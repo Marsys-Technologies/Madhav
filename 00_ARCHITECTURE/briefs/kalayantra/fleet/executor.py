@@ -120,10 +120,37 @@ def fence_quiescent() -> bool:
         proof = json.loads((ACC / f"{operation_id}.quiescence.json").read_text())
     except (OSError, KeyError, TypeError, json.JSONDecodeError):
         return False
-    return (isinstance(request_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", request_sha256) is not None
+    accepted = (isinstance(request_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", request_sha256) is not None
             and proof.get("operation_id") == operation_id and proof.get("request_sha256") == request_sha256
             and proof.get("result") == "ACCEPTED"
             and proof.get("by") in ("v1", "v2", "v3", "v4") and bool(proof.get("ts")))
+    if not accepted:
+        return False
+    try:
+        commit_bytes = (REC / f"{operation_id}.json").read_bytes()
+        committed = json.loads(commit_bytes)
+        if committed.get("operation_id") != operation_id or committed.get("request_sha256") != request_sha256:
+            return False
+        if committed.get("kind") == "smalltest_teardown":
+            policy = smalltest_policy(committed)
+            observed = policy["absence_evidence"](proof, OPS, teardown_receipt=committed)
+            completion = dict(schema="ky.smalltest_completion/1", status="COMPLETED", operation_id=operation_id,
+                request_sha256=request_sha256, reviewed_commit=committed["reviewed_commit"],
+                commit_receipt_sha256=digest_bytes(commit_bytes), run_id=observed["run_id"],
+                scope_sha256=observed["scope_sha256"], rowset_sha256=observed["rowset_sha256"],
+                absence_receipt=proof["absence_receipt"], absence_acceptance=proof["absence_acceptance"])
+            # The commit receipt remains immutable: absence binds its digest.
+            # Publish completion separately only after the independent detector.
+            path = REC / f"{operation_id}.completion.json"
+            with _lock:
+                staged = path.with_suffix(".json.tmp")
+                with staged.open("w") as stream:
+                    stream.write(json.dumps(completion, indent=1))
+                    stream.flush(); os.fsync(stream.fileno())
+                os.replace(staged, path)
+    except Exception:
+        return False
+    return True
 
 def refresh_state() -> str:
     try: return str(json.loads(REFRESH.read_text()).get("result", "UNKNOWN"))
@@ -250,9 +277,50 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             r["launch"] = launch
         else:
             r.update(status="FAILED", reason="small-test launch identity missing or invalid; reconcile remote outcome")
+    if req.get("kind") in ("smalltest_teardown", "smalltest_teardown_dryrun") and status == "COMPLETED":
+        records = []
+        for line in out.splitlines():
+            if line.startswith("teardown_proof\t"):
+                try: records.append(json.loads(line.split("\t", 1)[1]))
+                except ValueError: pass
+        proof = records[0] if len(records) == 1 else {}
+        expected = "ROLLED_BACK" if req["kind"].endswith("_dryrun") else "COMMITTED_AWAITING_ABSENCE"
+        if (rc == 0 and isinstance(proof, dict) and proof.get("schema") == "ky.smalltest_teardown/1" and proof.get("status") == expected
+                and proof.get("request_sha256") == request_digest(req) and proof.get("operation_id") == req["operation_id"]
+                and proof.get("scope") == req.get("smalltest_scope")
+                and proof.get("scope_sha256") == digest_bytes(json.dumps(req.get("smalltest_scope"), sort_keys=True, separators=(",", ":")).encode())
+                and proof.get("rollback_confirmed") is (expected == "ROLLED_BACK")
+                and re.fullmatch(r"[0-9a-f]{64}", str(proof.get("rowset_sha256", "")))):
+            r["teardown"] = proof
+            if expected == "COMMITTED_AWAITING_ABSENCE": r["status"] = "AWAITING_ABSENCE"
+        else:
+            r.update(status="FAILED", reason="bound teardown proof missing; reconcile transaction outcome")
     if extra: r.update(extra)
     with _lock: (REC / f"{name}.json").write_text(json.dumps(r, indent=1))
     log(f"{name} {status} {reason}")
+
+
+def smalltest_policy(req: dict):
+    """Load evidence rules only from the same reviewed, merged operation source.
+
+    The installed executor is standalone; importing a helper from the mutable
+    campaign checkout would cross its trust boundary. No checkout or Git write.
+    """
+    source = git("show", f"{req['reviewed_commit']}:platform/scripts/v5_small_test_shared.py")
+    if source.returncode or not getattr(source, "stdout", ""):
+        raise ValueError("reviewed small-test evidence policy unavailable")
+    namespace = {"__name__": "reviewed_smalltest_policy", "__file__": "reviewed_smalltest_policy.py"}
+    exec(compile(source.stdout, "reviewed small-test evidence policy", "exec"), namespace)
+    return namespace
+
+
+def smalltest_policy_problem(req: dict) -> str | None:
+    if req.get("kind") not in ("smalltest_teardown", "smalltest_teardown_dryrun", "smalltest_dispatch", "smalltest_dispatch_dryrun"):
+        return None
+    try:
+        return smalltest_policy(req)["smalltest_request_problem"](req, OPS)
+    except Exception:
+        return "reviewed small-test evidence policy unavailable or invalid"
 
 
 def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str | None:
@@ -298,7 +366,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
             if any((a.get("rows") or {}).get(k) is not True for k in op.get("required_rows", [])): return "required pre-acceptance rows are not all true"
         if any((a.get("checks") or {}).get(k) is not True for k in required): return "required backup/restore/dry-run attestation missing"
     if not reserved and seen(req["idempotency_key"]): return "idempotency key already used"
-    return None
+    return smalltest_policy_problem(req)
 
 
 def run_group(argv: list[str], cwd: pathlib.Path, env: dict, timeout: int) -> subprocess.CompletedProcess:
@@ -328,6 +396,7 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
     if op["needs"] == "builder": env["DATABASE_URL"] = os.environ["KY_BUILDER_DATABASE_URL"]
     elif op["needs"] == "owner": env["DATABASE_URL"] = os.environ["KY_OWNER_DATABASE_URL"]
     elif op["needs"] == "layer_verifier": env["DATABASE_URL"] = os.environ["KY_LAYER_VERIFIER_DATABASE_URL"]
+    env["KY_OPERATION_REQUEST"] = json.dumps(req, sort_keys=True, separators=(",", ":"))
     env["SE_EPHE_PATH"] = os.environ.get("SE_EPHE_PATH", str(KY_ROOT / "ephe")); env["KY_ROOT"] = str(KY_ROOT)
     if not op.get("production"):
         src = git("show", f"origin/main:{script}")
@@ -402,6 +471,7 @@ def main() -> int:
             last_sync = time.time()
         if time.time() - last_caps > 300: caps = capabilities(table is not None); last_caps = time.time()
         if table is None or (KY_ROOT / "HOLD").exists(): time.sleep(10); continue      # no table on main yet (before B-1), refs unreachable, or HOLD
+        if FENCE.exists(): fence_quiescent()  # reconcile independent small-test completion; retain the owner-controlled fence
         for f in sorted(REQ.glob("*.json")):
             try: req = json.loads(f.read_text())
             except Exception as e:

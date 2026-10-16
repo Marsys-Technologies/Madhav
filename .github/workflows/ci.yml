@@ -339,6 +339,11 @@ jobs:
           python-version: '3.11'
       - name: Install sidecar CI dependencies
         run: python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+      - name: Install PostgreSQL 16 logical backup clients
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
       - name: Download and verify pinned ephemeris
         run: |
           se1_dir="$(mktemp -d)"
@@ -361,7 +366,7 @@ jobs:
         # dispatch and broken-detector negatives in both migration states.
         # K9-1: directory discovery also collects kala_db/rehearsal (ordered
         # build lineage, own detectors, read-only inspection, publication CAS).
-        run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga -q -rs
+        run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters -q -rs -p no:cacheprovider
       - name: Run scoped parihara evaluator contract and route tests
         working-directory: platform/python-sidecar
         env:
@@ -377,6 +382,41 @@ jobs:
       - name: K7-4 — cyclic fronts, permutations and Tulana compatibility
         working-directory: platform/python-sidecar
         run: python -m pytest tests/l3/test_ka_tulana.py -q -rs
+
+  # K3-2 pre-build: real SQL evidence is required through governance-gates.
+  # Keep the existing all-Kāla DB selection above unchanged.
+  k3-sealed-db-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    name: K3 sealed negative-space contract (throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+      KALA_REQUIRE_DB: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install sidecar CI dependencies
+        run: python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+      - name: Run complete K3 consumer and SQL suites; skips fail
+        working-directory: platform/python-sidecar
+        run: python -B -m pytest tests/l3/ka_vighnakara tests/l3/kala_db/ka_vighnakara -q -rs -p no:cacheprovider --basetemp="$RUNNER_TEMP/k3-sealed-pytest"
 
   db-integration-tests:
     needs: changes
@@ -510,7 +550,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_station_refine.py tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_builder_restricted_flow.py tests/l3/gochara/test_a53_all_null_policy.py tests/l3/gochara/test_a53_all_null_policy_db.py tests/l3/gochara/test_a53_complete_output_verification.py tests/l3/gochara/test_a53_p1_contact_completeness.py tests/l3/gochara/test_a53_verification_job.py tests/l3/gochara/test_a53_contact_certification.py tests/l3/gochara/test_a53_boundary_tolerance.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_measuring_report_db.py tests/l3/gochara/test_a53_scope_completeness.py tests/l3/gochara/test_a53_stored_scope_real_sky.py tests/l3/gochara/test_a53_r10_complete_records.py tests/l3/gochara/test_a53_r10_record_results.py tests/l3/gochara/test_a53_r10_locking.py tests/l3/gochara/test_a53_r10_runner_gate.py tests/l3/gochara/test_a53_r10_identity.py tests/l3/gochara/test_a53_r10_boundary_contract.py tests/l3/gochara/test_a53_r11_generation_wide.py tests/l3/gochara/test_a53_r11_p1_independence.py tests/l3/gochara/test_a53_r11_seal_brief.py tests/l3/gochara/test_a53_seal_grants_ledger.py tests/l3/gochara/test_a53_disposable_db_guard.py tests/l3/gochara/test_a53_r12_boundary.py tests/l3/gochara/test_a53_r12_seal_job.py tests/l3/gochara/test_a53_r12_persisted_brief.py tests/l3/gochara/test_a53_r13_brief_serializer.py tests/l3/gochara/test_a53_r13_timeouts.py tests/l3/gochara/test_a53_r13_sealed_boundary.py tests/l3/gochara/test_a53_r13_producer.py tests/l3/gochara/test_a53_r13_own_checkout.py tests/l3/gochara/test_a53_r14_sealed_contacts.py tests/l3/gochara/test_a53_r15_amendments.py tests/l3/gochara/test_a53_r16_amendments.py tests/l3/gochara/test_a53_r18_independence_pins.py tests/l3/gochara/test_a53_writer_native_types.py tests/l3/gochara/test_a53_moon_scope_domain.py tests/l3/gochara/test_a53_ci_db_list_guard.py tests/l3/gochara/test_a25_v41_candidate_writer.py tests/l3/gochara/test_a53_input_vector.py tests/l3/gochara/test_a53_1241_fixture_pin.py tests/l3/gochara/test_a53_am5_writer.py tests/l3/gochara/test_a53_aspect_span.py tests/l3/gochara/test_a53_dasha_read.py tests/l3/gochara/test_a53_ephemeral_tier_rule.py tests/l3/gochara/test_a53_gochara_v5_writer.py tests/l3/gochara/test_a53_inventory.py tests/l3/gochara/test_a53_materialise.py tests/l3/gochara/test_a53_member_geometry.py tests/l3/gochara/test_a53_moon_on_demand.py tests/l3/gochara/test_a53_p1_house_descriptor.py tests/l3/gochara/test_a53_r18_graha_map_parity.py tests/l3/gochara/test_a53_r86_sweep.py tests/l3/gochara/test_a53_record_store.py tests/l3/gochara/test_a53_rule_registry.py tests/l3/gochara/test_a53_rule_registry_versions.py tests/l3/gochara/test_a53_substrate_store.py tests/l3/gochara/test_a53_targets.py tests/l3/gochara/test_a53_version_selection.py tests/l3/gochara/test_a53_window_evaluator.py tests/l3/gochara/test_a53_window_sweep.py tests/l3/gochara/test_a53_window_sweep_pg.py tests/l3/gochara/test_a53_writerbase_conformance.py tests/l3/gochara/test_c46_v5_test_slice.py tests/l3/gochara/test_c55_legacy_trigger_interplay_pg.py tests/l3/gochara/test_c48a_sealed_staleness.py tests/l3/gochara/test_w1_serving_reader.py tests/l3/gochara/test_w1_serving_grants.py tests/l3/gochara/test_w2_serving_route.py tests/l3/gochara/test_p09_acceptance.py tests/l3/gochara/test_p09_sealed_attestation.py tests/l3/gochara/test_p09_real_seal.py tests/l3/gochara/test_j7b_l5_handoff.py tests/l3/gochara/test_j6m_authority_admission_db.py tests/l3/gochara/test_j6m_prebuild_static.py tests/l3/gochara/test_horizon_derivation.py tests/l3/gochara/test_mb_horizon_shape_guard.py tests/l3/gochara/test_mb_stretch_sink.py -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
+          python -m pytest tests/l3/gochara/test_station_refine.py tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_builder_restricted_flow.py tests/l3/gochara/test_a53_all_null_policy.py tests/l3/gochara/test_a53_all_null_policy_db.py tests/l3/gochara/test_a53_complete_output_verification.py tests/l3/gochara/test_a53_p1_contact_completeness.py tests/l3/gochara/test_a53_verification_job.py tests/l3/gochara/test_a53_contact_certification.py tests/l3/gochara/test_a53_boundary_tolerance.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_measuring_report_db.py tests/l3/gochara/test_a53_scope_completeness.py tests/l3/gochara/test_a53_stored_scope_real_sky.py tests/l3/gochara/test_a53_r10_complete_records.py tests/l3/gochara/test_a53_r10_record_results.py tests/l3/gochara/test_a53_r10_locking.py tests/l3/gochara/test_a53_r10_runner_gate.py tests/l3/gochara/test_a53_r10_identity.py tests/l3/gochara/test_a53_r10_boundary_contract.py tests/l3/gochara/test_a53_r11_generation_wide.py tests/l3/gochara/test_a53_r11_p1_independence.py tests/l3/gochara/test_a53_r11_seal_brief.py tests/l3/gochara/test_a53_seal_grants_ledger.py tests/l3/gochara/test_a53_disposable_db_guard.py tests/l3/gochara/test_a53_r12_boundary.py tests/l3/gochara/test_a53_r12_seal_job.py tests/l3/gochara/test_a53_r12_persisted_brief.py tests/l3/gochara/test_a53_r13_brief_serializer.py tests/l3/gochara/test_a53_r13_timeouts.py tests/l3/gochara/test_a53_r13_sealed_boundary.py tests/l3/gochara/test_a53_r13_producer.py tests/l3/gochara/test_a53_r13_own_checkout.py tests/l3/gochara/test_a53_r14_sealed_contacts.py tests/l3/gochara/test_a53_r15_amendments.py tests/l3/gochara/test_a53_r16_amendments.py tests/l3/gochara/test_a53_r18_independence_pins.py tests/l3/gochara/test_a53_writer_native_types.py tests/l3/gochara/test_a53_moon_scope_domain.py tests/l3/gochara/test_a53_ci_db_list_guard.py tests/l3/gochara/test_a25_v41_candidate_writer.py tests/l3/gochara/test_a53_input_vector.py tests/l3/gochara/test_a53_1241_fixture_pin.py tests/l3/gochara/test_a53_am5_writer.py tests/l3/gochara/test_a53_aspect_span.py tests/l3/gochara/test_a53_dasha_read.py tests/l3/gochara/test_a53_ephemeral_tier_rule.py tests/l3/gochara/test_a53_gochara_v5_writer.py tests/l3/gochara/test_a53_inventory.py tests/l3/gochara/test_a53_materialise.py tests/l3/gochara/test_a53_member_geometry.py tests/l3/gochara/test_a53_moon_on_demand.py tests/l3/gochara/test_a53_p1_house_descriptor.py tests/l3/gochara/test_a53_r18_graha_map_parity.py tests/l3/gochara/test_a53_r86_sweep.py tests/l3/gochara/test_a53_record_store.py tests/l3/gochara/test_a53_rule_registry.py tests/l3/gochara/test_a53_rule_registry_versions.py tests/l3/gochara/test_a53_substrate_store.py tests/l3/gochara/test_a53_targets.py tests/l3/gochara/test_a53_version_selection.py tests/l3/gochara/test_a53_window_evaluator.py tests/l3/gochara/test_a53_window_sweep.py tests/l3/gochara/test_a53_window_sweep_pg.py tests/l3/gochara/test_a53_writerbase_conformance.py tests/l3/gochara/test_c46_v5_test_slice.py tests/l3/gochara/test_c55_legacy_trigger_interplay_pg.py tests/l3/gochara/test_c48a_sealed_staleness.py tests/l3/gochara/test_w1_serving_reader.py tests/l3/gochara/test_w1_serving_grants.py tests/l3/gochara/test_w2_serving_route.py tests/l3/gochara/test_p09_acceptance.py tests/l3/gochara/test_p09_sealed_attestation.py tests/l3/gochara/test_p09_real_seal.py tests/l3/gochara/test_j7b_l5_handoff.py tests/l3/gochara/test_j6m_authority_admission_db.py tests/l3/gochara/test_j6m_prebuild_static.py tests/l3/gochara/test_horizon_derivation.py tests/l3/gochara/test_mb_horizon_shape_guard.py tests/l3/gochara/test_mb_stretch_sink.py tests/l3/gochara/test_j6r_rehearsal_db.py tests/l3/gochara/test_j6r_prebuild_static.py -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
           # ^ that one test needs the pre-refactor baseline commit, unreachable from this job's shallow checkout;
           # it still runs in Governance Gates.
 
@@ -1106,7 +1146,7 @@ jobs:
       - name: Gochara v5 small-test teardown - registry shape, attribution, receipts, every refusal (unit)
         # The teardown is the only way a small test is removed. These tests pin its registry check to the migration-1304 shape, its
         # delete orders to the writer's own, the receipt rule the Nirmana monitor depends on, and every refusal (no database).
-        run: python -m pytest scripts/__tests__/test_teardown_v5_small_test.py -q
+        run: python -m pytest scripts/__tests__/test_teardown_v5_small_test.py scripts/__tests__/test_p01_smalltest_operations.py scripts/__tests__/test_backup_v5_small_test.py scripts/__tests__/test_w4_smalltest_safety.py -q -p no:cacheprovider
 
       - name: NTAP monitor — provision the dedicated migration 629 contract DB
         # Dedicated disposable database on this job's local postgres:16 service.
@@ -1395,7 +1435,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_c38_teardown_real_db.py tests/l3/gochara/test_c38_teardown_populated.py -q --tb=short -rs -p no:cacheprovider
+          python -m pytest tests/l3/gochara/test_c38_teardown_real_db.py tests/l3/gochara/test_c38_teardown_populated.py tests/l3/gochara/test_w4_smalltest_safety_db.py -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-teardown-round2:
     # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 14 minutes locally (26 tests).
@@ -2189,6 +2229,12 @@ jobs:
       - name: K9-23 disabled layer bindings and credential isolation
         if: ${{ matrix.shard == 1 }}
         run: python -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_k9_publication_bindings.py -q -p no:cacheprovider
+      - name: OPS-NB-02 — operation-adapter rollback and acceptance regressions
+        if: matrix.shard == 1
+        run: >-
+          python -m pytest
+          00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py
+          -q -p no:cacheprovider
       - name: KĀLA-YANTRA operation adapter acceptance harness (OPS-NB-01)
         if: matrix.shard == 1
         run: python -B -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py -q -p no:cacheprovider
@@ -2640,7 +2686,7 @@ jobs:
     # static gates job AND every python-sidecar shard are green: a failed, cancelled or SKIPPED shard (they never skip by design, not even
     # on a docs-only change) is not green. Same shape as `governance-tool-tests` above.
     name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
-    needs: [governance-gates-static, governance-gates-py-sidecar-shard]
+    needs: [changes, governance-gates-static, governance-gates-py-sidecar-shard, k3-sealed-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2648,12 +2694,17 @@ jobs:
       contents: read
 
     steps:
-      - name: The static gates and every py-sidecar shard passed
+      - name: The static gates, every py-sidecar shard and K3 SQL suite passed
         env:
+          K3_RESULT: ${{ needs.k3-sealed-db-tests.result }}
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           STATIC_RESULT: ${{ needs.governance-gates-static.result }}
           SHARDS_RESULT: ${{ needs.governance-gates-py-sidecar-shard.result }}
         run: |
-          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ]; then echo "static gates and all py-sidecar shards passed"; exit 0; fi
+          if [ "$K3_RESULT" != "success" ] && ! { [ "$K3_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; }; then
+            echo "::error::Governance Gates: required K3 SQL suite finished '$K3_RESULT'"; exit 1
+          fi
+          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ]; then echo "static gates, all py-sidecar shards and required K3 SQL suite passed"; exit 0; fi
           echo "::error::Governance Gates: static gates finished '$STATIC_RESULT', py-sidecar shards finished '$SHARDS_RESULT' (both must be 'success')"; exit 1
 
   governance-gates-gochara:

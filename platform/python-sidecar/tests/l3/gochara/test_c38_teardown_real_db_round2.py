@@ -11,6 +11,8 @@ import os
 import psycopg
 import pytest
 
+from ._smalltest_executor_evidence import executor_bound_smalltest  # noqa: F401
+
 from .test_c38_teardown_real_db import (  # noqa: F401  (fixtures and helpers of part 1)
     ASSET, GEN, MARKER, OTHER_CHART, SHORT, _built_stamped_with_test_run, _counts, _default_build, _present, _prune, _refused_and_untouched, _run, _slice_run, _slice_steps, _snapshot, _step, _teardown, json, os, psycopg, pytest, td, threading, time, template, tworld, writer_mod,
 )

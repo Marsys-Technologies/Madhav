@@ -240,6 +240,19 @@ class KaTithiPraveshaWriter(WriterBase):
     asset_id = "ka_tithi_pravesha"
 
     def run(self, ctx) -> WriterResult:
+        # SR-A4-01: only an explicit typed candidate payload enters the new
+        # path. Normal dispatch keeps the published legacy computation intact.
+        if "ka_adapter_payload" in ctx.config:
+            from services.kala_core.overlays.contested import AdapterPayload
+            from services.kala_core.overlays.contested_storage import replace_candidate
+
+            payload = ctx.config["ka_adapter_payload"]
+            if not isinstance(payload, AdapterPayload) or "ka_" + payload.family != self.asset_id:
+                raise ValueError("candidate payload family does not match registered writer")
+            count = replace_candidate(ctx, payload)
+            return WriterResult(asset_id=self.asset_id, rows_inserted=count,
+                                notes="SR-A4-01 candidate only; publication unchanged")
+
         conn = ctx.db_conn
         chart_id = ctx.config["chart_id"]
 

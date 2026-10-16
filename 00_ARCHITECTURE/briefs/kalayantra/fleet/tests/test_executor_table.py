@@ -1,11 +1,10 @@
 """KV3-B-EXECUTOR-TABLE (relaunch plan v2.7 §2, §5, §6 EXECUTE, §14 B-1): the executor table and the executor's git handle.
 
 What this proves, and what it deliberately does not touch:
-  · the table: every `enabled_by` is a plan-model item; exactly four kinds are enabled; every field equals the table at the
-    plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; the five P10 entries are present and disabled; `enabled` is the first
-    key of each entry; each of the five model detector patterns (read from the model, not retyped) misses the table and
-    hits a copy with that one entry flipped;
-  · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability additions only, and the listed
+  · the table: every `enabled_by` is a plan-model item; four bootstrap and six J-1a kinds are enabled; every field equals the table at the
+    plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; P10 entries are present, with only J-1a enabled; `enabled` is the first
+    key of each entry; the five model completion detectors retain main's reviewed definitions rather than treating table enablement as acceptance;
+  · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability and evidence-bound safety additions only, and the listed
     functions and constants are byte-identical;
   · the negative cases run through the real `validate` on a temporary KY_ROOT, with KY_SOURCE_REPO a temporary repository
     whose origin is a local path — never the campaign checkout, never the network, never the running executor.
@@ -36,13 +35,28 @@ SH_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh"
 COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 
 PLAN_PIN = "e709f60d7fcd4559227a25a4d5d83d6431c396b6"
+MODEL_PIN = "cf9831bceff36abd5a50e95328b83d16a4c1ce24"  # final J-4p/main integration target
 PINNED_EXECUTOR_SHA256 = "8b9a164f52b307514d7b42f87019070689b1533f624b871a2e1d113408ebdcf7"
 DEFAULT_SOURCE_REPO = "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign"
 SH_GIT_OLD = 'GIT="$KY_ROOT/wt/campaign"'
 SH_GIT_NEW = 'GIT="${KY_SOURCE_REPO:-' + DEFAULT_SOURCE_REPO + '}"'
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 
-ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"}
+P01_BINDINGS = {
+    "backup_snapshot": {"needs": "owner", "script": "platform/scripts/backup_v5_small_test_job.py",
+                        "fixed_args": ["--operation", "snapshot", "--execute"], "allowed_args": ["label"]},
+    "backup_restore_verify": {"needs": "owner", "script": "platform/scripts/backup_v5_small_test_job.py",
+                              "fixed_args": ["--operation", "restore-verify", "--execute"], "allowed_args": ["label"]},
+    "smalltest_dispatch_dryrun": {"script": "platform/scripts/dispatch_v5_small_test_job.py",
+                                 "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run"]},
+    "smalltest_dispatch": {"script": "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py",
+                          "fixed_args": []},
+    "smalltest_teardown_dryrun": {"script": "platform/scripts/teardown_v5_small_test_job.py",
+                                 "fixed_args": ["--dry-run"], "allowed_args": []},
+    "smalltest_teardown": {"script": "platform/scripts/teardown_v5_small_test_job.py",
+                          "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": []},
+}
+ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"} | set(P01_BINDINGS)
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
@@ -78,11 +92,8 @@ def model_items():
     return {i["id"]: i for i in json.loads(MODEL.read_text())["items"]}
 
 
-def detector_pattern(item_id):
-    det = model_items()[item_id]["detector"]
-    assert det["type"] == "file_contains", f"{item_id}: detector is {det['type']}"
-    assert det["path"].endswith("/" + OPS_REL), f"{item_id}: detector reads {det['path']}"
-    return re.compile(det["pattern"])
+def detector_definition(item_id):
+    return model_items()[item_id]["detector"]
 
 
 def flip(text, kind):
@@ -101,7 +112,7 @@ def test_every_enabled_by_is_a_model_item():
     assert not bad, f"enabled_by names an id that is not in the plan model: {bad}"
 
 
-def test_enabled_set_is_exactly_the_four_kinds():
+def test_enabled_set_is_exactly_bootstrap_and_six_p01_kinds():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     assert {k for k, e in ops.items() if enabled_state(k, e)} == ENABLED_KINDS
 
@@ -112,11 +123,11 @@ def test_enabled_is_the_first_key_of_every_entry():
         assert next(iter(entry)) == "enabled", f"{kind}: first key is {next(iter(entry))}"
 
 
-def test_p10_entries_present_and_disabled():
+def test_p10_entries_present_with_only_j1a_enabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     for item, kind in P10.items():
         assert kind in ops, f"{kind} is missing"
-        assert enabled_state(kind, ops[kind]) is False, f"{kind} must be disabled"
+        assert enabled_state(kind, ops[kind]) is (item == "J-1a"), f"{kind} has unexpected enablement"
         assert ops[kind]["enabled_by"] == item
 
 
@@ -153,6 +164,8 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
             "enabled": False, "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py",
             "fixed_args": ["--dry-run", "--kind", kind], "allowed_args": expected[kind]["allowed_args"], "enable_at": phase,
             "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
+    for kind, binding in P01_BINDINGS.items():
+        expected[kind].update(enabled=True, **binding)
     for kind, entry in now["ops"].items():
         assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
         assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
@@ -184,15 +197,15 @@ def test_doc_states_what_it_serves_and_assumes_no_enablement_path():
 
 
 @pytest.mark.parametrize("item,kind", sorted(P10.items()))
-def test_model_detector_misses_the_table_and_hits_one_flipped_entry(item, kind):
-    pattern = detector_pattern(item)
-    text = OPS_FILE.read_text()
-    assert not pattern.search(text), f"{item}'s detector already matches the table"
-    flipped = flip(text, kind)
-    assert pattern.search(flipped), f"{item}'s detector does not read the flipped {kind} entry"
-    for other_item, other_kind in P10.items():
-        if other_item != item:
-            assert not detector_pattern(other_item).search(flipped), f"flipping {kind} also trips {other_item}"
+def test_model_completion_detector_preserves_main_authority(item, kind):
+    # Final main replaced the old enablement regex with earned code/operation
+    # completion detectors. Preserve those definitions while P01 enables bindings.
+    main_model = json.loads(git_show(f"{MODEL_PIN}:00_ARCHITECTURE/control/kalayantra/plan_model.json"))
+    main_item = next(i for i in main_model["items"] if i["id"] == item)
+    detector = detector_definition(item)
+    assert detector == main_item["detector"]
+    assert not detector.get("path", "").endswith("/" + OPS_REL)
+    assert enabled_state(kind, load_ops(OPS_FILE.read_text())["ops"][kind]) is (item == "J-1a")
 
 
 def test_detector_state_unreadable_is_a_failure():
@@ -202,7 +215,7 @@ def test_detector_state_unreadable_is_a_failure():
     with pytest.raises(AssertionError):
         enabled_state("x", {"needs": "none"})
     with pytest.raises(KeyError):
-        detector_pattern("NO-SUCH-ITEM")
+        detector_definition("NO-SUCH-ITEM")
 
 
 # ───────────────────────────── the authority boundary ─────────────────────────────
@@ -234,13 +247,13 @@ def _segments(src):
     return out
 
 
-# Exact approved Wave 4 additions only. Any other mutation, including a changed
-# admission gate or receipt parser, still fails the pinned boundary detector.
-W4_FUNCTION_HASHES = {'receipt': '32faf16f6fc5600bb667b730c3792ebe7797df5c333e32b498c840263d0349cd', 'validate': '6a497e463815ff701c5ea67a8f20b009c32594d176d074167e88f631da5a4915'}
+# Exact Wave 4 safety-fix candidate additions, for independent review. Every
+# other mutation, including weakening these functions, fails the boundary pin.
+W4_FUNCTION_HASHES = {'receipt': '480f8793d5b6c4317ab4ec3eaaf0ad14de6f2b1ba4a6f02e2373fdd2c393b91d', 'validate': '8a3fac3be06069fccc01c7d34b20a30fb0f3e8f1a12d0c143a86427f826614cf', 'fence_quiescent': 'f3388af221f3d1fe0ee74684c0be9c1ac3200df733d339a4934c37ce3239f41e', 'execute': '8560e21fc11391f5f4c29efeef086a157a6fa7474fd31c9652fbac89eaeaf74d', 'main': '54742775aa3f7ad88df0e42bd6d3a99d723cfc5b3afde8188fc1cda38b2a1f04', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'c84beec4ea3dcff5b239dcd8d29b37d64e1da23b409f7290997075141d680967'}
 
 
 # Exact K9-23 additions: a distinct verifier capability and one-connection injection.
-K9_FUNCTION_HASHES = {'capabilities': '5ebe1c302e6b797c2af0da3bb72b7a9aadca4b40663645396aab217a27b9b675', 'execute': '40eb38466820b546f985f223e520161fa8fee4c6c2f48fcd8d4c440965126648'}
+K9_FUNCTION_HASHES = {'capabilities': '5ebe1c302e6b797c2af0da3bb72b7a9aadca4b40663645396aab217a27b9b675', 'execute': '886456fdfcf048491718ab86d873a923ea24600b4953dadf913a94e9ad4a1185'}
 
 
 def normalize_wave4(base_src, work_src):
@@ -248,14 +261,19 @@ def normalize_wave4(base_src, work_src):
     for name, digest in (W4_FUNCTION_HASHES | K9_FUNCTION_HASHES).items():
         segment = work_seg.get(name, "")
         if hashlib.sha256(segment.encode()).hexdigest() == digest:
-            work_src = work_src.replace(segment, base_seg[name], 1)
+            if name in base_seg:
+                work_src = work_src.replace(segment, base_seg[name], 1)
+            else:
+                work_src = work_src.replace(segment + "\n\n\n", "", 1)
     return work_src
 
 
 def boundary_violations(base_src, work_src):
     """Why `work_src` is not the pinned executor.py plus a changed GIT assignment (empty list = boundary holds)."""
+    base_segments, raw_segments = _segments(base_src), _segments(work_src)
+    problems = [f"{name} safety helper missing or changed" for name, digest in W4_FUNCTION_HASHES.items()
+                if name not in base_segments and hashlib.sha256(raw_segments.get(name, "").encode()).hexdigest() != digest]
     work_src = normalize_wave4(base_src, work_src)
-    problems = []
     base_tree, work_tree = ast.parse(base_src), ast.parse(work_src)
     base_git = [n for n in base_tree.body if _is_git_assign(n)]
     work_git = [n for n in work_tree.body if _is_git_assign(n)]
@@ -309,6 +327,13 @@ def test_boundary_test_fails_when_another_code_line_changes(old, new):
     assert work.count(old) == 1, f"mutation anchor not unique in executor.py: {old!r}"
     problems = boundary_violations(base_text(PY_REL), work.replace(old, new))
     assert problems, "the boundary test accepted a changed code line"
+
+
+@pytest.mark.parametrize("name", ["smalltest_policy", "smalltest_policy_problem"])
+def test_boundary_refuses_removal_of_a_new_safety_helper(name):
+    work = EXECUTOR_PY.read_text()
+    segment = _segments(work)[name]
+    assert boundary_violations(base_text(PY_REL), work.replace(segment, "", 1))
 
 
 def test_boundary_test_fails_when_a_second_statement_hides_on_the_git_line():
