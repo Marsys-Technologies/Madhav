@@ -30,16 +30,16 @@ SURFACES = {
                      "report-only is REPORT_ONLY, never VERIFIED or a seal brief"]},
     "publish_head": {
         "args": {"generation": "5.0"}, "caps": ["builder"], "runtime_principal": "data_plane_builder", "phase": "J-6m",
-        "source": "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
-        "blockers": ["allocate governed 5.0 authority-switch wrapper and dry-run kind through a real child",
+        "source": "platform/python-sidecar/scripts/kala_gochara_cutover/authority_operation.py",
+        "blockers": ["J6MR disabled real bindings require exact-head independent review and phase enablement",
                      "accepted sealed generation, retained previous head, compare-and-swap and readback evidence",
-                     "legacy flip script is not qualified for this governed path"]},
+                     "this preview is not publish_head_dryrun and cannot earn dry_run_passed"]},
     "rollback_head": {
         "args": {}, "caps": ["builder"], "runtime_principal": "data_plane_builder", "phase": "J-6r",
-        "source": "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
-        "blockers": ["allocate retained-head rollback rehearsal and dry-run kind through a real child",
+        "source": "platform/python-sidecar/scripts/kala_gochara_cutover/authority_operation.py",
+        "blockers": ["J6MR disabled retained-head rollback bindings require phase enablement and accepted rehearsal",
                      "pin expected current head and retained previous head in the reviewed request contract",
-                     "legacy rollback deletes authority and falls back to v1; it cannot prove retained-head rollback"]},
+                     "this preview is not rollback_head_dryrun and cannot earn dry_run_passed"]},
     "protected_apply": {
         "args": {}, "caps": [], "runtime_principal": "protected workflow ownership-admin", "phase": "J-4b-a55j / P06b",
         "source": "platform/scripts/kala_protected_migrations.txt",

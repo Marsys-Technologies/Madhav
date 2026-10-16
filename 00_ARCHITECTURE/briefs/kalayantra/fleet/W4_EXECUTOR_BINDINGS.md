@@ -67,7 +67,7 @@ existing dispatcher's two required steward flags as fixed args.
 
 ## Disabled preparation surfaces
 
-`prepared_dry_run` metadata on the five existing later kinds describes an explicit
+`prepared_dry_run` metadata on the existing later kinds describes an explicit
 no-effect request preview via `operation_dryrun.py --dry-run --kind <kind>` and the
 kind's bounded arguments. The executor never treats nested metadata as a kind.
 The preview returns `PREPARATION_ONLY`, blockers and **dry_run_passed=false**.
@@ -79,8 +79,8 @@ proposed request and its gaps reviewable now.
 | measuring_dispatch | run=all_classes_full, classes=all | builder + gcloud | J-3a/J-3c; staging rollback and actual launch qualification |
 | century_dispatch | classes=all | gcloud | J-4d/J-4e; final-rules 5.0 launcher; confirm any staging builder requirement |
 | verification_job | generation=5.0 | gcloud | phase 10 after P06b; remote launcher and immutable job-definition readback |
-| publish_head | generation=5.0 | builder | J-6m; governed switch, retained head and compare-and-swap contract |
-| rollback_head | no target presumed; request contract awaits measured retained head | builder | J-6r; retained-head rehearsal contract, not deletion-to-v1 |
+| publish_head | generation=5.0, manifest-id, expected-head | builder | J-6m; disabled real CAS and transactional dry-run kinds; see J6MR_PREBUILD.md |
+| rollback_head | measured generation, expected-head, source-operation, source-sha256 | builder | J-6r; disabled full-row retained-head restore and transactional dry-run kinds; see J6MR_PREBUILD.md |
 
 The additional disabled `measuring_dispatch.staging_dry_run` descriptor binds the
 **real transaction rollback** path: the existing dispatcher with fixed steward,
@@ -117,12 +117,13 @@ for the verifier or sealer.
 
 Proposed future kind names, **not allocated or executable**:
 `measuring_dispatch_dryrun`, `century_dispatch_dryrun`,
-`verification_job_dryrun`, `publish_head_dryrun`, `rollback_head_dryrun`,
+`verification_job_dryrun`,
 `protected_apply`, `protected_apply_dryrun`, `provision`, `provision_dryrun`,
 `seal`, `seal_dryrun`. Cockpit must decide names, child allocation, exact request
-inputs, capabilities and enable-at-phase gates. Century, authority switching and
-protected interfaces remain explicitly unbound; their existing placeholders
-continue to fail closed even if accidentally enabled.
+inputs, capabilities and enable-at-phase gates. Century and protected interfaces remain explicitly unbound. J6MR binds the four
+authority operations disabled; their exact request, accepted dry-run, recovery
+and source-evidence contracts are documented in [J6MR_PREBUILD.md](J6MR_PREBUILD.md).
+Its real transactional dry runs are distinct from the no-effect previews above.
 
 ## Opened source contracts
 
