@@ -1,255 +1,183 @@
-"""
-ka_taranga — Activation Waveform (L3 Kāla)
-============================================
-FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
-NEVER commits or closes ctx.db_conn — orchestrator owns the transaction.
-NEVER writes to bodha_* tables.
+"""K6-4: monthly integrals over a build-bound forecaster candidate.
 
-Monthly convolution of dasha × transit × promise activation scores, stored
-for months 1950-01 through 2100-12 per scope (domain + event_class).
-
-Three components per month × scope:
-  1. dasha_contribution    — fraction of this month's dasha lord(s) that
-                             activates the scope's domain/event_class (0–1).
-  2. transit_contribution  — mean convergence_score of kala_convergence windows
-                             overlapping this month for this scope's domain (0–1).
-  3. promise_contribution  — bodha_pratijna grade/10 for this scope (0–1).
-
-activation = harmonic_mean(dasha, transit, promise) where all three > 0,
-             else arithmetic mean of available components.
-
-Fine grain (daily/hourly) = SERVICE computation, never stored.
-Known Sade-Sati years should show elevated obstruction-adjusted activation
-for 'health' and 'karma' domains (exit gate: waveform sanity check).
-
-BA-P5A Step 3. DAG: ka_avadhi → ka_taranga.
+PRE-BUILD, SR-A4-01: ordinary dispatch is inactive. The explicit
+``taranga_candidate`` rehearsal switch never publishes or writes legacy data.
+K5-G1a's 1385 sibling field/snapshot contract is the upstream input. Months
+are UTC half-open intervals; integration uses the forecaster's own evaluator.
+Risk-set metadata is not in that contract yet and stays honestly unavailable.
 """
 from __future__ import annotations
 
-from services.gochara_kernel.dasha_read import (
-    dasha_query, execute_governed_dasha_query)
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
+import math
 
-import json
-import logging
-from datetime import date, timedelta
-from typing import Optional
-
-import psycopg.rows
+from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
-from services.taranga_kernel.kernel import GRAHA_DOMAINS as _GRAHA_DOMAINS
-from services.taranga_kernel.kernel import harmonic_mean as _harmonic_mean
-from services.taranga_kernel.kernel import month_range as _month_range
+from pipeline.orchestrator.writers.ka_read_model_integrity import bind_integrity_target
+from services.ka_kshetra.contracts import Segment
+from services.ka_kshetra.integrator import segment_integral
+from services.kala_core.idempotency import replace_candidate_partition
+from services.kala_core.manifest import Candidate, lock_candidate_inputs
 
-logger = logging.getLogger(__name__)
-
-FORMULA_VERSION = "ka_taranga_v1.0"
-
-_WAVEFORM_START = date(1950, 1, 1)
-_WAVEFORM_END   = date(2100, 12, 1)
-
-# _GRAHA_DOMAINS, _harmonic_mean, _month_range: shared kernel extraction
-# (wave/D-3/T-3) — moved to services.taranga_kernel.kernel so both this batch
-# writer AND a live on-demand caller (sibling lane T-2) use the IDENTICAL
-# activation-formula primitives. Re-imported under their original local names
-# here so every call site below is unchanged (byte-identical output — see
-# tests/l3/test_taranga_kernel_extraction.py).
-
-_INSERT_SQL = """
-INSERT INTO kala_taranga (
-    chart_id, month, scope_kind, scope_id,
-    activation, components, formula_version
-) VALUES (
-    %(chart_id)s, %(month)s, %(scope_kind)s, %(scope_id)s,
-    %(activation)s, %(components)s::jsonb, %(formula_version)s
-)
-ON CONFLICT (chart_id, month, scope_kind, scope_id) DO UPDATE SET
-    activation      = EXCLUDED.activation,
-    components      = EXCLUDED.components,
-    formula_version = EXCLUDED.formula_version,
-    computed_at     = NOW()
-"""
-
-_BATCH = 2000
+FORMULA_VERSION = 'ka_taranga_integral_v2'
 
 
-@register("ka_taranga")
+def _month_start(instant):
+    return instant.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def _next_month(instant):
+    return instant.replace(year=instant.year+1, month=1) if instant.month == 12 else instant.replace(month=instant.month+1)
+
+
+def _project(segments, snapshots):
+    """Validate before replacing anything; duplicate identities must agree."""
+    unique = {}
+    for row in segments:
+        key = (row['event_class'], row['segment_index'])
+        if key in unique and unique[key] != row:
+            raise ValueError('conflicting duplicate field segment')
+        unique[key] = row
+    by_class = defaultdict(list)
+    for row in unique.values():
+        values = [row[k] for k in ('t_start','t_end','alpha','gamma','integral_days')]
+        if not all(math.isfinite(v) for v in values) or row['t_end'] <= row['t_start'] or row['integral_days'] < 0:
+            raise ValueError('invalid field segment')
+        by_class[row['event_class']].append(row)
+    output = {}
+    for event, group in sorted(by_class.items()):
+        group.sort(key=lambda r: (r['t_start'],r['t_end'],r['segment_index']))
+        previous_end = None
+        origins = set()
+        for row in group:
+            snap = snapshots.get(row['field_snapshot_id'])
+            if snap is None or not snap['field_content_hash']:
+                raise ValueError('finalized source snapshot required')
+            pin = snap['config_pin']
+            if not str(pin.get('axis','')).startswith('days_since_birth_UT') or not pin.get('birth_utc'):
+                raise ValueError('pinned UTC birth axis required')
+            origin = datetime.fromisoformat(pin['birth_utc'])
+            if origin.tzinfo is None:
+                raise ValueError('birth axis must include timezone')
+            origin = origin.astimezone(timezone.utc)
+            origins.add(origin)
+            if len(origins) != 1:
+                raise ValueError('conflicting field time axes')
+            if previous_end is not None and row['t_start'] < previous_end:
+                raise ValueError('overlapping field segments')
+            previous_end = row['t_end']
+            seg = Segment(row['segment_index'],row['t_start'],row['t_end'],row['alpha'],row['gamma'])
+            month = _month_start(origin + timedelta(days=seg.t_start))
+            end = origin + timedelta(days=seg.t_end)
+            while month < end:
+                next_month = _next_month(month)
+                u = max(seg.t_start, (month-origin).total_seconds()/86400)
+                v = min(seg.t_end, (next_month-origin).total_seconds()/86400)
+                if v > u:
+                    value = segment_integral(seg,u,v)
+                    if not math.isfinite(value) or value < 0:
+                        raise ValueError('nonfinite monthly integral')
+                    key = (month.date(),event)
+                    cell = output.setdefault(key, dict(values=[],snapshots=set(),segments=set()))
+                    cell['values'].append(value)
+                    cell['snapshots'].add(row['field_snapshot_id'])
+                    cell['segments'].add(f'{event}:{row["segment_index"]}')
+                month = next_month
+    return output
+
+
+@register('ka_taranga')
 class KaTarangaWriter(WriterBase):
-    """ka_taranga — Activation Waveform (L3 Kāla). LIGHT writer."""
+    """Read model only; caller owns the transaction and serving-head switch."""
 
     def run(self, ctx) -> WriterResult:
+        if getattr(ctx, 'dry_run', False):
+            return WriterResult(self.asset_id, 0, notes='dry_run: no output changed')
+        if not ctx.config.get('taranga_candidate'):
+            if getattr(ctx, 'db_conn', None) is not None:
+                bind_integrity_target(ctx)
+            return WriterResult(self.asset_id, 0, notes='pre-build SR-A4-01: inactive; served output unchanged')
+        chart = str(ctx.config['chart_id'])
+        build = str(ctx.build_id)
         conn = ctx.db_conn
-        chart_id = ctx.config["chart_id"]
-
-        # Idempotency: delete-then-insert
-        with conn.cursor() as _timeout_cur:
-            _timeout_cur.execute("SET LOCAL statement_timeout = 0")
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM kala_taranga WHERE chart_id = %s", (chart_id,))
-
-        # ── Load raw data ────────────────────────────────────────────────────
-
-        # 1. All MD dasha rows (system=vimshottari for primary dasha contribution)
-        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            execute_governed_dasha_query(
-                ctx.db_conn, chart_id, dasha_query('taranga_writer_md'),
-                (chart_id,),
-             ayanamsha_id="lahiri_chitrapaksha", cursor=cur)
-            vimsh_md = cur.fetchall()
-
-        if not vimsh_md:
-            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
-                                notes="no vimshottari MD rows — run ka_dasha_kala first")
-
-        # 2. Transit windows from kala_convergence (domain × month presence)
-        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute(
-                """
-                SELECT domain, window_start::date, window_end::date, convergence_score
-                FROM kala_convergence
-                WHERE chart_id = %s AND domain IS NOT NULL
-                  AND window_start IS NOT NULL AND window_end IS NOT NULL
-                ORDER BY window_start
-                """,
-                (chart_id,),
-            )
-            transit_windows = cur.fetchall()
-
-        # 3. Pratijna grades by scope (domain + event_class)
-        pratijna_domain: dict[str, float] = {}   # domain → mean grade
-        pratijna_ec: dict[str, float] = {}        # event_class_id → grade
-        with conn.cursor() as _sp:
-            _sp.execute("SAVEPOINT sp_taranga_pratijna")
-        try:
-            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                cur.execute(
-                    """
-                    SELECT bp.event_class_id, beo.domain, bp.grade
-                    FROM bodha_pratijna bp
-                    JOIN brahma_event_ontology beo USING (event_class_id)
-                    WHERE bp.chart_id = %s
-                      AND bp.ayanamsha_id = 'lahiri_chitrapaksha'
-                    """,
-                    (chart_id,),
-                )
-                ec_rows = cur.fetchall()
-            for r in ec_rows:
-                ec_id = r["event_class_id"]
-                domain = str(r.get("domain") or "unknown")
-                grade = float(r.get("grade") or 0)
-                pratijna_ec[ec_id] = grade / 10.0
-                pratijna_domain.setdefault(domain, []).append(grade / 10.0)  # type: ignore[arg-type]
-            pratijna_domain = {k: sum(v) / len(v) for k, v in pratijna_domain.items()}  # type: ignore[arg-type]
-            with conn.cursor() as _sp:
-                _sp.execute("RELEASE SAVEPOINT sp_taranga_pratijna")
-        except Exception as exc:
-            with conn.cursor() as _sp:
-                _sp.execute("ROLLBACK TO SAVEPOINT sp_taranga_pratijna")
-            logger.debug("ka_taranga: pratijna fetch skipped: %s", exc)
-
-        # ── Build lookup structures ──────────────────────────────────────────
-
-        # dasha lord → which months it covers
-        def _lord_for_month(m: date) -> Optional[str]:
-            for row in vimsh_md:
-                if row["ds"] <= m <= row["de"]:
-                    return row["lord_graha"]
-            return None
-
-        # transit: month → {domain: mean_convergence_score}
-        transit_by_month_domain: dict[date, dict[str, list[float]]] = {}
-        for tw in transit_windows:
-            ws = tw["window_start"]
-            we = tw["window_end"]
-            d  = tw.get("domain") or "unknown"
-            cs = float(tw.get("convergence_score") or 0)
-            for m in _month_range(max(ws, _WAVEFORM_START), min(we, _WAVEFORM_END)):
-                transit_by_month_domain.setdefault(m, {}).setdefault(d, []).append(cs)
-
-        # Determine scope lists
-        all_domains = sorted(set(
-            d for domains in _GRAHA_DOMAINS.values() for d in domains
-        ) | set(pratijna_domain.keys()))
-        all_event_classes = sorted(pratijna_ec.keys())
-
-        # ── Generate rows ────────────────────────────────────────────────────
-
-        rows_inserted = 0
-        batch: list[dict] = []
-
-        def _flush():
-            nonlocal rows_inserted
-            with conn.cursor() as cur:
-                cur.executemany(_INSERT_SQL, batch)
-            rows_inserted += len(batch)
-            batch.clear()
-
-        for month in _month_range(_WAVEFORM_START, _WAVEFORM_END):
-            lord = _lord_for_month(month)
-            lord_domains = set(_GRAHA_DOMAINS.get(lord, [])) if lord else set()
-            transit_this_month = transit_by_month_domain.get(month, {})
-
-            for domain in all_domains:
-                d_contrib = 1.0 if domain in lord_domains else 0.15
-                t_vals = transit_this_month.get(domain, [])
-                t_contrib = sum(t_vals) / len(t_vals) if t_vals else 0.0
-                p_contrib = float(pratijna_domain.get(domain) or 0)
-                act = _harmonic_mean([d_contrib, t_contrib, p_contrib]) if p_contrib > 0 \
-                    else (d_contrib + t_contrib) / 2.0
-
-                batch.append({
-                    "chart_id": chart_id,
-                    "month": month,
-                    "scope_kind": "domain",
-                    "scope_id": domain,
-                    "activation": round(min(1.0, max(0.0, act)), 6),
-                    "components": json.dumps({
-                        "dasha_contribution": round(d_contrib, 4),
-                        "transit_contribution": round(t_contrib, 4),
-                        "promise_contribution": round(p_contrib, 4),
-                        "dasha_lord": lord,
-                        "formula_note": FORMULA_VERSION,
-                    }),
-                    "formula_version": FORMULA_VERSION,
-                })
-                if len(batch) >= _BATCH:
-                    _flush()
-
-            for ec_id in all_event_classes:
-                p_contrib = float(pratijna_ec.get(ec_id) or 0)
-                d_contrib = 1.0 if lord and any(
-                    d in lord_domains for d in _GRAHA_DOMAINS.get(lord, [])
-                ) else 0.1
-                t_vals = [s for d_vals in transit_this_month.values() for s in d_vals]
-                t_contrib = max(t_vals) if t_vals else 0.0
-                act = _harmonic_mean([d_contrib, t_contrib, p_contrib]) if p_contrib > 0 \
-                    else (d_contrib + t_contrib) / 2.0
-
-                batch.append({
-                    "chart_id": chart_id,
-                    "month": month,
-                    "scope_kind": "event_class",
-                    "scope_id": ec_id,
-                    "activation": round(min(1.0, max(0.0, act)), 6),
-                    "components": json.dumps({
-                        "dasha_contribution": round(d_contrib, 4),
-                        "transit_contribution": round(t_contrib, 4),
-                        "promise_contribution": round(p_contrib, 4),
-                        "dasha_lord": lord,
-                        "formula_note": FORMULA_VERSION,
-                    }),
-                    "formula_version": FORMULA_VERSION,
-                })
-                if len(batch) >= _BATCH:
-                    _flush()
-
-        if batch:
-            _flush()
-
-        logger.info("[ka_taranga] %d waveform rows for chart %s", rows_inserted, chart_id)
-        return WriterResult(
-            asset_id=self.asset_id,
-            rows_inserted=rows_inserted,
-            notes=f"domains={len(all_domains)};event_classes={len(all_event_classes)};"
-                  f"months={((_WAVEFORM_END.year - _WAVEFORM_START.year)*12)}",
-        )
+        bind_integrity_target(ctx)
+        # Same lock order as the manifest and K5 candidate guard, before reading
+        # any stage rows. The row lock is held by the caller's transaction.
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute('SELECT generation FROM kala_layer_candidate WHERE chart_id=%s AND build_id=%s', (chart,build))
+            bound = cur.fetchone()
+            if bound is None:
+                return WriterResult(self.asset_id, 0, notes='unbound build: zero candidate writes; served output unchanged')
+            gen = bound['generation']
+            lock_candidate_inputs(conn, Candidate(chart,gen,build,None))
+            cur.execute('''SELECT c.state,c.conventions FROM kala_layer_candidate c
+                JOIN build_runs b ON b.id=c.build_id AND b.chart_id=c.chart_id
+                WHERE c.chart_id=%s AND c.generation=%s AND c.build_id=%s FOR UPDATE OF c''', (chart,gen,build))
+            candidate = cur.fetchone()
+            cur.execute('SELECT 1 FROM kala_layer_head WHERE chart_id=%s AND generation=%s', (chart,gen))
+            if (not candidate or candidate['state'] != 'building' or gen in {'legacy','published','current','retained'} or cur.fetchone()):
+                raise ValueError('building candidate bound to chart/build required; published generation is immutable')
+            cur.execute('''SELECT event_class,segment_index,t_start,t_end,alpha,gamma,integral_days,field_snapshot_id
+                FROM kala_field_candidate WHERE chart_id=%s AND generation=%s
+                ORDER BY event_class,t_start,segment_index''', (chart,gen))
+            segments = cur.fetchall()
+            cur.execute('''SELECT field_snapshot_id,field_content_hash,config_pin FROM kala_field_snapshots_candidate
+                WHERE chart_id=%s AND generation=%s ORDER BY field_snapshot_id''', (chart,gen))
+            snapshots = {}
+            for snap in cur.fetchall():
+                key = snap['field_snapshot_id']
+                if key in snapshots and snapshots[key] != snap:
+                    raise ValueError('conflicting duplicate field snapshot')
+                snapshots[key] = snap
+            projected = _project(segments,snapshots)
+            cur.execute('''SELECT event_class,domain,source FROM kala_taranga_class_domain
+                WHERE chart_id=%s AND generation=%s ORDER BY event_class,domain,source''', (chart,gen))
+            mappings = cur.fetchall()
+            domains = defaultdict(set)
+            sources = defaultdict(list)
+            for m in mappings:
+                domains[m['event_class']].add(m['domain'])
+                sources[(m['event_class'],m['domain'])].append(m['source'])
+            # (I) INTERPRETATION: an explicit candidate convention pins the
+            # evaluated judge generation. No inferred "current"/legacy head.
+            judge_gen = candidate['conventions'].get('taranga_judge_generation')
+            judge = defaultdict(set)
+            if judge_gen:
+                cur.execute('''SELECT DISTINCT window_id,event_class,lower(interval) AS start,upper(interval) AS finish
+                    FROM ka_gochara_eval_window WHERE chart_id=%s AND generation=%s
+                    ORDER BY event_class,window_id''', (chart,judge_gen))
+                for window in cur.fetchall():
+                    month = _month_start(window['start'].astimezone(timezone.utc))
+                    while month < window['finish']:
+                        judge[(month.date(),window['event_class'])].add(str(window['window_id']))
+                        month = _next_month(month)
+        cells = {}
+        for (month,event), cell in projected.items():
+            for kind, scope in [('event_class',event), *(('domain',d) for d in sorted(domains[event]))]:
+                key = (month,kind,scope)
+                target = cells.setdefault(key,dict(values=[],classes=set(),snapshots=set(),segments=set(),windows=set(),sources=[],overlap=False))
+                target['values'].extend(cell['values'])
+                target['classes'].add(event)
+                target['snapshots'].update(cell['snapshots'])
+                target['segments'].update(cell['segments'])
+                target['windows'].update(judge[(month,event)])
+                target['overlap'] |= len(domains[event]) > 1
+                if kind == 'domain':
+                    target['sources'].extend(dict(event_class=event,domain=scope,source=s) for s in sources[(event,scope)])
+        rows = []
+        for (month,kind,scope), cell in sorted(cells.items()):
+            rows.append(dict(chart_id=chart,generation=gen,month=month,scope_kind=kind,scope_id=scope,
+                integral=math.fsum(cell['values']), units='expected_events', risk_set=None,
+                risk_set_null_reason='upstream_risk_set_unavailable',
+                judge_window_count=len(cell['windows']) if judge_gen else None,
+                judge_count_null_reason=None if judge_gen else 'judge_generation_unpinned',
+                overlap_flag=cell['overlap'], formula_version=FORMULA_VERSION,
+                source_refs=Jsonb(dict(field_snapshot_ids=sorted(cell['snapshots']),
+                    field_segment_ids=sorted(cell['segments']),event_classes=sorted(cell['classes']),
+                    judge_generation=judge_gen,judge_window_ids=sorted(cell['windows']),
+                    class_domain_sources=cell['sources'],overlap_rule='once_per_class_per_domain'))))
+        count = replace_candidate_partition(conn,'kala_taranga_candidate',chart,gen,None,rows)
+        return WriterResult(self.asset_id,count,notes=f'candidate={gen}; pre-build only; risk_set unavailable; no publication')
