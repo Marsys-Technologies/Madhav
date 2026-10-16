@@ -529,20 +529,23 @@ def accepted_receipt(root, receipt_ref, acceptance_ref, kind):
 def staged_scope(req, root):
     import re
     import uuid
-    scope = req.get('smalltest_scope')
+    measuring = req.get('kind') in ('measuring_teardown', 'measuring_teardown_dryrun')
+    if measuring and req.get('item_id') != 'J-3d':
+        raise Refused('measuring teardown belongs to J-3d')
+    scope = req.get('measuring_scope' if measuring else 'smalltest_scope')
     if not isinstance(scope, dict):
         raise Refused('identified staged small-test scope required')
     if scope.get('empty') is True:
         if req.get('kind') != 'smalltest_teardown_dryrun' or scope != {'empty': True}:
             raise Refused('empty scope is for the initial teardown rehearsal only')
         return scope
-    r, a = accepted_receipt(root, scope.get('dispatch_receipt'), scope.get('dispatch_acceptance'), 'smalltest_dispatch')
+    r, a = accepted_receipt(root, scope.get('dispatch_receipt'), scope.get('dispatch_acceptance'), 'measuring_dispatch' if measuring else 'smalltest_dispatch')
     launch = r.get('launch') or {}
     try:
         valid_uuid = str(uuid.UUID(str(scope.get('run_id')))) == scope.get('run_id')
     except ValueError:
         valid_uuid = False
-    if (not valid_uuid or r.get('item_id') not in ('J-2a', 'J-2c') or r.get('status') != 'COMPLETED'
+    if (not valid_uuid or r.get('item_id') not in (('J-3c',) if measuring else ('J-2a', 'J-2c')) or r.get('status') != 'COMPLETED'
             or launch.get('status') != 'LAUNCHED' or launch.get('run_id') != scope.get('run_id')
             or launch.get('chart_id') != CHART_ID or launch.get('asset_id') != ASSET_ID
             or scope.get('chart_id') != CHART_ID or scope.get('generation') != GENERATION
@@ -552,13 +555,19 @@ def staged_scope(req, root):
             or not ((scope.get('manifest_id') is None and scope.get('input_vector_sha256') is None)
                     or (scope.get('manifest_id') and re.fullmatch(r'[0-9a-f]{64}', str(scope.get('input_vector_sha256', '')))))):
         raise Refused('scope differs from the accepted staged launch/manifest identity')
+    if measuring and (launch.get('schema') != 'ky.measuring_launch/1'
+            or not re.fullmatch(r'[0-9a-f]{64}', str(scope.get('input_vector_sha256', '')))
+            or not re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', str(scope.get('manifest_id', '')))):
+        raise Refused('measuring scope requires its actual launch, candidate manifest and input vector')
     return scope
 
 
 def dryrun_evidence(req, root, scope, rowset_sha256=None):
-    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'), 'smalltest_teardown_dryrun')
+    measuring = req.get('kind') == 'measuring_teardown'
+    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'),
+                            'measuring_teardown_dryrun' if measuring else 'smalltest_teardown_dryrun')
     p = r.get('teardown') or {}
-    if (r.get('reviewed_commit') != req.get('reviewed_commit') or r.get('status') != 'COMPLETED' or p.get('schema') != 'ky.smalltest_teardown/1'
+    if (r.get('reviewed_commit') != req.get('reviewed_commit') or r.get('status') != 'COMPLETED' or p.get('schema') != ('ky.measuring_teardown/1' if measuring else 'ky.smalltest_teardown/1')
             or p.get('status') != 'ROLLED_BACK' or p.get('rollback_confirmed') is not True
             or p.get('scope') != scope or p.get('scope_sha256') != evidence_digest(scope)
             or p.get('request_sha256') != r.get('request_sha256') or p.get('operation_id') != r.get('operation_id')
@@ -633,12 +642,14 @@ def absence_evidence(req, root, *, teardown_receipt=None):
                 old = json.loads(path.read_text())
             except (OSError, ValueError):
                 raise Refused('prior operation evidence unreadable') from None
-            if ((old.get('kind') == 'smalltest_teardown' and (old.get('teardown') or {}).get('status') == 'COMMITTED_AWAITING_ABSENCE')
-                    or (old.get('kind') == 'smalltest_dispatch' and old.get('status') == 'COMPLETED' and old.get('launch'))):
+            if ((old.get('kind') in ('smalltest_teardown', 'measuring_teardown') and (old.get('teardown') or {}).get('status') == 'COMMITTED_AWAITING_ABSENCE')
+                    or (old.get('kind') in ('smalltest_dispatch', 'measuring_dispatch') and old.get('status') == 'COMPLETED' and old.get('launch'))):
                 raise Refused('prior teardown requires its own independent absence')
     else:
         proof = committed.get('teardown') or {}
-        if (committed.get('kind') != 'smalltest_teardown' or committed.get('exit_code') != 0
+        if (committed.get('kind') not in ('smalltest_teardown', 'measuring_teardown')
+                or proof.get('schema') != ('ky.measuring_teardown/1' if committed.get('kind') == 'measuring_teardown' else 'ky.smalltest_teardown/1')
+                or committed.get('exit_code') != 0
                 or committed.get('status') not in ('AWAITING_ABSENCE', 'COMPLETED')
                 or proof.get('status') != 'COMMITTED_AWAITING_ABSENCE'
                 or p.get('run_id') != (proof.get('scope') or {}).get('run_id')
@@ -656,7 +667,7 @@ def absence_evidence(req, root, *, teardown_receipt=None):
         for path in (root / 'receipts').glob('*.json'):
             try:
                 old = json.loads(path.read_text())
-                if (old.get('kind') == 'smalltest_dispatch' and old.get('status') == 'COMPLETED'
+                if (old.get('kind') in ('smalltest_dispatch', 'measuring_dispatch') and old.get('status') == 'COMPLETED'
                         and old.get('launch') and datetime.fromisoformat(old['ts']) > datetime.fromisoformat(committed['ts'])):
                     raise Refused('a later staged launch requires its own teardown and independent absence')
             except (OSError, ValueError, KeyError, TypeError):
@@ -739,3 +750,48 @@ def absence_readback_sql(committed=None):
     counts = ', '.join("'" + table + "', (" + sql + ")" for table, sql in sorted(queries.items()))
     return ("SELECT (" + literal(proof) + " || jsonb_build_object('counts', jsonb_build_object(" + counts + "), "
             "'registry_inert', (SELECT is_active IS FALSE FROM asset_registry WHERE asset_id = " + asset + ")))::text AS absence_proof")
+
+
+def measuring_request_problem(req, root):
+    """Measuring-only file evidence admission, loaded from reviewed source."""
+    try:
+        kind = req.get('kind')
+        if kind in ('measuring_dispatch', 'measuring_dispatch_dryrun'):
+            if req.get('item_id') != 'J-3c':
+                raise Refused('measuring dispatch belongs to J-3c')
+            args = req.get('args') or {}
+            if args != {'run': 'all_classes_full', 'classes': 'all'}:
+                raise Refused('measuring request requires only all_classes_full and all classes')
+            # Even a staging rollback may not bypass the previous lifecycle.
+            absence_evidence(req, root)
+            if kind == 'measuring_dispatch':
+                measuring_dryrun_evidence(req, root)
+        elif kind in ('measuring_teardown', 'measuring_teardown_dryrun'):
+            scope = staged_scope(req, root)
+            if kind == 'measuring_teardown':
+                dryrun_evidence(req, root, scope)
+        else:
+            raise Refused('unknown measuring operation kind')
+        return None
+    except (Refused, KeyError, TypeError, ValueError) as exc:
+        return str(exc) if isinstance(exc, Refused) else 'malformed measuring evidence'
+
+
+def measuring_dryrun_evidence(req, root, manifest_digest=None):
+    """A real accepted staging rollback, same source/args/manifest, before launch."""
+    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'), 'measuring_dispatch_dryrun')
+    p = r.get('staging') or {}
+    if (r.get('status') != 'COMPLETED' or r.get('item_id') != 'J-3c' or r.get('reviewed_commit') != req.get('reviewed_commit')
+            or p.get('schema') != 'ky.measuring_staging/1' or p.get('status') != 'ROLLED_BACK'
+            or p.get('rollback_confirmed') is not True or p.get('args') != req.get('args')
+            or p.get('operation_id') != r.get('operation_id') or p.get('request_sha256') != r.get('request_sha256')
+            or p.get('plan_manifest_digest') != evidence_digest(p.get('plan_manifest'))
+            or (manifest_digest is not None and p.get('plan_manifest_digest') != manifest_digest)):
+        raise Refused('accepted measuring staging rollback for the same source, args and manifest required')
+    from datetime import datetime
+    try:
+        if datetime.fromisoformat(r['ts']) >= datetime.fromisoformat(acceptance(req, root)['ts']):
+            raise ValueError()
+    except (KeyError, ValueError, TypeError):
+        raise Refused('measuring staging rollback must precede the accepted launch request') from None
+    return p

@@ -8,9 +8,9 @@ CI = Path(__file__).resolve().parents[4] / '.github/workflows/ci.yml'
 SUITE = 'scripts/__tests__/test_w4_smalltest_safety.py'
 
 
-def mandatory_safety_step(jobs):
+def mandatory_safety_step(jobs, suite=SUITE):
     job = jobs['db-integration-tests']
-    steps = [s for s in job['steps'] if SUITE in str(s.get('run', ''))]
+    steps = [s for s in job['steps'] if suite in str(s.get('run', ''))]
     return (len(steps) == 1 and not job.get('continue-on-error')
             and not steps[0].get('if') and not steps[0].get('continue-on-error')
             and 'pytest' in steps[0]['run'] and '||' not in steps[0]['run']
@@ -39,3 +39,11 @@ def test_real_w4_rollback_and_independent_readback_run_in_required_db_job():
     assert not step.get('if') and not step.get('continue-on-error')
     assert str(step['env']['GOCHARA_A53_REQUIRE_DB']) == '1'
     assert '--tb=short' in step['run'] and '-p no:cacheprovider' in step['run']
+
+
+@pytest.mark.parametrize('suite', [
+    '../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_w4_smalltest_enablement.py',
+    '../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_launch.py',
+])
+def test_admission_and_launch_fixtures_run_in_mandatory_ci(suite):
+    assert mandatory_safety_step(yaml.safe_load(CI.read_text())['jobs'], suite)

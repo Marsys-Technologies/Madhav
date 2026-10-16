@@ -543,6 +543,14 @@ def _bound_scope(cur, owned, req):
             or runs[0]["plan_manifest_digest"] != scope["plan_manifest_digest"]
             or shared.evidence_digest(runs[0]["plan_manifest"]) != scope["plan_manifest_digest"]):
         raise TeardownRefused("staged launch UUID/manifest does not match the surviving run")
+    if req.get("kind") in ("measuring_teardown", "measuring_teardown_dryrun"):
+        marker = runs[0]["plan_manifest"].get("gochara_v5_test_slice")
+        try:
+            validated = _writer()._validate_test_slice(marker)
+            if validated.run != "all_classes_full":
+                raise ValueError()
+        except Exception:
+            raise TeardownRefused("measuring teardown requires the original full measuring marker") from None
     cur.execute("SELECT manifest_id, status, input_generation_vector, horizon FROM kala_gochara_publication WHERE chart_id = %s AND generation = %s FOR UPDATE", (CHART_ID, GENERATION))
     manifest = cur.fetchone()
     if manifest is None and scope.get("manifest_id") is None and scope.get("input_vector_sha256") is None:
@@ -626,13 +634,13 @@ def teardown(*, dry_run: bool = True) -> None:
         retention = _retention_lines(cur, owned)
         counts = _plan_counts(cur, owned)
         req = lane_req if lane_req is not None else shared.operation_request()
-        if req.get("kind") not in (("smalltest_teardown", "smalltest_teardown_dryrun") if dry_run else ("smalltest_teardown",)):
+        if req.get("kind") not in (("smalltest_teardown", "smalltest_teardown_dryrun", "measuring_teardown", "measuring_teardown_dryrun") if dry_run else ("smalltest_teardown", "measuring_teardown")):
             raise TeardownRefused("executor operation kind and teardown mode differ")
         scope = _bound_scope(cur, owned, req)
         rowset_sha256 = _rowset_digest(cur, owned)
         if not dry_run:
             shared.dryrun_evidence(req, shared.evidence_root(), scope, rowset_sha256)
-        proof = {"schema": "ky.smalltest_teardown/1", "operation_id": req["operation_id"],
+        proof = {"schema": "ky.measuring_teardown/1" if req["kind"].startswith("measuring_") else "ky.smalltest_teardown/1", "operation_id": req["operation_id"],
                  "request_sha256": shared.request_hash(req), "scope": scope,
                  "scope_sha256": shared.evidence_digest(scope), "rowset_sha256": rowset_sha256,
                  "status": "ROLLED_BACK" if dry_run else "COMMITTED_AWAITING_ABSENCE",
