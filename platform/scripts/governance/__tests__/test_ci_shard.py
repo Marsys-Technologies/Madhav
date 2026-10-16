@@ -179,3 +179,18 @@ def test_verify_exits_nonzero_on_a_broken_partition(tmp_path):
     (tmp_path / "test_only.py").write_text("x")
     p = subprocess.run([sys.executable, str(HERE.parent / "ci_shard.py"), "--count", "2", "--verify", "--root", str(tmp_path)], capture_output=True, text=True)
     assert p.returncode == 1 and "empty shard" in p.stderr           # two shards, one file: an empty shard fails the run
+
+
+def test_tracker_suite_is_mandatory_in_governance_shards():
+    import yaml
+
+    job = yaml.safe_load(CI.read_text())["jobs"]["governance-tool-tests-shard"]
+    tracker = [step for step in job["steps"]
+               if "python -m pytest platform/scripts/governance/pravaha_tracker/tests/test_verify_priority.py" in step.get("run", "")]
+    assert len(tracker) == 1, "tracker regressions must run in required governance CI"
+    assert tracker[0].get("continue-on-error", False) is False
+    assert tracker[0].get("if") == "matrix.shard == 1"
+    assert tracker[0]["env"]["PYTHONPATH"] == "platform/scripts/governance"
+    assert "-p no:cacheprovider" in tracker[0]["run"]
+    assert "platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py" in tracker[0]["run"]
+    assert "test_kalayantra_control_plane.py::GuardedCompletionCases" in tracker[0]["run"]

@@ -2170,6 +2170,17 @@ jobs:
       - name: K9-23 disabled layer bindings and credential isolation
         if: ${{ matrix.shard == 1 }}
         run: python -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_k9_publication_bindings.py -q -p no:cacheprovider
+      - name: pytest — tracker guarded completion and concurrency (required)
+        if: matrix.shard == 1
+        env:
+          DATABASE_URL: ''
+          PGHOST: ''
+          PYTHONPATH: platform/scripts/governance
+        run: >-
+          python -m pytest platform/scripts/governance/pravaha_tracker/tests/test_verify_priority.py
+          platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py
+          platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py::GuardedCompletionCases
+          -q --no-header -p no:cacheprovider
 
   governance-readback-tests:
     # P05-B02: both ported readback suites, including all five real-cluster cases.
