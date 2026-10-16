@@ -359,3 +359,72 @@ def test_rollback_execute_requires_its_own_exact_dryrun_and_can_consume_prior_fl
     assert head.request_problem(req,ops) is None
     req['head_change']['restore_head']['flipped_by']='invented'
     assert 'retained' in head.request_problem(req,ops)
+
+
+@pytest.mark.parametrize('kind', ['publish_head', 'rollback_head', 'publish_head_dryrun', 'rollback_head_dryrun'])
+@pytest.mark.parametrize('enabled', [True, False])
+@pytest.mark.parametrize('prior_status', ['AWAITING_READBACK', 'RUNNING', 'FAILED', 'unreadable'])
+def test_main_duplicate_refusal_preserves_receipt_and_retained_head_bytes(tmp_path, monkeypatch, kind, enabled, prior_status):
+    ex = executor(tmp_path, monkeypatch)
+    root = tmp_path
+    for attr, path in {
+        'KY_ROOT': root, 'RUN': root/'run', 'OPS': root/'run/ops',
+        'REQ': root/'run/ops/requests', 'REC': root/'run/ops/receipts',
+        'DONE': root/'run/ops/done', 'ACC': root/'run/ops/acceptance',
+        'INFLIGHT': root/'run/ops/inflight', 'TMP': root/'run/ops/tmp',
+        'EXEC': root/'exec', 'FENCE': root/'run/ops/PRODUCTION_PENDING.json',
+        'SEEN': root/'run/ops/idempotency.jsonl',
+    }.items():
+        monkeypatch.setattr(ex, attr, path)
+    ex.REQ.mkdir()
+    req = request(kind)
+    prior_req = request('publish_head')
+    original = receipt(prior_req, stage(prior_req))
+    original['status'] = prior_status
+    original_raw = json.dumps(original, indent=2).encode() if prior_status != 'unreadable' else b'{retained-unreadable'
+    original_path = ex.REC/(req['operation_id']+'.json')
+    original_path.write_bytes(original_raw)
+    output_path = ex.REC/(req['operation_id']+'.output.txt')
+    output_path.write_bytes(b'original adapter output evidence\n')
+    table = json.loads((FLEET/'executor_ops.json').read_text())['ops']
+    table[kind]['enabled'] = enabled  # fixture only; authority stays disabled in source
+    monkeypatch.setattr(ex, 'sync', lambda: None)
+    monkeypatch.setattr(ex, 'load_table', lambda: table)
+    monkeypatch.setattr(ex, 'refresh_from_main_or_fail_closed', lambda: True)
+    monkeypatch.setattr(ex, 'capabilities', lambda _: {'builder': True})
+    def forbidden(*args, **kwargs):
+        pytest.fail('duplicate refusal must not consult a lease or dispatch an operation')
+    monkeypatch.setattr(ex, 'lease_live', forbidden)
+    monkeypatch.setattr(ex, 'execute', forbidden)
+    monkeypatch.setattr(ex.time, 'sleep', lambda _: (ex.RUN/'STOP_executor').touch())
+    for attempt in range(2):
+        (ex.RUN/'STOP_executor').unlink(missing_ok=True)
+        queued = ex.REQ/'duplicate-request.json'
+        queued.write_text(json.dumps(req))
+        assert ex.main() == 0
+        assert original_path.read_bytes() == original_raw
+        assert output_path.read_bytes() == b'original adapter output evidence\n'
+        refusals = sorted((ex.REC/'refusals').glob('*.json'))
+        assert len(refusals) == attempt + 1
+        for path in refusals:
+            refused = json.loads(path.read_text())
+            assert refused['status'] == 'REFUSED'
+            assert refused['operation_id'] == req['operation_id']
+            assert refused['request_sha256'] == head.request_digest(req)
+            assert refused['preserved_receipt'] == {
+                'path': str(original_path), 'sha256': hashlib.sha256(original_raw).hexdigest(),
+            }
+        assert not queued.exists() and (ex.DONE/queued.name).exists()
+        assert not ex.SEEN.exists() and not ex.FENCE.exists()
+        assert not list(ex.INFLIGHT.iterdir())
+
+
+def test_reserved_operation_refusal_still_finishes_its_own_running_receipt(tmp_path, monkeypatch):
+    ex = executor(tmp_path, monkeypatch)
+    req = request('publish_head')
+    ex.receipt(req, 'RUNNING')
+    ex.receipt(req, 'REFUSED', 'operation definition changed before execution')
+    got = json.loads((ex.REC/(req['operation_id']+'.json')).read_text())
+    assert got['status'] == 'REFUSED'
+    assert got['reason'] == 'operation definition changed before execution'
+    assert not (ex.REC/'refusals').exists()

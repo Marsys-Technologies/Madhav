@@ -241,7 +241,8 @@ def _segments(src):
 
 # Exact Wave 4 safety-fix candidate additions, for independent review. Every
 # other mutation, including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6ab55daa748a71149247f3e2d5a1', 'receipt': '7e63981b64cf7b5a881ffd8060e8aaa9a769d37c3eca030de7f531df30e5f020', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'head_policy': '948d21ff7ed3d7e4ba67bfdcf3d11ce042a3c7fef7603d3de852b3beff9a116c', 'head_policy_problem': '7d4d5e7cd616c4a4e0703361630ada5544250aad5907e359618ba5de2491f96f', 'validate': 'f0c856ce0954d350a024d8cef9ced20b36319e89c7f2bd7a1857e038b1be0979', 'execute': '8560e21fc11391f5f4c29efeef086a157a6fa7474fd31c9652fbac89eaeaf74d', 'main': '54742775aa3f7ad88df0e42bd6d3a99d723cfc5b3afde8188fc1cda38b2a1f04'}
+# J6B-NB-01 updates only receipt/main for separately recorded duplicate refusals.
+W4_FUNCTION_HASHES = {'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6ab55daa748a71149247f3e2d5a1', 'receipt': '27ac5f30da45c2246d5adfa42c45f13365e4d0a210d3b649ec6407fe70bcdc06', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'head_policy': '948d21ff7ed3d7e4ba67bfdcf3d11ce042a3c7fef7603d3de852b3beff9a116c', 'head_policy_problem': '7d4d5e7cd616c4a4e0703361630ada5544250aad5907e359618ba5de2491f96f', 'validate': 'f0c856ce0954d350a024d8cef9ced20b36319e89c7f2bd7a1857e038b1be0979', 'execute': '8560e21fc11391f5f4c29efeef086a157a6fa7474fd31c9652fbac89eaeaf74d', 'main': '0b37ff955b700f68324b8f5a0c20b704711ec5cb53c6b66f72611927c98bd96e'}
 
 
 def normalize_wave4(base_src, work_src):
