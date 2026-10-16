@@ -19,6 +19,7 @@ inherit it verbatim, carrying `source_table`/`source_pk`/`source_fact_id`.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import date
 from typing import Callable, Optional, Sequence
@@ -696,6 +697,14 @@ def run_substep(ctx, step) -> object:
             chart_id, sandhi_gap,
         )
 
+    # G1(c): consume the adapters and K3 effective states, never recompute them.
+    from .g1_inputs import birth_instant, load_suppression
+    generation = ctx.config.get('kshetra_g1_candidate')
+    gaps = []
+    if generation:
+        suppression, gaps = load_suppression(conn, str(chart_id), generation, birth_instant(ctx.config))
+        primitives.extend(suppression)
+
     # Coverage gaps (§N.7 item 6: serve honestly, never fabricate).
     # av_kaksha_gate and latta are not_in_corpus at W2 — logged, not raised.
     for gap in (av_kaksha_gate_coverage(), latta_coverage()):
@@ -706,4 +715,4 @@ def run_substep(ctx, step) -> object:
         )
 
     n = write_primitive_rows(conn, primitives)
-    return WriterResult(asset_id='ka_kshetra', rows_inserted=n)
+    return WriterResult(asset_id='ka_kshetra', rows_inserted=n, notes=json.dumps({'suppression_disclosures': gaps}, sort_keys=True))
