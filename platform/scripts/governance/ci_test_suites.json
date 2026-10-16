@@ -1,0 +1,761 @@
+{
+  "schema": "ci.test_suites/1",
+  "suites": {
+    "unit-tests-4-9": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/nirmana_elevation*.test.ts"
+      ]
+    },
+    "unit-tests-4-10": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/nirmana_evidence*.test.ts"
+      ]
+    },
+    "unit-tests-4-11": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/nirmana_egate*.test.ts"
+      ]
+    },
+    "unit-tests-10-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "src/lib/retrieval/registry/whitelist_resolution*.test.ts"
+      ]
+    },
+    "unit-tests-11-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "src/lib/retrieval/registry/parity_check*.test.ts"
+      ]
+    },
+    "kala-db-tests-5-0": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/ka_bhavishya_lekha/test_certification*.py",
+        "tests/l3/ka_kshetra/test_g1*.py"
+      ],
+      "directories": [
+        "tests/l3/kala_db",
+        "tests/l3/ka_vedha_gochara",
+        "tests/l3/ka_taranga",
+        "tests/l3/ka_adapters"
+      ]
+    },
+    "kala-db-tests-7-0": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/ka_kshetra/test_g2*.py"
+      ]
+    },
+    "kala-db-tests-8-0": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/test_ka_tulana*.py"
+      ]
+    },
+    "db-integration-tests-4-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_achieved*.test.ts"
+      ]
+    },
+    "db-integration-tests-8-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/gochara_b6*.test.ts"
+      ]
+    },
+    "db-integration-tests-9-12": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_station*.py",
+        "tests/l3/gochara/test_a53*.py",
+        "tests/l3/gochara/test_measuring*.py",
+        "tests/l3/gochara/test_a25*.py",
+        "tests/l3/gochara/test_c46_v5*.py",
+        "tests/l3/gochara/test_c55*.py",
+        "tests/l3/gochara/test_c48a*.py",
+        "tests/l3/gochara/test_w1*.py",
+        "tests/l3/gochara/test_w2*.py",
+        "tests/l3/gochara/test_p09*.py",
+        "tests/l3/gochara/test_j7b*.py",
+        "tests/l3/gochara/test_j6m*.py",
+        "tests/l3/gochara/test_horizon*.py",
+        "tests/l3/gochara/test_mb_horizon*.py",
+        "tests/l3/gochara/test_mb_stretch*.py",
+        "tests/l3/gochara/test_j6r*.py"
+      ],
+      "discover_db": true
+    },
+    "db-integration-tests-10-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "src/lib/retrieval/registry/layers/L3_kala/views_registry.integration*.test.ts"
+      ]
+    },
+    "db-integration-tests-12-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "src/lib/__tests__/mcp/oauth_rate*.test.ts"
+      ]
+    },
+    "db-integration-tests-14-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/asset_throughput_state_audit.db*.test.ts"
+      ]
+    },
+    "db-integration-tests-16-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/asset_throughput_state_audit_grants.db*.test.ts"
+      ]
+    },
+    "db-integration-tests-18-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/bg_transit*.test.ts"
+      ]
+    },
+    "db-integration-tests-20-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/gochara_resonance*.test.ts"
+      ]
+    },
+    "db-integration-tests-22-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/gochara_windows_builder*.test.ts"
+      ]
+    },
+    "db-integration-tests-24-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/gochara_windows_v2*.test.ts"
+      ]
+    },
+    "db-integration-tests-26-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/gochara_overlay*.test.ts"
+      ]
+    },
+    "db-integration-tests-28-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/gochara_contract_builder_grants.db*.test.ts"
+      ]
+    },
+    "db-integration-tests-30-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/gochara_contract_builder_function*.test.ts"
+      ]
+    },
+    "db-integration-tests-32-2": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/test_builder_role_resonance*.py"
+      ]
+    },
+    "db-integration-tests-33-3": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/test_ga4*.py"
+      ]
+    },
+    "db-integration-tests-34-2": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/test_builder_role_v4*.py"
+      ]
+    },
+    "db-integration-tests-35-3": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/test_karaka*.py"
+      ]
+    },
+    "db-integration-tests-36-2": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/test_builder_role_overlay*.py"
+      ]
+    },
+    "db-integration-tests-37-2": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "ga_writers/__tests__/test_l1_min_fixes*.py"
+      ]
+    },
+    "db-integration-tests-38-2": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_wp10*.py"
+      ]
+    },
+    "db-integration-tests-40-2": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/test_ga_vichara*.py"
+      ]
+    },
+    "db-integration-tests-42-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/nirmana_t0*.test.ts"
+      ]
+    },
+    "db-integration-tests-44-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/nirmana_l0*.test.ts"
+      ]
+    },
+    "db-integration-tests-46-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_formula*.test.ts"
+      ]
+    },
+    "db-integration-tests-48-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_registry*.test.ts"
+      ]
+    },
+    "db-integration-tests-50-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_sky*.test.ts"
+      ]
+    },
+    "db-integration-tests-52-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_wave0_integrity*.test.ts"
+      ]
+    },
+    "db-integration-tests-56-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_bg_reference*.test.ts"
+      ]
+    },
+    "db-integration-tests-58-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_bg_remedies*.test.ts"
+      ]
+    },
+    "db-integration-tests-60-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_digest*.test.ts"
+      ]
+    },
+    "db-integration-tests-62-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_bg_texts*.test.ts"
+      ]
+    },
+    "db-integration-tests-64-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_static*.test.ts"
+      ]
+    },
+    "db-integration-tests-66-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_vastu*.test.ts"
+      ]
+    },
+    "db-integration-tests-68-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_transit*.test.ts"
+      ]
+    },
+    "db-integration-tests-70-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_ghatana*.test.ts"
+      ]
+    },
+    "db-integration-tests-72-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_governance*.test.ts"
+      ]
+    },
+    "db-integration-tests-74-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_prashna*.test.ts"
+      ]
+    },
+    "db-integration-tests-76-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_text*.test.ts"
+      ]
+    },
+    "db-integration-tests-78-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_rules*.test.ts"
+      ]
+    },
+    "db-integration-tests-80-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_wave0_remaining*.test.ts"
+      ]
+    },
+    "db-integration-tests-80-1": {
+      "cwd": "platform",
+      "engine": "pytest",
+      "include": [
+        "python-sidecar/tests/test_l0*.py"
+      ]
+    },
+    "db-integration-tests-81-0": {
+      "cwd": "platform",
+      "engine": "pytest",
+      "include": [
+        "scripts/__tests__/test_dispatch_frozen*.py"
+      ]
+    },
+    "db-integration-tests-82-0": {
+      "cwd": "platform",
+      "engine": "pytest",
+      "include": [
+        "scripts/__tests__/test_dispatch_v5*.py"
+      ]
+    },
+    "db-integration-tests-83-0": {
+      "cwd": "platform",
+      "engine": "pytest",
+      "include": [
+        "scripts/__tests__/test_teardown*.py",
+        "scripts/__tests__/test_p01*.py",
+        "scripts/__tests__/test_backup*.py",
+        "scripts/__tests__/test_w4*.py"
+      ]
+    },
+    "db-integration-tests-85-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "src/app/api/admin/internal/nirmana-elevation-monitor/__tests__/migration-contract.db*.test.ts"
+      ]
+    },
+    "db-integration-tests-87-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_wave1*.test.ts"
+      ]
+    },
+    "db-integration-tests-89-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/unit/migrations/nirmana_l0_gochara*.test.ts"
+      ]
+    },
+    "db-integration-tests-91-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/integration/downstream_dependents.db*.test.ts"
+      ]
+    },
+    "db-integration-tests-93-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "src/lib/pariprashna/pipeline/__tests__/reading_parts*.test.ts"
+      ]
+    },
+    "gochara-a55-replace-chain-1-9": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_a55*.py"
+      ]
+    },
+    "gochara-a55-slice-transitions-1-9": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_c46_slice_transitions*.py"
+      ]
+    },
+    "gochara-a55-teardown-1-9": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_c38_teardown_real_db*.py",
+        "tests/l3/gochara/test_c38_teardown_populated*.py",
+        "tests/l3/gochara/test_w4_smalltest*.py"
+      ],
+      "exclude": [
+        "tests/l3/gochara/test_c38_teardown_real_db_round*.py"
+      ]
+    },
+    "gochara-a55-teardown-round2-1-9": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_c38_teardown_real_db_round2*.py"
+      ]
+    },
+    "gochara-a55-teardown-round3-1-9": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_c38_teardown_real_db_round3*.py",
+        "tests/l3/gochara/test_c38_teardown_lit*.py"
+      ]
+    },
+    "gochara-a55-measuring-build-1-9": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_mb_real*.py",
+        "tests/l3/gochara/test_mb_ordinary*.py",
+        "tests/l3/gochara_eval/test_dump*.py"
+      ]
+    },
+    "gochara-a55-dispatch-1-9": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_c37*.py",
+        "tests/l3/gochara/test_w4_launch*.py"
+      ]
+    },
+    "gochara-a55-round2-runner-1-9": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_c46_slice_round2*.py",
+        "tests/l3/gochara/test_c47*.py",
+        "tests/l3/gochara/test_c49*.py"
+      ]
+    },
+    "gochara-a55-verifier-fixes-1-9": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_p1*.py",
+        "tests/l3/gochara/test_member*.py",
+        "tests/l3/gochara/test_graze*.py",
+        "tests/l3/gochara_rules/test_am10*.py"
+      ]
+    },
+    "pratijna-v4-fixture-property-tests-5-0": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/test_pratijna*.py"
+      ]
+    },
+    "governance-tool-tests-shard-5-0": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation*.py"
+      ]
+    },
+    "governance-tool-tests-shard-6-0": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation*.py"
+      ]
+    },
+    "governance-tool-tests-shard-7-0": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "platform/scripts/governance/pravaha_tracker/tests/test_verify*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_hang*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_decision*.py"
+      ]
+    },
+    "governance-readback-tests-3-0": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "platform/scripts/__tests__/test_gochara_window_readbacks*.py",
+        "platform/scripts/__tests__/test_gochara_sitting_evidence*.py",
+        "platform/scripts/__tests__/test_fn*.py"
+      ]
+    },
+    "governance-gates-py-sidecar-shard-3-29": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/test_certification*.py",
+        "tests/l3/ka_bhavishya_lekha/test_certification*.py",
+        "tests/l3/ka_muhurta_seva/test_certification*.py",
+        "tests/l3/test_ka_tulana*.py"
+      ]
+    },
+    "governance-gates-py-sidecar-shard-3-33": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "pipeline/orchestrator/writers/tests/test_bg_sky*.py",
+        "pipeline/orchestrator/writers/tests/test_bg_texts*.py"
+      ],
+      "directories": [
+        "tests/",
+        "bodha_writers/__tests__",
+        "ga_writers/__tests__",
+        "pipeline/orchestrator/tests/"
+      ]
+    },
+    "governance-gates-static-13-8": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/test_service*.py",
+        "tests/test_swiss*.py"
+      ]
+    },
+    "density-census-6-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [],
+      "directories": [
+        "src"
+      ],
+      "quarantine": {
+        "src/tools/intent_routing_suite.test.ts": "Pre-existing unresolved import in full src run; not in the prior CI selection.",
+        "src/tools/kala_views/published_now_sql.test.ts": "Pre-existing unresolved @/generated alias; not in the prior CI selection.",
+        "src/tools/kala_views/registry_contract.test.ts": "Pre-existing unresolved @/generated alias; not in the prior CI selection.",
+        "src/tools/kala_views/stage_budget.test.ts": "Pre-existing unresolved @/generated alias; not in the prior CI selection.",
+        "src/__tests__/kala_ahead_get_digest_90d_w1.test.ts": "Pre-existing W1 ritual-free wording assertion; not in the prior CI selection.",
+        "src/__tests__/kala_timeline.test.ts": "Pre-existing algorithmic timeline assertions; not in the prior CI selection.",
+        "src/__tests__/phala_muhurta.test.ts": "Pre-existing FORENSIC description assertion; not in the prior CI selection.",
+        "src/__tests__/shad_darshana_w1_verify_reopen.test.ts": "Pre-existing forward-half earned-signal assertion; not in the prior CI selection."
+      },
+      "workers": 2,
+      "test_timeout_ms": 10000
+    },
+    "density-census-7-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/__tests__/r5_codegen*.test.ts"
+      ]
+    },
+    "density-census-8-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/kala_views/elect*.test.ts"
+      ]
+    },
+    "density-census-9-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/kala_views/__tests__/elect_budget*.test.ts",
+        "src/tools/kala_views/__tests__/elect_sections*.test.ts",
+        "src/tools/kala_views/__tests__/elect_ledger*.test.ts"
+      ]
+    },
+    "density-census-10-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/__tests__/kala_now_get*.test.ts"
+      ]
+    },
+    "density-census-11-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/__tests__/kala_now_get_kota*.test.ts"
+      ]
+    },
+    "density-census-12-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/__tests__/kala_now_get_moorti*.test.ts"
+      ]
+    },
+    "density-census-13-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/__tests__/register_p1*.test.ts"
+      ]
+    },
+    "density-census-14-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/__tests__/f129_top*.test.ts"
+      ]
+    },
+    "density-census-15-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/__tests__/f67_bodha*.test.ts"
+      ]
+    },
+    "density-census-16-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/kala_views/f123_dead*.test.ts"
+      ]
+    },
+    "density-census-17-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/__tests__/f06_remedies*.test.ts"
+      ]
+    },
+    "density-census-18-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/__tests__/rate07_oauth*.test.ts"
+      ]
+    },
+    "density-census-19-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/lib/kala_upaya*.test.ts",
+        "src/tools/kala_views/upaya*.test.ts",
+        "src/tools/kala_views/upaya_weak*.test.ts"
+      ]
+    },
+    "density-census-22-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/__tests__/vidhi_codegen*.test.ts"
+      ]
+    },
+    "density-census-25-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "src/lib/retrieval/registry/__tests__/projection_compiler*.test.ts"
+      ]
+    },
+    "density-census-28-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "src/lib/retrieval/registry/knowledge/knowledge*.test.ts",
+        "src/lib/vidhi/inquiry/compiler*.test.ts",
+        "src/lib/vidhi/inquiry/lifecycle_token*.test.ts",
+        "src/lib/vidhi/inquiry/pagination*.test.ts",
+        "src/lib/vidhi/inquiry/migration_contract*.test.ts",
+        "scripts/__tests__/generate_capability*.test.ts",
+        "src/app/api/mcp/inquiry/__tests__/route*.test.ts",
+        "src/app/api/mcp/prashna_ask/__tests__/route*.test.ts"
+      ]
+    },
+    "density-census-29-0": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/__tests__/register_inquiry*.test.ts",
+        "src/tools/register_prashna*.test.ts",
+        "src/__tests__/server_tool*.test.ts"
+      ]
+    },
+    "db-integration-tests-smalltest": {
+      "cwd": "platform",
+      "engine": "pytest",
+      "include": [
+        "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_*smalltest*.py"
+      ]
+    },
+    "governance-readback-tests-mcp": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/retrieval/register_gochara_contact_ledger*.test.ts",
+        "src/tools/retrieval/register_gochara_windows_governed_gate*.test.ts"
+      ]
+    },
+    "governance-readback-tests-migration": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/test_migration_1235_evidence*.py"
+      ]
+    }
+  }
+}
