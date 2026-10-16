@@ -1,5 +1,5 @@
 """NB-KALA required-check wiring executes fail-closed, including skipped DBs."""
-import itertools
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -19,20 +19,30 @@ def jobs():
 
 
 def test_kala_database_proof_is_a_required_aggregate_dependency():
-    aggregate = jobs()['governance-gates']
-    assert 'kala-db-tests' in aggregate['needs']
-    assert aggregate['steps'][0]['env']['KALA_RESULT'] == '${{ needs.kala-db-tests.result }}'
+    all_jobs = jobs()
+    assert 'full-suite' in all_jobs['governance-gates']['needs']
+    assert 'kala-db-tests' in all_jobs['full-suite']['needs']
 
 
-@pytest.mark.parametrize('result,docs_only', list(itertools.product(
-    ['success', 'failure', 'cancelled', 'skipped', ''], ['true', 'false', ''])))
-def test_actual_aggregate_rejects_missing_failed_and_unexplained_skipped_db(result, docs_only):
-    command = jobs()['governance-gates']['steps'][0]['run']
-    run = subprocess.run(['bash', '-c', command], capture_output=True, text=True,
-        env={'PATH': '/usr/bin:/bin', 'STATIC_RESULT': 'success', 'SHARDS_RESULT': 'success',
-             'K3_RESULT': 'success', 'KALA_RESULT': result, 'DOCS_ONLY': docs_only})
-    expected = result == 'success' or (result == 'skipped' and docs_only == 'true')
-    assert (run.returncode == 0) == expected, (result, docs_only, run.stdout)
+def _full_suite(result, event, selected, extra=None):
+    """Run the real full-suite contract script with kala-db-tests set to `result`."""
+    job = jobs()['full-suite']
+    command = job['steps'][0]['run']
+    needs = {name: {'result': 'success'} for name in job['needs']}
+    needs['kala-db-tests'] = {'result': result}
+    needs.update(extra or {})
+    return subprocess.run(['bash', '-c', command], capture_output=True, text=True,
+        env={'PATH': os.environ['PATH'], 'EVENT_NAME': event, 'REF': 'refs/heads/x', 'FULL_GATE': '',
+             'DB_JOBS': json.dumps(selected), 'NEEDS_JSON': json.dumps(needs)})
+
+
+@pytest.mark.parametrize('result', ['success', 'failure', 'cancelled', 'skipped', ''])
+@pytest.mark.parametrize('event,selected,executes', [
+    ('merge_group', [], True), ('pull_request', ['kala-db-tests'], True), ('pull_request', [], False)])
+def test_actual_full_suite_rejects_failed_and_unexplained_skipped_kala_db(result, event, selected, executes):
+    run = _full_suite(result, event, selected)
+    expected = result == 'success' or (result == 'skipped' and not executes)
+    assert (run.returncode == 0) == expected, (result, event, selected, run.stdout, run.stderr)
 
 
 def test_density_census_executes_projection_aware_kcert_serving_regression(tmp_path):

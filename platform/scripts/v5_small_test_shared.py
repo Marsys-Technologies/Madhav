@@ -419,6 +419,39 @@ def evidence_digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
+
+def lane_rehearsal_request():
+    """Only the initial empty LOCAL teardown rehearsal; never execute authority.
+
+    Production's operation_request/acceptance path is unchanged. Called before
+    connecting, only from teardown(dry_run=True). No service, implicit libpq
+    defaults, host override or populated scope may enter this exception.
+    """
+    import json
+    import re
+    try: req = json.loads(os.environ.get('KY_OPERATION_REQUEST', '{}'))
+    except (TypeError, ValueError): return None
+    if not isinstance(req, dict) or 'lane_target' not in req: return None
+    target = req.get('lane_target')
+    if (req.get('kind') != 'smalltest_teardown_dryrun' or req.get('dry_run') is not True
+            or req.get('smalltest_scope') != {'empty': True} or req.get('chart_id') != CHART_ID
+            or not isinstance(target, dict) or set(target) != {'host', 'port', 'database'}
+            or target.get('host') not in ('127.0.0.1', 'localhost', '::1')
+            or type(target.get('port')) is not int or target['port'] != 55433
+            or not isinstance(target.get('database'), str)
+            or re.fullmatch(r'ky_[a-z][a-z0-9_]{0,54}', target['database']) is None):
+        raise Refused('local lane exception requires dry-run kind and an empty scope on ky_<lane>')
+    from psycopg.conninfo import conninfo_to_dict
+    try: settings = conninfo_to_dict(os.environ.get('DATABASE_URL', ''))
+    except Exception: raise Refused('lane rehearsal connection settings invalid') from None
+    expected = dict(host=target['host'], hostaddr='::1' if target['host'] == '::1' else '127.0.0.1',
+                    port='55433', dbname=target['database'], user='postgres', password='',
+                    passfile=os.devnull, options='', sslmode='disable', connect_timeout='10')
+    if settings != expected or any(key.startswith('PG') and key != 'PGPASSFILE' for key in os.environ):
+        raise Refused('lane rehearsal connection must be explicit and match the local target')
+    return req
+
+
 def operation_request():
     import json
     try:
