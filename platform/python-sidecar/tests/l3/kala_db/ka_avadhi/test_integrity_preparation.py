@@ -196,7 +196,7 @@ def test_published_rows_and_registry_bytes_stay_unchanged(db):
 
 def test_existing_mandatory_db_job_collects_preparation_suite():
     import yaml
-    ci = yaml.safe_load((PLATFORM.parent / '.github/workflows/ci.yml').read_text())
+    ci = _ci_load((PLATFORM.parent / '.github/workflows/ci.yml').read_text())
     job = ci['jobs']['kala-db-tests']
     step = next(s for s in job['steps'] if 'pytest tests/l3/kala_db ' in s.get('run', ''))
     assert str(step['env']['KALA_REQUIRE_DB']) == '1'
@@ -234,3 +234,14 @@ def test_candidate_inspection_propagates_governed_dasha_refusal(db, damage, code
     with pytest.raises(dasha_read.DashaBuildRefused, match=code):
         inspect(db, chart=requested_chart)
     assert snapshot(db) == before
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[6] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow as _ci_expanded
+
+def _ci_load(text):
+    import yaml
+    data = yaml.safe_load(text)
+    data['jobs'] = _ci_expanded(data['jobs'])
+    return data

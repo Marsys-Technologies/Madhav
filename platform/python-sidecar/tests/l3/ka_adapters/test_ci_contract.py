@@ -7,7 +7,7 @@ import yaml
 
 def test_mandatory_kala_db_job_collects_each_adapter_regression():
     root=Path(__file__).resolve().parents[5]
-    workflow=yaml.safe_load((root/'.github/workflows/ci.yml').read_text())
+    workflow=_ci_load((root/'.github/workflows/ci.yml').read_text())
     job=workflow['jobs']['kala-db-tests']
     collected=set()
     for step in job['steps']:
@@ -27,3 +27,14 @@ def test_migration_is_protected_from_routine_deploy():
     entries=(root/'platform/scripts/kala_protected_migrations.txt').read_text().splitlines()
     names={line.strip() for line in entries if line.strip() and not line.startswith('#')}
     assert '1384_ka_3b_contested_candidates.sql' in names
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[5] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow as _ci_expanded
+
+def _ci_load(text):
+    import yaml
+    data = yaml.safe_load(text)
+    data['jobs'] = _ci_expanded(data['jobs'])
+    return data
