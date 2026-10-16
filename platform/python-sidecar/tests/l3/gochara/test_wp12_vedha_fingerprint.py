@@ -96,7 +96,7 @@ def db():
     c.execute(MIGRATION_1082.read_text())
     c.close()
     seed = psycopg.connect(WP6_DSN)
-    _seed(seed)
+    _seed(seed, real_ephemeris=True)
     seed.commit()
     seed.close()
     yield
@@ -108,13 +108,10 @@ def _build():
 
     conn = psycopg.connect(WP6_DSN)
     ctx = SimpleNamespace(db_conn=conn, config={"chart_id": CHART_ID}, dry_run=False)
-    orig = vw._compute_ayanamsha_offset
-    vw._compute_ayanamsha_offset = lambda _d: 0.0
     try:
         vw.KaVedhaGocharaWriter().run(ctx)
         conn.commit()
     finally:
-        vw._compute_ayanamsha_offset = orig
         conn.close()
 
 
@@ -251,13 +248,10 @@ def _build_moorti():
 
     conn = psycopg.connect(WP6_DSN)
     ctx = SimpleNamespace(db_conn=conn, config={"chart_id": CHART_ID}, dry_run=False)
-    orig = mw._compute_ayanamsha_offset
-    mw._compute_ayanamsha_offset = lambda _d: 0.0
     try:
         mw.KaMoortiNirnayaWriter().run(ctx)
         conn.commit()
     finally:
-        mw._compute_ayanamsha_offset = orig
         conn.close()
 
 
