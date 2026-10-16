@@ -4,8 +4,6 @@ Only synthetic rows in the suite-owned DB. No classical calculation is claimed.
 Each oracle measures a distinct preparation claim, not captured current output.
 """
 import json
-import os
-from pathlib import Path
 
 import psycopg
 from psycopg import sql
@@ -24,13 +22,23 @@ def adapter():
     return rehearsal_settlement
 
 
+@pytest.fixture(autouse=True)
+def job_scratch(tmp_path, monkeypatch):
+    """Hermetic rehearsal ownership: JOB_SCRATCH exists only for the harness, so
+    every test supplies its own absolute scratch rather than inheriting one."""
+    scratch = tmp_path / 'synthetic-settlement-job'
+    scratch.mkdir()
+    monkeypatch.setenv('JOB_SCRATCH', str(scratch))
+    return scratch
+
+
 @pytest.fixture
-def restored(isolated_kala_db_dsn):
+def restored(isolated_kala_db_dsn, job_scratch):
     """Existing guarded fixture alone creates/drops the DB; tag its job custody."""
     with psycopg.connect(isolated_kala_db_dsn, autocommit=True) as conn:
         name = conn.info.dbname
         conn.execute(sql.SQL('COMMENT ON DATABASE {} IS {}').format(
-            sql.Identifier(name), sql.Literal('ky.job=' + Path(os.environ['JOB_SCRATCH']).name)))
+            sql.Identifier(name), sql.Literal('ky.job=' + job_scratch.name)))
         conn.execute('''
             DROP SCHEMA public CASCADE; CREATE SCHEMA public;
             CREATE TABLE chart_dashas (
@@ -107,22 +115,39 @@ def test_gate_is_required_even_on_a_guarded_throwaway(restored):
         wrap(restored)
 
 
-def test_non_rehearsal_identity_and_changed_custody_refuse(restored):
+def test_non_rehearsal_identity_and_changed_custody_refuse(restored, job_scratch):
     """A: database name is insufficient; ownership is rechecked at consumption."""
     name = restored.info.dbname
     restored.execute(sql.SQL('COMMENT ON DATABASE {} IS NULL').format(sql.Identifier(name)))
     with pytest.raises(ValueError, match='ownership'):
         wrap(restored, enabled=True)
     restored.execute(sql.SQL('COMMENT ON DATABASE {} IS {}').format(
-        sql.Identifier(name), sql.Literal('ky.job=' + Path(os.environ['JOB_SCRATCH']).name)))
+        sql.Identifier(name), sql.Literal('ky.job=' + job_scratch.name)))
     conn = wrap(restored, enabled=True)
     restored.execute(sql.SQL('COMMENT ON DATABASE {} IS {}').format(sql.Identifier(name), sql.Literal('ky.job=another-job')))
     with pytest.raises(ValueError, match='ownership'):
         reader.load_pinned_vimshottari(conn, CHART)
 
 
-def test_remote_and_admin_targets_refuse_before_sql():
-    """A: a rehearsal-like name on another endpoint never authorizes access."""
+def test_missing_or_relative_job_scratch_refuses_before_sql(monkeypatch):
+    """A: without an absolute JOB_SCRATCH no ownership can be proven; refuse unchanged."""
+    class Target:
+        info = None
+        def execute(self, *args):
+            pytest.fail('ownerless rehearsal reached SQL')
+    monkeypatch.delenv('JOB_SCRATCH')
+    with pytest.raises(ValueError, match='absolute JOB_SCRATCH required'):
+        wrap(Target(), enabled=True)
+    monkeypatch.setenv('JOB_SCRATCH', 'relative/job')
+    with pytest.raises(ValueError, match='absolute JOB_SCRATCH required'):
+        wrap(Target(), enabled=True)
+
+
+def test_remote_and_admin_targets_refuse_before_sql(job_scratch):
+    """A: a rehearsal-like name on another endpoint never authorizes access.
+
+    A valid scratch is present (autouse fixture), so the refusal measured here
+    is the target check, not the missing-scratch check."""
     from types import SimpleNamespace
     for host, port, name in [('192.0.2.1',55433,'ky_rehearse_test'),
                              ('127.0.0.1',5432,'ky_rehearse_test'),
@@ -131,7 +156,7 @@ def test_remote_and_admin_targets_refuse_before_sql():
             info = SimpleNamespace(host=host, port=port, dbname=name)
             def execute(self, *args):
                 pytest.fail('unsafe endpoint reached SQL')
-        with pytest.raises(ValueError, match='target'):
+        with pytest.raises(ValueError, match='guarded rehearsal target'):
             wrap(Target(), enabled=True)
 
 
