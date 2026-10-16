@@ -2186,6 +2186,9 @@ jobs:
           [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
           python -m pytest "${FILES[@]}" -q --no-header -rs
 
+      - name: KĀLA-YANTRA operation adapter acceptance harness (OPS-NB-01)
+        if: matrix.shard == 1
+        run: python -B -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py -q -p no:cacheprovider
       - name: pytest — tracker guarded completion and concurrency (required)
         if: matrix.shard == 1
         env:
