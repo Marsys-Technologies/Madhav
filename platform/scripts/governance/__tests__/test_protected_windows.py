@@ -411,18 +411,97 @@ def test_unknown_dynamic_selection_is_not_silently_omitted():
         windows.catalog(snap, HEAD)
 
 
-def test_future_static_schema_window_is_automatically_selected(rig):
+@pytest.fixture
+def future_window(rig):
     import yaml
     workflow = yaml.safe_load(rig.source.text('.github/workflows/deploy.yml', HEAD))
     workflow[True]['workflow_dispatch']['inputs']['future_schema_migration'] = {'type': 'boolean', 'default': False}
-    step = next(step for step in workflow['jobs']['jataka-protected-migrations']['steps']
+    job = workflow['jobs']['jataka-protected-migrations']
+    job['if'] = job['if'].replace('inputs.kala_schema_migration == true',
+                                  'inputs.kala_schema_migration == true || inputs.future_schema_migration == true')
+    step = next(step for step in job['steps']
                 if step.get('name') == 'Apply exact protected public-schema migrations')
     step['env']['APPLY_FUTURE'] = '${{ inputs.future_schema_migration }}'
-    step['run'] += '\nif [ "$APPLY_FUTURE" = "true" ]; then\n  migrations+=(1234_gochara_eval_window_builder_grants.sql)\nfi\n'
+    selection = 'if [ "$APPLY_FUTURE" = "true" ]; then\n  migrations+=(1234_gochara_eval_window_builder_grants.sql)\nfi\n'
+    empty_check = 'if [ "${#migrations[@]}" -eq 0 ]; then'
+    assert step['run'].count(empty_check) == 1
+    step['run'] = step['run'].replace(empty_check, selection + empty_check)
     rig.source.overrides['.github/workflows/deploy.yml'] = yaml.safe_dump(workflow)
+    return workflow
+
+
+def test_future_static_schema_window_is_automatically_selected(rig, future_window):
+    windows, _ = modules()
+    schedule(rig.source, [{'migration': '1234_gochara_eval_window_builder_grants.sql',
+                          'window_input': 'future_schema_migration', 'lease': LEASE}])
+    assert windows.guard(rig.source, 'base') == []
     rig.pending('1234_gochara_eval_window_builder_grants.sql')
     result = rig.run()
     assert result['status'] == 'verified' and result['inputs'] == ['future_schema_migration']
+
+
+def test_future_window_job_admits_only_requested_input(future_window):
+    """Evaluate the entire real job condition, with successful prerequisite jobs."""
+    import re
+    job = future_window['jobs']['jataka-protected-migrations']
+    context = {
+        'github.event_name': 'workflow_dispatch',
+        'needs.changes.result': 'success',
+        'needs.migration-state.result': 'success',
+        'needs.migration-state.outputs.data_plane': 'marked',
+        'needs.migration-state.outputs.data_plane_isolation': 'strict',
+        'needs.migration-state.outputs.nirmana': 'marked',
+        'needs.migration-state.outputs.purna': 'marked',
+        'needs.privileged-bootstrap.result': 'skipped',
+    }
+    inputs = future_window[True]['workflow_dispatch']['inputs']
+
+    def admitted(selected):
+        values = {**context, **{f'inputs.{name}': name == selected for name in inputs}}
+        # This local workflow's condition uses only literals, contexts, always(),
+        # comparisons and boolean operators. Unknown contexts fail the test.
+        expression = re.sub(r'\b(?:github|needs|inputs)\.[a-zA-Z0-9_.-]+',
+                            lambda match: repr(values[match[0]]), job['if'])
+        expression = expression.replace('always()', 'True').replace('&&', ' and ').replace('||', ' or ')
+        expression = re.sub(r'\btrue\b', 'True', expression)
+        expression = re.sub(r'\bfalse\b', 'False', expression)
+        return eval(expression, {'__builtins__': {}}, {})
+
+    assert not admitted(None), 'an unrequested window must not admit the job'
+    assert admitted('future_schema_migration'), 'the future input must admit the protected job'
+    context['github.event_name'] = 'push'
+    assert not admitted('future_schema_migration'), 'the window must remain manual-only'
+
+
+def test_future_window_selects_before_migration_execution(future_window, tmp_path):
+    """Run deploy's actual selection shell; stub only the external runner."""
+    import re
+    import subprocess
+    step = next(step for step in future_window['jobs']['jataka-protected-migrations']['steps']
+                if step.get('name') == 'Apply exact protected public-schema migrations')
+    (tmp_path / 'platform').mkdir()
+    bin_dir = tmp_path / 'bin'; bin_dir.mkdir()
+    calls = tmp_path / 'runner-calls.json'
+    npx = bin_dir / 'npx'
+    npx.write_text('#!/usr/bin/env python3\nimport json, os, sys\nfrom pathlib import Path\n'
+                   "Path(os.environ['RUNNER_CALLS']).write_text(json.dumps(sys.argv[1:]))\n")
+    npx.chmod(0o755)
+    env = {'PATH': str(bin_dir) + os.pathsep + os.defpath + os.pathsep + str(Path(sys.executable).parent),
+           'RUNNER_CALLS': str(calls)}
+    for variable, binding in step['env'].items():
+        match = re.fullmatch(r'\$\{\{\s*inputs\.([a-z0-9_]+)\s*\}\}', binding)
+        if match:
+            env[variable] = 'true' if match[1] == 'future_schema_migration' else 'false'
+    run = subprocess.run(['bash', '-e', '-c', step['run']], cwd=tmp_path,
+                         env=env, capture_output=True, text=True)
+    assert run.returncode == 0, run.stdout + run.stderr
+    assert json.loads(calls.read_text()) == [
+        'tsx', 'scripts/migrate.ts', '--only', '1234_gochara_eval_window_builder_grants.sql']
+    calls.unlink()
+    env.update({variable: 'false' for variable in env if variable.startswith('APPLY_')})
+    unrequested = subprocess.run(['bash', '-e', '-c', step['run']], cwd=tmp_path,
+                                 env=env, capture_output=True, text=True)
+    assert unrequested.returncode != 0 and not calls.exists()
 
 
 def test_protected_runner_declaration_without_deploy_window_cannot_escape_schedule_guard():
