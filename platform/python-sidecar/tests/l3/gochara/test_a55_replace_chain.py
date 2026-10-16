@@ -200,20 +200,22 @@ def template():
         pytest.skip("pinned .se1 corpus unavailable")
     import psycopg
     admin, name, dsn = create_am5_database("a55rc")
-    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
     try:
-        RuleRegistryStore(conn).seed()
-        w = writer_mod.GocharaV5Writer()
-        for key in [writer_mod.CONVENTION_SUBSTEP] + [f"{writer_mod.BODY_SUBSTEP_PREFIX}{b}"
-                                                      for b in writer_mod.SUBSTRATE_BODIES]:
-            ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="tpl", db_conn=conn, dry_run=False,
-                              config={"chart_id": CHART_ID, "horizon": LONG, "ephe_path": EPHE_PATH})
-            with conn.transaction():
-                w.run_substep(ctx, SubStep(key=key, label=key))
+        conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+        try:
+            RuleRegistryStore(conn).seed()
+            w = writer_mod.GocharaV5Writer()
+            for key in [writer_mod.CONVENTION_SUBSTEP] + [f"{writer_mod.BODY_SUBSTEP_PREFIX}{b}"
+                                                          for b in writer_mod.SUBSTRATE_BODIES]:
+                ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="tpl", db_conn=conn, dry_run=False,
+                                  config={"chart_id": CHART_ID, "horizon": LONG, "ephe_path": EPHE_PATH})
+                with conn.transaction():
+                    w.run_substep(ctx, SubStep(key=key, label=key))
+        finally:
+            conn.close()
+        yield admin, name, dsn
     finally:
-        conn.close()
-    yield admin, name, dsn
-    drop_am5_database(admin, name)
+        drop_am5_database(admin, name)
 
 
 class _World:
