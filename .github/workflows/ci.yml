@@ -342,6 +342,8 @@ jobs:
           KALA_REQUIRE_DB: '1'
         # Includes test_k7_tulana_probe_transition.py: real stored 849/1377
         # dispatch and broken-detector negatives in both migration states.
+        # K9-1: directory discovery also collects kala_db/rehearsal (ordered
+        # build lineage, own detectors, read-only inspection, publication CAS).
         # Recursive collection includes KA-3a's sky/latta/fingerprint oracles,
         # typed writer dispatch, legacy columns and direct SQL refusal probes.
         run: >-
@@ -358,6 +360,12 @@ jobs:
           KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           KALA_REQUIRE_DB: '1'
         run: python -m pytest tests/l3/ka_muhurta_seva -q -rs
+      - name: K5-3 — G2 event models, unavailable inputs and mandatory CI coverage
+        working-directory: platform/python-sidecar
+        run: >-
+          python -m pytest tests/l3/ka_kshetra/test_g2_model.py
+          tests/l3/ka_kshetra/test_g2_features.py tests/l3/ka_kshetra/test_g2_ci.py
+          -q -rs -p no:cacheprovider
       - name: K7-4 — cyclic fronts, permutations and Tulana compatibility
         working-directory: platform/python-sidecar
         run: python -m pytest tests/l3/test_ka_tulana.py -q -rs
@@ -2169,6 +2177,18 @@ jobs:
           mapfile -t FILES < <(python platform/scripts/governance/ci_shard.py --count 5 --index ${{ matrix.shard }})
           [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
           python -m pytest "${FILES[@]}" -q --no-header -rs
+
+      - name: pytest — tracker guarded completion and concurrency (required)
+        if: matrix.shard == 1
+        env:
+          DATABASE_URL: ''
+          PGHOST: ''
+          PYTHONPATH: platform/scripts/governance
+        run: >-
+          python -m pytest platform/scripts/governance/pravaha_tracker/tests/test_verify_priority.py
+          platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py
+          platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py::GuardedCompletionCases
+          -q --no-header -p no:cacheprovider
 
   governance-readback-tests:
     # P05-B02: both ported readback suites, including all five real-cluster cases.
