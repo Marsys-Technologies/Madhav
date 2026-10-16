@@ -89,7 +89,7 @@ def test_ci_runs_the_entire_evaluator_directory_in_required_db_job():
     assert not any(token in run.split()[run.split().index("pytest")+1:] for token in ("-k","-m","--deselect","--ignore","||",";","|"))
     assert "postgres" in job["services"]
     assert "changes" in ([job["needs"]] if isinstance(job["needs"], str) else job["needs"]) and "!cancelled()" in str(job["if"])
-    assert "needs.changes.outputs.docs_only != 'true'" in str(job["if"])
+    assert runs_in_full_gate(job)
     assert steps[0]["env"]["KALA_ADMIN_DSN"]
     assert not steps[0].get("continue-on-error") and not job.get("continue-on-error")
 
@@ -97,6 +97,8 @@ from pathlib import Path as _CiPath
 import sys as _ci_sys
 _ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[5] / 'platform/scripts/governance'))
 from ci_discovery import expanded_workflow as _ci_expanded
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[5] / 'platform/scripts/governance/__tests__'))
+from _ci_gate_test_support import runs_in_full_gate
 
 def _ci_load(text):
     import yaml
