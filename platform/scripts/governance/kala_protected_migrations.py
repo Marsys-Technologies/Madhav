@@ -31,8 +31,6 @@ def derive(root: Path = ROOT) -> list[str]:
             raise ValueError(f'invalid or unordered legacy protected filename: {name}')
         previous = int(match[1])
         seed.add(name)
-    if not seed:
-        raise ValueError('empty legacy protected seed would remove existing protection')
     exclusions_path = root / EXCLUSIONS
     exclusions = json.loads(exclusions_path.read_text()) if exclusions_path.exists() else {}
     if not isinstance(exclusions, dict) or any(not re.fullmatch(r'\d+_[A-Za-z0-9_]+\.sql', k)
@@ -40,6 +38,11 @@ def derive(root: Path = ROOT) -> list[str]:
         raise ValueError('protected exclusions must map numbered SQL filenames to a reviewable reason')
     if seed & exclusions.keys():
         raise ValueError('an exclusion cannot remove legacy protected membership')
+    # An intentionally empty window retains the pre-discovery privilege-guard
+    # semantics: protect nothing here, so its scan still reports uncovered DDL.
+    # The deployment CLI below separately rejects empty windows.
+    if not seed:
+        return []
     selected = set(seed)
     for directory in MIGRATION_DIRS:
         for path in (root / directory).glob('*.sql'):
@@ -53,7 +56,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--repo-root', type=Path, default=ROOT)
     args = ap.parse_args()
-    print('\n'.join(derive(args.repo_root)))
+    selected = derive(args.repo_root)
+    if not selected:
+        raise ValueError('empty legacy protected seed would remove existing protection')
+    print('\n'.join(selected))
 
 
 if __name__ == '__main__':

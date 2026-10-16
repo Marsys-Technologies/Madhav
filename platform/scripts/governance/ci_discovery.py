@@ -99,7 +99,21 @@ def workflow_problems(text: str) -> list[str]:
     jobs = yaml.safe_load(text).get('jobs', {})
     problems = []
     for name, job in jobs.items():
-        for step in job.get('steps', []):
+        steps = job.get('steps', [])
+        checkouts = [i for i, step in enumerate(steps)
+                     if step.get('uses', '').startswith('actions/checkout@')]
+        # Discover consumers from the actual workflow, including jobs merged later.
+        # Only classification and the overlay producer intentionally read raw source.
+        if checkouts and name not in ('changes', 'generated-artifacts'):
+            needs = job.get('needs', [])
+            needs = [needs] if isinstance(needs, str) else needs
+            if 'generated-artifacts' not in needs:
+                problems.append(f'{name}: checkout consumer needs generated-artifacts')
+            for index in checkouts:
+                restore = steps[index + 1] if index + 1 < len(steps) else {}
+                if restore.get('uses') != './.github/actions/restore-generated' or 'if' in restore:
+                    problems.append(f'{name}: checkout must immediately restore generated outputs unconditionally')
+        for step in steps:
             for line in str(step.get('run', '')).replace('\\\n', ' ').splitlines():
                 if line.lstrip().startswith('#'):
                     continue

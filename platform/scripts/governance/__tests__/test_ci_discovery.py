@@ -119,3 +119,29 @@ def test_mcp_quarantine_cannot_remove_a_previously_run_file():
     for profile in module().profiles().values():
         assert not selected.intersection(profile.get('quarantine', {}))
         assert all(not any(char in path for char in '*?[') for path in profile.get('quarantine', {}))
+
+
+@pytest.mark.parametrize('missing', ['dependency', 'restore', 'order', 'conditional'])
+def test_guard_discovers_future_checkout_consumers_automatically(missing):
+    jobs = {
+        'generated-artifacts': {'steps': [{'uses': 'actions/checkout@v4'}]},
+        'changes': {'steps': [{'uses': 'actions/checkout@v4'}]},
+        'future-merged-job': {
+            'needs': ['changes', 'generated-artifacts'],
+            'steps': [{'uses': 'actions/checkout@v4'},
+                      {'uses': './.github/actions/restore-generated'},
+                      {'run': 'python -m pytest tests/new_family'}],
+        },
+    }
+    mod = module()
+    assert mod.workflow_problems(yaml.safe_dump({'jobs': jobs})) == []
+    job = jobs['future-merged-job']
+    if missing == 'dependency':
+        job['needs'] = ['changes']
+    elif missing == 'restore':
+        job['steps'].pop(1)
+    elif missing == 'order':
+        job['steps'].reverse()
+    else:
+        job['steps'][1]['if'] = 'false'
+    assert any('future-merged-job' in error for error in mod.workflow_problems(yaml.safe_dump({'jobs': jobs})))

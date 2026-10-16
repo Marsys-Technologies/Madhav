@@ -20,8 +20,8 @@
     },
     "local_limitation": "Whole-platform Vitest list timed out at 180s and 600s; the native Unit Tests invocation and its configuration have no selection edit."
   },
-  "collected_before": 44150,
-  "collected_after": 46246,
+  "collected_before": 44676,
+  "collected_after": 46772,
   "missing": [],
   "suites": [
     {
@@ -56,8 +56,8 @@
     },
     {
       "suite": "kala-db-tests-5-0",
-      "before": 1018,
-      "after": 1018,
+      "before": 1065,
+      "after": 1065,
       "missing": []
     },
     {
@@ -464,8 +464,8 @@
     },
     {
       "suite": "governance-gates-py-sidecar-shard-3-33",
-      "before": 20669,
-      "after": 20693,
+      "before": 20835,
+      "after": 20859,
       "missing": []
     },
     {
@@ -596,8 +596,8 @@
     },
     {
       "suite": "governance-shards-full",
-      "before": 20696,
-      "after": 20696,
+      "before": 21056,
+      "after": 21056,
       "missing": []
     },
     {
@@ -633,13 +633,13 @@
   ],
   "before_nodeids": {
     "path": "00_ARCHITECTURE/briefs/kalayantra/CI_DISCOVERY_BEFORE.nodeids.txt.gz",
-    "sha256": "0130a15113e69d2847efdee31b6f0e6d8e4567b957b6ca84920c015ab149477a"
+    "sha256": "b099733c95edbddea30b9c3ddd8128dbee2ebbd0d87ed244125143a1e8d8a9cc"
   },
   "after_nodeids": {
     "path": "00_ARCHITECTURE/briefs/kalayantra/CI_DISCOVERY_AFTER.nodeids.txt.gz",
-    "sha256": "e05be2cc6cc1f450f6080c06a58782a6745e1f7b7da2eaa32db270d321e6328f"
+    "sha256": "a034add593e23de5878db3d93d30656a82fc33f8adbc5b3cffd052de54082ffb"
   },
+  "nodeid_format": "collection working directory / native pytest nodeid or Vitest file::name",
   "profile_sha256": "ffaeb96ef88a67514fa25215c19182deeb835d50a095b9082642232cf8467822",
-  "required_checks_unchanged": true,
-  "nodeid_format": "collection working directory / native pytest nodeid or Vitest file::name"
+  "required_checks_unchanged": true
 }

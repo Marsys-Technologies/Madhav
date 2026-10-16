@@ -44,5 +44,18 @@ def test_empty_legacy_seed_cannot_be_hidden_by_new_automatic_members(tmp_path):
     migrations = tmp_path / 'platform/migrations'
     migrations.mkdir()
     (migrations / '9001_new.sql').write_text('CREATE TABLE public.new_table (id int);\n')
-    with pytest.raises(ValueError, match='empty'):
-        derive(tmp_path)
+    assert derive(tmp_path) == []
+    assert guard.scan(tmp_path, set(derive(tmp_path)), set()) == [
+        'platform/migrations/9001_new.sql: line 1: CREATE TABLE in schema public'
+    ]
+
+
+def test_deployment_selector_cli_still_refuses_an_empty_window(tmp_path):
+    import subprocess
+    scripts = tmp_path / 'platform/scripts'
+    scripts.mkdir(parents=True)
+    (scripts / 'kala_protected_migrations.txt').write_text('# intentionally empty fixture\n')
+    proc = subprocess.run([sys.executable, str(HERE / 'kala_protected_migrations.py'),
+                           '--repo-root', str(tmp_path)], text=True, capture_output=True, timeout=30)
+    assert proc.returncode == 5
+    assert 'empty' in proc.stderr

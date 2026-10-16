@@ -17,12 +17,13 @@ def main():
     profiles=discovery.profiles();before=set();after=set();rows=[]; cache={}
     cache_path=scratch/'collection-cache.json'
     persistent={}
-    env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1','SE_EPHE_PATH':'/Users/Dev/kalayantra/ephe','SWE_EPHE_PATH':'/Users/Dev/kalayantra/ephe','TMPDIR':str(scratch/'tmp'),'NPM_CONFIG_CACHE':str(scratch/'npm-cache'),'CI':'true','TSX_DISABLE_CACHE':'1','GIT_OPTIONAL_LOCKS':'0'}
+    # Vitest 2 needs a bounded minimum; these env knobs also work with the Vitest 4 collector.
+    env={**os.environ,'PYTHONDONTWRITEBYTECODE':'1','SE_EPHE_PATH':'/Users/Dev/kalayantra/ephe','SWE_EPHE_PATH':'/Users/Dev/kalayantra/ephe','TMPDIR':str(scratch/'tmp'),'NPM_CONFIG_CACHE':str(scratch/'npm-cache'),'CI':'true','TSX_DISABLE_CACHE':'1','GIT_OPTIONAL_LOCKS':'0','VITEST_MIN_THREADS':'1','VITEST_MIN_FORKS':'1'}
     # Collection never uses fixtures; strip connection-bearing variables so import-time code cannot contact anything remote.
     for key in list(env):
      if key.endswith(('_DSN','_DATABASE_URL')) or key in ('DATABASE_URL','PGHOST','PGPORT','PGDATABASE','PGUSER','PGPASSWORD'):env.pop(key)
     env['PYTHONPATH']=os.pathsep.join([str(root/'platform/scripts/governance/pytest_plugins'),str(scratch/'python-deps'),str(root/'platform/scripts/governance'),str(root/'platform/scripts/governance/pytest_plugins')])
-    
+
     def options(c):
      args=shlex.split(c['line'].split(c['exe'],1)[1]); paths=c['paths'];args=args[len(paths):];out=[];i=0
      while i<len(args):
@@ -32,7 +33,7 @@ def main():
       if a.startswith(('--ignore=','--ignore-glob=','--deselect=')):out.append(a)
       i+=1
      return out
-    
+
     def collect(c,paths,tag):
      opts=options(c)
      if tag.endswith(' after') and c['engine']=='vitest':
@@ -82,7 +83,7 @@ def main():
      result={c['cwd'].rstrip('/')+'/'+node for node in ids};cache[key]=result
      persistent[persistent_key]=sorted(result);cache_path.write_text(json.dumps(persistent))
      return result
-    
+
     for idx,c in enumerate(baseline['commands']):
      old=collect(c,c['paths'],c['suite']+' before');new=collect(c,discovery.discover(root,profiles[c['suite']]),c['suite']+' after')
      missing=sorted(old-new)

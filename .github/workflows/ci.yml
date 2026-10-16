@@ -120,6 +120,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
+          python platform/scripts/governance/ci_discovery.py guard
           args=()
           if [ -n "$BASE_SHA" ] && [ "$BASE_SHA" != "0000000000000000000000000000000000000000" ]; then args+=(--base "$BASE_SHA"); fi
           python platform/scripts/governance/ci_generated.py generate --destination "$RUNNER_TEMP/ci-generated" "${args[@]}"
@@ -435,7 +436,7 @@ jobs:
   # K3-2 pre-build: real SQL evidence is required through governance-gates.
   # Keep the existing all-Kāla DB selection above unchanged.
   k3-sealed-db-tests:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: K3 sealed negative-space contract (throwaway Postgres)
     runs-on: ubuntu-latest
@@ -458,6 +459,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

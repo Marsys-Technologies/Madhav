@@ -1348,8 +1348,9 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
 
       # Pre-cutover source trees use their original committed outputs and CI guards.
+      # Emergency dispatch regenerates locally: no CI run/artifact service is required.
       - name: Find verified generated artifact for this source
-        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' }}
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' && !(github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN') }}
         id: generated-ci
         uses: actions/github-script@v7
         env:
@@ -1364,8 +1365,8 @@ jobs:
                 ...context.repo, workflow_id: 'ci.yml', head_sha: process.env.SOURCE_SHA,
                 per_page: 100,
               });
-              // The existing changes job enforces normal CI green or the explicit
-              // emergency override. In both cases, generation itself must have passed.
+              // Normal dispatch has already passed the existing CI gate.
+              // Emergency dispatch skips lookup and regenerates below.
               let accepted;
               for (const run of runs.filter(r => r.head_sha === process.env.SOURCE_SHA)) {
                 const response = await github.rest.actions.listWorkflowRunArtifacts({
@@ -1384,6 +1385,7 @@ jobs:
         with:
           run-id: ${{ steps.generated-ci.outputs.run_id }}
           sha: ${{ env.DEPLOY_SHA }}
+          regenerate: ${{ github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN' }}
 
 
       - name: Verify deployment source provenance
@@ -1685,8 +1687,9 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
 
       # Pre-cutover source trees use their original committed outputs and CI guards.
+      # Emergency dispatch regenerates locally: no CI run/artifact service is required.
       - name: Find verified generated artifact for this source
-        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' }}
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' && !(github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN') }}
         id: generated-ci
         uses: actions/github-script@v7
         env:
@@ -1701,8 +1704,8 @@ jobs:
                 ...context.repo, workflow_id: 'ci.yml', head_sha: process.env.SOURCE_SHA,
                 per_page: 100,
               });
-              // The existing changes job enforces normal CI green or the explicit
-              // emergency override. In both cases, generation itself must have passed.
+              // Normal dispatch has already passed the existing CI gate.
+              // Emergency dispatch skips lookup and regenerates below.
               let accepted;
               for (const run of runs.filter(r => r.head_sha === process.env.SOURCE_SHA)) {
                 const response = await github.rest.actions.listWorkflowRunArtifacts({
@@ -1721,6 +1724,7 @@ jobs:
         with:
           run-id: ${{ steps.generated-ci.outputs.run_id }}
           sha: ${{ env.DEPLOY_SHA }}
+          regenerate: ${{ github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN' }}
 
 
       # #2159: workflow_run.head_sha can resolve to a stale commit under
@@ -1924,8 +1928,9 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
 
       # Pre-cutover source trees use their original committed outputs and CI guards.
+      # Emergency dispatch regenerates locally: no CI run/artifact service is required.
       - name: Find verified generated artifact for this source
-        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' }}
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' && !(github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN') }}
         id: generated-ci
         uses: actions/github-script@v7
         env:
@@ -1940,8 +1945,8 @@ jobs:
                 ...context.repo, workflow_id: 'ci.yml', head_sha: process.env.SOURCE_SHA,
                 per_page: 100,
               });
-              // The existing changes job enforces normal CI green or the explicit
-              // emergency override. In both cases, generation itself must have passed.
+              // Normal dispatch has already passed the existing CI gate.
+              // Emergency dispatch skips lookup and regenerates below.
               let accepted;
               for (const run of runs.filter(r => r.head_sha === process.env.SOURCE_SHA)) {
                 const response = await github.rest.actions.listWorkflowRunArtifacts({
@@ -1960,6 +1965,7 @@ jobs:
         with:
           run-id: ${{ steps.generated-ci.outputs.run_id }}
           sha: ${{ env.DEPLOY_SHA }}
+          regenerate: ${{ github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN' }}
 
 
       # #2159: workflow_run.head_sha can resolve to a stale commit under
@@ -2331,8 +2337,9 @@ jobs:
           ref: ${{ env.DEPLOY_SHA }}
 
       # Pre-cutover source trees use their original committed outputs and CI guards.
+      # Emergency dispatch regenerates locally: no CI run/artifact service is required.
       - name: Find verified generated artifact for this source
-        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' }}
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' && !(github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN') }}
         id: generated-ci
         uses: actions/github-script@v7
         env:
@@ -2347,8 +2354,8 @@ jobs:
                 ...context.repo, workflow_id: 'ci.yml', head_sha: process.env.SOURCE_SHA,
                 per_page: 100,
               });
-              // The existing changes job enforces normal CI green or the explicit
-              // emergency override. In both cases, generation itself must have passed.
+              // Normal dispatch has already passed the existing CI gate.
+              // Emergency dispatch skips lookup and regenerates below.
               let accepted;
               for (const run of runs.filter(r => r.head_sha === process.env.SOURCE_SHA)) {
                 const response = await github.rest.actions.listWorkflowRunArtifacts({
@@ -2367,6 +2374,7 @@ jobs:
         with:
           run-id: ${{ steps.generated-ci.outputs.run_id }}
           sha: ${{ env.DEPLOY_SHA }}
+          regenerate: ${{ github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN' }}
 
 
       # #2159: workflow_run.head_sha can resolve to a stale commit under
