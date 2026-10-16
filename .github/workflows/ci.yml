@@ -2250,7 +2250,7 @@ jobs:
           -q --no-header -p no:cacheprovider
 
   governance-readback-tests:
-    # P05-B02: both ported readback suites, including all five real-cluster cases.
+    # P05-B02 / A6: both complete readback suites, including populated real-DB negatives.
     # The helper owns and cleans up its loopback-only cluster. Missing binaries,
     # unavailable helpers, or any other skipped oracle fail the required aggregate.
     needs: changes
