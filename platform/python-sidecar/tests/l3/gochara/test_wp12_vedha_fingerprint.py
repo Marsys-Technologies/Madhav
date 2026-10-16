@@ -19,6 +19,8 @@ NOT_RUN when unreachable.
 """
 from __future__ import annotations
 
+from ._legacy_vedha_fixture import build_legacy_vedha
+
 import importlib.util
 import sys
 from pathlib import Path
@@ -111,7 +113,7 @@ def _build():
     orig = vw._compute_ayanamsha_offset
     vw._compute_ayanamsha_offset = lambda _d: 0.0
     try:
-        vw.KaVedhaGocharaWriter().run(ctx)
+        build_legacy_vedha(ctx)
         conn.commit()
     finally:
         vw._compute_ayanamsha_offset = orig
@@ -258,12 +260,15 @@ def _build_moorti():
     conn = psycopg.connect(WP6_DSN)
     ctx = SimpleNamespace(db_conn=conn, config={"chart_id": CHART_ID}, dry_run=False)
     orig = mw._compute_ayanamsha_offset
+    orig_grading = mw.KERNEL_INSTANT_GRADING
+    mw.KERNEL_INSTANT_GRADING = False
     mw._compute_ayanamsha_offset = lambda _d: 0.0
     try:
         mw.KaMoortiNirnayaWriter().run(ctx)
         conn.commit()
     finally:
         mw._compute_ayanamsha_offset = orig
+        mw.KERNEL_INSTANT_GRADING = orig_grading
         conn.close()
 
 

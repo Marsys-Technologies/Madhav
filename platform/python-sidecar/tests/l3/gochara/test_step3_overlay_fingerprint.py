@@ -35,6 +35,8 @@ table to that kind before the gate runs (the §3 stamps arrive with the row-stam
 """
 from __future__ import annotations
 
+from ._legacy_vedha_fixture import build_legacy_vedha
+
 import hashlib
 import json
 from types import SimpleNamespace
@@ -209,7 +211,7 @@ def _build_writers():
         if orig_grading is not None:
             mod.KERNEL_INSTANT_GRADING = False
         try:
-            cls().run(ctx)
+            build_legacy_vedha(ctx) if mod is vw else cls().run(ctx)
             conn.commit()
         finally:
             mod._compute_ayanamsha_offset = orig

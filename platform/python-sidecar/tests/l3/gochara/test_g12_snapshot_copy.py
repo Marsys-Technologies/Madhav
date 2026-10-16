@@ -1830,5 +1830,8 @@ def test_p06_live_operand_helper_is_exclusively_an_overlay_input():
         for node in ast.walk(ast.parse(path.read_text())):
             if isinstance(node, ast.ImportFrom) and node.module and node.module.endswith("l1_identity"):
                 consumers.add(str(path.relative_to(root)))
-    assert consumers == {"services/ka_vedha_gochara/writer.py", "services/ka_vedha_gochara/freshness.py",
+    # KA-3a dispatch consumes a typed candidate payload, not live legacy L1.
+    # The archived DATE-row builder is test-only; production live reads stay
+    # confined to the freshness gate and the still-active Moorti overlay.
+    assert consumers == {"services/ka_vedha_gochara/freshness.py",
                          "services/ka_moorti_nirnaya/writer.py"}

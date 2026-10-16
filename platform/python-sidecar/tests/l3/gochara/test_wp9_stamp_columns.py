@@ -15,6 +15,8 @@ ephemeris_daily, then runs BOTH writers end-to-end.
 """
 from __future__ import annotations
 
+from ._legacy_vedha_fixture import build_legacy_vedha
+
 import json
 import os
 import sys
@@ -450,7 +452,7 @@ def wp9_schema():
 
 @pytest.fixture(scope="session")
 def wp9_built(wp9_schema):
-    """Runs both writers end-to-end against the seeded fixture (once per session)."""
+    """Build historical vedha rows and live Moorti rows on the seeded inputs."""
     import services.ka_vedha_gochara.writer as vedha_writer
     import services.ka_moorti_nirnaya.writer as moorti_writer
 
@@ -459,15 +461,18 @@ def wp9_built(wp9_schema):
 
     orig_vedha_offset = vedha_writer._compute_ayanamsha_offset
     orig_moorti_offset = moorti_writer._compute_ayanamsha_offset
+    orig_grading = moorti_writer.KERNEL_INSTANT_GRADING
+    moorti_writer.KERNEL_INSTANT_GRADING = False
     vedha_writer._compute_ayanamsha_offset = lambda _d: 0.0
     moorti_writer._compute_ayanamsha_offset = lambda _d: 0.0
     try:
-        vedha_result = vedha_writer.KaVedhaGocharaWriter().run(ctx)
+        vedha_result = build_legacy_vedha(ctx)
         moorti_result = moorti_writer.KaMoortiNirnayaWriter().run(ctx)
         conn.commit()
     finally:
         vedha_writer._compute_ayanamsha_offset = orig_vedha_offset
         moorti_writer._compute_ayanamsha_offset = orig_moorti_offset
+        moorti_writer.KERNEL_INSTANT_GRADING = orig_grading
         conn.close()
     return {"vedha": vedha_result, "moorti": moorti_result}
 
@@ -613,10 +618,9 @@ class TestWriterStamps:
         assert computed, "expected at least one moorti-computed row"
         for r in computed:
             assert r["source_qualification"] == "algorithmic_approximation"
-            # WP9 5.3: non-truncated runs are graded at the true kernel
-            # sign-ingress instant -> instant_grain (day-grain only remains
-            # on runs the kernel could not solve).
-            assert r["precision_regime"] == "instant_grain"
+            # These synthetic longitudes exercise the explicit day-grade
+            # path; real Swiss ingress precision has its own writer suite.
+            assert r["precision_regime"] == "date_grain"
             assert r["corpus_verifiable"] is False
         assert uncomputed, "expected moorti-uncomputed rows (truncated horizon runs)"
         for r in uncomputed:

@@ -1,4 +1,4 @@
-"""Behavioral replacement-safety contracts for the eight W2 row writers."""
+"""Behavioral replacement-safety contracts for W2 writers and inert KA-3a dispatch."""
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -149,22 +149,9 @@ def _patch_daily_writer_dependencies(monkeypatch, module, daily_by_body):
         # that swallow). The kernel solver is covered in
         # test_ka_moorti_nirnaya_writer.py::TestIngressSolverMethodRecorded.
         monkeypatch.setattr(module, "KERNEL_INSTANT_GRADING", False)
-    else:
-        monkeypatch.setattr(module, "_fetch_janma_moon", lambda *_: (0, 0, "fact-1"))
-        monkeypatch.setattr(
-            module,
-            "_fetch_vedha_rules",
-            lambda *_: {("sun", 1): {"vedha_house": 7, "phala": "fixture", "classical_citation": "fixture"}},
-        )
-        monkeypatch.setattr(module, "_fetch_malefic_scale", lambda *_: {})
-        monkeypatch.setattr(module, "_fetch_latta_rules", lambda *_: {})
-        monkeypatch.setattr(module, "_fetch_daily_sidereal_by_body", lambda *_: daily_by_body)
-        monkeypatch.setattr(module, "_fetch_school_tagged_vedha_pair", lambda *_: (1, "fixture-school"))
-    if module is moorti or module is vedha:
-        # Step 3 §4: the fingerprint's node-series and L1 components — stubbed
-        # (their live-DB behaviour is covered by the step-3 fingerprint suite);
-        # these tests assert delete/insert ORDERING on a fake conn that cannot
-        # answer the digest SQL.
+    if module is moorti:
+        # P06 fingerprints read node-series and natal identities; the fake
+        # connection here tests replacement ordering, not the digest SQL.
         monkeypatch.setattr(
             module, "node_series_identity",
             lambda conn: {"mode": "true", "n_rows": 2, "digest": "d" * 64})
@@ -179,7 +166,6 @@ def _patch_daily_writer_dependencies(monkeypatch, module, daily_by_body):
     [
         (kota, kota.ALL_GRAHAS, kota.KaKotaChakraWriter),
         (moorti, moorti.MOORTI_GRAHAS + ("Moon",), moorti.KaMoortiNirnayaWriter),
-        (vedha, vedha.ALL_GRAHAS, vedha.KaVedhaGocharaWriter),
     ],
 )
 def test_daily_writers_reject_gaps_duplicates_and_truncation(
@@ -212,7 +198,6 @@ def test_daily_writers_reject_gaps_duplicates_and_truncation(
     [
         (kota, kota.ALL_GRAHAS, kota.KaKotaChakraWriter),
         (moorti, moorti.MOORTI_GRAHAS + ("Moon",), moorti.KaMoortiNirnayaWriter),
-        (vedha, vedha.ALL_GRAHAS, vedha.KaVedhaGocharaWriter),
     ],
 )
 def test_daily_writers_delete_only_after_complete_horizon(
@@ -249,6 +234,21 @@ def test_daily_writers_delete_only_after_complete_horizon(
     assert result.rows_inserted > 0
     assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
     assert conn.mutations[-1][0] == "executemany"
+
+
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_vedha_unbound_dispatch_preserves_legacy_rows(dry_run):
+    # KA-3a replaced the rolling-day writer with an explicitly bound candidate
+    # provider. Without a payload dispatch must not read or mutate legacy data.
+    conn = RecordingConnection()
+    ctx = _ctx(conn)
+    ctx.dry_run = dry_run
+
+    result = vedha.KaVedhaGocharaWriter().run(ctx)
+
+    assert result.rows_inserted == 0
+    assert "provider binding/activation pending" in result.notes
+    assert conn.calls == []
 
 
 def test_avadhi_preserves_published_rows_without_build_candidate():
