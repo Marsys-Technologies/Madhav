@@ -43,6 +43,31 @@ class DashaBuildRefused(DD.DashaReadConflict):
         self.code = code
 
 
+def _validate_period_bounds(rows):
+    """Refuse ordinary admitted ISO periods before consumers lose provenance.
+
+    Date projections may have equal bounds for a positive within-day period;
+    only the authoritative ISO instants decide interval validity.
+    """
+    for row in rows:
+        try:
+            start, end = row.get("start_iso"), row.get("end_iso")
+            if isinstance(start, str):
+                start = datetime.fromisoformat(start)
+            if isinstance(end, str):
+                end = datetime.fromisoformat(end)
+            if not isinstance(start, datetime) or not isinstance(end, datetime):
+                raise ValueError("no datetime boundary")
+            if start.utcoffset() is None or end.utcoffset() is None:
+                raise ValueError("boundaries must be timezone-aware")
+            if end <= start:
+                raise ValueError("non-positive period")
+        except (ValueError, TypeError, OverflowError) as exc:
+            raise DashaBuildRefused(
+                "dasha_period_malformed",
+                f"row {row.get('dasha_row_id')}: {exc}") from exc
+
+
 def load_dasha_settlement(chart_id: str) -> dict:
     """Load the reviewed receipt on each read; no row-presence or cached fallback."""
     try:
@@ -249,6 +274,8 @@ def _fetch_dasha_periods_multilevel(
     parsed = [r for r in parsed
               if _readable(r)
               and (build_id is None or str(r.get("build_id")) == str(build_id))]
+    if build_id is not None:
+        _validate_period_bounds(parsed)
     if not canonicalize:
         # RAW pinned rows — for a caller that must SELECT the build pin
         # first (the §4.0 read contract) and only then canonicalize the
@@ -503,11 +530,15 @@ def execute_governed_dasha_query(
     projected = re.sub(r"\b(?:public\.)?chart_dashas\b", "governed_chart_dashas", sql, flags=re.I)
     if projected == sql or not re.match(r"\s*SELECT\b", projected, re.I):
         raise DashaBuildRefused("read_contract_mismatch", "unregistered daśā projection")
+    # Refuse malformed admitted periods BEFORE any projection can clip,
+    # aggregate, select a lord or discard bounds. Never silently filter them.
+    # The contract's scope_cap sentinel is excluded by the named period-system
+    # allowlist and governed ayanamsha, never by a generic bounds predicate.
     prefix = """WITH governed_chart_dashas AS (
         SELECT * FROM public.chart_dashas
         WHERE chart_id = %s AND ayanamsha_id = %s AND build_id = %s
           AND system_id = ANY(%s) AND level_n BETWEEN 1 AND 4
-          AND start_iso < end_iso AND (verification_pass_status = %s
+          AND (verification_pass_status = %s
     """
     bound = [chart_id, ayanamsha_id, contract["build_id"], list(DD.DASHA_SYSTEMS),
              clock_tier if clock_tier is not None else DD.READ_CONTRACT_TIER]
@@ -517,6 +548,15 @@ def execute_governed_dasha_query(
         prefix += " OR (system_id = %s AND level_n = %s AND verification_pass_status = ANY(%s))"
         bound.extend([system, level, sorted(tiers)])
     prefix += ")) "
+    invalid = _population_query(conn, prefix + """
+        SELECT dasha_row_id, start_iso, end_iso FROM governed_chart_dashas
+        WHERE start_iso IS NULL OR end_iso IS NULL OR end_iso <= start_iso
+        LIMIT 1
+    """, bound)
+    _validate_period_bounds([
+        row if isinstance(row, dict) else dict(zip(("dasha_row_id", "start_iso", "end_iso"), row))
+        for row in invalid
+    ])
     executor = cursor if cursor is not None else conn
     result = executor.execute(prefix + projected, bound + list(params))
     return cursor if cursor is not None else result
@@ -557,6 +597,7 @@ def validate_live_dasha_periods(chart_id, periods, ayanamsha_id):
             accepted = False
         if not accepted:
             raise DashaBuildRefused("dasha_tier_refused", "preloaded operand has no accepted tier")
+    _validate_period_bounds(periods)
     return contract
 
 

@@ -44,6 +44,7 @@ from .conftest import (  # noqa: E402
     WP6_MIGRATION_1152,
 )
 from .test_wp9_stamp_columns import BASE_DDL as _WP9_BASE_DDL  # noqa: E402
+from tests.l3._settled_dasha_fixture import CHART_ID as SETTLED_CHART, DASHA_DDL, seed_default_periods
 
 WRITER_PATH = (
     Path(__file__).resolve().parents[3]
@@ -476,7 +477,7 @@ def test_delta_report_with_baseline_deltas():
 
 # ── disposable-DB integration ────────────────────────────────────────────────
 
-S6B_CHART = "33333333-4444-5555-6666-777777777777"
+S6B_CHART = SETTLED_CHART
 
 EXTRA_DDL = """
 DROP TABLE IF EXISTS gochara_resonance_map;
@@ -550,6 +551,8 @@ def s6b_schema():
     conn.execute(_WP9_BASE_DDL)
     conn.execute(MIGRATION_1082.read_text())
     conn.execute(EXTRA_DDL)
+    conn.execute(DASHA_DDL)
+    seed_default_periods(conn)
     conn.execute(WP6_DROP_SQL)
     conn.execute(WP6_MIGRATION_1072.read_text())
     conn.execute(WP6_MIGRATION_1087.read_text())

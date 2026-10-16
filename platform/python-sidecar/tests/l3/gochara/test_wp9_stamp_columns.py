@@ -29,6 +29,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 import psycopg  # noqa: E402
+from ._real_swiss_daily import real_ephemeris_rows
 
 WP6_DSN = os.environ.get(
     "WP6_LEDGER_DSN", "postgresql://wp6:local@localhost:55433/wp6"
@@ -386,7 +387,7 @@ def ephemeris_rows(horizon_start, days, lon_fn, retro_fn):
     return rows
 
 
-def _seed(conn: psycopg.Connection) -> None:
+def _seed(conn: psycopg.Connection, *, real_ephemeris=False) -> None:
     today = date.today()
     horizon_start = today - timedelta(days=HORIZON_BACK_DAYS)
 
@@ -430,7 +431,8 @@ def _seed(conn: psycopg.Connection) -> None:
         days = (HORIZON_BACK_DAYS + HORIZON_FORWARD_DAYS) + 1
         cur.executemany(
             EPHEMERIS_INSERT_SQL,
-            ephemeris_rows(horizon_start, days, _body_lon, None),
+            (real_ephemeris_rows(horizon_start, days)
+             if real_ephemeris else ephemeris_rows(horizon_start, days, _body_lon, None)),
         )
 
 
@@ -444,7 +446,7 @@ def wp9_schema():
     conn.close()
 
     seed_conn = psycopg.connect(WP6_DSN)
-    _seed(seed_conn)
+    _seed(seed_conn, real_ephemeris=True)
     seed_conn.commit()
     seed_conn.close()
     return True
@@ -459,20 +461,11 @@ def wp9_built(wp9_schema):
     conn = psycopg.connect(WP6_DSN)
     ctx = SimpleNamespace(db_conn=conn, config={"chart_id": CHART_ID}, dry_run=False)
 
-    orig_vedha_offset = vedha_writer._compute_ayanamsha_offset
-    orig_moorti_offset = moorti_writer._compute_ayanamsha_offset
-    orig_grading = moorti_writer.KERNEL_INSTANT_GRADING
-    moorti_writer.KERNEL_INSTANT_GRADING = False
-    vedha_writer._compute_ayanamsha_offset = lambda _d: 0.0
-    moorti_writer._compute_ayanamsha_offset = lambda _d: 0.0
     try:
         vedha_result = build_legacy_vedha(ctx)
         moorti_result = moorti_writer.KaMoortiNirnayaWriter().run(ctx)
         conn.commit()
     finally:
-        vedha_writer._compute_ayanamsha_offset = orig_vedha_offset
-        moorti_writer._compute_ayanamsha_offset = orig_moorti_offset
-        moorti_writer.KERNEL_INSTANT_GRADING = orig_grading
         conn.close()
     return {"vedha": vedha_result, "moorti": moorti_result}
 
@@ -614,14 +607,16 @@ class TestWriterStamps:
         assert rows, "expected moorti rows"
         computed = [r for r in rows if r["moorti_computed"]]
         uncomputed = [r for r in rows if not r["moorti_computed"]]
-        # The Sun sign-2 run (days 100..130) is the one non-truncated run.
+        # Real daily rows include many non-truncated runs. Slow movers can
+        # legitimately fail to match an ingress instant and remain date-grain;
+        # the writer documents that fallback rather than inventing precision.
         assert computed, "expected at least one moorti-computed row"
         for r in computed:
             assert r["source_qualification"] == "algorithmic_approximation"
-            # These synthetic longitudes exercise the explicit day-grade
-            # path; real Swiss ingress precision has its own writer suite.
-            assert r["precision_regime"] == "date_grain"
+            assert r["precision_regime"] in ("instant_grain", "date_grain")
             assert r["corpus_verifiable"] is False
+        sun = [r for r in computed if r["graha"] == "Sun"]
+        assert sun and all(r["precision_regime"] == "instant_grain" for r in sun)
         assert uncomputed, "expected moorti-uncomputed rows (truncated horizon runs)"
         for r in uncomputed:
             assert r["source_qualification"] == "unsourced"

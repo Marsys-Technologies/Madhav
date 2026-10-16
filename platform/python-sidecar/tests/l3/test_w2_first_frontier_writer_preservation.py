@@ -265,7 +265,7 @@ def test_avadhi_preserves_published_rows_without_build_candidate():
 @pytest.mark.parametrize(
     ("tier", "row_build", "error_type", "message"),
     [
-        (TWO_PASS_VERIFIED, "f2-build", RuntimeError,
+        (TWO_PASS_VERIFIED, "f2-build", avadhi.clocks.ClockUnavailable,
          "pinned chart_dashas row has a non-positive period"),
         ("L1", "f2-build", avadhi.clocks.ClockUnavailable, "tier_unavailable"),
         (TWO_PASS_VERIFIED, "other-build", avadhi.clocks.ClockUnavailable, "build_not_pinned"),
@@ -275,6 +275,7 @@ def test_avadhi_preserves_published_rows_without_build_candidate():
 def test_avadhi_preserves_candidate_if_pinned_period_is_invalid(tier, row_build, error_type, message, monkeypatch):
     # This oracle starts with F2 projection rows and exercises admission of
     # their tier/build/interval before output mutation, after settlement.
+    # Real SQL admission is covered by test_j4p_malformed_settled_periods.
     from tests.l3._dasha_projection import emulated_projection
     monkeypatch.setattr(avadhi, "execute_governed_dasha_query", emulated_projection)
     pins = {
