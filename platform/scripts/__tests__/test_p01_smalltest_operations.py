@@ -82,6 +82,27 @@ def test_unsupported_arguments_refused_at_parser(script, flag):
     assert error.value.code == 2
 
 
+@pytest.mark.parametrize('script', ['dispatch', 'teardown', 'backup'])
+@pytest.mark.parametrize('flag', ['--exec', '--dry-r'])
+def test_bare_mode_abbreviations_refused_at_parser(script, flag):
+    """No extra positional token may mask acceptance of an abbreviated mode."""
+    module = {'dispatch': dispatch, 'teardown': teardown}.get(script)
+    if module is None:
+        module = importlib.import_module('backup_v5_small_test_job')
+    base = (['--run', 'one_class_full', '--i-am-steward', '--after-settled-1']
+            if script == 'dispatch' else ['--i-am-steward'] if script == 'teardown' else
+            ['--operation', 'snapshot', '--label', 'p01_fixture'])
+    # The full spelling must parse with the SAME prerequisites; in particular,
+    # teardown's steward requirement must not accidentally reject --exec for us.
+    full_flag = '--execute' if flag == '--exec' else '--dry-run'
+    args = module._parse_args(base + [full_flag])
+    assert args.execute is (full_flag == '--execute')
+    assert args.dry_run is (full_flag == '--dry-run')
+    with pytest.raises(SystemExit) as error:
+        module._parse_args(base + [flag])
+    assert error.value.code == 2
+
+
 @pytest.mark.parametrize('kind', ['smalltest_dispatch_dryrun', 'smalltest_teardown_dryrun'])
 def test_table_dryrun_uses_rollback_path(kind, monkeypatch, capsys):
     op = json.loads(TABLE.read_text())['ops'][kind]
