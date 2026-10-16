@@ -4,6 +4,19 @@ import pytest
 from services.kala_core.measure import Verdict
 
 
+@pytest.mark.parametrize('missing_gate', ['held_out', 'matched_controls'])
+@pytest.mark.parametrize('value', [False, None, 1, 'true'])
+def test_k1_requires_real_heldout_and_matched_control_protocol(missing_gate, value):
+    from services.kala_core.measure.forecaster_oracles import measure_forecaster
+    row = {'endpoint': 'paired hit-control alignment tail', 'minimum_n': 2,
+           'pairs': [(.01, .5), (.02, .6)], 'held_out': True, 'matched_controls': True}
+    row[missing_gate] = value
+    result = measure_forecaster({'K1': row})['K1']
+    assert result['verdict'] == Verdict.NOT_EVALUABLE
+    assert result['value'] is None
+    assert result['reason'] == 'held_out_matched_controls_required'
+
+
 def test_four_way_evidence_and_prospective_reliability_gate():
     from services.kala_core.measure.forecaster_oracles import measure_forecaster
     empty=measure_forecaster({})
