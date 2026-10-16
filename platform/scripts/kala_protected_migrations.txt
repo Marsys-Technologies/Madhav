@@ -30,3 +30,4 @@
 1382_gochara_authority_no_truncate.sql
 1383_ka_3a_vedha_candidate_intervals.sql
 1387_k5_g2_candidate_field.sql
+1389_k6_taranga_candidate.sql
