@@ -56,6 +56,7 @@ P01_BINDINGS = {
     "smalltest_teardown": {"script": "platform/scripts/teardown_v5_small_test_job.py",
                           "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": []},
 }
+W4_KINDS = set(P01_BINDINGS)
 ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"} | set(P01_BINDINGS)
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
@@ -450,8 +451,9 @@ def simple_request(kind, by="adhikarin", **over):
 
 
 def copy_with(text, kind, **fields):
-    """A copy of the table text with `kind` enabled and `fields` set — the only way an entry is ever enabled in these tests."""
-    ops = json.loads(flip(text, kind))
+    """An independent fixture table with `kind` enabled and `fields` set."""
+    ops = json.loads(text)
+    ops["ops"][kind]["enabled"] = True
     ops["ops"][kind].update(fields)
     return json.dumps(ops)
 
@@ -466,8 +468,8 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["smalltest_dispatch", "verification_job", "century_dispatch", "publish_head", "rollback_head",
-                                  "measuring_dispatch", "layer_verify", "orchestrator_rebuild", "backup_snapshot"])
+@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head",
+                                  "measuring_dispatch", *K9_KINDS])
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)
@@ -560,3 +562,29 @@ def test_production_acceptance_other_refusals(tmp_path, monkeypatch):
     assert w.mod.validate(w.accept(other), table, ALL_CAPS) == "chart_id is not the canonical chart"
     stale_lease = w.production_request("backup_snapshot", lease_id="lease-2")
     assert "lease is not the single unexpired ACTIVE row" in w.mod.validate(w.accept(stale_lease), table, ALL_CAPS)
+
+
+def test_enabled_set_is_exactly_bootstrap_plus_wave4():
+    ops = load_ops(OPS_FILE.read_text())["ops"]
+    assert {k for k, e in ops.items() if enabled_state(k, e)} == ENABLED_KINDS
+
+
+def test_p10_entries_present_and_disabled():
+    ops = load_ops(OPS_FILE.read_text())["ops"]
+    for item, kind in {item: kind for item, kind in P10.items() if item != "J-1a"}.items():
+        assert kind in ops, f"{kind} is missing"
+        assert enabled_state(kind, ops[kind]) is False, f"{kind} must be disabled"
+        assert ops[kind]["enabled_by"] == item
+
+
+@pytest.mark.parametrize("item,kind", sorted({item: kind for item, kind in P10.items() if item != "J-1a"}.items()))
+def test_future_table_enablement_and_typed_model_detectors_stay_separate(item, kind):
+    # The reconciled model uses packet/rehearsal evidence, not enabled-string
+    # completion. Preserve the legacy first-key format without inventing a detector.
+    det = model_items()[item]["detector"]
+    assert det["type"] in {"pr_merged", "branch_merged", "file_exists"}
+    assert det.get("pr") or det.get("ref") or det.get("path")
+    pattern = re.compile(r'"' + re.escape(kind) + r'"\s*:\s*\{\s*"enabled"\s*:\s*true')
+    text = OPS_FILE.read_text()
+    assert not pattern.search(text)
+    assert pattern.search(flip(text, kind))
