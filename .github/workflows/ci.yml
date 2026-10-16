@@ -292,12 +292,14 @@ jobs:
   # `Initialize containers` buys 7 real DB-integration tests (verified against main:
   # same 713 test files, 670 passed/43 skipped -> 677 passed/36 skipped).
   #
-  # NOT a required check, deliberately — adding one is a branch-protection decision, not
-  # a workflow edit. To revert the split: move `services:`, the two SAMIKSHA_* env vars
-  # and the provision step back onto `unit-tests` and delete this job.
+  # KA-3a oracle follow-up: keep this separate job for diagnosis, and consume its
+  # result in the existing required Governance Gates check. This ensures the
+  # real database detectors must pass before that required check can succeed.
   # ─────────────────────────────────────────────────────────────────────────────
   kala-db-tests:
     needs: changes
+    # KA-3a: required Governance Gates below consumes this result. The only
+    # accepted skip is the existing changes classifier's docs-only case.
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: Kāla DB Tests (throwaway Postgres)
     runs-on: ubuntu-latest
@@ -340,7 +342,16 @@ jobs:
           KALA_REQUIRE_DB: '1'
         # Includes test_k7_tulana_probe_transition.py: real stored 849/1377
         # dispatch and broken-detector negatives in both migration states.
-        run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara -q -rs
+        # Recursive collection includes KA-3a's sky/latta/fingerprint oracles,
+        # typed writer dispatch, legacy columns and direct SQL refusal probes.
+        run: >-
+          python -m pytest tests/l3/kala_db
+          tests/l3/ka_bhavishya_lekha/test_certification_mapping.py
+          tests/l3/ka_vedha_gochara
+          tests/l3/gochara_rules/test_am18_vedha.py
+          tests/l3/gochara/test_vedha_interval_relation.py
+          tests/l3/kala_core/ayanamsha/test_ayanamsha.py
+          -q -rs -p no:cacheprovider
       - name: Run scoped parihara evaluator contract and route tests
         working-directory: platform/python-sidecar
         env:
@@ -2587,10 +2598,11 @@ jobs:
   governance-gates:
     # The ORIGINAL job name, kept as ONE check (it is the required check `Governance Gates (drift / schema / edge / native-literal /
     # py-sidecar)`; no per-shard context is required, so the shard count can change without touching the ruleset). Green only when the
-    # static gates job AND every python-sidecar shard are green: a failed, cancelled or SKIPPED shard (they never skip by design, not even
-    # on a docs-only change) is not green. Same shape as `governance-tool-tests` above.
+    # static gates job, every python-sidecar shard AND the Kāla DB job pass.
+    # A skipped DB job is accepted only for classified docs-only changes;
+    # skipped shards, failed jobs and cancellations never count as success.
     name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
-    needs: [governance-gates-static, governance-gates-py-sidecar-shard]
+    needs: [changes, governance-gates-static, governance-gates-py-sidecar-shard, kala-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2598,13 +2610,17 @@ jobs:
       contents: read
 
     steps:
-      - name: The static gates and every py-sidecar shard passed
+      - name: The static gates, every py-sidecar shard and Kāla DB tests passed
         env:
           STATIC_RESULT: ${{ needs.governance-gates-static.result }}
           SHARDS_RESULT: ${{ needs.governance-gates-py-sidecar-shard.result }}
+          KALA_DB_RESULT: ${{ needs.kala-db-tests.result }}
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
         run: |
-          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ]; then echo "static gates and all py-sidecar shards passed"; exit 0; fi
-          echo "::error::Governance Gates: static gates finished '$STATIC_RESULT', py-sidecar shards finished '$SHARDS_RESULT' (both must be 'success')"; exit 1
+          kala_db_ok=false
+          if [ "$KALA_DB_RESULT" = "success" ] || { [ "$DOCS_ONLY" = "true" ] && [ "$KALA_DB_RESULT" = "skipped" ]; }; then kala_db_ok=true; fi
+          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ] && [ "$kala_db_ok" = "true" ]; then echo "static gates, all py-sidecar shards and required Kāla DB tests passed"; exit 0; fi
+          echo "::error::Governance Gates: static gates finished '$STATIC_RESULT', py-sidecar shards finished '$SHARDS_RESULT', Kāla DB tests finished '$KALA_DB_RESULT' (DB skip allowed only when docs_only=true, observed '$DOCS_ONLY')"; exit 1
 
   governance-gates-gochara:
     needs: changes
