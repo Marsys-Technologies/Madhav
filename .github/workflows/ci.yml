@@ -2144,6 +2144,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # OPS-NB-03: executor-table assertions read the immutable relaunch plan pin.
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -2178,6 +2181,19 @@ jobs:
           platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py
           platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py::GuardedCompletionCases
           -q --no-header -p no:cacheprovider
+
+      - name: pytest — KĀLA-YANTRA executor table and model reconciliation (required)
+        if: matrix.shard == 1
+        # Run the local-Git fixtures denied inside campaign jobs here, on the CI runner.
+        # Historical EVENTS-prefix replay tests still skip when the campaign-host log is absent;
+        # executor-table fixtures and offline reconciliation checks must never skip.
+        env:
+          DATABASE_URL: ''
+          PGHOST: ''
+          GIT_OPTIONAL_LOCKS: '0'
+        run: |
+          python -B -m pytest 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyreconcile.py -q --no-header -rs -p no:cacheprovider --junitxml=kalayantra-ops-model.xml
+          python -c 'import xml.etree.ElementTree as ET; root = ET.parse("kalayantra-ops-model.xml").getroot(); allowed = {"test_events_prefix_refuses_a_wrong_hash", "test_capture_replays_the_live_snapshot", "test_path_migration_item_states_identical", "test_path_only_comparison_has_teeth", "test_triage_delta_equals_the_reviewed_expected_delta", "test_triage_preserves_earned_completions", "test_live_staged_actions_are_unpublished_or_published_exactly_once"}; unexpected = [case.get("name") for case in root.findall(".//testcase") if case.find("skipped") is not None and case.get("name") not in allowed]; raise SystemExit("required KĀLA-YANTRA fixtures skipped: " + repr(unexpected) if unexpected else 0)'
 
   governance-readback-tests:
     # P05-B02: both ported readback suites, including all five real-cluster cases.

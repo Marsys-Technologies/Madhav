@@ -157,11 +157,45 @@ def test_triage_model_is_the_reproducible_build(base, decl, roots):
     assert built == R.render(R.build(base, decl, roots))
 
 
-def test_live_model_preserves_the_reviewed_reconciliation(final):
-    live = R.load(CONTROL / "plan_model.json")
+def assert_live_preserves_earned_reconciliation(live, reviewed, capture):
+    """(I) INTERPRETATION (OPS-NB-03): plan §0.5 preserves earned completion contracts.
+
+    Later reviewed work may evolve unfinished items.
+
+    The exact historical model/delta remain pinned by the reproducible-build and review-digest tests.
+    This is a live compatibility check, not an equality check against that historical snapshot.
+    """
+    from pravaha_tracker import server  # noqa: PLC0415
+    assert server.check_model(live) == []
     by_id = {item["id"]: item for item in live["items"]}
-    assert all(by_id.get(item["id"]) == item for item in final["items"])
-    assert {k: v for k, v in live.items() if k != "items"} == {k: v for k, v in final.items() if k != "items"}
+    for item in reviewed["items"]:
+        iid = item["id"]
+        assert iid in by_id, f"reviewed item disappeared: {iid}"
+        if capture["item_states"].get(iid, {}).get("status") == "done":
+            for field in ("owner", "completion_kind", "producer", "reviewer_rule", "done_by", "decision", "steps"):
+                assert by_id[iid].get(field) == item.get(field), f"{iid}: earned {field} changed"
+
+
+def test_live_model_preserves_the_reviewed_reconciliation(final, capture):
+    assert_live_preserves_earned_reconciliation(R.load(CONTROL / "plan_model.json"), final, capture)
+
+
+@pytest.mark.parametrize("mutation", ["missing_item", "completion_kind", "owner", "steps", "dependency"])
+def test_live_reconciliation_refuses_lost_items_or_changed_earned_contracts(final, capture, mutation):
+    live = R.load(CONTROL / "plan_model.json")
+    earned = next(i for i in live["items"] if i["id"] == "B-4")
+    assert capture["item_states"]["B-4"]["status"] == "done"
+    if mutation == "missing_item":
+        live["items"].remove(earned)
+    elif mutation == "dependency":
+        earned["depends_on"].append("NO-SUCH-ITEM")
+    elif mutation == "steps":
+        earned["steps"] = []
+        earned["step_evidence"] = {}
+    else:
+        earned[mutation] = "operation" if mutation == "completion_kind" else "N"
+    with pytest.raises(AssertionError):
+        assert_live_preserves_earned_reconciliation(live, final, capture)
 
 
 def test_triage_delta_equals_the_reviewed_expected_delta(base, final, decl, staged, capture, events):
