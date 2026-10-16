@@ -23764,7 +23764,7 @@
       {
         "id": "writer_digest_inventory",
         "path": "platform/src/generated/nirmana-writer-digests.json",
-        "sha256": "64abf11c89ae2610b7ef9c4da8f3d13e7a3222170479dbb87aafd31da5c0d529"
+        "sha256": "dc1169f67995102c8a02e1240ddbda75a1657255cbc3efc2d56bb69a89792053"
       }
     ]
   },
