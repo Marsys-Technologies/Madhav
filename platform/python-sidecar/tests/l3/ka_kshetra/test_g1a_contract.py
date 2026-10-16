@@ -269,7 +269,7 @@ def test_sampled_candidate_dispatch_runs_the_pinned_nonidentity_experiment(monke
         clocks=[], ladder={}, envelopes=S4.EnvelopeIndex([
             primitive('contact_moon_ref', [(2.31, 0.), (2.37, 1.), (2.43, 0.)])], 10.),
         weights={'beta:x1': 2.}, horizon_days=10., extra_breakpoints=(4.13,))
-    acc = S5.NullAccumulator(replicates=S5.DEFAULT_REPLICATES, horizon_days=10.)
+    acc = writer._new_null_accumulator(EVENT_CLASS)
     cctx = SimpleNamespace(evaluator=ev, null_accumulator=acc,
         temporal_shape='punctual', baseline_is_synthetic=False)
     monkeypatch.setattr(writer, '_class_context', lambda *a: cctx)
@@ -302,7 +302,7 @@ def test_sampled_candidate_dispatch_runs_the_pinned_nonidentity_experiment(monke
     assert all(0. < delta < 10. for delta in shifts)
     assert len(partitions) == 1023 and all(4.13 in p for p in partitions)
     result = acc.finalize()
-    assert result.replicates == 1024 and result.shift_count == 1023
+    assert result.replicates == 1023 and result.denominator == 1024
     assert result.shift_grid_step == 10. / 1024
     assert result.resolution == 1. / 1024
     assert all(len(stats) == 1023 for stats in result.max_stats.values())
@@ -310,10 +310,10 @@ def test_sampled_candidate_dispatch_runs_the_pinned_nonidentity_experiment(monke
     assert S5.null_p([1.] * 1023, 1.) == 1.
     writer.run_substep(ctx, finalize)
     assert len(conn.tables['kala_field_null']) == 10
-    assert all(r['replicates'] == 1024 and len(r['null_max_stats']) == 1023
+    assert all(r['replicates'] == 1023 and len(r['null_max_stats']) == 1023
                and r['shift_grid_step'] == 10. / 1024 for r in conn.tables['kala_field_null'])
     assert conn.tables['kala_field_windows'], 'the real peak must exercise persisted window resolution'
-    assert all(r['null_R'] == 1024 and r['null_resolution'] == 1. / 1024
+    assert all(r['null_R'] == 1023 and r['null_resolution'] == 1. / 1024
                and r['null_p'] >= r['null_resolution'] for r in conn.tables['kala_field_windows'])
 
 
@@ -322,13 +322,15 @@ def test_sampled_experiment_provenance_is_derived_from_execution_config(monkeypa
     from services.ka_kshetra import writer as W, stage5_null as S5
     from .fake_db import FakeConn, FakeCtx
     from .fixtures import build_tables, CHART_ID
-    monkeypatch.setattr(S5, 'DEFAULT_REPLICATES', replicates)
+    monkeypatch.setattr(W, 'candidate_null_shifts', lambda: replicates - 1)
     monkeypatch.setattr(W.KaKshetraWriter, '_optional_stage_plugins', lambda *a: [])
     writer = W.KaKshetraWriter()
     writer.plan_substeps(FakeCtx(FakeConn(build_tables()), CHART_ID))
     config = writer._pins.config_pin
-    assert config['null_replicates'] == replicates
-    assert config['null_experiment'] == {
+    assert config['null_replicates'] == replicates - 1
+    assert config['null_experiment'] == 'class_specific_field_maximum'
+    assert config['null_denominator'] == replicates
+    assert config['null_configuration'] == {
         'replicates': replicates, 'shift_count': replicates - 1,
         'denominator': replicates, 'resolution': 1. / replicates,
         'shift_grid_step': W.HORIZON_DAYS / replicates,

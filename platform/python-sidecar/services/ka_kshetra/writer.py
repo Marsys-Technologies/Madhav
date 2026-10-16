@@ -261,6 +261,11 @@ class _ClassContext:
     baseline_is_synthetic: bool = False
 
 
+def candidate_null_shifts():
+    from services.kala_core.measure import DEFAULT_NON_IDENTITY_SHIFTS
+    return DEFAULT_NON_IDENTITY_SHIFTS
+
+
 @register(ASSET_ID)
 @records_swiss_backend
 class KaKshetraWriter(WriterBase):
@@ -280,6 +285,7 @@ class KaKshetraWriter(WriterBase):
         from .g1_inputs import birth_instant, pinned_as_of, load_suppression
         conn, candidate = bind_candidate(ctx)
         self._generation = conn.generation
+        self._build_id = str(ctx.build_id)
         self._g1_birth = birth_instant(ctx.config)
         self._as_of = pinned_as_of(ctx.config)
         self._suppression_primitives, self._suppression_gaps = load_suppression(
@@ -327,7 +333,8 @@ class KaKshetraWriter(WriterBase):
         )
         null_config = S5.null_configuration(
             HORIZON_DAYS, _dn_module().DEFAULT_REPLICATES
-            if self._segment_engine == 'analytic' else S5.DEFAULT_REPLICATES)
+            if self._segment_engine == 'analytic' else (candidate_null_shifts() + 1
+            if hasattr(self, '_generation') else S5.DEFAULT_REPLICATES))
 
         self._pins = S4.FieldPins(
             chart_id=str(self._chart_id),
@@ -360,9 +367,18 @@ class KaKshetraWriter(WriterBase):
                 'rho_max': hazard.RHO_MAX,
                 'tau_nats': integrator.DEFAULT_TAU,
                 'max_refinement_depth': integrator.DEFAULT_MAX_DEPTH,
-                'null_replicates': null_config['replicates'],
-                'null_experiment': null_config,
+                'null_replicates': (
+                    _dn_module().DEFAULT_REPLICATES
+                    if self._segment_engine == 'analytic'
+                    else (candidate_null_shifts() if hasattr(self, '_generation')
+                          else S5.DEFAULT_REPLICATES)
+                ),
+                'null_configuration': null_config,
                 'null_quantile': S5.Q_QUANTILE,
+                'null_experiment': 'class_specific_field_maximum',
+                'null_surrogate_diagnostic': True,
+                'null_denominator': candidate_null_shifts() + 1,
+                'disabled_insight_types': S65.DISABLED_INSIGHT_TYPES,
                 'duration_buckets': list(S5.DURATION_BUCKETS),
                 'precision_regime': 'day_grade',
                 'segment_engine': self._segment_engine,
@@ -401,7 +417,7 @@ class KaKshetraWriter(WriterBase):
                 work_steps.append(SubStep(key=f'stage4:{ec}:{d}',
                                           label=f'field {ec} decade {d}'))
         _ev5 = self._segment_engine
-        n_blocks = math.ceil((S5.DEFAULT_REPLICATES - 1) / S5.DEFAULT_BLOCK_SIZE)
+        n_blocks = math.ceil((candidate_null_shifts() if hasattr(self, '_generation') else S5.DEFAULT_REPLICATES - 1) / S5.DEFAULT_BLOCK_SIZE)
         for ec in self._event_classes:
             if _ev5 == 'analytic':
                 # F2 (SM-R-11): two substeps so each commits within the 15-min
@@ -422,7 +438,7 @@ class KaKshetraWriter(WriterBase):
         # stage5finalize: salience reads committed windows, insights read
         # committed salience, and the timeline spec reads both.
         work_steps.append(SubStep(key='stage6', label='salience vector + submodular selection'))
-        work_steps.append(SubStep(key='stage65', label='insight synthesis (7 non-LEL types)'))
+        work_steps.append(SubStep(key='stage65', label='insight synthesis (6 enabled non-LEL types)'))
         for view in TIMELINE_VIEWS:
             work_steps.append(SubStep(key=f'stage8:{view}', label=f'timeline spec ({view})'))
         work_steps.append(SubStep(key='snapshot', label='field snapshot + content hash'))
@@ -724,9 +740,13 @@ class KaKshetraWriter(WriterBase):
 
         size = S5.DEFAULT_BLOCK_SIZE
         lo = (block - 1) * size
-        hi = min(block * size, S5.DEFAULT_REPLICATES - 1)
-        S5.run_null(cctx.evaluator, HORIZON_DAYS, S5.DEFAULT_REPLICATES,
-                    block=(lo, hi), accumulator=cctx.null_accumulator)
+        if hasattr(self, '_generation'):
+            hi = min(block * size, candidate_null_shifts())
+            S5.run_field_block(cctx.evaluator, cctx.null_accumulator, start=lo, end=hi)
+        else:
+            hi = min(block * size, S5.DEFAULT_REPLICATES - 1)
+            S5.run_null(cctx.evaluator, HORIZON_DAYS, S5.DEFAULT_REPLICATES,
+                        block=(lo, hi), accumulator=cctx.null_accumulator)
         if not self._dry_run:
             self._record_substep(conn, step.key, 0)
         # The null writes no rows of its own until finalize: partial statistics
@@ -744,10 +764,11 @@ class KaKshetraWriter(WriterBase):
                                 notes=f'{event_class} skipped: {skip.reason}')
 
         acc = cctx.null_accumulator
-        if acc.completed < S5.DEFAULT_REPLICATES - 1:
+        required = candidate_null_shifts() if hasattr(self, '_generation') else S5.DEFAULT_REPLICATES - 1
+        if acc.completed < required:
             raise S4.UpstreamStageIncomplete(
                 f'upstream_stage_incomplete: {event_class} has {acc.completed}/'
-                f'{S5.DEFAULT_REPLICATES - 1} null shifts. q_e is a quantile over ALL '
+                f'{required} null shifts. q_e is a quantile over ALL '
                 'replicates; computing it from a subset would silently change the '
                 'statistic every window boundary depends on.'
             )
@@ -1312,13 +1333,8 @@ class KaKshetraWriter(WriterBase):
             return WriterResult(asset_id=ASSET_ID, rows_inserted=0)
 
         windows = self._load_committed_windows(conn)
-        if not windows:
-            self._record_substep(conn, step.key, 0)
-            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
-                                notes='honest_empty:no_committed_windows')
-
         salience = self._load_salience(conn)
-        if not salience:
+        if windows and any(w['window_id'] not in salience for w in windows):
             raise S4.UpstreamStageIncomplete(
                 'upstream_stage_incomplete: stage 6.5 found no kala_field_salience '
                 'rows for this snapshot. Every insight_score is '
@@ -1359,16 +1375,20 @@ class KaKshetraWriter(WriterBase):
         # field to be absent from, and claiming an absence for it would be a
         # finding manufactured out of a build gap.
         absence: list[tuple[str, float, float, float]] = []
+        absence_facts = {}
         for ec in self._event_classes:
             if ec in {s['event_class'] for s in self._skipped}:
                 continue
             try:
-                p_e = S4.load_promise_prior(conn, self._chart_id, ec).p
+                self._require_stage4_committed(conn, ec)
+                prior = S4.load_promise_prior(conn, self._chart_id, ec)
+                p_e = prior.p
             except Exception as exc:            # pragma: no cover - lane-dependent
                 logger.warning('ka_kshetra stage65: promise prior unavailable for %s '
                                '(%s) — absence_of_expected not evaluated for it', ec, exc)
                 continue
             absence.append((ec, float(p_e), 0.0, float(HORIZON_DAYS)))
+            absence_facts[ec] = prior.fact_ids
 
         scarcity_pairs = [(iw, by_class[iw.event_class]) for iw in insight_windows]
         reversal_inputs = self._reversal_inputs(conn, by_class)
@@ -1381,6 +1401,8 @@ class KaKshetraWriter(WriterBase):
             absence_candidates=absence,
             scarcity_pairs=scarcity_pairs,
             reversal_inputs=reversal_inputs,
+            horizon_end=float(HORIZON_DAYS),
+            absence_fact_ids=absence_facts,
             # Type 8 `contrast` needs a BASELINE field to diff against
             # (last_month / last_year / a pinned prior field_snapshot_id). A
             # rebuild deletes this chart's prior snapshot rows before any substep
@@ -2014,6 +2036,17 @@ class KaKshetraWriter(WriterBase):
                  json.dumps({}), list(_HASHED_TABLES),
                  list(self._event_classes), json.dumps(self._skipped), HORIZON_DAYS),
             )
+        if hasattr(self, '_generation'):
+            from .g1_manifest import attest_snapshot
+            attest_snapshot(conn, chart_id=str(self._chart_id), generation=self._generation,
+                build_id=self._build_id, snapshot_id=self._snapshot_id,
+                content_digest=content_hash, pins={
+                    'corpus_pin': self._pins.corpus_pin,
+                    'weights_version': self._weights_version,
+                    'config_pin': dict(self._pins.config_pin),
+                    'cohort_version': self._pins.cohort_version,
+                    'x_schema_version': self._pins.x_schema_version,
+                })
         self._record_substep(conn, step.key, 1)
         return WriterResult(asset_id=ASSET_ID, rows_inserted=1,
                             notes=f'content_hash={content_hash}')
@@ -2047,6 +2080,13 @@ class KaKshetraWriter(WriterBase):
                                      self._iter_content_hash_rows(conn))
 
     # ── helpers ──────────────────────────────────────────────────────────────
+
+    def _new_null_accumulator(self, event_class):
+        if hasattr(self, '_generation'):
+            from services.kala_core.measure.field import prepare_field, FieldAccumulator
+            return FieldAccumulator(prepare_field(event_class, HORIZON_DAYS,
+                non_identity_shifts=candidate_null_shifts()))
+        return S5.NullAccumulator(replicates=S5.DEFAULT_REPLICATES, horizon_days=HORIZON_DAYS)
 
     def _class_context(self, conn, event_class: str) -> _ClassContext:
         cached = self._class_cache.get(event_class)
@@ -2111,8 +2151,7 @@ class KaKshetraWriter(WriterBase):
         ctx = _ClassContext(
             event_class=event_class,
             evaluator=evaluator,
-            null_accumulator=S5.NullAccumulator(replicates=S5.DEFAULT_REPLICATES,
-                                                horizon_days=HORIZON_DAYS),
+            null_accumulator=self._new_null_accumulator(event_class),
             temporal_shape=shape,
             dhara_segments=dhara_segs,
             baseline_is_synthetic=shape_only_from_tier,
