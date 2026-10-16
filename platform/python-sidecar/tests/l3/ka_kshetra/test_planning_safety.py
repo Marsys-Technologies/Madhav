@@ -22,8 +22,10 @@ def _mutating_statements(conn: FakeConn) -> list[str]:
     ]
 
 
-def _plan(conn: FakeConn, *, dry_run: bool = False):
+def _plan(conn: FakeConn, *, dry_run: bool = False, active: bool = True):
     ctx = FakeCtx(conn, F.CHART_ID, dry_run=dry_run)
+    if not active:
+        ctx.config.pop('kshetra_g1_candidate',None)
     writer = W.KaKshetraWriter()
     return writer, ctx, writer.plan_substeps(ctx)
 
@@ -116,7 +118,7 @@ def test_prepare_clears_every_owned_table_once_in_dependency_safe_order() -> Non
 
 
 @pytest.mark.parametrize('table,predicate', W._OWNED_TABLES)
-def test_any_preexisting_writer_owned_output_holds_replacement_without_dml(
+def test_ordinary_dispatch_preserves_any_preexisting_output_without_dml(
     table: str, predicate: str | None,
 ) -> None:
     tables = _without_owned_outputs(F.build_tables())
@@ -127,12 +129,11 @@ def test_any_preexisting_writer_owned_output_holds_replacement_without_dml(
     tables[table].append(row)
     conn = FakeConn(tables)
     prior_slice = copy.deepcopy(conn.tables)
-    writer, ctx, steps = _plan(conn)
+    writer, ctx, steps = _plan(conn, active=False)
 
-    with pytest.raises(W.KshetraReplacementHeld, match=table):
-        writer.run_substep(ctx, steps[0])
+    writer.run_substep(ctx, steps[0])
 
-    assert conn.advisory_locks == [(W.ASSET_ID, F.CHART_ID)]
+    assert conn.advisory_locks == []
     assert conn.tables == prior_slice
     assert _mutating_statements(conn) == []
     assert conn.deletes == []
@@ -151,7 +152,7 @@ def test_lane_e_only_insight_does_not_block_and_survives_empty_slice_prepare() -
     writer.run_substep(ctx, steps[0])
 
     assert conn.tables['kala_insights'] == [lane_e_row]
-    assert conn.advisory_locks == [(W.ASSET_ID, F.CHART_ID)]
+    assert conn.advisory_locks == []  # candidate locking is proven by the real DB suite
 
 
 def test_matching_resume_is_zero_dml_and_does_not_prepare_twice() -> None:
@@ -216,13 +217,12 @@ def test_later_stage_crash_replan_preserves_prior_slice_without_dml() -> None:
     conn = FakeConn(tables)
     prior_slice = copy.deepcopy(conn.tables)
 
-    writer, ctx, steps = _plan(conn)
+    writer, ctx, steps = _plan(conn, active=False)
 
-    assert steps[0].key == 'prepare:replace'
+    assert steps[0].key == 'prebuild:inactive'
     assert _mutating_statements(conn) == []
 
-    with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
-        writer.run_substep(ctx, steps[0])
+    writer.run_substep(ctx, steps[0])
     assert conn.tables == prior_slice
     assert _mutating_statements(conn) == []
     assert conn.deletes == []
@@ -335,19 +335,12 @@ def test_empty_discovery_preserves_preexisting_output_without_dml(monkeypatch) -
     empty_conn = _TransactionalFakeConn(empty_tables)
     prior_slice = copy.deepcopy(empty_conn.tables)
 
-    writer, ctx, empty_steps = _plan(empty_conn)
+    writer, ctx, empty_steps = _plan(empty_conn, active=False)
 
-    assert [step.key for step in empty_steps] == ['prepare:replace']
+    assert [step.key for step in empty_steps] == ['prebuild:inactive']
     assert _mutating_statements(empty_conn) == []
-    monkeypatch.setattr(asset_runner, 'emit_event', lambda *_args, **_kwargs: None)
-    with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
-        asset_runner._drive_substeps(
-            empty_conn, empty_conn.cursor(), ctx.build_id, F.CHART_ID,
-            W.ASSET_ID, writer, ctx,
-        )
+    writer.run_substep(ctx, empty_steps[0])
     assert empty_conn.commits == 0
-    assert 'SAVEPOINT writer_exec' in empty_conn.executed
-    assert 'ROLLBACK TO SAVEPOINT writer_exec' in empty_conn.executed
     assert empty_conn.tables == prior_slice
     assert _mutating_statements(empty_conn) == []
 
