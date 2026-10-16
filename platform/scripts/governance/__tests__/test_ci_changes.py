@@ -258,6 +258,8 @@ def test_every_heavy_job_needs_changes_and_runs_unless_docs_only_is_exactly_true
 def test_the_cheap_and_required_gates_are_never_skipped_by_the_fast_path(jobs, name):
     j = jobs[name]
     assert "docs_only" not in str(j.get("if", "")), name
+    if name == "governance-gates":
+        assert str(j["if"]) == "${{ always() }}"
     if name not in {"governance-tool-tests", "governance-gates"}:
         assert "changes" not in (j.get("needs") if isinstance(j.get("needs"), list) else [j.get("needs")]), name
 

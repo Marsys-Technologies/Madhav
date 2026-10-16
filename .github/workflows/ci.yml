@@ -311,9 +311,9 @@ jobs:
   # `Initialize containers` buys 7 real DB-integration tests (verified against main:
   # same 713 test files, 670 passed/43 skipped -> 677 passed/36 skipped).
   #
-  # NOT a required check, deliberately — adding one is a branch-protection decision, not
-  # a workflow edit. To revert the split: move `services:`, the two SAMIKSHA_* env vars
-  # and the provision step back onto `unit-tests` and delete this job.
+  # KA-3a: keep this job separate for diagnosis; the existing required
+  # Governance Gates aggregate consumes its result. A skip is accepted only
+  # for classified docs-only changes.
   # ─────────────────────────────────────────────────────────────────────────────
   kala-db-tests:
     needs: changes
@@ -366,7 +366,7 @@ jobs:
         # dispatch and broken-detector negatives in both migration states.
         # K9-1: directory discovery also collects kala_db/rehearsal (ordered
         # build lineage, own detectors, read-only inspection, publication CAS).
-        run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters -q -rs
+        run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters tests/l3/gochara_rules/test_am18_vedha.py tests/l3/gochara/test_vedha_interval_relation.py tests/l3/kala_core/ayanamsha/test_ayanamsha.py -q -rs -p no:cacheprovider
       - name: Run scoped parihara evaluator contract and route tests
         working-directory: platform/python-sidecar
         env:
@@ -2676,10 +2676,10 @@ jobs:
   governance-gates:
     # The ORIGINAL job name, kept as ONE check (it is the required check `Governance Gates (drift / schema / edge / native-literal /
     # py-sidecar)`; no per-shard context is required, so the shard count can change without touching the ruleset). Green only when the
-    # static gates job AND every python-sidecar shard are green: a failed, cancelled or SKIPPED shard (they never skip by design, not even
-    # on a docs-only change) is not green. Same shape as `governance-tool-tests` above.
+    # static gates job, every python-sidecar shard, K3 SQL and Kāla DB jobs pass.
+    # Only the DB jobs may skip, and only for classified docs-only changes.
     name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
-    needs: [changes, governance-gates-static, governance-gates-py-sidecar-shard, k3-sealed-db-tests]
+    needs: [changes, governance-gates-static, governance-gates-py-sidecar-shard, k3-sealed-db-tests, kala-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2687,9 +2687,10 @@ jobs:
       contents: read
 
     steps:
-      - name: The static gates, every py-sidecar shard and K3 SQL suite passed
+      - name: The static gates, every py-sidecar shard, K3 SQL and Kāla DB suites passed
         env:
           K3_RESULT: ${{ needs.k3-sealed-db-tests.result }}
+          KALA_DB_RESULT: ${{ needs.kala-db-tests.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           STATIC_RESULT: ${{ needs.governance-gates-static.result }}
           SHARDS_RESULT: ${{ needs.governance-gates-py-sidecar-shard.result }}
@@ -2697,7 +2698,10 @@ jobs:
           if [ "$K3_RESULT" != "success" ] && ! { [ "$K3_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; }; then
             echo "::error::Governance Gates: required K3 SQL suite finished '$K3_RESULT'"; exit 1
           fi
-          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ]; then echo "static gates, all py-sidecar shards and required K3 SQL suite passed"; exit 0; fi
+          if [ "$KALA_DB_RESULT" != "success" ] && ! { [ "$KALA_DB_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; }; then
+            echo "::error::Governance Gates: required Kāla DB tests finished '$KALA_DB_RESULT'"; exit 1
+          fi
+          if [ "$STATIC_RESULT" = "success" ] && [ "$SHARDS_RESULT" = "success" ]; then echo "static gates, all py-sidecar shards, required K3 SQL and Kāla DB suites passed"; exit 0; fi
           echo "::error::Governance Gates: static gates finished '$STATIC_RESULT', py-sidecar shards finished '$SHARDS_RESULT' (both must be 'success')"; exit 1
 
   governance-gates-gochara:
