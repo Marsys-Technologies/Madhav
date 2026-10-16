@@ -38,6 +38,7 @@ import math
 import os
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from urllib.parse import quote
@@ -82,7 +83,12 @@ def get(path: str, timeout: float = 3.0):
         if path.startswith("/api/verify?"):
             # Guarded measurements never fall back to a persisted snapshot.
             reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
-            return None, "tracker-timeout" if isinstance(reason, TimeoutError) else "tracker-unreachable"
+            if isinstance(reason, TimeoutError):
+                return None, "tracker-timeout"
+            # A received HTTP error or malformed reply is not a transport outage.
+            if isinstance(exc, urllib.error.HTTPError) or not isinstance(reason, OSError):
+                return None, "unavailable"
+            return None, "tracker-unreachable"
         try:
             with open(SNAPSHOT, encoding="utf-8") as f:
                 return {"_snapshot": json.load(f)}, "stale-snapshot"
@@ -227,7 +233,12 @@ def cmd_guarded_done(a, actor: str) -> int:
         timeout = float(os.environ.get("KY_VERIFY_TIMEOUT_S", "300"))
         if not math.isfinite(timeout) or timeout <= 0:
             raise CompletionError("KY_VERIFY_TIMEOUT_S must be a positive finite number")
-        observed, via = get("/api/verify?id=" + quote(a.item, safe=""), timeout=timeout)
+        for attempt in range(4):
+            observed, via = get("/api/verify?id=" + quote(a.item, safe=""), timeout=timeout)
+            # Stop on any reply or timeout: a retry must never replace a failed verdict.
+            if via != "tracker-unreachable" or attempt == 3:
+                break
+            time.sleep(2 ** (attempt + 1))  # 2/4/8s; at most 14s beyond request timeouts.
         if via == "tracker-timeout":
             raise CompletionError(f"tracker timed out after {timeout:g}s during live detector verification")
         if via == "tracker-unreachable":
