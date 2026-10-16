@@ -468,13 +468,19 @@ def test_production_boundary_oracles_run_in_required_no_skip_ci():
     spec.loader.exec_module(discovery)
     jobs = yaml.safe_load((root/'.github/workflows/ci.yml').read_text())['jobs']
     jobs = discovery.expanded_workflow(jobs)
-    required = jobs['governance-gates']
-    assert 'k3-sealed-db-tests' in required['needs']
+    # PR #3668 light-PR split: governance-gates requires full-suite, which requires the DB job.
+    assert 'full-suite' in jobs['governance-gates']['needs']
+    assert 'k3-sealed-db-tests' in jobs['full-suite']['needs']
     job = jobs['k3-sealed-db-tests']
     assert job['env']['KALA_REQUIRE_DB'] == '1'
     assert not job.get('continue-on-error')
     step = next(s for s in job['steps'] if s.get('name','').startswith('K5-G1a —'))
-    assert not step.get('continue-on-error') and not step.get('if')
+    assert not step.get('continue-on-error')
+    # Full events (merge group, main push, full_gate dispatch) run it unconditionally; a light PR only
+    # when its diff touches the k5-g1a-oracles profile.
+    for token in ("github.event_name == 'merge_group'", "github.event_name == 'push' && github.ref == 'refs/heads/main'",
+                  "inputs.full_gate", "'k5-g1a-oracles'"):
+        assert token in step['if']
     args = shlex.split(step['run'])
     assert {'tests/l3/ka_kshetra/test_g1a_contract.py',
             'tests/l3/ka_kshetra/test_g1a_candidate_sql.py',

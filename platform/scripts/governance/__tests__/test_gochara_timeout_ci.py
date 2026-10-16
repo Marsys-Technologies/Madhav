@@ -1,4 +1,6 @@
 """Keep the J-GOCHARA-TIMEOUT real-SQL oracles in mandatory CI."""
+from _ci_gate_test_support import runs_in_full_gate
+
 import copy
 import shlex
 from pathlib import Path
@@ -12,7 +14,7 @@ SUITE = "tests/l3/kala_db/test_gochara_materializer_timeout.py"
 
 def problems(job):
     errors = []
-    if "changes" not in ([job.get("needs")] if isinstance(job.get("needs"), str) else job.get("needs", [])) or job.get("if") != "${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}":
+    if "changes" not in ([job.get("needs")] if isinstance(job.get("needs"), str) else job.get("needs", [])) or not runs_in_full_gate(job):
         errors.append("changed job gate")
     if job.get("continue-on-error"):
         errors.append("optional job")
@@ -27,7 +29,7 @@ def problems(job):
         if SUITE not in selected and "tests/l3/kala_db" not in selected:
             continue
         matching.append(step)
-        if step.get("if") or step.get("continue-on-error"):
+        if not runs_in_full_gate(step) or step.get("continue-on-error"):
             errors.append("optional step")
         if step.get("working-directory") != "platform/python-sidecar":
             errors.append("wrong working directory")
