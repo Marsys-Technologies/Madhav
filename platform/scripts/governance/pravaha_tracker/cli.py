@@ -359,6 +359,14 @@ def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str)
         # Artifact hashes remain an alternative only for legacy single-item results.
         if (batched or not artifact_bound) and (len(matching) != 1 or matching[0].get("verdict") != "MET"):
             raise CompletionError("step receipt review result does not say MET for this step")
+        if "evidence_sha256" in receipt:
+            if len(matching) != 1 or any(matching[0].get(key) != receipt.get(key)
+                    for key in ("evidence_sha256", "request_id", "operation_id")):
+                raise CompletionError("step receipt evidence/request/operation differs from the reviewed step")
+            from pravaha_tracker.operation_evidence import check_operation_evidence
+            check_operation_evidence(receipt, matching[0], result_path)
+    elif "evidence_sha256" in receipt:
+        raise CompletionError("operational evidence requires a matching independent review")
 
 
 def cmd_step(a, actor: str) -> int:

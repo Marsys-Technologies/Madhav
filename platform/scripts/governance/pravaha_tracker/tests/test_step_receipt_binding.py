@@ -238,3 +238,254 @@ def test_refuses_invalid_batched_review_without_single_item_fallback(receipt_ste
     # Even valid legacy fields cannot override a present, invalid batch.
     result_path.write_text(json.dumps({**result, "items": items}))
     run()
+
+
+@pytest.fixture
+def operation_step(receipt_step):
+    root, path, receipt, result_path, result, spec, run = receipt_step
+    request = {'request_id': 'REQ-1', 'operation_id': 'OP-1', 'kind': 'publish_head',
+               'chart_id': '482012f1-710e-4a25-994a-93821f5871aa',
+               'args': {'generation': '5.0', 'manifest-id': '0d1f8a52-6f0e-4c7e-9a3b-5a2a2f6f9c11'},
+               'reviewed_commit': 'a'*40}
+    request_sha = hashlib.sha256(canonical(request).strip().encode()).hexdigest()
+    source_receipt = {'operation_id': 'OP-1', 'kind': 'publish_head', 'status': 'COMPLETED',
+                      'exit_code': 0, 'request_sha256': request_sha, 'reviewed_commit': 'a'*40}
+    readback = {'request_id': 'REQ-1', 'operation_id': 'OP-1', 'request_sha256': request_sha,
+                'result': 'ACCEPTED', 'by': 'v2', 'reviewed_commit': 'a'*40}
+    sources = {}
+    for key, value in [('request', request), ('receipt', source_receipt), ('readback', readback)]:
+        if key == 'readback': value['executor_receipt_sha256'] = sources['receipt']['sha256']
+        p = root / (key + '.json')
+        p.write_text(canonical(value))
+        sources[key] = {'path': str(p), 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
+    evidence = root / 'observed.json'
+    evidence.write_text(canonical({'request_id': 'REQ-1', 'operation_id': 'OP-1', 'sources': sources}))
+    receipt.update(evidence_sha256=hashlib.sha256(evidence.read_bytes()).hexdigest(),
+                   request_id='REQ-1', operation_id='OP-1')
+    result['steps'] = [{**receipt, 'evidence_path': str(evidence)}]
+    result_path.write_text(json.dumps(result))
+    path.write_text(canonical(receipt))
+    return root, path, receipt, result_path, result, evidence, run
+
+
+def test_operational_step_accepts_actual_evidence_and_source_chain(operation_step):
+    *_, run = operation_step
+    run(expected=0)
+
+
+@pytest.mark.parametrize('damage', ['evidence_sha256', 'request_id', 'operation_id', 'evidence_bytes',
+                                  'source_bytes', 'source_identity', 'source_request_digest', 'readback_receipt_digest', 'missing_evidence_path'])
+def test_operational_step_rejects_unbound_evidence_at_real_command(operation_step, damage):
+    root, path, receipt, result_path, result, evidence, run = operation_step
+    if damage in ('evidence_sha256', 'request_id', 'operation_id'):
+        receipt[damage] = '0' * 64 if damage.endswith('sha256') else 'OTHER'
+        path.write_text(canonical(receipt))
+    elif damage == 'evidence_bytes': evidence.write_text(evidence.read_text() + ' ')
+    elif damage == 'source_bytes':
+        source = root / 'readback.json'
+        source.write_text(source.read_text() + ' ')
+    elif damage == 'missing_evidence_path':
+        del result['steps'][0]['evidence_path']
+        result_path.write_text(json.dumps(result))
+    else:
+        key = ('operation_id' if damage == 'source_identity' else 'executor_receipt_sha256'
+               if damage == 'readback_receipt_digest' else 'request_sha256')
+        source = root / 'readback.json'
+        value = json.loads(source.read_text()); value[key] = 'OTHER'
+        source.write_text(canonical(value))
+        doc = json.loads(evidence.read_text())
+        doc['sources']['readback']['sha256'] = hashlib.sha256(source.read_bytes()).hexdigest()
+        evidence.write_text(canonical(doc))
+        receipt['evidence_sha256'] = hashlib.sha256(evidence.read_bytes()).hexdigest()
+        result['steps'][0]['evidence_sha256'] = receipt['evidence_sha256']
+        path.write_text(canonical(receipt)); result_path.write_text(json.dumps(result))
+    run()
+
+
+def _soak_fixture(operation_step):
+    import base64
+    root, path, receipt, result_path, result, evidence, run = operation_step
+    rule = {'schema': 'ky.soak_rule/1', 'decision_id': 'KYD-soak-fixture',
+            'approved_at': '2026-10-16T00:00:00Z', 'start': '2026-10-16T01:00:00Z',
+            'end': '2026-10-16T01:00:20Z', 'cadence_s': 10, 'max_lateness_s': 1,
+            'max_latency_ms': 500, 'required_classes': ['marriage'],
+            'chart_id': '482012f1-710e-4a25-994a-93821f5871aa',
+            'generation': '5.0', 'manifest_id': '0d1f8a52-6f0e-4c7e-9a3b-5a2a2f6f9c11',
+            'deployment': {'commit': 'a'*40, 'image_digest': 'sha256:'+'b'*64,
+                           'migration_set_sha256': 'c'*64},
+            'transport': 'authority_selected_http'}
+    rule_path = root / 'rule.json'; rule_path.write_text(canonical(rule))
+    rule_ref = {'path': str(rule_path), 'sha256': hashlib.sha256(rule_path.read_bytes()).hexdigest()}
+    doc = json.loads(evidence.read_text())
+    doc.update(schema='ky.served_soak/1', rule=rule_ref, samples=[])
+    body = {'schema': 'gochara_v5_windows/1', 'chart_id': rule['chart_id'], 'generation': '5.0', 'manifest_id': rule['manifest_id'],
+            'refusal': None, 'manifest_status': 'published',
+            'seal': {'chart_id': rule['chart_id'], 'generation': '5.0', 'manifest_id': rule['manifest_id']},
+            'classes': [{'event_class': 'marriage', 'completeness': 'complete_within_scope'}]}
+    raw = canonical(body).encode()
+    for n in (0, 10, 20):
+        doc['samples'].append({'scheduled_at': f'2026-10-16T01:00:{n:02d}Z',
+            'observed_at': f'2026-10-16T01:00:{n:02d}Z', 'latency_ms': 100, 'http_status': 200,
+            'transport': rule['transport'], 'deployment': rule['deployment'],
+            'response_base64': base64.b64encode(raw).decode(), 'response_sha256': hashlib.sha256(raw).hexdigest()})
+    readback_path = root/'readback.json'; readback = json.loads(readback_path.read_text())
+    readback.update(chart_id=rule['chart_id'], generation='5.0', manifest_id=rule['manifest_id'],
+                    deployment=rule['deployment'])
+    readback_path.write_text(canonical(readback))
+    doc['sources']['readback']['sha256'] = hashlib.sha256(readback_path.read_bytes()).hexdigest()
+    def save():
+        evidence.write_text(canonical(doc))
+        receipt['evidence_sha256'] = hashlib.sha256(evidence.read_bytes()).hexdigest()
+        result['steps'][0].update(evidence_sha256=receipt['evidence_sha256'],
+                                 soak_rule_sha256=rule_ref['sha256'], effective_soak_decision=rule['decision_id'])
+        result_path.write_text(json.dumps(result)); path.write_text(canonical(receipt))
+    save()
+    return root, doc, rule, save, run
+
+
+def test_soak_measures_all_preregistered_samples(operation_step):
+    *_, run = _soak_fixture(operation_step)
+    run(expected=0)
+
+
+@pytest.mark.parametrize('damage', ['wrong_generation', 'wrong_manifest', 'wrong_chart', 'domain_refusal',
+    'timeout', 'missing_sample', 'duplicate_sample', 'late_sample', 'rolled_back', 'wrong_deployment',
+    'explicit_generation_transport', 'bytes_changed', 'stale_class', 'missing_class', 'unreviewed_rule',
+    'unregistered_rule', 'missing_schema', 'wrong_envelope_schema', 'missing_refusal'])
+def test_soak_rejects_bad_provenance_timeout_gaps_and_rollback(operation_step, damage):
+    import base64
+    root, doc, rule, save, run = _soak_fixture(operation_step)
+    sample = doc['samples'][1]
+    if damage in ('wrong_generation', 'wrong_manifest', 'wrong_chart', 'domain_refusal', 'stale_class', 'missing_class',
+                  'wrong_envelope_schema', 'missing_refusal'):
+        body = json.loads(base64.b64decode(sample['response_base64']))
+        if damage == 'wrong_generation': body['generation'] = '3.0'
+        elif damage == 'wrong_manifest': body['manifest_id'] = 'other'
+        elif damage == 'wrong_chart': body['chart_id'] = 'other'
+        elif damage == 'domain_refusal': body['refusal'] = {'code': 'not_sealed'}
+        elif damage == 'wrong_envelope_schema': body['schema'] = 'unrelated_envelope/1'
+        elif damage == 'missing_refusal': del body['refusal']
+        elif damage == 'stale_class': body['classes'][0]['completeness'] = 'stale_binding'
+        else: body['classes'] = []
+        raw = canonical(body).encode(); sample.update(response_base64=base64.b64encode(raw).decode(),
+                                                    response_sha256=hashlib.sha256(raw).hexdigest())
+    elif damage == 'timeout': sample['latency_ms'] = 501
+    elif damage == 'missing_sample': doc['samples'].pop(1)
+    elif damage == 'duplicate_sample': doc['samples'].append(dict(sample))
+    elif damage == 'late_sample': sample['observed_at'] = '2026-10-16T01:00:12Z'
+    elif damage == 'rolled_back': doc['rollback_operation_id'] = 'ROLLBACK-1'
+    elif damage == 'wrong_deployment': sample['deployment'] = {'commit': 'd'*40}
+    elif damage == 'explicit_generation_transport': sample['transport'] = 'explicit_generation_http'
+    elif damage == 'bytes_changed': sample['response_base64'] = base64.b64encode(b'{}').decode()
+    elif damage == 'missing_schema': del doc['schema']
+    elif damage == 'unregistered_rule':
+        rule['approved_at'] = '2026-10-16T01:00:01Z'
+        (root/'rule.json').write_text(canonical(rule))
+        doc['rule']['sha256'] = hashlib.sha256((root/'rule.json').read_bytes()).hexdigest()
+    save()
+    if damage == 'unreviewed_rule':
+        result_path = operation_step[3]; result = operation_step[4]
+        result['steps'][0]['soak_rule_sha256'] = '0'*64
+        result_path.write_text(json.dumps(result))
+    # Enforce the same schema at the named production step as well as generic tests.
+    if damage == 'missing_schema':
+        from pravaha_tracker.operation_evidence import check_operation_evidence
+        with pytest.raises(cli.CompletionError):
+            check_operation_evidence({**operation_step[2], 'item': 'J-6l-a61',
+                                      'step': 'owner_soak_rule_and_live_readback'},
+                                     operation_step[4]['steps'][0], str(operation_step[3]))
+    else: run()
+
+
+@pytest.mark.parametrize('damage', ['evidence_sha256', 'request_id', 'operation_id', 'none'])
+def test_j6l_actual_named_soak_step_command_binds_review_and_samples(operation_step, monkeypatch, damage):
+    from pathlib import Path
+    root, doc, rule, save, _ = _soak_fixture(operation_step)
+    _, path, receipt, result_path, result, evidence, _ = operation_step
+    item, step = 'J-6l-a61', 'owner_soak_rule_and_live_readback'
+    receipt.update(item=item, step=step)
+    result.update(item=item)
+    result['steps'][0].update(item=item, step=step)
+    if damage != 'none': receipt[damage] = '0'*64 if damage == 'evidence_sha256' else 'OTHER'
+    path.write_text(canonical(receipt)); result_path.write_text(json.dumps(result))
+    repo = Path(__file__).resolve().parents[5]
+    model = json.loads((repo/'00_ARCHITECTURE/control/kalayantra/plan_model.json').read_text())
+    row = next(row for row in model['items'] if row['id'] == item)
+    spec = {'type': 'file_contains', 'path': str(path), 'pattern': 'MET'}
+    row['step_evidence'][step]['detector'] = spec
+    monkeypatch.setattr(cli, 'load_model', lambda: model)
+    monkeypatch.setattr(cli, 'get', lambda *a, **k: ({'item': item, 'step': step, 'spec': spec,
+                                                   'detector': {'status': 'done'}}, 'live'))
+    code = cli.main(['step', item, step, '--as', 'steward', '--evidence', str(path)])
+    assert code == (0 if damage == 'none' else 2)
+    if damage != 'none': assert not (root/'EVENTS.jsonl').exists()
+
+
+@pytest.mark.parametrize('observed_offset_s,expected', [
+    (-60, 0), (0, 0), (5, 0), (5.000001, 2), (29 * 60, 2),
+])
+@pytest.mark.parametrize('clock_advances', [False, True])
+def test_j6l_named_soak_bounds_observation_by_validation_clock(
+        operation_step, monkeypatch, observed_offset_s, expected, clock_advances):
+    """NB-J6MR-B01: future evidence cannot append the production step's done event."""
+    from datetime import datetime, timedelta, timezone
+    from pravaha_tracker import served_soak
+
+    root, doc, rule, save, _ = _soak_fixture(operation_step)
+    _, path, receipt, result_path, result, _, _ = operation_step
+    validation_now = datetime(2026, 10, 16, 12, tzinfo=timezone.utc)
+
+    class ValidationClock(datetime):
+        calls = 0
+
+        @classmethod
+        def now(cls, tz=None):
+            # Time spent checking evidence must not extend the observation cutoff.
+            value = validation_now + timedelta(hours=cls.calls if clock_advances else 0)
+            cls.calls += 1
+            return value.astimezone(tz)
+
+    monkeypatch.setattr(served_soak, 'datetime', ValidationClock)
+    # Review reproduction: the window ended one minute ago, but one-hour
+    # permitted lateness alone would accept an observation 29 minutes ahead.
+    end = validation_now - timedelta(minutes=1)
+    start = end - timedelta(days=2)
+    rule.update(start=start.isoformat(), end=end.isoformat(),
+                approved_at=(start - timedelta(days=1)).isoformat(),
+                cadence_s=86400, max_lateness_s=3600)
+    for n, sample in enumerate(doc['samples']):
+        scheduled = start + timedelta(days=n)
+        sample.update(scheduled_at=scheduled.isoformat(), observed_at=scheduled.isoformat())
+    doc['samples'][-1]['observed_at'] = (validation_now + timedelta(seconds=observed_offset_s)).isoformat()
+    rule_path = root / 'rule.json'
+    rule_path.write_text(canonical(rule))
+    doc['rule']['sha256'] = hashlib.sha256(rule_path.read_bytes()).hexdigest()
+    save()
+
+    item, step = 'J-6l-a61', 'owner_soak_rule_and_live_readback'
+    receipt.update(item=item, step=step, review_job='X-20261016T120000Z-soak-regression')
+    result.update(item=item)
+    result['steps'][0].update(item=item, step=step)
+    review_path = result_path.parent.with_name(receipt['review_job']) / 'result.json'
+    result_path.parent.rename(review_path.parent)
+    path.write_text(canonical(receipt))
+    review_path.write_text(json.dumps(result))
+    repo = Path(__file__).resolve().parents[5]
+    model = json.loads((repo / '00_ARCHITECTURE/control/kalayantra/plan_model.json').read_text())
+    row = next(row for row in model['items'] if row['id'] == item)
+    spec = row['step_evidence'][step]['detector']
+    spec['path'] = str(path)  # Preserve the production receipt regex and real file detector.
+    detector = Detectors(Config(repo=str(root), home=str(root), pgenv=None))
+    assert detector.verify(spec).status == 'done'
+    monkeypatch.setattr(cli, 'load_model', lambda: model)
+    monkeypatch.setattr(cli, 'get', lambda *a, **k: (
+        {'item': item, 'step': step, 'spec': spec,
+         'detector': {'status': detector.verify(spec).status}}, 'live'))
+    code = cli.main(['step', item, step, '--as', 'steward', '--evidence', str(path)])
+    events_path = root / 'EVENTS.jsonl'
+    if expected:
+        assert not events_path.exists(), 'future observation appended a false-green done event'
+    else:
+        event, = [json.loads(line) for line in events_path.read_text().splitlines()]
+        assert (event['item'], event['step'], event['state']) == (item, step, 'done')
+    assert code == expected
