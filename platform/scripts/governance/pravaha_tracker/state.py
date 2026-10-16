@@ -295,6 +295,25 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         if s["status"] == "not_started":
             s["status"] = "ready" if not s["deps_open"] else "waiting"
 
+        # A5 D-39: display-only merge evidence, never a new completion state.
+        # Use strict dependencies: readiness can relax a merged/accepted input
+        # that is still an actual gate on completion. Non-merge detectors (e.g.
+        # pr_ready or file_exists) cannot establish that code is on main.
+        outcomes_met = all(
+            (decision_status(ix["decisions"].get(decision, []))[1] or {}).get("outcome") == needed
+            for decision, needed in it.get("requires_outcome", {}).items()
+        )
+        s["built_waiting_on_gate"] = bool(
+            (it.get("detector") or {}).get("type") in ("branch_merged", "pr_merged")
+            and (det_results.get(iid) or {}).get("status") == "done"
+            and s["status"] in ("ready", "waiting", "running", "review")
+            and all(step["done"] for step in s.get("steps", []))
+            and outcomes_met
+            and s["deps_open_strict"]
+            and all(dep in items for dep in s["deps_open_strict"])
+        )
+        s["gate_blockers"] = list(s["deps_open_strict"]) if s["built_waiting_on_gate"] else []
+
     # a model that declares its items (relaunch plan v2.7 §6) shows each row's declaration; other models as before
     declared = isinstance(model.get("control_plane", {}).get("declarations"), dict)
     tracks = []
@@ -370,6 +389,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         "generated_at": now.isoformat(timespec="seconds"),
         "campaign": model.get("campaign"), "subtitle": model.get("subtitle"), "plan_ref": model.get("plan_ref"),
         "overall": {"total": total, "done": counts.get("done", 0),
+                    "built_waiting_on_gate": sum(1 for t in flat if t["built_waiting_on_gate"]),
                     "not_applicable": counts.get("not_applicable", 0),
                     "running": counts.get("running", 0) + counts.get("review", 0),
                     "ready": counts.get("ready", 0), "waiting": counts.get("waiting", 0),
