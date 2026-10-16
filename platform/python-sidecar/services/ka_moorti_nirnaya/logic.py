@@ -193,25 +193,44 @@ __all__ = [
 # upstream change left built rows silently stale (CLAUDE.md §N.8). This digests exactly the
 # rows a build consumed — the same in-memory objects the writer holds — so comparing it to a
 # fresh read answers "was this built from what the table says now?".
-# `ephemeris_daily` is deliberately NOT fingerprinted here: it is a bulk substrate whose
-# input identity is its own substrate_version, recorded in the publication's input
-# generation vector (plan §5.5), not a citation-bearing reference table.
+# Step 3 §4 closes the two gaps this comment used to declare deliberate: the consumed
+# `ephemeris_daily` node series now rides the fingerprint as the `node_series` component
+# (the L0-owned node_series_digest_v1 identity — services.gochara_kernel.node_series_digest), and the consumed
+# natal L1 operand (the chart's MOON longitude fact: fact_id, build_id, stored value text)
+# rides it as the `l1` component — so an L1 rebuild or a series change now makes older rows
+# stale instead of silently fresh.
 from services.gochara_kernel.fingerprint import FINGERPRINT_ALGORITHM, canonical_digest
 
 
-def moorti_upstream_fingerprint(moorti_table: dict) -> dict:
+def moorti_upstream_fingerprint(moorti_table: dict, *,
+                                node_series: Optional[dict] = None,
+                                l1: Optional[dict] = None,
+                                formula_version: Optional[str] = None) -> dict:
     """Digest of the `bg_transit_moorti` rows one build consumed.
 
     `moorti_table` is `{nakshatra_offset: row}` — what the writer's `_fetch_moorti_table`
     returns. Order-independent; sensitive to every consumed field. JSON-safe, so it
     round-trips through a jsonb column.
+
+    Step 3 §4: `node_series`, `l1` and `formula_version` fold in the consumed series
+    identity, the consumed natal operand identity and the writer version (same contract
+    as ka_vedha_gochara's upstream_fingerprint; omitted components keep the pre-step-3
+    shape, which the gate reads stale by construction). The bulk-ephemeris caveat above
+    is now carried by the `node_series` component, not by silence.
     """
     rows = sorted(
         ([int(k), {f: v for f, v in sorted(dict(row).items())}] for k, row in moorti_table.items()),
         key=lambda x: x[0],
     )
-    return {
+    fp = {
         "algorithm": FINGERPRINT_ALGORITHM,
         "bg_transit_moorti": canonical_digest(rows),
         "n_moorti_rows": len(rows),
     }
+    if node_series is not None:
+        fp["node_series"] = node_series
+    if l1 is not None:
+        fp["l1"] = l1
+    if formula_version is not None:
+        fp["formula_version"] = formula_version
+    return fp
