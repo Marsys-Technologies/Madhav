@@ -4,6 +4,8 @@
 -- inspected 2026-10-16 (highest 1386); no public CREATE/ALTER is required.
 -- Source contracts: KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md §§7–9;
 -- writers and source-bound tests pin the corrected read edges and substep shapes.
+-- PR #3557: the candidate vedha writer reads classical_text_chunks for cited
+-- enrichment (services/ka_vedha_gochara/storage.py:71 on merged main).
 -- (I) INTERPRETATION: retain service/runtime ordering edges for compatible legacy
 -- dispatch; add direct SQL reads, remove the already-retired grid (1360).
 -- (I) INTERPRETATION: preserve accepted integrity SQL and generation selection.
@@ -295,7 +297,8 @@ DECLARE
       "bg_ephemeris",
       "bg_transit_rules",
       "bg_vedha_malefic_scale",
-      "bg_phaladeepika_latta"
+      "bg_phaladeepika_latta",
+      "bg_texts"
     ],
     "has_writer": true,
     "has_substeps": false

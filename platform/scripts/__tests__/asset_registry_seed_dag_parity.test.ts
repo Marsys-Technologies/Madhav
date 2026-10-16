@@ -82,7 +82,7 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
   // K8 mirrors migration 1360 (SS N-430), which RETIRES bg_sarvatobhadra_grid in the live registry and removes it from ka_vedha_gochara.depends_on. The seed row
   // now mirrors K8; the seed upsert never rewrites depends_on of an existing row and keeps a RETIRED row
   // RETIRED / inactive. K8 adds the missing direct edges without reintroducing the grid.
-  ka_vedha_gochara: ['ga_positions', 'bg_ephemeris', 'bg_transit_rules', 'bg_vedha_malefic_scale', 'bg_phaladeepika_latta'],
+  ka_vedha_gochara: ['ga_positions', 'bg_ephemeris', 'bg_transit_rules', 'bg_vedha_malefic_scale', 'bg_phaladeepika_latta', 'bg_texts'],
   ph_nimitta: [
     'ka_sangam', 'ka_bhavishya_lekha', 'bo_bimba', 'bo_samskara',
     'bo_karanajala', 'bo_sangati', 'bo_anveshana', 'bo_cgm_paths',

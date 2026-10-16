@@ -331,7 +331,7 @@ def test_the_seed_and_the_input_differ_on_exactly_sixteen_assets_in_exactly_thes
         "ka_kala_darshana": ([], ["ka_gochara_v3_century_materialize"]),
         "ka_kshetra": (["ka_vedha_gochara"], ["bg_ghatana", "bo_bimba", "bo_karanajala", "bo_laksana", "ka_gochara", "ka_gochara_v3_century_materialize"]),
         "ka_muhurta_seva": ([], ["ka_graha_sancara"]),
-        "ka_vedha_gochara": (["bg_sarvatobhadra_grid"], []),
+        "ka_vedha_gochara": (["bg_sarvatobhadra_grid"], ["bg_texts"]),
         "ka_vighnakara": ([], ["ka_gochara"]),
         # K2-1b migration 1339 adds the L1 positions and L0 yoga reads; the frozen draft predates them.
         "ka_yojaka": ([], ["bg_text_index", "bg_yogas", "bo_karanajala", "ga_positions"]),

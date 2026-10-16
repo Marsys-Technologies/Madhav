@@ -22634,7 +22634,7 @@
       {
         "id": "producer_asset_seed",
         "path": "platform/scripts/seed/asset_registry_seed.ts",
-        "sha256": "6ecb13614129a83af4b162c9e65de5a63d2857dc47ad48e6a517ad18cadee535"
+        "sha256": "16d6b8c5002dccc83bec7a9f4cd6b28c4a9750a3d2d9d3592729a5b48ab66f8a"
       },
       {
         "id": "public_registrar_source_set",
