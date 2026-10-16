@@ -107,12 +107,14 @@ alternative: shorter, at the cost of re-running step 10 inside a long sitting. A
 
 Enforcement is the smallest change that works: `scoped_backup_problem` in `v5_small_test_shared.py`, called from
 `smalltest_request_problem`, which runs at executor admission **and again inside the dispatch script at `--execute`**. A
-`smalltest_dispatch` request that carries `backup_label` and `backup_restore_sha256` (the SHA-256 of that label's `restore.json`,
-bound by the request's acceptance digest like the absence evidence) is admitted only for a verified scoped proof of the pinned
-scope digest, whose capture matches it, inside its window. **(I) INTERPRETATION J2A-S2:** a request with no `backup_label` is
-not checked here (the executor's boolean attestations are unchanged) and a full-form proof (`/1`) carries no window; the scoped
-step-10 pack must therefore always name the label. Alternative: make the label mandatory for every dispatch — rejected here
-because it changes every existing dispatch request and its pinned suites.
+`smalltest_dispatch` request **must** carry `backup_label` and `backup_restore_sha256` (the SHA-256 of that label's
+`restore.json`, bound by the request's acceptance digest like the absence evidence); without them it is refused. The named
+proof is admitted only inside its window: a scoped proof (`/2`) must also be a verified proof of the pinned scope digest whose
+capture matches it. **(I) INTERPRETATION J2A-S2 (revised after review B1; the earlier opt-in reading is withdrawn):** the label
+is mandatory for every `smalltest_dispatch` (dry-run kinds are unchanged). **(I) INTERPRETATION J2A-S4:** a full-form proof
+(`/1`) is accepted only with the same 4 h window, measured from its capture receipt's `ts` (a `/1` capture has no snapshot
+instant, so the window starts after the dump); a `/1` pair without a readable timestamp is refused. Alternative: refuse `/1`
+proofs for dispatch altogether.
 
 ## 6. Runbook — step 10, scoped
 

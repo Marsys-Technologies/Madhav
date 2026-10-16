@@ -271,10 +271,60 @@ def test_request_policy_applies_the_window_to_a_dispatch_that_names_a_backup(sha
     assert shared.smalltest_request_problem(dict(req, kind='smalltest_dispatch_dryrun'), tmp_path) is None and not seen
 
 
-def test_a_dispatch_that_names_no_backup_label_or_the_full_backup_proof_is_unchanged(shared, tmp_path):
-    shared.scoped_backup_problem({}, tmp_path)
-    req = write_evidence(tmp_path, shared, proof_schema='ky.smalltest_restore/1', started=datetime(2020, 1, 1, tzinfo=timezone.utc))
-    shared.scoped_backup_problem(req, tmp_path)
+def write_full_evidence(root, shared, *, label='p02_full', captured=None):
+    """A full-form (/1) backup + restore proof pair, as backup_v5_small_test_job.py writes them."""
+    captured = captured or datetime.now(timezone.utc) - timedelta(minutes=30)
+    folder = root / 'backups' / label
+    folder.mkdir(parents=True)
+    capture = {'schema': 'ky.smalltest_backup/1', 'label': label, 'status': 'captured', 'archive_sha256': 'c' * 64,
+               'ts': captured.isoformat()}
+    (folder / 'capture.json').write_text(json.dumps(capture))
+    proof = {'schema': 'ky.smalltest_restore/1', 'label': label, 'status': 'verified', 'archive_sha256': 'c' * 64,
+             'capture_sha256': hashlib.sha256((folder / 'capture.json').read_bytes()).hexdigest(), 'target_removed': True,
+             'backup_taken': True, 'restore_verified': True, 'ts': (captured + timedelta(minutes=10)).isoformat()}
+    (folder / 'restore.json').write_text(json.dumps(proof))
+    return {'backup_label': label, 'backup_restore_sha256': hashlib.sha256((folder / 'restore.json').read_bytes()).hexdigest()}
+
+
+# SR-J2A-BACKUP-SCOPE condition 4 ("dispatch outside the window requires a fresh step 10"), review B1: the window is not
+# opt-in. One oracle per admission claim, driven through the request policy the executor and the dispatch script both call.
+def dispatch_problem(shared, tmp_path, monkeypatch, **backup):
+    monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)
+    req = {'kind': 'smalltest_dispatch', 'args': {'run': 'one_class_full', 'classes': 'marriage'}, **backup}
+    return shared.smalltest_request_problem(req, tmp_path)
+
+
+def test_dispatch_without_a_named_backup_is_refused_even_when_no_backup_exists_to_be_stale(shared, tmp_path, monkeypatch):
+    for backup in ({}, {'backup_label': 'p02_win'}, {'backup_restore_sha256': '0' * 64}):
+        assert 'must name its backup' in dispatch_problem(shared, tmp_path, monkeypatch, **backup), backup
+
+
+def test_dispatch_naming_a_stale_scoped_backup_is_refused_and_a_fresh_one_admitted(shared, tmp_path, monkeypatch):
+    stale = write_evidence(tmp_path / 'stale', shared, started=datetime.now(timezone.utc) - timedelta(hours=9))
+    fresh = write_evidence(tmp_path / 'fresh', shared)
+    assert 'outside its validity window' in dispatch_problem(shared, tmp_path / 'stale', monkeypatch, **stale)
+    assert dispatch_problem(shared, tmp_path / 'fresh', monkeypatch, **fresh) is None
+
+
+def test_a_full_backup_proof_is_admitted_only_inside_the_same_window(shared, tmp_path, monkeypatch):
+    stale = write_full_evidence(tmp_path / 'stale', shared, captured=datetime.now(timezone.utc) - timedelta(hours=9))
+    fresh = write_full_evidence(tmp_path / 'fresh', shared)
+    assert 'outside its validity window' in dispatch_problem(shared, tmp_path / 'stale', monkeypatch, **stale)
+    assert dispatch_problem(shared, tmp_path / 'fresh', monkeypatch, **fresh) is None
+
+
+def test_a_full_backup_proof_without_a_timestamp_is_refused_not_allowed(shared, tmp_path, monkeypatch):
+    req = write_full_evidence(tmp_path, shared)
+    capture = tmp_path / 'backups' / req['backup_label'] / 'capture.json'
+    body = json.loads(capture.read_text())
+    del body['ts']
+    capture.write_text(json.dumps(body))
+    proof = tmp_path / 'backups' / req['backup_label'] / 'restore.json'
+    edited = json.loads(proof.read_text())
+    edited['capture_sha256'] = hashlib.sha256(capture.read_bytes()).hexdigest()
+    proof.write_text(json.dumps(edited))
+    req['backup_restore_sha256'] = hashlib.sha256(proof.read_bytes()).hexdigest()
+    assert 'no timestamp' in dispatch_problem(shared, tmp_path, monkeypatch, **req)
 
 
 # ---- C6/C7: scope selection, cross-refusal and the executor table ----------------------------------------------------------

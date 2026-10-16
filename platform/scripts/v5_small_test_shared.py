@@ -688,16 +688,41 @@ SCOPED_BACKUP_SCOPE_SHA256 = "489330948aecf7b6fdaa52d00a8f8fa8735e4ed1dcd27a14ee
 SCOPED_BACKUP_VALIDITY_S = 4 * 3600
 
 
-def scoped_backup_problem(req, root, now=None):
-    """A dispatch that names its backup (`backup_label` + the restore proof's `backup_restore_sha256`) must name a
-    verified SCOPED proof of the pinned scope, taken no more than SCOPED_BACKUP_VALIDITY_S ago. Raises Refused.
+def full_backup_window_problem(proof, label, folder, root, now=None):
+    """A full-form (/1) proof names its backup only with the same freshness bound as a scoped one."""
+    from datetime import datetime, timedelta, timezone
+    if (proof.get('status') != 'verified' or proof.get('label') != label or proof.get('restore_verified') is not True
+            or proof.get('backup_taken') is not True or proof.get('target_removed') is not True):
+        raise Refused('full backup restore proof is not a verified proof for this label')
+    capture = read_evidence(root, folder, {'name': 'capture.json', 'sha256': proof.get('capture_sha256')})
+    if (capture.get('schema') != 'ky.smalltest_backup/1' or capture.get('label') != label
+            or capture.get('archive_sha256') != proof.get('archive_sha256')):
+        raise Refused('full backup restore proof does not match its capture')
+    try:
+        start = datetime.fromisoformat(capture['ts'])
+        taken = datetime.fromisoformat(proof['ts'])
+        if start.tzinfo is None or taken.tzinfo is None:
+            raise ValueError()
+    except (KeyError, TypeError, ValueError):
+        raise Refused('full backup has no timestamp inside a validity window') from None
+    instant = now or datetime.now(timezone.utc)
+    if not start <= taken <= instant <= start + timedelta(seconds=SCOPED_BACKUP_VALIDITY_S):
+        raise Refused('backup is outside its validity window; a fresh backup and restore proof are required')
 
-    (I) INTERPRETATION J2A-S2: a request that names no backup label is not checked here (the executor's boolean
-    backup/restore attestations still apply unchanged); the scoped step 10 pack always names it. A proof of the full
-    backup (schema /1) carries no window and passes unchanged."""
+
+def scoped_backup_problem(req, root, now=None):
+    """A `smalltest_dispatch` MUST name its backup (`backup_label` + the restore proof's `backup_restore_sha256`), and
+    that proof must be taken no more than SCOPED_BACKUP_VALIDITY_S ago (SR-J2A-BACKUP-SCOPE condition 4). A scoped proof
+    (schema /2) must be a verified proof of the pinned scope; a full proof (schema /1) is accepted only with the same
+    window, measured from its capture receipt's `ts`. Raises Refused.
+
+    (I) INTERPRETATION J2A-S2 (replaces the earlier opt-in reading): no label, no restore-proof digest, or a /1 proof
+    without a readable timestamp is refused, never silently allowed. (I) INTERPRETATION J2A-S4: the /1 capture has no
+    snapshot instant, so its window starts at the capture receipt's `ts`, written after the dump; alternative: refuse
+    every /1 proof."""
     label = req.get('backup_label')
-    if label is None:
-        return
+    if label is None or req.get('backup_restore_sha256') is None:
+        raise Refused('a dispatch must name its backup_label and backup_restore_sha256; run a fresh backup and restore proof')
     import re
     from datetime import datetime, timedelta, timezone
     if not isinstance(label, str) or not re.fullmatch(r'[a-z][a-z0-9_]{2,39}', label):
@@ -705,7 +730,7 @@ def scoped_backup_problem(req, root, now=None):
     folder = 'backups/' + label
     proof = read_evidence(root, folder, {'name': 'restore.json', 'sha256': req.get('backup_restore_sha256')})
     if proof.get('schema') == 'ky.smalltest_restore/1':
-        return
+        return full_backup_window_problem(proof, label, folder, root, now)
     if (proof.get('schema') != 'ky.smalltest_restore/2' or proof.get('status') != 'verified' or proof.get('label') != label
             or proof.get('scoped') is not True or proof.get('restore_verified') is not True
             or proof.get('backup_taken') is not True or proof.get('target_removed') is not True):

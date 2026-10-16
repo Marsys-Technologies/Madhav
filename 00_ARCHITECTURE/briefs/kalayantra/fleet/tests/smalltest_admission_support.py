@@ -67,6 +67,7 @@ def request(executor, kind, args=None):
                 req[field] = bound[field]
     if kind == 'smalltest_dispatch':
         req['absence_receipt'], req['absence_acceptance'] = evidence.absence_for(executor.KY_ROOT)
+        req.update(evidence.scoped_backup_for(executor.KY_ROOT))
     return approve(executor, req)
 
 
