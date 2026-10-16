@@ -20,8 +20,8 @@
     },
     "local_limitation": "Whole-platform Vitest list timed out at 180s and 600s; the native Unit Tests invocation and its configuration have no selection edit."
   },
-  "collected_before": 44676,
-  "collected_after": 46772,
+  "collected_before": 44715,
+  "collected_after": 46811,
   "missing": [],
   "suites": [
     {
@@ -56,8 +56,8 @@
     },
     {
       "suite": "kala-db-tests-5-0",
-      "before": 1065,
-      "after": 1065,
+      "before": 1091,
+      "after": 1091,
       "missing": []
     },
     {
@@ -338,8 +338,8 @@
     },
     {
       "suite": "db-integration-tests-83-0",
-      "before": 269,
-      "after": 269,
+      "before": 281,
+      "after": 281,
       "missing": []
     },
     {
@@ -464,8 +464,8 @@
     },
     {
       "suite": "governance-gates-py-sidecar-shard-3-33",
-      "before": 20835,
-      "after": 20859,
+      "before": 20861,
+      "after": 20885,
       "missing": []
     },
     {
@@ -596,8 +596,8 @@
     },
     {
       "suite": "governance-shards-full",
-      "before": 21056,
-      "after": 21056,
+      "before": 21057,
+      "after": 21057,
       "missing": []
     },
     {
@@ -633,13 +633,55 @@
   ],
   "before_nodeids": {
     "path": "00_ARCHITECTURE/briefs/kalayantra/CI_DISCOVERY_BEFORE.nodeids.txt.gz",
-    "sha256": "b099733c95edbddea30b9c3ddd8128dbee2ebbd0d87ed244125143a1e8d8a9cc"
+    "sha256": "324d48b427970ac21e29c18db6aa71d5b753f675ddf505ee51bb7390acc4cf7b"
   },
   "after_nodeids": {
     "path": "00_ARCHITECTURE/briefs/kalayantra/CI_DISCOVERY_AFTER.nodeids.txt.gz",
-    "sha256": "a034add593e23de5878db3d93d30656a82fc33f8adbc5b3cffd052de54082ffb"
+    "sha256": "fd1f03b0bcfb5355aff645580e1e0699a012a8e4d6f3a209ff5625c7a791fd75"
   },
   "nodeid_format": "collection working directory / native pytest nodeid or Vitest file::name",
-  "profile_sha256": "ffaeb96ef88a67514fa25215c19182deeb835d50a095b9082642232cf8467822",
-  "required_checks_unchanged": true
+  "profile_sha256": "412d5a70f79fe34cc7a4a0c992907f73cf2b399ec25db764c6d608c7ef9d6c15",
+  "required_checks_unchanged": true,
+  "merged_main_revision": "8c8c01b17961e81b28dd8bd773f23a00f38b4e8b",
+  "merged_main_selector_coverage": {
+    "main_revision": "8c8c01b17961e81b28dd8bd773f23a00f38b4e8b",
+    "main_explicit_selectors": 223,
+    "selectors_missing_from_collection_baseline": [],
+    "required_check_names_unchanged": true
+  },
+  "protected_migration_set_equality": {
+    "main_seed_count": 24,
+    "python_selector_count": 24,
+    "migrate_ts_selector_count": 24,
+    "set_equality": true,
+    "files": [
+      "1330_kala_layer_manifest_candidates.sql",
+      "1334_kala_layer_verifier_conflict_read_grant.sql",
+      "1339_k2_1b_promise_graph_columns.sql",
+      "1341_k1_2_avadhi_candidate_dossiers.sql",
+      "1342_k2_2_f1_relationships.sql",
+      "1350_kala_jury_candidate.sql",
+      "1351_issued_forecast_lifecycle.sql",
+      "1352_issued_forecast_finite_intervals.sql",
+      "1353_k6_kalasutra_candidate.sql",
+      "1354_k6_darshana_candidate.sql",
+      "1355_k6_jivana_candidate.sql",
+      "1356_k6_read_model_build_scoped_detectors.sql",
+      "1375_k6_integrity_chart_build_binding.sql",
+      "1376_k7_stage_verification_status.sql",
+      "1379_gochara_sealed_authority.sql",
+      "1380_issued_forecast_immutability_guard.sql",
+      "1382_gochara_authority_no_truncate.sql",
+      "1383_ka_3a_vedha_candidate_intervals.sql",
+      "1384_ka_3b_contested_candidates.sql",
+      "1385_k5_g1a_candidate_field.sql",
+      "1386_l0_m_parihara_typed_source_prepare.sql",
+      "1387_k5_g2_candidate_field.sql",
+      "1388_k3_2_sealed_negative_space.sql",
+      "1389_k6_taranga_candidate.sql"
+    ]
+  },
+  "merged_tree_method_note": "Historical baseline extended with main G1 selectors. Every current-main explicit selector is represented. Collections executed on this merged tree in this job; after installing missing asyncpg into JOB_SCRATCH/python-deps, successful prior collections were resumed using the comparator selector/options/source-mtime cache. Required check names match current main. No database fixtures run during collection.",
+  "origin_main_observed_at_completion": "d72e7ea344e74d84552597f8dc06ece7eeaa0ad2",
+  "merge_snapshot_note": "The pending merge and all comparison claims bind the fetched-at-start main 8c8c01b17961e81b28dd8bd773f23a00f38b4e8b. During validation the shared origin/main ref advanced by PRs #3548 and #3594. Those newer commits are not in this pending merge; cockpit must commit this merge before another merge can run."
 }

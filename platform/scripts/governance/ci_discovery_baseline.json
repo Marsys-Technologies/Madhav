@@ -72,9 +72,11 @@
         "tests/l3/ka_bhavishya_lekha/test_certification_mapping.py",
         "tests/l3/ka_vedha_gochara",
         "tests/l3/ka_taranga",
-        "tests/l3/ka_adapters"
+        "tests/l3/ka_adapters",
+        "tests/l3/ka_kshetra/test_g1a_contract.py",
+        "tests/l3/ka_kshetra/test_g1a_candidate_sql.py"
       ],
-      "line": "python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters -q -rs",
+      "line": "python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters tests/l3/ka_kshetra/test_g1a_contract.py tests/l3/ka_kshetra/test_g1a_candidate_sql.py -q -rs -p no:cacheprovider",
       "exe": "python -m pytest"
     },
     {
@@ -1329,5 +1331,7 @@
         }
       ]
     }
-  }
+  },
+  "merged_main_revision": "8c8c01b17961e81b28dd8bd773f23a00f38b4e8b",
+  "merged_main_note": "Main G1 selectors added to the original baseline for the merged-tree collection proof; original source_revision retains historical matrix and environment lookup."
 }
