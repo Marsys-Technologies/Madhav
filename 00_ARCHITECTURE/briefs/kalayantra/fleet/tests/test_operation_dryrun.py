@@ -68,12 +68,12 @@ def test_cli_requires_explicit_dry_run_and_rejects_extra_flags(capsys):
 
 
 def test_measuring_preparation_binds_the_real_rollback_path_without_overrides():
-    entry = json.loads((FLEET / "executor_ops.json").read_text())["ops"]["measuring_dispatch"]
-    surface = entry["staging_dry_run"]
+    entry = json.loads((FLEET / "executor_ops.json").read_text())["ops"]["measuring_dispatch_dryrun"]
+    surface = entry
     assert surface["enabled"] is False and surface["needs"] == "builder"
-    assert surface["script"] == "platform/scripts/dispatch_v5_small_test_job.py"
-    assert surface["fixed_args"] == ["--i-am-steward", "--after-settled-1", "--dry-run", "--run", "all_classes_full", "--classes", "all"]
-    assert surface["allowed_args"] == []
+    assert surface["script"] == "platform/scripts/dispatch_v5_measuring_job.py"
+    assert surface["fixed_args"] == ["--i-am-steward", "--after-settled-1", "--dry-run"]
+    assert surface["allowed_args"] == ["run", "classes"]
 
 
 def test_rollback_never_invents_the_retained_generation():

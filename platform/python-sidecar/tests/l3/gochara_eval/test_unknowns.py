@@ -248,6 +248,32 @@ def test_an_over_budget_query_raises_before_any_option_is_generated(monkeypatch)
     assert calls == [], f"{len(calls)} slot-option generators were created for an over-budget query"
 
 
+def test_one_excess_slot_distribution_is_refused_before_composition_work(monkeypatch):
+    """One unknown has two slots around a known value; budget one permits neither scan."""
+    calls = []
+    original = _unk._compositions
+    def compositions(*args):
+        calls.append(args)
+        return original(*args)
+    monkeypatch.setattr(_unk, "_compositions", compositions)
+    with pytest.raises(BudgetExceeded):
+        list(enumerate_structures([1.0], [True], 0, 1, budget=1))
+    assert calls == []
+
+
+def test_one_excess_planned_structure_is_refused_before_option_work(monkeypatch):
+    """Two unlabelled unknowns have tied/split options; reject both before allocating."""
+    calls = []
+    original = _unk._slot_options
+    def options(*args):
+        calls.append(args)
+        return original(*args)
+    monkeypatch.setattr(_unk, "_slot_options", options)
+    with pytest.raises(BudgetExceeded):
+        list(enumerate_structures([], [], 0, 2, budget=1))
+    assert calls == []
+
+
 @pytest.mark.parametrize("known,k_a,k_b", [([], 0, 40), ([], 20, 20), ([1.0, 2.0, 3.0], 0, 40), ([1.0, 2.0, 3.0], 10, 30),
                                            ([float(i) for i in range(30)], 5, 35)])
 def test_forty_unknowns_reach_the_conservative_fallback_fast(known, k_a, k_b):
