@@ -35,7 +35,8 @@ def test_prebuild_preserves_disabled_authority_operations_and_deferred_helper():
     ops = json.loads((ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json').read_text())['ops']
     for name in ('publish_head', 'rollback_head'):
         assert ops[name]['enabled'] is False
-        assert ops[name]['script'].startswith('TO_BE_SET_')
+        assert ops[name]['script'] == 'platform/python-sidecar/scripts/kala_gochara_cutover/authority_operation.py'
+        assert ops[name + '_dryrun']['enabled'] is False
     # The rejected P09 helper was deferred on main. Do not recreate the B1
     # readiness-only mutation path during this admission-only prebuild.
     assert not (ROOT / 'platform/python-sidecar/services/gochara_kernel/authority_head.py').exists()

@@ -307,7 +307,7 @@ def test_a_disabled_or_placeholder_entry_an_unauthorised_requester_or_disallowed
     for kind, entry in real.items():
         if entry["production"] and not entry["enabled"]:
             assert X.validate(dict(req, kind=kind, args={}), real, ALL_CAPS).startswith("kind %s is not enabled" % kind)
-    placeholder = dict(real, publish_head=dict(real["publish_head"], enabled=True))
+    placeholder = dict(real, publish_head=dict(real["publish_head"], enabled=True, script="TO_BE_SET_BY_J-6m"))
     assert X.validate(dict(req, kind="publish_head", args={}), placeholder, ALL_CAPS) == "operation script not yet reviewed/landed"
     for changes, reason in [
         ({"kind": "no_such_kind"}, "unknown kind"),
@@ -868,3 +868,39 @@ def test_failed_execution_is_receipted_and_cannot_be_retried_automatically(bench
     assert A.completion(bench.run, prepared, [], bench.observation(prepared))[0] == "refused"
     assert bench.X.validate(req, bench.X.load_table(), ALL_CAPS) == "idempotency key already used"
     assert bench.remote.submissions == [] and bench.X.FENCE.exists()
+
+
+@pytest.mark.parametrize('kind', ['publish_head', 'publish_head_dryrun', 'rollback_head', 'rollback_head_dryrun'])
+def test_j6mr_disabled_real_bindings_transport_expected_head_and_mode(bench, kind):
+    """Removing an adapter binding or head/source arg breaks real executor transport."""
+    table = real_table()
+    op = table[kind]
+    assert op['enabled'] is False
+    assert op['script'] == 'platform/python-sidecar/scripts/kala_gochara_cutover/authority_operation.py'
+    assert op['python_module'] == 'scripts.kala_gochara_cutover.authority_operation'
+    assert op['cwd'] == 'platform/python-sidecar'
+    assert op['needs'] == 'builder'
+    assert op['required_rows'] == ['2', '3', '7', '9', '11']
+    assert op['timeout_s'] == 120
+    base = kind.removesuffix('_dryrun')
+    assert op['fixed_args'] == ['--kind', base, '--dry-run' if kind.endswith('_dryrun') else '--execute']
+    args = {'generation': '5.0' if base == 'publish_head' else '3.0', 'expected-head': 'a' * 64}
+    if base == 'publish_head': args['manifest-id'] = '0d1f8a52-6f0e-4c7e-9a3b-5a2a2f6f9c11'
+    else: args.update({'source-operation': 'flip-fixture', 'source-sha256': 'b' * 64})
+    assert set(op['allowed_args']) == set(args)
+    req = {'operation_id': 'J6MR-fixture', 'kind': kind, 'args': args, 'reviewed_commit': MERGED,
+           'chart_id': CANONICAL_CHART, 'request_id': 'J6MR-request'}
+    observed = []
+    def capture(argv, cwd, env, timeout):
+        observed.append((argv, cwd, env, timeout))
+        return subprocess.CompletedProcess(argv, 0, '{}', '')
+    bench.git.scripts[op['script']] = '# fixture boundary; execution uses reviewed module\n'
+    bench.X.run_group = capture
+    assert bench.X.execute(req, op)[0] == 0
+    argv, cwd, env, timeout = observed[0]
+    assert argv[:3] == [bench.X.PY, '-m', op['python_module']]
+    assert argv[3:3+len(op['fixed_args'])] == op['fixed_args']
+    transported = dict(zip(argv[3+len(op['fixed_args']):][::2], argv[3+len(op['fixed_args']):][1::2]))
+    assert transported == {'--' + key: value for key, value in args.items()}
+    assert json.loads(env['KY_OPERATION_REQUEST']) == req
+    assert cwd.name == 'python-sidecar' and timeout == 120
