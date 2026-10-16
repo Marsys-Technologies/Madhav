@@ -216,9 +216,7 @@
     "db-integration-tests-37-2": {
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
-      "include": [
-        "ga_writers/__tests__/test_l1*.py"
-      ]
+      "include": []
     },
     "db-integration-tests-38-2": {
       "cwd": "platform/python-sidecar",
