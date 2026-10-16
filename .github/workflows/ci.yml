@@ -1143,9 +1143,11 @@ jobs:
         # horizons it refuses) and a registry INSERT of the pre-1304 row. These tests use the REAL writer as oracle.
         run: python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py -q
 
-      - name: Gochara v5 small-test teardown - registry shape, attribution, receipts, every refusal (unit)
+      - name: Gochara v5 small-test teardown and P01 production-reversion oracles (unit)
         # The teardown is the only way a small test is removed. These tests pin its registry check to the migration-1304 shape, its
         # delete orders to the writer's own, the receipt rule the Nirmana monitor depends on, and every refusal (no database).
+        # Mandatory J-1a oracles also reject bare abbreviated modes, stale capture-script identity, source/target name
+        # collisions, foreign tables, large objects and receipt replay BEFORE scratch database work (37-reversion proof).
         run: python -m pytest scripts/__tests__/test_teardown_v5_small_test.py scripts/__tests__/test_p01_smalltest_operations.py scripts/__tests__/test_backup_v5_small_test.py scripts/__tests__/test_w4_smalltest_safety.py -q -p no:cacheprovider
 
       - name: NTAP monitor — provision the dedicated migration 629 contract DB
