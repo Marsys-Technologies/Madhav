@@ -78,3 +78,48 @@ def test_completeness_uses_sealed_attestation_without_replaying_contacts(monkeyp
                                             (lo, hi), (vector, 'published', None), sealed_read=True)
     assert state == sr.COMPLETE and reasons == []
     assert basis['verification_source'] == 'seal_bound_immutable_attestation'
+
+
+def test_missing_sealed_attestation_never_falls_back_to_generation_replay(monkeypatch):
+    """A sealed read without approval evidence is unknown, not an online verifier."""
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+    lo = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    hi = datetime(2025, 2, 1, tzinfo=timezone.utc)
+    vector = {'stored_scope': 'stored_non_moon'}
+    horizon = SimpleNamespace(lower=lo, upper=hi)
+
+    class Evidence:
+        def __init__(self):
+            self.replays = 0
+
+        def execute(self, sql, params=()):
+            if 'ka_gochara_window_verification_violations(%s' in sql:
+                self.replays += 1
+                return Rows([])
+            if 'ka_gochara_search_input_snapshot' in sql:
+                return Rows([(vector, 'input')])
+            if 'SELECT horizon, input_digest' in sql:
+                return Rows([(horizon, 'input', 'inventory')])
+            if 'completed_horizon' in sql:
+                return Rows([(horizon,)])
+            if 'ka_gochara_search_interval' in sql:
+                return Rows([(0,)])
+            if 'ka_gochara_search_inventory_verification' in sql:
+                return Rows([(1,)])
+            if 'to_regprocedure' in sql:
+                return Rows([(True,)])
+            raise AssertionError(sql)
+
+    monkeypatch.setattr(sr, '_sealed_window_attestation', lambda *args: None)
+    conn = Evidence()
+    state, reasons, basis = sr._completeness(conn, 'chart', '5.0', 'marriage',
+                                            (lo, hi), (vector, 'published', None), sealed_read=True)
+    assert conn.replays == 0
+    assert state == 'evidence_unavailable'
+    assert [reason['code'] for reason in reasons] == ['sealed_window_attestation_unavailable']
+    assert 'window_verification' not in basis and 'verification_source' not in basis
+    # The ordinary constructor remains compatible for unsealed verification use.
+    state, reasons, basis = sr._completeness(conn, 'chart', '5.0', 'marriage',
+                                            (lo, hi), (vector, 'published', None))
+    assert conn.replays == 1 and state == sr.COMPLETE and reasons == []

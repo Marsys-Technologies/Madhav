@@ -22,6 +22,8 @@ Covered:
 * C44: W2a-recheck and W6-post sort BOTH sides LC_ALL=C before comm (non-C-ordered stub output on an
   unchanged capture must PASS), a sorted capture is hashed into the MANIFEST exactly once (shasum -c
   verifies), and the runner writes its own sha256 as RUNNER_SHA256 (the C43 evidence pack reads it);
+* A6: populated real W1/registry checks, original committed registry SQL pin, unique manifest names,
+  exact sorted capture bytes and per-process C locale under non-C caller locales;
 * one STOP per check -> exit 1 and 'STOP <id>' on stderr;
 * the read-only refusal: SHOW transaction_read_only != on -> exit 2;
 * the no-DSN guarantee: the stub's argv log carries no -d/--dbname/postgresql:// and the
@@ -35,6 +37,9 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import runpy
+import shutil
+import shlex
 import stat
 import subprocess
 import sys
@@ -462,6 +467,8 @@ def test_w2a_recheck_passes_when_the_db_order_is_not_the_c_order(tmp_path: Path)
     assert _manifest_verifies(tmp_path / "out"), \
         "MANIFEST.sha256 must verify (a sorted capture is hashed exactly once)"
 
+    _assert_capture_evidence(tmp_path / 'out', 'W2a-recheck.out', [W2A_ROW, W2A_ROW2])
+
 
 def test_w6_post_passes_when_the_db_order_is_not_the_c_order(tmp_path: Path) -> None:
     # C44: same collation hazard for the post-window trigger capture, compared BOTH directions.
@@ -473,6 +480,7 @@ def test_w6_post_passes_when_the_db_order_is_not_the_c_order(tmp_path: Path) -> 
     assert "PASS W6-post" in r.stdout
     assert "preservation empty both ways; 0 addition(s)" in r.stdout
     assert _manifest_verifies(tmp_path / "out")
+    _assert_capture_evidence(tmp_path / 'out', 'W6-post.out', [W6_ROW, LEGACY_ROW2])
 
 
 def test_runner_sha256_is_written_into_the_evidence(tmp_path: Path) -> None:
@@ -645,3 +653,123 @@ def test_runner_against_a_real_cluster(disposable_pg, tmp_path, monkeypatch) -> 
         capture_output=True, text=True, timeout=180)
     assert right.returncode == 1
     assert f"PASS SESSION-expect-db current_database()={cl.dbname}" in right.stdout
+
+
+# A6 packet oracles: execute production checks on populated real relations.
+# Keep the runner's setup, SQL, pin verifier and check functions byte-for-byte;
+# replace only the final phase dispatcher so unrelated sitting gates cannot mask a check.
+def _real_window_check(disposable_pg, monkeypatch, tmp_path, commands, extra_args=()):
+    point_psql_at(disposable_pg, monkeypatch)
+    prefix, dispatch = SCRIPT.read_text().rsplit('\ncase "$PHASE" in\n', 1)
+    assert 'run_check check_w1' in dispatch
+    runner = tmp_path / 'focused-runner.sh'
+    runner.write_text(prefix + '\n' + commands + '\n_finalize\n[ ! -s "$OUT/.stops" ]\n')
+    return subprocess.run(['bash', str(runner), 'pre-window', '--out', str(tmp_path / 'out'),
+                           *extra_args], cwd=REPO, capture_output=True, text=True, timeout=60)
+
+
+CANONICAL = '482012f1-710e-4a25-994a-93821f5871aa'
+OTHER = '10000000-0000-4000-8000-000000000001'
+LEGACY_TABLES = ('kala_gochara_publication', 'kala_gochara_coverage',
+                 'kala_gochara_contacts', 'kala_gochara_windows')
+
+
+@pytest.mark.parametrize('relation', LEGACY_TABLES)
+def test_real_w1_detects_other_chart_governed_rows(disposable_pg, monkeypatch, tmp_path, relation):
+    cl = disposable_pg
+    for table in LEGACY_TABLES:
+        cl.psql(f'DROP TABLE IF EXISTS {table} CASCADE; CREATE TABLE {table} (chart_id uuid, generation text)')
+        cl.psql(f"INSERT INTO {table} VALUES ('{CANONICAL}', '5.4'), ('{OTHER}', '4.1')")
+    # Canonical governed data and foreign legacy data are allowed.
+    clean = tmp_path / 'clean'
+    clean.mkdir()
+    proc = _real_window_check(cl, monkeypatch, clean, 'check_w1')
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert 'PASS W1-governed-rows ' in proc.stdout
+    # Exactly one foreign governed row in each of the four possible relations must STOP.
+    cl.psql(f"INSERT INTO {relation} VALUES ('{OTHER}', '5.4')")
+    dirty = tmp_path / 'dirty'
+    dirty.mkdir()
+    proc = _real_window_check(cl, monkeypatch, dirty, 'check_w1')
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert 'STOP W1-governed-rows ' in proc.stderr
+    assert f'{relation}:1row(s)' in proc.stderr
+    assert (dirty / 'out' / f'W1-{relation}.out').read_text() == f'{OTHER}\t5.4\n'
+
+
+def test_real_registry_writer_count_and_committed_pin(disposable_pg, monkeypatch, tmp_path):
+    cl = disposable_pg
+    # Reuse the existing catalog-shaped fixture, not any production writer or L0-L2 asset.
+    fixture = runpy.run_path(str(REPO / 'platform/python-sidecar/tests/test_migration_1243_inert_registry_rows.py'))
+    cl.psql('DROP TABLE IF EXISTS asset_registry CASCADE; DROP FUNCTION IF EXISTS nirmana_invalidate_registry_receipts() CASCADE;')
+    cl.psql(fixture['DDL'])
+    for table in ('asset_provenance_receipts', 'build_run_assets', 'asset_throughput'):
+        cl.psql(f'DROP TABLE IF EXISTS {table} CASCADE; CREATE TABLE {table} (asset_id text)')
+    cl.psql('CREATE TABLE IF NOT EXISTS nirmana_elevation_monitor_observations (observed_at timestamptz, status text)')
+    cl.psql((REPO / 'platform/migrations/1243_ka_gochara_inert_registry_rows.sql').read_text())
+    cl.psql("""INSERT INTO asset_registry
+        (asset_id, layer, sort_order, sanskrit_name, english_name, english_description, storage_type, scope, has_writer)
+        VALUES ('fixture_writer', 'kala', 1, 'x', 'x', 'x', 'postgres_table', 'per_chart', true),
+               ('fixture_non_writer', 'kala', 2, 'x', 'x', 'x', 'postgres_table', 'per_chart', false)""")
+    # Original archived SQL bytes, never re-pinned by this oracle. Its production verifier must accept them.
+    sql_dir = Path(__file__).parent / 'fixtures'
+    proc = _real_window_check(cl, monkeypatch, tmp_path, 'check_registry_1243',
+                             ('--sql-dir', str(sql_dir), '--expect-registry-rows', '4', '--expect-writers', '3'))
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert 'PASS R2-registry-1243 ' in proc.stdout
+    assert (tmp_path / 'out/R2-1243-writers.out').read_text() == '3\n'
+    assert (tmp_path / 'out/R2-1243-rowcount.out').read_text() == '4\n'
+    assert (tmp_path / 'out/R2-1243-fingerprints.out').read_text() == '2\n'
+
+
+def _assert_capture_evidence(out, capture, rows):
+    expected = ''.join(row + '\n' for row in sorted(rows, key=lambda row: row.encode()))
+    assert (out / capture).read_text() == expected
+    entries = [line.split(maxsplit=1) for line in (out / 'MANIFEST.sha256').read_text().splitlines()]
+    names = [entry[1] for entry in entries]
+    assert len(names) == len(set(names)), 'every evidence path must appear exactly once'
+    assert names.count(capture) == 1
+    entry = next(entry for entry in entries if entry[1] == capture)
+    assert entry[0] == hashlib.sha256(expected.encode()).hexdigest()
+
+
+@pytest.mark.parametrize('caller_locale', ['en_US.UTF-8', 'tr_TR.UTF-8'])
+def test_captures_and_comparisons_force_c_locale(tmp_path, monkeypatch, caller_locale):
+    # Observe the environment of the actual sort/comm processes and delegate to the real tools.
+    # The autouse fixture's C locale must not conceal caller-locale dependence.
+    monkeypatch.setenv('LC_ALL', caller_locale)
+    log = tmp_path / 'collation.log'
+    monkeypatch.setenv('COLLATION_LOG', str(log))
+    bindir = tmp_path / 'bin'
+    bindir.mkdir()
+    for tool in ('sort', 'comm'):
+        executable = shutil.which(tool)
+        assert executable
+        wrapper = bindir / tool
+        wrapper.write_text(f'#!/bin/sh\nprintf "{tool}:%s\\n" "$LC_ALL" >> "$COLLATION_LOG"\nexec "{executable}" "$@"\n')
+        wrapper.chmod(0o755)
+    mixed = [W2A_ROW, W2A_ROW2, W2A_ROW.replace('amjis_app', 'Z_owner'),
+             W2A_ROW.replace('amjis_app', 'a_owner'), W2A_ROW.replace('amjis_app', 'ä_owner')]
+    proc = run_script(tmp_path, 'post-window', baseline_rows=[W6_ROW, LEGACY_ROW2],
+                      overrides={'tbl_update': '\n'.join(reversed(mixed)),
+                                 'pg_get_triggerdef': f'{LEGACY_ROW2}\n{W6_ROW}'},
+                      w2a_baseline_rows=mixed)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    invocations = log.read_text().splitlines()
+    assert 'sort:C' in invocations and 'comm:C' in invocations
+    assert all(line in ('sort:C', 'comm:C') for line in invocations), invocations
+    _assert_capture_evidence(tmp_path / 'out', 'W2a-recheck.out', mixed)
+    _assert_capture_evidence(tmp_path / 'out', 'W6-post.out', [W6_ROW, LEGACY_ROW2])
+    assert _manifest_verifies(tmp_path / 'out')
+
+
+def test_real_sorted_capture_evidence_is_c_ordered_and_unique(disposable_pg, monkeypatch, tmp_path):
+    monkeypatch.setenv('LC_ALL', 'en_US.UTF-8')
+    # Deliberately return PostgreSQL rows in reverse byte order. Evidence must contain
+    # the C-sorted bytes, once, regardless of the caller's collation.
+    sql = "SELECT value FROM (VALUES ('z'), ('A'), ('ä')) AS t(value) ORDER BY value COLLATE \"C\" DESC"
+    proc = _real_window_check(disposable_pg, monkeypatch, tmp_path,
+                             f'run_sql_sorted capture {shlex.quote(sql)} > /dev/null')
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    _assert_capture_evidence(tmp_path / 'out', 'capture.out', ['A', 'z', 'ä'])
+    assert _manifest_verifies(tmp_path / 'out')
