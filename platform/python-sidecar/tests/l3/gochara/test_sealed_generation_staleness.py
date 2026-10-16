@@ -126,6 +126,12 @@ def test_completeness_violation_exit4(capsys) -> None:
 def test_snapshot_read_binds_both_requested_chart_and_generation(chart, generation):
     """s05: a digest from a different generation cannot establish freshness."""
     def scoped(sql, params):
+        # A matching seal/manifest is checked before reading its input snapshot.
+        if "FROM public.ka_gochara_generation_seal" in sql:
+            assert params == [chart, generation]
+            assert "p.manifest_id = s.manifest_id" in sql
+            assert "p.chart_id = s.chart_id" in sql and "p.generation = s.generation" in sql
+            return [(True,)]
         if "FROM public.ka_gochara_search_input_snapshot" in sql:
             assert " ".join(sql.split()).endswith("WHERE chart_id = %s AND generation = %s")
             assert params == [chart, generation]
