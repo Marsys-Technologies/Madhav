@@ -47,9 +47,9 @@ describe('ka_gochara_v5 registry-row conformance (ORCHESTRATOR_CONVERGENCE_CLOSE
     expect(typeof row().sort_order).toBe('number')
   })
 
-  // §5 "populated depends_on — real edges, not []": CLOSED by migration 1304 (PR 3101), whose seed row now says what the writer truly reads.
-  it('declares real depends_on edges (closed by migration 1304)', () => {
-    expect(row().depends_on).toEqual(['ga_positions', 'ga_dashas'])
+  // K8-REG / migration 1387 completes migration 1304's edges with the direct rule-registry read.
+  it('declares real depends_on edges (completed by K8-REG migration 1387)', () => {
+    expect(row().depends_on).toEqual(['ga_positions', 'ga_dashas', 'bg_transit_rules'])
   })
 
   // §5 "has_substeps=true if heavy": CLOSED by migration 1304 (PR 3101). The writer's class sets `has_substeps = True` and plans

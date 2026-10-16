@@ -306,7 +306,7 @@ def test_the_set_of_migrations_that_mention_depends_on_is_the_pinned_set_in_both
     assert PIN_FILE.read_text(encoding="utf-8") == R.migration_pin_text(found)               # the pin is what the tool writes
 
 
-def test_the_seed_and_the_input_differ_on_exactly_twelve_assets_in_exactly_these_edges():
+def test_the_seed_and_the_input_differ_on_exactly_sixteen_assets_in_exactly_these_edges():
     seed = {r["asset_id"]: set(r["depends_on"]) for r in G.parse_seed_text((REPO / "platform/scripts/seed/asset_registry_seed.ts").read_text(encoding="utf-8"))}
     diff = {r["asset_id"]: (sorted(set(r["depends_on"]) - seed[r["asset_id"]]), sorted(seed[r["asset_id"]] - set(r["depends_on"])))
             for r in ROWS if r["active"] and set(r["depends_on"]) != seed[r["asset_id"]]}
@@ -323,12 +323,18 @@ def test_the_seed_and_the_input_differ_on_exactly_twelve_assets_in_exactly_these
         # migration 1333's edge: the seed carries it (and the ga_fact_identity row, see R.POST_DRAFT_SEED_ACTIVE), the draft input does not
         "bo_pratijna": ([], ["ga_fact_identity"]),
         "bo_nakshatra_semantic": (["ga_structural"], []),
-        "ka_kshetra": (["ka_vedha_gochara"], []),
+        # K8-REG / migration 1387 corrects direct Kala reads in the seed.
+        # The historical active draft stays at its pre-1210 + 1210 basis.
+        "ka_avadhi": (["bg_ghatana", "bo_pratijna"], ["ga_positions", "ka_dasha_kala", "ka_yojaka"]),
+        "ka_gochara": ([], ["bg_ghatana", "bg_gochara_arcs", "bg_reference"]),
+        "ka_gochara_resonance": ([], ["bg_ghatana", "bg_reference", "ga_dashas", "ga_positions", "ga_yoga", "ka_yojaka"]),
+        "ka_kala_darshana": ([], ["ka_gochara_v3_century_materialize"]),
+        "ka_kshetra": (["ka_vedha_gochara"], ["bg_ghatana", "bo_bimba", "bo_karanajala", "bo_laksana", "ka_gochara", "ka_gochara_v3_century_materialize"]),
         "ka_muhurta_seva": ([], ["ka_graha_sancara"]),
-        "ka_sangam": (["ka_vedha_gochara"], []),
-        "ka_vighnakara": (["bg_dignity_reference", "ka_yojaka"], ["ka_gochara"]),
+        "ka_vedha_gochara": (["bg_sarvatobhadra_grid"], []),
+        "ka_vighnakara": ([], ["ka_gochara"]),
         # K2-1b migration 1339 adds the L1 positions and L0 yoga reads; the frozen draft predates them.
-        "ka_yojaka": ([], ["bg_yogas", "ga_positions"]),
+        "ka_yojaka": ([], ["bg_text_index", "bg_yogas", "bo_karanajala", "ga_positions"]),
     }
 
 
