@@ -23,7 +23,7 @@ export function runWorkflowShell(run: string, commands: Record<string, string>, 
     // Deliberately omit ambient credentials and cloud/Git configuration.
     const result = spawnSync('/bin/bash', ['--noprofile', '--norc', '-e', '-o', 'pipefail', '-c', run], {
       cwd: dir,
-      env: { PATH: bin, J56_SHIM_LOG: log, ...env },
+      env: { NODE_ENV: 'test', PATH: bin, J56_SHIM_LOG: log, ...env },
       encoding: 'utf8', timeout: 10_000,
     })
     if (result.error) throw result.error
