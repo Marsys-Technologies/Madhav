@@ -10,8 +10,10 @@ from types import SimpleNamespace
 
 import psycopg
 import pytest
+from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from pipeline.orchestrator.asset_runner import _data_rows_present
 from pipeline.orchestrator.writers.ka_taranga import KaTarangaWriter
 
 PLATFORM = Path(__file__).resolve().parents[5]
@@ -165,15 +167,26 @@ def test_invalid_source_is_rejected_before_replacement(db,invalid):
 def test_count_and_integrity_are_chart_build_bound_after_completion(db):
     snapshot(db); segment(db)
     KaTarangaWriter().run(context(db))
-    count, integrity = db.execute("SELECT count_sql,integrity_check_sql FROM asset_registry WHERE asset_id='ka_taranga'").fetchone()
-    assert db.execute(count.replace('$1','%s'),(CHART,)*count.count('$1')).fetchone()[0] == 2
-    assert db.execute(count.replace('$1','%s'),(OTHER,)*count.count('$1')).fetchone()[0] == 0
+    assert len(rows(db)) == 2
+    with db.cursor(row_factory=dict_row) as cur:
+        assert _data_rows_present(db, cur, 'ka_taranga', CHART) == 2
+        assert _data_rows_present(db, cur, 'ka_taranga', OTHER) == 0
+    integrity = db.execute("SELECT integrity_check_sql FROM asset_registry WHERE asset_id='ka_taranga'").fetchone()[0]
     assert db.execute(integrity).fetchone()[0] is True
     db.execute("SELECT set_config('kala.integrity_build_id',%s,true)",(OTHER,))
     assert db.execute(integrity).fetchone()[0] is False
     db.execute("SELECT set_config('kala.integrity_build_id',%s,true)",(BUILD,))
     db.execute("UPDATE kala_taranga_candidate SET source_refs='{}'")
     assert db.execute(integrity).fetchone()[0] is False
+
+
+def test_real_count_consumer_keeps_candidate_precedence_and_legacy_fallback(db):
+    with db.cursor(row_factory=dict_row) as cur:
+        # A bound but empty candidate takes precedence over the one legacy row.
+        assert _data_rows_present(db, cur, 'ka_taranga', CHART) == 0
+        db.execute('DELETE FROM kala_layer_candidate WHERE chart_id=%s', (CHART,))
+        assert _data_rows_present(db, cur, 'ka_taranga', CHART) == 1
+        assert _data_rows_present(db, cur, 'ka_taranga', OTHER) == 0
 
 
 def test_storage_refuses_published_mutation_even_outside_writer(db):
