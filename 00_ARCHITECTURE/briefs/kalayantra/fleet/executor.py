@@ -630,7 +630,13 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
         tmp = TMP / f"{oid}.{pathlib.Path(script).name}"; tmp.write_text(src.stdout); tmp.chmod(0o700)
         argv = ([PY, str(tmp)] if script.endswith(".py") else ["bash", str(tmp)]) + args
         try:
-            p = run_group(argv, KY_ROOT, env, timeout)
+            if req["kind"] == "local_schema_seed":
+                # Own scratch per seed operation; never inherit the caller's path.
+                with tempfile.TemporaryDirectory(prefix=f"op-{oid}-", dir=EXEC.resolve()) as scratch:
+                    env["KY_SCRATCH"] = scratch
+                    p = run_group(argv, KY_ROOT, env, timeout)
+            else:
+                p = run_group(argv, KY_ROOT, env, timeout)
         finally:
             tmp.unlink(missing_ok=True)
         return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
