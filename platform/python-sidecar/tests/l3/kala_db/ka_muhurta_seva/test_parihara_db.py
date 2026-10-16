@@ -42,8 +42,25 @@ def test_scoped_read_only_source_roundtrip_and_unknown_readings(db_dsn,request_d
         assert [r["source_verse"] for r in out["rules"]]==[88,88,88]
         assert ev.load_rules(conn,"business",["venus_sixth"])==[]
         assert ev.load_rules(conn,"marriage",["venus_sixth'); DROP TABLE bg_parihara_rules; --"])==[]
-        assert conn.execute("SELECT count(*) AS n FROM bg_parihara_rules").fetchone()["n"]==5
+        assert conn.execute("SELECT count(*) AS n FROM bg_parihara_rules").fetchone()["n"]==6
         with pytest.raises(psycopg.errors.ReadOnlySqlTransaction): conn.execute("DELETE FROM bg_parihara_rules")
+
+
+def test_mars_v88_disagreement_survives_read_only_source_roundtrip(db_dsn,request_data,sky):
+    """NB-02: neither source reading may disappear between storage and evaluation."""
+    sky(longitudes={"Mars":220.})
+    request_data["dosas_present"]=["mars_eighth"]
+    with psycopg.connect(db_dsn,row_factory=dict_row) as conn:
+        conn.read_only=True
+        rows=ev.load_rules(conn,"marriage",["mars_eighth"])
+        out=ev.evaluate_candidate(**request_data,rules=rows)
+    assert out["dosas"]==[{"dosha_canonical_id":"mars_eighth","by_rules":[201,206],
+                           "state":"cancellation_unassessed","reason":"readings_disagree"}]
+    assert [(r["rule_id"],r["result"],r["extraction_context"],r["source_chunk_id"])
+            for r in out["rules"]]==[
+        (201,"applies","tika_commentary","muhurta_chintamani_pg0116_c01"),
+        (206,"does_not_apply","mula_reconstructed","muhurta_chintamani_pg0115_c02"),
+    ]
 
 
 def test_real_route_connection_is_read_only(monkeypatch,db_dsn):
