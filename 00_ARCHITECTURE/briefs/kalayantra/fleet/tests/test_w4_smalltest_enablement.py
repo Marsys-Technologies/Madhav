@@ -24,6 +24,7 @@ W4 = {
     "smalltest_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], []),
 }
 DISABLED = {"measuring_dispatch", "verification_job", "century_dispatch", "publish_head", "rollback_head",
+            "measuring_dispatch_dryrun", "measuring_teardown", "measuring_teardown_dryrun",
             "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"}
 
 

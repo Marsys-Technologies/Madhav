@@ -79,7 +79,7 @@ def _write_claim(path, value, *, exclusive=False):
         os.close(directory)
 
 
-def launch_staged(*, run_id, expected_manifest, connection, claim_dir, launcher=cloud_launcher):
+def launch_staged(*, run_id, expected_manifest, connection, claim_dir, launcher=cloud_launcher, launch_schema="ky.smalltest_launch/1"):
     """Caller owns transaction; hold run/asset row locks until launch returns.
 
     `launcher(run_id, timeout_s)` is injectable. All identity and age checks run
@@ -110,7 +110,7 @@ def launch_staged(*, run_id, expected_manifest, connection, claim_dir, launcher=
     claim_dir = Path(claim_dir)
     claim_dir.mkdir(parents=True, exist_ok=True)
     path = claim_dir / f"{run_id}.json"
-    record = dict(schema="ky.smalltest_launch/1", status="LAUNCH_PENDING", run_id=run_id, chart_id=CHART,
+    record = dict(schema=launch_schema, status="LAUNCH_PENDING", run_id=run_id, chart_id=CHART,
                   asset_id=ASSET, plan_manifest_digest=digest, created_at=row["created_at"].isoformat(),
                   execute_by=(row["created_at"] + dt.timedelta(minutes=10)).isoformat(), execution_name=None)
     _write_claim(path, record, exclusive=True)
@@ -124,7 +124,7 @@ def launch_staged(*, run_id, expected_manifest, connection, claim_dir, launcher=
     return record
 
 
-def run(argv=None, *, dispatcher=None, connect=None, launcher=cloud_launcher, claim_dir=None):
+def run(argv=None, *, dispatcher=None, connect=None, launcher=cloud_launcher, claim_dir=None, launch_schema="ky.smalltest_launch/1"):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", required=True, choices=("all_classes_1y", "one_class_full", "all_classes_full"))
     parser.add_argument("--classes", default="all")
@@ -160,7 +160,7 @@ def run(argv=None, *, dispatcher=None, connect=None, launcher=cloud_launcher, cl
         manifest, _ = dispatcher.build_small_test_manifest(candidate=candidate, slice_marker=marker)
         result = launch_staged(run_id=run_id, expected_manifest=manifest, connection=conn,
                                claim_dir=claim_dir or Path(os.environ["KY_ROOT"]) / "run/ops/smalltest_launch",
-                               launcher=launcher)
+                               launcher=launcher, launch_schema=launch_schema)
         print(canonical(result), flush=True)
         return result
     finally:
