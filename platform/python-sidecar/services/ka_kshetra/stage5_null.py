@@ -16,7 +16,8 @@ it is a MUCH harder opponent than the usual "compare against a random chart" —
 the replicate keeps every advantage the model has except the one under test.
 
 ── FULLY DETERMINISTIC: NO RNG ANYWHERE ────────────────────────────────────
-The shift grid is δ_r = r·(H/R) for r = 1…R — COMPUTED, not drawn. Two reasons,
+The shift grid is δ_r = r·(H/R) for r = 1…R-1 — COMPUTED, not drawn. R includes
+the observation, counted once; δ=H would repeat it. Two reasons,
 both binding:
   • hash-replay (§7.4) must hold, and a seeded PRNG ties the field hash to
     library-internal generator behaviour that can change across versions;
@@ -24,12 +25,11 @@ both binding:
     can ever have chosen one that flattered the result.
 
 ── THE p-VALUE AND ITS RESOLUTION ──────────────────────────────────────────
-    null_p          = ( 1 + #{ r : M_r(L*) ≥ Λ_obs } ) / ( R + 1 )
-    null_resolution = 1 / (R + 1) = 1/257 ≈ 0.00389
-The +1 correction is the standard one and it is why p is never 0: with 256
-replicates you have not measured a probability smaller than 1/257, and reporting
-0 would claim a precision the replicate count cannot support (LAW ZERO). Both
-numbers are served, so a consumer can never read p = 0.0039 as p = 0.
+    null_p          = ( 1 + #{ r : M_r(L*) ≥ Λ_obs } ) / R
+    null_resolution = 1 / R = 1/1024
+The +1 correction counts the observation once, alongside 1023 non-identity
+shifts. Reporting 0 would claim a precision the experiment cannot support
+(LAW ZERO). Both numbers are served.
 
 L* is the SMALLEST duration bucket ≥ the window's own duration. That direction is
 deliberate and conservative: a longer matched filter can only ACCUMULATE MORE
@@ -37,17 +37,17 @@ hazard, so M_r(L*) ≥ M_r(L_W) and the resulting p is an UPPER BOUND on the tru
 permutation p — it can overstate a window's ordinariness, never its significance.
 
 ── q_e IS A DEFINITION, NOT A TUNING KNOB ──────────────────────────────────
-    q_e = quantile_0.95 over { λ^{(r)}_e(t_g) : r = 1…R, t_g on the 1-day grid }
+    q_e = quantile_0.95 over { λ^{(r)}_e(t_g) : r = 1…R-1, t_g on the 1-day grid }
 so "a window" means "a stretch where this chart's own hazard exceeds what its own
 shifted sky would produce 95% of the time". Nobody picks a threshold; the chart's
 own null computes it, and §5.2's window construction reads it.
 
 ── COST (the design's own dominant-cost warning, §5.5) ─────────────────────
-R = 256 rebuilds per class is the heaviest thing in W2. The replicate reuses the
+R-1 = 1023 rebuilds per class is the heaviest thing in W2. The replicate reuses the
 SAME clock, promise and baseline terms and re-indexes ONLY the stage-1 envelopes,
 which is where the order-of-magnitude saving comes from. Substep grain is
-(stage5, event_class, replicate_block_of_32) — 8 substeps per class. If a substep
-approaches `writer_timeout_seconds`, REDUCE THE BLOCK TO 16; do not raise the
+(stage5, event_class, replicate_block_of_16) — 64 substeps per class. If a substep
+approaches `writer_timeout_seconds`, reduce the block; do not raise the
 timeout (the `ka_gochara_sweep` D-5 lesson, verbatim).
 
 Authority: KALA_W2_FIELD_DESIGN_v1_0.md §5.5, §5.6.
@@ -56,18 +56,22 @@ from __future__ import annotations
 
 import heapq
 import math
-from dataclasses import dataclass, field
 from typing import Iterable, Mapping, Optional, Sequence
 
+from services.kala_core.measure.field import (
+    QuantilePool, select_bucket, null_p, null_resolution as _shared_null_resolution, null_exceeding,
+    sliding_window_max,
+)
 from services.ka_kshetra import integrator
-from services.ka_kshetra.contracts import Segment
+from services.ka_kshetra.contracts import NullResult, Segment
 from services.ka_kshetra.stage4_field import EnvelopeIndex, FieldEvaluator
 
 #: §5.5's ten duration buckets, in days — the matched-filter scales.
 DURATION_BUCKETS: tuple[int, ...] = (1, 3, 7, 15, 30, 60, 90, 180, 365, 730)
 
-#: §5.5's replicate count. Fixes the p-value resolution at 1/257.
-DEFAULT_REPLICATES: int = 256
+#: SM-R-8 / F-01: the pinned experiment has 1023 non-identity shifts plus the
+#: observation. R is the denominator, matching contracts.NullResult and DHARA.
+DEFAULT_REPLICATES: int = 1024
 
 #: §5.5's substep grain. Reduce to 16 if a substep nears the writer timeout —
 #: never raise the timeout.
@@ -87,7 +91,7 @@ Q_QUANTILE: float = 0.95
 #: honest answer is p = 1 (nothing is exceptional). But Λ_obs is computed by one
 #: summation order and M_r by another (a running daily cumulative), so the two
 #: can differ in the last ulp and an exact `>=` would score 0/R exceedances and
-#: report p = 1/257 — a maximally significant result on a field that carries no
+#: report p at its minimum resolution on a field that carries no
 #: information whatsoever. The tolerance is a millionth of the smallest
 #: meaningful difference and it always errs toward the null.
 _EXCEEDANCE_REL_TOL: float = 1e-12
@@ -101,109 +105,29 @@ PINNED_AYANAMSHAS: tuple[str, ...] = (
 # ── the deterministic shift grid ─────────────────────────────────────────────
 
 def shift_grid(horizon_days: float, replicates: int) -> list[float]:
-    """δ_r = r·(H/R) for r = 1…R. Computed, never drawn (see module docstring)."""
-    if replicates < 1:
-        raise ValueError(f'replicates must be ≥ 1, got {replicates!r}')
+    """δ_r = r·(H/R), r = 1…R-1; exclude the identity (F-01)."""
+    if replicates < 2:
+        raise ValueError(f'replicates must be ≥ 2, got {replicates!r}')
     if not (horizon_days > 0):
         raise ValueError(f'horizon_days must be > 0, got {horizon_days!r}')
     step = horizon_days / replicates
-    return [r * step for r in range(1, replicates + 1)]
+    return [r * step for r in range(1, replicates)]
 
 
-def select_bucket(duration_days: float,
-                  buckets: Sequence[int] = DURATION_BUCKETS) -> int:
-    """L* = the smallest bucket ≥ the window's duration.
-
-    Conservative by construction: a longer filter accumulates at least as much,
-    so the p-value it yields is an UPPER bound. A window longer than the largest
-    bucket clamps to that bucket — still the closest available filter, still in
-    the conservative direction.
-    """
-    for b in buckets:
-        if b >= duration_days:
-            return b
-    return max(buckets)
-
-
-# ── the permutation p-value ──────────────────────────────────────────────────
-
-def null_p(max_stats: Sequence[float], lambda_obs: float) -> Optional[float]:
-    """(1 + #{r : M_r ≥ Λ_obs}) / (R + 1), with the standard +1 correction.
-
-    Returns None — an honest not-computed — when no replicates are available.
-    Never 0.0, never a fabricated small number.
-    """
-    stats = list(max_stats)
-    if not stats:
-        return None
-    threshold = lambda_obs * (1.0 - _EXCEEDANCE_REL_TOL)
-    exceed = sum(1 for m in stats if m >= threshold)
-    return (1 + exceed) / (len(stats) + 1)
+def null_configuration(horizon_days: float, replicates: int) -> dict:
+    """Snapshot disclosure from the same R and schedule used by execution."""
+    grid = shift_grid(horizon_days, replicates)
+    return {
+        'replicates': replicates, 'shift_count': len(grid),
+        'denominator': replicates, 'resolution': null_resolution(replicates),
+        'shift_grid_step': horizon_days / replicates,
+        'schedule': 'delta_r=r*H/R; r=1..R-1; observation counted once',
+    }
 
 
 def null_resolution(replicates: int) -> float:
-    """1/(R+1). Served ALONGSIDE null_p so p = 1/257 is never read as p = 0."""
-    return 1.0 / (replicates + 1)
-
-
-def null_exceeding(p: Optional[float], alpha: float = ALPHA) -> Optional[bool]:
-    return None if p is None else bool(p <= alpha)
-
-
-# ── q_e: an exact streaming quantile with bounded memory ─────────────────────
-
-class QuantilePool:
-    """The EXACT q-quantile of a pooled sample, streamed with bounded memory.
-
-    q_e pools R × N values (256 × 36 526 ≈ 9.3 M floats ≈ 75 MB), which is more
-    than a build substep should hold and more than is needed: the 0.95 quantile
-    is the k-th largest value with k = n − ceil(0.95·n) + 1, so a bounded
-    min-heap of the top k is sufficient and EXACT. No sketching, no t-digest, no
-    approximation — the number served is the number the definition names.
-
-    Bounded memory matters here for a specific reason: the alternative
-    (subsampling the grid, or approximating the quantile) would make the served
-    `q_threshold` a DIFFERENT statistic from the one §5.5 defines, and every
-    window boundary in the product hangs off it.
-    """
-
-    def __init__(self, quantile: float = Q_QUANTILE, expected_total: int = 0):
-        if not (0.0 < quantile < 1.0):
-            raise ValueError(f'quantile must be in (0,1), got {quantile!r}')
-        self.quantile = quantile
-        self._n = 0
-        self._heap: list[float] = []
-        self._capacity = self._capacity_for(max(expected_total, 1))
-
-    def _capacity_for(self, n: int) -> int:
-        return max(1, n - math.ceil(self.quantile * n) + 1)
-
-    def add(self, values: Iterable[float]) -> None:
-        for v in values:
-            v = float(v)
-            self._n += 1
-            need = self._capacity_for(self._n)
-            if need > self._capacity:
-                self._capacity = need
-            if len(self._heap) < self._capacity:
-                heapq.heappush(self._heap, v)
-            elif v > self._heap[0]:
-                heapq.heapreplace(self._heap, v)
-
-    def value(self) -> Optional[float]:
-        """The exact q-quantile of everything added, or None if nothing was.
-
-        Uses the "k-th smallest of the sorted sample at rank ceil(q·n)"
-        convention — the same one `sorted(sample)[ceil(q*n) - 1]` gives, so the
-        pooled value is reproducible by anyone holding the raw sample.
-        """
-        if self._n == 0:
-            return None
-        rank_from_top = self._n - math.ceil(self.quantile * self._n) + 1
-        ordered = sorted(self._heap)
-        if rank_from_top > len(ordered):
-            return ordered[0]
-        return ordered[len(ordered) - rank_from_top]
+    """1/R; the sampled contract counts the observation in R."""
+    return _shared_null_resolution(replicates - 1)
 
 
 # ── replicate machinery ──────────────────────────────────────────────────────
@@ -293,19 +217,6 @@ def cumulative_on_grid(
     return cum
 
 
-def sliding_window_max(cum: Sequence[float], bucket_days: int) -> float:
-    """M(L) = max over t on the grid of Λ(t, t+L) — a matched filter at scale L.
-
-    A bucket longer than the whole horizon degenerates to the total integral,
-    which is the honest answer (the longest available filter is the whole span)
-    rather than an error or a skipped bucket.
-    """
-    n = len(cum) - 1
-    if bucket_days >= n:
-        return cum[-1] - cum[0]
-    return max(cum[k + bucket_days] - cum[k] for k in range(n - bucket_days + 1))
-
-
 def replicate_stats(
     ev: FieldEvaluator,
     delta: float,
@@ -320,16 +231,6 @@ def replicate_stats(
         segments = _null_build_segments(replicate_evaluator(ev, delta))
     cum = cumulative_on_grid(segments, horizon_days, grid_step)
     return {int(b): sliding_window_max(cum, int(b)) for b in buckets}
-
-
-@dataclass
-class NullResult:
-    """Everything stage 5 needs to persist and to threshold windows with."""
-    replicates: int
-    horizon_days: float
-    shift_grid_step: float
-    q_threshold: Optional[float]
-    max_stats: dict[int, list[float]] = field(default_factory=dict)
 
 
 def _lambda_grid_fast(
@@ -362,10 +263,8 @@ def _lambda_grid_fast(
     return vals
 
 
-# DEPRECATED (2026-08-14, P0.b): dead code — ENGINE_VERSION='analytic' permanently
-# removes all callers of run_null / NullAccumulator (the sampled-path block
-# substep machinery).  Slated for removal in a post-P-B cleanup wave.
-# Do NOT call these methods.
+# G1 candidates use this complete reference path until compact/null parity and
+# performance are independently accepted. The experiment stays pinned to F-01.
 def run_null(
     ev: FieldEvaluator,
     horizon_days: float,
@@ -397,7 +296,7 @@ def run_null(
                                          grid_step=grid_step)
     for r in range(lo, hi):
         rep = replicate_evaluator(ev, grid[r])
-        segs = _null_build_segments(rep)  # L1g: coarse breakpoints (MD/AD/PD only)
+        segs = _null_build_segments(rep)
         acc.add_replicate(
             index=r,
             stats=replicate_stats(rep, 0.0, horizon_days, buckets=buckets,
@@ -418,7 +317,7 @@ class NullAccumulator:
         self.buckets = tuple(int(b) for b in buckets)
         self.grid_step = grid_step
         n_grid = int(round(horizon_days / grid_step))
-        self._pool = QuantilePool(quantile=quantile, expected_total=replicates * n_grid)
+        self._pool = QuantilePool(quantile=quantile, expected_total=(replicates - 1) * n_grid)
         self._stats: dict[int, dict[int, float]] = {b: {} for b in self.buckets}
 
     def add_replicate(self, index: int, stats: Mapping[int, float],
@@ -434,6 +333,7 @@ class NullAccumulator:
     def finalize(self) -> NullResult:
         return NullResult(
             replicates=self.replicates,
+            shift_count=self.replicates - 1,
             horizon_days=self.horizon_days,
             shift_grid_step=self.horizon_days / self.replicates,
             q_threshold=self._pool.value(),
@@ -443,6 +343,18 @@ class NullAccumulator:
             max_stats={b: [self._stats[b][i] for i in sorted(self._stats[b])]
                        for b in self.buckets},
         )
+
+
+def run_field_block(ev, accumulator, *, start, end):
+    """G1 candidate experiment: geometry retained, measurement owned by core."""
+    from services.kala_core.measure.field import collect_field_block
+    def draw(delta):
+        segments = _null_build_segments(replicate_evaluator(ev, delta))
+        horizon = accumulator.preparation.horizon_days
+        return (replicate_stats(ev, 0., horizon, buckets=accumulator.buckets,
+                                segments=segments),
+                _lambda_grid_fast(segments, horizon))
+    collect_field_block(accumulator, draw, start=start, end=end)
 
 
 # ── §5.6 the robustness vector ───────────────────────────────────────────────
@@ -555,7 +467,7 @@ def adrishta_residual(
 __all__ = [
     'DURATION_BUCKETS', 'DEFAULT_REPLICATES', 'DEFAULT_BLOCK_SIZE',
     'ALPHA', 'Q_QUANTILE', 'PINNED_AYANAMSHAS',
-    'shift_grid', 'select_bucket',
+    'shift_grid', 'null_configuration', 'select_bucket',
     'null_p', 'null_resolution', 'null_exceeding',
     'QuantilePool', 'NullResult', 'NullAccumulator',
     'replicate_evaluator', 'cumulative_on_grid', 'sliding_window_max',

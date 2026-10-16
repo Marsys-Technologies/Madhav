@@ -1,11 +1,12 @@
 ---
 artifact: V5_SMALLTEST_TEARDOWN_RUNBOOK
-version: "1.4"
+version: "1.5"
 status: DRAFT for steward review — nothing in it has been executed against any database
 date: 2026-10-16
 author: Stream A (Exec A), answering Codex rounds 2 and 3 and Stream B on PR 3098 (steward TEARDOWN-CODEX-2, TEARDOWN-B-ADD)
 scope: How the small-test teardown (`platform/scripts/teardown_v5_small_test_job.py`) is run, when it refuses and what the steward does then, and which database role it needs.
 changelog:
+  - "1.5 (2026-10-16, P07 main integration): retain W4-SAFETY governed scope, rehearsal and independent absence requirements; add P07 timeout detection and pre-teardown process-quiescence evidence."
   - "1.4 (2026-10-16, W4-SAFETY-01..03): teardown is limited to one accepted staged launch and its exact candidate; no pruned-run reconstruction. Real deletion requires its own same-row-set rollback proof; completion requires a separate accepted absence readback. Bounded table locks require UPDATE on cascade children. No production operation or grant change is authorized by this runbook."
   - "1.3 (2026-10-15, Wave 4 P01): measured absence proof covers every deleted scope and four cascade children before commit; dry-run output labels the rolled-back rehearsal. SELECT on cascade children is now required; no grant or production operation is performed here."
   - "1.2 (2026-10-05): §6 added from steward TIMEOUT-RULING: the registry cap is 28800 s (8 h) for the small test and the measuring build, what a fired cap leaves behind, the misleading BLOCKED text it writes, and the pre-dispatch check against the Cloud Run task timeout."
@@ -20,6 +21,8 @@ The cockpit watchdog deletes terminal build runs (completed, failed, stopped) 90
 
 ## 2. Connect DIRECTLY, then run the usual sequence
 **Use a DIRECT connection to the database's own host and port. Never a pooler** (PgBouncer or any transaction-mode pooler). The orchestrator exclusion lock is a SESSION advisory lock; through a transaction-mode pooler it silently holds nothing, and the script's other protections lean on it. The script reads `pg_backend_pid()` in three separate transactions and refuses if the backend changes, and checks that the lock is held by the backend running the transaction; that catches a busy pooler but cannot prove a quiet one is absent, so the direct connection is a requirement of this runbook, not only of the code.
+
+Before either the dry run or execution, satisfy and record the process-quiescence gate in §6. Terminal database state and acquired advisory locks do not prove the writer has exited; the teardown script does not collect this external evidence.
 
 The Wave 4 operations run through the governed executor, under the existing owner authorization `OWNER-AUTH-TEARDOWN-20261015`. A direct invocation with only DATABASE_URL and steward flags now refuses: the executor supplies the independently accepted complete request in `KY_OPERATION_REQUEST`.
 
@@ -84,9 +87,15 @@ It proves the locks can be taken (on a direct connection), every refusal check p
 ## 6. If the writer timeout fires (operating note; steward TIMEOUT-RULING, 2026-10-05)
 **The cap.** The migration-1304 registry row carries `writer_timeout_seconds = 28800` (8 h), one value for the small test and the measuring build, so no second registry migration is needed. The orchestrator applies it to the WHOLE asset as wall-clock from the asset's dispatch (not per substep), and the registry value wins over the job's `WRITER_TIMEOUT_SECONDS`. A healthy run must never be ended by the cap; the cost of a large cap is slower detection of a genuinely hung writer, and every run is supervised. Before dispatch, the pre-dispatch readback notes must show that the Cloud Run job task timeout (86400 s per Stream B's read-only describe) is above the cap.
 
-**What a fired cap looks like.** The asset and its `build_run_assets` row read `error` with this text, which is misleading (nothing upstream failed): `BLOCKED: upstream dependency(ies) timeout:28800s did not complete in this run; skipped to avoid building on incomplete data`. A message of that shape on `ka_gochara_v5` means the CAP fired. The run ends `failed` (the runner still exits 0).
+**Detect from state, never message text (MB-4.2).** Read `build_runs.state = 'failed'`, `build_run_assets.state = 'error'` for the run and asset, and an unfinished substep plan (no `asset.substep` event at `index = total`). Record the last `index/total` and the observation window. The current diagnostic is `TIMEOUT: writer exceeded its writer_timeout_seconds budget (Ns) — …`, with disposition NULL; the old `BLOCKED: upstream dependency(ies) timeout` diagnostic is withdrawn and must not be used as the detector. A missing or incomplete event record is unknown, never proof of completion. The runner can exit 0 while the run is failed.
 
-**What it leaves behind.** The orchestrator only marks the asset and stops waiting; it does not stop the writer thread. For the seconds until the process exits (a single-asset run) the writer can finish the substep it is in and commit it, so the chain holds a contiguous PREFIX of the plan, never a half-committed substep. In the rare case the thread finishes the whole plan before the process exits, the asset can read built while the run reads failed (not exercised by a test today). **A fired cap is a teardown case:** run the reviewed teardown (this runbook, §2) and do not resume or hand-edit.
+**What it leaves behind.** The orchestrator marks the asset and stops waiting; it does not cancel the writer thread. An in-flight substep can still commit after the error state is written. If it finishes the whole plan, the asset can read `lit` under a failed run; read the run state first and refuse `asset_lit_under_failed_run` (MB-4.4). A fired cap requires teardown and re-dispatch from zero, with no resume ledger or hand-edit, only after the following gate.
+
+**Required process-quiescence gate before teardown (MB-4.5).** For the exact Cloud Run execution dispatched with this run id, retain in the sitting log:
+
+1. The execution identity, run id and readback showing terminal execution with `status.completionTime` set. A terminal database run/asset row, the process exit code or an acquired advisory lock is insufficient. If completionTime is absent, refuse `run_not_terminal_for_teardown` and delete nothing.
+2. After that completionTime, read the same execution/run's `asset.substep` events through a recorded observation cutoff. Record the completionTime, cutoff, log-query scope and last substep's event timestamp and `index/total`; establish that no later `asset.substep` event exists. If a later event appears, or log coverage cannot establish absence, do not tear down: preserve the evidence and resolve the execution/log mismatch with the steward. Do not infer quiescence from silence during the writer's timeout.
+3. Only with both receipts recorded, follow §2: the governed, accepted same-row-set rehearsal, execution and independent post-commit absence procedure. Preserve the failed run/unfinished-plan evidence before deletion. The script's database checks and locks supplement this gate; they do not establish process completion or event quiescence. The FROZEN runner is unchanged.
 
 ## 7. The dispatch that precedes it (companion notes; the dispatch script is `platform/scripts/dispatch_v5_small_test_job.py`)
 - **Role: `data_plane_builder` SUFFICES** (production catalog, read-only, 2026-10-05; `amjis_app` is NOT needed). The staging transaction needs only: SELECT on `asset_registry`, `asset_provenance_receipts`, `asset_freshness`, `ka_gochara_generation_seal`, `kala_gochara_authority`, `kala_gochara_publication` and the chain and inventory tables; SELECT and INSERT on `build_runs` and `build_run_assets`; SELECT, INSERT and UPDATE on `asset_throughput`; EXECUTE on `ka_gochara_lock_chart(uuid)`; and the column UPDATE on `asset_registry` that the builder holds (it is what makes the `FOR SHARE` row lock work). It never updates `asset_registry.is_active`, deletes nothing, and does not need `ka_gochara_generation_is_sealed`. A real-database test runs it as a role holding exactly that.
