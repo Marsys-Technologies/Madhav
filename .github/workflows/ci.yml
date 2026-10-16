@@ -2145,8 +2145,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # OPS-NB-03: executor-table assertions read the immutable relaunch plan pin.
-          fetch-depth: 0
+          # OPS-NB-03: only shard 1 runs executor-table assertions against the
+          # immutable relaunch plan pin. Preserve the other shards' shallow checkout.
+          fetch-depth: ${{ matrix.shard == 1 && '0' || '1' }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
