@@ -213,8 +213,11 @@ def audit_foreign_keys(dsn: str) -> dict:
                     sql.SQL('parent.{} OPERATOR({}) child.{}').format(
                         sql.Identifier(p), sql.SQL(op), sql.Identifier(c))
                     for c, p, op in zip(child_cols, parent_cols, operators))
+                # Ordinary-table FKs exclude inheritance descendants; a
+                # partitioned FK parent includes its declarative partitions.
+                parent_scan = sql.SQL('ONLY {}' if parent_kind == 'r' else '{}').format(sql.Identifier(ps, parent))
                 missing = sql.SQL('({}) AND NOT EXISTS (SELECT 1 FROM {} parent WHERE {})').format(
-                    nonnull, sql.Identifier(ps, parent), equals)
+                    nonnull, parent_scan, equals)
                 if match == 'f':
                     missing = sql.SQL('({}) OR (NOT ({}) AND NOT ({}))').format(missing, nonnull, nulls)
                 count = conn.execute(sql.SQL('SELECT count(*) FROM {} child WHERE {}').format(

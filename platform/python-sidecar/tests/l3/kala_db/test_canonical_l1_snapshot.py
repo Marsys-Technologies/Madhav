@@ -95,6 +95,47 @@ def test_any_other_dangling_reference_fails_closed(restored):
     assert [(c['name'], c['unresolved_rows']) for c in broken] == [('authority_parent', 1)]
 
 
+def test_parent_scan_matches_postgres_inheritance_and_partition_fk_semantics(restored):
+    """KY-S11-B01: inherited rows cannot hide a dangling FK; partitions can resolve it.
+
+    Source: fixture spec v1.1:118-125 and CLAUDE.md §N.8. PostgreSQL's
+    actual FK enforcement supplies the oracle, without captured chart output.
+    """
+    conn, dsn = restored
+    conn.execute('''
+        CREATE TABLE public.partitioned_authority(id integer PRIMARY KEY) PARTITION BY RANGE(id);
+        CREATE TABLE public.authority_partition PARTITION OF public.partitioned_authority
+            FOR VALUES FROM (1) TO (1000);
+        INSERT INTO public.partitioned_authority VALUES (999);
+        ALTER TABLE public.life_events ADD COLUMN authority_id integer,
+            ADD CONSTRAINT partitioned_parent FOREIGN KEY(authority_id)
+                REFERENCES public.partitioned_authority(id);
+        CREATE TABLE public.authority_descendant () INHERITS (public.authority);
+        INSERT INTO public.authority_descendant VALUES (999);
+    ''')
+    # The real FK accepts a partition row but rejects an inheritance child row.
+    conn.execute('UPDATE public.life_events SET authority_id = 999')
+    with pytest.raises(psycopg.errors.ForeignKeyViolation):
+        conn.execute('UPDATE public.chart_facts SET authority_id = 999')
+    resolved = snapshot.audit_foreign_keys(dsn)
+    assert resolved['passed'] is True, resolved
+    partition = next(c for c in resolved['constraints'] if c['name'] == 'partitioned_parent')
+    assert (partition['classification'], partition['unresolved_rows']) == ('resolved', 0)
+
+    # Reproduce a replica-mode restore of the row PostgreSQL just rejected.
+    with conn.transaction():
+        conn.execute('SET LOCAL session_replication_role = replica')
+        conn.execute('UPDATE public.chart_facts SET authority_id = 999')
+    verdict = snapshot.audit_foreign_keys(dsn)
+    assert verdict['passed'] is False, verdict
+    assert verdict['status'] == 'FK_AUDIT_FAILED'
+    assert verdict['errors'] == []
+    broken = [c for c in verdict['constraints'] if c['classification'] == 'violation']
+    assert [(c['name'], c['unresolved_rows']) for c in broken] == [('authority_parent', 1)]
+    partition = next(c for c in verdict['constraints'] if c['name'] == 'partitioned_parent')
+    assert (partition['classification'], partition['unresolved_rows']) == ('resolved', 0)
+
+
 def test_inventory_checks_both_endpoints_self_keys_and_composite_null_semantics(restored):
     """Break caught: auditing only outgoing or validated/non-composite FKs."""
     conn, dsn = restored
