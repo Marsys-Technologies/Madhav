@@ -33,13 +33,14 @@ class TestShiftGrid:
         # NO RNG ANYWHERE (§5.5). Hash-replay depends on it: a seeded PRNG would
         # tie the field hash to library-internal generator behaviour.
         g = S5.shift_grid(horizon_days=1000.0, replicates=4)
-        assert g == [250.0, 500.0, 750.0, 1000.0]
+        # ALGO v1.1 §3.20 supersedes W2: observation is the fifth grid point.
+        assert g == [200.0, 400.0, 600.0, 800.0]
 
     def test_grid_has_exactly_R_shifts_starting_at_r_equals_one(self):
         g = S5.shift_grid(horizon_days=36525.0, replicates=256)
         assert len(g) == 256
-        assert g[0] == pytest.approx(36525.0 / 256)
-        assert g[-1] == pytest.approx(36525.0)
+        assert g[0] == pytest.approx(36525.0 / 257)
+        assert g[-1] == pytest.approx(256 * 36525.0 / 257)
 
     def test_grid_is_reproducible(self):
         assert S5.shift_grid(36525.0, 256) == S5.shift_grid(36525.0, 256)

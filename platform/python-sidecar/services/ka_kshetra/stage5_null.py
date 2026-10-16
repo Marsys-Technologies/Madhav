@@ -16,7 +16,7 @@ it is a MUCH harder opponent than the usual "compare against a random chart" —
 the replicate keeps every advantage the model has except the one under test.
 
 ── FULLY DETERMINISTIC: NO RNG ANYWHERE ────────────────────────────────────
-The shift grid is δ_r = r·(H/R) for r = 1…R — COMPUTED, not drawn. Two reasons,
+The shift grid is δ_r = r·(H/(R+1)) for r = 1…R — COMPUTED, not drawn. Two reasons,
 both binding:
   • hash-replay (§7.4) must hold, and a seeded PRNG ties the field hash to
     library-internal generator behaviour that can change across versions;
@@ -25,11 +25,11 @@ both binding:
 
 ── THE p-VALUE AND ITS RESOLUTION ──────────────────────────────────────────
     null_p          = ( 1 + #{ r : M_r(L*) ≥ Λ_obs } ) / ( R + 1 )
-    null_resolution = 1 / (R + 1) = 1/257 ≈ 0.00389
-The +1 correction is the standard one and it is why p is never 0: with 256
-replicates you have not measured a probability smaller than 1/257, and reporting
+    null_resolution = 1 / (R + 1) = 1/1024 ≈ 0.000977
+The +1 correction is the standard one and it is why p is never 0: with 1023
+replicates you have not measured a probability smaller than 1/1024, and reporting
 0 would claim a precision the replicate count cannot support (LAW ZERO). Both
-numbers are served, so a consumer can never read p = 0.0039 as p = 0.
+numbers are served, so a consumer can never read p = 0.000977 as p = 0.
 
 L* is the SMALLEST duration bucket ≥ the window's own duration. That direction is
 deliberate and conservative: a longer matched filter can only ACCUMULATE MORE
@@ -43,14 +43,15 @@ shifted sky would produce 95% of the time". Nobody picks a threshold; the chart'
 own null computes it, and §5.2's window construction reads it.
 
 ── COST (the design's own dominant-cost warning, §5.5) ─────────────────────
-R = 256 rebuilds per class is the heaviest thing in W2. The replicate reuses the
+R = 1023 rebuilds per class is the heaviest thing in W2. The replicate reuses the
 SAME clock, promise and baseline terms and re-indexes ONLY the stage-1 envelopes,
 which is where the order-of-magnitude saving comes from. Substep grain is
-(stage5, event_class, replicate_block_of_32) — 8 substeps per class. If a substep
-approaches `writer_timeout_seconds`, REDUCE THE BLOCK TO 16; do not raise the
+(stage5, event_class, replicate_block_of_16) — 64 substeps per class. If a substep
+approaches `writer_timeout_seconds`, reduce the block further; do not raise the
 timeout (the `ka_gochara_sweep` D-5 lesson, verbatim).
 
-Authority: KALA_W2_FIELD_DESIGN_v1_0.md §5.5, §5.6.
+Authority: KALA_W2_FIELD_DESIGN_v1_0.md §5.5, §5.6; schedule superseded
+by KALA_ASSET_ALGORITHM_ELEVATIONS_v1_1.md §3.20: nonidentity shifts only.
 """
 from __future__ import annotations
 
@@ -66,8 +67,8 @@ from services.ka_kshetra.stage4_field import EnvelopeIndex, FieldEvaluator
 #: §5.5's ten duration buckets, in days — the matched-filter scales.
 DURATION_BUCKETS: tuple[int, ...] = (1, 3, 7, 15, 30, 60, 90, 180, 365, 730)
 
-#: §5.5's replicate count. Fixes the p-value resolution at 1/257.
-DEFAULT_REPLICATES: int = 256
+#: ALGO v1.1 §3.20: 1023 nonidentity shifts + observation, resolution 1/1024.
+DEFAULT_REPLICATES: int = 1023
 
 #: §5.5's substep grain. Reduce to 16 if a substep nears the writer timeout —
 #: never raise the timeout.
@@ -87,7 +88,7 @@ Q_QUANTILE: float = 0.95
 #: honest answer is p = 1 (nothing is exceptional). But Λ_obs is computed by one
 #: summation order and M_r by another (a running daily cumulative), so the two
 #: can differ in the last ulp and an exact `>=` would score 0/R exceedances and
-#: report p = 1/257 — a maximally significant result on a field that carries no
+#: report p = 1/1024 — a maximally significant result on a field that carries no
 #: information whatsoever. The tolerance is a millionth of the smallest
 #: meaningful difference and it always errs toward the null.
 _EXCEEDANCE_REL_TOL: float = 1e-12
@@ -101,12 +102,12 @@ PINNED_AYANAMSHAS: tuple[str, ...] = (
 # ── the deterministic shift grid ─────────────────────────────────────────────
 
 def shift_grid(horizon_days: float, replicates: int) -> list[float]:
-    """δ_r = r·(H/R) for r = 1…R. Computed, never drawn (see module docstring)."""
+    """δ_r = r·(H/(R+1)) for r = 1…R. Computed, never drawn (see module docstring)."""
     if replicates < 1:
         raise ValueError(f'replicates must be ≥ 1, got {replicates!r}')
     if not (horizon_days > 0):
         raise ValueError(f'horizon_days must be > 0, got {horizon_days!r}')
-    step = horizon_days / replicates
+    step = horizon_days / (replicates + 1)
     return [r * step for r in range(1, replicates + 1)]
 
 
@@ -142,7 +143,7 @@ def null_p(max_stats: Sequence[float], lambda_obs: float) -> Optional[float]:
 
 
 def null_resolution(replicates: int) -> float:
-    """1/(R+1). Served ALONGSIDE null_p so p = 1/257 is never read as p = 0."""
+    """1/(R+1). Served ALONGSIDE null_p so p = 1/1024 is never read as p = 0."""
     return 1.0 / (replicates + 1)
 
 
@@ -155,7 +156,7 @@ def null_exceeding(p: Optional[float], alpha: float = ALPHA) -> Optional[bool]:
 class QuantilePool:
     """The EXACT q-quantile of a pooled sample, streamed with bounded memory.
 
-    q_e pools R × N values (256 × 36 526 ≈ 9.3 M floats ≈ 75 MB), which is more
+    q_e pools R × N values (1023 × 36 526 ≈ 37.4 M floats ≈ 299 MB), which is more
     than a build substep should hold and more than is needed: the 0.95 quantile
     is the k-th largest value with k = n − ceil(0.95·n) + 1, so a bounded
     min-heap of the top k is sufficient and EXACT. No sketching, no t-digest, no
@@ -362,10 +363,8 @@ def _lambda_grid_fast(
     return vals
 
 
-# DEPRECATED (2026-08-14, P0.b): dead code — ENGINE_VERSION='analytic' permanently
-# removes all callers of run_null / NullAccumulator (the sampled-path block
-# substep machinery).  Slated for removal in a post-P-B cleanup wave.
-# Do NOT call these methods.
+# K5-G1a candidates use this complete sampled reference until a compact
+# evaluator satisfies the numerical contract (ALGO v1.1 §3.20 / PLAN §6.2).
 def run_null(
     ev: FieldEvaluator,
     horizon_days: float,
@@ -435,7 +434,7 @@ class NullAccumulator:
         return NullResult(
             replicates=self.replicates,
             horizon_days=self.horizon_days,
-            shift_grid_step=self.horizon_days / self.replicates,
+            shift_grid_step=self.horizon_days / (self.replicates + 1),
             q_threshold=self._pool.value(),
             # Ordered by replicate index so `null_max_stats[r-1]` is replicate r
             # under any substep dispatch order — the array is auditable, not just
