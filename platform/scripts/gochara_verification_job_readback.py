@@ -77,6 +77,9 @@ def check(job, *, image_repo, image_digest, service_account, runner_commit, secr
     if not _DIGEST.fullmatch(image_digest or "") or not _SHA.fullmatch(runner_commit or ""):
         raise Refused("the expected image digest / runner commit are malformed")
     execution, task, annotations = _shape(job)
+    metadata = job.get("metadata")
+    if not isinstance(metadata, dict) or metadata.get("name") != "gochara-verification-job":
+        raise Refused("the definition is not the named verification job")
     retries = vjc.UNSET if v2_job is None else strict_v2_retries(v2_job, "job")
     bad = vjc.forbidden_annotations(job, v2_job)
     bad += vjc.validate_task(task, image_repo=image_repo, image_digest=image_digest,

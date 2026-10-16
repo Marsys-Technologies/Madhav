@@ -49,6 +49,22 @@ def test_the_exact_definition_is_accepted():
     assert run() == []
 
 
+@pytest.mark.parametrize("metadata", [
+    {"name": "brahma-build-pipeline-job"}, {"name": None}, {}, None, [],
+])
+def test_j5s_definition_cli_refuses_an_unnamed_or_differently_named_job(tmp_path, capsys, metadata):
+    j = job()
+    j["metadata"] = metadata
+    path = tmp_path / "job.json"
+    path.write_text(json.dumps(j))
+    assert rb.main(["--job-file", str(path), "--image-repo", REPO, "--image-digest", DIG,
+                    "--service-account", SA, "--runner-commit", SHA, "--secret-name", "gochara-verifier-db-url",
+                    "--cloudsql-instance", INST, "--timeout-seconds", "7200", "--memory", "8Gi", "--cpu", "2"]) == 2
+    result = capsys.readouterr()
+    assert "named verification job" in result.err
+    assert "definition verified" not in result.out
+
+
 @pytest.mark.parametrize("fn,needle", [
     (lambda j: task(j)["containers"][0].update(image=f"{REPO}:{SHA}"), "image is"),                                  # a tag
     (lambda j: task(j)["containers"][0].update(image=f"{REPO}@sha256:{'c' * 64}"), "image is"),                      # another digest
