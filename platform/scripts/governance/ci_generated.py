@@ -103,7 +103,9 @@ def generate(destination: Path, base: str | None):
         subprocess.run(['node', '--import', 'tsx', '--conditions=react-server', script, '--check'], cwd=ROOT / 'platform', check=True)
     subprocess.run([sys.executable, '-m', 'services.gochara_kernel.implementation_registry'], cwd=sidecar, check=True)
     subprocess.run(['bash', 'platform/scripts/regenerate_generated.sh', '--check'], cwd=ROOT, check=True)
-    projection_env = {**os.environ, 'CI_GENERATED_AT': git('show', '-s', '--format=%cI', 'HEAD')}
+    # UTC 'Z' regardless of the committer's timezone: a branch commit made at +05:30 otherwise fails the
+    # date-stamped registry metric test (mcp_catalog_version.test.ts expects ...Z).
+    projection_env = {**os.environ, 'CI_GENERATED_AT': subprocess.run(['git', 'show', '-s', '--date=format-local:%Y-%m-%dT%H:%M:%SZ', '--format=%cd', 'HEAD'], cwd=ROOT, env={**os.environ, 'TZ': 'UTC'}, capture_output=True, text=True, check=True).stdout.strip()}
     projection_cmd = ['node', '--import', 'tsx', '--conditions=react-server', 'scripts/manifest/generate_projections.ts']
     subprocess.run(projection_cmd, cwd=ROOT / 'platform', env=projection_env, check=True)
     first = {p: (ROOT / p).read_bytes() for p in PROJECTION_OUTPUTS}

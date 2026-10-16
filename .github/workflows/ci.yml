@@ -3120,7 +3120,7 @@ jobs:
         # artifacts under src/generated/projections/ + a comparison report under
         # 00_ARCHITECTURE/briefs/retrieval_impl/ — nothing here is wired into any live-
         # serving path (see the generator's own header comment).
-        run: CI_GENERATED_AT="$(git show -s --format=%cI HEAD)" npm run codegen:projections
+        run: CI_GENERATED_AT="$(TZ=UTC git show -s --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd HEAD)" npm run codegen:projections
       - name: R-1 projection compiler parity/completeness gate
         # Same source, tested directly (r5_codegen_parity discipline): imports the SAME
         # pure builder functions the generator step above calls and asserts (1) every live
