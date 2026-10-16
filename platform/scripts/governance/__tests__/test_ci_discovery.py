@@ -102,7 +102,8 @@ def test_all_original_job_names_and_shard_counts_remain_exact():
     jobs = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs']
     before = json.loads((TOOL.parent / 'ci_discovery_baseline.json').read_text())
     for key, name in before['job_names'].items():
-        assert jobs[key].get('name', key) == name
+        context = jobs.get('required-'+key, jobs[key])
+        assert context.get('name', key) == name
     for key, matrix in before['matrices'].items():
         actual = jobs[key]['strategy']['matrix']
         # Runtime slow discovery removes only the old shard_files payload.

@@ -417,7 +417,7 @@ jobs:
         # dispatch and broken-detector negatives in both migration states.
         # K9-1: directory discovery also collects kala_db/rehearsal (ordered
         # build lineage, own detectors, read-only inspection, publication CAS).
-        run: python -B -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping*.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters tests/l3/ka_kshetra/test_g1a_c*.py tests/l3/ka_kshetra/test_g1b*.py -q -rs -p no:cacheprovider
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest kala-db-tests-5-0 -- -q -rs -p no:cacheprovider
       - name: Run scoped parihara evaluator contract and route tests
         working-directory: platform/python-sidecar
         env:
@@ -472,13 +472,20 @@ jobs:
 
   db-integration-tests:
     needs: [changes, generated-artifacts]
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
-    name: DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)
+    # A4 D-31: skips are fatal at the umbrella, including docs-only changes.
+    if: ${{ !cancelled() }}
+    name: DB shard ${{ matrix.shard }}/4 — DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: platform
     env:
+      CI_DB_SHARD_JOB: db-integration-tests
+      CI_DB_SHARD: '${{ matrix.shard }}/4'
       NODE_ENV: test
       # Two separate databases, deliberately: samiksha_test carries migration 470
       # pre-applied (the files that assume the ledger table already exists — see
@@ -555,7 +562,7 @@ jobs:
         # pg_type_typname_nsp_index), which is exactly the two live occurrences #1973 reported
         # on two unrelated tables. Serializing file execution removes the race without touching
         # any test file's DDL (which may have quietly drifted between the ~6 copies).
-        run: npx vitest run tests/pariprashna/samiksha src/lib/pariprashna/samiksha --reporter=verbose --no-file-parallelism
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-7-0 -- --reporter=verbose --no-file-parallelism
 
       - name: Pravāha F-1 — provision the Gochara disposable DB (migration 1206 live suite)
         # A fourth throwaway database, named EXACTLY gochara_a51_test: the suite's own
@@ -575,7 +582,9 @@ jobs:
           GOCHARA_REQUIRE_DB: '1'
         run: |
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-8-0 -- --reporter=verbose --no-file-parallelism
-          python3 scripts/gochara/mutation_check_1206.py
+          if [ "${{ matrix.shard }}" = "4" ]; then
+            python3 scripts/gochara/mutation_check_1206.py
+          fi
 
       - name: Pravāha A5.3 — migration 1240 / 1233 live-DB suites (window verification gate, roles, seal flows, P1 anchor) — REQUIRED, never skipped
         # The A5.3 tests build their OWN throwaway databases (a53t_*) and cluster roles on the CI Postgres through the
@@ -1342,6 +1351,24 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/p3c_persistence_test
         run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-93-0 -- --reporter=verbose
 
+
+  required-db-integration-tests:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    name: DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)
+    needs: [db-integration-tests]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.db-integration-tests.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::DB shards finished $result; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
+
   gochara-a55-replace-chain:
     # A5.5f (G7): the rebuild-replaces-the-whole-candidate-chain suites drive the writer's REAL substeps on the real migrations
     # (a template database with the sky-event substrate, cloned per test). They run in their OWN job, in parallel, so every PR does
@@ -1360,8 +1387,16 @@ jobs:
     #   gochara-a55-verifier-fixes    : p1_exclusion_h_unknown, member_geometry_seam, graze_interim
     #   (next: gochara-a55-teardown, -round2 and -round3 for the c38 real-db modules, gochara-a55-dispatch for c37 real-db)
     needs: [changes, generated-artifacts]
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
-    name: Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
+    # A4 D-31: skips are fatal at the umbrella, including docs-only changes.
+    if: ${{ !cancelled() }}
+    name: DB shard ${{ matrix.shard }}/2 — Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    env:
+      CI_DB_SHARD_JOB: gochara-a55-replace-chain
+      CI_DB_SHARD: '${{ matrix.shard }}/2'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -1403,6 +1438,24 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-replace-chain-1-9 -- -q --tb=short -rs -p no:cacheprovider
+
+
+  required-gochara-a55-replace-chain:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    name: Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
+    needs: [gochara-a55-replace-chain]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.gochara-a55-replace-chain.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::DB shards finished $result; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
 
   gochara-a55-slice-transitions:
     # A5.5f / C46: the test-slice transition suite (see the split note on gochara-a55-replace-chain).
@@ -1455,8 +1508,16 @@ jobs:
     # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 10 minutes locally (module test_c38_teardown_real_db plus the populated case); split into three parallel jobs so each stays well inside its budget.
     # See the split note on gochara-a55-replace-chain.
     needs: [changes, generated-artifacts]
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
-    name: Gochara C38 - the small-test teardown (real writer, throwaway Postgres)
+    # A4 D-31: skips are fatal at the umbrella, including docs-only changes.
+    if: ${{ !cancelled() }}
+    name: DB shard ${{ matrix.shard }}/3 — Gochara C38 - the small-test teardown (real writer, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      CI_DB_SHARD_JOB: gochara-a55-teardown
+      CI_DB_SHARD: '${{ matrix.shard }}/3'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -1498,6 +1559,24 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-teardown-1-9 -- -q --tb=short -rs -p no:cacheprovider
+
+
+  required-gochara-a55-teardown:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    name: Gochara C38 - the small-test teardown (real writer, throwaway Postgres)
+    needs: [gochara-a55-teardown]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.gochara-a55-teardown.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::DB shards finished $result; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
 
   gochara-a55-teardown-round2:
     # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 14 minutes locally (26 tests).
@@ -1551,8 +1630,16 @@ jobs:
     # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 9 minutes locally (16 tests).
     # See the split note on gochara-a55-replace-chain.
     needs: [changes, generated-artifacts]
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
-    name: Gochara C38 - the small-test teardown, round 3 (real catalog foreign keys, lock race, interrupted replacement) (real writer, throwaway Postgres)
+    # A4 D-31: skips are fatal at the umbrella, including docs-only changes.
+    if: ${{ !cancelled() }}
+    name: DB shard ${{ matrix.shard }}/2 — Gochara C38 - the small-test teardown, round 3 (real catalog foreign keys, lock race, interrupted replacement) (real writer, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    env:
+      CI_DB_SHARD_JOB: gochara-a55-teardown-round3
+      CI_DB_SHARD: '${{ matrix.shard }}/2'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -1594,6 +1681,24 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-teardown-round3-1-9 -- -q --tb=short -rs -p no:cacheprovider
+
+
+  required-gochara-a55-teardown-round3:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    name: Gochara C38 - the small-test teardown, round 3 (real catalog foreign keys, lock race, interrupted replacement) (real writer, throwaway Postgres)
+    needs: [gochara-a55-teardown-round3]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.gochara-a55-teardown-round3.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::DB shards finished $result; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
 
   gochara-a55-measuring-build:
     # Measuring-build PR (steward MEASURING-BUILD, MB-ADDITIONS, TIMEOUT-RULING): the horizon derivation, the manifest basis, the state guard and the fired cap
@@ -1702,8 +1807,16 @@ jobs:
   gochara-a55-round2-runner:
     # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).
     needs: [changes, generated-artifacts]
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
-    name: Gochara A5.5f - test-slice round 2 and the real runner (real writer, throwaway Postgres)
+    # A4 D-31: skips are fatal at the umbrella, including docs-only changes.
+    if: ${{ !cancelled() }}
+    name: DB shard ${{ matrix.shard }}/3 — Gochara A5.5f - test-slice round 2 and the real runner (real writer, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      CI_DB_SHARD_JOB: gochara-a55-round2-runner
+      CI_DB_SHARD: '${{ matrix.shard }}/3'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -1746,11 +1859,37 @@ jobs:
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-round2-runner-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
+
+  required-gochara-a55-round2-runner:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    name: Gochara A5.5f - test-slice round 2 and the real runner (real writer, throwaway Postgres)
+    needs: [gochara-a55-round2-runner]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.gochara-a55-round2-runner.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::DB shards finished $result; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
+
   gochara-a55-verifier-fixes:
     # C48 / PR 3143 (the in-build verifier fixes: P1 exclusion for H-unknown classes, the member-geometry seam and horizon-edge rules, the slice-only graze interim): three real-database suites, about 14 minutes together.
     needs: [changes, generated-artifacts]
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
-    name: Gochara A5.5f - verifier fixes (P1 exclusion, member geometry, graze interim) (real writer, throwaway Postgres)
+    # A4 D-31: skips are fatal at the umbrella, including docs-only changes.
+    if: ${{ !cancelled() }}
+    name: DB shard ${{ matrix.shard }}/3 — Gochara A5.5f - verifier fixes (P1 exclusion, member geometry, graze interim) (real writer, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      CI_DB_SHARD_JOB: gochara-a55-verifier-fixes
+      CI_DB_SHARD: '${{ matrix.shard }}/3'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -1795,6 +1934,24 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-verifier-fixes-1-9 -- -q --tb=short -rs -p no:cacheprovider
+
+
+  required-gochara-a55-verifier-fixes:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    name: Gochara A5.5f - verifier fixes (P1 exclusion, member geometry, graze interim) (real writer, throwaway Postgres)
+    needs: [gochara-a55-verifier-fixes]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.gochara-a55-verifier-fixes.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::DB shards finished $result; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
 
   pratijna-v4-fixture-property-tests:
     needs: [changes, generated-artifacts]

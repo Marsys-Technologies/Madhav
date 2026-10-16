@@ -731,6 +731,28 @@
         "src/tools/register_prashna*.test.ts",
         "src/__tests__/server_tool*.test.ts"
       ]
+    },
+    "db-integration-tests-7-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/pariprashna/samiksha/**/*.test.[jt]s",
+        "tests/pariprashna/samiksha/**/*.test.[jt]sx",
+        "tests/pariprashna/samiksha/**/*.test.[cm][jt]s",
+        "tests/pariprashna/samiksha/**/*.test.[cm][jt]sx",
+        "tests/pariprashna/samiksha/**/*.spec.[jt]s",
+        "tests/pariprashna/samiksha/**/*.spec.[jt]sx",
+        "tests/pariprashna/samiksha/**/*.spec.[cm][jt]s",
+        "tests/pariprashna/samiksha/**/*.spec.[cm][jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.test.[jt]s",
+        "src/lib/pariprashna/samiksha/**/*.test.[jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.test.[cm][jt]s",
+        "src/lib/pariprashna/samiksha/**/*.test.[cm][jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.spec.[jt]s",
+        "src/lib/pariprashna/samiksha/**/*.spec.[jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]s",
+        "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]sx"
+      ]
     }
   }
 }

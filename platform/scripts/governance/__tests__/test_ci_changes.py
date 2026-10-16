@@ -248,10 +248,14 @@ def jobs():
 
 
 @pytest.mark.parametrize("name", HEAVY)
-def test_every_heavy_job_needs_changes_and_runs_unless_docs_only_is_exactly_true(jobs, name):
+def test_every_heavy_job_needs_changes_and_preserves_its_docs_policy(jobs, name):
     j = jobs[name]
     assert j["needs"] in ("changes", ["changes"]) or "changes" in j["needs"]
     cond = str(j["if"])
+    from ci_db_shard import JOB_SHARDS
+    if name in JOB_SHARDS:
+        assert cond == "${{ !cancelled() }}"  # its required umbrella rejects ANY skipped shard
+        return
     assert "!cancelled()" in cond and "needs.changes.outputs.docs_only != 'true'" in cond and "== 'false'" not in cond   # an unset/failed output RUNS the job
 
 
@@ -282,7 +286,9 @@ def test_the_trigger_set_is_unchanged_so_push_and_merge_group_still_run_everythi
 
 
 def test_every_job_in_ci_yml_is_classified_here_so_a_new_heavy_job_is_a_conscious_choice(jobs):
-    unknown = set(jobs) - set(HEAVY) - set(NEVER_SKIPPED) - {"census-battery"}
+    from ci_db_shard import JOB_SHARDS
+    umbrellas = {"required-"+name for name in JOB_SHARDS}
+    unknown = set(jobs) - umbrellas - set(HEAVY) - set(NEVER_SKIPPED) - {"census-battery"}
     assert not unknown, f"classify these jobs as HEAVY (skipped on docs-only) or NEVER_SKIPPED: {sorted(unknown)}"
 
 
@@ -462,7 +468,7 @@ def _am10_db_problems(jobs):
         if AM10_SUITE not in _job_suites(job):
             continue
         problems = _a55_problems(job, (AM10_SUITE,))
-        if "needs.changes.outputs.docs_only != 'true'" not in str(job.get("if", "")):
+        if str(job.get("if", "")) not in ("${{ !cancelled() }}", "${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}"):
             problems.append("AM-10 job can skip a code change")
         for step in job["steps"]:
             if AM10_SUITE not in _pytest_suites(step.get("run", "")):
