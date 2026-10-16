@@ -14,8 +14,8 @@
 #   pre-train    row 7 preconditions: both roles exist, W4 sealer CONNECT, 1206 absent, 1243 ledger sha AND the
 #                full registry-1243 readback re-run (all three release-gate items re-read at the sitting)
 #   pre-dispatch row 8 preconditions: window preread refusals again, 1206 absent, both roles, the ledger diff
-#                against the row-2 snapshot (only the five window files may be new, never a 1378_*), 1243 ledger sha
-#   post-window  row 9: positive privilege readback (zero rows), amjis_app CREATE on public = false, the five
+#                against the row-2 snapshot (only the six window files may be new, never a 1378_*), 1243 ledger sha
+#   post-window  row 9: positive privilege readback (zero rows), amjis_app CREATE on public = false, the six
 #                window files recorded exactly once with EXPECTED_WINDOW_SHA256.txt hashes, ka_gochara_* /
 #                kala_gochara_* ownership = amjis_app, PUBLIC EXECUTE revoked on ka_gochara_* functions, ledger
 #                diff against the row-2 snapshot, W2(b/c) recheck, W2(a) recheck against --w2a-baseline (any NEW
@@ -111,7 +111,7 @@ PINNED_SHA256_window_preread_refusals_sql="73db79463a93f5794fdfe01a3a66accce9b23
 # shellcheck disable=SC2034
 PINNED_SHA256_EXPECTED_WINDOW_TRIGGER_MANIFEST_tsv="2a00af09f3db783f4975c03ea925baff7cf60be5630d235bffdfd77eac4bd73e"
 
-WINDOW_FILES="1204_gochara_av_qualifier_object_role.sql 1206_gochara_search_inventory_completeness.sql 1232_gochara_search_moon_scope_domain.sql 1233_gochara_p1_period_anchor.sql 1240_gochara_window_verification_gate.sql"
+WINDOW_FILES="1204_gochara_av_qualifier_object_role.sql 1206_gochara_search_inventory_completeness.sql 1232_gochara_search_moon_scope_domain.sql 1233_gochara_p1_period_anchor.sql 1235_ka_gochara_staged_candidate_evidence_function.sql 1240_gochara_window_verification_gate.sql"
 
 SHA_1243="88be3ed59aaa0685d65e9b8b6607f3787c3ae65a5e8fb96d51f09ebe63798321"
 # Row 3: 1302 (revoke role_orchestrator's windows DML) is applied BEFORE the row-2 ledger snapshot,
@@ -324,11 +324,11 @@ check_routine_predecessors() { # B2 (row 2): every repo migration numbered <= 12
     base="$(basename "$f")"
     n="${base%%_*}"
     [ "$((10#$n))" -le 1240 ] || continue
-    case "$base" in 1204_*|1206_*|1232_*|1233_*|1240_*) continue ;; esac
+    case "$base" in 1204_*|1206_*|1232_*|1233_*|1235_*|1240_*) continue ;; esac
     echo "$ledger" | grep -qxF "$base" || missing="$missing $base"
   done
   if [ -z "$missing" ]; then
-    _pass R2-routine-predecessors "every routine migration numbered <= 1240 (the five window files excluded) is recorded applied"
+    _pass R2-routine-predecessors "every routine migration numbered <= 1240 (the six window files excluded) is recorded applied"
   else
     _stop R2-routine-predecessors "repo migration(s) numbered <= 1240 missing from _migrations_applied:$missing"
   fi
@@ -447,15 +447,15 @@ check_schema_create() { # row 9: amjis_app must NOT hold CREATE on public
   fi
 }
 
-check_window_files_ledger() { # B3a (row 9): the five window files recorded exactly once, sha256 as expected
+check_window_files_ledger() { # B3a (row 9): the six window files recorded exactly once, sha256 as expected
   local expected_sha_file="$SQL_DIR/EXPECTED_WINDOW_SHA256.txt"
   [ -f "$expected_sha_file" ] || { _stop P9-window-files-ledger "expected sha file not found: $expected_sha_file (pass --sql-dir)"; return 0; }
   local got exp gots
-  got="$(run_sql P9-window-files-ledger "SELECT filename, sha256 FROM public._migrations_applied WHERE filename IN ('1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql','1240_gochara_window_verification_gate.sql')")" || return 0
+  got="$(run_sql P9-window-files-ledger "SELECT filename, sha256 FROM public._migrations_applied WHERE filename IN ('1204_gochara_av_qualifier_object_role.sql','1206_gochara_search_inventory_completeness.sql','1232_gochara_search_moon_scope_domain.sql','1233_gochara_p1_period_anchor.sql','1235_ka_gochara_staged_candidate_evidence_function.sql','1240_gochara_window_verification_gate.sql')")" || return 0
   exp="$(awk -v names="$WINDOW_FILES" 'BEGIN { n = split(names, a, " "); for (i = 1; i <= n; i++) want[a[i]] = 1 } want[$2] { print $2 "\t" $1 }' "$expected_sha_file" | LC_ALL=C sort)"
   gots="$(echo "$got" | LC_ALL=C sort)"
-  if [ "$gots" = "$exp" ] && [ "$(echo "$gots" | grep -c .)" = "5" ]; then
-    _pass P9-window-files-ledger "all five window files recorded exactly once, sha256 matching EXPECTED_WINDOW_SHA256.txt"
+  if [ "$gots" = "$exp" ] && [ "$(echo "$gots" | grep -c .)" = "6" ]; then
+    _pass P9-window-files-ledger "all six window files recorded exactly once, sha256 matching EXPECTED_WINDOW_SHA256.txt"
   else
     _stop P9-window-files-ledger "observed '$(echo "$gots" | tr '\n' ' ')' vs expected '$(echo "$exp" | tr '\n' ' ')'"
   fi
@@ -473,7 +473,7 @@ check_ownership() { # B3b (row 9): every ka_gochara_*/kala_gochara_* relation an
 
 check_public_execute() { # B3c (row 9): PUBLIC EXECUTE revoked on every ka_gochara_* function
   local out
-  out="$(run_sql P9-public-execute "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname ~ '^ka_gochara_' AND has_function_privilege('PUBLIC', p.oid, 'EXECUTE') ORDER BY 1")" || return 0
+  out="$(run_sql P9-public-execute "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname ~ '^ka_gochara_' AND EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE') ORDER BY 1")" || return 0
   if [ -z "$out" ]; then
     _pass P9-public-execute "PUBLIC holds EXECUTE on no ka_gochara_* function"
   else
@@ -481,7 +481,7 @@ check_public_execute() { # B3c (row 9): PUBLIC EXECUTE revoked on every ka_gocha
   fi
 }
 
-check_ledger_diff() { # B3d (rows 8 + 9) <id>: new ledger entries vs the row-2 snapshot = ONLY the five window files
+check_ledger_diff() { # B3d (rows 8 + 9) <id>: new ledger entries vs the row-2 snapshot = ONLY the six window files
   local id="$1"
   [ -n "$LEDGER_SNAPSHOT" ] || { _stop "$id" "needs --ledger-snapshot FILE (the row-2 ledger snapshot)"; return 0; }
   [ -f "$LEDGER_SNAPSHOT" ] || { _stop "$id" "snapshot not found: $LEDGER_SNAPSHOT"; return 0; }
@@ -490,11 +490,11 @@ check_ledger_diff() { # B3d (rows 8 + 9) <id>: new ledger entries vs the row-2 s
   new="$(LC_ALL=C comm -13 <(LC_ALL=C sort "$LEDGER_SNAPSHOT") <(LC_ALL=C sort "$OUT/$id-current.out"))"
   echo "$new" > "$OUT/$id-new-entries.tsv"
   _evidence "$id" "$id-new-entries.tsv"
-  bad="$(echo "$new" | grep -Ev '^(1204_gochara_av_qualifier_object_role|1206_gochara_search_inventory_completeness|1232_gochara_search_moon_scope_domain|1233_gochara_p1_period_anchor|1240_gochara_window_verification_gate)[.]sql$' | grep . || true)"
+  bad="$(echo "$new" | grep -Ev '^(1204_gochara_av_qualifier_object_role|1206_gochara_search_inventory_completeness|1232_gochara_search_moon_scope_domain|1233_gochara_p1_period_anchor|1235_ka_gochara_staged_candidate_evidence_function|1240_gochara_window_verification_gate)[.]sql$' | grep . || true)"
   if [ -n "$bad" ]; then
-    _stop "$id" "ledger entries since the row-2 snapshot that are NOT one of the five window files (a 1378_* or a protected file would appear here): $(echo "$bad" | tr '\n' ' ')"
+    _stop "$id" "ledger entries since the row-2 snapshot that are NOT one of the six window files (a 1378_* or a protected file would appear here): $(echo "$bad" | tr '\n' ' ')"
   else
-    _pass "$id" "every new ledger entry since the row-2 snapshot is one of the five window files ($(echo "$new" | grep -c . || true) new)"
+    _pass "$id" "every new ledger entry since the row-2 snapshot is one of the six window files ($(echo "$new" | grep -c . || true) new)"
   fi
 }
 

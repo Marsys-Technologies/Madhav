@@ -52,11 +52,12 @@ import { TRACKER_DDL, TRACKER_IDENTITY_DDL, runMigrations } from '../../scripts/
 import { resolveDisposableA51Config } from './gochara_a5_1_disposable_url'
 
 const TEST_DB_URL = process.env.GOCHARA_A51_TEST_DATABASE_URL
-const REQUIRE_DB = process.env.GOCHARA_REQUIRE_DB === '1'
+const LOCAL_ADMIN_DSN = process.env.KALA_ADMIN_DSN
+const REQUIRE_DB = process.env.GOCHARA_REQUIRE_DB === '1' || process.env.KALA_REQUIRE_DB === '1'
 
 describe('AM-7 CI database prerequisite', () => {
   it.skipIf(!REQUIRE_DB)('requires the disposable DB URL when GOCHARA_REQUIRE_DB=1', () => {
-    expect(TEST_DB_URL, 'GOCHARA_REQUIRE_DB=1 but GOCHARA_A51_TEST_DATABASE_URL is unset').toBeTruthy()
+    expect(TEST_DB_URL || LOCAL_ADMIN_DSN, 'required AM-7 database URL / local fixture admin DSN is unset').toBeTruthy()
   })
 })
 
@@ -307,9 +308,29 @@ async function insertRecord(c: Q, o: {
   return id
 }
 
-describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposable DB)', () => {
+// Local campaign jobs own the database, while CI supplies its existing fixture.
+// CREATE DATABASE refuses an existing name: cleanup only drops one we created.
+let localAdmin: Pool | undefined
+let localDatabaseCreated = false
+
+describe.skipIf(!TEST_DB_URL && !LOCAL_ADMIN_DSN)('B6.0 v1.5 contract migration 1204 (live disposable DB)', () => {
   beforeAll(async () => {
-    const config = resolveDisposableA51Config(TEST_DB_URL)
+    let config: ReturnType<typeof resolveDisposableA51Config>
+    if (LOCAL_ADMIN_DSN) {
+      const adminUrl = new URL(LOCAL_ADMIN_DSN)
+      if (adminUrl.pathname !== '/postgres' || adminUrl.hostname !== '127.0.0.1' || adminUrl.port !== '55433') {
+        throw new Error('AM-7 local fixture requires 127.0.0.1:55433/postgres')
+      }
+      adminUrl.pathname = '/gochara_a51_test'
+      config = resolveDisposableA51Config(adminUrl.toString())
+      localAdmin = new Pool({ ...config, database: 'postgres', max: 1 })
+      const identity = await localAdmin.query("SELECT current_database() = 'postgres' AND host(inet_server_addr()) = '127.0.0.1' AND inet_server_port() = 55433 AS safe")
+      if (identity.rows[0]?.safe !== true) throw new Error('AM-7 local server identity refused')
+      await localAdmin.query('CREATE DATABASE gochara_a51_test')
+      localDatabaseCreated = true
+    } else {
+      config = resolveDisposableA51Config(TEST_DB_URL)
+    }
     pool = new Pool({ ...config, max: 4 })
     await resetSchema()
     // The protected-window route: runMigrations --only over the on-disk files, in order.
@@ -348,9 +369,17 @@ describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposabl
   }, 120_000)
 
   afterAll(async () => {
-    if (!pool) return
-    await resetSchema()
-    await pool.end()
+    try {
+      if (pool) {
+        try { if (!localDatabaseCreated) await resetSchema() }
+        finally { await pool.end() }
+      }
+    } finally {
+      if (localAdmin) {
+        try { if (localDatabaseCreated) await localAdmin.query('DROP DATABASE gochara_a51_test WITH (FORCE)') }
+        finally { await localAdmin.end() }
+      }
+    }
   })
 
   it("AM-7: the widened CHECK ACCEPTS 'av_qualifier' on a REAL house-span residence — a full writer-path record COMMITs", async () => {
