@@ -756,6 +756,14 @@
       "include": [
         "tests/test_migration_1235_evidence*.py"
       ]
+    },
+    "k5-g1a-oracles": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/ka_kshetra/test_g1a*.py",
+        "tests/l3/kala_db/ka_kshetra/test_g1a*.py"
+      ]
     }
   }
 }
