@@ -138,6 +138,55 @@ def capture(backup, tmp_path):
     return folder, receipt
 
 
+@pytest.mark.parametrize('identity', [None, '0' * 64])
+def test_restore_refuses_missing_or_changed_script_before_connecting(backup, capture, monkeypatch, identity):
+    import psycopg
+    folder, receipt = capture
+    if identity is None:
+        receipt.pop('script_sha256')
+    else:
+        receipt['script_sha256'] = identity
+    (folder / 'capture.json').write_text(json.dumps(receipt))
+    monkeypatch.delenv('PGSERVICE', raising=False)
+    monkeypatch.setattr(psycopg, 'connect', lambda *a, **kw: pytest.fail('stale capture reached libpq'))
+    monkeypatch.setattr(backup, 'run_client', lambda *a: pytest.fail('stale capture reached pg_restore'))
+    with pytest.raises(backup.BackupRefused, match='capture script identity changed; recapture required'):
+        backup.restore_verify(folder, 'p01_fixture')
+    assert not (folder / 'restore.json').exists()
+
+
+def test_restore_refuses_source_database_name_before_any_sql(backup, capture, monkeypatch):
+    import psycopg
+    folder, receipt = capture
+    receipt['source']['database'] = 'ky_restore_p01_fixture'
+    (folder / 'capture.json').write_text(json.dumps(receipt))
+    # An absent target isolates the name-separation guard from the separate
+    # existing-target refusal. Even a catalog query is too late for this case.
+    conn = Connection(exists=False)
+    monkeypatch.delenv('PGSERVICE', raising=False)
+    monkeypatch.setattr(psycopg, 'connect', lambda **kw: conn)
+    monkeypatch.setattr(backup, 'run_client', lambda *a: pytest.fail('source name reached pg_restore'))
+    with pytest.raises(backup.BackupRefused, match='restore target has the source database name'):
+        backup.restore_verify(folder, 'p01_fixture')
+    assert conn.statements == []
+    assert not (folder / 'restore.json').exists()
+
+
+def test_restore_receipt_replay_refused_before_database_work(backup, capture, monkeypatch):
+    import psycopg
+    folder, _ = capture
+    evidence = b'{"status":"verified","previous_evidence":"must remain unchanged"}\n'
+    (folder / 'restore.json').write_bytes(evidence)
+    monkeypatch.delenv('PGSERVICE', raising=False)
+    monkeypatch.setattr(psycopg, 'connect', lambda *a, **kw: pytest.fail('replay reached libpq'))
+    monkeypatch.setattr(backup, 'run_client', lambda *a: pytest.fail('replay reached pg_restore'))
+    # Exclusive receipt creation at the END is insufficient: no scratch
+    # database may be created/restored/dropped when evidence already exists.
+    with pytest.raises(backup.BackupRefused, match='restore evidence already exists; use a fresh label'):
+        backup.restore_verify(folder, 'p01_fixture')
+    assert (folder / 'restore.json').read_bytes() == evidence
+
+
 @pytest.mark.parametrize('failure', ['none', 'changed_content', 'restore_error', 'cleanup_error', 'existing_target'])
 def test_actual_restore_workflow_requires_equality_and_successful_cleanup(backup, capture, monkeypatch, failure):
     import psycopg
@@ -234,6 +283,26 @@ def test_table_fingerprints_measure_real_row_bytes_and_sequence_state(backup):
     assert backup.measurements(MeasureConnection()) == {
         'tables': {'public.fixture': {'rows': 2, 'sha256': expected_digest.hexdigest()}},
         'sequences': {'public.seq': {'last_value': 2, 'is_called': True}}}
+
+
+@pytest.mark.parametrize('uncovered', ['foreign_table', 'large_object'])
+def test_measurements_refuse_uncovered_data_before_scanning_rows(backup, uncovered):
+    class CatalogConnection:
+        def execute(self, query):
+            if query.startswith('SET LOCAL '):
+                return Result(None)
+            if 'pg_catalog.pg_class' in query:
+                relations = [('public', 'fixture', 'r')]
+                if uncovered == 'foreign_table':
+                    relations.append(('public', 'external_rows', 'f'))
+                return type('Relations', (), {'fetchall': lambda self: relations})()
+            assert query == 'SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_largeobject_metadata)'
+            return Result((uncovered == 'large_object',))
+        def cursor(self, name):
+            pytest.fail('uncovered data reached table scan')
+    reason = 'foreign-table data is not covered' if uncovered == 'foreign_table' else 'large objects require'
+    with pytest.raises(backup.BackupRefused, match=reason):
+        backup.measurements(CatalogConnection())
 
 
 @pytest.mark.parametrize('service', ['synthetic_redirect', ''])

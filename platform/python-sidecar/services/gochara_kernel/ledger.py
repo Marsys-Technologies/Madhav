@@ -557,16 +557,23 @@ def publish_candidate(conn, chart_id: str, generation: str, convention_id: str,
             f"has status {row[1]!r}; a rebuild after publication is a NEW "
             f"generation label (plan §4.7)"
         )
-    conn.execute(
+    replaced = conn.execute(
         """
         UPDATE kala_gochara_publication
         SET convention_id = %s, input_generation_vector = %s,
             ephemeris_backend = %s, horizon = %s::tstzrange,
             row_counts = '{}'::jsonb, content_digest = 'sha256:unpublished-candidate'
-        WHERE manifest_id = %s
+        WHERE manifest_id = %s AND status = 'candidate'
         """,
         (convention_id, vector, ephem, horizon, row[0]),
     )
+    # The status read above can be stale after another transaction publishes.
+    # Keep the replacement conditional even if database triggers are bypassed.
+    if getattr(replaced, "rowcount", None) == 0:
+        raise PublishedGenerationRefusal(
+            f"publish_candidate refused: the manifest for generation {generation!r} was no longer a candidate when it was replaced "
+            "(it changed status after it was read — a stale caller); nothing was rewritten"
+        )
     return str(row[0])
 
 

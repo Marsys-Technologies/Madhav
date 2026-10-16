@@ -366,7 +366,7 @@ jobs:
         # dispatch and broken-detector negatives in both migration states.
         # K9-1: directory discovery also collects kala_db/rehearsal (ordered
         # build lineage, own detectors, read-only inspection, publication CAS).
-        run: python -B -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters tests/l3/ka_kshetra/test_g1a_contract.py tests/l3/ka_kshetra/test_g1a_candidate_sql.py -q -rs -p no:cacheprovider
+        run: python -B -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters tests/l3/ka_kshetra/test_g1a_contract.py tests/l3/ka_kshetra/test_g1a_candidate_sql.py tests/l3/ka_kshetra/test_g1b*.py -q -rs -p no:cacheprovider
       - name: Run scoped parihara evaluator contract and route tests
         working-directory: platform/python-sidecar
         env:
@@ -550,7 +550,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_station_refine.py tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_builder_restricted_flow.py tests/l3/gochara/test_a53_all_null_policy.py tests/l3/gochara/test_a53_all_null_policy_db.py tests/l3/gochara/test_a53_complete_output_verification.py tests/l3/gochara/test_a53_p1_contact_completeness.py tests/l3/gochara/test_a53_verification_job.py tests/l3/gochara/test_a53_contact_certification.py tests/l3/gochara/test_a53_boundary_tolerance.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_measuring_report_db.py tests/l3/gochara/test_a53_scope_completeness.py tests/l3/gochara/test_a53_stored_scope_real_sky.py tests/l3/gochara/test_a53_r10_complete_records.py tests/l3/gochara/test_a53_r10_record_results.py tests/l3/gochara/test_a53_r10_locking.py tests/l3/gochara/test_a53_r10_runner_gate.py tests/l3/gochara/test_a53_r10_identity.py tests/l3/gochara/test_a53_r10_boundary_contract.py tests/l3/gochara/test_a53_r11_generation_wide.py tests/l3/gochara/test_a53_r11_p1_independence.py tests/l3/gochara/test_a53_r11_seal_brief.py tests/l3/gochara/test_a53_seal_grants_ledger.py tests/l3/gochara/test_a53_disposable_db_guard.py tests/l3/gochara/test_a53_r12_boundary.py tests/l3/gochara/test_a53_r12_seal_job.py tests/l3/gochara/test_a53_r12_persisted_brief.py tests/l3/gochara/test_a53_r13_brief_serializer.py tests/l3/gochara/test_a53_r13_timeouts.py tests/l3/gochara/test_a53_r13_sealed_boundary.py tests/l3/gochara/test_a53_r13_producer.py tests/l3/gochara/test_a53_r13_own_checkout.py tests/l3/gochara/test_a53_r14_sealed_contacts.py tests/l3/gochara/test_a53_r15_amendments.py tests/l3/gochara/test_a53_r16_amendments.py tests/l3/gochara/test_a53_r18_independence_pins.py tests/l3/gochara/test_a53_writer_native_types.py tests/l3/gochara/test_a53_moon_scope_domain.py tests/l3/gochara/test_a53_ci_db_list_guard.py tests/l3/gochara/test_a25_v41_candidate_writer.py tests/l3/gochara/test_a53_input_vector.py tests/l3/gochara/test_a53_1241_fixture_pin.py tests/l3/gochara/test_a53_am5_writer.py tests/l3/gochara/test_a53_aspect_span.py tests/l3/gochara/test_a53_dasha_read.py tests/l3/gochara/test_a53_ephemeral_tier_rule.py tests/l3/gochara/test_a53_gochara_v5_writer.py tests/l3/gochara/test_a53_inventory.py tests/l3/gochara/test_a53_materialise.py tests/l3/gochara/test_a53_member_geometry.py tests/l3/gochara/test_a53_moon_on_demand.py tests/l3/gochara/test_a53_p1_house_descriptor.py tests/l3/gochara/test_a53_r18_graha_map_parity.py tests/l3/gochara/test_a53_r86_sweep.py tests/l3/gochara/test_a53_record_store.py tests/l3/gochara/test_a53_rule_registry.py tests/l3/gochara/test_a53_rule_registry_versions.py tests/l3/gochara/test_a53_substrate_store.py tests/l3/gochara/test_a53_targets.py tests/l3/gochara/test_a53_version_selection.py tests/l3/gochara/test_a53_window_evaluator.py tests/l3/gochara/test_a53_window_sweep.py tests/l3/gochara/test_a53_window_sweep_pg.py tests/l3/gochara/test_a53_writerbase_conformance.py tests/l3/gochara/test_c46_v5_test_slice.py tests/l3/gochara/test_c55_legacy_trigger_interplay_pg.py tests/l3/gochara/test_c48a_sealed_staleness.py tests/l3/gochara/test_w1_serving_reader.py tests/l3/gochara/test_w1_serving_grants.py tests/l3/gochara/test_w2_serving_route.py tests/l3/gochara/test_p09_acceptance.py tests/l3/gochara/test_p09_sealed_attestation.py tests/l3/gochara/test_p09_real_seal.py tests/l3/gochara/test_j7b_l5_handoff.py tests/l3/gochara/test_j6m_authority_admission_db.py tests/l3/gochara/test_j6m_prebuild_static.py tests/l3/gochara/test_horizon_derivation.py tests/l3/gochara/test_mb_horizon_shape_guard.py tests/l3/gochara/test_mb_stretch_sink.py tests/l3/gochara/test_j6r_rehearsal_db.py tests/l3/gochara/test_j6r_prebuild_static.py -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
+          python -m pytest tests/l3/gochara/test_station_refine.py tests/l3/gochara/test_a53_migration_1240_static.py tests/l3/gochara/test_a53_window_verification_gate.py tests/l3/gochara/test_a53_window_verification_roles.py tests/l3/gochara/test_a53_builder_restricted_flow.py tests/l3/gochara/test_a53_all_null_policy.py tests/l3/gochara/test_a53_all_null_policy_db.py tests/l3/gochara/test_a53_complete_output_verification.py tests/l3/gochara/test_a53_p1_contact_completeness.py tests/l3/gochara/test_a53_verification_job.py tests/l3/gochara/test_a53_contact_certification.py tests/l3/gochara/test_a53_boundary_tolerance.py tests/l3/gochara/test_a53_p1_anchor.py tests/l3/gochara/test_a53_p1_support.py tests/l3/gochara/test_measuring_report_db.py tests/l3/gochara/test_a53_scope_completeness.py tests/l3/gochara/test_a53_stored_scope_real_sky.py tests/l3/gochara/test_a53_r10_complete_records.py tests/l3/gochara/test_a53_r10_record_results.py tests/l3/gochara/test_a53_r10_locking.py tests/l3/gochara/test_a53_r10_runner_gate.py tests/l3/gochara/test_a53_r10_identity.py tests/l3/gochara/test_a53_r10_boundary_contract.py tests/l3/gochara/test_a53_r11_generation_wide.py tests/l3/gochara/test_a53_r11_p1_independence.py tests/l3/gochara/test_a53_r11_seal_brief.py tests/l3/gochara/test_a53_seal_grants_ledger.py tests/l3/gochara/test_a53_disposable_db_guard.py tests/l3/gochara/test_a53_r12_boundary.py tests/l3/gochara/test_a53_r12_seal_job.py tests/l3/gochara/test_a53_r12_persisted_brief.py tests/l3/gochara/test_a53_r13_brief_serializer.py tests/l3/gochara/test_a53_r13_timeouts.py tests/l3/gochara/test_a53_r13_sealed_boundary.py tests/l3/gochara/test_a53_r13_producer.py tests/l3/gochara/test_a53_r13_own_checkout.py tests/l3/gochara/test_a53_r14_sealed_contacts.py tests/l3/gochara/test_a53_r15_amendments.py tests/l3/gochara/test_a53_r16_amendments.py tests/l3/gochara/test_a53_r18_independence_pins.py tests/l3/gochara/test_a53_writer_native_types.py tests/l3/gochara/test_a53_moon_scope_domain.py tests/l3/gochara/test_a53_ci_db_list_guard.py tests/l3/gochara/test_a25_v41_candidate_writer.py tests/l3/gochara/test_a53_input_vector.py tests/l3/gochara/test_a53_1241_fixture_pin.py tests/l3/gochara/test_a53_am5_writer.py tests/l3/gochara/test_a53_aspect_span.py tests/l3/gochara/test_a53_dasha_read.py tests/l3/gochara/test_a53_ephemeral_tier_rule.py tests/l3/gochara/test_a53_gochara_v5_writer.py tests/l3/gochara/test_a53_inventory.py tests/l3/gochara/test_a53_materialise.py tests/l3/gochara/test_a53_member_geometry.py tests/l3/gochara/test_a53_moon_on_demand.py tests/l3/gochara/test_a53_p1_house_descriptor.py tests/l3/gochara/test_a53_r18_graha_map_parity.py tests/l3/gochara/test_a53_r86_sweep.py tests/l3/gochara/test_a53_record_store.py tests/l3/gochara/test_a53_rule_registry.py tests/l3/gochara/test_a53_rule_registry_versions.py tests/l3/gochara/test_a53_substrate_store.py tests/l3/gochara/test_a53_targets.py tests/l3/gochara/test_a53_version_selection.py tests/l3/gochara/test_a53_window_evaluator.py tests/l3/gochara/test_a53_window_sweep.py tests/l3/gochara/test_a53_window_sweep_pg.py tests/l3/gochara/test_a53_writerbase_conformance.py tests/l3/gochara/test_c46_v5_test_slice.py tests/l3/gochara/test_j1a_publication_guard_db.py tests/l3/gochara/test_c55_legacy_trigger_interplay_pg.py tests/l3/gochara/test_c48a_sealed_staleness.py tests/l3/gochara/test_w1_serving_reader.py tests/l3/gochara/test_w1_serving_grants.py tests/l3/gochara/test_w2_serving_route.py tests/l3/gochara/test_p09_acceptance.py tests/l3/gochara/test_p09_sealed_attestation.py tests/l3/gochara/test_p09_real_seal.py tests/l3/gochara/test_j7b_l5_handoff.py tests/l3/gochara/test_j6m_authority_admission_db.py tests/l3/gochara/test_j6m_prebuild_static.py tests/l3/gochara/test_horizon_derivation.py tests/l3/gochara/test_mb_horizon_shape_guard.py tests/l3/gochara/test_mb_stretch_sink.py tests/l3/gochara/test_j6r_rehearsal_db.py tests/l3/gochara/test_j6r_prebuild_static.py -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
           # ^ that one test needs the pre-refactor baseline commit, unreachable from this job's shallow checkout;
           # it still runs in Governance Gates.
 
@@ -1143,9 +1143,11 @@ jobs:
         # horizons it refuses) and a registry INSERT of the pre-1304 row. These tests use the REAL writer as oracle.
         run: python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py -q
 
-      - name: Gochara v5 small-test teardown - registry shape, attribution, receipts, every refusal (unit)
+      - name: Gochara v5 small-test teardown and P01 production-reversion oracles (unit)
         # The teardown is the only way a small test is removed. These tests pin its registry check to the migration-1304 shape, its
         # delete orders to the writer's own, the receipt rule the Nirmana monitor depends on, and every refusal (no database).
+        # Mandatory J-1a oracles also reject bare abbreviated modes, stale capture-script identity, source/target name
+        # collisions, foreign tables, large objects and receipt replay BEFORE scratch database work (37-reversion proof).
         run: python -m pytest scripts/__tests__/test_teardown_v5_small_test.py scripts/__tests__/test_p01_smalltest_operations.py scripts/__tests__/test_backup_v5_small_test.py scripts/__tests__/test_w4_smalltest_safety.py -q -p no:cacheprovider
 
       - name: Wave 4 small-test admission and launch — full reviewed evidence fixtures
@@ -2247,11 +2249,12 @@ jobs:
         run: >-
           python -m pytest platform/scripts/governance/pravaha_tracker/tests/test_verify_priority.py
           platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py
+          platform/scripts/governance/pravaha_tracker/tests/test_step_receipt_binding.py
           platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py::GuardedCompletionCases
           -q --no-header -p no:cacheprovider
 
   governance-readback-tests:
-    # P05-B02: both ported readback suites, including all five real-cluster cases.
+    # P05-B02 + P07: readback and publication oracles feed the required governance aggregate.
     # The helper owns and cleans up its loopback-only cluster. Missing binaries,
     # unavailable helpers, or any other skipped oracle fail the required aggregate.
     needs: changes
@@ -2261,6 +2264,18 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -2278,6 +2293,29 @@ jobs:
         run: |
           python -m pytest platform/scripts/__tests__/test_gochara_window_readbacks.py platform/scripts/__tests__/test_fn_1235_readbacks.py -q --no-header -rs --junitxml=gochara-readbacks.xml
           python -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-readbacks.xml").getroot(); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara readback oracles skipped" if skipped else 0)'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform-mcp/package-lock.json
+      - name: Install MCP dependencies
+        working-directory: platform-mcp
+        run: npm ci
+      - name: P07 — ported Gochara publication oracles (REQUIRED)
+        working-directory: platform-mcp
+        run: |
+          npx vitest run --no-cache src/tools/retrieval/register_gochara_contact_ledger.test.ts src/tools/retrieval/register_gochara_windows_governed_gate.test.ts --reporter=default --reporter=junit --outputFile=gochara-mcp.xml
+          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-mcp.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara MCP oracles need 30 executed cases and zero skips" if len(cases) != 30 or skipped else 0)'
+      - name: P07 — migration 1235 protected evidence function (REQUIRED, skips fail)
+        working-directory: platform/python-sidecar
+        env:
+          GOCHARA_A51_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:55433/postgres
+          GOCHARA_REQUIRE_DB: '1'
+        run: |
+          python3 -m pip install -r requirements-ci.txt --quiet
+          python3 -m pytest tests/test_migration_1235_evidence_function.py -q -rs -p no:cacheprovider --junitxml=migration-1235.xml
+          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("migration-1235.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required migration 1235 needs five executed cases and zero skips" if len(cases) != 5 or skipped else 0)'
 
   governance-tool-tests:
     # The ORIGINAL job name, kept as ONE check: green only when every shard and the ported readbacks above are green (a cancelled or failed shard is not green; a
