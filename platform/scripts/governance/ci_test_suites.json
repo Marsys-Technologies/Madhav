@@ -217,7 +217,7 @@
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
       "include": [
-        "ga_writers/__tests__/test_l1*.py"
+        "ga_writers/__tests__/test_l1_min_fixes*.py"
       ]
     },
     "db-integration-tests-38-2": {
@@ -734,6 +734,29 @@
         "src/__tests__/server_tool*.test.ts"
       ]
     },
+    "db-integration-tests-smalltest": {
+      "cwd": "platform",
+      "engine": "pytest",
+      "include": [
+        "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_*smalltest*.py"
+      ],
+      "shard_job": "db-integration-tests"
+    },
+    "governance-readback-tests-mcp": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/retrieval/register_gochara_contact_ledger*.test.ts",
+        "src/tools/retrieval/register_gochara_windows_governed_gate*.test.ts"
+      ]
+    },
+    "governance-readback-tests-migration": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/test_migration_1235_evidence*.py"
+      ]
+    },
     "db-integration-tests-7-0": {
       "cwd": "platform",
       "engine": "vitest",
@@ -754,29 +777,6 @@
         "src/lib/pariprashna/samiksha/**/*.spec.[jt]sx",
         "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]s",
         "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]sx"
-      ]
-    },
-    "db-integration-tests-smalltest": {
-      "cwd": "platform",
-      "engine": "pytest",
-      "shard_job": "db-integration-tests",
-      "include": [
-        "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_*smalltest*.py"
-      ]
-    },
-    "governance-readback-tests-mcp": {
-      "cwd": "platform-mcp",
-      "engine": "vitest",
-      "include": [
-        "src/tools/retrieval/register_gochara_contact_ledger*.test.ts",
-        "src/tools/retrieval/register_gochara_windows_governed_gate*.test.ts"
-      ]
-    },
-    "governance-readback-tests-migration": {
-      "cwd": "platform/python-sidecar",
-      "engine": "pytest",
-      "include": [
-        "tests/test_migration_1235_evidence*.py"
       ]
     }
   }

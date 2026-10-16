@@ -37,12 +37,12 @@ The Kāla DB step now uses its existing `kala-db-tests-5-0` discovery profile. T
 parent branch had an inline glob command while its pinned #3588 test required the
 profile invocation. The node-ID comparison also covers this selector correction.
 
-Reproduce collection equality against the latest #3588 discovery revision (install the
+Reproduce collection equality against main at the #3588 merge (install the
 sidecar CI Python dependencies and platform npm dependencies first):
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python -B platform/scripts/governance/compare_ci_db_shards.py \
-  --baseline 1c1cc0b4f0021c83c8f58a15b6e11d32b19a3ad1 \
+  --baseline cc9f509b480461880be80b225ff44b084995b3d7 \
   --scratch "$JOB_SCRATCH/coverage-recheck" \
   --ephe-path /Users/Dev/kalayantra/ephe
 ```
@@ -65,6 +65,20 @@ whole-job partition as the numeric profiles. The numeric boundary still prevents
 teardown from claiming teardown-round2/round3. The regression compares every
 worker's actual workflow selectors with its partition owners and checks that each
 small-test file runs exactly once across the four workers.
+
+The current-main merge retains all 96 incoming profiles, including the narrowed
+`37-2` builder-role family, the narrowed readback profile, both named readback
+profiles and the tracker step-receipt selection. `unit-tests` still depends on
+both `changes` and `generated-artifacts`; the AM-5 static test still asserts the
+`8-0` discovery invocation. All 33 pinned check names, including the required
+contexts, retain their names and remain unique.
+
+- **(I) INTERPRETATION:** the supplied three-way resolver's union restored the
+  superseded broad `ga_writers/__tests__/test_l1*.py` glob in `37-2`. Main's explicit
+  narrowing takes precedence for this one family; all other resolver output is
+  retained. The alternative union would select the unrelated data-plane suite
+  and break current-main node parity. The discovery regression tests both that
+  exclusion and automatic inclusion of a future `test_l1_min_fixes*.py` case.
 
 - **(I) INTERPRETATION:** named profiles use explicit `shard_job` ownership; the
   alternative of accepting every nonnumeric suffix by prefix could also claim
@@ -140,7 +154,7 @@ Recheck only the changed job while preserving the existing same-baseline rows:
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python -B platform/scripts/governance/compare_ci_db_shards.py \
-  --baseline 1c1cc0b4f0021c83c8f58a15b6e11d32b19a3ad1 --job gochara-a55-replace-chain \
+  --baseline cc9f509b480461880be80b225ff44b084995b3d7 --job gochara-a55-replace-chain \
   --scratch "$JOB_SCRATCH/coverage-recheck" --ephe-path /Users/Dev/kalayantra/ephe
 ```
 

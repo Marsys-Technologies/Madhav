@@ -61,6 +61,21 @@ def test_a_new_profile_does_not_reintroduce_a_file_allowlist():
         assert all('*' in pattern for pattern in profile['include'])
 
 
+def test_builder_role_profile_keeps_main_narrowing_and_accepts_new_family_cases(tmp_path):
+    """The shard merge must not restore the superseded broad L1 selector."""
+    mod = module()
+    profile = mod.profiles()['db-integration-tests-37-2']
+    directory = tmp_path / profile['cwd'] / 'ga_writers/__tests__'
+    directory.mkdir(parents=True)
+    for name in ('test_l1_min_fixes_builder_role_pg.py',
+                 'test_l1_min_fixes_future.py', 'test_l1_data_plane_contracts.py'):
+        (directory / name).write_text('def test_case(): pass\n')
+    assert mod.discover(tmp_path, profile) == [
+        'ga_writers/__tests__/test_l1_min_fixes_builder_role_pg.py',
+        'ga_writers/__tests__/test_l1_min_fixes_future.py',
+    ]
+
+
 def test_runner_propagates_collection_failure_and_executes_new_test(tmp_path):
     mod = module()
     (tmp_path / 'test_new.py').write_text('def test_new(): assert False\n')
