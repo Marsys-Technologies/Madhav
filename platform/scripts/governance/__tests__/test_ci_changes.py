@@ -662,3 +662,29 @@ def test_measuring_dump_service_exposes_a_local_socket_for_the_disposable_guard(
     assert socket_dir == "/var/run/postgresql"
     assert f"{socket_dir}:/var/run/postgresql" in service["volumes"]
     assert step["env"]["GOCHARA_A53_ADMIN_DSN"] == next(s for s in peer["steps"] if "GOCHARA_A53_ADMIN_DSN" in s.get("env", {}))["env"]["GOCHARA_A53_ADMIN_DSN"]
+
+
+@pytest.mark.parametrize("suite", [
+    "scripts/__tests__/test_gochara_pipeline_ephe_probe.py",
+    "scripts/__tests__/test_gochara_sitting_evidence_pack.py",
+])
+def test_j3ab_script_oracles_are_mandatory_and_unfiltered_in_ci(jobs, suite):
+    import shlex
+
+    job = jobs["db-integration-tests"]
+    assert not job.get("continue-on-error")
+    assert job["defaults"]["run"]["working-directory"] == "platform"
+    commands = []
+    for step in job["steps"]:
+        for line in str(step.get("run", "")).replace("\\\n", " ").splitlines():
+            if line.lstrip().startswith("#") or "pytest" not in line or suite not in line:
+                continue
+            tokens = shlex.split(line, comments=True)
+            if "pytest" not in tokens or suite not in tokens:
+                continue
+            assert not step.get("continue-on-error") and not step.get("if")
+            args = tokens[tokens.index("pytest") + 1:]
+            assert not any(t.split("=")[0] in _FORBIDDEN_FLAGS for t in args)
+            assert not any(t in {"||", ";", "|", "&&"} for t in tokens)
+            commands.append(tokens)
+    assert commands, f"{suite} is outside discovery and must run in mandatory CI"

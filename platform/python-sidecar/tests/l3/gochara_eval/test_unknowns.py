@@ -313,3 +313,23 @@ class TestAgainstTheReferenceModel:
         plo, phi, pvals = percentile_range(known, idx, k)
         assert (mlo, mhi) == pytest.approx((plo, phi), abs=1e-9)
         assert mvals == pytest.approx(pvals, abs=1e-9)
+
+
+def test_slot_distribution_budget_refuses_before_enumeration_or_any_partial_yield(monkeypatch):
+    from services.gochara_eval import unknowns
+    # One known value gives LOW/HIGH; one A and one B give 2*2 = 4
+    # distributions. Budget 3 must refuse before even constructing a
+    # distribution, not merely hit one of the later structure-count guards.
+    visited = []
+    compositions = unknowns._compositions
+
+    def observed_compositions(*args):
+        visited.append(args)
+        yield from compositions(*args)
+
+    monkeypatch.setattr(unknowns, "_compositions", observed_compositions)
+    structures = unknowns.enumerate_structures([1.0], [True], 1, 1, budget=3)
+    with pytest.raises(unknowns.BudgetExceeded) as exc:
+        next(structures)
+    assert visited == [], "over-budget work reached distribution enumeration"
+    assert str(exc.value) == "4 slot distributions > budget 3"

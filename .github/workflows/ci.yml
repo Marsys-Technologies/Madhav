@@ -1138,10 +1138,12 @@ jobs:
         # This test fails on that old path (mutation-checked) — keep it collected.
         run: python -m pytest scripts/__tests__/test_dispatch_frozen_rebuild_digest_path.py -q
 
-      - name: Gochara v5 small-test dispatch — the marker it builds is accepted by the writer's own validator
+      - name: Gochara v5 dispatch, ephemeris probe and sitting evidence oracles
         # The dispatch used to carry its own copy of the slice rules (classes the writer never scored, date-only
         # horizons it refuses) and a registry INSERT of the pre-1304 row. These tests use the REAL writer as oracle.
-        run: python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py -q
+        # J3AB: scripts/__tests__ is outside the governance shard directory.
+        # Keep the stubbed current-image/location and canonical-manifest oracles mandatory.
+        run: python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py scripts/__tests__/test_gochara_pipeline_ephe_probe.py scripts/__tests__/test_gochara_sitting_evidence_pack.py -q -p no:cacheprovider
 
       - name: Gochara v5 small-test teardown and P01 production-reversion oracles (unit)
         # The teardown is the only way a small test is removed. These tests pin its registry check to the migration-1304 shape, its
