@@ -1,7 +1,8 @@
 """A5.3 — the five closed graha adapters the R17 census excludes (steward M20261003T121341 / Suvarna M20261003T121400).
 
-* the three BUILDER maps are TEMPORARY exclusions (they migrate onto the SSoT after the protected window): each is pinned EQUAL to the
-  map derived from `brahmagyan.graha_vocabulary` (same nine keys, same values), and each parity check is itself mutation-proofed;
+* the three BUILDER maps are now DERIVED from the SSoT (they migrated onto the graha_vocabulary helpers after the
+  protected window): the equality pins below remain as drift guards — a hand-edit that re-introduces an
+  independent literal still fails here, and each parity check is itself mutation-proofed;
 * the two VERIFIER maps are PERMANENT exclusions (independence from builder and SSoT is their purpose): they are checked against FIXED
   LITERAL expectations ONLY — nothing here ties them to the SSoT.
 Doctrine note (Suvarna, M20261003T121557): the parity test pins the MEAN-node mapping (RAH_MEAN / KET_MEAN). If a builder map is ever meant
@@ -57,3 +58,14 @@ def test_the_verifier_maps_match_their_fixed_literal_expectations_and_nothing_el
                                       "venus": "Venus", "saturn": "Saturn", "rahu": "Rahu", "ketu": "Ketu"}
     assert inventory_verifier._FACT_SUBJECT == {"SUN": "sun", "MOON": "moon", "MAR": "mars", "MER": "mercury", "JUP": "jupiter",
                                                 "VEN": "venus", "SAT": "saturn", "RAH_MEAN": "rahu", "KET_MEAN": "ketu"}
+
+
+def test_builder_mapping_bytes_equal_the_pre_port_capture():
+    """Canonical bytes captured from the accepted pre-port main maps.
+
+    This is a mapping equality oracle, not the pending full measuring-build
+    class/output proof. Verifier maps keep their independent literals above.
+    """
+    import json
+    actual = {name: value for name, (value, _) in BUILDER_MAPS.items()}
+    assert json.dumps(actual, sort_keys=True, separators=(",", ":")).encode() == b'{"chart_context._SUBJECT_TITLE":{"JUP":"Jupiter","KET_MEAN":"Ketu","MAR":"Mars","MER":"Mercury","MOON":"Moon","RAH_MEAN":"Rahu","SAT":"Saturn","SUN":"Sun","VEN":"Venus"},"substrate.DB_BODY":{"Jupiter":"jupiter","Ketu":"ketu","Mars":"mars","Mercury":"mercury","Moon":"moon","Rahu":"rahu","Saturn":"saturn","Sun":"sun","Venus":"venus"},"window_sweep.GRAHA_TITLE":{"jupiter":"Jupiter","ketu":"Ketu","mars":"Mars","mercury":"Mercury","moon":"Moon","rahu":"Rahu","saturn":"Saturn","sun":"Sun","venus":"Venus"}}'
