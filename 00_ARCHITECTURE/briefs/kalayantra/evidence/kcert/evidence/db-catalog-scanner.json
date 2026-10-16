@@ -1,0 +1,70 @@
+{
+  "fixture_database": "kala_ci_211cce31656548ccbf1677851e9addb8",
+  "catalog": {
+    "exists": [
+      "bg_gochara_citation_resolution"
+    ],
+    "cols": {
+      "bg_gochara_citation_resolution": [
+        "citation_string",
+        "chunk_id",
+        "text_id",
+        "verse_ref",
+        "status",
+        "source_citation",
+        "constant_name",
+        "note",
+        "created_at"
+      ]
+    },
+    "keys": {
+      "bg_gochara_citation_resolution": [
+        [
+          "citation_string",
+          "chunk_id"
+        ]
+      ]
+    },
+    "views": [],
+    "types": {
+      "bg_gochara_citation_resolution": {
+        "citation_string": "text",
+        "chunk_id": "text",
+        "text_id": "text",
+        "verse_ref": "text",
+        "status": "text",
+        "source_citation": "text",
+        "constant_name": "text",
+        "note": "text",
+        "created_at": "timestamp with time zone"
+      }
+    },
+    "defaults": {
+      "bg_gochara_citation_resolution": {
+        "status": "'resolved'::text",
+        "created_at": "now()"
+      }
+    },
+    "types_error": null,
+    "udts": {}
+  },
+  "positive": {
+    "v": "PASS",
+    "measured": "STRUCTURAL: 1 module(s) reach it by code: platform-mcp/src/tools/retrieval/register_gochara_windows.ts; 1 capability(ies) declare density_contract AND select a tier column from it (status) in: platform-mcp/src/tools/retrieval/register_gochara_windows.ts"
+  },
+  "negative": {
+    "v": "PARTIAL",
+    "measured": "STRUCTURAL: 1 module(s) reach it by code: platform-mcp/src/tools/retrieval/register_gochara_windows.ts; a referencing capability declares density_contract but platform-mcp/src/tools/retrieval/register_gochara_windows.ts: no tier column in its served select"
+  },
+  "stored_rows": [
+    [
+      "gap",
+      "unresolved"
+    ],
+    [
+      "known",
+      "resolved"
+    ]
+  ],
+  "limits": "Guarded fixture, not production; no value/prose verification claim."
+}
