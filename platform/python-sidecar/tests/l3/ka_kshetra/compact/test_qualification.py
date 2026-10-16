@@ -46,9 +46,13 @@ def test_aggregate_recomputes_status_from_clauses_not_supplied_green_label():
 def test_committed_trial_runs_all_adversaries_and_reports_actual_failing_clause():
     from .run_contract_trial import build_report
     result = build_report()
-    assert len(result['fixtures']) == 6
+    assert {fixture['fixture_id'] for fixture in result['fixtures']} == {
+        'corrected_clock', 'max_switch_and_peak', 'min_crossing',
+        'steps_and_support_edges', 'curved_suppression', 'shift_seam',
+        'long_horizon',
+    }
     assert result['status'] == 'failed_with_failing_clause'
-    assert 'null_statistics' in result['failed_clauses']['curved_suppression']
+    assert result['failed_clauses'] == {'curved_suppression': ['null_statistics']}
     assert result['dense_path_disposition'] == 'retain'
     for fixture in result['fixtures']:
         for clause, data in fixture['clauses'].items():

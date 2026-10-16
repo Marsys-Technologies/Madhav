@@ -4,6 +4,7 @@ The authentic *historical* baseline is replayed from immutable migrations, never
 presented as the current production row. TEST_APPROVED is a deliberately artificial
 one-second increase for SQL mechanics; it is not a proposed policy or timeout.
 """
+import asyncio
 from pathlib import Path
 
 import psycopg
@@ -70,6 +71,68 @@ def test_updates_exact_target_column_and_is_idempotent(registry):
     assert {k: v for k, v in after.items() if k != TARGET} == {k: v for k, v in before.items() if k != TARGET}
     registry.execute(prepared_sql())
     assert snapshot(registry) == after
+
+
+@pytest.fixture
+def committed_neighbour(baseline):
+    # The normal registry fixture's rows/DDL are uncommitted and invisible to
+    # a second session. Publish only this test's distinct competing-write row.
+    neighbour = TARGET + "_competing_writer"
+    with psycopg.connect(baseline, autocommit=True) as conn:
+        conn.execute("""INSERT INTO public.asset_registry
+            SELECT (jsonb_populate_record(NULL::public.asset_registry,
+            to_jsonb(r) || jsonb_build_object('asset_id', %s::text))).*
+            FROM public.asset_registry r WHERE asset_id = %s""", (neighbour, TARGET))
+        try:
+            yield baseline, neighbour
+        finally:
+            conn.execute("DELETE FROM public.asset_registry WHERE asset_id = %s", (neighbour,))
+
+
+def test_competing_registry_writer_waits_until_transaction_ends(committed_neighbour):
+    """Removing the table lock must let this different-row write escape."""
+    baseline, neighbour = committed_neighbour
+
+    async def compete():
+        options = "-c statement_timeout=5000 -c lock_timeout=4000"
+        async with (
+            await psycopg.AsyncConnection.connect(baseline, connect_timeout=3, options=options) as migration,
+            await psycopg.AsyncConnection.connect(baseline, connect_timeout=3, options=options) as competitor,
+        ):
+            await migration.execute(prepared_sql())
+            # A write to TARGET would also wait on UPDATE's ordinary row lock,
+            # masking removal of the full-registry snapshot protection.
+            writer = asyncio.create_task(competitor.execute("""UPDATE public.asset_registry
+                SET writer_timeout_seconds = writer_timeout_seconds + 1
+                WHERE asset_id = %s RETURNING writer_timeout_seconds""", (neighbour,)))
+            try:
+                deadline = asyncio.get_running_loop().time() + 2
+                while True:
+                    cursor = await migration.execute(
+                        "SELECT pg_blocking_pids(%s)", (competitor.info.backend_pid,))
+                    blockers = (await cursor.fetchone())[0]
+                    if migration.info.backend_pid in blockers:
+                        break
+                    assert not writer.done(), "competing registry write escaped the migration transaction"
+                    assert asyncio.get_running_loop().time() < deadline, "writer did not reach the registry lock"
+                    await asyncio.sleep(0.01)
+                assert not writer.done()
+                await migration.rollback()
+                cursor = await asyncio.wait_for(writer, timeout=6)
+                assert await cursor.fetchone() == (HISTORICAL_BASELINE + 1,)
+                cursor = await competitor.execute(
+                    "SELECT writer_timeout_seconds FROM public.asset_registry WHERE asset_id = %s", (TARGET,))
+                assert await cursor.fetchone() == (HISTORICAL_BASELINE,)
+            finally:
+                # Release the blocker even on assertion failure, then drain the
+                # bounded write before rolling it back; no task/row survives.
+                await migration.rollback()
+                try:
+                    await asyncio.wait_for(writer, timeout=6)
+                finally:
+                    await competitor.rollback()
+
+    asyncio.run(compete())
 
 
 @pytest.mark.parametrize("state", ["missing", "alias-only", "stale", "null"])

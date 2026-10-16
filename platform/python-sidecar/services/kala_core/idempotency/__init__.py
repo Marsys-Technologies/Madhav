@@ -52,6 +52,7 @@ _DELETE_CANDIDATE = {
     "kala_field_snapshots": "DELETE FROM kala_field_snapshots WHERE chart_id = %s AND generation = %s",
     "kala_activation": "DELETE FROM kala_activation WHERE chart_id = %s AND generation = %s",
     "kala_darshana": "DELETE FROM kala_darshana WHERE chart_id = %s AND generation = %s",
+    "kala_taranga_candidate": "DELETE FROM kala_taranga_candidate WHERE chart_id = %s AND generation = %s",
     "kala_taranga": "DELETE FROM kala_taranga WHERE chart_id = %s AND generation = %s",
     "kala_jivana_parva": "DELETE FROM kala_jivana_parva WHERE chart_id = %s AND generation = %s",
 }
