@@ -145,3 +145,17 @@ def test_guard_discovers_future_checkout_consumers_automatically(missing):
     else:
         job['steps'][1]['if'] = 'false'
     assert any('future-merged-job' in error for error in mod.workflow_problems(yaml.safe_dump({'jobs': jobs})))
+
+
+def test_merged_g1_candidate_suites_keep_the_required_kala_db_context():
+    """PR #3588: main's G1 selectors must survive discovery without literal paths."""
+    mod = module()
+    profile = mod.profiles()['kala-db-tests-5-0']
+    assert profile['cwd'] == 'platform/python-sidecar'
+    selected = mod.discover(ROOT, profile)
+    for path in ('tests/l3/ka_kshetra/test_g1a_contract.py',
+                 'tests/l3/ka_kshetra/test_g1a_candidate_sql.py'):
+        assert path in selected
+    jobs = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs']
+    assert any('ci_discovery.py" pytest kala-db-tests-5-0 --' in step.get('run', '')
+               for step in jobs['kala-db-tests']['steps'])

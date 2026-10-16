@@ -40,7 +40,8 @@
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
       "include": [
-        "tests/l3/ka_bhavishya_lekha/test_certification*.py"
+        "tests/l3/ka_bhavishya_lekha/test_certification*.py",
+        "tests/l3/ka_kshetra/test_g1*.py"
       ],
       "directories": [
         "tests/l3/kala_db",
