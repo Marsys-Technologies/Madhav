@@ -5,7 +5,9 @@ from pathlib import Path
 
 import psycopg
 import psycopg.rows
+import pytest
 
+from ._smalltest_executor_evidence import executor_bound_smalltest  # noqa: F401
 from .test_a55_replace_chain import template  # noqa: F401
 from .test_c37_dispatch_real_db import dtemplate, dw  # noqa: F401
 
@@ -28,13 +30,17 @@ def test_real_staged_run_is_launched_once_and_receipted(dw, tmp_path, monkeypatc
     assert json.loads((tmp_path / (result["run_id"] + ".json")).read_text()) == result
 
 
-def test_measuring_staging_dry_run_uses_real_rollback(dw, capsys, monkeypatch):
+def test_measuring_staging_dry_run_is_refused_without_writes(dw, capsys, monkeypatch):
     import dispatch_v5_small_test_job as dispatch
     monkeypatch.setenv("DATABASE_URL", dw.dsn)
     path = Path(__file__).resolve().parents[5] / "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json"
     surface = json.loads(path.read_text())["ops"]["measuring_dispatch"]["staging_dry_run"]
-    dispatch.main(surface["fixed_args"])
-    result = json.loads(capsys.readouterr().out)
-    assert result["plan_manifest"]["gochara_v5_test_slice"]["run"] == "all_classes_full"
+    # PR #3507 / P01 deliberately disables measuring through the small-test path.
+    with pytest.raises(SystemExit) as refused:
+        dispatch.main(surface["fixed_args"])
+    assert refused.value.code == 2
+    streams = capsys.readouterr()
+    assert streams.out == ""
+    assert "measuring phase is disabled" in streams.err
     assert dw.conn.execute("SELECT count(*) FROM build_runs").fetchone()[0] == 0
     assert dw.conn.execute("SELECT count(*) FROM build_run_assets").fetchone()[0] == 0
