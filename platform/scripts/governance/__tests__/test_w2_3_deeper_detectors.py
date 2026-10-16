@@ -350,8 +350,8 @@ _REAL_TARGETS = {
 def test_r20_the_real_writers_resolve_as_hand_verified():
     """The three W2-2 C-KSHETRA acceptance items on the real sources, plus R127's three L2 delegating writers
     and one L1 adapter / one L0 seeder: bo_upaya PASS through bodha_writers/_idempotency.py (both counted
-    tables); ka_gochara PARTIAL naming the v2 mismatch (R240); ka_kshetra still FAIL; bo_bimba and
-    bo_pramana_mapa PASS through their replace_prior_* helpers; bo_samvada PARTIAL (its writer runs no DDL);
+    tables); ka_gochara PARTIAL naming the v2 mismatch (R240); ka_kshetra PASSes candidate replacement
+    (K5-G1a, PR #3542); bo_bimba and bo_pramana_mapa PASS through their replace_prior_* helpers; bo_samvada PARTIAL (its writer runs no DDL);
     bo_laksana_rerank PARTIAL (UPDATE-only); ga_positions PASS two hops down; bg_rules PASS in its seeder."""
     ids = {**ac.registered_ids("bo_"), **ac.registered_ids("ka_"), **ac.registered_ids("ga_"), **ac.registered_ids("bg_")}
     conv = {"bo": "delete_then_insert", "ka": "delete_then_insert", "ga": "delete_then_insert", "bg": "upsert"}
@@ -364,7 +364,7 @@ def test_r20_the_real_writers_resolve_as_hand_verified():
     v, n = scan("ka_gochara")
     assert v == ac.PARTIAL and "the registry declares kala_gochara_windows, the writer replaces kala_gochara_windows_v2" in n[0], n
     v, n = scan("ka_kshetra", ["kala_field"])
-    assert v == ac.FAIL and "services/ka_kshetra/writer.py:" in n[0], n
+    assert v == ac.PASS and "kala_field (services/ka_kshetra/writer.py:" in n[0], n
     for aid in ("bo_bimba", "bo_pramana_mapa"):
         v, n = scan(aid)
         assert v == ac.PASS and "(bodha_writers/_idempotency.py:" in n[0], (aid, n)
@@ -508,12 +508,14 @@ def test_r241_an_open_gap_does_not_close_on_an_early_return_hold(monkeypatch, tm
 
 
 def test_r241_the_real_writers_near_the_new_shapes_resolve_as_hand_verified():
-    """Real sources (targets read live 2026-09-27): ka_kshetra still FAILs on its KshetraReplacementHeld raise;
+    """K5-G1a (PR #3542) replaces the populated-target hold with candidate-scoped deletion: PASS.
+    Synthetic held-writer cases above still require FAIL; this scan does not certify DB isolation.
+    For the other real sources (targets read live 2026-09-27),
     mi_jivanaghatana's `count_chart_lel_events` probe counts life_events (its input), and ga_vargas's
     `_check_already_written` is pinned to the current build — neither is a hold, both PASS."""
     ids = {**ac.registered_ids("ka_"), **ac.registered_ids("mi_"), **ac.registered_ids("ga_")}
     v, n = ac.idem_scan("ka_kshetra", ids["ka_kshetra"], "delete_then_insert", ["kala_field"])
-    assert v == ac.FAIL and "services/ka_kshetra/writer.py:547 (raise KshetraReplacementHeld" in n[0], n
+    assert v == ac.PASS and "kala_field (services/ka_kshetra/writer.py:" in n[0], n
     v, n = ac.idem_scan("mi_jivanaghatana", ids["mi_jivanaghatana"], "delete_then_insert", ["mimamsa_event_provenance"] * 2)
     assert v == ac.PASS, n
     v, n = ac.idem_scan("ga_vargas", ids["ga_vargas"], "delete_then_insert", ["chart_divisionals"] * 2)
