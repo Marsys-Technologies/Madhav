@@ -1,22 +1,32 @@
 ---
 artifact: REGISTRAR_INPUT_OUTPUT_CONTRACT
-version: "1.0"
+version: "1.1"
 status: PREPARATION — fixture-only; live admission and reference cutover pending
 item: K6-5
 authority: KYD-141; ALGO 3.8; PLAN sections 4.1, 7, 9, 10
 produced_on: 2026-10-10
 changelog:
+  - "1.1 (2026-10-16, K6-N1): reconcile merged default dispatch, historical-only L4 safety and fixture/live admission limits; no runtime change."
   - "1.0: pin the complete registrar input/output boundary using K6-5a storage."
 ---
 
 # Registrar boundary
 
-The explicit entry is `ctx.config.registrar_fixture_inputs`, a sequence of typed
-`RegistrarInput` values. The default writer continues legacy computation, and
-its jury preparation entry remains intact. No stage row becomes an issue during
-an ordinary rebuild. This contract supplies consumer fixtures only; the conductor
-must admit actual producer, delivery-confirmation and ontology bindings before
-live issue creation. The entry refuses every non-fixture manifest.
+The default append-only registrar is `KaBhavishyaLekhaWriter`. Both
+`registrar_inputs` and `registrar_fixture_inputs` in `ctx.config` accept a sequence
+of typed `RegistrarInput` values and call the same immutable registrar. The
+fixture key takes precedence, even when empty; next, `jury_reader_generation`
+selects the retained jury preparation entry; otherwise the default reads
+`registrar_inputs`. Absent inputs or an empty sequence perform no SQL and return
+zero rows with `no_delivery_inputs`. No stage row becomes an issue during an
+ordinary rebuild, and no legacy rebuild runs on that path.
+
+Both keys still require a complete/verified fixture manifest and explicit
+delivery confirmation. This contract supplies consumer fixtures only; the
+conductor must admit actual producer, delivery-confirmation and ontology bindings
+before live issue creation. Both entries refuse every non-fixture manifest.
+Source: `platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:768`
+(shared helper), `:790` (registered default), `:803` (dispatch precedence).
 
 | Input | Exact mapping and admission |
 |---|---|
@@ -44,11 +54,16 @@ retry raises `ImmutableIssueConflict`; no issue is rewritten. The orchestrator
 retains transaction ownership. L5 outcomes still reference exact versions and
 cluster evaluation credit by `(chart_id,event_class,phase,affected_person,episode)`.
 
-The unchanged L4 `phala_anchors` protective read remains required until accepted
-L5 integration and downstream reference acceptance. Existing archived issues
-are never updated, reclassified or deleted. Reference-protection cutover, live
-qualification, protected upstream application, deployment and publication are
-not established by these fixtures. No new migration or asset is introduced.
+`_LegacyKaBhavishyaLekhaWriter` is unregistered and retained for historical safety
+oracles only, including the L4 `phala_anchors` protective read. The default
+registrar never reads L4 and never updates, reclassifies or deletes legacy rows
+or archived issues. Historical foreign keys and safety oracles remain intact;
+this dispatch change does not establish downstream L4 reference acceptance.
+Source: `platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:88`;
+see `ISSUED_FORECAST_LIFECYCLE_CONTRACT_v1_0.md:18` and `:133` for lifecycle custody.
+Live qualification, protected upstream application, independent acceptance,
+parent completion, deployment and K9-4b publication are not established by these
+fixtures. No new migration or asset is introduced.
 
 Certification: the registrar's append-only helper remains **FAIL under the
 current Idem detector**, routed to PLAN section 7/R-10 for reviewed immutable

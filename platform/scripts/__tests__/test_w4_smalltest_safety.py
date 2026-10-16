@@ -385,3 +385,235 @@ def test_executor_commit_receipt_remains_pending_until_independent_absence(execu
     executor.receipt(req, 'COMPLETED', rc=0, out='teardown_proof\t' + json.dumps(proof))
     assert json.loads((executor.REC / 'fixture.json').read_text())['status'] == 'AWAITING_ABSENCE'
     assert not (executor.REC / 'fixture.completion.json').exists()
+
+
+@pytest.mark.parametrize('field,value', [
+    ('result', 'REJECTED'), ('by', 'adhikarin'), ('operation_id', 'another'),
+    ('request_sha256', '0' * 64), ('reviewed_commit', '0' * 40),
+])
+def test_request_acceptance_itself_rejects_unbound_or_nonverifier_evidence(bound, field, value):
+    root = bound.root / 'run/ops'
+    assert shared.acceptance(bound.req, root)['result'] == 'ACCEPTED'
+    path = Path(bound.req['acceptance_receipt'])
+    acceptance = json.loads(path.read_text())
+    acceptance[field] = value
+    path.write_text(json.dumps(acceptance))
+    with pytest.raises(shared.Refused, match='bound to independent verifier acceptance'):
+        shared.acceptance(bound.req, root)
+
+
+@pytest.mark.parametrize('field,value', [
+    ('run_id', S.RUN), ('plan_manifest_digest', '0' * 64),
+    ('chart_id', S.RUN), ('asset_id', 'another'), ('generation', '5.1'),
+])
+def test_staged_scope_itself_is_bound_to_the_accepted_launch(bound, field, value):
+    root = bound.root / 'run/ops'
+    assert shared.staged_scope(bound.req, root) == bound.scope
+    bound.scope[field] = value
+    with pytest.raises(shared.Refused, match='scope differs from the accepted staged launch'):
+        shared.staged_scope(bound.req, root)
+
+
+@pytest.mark.parametrize('field,value', [('id', S.RUN), ('plan_manifest_digest', '0' * 64),
+                                       ('plan_manifest', {})])
+def test_teardown_checks_surviving_run_identity_independently_of_stamp_proof(bound, field, value):
+    # Exercise this boundary directly: the earlier generation-ownership check
+    # must not mask a missing UUID/manifest binding in _bound_scope itself.
+    cur = bound.h.conn.cursor()
+    with T._patched(bound.h, bind=False):
+        assert T.teardown_mod._bound_scope(cur, [T.RUN_1], bound.req) == bound.scope
+        bound.h.run_manifests[0][field] = value
+        with pytest.raises(shared.Refused, match='staged launch UUID/manifest'):
+            T.teardown_mod._bound_scope(cur, [T.RUN_1], bound.req)
+    assert not bound.h.deletes() and not bound.h.commits
+
+
+@pytest.mark.parametrize('field,value', [('manifest_id', S.RUN), ('status', 'published'),
+                                       ('input_generation_vector', {})])
+def test_teardown_checks_candidate_identity_against_accepted_scope(bound, field, value):
+    cur = bound.h.conn.cursor()
+    with T._patched(bound.h, bind=False):
+        assert T.teardown_mod._bound_scope(cur, [T.RUN_1], bound.req) == bound.scope
+        bound.h.manifest[field] = value
+        with pytest.raises(shared.Refused, match='candidate manifest/vector differs'):
+            T.teardown_mod._bound_scope(cur, [T.RUN_1], bound.req)
+    assert not bound.h.deletes() and not bound.h.commits
+
+
+def test_teardown_requires_the_original_surviving_marker_even_with_bound_identities(bound):
+    # Keep UUID, manifest digest and accepted candidate vector all coherent.
+    # Only the original marker's relation to that vector is wrong.
+    manifest = copy.deepcopy(bound.h.run_manifests[0]['plan_manifest'])
+    original_class = manifest[T._W.TEST_SLICE_KEY]['classes'][0]
+    manifest[T._W.TEST_SLICE_KEY]['classes'] = [next(c for c in T._W.SCORED_CLASSES if c != original_class)]
+    T._W._validate_test_slice(manifest[T._W.TEST_SLICE_KEY])
+    bound.h.run_manifests[0].update(plan_manifest=manifest, plan_manifest_digest=shared.evidence_digest(manifest))
+    bound.req['smalltest_scope'] = S.scope_for(bound.root, T.RUN_1, manifest, bound.h.manifest)
+    with T._patched(bound.h, bind=False):
+        with pytest.raises(shared.Refused, match="original marker"):
+            T.teardown_mod._bound_scope(bound.h.conn.cursor(), [T.RUN_1], bound.req)
+    assert not bound.h.deletes() and not bound.h.commits
+
+
+@pytest.mark.parametrize('mismatch', ['kind', 'arguments'])
+def test_dispatch_binds_kind_and_cli_arguments_before_connecting(tmp_path, monkeypatch, mismatch):
+    import psycopg
+    args = {'run': 'all_classes_1y', 'classes': 'all',
+            'horizon-start': '2025-01-01T00:00:00+00:00', 'horizon-end': '2026-01-01T00:00:00+00:00'}
+    rr, ar = S.absence_for(tmp_path)
+    req = S.authorize(tmp_path, dict(operation_id='dispatch', kind='smalltest_dispatch', args=args,
+                                   absence_receipt=rr, absence_acceptance=ar))
+    argv = ['--i-am-steward', '--after-settled-1', '--execute']
+    for key, value in args.items():
+        argv.extend(['--' + key, value])
+    monkeypatch.setenv('KY_ROOT', str(tmp_path))
+    monkeypatch.setenv('DATABASE_URL', 'postgresql://postgres@127.0.0.1:55433/not_connected')
+    class ConnectionBoundary(Exception):
+        pass
+    calls = []
+    def connect(*a, **kw):
+        calls.append(True)
+        raise ConnectionBoundary()
+    monkeypatch.setattr(psycopg, 'connect', connect)
+    monkeypatch.setenv('KY_OPERATION_REQUEST', json.dumps(req))
+    with pytest.raises(ConnectionBoundary):
+        dispatch.main(argv)
+    calls.clear()
+    if mismatch == 'kind':
+        req['kind'] = 'backup_snapshot'
+        reason = 'operation kind does not authorize'
+    else:
+        req['args']['horizon-end'] = '2025-12-31T00:00:00+00:00'
+        reason = 'staging arguments differ'
+    S.authorize(tmp_path, req)
+    monkeypatch.setenv('KY_OPERATION_REQUEST', json.dumps(req))
+    with pytest.raises(shared.Refused, match=reason):
+        dispatch.main(argv)
+    assert not calls
+
+
+def test_absence_output_hash_is_checked_even_when_altered_bytes_measure_the_same_json(executor):
+    rr, ar = S.absence_for(executor.KY_ROOT)
+    # Additional trailing whitespace leaves the parsed JSON/TSV unchanged.
+    # Only a byte hash comparison detects this change.
+    output = executor.REC / 'readback.output.txt'
+    output.write_bytes(output.read_bytes() + b'\n')
+    req = admitted_request(executor, absence_receipt=rr, absence_acceptance=ar)
+    problem = validate(executor, req)
+    assert problem and 'output digest mismatch' in problem
+
+
+def test_absence_acceptance_cannot_change_a_measured_zero_into_another_zero(executor):
+    rr, ar = S.absence_for(executor.KY_ROOT)
+    a = json.loads((executor.ACC / ar['name']).read_text())
+    # Both zero censuses meet the coverage requirement. Equality to the actual
+    # measured output, independently of that coverage check, must still hold.
+    a['absence']['counts']['unmeasured_extra_table'] = 0
+    ar = S.put(executor.KY_ROOT, 'acceptance', 'readback', a)
+    req = admitted_request(executor, absence_receipt=rr, absence_acceptance=ar)
+    problem = validate(executor, req)
+    assert problem and 'differs from the measured readback output' in problem
+
+
+def test_old_absence_cannot_bypass_a_later_completed_launch(executor):
+    committed = committed_fixture(executor.KY_ROOT)
+    prior = S.put(executor.KY_ROOT, 'receipts', 'apply', committed)
+    rr, ar = S.absence_for(executor.KY_ROOT, committed=committed)
+    req = admitted_request(executor, absence_receipt=rr, absence_acceptance=ar, prior_teardown_receipt=prior)
+    assert validate(executor, req) is None
+    S.accepted(executor.KY_ROOT, 'smalltest_dispatch', 'later-launch',
+               ts='2026-10-15T00:00:02+00:00', launch={'run_id': T.RUN_1})
+    problem = validate(executor, req)
+    assert problem and 'later staged launch requires its own teardown' in problem
+
+
+def test_first_annual_smalltest_cannot_reduce_the_scored_class_set(executor):
+    rr, ar = S.absence_for(executor.KY_ROOT)
+    req = admitted_request(executor, absence_receipt=rr, absence_acceptance=ar)
+    assert validate(executor, req) is None
+    args = dict(req['args'], classes='marriage')
+    req = admitted_request(executor, args=args, absence_receipt=rr, absence_acceptance=ar)
+    problem = validate(executor, req)
+    assert problem and 'requires all scored classes' in problem
+
+
+@pytest.mark.parametrize('needs', ['none', 'builder', 'owner'])
+def test_execute_hands_the_complete_accepted_request_to_the_operation(executor, monkeypatch, needs):
+    req = admitted_request(executor)
+    executor.TMP.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv('KY_BUILDER_DATABASE_URL', 'synthetic-builder')
+    monkeypatch.setenv('KY_OWNER_DATABASE_URL', 'synthetic-owner')
+    calls = []
+    def run_group(argv, cwd, env, timeout):
+        calls.append((argv, env))
+        return SimpleNamespace(returncode=0, stdout='fixture', stderr='')
+    monkeypatch.setattr(executor, 'run_group', run_group)
+    op = dict(script='fixture.py', fixed_args=[], needs=needs, production=False)
+    assert executor.execute(req, op)[0] == 0
+    assert len(calls) == 1
+    env = calls[0][1]
+    assert json.loads(env['KY_OPERATION_REQUEST']) == req
+    assert env.get('DATABASE_URL') == {'none': None, 'builder': 'synthetic-builder', 'owner': 'synthetic-owner'}[needs]
+    assert 'KY_OWNER_DATABASE_URL' not in env and 'KY_BUILDER_DATABASE_URL' not in env
+
+
+def test_executor_loop_reconciles_independent_teardown_completion_without_new_requests(executor, monkeypatch):
+    committed = committed_fixture(executor.KY_ROOT)
+    S.put(executor.KY_ROOT, 'receipts', 'apply', committed)
+    executor.FENCE.write_text(json.dumps(dict(operation_id='apply', request_sha256=committed['request_sha256'])))
+    rr, ar = S.absence_for(executor.KY_ROOT, committed=committed)
+    S.put(executor.KY_ROOT, 'acceptance', 'apply.quiescence', dict(operation_id='apply',
+        request_sha256=committed['request_sha256'], result='ACCEPTED', by='v2', ts=executor.now(),
+        absence_receipt=rr, absence_acceptance=ar))
+    class NoWorkers:
+        def __init__(self, **kwargs): pass
+        def submit(self, *args): pytest.fail('idle loop submitted an operation')
+        def shutdown(self, **kwargs): pass
+    monkeypatch.setattr(executor.cf, 'ThreadPoolExecutor', NoWorkers)
+    monkeypatch.setattr(executor, 'sync', lambda: None)
+    monkeypatch.setattr(executor, 'refresh_from_main_or_fail_closed', lambda: True)
+    monkeypatch.setattr(executor, 'load_table', lambda: {})
+    monkeypatch.setattr(executor, 'capabilities', lambda *a: {})
+    monkeypatch.setattr(executor.time, 'time', lambda: 1000)
+    monkeypatch.setattr(executor.time, 'sleep', lambda _: (executor.RUN / 'STOP_executor').touch())
+    assert executor.main() == 0
+    completion = json.loads((executor.REC / 'apply.completion.json').read_text())
+    assert completion['status'] == 'COMPLETED' and completion['run_id'] == S.RUN
+    assert completion['absence_receipt'] == rr
+    assert executor.FENCE.exists()
+
+
+@pytest.mark.parametrize('profile', ['one_class_full', 'all_classes_1y'])
+@pytest.mark.parametrize('active_run', [False, True])
+def test_launch_bridge_dryrun_uses_real_staging_admission_and_rollback_only(
+        tmp_path, capsys, profile, active_run):
+    from test_dispatch_v5_small_test import _Harness, _run_main
+    spec = importlib.util.spec_from_file_location('j1a_dryrun_bridge', FLEET / 'smalltest_launch.py')
+    bridge = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bridge)
+    h = _Harness(active_runs=[{'id': S.RUN, 'state': 'running'}] if active_run else [])
+    reports = []
+    def rehearse(argv):
+        assert '--dry-run' in argv and '--execute' not in argv
+        reports.append(_run_main(h, argv, capsys))
+    def forbidden(*a, **kw):
+        pytest.fail('dry run entered the launch/claim boundary')
+    bridge._write_claim = forbidden
+    dispatcher = SimpleNamespace(build_slice_marker=dispatch.build_slice_marker, main=rehearse)
+    argv = ['--run', profile, '--classes', 'marriage' if profile == 'one_class_full' else 'all', '--dry-run']
+    if profile == 'all_classes_1y':
+        argv += ['--horizon-start', '2025-01-01T00:00:00+00:00', '--horizon-end', '2026-01-01T00:00:00+00:00']
+    def run():
+        return bridge.run(argv, dispatcher=dispatcher, connect=forbidden, launcher=forbidden, claim_dir=tmp_path)
+    if active_run:
+        with pytest.raises(shared.Refused, match='already active'):
+            run()
+        assert not any('INSERT INTO' in sql for sql in h.statements)
+    else:
+        assert run() is None
+        assert len(reports) == 1
+        report = json.loads(reports[0].out)
+        assert report['plan_manifest']['gochara_v5_test_slice']['run'] == profile
+        assert 'ROLLED BACK' in reports[0].err
+    assert not h.commits and len(h.rollbacks) == 1
+    assert not list(tmp_path.iterdir())
