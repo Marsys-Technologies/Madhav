@@ -233,7 +233,7 @@ def test_cli_fails_closed(tmp_path):
 HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
          "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")
-NEVER_SKIPPED = ("changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
+NEVER_SKIPPED = ("generated-artifacts", "changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
                  "governance-gates-static", "governance-gates-py-sidecar-shard",       # the required Governance Gates check's parts (sharded 2026-10-08): never skipped, as before
                  "coverage-gate", "density-census", "governance-tool-tests")
 
@@ -243,7 +243,8 @@ def jobs():
     yaml = pytest.importorskip("yaml")
     if not CI.is_file():
         pytest.skip("no ci.yml on this tree")
-    return yaml.safe_load(CI.read_text())["jobs"]
+    from ci_discovery import expanded_workflow
+    return expanded_workflow(yaml.safe_load(CI.read_text())["jobs"])
 
 
 @pytest.mark.parametrize("name", HEAVY)
