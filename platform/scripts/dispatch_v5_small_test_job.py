@@ -486,6 +486,17 @@ def _admit(cur) -> tuple[list[dict], list[str]]:
 
 
 def main(argv: list[str] | None = None) -> None:
+    return _main(argv)
+
+
+def _main(argv=None, *, marker_builder=build_slice_marker,
+          operation_kind="smalltest_dispatch", request_policy=shared.smalltest_request_problem,
+          manifest_check=None):
+    """Shared staging transaction; explicit measuring entry point supplies its policy.
+
+    This is not a CLI override. The small-test entry point retains its full-shape
+    refusal; no environment flag or request argument can switch its authority.
+    """
     args = _parse_args(sys.argv[1:] if argv is None else argv)
     if args.list_runs or args.lookup:
         run_id = None
@@ -509,7 +520,7 @@ def main(argv: list[str] | None = None) -> None:
               "pass BOTH --i-am-steward and --after-settled-1", file=sys.stderr)
         sys.exit(2)
     try:
-        slice_marker = build_slice_marker(
+        slice_marker = marker_builder(
             run=args.run, classes=args.classes,
             horizon_start=args.horizon_start, horizon_end=args.horizon_end)
     except Exception as exc:  # RuntimeError or the writer's TestSliceRefusal: nothing touched yet
@@ -518,13 +529,13 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.execute:
         req = shared.operation_request()
-        if req.get("kind") != "smalltest_dispatch":
+        if req.get("kind") != operation_kind:
             raise shared.Refused("executor operation kind does not authorize small-test staging")
-        problem = shared.smalltest_request_problem(req, shared.evidence_root())
+        problem = request_policy(req, shared.evidence_root())
         if problem:
             raise shared.Refused(problem)
         bound_args = req.get("args") or {}
-        bound_marker = build_slice_marker(run=bound_args.get("run"), classes=bound_args.get("classes"),
+        bound_marker = marker_builder(run=bound_args.get("run"), classes=bound_args.get("classes"),
             horizon_start=bound_args.get("horizon-start"), horizon_end=bound_args.get("horizon-end"))
         if bound_marker != slice_marker:
             raise shared.Refused("staging arguments differ from the accepted small-test request")
@@ -554,6 +565,8 @@ def main(argv: list[str] | None = None) -> None:
         candidate = _load_inactive_candidate(cur)    # the row is read inactive; NO UPDATE of asset_registry is ever issued
         manifest, manifest_digest = build_small_test_manifest(
             candidate=candidate, slice_marker=slice_marker)
+        if manifest_check is not None:
+            manifest_check(manifest, manifest_digest)
 
         # Force dormant (per_chart scope) so the orchestrator treats this as a
         # genuine build, not a no-op over an already-lit asset.
