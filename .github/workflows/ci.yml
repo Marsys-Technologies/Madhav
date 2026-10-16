@@ -417,7 +417,7 @@ jobs:
         # dispatch and broken-detector negatives in both migration states.
         # K9-1: directory discovery also collects kala_db/rehearsal (ordered
         # build lineage, own detectors, read-only inspection, publication CAS).
-        run: python -B -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters tests/l3/ka_kshetra/test_g1a_contract.py tests/l3/ka_kshetra/test_g1a_candidate_sql.py tests/l3/ka_kshetra/test_g1b*.py -q -rs -p no:cacheprovider
+        run: python -B -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping*.py tests/l3/ka_vedha_gochara tests/l3/ka_taranga tests/l3/ka_adapters tests/l3/ka_kshetra/test_g1a_c*.py tests/l3/ka_kshetra/test_g1b*.py -q -rs -p no:cacheprovider
       - name: Run scoped parihara evaluator contract and route tests
         working-directory: platform/python-sidecar
         env:
