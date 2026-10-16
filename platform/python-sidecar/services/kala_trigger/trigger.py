@@ -26,7 +26,7 @@ standalone; `compute_trigger_currents` also reports `net` for this module's
 own scope (`additive + suppressive`, unclamped) for direct testing.
 
 READ-ONLY reuse (imports only, zero writes, zero modification):
-  - services.ka_sangam.engine — orb_strength_score, HIGH_CONFIDENCE_ORB_THRESHOLD.
+  - services.ka_sangam.engine — cosine_orb_strength_score, HIGH_CONFIDENCE_ORB_THRESHOLD.
   - chart_facts saham_position rows written by ga_writers/ga_sensitive_writer.py
     (read via fetch_saham_facts — a plain SELECT with SAVEPOINT guard, no
     writes, mirroring the read pattern in
@@ -56,7 +56,7 @@ from typing import Any, Optional
 
 from services.ka_sangam.engine import (
     HIGH_CONFIDENCE_ORB_THRESHOLD,
-    orb_strength_score,
+    cosine_orb_strength_score,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,7 +103,7 @@ def _malefic_transit_over_mechanism(
             )
             for ev in events:
                 orb_at = getattr(ev, "orb_at_event_deg", orb_deg)
-                base = orb_strength_score(
+                base = cosine_orb_strength_score(
                     orb_at, orb_deg, getattr(ev, "applying_separating", "applying")
                 )
                 extra = getattr(ev, "extra", None) or {}
@@ -157,7 +157,7 @@ def _papa_kartari_sandwich(
                 )
                 for ev in events:
                     orb_at = getattr(ev, "orb_at_event_deg", orb_deg)
-                    s = orb_strength_score(
+                    s = cosine_orb_strength_score(
                         orb_at, orb_deg, getattr(ev, "applying_separating", "applying")
                     )
                     if label == "before":
@@ -207,7 +207,7 @@ def guru_shani_double_transit(
                 best = 0.0
                 for ev in events:
                     orb_at = getattr(ev, "orb_at_event_deg", orb_deg)
-                    s = orb_strength_score(
+                    s = cosine_orb_strength_score(
                         orb_at, orb_deg, getattr(ev, "applying_separating", "applying")
                     )
                     if s >= HIGH_CONFIDENCE_ORB_THRESHOLD:
@@ -305,7 +305,7 @@ def saham_current(
     score = 0.0
     if saham_lon is not None and transiting_planet_lon is not None:
         delta = abs(((transiting_planet_lon - saham_lon) + 180.0) % 360.0 - 180.0)
-        score = max(score, orb_strength_score(delta, orb_deg, "applying"))
+        score = max(score, cosine_orb_strength_score(delta, orb_deg, "applying"))
     if dasha_lord is not None and saham_lord is not None and dasha_lord == saham_lord:
         score = max(score, 0.6)  # classical dasha-lord activation; no orb concept
     return min(1.0, score)

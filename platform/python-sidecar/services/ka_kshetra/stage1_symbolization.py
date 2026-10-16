@@ -220,40 +220,9 @@ def build_syzygy_band_primitive(chart_id: str, body: str, t_root: float,
 
 # ── Builders: L0/L1/L3 reference joins (§N.5 — inherit, never recompute) ────
 
-def build_moorti_primitive(chart_id: str, body: str, t_ingress: float,
-                            t_next_ingress: float, moorti_name: str,
-                            quality_tier: int, kinematics_id: Optional[int] = None
-                            ) -> PrimitiveRow:
-    """`moorti_at_ingress` (§3.2): the moorti class of a sign_ingress, from
-    `bg_transit_moorti`. quality_tier 1 (best, svarna) .. 4 (worst, loha) maps
-    to strength 1.0 .. 0.25 (linear, tier-inverted)."""
-    strength = 1.0 - 0.25 * (quality_tier - 1)
-    polarity = "supportive" if quality_tier <= 2 else "obstructive" if quality_tier == 4 else "neutral"
-    knots = _box_envelope(t_ingress, t_next_ingress, strength)
-    return PrimitiveRow(
-        chart_id=chart_id, primitive_kind="moorti_at_ingress", subject=body,
-        t_start=t_ingress, t_end=t_next_ingress, envelope=knots, polarity=polarity,
-        class_label=moorti_name, source_kind="l0_reference",
-        source_table="bg_transit_moorti", source_pk=moorti_name,
-        kinematics_ids=(kinematics_id,) if kinematics_id is not None else (),
-    )
-
-
-def build_vedha_primitive(chart_id: str, body: str, t_start: float, t_end: float,
-                           vedha_house: int, phala: str,
-                           kinematics_id: Optional[int] = None) -> PrimitiveRow:
-    """`vedha` (§3.2): obstruction of a transit house by an occupied vedha
-    house, from `bg_transit_rules` (rule_type='vedha')."""
-    knots = _box_envelope(t_start, t_end, 1.0)
-    return PrimitiveRow(
-        chart_id=chart_id, primitive_kind="vedha", subject=body,
-        object_ref=f"house_{vedha_house}", t_start=t_start, t_end=t_end,
-        envelope=knots, polarity="obstructive", class_label=phala,
-        source_kind="l0_reference", source_table="bg_transit_rules",
-        source_pk=f"vedha:{body}:{vedha_house}",
-        kinematics_ids=(kinematics_id,) if kinematics_id is not None else (),
-    )
-
+# KR-1 / PLAN §8.1: vedha and mūrti now enter through
+# g1_inputs.suppression_primitives from upstream stage intervals. S1 keeps
+# the continuous kinematic knot builders (B8-6), not a second rule evaluator.
 
 _PANCHANGA_LIMB_KEYS = ("tithi", "vara", "nakshatra", "yoga", "karana")
 

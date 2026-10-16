@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from services.gochara_grammar.primitives import SPECIAL_DRISHTI_DEG as LEGACY_TABLE
+from services.gochara_grammar.primitives import SPECIAL_DRISHTI_DEG as GRAMMAR_TABLE
+from services.gochara_kernel.convention import SPECIAL_DRISHTI_DEG as KERNEL_TABLE
 from services.kala_core.sky import aspected_points, aspects, contact_level, drishti_angles
 
 
@@ -30,10 +31,12 @@ def test_nodes_cast_none(node: str) -> None:
         assert aspects(node, 0.0, target, orb_deg=1.0) == ()
 
 
-def test_legacy_node_aspect_table_is_not_the_table() -> None:
-    assert tuple(LEGACY_TABLE["Rahu"]) != drishti_angles("Rahu")
-    assert {b: tuple(v) for b, v in LEGACY_TABLE.items() if b not in ("Rahu", "Ketu")} == {
-        b: drishti_angles(b) for b in LEGACY_TABLE if b not in ("Rahu", "Ketu")}
+def test_grammar_uses_the_kernel_aspect_table() -> None:
+    # KR-1 contracts the old disagreement: there is one Kāla table, including
+    # the empty node entries, rather than a copied convention that can drift.
+    assert GRAMMAR_TABLE is KERNEL_TABLE
+    assert {body: tuple(angles) for body, angles in GRAMMAR_TABLE.items()} == {
+        body: drishti_angles(body) for body in GRAMMAR_TABLE}
 
 
 def test_orb_must_be_declared() -> None:

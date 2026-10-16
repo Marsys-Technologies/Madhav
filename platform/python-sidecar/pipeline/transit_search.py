@@ -136,6 +136,11 @@ def orb_strength_score(
     """
     Score in [0, 1] where 1 = exact and applying, 0 = at max orb and separating.
     Applying events receive a 1.2x multiplier (capped at 1.0).
+
+    Legacy ad-hoc practice convention, retained by
+    KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md §3.1 (intensity row), §8.
+    This linear weight is distinct from Saṅgam's I-17 cosine weight;
+    neither numeric multiplier is a classical or calibrated probability claim.
     """
     if max_orb_deg <= 0.0:
         return 1.0

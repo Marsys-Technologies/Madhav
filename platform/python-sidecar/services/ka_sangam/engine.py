@@ -3,7 +3,7 @@ services.ka_sangam.engine — Convergence scoring engine (L3 K4-a).
 
 Implements ratified invariants:
   I-16: convergence_score — multiplicative necessary × saturating supporting
-  I-17: orb_strength_score — cos² decay
+  I-17: cosine_orb_strength_score — cos² decay
   I-21: confidence_label — threshold classifier
   I-22: independent_current_count — correlation-discounted evidence counter
 
@@ -181,7 +181,7 @@ def _c8_eclipse_score(
             continue
         for ev in events:
             orb_deg = getattr(ev, 'orb_at_event_deg', orb)
-            s = orb_strength_score(orb_deg, orb, getattr(ev, 'applying_separating', 'applying'))
+            s = cosine_orb_strength_score(orb_deg, orb, getattr(ev, 'applying_separating', 'applying'))
             max_score = max(max_score, s)
     return min(1.0, max_score)
 
@@ -217,7 +217,7 @@ def _c9_transit_to_transit_score(
             )
             for ev in events:
                 orb_deg = getattr(ev, 'orb_at_event_deg', orb)
-                s = orb_strength_score(orb_deg, orb, getattr(ev, 'applying_separating', 'applying'))
+                s = cosine_orb_strength_score(orb_deg, orb, getattr(ev, 'applying_separating', 'applying'))
                 max_score = max(max_score, s)
         except Exception as exc:
             logger.debug("C9 transit_to_transit(%s/%s) failed: %s", planet, partner, exc)
@@ -469,7 +469,7 @@ def _c_benefic_dristi(
             )
             for ev in events:
                 orb_deg = getattr(ev, 'orb_at_event_deg', orb)
-                base = orb_strength_score(
+                base = cosine_orb_strength_score(
                     orb_deg, orb, getattr(ev, 'applying_separating', 'applying')
                 )
                 asp = int(round(abs(float((ev.extra or {}).get('aspect_deg', 0)))))
@@ -754,9 +754,9 @@ def _current_stance(value: Optional[float], empty_reason: Optional[str] = None) 
     return {'state': 'honest_empty', 'empty_reason': empty_reason}
 
 
-# ── I-17: orb_strength_score ─────────────────────────────────────────────────
+# ── I-17: cosine_orb_strength_score ─────────────────────────────────────────────────
 
-def orb_strength_score(
+def cosine_orb_strength_score(
     orb_deg: float,
     max_orb_deg: float,
     applying_separating: str,
@@ -769,6 +769,10 @@ def orb_strength_score(
     separating × 0.7
 
     Result clamped to [0, 1].
+    Historical I-17 practice convention, documented separately from the
+    ad-hoc linear scanner in KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md
+    §3.1 (intensity row), §8. The 0.7 is not a classical strength rule or
+    a calibrated probability. This legacy path retires with the live shim.
     """
     if max_orb_deg <= 0.0:
         return 1.0
@@ -960,7 +964,7 @@ _PLANET_PERIOD_YR: dict[str, float] = {
     'MeanNode': 18.61,
 }
 
-# Inline confidence gate: I-21 moderate floor (orb_strength_score ≥ 0.45 required).
+# Inline confidence gate: I-21 moderate floor (cosine_orb_strength_score ≥ 0.45 required).
 # Applied per-event inside the transit scan loops so sub-threshold events are
 # discarded as found and never accumulate in RAM (prevents Moon/Mercury explosion).
 HIGH_CONFIDENCE_ORB_THRESHOLD: float = 0.45
@@ -1166,7 +1170,7 @@ def mode_a_search(
         events = []
 
     for ev in events:
-        orb_s = orb_strength_score(
+        orb_s = cosine_orb_strength_score(
             ev.orb_at_event_deg, orb_deg, ev.applying_separating
         )
         if orb_s < HIGH_CONFIDENCE_ORB_THRESHOLD:
@@ -1398,7 +1402,7 @@ def mode_b_sweep(
         events = []
 
     for ev in events:
-        orb_s = orb_strength_score(
+        orb_s = cosine_orb_strength_score(
             ev.orb_at_event_deg, orb_deg, ev.applying_separating
         )
         if orb_s < HIGH_CONFIDENCE_ORB_THRESHOLD:
@@ -1798,7 +1802,7 @@ __all__ = [
     'HIGH_CONFIDENCE_ORB_THRESHOLD',
     'EnrichmentContext',
     'convergence_score',
-    'orb_strength_score',
+    'cosine_orb_strength_score',
     'confidence_label',
     'independent_current_count',
     'mode_a_search',

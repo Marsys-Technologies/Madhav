@@ -17,12 +17,10 @@ from services.ka_kshetra.stage1_symbolization import (
     PrimitiveRow,
     av_kaksha_gate_coverage,
     build_contact_primitive_with_dwell,
-    build_moorti_primitive,
     build_panchanga_limb_primitive,
     build_sandhi_band_primitives,
     build_station_band_primitive,
     build_syzygy_band_primitive,
-    build_vedha_primitive,
     envelope_value_at,
     latta_coverage,
     row_to_params,
@@ -159,31 +157,52 @@ class TestSyzygyBandPrimitive:
         assert row.class_label == "new"
 
 
+# KR-1: the former internal rule-builder tests are rewritten against the
+# upstream interval consumer. They retain the envelope/serialization checks.
+_BIRTH = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
+
+
+def _upstream_moorti(body="Jupiter", name="swarna", tier=1):
+    from services.ka_kshetra.g1_inputs import suppression_primitives
+    return suppression_primitives("c1", _BIRTH, [], [{
+        "graha": body, "t_in": "2000-02-20T00:00:00+00:00",
+        "t_out": "2000-03-21T00:00:00+00:00", "moorti_name": name,
+        "quality_tier": tier, "source_ref": "moorti:1"}], [])[0][0]
+
+
+def _upstream_vedha():
+    from services.ka_kshetra.g1_inputs import suppression_primitives
+    return suppression_primitives("c1", _BIRTH, [{
+        "graha": "Saturn", "t_in": "2000-01-11T00:00:00+00:00",
+        "t_out": "2000-01-21T00:00:00+00:00", "state": "active",
+        "vedha_kind": "gochara", "source_ref": "vedha:1"}], [], [])[0][0]
+
+
 class TestMoortiPrimitive:
-    def test_svarna_tier1_is_supportive_and_full_strength(self):
-        row = build_moorti_primitive("c1", "Jupiter", 50.0, 80.0, "swarna", 1)
-        assert row.polarity == "supportive"
-        assert envelope_value_at(row.envelope, 60.0) == pytest.approx(1.0)
-        assert row.source_table == "bg_transit_moorti"
+    def test_svarna_tier1_is_neutral_testimony_without_strength(self):
+        row = _upstream_moorti()
+        assert row.polarity == "neutral"
+        assert envelope_value_at(row.envelope, 60.0) == 0.0
+        assert row.source_table == "kala_moorti_nirnaya_candidate"
 
-    def test_loha_tier4_is_obstructive_and_low_strength(self):
-        row = build_moorti_primitive("c1", "Saturn", 50.0, 80.0, "loha", 4)
-        assert row.polarity == "obstructive"
-        assert envelope_value_at(row.envelope, 60.0) == pytest.approx(0.25)
+    def test_loha_tier4_is_also_neutral_without_strength(self):
+        row = _upstream_moorti("Saturn", "loha", 4)
+        assert row.polarity == "neutral"
+        assert envelope_value_at(row.envelope, 60.0) == 0.0
 
-    def test_box_shape_is_zero_outside_ingress_span(self):
-        row = build_moorti_primitive("c1", "Jupiter", 50.0, 80.0, "swarna", 1)
+    def test_upstream_edges_survive_without_numeric_bridge(self):
+        row = _upstream_moorti()
+        assert (row.t_start, row.t_end) == (50.0, 80.0)
         assert envelope_value_at(row.envelope, 40.0) == 0.0
         assert envelope_value_at(row.envelope, 90.0) == 0.0
 
 
 class TestVedhaPrimitive:
-    def test_is_obstructive_box(self):
-        row = build_vedha_primitive("c1", "Saturn", 10.0, 20.0, vedha_house=5,
-                                     phala="obstructs 11H gains")
+    def test_upstream_active_interval_is_obstructive_box(self):
+        row = _upstream_vedha()
         assert row.polarity == "obstructive"
-        assert row.object_ref == "house_5"
-        assert row.source_table == "bg_transit_rules"
+        assert row.object_ref == "vedha:1"
+        assert row.source_table == "kala_vedha_gochara_interval"
         assert envelope_value_at(row.envelope, 15.0) == pytest.approx(1.0)
 
 
@@ -256,15 +275,15 @@ class _FakeConn:
 
 class TestWritePrimitiveRows:
     def test_upserts_each_row_once(self):
-        row1 = build_vedha_primitive("c1", "Saturn", 10.0, 20.0, 5, "x")
-        row2 = build_moorti_primitive("c1", "Jupiter", 50.0, 80.0, "swarna", 1)
+        row1 = _upstream_vedha()
+        row2 = _upstream_moorti()
         conn = _FakeConn()
         n = write_primitive_rows(conn, [row1, row2])
         assert n == 2
         assert len(conn.executed) == 2
 
     def test_row_to_params_serializes_envelope_as_json(self):
-        row = build_vedha_primitive("c1", "Saturn", 10.0, 20.0, 5, "x")
+        row = _upstream_vedha()
         params = row_to_params(row)
         assert isinstance(params["envelope"], str)
         assert '"t"' in params["envelope"] and '"v"' in params["envelope"]

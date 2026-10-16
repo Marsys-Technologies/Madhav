@@ -30,8 +30,8 @@ def dignity():
 
 @pytest.fixture
 def orb_s():
-    from services.ka_sangam.engine import orb_strength_score
-    return orb_strength_score(2.3, 5.0, 'applying')
+    from services.ka_sangam.engine import cosine_orb_strength_score
+    return cosine_orb_strength_score(2.3, 5.0, 'applying')
 
 
 @pytest.fixture

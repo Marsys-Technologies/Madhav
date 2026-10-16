@@ -5,7 +5,7 @@ Covers:
   1. CR-87 — chart is a REQUIRED param on every public function (ChartRef
      construction, activation(), curve(), record_evidence()).
   2. cos² orb weighting + applying(x1.0)/separating(x0.7) distinction
-     (via services.ka_sangam.engine.orb_strength_score, the same function
+     (via services.ka_sangam.engine.cosine_orb_strength_score, the same function
      this service imports at its single T-3 adapter point).
   3. Superposition: two simultaneous currents sum (not max/replace).
   4. CR-41 proof: activation()/curve() resolve for a FUTURE timestamp far
@@ -38,7 +38,7 @@ if str(SIDECAR) not in sys.path:
     sys.path.insert(0, str(SIDECAR))
 
 from services import taranga_service as svc  # noqa: E402
-from services.ka_sangam.engine import orb_strength_score  # noqa: E402
+from services.ka_sangam.engine import cosine_orb_strength_score  # noqa: E402
 
 _CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 _AYANAMSHA = "lahiri_chitrapaksha"
@@ -201,21 +201,21 @@ class TestCR87RequiredChart:
 
 class TestOrbModel:
     def test_exact_applying_is_full_strength(self):
-        assert orb_strength_score(0.0, 8.0, "applying") == pytest.approx(1.0)
+        assert cosine_orb_strength_score(0.0, 8.0, "applying") == pytest.approx(1.0)
 
     def test_at_max_orb_is_zero(self):
-        assert orb_strength_score(8.0, 8.0, "applying") == pytest.approx(0.0, abs=1e-9)
+        assert cosine_orb_strength_score(8.0, 8.0, "applying") == pytest.approx(0.0, abs=1e-9)
 
     def test_separating_gets_070_multiplier_not_applying(self):
-        applying = orb_strength_score(2.0, 8.0, "applying")
-        separating = orb_strength_score(2.0, 8.0, "separating")
+        applying = cosine_orb_strength_score(2.0, 8.0, "applying")
+        separating = cosine_orb_strength_score(2.0, 8.0, "separating")
         assert separating == pytest.approx(applying * 0.7)
 
-    def test_taranga_uses_the_shared_orb_strength_score(self):
+    def test_taranga_uses_the_shared_cosine_orb_strength_score(self):
         """The service's single T-3 adapter-point import must be this exact
         function — proves the cos² model is really wired in, not a private
         re-implementation."""
-        assert svc._orb_strength_score is orb_strength_score
+        assert svc._orb_strength_score is cosine_orb_strength_score
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -28,7 +28,7 @@ from services.ka_sangam.engine import (
     SUPPORTING_WEIGHTS,
     HIGH_CONFIDENCE_ORB_THRESHOLD,
     convergence_score,
-    orb_strength_score,
+    cosine_orb_strength_score,
     confidence_label,
     relative_confidence_labels,
     independent_current_count,
@@ -96,52 +96,52 @@ class TestConvergenceScore:
         assert result < 0.05
 
 
-# ─── I-17: orb_strength_score ────────────────────────────────────────────────
+# ─── I-17: cosine_orb_strength_score ────────────────────────────────────────────────
 
 class TestOrbStrengthScore:
 
     def test_orb_exact_is_one(self):
         """Exact orb (0°) with applying → 1.0."""
-        result = orb_strength_score(0.0, 1.0, 'applying')
+        result = cosine_orb_strength_score(0.0, 1.0, 'applying')
         assert result == pytest.approx(1.0, abs=1e-6)
 
     def test_orb_at_boundary_near_zero(self):
         """Orb at max boundary → ~0 (cos²(π/2) = 0)."""
-        result = orb_strength_score(1.0, 1.0, 'applying')
+        result = cosine_orb_strength_score(1.0, 1.0, 'applying')
         assert result < 0.01
 
     def test_applying_greater_than_separating(self):
         """Same orb, applying > separating."""
-        applying = orb_strength_score(0.5, 2.0, 'applying')
-        separating = orb_strength_score(0.5, 2.0, 'separating')
+        applying = cosine_orb_strength_score(0.5, 2.0, 'applying')
+        separating = cosine_orb_strength_score(0.5, 2.0, 'separating')
         assert applying > separating
 
     def test_orb_strength_values_in_range(self):
-        """orb_strength_score always in [0, 1]."""
+        """cosine_orb_strength_score always in [0, 1]."""
         for orb in [0.0, 0.5, 1.0, 2.0, 5.0, 10.0]:
             for max_o in [1.0, 5.0, 10.0]:
                 for mode in ['applying', 'separating', 'stationary']:
-                    r = orb_strength_score(orb, max_o, mode)
+                    r = cosine_orb_strength_score(orb, max_o, mode)
                     assert 0.0 <= r <= 1.0, f"Out of range: orb={orb}, max={max_o}, mode={mode}, r={r}"
 
     def test_exact_applying_is_one(self):
         """Cos² at 0 = 1, × 1.0 for applying = 1.0."""
-        assert orb_strength_score(0.0, 5.0, 'applying') == pytest.approx(1.0, abs=1e-6)
+        assert cosine_orb_strength_score(0.0, 5.0, 'applying') == pytest.approx(1.0, abs=1e-6)
 
     def test_exact_separating_is_0_7(self):
         """Cos² at 0 = 1, × 0.7 for separating = 0.7."""
-        assert orb_strength_score(0.0, 5.0, 'separating') == pytest.approx(0.7, abs=1e-6)
+        assert cosine_orb_strength_score(0.0, 5.0, 'separating') == pytest.approx(0.7, abs=1e-6)
 
     def test_mid_orb_cos_squared_shape(self):
         """At mid-orb, value should follow cos²(π/4) = 0.5."""
         # orb = max/2 → ratio = 0.5 → cos²(π/4) = 0.5
-        result = orb_strength_score(0.5, 1.0, 'applying')
+        result = cosine_orb_strength_score(0.5, 1.0, 'applying')
         expected = math.cos(0.5 * math.pi / 2.0) ** 2
         assert result == pytest.approx(expected, abs=1e-5)
 
     def test_zero_max_orb_returns_one(self):
         """max_orb_deg = 0 edge case → returns 1.0."""
-        assert orb_strength_score(0.0, 0.0, 'applying') == pytest.approx(1.0, abs=1e-6)
+        assert cosine_orb_strength_score(0.0, 0.0, 'applying') == pytest.approx(1.0, abs=1e-6)
 
 
 # ─── I-21: confidence_label ──────────────────────────────────────────────────

@@ -119,6 +119,7 @@ from panchang_engine.tara_bala import compute_tara_position, get_tara_detail
 # module's orchestrator-nested (G-4) context and any standalone (no outer
 # savepoint) context.
 from services.gochara_intensity._dbutil import savepoint_scope
+from services.gochara_kernel.convention import SPECIAL_DRISHTI_DEG
 from brahmagyan.graha_vocabulary import norm_graha
 from services.ayanamsha_ids import PRIMARY_AYANAMSHA_ID
 
@@ -188,18 +189,8 @@ def clear_primitive_read_caches() -> None:
 ALL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
 CLASSICAL_SEVEN = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 
-# Classical graha drishti (BPHS Ch.26): every graha casts a full (7th-house,
-# 180deg) aspect; Mars/Jupiter/Saturn cast additional special full aspects.
-SPECIAL_DRISHTI_DEG: dict[str, list[float]] = {
-    "Mars": [90.0, 180.0, 210.0],       # 4th, 7th, 8th
-    "Jupiter": [120.0, 180.0, 240.0],   # 5th, 7th, 9th
-    "Saturn": [60.0, 180.0, 270.0],     # 3rd, 7th, 10th
-    # D-S1(c): the "BPHS Ch.26 — same as Jupiter" citation for Rahu/Ketu is
-    # refuted by F-29. These entries are retained ONLY for the legacy arm of
-    # flag `nodal_drishti`; they retire when candidate '4.0' is accepted.
-    "Rahu": [120.0, 180.0, 240.0],      # 5th, 7th, 9th (legacy nodal_drishti arm only — see above)
-    "Ketu": [120.0, 180.0, 240.0],      # 5th, 7th, 9th (legacy nodal_drishti arm only — see above)
-}
+# PLAN §8 / N-14: the kernel owns the only Kāla aspect table. In particular
+# the nodes cast none, including no seventh; no local legacy arm survives.
 _DEFAULT_DRISHTI_DEG = [180.0]  # every other graha: 7th-house aspect only
 
 
@@ -347,6 +338,8 @@ def _drishti_contact_point(
     sentences: list[ConfigurationSentence] = []
     for planet in (planets or ALL_GRAHAS):
         aspect_degrees = SPECIAL_DRISHTI_DEG.get(planet, _DEFAULT_DRISHTI_DEG)
+        if not aspect_degrees:
+            continue
         events = find_aspect_events(swe, planet, target.target_longitude_deg, aspect_degrees, orb_deg, start_jd, end_jd)
         for ev in events:
             sentences.append(ConfigurationSentence(

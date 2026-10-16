@@ -20,7 +20,7 @@ Split (design §5):
     positions via `pipeline.transit_search._get_planet_pos` (the same
     ephemeris utility ka_gochara/ka_sangam already rely on for transit
     position + speed lookups — no new ephemeris compute path is introduced),
-    cos² orb scoring (`services.ka_sangam.engine.orb_strength_score` — I-17,
+    cos² orb scoring (`services.ka_sangam.engine.cosine_orb_strength_score` — I-17,
     applying ×1.0 / separating ×0.7), and simple additive superposition of
     every simultaneously active current (v1 baseline per design §5 — SIGNED
     suppressive / destructive-interference currents are explicit T-5 scope,
@@ -29,7 +29,7 @@ Split (design §5):
 T-3 shared-kernel adapter point
 --------------------------------
 T-3 (parallel lane, not yet merged) is extracting a shared kernel module out
-of `services.ka_sangam.engine`. This module imports `orb_strength_score`
+of `services.ka_sangam.engine`. This module imports `cosine_orb_strength_score`
 from `services.ka_sangam.engine` in EXACTLY ONE place — the
 `_orb_strength_score` re-export below. When T-3 ships its shared module,
 re-pointing this service is a one-line import change at that single site;
@@ -79,7 +79,7 @@ logger = logging.getLogger(__name__)
 
 # ── T-3 shared-kernel adapter point (see module docstring) ─────────────────
 # ONE import site. Swap to T-3's shared kernel module here when it ships.
-from services.ka_sangam.engine import orb_strength_score as _orb_strength_score  # noqa: E402
+from services.ka_sangam.engine import cosine_orb_strength_score as _orb_strength_score  # noqa: E402
 from brahmagyan.graha_vocabulary import norm_graha  # noqa: E402
 
 # Existing ephemeris position/speed lookup (already relied on by ka_gochara /

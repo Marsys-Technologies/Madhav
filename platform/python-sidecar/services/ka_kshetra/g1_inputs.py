@@ -7,7 +7,7 @@ KA-3b mūrti is testimony: its intervals are retained without a numeric bridge; 
 from datetime import datetime, timedelta, timezone
 import math
 
-from .stage1_symbolization import PrimitiveRow, _box_envelope, build_moorti_primitive
+from .stage1_symbolization import PrimitiveRow, _box_envelope
 
 CANONICAL_AYANAMSHA = 'lahiri_chitrapaksha'
 SECONDS_PER_DAY = 86400.0  # SI day; same UT axis as ephemeris_daily
@@ -73,10 +73,12 @@ def suppression_primitives(chart, birth, vedha, moorti, negative, *, allow_fixtu
             gaps.append({'source_ref':row.get('source_ref'), 'reason':'moorti_information_unavailable'})
             continue
         lo,hi=field_days(row['t_in'],birth),field_days(row['t_out'],birth)
-        p=build_moorti_primitive(chart,row['graha'],lo,hi,row['moorti_name'],int(row['quality_tier']))
-        p.primitive_kind='moorti_testimony'; p.polarity='neutral'
-        p.source_kind='l3_row'; p.source_table='kala_moorti_nirnaya_candidate'; p.source_pk=row.get('source_ref')
-        out.append(p)
+        # Testimony supplies interval edges and provenance only. Its quality
+        # tier has no admitted numeric bridge to the field (PLAN §8.1).
+        out.append(PrimitiveRow(chart,'moorti_testimony',row['graha'],lo,hi,
+            [(lo,0.),(hi,0.)],'neutral',class_label=row['moorti_name'],
+            source_kind='l3_row',source_table='kala_moorti_nirnaya_candidate',
+            source_pk=row.get('source_ref')))
         gaps.append({'source_ref':row.get('source_ref'), 'reason':'moorti_uncited_legacy_testimony;numeric_bridge_not_admitted'})
     for row in negative:
         state=row['effective_state']
