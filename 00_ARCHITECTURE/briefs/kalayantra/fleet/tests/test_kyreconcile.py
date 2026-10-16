@@ -167,6 +167,7 @@ def assert_live_preserves_earned_reconciliation(live, reviewed, capture):
     """
     from pravaha_tracker import server  # noqa: PLC0415
     assert server.check_model(live) == []
+    assert live.get("control_plane", {}).get("guarded_completion") is True, "guarded_completion must remain enabled"
     by_id = {item["id"]: item for item in live["items"]}
     for item in reviewed["items"]:
         iid = item["id"]
@@ -180,12 +181,16 @@ def test_live_model_preserves_the_reviewed_reconciliation(final, capture):
     assert_live_preserves_earned_reconciliation(R.load(CONTROL / "plan_model.json"), final, capture)
 
 
-@pytest.mark.parametrize("mutation", ["missing_item", "completion_kind", "owner", "steps", "dependency"])
+@pytest.mark.parametrize("mutation", ["missing_item", "completion_kind", "owner", "steps", "dependency", "guard_disabled", "guard_missing"])
 def test_live_reconciliation_refuses_lost_items_or_changed_earned_contracts(final, capture, mutation):
     live = R.load(CONTROL / "plan_model.json")
     earned = next(i for i in live["items"] if i["id"] == "B-4")
     assert capture["item_states"]["B-4"]["status"] == "done"
-    if mutation == "missing_item":
+    if mutation == "guard_disabled":
+        live["control_plane"]["guarded_completion"] = False
+    elif mutation == "guard_missing":
+        del live["control_plane"]["guarded_completion"]
+    elif mutation == "missing_item":
         live["items"].remove(earned)
     elif mutation == "dependency":
         earned["depends_on"].append("NO-SUCH-ITEM")
@@ -235,6 +240,28 @@ def test_triage_preserves_earned_completions(base, final, decl, staged, capture,
     for iid, st in before.items():
         if st["status"] == "done":
             assert after[iid] == st, f"{iid}: an earned completion changed"
+
+    # OPS03-R1: the live model must preserve accepted source/evidence, too. Merely
+    # checking item declarations misses the guard-disable mutation (39 lost proofs).
+    live = R.load(CONTROL / "plan_model.json")
+    live_states = R.states(live, events, capture)
+    earned_ids = [iid for iid, st in capture["item_states"].items() if st["status"] == "done"]
+    assert len(earned_ids) == 46
+    for iid in earned_ids:
+        for field in ("status", "source", "evidence"):
+            assert live_states[iid].get(field) == after[iid].get(field), f"{iid}: live earned {field} changed"
+
+    mutant = copy.deepcopy(live)
+    mutant["control_plane"]["guarded_completion"] = False
+    mutant_states = R.states(mutant, events, capture)
+    lost = {iid for iid in earned_ids if any(
+        mutant_states[iid].get(field) != live_states[iid].get(field)
+        for field in ("status", "source", "evidence"))}
+    assert len(lost) == 39
+    assert all(live_states[iid]["source"] == "guarded:event" and live_states[iid]["evidence"] for iid in lost)
+    assert live_states["B-4"]["evidence"] and not mutant_states["B-4"]["evidence"]
+    with pytest.raises(AssertionError, match="guarded_completion"):
+        assert_live_preserves_earned_reconciliation(mutant, final, capture)
 
 
 def test_triage_classes_follow_the_committed_closure(final, roots):
