@@ -605,6 +605,37 @@ def test_the_a55_guard_catches_every_way_of_weakening_each_job(jobs):
             assert _a55_problems(mutated, expected), f"{jname}: the guard accepted the mutation: {name}"
 
 
+# P07-R2: the ported publication oracles must execute, not merely be discovered.
+def test_p07_mcp_oracles_run_in_the_required_readback_job(jobs):
+    job = jobs["governance-readback-tests"]
+    assert not job.get("continue-on-error", False)
+    commands = [s for s in job["steps"] if "vitest run" in str(s.get("run", ""))]
+    for suite in ("src/tools/retrieval/register_gochara_contact_ledger.test.ts",
+                  "src/tools/retrieval/register_gochara_windows_governed_gate.test.ts"):
+        matching = [s for s in commands if suite in s["run"].split()]
+        assert matching, f"{suite} has no mandatory MCP test command"
+        assert all(s.get("working-directory") == "platform-mcp" for s in matching)
+        assert all(not s.get("continue-on-error", False) and "if" not in s
+                   and not any(x in s["run"] for x in ("||", "--passWithNoTests", "-t ", "--testNamePattern")) for s in matching)
+
+
+def test_p07_migration_1235_runs_fail_closed_in_the_disposable_db_job(jobs):
+    job = jobs["governance-readback-tests"]
+    assert "governance-readback-tests" in jobs["governance-tool-tests"]["needs"]
+    assert "postgres" in job.get("services", {}) and not job.get("continue-on-error", False)
+    suite = "tests/test_migration_1235_evidence_function.py"
+    steps = [s for s in job["steps"] if suite in _pytest_suites(str(s.get("run", "")))]
+    assert len(steps) == 1, "all five 1235 cases need one explicit mandatory DB command"
+    step = steps[0]
+    assert step["working-directory"] == "platform/python-sidecar"
+    assert step["env"]["GOCHARA_REQUIRE_DB"] == '1'
+    assert step["env"]["GOCHARA_A51_TEST_DATABASE_URL"] == "postgresql://postgres:postgres@localhost:55433/postgres"
+    assert not step.get("continue-on-error", False) and "if" not in step
+    assert "||" not in step["run"]
+    args = next(line.split("pytest", 1)[1] for line in step["run"].splitlines() if "pytest" in line)
+    assert not any(x in args for x in ("--deselect", "--ignore", "-k ", "-m ", "::"))
+
+
 def test_kala_certification_mapping_oracle_runs_with_its_required_db_neighbours(jobs):
     suite = "tests/l3/ka_bhavishya_lekha/test_certification_mapping.py"
     assert not jobs["kala-db-tests"].get("continue-on-error")
@@ -688,3 +719,36 @@ def test_j3ab_script_oracles_are_mandatory_and_unfiltered_in_ci(jobs, suite):
             assert not any(t in {"||", ";", "|", "&&"} for t in tokens)
             commands.append(tokens)
     assert commands, f"{suite} is outside discovery and must run in mandatory CI"
+
+
+@pytest.mark.parametrize("case_count,skipped,ok", [(5, False, True), (5, True, False), (4, False, False), (0, False, False)])
+def test_p07_ci_rejects_skipped_or_missing_migration_1235_cases(jobs, tmp_path, case_count, skipped, ok):
+    """Execute the shipped CI check: a skip or lost case cannot earn a DB pass."""
+    import shlex
+    steps = [s for s in jobs["governance-readback-tests"]["steps"]
+             if "tests/test_migration_1235_evidence_function.py" in str(s.get("run", ""))]
+    assert len(steps) == 1, "required migration 1235 CI command is missing"
+    step = steps[0]
+    command = next(shlex.split(line) for line in step["run"].splitlines() if "ET.parse(" in line)
+    cases = ["<testcase />"] * case_count
+    if skipped and cases:
+        cases[0] = "<testcase><skipped /></testcase>"
+    (tmp_path / "migration-1235.xml").write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
+    proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)
+    assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
+
+
+@pytest.mark.parametrize("case_count,skipped,ok", [(30, False, True), (30, True, False), (29, False, False), (0, False, False)])
+def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok):
+    """Both ported MCP suites must execute their 17 + 13 cases; skips cannot earn green."""
+    import shlex
+    steps = [s for s in jobs["governance-readback-tests"]["steps"]
+             if "src/tools/retrieval/register_gochara_contact_ledger.test.ts" in str(s.get("run", ""))]
+    assert len(steps) == 1
+    command = next(shlex.split(line) for line in steps[0]["run"].splitlines() if "ET.parse(" in line)
+    cases = ["<testcase />"] * case_count
+    if skipped and cases:
+        cases[0] = "<testcase><skipped /></testcase>"
+    (tmp_path / "gochara-mcp.xml").write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
+    proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)
+    assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
