@@ -14,7 +14,9 @@ from psycopg.types.json import Jsonb
 import pytest
 
 from scripts.kala_gochara_cutover import j6r_rehearsal as rehearsal
+from ._disposable_db_guard import guarded_admin_connect
 from .test_a53_inventory import CHART_ID, create_am5_database, drop_am5_database
+from .test_a53_record_store import ADMIN_DSN
 from .test_j6m_authority_admission_db import ROOT, MIGRATIONS
 
 OTHER_CHART = str(uuid.UUID(int=900))
@@ -250,8 +252,7 @@ def test_served_identity_admission_and_horizon_are_measured_not_assumed(db, monk
 
 
 def test_maintenance_database_is_refused_before_authority_access(rehearsal_database):
-    from psycopg.conninfo import make_conninfo
-    conn, _ = rehearsal_database
-    with psycopg.connect(make_conninfo(conn.info.dsn, dbname='postgres')) as maintenance:
+    # conn.info.dsn omits the password required by CI's disposable Postgres.
+    with guarded_admin_connect(ADMIN_DSN) as maintenance:
         with pytest.raises(rehearsal.RehearsalRefused, match='not_a_lane_database'):
             _run((maintenance, rehearsal_database[1]))
