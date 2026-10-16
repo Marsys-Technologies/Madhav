@@ -188,9 +188,13 @@ class _PopulationConn:
         self.consumed_build = consumed_build
         self.sql = []
 
-    def execute(self, sql, params):
+    def execute(self, sql, params=()):
         self.sql.append((sql, params))
-        if "search_input_snapshot" in sql:
+        if "information_schema.columns" in sql:
+            self.result = [(0,)]  # Legacy ids-only snapshot: migration 1305 is absent.
+        elif "SELECT consumed_fact_ids, consumed_dasha_row_ids" in sql:
+            self.result = [([], ["11111111-1111-4111-8111-111111111111"])]
+        elif "search_input_snapshot" in sql:
             self.result = [(["11111111-1111-4111-8111-111111111111"],)]
         elif "search_inventory" in sql:
             self.result = [(T(1), T(9))]
