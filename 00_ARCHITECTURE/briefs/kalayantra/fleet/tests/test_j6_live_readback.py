@@ -109,7 +109,9 @@ def test_soak_binds_opaque_owner_rule_and_each_actual_sample_without_deciding_it
 
 def test_tooling_is_on_mandatory_ci_path_and_no_new_kind_is_enabled():
     root=FLEET.parents[3]
-    ci=(root/'.github/workflows/ci.yml').read_text()
+    sys.path.insert(0, str(root/'platform/scripts/governance'))
+    from ci_discovery import expanded_workflow_text
+    ci=expanded_workflow_text((root/'.github/workflows/ci.yml').read_text())
     for name in ('test_j6_head_bindings.py','test_j6_live_readback.py','test_j6_bindings_db.py'):
         assert name in ci
     table=json.loads((FLEET/'executor_ops.json').read_text())['ops']
