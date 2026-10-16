@@ -467,7 +467,11 @@ def cmd_step(a, actor: str) -> int:
         spec = declared.get("detector") if isinstance(declared, dict) else None
         if not isinstance(spec, dict) or not spec:
             raise CompletionError(f"step {a.step_name} has no named detector; it cannot be recorded")
-        operation = item.get("completion_kind") == "operation" or declared.get("evidence") == "executor_receipt"
+        # Plan v2.7 §6 STEP / §N.8: a code prerequisite may cite executor
+        # provenance while its live DB detector measures the production fact.
+        # Actual operation items still require independently bound receipts.
+        operation = item.get("completion_kind") == "operation" or (
+            declared.get("evidence") == "executor_receipt" and spec.get("type") != "db_query")
         if operation and spec.get("type") != "file_contains":
             raise CompletionError("operation step requires a canonical file_contains acceptance receipt")
         if not a.evidence or not os.path.isfile(a.evidence):
