@@ -87,7 +87,10 @@ class Engine:
         self._backup_at = 0.0
         self._backup_info: dict = {}
         self._seen_events = 0
-        self.snapshot: dict = {}
+        # A cold start has a complete, honest empty view before any collector or
+        # external probe runs. Version zero keeps readiness false until a tick
+        # actually completes; a persisted snapshot may replace this below.
+        self.snapshot: dict = {**build_snapshot(self.model, [], {}, {}, {"power": "unknown"}), "version": 0}
         self.version = 0
         self._digest = ""
         self._dirty = True
@@ -162,9 +165,11 @@ class Engine:
                 # Everything mutated by a collector is private; detector cache and
                 # cfg are intentionally shared services. Published models/snapshots
                 # are replaced, never mutated, by the collector.
-                stage.log = copy.copy(self.log)
-                stage.log.events = list(self.log.events)
-                stage.log._lock = threading.Lock()
+                # Give the staged cursor its own lock at construction. Never
+                # copy a live lock and then replace it on an existing reader.
+                stage.log = EventLog(path=self.log.path, events=list(self.log.events),
+                                     malformed=self.log.malformed, _inode=self.log._inode,
+                                     _offset=self.log._offset, _partial=self.log._partial)
                 stage.cond = threading.Condition()
                 stage.tick_errors = collections.deque(maxlen=20)
                 stage._tick_history = list(self.tick_errors)
@@ -312,6 +317,7 @@ class Engine:
                 source["age_s"] = round(source["age_s"] + max(0, time.time() - source.get("sampled_at", completed_at)), 1)
             sources[name] = source
         health.update(server_started_at=self.started_at.isoformat(timespec="seconds"),
+                      initializing=not bool(snap.get("version")),
                       tick_age_s=age, engine_tick_age_s=age, sources=sources,
                       degraded=any(source.get("stale") for source in sources.values()),
                       git_activity_age_s=round(time.time() - self._activity_at, 1) if self._activity_at else None,
@@ -608,6 +614,8 @@ def serve(port: int, cfg: dict | None = None) -> tuple[ThreadingHTTPServer, Engi
 
 
 def main() -> None:
+    import faulthandler, signal as _sig
+    faulthandler.register(_sig.SIGUSR1, all_threads=True)
     ap = argparse.ArgumentParser(description="Pravāha real-time tracker")
     ap.add_argument("--port", type=int, default=int(os.environ.get("PRAVAHA_TRACKER_PORT", str(DEFAULT_PORT))))
     a = ap.parse_args()
