@@ -144,6 +144,7 @@ def reconcile(model, evidence):
                    for family in ROLES[:4]) or '/writers/ka_gochara_v5.py' in p
                    or '/services/gochara_kernel/' in p for p in owns):
             errors.append(f'unmapped family/wiring dependency: {dep}')
+    path_owners = {}
     for child in children:
         item, role = child['item'], child['role']
         if item not in items:
@@ -151,6 +152,8 @@ def reconcile(model, evidence):
         if item not in deps:
             errors.append(f'{role}: parent child dependency absent: {item}')
         owns = items.get(item, {}).get('brief', {}).get('owns', [])
+        for path in owns:
+            path_owners.setdefault(path, set()).add(item)
         families = {family for family in ROLES[:4] if any(
             f'/services/ka_{family}/' in p or f'/writers/ka_{family}.py' in p for p in owns)}
         if role in ROLES[:4] and families != {role}:
@@ -159,6 +162,9 @@ def reconcile(model, evidence):
             '/writers/ka_gochara_v5.py' in p or '/services/gochara_kernel/' in p for p in owns)):
             errors.append(f'{role}: independent wiring ownership absent or mixed with a family')
         errors.extend(_receipt_gaps(child, items.get(item, {})))
+    for path, owners in sorted(path_owners.items()):
+        if len(owners) > 1:
+            errors.append(f'ownership overlap: {path}: {", ".join(sorted(owners))}')
     return errors
 
 

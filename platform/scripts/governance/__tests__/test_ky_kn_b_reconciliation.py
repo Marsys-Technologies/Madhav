@@ -4,6 +4,8 @@ import importlib.util
 from pathlib import Path
 import hashlib
 import json
+import subprocess
+import sys
 
 import pytest
 
@@ -49,6 +51,38 @@ def test_complete_independent_children_and_wiring_have_no_offline_gaps(tmp_path)
     assert kn.reconcile(model, evidence) == []
 
 
+@pytest.mark.parametrize('family_role', ROLES[:4])
+@pytest.mark.parametrize('wiring_path', [
+    'platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py',
+    'platform/python-sidecar/services/gochara_kernel/overlays.py',
+])
+def test_family_and_independent_wiring_overlap_reports_gap_and_cli_failure(
+        tmp_path, family_role, wiring_path):
+    model, evidence = admitted_fixture(tmp_path)
+    family_id = 'fixture-' + family_role
+    wiring_id = 'fixture-judge_vedha_wiring'
+    family = next(row for row in model['items'] if row['id'] == family_id)
+    wiring = next(row for row in model['items'] if row['id'] == wiring_id)
+    wiring['brief']['owns'] = [wiring_path]
+    # The single-owner control differs only by the family claiming this path.
+    model_path, evidence_path = tmp_path / 'model.json', tmp_path / 'evidence.json'
+    evidence_path.write_text(json.dumps(evidence))
+    command = [sys.executable, '-B', str(SCRIPT), '--model', str(model_path),
+               '--evidence', str(evidence_path)]
+    model_path.write_text(json.dumps(model))
+    control = subprocess.run(command, capture_output=True, text=True, check=False)
+    assert control.returncode == 0, control.stdout + control.stderr
+    assert json.loads(control.stdout)['offline_gaps'] == []
+
+    family['brief']['owns'].append(wiring_path)
+    model_path.write_text(json.dumps(model))
+    result = subprocess.run(command, capture_output=True, text=True, check=False)
+    assert result.returncode == 1, result.stdout + result.stderr
+    gaps = json.loads(result.stdout)['offline_gaps']
+    assert any('ownership overlap' in gap and wiring_path in gap
+               and family_id in gap and wiring_id in gap for gap in gaps)
+
+
 @pytest.mark.parametrize('role', ROLES)
 def test_missing_family_or_wiring_cannot_be_replaced_by_adapter_preacceptance(tmp_path, role):
     model, evidence = admitted_fixture(tmp_path)
@@ -92,7 +126,7 @@ def test_registration_rejects_lost_edges_cycles_and_branch_only_parent(tmp_path,
     elif mutation == 'duplicate_id': model['items'].append(deepcopy(model['items'][0]))
     elif mutation == 'unknown_dependency': parent['depends_on'].append('absent')
     elif mutation == 'branch_only': parent.pop('join'); parent.pop('done_by'); parent['detector'] = {'type': 'branch_merged'}
-    elif mutation == 'mixed_family': model['items'][3]['brief']['owns'].append('platform/python-sidecar/services/ka_kota_chakra/candidate.py')
+    elif mutation == 'mixed_family': model['items'][3]['brief']['owns'].append('platform/python-sidecar/services/ka_kota_chakra/other.py')
     elif mutation == 'missing_item': model['items'] = [r for r in model['items'] if r['id'] != evidence['children'][0]['item']]
     elif mutation == 'carry_forward_cycle':
         model['items'].append({'id': 'KA3B-N2', 'depends_on': ['KA-3b']})
