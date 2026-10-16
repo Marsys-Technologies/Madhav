@@ -189,8 +189,14 @@ def test_file_exists_steps_keep_existing_behavior(receipt_step):
 
 
 @pytest.mark.parametrize("position", [0, 1])
-def test_accepts_batched_review_for_exactly_one_matching_item(receipt_step, position):
-    _, _, _, result_path, result, _, run = receipt_step
+@pytest.mark.parametrize("bind_artifact", [False, True])
+def test_accepts_batched_review_for_exactly_one_matching_item(receipt_step, position, bind_artifact):
+    root, path, receipt, result_path, result, _, run = receipt_step
+    if bind_artifact:
+        artifact = root / "artifact.txt"
+        artifact.write_bytes(b"reviewed artifact")
+        receipt.update(artifact_path=str(artifact), artifact_sha256=hashlib.sha256(artifact.read_bytes()).hexdigest())
+        path.write_text(canonical(receipt))
     items = [{"item": "K-D", "steps": [{"step": "tests", "verdict": "NOT_MET"}]}]
     items.insert(position, result)
     result_path.write_text(json.dumps({"head": "reviewed-head", "items": items}))
@@ -201,8 +207,14 @@ def test_accepts_batched_review_for_exactly_one_matching_item(receipt_step, posi
     "absent", "duplicate", "not_met", "wrong_step", "no_steps", "duplicate_step",
     "items_null", "items_object", "items_string",
 ])
-def test_refuses_invalid_batched_review_without_single_item_fallback(receipt_step, problem):
-    _, _, _, result_path, result, _, run = receipt_step
+@pytest.mark.parametrize("bind_artifact", [False, True])
+def test_refuses_invalid_batched_review_without_single_item_fallback(receipt_step, problem, bind_artifact):
+    root, path, receipt, result_path, result, _, run = receipt_step
+    if bind_artifact:
+        artifact = root / "artifact.txt"
+        artifact.write_bytes(b"artifact hash cannot authorize a batch verdict")
+        receipt.update(artifact_path=str(artifact), artifact_sha256=hashlib.sha256(artifact.read_bytes()).hexdigest())
+        path.write_text(canonical(receipt))
     entry = {"item": "K-C", "steps": [{"step": "tests", "verdict": "MET"}]}
     items = [entry, {"item": "K-D", "steps": [{"step": "tests", "verdict": "MET"}]}]
     if problem == "absent":
