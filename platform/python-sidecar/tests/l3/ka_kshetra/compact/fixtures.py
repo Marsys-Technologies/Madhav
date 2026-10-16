@@ -31,3 +31,10 @@ def evaluator(primitives=(), *, horizon=32.0, extra=(), weights=None, clock=True
 
 def curved_evaluator():
     return evaluator([primitive('vedha', ((0, 0), (32, 1)), polarity='obstructive')])
+
+
+def long_horizon_evaluator():
+    """Nonconstant three-year field: every null bucket has sliding windows."""
+    return evaluator([
+        primitive('contact_moon_ref', ((0, 0), (173, .9), (421, .1), (713, .7), (1096, 0))),
+    ], horizon=1096.0)
