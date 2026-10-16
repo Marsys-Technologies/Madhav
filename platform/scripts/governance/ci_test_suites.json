@@ -483,6 +483,13 @@
         "tests/l3/gochara_eval/test_dump*.py"
       ]
     },
+    "gochara-j5s-full-class-seal": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_j5s_*_db.py"
+      ]
+    },
     "gochara-a55-dispatch-1-9": {
       "cwd": "platform/python-sidecar",
       "engine": "pytest",

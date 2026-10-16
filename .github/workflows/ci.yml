@@ -1655,7 +1655,7 @@ jobs:
           python scripts/gochara/mutation_check_measuring_build.py
 
   gochara-j5s-full-class-seal:
-    needs: changes
+    needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     name: J5S full-class independent verifier and approved seal (local fixture)
     runs-on: ubuntu-latest
@@ -1679,6 +1679,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
       - name: Full-class real-sky seal rehearsal (required; never skipped)
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
@@ -1698,7 +1700,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python -m pytest tests/l3/gochara/test_j5s_*_db.py -q --tb=short -rs -p no:cacheprovider
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-j5s-full-class-seal -- -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-dispatch:
     # C37: the small-test DISPATCH executed for real (staging, refusals, dry run, exact-privilege role, and the end-to-end run through the real orchestrator entry point, then the teardown); about 4 minutes.
