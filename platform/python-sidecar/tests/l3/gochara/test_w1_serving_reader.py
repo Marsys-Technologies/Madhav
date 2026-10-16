@@ -404,17 +404,18 @@ def test_the_policy_is_read_from_the_manifest_and_stored_numbers_pass_through_un
     stored = _stored_window(w)[0]
     win = env["windows"][0]
     assert (win["score"], win["evidence_for"], win["evidence_against"], win["severity"]) == stored[5:9]
-    # give the stored window numbers (as a numbers-enabled build would): the reader returns exactly those
+    # Synthetic reader fixture: seed results under window_qualification/1; table CHECKs stay enabled.
     peak = stored[1] + (stored[2] - stored[1]) / 2
     _unguarded(w, "ka_gochara_eval_window",
                "UPDATE public.ka_gochara_eval_window SET score = 0.25, evidence_for = 1.5, evidence_against = 0.5,"
-               " objective_value = 0.75, peak_instant = %s, outcome_valence_for_native = 'mixed',"
+               " objective_value = 0.75, severity = 0.625, peak_instant = %s, outcome_valence_for_native = 'mixed',"
                " qualification = jsonb_set(qualification, '{unqualified_reason}', 'null'::jsonb)"
                " WHERE window_id = %s", (peak, stored[0]))
     win = _read(w, event_classes=[CLS])["windows"][0]
+    stored = next(row for row in _stored_window(w) if row[0] == win["window_id"])
     assert (win["score"], win["evidence_for"], win["evidence_against"], win["objective_value"]) == (0.25, 1.5, 0.5, 0.75)
     assert win["peak_instant"] == _iso(peak) and win["outcome_valence_for_native"] == "mixed"
-    assert win["severity"] is None                                 # still null where the store holds null
+    assert win["severity"] == stored[8] == 0.625                    # a non-null stored severity must survive serving
     assert not FORBIDDEN_WINDOW_KEYS & set(win)
 
 
