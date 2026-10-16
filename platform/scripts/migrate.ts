@@ -39,6 +39,7 @@
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
+import { execFileSync } from 'node:child_process'
 import { Pool, type PoolClient } from 'pg'
 
 export const TRACKER_DDL = `
@@ -174,8 +175,9 @@ export function assertGeneralRunnerMayApplyPublicSchema(filename: string, viaOnl
  * public — merged and made EVERY production deploy fail at "Apply Routine DB Migrations", because
  * the routine role has USAGE but not CREATE on public).
  *
- * The exact file set lives in ONE list file, `platform/scripts/kala_protected_migrations.txt`, read
- * by both this runner and deploy.yml's protected job (`kala_schema_migration=true`). Unlike the
+ * The shared selector `governance/kala_protected_migrations.py` retains the legacy list
+ * and automatically discovers new public-schema DDL. Both this runner and deploy.yml's
+ * protected job (`kala_schema_migration=true`) use it (Python 3 is required; errors are fatal). Unlike the
  * Gochara/AI sets above (which THROW in the routine path), a pending Kāla-listed file is SKIPPED by
  * the routine runner with a loud `::warning::` naming the dispatch to run, and later routine files
  * still apply — so a merged Kāla migration can never again block other campaigns' deploys.
@@ -213,7 +215,19 @@ export function parseProtectedMigrationList(text: string, source = 'kala_protect
 
 /** Load the Kāla protected list. A missing list is an error, not an empty set (fail closed). */
 export function loadKalaProtectedMigrations(filePath: string = defaultKalaProtectedListPath()): Set<string> {
-  return new Set(parseProtectedMigrationList(fs.readFileSync(filePath, 'utf8'), path.basename(filePath)))
+  if (filePath !== defaultKalaProtectedListPath()) {
+    return new Set(parseProtectedMigrationList(fs.readFileSync(filePath, 'utf8'), path.basename(filePath)))
+  }
+  return discoverKalaProtectedMigrations(path.resolve(path.dirname(filePath), '../..'))
+}
+
+/** Shared, DB-free selector. A malformed seed or failed detector must stop both deploy paths. */
+export function discoverKalaProtectedMigrations(repoRoot: string): Set<string> {
+  const detector = path.join(path.dirname(defaultKalaProtectedListPath()), 'governance/kala_protected_migrations.py')
+  const derived = execFileSync('python3', [detector, '--repo-root', repoRoot], {
+    encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
+  })
+  return new Set(parseProtectedMigrationList(derived, 'automatic Kāla protected migrations'))
 }
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]'])
