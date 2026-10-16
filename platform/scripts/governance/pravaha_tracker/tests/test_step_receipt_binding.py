@@ -419,3 +419,73 @@ def test_j6l_actual_named_soak_step_command_binds_review_and_samples(operation_s
     code = cli.main(['step', item, step, '--as', 'steward', '--evidence', str(path)])
     assert code == (0 if damage == 'none' else 2)
     if damage != 'none': assert not (root/'EVENTS.jsonl').exists()
+
+
+@pytest.mark.parametrize('observed_offset_s,expected', [
+    (-60, 0), (0, 0), (5, 0), (5.000001, 2), (29 * 60, 2),
+])
+@pytest.mark.parametrize('clock_advances', [False, True])
+def test_j6l_named_soak_bounds_observation_by_validation_clock(
+        operation_step, monkeypatch, observed_offset_s, expected, clock_advances):
+    """NB-J6MR-B01: future evidence cannot append the production step's done event."""
+    from datetime import datetime, timedelta, timezone
+    from pravaha_tracker import served_soak
+
+    root, doc, rule, save, _ = _soak_fixture(operation_step)
+    _, path, receipt, result_path, result, _, _ = operation_step
+    validation_now = datetime(2026, 10, 16, 12, tzinfo=timezone.utc)
+
+    class ValidationClock(datetime):
+        calls = 0
+
+        @classmethod
+        def now(cls, tz=None):
+            # Time spent checking evidence must not extend the observation cutoff.
+            value = validation_now + timedelta(hours=cls.calls if clock_advances else 0)
+            cls.calls += 1
+            return value.astimezone(tz)
+
+    monkeypatch.setattr(served_soak, 'datetime', ValidationClock)
+    # Review reproduction: the window ended one minute ago, but one-hour
+    # permitted lateness alone would accept an observation 29 minutes ahead.
+    end = validation_now - timedelta(minutes=1)
+    start = end - timedelta(days=2)
+    rule.update(start=start.isoformat(), end=end.isoformat(),
+                approved_at=(start - timedelta(days=1)).isoformat(),
+                cadence_s=86400, max_lateness_s=3600)
+    for n, sample in enumerate(doc['samples']):
+        scheduled = start + timedelta(days=n)
+        sample.update(scheduled_at=scheduled.isoformat(), observed_at=scheduled.isoformat())
+    doc['samples'][-1]['observed_at'] = (validation_now + timedelta(seconds=observed_offset_s)).isoformat()
+    rule_path = root / 'rule.json'
+    rule_path.write_text(canonical(rule))
+    doc['rule']['sha256'] = hashlib.sha256(rule_path.read_bytes()).hexdigest()
+    save()
+
+    item, step = 'J-6l-a61', 'owner_soak_rule_and_live_readback'
+    receipt.update(item=item, step=step, review_job='X-20261016T120000Z-soak-regression')
+    result.update(item=item)
+    result['steps'][0].update(item=item, step=step)
+    review_path = result_path.parent.with_name(receipt['review_job']) / 'result.json'
+    result_path.parent.rename(review_path.parent)
+    path.write_text(canonical(receipt))
+    review_path.write_text(json.dumps(result))
+    repo = Path(__file__).resolve().parents[5]
+    model = json.loads((repo / '00_ARCHITECTURE/control/kalayantra/plan_model.json').read_text())
+    row = next(row for row in model['items'] if row['id'] == item)
+    spec = row['step_evidence'][step]['detector']
+    spec['path'] = str(path)  # Preserve the production receipt regex and real file detector.
+    detector = Detectors(Config(repo=str(root), home=str(root), pgenv=None))
+    assert detector.verify(spec).status == 'done'
+    monkeypatch.setattr(cli, 'load_model', lambda: model)
+    monkeypatch.setattr(cli, 'get', lambda *a, **k: (
+        {'item': item, 'step': step, 'spec': spec,
+         'detector': {'status': detector.verify(spec).status}}, 'live'))
+    code = cli.main(['step', item, step, '--as', 'steward', '--evidence', str(path)])
+    events_path = root / 'EVENTS.jsonl'
+    if expected:
+        assert not events_path.exists(), 'future observation appended a false-green done event'
+    else:
+        event, = [json.loads(line) for line in events_path.read_text().splitlines()]
+        assert (event['item'], event['step'], event['state']) == (item, step, 'done')
+    assert code == expected

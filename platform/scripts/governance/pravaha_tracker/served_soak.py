@@ -20,6 +20,12 @@ from pravaha_tracker.completion import CompletionError
 from pravaha_tracker.operation_evidence import load_bound
 
 
+# (I) INTERPRETATION: permit at most five seconds of capture/validator host
+# clock skew. This fixed allowance is independent of rule lateness/cadence;
+# validation work must not move the cutoff and admit future measurements.
+MAX_OBSERVATION_CLOCK_SKEW = timedelta(seconds=5)
+
+
 def instant(value):
     dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
     if dt.tzinfo is None:
@@ -41,6 +47,7 @@ def check_soak(evidence, path, *, request, readback, reviewed_step):
 
 
 def _check_soak(evidence, path, *, request, readback, reviewed_step):
+    validation_now = datetime.now(timezone.utc)
     reference = evidence.get('rule')
     rule, _ = load_bound(reference, path)
     if (rule.get('schema') != 'ky.soak_rule/1'
@@ -54,7 +61,7 @@ def _check_soak(evidence, path, *, request, readback, reviewed_step):
     latency = number(rule['max_latency_ms'], positive=True)
     seconds = (end - start).total_seconds()
     count = seconds / cadence
-    if (instant(rule['approved_at']) > start or end > datetime.now(timezone.utc)
+    if (instant(rule['approved_at']) > start or end > validation_now
             or seconds <= 0 or not count.is_integer() or count > 100000):
         raise CompletionError('soak window must follow rule approval and span whole bounded cadence intervals')
     if lateness >= cadence:
@@ -86,8 +93,11 @@ def _check_soak(evidence, path, *, request, readback, reviewed_step):
     if not isinstance(samples, list) or len(samples) != len(expected):
         raise CompletionError('soak missing or duplicate scheduled samples')
     for sample, scheduled in zip(samples, expected):
+        observed = instant(sample['observed_at'])
+        if observed > validation_now + MAX_OBSERVATION_CLOCK_SKEW:
+            raise CompletionError('soak observation exceeds validation clock (5s maximum clock skew)')
         if (instant(sample['scheduled_at']) != scheduled
-                or not 0 <= (instant(sample['observed_at']) - scheduled).total_seconds() <= lateness
+                or not 0 <= (observed - scheduled).total_seconds() <= lateness
                 or number(sample['latency_ms']) > latency or sample.get('http_status') != 200
                 or sample.get('transport') != rule['transport'] or sample.get('deployment') != deployment):
             raise CompletionError('soak cadence, latency, transport or deployment failed')
