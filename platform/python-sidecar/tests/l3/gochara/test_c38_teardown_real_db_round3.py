@@ -38,12 +38,20 @@ def test_item1_each_real_build_runs_foreign_key_is_found_from_the_catalog_and_re
 
 
 def test_item1_an_unreferenced_new_foreign_key_does_not_block(tworld):
-    """A table with such a key but no row pointing at an owned run is not an obstacle (a hardcoded 'any FK blocks' would be wrong too)."""
+    """An unreferenced FK permits the identified run's rehearsal, but cannot authorize deleting another run."""
     w = tworld
     _slice_run(w)
     w.conn.execute("CREATE TABLE public.some_future_table (id serial PRIMARY KEY, built_by uuid REFERENCES public.build_runs(id) ON DELETE SET NULL)")
     w.conn.execute("INSERT INTO public.some_future_table (built_by) VALUES (NULL)")
-    _refused_and_untouched(w, "identified staged run")
+    before = _snapshot(w)
+    _teardown(w, dry_run=True)                                      # an unreferenced FK is not itself an obstacle
+    assert _snapshot(w) == before
+    # The evidence fixture identifies the newest staged run. Leave the older run and its output alive;
+    # a valid receipt for this new, unbuilt run must not authorize deleting the older one too.
+    _run(w, marker=MARKER, receipt=False)
+    for dry_run in (True, False):
+        _refused_and_untouched(w, "identified staged run", dry_run=dry_run)
+    assert w.conn.execute("SELECT built_by FROM public.some_future_table").fetchall() == [(None,)]
 
 
 NON_CANONICAL = dict(MARKER, horizon=[SHORT[0].isoformat().replace("+00:00", "Z"), SHORT[1].isoformat().replace("+00:00", "Z")],
@@ -52,13 +60,18 @@ NON_CANONICAL = dict(MARKER, horizon=[SHORT[0].isoformat().replace("+00:00", "Z"
 
 def test_item2_a_valid_writer_stamp_from_a_non_canonical_marker_is_proved_against_the_original_marker_of_the_run(tworld, capsys):
     """The writer hashes the marker AS GIVEN (Z timestamps, reversed class order) and stores the normalised component, so the stamp's
-    digest is not the reconstruction's. With the run row alive the proof is the original preimage and the teardown accepts it."""
+    digest is not the reconstruction's. Its original preimage permits rehearsal, but a different staged run cannot authorize its deletion."""
     w = tworld
     rid = _run(w, marker=NON_CANONICAL)
     _slice_steps(w, rid)
+    before = _snapshot(w)
     _teardown(w, dry_run=True)
     assert f"stamp\tproved against the ORIGINAL marker of run {rid}" in capsys.readouterr().out
-    _refused_and_untouched(w, "identified staged run")
+    assert _snapshot(w) == before
+    # Identify a new canonical-marker run, retaining the older non-canonical marker as the stamp's only preimage.
+    _run(w, marker=MARKER, receipt=False)
+    for dry_run in (True, False):
+        _refused_and_untouched(w, "identified staged run", dry_run=dry_run)
 
 
 def test_item2_the_same_stamp_with_no_run_row_left_is_refused_and_the_refusal_says_why(tworld):
