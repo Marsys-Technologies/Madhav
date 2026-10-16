@@ -46,7 +46,7 @@ def test_snapshot_and_restore_evidence_are_bound_by_label_and_bytes(backup, tmp_
     receipt = {'schema': 'ky.smalltest_backup/1', 'status': 'captured', 'label': 'p01_fixture',
                'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
                'measurements': {'tables': {'public.fixture': {'rows': 1, 'sha256': 'a'*64}}, 'sequences': {}},
-               'snapshot': 'synthetic-exported-snapshot',
+               'snapshot': '00000003-0000001B-1',
                'source': {'database': 'fixture_source', 'address': '192.0.2.1', 'port': 5432}}
     assert backup.validate_capture(receipt, archive, 'p01_fixture') == receipt['measurements']
     with pytest.raises(backup.BackupRefused, match='label'):
@@ -62,7 +62,7 @@ def test_snapshot_and_restore_evidence_are_bound_by_label_and_bytes(backup, tmp_
 def test_missing_or_malformed_measurements_refused(backup, tmp_path, measurements):
     archive = tmp_path / 'database.dump'; archive.write_bytes(b'archive')
     receipt = {'schema': 'ky.smalltest_backup/1', 'status': 'captured', 'label': 'p01_fixture',
-               'snapshot': 'synthetic', 'source': {'database': 'fixture_source', 'address': '192.0.2.1', 'port': 5432},
+               'snapshot': '00000003-0000001B-1', 'source': {'database': 'fixture_source', 'address': '192.0.2.1', 'port': 5432},
                'archive_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(), 'measurements': measurements}
     with pytest.raises(backup.BackupRefused):
         backup.validate_capture(receipt, archive, 'p01_fixture')
@@ -116,7 +116,7 @@ class Connection:
         if 'DROP DATABASE' in text and self.fail_drop:
             raise RuntimeError('synthetic cleanup failure')
         if 'pg_export_snapshot' in text:
-            return Result(('synthetic_snapshot',))
+            return Result(('00000003-0000001B-1',))
         if 'current_database()' in text:
             return Result(('fixture_source', '192.0.2.1', 5432))
         if 'pg_database WHERE' in text:
@@ -131,7 +131,7 @@ def capture(backup, tmp_path):
     folder = tmp_path / 'p01_fixture'; folder.mkdir()
     archive = folder / 'database.dump'; archive.write_bytes(b'synthetic archive')
     receipt = {'schema': 'ky.smalltest_backup/1', 'status': 'captured', 'label': 'p01_fixture',
-               'snapshot': 'synthetic_snapshot', 'source': {'database': 'fixture_source', 'address': '192.0.2.1', 'port': 5432},
+               'snapshot': '00000003-0000001B-1', 'source': {'database': 'fixture_source', 'address': '192.0.2.1', 'port': 5432},
                'script_sha256': backup.sha256(Path(backup.__file__)),
                'archive_sha256': backup.sha256(archive),
                'measurements': {'tables': {'public.fixture': {'rows': 1, 'sha256': 'a'*64}}, 'sequences': {}}}
@@ -241,7 +241,7 @@ def test_actual_snapshot_workflow_binds_dump_and_measurements_to_one_readonly_sn
     values = iter([measured, after])
     monkeypatch.setattr(backup, 'measurements', lambda c: next(values))
     def client(argv, settings):
-        assert argv[0] == 'pg_dump' and '--snapshot=synthetic_snapshot' in argv
+        assert argv[0] == 'pg_dump' and '--snapshot=00000003-0000001B-1' in argv
         assert '--format=custom' in argv and '--no-owner' in argv and '--no-privileges' in argv
         Path(argv[-1]).write_bytes(b'synthetic archive')
     monkeypatch.setattr(backup, 'run_client', client)
@@ -350,6 +350,70 @@ def test_explicit_unix_socket_source_provenance_remains_valid(backup, capture):
     folder, receipt = capture
     receipt['source'] = {'database': 'fixture_source', 'address': None, 'port': None}
     assert backup.validate_capture(receipt, folder / 'database.dump', 'p01_fixture') == receipt['measurements']
+
+
+@pytest.mark.parametrize('field,value', [
+    ('address', 'not-an-ip-address'), ('address', '   '), ('address', 'localhost'),
+    ('address', '256.0.0.1'), ('address', '127.0.0.1/24'),
+    ('address', '127.0.0.1/255.255.255.255'), ('address', '127.0.0.1/32/32'),
+    ('address', '::1/64'), ('address', 'fe80::1%en0/128'),
+    ('address', ' 127.0.0.1/32'), ('address', '::1/128\n'),
+    ('snapshot', 'this is not an exported PostgreSQL snapshot'),
+    ('snapshot', '00000003-0000001B'), ('snapshot', '00000003-0000001G-1'),
+    ('snapshot', '00000003-0000001b-1'), ('snapshot', '3-1B-1'),
+    ('snapshot', '00000003-0000001B-0'), ('snapshot', '00000003-0000001B-01'),
+    ('snapshot', '00000003-0000001B--1'), ('snapshot', '00000003-0000001B-1-extra'),
+    ('snapshot', '00000003-0000001B-1\n'), ('snapshot', ' 00000003-0000001B-1'),
+])
+def test_bg01_malformed_provenance_refused_before_restore(backup, capture, monkeypatch, field, value):
+    import psycopg
+    folder, receipt = capture
+    if field == 'address':
+        receipt['source']['address'] = value
+    else:
+        receipt[field] = value
+    (folder / 'capture.json').write_text(json.dumps(receipt))
+    monkeypatch.setattr(psycopg, 'connect', lambda *a, **kw: pytest.fail('malformed provenance reached libpq'))
+    with pytest.raises(backup.BackupRefused):
+        backup.restore_verify(folder, 'p01_fixture')
+    assert not (folder / 'restore.json').exists()
+
+
+@pytest.mark.parametrize('address', ['192.0.2.1', '192.0.2.1/32', '::1', '::1/128',
+                                     '2001:db8::abcd/128', '::ffff:192.0.2.1/128'])
+@pytest.mark.parametrize('snapshot_id', ['00000003-0000001B-1', '00000008-000EDE08-12'])
+def test_bg01_valid_ip_and_exported_snapshot_provenance(backup, capture, address, snapshot_id):
+    folder, receipt = capture
+    receipt['source']['address'] = address
+    receipt['snapshot'] = snapshot_id
+    assert backup.validate_capture(receipt, folder / 'database.dump', 'p01_fixture') == receipt['measurements']
+
+
+@pytest.mark.parametrize('field,value', [('address', 'not-an-ip-address'), ('address', '   '),
+                                     ('snapshot', 'this is not an exported PostgreSQL snapshot')])
+def test_bg01_snapshot_refuses_malformed_provenance_before_capture_receipt(
+        backup, capture, tmp_path, monkeypatch, capsys, field, value):
+    import psycopg
+    _, receipt = capture
+    conn = Connection()
+    execute = conn.execute
+    def malformed(query, params=None):
+        if field == 'address' and 'current_database()' in query:
+            return Result(('fixture_source', value, 5432))
+        if field == 'snapshot' and 'pg_export_snapshot' in query:
+            return Result((value,))
+        return execute(query, params)
+    monkeypatch.setattr(conn, 'execute', malformed)
+    monkeypatch.setattr(psycopg, 'connect', lambda *a, **kw: conn)
+    monkeypatch.setattr(backup, 'measurements', lambda c: receipt['measurements'])
+    monkeypatch.setattr(backup, 'run_client', lambda argv, settings: Path(argv[-1]).write_bytes(b'archive'))
+    monkeypatch.setenv('DATABASE_URL', 'postgresql://fixture.invalid/fixture_source')
+    root = tmp_path / 'executor'
+    monkeypatch.setenv('KY_ROOT', str(root))
+    assert backup.main(['--operation', 'snapshot', '--label', 'p01_fixture', '--execute']) == 1
+    output = capsys.readouterr()
+    assert not output.out and 'backup refused:' in output.err
+    assert not (root / 'run/ops/backups/p01_fixture/capture.json').exists()
 
 
 @pytest.mark.parametrize('sequence', [

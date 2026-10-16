@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -154,11 +155,10 @@ def validate_capture(receipt: dict, archive: Path, label: str) -> dict:
         raise BackupRefused('archive missing, empty or hash differs')
     values = receipt.get('measurements')
     snapshot_id, source = receipt.get('snapshot'), receipt.get('source')
-    # Match the provenance emitted by snapshot(), including explicit NULL
-    # endpoint fields for a Unix-socket source. Truthiness alone admits a
-    # non-string snapshot or a source with no database identity, defeating the
-    # source/restore-target name separation check below.
-    if (not isinstance(snapshot_id, str) or not snapshot_id.strip()
+    # pg_export_snapshot() emits two uppercase, eight-digit hexadecimal fields
+    # and a positive decimal export counter (%08X-%08X-%d). Validate the saved
+    # identifier's syntax, not its continued availability after capture ends.
+    if (not isinstance(snapshot_id, str) or re.fullmatch(r'[0-9A-F]{8}-[0-9A-F]{8}-[1-9][0-9]*', snapshot_id) is None
             or not isinstance(source, dict) or not isinstance(source.get('database'), str) or not source['database']
             or 'address' not in source or 'port' not in source
             or (source['address'] is None) != (source['port'] is None)
@@ -166,6 +166,18 @@ def validate_capture(receipt: dict, archive: Path, label: str) -> dict:
                 or type(source['port']) is not int or not 1 <= source['port'] <= 65535))
             or not isinstance(values, dict)):
         raise BackupRefused('capture provenance/measurements are missing or malformed')
+    # (I) INTERPRETATION BG-01: snapshot() reads inet_server_addr()::text,
+    # never a hostname. Accept IPs with an optional full-width host prefix
+    # (/32 or /128), as PostgreSQL emits; Unix sockets retain explicit NULLs.
+    if source['address'] is not None:
+        try:
+            parts = source['address'].split('/')
+            address = ipaddress.ip_address(parts[0])
+            if ('%' in parts[0] or len(parts) > 2
+                    or (len(parts) == 2 and parts[1] != str(address.max_prefixlen))):
+                raise ValueError('not a PostgreSQL host address')
+        except ValueError:
+            raise BackupRefused('capture source address is malformed') from None
     if set(values) != {'tables', 'sequences'} or not isinstance(values['tables'], dict) or not values['tables']:
         raise BackupRefused('table coverage is missing')
     for value in values['tables'].values():
@@ -214,6 +226,7 @@ def snapshot(folder: Path, label: str) -> dict:
                'script_sha256': sha256(Path(__file__)),
                'coverage': 'complete logical database; table content and sequence state measured; roles/grants excluded',
                'backup_taken': True, 'restore_verified': None}
+    validate_capture(receipt, archive, label)
     write_receipt(folder / 'capture.json', receipt)
     return receipt
 

@@ -113,7 +113,8 @@ def test_failed_client_cannot_earn_success_after_writing_real_archive_or_restore
 
 @pytest.mark.parametrize('invalid', ['missing', 'schema', 'status', 'snapshot', 'source', 'sequence',
                                    'source_database_missing', 'source_database_type', 'source_database_empty',
-                                   'source_missing_endpoint', 'source_port_type', 'snapshot_type'])
+                                   'source_missing_endpoint', 'source_port_type', 'snapshot_type',
+                                   'source_address_invalid', 'source_address_blank', 'snapshot_malformed'])
 def test_invalid_capture_never_emits_restore_success_or_creates_a_target(
         captured, tmp_path, monkeypatch, capsys, invalid):
     folder, label, receipt, source = captured
@@ -139,6 +140,12 @@ def test_invalid_capture_never_emits_restore_success_or_creates_a_target(
             receipt['source']['port'] = True
         elif invalid == 'snapshot_type':
             receipt['snapshot'] = ['not an exported snapshot identifier']
+        elif invalid == 'source_address_invalid':
+            receipt['source']['address'] = 'not-an-ip-address'
+        elif invalid == 'source_address_blank':
+            receipt['source']['address'] = '   '
+        elif invalid == 'snapshot_malformed':
+            receipt['snapshot'] = 'this is not an exported PostgreSQL snapshot'
         else:
             receipt[invalid] = None
         path.write_text(json.dumps(receipt))
