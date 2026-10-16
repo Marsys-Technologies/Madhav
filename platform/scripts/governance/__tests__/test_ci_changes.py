@@ -232,7 +232,7 @@ def test_cli_fails_closed(tmp_path):
 
 HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
-         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")
+         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build", "gochara-j5s-full-class-seal")
 NEVER_SKIPPED = ("changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
                  "governance-gates-static", "governance-gates-py-sidecar-shard",       # the required Governance Gates check's parts (sharded 2026-10-08): never skipped, as before
                  "coverage-gate", "density-census", "governance-tool-tests")
@@ -376,7 +376,13 @@ def _pytest_suites(step_run: str) -> list[str]:
         line = line.strip()
         if line.startswith("#") or "pytest" not in line:
             continue
-        out += [t for t in line.split() if t.startswith("tests/") and t.endswith(".py")]
+        for token in line.split():
+            if token.startswith("tests/") and token.endswith(".py"):
+                if any(char in token for char in '*?['):
+                    cwd = GOCHARA_TESTS.parents[2]
+                    out += sorted(path.relative_to(cwd).as_posix() for path in cwd.glob(token) if path.is_file())
+                else:
+                    out.append(token)
     return out
 
 
@@ -726,3 +732,24 @@ def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count,
     (tmp_path / "gochara-mcp.xml").write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
     proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
+
+
+def test_j5s_glob_is_discovered_by_the_mandatory_db_guard():
+    selected = _pytest_suites('python -m pytest tests/l3/gochara/test_j5s_*_db.py -q')
+    assert selected == ['tests/l3/gochara/test_j5s_full_class_seal_db.py']
+
+
+@pytest.mark.parametrize('j5s,docs,others,expected', [
+    ('success', 'false', 'success', 0), ('failure', 'false', 'success', 1),
+    ('cancelled', 'false', 'success', 1), ('skipped', 'false', 'success', 1),
+    ('skipped', 'true', 'skipped', 0),
+])
+def test_j5s_result_is_required_by_the_existing_protected_umbrella(jobs, j5s, docs, others, expected):
+    umbrella = jobs['governance-tool-tests']
+    assert 'gochara-j5s-full-class-seal' in umbrella['needs']
+    step = umbrella['steps'][0]
+    assert step['env']['J5S_RESULT'] == '${{ needs.gochara-j5s-full-class-seal.result }}'
+    result = subprocess.run(['bash', '-c', step['run']], capture_output=True, text=True,
+                            env={'SHARDS_RESULT': others, 'READBACK_RESULT': others,
+                                 'J5S_RESULT': j5s, 'DOCS_ONLY': docs})
+    assert result.returncode == expected
