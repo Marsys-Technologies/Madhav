@@ -13,6 +13,8 @@ import pytest
 
 from services.gochara_kernel import staleness
 
+from .test_sealed_generation_staleness import staleness as staleness_script
+
 from .test_a53_inventory import (CHART_ID, DASHA, DASHA_IDS, PINNED_BUILD, _boot, _plan,
                                  _write, create_am5_database, drop_am5_database)
 
@@ -124,3 +126,50 @@ def test_drift_is_reported_for_a_candidate_too(conn):
 def test_a_generation_without_a_snapshot_is_a_named_refusal(conn):
     with pytest.raises(staleness.SnapshotMissingError):
         staleness.sealed_generation_staleness(conn, CHART_ID, "5.99")
+
+
+# J5Q script SQL uses this already-required A5.3 CI fixture. Synthetic seals
+# below are not independent acceptance of a production generation.
+
+
+def test_candidate_snapshot_is_not_a_sealed_generation(conn):
+    _fresh(conn, "5.81")
+    with pytest.raises(staleness_script.SnapshotMissing, match="no matching generation seal and manifest"):
+        staleness_script.run(conn, CHART_ID, "5.81")
+
+
+def test_matching_seal_manifest_allows_real_digest_and_census_queries(conn, capsys):
+    _fresh(conn, "5.82")
+    _seal(conn, "5.82")
+    # The incomplete fixture correctly has census violations; it must be stale,
+    # not falsely fresh and not a failure to execute the SQL.
+    assert staleness_script.run(conn, CHART_ID, "5.82") == 4
+    assert '"status": "stale"' in capsys.readouterr().out
+
+
+def test_seal_with_wrong_manifest_identity_is_refused(conn):
+    _fresh(conn, "5.83")
+    _seal(conn, "5.83")
+    conn.execute("ALTER TABLE public.ka_gochara_generation_seal DISABLE TRIGGER USER")
+    try:
+        conn.execute("UPDATE public.ka_gochara_generation_seal SET manifest_id = gen_random_uuid()"
+                     " WHERE chart_id = %s AND generation = '5.83'", (CHART_ID,))
+    finally:
+        conn.execute("ALTER TABLE public.ka_gochara_generation_seal ENABLE TRIGGER USER")
+    with pytest.raises(staleness_script.SnapshotMissing, match="no matching generation seal and manifest"):
+        staleness_script.run(conn, CHART_ID, "5.83")
+
+
+def test_seal_cannot_borrow_a_different_generations_manifest(conn):
+    _fresh(conn, "5.84")
+    _fresh(conn, "5.85")
+    _seal(conn, "5.84")
+    conn.execute("ALTER TABLE public.ka_gochara_generation_seal DISABLE TRIGGER USER")
+    try:
+        conn.execute("UPDATE public.ka_gochara_generation_seal s SET manifest_id = p.manifest_id"
+                     " FROM public.kala_gochara_publication p WHERE s.chart_id = %s"
+                     " AND s.generation = '5.84' AND p.chart_id = s.chart_id AND p.generation = '5.85'", (CHART_ID,))
+    finally:
+        conn.execute("ALTER TABLE public.ka_gochara_generation_seal ENABLE TRIGGER USER")
+    with pytest.raises(staleness_script.SnapshotMissing, match="no matching generation seal and manifest"):
+        staleness_script.run(conn, CHART_ID, "5.84")

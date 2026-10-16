@@ -1097,11 +1097,11 @@ export async function computeGocharaCoverage(
         (sql, params) => platformQuery(sql, params, principal),
         chartId,
         authGen,
-        manifest == null ? null : {
+        manifest != null ? {
           status: manifest.status == null ? null : String(manifest.status),
           stored_scope: typeof manifestVector?.['stored_scope'] === 'string' ? (manifestVector['stored_scope'] as string) : null,
           has_test_slice: manifestVector != null && Object.prototype.hasOwnProperty.call(manifestVector, 'test_slice'),
-        }
+        } : null
       )
     : null
   const withheld = gate != null && !gate.serve ? gate : null

@@ -340,8 +340,9 @@ jobs:
           printf '%s\n' "$OUT" > reconcile.json
           echo "$OUT"
           { echo "## Reconciliation after the sealing step"; echo; echo '```'; echo "$OUT"; echo '```'; echo; echo "State is READ from the database, not inferred from this run's status. NOT_SEALED = nothing was published (start a fresh run to retry); INCONSISTENT or UNREADABLE = STOP and report; do not retry."; } >> "$GITHUB_STEP_SUMMARY"
-          # SEALED (0) and NOT_SEALED (10) are both honest, reported outcomes; the seal step's own status decides whether this run is green. INCONSISTENT (11) / UNREADABLE (12) fail the run.
-          case "$RC" in 0|10) exit 0 ;; *) exit "$RC" ;; esac
+          # Only measured SEALED (0) permits success. NOT_SEALED (10) must also
+          # fail if the seal command reported success but publication is absent.
+          exit "$RC"
 
       - name: Stop this run's Cloud SQL proxy
         id: stop-proxy

@@ -57,6 +57,6 @@ case "$rc" in
   2) echo "SEAL JOB REFUSED (nothing written) — the named refusal is the JSON line above (e.g. approval_malformed, run_identity_absent, seal_lock_timeout, seal_statement_timeout, receipt_brief_id_mismatch / _execution_mismatch / _producer_commit_mismatch / _superseded / _not_persisted / _not_from_verifier / _state_changed)." >&2 ;;
   3) echo "SEAL JOB: the approval does not match what is now recomputed (a changed candidate invalidates the approval); nothing published." >&2 ;;
   4) echo "SEAL JOB: identity or OWN-CHECKOUT check failed (identity_not_sealer, or own_checkout_digest_mismatch / own_checkout_digest_unregistered: the code this job runs is not the registered code of the sealing commit); nothing written." >&2 ;;
-  *) echo "SEAL JOB FAILED (exit $rc): the sealing transaction rolled back; verify the generation is still a candidate before retrying." >&2 ;;
+  *) echo "SEAL JOB FAILED (exit $rc): the transaction outcome is unknown; reconcile publication, seal and receipt before any retry." >&2 ;;
 esac
 exit "$rc"

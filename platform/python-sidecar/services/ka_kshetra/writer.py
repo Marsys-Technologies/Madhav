@@ -331,6 +331,10 @@ class KaKshetraWriter(WriterBase):
             if self._segment_engine == 'analytic'
             else None
         )
+        null_config = S5.null_configuration(
+            HORIZON_DAYS, _dn_module().DEFAULT_REPLICATES
+            if self._segment_engine == 'analytic' else (candidate_null_shifts() + 1
+            if hasattr(self, '_generation') else S5.DEFAULT_REPLICATES))
 
         self._pins = S4.FieldPins(
             chart_id=str(self._chart_id),
@@ -349,7 +353,14 @@ class KaKshetraWriter(WriterBase):
                 'suppression_disclosures': self._suppression_gaps,
                 'kinematics_role': 'evaluation_only',
                 'comparable_with': 'different_convention',
-                'constant_provenance': CONSTANT_PROVENANCE,
+                'constant_provenance': {
+                    **CONSTANT_PROVENANCE,
+                    'null': (
+                        f"{self._segment_engine}; {null_config['shift_count']} non-identity shifts + observation; "
+                        f"denominator={null_config['denominator']}; resolution={null_config['resolution']}; "
+                        f"{null_config['schedule']}; W2 5.5/ALGO 3.20; surrogate, not assumed exchangeable"
+                    ),
+                },
                 'numeric_constant_inventory': numeric_constant_inventory(),
                 'weights_digest': hashlib.sha256(S4.canonical_json(self._weights).encode()).hexdigest(),
                 'p_floor': hazard.P_FLOOR,
@@ -359,8 +370,10 @@ class KaKshetraWriter(WriterBase):
                 'null_replicates': (
                     _dn_module().DEFAULT_REPLICATES
                     if self._segment_engine == 'analytic'
-                    else candidate_null_shifts()
+                    else (candidate_null_shifts() if hasattr(self, '_generation')
+                          else S5.DEFAULT_REPLICATES)
                 ),
+                'null_configuration': null_config,
                 'null_quantile': S5.Q_QUANTILE,
                 'null_experiment': 'class_specific_field_maximum',
                 'null_surrogate_diagnostic': True,
@@ -404,7 +417,7 @@ class KaKshetraWriter(WriterBase):
                 work_steps.append(SubStep(key=f'stage4:{ec}:{d}',
                                           label=f'field {ec} decade {d}'))
         _ev5 = self._segment_engine
-        n_blocks = math.ceil((candidate_null_shifts() if hasattr(self, '_generation') else S5.DEFAULT_REPLICATES) / S5.DEFAULT_BLOCK_SIZE)
+        n_blocks = math.ceil((candidate_null_shifts() if hasattr(self, '_generation') else S5.DEFAULT_REPLICATES - 1) / S5.DEFAULT_BLOCK_SIZE)
         for ec in self._event_classes:
             if _ev5 == 'analytic':
                 # F2 (SM-R-11): two substeps so each commits within the 15-min
@@ -731,7 +744,7 @@ class KaKshetraWriter(WriterBase):
             hi = min(block * size, candidate_null_shifts())
             S5.run_field_block(cctx.evaluator, cctx.null_accumulator, start=lo, end=hi)
         else:
-            hi = min(block * size, S5.DEFAULT_REPLICATES)
+            hi = min(block * size, S5.DEFAULT_REPLICATES - 1)
             S5.run_null(cctx.evaluator, HORIZON_DAYS, S5.DEFAULT_REPLICATES,
                         block=(lo, hi), accumulator=cctx.null_accumulator)
         if not self._dry_run:
@@ -751,11 +764,11 @@ class KaKshetraWriter(WriterBase):
                                 notes=f'{event_class} skipped: {skip.reason}')
 
         acc = cctx.null_accumulator
-        required = candidate_null_shifts() if hasattr(self, '_generation') else S5.DEFAULT_REPLICATES
+        required = candidate_null_shifts() if hasattr(self, '_generation') else S5.DEFAULT_REPLICATES - 1
         if acc.completed < required:
             raise S4.UpstreamStageIncomplete(
                 f'upstream_stage_incomplete: {event_class} has {acc.completed}/'
-                f'{required} null replicates. q_e is a quantile over ALL '
+                f'{required} null shifts. q_e is a quantile over ALL '
                 'replicates; computing it from a subset would silently change the '
                 'statistic every window boundary depends on.'
             )

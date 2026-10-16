@@ -571,6 +571,8 @@ def publish_candidate(conn, chart_id: str, generation: str, convention_id: str,
         """,
         (convention_id, vector, ephem, horizon, row[0]),
     )
+    # The status read above can be stale after another transaction publishes.
+    # Keep the replacement conditional even if database triggers are bypassed.
     if getattr(replaced, "rowcount", None) == 0:
         raise PublishedGenerationRefusal(
             f"publish_candidate refused: the manifest for generation {generation!r} was no longer a candidate when it was replaced "
