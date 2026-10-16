@@ -311,9 +311,8 @@ jobs:
   # `Initialize containers` buys 7 real DB-integration tests (verified against main:
   # same 713 test files, 670 passed/43 skipped -> 677 passed/36 skipped).
   #
-  # NOT a required check, deliberately — adding one is a branch-protection decision, not
-  # a workflow edit. To revert the split: move `services:`, the two SAMIKSHA_* env vars
-  # and the provision step back onto `unit-tests` and delete this job.
+  # The original SAMĪKṢĀ split remains independent. Kāla DB proof below is required
+  # through governance-gates (A3 D-22 / NB-KALA); code changes cannot skip it.
   # ─────────────────────────────────────────────────────────────────────────────
   kala-db-tests:
     needs: changes
@@ -2720,7 +2719,7 @@ jobs:
     # static gates job AND every python-sidecar shard are green: a failed, cancelled or SKIPPED shard (they never skip by design, not even
     # on a docs-only change) is not green. Same shape as `governance-tool-tests` above.
     name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
-    needs: [changes, governance-gates-static, governance-gates-py-sidecar-shard, k3-sealed-db-tests]
+    needs: [changes, governance-gates-static, governance-gates-py-sidecar-shard, k3-sealed-db-tests, kala-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2728,13 +2727,17 @@ jobs:
       contents: read
 
     steps:
-      - name: The static gates, every py-sidecar shard and K3 SQL suite passed
+      - name: The static gates, every py-sidecar shard and required Kāla SQL suites passed
         env:
           K3_RESULT: ${{ needs.k3-sealed-db-tests.result }}
+          KALA_RESULT: ${{ needs.kala-db-tests.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           STATIC_RESULT: ${{ needs.governance-gates-static.result }}
           SHARDS_RESULT: ${{ needs.governance-gates-py-sidecar-shard.result }}
         run: |
+          if [ "$KALA_RESULT" != "success" ] && ! { [ "$KALA_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; }; then
+            echo "::error::Governance Gates: required Kāla DB suite finished '$KALA_RESULT'"; exit 1
+          fi
           if [ "$K3_RESULT" != "success" ] && ! { [ "$K3_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; }; then
             echo "::error::Governance Gates: required K3 SQL suite finished '$K3_RESULT'"; exit 1
           fi
@@ -2898,6 +2901,9 @@ jobs:
       - name: response_budget hardFloor regression test (platform-mcp)
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/response_budget_hard_floor.test.ts
+      - name: K-CERT stored citation status projection and honest gaps (platform-mcp)
+        working-directory: platform-mcp
+        run: npx vitest run src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts
       - name: envelope codegen parity test (platform-mcp) — GT-9
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/r5_codegen_parity.test.ts

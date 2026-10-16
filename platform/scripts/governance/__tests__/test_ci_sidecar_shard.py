@@ -135,7 +135,7 @@ def _tree(tmp_path: Path) -> Path:
 
 
 def _collect(root: Path, *args: str) -> tuple[int, list[str], str]:
-    p = subprocess.run([sys.executable, "-m", "pytest", "tests", "-m", "not integration", "--collect-only", "-q", "-p", "no:cacheprovider", *args],
+    p = subprocess.run([sys.executable, "-B", "-m", "pytest", "tests", "-m", "not integration", "--collect-only", "-q", "-p", "no:cacheprovider", *args],
                        cwd=root, env={"PYTHONPATH": str(PLUGINS), "PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
     return p.returncode, [line for line in p.stdout.splitlines() if "::" in line], p.stdout + p.stderr
 
@@ -246,11 +246,12 @@ def test_the_sidecar_suite_runs_only_sharded(jobs):
 def test_the_aggregate_keeps_the_required_name_and_needs_all_parts(jobs):
     agg = jobs[AGG_JOB]
     assert agg["name"] == REQUIRED_NAME
-    assert set(agg["needs"]) == {"changes", STATIC_JOB, SHARD_JOB, "k3-sealed-db-tests"}
+    assert set(agg["needs"]) == {"changes", STATIC_JOB, SHARD_JOB, "k3-sealed-db-tests", "kala-db-tests"}
     assert str(agg["if"]) == "${{ always() }}"
     step = agg["steps"][0]
     assert step["env"]["STATIC_RESULT"] == f"${{{{ needs.{STATIC_JOB}.result }}}}"
     assert step["env"]["SHARDS_RESULT"] == f"${{{{ needs.{SHARD_JOB}.result }}}}"
+    assert step["env"]["KALA_RESULT"] == "${{ needs.kala-db-tests.result }}"
     assert step["env"]["K3_RESULT"] == "${{ needs.k3-sealed-db-tests.result }}"
     assert step["env"]["DOCS_ONLY"] == "${{ needs.changes.outputs.docs_only }}"
     assert sum(1 for j in jobs.values() if j.get("name") == REQUIRED_NAME) == 1
@@ -266,7 +267,7 @@ RESULTS = ("success", "failure", "cancelled", "skipped", "")
 def test_the_aggregate_requires_static_and_shards_and_k3_or_docs_only_skip(jobs, static, shards, k3, docs_only):
     """Run the real aggregate: only K3 may skip, and only on an explicit docs-only change."""
     script = jobs[AGG_JOB]["steps"][0]["run"]
-    p = subprocess.run(["bash", "-c", script], env={"STATIC_RESULT": static, "SHARDS_RESULT": shards, "K3_RESULT": k3, "DOCS_ONLY": docs_only, "PATH": "/usr/bin:/bin"},
+    p = subprocess.run(["bash", "-c", script], env={"STATIC_RESULT": static, "SHARDS_RESULT": shards, "K3_RESULT": k3, "KALA_RESULT": "success", "DOCS_ONLY": docs_only, "PATH": "/usr/bin:/bin"},
                        capture_output=True, text=True)
     ok = (static == "success" and shards == "success"
           and (k3 == "success" or (k3 == "skipped" and docs_only == "true")))
