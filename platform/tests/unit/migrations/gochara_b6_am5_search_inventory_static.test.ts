@@ -10,6 +10,7 @@
  * steward M20261001T201843-f8e5 item 3. 1153–1157 are applied and never edited: this file
  * asserts the migration only ADDS (no ALTER/DROP/REPLACE of an applied object).
  */
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -244,7 +245,10 @@ describe('B6.0 F-1 migration 1206 (AM-5 search completeness) — static contract
   it('CI runs the live-DB suite as REQUIRED (no silent skip) plus the reproducible mutation harness', () => {
     const ci = fs.readFileSync(CI_YML, 'utf8')
     expect(ci).toContain('GOCHARA_REQUIRE_DB')
-    expect(ci).toContain('gochara_b6_am5_search_inventory.db.test.ts')
+    // A5 D-33: ci.yml names discovery suites, not files; the suite it invokes must discover this file.
+    expect(ci).toContain('ci_discovery.py" vitest db-integration-tests-8-0 --')
+    const discovered = execFileSync('python3', [path.resolve(process.cwd(), 'scripts/governance/ci_discovery.py'), 'files', 'db-integration-tests-8-0'], { encoding: 'utf8' })
+    expect(discovered.split('\n')).toContain('tests/integration/gochara_b6_am5_search_inventory.db.test.ts')
     expect(ci).toContain('CREATE DATABASE gochara_a51_test')
     expect(ci).toContain('scripts/gochara/mutation_check_1206.py')
     const db = fs.readFileSync(path.resolve(process.cwd(), 'tests/integration/gochara_b6_am5_search_inventory.db.test.ts'), 'utf8')
