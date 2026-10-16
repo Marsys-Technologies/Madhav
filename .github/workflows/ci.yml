@@ -236,6 +236,25 @@ jobs:
           npx vitest run tests/integration/nirmana_evidence_ownership_preflight.db.test.ts --reporter=verbose
           npx vitest run tests/integration/nirmana_egate_definition_scope.db.test.ts --reporter=verbose
 
+      # L0M-B1: use the existing required Unit Tests context and its Postgres
+      # service. Advisory-only execution cannot establish required DB coverage.
+      - name: L0-M — setup Python for the required source-preparation gate
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: L0-M — install source-preparation test dependencies
+        # This SQL/YAML-only suite imports no chart engine or service modules.
+        run: python -m pip install 'psycopg[binary]>=3.2' 'pyyaml>=6.0' 'pytest>=8.3'
+
+      - name: L0-M — typed source preparation against real Postgres (required)
+        env:
+          KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          KALA_REQUIRE_DB: '1'
+        run: |
+          cd python-sidecar
+          python -m pytest tests/l3/l0_parihara -q -rs --tb=short -p no:cacheprovider
+
       - name: MIG-1 — migration number guard (cross-directory duplicate)
         # DURABLE GUARD. SAMĀPTI brief v2.0 §4.4 · protocol:
         # 00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md
