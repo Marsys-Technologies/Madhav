@@ -340,6 +340,8 @@ jobs:
           KALA_REQUIRE_DB: '1'
         # Includes test_k7_tulana_probe_transition.py: real stored 849/1377
         # dispatch and broken-detector negatives in both migration states.
+        # K9-1: directory discovery also collects kala_db/rehearsal (ordered
+        # build lineage, own detectors, read-only inspection, publication CAS).
         run: python -m pytest tests/l3/kala_db tests/l3/ka_bhavishya_lekha/test_certification_mapping.py tests/l3/ka_vedha_gochara -q -rs
       - name: Run scoped parihara evaluator contract and route tests
         working-directory: platform/python-sidecar
@@ -347,6 +349,12 @@ jobs:
           KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           KALA_REQUIRE_DB: '1'
         run: python -m pytest tests/l3/ka_muhurta_seva -q -rs
+      - name: K5-3 — G2 event models, unavailable inputs and mandatory CI coverage
+        working-directory: platform/python-sidecar
+        run: >-
+          python -m pytest tests/l3/ka_kshetra/test_g2_model.py
+          tests/l3/ka_kshetra/test_g2_features.py tests/l3/ka_kshetra/test_g2_ci.py
+          -q -rs -p no:cacheprovider
       - name: K7-4 — cyclic fronts, permutations and Tulana compatibility
         working-directory: platform/python-sidecar
         run: python -m pytest tests/l3/test_ka_tulana.py -q -rs
