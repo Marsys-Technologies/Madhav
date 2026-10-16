@@ -290,9 +290,22 @@ def built(s6a_schema, tmp_path):
               "2020-01-01T00:00:00+00:00", "2030-01-01T00:00:00+00:00"),
              (S6A_CHART, "yogini", "Mangala",  # -> Moon; matches NO fixture class
               "2020-01-01T00:00:00+00:00", "2030-01-01T00:00:00+00:00")])
+        # Step 3 §4: the overlay fingerprints carry the chart's L1 natal-operand
+        # identity and the L0-owned node-series digest — seed the one MOON fact
+        # and a minimal pinned ('true') Rahu/Ketu series (the gate's recompute
+        # raises on either being absent).
+        # Preserve the current v2 evaluator's full chart operands above.
+        cur.execute("UPDATE chart_facts SET build_id='s6a-l1-build' WHERE chart_id=%s", (S6A_CHART,))
+        cur.execute("DELETE FROM ephemeris_daily")
+        cur.executemany(
+            "INSERT INTO ephemeris_daily (date, body, ayanamsha_id,"
+            " tropical_longitude, speed_dps, is_retrograde, node_mode)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            [("2026-01-01", "Rahu", "tropical", 100.0, -0.05, True, "true"),
+             ("2026-01-01", "Ketu", "tropical", 280.0, -0.05, True, "true")])
 
-    vedha_fp = current_fingerprint(conn)
-    moorti_fp = current_moorti_fingerprint(conn)
+    vedha_fp = current_fingerprint(conn, S6A_CHART)
+    moorti_fp = current_moorti_fingerprint(conn, S6A_CHART)
     with conn.cursor() as cur:
         cur.execute(
             "INSERT INTO kala_vedha_gochara (chart_id, ayanamsha_id, vedha_kind,"
@@ -337,7 +350,8 @@ def built(s6a_schema, tmp_path):
     return {"chart": S6A_CHART, "ctx_out": tmp_path / "ctx.json"}
 
 
-def _run_producer(chart, *extra, dsn=WP6_DSN):
+def _run_producer(chart, *extra, dsn=None):
+    dsn = WP6_DSN if dsn is None else dsn
     return subprocess.run(
         [sys.executable, str(PRODUCER_PATH), "--dsn", dsn,
          "--chart-id", chart, *extra],
