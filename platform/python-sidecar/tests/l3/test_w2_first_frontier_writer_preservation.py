@@ -1,4 +1,4 @@
-"""Behavioral replacement-safety contracts for the eight W2 row writers."""
+"""Behavioral replacement-safety contracts for W2 writers and inert KA-3a dispatch."""
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -149,17 +149,6 @@ def _patch_daily_writer_dependencies(monkeypatch, module, daily_by_body):
         # that swallow). The kernel solver is covered in
         # test_ka_moorti_nirnaya_writer.py::TestIngressSolverMethodRecorded.
         monkeypatch.setattr(module, "KERNEL_INSTANT_GRADING", False)
-    else:
-        monkeypatch.setattr(module, "_fetch_janma_moon", lambda *_: (0, 0, "fact-1"))
-        monkeypatch.setattr(
-            module,
-            "_fetch_vedha_rules",
-            lambda *_: {("sun", 1): {"vedha_house": 7, "phala": "fixture", "classical_citation": "fixture"}},
-        )
-        monkeypatch.setattr(module, "_fetch_malefic_scale", lambda *_: {})
-        monkeypatch.setattr(module, "_fetch_latta_rules", lambda *_: {})
-        monkeypatch.setattr(module, "_fetch_daily_sidereal_by_body", lambda *_: daily_by_body)
-        monkeypatch.setattr(module, "_fetch_school_tagged_vedha_pair", lambda *_: (1, "fixture-school"))
     monkeypatch.setattr(module, "_compute_ayanamsha_offset", lambda *_: 0.0)
 
 
@@ -253,6 +242,21 @@ def test_vedha_preserves_legacy_without_explicit_candidate_payload(monkeypatch, 
     result = vedha.KaVedhaGocharaWriter().run(_ctx(conn))
     assert result.rows_inserted == 0
     assert result.notes == "KA-3a pre-build: provider binding/activation pending"
+    assert conn.calls == []
+
+
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_vedha_unbound_dispatch_preserves_legacy_rows(dry_run):
+    # KA-3a replaced the rolling-day writer with an explicitly bound candidate
+    # provider. Without a payload dispatch must not read or mutate legacy data.
+    conn = RecordingConnection()
+    ctx = _ctx(conn)
+    ctx.dry_run = dry_run
+
+    result = vedha.KaVedhaGocharaWriter().run(ctx)
+
+    assert result.rows_inserted == 0
+    assert "provider binding/activation pending" in result.notes
     assert conn.calls == []
 
 

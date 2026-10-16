@@ -167,8 +167,7 @@ def test_writer_keeps_candidate_row_locked_against_concurrent_publication(conn, 
     conn.commit()
     schema=conn.execute('SELECT current_schema()').fetchone()[0]
     store(conn,active_bundle())
-    # ConnectionInfo.dsn omits the password required by CI; retain the guarded
-    # fixture DSN for both independent sessions.
+    # ConnectionInfo.dsn omits passwords; reuse the guarded fixture DSN in CI.
     with psycopg.connect(kala_db_dsn) as other:
         other.execute(f'SET search_path TO "{schema}", public')
         other.execute("SET LOCAL lock_timeout='100ms'")
