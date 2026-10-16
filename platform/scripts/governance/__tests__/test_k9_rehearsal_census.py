@@ -191,12 +191,38 @@ def test_mandatory_governance_ci_discovers_this_suite_exactly_once():
 
 
 def test_preparation_artifact_is_reproducible_and_stale_output_check_fails(tool, tmp_path):
-    doc = ROOT / "00_ARCHITECTURE/briefs/l3_families/measurements/K9_CENSUS_v1_0.md"
-    assert doc.read_text() == tool.render_markdown(tool.build_report(ROOT))
+    # A committed preparation report records the inputs at generation time.
+    # Other queued PRs may legitimately change them; regenerate from this tree
+    # instead of requiring that historical snapshot to match the current inputs.
+    expected = tool.render_markdown(tool.build_report(ROOT))
     output = tmp_path / "report.md"
     argv = [sys.executable, str(TOOL), "--repo", str(ROOT), "--format", "markdown", "--out", str(output)]
     p = subprocess.run(argv, capture_output=True, text=True)
-    assert p.returncode == 0 and output.read_text() == doc.read_text()
+    assert p.returncode == 0 and output.read_text() == expected
     assert subprocess.run([*argv, "--check"], capture_output=True).returncode == 0
+    assert subprocess.run(argv, capture_output=True).returncode == 0
+    assert output.read_text() == expected
+
+    # A legitimate input change must still invalidate an already generated
+    # report. Work on copies so neither the plan nor other tests are mutated.
+    repo = tmp_path / "repo"
+    for relative in (tool.PLAN, tool.REGISTRY, tool.DECLARATIONS):
+        target = repo / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((ROOT / relative).read_bytes())
+    plan = repo / tool.PLAN
+    plan.write_text(plan.read_text() + "\n<!-- unrelated merge-queue plan edit -->\n")
+    changed_argv = [sys.executable, str(TOOL), "--repo", str(repo),
+                    "--format", "markdown", "--out", str(output)]
+    stale = subprocess.run([*changed_argv, "--check"], capture_output=True, text=True)
+    assert stale.returncode == 2 and "stale/missing output" in stale.stderr
+    assert output.read_text() == expected  # --check never repairs stale output
+    assert subprocess.run(changed_argv, capture_output=True).returncode == 0
+    changed = output.read_text()
+    assert changed != expected
+    assert subprocess.run([*changed_argv, "--check"], capture_output=True).returncode == 0
+    assert subprocess.run(changed_argv, capture_output=True).returncode == 0
+    assert output.read_text() == changed
+
     output.write_text("stale report")
-    assert subprocess.run([*argv, "--check"], capture_output=True).returncode == 2
+    assert subprocess.run([*changed_argv, "--check"], capture_output=True).returncode == 2
