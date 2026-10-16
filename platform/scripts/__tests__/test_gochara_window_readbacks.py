@@ -170,7 +170,7 @@ def default_answers(ledger: list[str]) -> list[tuple[str, str]]:
         ("has_schema_privilege('amjis_app'", "f"),
         ("1204_gochara_av_qualifier_object_role", B3A_ANSWER),
         ("pg_get_userbyid", ""),
-        ("has_function_privilege('PUBLIC'", ""),
+        ("aclexplode(COALESCE(p.proacl", ""),
         ("ka_gochara_boundary_guard_inventory", GUARD_ROWS),
         ("C34 test registry readback", ""),
         ("C34 test privilege readback", ""),
@@ -551,7 +551,7 @@ STOP_CASES = [
     ("post-window", {"1204_gochara_av_qualifier_object_role":
                      B3A_ANSWER.replace("ab" * 32, "ff" * 32)}, "P9-window-files-ledger"),
     ("post-window", {"pg_get_userbyid": "relation\tka_gochara_x\tpostgres"}, "P9-ka-gochara-ownership"),
-    ("post-window", {"has_function_privilege('PUBLIC'": "ka_gochara_evil"}, "P9-public-execute"),
+    ("post-window", {"aclexplode(COALESCE(p.proacl": "ka_gochara_evil"}, "P9-public-execute"),
     ("post-window", {"SELECT filename FROM public._migrations_applied":
                      "\n".join(sorted(POST_LEDGER + ["1378_evil.sql"]))}, "P9-ledger-diff"),
     ("post-window", {"C34 test trigger manifest": "TRG\tkala_gochara_coverage\ttg_a"}, "W5-manifest"),
