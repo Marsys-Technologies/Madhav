@@ -131,7 +131,9 @@ BEGIN
         WHERE i.chart_id=r.chart_id AND i.generation=r.generation AND i.ayanamsha_id=r.ayanamsha_id
           AND i.vedha_kind=r.vedha_kind AND i.graha=r.graha
           AND tstzrange(i.t_in,i.t_out,'[)') && tstzrange(r.t_in,r.t_out,'[)')
-          AND (TG_OP='INSERT' OR i.t_in<>OLD.t_in)) THEN
+          AND (TG_OP='INSERT' OR
+            ROW(i.chart_id,i.generation,i.ayanamsha_id,i.vedha_kind,i.graha,i.t_in)
+              IS DISTINCT FROM ROW(OLD.chart_id,OLD.generation,OLD.ayanamsha_id,OLD.vedha_kind,OLD.graha,OLD.t_in))) THEN
       RAISE EXCEPTION 'KA-3a overlapping intervals';
     END IF;
   END IF;

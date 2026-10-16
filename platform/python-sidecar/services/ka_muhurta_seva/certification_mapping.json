@@ -1,0 +1,376 @@
+{
+  "version": "KA-4b/certification_mapping/v1",
+  "status": "PREBUILD_SR_A4_01",
+  "item": "KA-4b",
+  "asset_id": "ka_muhurta_seva",
+  "kind": "service",
+  "scope": "Scoped parihara evaluator preparation only; completion recorded after L0-M.",
+  "carriage": {
+    "nature": "computation",
+    "served_call": "platform/python-sidecar/routers/parihara_evaluate.py:72",
+    "served_surface": "POST /api/compute/parihara_evaluate (prepared route; no ELECT integration)"
+  },
+  "ldgr_source": null,
+  "vocab_alias": null,
+  "prose_fields": null,
+  "produced_tables": [],
+  "density_tier_columns": null,
+  "writer_digest_entry": "platform/src/generated/nirmana-writer-digests.json#/writers/ka_muhurta_seva",
+  "semantic_fingerprint": {
+    "contract_version": "parihara_evaluate/1",
+    "axes": [
+      "undertaking_scope",
+      "typed_predicate",
+      "start_mid_end_samples"
+    ],
+    "dominance": "Not applicable: no composite score or ranking.",
+    "front": "Explicit per-dosha states and by_rules; no Pareto front.",
+    "ordering": "Input dosha order deduplicated; rules ordered by target, cancellation_index, id.",
+    "live_jury_binding": "Not applicable; L0-M source admission and ELECT consumer binding unadmitted.",
+    "fixed_weights": false
+  },
+  "null_convention": "Unknown predicates, source locators, scope and sky coverage preserve named unassessed reasons; no invented clearance.",
+  "disposition": "Preparation evidence only; no whole-asset, census, consumer or production PASS.",
+  "production_certification": null,
+  "completion_after": "L0-M",
+  "interpretations": [
+    "(I) INTERPRETATION I1: single-pass tiers describe bounded fixture/relay evidence only; all live, consumer and interval-continuity claims remain null.",
+    "(I) INTERPRETATION I2: use the unchanged shared K8 service contract fields with explicit no-ranking/not-applicable readings; registry gate verdicts remain UNMEASURED or NO_DETECTOR."
+  ],
+  "registry_revision": 30,
+  "gates": {
+    "Build": {
+      "revisions": {
+        "Build.registered": 3,
+        "Build.contract": 2,
+        "Build.target": 2,
+        "Build.dag": 4,
+        "Build.count_integrity": 4,
+        "Build.completion": 7,
+        "Build.exercised": 3,
+        "Build.history": 3,
+        "Build.dep_liveness": 3
+      },
+      "expected_reading": "UNMEASURED: offline evaluator preparation only; no census or production PASS.",
+      "detector_none": [],
+      "detector_dependency": null
+    },
+    "Carr": {
+      "revisions": {
+        "Carr.D1": 5,
+        "Carr.D2": 3,
+        "Carr.D3": 4
+      },
+      "expected_reading": "NO_DETECTOR: Carr.D2; UNMEASURED: offline evaluator preparation only; no census or production PASS.",
+      "detector_none": [
+        "Carr.D2"
+      ],
+      "detector_dependency": "Current registry has no detector; later implementation required."
+    },
+    "Dens": {
+      "revisions": {
+        "Dens.served": 14
+      },
+      "expected_reading": "UNMEASURED: offline evaluator preparation only; no census or production PASS.",
+      "detector_none": [],
+      "detector_dependency": null
+    },
+    "Earn": {
+      "revisions": {
+        "Earn.build_record": 3,
+        "Earn.service_state": 2
+      },
+      "expected_reading": "UNMEASURED: offline evaluator preparation only; no census or production PASS.",
+      "detector_none": [],
+      "detector_dependency": null
+    },
+    "Idem": {
+      "revisions": {
+        "Idem.pattern": 5
+      },
+      "expected_reading": "UNMEASURED: offline evaluator preparation only; no census or production PASS.",
+      "detector_none": [],
+      "detector_dependency": null
+    },
+    "Ldgr": {
+      "revisions": {
+        "Ldgr.source_presence": 6
+      },
+      "expected_reading": "UNMEASURED: offline evaluator preparation only; no census or production PASS.",
+      "detector_none": [],
+      "detector_dependency": null
+    },
+    "Narr": {
+      "revisions": {
+        "Narr.agree": 8,
+        "Narr.checkable": 8,
+        "Narr.fidelity_test": 7,
+        "Narr.lint": 7
+      },
+      "expected_reading": "UNMEASURED: offline evaluator preparation only; no census or production PASS.",
+      "detector_none": [],
+      "detector_dependency": null
+    },
+    "Null": {
+      "revisions": {
+        "Null.schema_default": 11,
+        "Null.blank_rows": 11
+      },
+      "expected_reading": "UNMEASURED: offline evaluator preparation only; no census or production PASS.",
+      "detector_none": [],
+      "detector_dependency": null
+    },
+    "Vocab": {
+      "revisions": {
+        "Vocab.identity": 3,
+        "Vocab.alias": 10
+      },
+      "expected_reading": "UNMEASURED: offline evaluator preparation only; no census or production PASS.",
+      "detector_none": [],
+      "detector_dependency": null
+    }
+  },
+  "claims": {
+    "cited_cancellation": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::evaluate_candidate",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:265",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_marriage_cited_cancellation_and_exact_metadata"
+      ],
+      "tier": "single",
+      "limitation": "Synthetic sky and typed rules; not admitted production cancellation."
+    },
+    "undertaking_scope": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::scopes_for",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:41",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_exact_scope_map_no_natal_or_muhurta_fallback",
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_business_excludes_marriage_only_rule"
+      ],
+      "tier": "single",
+      "limitation": "Explicit undertaking map only; no event-class inference."
+    },
+    "recursive_predicates": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_predicate",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:188",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_recursive_grammar"
+      ],
+      "tier": "single",
+      "limitation": "Allowlisted grammar; no prose-to-predicate extraction."
+    },
+    "unknown_is_unassessed": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_term_value",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:123",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_unknowns_never_cancel_or_earn_residual"
+      ],
+      "tier": "single",
+      "limitation": "Undefined strength, agents and predicates remain unknown."
+    },
+    "sample_changes": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_predicate",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:188",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_three_sample_term_changes_do_not_clear_even_when_any_of_stays_true",
+        "tests/l3/ka_muhurta_seva/test_mars_v88_readings.py::test_mars_v88_changing_combustion_cannot_become_agreement"
+      ],
+      "tier": "single",
+      "limitation": "Start/mid/end samples detect observed changes; no continuity or interval splitting proof."
+    },
+    "coordinate_frame": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_term_value",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:123",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_independent_frame_goldens"
+      ],
+      "tier": "single",
+      "limitation": "Planted frame goldens; no second independent sky engine."
+    },
+    "combustion": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_term_value",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:123",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_combustion_reads_l0_orbs_and_short_arc"
+      ],
+      "tier": "single",
+      "limitation": "Boundary goldens use existing L0 orbs; no new classical authority."
+    },
+    "sky_identity": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_valid_sky",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:72",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_coverage_requires_real_backend_body_and_each_instant"
+      ],
+      "tier": "single",
+      "limitation": "Coverage and instant/backend checks, not independent ephemeris verification."
+    },
+    "v88_conflict": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_dosha",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:237",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_v88_disagreement_retains_both_citations_and_blocks_unrelated_cancellation",
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_source_pair_unknown_is_not_treated_as_agreement",
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_other_verses_in_the_same_chunk_do_not_count_as_v88_readings",
+        "tests/l3/ka_muhurta_seva/test_parihara_verse_locator.py::test_v88_conflict_uses_explicit_locator_not_display_citation",
+        "tests/l3/ka_muhurta_seva/test_parihara_verse_locator.py::test_display_v88_and_shared_chunk_cannot_override_cross_verse_locators",
+        "tests/l3/ka_muhurta_seva/test_parihara_verse_locator.py::test_verse_88_still_requires_the_exact_source_reading_pair",
+        "tests/l3/ka_muhurta_seva/test_parihara_verse_locator.py::test_explicit_v88_unknown_reading_does_not_earn_agreement"
+      ],
+      "tier": "single",
+      "limitation": "Synthetic reducer outcomes only; real kartari agents and source reading remain unqualified."
+    },
+    "mars_v88_readings": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_dosha",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:237",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_mars_v88_readings.py::test_mars_v88_readings_are_evaluated_and_cited_separately",
+        "tests/l3/ka_muhurta_seva/test_mars_v88_readings.py::test_mars_v88_preserves_literal_preparation_reading",
+        "tests/l3/kala_db/ka_muhurta_seva/test_parihara_db.py::test_mars_v88_disagreement_survives_read_only_source_roundtrip"
+      ],
+      "tier": "single",
+      "limitation": "Synthetic controls and guarded fixture roundtrip preserve literal and reconstructed readings; neither translation is selected and no L0-M admission is asserted."
+    },
+    "source_locator": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_rule",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:222",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_verse_locator.py::test_invalid_or_missing_verse_locator_cannot_earn_a_rule_verdict",
+        "tests/l3/ka_muhurta_seva/test_parihara_verse_locator.py::test_display_citation_is_preserved_alongside_explicit_locator",
+        "tests/l3/ka_muhurta_seva/test_parihara_verse_locator.py::test_missing_locator_cannot_bypass_a_potential_reading_conflict",
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_unsourced_never_cancelled_cannot_earn_a_verdict"
+      ],
+      "tier": "single",
+      "limitation": "Positive typed verse and exact reading pair; display citation is preserved, not parsed."
+    },
+    "state_reduction": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_dosha",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:237",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_state_reduction",
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_never_cancelled_overrides_applies"
+      ],
+      "tier": "single",
+      "limitation": "Explicit applies/does_not_apply/unknown rule states; no ranking or subtraction."
+    },
+    "source_text_fidelity": {
+      "detector": "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_source_fixtures_resolve_verbatim_not_from_memory",
+      "source": "platform/python-sidecar/tests/l3/ka_muhurta_seva/test_parihara_eval.py:18",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_source_fixtures_resolve_verbatim_not_from_memory"
+      ],
+      "tier": "single",
+      "limitation": "Fixture quotation fidelity only; does not select either v.88 reading or admit L0-M rows."
+    },
+    "fact_carriage": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_sample",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:95",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_real_swiss_facts_roundtrip_without_recomputing_source_values"
+      ],
+      "tier": "single",
+      "limitation": "Real Swiss relay fidelity and house calculation; same backend is not a second pass."
+    },
+    "ephemeris_gap": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::_sample",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:95",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_eval.py::test_missing_ephemeris_files_never_fall_back_to_moshier"
+      ],
+      "tier": "single",
+      "limitation": "Absent pinned corpus yields sky_coverage_gap; no stand-in."
+    },
+    "request_validation": {
+      "detector": "routers/parihara_evaluate.py::PariharaRequest",
+      "source": "platform/python-sidecar/routers/parihara_evaluate.py:37",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_evaluate.py::test_invalid_inputs_refused_before_db",
+        "tests/l3/ka_muhurta_seva/test_parihara_evaluate.py::test_valid_request_roundtrips_caller_and_reference_origin"
+      ],
+      "tier": "single",
+      "limitation": "HTTP contract and disclosed origin; consumer adapters are not exercised."
+    },
+    "authentication": {
+      "detector": "main.py::verify_api_key",
+      "source": "platform/python-sidecar/main.py:32",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_evaluate.py::test_main_mount_refuses_missing_or_wrong_key_before_db"
+      ],
+      "tier": "single",
+      "limitation": "Actual guarded mount AST in a local app; no deployed authentication claim."
+    },
+    "source_unavailable": {
+      "detector": "routers/parihara_evaluate.py::parihara_evaluate",
+      "source": "platform/python-sidecar/routers/parihara_evaluate.py:72",
+      "tests": [
+        "tests/l3/ka_muhurta_seva/test_parihara_evaluate.py::test_schema_or_db_error_refuses_instead_of_empty_residual",
+        "tests/l3/kala_db/ka_muhurta_seva/test_parihara_db.py::test_missing_typed_schema_is_loud_not_no_rules"
+      ],
+      "tier": "single",
+      "limitation": "Absent typed schema refuses; schema admission and production readback remain owed."
+    },
+    "scoped_sql": {
+      "detector": "services/ka_muhurta_seva/parihara_eval.py::load_rules",
+      "source": "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py:46",
+      "tests": [
+        "tests/l3/kala_db/ka_muhurta_seva/test_parihara_db.py::test_scoped_read_only_source_roundtrip_and_unknown_readings"
+      ],
+      "tier": "single",
+      "limitation": "Guarded disposable database with fixture rows; no production database proof."
+    },
+    "read_only_connection": {
+      "detector": "routers/parihara_evaluate.py::_connect",
+      "source": "platform/python-sidecar/routers/parihara_evaluate.py:64",
+      "tests": [
+        "tests/l3/kala_db/ka_muhurta_seva/test_parihara_db.py::test_real_route_connection_is_read_only"
+      ],
+      "tier": "single",
+      "limitation": "Real read-only transaction in a guarded disposable database."
+    }
+  },
+  "unmeasured": {
+    "interval_continuity": {
+      "detector": null,
+      "tests": [],
+      "tier": null,
+      "reason": "Three samples do not prove continuity or split candidate boundaries."
+    },
+    "l0_m_admission": {
+      "detector": null,
+      "tests": [],
+      "tier": null,
+      "reason": "Accepted typed L0-M rows, doctrine qualification and coordinated reseal remain prerequisites."
+    },
+    "elect_consumer_integration": {
+      "detector": null,
+      "tests": [],
+      "tier": null,
+      "reason": "Election registry/alias, budget, legacy shape and served prose integration remain unmeasured."
+    },
+    "production_readback": {
+      "detector": null,
+      "tests": [],
+      "tier": null,
+      "reason": "No production build, deployment containment or independent certification receipt is asserted."
+    }
+  },
+  "hashes": {
+    "platform/python-sidecar/brahmagyan/verification_vocab.py": "59e824a770eb17afaba1f5de84653acdede1f204be00f153e982b11084c686ca",
+    "platform/python-sidecar/main.py": "1049cf20a868efcfcef8fb0b398f3a1f270fc9689da92b59d9e461150e2fffd6",
+    "platform/python-sidecar/routers/parihara_evaluate.py": "badd271975f936cd9d16ccb0d9dbdbd37b2887a35b1b3c6e3506fa8feee4b60b",
+    "platform/python-sidecar/services/ka_muhurta_seva/parihara_eval.py": "8b0a2520aa85c4aeaf1f4a37073b38ec412031681dcb5fad800110b0df42eb04",
+    "platform/python-sidecar/services/kala_core/certification.py": "b9c1a7d73dd547af36f46fbb9991dc4c30f5e139645521f7c9051c507a60e01c",
+    "platform/python-sidecar/services/kala_core/sky/ephemeris.py": "3f511639550f0435778ffeb4250c94779611cc30505aed5fcc6624891725011c",
+    "platform/python-sidecar/tests/l3/_disposable_db_guard.py": "a2ead8c7d8dca23b658002830f07264979d2d32aa39632af31a06c591511c231",
+    "platform/python-sidecar/tests/l3/ka_muhurta_seva/conftest.py": "ca82b7dcab64b9f507bdc9ee6c1646c9399bc8af6b64c5a79c2a042b92cb7903",
+    "platform/python-sidecar/tests/l3/ka_muhurta_seva/parihara_predicates.json": "c9cec3d98109ab7e4285f8b835b7addbf6a0e1eda1765ca2fcfcfa617e4acdce",
+    "platform/python-sidecar/tests/l3/ka_muhurta_seva/test_mars_v88_readings.py": "ddd0d892c5a9cce98c30f91b1397b6e11732c328708f46fb6075ba2ace936e42",
+    "platform/python-sidecar/tests/l3/ka_muhurta_seva/test_parihara_eval.py": "9b22ca088355ff257acc488993a35cb84cf002bed69042c3462081e786a6e80b",
+    "platform/python-sidecar/tests/l3/ka_muhurta_seva/test_parihara_evaluate.py": "9161ecf4b331b4ca5927cb0b9733b2b541c197797408449d14fe2ace0b8e2554",
+    "platform/python-sidecar/tests/l3/ka_muhurta_seva/test_parihara_verse_locator.py": "6d0d185813fe15a8532846b8c09c4429627cb8e394571c9d06f03f50b6b35396",
+    "platform/python-sidecar/tests/l3/kala_db/conftest.py": "9964d8ba7336541025a920fa55679e7e6774ac0fbdb51653d20f03daa022ae96",
+    "platform/python-sidecar/tests/l3/kala_db/ka_muhurta_seva/test_parihara_db.py": "252fe6b17d4a9941e74c7cc210430dc09aeca7b120c0d37e6a1d4d08f0f2b272",
+    "platform/scripts/corpus/data/muhurta_chintamani_translations.json": "7601a048657e0b94de197cb4c8227891d12e673dac630611f1771a42052d1479",
+    "platform/scripts/governance/asset_census.py": "523f50ea74e24875f650f13b0659d4ee6165a0ec0eb864124b2e3d3fccf8c60b"
+  }
+}

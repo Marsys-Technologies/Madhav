@@ -98,6 +98,33 @@ def test_log_linear_input_and_integral_use_full_route_partition():
     assert f.numerical_uncertainty is None  # analytic integration does not measure roundoff
 
 
+@pytest.mark.parametrize(('alpha', 'gamma', 'expected'), [
+    (-750.0, 75.0, 3.571515949077437e-35),
+    (-75.0, -75.0, 3.571515949077437e-35),
+    (-900.0, 100.0, 0.01),
+])
+def test_extreme_log_linear_hazard_preserves_representable_integral(alpha, gamma, expected):
+    # Synthetic adversarial inputs. References integrate exp(alpha + gamma*t)
+    # on [0, 9]; the decreasing case is the first curve reflected in time.
+    m = model()
+    route = replace(m.routes[0], coefficients=(
+        Coefficient('count', 1.0, 'fixture:extreme-integral', 'declared'),
+    ))
+    m = replace(m, routes=(route,))
+    exposure = replace(risk(), intervals=((100.0, 109.0),))
+    partition = {'r1': (RouteCell(100.0, 109.0, {
+        'count': value(alpha - math.log(0.01), slope=gamma),
+    }),)}
+    f = build_field(m, exposure, partition, calibration=calibration(m))
+    assert f.rate_at(108.0) > 0
+    # abs=0 is essential: pytest's default absolute tolerance would accept zero.
+    assert f.routes[0].integral() == pytest.approx(expected, rel=1e-12, abs=0)
+    assert f.integrated_hazard == pytest.approx(expected, rel=1e-12, abs=0)
+    assert f.probability == pytest.approx(-math.expm1(-expected), rel=1e-12, abs=0)
+    assert f.odds == pytest.approx(math.expm1(expected), rel=1e-12, abs=0)
+    assert f.numerical_uncertainty is None
+
+
 @pytest.mark.parametrize('status', ['uncalibrated', 'not_evaluable', 'calibrated'])
 def test_odds_require_declared_model_and_exact_calibration(status):
     m = model()
