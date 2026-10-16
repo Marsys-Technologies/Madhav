@@ -12,7 +12,7 @@ command flags and immediate source-bound generated-output restore. The 1206 muta
 harness runs once, on SAMĪKṢĀ shard 4. File execution remains serial wherever the old
 job required it. Existing required-DB and required-ephemeris flags are retained.
 
-Assignment uses the full job's discovered file list and timing weights, placing
+Most jobs use the full job's discovered file list and timing weights, placing
 the heaviest file on the lightest shard, with path/index tie-breaks. New files join
 automatically. Empty whole-job shards fail; a profile with no files on one shard
 returns without launching an unfiltered test runner. See `ci_db_shard.py:37` and
@@ -72,14 +72,88 @@ including that step's ordinary Vitest invocation. Reported test-work estimates
 exclude service provisioning, dependency installation and generated-output restore.
 The full elapsed-time target must be checked on the resulting CI run.
 
-The local replace-chain measurement completed with 51 passed and 8 xfailed.
-`test_a55_replace_chain.py` dominates its runtime (about 26 minutes on the loaded
-local machine); the other four files took seconds. The job's whole-file split
-cannot shorten that dominant file. This is an additional remaining file bottleneck,
-alongside the two explicitly single-file jobs above.
+Replace-chain uses four **node** workers instead of an indivisible file split.
+`ci_discovery.py` still discovers every file in the profile; it explicitly loads
+`ci_db_node_shard.py`, which partitions the actual collected pytest node IDs before
+fixtures run. Timing keys only select placement: new files, functions and parameter
+cases join automatically. Pytest's original ordering, scopes, `-k` and `--deselect`
+policy are retained. An empty worker is a collection error. Every worker remains
+an independent pytest process with its own guarded fixture databases.
+
+The slow module fixture used to build the complete 1998–2085 sky-event substrate
+serially before its first scenario. Eight `replace-chain-substrate` workers now
+run the original writer's convention/body substeps, one real body each, over that
+same full domain and checksum-pinned Swiss corpus. They export the physical-object
+and sky-event tables through PostgreSQL COPY. The test fixture registers its own
+convention, then restores all eight parts before cloning per-test worlds. It still
+runs the original production manifest/snapshot/inventory/coverage/record substeps.
+No computation, body, domain, node ID, or assertion is removed.
+
+Artifacts bind the source digest (sidecar Python, migrations and the preparation
+helper), ephemeris checksums, body set, table row counts and COPY file checksums.
+Verification precedes the restore transaction; missing, duplicate, stale or corrupt
+parts fail. There is no artifact-path fallback to a long serial rebuild. The exact
+original umbrella requires **both** preparation and test matrices to succeed;
+its shell is tested against every pair of success/failure/skip/cancel/empty results.
+Restore runs inside the writer convention substep's chart-locked transaction, so
+COPY observes the same chart-before-substrate lock discipline as ordinary inserts.
+
+Within the heavy module's node workers, the pytest plugin also memoizes the actual
+`production_arc_index(body, ephe_path)` result. The corpus is checksum-pinned and
+read-only for the fixture lifetime; each caller receives a deep copy, and fixture
+teardown restores the original function. The index is still computed over the
+complete 1998–2085 domain by the original sampler/solver. All direct Swiss probes
+and their backend checks remain active. Cache hit/miss counts are printed at the
+end of each worker; the regression checks factory reuse and mutation isolation.
+
+- **(I) INTERPRETATION:** use collected node IDs as the independent test units rather
+  than physically moving functions, preserving the exact pre-sharding IDs.
+- **(I) INTERPRETATION:** preparing each body's real immutable substrate separately
+  is part of sharding the original fixture, rather than exempting fixture work from
+  the runtime target. Ordinary local runs keep their original serial fixture.
+- **(I) INTERPRETATION:** memoize real full-domain indexes within each module worker,
+  rather than resampling the same immutable pinned corpus in every record phase.
+  Deep copies retain independent caller state; no numerical value is substituted.
+- **(I) INTERPRETATION:** initial node weights apportion the original observed file
+  work across its collected cases. These remain estimates, not invented per-case
+  observations. The old expensive substrate cost stays in those estimates
+  conservatively; measured preparation and node-worker durations are recorded too.
+
+The original 26.171-minute file observation remains in `file_seconds` as historical
+evidence. It must not be counted as a single scheduling unit for this job. Node
+weights and repeated fixture work are recorded separately; full hosted elapsed
+time remains a CI follow-up, including provisioning and dependency installation.
+
+Recheck only the changed job while preserving the existing same-baseline rows:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python -B platform/scripts/governance/compare_ci_db_shards.py \
+  --baseline e45f1ef5b --job gochara-a55-replace-chain \
+  --scratch "$JOB_SCRATCH/coverage-recheck" --ephe-path /Users/Dev/kalayantra/ephe
+```
+
+This invokes the production collection plugin, rather than treating its input file
+list as proof of which nodes a worker runs. The job retains all 59 original IDs,
+including parametrized cases and historical expected failures.
 
 The unregenerated local A5.3 baseline produced 2,053 passed, 67 failed, 16 skipped
 and 1 deselected; the failures trace to its stale implementation-digest lock. The
 existing CI compiler regenerates and verifies that lock (`ci_generated.py:100`).
 The canonical generated output was left untouched; independently generating the
 lock under the job scratch directory verified the current source digest.
+
+R1 verification on the corrected tree: all eight real preparation units completed
+in 0.27–7.80 minutes. The four full node-worker invocations took
+6.09, 7.71, 10.27, 7.38 minutes (51 passed, 8 historical xfailed; all 59 IDs executed once).
+All four restored fixtures matched the original serial fixture's 2,146 physical
+objects and 50,124 sky events, comparing every field except `created_at`.
+The timing JSON binds the manifests, raw worker reports and executing source files
+by SHA-256. Updated scheduling estimates, including the measured repeated template
+setup reserve, are 7.35, 6.49, 6.47, 6.47 minutes. These are local test-work results;
+N1's full hosted elapsed-time follow-up remains outstanding.
+
+(I) INTERPRETATION: the approximately ten-minute criterion uses strict 600-second
+estimate/preparation budgets and a 5% (630-second) allowance for instrumented
+parallel worker wall time on the shared local host. One worker measured 616.20
+seconds, so a strict 600-second wall limit was NOT met. Hosted elapsed time is
+unmeasured; this tolerance does not claim a hosted CI result.

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""File-balanced DB jobs. Discovery remains authoritative; timings only choose placement.
+"""Balanced DB jobs, with collection-level units for the replace-chain bottleneck.
+
+Discovery remains authoritative; timings only choose placement.
 
 CI_DB_SHARD_JOB and CI_DB_SHARD=I/K apply one whole-job partition to every discovery
 invocation, including mixed pytest/Vitest jobs. Empty shares of an individual step
@@ -15,12 +17,13 @@ from pathlib import Path
 
 JOB_SHARDS = {
     'db-integration-tests': 4,
-    'gochara-a55-replace-chain': 2,
+    'gochara-a55-replace-chain': 4,
     'gochara-a55-teardown': 3,
     'gochara-a55-teardown-round3': 2,
     'gochara-a55-round2-runner': 3,
     'gochara-a55-verifier-fixes': 3,
 }
+NODE_SHARD_JOBS = {'gochara-a55-replace-chain'}
 TIMINGS = Path(__file__).with_name('ci_db_shard_timings.json')
 # (I) INTERPRETATION: an unmeasured/new file weighs one second until remeasured.
 # This affects placement only, never discovery or whether a test runs.
@@ -38,6 +41,8 @@ def partition_job(root: Path, job: str, count: int, durations: dict | None = Non
     from ci_discovery import discover
     if count < 1:
         raise ValueError('DB shard count must be positive')
+    if job in NODE_SHARD_JOBS:
+        raise ValueError(f'{job}: use partition_nodes after pytest collection')
     profiles = job_profiles(job)
     if not profiles:
         raise ValueError(f'unknown DB shard job: {job}')
@@ -81,7 +86,42 @@ def selected_files(root: Path, suite: str | None, profile: dict, files: list[str
         raise ValueError(f'DB shard must satisfy 1 <= I <= K, got {spec!r}')
     if job in JOB_SHARDS and count != JOB_SHARDS[job]:
         raise ValueError(f'{job}: expected {JOB_SHARDS[job]} shards, got {count}')
+    if job in NODE_SHARD_JOBS:
+        if profile['engine'] != 'pytest' or len(job_profiles(job)) != 1:
+            raise ValueError(f'{job}: node sharding requires one pytest discovery profile')
+        return files  # the pytest plugin partitions collected node IDs, before fixture execution
     chosen = set(partition_job(root, job, count)[index-1])
     selected = [f for f in files if str(Path(profile['cwd']) / f) in chosen]
     print(f'DB shard {job} {spec}: {suite}: {len(selected)}/{len(files)} files', flush=True)
     return selected
+
+
+def partition_nodes(nodes: list[str], job: str, count: int, timing: dict | None = None) -> list[list[str]]:
+    """Balance exact collected node IDs; timing keys never control membership.
+
+    Reserve repeated module-fixture work on EVERY worker. Per-node weights include
+    the original setup/call/teardown, so the first observed setup is overbudgeted
+    rather than pretending that cloned workers share fixtures.
+    """
+    if count < 1 or len(nodes) != len(set(nodes)):
+        raise ValueError('node partition needs a positive count and unique node IDs')
+    if timing is None:
+        timing = json.loads(TIMINGS.read_text())
+    durations = timing.get('node_seconds', {}).get(job, {})
+    fixed = float(timing.get('node_shard_fixed_seconds', {}).get(job, 0))
+    if fixed < 0 or not math.isfinite(fixed):
+        raise ValueError(f'{job}: invalid repeated fixture budget')
+    def weight(node):
+        value = float(durations.get(node, DEFAULT_SECONDS))
+        if value <= 0 or not math.isfinite(value):
+            raise ValueError(f'invalid DB node timing for {node}: {value}')
+        return value
+    shards = [[] for _ in range(count)]
+    loads = [fixed for _ in range(count)]
+    for node in sorted(nodes, key=lambda n: (-weight(n), n)):
+        index = min(range(count), key=lambda i: (loads[i], i))
+        shards[index].append(node)
+        loads[index] += weight(node)
+    if any(not group for group in shards) or Counter(sum(shards, [])) != Counter(nodes):
+        raise ValueError(f'{job}: node partition is empty, incomplete or duplicated')
+    return [sorted(group) for group in shards]

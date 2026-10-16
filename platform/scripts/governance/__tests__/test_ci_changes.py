@@ -230,7 +230,7 @@ def test_cli_fails_closed(tmp_path):
 
 # ---------------------------------------------------------------- the workflow wiring -----------------------------------------------------
 
-HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
+HEAVY = ("replace-chain-substrate", "typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
          "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")
 NEVER_SKIPPED = ("generated-artifacts", "changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
@@ -253,7 +253,7 @@ def test_every_heavy_job_needs_changes_and_preserves_its_docs_policy(jobs, name)
     assert j["needs"] in ("changes", ["changes"]) or "changes" in j["needs"]
     cond = str(j["if"])
     from ci_db_shard import JOB_SHARDS
-    if name in JOB_SHARDS:
+    if name in JOB_SHARDS or name == "replace-chain-substrate":
         assert cond == "${{ !cancelled() }}"  # its required umbrella rejects ANY skipped shard
         return
     assert "!cancelled()" in cond and "needs.changes.outputs.docs_only != 'true'" in cond and "== 'false'" not in cond   # an unset/failed output RUNS the job

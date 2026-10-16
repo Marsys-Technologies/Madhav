@@ -82,20 +82,25 @@ def test_real_partition_is_complete_and_required_names_remain_unique():
         assert 'postgres' in worker['services']
         assert not worker.get('continue-on-error')
         assert 'docs_only' not in str(worker.get('if', ''))
-        plan = mod.partition_job(ROOT, job, count)
-        assert all(plan)
+        if job not in mod.NODE_SHARD_JOBS:
+            plan = mod.partition_job(ROOT, job, count)
+            assert all(plan)
         umbrella = jobs['required-'+job]
         assert umbrella['name'] == baseline[job]
         assert sum(j.get('name') == baseline[job] for j in jobs.values()) == 1
-        assert umbrella['needs'] == [job]
+        expected_needs = [job, 'replace-chain-substrate'] if job in mod.NODE_SHARD_JOBS else [job]
+        assert umbrella['needs'] == expected_needs
         assert umbrella['if'] == '${{ always() }}'
         assert not umbrella.get('continue-on-error')
         script = umbrella['steps'][0]['run']
         assert not umbrella['steps'][0].get('continue-on-error')
         for result in ('success','failure','skipped','cancelled',''):
-            code = script.replace('${{ needs.'+job+'.result }}', result)
-            proc = subprocess.run(['bash', '-e', '-c', code], capture_output=True)
-            assert (proc.returncode == 0) == (result == 'success'), (job,result)
+            preparation_results = ('success','failure','skipped','cancelled','') if job in mod.NODE_SHARD_JOBS else ('success',)
+            for preparation in preparation_results:
+                code = script.replace('${{ needs.'+job+'.result }}', result)
+                code = code.replace('${{ needs.replace-chain-substrate.result }}', preparation)
+                proc = subprocess.run(['bash', '-e', '-c', code], capture_output=True)
+                assert (proc.returncode == 0) == (result == preparation == 'success'), (job,result,preparation)
     assert discovery.workflow_problems((ROOT / '.github/workflows/ci.yml').read_text()) == []
 
 
@@ -138,7 +143,7 @@ def test_committed_timings_have_recorded_sources_for_every_sharded_job():
     assert timing['schema'] == 'ci.db_shard_timings/1'
     assert timing['sources'], 'balance must be backed by a recorded timing source'
     for job,count in mod.JOB_SHARDS.items():
-        files = set(sum(mod.partition_job(ROOT,job,count),[]))
+        files = {str(Path(p['cwd']) / f) for p in mod.job_profiles(job).values() for f in discovery.discover(ROOT, p)}
         assert files.intersection(timing['file_seconds']), f'{job}: no recorded file durations'
 
 
@@ -200,3 +205,178 @@ def test_worker_check_names_cannot_alias_required_names_when_github_shortens_the
         names=[jobs[job]['name'].replace('${{ matrix.shard }}',str(i))[:100] for i in range(1,count+1)]
         assert before[job][:100] not in names,job
         assert len(set(names))==count,job
+
+
+def test_replace_chain_splits_inside_heavy_file_without_losing_nodes(tmp_path, monkeypatch):
+    """R1: reverting collection-level splitting strands the heavy file on one worker."""
+    mod = sharding()
+    job = 'gochara-a55-replace-chain'
+    suite = job + '-1-9'
+    profile = {'cwd': '.', 'engine': 'pytest', 'include': ['test_*.py']}
+    monkeypatch.setattr(discovery, 'profiles', lambda: {suite: profile})
+    # Every case records its unchanged pytest node ID; one can be made to fail.
+    source = '''import os, pytest
+from pathlib import Path
+@pytest.mark.parametrize("case", range(12))
+def test_heavy(case, request):
+    node = request.node.nodeid
+    with Path(os.environ["SELECTION_OUTPUT"]).open("a") as out:
+        out.write(node + "\\n")
+    assert node != os.environ.get("FAIL_NODE")
+'''
+    (tmp_path / 'test_heavy.py').write_text(source)
+    for i in range(4):
+        (tmp_path / f'test_small_{i}.py').write_text('def test_small(): pass\n')
+    monkeypatch.setenv('CI_DB_SHARD_JOB', job)
+    shards = []
+    count = mod.JOB_SHARDS[job]
+    for i in range(count):
+        output = tmp_path / f'selected-{i}.txt'
+        monkeypatch.setenv('SELECTION_OUTPUT', str(output))
+        monkeypatch.setenv('CI_DB_SHARD', f'{i+1}/{count}')
+        assert discovery.run(tmp_path, profile, ['-q', '-p', 'no:cacheprovider'], suite=suite) == 0
+        shards.append(output.read_text().splitlines() if output.exists() else [])
+    assert sum(bool(nodes) for nodes in shards) == count, 'heavy file is still indivisible'
+    assert Counter(sum(shards, [])) == Counter(f'test_heavy.py::test_heavy[{i}]' for i in range(12))
+    for i, nodes in enumerate(shards):
+        monkeypatch.setenv('CI_DB_SHARD', f'{i+1}/{count}')
+        monkeypatch.setenv('FAIL_NODE', nodes[0])
+        assert discovery.run(tmp_path, profile, ['-q', '-p', 'no:cacheprovider'], suite=suite) == 1
+
+
+def test_node_partition_is_complete_balanced_and_new_cases_join():
+    mod = sharding()
+    nodes = [f'test_heavy.py::test_case[{i}]' for i in range(12)]
+    timing = {'node_seconds': {'demo': {n: 100 for n in nodes}},
+              'node_shard_fixed_seconds': {'demo': 50}}
+    plan = mod.partition_nodes(nodes, 'demo', 4, timing)
+    assert Counter(sum(plan, [])) == Counter(nodes)
+    assert [len(group) for group in plan] == [3, 3, 3, 3]
+    assert mod.partition_nodes(list(reversed(nodes)), 'demo', 4, timing) == plan
+    assert 'test_future.py::test_new' in sum(mod.partition_nodes(nodes + ['test_future.py::test_new'], 'demo', 4, timing), [])
+    with pytest.raises(ValueError, match='empty'):
+        mod.partition_nodes(nodes[:3], 'demo', 4, timing)
+    with pytest.raises(ValueError, match='unique'):
+        mod.partition_nodes(nodes + nodes[:1], 'demo', 4, timing)
+    timing['node_seconds']['demo'][nodes[0]] = float('nan')
+    with pytest.raises(ValueError, match='invalid DB node timing'):
+        mod.partition_nodes(nodes, 'demo', 4, timing)
+
+
+def test_node_shard_collection_retains_existing_deselection_policy(tmp_path, monkeypatch):
+    mod = sharding()
+    job = 'gochara-a55-replace-chain'
+    suite = job + '-1-9'
+    profile = {'cwd': '.', 'engine': 'pytest', 'include': ['test_*.py']}
+    monkeypatch.setattr(discovery, 'profiles', lambda: {suite: profile})
+    (tmp_path / 'test_cases.py').write_text('import pytest\n@pytest.mark.parametrize("case", range(12))\ndef test_keep(case): pass\ndef test_excluded(): pass\n')
+    (tmp_path / 'conftest.py').write_text('import json, os\nfrom pathlib import Path\ndef pytest_collection_finish(session):\n    Path(os.environ["SELECTION_OUTPUT"]).write_text(json.dumps([item.nodeid for item in session.items]))\n')
+    monkeypatch.setenv('CI_DB_SHARD_JOB', job)
+    collected = []
+    for i in range(mod.JOB_SHARDS[job]):
+        output = tmp_path / f'collected-{i}.json'
+        monkeypatch.setenv('SELECTION_OUTPUT', str(output))
+        monkeypatch.setenv('CI_DB_SHARD', f'{i+1}/{mod.JOB_SHARDS[job]}')
+        args = ['--collect-only', '-q', '-p', 'no:cacheprovider', '-k', 'not excluded',
+                '--deselect=test_cases.py::test_keep[0]']
+        assert discovery.run(tmp_path, profile, args, suite=suite) == 0
+        collected.extend(json.loads(output.read_text()))
+    assert Counter(collected) == Counter(f'test_cases.py::test_keep[{i}]' for i in range(1, 12))
+    # A user filter must never turn an empty whole-job worker green.
+    assert discovery.run(tmp_path, profile, ['--collect-only', '-q', '-p', 'no:cacheprovider', '-k', 'missing'], suite=suite) != 0
+
+
+def test_parallel_real_substrate_is_required_before_node_workers():
+    """R1: node partitioning must not repeat the full serial sky-template build."""
+    jobs = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs']
+    worker = jobs['gochara-a55-replace-chain']
+    assert 'replace-chain-substrate' in worker['needs'], 'serial full-domain fixture is still on every test worker'
+    producer = jobs['replace-chain-substrate']
+    assert producer['strategy']['matrix']['body'] == ['Sun', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
+    assert producer['strategy']['fail-fast'] is False
+    assert not producer.get('continue-on-error')
+    assert producer['if'] == '${{ !cancelled() }}'
+    assert 'generated-artifacts' in producer['needs']
+    steps = worker['steps']
+    download = next(s for s in steps if s.get('uses', '').startswith('actions/download-artifact@'))
+    assert download['with']['pattern'] == 'replace-chain-substrate-*'
+    test_step = next(s for s in steps if s.get('name', '').startswith('A5.5f - replace-chain suites'))
+    assert test_step['env']['CI_REPLACE_CHAIN_SUBSTRATE'] == '${{ runner.temp }}/replace-chain-substrate'
+    assert 'ci_replace_chain_fixture.py' in str(producer['steps'])
+    umbrella = jobs['required-gochara-a55-replace-chain']
+    assert 'replace-chain-substrate' in umbrella['needs']
+    assert 'success' in umbrella['steps'][0]['run']
+
+
+def test_prepared_substrate_rejects_missing_stale_corrupt_and_duplicate_bodies(tmp_path):
+    import hashlib
+    from ci_replace_chain_fixture import SCHEMA, TABLES, manifest_files
+    ephe = {'unit-test-integrity-probe': 'not-used-for-computation'}
+    kwargs = {'source': 'source-v1', 'bodies': ['Sun', 'Mars'], 'ephe': ephe}
+    with pytest.raises(ValueError, match='every body'):
+        manifest_files(tmp_path, **kwargs)
+    for body in kwargs['bodies']:
+        parent = tmp_path / body
+        parent.mkdir()
+        tables = {}
+        for table in TABLES:
+            data = parent / (table + '.copy')
+            data.write_bytes(b'integrity probe only\n')
+            tables[table] = {'sha256': hashlib.sha256(data.read_bytes()).hexdigest(), 'rows': 1}
+        (parent / 'manifest.json').write_text(json.dumps({'schema': SCHEMA, 'source_digest': 'source-v1',
+                                                        'ephe_sha256': ephe, 'body': body, 'tables': tables}))
+    assert len(manifest_files(tmp_path, **kwargs)) == 2
+    with pytest.raises(ValueError, match='stale or unbound'):
+        manifest_files(tmp_path, **{**kwargs, 'source': 'changed'})
+    with pytest.raises(ValueError, match='stale or unbound'):
+        manifest_files(tmp_path, **{**kwargs, 'ephe': {}})
+    with pytest.raises(ValueError, match='every body'):
+        manifest_files(tmp_path, **{**kwargs, 'bodies': ['Sun', 'Sun']})
+    (tmp_path / 'Sun' / (TABLES[0] + '.copy')).write_bytes(b'corrupt\n')
+    with pytest.raises(ValueError, match='bytes mismatch'):
+        manifest_files(tmp_path, **kwargs)
+
+
+def test_replace_chain_recorded_work_fits_approximately_ten_minute_worker_budget():
+    """R1: strict 600s estimates/preparation; 5% tolerance for local instrumented wall time."""
+    import math
+    mod = sharding()
+    timing = json.loads(mod.TIMINGS.read_text())
+    job = 'gochara-a55-replace-chain'
+    report = json.loads((GOV / 'ci_db_shard_coverage.json').read_text())['jobs'][job]
+    nodes = [n.removeprefix('platform/python-sidecar/') for n in report['node_ids']]
+    weights = timing['node_seconds'][job]
+    assert set(weights) == set(nodes), 'every original node needs an explicit initial scheduling estimate'
+    plan = mod.partition_nodes(nodes, job, mod.JOB_SHARDS[job])
+    fixed = timing['node_shard_fixed_seconds'][job]
+    estimates = [fixed + sum(weights[n] for n in group) for group in plan]
+    observed = timing['replace_chain_observed_seconds']
+    assert set(observed['preparation']) == {'Sun', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu'}
+    assert set(observed['workers']) == {str(i+1) for i in range(mod.JOB_SHARDS[job])}
+    values = estimates + list(observed['preparation'].values())
+    assert all(math.isfinite(v) and 0 < v <= 600 for v in values), values
+    # (I) INTERPRETATION: 'approximately ten minutes' permits 5% on shared-host
+    # instrumented wall time. Report actual values, including strict-limit misses.
+    assert timing['local_worker_tolerance_seconds'] == 30
+    assert all(math.isfinite(v) and 0 < v <= 630 for v in observed['workers'].values())
+
+
+def test_node_worker_reuses_real_index_results_without_sharing_mutable_callers():
+    try:
+        import ci_db_node_shard as plugin
+    except ModuleNotFoundError:
+        plugin = None  # the pre-fix runner has no node-worker cache
+    calls = []
+    def factory(body, path):
+        calls.append((body, path))
+        return {'body': body, 'values': [path]}
+    # A protocol probe, not an ephemeris stand-in: the DB workers use the real factory.
+    cached = getattr(plugin, 'index_cache', lambda f: f)(factory)
+    first = cached('Sun', 'pinned-corpus')
+    first['values'].append('caller mutation')
+    second = cached('Sun', 'pinned-corpus')
+    assert calls == [('Sun', 'pinned-corpus')], 'the full real index is still recomputed for every record phase'
+    assert second['values'] == ['pinned-corpus']
+    cached('Mars', 'pinned-corpus')
+    cached('Sun', 'another-corpus')
+    assert len(calls) == 3

@@ -138,7 +138,7 @@ def workflow_problems(text: str) -> list[str]:
 
 
 def run(root: Path, profile: dict, args: list[str], *, suite: str | None = None) -> int:
-    from ci_db_shard import selected_files
+    from ci_db_shard import NODE_SHARD_JOBS, selected_files
     full_files = discover(root, profile)
     files = selected_files(root, suite, profile, full_files)
     if not files:
@@ -157,7 +157,11 @@ def run(root: Path, profile: dict, args: list[str], *, suite: str | None = None)
         exclusions += ['--minWorkers=1', f"--maxWorkers={profile['workers']}"]
     if profile.get('test_timeout_ms'):
         exclusions += [f"--testTimeout={profile['test_timeout_ms']}"]
-    return subprocess.call([*command, *files, *exclusions, *args], cwd=root / profile['cwd'])
+    execution_env = os.environ.copy()
+    if os.environ.get('CI_DB_SHARD_JOB') in NODE_SHARD_JOBS:
+        exclusions += ['-p', 'ci_db_node_shard']
+        execution_env['PYTHONPATH'] = os.pathsep.join(filter(None, [str(Path(__file__).parent), execution_env.get('PYTHONPATH')]))
+    return subprocess.call([*command, *files, *exclusions, *args], cwd=root / profile['cwd'], env=execution_env)
 
 
 def main():

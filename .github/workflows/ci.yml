@@ -1369,6 +1369,64 @@ jobs:
           fi
           echo "Every DB shard passed"
 
+  replace-chain-substrate:
+    # R1: each producer runs one REAL full-domain body substep; consumers restore
+    # its checksummed, source-bound rows instead of serially rebuilding all eight.
+    needs: [changes, generated-artifacts]
+    if: ${{ !cancelled() }}
+    name: Sky substrate ${{ matrix.body }} — replace-chain real fixture
+    strategy:
+      fail-fast: false
+      matrix:
+        body: [Sun, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
+      - name: Build one real substrate body (REQUIRED, never skipped)
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_replace_chain_fixture.py" --body "${{ matrix.body }}" --output "$RUNNER_TEMP/replace-chain-substrate/${{ matrix.body }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: replace-chain-substrate-${{ matrix.body }}
+          path: ${{ runner.temp }}/replace-chain-substrate/${{ matrix.body }}
+          if-no-files-found: error
+          retention-days: 1
+
   gochara-a55-replace-chain:
     # A5.5f (G7): the rebuild-replaces-the-whole-candidate-chain suites drive the writer's REAL substeps on the real migrations
     # (a template database with the sky-event substrate, cloned per test). They run in their OWN job, in parallel, so every PR does
@@ -1386,17 +1444,17 @@ jobs:
     #   gochara-a55-round2-runner     : c46_slice_round2, c47_ephe_real_runner, c49_wrap_cut_support
     #   gochara-a55-verifier-fixes    : p1_exclusion_h_unknown, member_geometry_seam, graze_interim
     #   (next: gochara-a55-teardown, -round2 and -round3 for the c38 real-db modules, gochara-a55-dispatch for c37 real-db)
-    needs: [changes, generated-artifacts]
+    needs: [changes, generated-artifacts, replace-chain-substrate]
     # A4 D-31: skips are fatal at the umbrella, including docs-only changes.
     if: ${{ !cancelled() }}
-    name: DB shard ${{ matrix.shard }}/2 — Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
+    name: DB shard ${{ matrix.shard }}/4 — Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4]
     env:
       CI_DB_SHARD_JOB: gochara-a55-replace-chain
-      CI_DB_SHARD: '${{ matrix.shard }}/2'
+      CI_DB_SHARD: '${{ matrix.shard }}/4'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -1418,8 +1476,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Restore source-bound generated files
         uses: ./.github/actions/restore-generated
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: replace-chain-substrate-*
+          path: ${{ runner.temp }}/replace-chain-substrate
+          merge-multiple: false
       - name: A5.5f - replace-chain suites (REQUIRED, never skipped)
         env:
+          CI_REPLACE_CHAIN_SUBSTRATE: ${{ runner.temp }}/replace-chain-substrate
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           GOCHARA_A53_REQUIRE_DB: '1'
         run: |
@@ -1443,7 +1507,7 @@ jobs:
   required-gochara-a55-replace-chain:
     # Exact required context retained; a matrix is green only if every leg succeeds.
     name: Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
-    needs: [gochara-a55-replace-chain]
+    needs: [gochara-a55-replace-chain, replace-chain-substrate]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1451,8 +1515,9 @@ jobs:
       - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
         run: |
           result="${{ needs.gochara-a55-replace-chain.result }}"
-          if [ "$result" != "success" ]; then
-            echo "::error::DB shards finished $result; every shard must succeed"
+          preparation="${{ needs.replace-chain-substrate.result }}"
+          if [ "$result" != "success" ] || [ "$preparation" != "success" ]; then
+            echo "::error::DB shards finished $result, substrate workers $preparation; every shard must succeed"
             exit 1
           fi
           echo "Every DB shard passed"

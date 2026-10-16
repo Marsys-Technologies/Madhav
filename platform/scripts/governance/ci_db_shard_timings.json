@@ -384,7 +384,7 @@
   },
   "fixed_work_source": {
     "url": "https://github.com/Marsys-Technologies/Madhav/actions/runs/38885741560/job/116926071922",
-    "step": "Pravāha F-1 — migration 1204 / 1206 / 1232 / 1233 live-DB suites (REQUIRED, never skipped) + reproducible mutation evidence",
+    "step": "Prav\u0101ha F-1 \u2014 migration 1204 / 1206 / 1232 / 1233 live-DB suites (REQUIRED, never skipped) + reproducible mutation evidence",
     "observed_step_seconds": 214,
     "interpretation": "(I) INTERPRETATION: conservatively reserve the whole recorded step for shard 4, which alone runs its mutation harness; its ordinary Vitest files still use normal discovery and sharding."
   },
@@ -738,11 +738,144 @@
       "summaries": [
         "2026-10-16T10:30:56.3404223Z 13 passed in 500.81s (0:08:20)"
       ]
+    },
+    {
+      "kind": "observed real body preparation and whole node-worker wall seconds, guarded localhost:55433 and pinned Swiss corpus",
+      "job_id": "X-20261016T123202Z-fix-ci-shard",
+      "source_digest": "2d7a5d4d78d7c53a41ab78548dadfd1ba42e63660623beeedd92be5bdad5e6e8",
+      "source_files_sha256": {
+        ".github/workflows/ci.yml": "9341652e228db3e6fcc9a7df86e9ac4e32f009b0fd4dc7654be4e07a86ae9a6e",
+        "platform/python-sidecar/tests/l3/gochara/test_a55_replace_chain.py": "8004c310125773f3e3a3798d1bc9005f701bc7b4381bcd437b9e18a0134071ba",
+        "platform/scripts/governance/ci_db_shard.py": "e703a4e2c96fdde469f9c7e2bcd80202a06d6827871881ada0cfa14322af78ad",
+        "platform/scripts/governance/ci_db_node_shard.py": "75c1fe8f4a1d8b5c666d9baf5c66c55491e85ae60c7e83ed9da6f4b9fe889a2f",
+        "platform/scripts/governance/ci_discovery.py": "71e91c09f570e4a95cb98e27dbb0d4276bc1b64f678d2524b44660a5e5fa97fe",
+        "platform/scripts/governance/ci_replace_chain_fixture.py": "75126efb184f9ea2be3ab04193fd9b9ddca1c214322a8e8583d158c9498ed187"
+      },
+      "manifest_sha256": {
+        "Mercury": "3fcd4d0221393d3ccf746b36e19b9d8b25ad4acda22c997527749365c8aa118c",
+        "Sun": "05a8d0b3077c50ab3b5f94aa393f4d24ce51280e60d757b1e058628bdc8132fe",
+        "Venus": "1d8f8e885f7c4a01aee01806499ae0fd90dd91965f6af44b0f03bdf30e68296d",
+        "Saturn": "963cfcbf72981913a55a582724eaedb9854e13ac7670bfe746192c4a11438510",
+        "Jupiter": "d05639cdd7434c2afe6037729bdcb647d1d5df50589793b76eb26a641e37326c",
+        "Ketu": "780a8390680d61c2522d19f81147dd1ef36c960290eee9b261e03625974c7d96",
+        "Rahu": "276479eefed431de4b3d6c20fe124ba9b79e6533aca3ecdfdad7ad01ff201089",
+        "Mars": "66c8ef48f3781a01552ec52cea73828c070b0d419274264f1b33cb34c34c70d9"
+      },
+      "worker_report_sha256": {
+        "worker-1.json": "8c5ac31fa578c1ab88eb937261bf3ebd85d3e41f065c8a0babfcc1d071745629",
+        "worker-2.json": "f3c44861f68f48fe992236ca75248fe57723437bb9160005a3dbf454e92a64bd",
+        "worker-3.json": "59de4d62f4c84593ecd6375104aec06678832db80320b2dc5486ffcb469be980",
+        "worker-4.json": "4930d76f9da2918aa3d982f470004af01bbb357f7de4c579c77f1ee0194fb93a"
+      },
+      "limitation": "Local test work, including fixture creation/restore, collection and evidence checks; hosted service provisioning, installs, ephemeris transfer and artifact transfer are unbenchmarked (N1). Initial equal-share node weights remain estimates."
     }
   ],
   "interpretations": [
     "(I) INTERPRETATION: recorded per-file timings are used where available. For CI pytest batches without per-file telemetry, apportion the remaining recorded batch duration equally over their unmeasured original files. These are scheduling estimates, not invented measurements.",
     "(I) INTERPRETATION: unmeasured/new files outside those recorded batches receive a one-second scheduling weight until measured.",
     "(I) INTERPRETATION: estimates measure test work; CI provisioning, installs, collection and generated-overlay restoration add overhead."
-  ]
+  ],
+  "node_seconds": {
+    "gochara-a55-replace-chain": {
+      "tests/l3/gochara/test_a55_conformance_oracles.py::test_o_ao_1_year_qualified_join_no_cross_year_match": 0.026857,
+      "tests/l3/gochara/test_a55_conformance_oracles.py::test_o_ao_2_saham_source_ref_resolves_in_b33_register": 0.026857,
+      "tests/l3/gochara/test_a55_conformance_oracles.py::test_o_ao_3_no_scored_p9_before_d_t2": 0.026857,
+      "tests/l3/gochara/test_a55_conformance_oracles.py::test_o_cf_n5_producer_keeps_both_peaks_60d_apart": 0.026857,
+      "tests/l3/gochara/test_a55_conformance_oracles.py::test_o_cf_n6_birth_anchor_excluded_control_present": 0.026857,
+      "tests/l3/gochara/test_a55_conformance_oracles.py::test_o_cf_n7_moorti_testimony_bit_identical_score": 0.026857,
+      "tests/l3/gochara/test_a55_conformance_oracles.py::test_o_cf_n7_production_moorti_row_audit": 0.026857,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_conflicting_contact_row_is_refused_for_span_and_point_contacts_both_ways": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_fresh_build_has_shared_end_clipped_contacts": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_later_start_then_an_earlier_start_leaves_no_extra_overlapping_contact": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_null_transition_is_a_difference_in_both_directions[delta_lambda]": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_null_transition_is_a_difference_in_both_directions[delta_t]": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_null_transition_is_a_difference_in_both_directions[precision_regime]": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_null_transition_is_a_difference_in_both_directions[t_exact]": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_null_transition_is_a_difference_in_both_directions[t_out]": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_partial_run_that_skips_the_head_does_not_over_delete": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_published_but_unsealed_manifest_is_not_replaced": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_retry_after_a_mid_build_failure_is_a_whole_plan_replay_and_equals_a_fresh_build": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_row_of_the_wrong_shape_is_a_named_error_not_zipped_short": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_sealed_generation_is_not_replaced": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_sealed_generation_is_refused_first_and_by_the_new_delete": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_a_truncated_point_contact_conflict_is_refused_both_ways": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_an_orphan_contact_from_a_crashed_run_is_replaced_not_kept": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_certification_catches_a_stale_end_after_an_extension_loudly": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_certification_does_NOT_catch_a_stale_end_beyond_a_narrowed_horizon": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_certification_of_a_correct_build_agrees_for_every_materialised_contact": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_contact_row_diffs_name_every_differing_column": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_every_chain_writing_phase_refuses_a_horizon_that_is_not_its_manifests": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_every_one_of_the_13_compared_columns_is_independently_checked_on_conflict": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_extending_the_horizon_moves_every_bound_the_two_classes_share": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_generation_chain_delete_is_dependency_ordered_and_chart_generation_scoped": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_narrowing_the_horizon_leaves_no_contact_beyond_the_new_end": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_only_a_candidate_manifest_may_be_replaced": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_the_accuracy_columns_compare_at_float4_the_other_columns_exactly": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_the_shape_check_survives_python_dash_O": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain.py::test_the_snapshot_precedes_every_substep_that_writes_chain_rows": 54.147138,
+      "tests/l3/gochara/test_a55_replace_chain_populated.py::test_a_failure_inside_the_snapshot_substep_rolls_the_deletes_back": 1.409,
+      "tests/l3/gochara/test_a55_replace_chain_populated.py::test_rebuilding_after_the_builders_replace_equals_what_was_there_and_a_fresh_build": 1.409,
+      "tests/l3/gochara/test_a55_replace_chain_populated.py::test_the_builder_replaces_a_populated_chain_and_keeps_the_survivors": 1.409,
+      "tests/l3/gochara/test_a55_replace_chain_populated.py::test_the_populated_fixture_really_holds_every_table": 1.409,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestORX1OccurrenceOrdinalIdentity::test_occurrence_ordinals_under_one_physical_object": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSM3StationSolverMethodAudit::test_every_station_swiss_refined_with_positive_control": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSS1SunBoundaryCounts2025::test_boundary_count_exact[kakshya_cell_crossing]": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSS1SunBoundaryCounts2025::test_boundary_count_exact[nakshatra_ingress]": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSS1SunBoundaryCounts2025::test_boundary_count_exact[sign_ingress]": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSS2SeamBoundarySearch::test_case1_direct_aries_ingress_root_found": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSS2SeamBoundarySearch::test_case1_episode_is_honestly_exact": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSS2SeamBoundarySearch::test_case2_retrograde_pisces_reentry_through_upper_boundary": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSS3OffHorizonCentreTruncated::test_degree_contact_centre_off_horizon_kept_without_fabricated_exact": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSS3OffHorizonCentreTruncated::test_residence_span_clipped_at_horizon_end_kept": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSS4MoonOnDemand::test_global_substrate_holds_no_materialised_moon_rows": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSS4MoonOnDemand::test_moon_episodes_confined_to_requested_window": 0.011,
+      "tests/l3/gochara/test_a55_substrate_oracles.py::TestOSS4MoonOnDemand::test_moon_episodes_live_only_with_coverage_row": 0.011,
+      "tests/l3/gochara/test_a55_writer_oracles.py::test_o_gr_plateau_grain_lineage_and_clipped_curve_flag": 0.000667,
+      "tests/l3/gochara/test_a55_writer_oracles.py::test_o_rw_1_geometry_change_yields_new_convention_id_valence_cannot": 0.000667,
+      "tests/l3/gochara/test_a55_writer_oracles.py::test_o_rw_1_solver_invocation_counter_and_invalidation_record": 0.000667,
+      "tests/l3/gochara/test_a55_writer_oracles.py::test_o_rw_2_no_window_answer_carries_coverage_object": 0.000667,
+      "tests/l3/gochara/test_a55_writer_oracles.py::test_o_rw_2_window_set_counts_confirmed_vs_context_separately": 0.000667,
+      "tests/l3/gochara/test_a55_writer_oracles.py::test_o_rw_3_provenance_names_ka_gochara_republish_from_manifest": 0.000667
+    }
+  },
+  "node_seconds_basis": {
+    "gochara-a55-replace-chain": "(I) INTERPRETATION: apportion the original observed per-file work equally across its collected cases for initial node placement. These are scheduling estimates, not per-case measurements. The expensive full-domain substrate is now measured separately in body producers; retain the original cost in the estimates conservatively. Actual per-worker timing is recorded separately."
+  },
+  "node_shard_fixed_seconds": {
+    "gochara-a55-replace-chain": 7.747003
+  },
+  "local_worker_tolerance_seconds": 30,
+  "replace_chain_observed_seconds": {
+    "preparation": {
+      "Mercury": 468.1388636250049,
+      "Sun": 276.1769737079885,
+      "Venus": 235.78559625000344,
+      "Saturn": 38.02894187500351,
+      "Jupiter": 72.49100029199326,
+      "Ketu": 16.83309066700167,
+      "Rahu": 16.176098583004205,
+      "Mars": 120.26423833399895
+    },
+    "workers": {
+      "1": 365.58384170800855,
+      "2": 462.43609662500967,
+      "3": 616.1962621250132,
+      "4": 442.7035997089988
+    }
+  },
+  "replace_chain_substrate_equivalence": {
+    "method": "All ordered substrate rows serialized through PostgreSQL JSONB/COPY, excluding created_at only",
+    "tables": {
+      "ka_gochara_physical_object": {
+        "sha256": "83b6ac4491f90a478c2cca52134678d7c3ebd1d15633bfc8a9831eeaffe248bd",
+        "rows": 2146
+      },
+      "ka_gochara_sky_event": {
+        "sha256": "653c25eb2882082fd444abf5a0213cd470c096aca760ea4798889668040b2820",
+        "rows": 50124
+      }
+    },
+    "verified_worker_count": 4,
+    "all_identical": true
+  }
 }
