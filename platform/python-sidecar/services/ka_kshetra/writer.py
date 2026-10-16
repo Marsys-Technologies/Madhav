@@ -325,6 +325,9 @@ class KaKshetraWriter(WriterBase):
             if self._segment_engine == 'analytic'
             else None
         )
+        null_config = S5.null_configuration(
+            HORIZON_DAYS, _dn_module().DEFAULT_REPLICATES
+            if self._segment_engine == 'analytic' else S5.DEFAULT_REPLICATES)
 
         self._pins = S4.FieldPins(
             chart_id=str(self._chart_id),
@@ -343,18 +346,22 @@ class KaKshetraWriter(WriterBase):
                 'suppression_disclosures': self._suppression_gaps,
                 'kinematics_role': 'evaluation_only',
                 'comparable_with': 'different_convention',
-                'constant_provenance': CONSTANT_PROVENANCE,
+                'constant_provenance': {
+                    **CONSTANT_PROVENANCE,
+                    'null': (
+                        f"{self._segment_engine}; {null_config['shift_count']} non-identity shifts + observation; "
+                        f"denominator={null_config['denominator']}; resolution={null_config['resolution']}; "
+                        f"{null_config['schedule']}; W2 5.5/ALGO 3.20; surrogate, not assumed exchangeable"
+                    ),
+                },
                 'numeric_constant_inventory': numeric_constant_inventory(),
                 'weights_digest': hashlib.sha256(S4.canonical_json(self._weights).encode()).hexdigest(),
                 'p_floor': hazard.P_FLOOR,
                 'rho_max': hazard.RHO_MAX,
                 'tau_nats': integrator.DEFAULT_TAU,
                 'max_refinement_depth': integrator.DEFAULT_MAX_DEPTH,
-                'null_replicates': (
-                    _dn_module().DEFAULT_REPLICATES
-                    if self._segment_engine == 'analytic'
-                    else S5.DEFAULT_REPLICATES
-                ),
+                'null_replicates': null_config['replicates'],
+                'null_experiment': null_config,
                 'null_quantile': S5.Q_QUANTILE,
                 'duration_buckets': list(S5.DURATION_BUCKETS),
                 'precision_regime': 'day_grade',
@@ -394,7 +401,7 @@ class KaKshetraWriter(WriterBase):
                 work_steps.append(SubStep(key=f'stage4:{ec}:{d}',
                                           label=f'field {ec} decade {d}'))
         _ev5 = self._segment_engine
-        n_blocks = math.ceil(S5.DEFAULT_REPLICATES / S5.DEFAULT_BLOCK_SIZE)
+        n_blocks = math.ceil((S5.DEFAULT_REPLICATES - 1) / S5.DEFAULT_BLOCK_SIZE)
         for ec in self._event_classes:
             if _ev5 == 'analytic':
                 # F2 (SM-R-11): two substeps so each commits within the 15-min
@@ -717,7 +724,7 @@ class KaKshetraWriter(WriterBase):
 
         size = S5.DEFAULT_BLOCK_SIZE
         lo = (block - 1) * size
-        hi = min(block * size, S5.DEFAULT_REPLICATES)
+        hi = min(block * size, S5.DEFAULT_REPLICATES - 1)
         S5.run_null(cctx.evaluator, HORIZON_DAYS, S5.DEFAULT_REPLICATES,
                     block=(lo, hi), accumulator=cctx.null_accumulator)
         if not self._dry_run:
@@ -737,10 +744,10 @@ class KaKshetraWriter(WriterBase):
                                 notes=f'{event_class} skipped: {skip.reason}')
 
         acc = cctx.null_accumulator
-        if acc.completed < S5.DEFAULT_REPLICATES:
+        if acc.completed < S5.DEFAULT_REPLICATES - 1:
             raise S4.UpstreamStageIncomplete(
                 f'upstream_stage_incomplete: {event_class} has {acc.completed}/'
-                f'{S5.DEFAULT_REPLICATES} null replicates. q_e is a quantile over ALL '
+                f'{S5.DEFAULT_REPLICATES - 1} null shifts. q_e is a quantile over ALL '
                 'replicates; computing it from a subset would silently change the '
                 'statistic every window boundary depends on.'
             )
