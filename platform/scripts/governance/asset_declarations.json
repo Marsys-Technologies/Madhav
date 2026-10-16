@@ -17675,7 +17675,7 @@
    "read_table": null,
    "read_kind": null,
    "evidence": {
-    "kind": "registry kind data (seed, T0 data); writer-backed own table(s) kala_field; census Idem.pattern FAIL: rebuild refused when target is populated: services/ka_kshetr",
+    "kind": "registry kind data (seed, T0 data); writer-backed own table(s) kala_field; census Idem.pattern FAIL: rebuild refused when target is populated: services/ka_kshetr; K5-G1b candidate-only pre-build certification mapping (registry revision 30; no production certificate): platform/python-sidecar/services/ka_kshetra/certification_mapping.json:1",
     "carriage": "served_surface null (unknown): the only evidence is a provenance/comment mention (query_predictive_anchors.ts:209 comment citing ka_kshetra/stage8_spec.py); its table kala_field has no registry capability (platform-mcp/src/tools/kala_views/ritual.ts:783); Dens.served N/A.",
     "prose_fields": null
    }
