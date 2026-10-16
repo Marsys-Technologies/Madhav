@@ -537,7 +537,8 @@
       "include": [
         "platform/scripts/governance/pravaha_tracker/tests/test_verify*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_hang*.py",
-        "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py"
+        "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py"
       ]
     },
     "governance-readback-tests-3-0": {
@@ -734,10 +735,10 @@
       ]
     },
     "db-integration-tests-smalltest": {
-      "cwd": ".",
+      "cwd": "platform",
       "engine": "pytest",
       "include": [
-        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_*smalltest*.py"
+        "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_*smalltest*.py"
       ]
     },
     "governance-readback-tests-mcp": {
