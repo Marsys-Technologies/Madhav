@@ -74,12 +74,14 @@
     const st = it.status;
     const prog = it.progress != null && st !== "done" ? `<div class="p"><div style="width:${Math.round(it.progress * 100)}%"></div></div>` : "";
     const steps = it.steps ? `<div class="steps">${it.steps.map((s) => `<span class="${s.done ? "on" : ""}">${esc(s.name)}</span>`).join("")}</div>` : "";
+    const gateWait = it.built_waiting_on_gate && it.gate_blockers?.length
+      ? `<div class="s">built, waiting on gate: ${esc(it.gate_blockers.join(", "))}</div>` : "";
     const when = (st === "running" || st === "review") && it.elapsed_s != null ? `for ${dur(it.elapsed_s)}` : it.checked_at ? `checked ${ago(it.checked_at)}` : it.updated_at ? ago(it.updated_at) : "";
     const tip = [it.detail, `owner: ${it.owner || "—"}`, `source: ${it.source}`, it.depends_on?.length ? `depends on: ${it.depends_on.join(", ")}` : "",
       it.deps_open?.length ? `waiting on: ${it.deps_open.join(", ")}` : "", it.evidence ? `evidence: ${it.evidence}` : ""].filter(Boolean).join("\n");
     return `<div class="card st-${st} ${it.gate ? "gate" : ""}" title="${esc(tip)}">
       <div class="t">${it.cross_stream ? '<span class="xs" title="waits on the other stream">⇄</span> ' : ""}${esc(it.title)}</div>
-      <div class="s"><span class="badge">${esc(LABEL[st] || st)}</span><span>${esc(it.id)}</span><span>${esc(when)}</span></div>${steps}${prog}</div>`;
+      <div class="s"><span class="badge">${esc(LABEL[st] || st)}</span><span>${esc(it.id)}</span><span>${esc(when)}</span></div>${gateWait}${steps}${prog}</div>`;
   }
 
   function mini(it) {
@@ -155,6 +157,7 @@
     $("pct-bar").style.width = `${o.pct}%`;
     const chip = (k, v) => `<span class="chip st-${k}"><b>${v}</b>${esc(LABEL[k] || k)}</span>`;
     $("counts").innerHTML = [chip("done", o.done), chip("running", o.running), chip("ready", o.ready), chip("waiting", o.waiting),
+      `<span class="chip"><b>${o.built_waiting_on_gate ?? 0}</b>built, waiting on gate</span>`,
       chip("blocked", o.blocked), chip("unknown", o.unknown), `<span class="chip"><b>${o.total}</b>items in plan</span>`].join("");
   }
 
