@@ -147,7 +147,8 @@ class FakeRemote:
 
     def execute(self, argv, env):
         self.submissions.append({"argv": list(argv), "env": dict(env)})
-        self.state[argv[-1].rsplit(",", 1)[-1]] = "RUNNING"
+        run_arg, = [arg for arg in argv if arg.startswith("--args=--run-id,")]
+        self.state[run_arg.removeprefix("--args=--run-id,")] = "RUNNING"
         return 0, "execution started\n"
 
     def fingerprint(self):
@@ -225,8 +226,10 @@ class Bench:
             "result": "ACCEPTED", "actor": "stream-V:v2"})
 
     def observation(self, prepared, **fields):
+        state = self.remote.state.get(prepared["request"]["args"]["run-id"])
         return dict({"schema": A.OBSERVATION_SCHEMA, "operation_id": prepared["operation_id"],
-            "request_sha256": prepared["request_sha256"], "terminal": True, "outcome": "succeeded",
+            "request_sha256": prepared["request_sha256"], "terminal": state in {"SUCCEEDED", "FAILED"},
+            "outcome": {"SUCCEEDED": "succeeded", "FAILED": "failed"}.get(state),
             "receipt_sha256": sha_file(self.X.REC / (prepared["operation_id"] + ".json")), "source": "fake remote"}, **fields)
 
 def accepted_request(bench, steps=None):
@@ -678,20 +681,52 @@ def test_staging_or_a_local_exit_0_without_a_terminal_semantic_readback_cannot_c
     bench.verdict(prepared)
     assert A.completion(bench.run, prepared, events(), None)[0] == "unknown"
     assert A.completion(bench.run, prepared, events(), staged)[0] == "incomplete"
+    # Synthetic observations below probe the completion contract's malformed/unbound evidence cases.
+    observed = bench.observation(prepared, terminal=True, outcome="succeeded")
     for loose in (dict(terminal="true"), dict(terminal=1), dict(outcome="SUCCEEDED"), dict(outcome=True), dict(schema="other/1")):
-        assert A.completion(bench.run, prepared, events(), bench.observation(prepared, **loose))[0] != "complete", loose
-    assert A.completion(bench.run, prepared, events(), bench.observation(prepared, outcome="failed"))[0] == "failed"
+        assert A.completion(bench.run, prepared, events(), dict(observed, **loose))[0] != "complete", loose
+    assert A.completion(bench.run, prepared, events(), dict(observed, outcome="failed"))[0] == "failed"
     for unbound in (dict(operation_id="OP-FIX-s1"), dict(request_sha256="0" * 64), dict(receipt_sha256="0" * 64)):
-        assert A.completion(bench.run, prepared, events(), bench.observation(prepared, **unbound))[0] == "refused", unbound
-    assert A.completion(bench.run, prepared, None, bench.observation(prepared))[0] == "unknown"       # events unreadable
-    assert A.completion(bench.run, prepared, [{"kind": "mystery"}], bench.observation(prepared))[0] == "unknown"
-    assert A.completion(bench.run, prepared, events(), bench.observation(prepared)) == ("complete", None)
+        assert A.completion(bench.run, prepared, events(), dict(observed, **unbound))[0] == "refused", unbound
+    assert A.completion(bench.run, prepared, None, observed)[0] == "unknown"       # events unreadable
+    assert A.completion(bench.run, prepared, [{"kind": "mystery"}], observed)[0] == "unknown"
+    assert A.completion(bench.run, prepared, events(), observed) == ("complete", None)
 
 def completed(bench):
     prepared, path, req = accepted_request(bench)
     assert bench.execute(path, req) is None
+    bench.remote.state[req["args"]["run-id"]] = "SUCCEEDED"
     rpath, receipt = bench.receipt("OP-FIX-s2")
     return prepared, rpath, receipt
+
+
+def test_fake_remote_tracks_the_requested_run():
+    remote = FakeRemote()
+    other_run = "1d1f8a52-6f0e-4c7e-9a3b-5a2a2f6f9c11"
+    for run_id in (RUN_ID, other_run):
+        A.remote_launch("execute", run_id, remote, environ={})
+    assert remote.state == {RUN_ID: "RUNNING", other_run: "RUNNING"}
+
+
+@pytest.mark.parametrize("remote_state,terminal,outcome,completion", [
+    (None, False, None, "incomplete"),
+    ("RUNNING", False, None, "incomplete"),
+    ("FAILED", True, "failed", "failed"),
+    ("SUCCEEDED", True, "succeeded", "complete"),
+])
+def test_observation_is_derived_from_remote_state(bench, remote_state, terminal, outcome, completion):
+    other_run = "1d1f8a52-6f0e-4c7e-9a3b-5a2a2f6f9c11"
+    prepared, path, req = accepted_request(bench, [RUN(args={"assets": "ka_fixture", "run-id": other_run})])
+    assert bench.execute(path, req) is None
+    bench.remote.state[RUN_ID] = "FAILED" if remote_state == "SUCCEEDED" else "SUCCEEDED"
+    if remote_state is None:
+        bench.remote.state.pop(other_run, None)
+    else:
+        bench.remote.state[other_run] = remote_state
+    bench.verdict(prepared)
+    observed = bench.observation(prepared)
+    assert (observed["terminal"], observed["outcome"]) == (terminal, outcome)
+    assert A.completion(bench.run, prepared, bench.events(ITEM), observed)[0] == completion
 
 @pytest.mark.parametrize("damage", ["missing_output", "empty_output", "changed_output", "other_request", "other_item", "other_operation",
                                     "no_output_digest", "nonzero_exit", "true_exit"])
@@ -754,9 +789,11 @@ def test_dry_run_and_execution_share_the_plan_and_only_terminal_readback_complet
     assert record["submitted"] is True and dry_record["submitted"] is False
     assert "DATABASE_URL" not in bench.remote.submissions[0]["env"]
     assert A.completion(bench.run, prepared, [], None)[0] == "unknown"
-    assert A.completion(bench.run, prepared, [], bench.observation(prepared, terminal=False, outcome=None))[0] == "incomplete"
-    bench.remote.state[RUN_ID] = "SUCCEEDED"
     bench.verdict(prepared)
+    assert A.completion(bench.run, prepared, bench.events(ITEM), bench.observation(prepared))[0] == "incomplete"
+    bench.remote.state[RUN_ID] = "FAILED"
+    assert A.completion(bench.run, prepared, bench.events(ITEM), bench.observation(prepared))[0] == "failed"
+    bench.remote.state[RUN_ID] = "SUCCEEDED"
     assert A.completion(bench.run, prepared, bench.events(ITEM), bench.observation(prepared)) == ("complete", None)
     assert bench.X.FENCE.exists() and not bench.X.fence_quiescent()
     proof = {"operation_id": prepared["operation_id"], "request_sha256": prepared["request_sha256"],
