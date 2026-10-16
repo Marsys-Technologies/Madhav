@@ -1,0 +1,687 @@
+{
+  "schema": "ci.collection_comparison/1",
+  "source_revision": "5fe009a8ff60f16f57306559a01b9b5a7498e31b",
+  "method": "Real pytest --collect-only (after marker/deselect) and vitest list --json; fixture environments are independently pinned by governance tests. Unchanged directory selections collected once, included in both sets. No database fixtures execute. All 5 governance shards and 4 sidecar shards are compared as their complete unions.",
+  "collection_scope": "Materialized C: every changed explicit selector plus directory suites below. U: the unchanged native Unit Tests command is certified by identity, not included in these numeric counts. Both selectors are collected on the proposed source tree.",
+  "full_ci_superset_proof": {
+    "formula": "C_before subset C_after => (C_before union U) subset (C_after union U)",
+    "C_subset_verified": true,
+    "U_identity": {
+      "job": "unit-tests",
+      "cmd": "npm test -- --reporter=verbose",
+      "cwd": "platform",
+      "env": {
+        "NODE_ENV": "test"
+      },
+      "unchanged_config_sha256": {
+        "platform/package.json": "fd64000857fb2be200010420a6f8570c01aa465a3342429f3328a7dbb7de0f1c",
+        "platform/vitest.config.ts": "7705104a3caf1fbad114b12dab0db43f1c0b047e6bdf6857a9d86ed0fa7a5b81"
+      }
+    },
+    "local_limitation": "Whole-platform Vitest list timed out at 180s and 600s; the native Unit Tests invocation and its configuration have no selection edit."
+  },
+  "collected_before": 44715,
+  "collected_after": 46811,
+  "missing": [],
+  "suites": [
+    {
+      "suite": "unit-tests-4-9",
+      "before": 8,
+      "after": 8,
+      "missing": []
+    },
+    {
+      "suite": "unit-tests-4-10",
+      "before": 16,
+      "after": 16,
+      "missing": []
+    },
+    {
+      "suite": "unit-tests-4-11",
+      "before": 3,
+      "after": 3,
+      "missing": []
+    },
+    {
+      "suite": "unit-tests-10-0",
+      "before": 64,
+      "after": 64,
+      "missing": []
+    },
+    {
+      "suite": "unit-tests-11-0",
+      "before": 9,
+      "after": 9,
+      "missing": []
+    },
+    {
+      "suite": "kala-db-tests-5-0",
+      "before": 1091,
+      "after": 1091,
+      "missing": []
+    },
+    {
+      "suite": "kala-db-tests-7-0",
+      "before": 46,
+      "after": 46,
+      "missing": []
+    },
+    {
+      "suite": "kala-db-tests-8-0",
+      "before": 39,
+      "after": 39,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-4-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-8-0",
+      "before": 71,
+      "after": 84,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-9-12",
+      "before": 1900,
+      "after": 2136,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-10-0",
+      "before": 34,
+      "after": 34,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-12-0",
+      "before": 5,
+      "after": 37,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-14-0",
+      "before": 5,
+      "after": 5,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-16-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-18-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-20-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-22-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-24-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-26-0",
+      "before": 10,
+      "after": 10,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-28-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-30-0",
+      "before": 7,
+      "after": 7,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-32-2",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-33-3",
+      "before": 19,
+      "after": 228,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-34-2",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-35-3",
+      "before": 136,
+      "after": 136,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-36-2",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-37-2",
+      "before": 41,
+      "after": 93,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-38-2",
+      "before": 18,
+      "after": 20,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-40-2",
+      "before": 59,
+      "after": 70,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-42-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-44-0",
+      "before": 3,
+      "after": 3,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-46-0",
+      "before": 9,
+      "after": 9,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-48-0",
+      "before": 9,
+      "after": 9,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-50-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-52-0",
+      "before": 5,
+      "after": 5,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-56-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-58-0",
+      "before": 5,
+      "after": 5,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-60-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-62-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-64-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-66-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-68-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-70-0",
+      "before": 7,
+      "after": 7,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-72-0",
+      "before": 12,
+      "after": 12,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-74-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-76-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-78-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-80-0",
+      "before": 7,
+      "after": 7,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-80-1",
+      "before": 39,
+      "after": 341,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-81-0",
+      "before": 3,
+      "after": 3,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-82-0",
+      "before": 127,
+      "after": 127,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-83-0",
+      "before": 281,
+      "after": 281,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-85-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-87-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-89-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-91-0",
+      "before": 15,
+      "after": 15,
+      "missing": []
+    },
+    {
+      "suite": "db-integration-tests-93-0",
+      "before": 3,
+      "after": 15,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-replace-chain-1-9",
+      "before": 33,
+      "after": 59,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-slice-transitions-1-9",
+      "before": 13,
+      "after": 13,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-teardown-1-9",
+      "before": 22,
+      "after": 22,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-teardown-round2-1-9",
+      "before": 26,
+      "after": 26,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-teardown-round3-1-9",
+      "before": 19,
+      "after": 19,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-measuring-build-1-9",
+      "before": 33,
+      "after": 41,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-dispatch-1-9",
+      "before": 24,
+      "after": 24,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-round2-runner-1-9",
+      "before": 64,
+      "after": 64,
+      "missing": []
+    },
+    {
+      "suite": "gochara-a55-verifier-fixes-1-9",
+      "before": 192,
+      "after": 200,
+      "missing": []
+    },
+    {
+      "suite": "pratijna-v4-fixture-property-tests-5-0",
+      "before": 24,
+      "after": 24,
+      "missing": []
+    },
+    {
+      "suite": "governance-tool-tests-shard-5-0",
+      "before": 69,
+      "after": 87,
+      "missing": []
+    },
+    {
+      "suite": "governance-tool-tests-shard-6-0",
+      "before": 69,
+      "after": 87,
+      "missing": []
+    },
+    {
+      "suite": "governance-tool-tests-shard-7-0",
+      "before": 50,
+      "after": 135,
+      "missing": []
+    },
+    {
+      "suite": "governance-readback-tests-3-0",
+      "before": 64,
+      "after": 83,
+      "missing": []
+    },
+    {
+      "suite": "governance-gates-py-sidecar-shard-3-29",
+      "before": 94,
+      "after": 132,
+      "missing": []
+    },
+    {
+      "suite": "governance-gates-py-sidecar-shard-3-33",
+      "before": 20861,
+      "after": 20885,
+      "missing": []
+    },
+    {
+      "suite": "governance-gates-static-13-8",
+      "before": 106,
+      "after": 212,
+      "missing": []
+    },
+    {
+      "suite": "density-census-6-0",
+      "before": 3,
+      "after": 2204,
+      "missing": []
+    },
+    {
+      "suite": "density-census-7-0",
+      "before": 16,
+      "after": 16,
+      "missing": []
+    },
+    {
+      "suite": "density-census-8-0",
+      "before": 18,
+      "after": 18,
+      "missing": []
+    },
+    {
+      "suite": "density-census-9-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "density-census-10-0",
+      "before": 37,
+      "after": 95,
+      "missing": []
+    },
+    {
+      "suite": "density-census-11-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "density-census-12-0",
+      "before": 15,
+      "after": 15,
+      "missing": []
+    },
+    {
+      "suite": "density-census-13-0",
+      "before": 2,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "density-census-14-0",
+      "before": 4,
+      "after": 4,
+      "missing": []
+    },
+    {
+      "suite": "density-census-15-0",
+      "before": 6,
+      "after": 6,
+      "missing": []
+    },
+    {
+      "suite": "density-census-16-0",
+      "before": 5,
+      "after": 5,
+      "missing": []
+    },
+    {
+      "suite": "density-census-17-0",
+      "before": 7,
+      "after": 7,
+      "missing": []
+    },
+    {
+      "suite": "density-census-18-0",
+      "before": 59,
+      "after": 59,
+      "missing": []
+    },
+    {
+      "suite": "density-census-19-0",
+      "before": 130,
+      "after": 130,
+      "missing": []
+    },
+    {
+      "suite": "density-census-22-0",
+      "before": 3,
+      "after": 3,
+      "missing": []
+    },
+    {
+      "suite": "density-census-25-0",
+      "before": 32,
+      "after": 32,
+      "missing": []
+    },
+    {
+      "suite": "density-census-28-0",
+      "before": 250,
+      "after": 278,
+      "missing": []
+    },
+    {
+      "suite": "density-census-29-0",
+      "before": 41,
+      "after": 41,
+      "missing": []
+    },
+    {
+      "suite": "samiksha",
+      "before": 126,
+      "after": 126,
+      "missing": []
+    },
+    {
+      "suite": "planner-regression",
+      "before": 45,
+      "after": 45,
+      "missing": []
+    },
+    {
+      "suite": "governance-shards-full",
+      "before": 21057,
+      "after": 21057,
+      "missing": []
+    },
+    {
+      "suite": "muhurta",
+      "before": 114,
+      "after": 114,
+      "missing": []
+    },
+    {
+      "suite": "compact",
+      "before": 59,
+      "after": 59,
+      "missing": []
+    },
+    {
+      "suite": "gochara-fast",
+      "before": 724,
+      "after": 724,
+      "missing": []
+    },
+    {
+      "suite": "gochara-slow",
+      "before": 47,
+      "after": 47,
+      "missing": []
+    },
+    {
+      "suite": "gochara-benchmark",
+      "before": 2,
+      "after": 2,
+      "missing": []
+    }
+  ],
+  "before_nodeids": {
+    "path": "00_ARCHITECTURE/briefs/kalayantra/CI_DISCOVERY_BEFORE.nodeids.txt.gz",
+    "sha256": "324d48b427970ac21e29c18db6aa71d5b753f675ddf505ee51bb7390acc4cf7b"
+  },
+  "after_nodeids": {
+    "path": "00_ARCHITECTURE/briefs/kalayantra/CI_DISCOVERY_AFTER.nodeids.txt.gz",
+    "sha256": "fd1f03b0bcfb5355aff645580e1e0699a012a8e4d6f3a209ff5625c7a791fd75"
+  },
+  "nodeid_format": "collection working directory / native pytest nodeid or Vitest file::name",
+  "profile_sha256": "412d5a70f79fe34cc7a4a0c992907f73cf2b399ec25db764c6d608c7ef9d6c15",
+  "required_checks_unchanged": true,
+  "merged_main_revision": "8c8c01b17961e81b28dd8bd773f23a00f38b4e8b",
+  "merged_main_selector_coverage": {
+    "main_revision": "8c8c01b17961e81b28dd8bd773f23a00f38b4e8b",
+    "main_explicit_selectors": 223,
+    "selectors_missing_from_collection_baseline": [],
+    "required_check_names_unchanged": true
+  },
+  "protected_migration_set_equality": {
+    "main_seed_count": 24,
+    "python_selector_count": 24,
+    "migrate_ts_selector_count": 24,
+    "set_equality": true,
+    "files": [
+      "1330_kala_layer_manifest_candidates.sql",
+      "1334_kala_layer_verifier_conflict_read_grant.sql",
+      "1339_k2_1b_promise_graph_columns.sql",
+      "1341_k1_2_avadhi_candidate_dossiers.sql",
+      "1342_k2_2_f1_relationships.sql",
+      "1350_kala_jury_candidate.sql",
+      "1351_issued_forecast_lifecycle.sql",
+      "1352_issued_forecast_finite_intervals.sql",
+      "1353_k6_kalasutra_candidate.sql",
+      "1354_k6_darshana_candidate.sql",
+      "1355_k6_jivana_candidate.sql",
+      "1356_k6_read_model_build_scoped_detectors.sql",
+      "1375_k6_integrity_chart_build_binding.sql",
+      "1376_k7_stage_verification_status.sql",
+      "1379_gochara_sealed_authority.sql",
+      "1380_issued_forecast_immutability_guard.sql",
+      "1382_gochara_authority_no_truncate.sql",
+      "1383_ka_3a_vedha_candidate_intervals.sql",
+      "1384_ka_3b_contested_candidates.sql",
+      "1385_k5_g1a_candidate_field.sql",
+      "1386_l0_m_parihara_typed_source_prepare.sql",
+      "1387_k5_g2_candidate_field.sql",
+      "1388_k3_2_sealed_negative_space.sql",
+      "1389_k6_taranga_candidate.sql"
+    ]
+  },
+  "merged_tree_method_note": "Historical baseline extended with main G1 selectors. Every current-main explicit selector is represented. Collections executed on this merged tree in this job; after installing missing asyncpg into JOB_SCRATCH/python-deps, successful prior collections were resumed using the comparator selector/options/source-mtime cache. Required check names match current main. No database fixtures run during collection.",
+  "origin_main_observed_at_completion": "d72e7ea344e74d84552597f8dc06ece7eeaa0ad2",
+  "merge_snapshot_note": "The pending merge and all comparison claims bind the fetched-at-start main 8c8c01b17961e81b28dd8bd773f23a00f38b4e8b. During validation the shared origin/main ref advanced by PRs #3548 and #3594. Those newer commits are not in this pending merge; cockpit must commit this merge before another merge can run."
+}
