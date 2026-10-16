@@ -731,6 +731,28 @@
         "src/tools/register_prashna*.test.ts",
         "src/__tests__/server_tool*.test.ts"
       ]
+    },
+    "db-integration-tests-smalltest": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_*smalltest*.py"
+      ]
+    },
+    "governance-readback-tests-mcp": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/retrieval/register_gochara_contact_ledger*.test.ts",
+        "src/tools/retrieval/register_gochara_windows_governed_gate*.test.ts"
+      ]
+    },
+    "governance-readback-tests-migration": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/test_migration_1235_evidence*.py"
+      ]
     }
   }
 }
