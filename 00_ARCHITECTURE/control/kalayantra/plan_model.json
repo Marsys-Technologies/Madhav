@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -22766,7 +22766,8 @@
           "Inherited changed test path (discover its real runner/fixtures before claim): platform/tests/unit/migrations/gochara_b6_v15_contract_static.test.ts"
         ],
         "compat": "protected migrations land only inside the window; the runner refuses them outside it; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:2817; original phase owner J-4b; join J-4b. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/b6-v15-contract-migrations @ b9d5d27184427703ea79cda57f633c165b211f04; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P05 PR #3508. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure."
+        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:2817; original phase owner J-4b; join J-4b. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/b6-v15-contract-migrations @ b9d5d27184427703ea79cda57f633c165b211f04; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P05 PR #3508. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure.",
+        "migration": "platform/migrations/1204_gochara_av_qualifier_object_role.sql"
       },
       "completion_kind": "code",
       "producer": "K",
@@ -23125,7 +23126,8 @@
           "Inherited changed test path (discover its real runner/fixtures before claim): platform/tests/unit/migrations/gochara_b6_1241_verifier_sealer_grants_static.test.ts"
         ],
         "compat": "protected migrations land only inside the window; the runner refuses them outside it; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:2949; original phase owner J-4b; join J-4b. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/b6-1241-verifier-sealer-grants @ c26743b5db35ce63c55bd83975ecaf3970023b6a; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P05 PR #3508. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure."
+        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:2949; original phase owner J-4b; join J-4b. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/b6-1241-verifier-sealer-grants @ c26743b5db35ce63c55bd83975ecaf3970023b6a; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P05 PR #3508. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure.",
+        "migration": "platform/migrations/1378_gochara_verifier_sealer_inventory_grants.sql"
       },
       "completion_kind": "code",
       "producer": "K",
@@ -23513,7 +23515,8 @@
           "Inherited changed test path (discover its real runner/fixtures before claim): platform/tests/unit/migrations/ka_gochara_evidence_function_1235_static.test.ts"
         ],
         "compat": "candidate-only; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:3018; original phase owner J-4d; join J-4d. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/b7-evidence-function-1235 @ 5fe96c181f059b5f330b7271cb01b0d1c67c464d; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P07 PR #3512. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure."
+        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:3018; original phase owner J-4d; join J-4d. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/b7-evidence-function-1235 @ 5fe96c181f059b5f330b7271cb01b0d1c67c464d; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P07 PR #3512. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure.",
+        "migration": "platform/migrations/1235_ka_gochara_staged_candidate_evidence_function.sql"
       },
       "completion_kind": "code",
       "producer": "K",
@@ -23932,7 +23935,8 @@
           "Inherited changed test path (discover its real runner/fixtures before claim): platform/python-sidecar/tests/test_migration_1303_revoke_orchestrator_gochara_rest.py"
         ],
         "compat": "contract phase: every reader already reads '5.0'; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:3099; original phase owner J-7a; join J-7a. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/c40-revoke-orchestrator-gochara-rest @ 6215cf782401153e9b069b9306562bb2f9f1ab35; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P10; carrying PR not yet nominated. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure."
+        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:3099; original phase owner J-7a; join J-7a. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/c40-revoke-orchestrator-gochara-rest @ 6215cf782401153e9b069b9306562bb2f9f1ab35; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P10; carrying PR not yet nominated. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure.",
+        "migration": "platform/migrations/1303_revoke_role_orchestrator_gochara_rest.sql"
       },
       "completion_kind": "code",
       "producer": "K",
@@ -24538,7 +24542,8 @@
           "Inherited changed test path (discover its real runner/fixtures before claim): platform/tests/unit/migrations/gochara_g8_class_census_static.test.ts"
         ],
         "compat": "candidate-only; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:3141; original phase owner J-4c; join J-4c. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/b6-g8-class-census @ 35ceffb7f8b6b430a83dcee47d5d68795e426a06; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P06 PR #3516. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure."
+        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:3141; original phase owner J-4c; join J-4c. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/b6-g8-class-census @ 35ceffb7f8b6b430a83dcee47d5d68795e426a06; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P06 PR #3516. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure.",
+        "migration": "platform/migrations/1306_gochara_expected_class_census.sql"
       },
       "completion_kind": "code",
       "producer": "K",
@@ -25013,7 +25018,8 @@
           "Inherited changed test path (discover its real runner/fixtures before claim): platform/tests/unit/migrations/gochara_nd_p2_near_miss_storage_static.test.ts"
         ],
         "compat": "candidate-only; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:3191; original phase owner J-4c; join J-4c. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/d-near-miss-storage @ 276ba4cb6ad415a7c68ef911904156a2676fd423; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P06 PR #3516. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure."
+        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:3191; original phase owner J-4c; join J-4c. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/d-near-miss-storage @ 276ba4cb6ad415a7c68ef911904156a2676fd423; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P06 PR #3516. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure.",
+        "migration": "platform/migrations/1308_gochara_near_miss_storage.sql"
       },
       "completion_kind": "code",
       "producer": "K",
@@ -25199,7 +25205,8 @@
           "Inherited changed test path (discover its real runner/fixtures before claim): platform/tests/unit/migrations/gochara_g12_snapshot_copy_static.test.ts"
         ],
         "compat": "candidate-only; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:3193; original phase owner J-4c; join J-4c. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/f-g12-round6 @ 7e66f3362d7f1f58ab28d0deb283b35519e6f219; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P06 PR #3516. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure."
+        "notes": "Wave 4 supersedes the J-0m hypothetical branch and empty-scope declarations; archived inventory remains provenance only.  Source pr:3193; original phase owner J-4c; join J-4c. Inventory branch/head observed 2026-10-07T19:58:18Z: pravaha/f-g12-round6 @ 7e66f3362d7f1f58ab28d0deb283b35519e6f219; not a current landing/CI/deploy observation. J-0d children[] writable_paths copied exactly. Carried by P06 PR #3516. Code-only coverage: the authentic independent review must enumerate this child and its ported oracles must pass in CI at the exact reviewed/admitted head. Materialize a hash-bound per-child verdict envelope, not a packet-id envelope. Keep applicable post-deploy migration readback and successful actual deployed-source containment. Original dependencies still gate closure.",
+        "migration": "platform/migrations/1305_gochara_snapshot_owns_l1_copy.sql"
       },
       "completion_kind": "code",
       "producer": "K",
@@ -26965,14 +26972,15 @@
           ".github/workflows/deploy.yml"
         ],
         "tests": [
-          "FB-28 stacked replacements of 1240 state-digest and candidate-gate functions; allocate NEW migration at next free number via create-migration, never edit applied migrations; FB-20 function pins and FB-21 per-migration readback including 1308.",
+          "FB-28 stacked replacements of 1240 state-digest and candidate-gate functions; use NEW migration 1381 allocated to P06b in /Users/Dev/kalayantra/run/MIGRATION_ALLOCATION.json:8, never pick another number or edit applied migrations; FB-20 function pins and FB-21 per-migration readback including 1308.",
           "FB-8 manifest near_miss_layer_version; FB-29 ephemeris-backed verification-job stage persists near-miss digest on the verification row.",
           "Stationless-body refusal and precision_regime/delta_t/solver_method checks use pinned /Users/Dev/kalayantra/ephe and guarded 127.0.0.1:55433 fixtures; fail on reversion.",
           "FINAL seal remains gated by FINAL_BUILD_SCOPE §11.1–11.2; code review/merge does not stand in for protected apply or independent readback.",
           "all-five-endpoint/ranking identity remains vacuous_under_policy under all_null_candidate/1; never green; real duty returns with OD-1 on the final-rules candidate."
         ],
         "compat": "P06 near_miss_layer: stored_uncovered until measured layer version and FINAL seal acceptance. Same P06 builder lane; candidate-only; no L0–L2 or FROZEN-contract change.",
-        "notes": "(I) INTERPRETATION: P06b uses the owner-named id and existing exact near-miss integration paths; new migration/readback/test filenames are deliberately unallocated until the builder cuts the brief at then-current main. It depends on P06 census code, not J-4c (avoids a cycle). Preserve all original J DAG edges; hard exit gates are required detector-backed steps on J-4c, J-4d and J-5s; no packet join is activated. FINAL seal acceptance here means executable positive/negative contract tests on the guarded lane fixture plus required migration readbacks, not sealing a production generation before FB-66 exists."
+        "notes": "(I) INTERPRETATION: P06b uses the owner-named id and existing exact near-miss integration paths; new migration/readback/test filenames are deliberately unallocated until the builder cuts the brief at then-current main. It depends on P06 census code, not J-4c (avoids a cycle). Preserve all original J DAG edges; hard exit gates are required detector-backed steps on J-4c, J-4d and J-5s; no packet join is activated. FINAL seal acceptance here means executable positive/negative contract tests on the guarded lane fixture plus required migration readbacks, not sealing a production generation before FB-66 exists.",
+        "migration": "1381 — stacked replacements of 1240 state-digest and candidate-gate functions; allocated to P06b in /Users/Dev/kalayantra/run/MIGRATION_ALLOCATION.json:8; filename remains builder-owned."
       },
       "completion_kind": "code",
       "producer": "K",
@@ -27189,8 +27197,9 @@
       "done_by": "decision",
       "decision": "D-KCERT-EXISTING-STATUS-20261015",
       "triage": {
-        "class": "retire_decision",
-        "retires": "KV3-SCHEMA-1"
+        "class": "a",
+        "retires": "KV3-SCHEMA-1",
+        "reason": "(I) INTERPRETATION: later governed retirement decision, not a B-2 installation-staged retirement; retain the explicit decision event and requires_outcome refusal semantics. The two original B-2 staged retirements remain unchanged."
       }
     },
     {
@@ -27210,8 +27219,9 @@
       "done_by": "decision",
       "decision": "D-RETIRE-B-DB-BASELINE",
       "triage": {
-        "class": "retire_decision",
-        "retires": "B-DB-BASELINE"
+        "class": "a",
+        "retires": "B-DB-BASELINE",
+        "reason": "(I) INTERPRETATION: later governed retirement decision, not a B-2 installation-staged retirement; retain the explicit decision event and requires_outcome refusal semantics. The two original B-2 staged retirements remain unchanged."
       }
     },
     {
