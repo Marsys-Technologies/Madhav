@@ -362,6 +362,7 @@ def test_explicit_unix_socket_source_provenance_remains_valid(backup, capture):
     ('snapshot', '00000003-0000001B'), ('snapshot', '00000003-0000001G-1'),
     ('snapshot', '00000003-0000001b-1'), ('snapshot', '3-1B-1'),
     ('snapshot', '00000003-0000001B-0'), ('snapshot', '00000003-0000001B-01'),
+    ('snapshot', '00000003-0000001B-2147483648'), ('snapshot', '00000003-0000001B-' + '9' * 70),
     ('snapshot', '00000003-0000001B--1'), ('snapshot', '00000003-0000001B-1-extra'),
     ('snapshot', '00000003-0000001B-1\n'), ('snapshot', ' 00000003-0000001B-1'),
 ])

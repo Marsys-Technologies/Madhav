@@ -158,7 +158,9 @@ def validate_capture(receipt: dict, archive: Path, label: str) -> dict:
     # pg_export_snapshot() emits two uppercase, eight-digit hexadecimal fields
     # and a positive decimal export counter (%08X-%08X-%d). Validate the saved
     # identifier's syntax, not its continued availability after capture ends.
-    if (not isinstance(snapshot_id, str) or re.fullmatch(r'[0-9A-F]{8}-[0-9A-F]{8}-[1-9][0-9]*', snapshot_id) is None
+    counter = re.fullmatch(r'[0-9A-F]{8}-[0-9A-F]{8}-([1-9][0-9]{0,9})', snapshot_id) if isinstance(snapshot_id, str) else None
+    # the export counter is a C int (%d): an identifier beyond 2**31 - 1 cannot have come from pg_export_snapshot()
+    if (counter is None or int(counter.group(1)) > 2**31 - 1
             or not isinstance(source, dict) or not isinstance(source.get('database'), str) or not source['database']
             or 'address' not in source or 'port' not in source
             or (source['address'] is None) != (source['port'] is None)
