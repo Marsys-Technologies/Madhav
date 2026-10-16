@@ -1,5 +1,7 @@
 """Production prerequisites remain earned when a campaign-completion edge moves.
 
+Governance oracles: CLAUDE.md §N.8 and relaunch plan v2.7 §6 STEP require
+the step's own live detector; operation acceptance remains independently bound.
 Exercise the committed SQL and real tracker step/completion paths without any
 production connection. The in-memory ledger only supplies query result fixtures.
 """
@@ -102,6 +104,22 @@ def test_ka3a_step_needs_live_production_measurement(observation, expected, tmp_
         {"item": "KA-3a", "step": STEP, "spec": spec, "detector": {"status": observation}}, "live"))
     assert cli.main(["step", "KA-3a", STEP, "--stream", "K", "--evidence", str(evidence)]) == expected
     assert events.exists() == (expected == 0)
+
+
+def test_operation_item_cannot_replace_bound_receipt_with_live_query(tmp_path, monkeypatch, capsys):
+    plan = model()
+    spec = production_spec(plan)
+    item(plan, "KA-3a")["completion_kind"] = "operation"
+    events = tmp_path / "EVENTS.jsonl"
+    evidence = tmp_path / "unbound.json"
+    evidence.write_text('{}\n')
+    monkeypatch.setattr(cli, "load_model", lambda: plan)
+    monkeypatch.setattr(cli, "EVENTS", str(events))
+    monkeypatch.setattr(cli, "get", lambda *a, **kw: (
+        {"item": "KA-3a", "step": STEP, "spec": spec, "detector": {"status": "done"}}, "live"))
+    assert cli.main(["step", "KA-3a", STEP, "--stream", "K", "--evidence", str(evidence)]) == 2
+    assert "canonical file_contains acceptance receipt" in capsys.readouterr().err
+    assert not events.exists()
 
 
 def test_ka3a_replaces_only_campaign_wait_and_cannot_complete_without_production_step():

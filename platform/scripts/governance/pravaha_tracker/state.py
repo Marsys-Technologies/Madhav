@@ -6,7 +6,8 @@ instead requires a guarded done event; a matching detector is evidence only:
 1. An item with a **detector**: the detector decides `done`. An event may set it running, in review,
    blocked or parked, but an event claiming `done` while the detector disagrees is a *conflict*,
    never done. A detector that cannot measure shows `unknown`, never done.
-2. An item **done by decision**: done when the native's decision is recorded (decided/delegated).
+2. An item **done by decision**: done when the native's final decision is recorded
+   (decided/delegated) and every declared dependency is complete.
 3. An item **done by join**: done when every dependency is done — a join is a fact about the plan,
    so no event can claim it.
 4. An item **done by event**: done only by an event carrying evidence (enforced at write time).
@@ -233,6 +234,14 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded,
                                decision_outcomes=decision_outcomes) for iid, it in items.items()}
 
+    # A final ruling is recorded independently of each consuming item's completion.
+    # Seed decision items as waiting so joins/other decisions cannot consume a
+    # provisional done state before its original gates have been resolved.
+    recorded_decisions = {iid for iid, it in items.items()
+                          if it.get("done_by") == "decision" and status[iid]["status"] == "done"}
+    for iid in recorded_decisions:
+        status[iid]["status"] = "waiting"
+
     # Start-at-merge/acceptance remains a scheduling policy only. D-39: deps_open
     # always names strict completion gates, even when work may already start.
     # deps_open_strict is a compatibility alias with exactly the same meaning.
@@ -250,7 +259,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                 if e.get("kind") == "verdict" and e.get("phase", "pre_merge") == "pre_merge" and e.get("item") in items:
                     latest[e["item"]] = e.get("result")
             merged_accepted |= {iid for iid, res in latest.items() if res == "ACCEPTED"}
-    # dependencies → readiness; joins resolve here (repeat until stable: joins may depend on joins)
+    # Resolve joins and recorded decisions together until their strict gates stabilise.
     for _ in range(len(items) + 1):
         changed = False
         for iid, it in items.items():
@@ -279,6 +288,11 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                              skip_origin=sorted(set(origins)), detail="required outcome or input unavailable")
                     changed = True
                     continue
+            if iid in recorded_decisions and s["status"] != "not_applicable":
+                new = "waiting" if strict_open else "done"
+                if s["status"] != new:
+                    s["status"] = new
+                    changed = True
             if it.get("done_by") == "join":
                 new = "done" if not strict_open else "waiting"
                 if s["status"] != new:
