@@ -37,15 +37,8 @@ SHA_1235 = "930902f6af470d3a6cdfd1b707ea23e6e365ad8c464004b9ed2a924194353682"
 LEDGER_NAME = "1235_ka_gochara_staged_candidate_evidence_function.sql"
 
 sys.path.insert(0, str(REPO / "platform/scripts/governance/__tests__"))
-try:
-    from _disposable_pg import disposable_pg, point_psql_at  # noqa: F401  (fixture import)
-except Exception:  # pragma: no cover - helper missing: the real-cluster tests skip
-    @pytest.fixture(scope="session")
-    def disposable_pg():
-        pytest.skip("the _disposable_pg helper is unavailable")
-
-    def point_psql_at(cl, monkeypatch):  # noqa: ARG001
-        pytest.skip("the _disposable_pg helper is unavailable")
+from _disposable_pg import point_psql_at
+from _gochara_readback_pg import disposable_pg  # noqa: F401
 
 
 @pytest.fixture(scope="session", autouse=True)
