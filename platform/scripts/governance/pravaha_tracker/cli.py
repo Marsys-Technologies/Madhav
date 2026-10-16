@@ -39,6 +39,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from urllib.parse import quote
@@ -84,7 +85,12 @@ def get(path: str, timeout: float = 3.0):
         if path.startswith("/api/verify?"):
             # Guarded measurements never fall back to a persisted snapshot.
             reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
-            return None, "tracker-timeout" if isinstance(reason, TimeoutError) else "tracker-unreachable"
+            if isinstance(reason, TimeoutError):
+                return None, "tracker-timeout"
+            # A received HTTP error or malformed reply is not a transport outage.
+            if isinstance(exc, urllib.error.HTTPError) or not isinstance(reason, OSError):
+                return None, "unavailable"
+            return None, "tracker-unreachable"
         try:
             with open(SNAPSHOT, encoding="utf-8") as f:
                 return {"_snapshot": json.load(f)}, "stale-snapshot"
@@ -229,7 +235,12 @@ def cmd_guarded_done(a, actor: str) -> int:
         timeout = float(os.environ.get("KY_VERIFY_TIMEOUT_S", "300"))
         if not math.isfinite(timeout) or timeout <= 0:
             raise CompletionError("KY_VERIFY_TIMEOUT_S must be a positive finite number")
-        observed, via = get("/api/verify?id=" + quote(a.item, safe=""), timeout=timeout)
+        for attempt in range(4):
+            observed, via = get("/api/verify?id=" + quote(a.item, safe=""), timeout=timeout)
+            # Stop on any reply or timeout: a retry must never replace a failed verdict.
+            if via != "tracker-unreachable" or attempt == 3:
+                break
+            time.sleep(2 ** (attempt + 1))  # 2/4/8s; at most 14s beyond request timeouts.
         if via == "tracker-timeout":
             raise CompletionError(f"tracker timed out after {timeout:g}s during live detector verification")
         if via == "tracker-unreachable":
@@ -456,7 +467,11 @@ def cmd_step(a, actor: str) -> int:
         spec = declared.get("detector") if isinstance(declared, dict) else None
         if not isinstance(spec, dict) or not spec:
             raise CompletionError(f"step {a.step_name} has no named detector; it cannot be recorded")
-        operation = item.get("completion_kind") == "operation" or declared.get("evidence") == "executor_receipt"
+        # Plan v2.7 §6 STEP / §N.8: a code prerequisite may cite executor
+        # provenance while its live DB detector measures the production fact.
+        # Actual operation items still require independently bound receipts.
+        operation = item.get("completion_kind") == "operation" or (
+            declared.get("evidence") == "executor_receipt" and spec.get("type") != "db_query")
         if operation and spec.get("type") != "file_contains":
             raise CompletionError("operation step requires a canonical file_contains acceptance receipt")
         if not a.evidence or not os.path.isfile(a.evidence):
