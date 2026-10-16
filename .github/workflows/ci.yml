@@ -2190,8 +2190,8 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
     # Suvarṇa E4.1 (sharded, Exec Suvarṇa): runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
-    # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a live DB skip on their
-    # own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on this tree skip via conftest.
+    # drift_detector/schema_validator tests are enforced, not just present. The shard pytest runs without DB settings; DB tests skip on their
+    # own (PG*/DATABASE_URL unset), and missing campaign artifacts skip via conftest. The final J-1a step owns a separate loopback-only CI cluster.
     # The single job outgrew its 10-minute ceiling (median ~8.5 min, max ~10 min on main), so the test files are split across 5 shards (3 until the 2026-10-05 L0-L2 build-out grew the suite to ~48 min of shard time) by
     # platform/scripts/governance/ci_shard.py (deterministic, size-balanced, `--verify` fails if any file is in no shard or in two).
     # The aggregate job below keeps the original job name; this one is test steps only.
@@ -2208,6 +2208,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -2252,6 +2254,36 @@ jobs:
           platform/scripts/governance/pravaha_tracker/tests/test_step_receipt_binding.py
           platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py::GuardedCompletionCases
           -q --no-header -p no:cacheprovider
+
+      - name: J-1a — local lane admission, six dry-run CLIs and independent readback (REQUIRED)
+        # PR #3588 supplies discovery. Run once in this required matrix, on a host
+        # loopback server: a Docker proxy fails the actual-server address guard.
+        if: matrix.shard == 1
+        env:
+          GIT_OPTIONAL_LOCKS: '0'
+          PYTHONDONTWRITEBYTECODE: '1'
+          TMPDIR: ${{ runner.temp }}
+          KALA_REQUIRE_DB: '1'
+          KALA_ADMIN_DSN: postgresql://postgres@127.0.0.1:55433/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres@127.0.0.1:55433/postgres
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql
+          python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+          LANE_PG_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)"
+          LANE_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/ky-j1a.XXXXXX")"
+          cleanup_lane_pg() {
+            if [ -f "$LANE_PG_ROOT/data/postmaster.pid" ]; then
+              "$LANE_PG_BIN/pg_ctl" -D "$LANE_PG_ROOT/data" -m fast -w stop || return 1
+            fi
+            rm -rf "$LANE_PG_ROOT"
+          }
+          trap cleanup_lane_pg EXIT
+          "$LANE_PG_BIN/initdb" -D "$LANE_PG_ROOT/data" -A trust -U postgres --no-locale
+          "$LANE_PG_BIN/pg_ctl" -D "$LANE_PG_ROOT/data" -l "$LANE_PG_ROOT/postgres.log" -o "-h 127.0.0.1 -p 55433 -k $LANE_PG_ROOT" -w start
+          python -B "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-lane -- -q -rs -p no:cacheprovider --basetemp="$LANE_PG_ROOT/pytest" --junitxml=lane-smalltest.xml
+          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("lane-smalltest.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required lane oracles need executed cases and zero skips" if not cases or skipped else 0)'
 
   governance-readback-tests:
     # P05-B02 + P07 / A6: readback (including populated real-DB negatives) and publication oracles feed the required governance aggregate.
