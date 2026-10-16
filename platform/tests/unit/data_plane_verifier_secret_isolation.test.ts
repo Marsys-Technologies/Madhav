@@ -367,6 +367,16 @@ describe('C53: the Firebase management service agent is a canonical Google servi
         resolved, ADMIN, NUMBER, '')).not.toThrow()
     }
   })
+
+  it.each(['111222333444', '987654321098'])('uses the supplied project number %s for Firebase', (number) => {
+    const member = `serviceAccount:service-${number}@gcp-sa-firebase.iam.gserviceaccount.com`
+    expect(() => assertVerifierInheritedControl(
+      atProject([{ role: FIREBASE_ROLE, members: [member] }], `projects/${number}`),
+      resolved, ADMIN, number, '')).not.toThrow()
+    expect(() => assertVerifierInheritedControl(
+      atProject([{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT] }], `projects/${number}`),
+      resolved, ADMIN, number, '')).toThrow(/remains outside the declared control-plane exceptions/)
+  })
   it('a DIFFERENT member with that role is refused', () => {
     const other = `serviceAccount:service-111@gcp-sa-firebase.iam.gserviceaccount.com`
     expect(() => assertVerifierInheritedControl(atProject([{ role: FIREBASE_ROLE, members: [other] }]),
