@@ -2290,7 +2290,7 @@ jobs:
           DATABASE_URL: ''
           PGHOST: ''
         run: |
-          python -m pytest platform/scripts/__tests__/test_gochara_window_readbacks.py platform/scripts/__tests__/test_fn_1235_readbacks.py -q --no-header -rs --junitxml=gochara-readbacks.xml
+          python -m pytest platform/scripts/__tests__/test_gochara_window_readbacks.py platform/scripts/__tests__/test_fn_1235_readbacks.py platform/scripts/__tests__/test_gochara_sitting_evidence_pack.py -q --no-header -rs --junitxml=gochara-readbacks.xml
           python -c 'import xml.etree.ElementTree as ET; root = ET.parse("gochara-readbacks.xml").getroot(); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required Gochara readback oracles skipped" if skipped else 0)'
 
       - uses: actions/setup-node@v4
