@@ -2246,6 +2246,7 @@ jobs:
         run: >-
           python -m pytest platform/scripts/governance/pravaha_tracker/tests/test_verify_priority.py
           platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py
+          platform/scripts/governance/pravaha_tracker/tests/test_step_receipt_binding.py
           platform/scripts/governance/pravaha_tracker/tests/test_kalayantra_control_plane.py::GuardedCompletionCases
           -q --no-header -p no:cacheprovider
 
