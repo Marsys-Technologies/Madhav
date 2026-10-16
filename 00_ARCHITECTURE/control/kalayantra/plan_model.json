@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+p01-a55h-scope-20261015",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+p01-a55h-scope-20261015",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -3542,6 +3542,88 @@
       }
     },
     {
+      "id": "KA3B-N1",
+      "track": "K",
+      "lane": "K · KA adapters and services",
+      "title": "Builder evidence unavailable",
+      "owner": "K",
+      "depends_on": [
+        "KA-3b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/ka3b-n1"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/kalayantra/run/reviews/KA-3b_REVIEW_r1.md:32 (KA3B-N1)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KA-3b_v1.md"
+        ],
+        "tests": [
+          "Retain/restore the original prebuild-ka-3b builder result, interpretations and per-behavior reversion receipts with exact artifact/digest custody references in the tracked packet.",
+          "Distinguish independently reproduced review mutations from original builder receipts; never fabricate missing evidence or claim exhaustive per-behavior proof from the review alone.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION: branch_merged tracks a reviewed custody-reference/packet change; original builder artifacts remain in their job folder for cockpit restoration. Alternative: a pure artifact item, contrary to the requested branch_merged child pattern. No original job artifact is written by this registration."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "KA3B-N2",
+      "track": "K",
+      "lane": "K · KA adapters and services",
+      "title": "Pre-build acceptance is separate from parent closure",
+      "owner": "K",
+      "depends_on": [
+        "KA-3b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/ka3b-n2"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/kalayantra/run/reviews/KA-3b_REVIEW_r1.md:33 (KA3B-N2)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/control/kalayantra/plan_model.json",
+          "00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KA-3b_v1.md"
+        ],
+        "tests": [
+          "Reconcile registration/completion evidence for four family children, independently accepted judge vedha wiring, retained original dependency edges and the parent join.",
+          "Reject absent/duplicate family or wiring, dropped edges, cycles and premature parent closure; pre-staged adapter acceptance alone never proves whole-parent or live-wiring completion.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
       "id": "KA-4",
       "track": "K",
       "lane": "K · KA adapters and services",
@@ -5005,6 +5087,130 @@
       "completion_kind": "packet",
       "producer": "V",
       "reviewer_rule": "v_packet_verdict_bound_to_external_review",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K6-N1",
+      "track": "K",
+      "lane": "K · K6 carried-forward findings",
+      "title": "Contracts describe superseded dispatch and integrity targeting",
+      "owner": "K",
+      "depends_on": [
+        "V-K6"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k6-n1"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K6_v1_1.md:65–71 (K6-N1)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/l3_families/contracts/REGISTRAR_INPUT_OUTPUT_CONTRACT_v1_0.md",
+          "platform/python-sidecar/pipeline/orchestrator/writers/k6_candidate_contract.json"
+        ],
+        "tests": [
+          "Reconcile/version both contracts against merged default registrar behavior: both registrar keys, no-input no-op, historical-only safety path, explicit transaction-bound chart/build integrity pins.",
+          "Contract checks reject superseded legacy-default/latest-build targeting; preserve private-fixture/live-admission limitations.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K6-N2",
+      "track": "K",
+      "lane": "K · K6 carried-forward findings",
+      "title": "K8-K6 mapping is incomplete for the merged read models",
+      "owner": "K",
+      "depends_on": [
+        "V-K6"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k6-n2"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K6_v1_1.md:73–79 (K6-N2)"
+        ],
+        "owns": [
+          "platform/python-sidecar/pipeline/orchestrator/writers/k6_candidate_contract.json",
+          "platform/python-sidecar/services/kala_core/assertion/certification_mapping.json",
+          "00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md"
+        ],
+        "tests": [
+          "Supply current per-asset mappings for Kalasūtra, Jīvana and the private Darśana projection, declaring actual private outputs and all nine gate/revision mappings.",
+          "Validate provenance/tier/null/fingerprint/fidelity evidence and honest fixture-only/unmeasured readings; legacy serving claims remain separate; registrar validation alone cannot complete K8-K6. K6-4 mapping remains with its implementation.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION: owns names existing integration/contract paths; the child allocates necessary per-asset mapping/test files after inspecting real locations and lists scope supplements under out_of_owns. No nonexistent interface or mapping path is presumed here."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K6-N3",
+      "track": "K",
+      "lane": "K · K6 carried-forward findings",
+      "title": "The corruption-masking regression can pass without integrity binding",
+      "owner": "K",
+      "depends_on": [
+        "V-K6"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k6-n3"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17: tracked carry-forward; independent review and per-finding fail-on-revert proof for implementation fixes)",
+          "/Users/Dev/kalayantra/run/reviews/ASTRA_REVIEW_K6_v1_1.md:81–87 (K6-N3)"
+        ],
+        "owns": [
+          "platform/python-sidecar/tests/l3/kala_db/ka_kalasutra/test_integrity_build_scope.py"
+        ],
+        "tests": [
+          "Each test_newer_build_cannot_mask_corrupted_candidate case first asserts healthy integrity succeeds, then plants corruption and asserts refusal.",
+          "Retain test_actual_orchestrator_probe_rejects_masked_corruption and show a no-op bind_integrity_target mutation fails the strengthened masking cases.",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
+        "notes": [
+          "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+        ]
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
         "class": "a"
       }
@@ -18140,7 +18346,8 @@
           "readback_sql (absence)"
         ],
         "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
-        "compat": "candidate-only production writes on the governed path; served output unchanged"
+        "compat": "candidate-only production writes on the governed path; served output unchanged",
+        "notes": "D-30(1) clean-outcome input: clean = run 1's readback matches the expected census exactly; teardown proves absence with zero residual rows; no retry, timeout or manual intervention in the dispatch; the dry run's plan matched the real run. Bind J-2b’s recorded run/request/operation identity, expected and actual census, zero-residual absence readback, dispatch history and dry-run/real-plan comparison; include the J-2b detector evidence at /Users/Dev/kalayantra/run/ops/receipts/J-2b.absence.json plus its digest and independently accepted step receipts. Record these references and digests on the decision event; skip_origin D-RUN2 then attaches the same evidence to both skipped items by reference, never invented run-2 receipts."
       },
       "completion_kind": "operation",
       "producer": "N",
@@ -18191,10 +18398,11 @@
       "id": "J-2c",
       "track": "J",
       "lane": "J · Gochara 5.0 absorbed",
-      "title": "Phase 3 — small test run 2 dispatched",
+      "title": "Phase 3 — small test run 2 dispatched (CONDITIONAL: only if run 1 is not clean, D-30)",
       "owner": "N",
       "depends_on": [
-        "J-2b"
+        "J-2b",
+        "D-RUN2"
       ],
       "mandatory": true,
       "steps": [
@@ -18217,7 +18425,8 @@
           "smalltest_dispatch"
         ],
         "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
-        "compat": "candidate-only production writes on the governed path; served output unchanged"
+        "compat": "candidate-only production writes on the governed path; served output unchanged",
+        "notes": "D-30(1): clean = run 1's readback matches the expected census exactly; teardown proves absence with zero residual rows; no retry, timeout or manual intervention in the dispatch; the dry run's plan matched the real run. D-RUN2 approved makes this item not_applicable with J-2b evidence attached through skip_origin D-RUN2 and its digest-bound decision event. D-RUN2 refused permits run 2 under all existing operation/acceptance gates; open outcomes wait. No synthetic run-2 detector receipt."
       },
       "completion_kind": "operation",
       "producer": "N",
@@ -18262,17 +18471,21 @@
       },
       "triage": {
         "class": "a"
+      },
+      "requires_outcome": {
+        "D-RUN2": "refused"
       }
     },
     {
       "id": "J-2d",
       "track": "J",
       "lane": "J · Gochara 5.0 absorbed",
-      "title": "Phase 3 — run 2 read back, torn down, and its absence proven",
+      "title": "Phase 3 — run 2 read back, torn down, and its absence proven (CONDITIONAL: only if run 1 is not clean, D-30)",
       "owner": "N",
       "depends_on": [
         "J-2c",
-        "J-2d-a55i"
+        "J-2d-a55i",
+        "D-RUN2"
       ],
       "mandatory": true,
       "steps": [
@@ -18297,7 +18510,8 @@
           "readback_sql (absence)"
         ],
         "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
-        "compat": "candidate-only production writes on the governed path; served output unchanged"
+        "compat": "candidate-only production writes on the governed path; served output unchanged",
+        "notes": "D-30(1): clean = run 1's readback matches the expected census exactly; teardown proves absence with zero residual rows; no retry, timeout or manual intervention in the dispatch; the dry run's plan matched the real run. D-RUN2 approved makes this item not_applicable with J-2b evidence attached through skip_origin D-RUN2 and its digest-bound decision event. D-RUN2 refused permits run 2 under all existing operation/acceptance gates; open outcomes wait. No synthetic run-2 detector receipt."
       },
       "completion_kind": "operation",
       "producer": "N",
@@ -18342,6 +18556,9 @@
       },
       "triage": {
         "class": "a"
+      },
+      "requires_outcome": {
+        "D-RUN2": "refused"
       }
     },
     {
@@ -18351,7 +18568,7 @@
       "title": "Phase 4 — measuring build, builder side landed on the measuring rules (PR 3194 lineage); measuring_dispatch enabled in the executor table",
       "owner": "K",
       "depends_on": [
-        "J-2d",
+        "J-RUN2-RESOLVED",
         "J-3a-pr2914",
         "J-3a-pr3144",
         "J-3a-b44"
@@ -18460,7 +18677,7 @@
       "title": "Phase 4 — measuring build, verifier side landed (PR 3185 lineage)",
       "owner": "K",
       "depends_on": [
-        "J-2d",
+        "J-RUN2-RESOLVED",
         "J-3b-pr3185"
       ],
       "mandatory": true,
@@ -20689,7 +20906,15 @@
         "V-KA",
         "V-VC",
         "VC-1",
-        "VC-2"
+        "VC-2",
+        "D-RUN2",
+        "J-RUN2-RESOLVED",
+        "D-RETIRE-B-DB-BASELINE",
+        "K6-N1",
+        "K6-N2",
+        "K6-N3",
+        "KA3B-N1",
+        "KA3B-N2"
       ],
       "mandatory": true,
       "detector": {
@@ -21438,7 +21663,8 @@
       "title": "Prepare the caller lane disposable DB from the governed current-main baseline and require the full migration runner before READY",
       "owner": "K",
       "depends_on": [
-        "B-7"
+        "B-7",
+        "D-RETIRE-B-DB-BASELINE"
       ],
       "mandatory": true,
       "steps": [
@@ -21480,7 +21706,7 @@
           "Run full current-main migrate.ts to exit0 with normal schema assertions and truthful complete output/status hashes; independent actual caller replay must bind exact reviewed fixture/helper/current-main source. Existing runner_rc1/FAILED receipts remain historical evidence; registration and administrative unpark alone are not READY"
         ],
         "compat": "Source helper/fixture repair only; no production schema, foreign migration, registry semantics, installed fleet script or credentials change. KYD-89 permits parser recognition only: no L0-L2 asset declaration, target floor, count/size SQL, registry row/UPSERT policy, coefficient or foreign migration1320 changes. KYD-94 adds only versioned predecessor metadata consumption in disposable caller databases; the narrowly enumerated fixture may carry exact governed integrity text/floor needed by pending migrations. Existing production declarations/rows/UPSERT policy, corpus, historical migration guards and all parser restrictions remain unchanged.",
-        "notes": "One existing baseline report, mandatory for close; it adds no launch, B-8 or stage/source-work gate. Original L0-K is already blocked until its actual local readiness exists. Normal reviewed source/mirror adoption and measured lane receipt are required; no in-cycle installed-control repair, wrapper or offline mode. KYD-89 removes only the administrative source-scope park. Sole S records this scope before original eligible K1 work; lawful model admission/canonical preflight and original claim remain required. Existing K0a-2/L0-M/L0-K readiness blocks remain until measured. KYD-94 is same-item prerequisite remediation, with original eligible K1 source ownership retained. Enumerated source scope requires ordinary independent exact-head review, protected merge, lawful model mirror and canonical preflight before worker resumption. Frozen PR3277 parser qualification remains independent and unchanged; this later fixture scope grants no baseline readiness, caller acceptance or downstream unblock."
+        "notes": "One existing baseline report, mandatory for close; it adds no launch, B-8 or stage/source-work gate. Original L0-K is already blocked until its actual local readiness exists. Normal reviewed source/mirror adoption and measured lane receipt are required; no in-cycle installed-control repair, wrapper or offline mode. KYD-89 removes only the administrative source-scope park. Sole S records this scope before original eligible K1 work; lawful model admission/canonical preflight and original claim remain required. Existing K0a-2/L0-M/L0-K readiness blocks remain until measured. KYD-94 is same-item prerequisite remediation, with original eligible K1 source ownership retained. Enumerated source scope requires ordinary independent exact-head review, protected merge, lawful model mirror and canonical preflight before worker resumption. Frozen PR3277 parser qualification remains independent and unchanged; this later fixture scope grants no baseline readiness, caller acceptance or downstream unblock. RETIRED: dispatcher lane retired, D-28 (owner direction 2026-10-15, A4). Historical footprint/steps are audit history, not dispatch authority. Refused retirement decision makes this item not_applicable; no baseline delivery or READY is claimed."
       },
       "completion_kind": "code",
       "producer": "K",
@@ -21524,9 +21750,11 @@
         }
       },
       "triage": {
-        "class": "b",
-        "reason": "its content (registry-inclusive seed, the 1320 failure detected) moves into the Wave B slot-database packet (plan §5); owner decision 2026-10-11",
-        "re_entry": "if that packet's acceptance does not cover its four steps; PR #3284 then refreshed or closed"
+        "class": "retired",
+        "decision": "D-RETIRE-B-DB-BASELINE"
+      },
+      "requires_outcome": {
+        "D-RETIRE-B-DB-BASELINE": "approved"
       }
     },
     {
@@ -22703,7 +22931,7 @@
       "owner": "K",
       "depends_on": [
         "J-0m",
-        "J-2d"
+        "J-RUN2-RESOLVED"
       ],
       "mandatory": true,
       "detector": {
@@ -24337,7 +24565,7 @@
       "owner": "K",
       "depends_on": [
         "J-0m",
-        "J-2d"
+        "J-RUN2-RESOLVED"
       ],
       "mandatory": true,
       "detector": {
@@ -24486,7 +24714,7 @@
       "owner": "K",
       "depends_on": [
         "J-0m",
-        "J-2d"
+        "J-RUN2-RESOLVED"
       ],
       "mandatory": true,
       "detector": {
@@ -26178,7 +26406,7 @@
       "owner": "K",
       "depends_on": [
         "J-0m",
-        "J-2d"
+        "J-RUN2-RESOLVED"
       ],
       "mandatory": true,
       "detector": {
@@ -26958,6 +27186,81 @@
         "class": "retire_decision",
         "retires": "KV3-SCHEMA-1"
       }
+    },
+    {
+      "id": "D-RETIRE-B-DB-BASELINE",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Retire B-DB-BASELINE: dispatcher lane retired, D-28 (owner direction 2026-10-15, A4)",
+      "owner": "N",
+      "depends_on": [],
+      "mandatory": true,
+      "brief": {
+        "spec": [
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:41 (D-28)"
+        ],
+        "notes": "Owner-authorised outcome refused; steward records the D-28 decision event with reason: dispatcher lane retired, D-28 (owner direction 2026-10-15, A4). Mirror D-RETIRE-B-K-INBOX. This model edit writes no live decision event."
+      },
+      "done_by": "decision",
+      "decision": "D-RETIRE-B-DB-BASELINE",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "B-DB-BASELINE"
+      }
+    },
+    {
+      "id": "D-RUN2",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "D-30(1): approve clean run 1 to waive small-test run 2; refuse only on evidenced non-clean run 1",
+      "owner": "N",
+      "depends_on": [
+        "J-2b"
+      ],
+      "mandatory": true,
+      "brief": {
+        "spec": [
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:42–43 (D-29, D-30)"
+        ],
+        "notes": [
+          "Rule: clean = run 1's readback matches the expected census exactly; teardown proves absence with zero residual rows; no retry, timeout or manual intervention in the dispatch; the dry run's plan matched the real run. Approved iff all clauses hold; refused when completed run-1 evidence establishes any clause failed. Missing/inconclusive evidence remains deferred or insufficient_evidence, never approved/refused merely by timeout.",
+          "Bind J-2b’s recorded run/request/operation identity, expected and actual census, zero-residual absence readback, dispatch history and dry-run/real-plan comparison; include the J-2b detector evidence at /Users/Dev/kalayantra/run/ops/receipts/J-2b.absence.json plus its digest and independently accepted step receipts. Record these references and digests on the decision event; skip_origin D-RUN2 then attaches the same evidence to both skipped items by reference, never invented run-2 receipts.",
+          "(I) INTERPRETATION: use existing requires_outcome, decision skip propagation and an accepts_not_applicable_dependencies join because the tracker has no conditional OR dependency. Surrogate records D-RUN2 under D-29 only after J-2b completion and evidence evaluation. Approved skips J-2c/J-2d; refused requires both operations. The J-RUN2-RESOLVED join preserves all other downstream prerequisites. No live decision or production operation is performed by this edit."
+        ]
+      },
+      "done_by": "decision",
+      "decision": "D-RUN2",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "J-RUN2-RESOLVED",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Small-test completion: clean run 1 accepted or required run 2 completed (D-30)",
+      "owner": "N",
+      "depends_on": [
+        "J-2b",
+        "D-RUN2",
+        "J-2d"
+      ],
+      "mandatory": true,
+      "join": true,
+      "done_by": "join",
+      "accepts_not_applicable_dependencies": true,
+      "brief": {
+        "spec": [
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:42–43 (D-29, D-30)"
+        ],
+        "notes": [
+          "Approved D-RUN2: J-2b done with clean evidence, J-2c/J-2d not_applicable; join done with D-RUN2 skip origin retained. Refused D-RUN2: J-2c and J-2d must complete their real dispatch/readback/teardown/absence acceptance. Deferred/insufficient_evidence/pending decision leaves the join waiting.",
+          "(I) INTERPRETATION: redirect every executable direct J-2d consumer through this isolated join, retaining every other dependency. JOIN-ALL retains original J-2b/J-2c/J-2d edges and already accepts skips; add the decision and disposition join so campaign closure cannot omit the disposition. J-2d-a55i retains its J-2c edge and automatically skips on clean run 1."
+        ]
+      },
+      "triage": {
+        "class": "a"
+      }
     }
   ],
   "decisions": [
@@ -27068,6 +27371,18 @@
       "title": "Supersede owner-decisions Q2 only as the K-CERT structural prerequisite; retire KV3-SCHEMA-1",
       "owner": "ADHIKĀRIN (N); steward records SR-A2-11 under owner full-authority delegation 2026-10-14",
       "default": "refused — retire KV3-SCHEMA-1 as this structural prerequisite, never as a delivered migration; adopt the independently assessed existing-status K-CERT artifact (SR-A2-11)"
+    },
+    {
+      "id": "D-RETIRE-B-DB-BASELINE",
+      "title": "Retire B-DB-BASELINE under D-28",
+      "owner": "ADHIKĀRIN (N); surrogate under owner direction 2026-10-15 (A4)",
+      "default": "refused — dispatcher lane retired, D-28 (owner direction 2026-10-15, A4)"
+    },
+    {
+      "id": "D-RUN2",
+      "title": "Run 1 clean disposition (D-30(1))",
+      "owner": "ADHIKĀRIN (N); owner surrogate per D-29",
+      "default": "conditional approval only on J-2b evidence: clean = run 1's readback matches the expected census exactly; teardown proves absence with zero residual rows; no retry, timeout or manual intervention in the dispatch; the dry run's plan matched the real run. Approved = waive run 2; refused = execute run 2; inconclusive = open. Bind J-2b’s recorded run/request/operation identity, expected and actual census, zero-residual absence readback, dispatch history and dry-run/real-plan comparison; include the J-2b detector evidence at /Users/Dev/kalayantra/run/ops/receipts/J-2b.absence.json plus its digest and independently accepted step receipts. Record these references and digests on the decision event; skip_origin D-RUN2 then attaches the same evidence to both skipped items by reference, never invented run-2 receipts."
     }
   ],
   "coordination": {
