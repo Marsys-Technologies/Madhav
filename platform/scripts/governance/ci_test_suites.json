@@ -41,7 +41,8 @@
       "engine": "pytest",
       "include": [
         "tests/l3/ka_bhavishya_lekha/test_certification*.py",
-        "tests/l3/ka_kshetra/test_g1*.py"
+        "tests/l3/ka_kshetra/test_g1*.py",
+        "tests/l3/ka_vedha_gochara/test_ka3a_overlays_module_oracles*.py"
       ],
       "directories": [
         "tests/l3/kala_db",
