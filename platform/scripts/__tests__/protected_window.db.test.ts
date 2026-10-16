@@ -31,6 +31,28 @@ function adminConfig(raw: string): PoolConfig {
     password: decodeURIComponent(url.password), ssl: false, connectionTimeoutMillis: 3000 }
 }
 
+describe('protected window fixture connection guard', () => {
+  it.each([
+    ['127.0.0.1', '127.0.0.1'], ['localhost', 'localhost'], ['[::1]', '::1'],
+  ])('accepts explicit loopback host %s', (host, expectedHost) => {
+    expect(adminConfig(`postgresql://postgres@${host}:55433/postgres`)).toMatchObject({
+      host: expectedHost, port: 55433, database: 'postgres', ssl: false,
+    })
+  })
+
+  it.each([
+    'postgresql://postgres@172.18.0.2:55433/postgres',
+    'postgresql://postgres@db.example:55433/postgres',
+    'postgresql://postgres@127.0.0.1/postgres',
+    'postgresql://postgres@127.0.0.1:55433/production',
+    'postgresql://postgres@127.0.0.1:55433/postgres?host=db.example',
+    'postgresql://postgres@127.0.0.1:55433/postgres#options',
+    'https://postgres@127.0.0.1:55433/postgres',
+  ])('rejects unsafe admin DSN %s', dsn => {
+    expect(() => adminConfig(dsn)).toThrow(/explicit loopback/)
+  })
+})
+
 describe.skipIf(!adminDsn && !required)('protected window PostgreSQL regressions', () => {
   let admin: Pool
   let pool: Pool
@@ -45,7 +67,9 @@ describe.skipIf(!adminDsn && !required)('protected window PostgreSQL regressions
     admin = new Pool(config)
     const identity = await admin.query("SELECT current_database() AS db, host(inet_server_addr()) AS addr")
     expect(identity.rows[0].db).toBe('postgres')
-    expect(['127.0.0.1', '::1']).toContain(identity.rows[0].addr)
+    // The client endpoint is constrained by adminConfig. In CI, localhost is
+    // forwarded to the service container, so PostgreSQL reports its bridge
+    // address (e.g. 172.18.0.2), not the client's loopback endpoint.
     await admin.query(`CREATE DATABASE "${dbname}"`)
     created = true
     pool = new Pool({ ...config, database: dbname })
