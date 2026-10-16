@@ -147,9 +147,9 @@ def merge_windows(rows: list[dict]) -> dict[str, list[MergedWindow]]:
             if cur and w[0] <= cur[-1][1] + dt.timedelta(days=1):
                 p = cur[-1]
                 # merge representative: max si; ties -> earliest peak (§4.2)
-                if w[3] > p[3] + TIE_TOL:
+                if w[3] - p[3] >= TIE_TOL:
                     pk, si, mech = w[2], w[3], w[4]
-                elif abs(w[3] - p[3]) <= TIE_TOL:
+                elif abs(w[3] - p[3]) < TIE_TOL:
                     pk, si, mech = min(p[2], w[2]), p[3], p[4]
                 else:
                     pk, si, mech = p[2], p[3], p[4]

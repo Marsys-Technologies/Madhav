@@ -42,6 +42,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { governedGenerationGate } from '../../lib/governed_generation_gate.js'
 import type { Principal } from '../../types.js'
 import { remoteAuthorize } from '../../lib/authz.js'
 
@@ -120,7 +121,7 @@ export interface ContactLedgerResult {
   /** Present only when the capability REFUSES the generation by name: a test slice, or a governed (5.x) generation that is not published AND sealed. */
   refusal?: 'test_slice_candidate' | 'candidate_not_served'
   /** Present only when an UNSEALED governed generation was served because the caller asked for diagnostics: the data is NOT a published coverage statement. */
-  diagnostic?: { served_unpublished_generation: true; manifest_status: string | null; sealed: boolean; note: string }
+  diagnostic?: { served_unpublished_generation: true; manifest_status: string | null; sealed: boolean | null; seal_lookup_failed?: true; note: string }
   floor_overflow?: boolean
   generation: string | null
   manifest: {
@@ -254,12 +255,6 @@ function rowToCoveragePartition(r: Record<string, unknown>): CoveragePartition {
   }
 }
 
-/** A governed generation (candidate_boundary.is_governed): major version >= 5. Legacy generations ('3.0', '4.x') are unchanged. */
-function isGovernedGeneration(generation: string): boolean {
-  const major = Number.parseInt(String(generation).split('.', 1)[0] ?? '', 10)
-  return Number.isFinite(major) && major >= 5
-}
-
 // ── The capability core (exported for tests + future non-MCP callers) ────────
 
 export interface ContactLedgerQueryInput {
@@ -330,80 +325,62 @@ export async function queryContactLedger(
       }
     : null
 
-  // A TEST SLICE candidate (a small-test build of generation '5.0': stored_scope 'test_slice' and/or a test_slice component in its
-  // manifest) covers a handful of classes over a narrowed horizon and is unsealable and unpublishable by construction. It is REFUSED
-  // here by name — never served as an ordinary status 'ok' coverage object, which would read as a complete search (Codex P2 on
-  // PR 3110). No contact or coverage query is issued.
-  const sliceRow = manifestRows[0]
-  if (sliceRow && (sliceRow['stored_scope'] === 'test_slice' || sliceRow['has_test_slice'] === true)) {
+  // THE GATE (governed_generation_gate.ts — the one rule the windows reader's coverage path applies too). A TEST SLICE candidate (stored_scope
+  // 'test_slice' and/or a test_slice component) is never served, diagnostic or not: refused by name, no contact or coverage query. A GOVERNED
+  // (5.x) generation is served only when its manifest is PUBLISHED and SEALED; between the manifest substep and the snapshot substep of a
+  // rebuild the manifest already carries the NEW vector while the chain still holds the OLD one, a state this reader cannot see from the
+  // manifest alone, so the status/seal rule needs no consistency judgement at all. Seal history is looked up whatever the manifest's status
+  // says (a superseded or withdrawn sealed generation reports sealed). An explicit `diagnostic` read of an unsealed governed generation still
+  // gets the data, labelled.
+  const gate = await governedGenerationGate(
+    (sql, params) => platformQuery(sql, params, principal),
+    input.chart_id,
+    generation,
+    manifestRows[0]
+      ? {
+          status: String(manifestRows[0]['status']),
+          stored_scope: (manifestRows[0]['stored_scope'] as string | null) ?? null,
+          has_test_slice: manifestRows[0]['has_test_slice'] === true,
+        }
+      : null
+  )
+  if (gate.refusal === 'test_slice_candidate') {
     return {
       status: 'not_computed',
       refusal: 'test_slice_candidate',
       generation,
       manifest,
       hard_floor: { confirmed: [], count: 0 },
-      coverage: {
-        partitions: [],
-        searched_horizon: null,
-        unavailable_inputs: {},
-        note:
-          `generation ${generation} is a TEST SLICE candidate (a small-test build over a narrowed set of classes and horizon): ` +
-          'refused, never served as a coverage statement. Run the full build under a real manifest.',
-      },
+      coverage: { partitions: [], searched_horizon: null, unavailable_inputs: {}, note: gate.reason },
       page: { returned: 0, next_cursor: null, confirmed_returned: 0 },
     }
   }
-
-  // A GOVERNED (5.x) generation is served only when its manifest is PUBLISHED and SEALED. Anything else is a candidate under
-  // construction: between the manifest substep and the snapshot substep of a rebuild the manifest already carries the NEW vector
-  // while the chain still holds the OLD one (an interrupted slice-to-full rebuild would otherwise be served here as status 'ok' with
-  // the old slice's coverage, unlabelled — Codex round 3). The guard reads only the manifest's own vector, so it cannot see that
-  // state; the status/seal rule needs no consistency judgement at all. An explicit `diagnostic` read still gets the data, labelled.
   let diagnostic: ContactLedgerResult['diagnostic']
-  if (isGovernedGeneration(generation)) {
-    const published = manifestRows[0]?.['status'] === 'published'
-    let sealed = false
-    if (published) {
-      const { rows: presentRows } = await platformQuery(
-        `SELECT to_regclass('public.ka_gochara_generation_seal') IS NOT NULL AS present`, [], principal)
-      if (presentRows[0]?.['present'] === true) {
-        const { rows: sealRows } = await platformQuery(
-          `SELECT EXISTS (SELECT 1 FROM ka_gochara_generation_seal WHERE chart_id = $1::uuid AND generation = $2) AS sealed`,
-          [input.chart_id, generation],
-          principal
-        )
-        sealed = sealRows[0]?.['sealed'] === true
+  if (!gate.serve) {
+    if (!input.diagnostic) {
+      return {
+        status: 'not_computed',
+        refusal: 'candidate_not_served',
+        generation,
+        manifest,
+        hard_floor: { confirmed: [], count: 0 },
+        coverage: {
+          partitions: [],
+          searched_horizon: null,
+          unavailable_inputs: {},
+          note: `${gate.reason} Pass diagnostic=true for a labelled diagnostic read of the unsealed rows.`,
+        },
+        page: { returned: 0, next_cursor: null, confirmed_returned: 0 },
       }
     }
-    if (!(published && sealed)) {
-      const status = manifestRows[0] ? String(manifestRows[0]['status']) : null
-      if (!input.diagnostic) {
-        return {
-          status: 'not_computed',
-          refusal: 'candidate_not_served',
-          generation,
-          manifest,
-          hard_floor: { confirmed: [], count: 0 },
-          coverage: {
-            partitions: [],
-            searched_horizon: null,
-            unavailable_inputs: {},
-            note:
-              `generation ${generation} is not published and sealed (manifest ${status ?? 'absent'}, ${sealed ? 'sealed' : 'not sealed'}): ` +
-              'a governed generation under construction is never served as a coverage statement. Pass diagnostic=true for a labelled ' +
-              'diagnostic read of the unsealed rows.',
-          },
-          page: { returned: 0, next_cursor: null, confirmed_returned: 0 },
-        }
-      }
-      diagnostic = {
-        served_unpublished_generation: true,
-        manifest_status: status,
-        sealed,
-        note:
-          'DIAGNOSTIC: this generation is not published and sealed; the rows below are build output under construction, may mix ' +
-          'rebuild generations, and are NOT a coverage statement.',
-      }
+    diagnostic = {
+      served_unpublished_generation: true,
+      manifest_status: gate.manifest_status,
+      sealed: gate.sealed,
+      ...(gate.seal_lookup_failed ? { seal_lookup_failed: true } : {}),
+      note:
+        'DIAGNOSTIC: this generation is not published and sealed; the rows below are build output under construction (or of a generation ' +
+        'whose publication has ended), may mix rebuild generations, and are NOT a coverage statement.',
     }
   }
 
