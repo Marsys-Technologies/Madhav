@@ -41,7 +41,8 @@
       "engine": "pytest",
       "include": [
         "tests/l3/ka_bhavishya_lekha/test_certification*.py",
-        "tests/l3/ka_kshetra/test_g1*.py"
+        "tests/l3/ka_kshetra/test_g1*.py",
+        "tests/l3/ka_vedha_gochara/test_ka3a_overlays_module_oracles*.py"
       ],
       "directories": [
         "tests/l3/kala_db",
@@ -754,6 +755,14 @@
       "engine": "pytest",
       "include": [
         "tests/test_migration_1235_evidence*.py"
+      ]
+    },
+    "k5-g1a-oracles": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/ka_kshetra/test_g1a*.py",
+        "tests/l3/kala_db/ka_kshetra/test_g1a*.py"
       ]
     }
   }
