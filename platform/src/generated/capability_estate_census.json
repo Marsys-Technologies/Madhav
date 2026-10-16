@@ -8287,39 +8287,6 @@
             "description": "Integer 1..200; legacy default 20.",
             "type": "number"
           },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
             "properties": {
@@ -8411,39 +8378,6 @@
           },
           "native_janma_nakshatra": {
             "type": "string"
-          },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
           },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
@@ -8560,39 +8494,6 @@
             "description": "Integer 1..50; legacy default 15.",
             "type": "number"
           },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
             "properties": {
@@ -8669,39 +8570,6 @@
             "description": "Explicit chart UUID; no chart default.",
             "required": true,
             "type": "string"
-          },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
           },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
@@ -8793,39 +8661,6 @@
               "type": "string"
             },
             "type": "array"
-          },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
           },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
@@ -8922,39 +8757,6 @@
             "description": "Integer 1..50; legacy default 10.",
             "type": "number"
           },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
-          },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
             "properties": {
@@ -9030,39 +8832,6 @@
             "description": "Explicit chart UUID; no chart default.",
             "required": true,
             "type": "string"
-          },
-          "published_request": {
-            "description": "Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.",
-            "properties": {
-              "assertion_id": {
-                "type": "string"
-              },
-              "at": {
-                "type": "string"
-              },
-              "date_from": {
-                "type": "string"
-              },
-              "date_to": {
-                "type": "string"
-              },
-              "event_class": {
-                "type": "string"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "offset": {
-                "type": "number"
-              },
-              "record_id": {
-                "type": "string"
-              },
-              "source_table": {
-                "type": "string"
-              }
-            },
-            "type": "object"
           },
           "question_frame": {
             "description": "Forwarded without reinterpretation to the established handler.",
@@ -22472,7 +22241,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "2febfc5ca0730eb25655d384f56f2c5c73eeb0caa27f29f3e1dd9c0bc99a4772"
+        "sha256": "0b88c31db28b907947e8c50da29da384ad39df1b525c9fca3f921a818b0e1cf9"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -22869,7 +22638,7 @@
       },
       {
         "id": "public_registrar_source_set",
-        "member_count": 54,
+        "member_count": 53,
         "members": [
           {
             "path": "platform-mcp/src/tools/bo_2-8.ts",
@@ -22897,7 +22666,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/ahead.ts",
-            "sha256": "bcf1e502984d63850cea97d61dafcdd5dc7d1657c00c8e3acb1da9e93dea0dd6"
+            "sha256": "5512684ed1fe4b6710b0c3bc967b541eb84fb9cfb11d6657b7f473b8a4147dda"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/dasha_sandhi.ts",
@@ -22905,19 +22674,19 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/elect.ts",
-            "sha256": "4dcc89d3d1cf0d56f1f350e35ad85139cb4d5273152b5201dd49769ce2dadf18"
+            "sha256": "905f830f0933092ead34294494f315121edb33bab190608ce57c312825eb129c"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/explain.ts",
-            "sha256": "8756018e6c34f95e3f687e878bf879cee581a137e6e9b08e231664f045835fd7"
+            "sha256": "66357ab15c412fadc253653dc95c4349fd9bdaea9f44dceff2e56edf2f3a163b"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/now.ts",
-            "sha256": "78f53964c7ff60a5f1eb3a5e8c4bd8e230280445b17d121b962e152a39d956ba"
+            "sha256": "0ac067fa62d1fc5f8b2b556110b2d7f04b1d0e48bc73ab4f34c5fc9652bdc1bf"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/priority.ts",
-            "sha256": "fb5025fd58d4db4dfa7df66d4ff87114e713cea11d1a157b1c45477bf4bd9d47"
+            "sha256": "56566475ec12548b19e2bc1984ef87428630c1c05e1f8391d9514290a1a958c9"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/promise_gate.ts",
@@ -22928,16 +22697,12 @@
             "sha256": "416c7105afe64dc168e590954ea7bf00742ebf8ab940d4bb2ecf727c20055dd1"
           },
           {
-            "path": "platform-mcp/src/tools/kala_views/published_request.ts",
-            "sha256": "2c78e502c8da28216252f1484d516ba1636260ca7ed0d4d0c53f9f6a768b66f3"
-          },
-          {
             "path": "platform-mcp/src/tools/kala_views/register_all.ts",
             "sha256": "d224a51c27037ede2e0a96c1eb56b34efcf8567c5c111b4e070a8c9912806455"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/registry_alias.ts",
-            "sha256": "ccdc4796fc187b799c4fbf1fb9e945ea877eb0db4fb18f60bb3bef86726ee325"
+            "sha256": "ee5d3cd54d0105b727805705b362ccfef1fc45dbefd550600ee96ee0e0710e1f"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/registry_alias.vitest.config.ts",
@@ -22945,7 +22710,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/ritual.ts",
-            "sha256": "ae532ec9df4b5c0777a7f701168cd750d102052de96f4148f9a1898b6f6468a7"
+            "sha256": "4230076ca8bb9e6d061aaff2fc37f8e59d358c1192f60dd4684863e0bdfa5b6c"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/shared.ts",
@@ -22957,7 +22722,7 @@
           },
           {
             "path": "platform-mcp/src/tools/kala_views/story.ts",
-            "sha256": "e638247197c8a03476c03a9da84d1ef1407a7a5b82499ba38667b7d56c58a973"
+            "sha256": "43fe28a73731dc76e95a851fcd6b8e2f73becf55a9db87ecc09e31e1c481d413"
           },
           {
             "path": "platform-mcp/src/tools/kala_views/upaya.ts",
@@ -23089,7 +22854,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "b84b80e61e696f22fb1fc662bc075b6eda75abfa98a9cdea0ee0ba58b684c22d"
+        "sha256": "a8a511aa7c20faf17140d92e83a1dfb3d6c49b406c80cca5f8f033eca439f5c8"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -23103,7 +22868,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 220,
+        "member_count": 218,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -23678,24 +23443,16 @@
             "sha256": "e488a71efb4b0985a0f406529cdd460ee21e7d4b6faf0ca4f31c06a2caa967b0"
           },
           {
-            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/arrival_state.ts",
-            "sha256": "daf70ad112034b5bf2faa2b053fe798759986bf04664fd710b7ae1c26338bd27"
-          },
-          {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
             "sha256": "73b4ea74e3b3e57ea3a6a1992df6cfa6842301087472f797f147d448e73c8635"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/disposable_sql.test_support.ts",
-            "sha256": "af70c419b5fc725ecbf82521886a4da74a7b3b822eecbe10d1920c2bac6c832d"
+            "sha256": "8c2f4cafc1003da4663bcfc8f5edd41fb8b96ce2efafe585fae38d52a3a7b78a"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
             "sha256": "2c0e34f5823dcd9a7fd0dfcb7a7160e1c009b2b09dca79e31c71336abec67dbc"
-          },
-          {
-            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/published_request.ts",
-            "sha256": "d7af779b6601923515e38dede1359b075393240eecdb991cb1ac2c65493ad1ea"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts",
@@ -23771,7 +23528,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts",
-            "sha256": "a340dc97d0c29f1997f7a6d43fff3727f379bacf4c1aa2850c653549086c165f"
+            "sha256": "89f21cf3247c95bb1d0dcafcbf2cd8585ce764b545d4d3936fb349b47a8f101e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts",
@@ -23987,7 +23744,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "3efd6e780e40a20b311183d433d6fc09eb1f34e0b2984a2847a0b41eff62005d"
+        "sha256": "14fc04c4223a8d7818946d6de6a65e35ebc0264fd2cca1a03cb4e44e49d015b6"
       },
       {
         "id": "service_effect_contracts",
