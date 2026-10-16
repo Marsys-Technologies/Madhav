@@ -153,8 +153,19 @@ def validate_capture(receipt: dict, archive: Path, label: str) -> dict:
     if not archive.is_file() or archive.stat().st_size == 0 or sha256(archive) != receipt.get('archive_sha256'):
         raise BackupRefused('archive missing, empty or hash differs')
     values = receipt.get('measurements')
-    if not receipt.get('snapshot') or not receipt.get('source') or not isinstance(values, dict):
-        raise BackupRefused('capture provenance/measurements are missing')
+    snapshot_id, source = receipt.get('snapshot'), receipt.get('source')
+    # Match the provenance emitted by snapshot(), including explicit NULL
+    # endpoint fields for a Unix-socket source. Truthiness alone admits a
+    # non-string snapshot or a source with no database identity, defeating the
+    # source/restore-target name separation check below.
+    if (not isinstance(snapshot_id, str) or not snapshot_id.strip()
+            or not isinstance(source, dict) or not isinstance(source.get('database'), str) or not source['database']
+            or 'address' not in source or 'port' not in source
+            or (source['address'] is None) != (source['port'] is None)
+            or (source['address'] is not None and (not isinstance(source['address'], str) or not source['address']
+                or type(source['port']) is not int or not 1 <= source['port'] <= 65535))
+            or not isinstance(values, dict)):
+        raise BackupRefused('capture provenance/measurements are missing or malformed')
     if set(values) != {'tables', 'sequences'} or not isinstance(values['tables'], dict) or not values['tables']:
         raise BackupRefused('table coverage is missing')
     for value in values['tables'].values():
