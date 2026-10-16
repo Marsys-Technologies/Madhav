@@ -207,7 +207,8 @@ def assert_required_source_ci(ci):
     # DB-split declarations). A step in an advisory job is insufficient.
     job = ci["jobs"]["unit-tests"]
     assert job["name"] == "Unit Tests"
-    assert job["needs"] == "changes"
+    needs = job["needs"] if isinstance(job["needs"], list) else [job["needs"]]
+    assert "changes" in needs  # A5 D-33: may also wait on CI-generated outputs
     assert job["if"] == "${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}"
     assert "postgres" in job["services"]
     assert not job.get("continue-on-error")

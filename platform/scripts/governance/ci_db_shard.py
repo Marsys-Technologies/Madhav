@@ -33,8 +33,10 @@ DEFAULT_SECONDS = 1.0
 def job_profiles(job: str) -> dict:
     from ci_discovery import profiles
     # The digit boundary prevents teardown from claiming teardown-round2/round3.
+    # Named profiles declare their owner explicitly instead of bypassing sharding.
     return {key: p for key, p in profiles().items()
-            if key.startswith(job+'-') and key[len(job)+1:len(job)+2].isdigit()}
+            if p.get('shard_job') == job or
+            (key.startswith(job+'-') and key[len(job)+1:len(job)+2].isdigit())}
 
 
 def partition_job(root: Path, job: str, count: int, durations: dict | None = None) -> list[list[str]]:

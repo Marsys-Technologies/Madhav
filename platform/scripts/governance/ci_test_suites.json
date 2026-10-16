@@ -537,14 +537,16 @@
       "include": [
         "platform/scripts/governance/pravaha_tracker/tests/test_verify*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_hang*.py",
-        "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py"
+        "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py"
       ]
     },
     "governance-readback-tests-3-0": {
       "cwd": ".",
       "engine": "pytest",
       "include": [
-        "platform/scripts/__tests__/test_gochara*.py",
+        "platform/scripts/__tests__/test_gochara_window_readbacks*.py",
+        "platform/scripts/__tests__/test_gochara_sitting_evidence*.py",
         "platform/scripts/__tests__/test_fn*.py"
       ]
     },
@@ -752,6 +754,29 @@
         "src/lib/pariprashna/samiksha/**/*.spec.[jt]sx",
         "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]s",
         "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]sx"
+      ]
+    },
+    "db-integration-tests-smalltest": {
+      "cwd": "platform",
+      "engine": "pytest",
+      "shard_job": "db-integration-tests",
+      "include": [
+        "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_*smalltest*.py"
+      ]
+    },
+    "governance-readback-tests-mcp": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/retrieval/register_gochara_contact_ledger*.test.ts",
+        "src/tools/retrieval/register_gochara_windows_governed_gate*.test.ts"
+      ]
+    },
+    "governance-readback-tests-migration": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/test_migration_1235_evidence*.py"
       ]
     }
   }

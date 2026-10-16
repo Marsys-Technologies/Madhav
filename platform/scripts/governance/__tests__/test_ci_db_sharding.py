@@ -104,6 +104,28 @@ def test_real_partition_is_complete_and_required_names_remain_unique():
     assert discovery.workflow_problems((ROOT / '.github/workflows/ci.yml').read_text()) == []
 
 
+def test_every_db_worker_discovery_step_belongs_to_its_partition(monkeypatch):
+    """The named small-test profile must join SAMĪKṢĀ's numeric profiles."""
+    import re
+    mod = sharding()
+    jobs = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs']
+    for job, count in mod.JOB_SHARDS.items():
+        suites = {suite for step in jobs[job]['steps']
+                  for suite in re.findall(r'ci_discovery.py" (?:pytest|vitest) ([\w-]+) --',
+                                          step.get('run', ''))}
+        assert suites == set(mod.job_profiles(job)), (job, suites ^ mod.job_profiles(job).keys())
+    suite = 'db-integration-tests-smalltest'
+    profile = discovery.profiles()[suite]
+    files = discovery.discover(ROOT, profile)
+    selected = []
+    job = 'db-integration-tests'
+    monkeypatch.setenv('CI_DB_SHARD_JOB', job)
+    for index in range(mod.JOB_SHARDS[job]):
+        monkeypatch.setenv('CI_DB_SHARD', f'{index+1}/{mod.JOB_SHARDS[job]}')
+        selected.extend(mod.selected_files(ROOT, suite, profile, files))
+    assert Counter(selected) == Counter(files)
+
+
 @pytest.mark.parametrize('spec', ['', 'x/y', '0/2', '3/2', '1/0', '1/2/3'])
 def test_invalid_shard_specs_fail_closed(tmp_path, monkeypatch, spec):
     mod = sharding()

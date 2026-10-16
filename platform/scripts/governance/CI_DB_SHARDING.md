@@ -37,12 +37,12 @@ The Kāla DB step now uses its existing `kala-db-tests-5-0` discovery profile. T
 parent branch had an inline glob command while its pinned #3588 test required the
 profile invocation. The node-ID comparison also covers this selector correction.
 
-Reproduce collection equality against the pre-sharding source revision (install the
+Reproduce collection equality against the latest #3588 discovery revision (install the
 sidecar CI Python dependencies and platform npm dependencies first):
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python -B platform/scripts/governance/compare_ci_db_shards.py \
-  --baseline e45f1ef5b \
+  --baseline 1c1cc0b4f0021c83c8f58a15b6e11d32b19a3ad1 \
   --scratch "$JOB_SCRATCH/coverage-recheck" \
   --ephe-path /Users/Dev/kalayantra/ephe
 ```
@@ -57,6 +57,18 @@ coverage evidence; it does not claim that DB test execution passed.
 
 Timing data and collection evidence are deliberately outside machine-owned output
 paths. No generated-output guard or required-name baseline is rewritten.
+
+The #3588 refresh preserves every incoming discovery profile and the required
+readback case-count/skip checks. The named `db-integration-tests-smalltest` profile
+declares `shard_job: db-integration-tests`, so its two fleet suites join the same
+whole-job partition as the numeric profiles. The numeric boundary still prevents
+teardown from claiming teardown-round2/round3. The regression compares every
+worker's actual workflow selectors with its partition owners and checks that each
+small-test file runs exactly once across the four workers.
+
+- **(I) INTERPRETATION:** named profiles use explicit `shard_job` ownership; the
+  alternative of accepting every nonnumeric suffix by prefix could also claim
+  the distinct teardown-round2/round3 jobs.
 
 The timing table binds the recent green main run
 [38885741560](https://github.com/Marsys-Technologies/Madhav/actions/runs/38885741560)
@@ -128,7 +140,7 @@ Recheck only the changed job while preserving the existing same-baseline rows:
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python -B platform/scripts/governance/compare_ci_db_shards.py \
-  --baseline e45f1ef5b --job gochara-a55-replace-chain \
+  --baseline 1c1cc0b4f0021c83c8f58a15b6e11d32b19a3ad1 --job gochara-a55-replace-chain \
   --scratch "$JOB_SCRATCH/coverage-recheck" --ephe-path /Users/Dev/kalayantra/ephe
 ```
 
