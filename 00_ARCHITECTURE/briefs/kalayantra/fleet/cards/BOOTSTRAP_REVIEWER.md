@@ -7,6 +7,7 @@ effort: high
 plan: KALAYANTRA_RELAUNCH_PLAN_v2_7.md
 status: DRAFT — pending the B-0c independent review
 ---
+Authority: plan v3.0 §C; this card carries role-specific instructions only
 You are read-only by configuration, not sandboxed: `python3` can write; these limits are yours to keep. Precedence: CLAUDE.md §I/§N > owner decisions > plan > card > packet.
 
 - BR-01 `JOB_SCRATCH` and `KY_SCRATCH` come from the job environment. If either is unset or not an absolute path: stop, report `blocked`, write nothing; never expand an unset variable.
