@@ -17,6 +17,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import datetime as dt
 from pathlib import Path
 
@@ -440,10 +441,17 @@ GIT_ENV = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TER
            "GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
            "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}
 ALL_CAPS = {"builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
+# 2026-10-17 incident: an inherited GIT_DIR beats `-C`, so `git init --bare` re-initialised the SHARED repository. A fixture's git must only see what it made.
+REPO_LOCATING_VARS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE",
+                      "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE")
+
+
+def _git_env():
+    return {**{k: v for k, v in os.environ.items() if k not in REPO_LOCATING_VARS}, **GIT_ENV}
 
 
 def _git(cwd, *args):
-    p = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, env={**os.environ, **GIT_ENV})
+    p = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, env=_git_env())
     assert p.returncode == 0, f"git {args}: {p.stderr[-300:]}"
     return p.stdout.strip()
 
@@ -461,6 +469,8 @@ class World:
     def __init__(self, tmp_path, monkeypatch, table_text, lease_id="lease-1"):
         for k, v in GIT_ENV.items():
             monkeypatch.setenv(k, v)
+        for k in REPO_LOCATING_VARS:  # the executor under test runs git from this environment too
+            monkeypatch.delenv(k, raising=False)
         self.root = tmp_path / "ky"
         self.origin = tmp_path / "origin.git"
         self.repo = tmp_path / "source-repo"
@@ -520,6 +530,47 @@ def copy_with(text, kind, **fields):
     ops["ops"][kind]["enabled"] = True
     ops["ops"][kind].update(fields)
     return json.dumps(ops)
+
+
+def _linked_worktree_victim(tmp_path):
+    """A throwaway repository with one linked worktree: (repository, the linked worktree's gitdir), as in the 2026-10-17 incident."""
+    victim = tmp_path / "victim"
+    _git(tmp_path, "init", "-q", "-b", "main", str(victim))
+    _git(victim, "commit", "-q", "--allow-empty", "-m", "x")
+    _git(victim, "worktree", "add", "-q", str(tmp_path / "linked"), "-b", "linked")
+    assert _git(victim, "config", "--bool", "core.bare") == "false"
+    return victim, next((victim / ".git" / "worktrees").iterdir())
+
+
+def _core_bare(victim):
+    return subprocess.run(["git", "--git-dir", str(victim / ".git"), "config", "--bool", "core.bare"], capture_output=True, text=True, env=_git_env()).stdout.strip()
+
+
+def test_world_fixture_leaves_a_repository_named_by_an_inherited_git_dir_untouched(tmp_path, monkeypatch):
+    """The 2026-10-17 incident, on a throwaway repository: GIT_DIR names a LINKED WORKTREE's gitdir and the fixture's plain `git init` re-initialised the whole repository as bare
+    (core.bare=true in the common config). The fixture must leave that repository's core.bare alone."""
+    victim, linked_gitdir = _linked_worktree_victim(tmp_path)
+    scratch = tmp_path / "w"
+    scratch.mkdir()
+    monkeypatch.setenv("GIT_DIR", str(linked_gitdir))
+    try:
+        w = World(scratch, monkeypatch, OPS_FILE.read_text())
+    finally:  # judged first even when building the fixture failed half-way: that is what a re-initialised victim looks like
+        assert _core_bare(victim) == "false", "the fixture's git re-initialised the repository named by the inherited GIT_DIR (core.bare=%s)" % _core_bare(victim)
+    assert w.reviewed and (w.origin / "HEAD").is_file()  # the fixture still built its own repositories
+
+
+def test_fleet_conftest_drops_git_dir_before_any_fixture_inherits_it(tmp_path):
+    """A pytest process started with GIT_DIR exported: the fleet conftest must keep a fixture's plain `git init` off that repository (throwaway repository only)."""
+    victim, linked_gitdir = _linked_worktree_victim(tmp_path)
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "conftest.py").write_text((FLEET / "tests" / "conftest.py").read_text())
+    (run / "test_x.py").write_text('import subprocess\n\ndef test_init(tmp_path):\n    subprocess.run(["git", "init", "-q", str(tmp_path / "repo")], check=True, capture_output=True)\n')
+    env = {**_git_env(), "GIT_DIR": str(linked_gitdir)}
+    r = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(run / "test_x.py")], capture_output=True, text=True, env=env, cwd=run)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert _core_bare(victim) == "false"
 
 
 def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path, monkeypatch):
