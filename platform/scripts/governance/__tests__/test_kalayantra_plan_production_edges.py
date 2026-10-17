@@ -56,6 +56,21 @@ def rows(plan, events):
     return {row["id"]: row for track in view["tracks"] for row in track["items"]}
 
 
+def code_acceptance(iid, *, post_deploy):
+    """(review + verdict events, proof) of a merged, deployed, independently accepted code item (A7 D-46)."""
+    head, merge = "a" * 40, "b" * 40
+    verdict = dict(kind="verdict", actor="stream-V", item=iid, result="ACCEPTED")
+    events = [dict(kind="item", item=iid, actor="stream-K", state="review", detail=f"PR #9999 @ {head}",
+                   ts="2026-10-16T15:01:30Z"),
+              dict(verdict, head=head, phase="pre_merge", ts="2026-10-16T15:02:00Z")]
+    if post_deploy:
+        events.append(dict(verdict, head=merge, phase="post_deploy", ts="2026-10-16T15:03:00Z"))
+    proof = dict(type="code", reviewed_head=head,
+                 pr=dict(number=9999, state="MERGED", headRefOid=head, mergeCommit={"oid": merge}),
+                 deploy=dict(deployed_sha="c" * 40, run_id=1, contains_merge=True))
+    return events, proof
+
+
 def production_spec(plan):
     consumer = item(plan, "KA-3a")
     assert "J-4d-pr3018" not in consumer["depends_on"], "full campaign closure is no longer the 1235 prerequisite"
@@ -122,26 +137,36 @@ def test_operation_item_cannot_replace_bound_receipt_with_live_query(tmp_path, m
     assert not events.exists()
 
 
-def test_ka3a_replaces_only_campaign_wait_and_cannot_complete_without_production_step():
+def test_ka3a_d46_implements_without_step_receipts_but_keeps_post_deploy_verdict():
+    """A7 D-46: a code item drops separate step receipts (the PR acceptance covers them) and its open upstream
+    becomes `activation_pending` (KA-3a's only production wait was that step, so none is left); the production protection that remains is the independent post-deploy verdict
+    (amendment §5: KA-3a declares a migration), which no step receipt or deploy replaces."""
     plan = model()
     production_spec(plan)
     events = accepted_inputs(plan, {"KA-3a", "J-4d-pr3018"})
     assert rows(plan, events)["KA-3a"]["deps_open_strict"] == []
-    for step in item(plan, "KA-3a")["steps"]:
-        if step != STEP:
-            events.append(dict(kind="item", item="KA-3a", actor="stream-K", state="done", step=step,
-                               evidence="synthetic accepted step", ts="2026-10-16T15:01:00Z"))
-    with pytest.raises(CompletionError, match="steps remain open: " + STEP):
-        guarded_done_event(plan, events, "KA-3a", "stream-K", {"status": "done"}, {})
+    accepted, proof = code_acceptance("KA-3a", post_deploy=True)
+    done = guarded_done_event(plan, events + accepted, "KA-3a", "stream-K", {"status": "done"}, proof)
+    assert STEP in item(plan, "KA-3a")["steps"] and not any(ev.get("step") for ev in events)
+    assert done["activation_pending"] == []
+    missing, proof = code_acceptance("KA-3a", post_deploy=False)
+    with pytest.raises(CompletionError, match="independent post-deploy verdict at merge commit is missing"):
+        guarded_done_event(plan, events + missing, "KA-3a", "stream-K", {"status": "done"}, proof)
 
 
-def test_k32_retains_sealed_production_output_dependency_despite_merged_code():
+def test_k32_d46_implements_with_sealed_production_output_pending_but_operation_kind_still_waits():
+    """K3-2 keeps depends_on J-5s. D-46: as a code item it closes implemented with J-5s `activation_pending`;
+    SR-A4-01 strict ordered completion still binds every non-code/artifact kind, which refuses while J-5s is open."""
     plan = model()
     consumer = item(plan, "K3-2")
     assert consumer["depends_on"] == ["J-5s", "K3-1"]
     assert consumer["steps"] == ["certification_mapping"]
     events = accepted_inputs(plan, {"K3-2", "J-5s"})
     assert rows(plan, events)["K3-2"]["deps_open_strict"] == ["J-5s"]
+    accepted, proof = code_acceptance("K3-2", post_deploy=False)
+    done = guarded_done_event(plan, events + accepted, "K3-2", "stream-K", {"status": "done"}, proof)
+    assert done["activation_pending"] == ["J-5s"]
+    consumer["completion_kind"] = "operation"
     with pytest.raises(CompletionError, match="dependencies remain open: J-5s"):
         guarded_done_event(plan, events, "K3-2", "stream-K", {"status": "done"}, {})
 
