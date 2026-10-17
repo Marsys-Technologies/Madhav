@@ -1,6 +1,6 @@
 ---
 artifact: V5_SMALLTEST_TEARDOWN_RUNBOOK
-version: "1.5"
+version: "1.6"
 status: DRAFT for steward review — nothing in it has been executed against any database
 date: 2026-10-16
 author: Stream A (Exec A), answering Codex rounds 2 and 3 and Stream B on PR 3098 (steward TEARDOWN-CODEX-2, TEARDOWN-B-ADD)
@@ -104,3 +104,10 @@ It proves the locks can be taken (on a direct connection), every refusal check p
 - **Look a run up (read-only) with `--lookup <run id>` or `--list-runs`**, never with a dry run: once a staged run exists, the dry run refuses (an active run) by design.
 - **Before the dispatch dry run**, run the read-only readbacks as the steward: `platform/scripts/v5_small_test_predispatch_readback.sql` (registry shape, dependencies lit and fresh, chart birth data, nothing of the small test exists, no resumption-ledger rows, concurrency cap, the writer-gap check, the role's privileges) and `platform/scripts/v5_small_test_registry_row_readback.sql`.
 - **Any prior generation '5.0' output refuses the dispatch** (proven small test or not): clear it with the teardown first. A staged run that was never executed is failed by the cockpit watchdog after 10 minutes and then carries no receipts and no output, so the teardown removes it; before the watchdog acts it is an active run and blocks both scripts by name. Execute within 10 minutes of staging or re-stage.
+
+## 8. Another chart's rows in the manifest and authority tables (v1.6, 2026-10-17; J-2a / SR-J2A-N18)
+*Change record 1.6: this section and the version bump; lines 1-106 are unchanged so existing line citations stay valid. No production operation is performed or authorized by this note.*
+
+Production holds a non-canonical chart in `kala_gochara_publication` (`1c826d5a-41cb-4450-b4dc-59d440e5f75a`, generation 4.0, unpublished candidate) and in `kala_gochara_authority`. Migration 1379's statement-level locks walked **every** chart in those tables, so any UPDATE or DELETE on them, even the teardown's zero-row DELETE, raised the N18 one-chart-per-transaction refusal (P0001) once the transaction was bound to the canonical chart. **Apply migration 1394 in the Kāla protected window and read it back before the dry run or the execution.** Readback: the two `0_` BEFORE triggers (`kala_gochara_publication_0_authority_statement_lock`, `kala_gochara_authority_0_statement_lock`) call `ka_gochara_governed_chart_statement_lock`, and four ENABLE ALWAYS AFTER triggers named `kala_gochara_{publication,authority}_9_touched_charts_{update,delete}_lock` exist (the migration's own postflight asserts both).
+
+From then on a statement locks only the charts in its own transition tables. The teardown passes with the other chart's rows present and leaves them untouched; a statement that touches two charts, or a non-canonical chart, is still refused (N18 / D-SCOPE) and rolls back. The script must **never** be made to delete or edit the other chart's rows (they belong to another campaign). Where a table's scoped row count is 0, prove the absence by SELECT and issue no DELETE.
