@@ -106,7 +106,7 @@ def inspect_rebuild(conn: Any, *, run_id: str, assets: str) -> dict:
     if assets.split(',') != run['plan']:
         raise ValueError('assets must exactly match the frozen ordered plan')
     return {'status':'PLAN_ONLY','run_id':run_id,'chart_id':str(run['chart_id']),
-            'planned_assets':run['plan'],'executed_assets':[],'dry_run_passed':False}
+            'planned_assets':run['plan'],'executed_assets':[],'dry_run_passed':None}
 
 
 def main(argv=None) -> int:
