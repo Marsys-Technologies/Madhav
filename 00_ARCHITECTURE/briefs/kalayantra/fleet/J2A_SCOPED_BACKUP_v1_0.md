@@ -1,10 +1,11 @@
 ---
 artifact: J2A_SCOPED_BACKUP
-version: "1.0"
+version: "1.1"
 status: REVIEW_CANDIDATE
 produced_on: 2026-10-17
-authority: surrogate ruling SR-J2A-BACKUP-SCOPE (DECISIONS_SURROGATE.jsonl, 2026-10-16T22:08Z); amends P01_REWORK_v1_0.md (paired logical backup) and the step-10 text of the small-test sitting checklist
+authority: surrogate rulings SR-J2A-BACKUP-SCOPE (DECISIONS_SURROGATE.jsonl, 2026-10-16T22:08Z) and SR-J2A-BACKUP-POSITIVE (2026-10-17T01:50Z); amends P01_REWORK_v1_0.md (paired logical backup) and the step-10 text of the small-test sitting checklist
 changelog:
+  - "1.1: SR-J2A-BACKUP-POSITIVE. The 01:48Z production capture failed because the full-schema dump locked relations the backup login (amjis_app) cannot read (four planner_* tables owned by purna_inquiry_owner). The scoped dump now names ONLY the scope plus its foreign-key parents, each with its own -t (definitions and data), so nothing else is locked or dumped; the restore target is built from the governed L1 bundle schema instead of from a production schema dump; a guarded --exclude-table fallback is recorded in capture.json with each table's owner. No grant was widened."
   - "1.0: scoped small-test backup (--scope small_test): reviewed scope file + digest, SQL-aggregate measurement, parallel directory dump, restore proof, validity window, dispatch check."
 ---
 
@@ -19,9 +20,9 @@ The full form (`--scope full`, the default) is unchanged and remains available; 
 
 | | Full (`--scope full`) | Scoped (`--scope small_test`) |
 |---|---|---|
-| Schema (tables, functions, guard triggers, FKs, extensions) | archived and restored | archived and restored (the whole schema) |
+| Schema (tables, functions, guard triggers, FKs, extensions) | archived and restored | **the definitions of the same tables only** (with their indexes, constraints, triggers, owned sequences); functions, types and extensions are not archived |
 | Row data | every table | **the tables the small test can write, plus their foreign-key parents** |
-| Restore proof | every table's count + content hash + sequences equal | the same, over exactly that data set |
+| Restore proof | every table's count + content hash + sequences equal | the same, over exactly that data set, into a target built from the governed L1 bundle schema (§3) |
 | Receipt wording | "complete logical database" | "SCOPED logical backup, not a complete database" |
 | Recovers a table the test was never meant to write but wrote | yes | **no** (no backup detects an unexpected write either) |
 
@@ -65,11 +66,17 @@ overwrites and the teardown deletes, and the insert-only global Gochara tables n
 
 * **Capture** (`--operation snapshot --scope small_test`): `REPEATABLE READ READ ONLY`, `pg_export_snapshot()`; global
   refusals (foreign tables, large objects — both measured as zero on production, prerequisites receipt) ; catalog refusals (§2.4);
-  size refusal; **measurement**; `pg_dump --format=directory --jobs=4 --snapshot=<id> --no-owner --no-privileges` with
-  `--exclude-table-data` for every other user table (so the archive carries the full schema and only the data set's rows);
-  sequences re-measured after the dump (the only state a snapshot does not freeze); the archive's table-of-contents must list
-  data for **exactly** the data set (an exclusion that did not take effect refuses); every archive file is SHA-256'd and the sorted
-  manifest is the archive digest.
+  size refusal; **measurement**; `pg_dump --format=directory --jobs=4 --snapshot=<id> --no-owner --no-privileges --strict-names`
+  with **one quoted `--table="schema"."name"` per relation of the data set and nothing else** (SR-J2A-BACKUP-POSITIVE: pg_dump
+  locks and reads only the named relations, so a relation the backup login cannot read — the `planner_inquiry_*` /
+  `planner_managed_prashna_jobs` tables — is never touched, and no exclusion list is needed); sequences re-measured after the dump
+  (the only state a snapshot does not freeze); the archive's table-of-contents must list **both the definition and the data of
+  exactly** the data set (anything else refuses: `archive data entries differ…` / `archive definitions differ…`); every archive
+  file is SHA-256'd and the sorted manifest is the archive digest.
+* **Guarded fallback (`--exclude-table`)**: `dump_excludes` in the scope file (absent today, so none is passed) names a relation
+  pg_dump must be told to skip. At capture it must lie **outside the scope and the foreign-key closure and have no foreign-key
+  edge to or from them**, else the capture refuses (`dump exclusion is inside the scope…` / `…has a foreign-key edge…`); each one
+  is written to `scope.dump_excludes` in `capture.json` with its catalog owner.
 * **Measurement (ruling condition 2):** no server-side sort and no row transfer. Per table one scan:
   `count(*)` and two sums of the 64-bit halves of `sha256(row_to_json(row))`; the receipt stores
   `sha256("rows:sum1:sum2")` in the existing `{rows, sha256}` shape and names `measurement_method =
@@ -79,9 +86,24 @@ overwrites and the teardown deletes, and the insert-only global Gochara tables n
   snapshot). Alternative: keep both passes (a third of the source volume, no signal).
 * **Restore proof** (`--operation restore-verify --scope small_test`, same label): validates the capture (scope digest equal to
   the reviewed file's, file hashes, window, provenance — the BG-01 checks are shared with the full form), creates
-  `ky_restore_<label>` on the loopback cluster, `pg_restore --exit-on-error --single-transaction`, measures the receipt's data set
-  and sequences, requires exact equality, drops the target, and only then writes `restore.json`
-  (`ky.smalltest_restore/2`: `restore_verified`, `target_removed`, `scope_sha256`, `validity`).
+  `ky_restore_<label>` on the loopback cluster, **builds its base schema, drops the data-set tables from it, then**
+  `pg_restore --exit-on-error --single-transaction` of the archive, measures the receipt's data set and sequences, requires exact
+  equality, drops the target, and only then writes `restore.json` (`ky.smalltest_restore/2`: `restore_verified`, `target_removed`,
+  `scope_sha256`, `validity`, `restore_base`).
+* **(I) INTERPRETATION J2A-B1 — restore base (SR-J2A-BACKUP-POSITIVE).** Scoped definitions alone cannot be restored: the
+  archived guard triggers call functions (and columns use types and extensions) that a `-t` dump does not carry. The base is
+  therefore the **governed L1 bundle's `schema.sql`** (`run/canonical_l1/20261016T135745Z/`, 475 tables, sha256
+  `7e15492f09d54b3f4c49e05afe4237b70254d59740e6a1222a0aa4277899700e`, checked against the bundle manifest before use; mode-700
+  directory, read in place, never copied or printed), **not** a dump of production's catalog. It is applied the way the bundle's own
+  strict restore applied it (the two psql-only restrict/unrestrict lines dropped; the empty `public` schema dropped; the dump's
+  `CREATE SCHEMA public`; the five extensions `vector, pgcrypto, pg_trgm, uuid-ossp, btree_gist`; the rest). The archive's own
+  definitions then replace the base's copy of exactly the data set (`DROP TABLE … CASCADE`, then `pg_restore`), so the proof tests
+  the archive's definitions, not the bundle's. `restore.json` records the base's path, sha256 and migration list. Alternative:
+  `--data-only` into the base's own tables (does not test the archived definitions).
+* **(I) INTERPRETATION J2A-B2 — migrations since the bundle.** `SCOPED_RESTORE_BASE_MIGRATIONS` (file, sha256, applied in order after
+  the bundle) is **empty**: the production migration state is not readable from this change. A function, type or column the archive
+  needs and the base lacks makes the restore **fail before any receipt**; the fix is a reviewed entry in that list. Checked locally:
+  every scope table, and every function a trigger on them calls, is in the bundle.
 * **Fail-closed (condition 3):** `backup_taken` is written only with the capture receipt, after the archive, the table of contents
   and the measurements are validated; `restore_verified` only after exact equality and target removal. A failed client exit,
   an unmeasured or different table, a changed sequence, a scope or file-hash difference, an existing target or evidence file
@@ -97,6 +119,8 @@ data (tens of MB expected) 1–5 minutes, local restore and proof under 2 minute
 worst case**. The real byte count of the 35 tables is not known (none is among the ten largest relations; each is below
 0.52 GB including indexes): if the budget refusal fires, the step stops with that number and the cockpit decides — nothing is
 dumped. Local rehearsal on the full migration-derived schema (475 tables, pgvector, guard triggers): capture 0.4 s, restore 1.1 s.
+With the governed bundle as source stand-in and a login that cannot read an out-of-scope table: capture 0.1 s, restore (base build
+included) 1.1 s, counts and digests equal.
 
 ## 5. Validity window (condition 4)
 
@@ -127,7 +151,11 @@ proofs for dispatch altogether.
 5. If the window lapses before dispatch, repeat 2–4 with a new label. Refusal text names what to do: *scope table missing*
    (production lacks a reviewed table: fix the scope by review), *trigger … writes outside the scope* / *action … reaches an
    unreviewed table* (a write path the review missed: extend the scope by review, never bypass), *over the budget* (§4),
-   *capture scope differs from the reviewed scope; recapture required* (the scope changed after capture).
+   *capture scope differs from the reviewed scope; recapture required* (the scope changed after capture), *dump exclusion …*
+   (§3 fallback declared against the scope or an FK-linked table: remove it), *restore base schema … differs / is not readable*
+   (the governed bundle moved: stop and raise it; do not point the script at another file). A pg_dump failure still withholds the
+   client's text; `permission denied for table …` there means a scope or closure relation is unreadable to the login — never widen
+   grants to fix it; report it.
 
 ## 7. Test map (one oracle per claim)
 
@@ -136,7 +164,11 @@ proofs for dispatch altogether.
 | every write target is in scope; detector reads false | `test_backup_v5_small_test_scoped.py` scope-pin tests |
 | digest pinned where the executor reads it | `test_policy_pins_the_reviewed_scope_digest…` |
 | trigger targets read from function bodies | `test_trigger_write_targets_come_from_the_function_body` (the migrations' real bodies) |
-| archive holds exactly scope + FK parents; restores equal | `test_p01_smalltest_backup_scoped.py::test_scoped_archive_holds_exactly…` (real `pg_dump`/`pg_restore`) |
+| archive holds exactly scope + FK parents (definitions and data); restores equal | `test_p01_smalltest_backup_scoped.py::test_scoped_archive_holds_exactly…` (real `pg_dump`/`pg_restore`) |
+| another role's unreadable table outside the scope no longer breaks the dump | `…::test_a_table_outside_the_scope_that_the_login_cannot_read_does_not_break_the_dump` (real second login) |
+| the dump names exactly the data set, one quoted `-t` each | `test_backup_v5_small_test_scoped.py::test_dump_names_exactly_the_data_set…` |
+| guarded exclusion: outside scope/closure, no FK edge, owner recorded | `…::test_a_dump_exclusion_is_a_guarded_fallback…` |
+| restore base is the hash-checked governed bundle, bootstrapped as its own restore ran; migrations pinned | `test_restore_base_is_the_hash_checked…`, `test_restore_base_migrations_are_applied…` |
 | measurement order-independent and change-sensitive | `…::test_sql_measurement_is_order_independent…` |
 | unhonourable scope refused before any dump | `…::test_scope_the_database_cannot_honour…` |
 | sequence drift / leaked data / tampered file / failed client | the four matching tests in the same DB file |
@@ -150,6 +182,12 @@ proofs for dispatch altogether.
 * Trigger detection is first-level (a trigger calling a function that writes is not seen); the three known trigger functions
   are covered by test and the catalog run on the migration-derived schema passed. A `SECURITY DEFINER`/nested writer would need review.
 * Production has 507 tables against 475 on the migration-derived schema; a foreign-key parent or trigger among the extra 32 is
-  possible and would refuse the capture by name (fail-closed) rather than widen it silently.
+  possible and would refuse the capture by name (fail-closed) rather than widen it silently. A foreign-key parent the login cannot
+  read would now fail the dump on that parent (and only it) with the same withheld text.
+* Row-level security: `public.charts` (a closure parent) has it enabled in the bundle. pg_dump errors, and the SQL measurement would
+  silently see filtered rows, for a login that is neither the owner nor `BYPASSRLS`; the earlier full-form backups ran under the
+  same login. Not changed here; the local rehearsal needed `BYPASSRLS` for the stand-in login.
+* The restore base is the bundle as of 2026-10-16T22:55Z (J2A-B1/B2); a production migration newer than it that the scope tables
+  depend on fails the restore until pinned in `SCOPED_RESTORE_BASE_MIGRATIONS`.
 * Materialized views are refreshed during restore over mostly empty tables; a view that errors on empty inputs would fail the
   restore (loudly, before any receipt).
