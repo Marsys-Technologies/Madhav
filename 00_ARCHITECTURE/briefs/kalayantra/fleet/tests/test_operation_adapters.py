@@ -197,6 +197,8 @@ class Bench:
         self.launched, self.event_log = [], {}
         self.wrapper = fixture_wrapper
         X.git, X.capabilities, X.run_group = self.git, lambda _: dict(ALL_CAPS), self.process
+        # The writer-digest overlay (J-2a M12) has its own oracles in test_executor_overlay.py; here `process` is the one wrapper.
+        X.apply_generated_overlay = lambda root, commit, env, timeout=600: ({"schema": "ky.generated_overlay/1", "source_sha": commit, "files": {}}, "")
         self.run = X.RUN
 
     def process(self, argv, cwd, env, timeout):

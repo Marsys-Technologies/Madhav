@@ -316,6 +316,8 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             if expected == "COMMITTED_AWAITING_ABSENCE": r["status"] = "AWAITING_ABSENCE"
         else:
             r.update(status="FAILED", reason="bound teardown proof missing; reconcile transaction outcome")
+    overlay = overlay_proofs().pop(str(req.get("operation_id")), None)
+    if overlay: r["generated_overlay"] = overlay                 # the proof the executor itself measured, never the child's words
     if extra: r.update(extra)
     with _lock: (REC / f"{name}.json").write_text(json.dumps(r, indent=1))
     log(f"{name} {status} {reason}")
@@ -520,6 +522,32 @@ def lane_qualification(req: dict) -> list[dict]:
     return bound
 
 
+def overlay_proofs(_store: dict = {}) -> dict:
+    """In-memory hand-off of each operation's generated-overlay proof from execute()/execute_lane() to receipt(); the
+    child's output is never altered (a reader parses it whole) and never trusted for the proof."""
+    return _store
+
+
+def apply_generated_overlay(root: pathlib.Path, commit: str, env: dict, timeout: int = 600) -> tuple[dict | None, str]:
+    """A5 D-33: the machine-owned writer-digest file is deliberately non-authoritative on main; CI/deploy overlay bytes generated from
+    the reviewed commit. Regenerate it in `root` (a tree of `commit`) with the repository's own generator — the narrowest subset of
+    ci_generated.py that covers this file, because the rest of `generate` needs node and npm, which this host does not carry — then
+    verify with the generator's own --check in a second process. Returns (proof, "") or (None, reason); the caller fails closed."""
+    sidecar = root / "platform/python-sidecar"; digests = "platform/src/generated/nirmana-writer-digests.json"
+    child = {k: v for k, v in env.items() if k in {"PATH", "HOME", "LANG", "LC_ALL", "TZ", "TMPDIR", "SE_EPHE_PATH"}}
+    child["PYTHONDONTWRITEBYTECODE"] = "1"                      # a digest generator needs no credential, cloud or database reach
+    module = [PY, "-m", "pipeline.orchestrator.provenance_inventory"]
+    try:
+        for step, argv in (("generate", module), ("check", module + ["--check"])):
+            p = run_group(argv, sidecar, child, timeout)
+            if p.returncode: return None, f"writer-digest {step} exited {p.returncode}: " + redact((p.stderr or p.stdout or "")[-300:])
+        files = {digests: digest_bytes((root / digests).read_bytes())}
+    except (OSError, subprocess.SubprocessError) as e:
+        return None, f"{type(e).__name__}: {redact(str(e))[:300]}"
+    manifest = {"schema": "ky.generated_overlay/1", "source_sha": commit, "files": files}
+    return dict(manifest, manifest_sha256=digest_bytes(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())), ""
+
+
 def lane_child_env(req: dict, scratch: pathlib.Path) -> dict:
     env = {k: v for k, v in os.environ.items() if k in {"PATH", "LANG", "LC_ALL", "TZ"}}
     env.update(KY_OPERATION_REQUEST=json.dumps(req, sort_keys=True, separators=(",", ":")),
@@ -553,6 +581,9 @@ def execute_lane(req: dict, op: dict) -> tuple[int, str]:
                     (staged / name).write_bytes((REC / name).read_bytes())
         env = lane_child_env(req, scratch)
         env["PYTHONPATH"] = str(source / "platform/python-sidecar")
+        overlay, why = apply_generated_overlay(source, req["reviewed_commit"], env)
+        if overlay is None: return 126, "generated overlay refused: " + why
+        overlay_proofs()[req["operation_id"]] = overlay
         adapter = op.get("lane_readback", op.get("lane_dry_run"))["script"]
         p = run_group([PY, str(source / adapter), "--dry-run", "--lane-target", json.dumps(req["lane_target"], sort_keys=True)],
                       source, env, min(int(req.get("timeout_s", 900)), MAX_TIMEOUT))
@@ -651,6 +682,9 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
         elif script.endswith(".py"): argv = [PY, str(wt / script)] + args
         else: argv = ["bash", str(wt / script)] + args
         if not op.get("python_module") and not (wt / script).exists(): return 127, f"script {script} does not exist at {req['reviewed_commit']}"
+        overlay, why = apply_generated_overlay(wt, req["reviewed_commit"], env)
+        if overlay is None: return 126, "generated overlay refused: " + why
+        overlay_proofs()[oid] = overlay
         p = run_group(argv, cwd, env, timeout)
         return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
     finally:

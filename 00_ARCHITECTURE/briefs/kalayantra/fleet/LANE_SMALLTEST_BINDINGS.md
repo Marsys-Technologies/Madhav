@@ -44,6 +44,11 @@ this route does not manufacture such acceptance. Alternative: perform backups,
 restore databases, stage persistent runs, launch jobs or authorize populated
 teardown during qualification; those effects exceed this dry-run task.
 
+**(I) INTERPRETATION J2A-L1:** the backup kinds now also accept the request arg `scope` (`small_test`); the lane child receives
+it as `--scope small_test --dry-run`, which prints the plan with the reviewed scope digest and validity window and touches nothing.
+The scoped backup itself is specified in `J2A_SCOPED_BACKUP_v1_0.md`. Alternative: leave the lane unaware of the scope (then the
+qualification run could not show the digest an operator will see).
+
 **(I) INTERPRETATION J1A-I2:** the existing enabled `readback_sql` kind, with the
 same lane selector and `args={}`, is a fixed independent whole-database table
 content/sequence measurement. It accepts no SQL file. Alternative: allocate a

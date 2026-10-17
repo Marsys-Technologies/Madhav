@@ -42,6 +42,8 @@ def test_executor_passes_only_operation_specific_connection(tmp_path,monkeypatch
         calls.append(env)
         return SimpleNamespace(returncode=0,stdout='',stderr='')
     monkeypatch.setattr(executor,'run_group',run_group)
+    # The writer-digest overlay (J-2a M12) has its own oracles in test_executor_overlay*.py; this test pins only the connection.
+    monkeypatch.setattr(executor,'apply_generated_overlay',lambda root,commit,env,timeout=600:({'schema':'ky.generated_overlay/1','source_sha':commit,'files':{}},''))
     op=json.loads((FLEET/'executor_ops.json').read_text())['ops'][kind]
     assert executor.execute({'operation_id':'fixture','reviewed_commit':'a'*40,'args':{}},op)[0]==0
     assert calls[0]['DATABASE_URL']==credential

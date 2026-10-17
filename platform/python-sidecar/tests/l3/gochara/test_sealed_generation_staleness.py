@@ -128,6 +128,48 @@ def test_completeness_violation_exit4(capsys) -> None:
     assert any("conjunction" in r and "partition_without_inventory" in r for r in report["reasons"])
 
 
+@pytest.mark.parametrize("chart,generation", [(CHART, "5.0"), ("11111111-1111-1111-1111-111111111111", "5.1")])
+def test_snapshot_read_binds_both_requested_chart_and_generation(chart, generation):
+    """s05: a digest from a different generation cannot establish freshness."""
+    def scoped(sql, params):
+        # A matching seal/manifest is checked before reading its input snapshot.
+        if "FROM public.ka_gochara_generation_seal" in sql:
+            assert params == [chart, generation]
+            assert "p.manifest_id = s.manifest_id" in sql
+            assert "p.chart_id = s.chart_id" in sql and "p.generation = s.generation" in sql
+            return [(True,)]
+        if "FROM public.ka_gochara_search_input_snapshot" in sql:
+            assert " ".join(sql.split()).endswith("WHERE chart_id = %s AND generation = %s")
+            assert params == [chart, generation]
+            return [SNAP_ROW]
+        if "ka_gochara_search_l1_facts_digest" in sql:
+            assert params == [chart, list(SNAP_ROW[0])]
+            return [("L1SNAP",)]
+        if "ka_gochara_search_dasha_digest" in sql:
+            assert params == [chart, list(SNAP_ROW[1])]
+            return [("DASHASNAP",)]
+        assert "ka_gochara_search_completeness_violations" in sql
+        assert params == [chart, generation]
+        return []
+
+    assert staleness.check_staleness(FakeConn(scoped), chart, generation)["status"] == "fresh"
+
+
+def test_every_completeness_violation_is_reported_in_order(capsys):
+    """s06: reporting only the first violation hides independent stale inputs."""
+    violations = [
+        ("conjunction", "partition_without_inventory", "no inventory"),
+        ("marriage", "input_digest_drift", "consumed facts changed"),
+    ]
+    assert staleness.run(FakeConn(make_router(violations=violations)), CHART, GENERATION) == 4
+    report = __import__("json").loads(capsys.readouterr().out)
+    assert report["status"] == "stale"
+    assert report["reasons"] == [
+        "completeness violation [conjunction] partition_without_inventory: no inventory",
+        "completeness violation [marriage] input_digest_drift: consumed facts changed",
+    ]
+
+
 def test_missing_snapshot_raises() -> None:
     conn = FakeConn(make_router(snap=None))
     with pytest.raises(staleness.SnapshotMissing):
