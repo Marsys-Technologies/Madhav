@@ -830,6 +830,14 @@
       "include": [
         "src/tools/retrieval/register_gochara_windows_kcert_assessment*.test.ts"
       ]
+    },
+    "governance-readback-tests-j4d": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/retrieval/register_gochara_contact_ledger*.test.ts",
+        "src/tools/retrieval/register_gochara_windows_governed_gate*.test.ts"
+      ]
     }
   }
 }
