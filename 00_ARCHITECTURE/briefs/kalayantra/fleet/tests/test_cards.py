@@ -1,5 +1,7 @@
-"""B-0c role cards: measured size, coverage cross-references, record templates against their schemas, and one
-check (with its negative) per round-1 review finding of the cards area (C-01, C-02, C-03, N-02 … N-08).
+"""Role cards under plan v3.0 (Amendment A8): the authority header, the byte proxy, record templates against their
+schemas, and one check (with its negative) per round-1 review finding of the cards area (C-01, C-02, C-03, N-03 … N-08).
+A8 §4 retired the COVERAGE matrices, the token-measurement binding and the cards' restatements of CLAUDE.md §I/§N;
+the checks for those are gone and a test guards that they stay gone.
 
 A card is prose, so most checks here read text. Each one names the rule it looks for and has a negative case
 that shows the check can fail; none of them proves that a model obeys the rule (that is the rehearsal's job).
@@ -24,8 +26,8 @@ import kyschema  # noqa: E402
 import kyveto  # noqa: E402
 
 CARDS_DIR = FLEET / "cards"
-COVERAGE = CARDS_DIR / "COVERAGE_BOOTSTRAP.md"
-MEASUREMENT = CARDS_DIR / "TOKEN_MEASUREMENT.json"
+HEADER = "Authority: plan v3.0 §C; this card carries role-specific instructions only"   # A8: first body line of every card
+RETIRED = {"KA": range(8, 17), "PA": range(6, 15), "AD": range(8, 13)}   # A8 §4: the lines that restated CLAUDE.md §I/§N
 PLAN = FLEET.parent / "KALAYANTRA_RELAUNCH_PLAN_v2_7.md"
 AGENT = REPO / ".claude" / "agents" / "kalayantra-owner-surrogate.md"
 PREFIX = {"BOOTSTRAP": "BS", "BOOTSTRAP_REVIEWER": "BR", "FIXTURE_BUILDER": "FB", "FIXTURE_VERIFIER": "FV",
@@ -71,8 +73,8 @@ def rule_line(text, needle):
 # the card set and its front matter
 # --------------------------------------------------------------------------------------------------------------
 def test_the_card_set_is_exactly_the_eight_roles():
-    found = sorted(p.stem for p in CARDS_DIR.glob("*.md") if not p.name.startswith("COVERAGE"))
-    assert found == sorted(ALL_PREFIX)
+    found = sorted(p.stem for p in CARDS_DIR.glob("*.md"))
+    assert found == sorted(ALL_PREFIX), "only the eight role cards; no coverage matrix (A8 §4)"
 
 
 @pytest.mark.parametrize("name", sorted(ALL_PREFIX))
@@ -83,120 +85,33 @@ def test_front_matter_and_line_ids(name):
     meta = dict(ln.split(": ", 1) for ln in head.group(1).splitlines())
     assert list(meta) == ["card", "version", "role", "model", "effort", "plan", "status"]
     assert meta["card"] == name and meta["version"] == "2.7" and meta["plan"] == PLAN.name
+    assert text[head.end():].split("\n", 1)[0] == HEADER, "the A8 authority line is the first body line"
     ids = line_ids(text)
-    assert ids == ["%s-%02d" % (ALL_PREFIX[name], n) for n in range(1, len(ids) + 1)] and ids, ids
+    numbers = [int(i.split("-")[1]) for i in ids]
+    assert ids and numbers[0] == 1 and numbers == sorted(set(numbers)), ids
+    retired = {"%s-%02d" % (ALL_PREFIX[name], n) for n in RETIRED.get(ALL_PREFIX[name], ())}
+    assert not retired & set(ids), "a retired CLAUDE.md-restating line is back: %s" % sorted(retired & set(ids))
     assert {m.group(1) for m in ID.finditer(text)} == {ALL_PREFIX[name]}, "a card cites only its own line ids"
 
 
 # --------------------------------------------------------------------------------------------------------------
-# (a) measured tokens, bound to the bytes on disk     (b) the byte target
+# the byte target (the token-measurement binding to TOKEN_MEASUREMENT.json is retired with the qualification
+# machinery, A8 §4; the record stays as history). The A8 header line is not counted against a card's budget.
 # --------------------------------------------------------------------------------------------------------------
-def measurement_problems(cards, record):
-    """cards: {name: bytes}; record: the parsed TOKEN_MEASUREMENT.json (or None). One line per card that is not
-    proven ≤ the cap: no record, a record of other bytes, an unknown count, or a count over the cap."""
-    if not isinstance(record, dict):
-        return ["no measurement record"]
-    table = record.get("cards") if isinstance(record.get("cards"), dict) else record
-    out = []
-    for name, data in sorted(cards.items()):
-        rec = table.get(name + ".md", table.get(name))
-        if not isinstance(rec, dict):
-            out.append(name + ": never measured")
-        elif rec.get("sha256") != hashlib.sha256(data).hexdigest():
-            out.append(name + ": changed since it was measured")
-        elif not isinstance(rec.get("tokens"), int) or isinstance(rec.get("tokens"), bool):
-            out.append(name + ": tokens unknown")
-        elif rec["tokens"] > TOKEN_CAP:
-            out.append("%s: %d tokens exceeds the cap of %d" % (name, rec["tokens"], TOKEN_CAP))
-    return out
-
-
-@pytest.mark.parametrize("name", sorted(PREFIX))
-def test_a_every_card_has_a_current_measurement_at_or_under_the_cap(name):
-    """Every card has a measurement record bound to its current bytes, at or under the cap (written by kycardtokens.py)."""
-    cards = {name: (CARDS_DIR / (name + ".md")).read_bytes()}
-    try:
-        record = json.loads(MEASUREMENT.read_text())
-    except (OSError, ValueError):
-        record = None
-    problems = measurement_problems(cards, record)
-    # Only these Wave-0 bytes may await cockpit measurement; any further edit fails the gate.
-    if name == "OWNER_SURROGATE" and problems == ["OWNER_SURROGATE: changed since it was measured"] and \
-            hashlib.sha256(cards[name]).hexdigest() == "8199fd1882df7cfbcb7e7a4754314ffb8e33a65425395e96b4bf1215650616d0":
-        pytest.xfail("R19a/Wave-0 changed the surrogate card; cockpit must remeasure with the real program (barred in this job)")
-    assert problems == []
-
-
-def test_a_measurement_check_refuses_missing_stale_unknown_and_oversized_records():
-    data = b"card bytes"
-    good = {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data), "tokens": 1500}
-    assert measurement_problems({"X": data}, {"cards": {"X.md": good}}) == []
-    assert measurement_problems({"X": data}, {"X": good}) == []
-    assert measurement_problems({"X": data}, None) == ["no measurement record"]
-    assert measurement_problems({"X": data}, {"cards": {}}) == ["X: never measured"]
-    assert measurement_problems({"X": data + b"!"}, {"cards": {"X.md": good}}) == ["X: changed since it was measured"]
-    for tokens in ("unknown", None, True, 1499.0):
-        assert measurement_problems({"X": data}, {"cards": {"X.md": dict(good, tokens=tokens)}}) == ["X: tokens unknown"]
-    assert measurement_problems({"X": data}, {"cards": {"X.md": dict(good, tokens=1501)}}) == [
-        "X: 1501 tokens exceeds the cap of 1500"]
+def card_bytes(name):
+    return (CARDS_DIR / (name + ".md")).stat().st_size - len((HEADER + "\n").encode("utf-8"))
 
 
 @pytest.mark.parametrize("name", sorted(PREFIX))
 def test_b_card_is_within_the_byte_target(name):
-    size = (CARDS_DIR / (name + ".md")).stat().st_size
+    size = card_bytes(name)
     cap = 5200 if name == "OWNER_SURROGATE" else BYTE_CAP  # R19a job's explicit surrogate-only limit
     assert size <= cap, "%s is %d bytes" % (name, size)
 
 
 @pytest.mark.parametrize("name", sorted(CAMPAIGN_PREFIX))
 def test_b_campaign_card_is_within_the_accepted_byte_proxy(name):
-    assert (CARDS_DIR / (name + ".md")).stat().st_size <= CAMPAIGN_BYTE_CAP
-
-
-def campaign_coverage_problems(text, card_ids):
-    """Check references/explicit exceptions, not whether prose substantively carries a MUST."""
-    out, gaps, cited, count = [], set(), set(), 0
-    for ln in text.splitlines():
-        if not re.match(r"\| \d+ \|", ln):
-            continue
-        cells = [c.strip() for c in ln.strip("|").split("|")]
-        if len(cells) != 6:
-            out.append("wrong column count")
-            continue
-        count += 1
-        if cells[0] != str(count):
-            out.append("row numbering")
-        if not re.search(r"\b(?:R|P|D|C|G|A|J)\b.*:\d+", cells[1]):
-            out.append("source without section/line")
-        for prefix, cell in zip(("KA", "PA", "AD"), cells[3:]):
-            if cell.startswith("GAP — "):
-                gaps.add(cells[0] + "." + prefix)
-            elif cell.startswith("N/A — "):
-                continue
-            elif not ID.search(cell):
-                out.append("unexplained cell")
-            for cid in ID.finditer(cell):
-                if cid.group(1) != prefix or cid.group(0) not in card_ids.get(prefix, ()):
-                    out.append("invalid card line: " + cid.group(0))
-                cited.add(cid.group(0))
-    if count < 100:
-        out.append("missing obligation rows")
-    expected = {cid for ids in card_ids.values() for cid in ids}
-    if cited != expected:
-        out.append("uncited or unknown rule")
-    footer = re.search(r"(?m)^GAP cells \((\d+)\): (.*)$", text)
-    if not footer or int(footer[1]) != len(gaps) or set(re.findall(r"\d+\.(?:KA|PA|AD)", footer[2])) != gaps:
-        out.append("incorrect GAP footer")
-    return out
-
-
-def test_c_campaign_coverage_references_and_honest_exceptions():
-    text = (CARDS_DIR / "COVERAGE.md").read_text(encoding="utf-8")
-    ids = {prefix: line_ids(card_text(name)) for name, prefix in CAMPAIGN_PREFIX.items()}
-    assert campaign_coverage_problems(text, ids) == []
-    assert campaign_coverage_problems(text.replace("KA-08", "KA-99", 1), ids)
-    assert campaign_coverage_problems(text.replace("| N/A —", "| N/A", 1), ids)
-    assert campaign_coverage_problems(text.replace("GAP cells (", "GAP cells:", 1), ids)
+    assert card_bytes(name) <= CAMPAIGN_BYTE_CAP
 
 
 def campaign_boundary_problems(text, rule):
@@ -205,10 +120,9 @@ def campaign_boundary_problems(text, rule):
         command = ("python3 -B -m pytest <packet test paths> -p no:cacheprovider "
                    "--basetemp=<absolute job scratch>/pytest")
         return [] if command in line and "paths written out" in line else ["invalid pytest invocation"]
-    required = ("verify locally", "request/consume credential-free executor evidence",
-                "independent production readback", "no production access/own acceptance")
-    builder_readback = re.search(r"(?i)(?:perform(?:s)?|run|verify|do) (?:the )?production readback", line)
-    return [] if all(part in line for part in required) and not builder_readback else [
+    # KA-04: the builder has no production access, and no KARAKA line may ask the builder to do the production readback itself
+    builder_readback = re.search(r"(?i)(?:perform(?:s)?|run|verify|do) (?:the )?production readback", text)
+    return [] if "production access" in line and not builder_readback else [
         "builder production boundary absent or contradictory"]
 
 
@@ -218,138 +132,19 @@ def test_cr04_campaign_verifier_invokes_pytest_and_rejects_the_broken_command():
     assert campaign_boundary_problems(text.replace("-m pytest ", "", 1), "PA-05")
 
 
-def test_cr01_builder_consumes_independent_readback_and_rejects_builder_production_duty():
+def test_cr01_builder_has_no_production_access_and_rejects_builder_production_duty():
     text = card_text("KARAKA")
-    assert campaign_boundary_problems(text, "KA-13") == []
-    old = ("- KA-13 Migrations verified applied locally + production readback; never edit applied SQL.")
-    assert campaign_boundary_problems(text.replace(rule_line(text, "KA-13"), old), "KA-13")
-    assert campaign_boundary_problems(text.replace(rule_line(text, "KA-13"),
-                                                   rule_line(text, "KA-13") + " Perform production readback yourself."),
-                                      "KA-13")
+    assert campaign_boundary_problems(text, "KA-04") == []
+    line = rule_line(text, "KA-04")
+    assert campaign_boundary_problems(text.replace(line, line.replace("production access/", "", 1)), "KA-04")
+    assert campaign_boundary_problems(text.replace(line, line + " Perform production readback yourself."), "KA-04")
 
 
-# --------------------------------------------------------------------------------------------------------------
-# (c) the coverage table and the cards cite each other exactly; its honesty rules (N-02)
-# --------------------------------------------------------------------------------------------------------------
-COLUMNS = ("BS", "BR", "FB", "FV", "OS")
-
-
-def coverage_rows(text):
-    """{row number: {column: cell}} of the main table"""
-    rows = {}
-    for ln in text.splitlines():
-        m = re.match(r"\| (\d+) \|", ln)
-        if m:
-            cells = [c.strip() for c in ln.strip().strip("|").split("|")]
-            assert len(cells) == 3 + len(COLUMNS), "row %s has %d cells" % (m.group(1), len(cells))
-            assert int(m.group(1)) not in rows, "row %s twice" % m.group(1)
-            rows[int(m.group(1))] = dict(zip(COLUMNS, cells[3:]))
-    return rows
-
-
-def carriers(text):
-    """{X-id: (repository-relative file, symbol)} of the 'Executable checks' table"""
-    out = {}
-    for ln in text.splitlines():
-        m = re.match(r"\| (X-\d{2}) \| `([^`]+)` \| `([^`]+)` \|", ln)
-        if m:
-            assert m.group(1) not in out
-            out[m.group(1)] = (m.group(2), m.group(3))
-    return out
-
-
-def coverage_problems(text, card_ids):
-    """card_ids: {prefix: [ids]}. Every way the table can mis-state what carries a rule."""
-    out, rows, known = [], coverage_rows(text), carriers(text)
-    cited = {m.group(0) for m in ID.finditer(text)}
-    for cid in sorted(cited):
-        if cid not in card_ids.get(cid[:2], ()):
-            out.append("%s is cited but is not a line of its card" % cid)
-    for prefix, ids in sorted(card_ids.items()):
-        for cid in ids:
-            if cid not in cited:
-                out.append("%s is a card line the table never cites" % cid)
-    if re.search(r"\b(?:BS|BR|FB|FV|OS)-\d{2}\s*(?:…|–|—|-|to)\s*(?:(?:BS|BR|FB|FV|OS)-)?\d{2}\b", text):
-        out.append("a range of line ids hides which lines are cited")
-    gaps = set()
-    for n, row in sorted(rows.items()):
-        for col, cell in row.items():
-            where = "%d.%s" % (n, col)
-            if not cell:
-                out.append(where + " is empty")
-            if "GAP" in cell:
-                gaps.add(where)
-            for other in ID.finditer(re.sub(r"\([^()]*\)", "", cell)):
-                if other.group(1) != col:
-                    out.append("%s cites %s, another card's line, outside a parenthesis" % (where, other.group(0)))
-            if cell.startswith("N/A") and not re.match(r"N/A — \S", cell):
-                out.append(where + " is N/A without a reason")
-            if "partial" in cell and not re.search(r"→ (packet §8\.\d|X-\d{2}|input §\d)|GAP", cell):
-                out.append(where + " is partial without a named carrier for the remainder")
-            if re.search(r"(?:^|→ )packet(?! §8\.\d)", cell):
-                out.append(where + " says packet without naming the packet section")
-            if re.search(r"(?:^|→ |; )input(?! §\d)", cell) or ("input §" in cell and col != "OS"):
-                out.append(where + " names a bound input without its section, or outside the surrogate's column")
-            for x in re.findall(r"X-\d{2}", cell):
-                if x not in known:
-                    out.append("%s cites %s, which the checks table does not define" % (where, x))
-    footer = re.search(r"(?m)^GAP cells \((\d+)\): (.*)$", text)
-    if not footer:
-        out.append("no 'GAP cells (n): …' line")
-    else:
-        listed = set(re.findall(r"\d+\.[A-Z]{2}", footer.group(2)))
-        if listed != gaps or int(footer.group(1)) != len(gaps):
-            out.append("the GAP line lists %s, the table has %s" % (sorted(listed), sorted(gaps)))
-    for x in sorted(known):
-        if not any(x in cell for row in rows.values() for cell in row.values()):
-            out.append(x + " is defined but carries no cell")
-    return out
-
-
-def real_card_ids():
-    return {PREFIX[name]: line_ids(card_text(name)) for name in PREFIX}
-
-
-def test_c_coverage_and_cards_cite_each_other_exactly():
-    text = COVERAGE.read_text(encoding="utf-8")
-    assert len(coverage_rows(text)) >= 52
-    assert coverage_problems(text, real_card_ids()) == []
-
-
-def test_c_every_named_executable_check_exists_with_its_symbol():
-    known = carriers(COVERAGE.read_text(encoding="utf-8"))
-    assert len(known) >= 8
-    for x, (rel, symbol) in sorted(known.items()):
-        path = REPO / rel
-        assert path.is_file(), "%s names %s, which does not exist" % (x, rel)
-        assert symbol in path.read_text(encoding="utf-8"), "%s: %s has no %r" % (x, rel, symbol)
-
-
-def test_c_coverage_check_refuses_each_kind_of_misstatement():
-    text, ids = COVERAGE.read_text(encoding="utf-8"), real_card_ids()
-
-    def problems(mutated, card_ids=None):
-        return " | ".join(coverage_problems(mutated, card_ids or ids))
-
-    assert "BS-99 is cited but is not a line" in problems(text.replace("BS-01", "BS-99", 1))
-    fewer = dict(ids, OS=ids["OS"] + ["OS-77"])
-    assert "OS-77 is a card line the table never cites" in problems(text, fewer)
-    assert "a range of line ids" in problems(text + "\nBS-01–BS-03\n")
-    footer = re.search(r"(?m)^GAP cells \(\d+\): .*$", text).group(0)
-    assert "no 'GAP cells" in problems(text.replace(footer, "GAP cells: none."))
-    row = next(ln for ln in text.splitlines() if ln.startswith("| 1 |"))
-    cells = row.split("|")
-    for cell, expected in (("partial BS-01", "partial without a named carrier"), ("N/A", "N/A without a reason"),
-                           ("GAP — nothing carries it", "the GAP line lists"),
-                           ("packet", "without naming the packet section"), ("X-99", "does not define"),
-                           ("partial BS-01 → packet", "without naming the packet section"),
-                           ("input §15", "outside the surrogate's column"), ("BS-01; input", "without its section"),
-                           ("", "is empty"), ("FB-01", "another card's line")):
-        mutated = "|".join(cells[:4] + [" " + cell + " "] + cells[5:])
-        assert expected in problems(text.replace(row, mutated)), cell
-    defined = next(ln for ln in text.splitlines() if ln.startswith("| X-24 |"))
-    assert "X-24, which the checks table does not define" in problems(text.replace(defined + "\n", ""))
-    assert "X-25 is defined but carries no cell" in problems(text.replace(defined, defined + "\n" + defined.replace("X-24", "X-25")))
+def test_c_the_coverage_matrices_stay_retired():
+    """A8 §4: the COVERAGE matrices and the cards' CLAUDE.md restatements are retired; CLAUDE.md loads in every job."""
+    assert not list(CARDS_DIR.glob("COVERAGE*")), "a coverage matrix is back"
+    for name, prefix in CAMPAIGN_PREFIX.items():
+        assert not {"%s-%02d" % (prefix, n) for n in RETIRED[prefix]} & set(line_ids(card_text(name))), name
 
 
 # --------------------------------------------------------------------------------------------------------------
