@@ -15944,6 +15944,75 @@ def _delegation_scope(asset_id: str, files: list[str], hops: int | None = None, 
 
 
 _TREE_INFO: dict[int, tuple] = {}
+_PLUS_JOIN_NAMES: dict[int, tuple] = {}
+
+
+def _plus_join_names(tree) -> dict[str, list[str]]:
+    """S3 (SS N-551): the names a `+` chain may join into a column list: `{name: [its strings]}` for a MODULE-LEVEL name that is a literal
+    list/tuple of non-empty str constants (nothing else in it) bound by exactly ONE top-level assignment in the whole module and never rebound,
+    deleted, imported, declared global, used as a parameter, or shadowed in a function/class/comprehension scope; a LIST must also be used only
+    where nothing can change it (a `len()` argument, a `join` argument, an iteration source, an index read) — an alias, a call argument, a method call or
+    a store through it leaves it unresolved. A module with a star import or a `globals()` / `exec()` / `eval()` call resolves nothing (the name
+    could be rebound where this scan cannot see it). Anything else — built at run time, imported, concatenated, class attribute, function-local — is not here. Cached per module."""
+    hit = _PLUS_JOIN_NAMES.get(id(tree))
+    if hit is not None and hit[0] is tree:
+        return hit[1]
+    found: dict[str, list[str]] = {}
+    nodes = list(ast.walk(tree))
+    blind = any((isinstance(x, ast.ImportFrom) and any(a.name == "*" for a in x.names))
+                or (isinstance(x, ast.Call) and isinstance(x.func, ast.Name) and x.func.id in ("globals", "exec", "eval"))
+                for x in nodes)
+    if not blind:
+        binds: dict[str, int] = {}
+
+        def bind(name):
+            if isinstance(name, str):
+                binds[name] = binds.get(name, 0) + 1
+        for x in nodes:
+            if isinstance(x, ast.Name) and isinstance(x.ctx, (ast.Store, ast.Del)):
+                bind(x.id)
+            elif isinstance(x, ast.arg):
+                bind(x.arg)
+            elif isinstance(x, (ast.Import, ast.ImportFrom)):
+                for a in x.names:
+                    bind(a.asname or a.name.split(".")[0])
+            elif isinstance(x, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.ExceptHandler)):
+                bind(x.name)
+            elif isinstance(x, (ast.Global, ast.Nonlocal)):
+                for nm in x.names:
+                    bind(nm)
+                    bind(nm)                           # a global/nonlocal declaration alone disqualifies the name (it is bound > once)
+            elif type(x).__name__ in ("MatchAs", "MatchStar"):          # py >= 3.10 pattern captures
+                bind(x.name)
+            elif type(x).__name__ == "MatchMapping":
+                bind(x.rest)
+        parent = {id(c): p for p in nodes for c in ast.iter_child_nodes(p)}
+
+        def inert_use(u) -> bool:
+            p = parent.get(id(u))
+            if isinstance(p, ast.Call) and u in p.args and not p.keywords and len(p.args) == 1:
+                f = p.func
+                return (isinstance(f, ast.Name) and f.id == "len") or (isinstance(f, ast.Attribute) and f.attr == "join" and isinstance(f.value, ast.Constant) and isinstance(f.value.value, str))
+            if isinstance(p, (ast.For, ast.AsyncFor, ast.comprehension)):
+                return p.iter is u
+            return isinstance(p, ast.Subscript) and p.value is u and isinstance(p.ctx, ast.Load)
+        for st in tree.body:
+            if isinstance(st, ast.Assign) and len(st.targets) == 1 and isinstance(st.targets[0], ast.Name):
+                name, val = st.targets[0].id, st.value
+            elif isinstance(st, ast.AnnAssign) and isinstance(st.target, ast.Name) and st.value is not None:
+                name, val = st.target.id, st.value
+            else:
+                continue
+            if not (isinstance(val, (ast.List, ast.Tuple)) and val.elts
+                    and all(isinstance(e, ast.Constant) and isinstance(e.value, str) and e.value for e in val.elts)):
+                continue
+            if binds.get(name) != 1:
+                continue
+            if isinstance(val, ast.List) and not all(inert_use(u) for u in nodes if isinstance(u, ast.Name) and u.id == name and isinstance(u.ctx, ast.Load)):
+                continue
+            found[name] = [e.value for e in val.elts]
+    _PLUS_JOIN_NAMES[id(tree)] = (tree, found)
+    return found
 
 
 def _sql_texts(unit: dict):
@@ -16012,10 +16081,23 @@ def _sql_texts(unit: dict):
                     texts = [t + x for t in texts for x in (names or ["{?}"])]
             return texts
         if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Add):
-            a, b = parts_of(n.left, loops), parts_of(n.right, loops)
+            a, b = side(n.left, loops), side(n.right, loops)
             if a is not None and b is not None:
                 return [x + y for x in a for y in b]
         return None
+
+    def side(n, loops) -> list[str] | None:
+        """An operand of a `+` chain: as `parts_of`, plus S3 — `"<sep>".join(NAME)` where NAME is a module-level literal sequence of strings (see `_plus_join_names`), the `+` form of the
+        column-list join an f-string `{', '.join(COLS)}` reads. Any other call, and any join of a name that is not such a sequence, stays unread (None)."""
+        if isinstance(n, ast.Call):
+            f = n.func
+            if (isinstance(f, ast.Attribute) and f.attr == "join" and isinstance(f.value, ast.Constant) and isinstance(f.value.value, str)
+                    and len(n.args) == 1 and not n.keywords and isinstance(n.args[0], ast.Name)):
+                items = _plus_join_names(tree).get(n.args[0].id)
+                if items is not None:
+                    return [f.value.value.join(items)]
+            return None
+        return parts_of(n, loops)
 
     def visit(n, loops):
         pushed = isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
