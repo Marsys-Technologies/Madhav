@@ -97,6 +97,10 @@ def client_env(settings: dict) -> dict:
         raise BackupRefused('unsupported source connection options')
     env.update({mapping[k]: str(v) for k, v in settings.items()})
     env['PGPASSFILE'] = os.devnull
+    # A7 D-44: the executor's session marker (an application_name, not a credential) is the ONE PG* setting every client keeps, so
+    # pg_dump / pg_restore sessions are visible to the mechanical quiescence measurement.
+    if os.environ.get('PGAPPNAME'):
+        env['PGAPPNAME'] = os.environ['PGAPPNAME']
     return env
 
 
