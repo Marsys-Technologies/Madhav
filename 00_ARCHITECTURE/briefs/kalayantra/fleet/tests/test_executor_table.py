@@ -44,9 +44,9 @@ CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 
 P01_BINDINGS = {
     "backup_snapshot": {"needs": "owner", "script": "platform/scripts/backup_v5_small_test_job.py",
-                        "fixed_args": ["--operation", "snapshot", "--execute"], "allowed_args": ["label"]},
+                        "fixed_args": ["--operation", "snapshot", "--execute"], "allowed_args": ["label", "scope"]},
     "backup_restore_verify": {"needs": "owner", "script": "platform/scripts/backup_v5_small_test_job.py",
-                              "fixed_args": ["--operation", "restore-verify", "--execute"], "allowed_args": ["label"]},
+                              "fixed_args": ["--operation", "restore-verify", "--execute"], "allowed_args": ["label", "scope"]},
     "smalltest_dispatch_dryrun": {"script": "platform/scripts/dispatch_v5_small_test_job.py",
                                  "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run"]},
     "smalltest_dispatch": {"script": "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py",
