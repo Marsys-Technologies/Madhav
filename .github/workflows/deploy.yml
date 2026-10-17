@@ -12,10 +12,8 @@ on:
   # Dockerfile / Next.js build failures before merge.
   pull_request:
     branches: [main]
-    paths:
-      - 'platform/**'
-      - 'platform-mcp/**'
-      - '.github/workflows/deploy.yml'
+    # Always create the named check; job-level skips still report to protection.
+    # Workflow-level path filtering would leave a required context pending.
   # Manual deploys stay available — but they are held to the SAME CI gate as an automatic
   # deploy unless an operator deliberately overrides it and says why. Until SAMĀPTI this
   # trigger bypassed the CI gate outright (`event_name == 'workflow_dispatch' || ...` on every
@@ -100,10 +98,76 @@ env:
   DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
+  # PR classification is separate from the production `changes` gate below:
+  # no credentials, deployment-state reads, protected windows or CI-gate changes.
+  pr-changes:
+    name: Detect PR deployable changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      deployable: ${{ steps.classify.outputs.deployable }}
+    steps:
+      - name: Checkout (merge commit and its parents)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Classify deployable inputs
+        id: classify
+        env:
+          GIT_OPTIONAL_LOCKS: '0'
+        run: |
+          python3 - <<'PY'
+          import fnmatch
+          import os
+          import subprocess
+          import sys
+
+          # Web COPY . and sidecar COPY python-sidecar/ (platform context);
+          # MCP and pipeline use repo-root COPYs. Include runtime corpora and
+          # the architecture files copied by the workflow / MCP Dockerfile.
+          # (I) INTERPRETATION: those shipped documents are deployable data;
+          # ordinary 00_ARCHITECTURE/**, docs and plan-model changes are not.
+          patterns = (
+              'platform/**', 'platform-mcp/**',
+              '01_FACTS_LAYER/**', '025_HOLISTIC_SYNTHESIS/**', '035_DISCOVERY_LAYER/**',
+              '00_ARCHITECTURE/CAPABILITY_MANIFEST.json',
+              '00_ARCHITECTURE/manifest_overrides.yaml',
+              '00_ARCHITECTURE/PLANNER_PROMPT_v*.md',
+              '00_ARCHITECTURE/MACRO_PLAN_v2_0.md',
+              '00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md',
+              '00_ARCHITECTURE/CURRENT_STATE_v1_0.md',
+              '.github/workflows/deploy.yml',
+              'Dockerfile*', '**/Dockerfile*', '.dockerignore', '**/.dockerignore',
+              'cloudbuild*.yaml', 'cloudbuild*.yml', '**/cloudbuild*.yaml', '**/cloudbuild*.yml',
+              'package.json', '**/package.json', 'package-lock.json', '**/package-lock.json',
+              'npm-shrinkwrap.json', '**/npm-shrinkwrap.json',
+              'pnpm-lock.yaml', '**/pnpm-lock.yaml', 'yarn.lock', '**/yarn.lock',
+          )
+          deployable = True  # An empty/unreadable diff must never earn a skip (§N.8).
+          try:
+              # HEAD is GitHub's PR merge commit; its first parent is the base.
+              # Diff the whole PR, including deletes and BOTH names of a rename.
+              diff = subprocess.run(
+                  ['git', 'diff', '--name-only', '--no-renames', '-z', 'HEAD^1', 'HEAD'],
+                  capture_output=True, check=True, timeout=60,
+              ).stdout
+              paths = [p for p in diff.decode('utf-8', 'surrogateescape').split('\0') if p]
+              deployable = not paths or any(fnmatch.fnmatchcase(p, pat) for p in paths for pat in patterns)
+          except (OSError, subprocess.SubprocessError) as exc:
+              print(f'::warning::Cannot classify PR diff; running build check: {exc}', file=sys.stderr)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'deployable={str(deployable).lower()}\n')
+          PY
+
   # ── PR build-check: build without push to catch Dockerfile/Next.js failures pre-merge ──
   build-check:
     name: Build Check (PR only)
-    if: github.event_name == 'pull_request'
+    needs: [pr-changes]
+    # !cancelled() overrides implicit success(): a failed detector runs validation.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.pr-changes.outputs.deployable != 'false' }}
     runs-on: ubuntu-latest
     # A PR image build must not hold the merge queue at GitHub Actions' six-hour
     # default when a hosted BuildKit worker stalls before emitting progress.
