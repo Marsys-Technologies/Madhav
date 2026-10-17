@@ -6,7 +6,7 @@ import path from 'node:path'
 
 /**
  * Pravāha B6.0 / Codex round 19 R19-1 — the owner's dispatch (`gh workflow run deploy.yml -f gochara_contracts_schema_migration=true`) must
- * hand `migrate.ts --only` EXACTLY the Gochara protected window: 1153–1157 and the six pending files 1204, 1206, 1232, 1233, 1235, 1240, in
+ * hand `migrate.ts --only` EXACTLY the Gochara protected window: 1153–1157 and the nine pending files 1204, 1206, 1232, 1233, 1235, 1240, 1305, 1306, 1308, in
  * ascending order, and never 1378 (1378 is a routine file that waits for SETTLED-1).
  *
  * This test does not grep: it EXTRACTS the real shell block of the step "Apply exact protected public-schema migrations" from
@@ -34,8 +34,11 @@ export const WINDOW_FILES = [
   '1233_gochara_p1_period_anchor.sql',
   '1235_ka_gochara_staged_candidate_evidence_function.sql',
   '1240_gochara_window_verification_gate.sql',
+  '1305_gochara_snapshot_owns_l1_copy.sql',
+  '1306_gochara_expected_class_census.sql',
+  '1308_gochara_near_miss_storage.sql',
 ]
-const PENDING_SIX = WINDOW_FILES.slice(5)
+const PENDING_NINE = WINDOW_FILES.slice(5)
 
 /** The `run: |` block scalar of the named step, de-indented — extracted by indentation, no YAML library needed. */
 function stepScript(name: string): string {
@@ -86,15 +89,15 @@ function run(inputs: Record<string, string>): Outcome {
 }
 
 describe('owner dispatch — the protected window selection, executed from deploy.yml', () => {
-  it('gochara_contracts_schema_migration=true selects exactly 1153–1157 then 1204, 1206, 1232, 1233, 1235, 1240, in that order', () => {
+  it('gochara_contracts_schema_migration=true selects exactly 1153–1157 then 1204, 1206, 1232, 1233, 1235, 1240, 1305, 1306, 1308, in that order', () => {
     const r = run({ APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: 'true' })
     expect(r.status, r.out).toBe(0)
     expect(r.only).toEqual(WINDOW_FILES)
   })
 
-  it('the ordered pending six are the last six of the selection and are strictly ascending by number', () => {
+  it('the ordered pending nine are the last nine of the selection and are strictly ascending by number', () => {
     const r = run({ APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: 'true' })
-    expect(r.only!.slice(-6)).toEqual(PENDING_SIX)
+    expect(r.only!.slice(-9)).toEqual(PENDING_NINE)
     const nums = r.only!.map((f) => Number(f.split('_')[0]))
     expect(nums).toEqual([...nums].sort((a, b) => a - b))
   })

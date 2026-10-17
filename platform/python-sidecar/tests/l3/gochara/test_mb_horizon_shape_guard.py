@@ -426,13 +426,13 @@ def test_both_production_callers_pass_the_re_derived_basis_to_the_vector_builder
 
 # ── Codex round 2, blocker 1 (steward MB-CODEX-2 ruling 1): the ordinary vector differs from main's ONLY in the implementation identity ──────────────────────────────────
 
-MAIN_IMPLEMENTATION_MODULES = {                     # the module lists of main's input_vector.py, as literals (before the measuring build)
+MAIN_IMPLEMENTATION_MODULES = {                     # accepted P06 adc6b81ea input_vector.py literals, before integrating the measuring build
     "geometry": tuple("services.gochara_kernel." + m for m in (
-        "arcs", "boundary_match", "contact_certify", "contact_reconstruct", "contacts", "convention", "episodes", "ids", "knots", "materialise", "record_store",
+        "arcs", "boundary_match", "contact_certify", "contact_reconstruct", "contacts", "convention", "episodes", "ids", "knots", "materialise", "near_miss", "record_store",
         "substrate", "targets")),
     "evaluation": tuple("services.gochara_kernel." + m for m in (
         "chart_context", "coverage", "dasha_read", "ephemeris_pins", "evaluator", "input_vector", "input_vector_verifier",
-        "inventory", "inventory_store", "inventory_verifier", "ledger", "lifecycle", "native_conn",
+        "inventory", "inventory_store", "inventory_verifier", "ledger", "lifecycle", "native_conn", "nd_h_tables",
         "record_derivation", "record_verifier", "scope_response",
         "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",) + tuple("services.gochara_rules." + m for m in (
         "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "flat_selector", "frames",

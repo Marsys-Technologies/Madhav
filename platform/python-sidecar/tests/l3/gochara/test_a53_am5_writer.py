@@ -139,6 +139,7 @@ def test_the_verifier_derives_every_included_path_so_a_class_without_its_contact
 
 
 def test_an_h_unknown_class_plans_under_the_standing_ruling(run):
+    """The formerly unknown class selects final rows; its legacy rows are superseded."""
     step, conn = run
     for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP,
               writer_mod.SNAPSHOT_SUBSTEP):
@@ -149,10 +150,16 @@ def test_an_h_unknown_class_plans_under_the_standing_ruling(run):
         "SELECT path_id, exclusion_reason, ruling_ref FROM public.ka_gochara_search_path_pin"
         " WHERE generation = %s AND event_class = 'spiritual_turn' AND disposition = 'excluded'"
         " ORDER BY path_id", (GEN,)).fetchall()
-    assert rows == [("P1", "inputs_unavailable", "ST-H-UNKNOWN-20261002"),
-                    ("P3", "inputs_unavailable", "ST-H-UNKNOWN-20261002"),
-                    ("P4", "inputs_unavailable", "ST-H-UNKNOWN-20261002"),
+    assert rows == [("P1", "superseded_by_version", None),
+                    ("P3", "superseded_by_version", None),
+                    ("P4", "superseded_by_version", None),
                     ("P5", "tier_withheld_by_ruling", "ST-P5-HOLD-20261001")]
+    selected = conn.execute(
+        "SELECT path_id, disposition FROM public.ka_gochara_search_path_pin"
+        " WHERE generation = %s AND event_class = 'spiritual_turn' AND rule_version = '1.2.0'"
+        " ORDER BY path_id", (GEN,)).fetchall()
+    assert [p for p, _d in selected] == ["P1", "P3", "P4"]
+    assert all(d in ("included", "computed_empty") for _p, d in selected)
 
 
 def test_coverage_refuses_when_the_inventory_has_not_run(run):

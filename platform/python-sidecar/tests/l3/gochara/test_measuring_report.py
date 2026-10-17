@@ -54,6 +54,14 @@ def born(d=BIRTH):
 BIRTH_ROW = born()
 
 
+def _ok(fn):
+    """the call must succeed; a named refusal is an assertion failure here (never a raw exception reaching the harness)"""
+    try:
+        return fn()
+    except MeasuringReportError as exc:
+        raise AssertionError(f"unexpected refusal: {exc}") from None
+
+
 def _refuses(fn, code):
     """the call must raise MeasuringReportError carrying `code`; any other outcome is an assertion failure (not a raw exception)"""
     try:
@@ -132,23 +140,23 @@ def test_the_birth_row_is_identified_by_the_domain_column_only_and_refused_when_
 
 def test_fully_dated_is_a_conjunction_of_exact_and_a_dated_lel_id_and_a_failing_row_is_excluded_and_reported_never_a_refusal():
     rows = [BIRTH_ROW, LEL(date(1997, 7, 1), conf="year_only"), LEL(date(1997, 5, 1), conf="month_known"), LEL(date(2001, 6, 9))]
-    info = fully_dated_events(rows, birth_date=BIRTH)
+    info = _ok(lambda: fully_dated_events(rows, birth_date=BIRTH))
     assert info["dates"] == [date(2001, 6, 9)] and info["excluded"] == 2 and info["flag_exact_but_id_undated"] == []
     # the reviewer's input: the intake's uuid `event_id` with the EVT id in provenance.lel_id is a VALID fully dated event (no refusal)
     ok = LEL(date(1998, 2, 16), event_id="12345678-1234-1234-1234-123456789abc", lel_id="EVT.1998.02.16.01")
-    d = derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, ok], BUILD)
+    d = _ok(lambda: derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, ok], BUILD))
     assert (d["start"], d["basis"], d["chosen"]) == (date(1998, 1, 1), "first_dated_event", "12345678-1234-1234-1234-123456789abc")
     # an exact-flagged row whose lel id is undated (457 defaulted legacy rows to exact) before a valid 1998 event: EXCLUDED and REPORTED, start 1998
     legacy = LEL(date(1995, 7, 1), lel_id="EVT.1995.XX.XX.01")
-    d = derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, legacy, ok], BUILD)
+    d = _ok(lambda: derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, legacy, ok], BUILD))
     assert d["start"] == date(1998, 1, 1) and d["excluded_undated"] == 1
     assert [r["lel_id"] for r in d["flag_exact_but_id_undated"]] == ["EVT.1995.XX.XX.01"]
     # a stored date that differs from its lel id's date is the same exclusion
     skewed = LEL(date(1996, 3, 3), lel_id="EVT.1996.03.04.01")
-    assert derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, skewed, ok], BUILD)["start"] == date(1998, 1, 1)
+    assert _ok(lambda: derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, skewed, ok], BUILD))["start"] == date(1998, 1, 1)
     # the reverse: a dated top-level event_id (EVT form) with an UNDATED provenance.lel_id is disqualified, not accepted
     reverse = LEL(date(1996, 3, 3), event_id="EVT.1996.03.03.01", lel_id="EVT.1996.XX.XX.01")
-    assert derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, reverse, ok], BUILD)["start"] == date(1998, 1, 1)
+    assert _ok(lambda: derive_chart_horizon_detail(BIRTH, [BIRTH_ROW, reverse, ok], BUILD))["start"] == date(1998, 1, 1)
 
 
 def test_a_row_with_no_provenance_lel_id_is_excluded_and_reported_never_a_refusal_never_a_fallback_to_event_id():

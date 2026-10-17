@@ -1,10 +1,21 @@
-"""An ordinary (markerless) build preserves the pre-B4 J-4p observations.
+"""An ordinary (markerless) P06 build preserves its accepted final-rule observations.
+
+(I) INTERPRETATION: keep main's J-4p historical captures and their regression
+unchanged, and use the accepted P06 capture (adc6b81ea) for P06 final rules.
+This is the branch's existing settlement-amended copy: its snapshot note and
+inventory/verify transcripts already include the accepted J-4p/J4P-B1 reads.
+No capture is regenerated from the merged implementation.
+The only SQL adaptation reverses B4's removed positive-bounds predicate when
+comparing the accepted transcript; B5's replacement guard remains checked exactly.
+All outcomes, counts, SQL order and non-implementation inputs remain pinned.
+
+Main's historical baseline rationale follows:
 
 The historical measuring-build golden, `fixtures/mb_ordinary_golden_main.json`
 at 75eeda4c9, remains unchanged. It predates J-4p's governed reads and settled
 build identity. Both comparisons already fail on the unmodified pre-B4 head.
 (I) INTERPRETATION I6: use the pre-B4 J-4p head as the valid-data baseline.
-The active golden, `fixtures/mb_ordinary_golden_j4p.json`, was captured from
+Main's J-4p golden, `fixtures/mb_ordinary_golden_j4p.json`, was captured from
 unmodified production sources at 2d75833d3963a61544deaa4c36cc8322cb2cdcb5.
 Its provenance records the source hashes and the only SQL adaptation for B4:
 remove the governed CTE's positive-bounds pre-filter. All other ordered SQL,
@@ -16,8 +27,13 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
     and notes, or the refusal's type and message), the SQL statements it issued through the connection (whitespace-normalised text and parameter count, kept as a count
     per distinct statement shape plus the sha256 of the ordered sequence), and the row count of every ka_gochara_* / kala_gochara_* table after it;
   * the candidate manifest's input vector, every component.
-HEAD must equal it except the evaluation implementation identity and the pinned
-J4C-A geometry/window source updates below. Exactly one state-guard SELECT is checked
+For the P06 capture, evaluation and geometry implementation identities changed
+with main's measuring-build and governed-period updates; the window identity
+remains equal to accepted P06. Both changed identities are pinned below.
+(I) INTERPRETATION: main's J4C-A (#3596) graha-mapping source updates are
+already part of the merged tree whose digests are pinned below (computed with
+implementation_registry.compute() after merging origin/main 526fb5f53 and equal
+to the accepted P06 pins), so no separate J4C pin is applied to this capture. Exactly one state-guard SELECT is checked
 per non-dry-run substep and excluded from both SQL summaries. B5 adds exactly
 one invalid-period guard SELECT to inventory:marriage; its complete shape and
 parameter count are checked separately, preserving the stored baseline.
@@ -40,17 +56,9 @@ from .conftest import EPHE_PATH
 from .test_a53_inventory import CHART_ID
 from .test_a55_replace_chain import SHORT, _World, template  # noqa: F401
 
-GOLDEN = Path(__file__).resolve().parent / "fixtures" / "mb_ordinary_golden_j4p.json"
-GOLDEN_COMMIT = "2d75833d3963a61544deaa4c36cc8322cb2cdcb5"
-# PR #3596 (ci-kalayantra-pb-j4c-a), J4C-A: substrate.DB_BODY and
-# window_sweep.GRAHA_TITLE now derive the same graha mapping from the SSoT.
-# Computed from this tree with implementation_registry.compute(); pin these
-# source identities without changing the historical capture or other components.
-# (I) INTERPRETATION: apply the stage update here, preserving the immutable fixture.
-J4C_IMPLEMENTATION = {
-    "geometry": "22f14a9c648a497b7702ab4ee3263fc37100ab5d352e01d60bd254c9384efc43",
-    "window": "3afc40476aec141bc635309b09f32084c475ad3bd03e6f100101d52475d2c507",
-}
+J4P_GOLDEN = Path(__file__).resolve().parent / "fixtures" / "mb_ordinary_golden_j4p.json"
+GOLDEN = J4P_GOLDEN.with_name("mb_ordinary_golden_p06.json")
+GOLDEN_COMMIT = "adc6b81ea"
 # the REAL runner's birth parameters shape (birth_params._to_birth_params): main ignores them, an ordinary HEAD build must too
 BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, "longitude_deg": 85.8245, "tz_offset_hours": 5.5, "place_name": "Bhubaneswar",
                 "subject_label": "native"}
@@ -164,12 +172,14 @@ def test_capture_the_markerless_run(template):
     assert got["substeps"] and "manifest_vector" in got
 
 
-# ── the comparison (HEAD against the pre-B4 J-4p golden) ───────────────────────────────────────────────────────────────────────
+# ── the comparison (merged P06 against the accepted final-rule golden) ───────────────────────────────────────────────────────────────────────
 
-def _load():
-    assert GOLDEN.exists(), f"the pre-B4 golden ({GOLDEN_COMMIT}) is missing: {GOLDEN}"
-    golden = json.loads(GOLDEN.read_text(encoding="utf-8"))
-    assert golden["golden_commit"] == GOLDEN_COMMIT
+def _load(path=GOLDEN):
+    assert path.exists(), f"the pinned golden is missing: {path}"
+    golden = json.loads(path.read_text(encoding="utf-8"))
+    assert golden["golden_commit"] == (GOLDEN_COMMIT if path == GOLDEN else "2d75833d3963a61544deaa4c36cc8322cb2cdcb5")
+    if path == GOLDEN:
+        return golden
     assert golden["provenance"]["sql_adaptations"] == {
         "state_guard_selects_removed": 12,
         "b4_cte_positive_bounds_predicates_removed": 1,
@@ -184,7 +194,7 @@ def test_b4_baseline_preserves_final_main_settlement_amendments():
     guard is counted separately below. No other main SQL shape may change.
     """
     main = json.loads(GOLDEN.with_name("mb_ordinary_golden_main.json").read_text())
-    b4 = _load()
+    b4 = _load(J4P_GOLDEN)
     assert [s["key"] for s in b4["substeps"]] == [s["key"] for s in main["substeps"]]
     for got, want in zip(b4["substeps"], main["substeps"]):
         assert got["outcome"] == want["outcome"], want["key"]
@@ -230,23 +240,30 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
     assert kinds >= {"rules", "convention", "body", "manifest", "snapshot", "inventory", "coverage", "record", "window", "verify"}, kinds
     for g, m in zip(got["substeps"], want["substeps"]):
         key = m["key"]
-        assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from the pre-B4 baseline"
-        assert g["counts"] == m["counts"], f"{key}: the table row counts differ from the pre-B4 baseline"
+        assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from the accepted P06 baseline"
+        assert g["counts"] == m["counts"], f"{key}: the table row counts differ from the accepted P06 baseline"
         guard = [s for s in raw[key] if s == [GUARD_SELECT, 2]]
         period_guard = [s for s in raw[key] if s == [PERIOD_GUARD_SELECT, 11]]
         assert len(period_guard) == (1 if key == "inventory:marriage" else 0), f"{key}: expected the B5 period guard exactly once before the inventory projection"
         rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11])]
         assert len(guard) == (0 if "[dry_run]" in key else 1), f"{key}: expected exactly one state-guard SELECT per non-dry-run substep, saw {len(guard)}"
-        assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards differ from the pre-B4 baseline"
+        if key == "inventory:marriage":
+            old_shapes = m["statements"]["shapes"]
+            old = [sql.split("|", 1)[1] for sql in old_shapes
+                   if "AND start_iso < end_iso AND" in sql]
+            assert len(old) == 1
+            new = old[0].replace("AND start_iso < end_iso AND", "AND")
+            assert rest.count([new, 13]) == 1
+            rest = [[old[0], n] if sql == new else [sql, n] for sql, n in rest]
+        assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards differ from the accepted P06 baseline"
 
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
-    """Preserve valid-data inputs with J4C-A's geometry/window source pins.
+    """Preserve P06 inputs with main's evaluation/geometry implementation updates.
 
     No `horizon_basis` or `test_slice` component may appear in an ordinary run.
     """
     got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
-    want["implementation"] = {**want["implementation"], **J4C_IMPLEMENTATION}
     assert "horizon_basis" not in got and "test_slice" not in got
 
     same_host = got["ephemeris"]["platform"] == want["ephemeris"]["platform"]
@@ -258,9 +275,14 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
         out = {k: x for k, x in v.items() if k != "implementation"}
         out["ephemeris"] = {k: x for k, x in v["ephemeris"].items() if k not in host_bound}
         return out
-    assert comparable(got) == comparable(want), "non-implementation components equal the pre-B4 baseline (excluding another host's library identity)"
+    assert comparable(got) == comparable(want), "non-implementation components equal the accepted P06 baseline (excluding another host's library identity)"
     assert set(got["implementation"]) == set(want["implementation"])
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
-    assert differing == ["evaluation"], differing
-    assert got["implementation"]["geometry"] == want["implementation"]["geometry"]
+    assert differing == ["evaluation", "geometry"], differing
+    assert got["implementation"]["geometry"] == "1313c7d2d6a993987243e9d89831fa913d4161b73fd3cc1fe61bd34b8607ead2"
+    # ci-kalayantra-w4-p06 (#3516): merge 649ad111f adds scope_response's
+    # sealed-window attestation refusal to this governed stage. Pin the digest
+    # computed by implementation_registry.compute() from this accepted tree;
+    # preserve every other component of the ordinary-build golden exactly.
+    assert got["implementation"]["evaluation"] == "a0402ca0e545ba7ce6b39ed215a6cee2d20d0731f63c0e0fe990fe1cb55abb57"
     assert got["implementation"]["window"] == want["implementation"]["window"]

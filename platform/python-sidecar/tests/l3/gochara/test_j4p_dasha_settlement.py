@@ -44,8 +44,12 @@ class Conn:
     def __init__(self, builds, tier="two_pass_verified"):
         self.builds, self.tier, self.pins = builds, tier, []
 
-    def execute(self, sql, params):
-        if "search_input_snapshot" in sql:
+    def execute(self, sql, params=()):
+        if "information_schema.columns" in sql:
+            self.result = [(0,)]  # This settlement fixture models a legacy (ids-only) snapshot.
+        elif "SELECT consumed_fact_ids, consumed_dasha_row_ids" in sql:
+            self.result = [([], [row(BUILD)["dasha_row_id"]])]
+        elif "search_input_snapshot" in sql:
             self.result = [([row(BUILD)["dasha_row_id"]],)]
         elif "search_inventory" in sql:
             self.result = [(LO, HI)]

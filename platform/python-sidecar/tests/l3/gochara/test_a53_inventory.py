@@ -218,7 +218,7 @@ BUILDER_GRANT_MIGRATIONS = ("1216_gochara_contract_builder_grants.sql",
                             M1241_NAME)
 
 
-def create_am5_database(tag="am5", faithful=False, apply_1240=True):
+def create_am5_database(tag="am5", faithful=False, apply_1240=True, apply_1305=False):
     """A throwaway database with the real chain + 1206 applied and the L1 tables stubbed.
     Returns (admin_conn, name, dsn); the caller drops it (refusing non-prefixed names)."""
     psycopg = pytest.importorskip("psycopg")
@@ -250,7 +250,7 @@ def create_am5_database(tag="am5", faithful=False, apply_1240=True):
         conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
         if faithful:
             conn.execute("ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC")
-        _populate_am5_database(conn, faithful=faithful, apply_1240=apply_1240)
+        _populate_am5_database(conn, faithful=faithful, apply_1240=apply_1240, apply_1305=apply_1305)
         conn.close()
     except BaseException:
         drop_am5_database(admin, name)
@@ -264,7 +264,7 @@ def drop_am5_database(admin, name):
     admin.close()
 
 
-def _populate_am5_database(conn, faithful=False, apply_1240=True):
+def _populate_am5_database(conn, faithful=False, apply_1240=True, apply_1305=False):
     with conn.cursor() as cur:
         cur.execute("CREATE TABLE public.charts (id uuid PRIMARY KEY)")
         cur.execute("CREATE TABLE public._migrations_applied"
@@ -273,13 +273,18 @@ def _populate_am5_database(conn, faithful=False, apply_1240=True):
         cur.execute("CREATE TABLE public.chart_facts (fact_id text PRIMARY KEY,"
                     " chart_id uuid, ayanamsha_id text, fact_category text, fact_subject text,"
                     " fact_key text,"
-                    " fact_value_num double precision, verification_pass_status text NOT NULL DEFAULT 'single',"
-                    " created_at timestamptz DEFAULT now())")
+                    " fact_value_num numeric, verification_pass_status text NOT NULL DEFAULT 'single',"      # NUMERIC, as production (supabase/migrations/204_chart_facts.sql)
+                    " created_at timestamptz DEFAULT now(),"
+                    # the production columns migration 1305's copy reads (all nullable: the existing tests insert only the six above)
+                    " fact_value_text text, fact_value_jsonb jsonb, unit text, build_id uuid, engine_version text, salience_formula_ver text,"
+                    " tolerance_arcsec double precision, citation_ref text, citation_human text, source_calculation text,"
+                    " formula_provenance_text text, formula_id text, near_sign_boundary_flag boolean, near_nakshatra_boundary_flag boolean,"
+                    " vargottama_flag_at_point boolean, cross_ayanamsha_divergence_arcsec double precision)")
         cur.execute("CREATE TABLE public.chart_dashas (dasha_row_id uuid PRIMARY KEY,"
                     " chart_id uuid, ayanamsha_id text, system_id text, level_n int,"
                     " parent_row_id uuid, lord_graha text, start_iso timestamptz,"
                     " end_iso timestamptz, build_id uuid, verification_pass_status text,"
-                    " computed_at timestamptz DEFAULT now())")
+                    " computed_at timestamptz DEFAULT now(), kp_sublevel text, engine_version text)")
         # L0 reference the input vector binds (P2's cited vedha rows, AM-18): the real table's shape
         cur.execute("CREATE TABLE public.bg_transit_rules (id SERIAL PRIMARY KEY, rule_type TEXT NOT NULL"
                     " CHECK (rule_type IN ('favourable','unfavourable','vedha')), graha TEXT NOT NULL,"
@@ -301,9 +306,10 @@ def _populate_am5_database(conn, faithful=False, apply_1240=True):
         # CHECK helper, only what 1240 itself grants it
         # (apply_1240=False builds the PRE-1240 schema — for the chronological-upgrade test: 1240 and 1241 are applied later, by the test)
         for fname in MIGRATION_CHAIN + ["1206_gochara_search_inventory_completeness.sql"] + (
-                ["1232_gochara_search_moon_scope_domain.sql"] if faithful else []) + (
+                ["1232_gochara_search_moon_scope_domain.sql"] if (faithful or apply_1305) else []) + (
                 ["1240_gochara_window_verification_gate.sql"] if apply_1240 else []) + (
-                [f for f in BUILDER_GRANT_MIGRATIONS if apply_1240 or f != M1241_NAME] if faithful else []):
+                [f for f in BUILDER_GRANT_MIGRATIONS if apply_1240 or f != M1241_NAME] if faithful else []) + (
+                ["1305_gochara_snapshot_owns_l1_copy.sql"] if apply_1305 else []):          # grants' closed-ACL check runs before 1305 exists
             if fname == M1241_NAME:
                 # PR #2949 lands as 1378. The loader pins the landing separately from
                 # the archived 1241 v7 fixture and permits only the migration renumber.
@@ -392,7 +398,8 @@ def test_the_registry_seals_are_the_pin_partition_the_planner_must_cover(am5):
     store, _sky, _ = _boot(am5, "5.7")
     with am5.transaction():
         am5.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
-        assert store.sealed_rule_paths() == SEALED
+        from services.gochara_kernel.rule_registry import bound_path_refs
+        assert store.sealed_rule_paths() == sorted(bound_path_refs())
 
 
 def test_a_planned_class_is_stored_finalised_and_the_digests_are_the_dbs(am5):
@@ -545,7 +552,7 @@ def test_the_verifier_imports_nothing_from_the_builder():
     # stdlib only (the aspect-to-span re-derivation needs `datetime.timedelta`; R9-10: `json` reads the
     # manifest's stored_scope; re/pathlib/uuid validate the reviewed settlement independently)
     # + `brahmagyan.verification_vocab`: the SANCTIONED tier vocabulary (TAP-6 forbids the literal outside it) — a constant, no builder logic
-    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime", "json", "re", "pathlib", "uuid", "brahmagyan.verification_vocab"}, imported
+    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime", "json", "re", "pathlib", "uuid", "brahmagyan.verification_vocab", ".nd_h_tables"}, imported
 
 
 def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5):
@@ -553,8 +560,14 @@ def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5
     function must report ONLY those two absences — not a digest, commitment, coverage or
     input fault. (A publication row must be `published` for the manifest-bound checks.)"""
     store, sky, _ = _boot(am5, "5.7")
-    plan = _plan(cap=inv.SearchCapability(position_probe=True, arc_index=True,
-                                          aspect_span_solver=True))
+    from services.gochara_kernel.rule_registry import selected_versions_for
+    # The seeded catalogue includes P06's successors; account for every version while
+    # keeping marriage's approved selection, so the test isolates the two absences below.
+    plan = inv.plan_class_inventory(
+        event_class="marriage", chart=CHART, horizon=(H0, H1),
+        sealed_paths=store.sealed_rule_paths(), selected_versions=selected_versions_for("marriage"),
+        capability=inv.SearchCapability(position_probe=True, arc_index=True, aspect_span_solver=True),
+        path_exclusions={"P5": P5_EXCL}, dasha_rows=DASHA)
     _write(am5, store, sky, "5.7", plan)
     with am5.transaction():
         am5.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
@@ -646,18 +659,22 @@ def test_p1_intervals_are_cut_at_the_pinned_dasha_rows_with_the_resolved_agent()
 
     def cuts(role):
         ob = next(o for o in obs if o.agent == f"period_lord:{role}")
-        return [(iv.start, iv.end, iv.detail["resolved_agent"], iv.detail["dasha_row_id"],
-                 iv.state) for iv in sorted(plan.intervals, key=lambda i: i.start)
-                if iv.ob_id == ob.ob_id]
+        # G12: the interval detail names the period by a NATURAL pointer (level, start), never by a row id an L1 rebuild would re-issue
+        return [(iv.start, iv.end, iv.detail["resolved_agent"], iv.detail["dasha_period"], iv.state)
+                for iv in sorted(plan.intervals, key=lambda i: i.start) if iv.ob_id == ob.ob_id]
 
-    assert cuts("md") == [(H0, H1, "saturn", str(uuid.UUID(int=1)), "searched_complete")]
+    def period(level, row):
+        return {"level": level, "start": row.start.isoformat()}
+    md, ad, pd = ([r for r in DASHA if r.level == n] for n in (1, 2, 3))
+    assert cuts("md") == [(H0, H1, "saturn", period(1, md[0]), "searched_complete")]
     assert cuts("ad") == [
-        (H0, _dt(2025, 2, 1), "venus", str(uuid.UUID(int=2)), "searched_complete"),
-        (_dt(2025, 2, 1), H1, "sun", str(uuid.UUID(int=3)), "searched_complete")]
+        (H0, _dt(2025, 2, 1), "venus", period(2, ad[0]), "searched_complete"),
+        (_dt(2025, 2, 1), H1, "sun", period(2, ad[1]), "searched_complete")]
     assert cuts("pd") == [
-        (H0, _dt(2025, 1, 15), "mars", str(uuid.UUID(int=4)), "searched_complete"),
-        (_dt(2025, 1, 15), _dt(2025, 2, 1), "rahu", str(uuid.UUID(int=5)), "searched_complete"),
-        (_dt(2025, 2, 1), H1, "jupiter", str(uuid.UUID(int=6)), "searched_complete")]
+        (H0, _dt(2025, 1, 15), "mars", period(3, pd[0]), "searched_complete"),
+        (_dt(2025, 1, 15), _dt(2025, 2, 1), "rahu", period(3, pd[1]), "searched_complete"),
+        (_dt(2025, 2, 1), H1, "jupiter", period(3, pd[2]), "searched_complete")]
+    assert all("dasha_row_id" not in iv.detail for iv in plan.intervals if iv.detail)
 
 
 def test_a_dasha_gap_is_a_missing_inputs_interval_never_silently_covered():
@@ -668,7 +685,7 @@ def test_a_dasha_gap_is_a_missing_inputs_interval_never_silently_covered():
     gaps = [iv for iv in plan.intervals if iv.ob_id == pd.ob_id and iv.state == "missing_inputs"]
     assert [(g.start, g.end) for g in gaps] == [(_dt(2025, 1, 15), _dt(2025, 2, 1))]
     # the PD role obligation also carries its named limitation (R9-5: searched, but readings are testimony)
-    assert gaps[0].detail == {"resolved_agent": None, "dasha_row_id": None, "limitation": "p1_pd_level_no_source"}
+    assert gaps[0].detail == {"resolved_agent": None, "dasha_period": None, "limitation": "p1_pd_level_no_source"}
 
 
 def test_p1_without_the_pinned_rows_or_with_a_subsecond_boundary_is_blocked_by_name():

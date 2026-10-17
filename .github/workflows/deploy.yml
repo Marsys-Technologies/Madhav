@@ -1181,6 +1181,10 @@ jobs:
             # migration numbered below 1240 (1234 builder grants, and 1236 if present) must ALREADY be applied by an
             # ordinary deploy BEFORE this window is dispatched.
             migrations+=(1240_gochara_window_verification_gate.sql)
+            # P06: snapshot copy precedes the census; near-miss storage follows both.
+            migrations+=(1305_gochara_snapshot_owns_l1_copy.sql)
+            migrations+=(1306_gochara_expected_class_census.sql)
+            migrations+=(1308_gochara_near_miss_storage.sql)
           fi
           if [ "$APPLY_AI_METERING_SCHEMA_MIGRATION" = "true" ]; then
             migrations+=(1202_ai_metering_ledger.sql)

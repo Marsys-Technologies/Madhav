@@ -239,8 +239,10 @@ def test_1206_accepts_the_supersession_plan_and_flags_two_included_versions(am5,
                        " ORDER BY path_id, rule_version", (CHART_ID,)).fetchall()
     assert rows == [("P3", "1.0.0", "excluded", "superseded_by_version", None),
                     ("P3", "1.1.0", "included", None, None),
+                    ("P3", "1.2.0", "excluded", "not_applicable_to_class", None),
                     ("P4", "1.0.0", "excluded", "superseded_by_version", None),
-                    ("P4", "1.1.0", "included", None, None)]
+                    ("P4", "1.1.0", "included", None, None),
+                    ("P4", "1.2.0", "excluded", "not_applicable_to_class", None)]
     # the OLD behaviour (every sealed version included) is exactly what 1206 rejects
     two = inv.ClassInventory(event_class="marriage", horizon=good.horizon, pins=tuple(
         inv.PinPlan(p.path_id, p.rule_version, "included", _plan([(p.path_id, p.rule_version)]).obligations)
@@ -295,7 +297,9 @@ def test_the_verifiers_p2_tables_equal_the_rule_modules_and_it_imports_neither()
 
 
 @pytest.mark.parametrize("cls", sorted(ver._POLARITY))
-def test_p2_obligations_the_planner_and_the_verifier_agree_for_every_class(cls):
+def test_p2_obligations_the_planner_and_the_verifier_agree_for_every_class(cls, monkeypatch):
+    # This oracle pins the legacy selection. The final parental exclusion has its own packet test.
+    monkeypatch.setattr(rr, "CLASS_SELECTION_OVERRIDES", {})
     if cls == "birth_anchor":
         pytest.skip("excluded from enumeration entirely (O-CF-N6)")
     plan = inv.plan_class_inventory(event_class=cls, chart=CHART, horizon=(H0, H1), sealed_paths=[("P2", "1.0.0")],
