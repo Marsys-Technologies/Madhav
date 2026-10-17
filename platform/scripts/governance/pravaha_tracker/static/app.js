@@ -76,12 +76,14 @@
     const steps = it.steps ? `<div class="steps">${it.steps.map((s) => `<span class="${s.done ? "on" : ""}">${esc(s.name)}</span>`).join("")}</div>` : "";
     const gateWait = it.built_waiting_on_gate && it.gate_blockers?.length
       ? `<div class="s">built, waiting on gate: ${esc(it.gate_blockers.join(", "))}</div>` : "";
+    const activation = it.activation_pending?.length
+      ? `<div class="s">implemented, activation pending: ${esc(it.activation_pending.join(", "))}</div>` : "";
     const when = (st === "running" || st === "review") && it.elapsed_s != null ? `for ${dur(it.elapsed_s)}` : it.checked_at ? `checked ${ago(it.checked_at)}` : it.updated_at ? ago(it.updated_at) : "";
     const tip = [it.detail, `owner: ${it.owner || "—"}`, `source: ${it.source}`, it.depends_on?.length ? `depends on: ${it.depends_on.join(", ")}` : "",
       it.deps_open?.length ? `waiting on: ${it.deps_open.join(", ")}` : "", it.evidence ? `evidence: ${it.evidence}` : ""].filter(Boolean).join("\n");
     return `<div class="card st-${st} ${it.gate ? "gate" : ""}" title="${esc(tip)}">
       <div class="t">${it.cross_stream ? '<span class="xs" title="waits on the other stream">⇄</span> ' : ""}${esc(it.title)}</div>
-      <div class="s"><span class="badge">${esc(LABEL[st] || st)}</span><span>${esc(it.id)}</span><span>${esc(when)}</span></div>${gateWait}${steps}${prog}</div>`;
+      <div class="s"><span class="badge">${esc(LABEL[st] || st)}</span><span>${esc(it.id)}</span><span>${esc(when)}</span></div>${gateWait}${activation}${steps}${prog}</div>`;
   }
 
   function mini(it) {
@@ -156,7 +158,9 @@
     $("pct").textContent = o.pct.toFixed(1);
     $("pct-bar").style.width = `${o.pct}%`;
     const chip = (k, v) => `<span class="chip st-${k}"><b>${v}</b>${esc(LABEL[k] || k)}</span>`;
-    $("counts").innerHTML = [chip("done", o.done), chip("running", o.running), chip("ready", o.ready), chip("waiting", o.waiting),
+    const frac = (label, n) => `<span class="chip st-done"><b>${n == null ? "—" : n}/${o.total}</b>${label}</span>`;
+    $("counts").innerHTML = [frac("implemented", o.implemented), frac("activated", o.activated),
+      chip("done", o.done), chip("running", o.running), chip("ready", o.ready), chip("waiting", o.waiting),
       `<span class="chip"><b>${o.built_waiting_on_gate ?? 0}</b>built, waiting on gate</span>`,
       chip("blocked", o.blocked), chip("unknown", o.unknown), `<span class="chip"><b>${o.total}</b>${o.scope === "closure" ? "items in the closure" : "items in plan"}</span>${o.scope === "closure" ? `<span class="chip"><b>${(o.deferred || []).length}</b>deferred (not counted)</span>` : ""}`].join("");
   }
