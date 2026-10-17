@@ -28,6 +28,41 @@ def test_field_preparation_and_unchanged_reductions_are_bitwise():
     assert actual.resolution==.25
     assert actual.surrogate_diagnostic is True
     assert actual.exchangeable is False
+    assert actual.preparation_digest == preparation.digest
+
+
+def test_real_candidate_class_context_constructs_the_prepared_field_null(monkeypatch):
+    """ALGO §3.20: the writer must construct the field estimand, not legacy null."""
+    import hashlib
+    import json
+    from services.ka_kshetra import writer as W, stage4_field as S4
+    from services.ka_kshetra.contracts import PromisePrior
+    writer = W.KaKshetraWriter()
+    writer._generation = 'candidate:g1'; writer._chart_id = 'chart'
+    writer._class_cache = {}; writer._weights = {}; writer._segment_engine = 'sampled'
+    writer._shared_clocks = []; writer._shared_ladder = {}
+    writer._shared_envelopes = S4.EnvelopeIndex([], 10.)
+    writer._shared_extra_breakpoints = []; writer._shared_layer0 = object()
+    monkeypatch.setattr(W, 'HORIZON_DAYS', 10.)
+    monkeypatch.setattr(W, 'candidate_null_shifts', lambda: 3)
+    monkeypatch.setattr(S4, 'load_class_lifetime_count', lambda *a: (1., 'prior'))
+    monkeypatch.setattr(S4, 'load_event_shape', lambda *a: 'point')
+    monkeypatch.setattr(S4, 'load_promise_prior', lambda *a: PromisePrior(.8))
+    context = writer._class_context(object(), 'career')
+    assert writer._class_context(object(), 'career') is context
+    acc = context.null_accumulator
+    # Re-derive preparation material from the plan's separate estimand/schedule.
+    conditioning = ('natal promise, baseline and clocks fixed; all stage-1 transit and '
+                    'obstruction envelopes circularly shifted; full reference rebuilt per draw')
+    material = ['class_specific_field_maximum:career', conditioning, 10., [2.5, 5., 7.5]]
+    expected = hashlib.sha256(json.dumps(material, separators=(',', ':')).encode()).hexdigest()
+    for i in range(3):
+        acc.add_replicate(i, {b: 0. for b in acc.buckets}, [1.] * 10)
+    result = acc.finalize()
+    assert result.experiment.estimand == 'class_specific_field_maximum:career'
+    assert result.preparation_digest == expected
+    assert result.denominator == 4 and result.resolution == .25
+    assert result.surrogate_diagnostic and not result.exchangeable
 
 
 def test_field_accumulator_retries_do_not_reweight_quantile():
