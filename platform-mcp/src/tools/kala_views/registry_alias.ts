@@ -13,6 +13,15 @@ import type { ZodRawShapeCompat } from '@modelcontextprotocol/sdk/server/zod-com
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { remoteAuthorize } from '../../lib/authz.js'
 import type { Principal } from '../../types.js'
+import { z } from 'zod'
+import { servePublishedRequest } from './published_request.js'
+
+export const publishedRequestSchema = z.object({
+  at: z.string().optional(), date_from: z.string().optional(), date_to: z.string().optional(),
+  event_class: z.string().optional(), assertion_id: z.string().optional(),
+  source_table: z.string().optional(), record_id: z.string().optional(),
+  limit: z.number().int().min(1).max(50).optional(), offset: z.number().int().nonnegative().optional(),
+}).strict().optional().describe('Exact published-stage selectors; opts into the stage envelope. Omit for the unchanged legacy answer.')
 
 export type KalaView = 'now' | 'ahead' | 'priority' | 'elect' | 'story' | 'ritual' | 'explain'
 export type PublicViewName = `kala_${KalaView}_get`
@@ -59,6 +68,11 @@ export function kalaViewAlias<Args extends ZodRawShapeCompat>(
     CallToolResult | Promise<CallToolResult>
   const original = legacy as unknown as RawCallback
   const callback = (async (args, extra) => {
+    // Ritual's established Mode-3 refusal remains prior to all I/O.
+    if (Object.hasOwn(args, 'published_request') && args.published_request !== undefined
+      && !(view === 'ritual' && typeof args.undertaking === 'string' && args.undertaking.trim())) {
+      return servePublishedRequest(principal, view, args)
+    }
     const adapter = createKalaLegacyAdapter(principal, view, async forwarded => {
       return await original(forwarded, extra)
     })
