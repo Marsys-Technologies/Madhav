@@ -2719,6 +2719,11 @@ jobs:
       - name: Install Python dependencies
         run: pip install pyyaml pytest
 
+      - name: SR-A6-GCW — protected migration window scheduling
+        # Required through the existing Governance Gates aggregate, including merge_group.
+        # Test coverage is discovered by governance-tool-tests; no per-file CI allowlist.
+        run: python3 -B 00_ARCHITECTURE/briefs/kalayantra/fleet/protected_windows.py guard
+
       # ── SAMĀPTI B-N8-CI-GATES / finding F-29 (2026-07-30) ──────────────────────
       # Both steps below accepted exit 3 UNCONDITIONALLY, so the entire MEDIUM/LOW
       # severity band passed green permanently and without limit: one pre-existing
