@@ -57,8 +57,6 @@
     "J-3d-a55",
     "J-3d-pr3103",
     "J-4a",
-    "J-4a-a25",
-    "J-4a-a26",
     "J-4a-a55k",
     "J-4a-pr2903",
     "J-4a-pr3116",
@@ -175,7 +173,7 @@
     "VC-1",
     "VC-2"
    ],
-   "closure_count": 172,
+   "closure_count": 170,
    "gap_candidates": [
     {
      "absorbed_by": "J-RUN2-RESOLVED",
@@ -296,8 +294,6 @@
     "J-3d-a55",
     "J-3d-pr3103",
     "J-4a",
-    "J-4a-a25",
-    "J-4a-a26",
     "J-4a-a55k",
     "J-4a-pr2903",
     "J-4a-pr3116",
@@ -353,7 +349,7 @@
     "P06b",
     "V-J6"
    ],
-   "closure_count": 105,
+   "closure_count": 103,
    "gap_candidates": [
     {
      "absorbed_by": "J-RUN2-RESOLVED",
@@ -459,8 +455,6 @@
     "J-3d-a55",
     "J-3d-pr3103",
     "J-4a",
-    "J-4a-a25",
-    "J-4a-a26",
     "J-4a-a55k",
     "J-4a-pr2903",
     "J-4a-pr3116",
@@ -547,7 +541,7 @@
     "L0-M",
     "P06b"
    ],
-   "closure_count": 138,
+   "closure_count": 136,
    "gap_candidates": [
     {
      "absorbed_by": "J-RUN2-RESOLVED",
@@ -648,8 +642,6 @@
     "J-3d-a55",
     "J-3d-pr3103",
     "J-4a",
-    "J-4a-a25",
-    "J-4a-a26",
     "J-4a-a55k",
     "J-4a-pr2903",
     "J-4a-pr3116",
@@ -777,7 +769,7 @@
     "VC-1",
     "VC-2"
    ],
-   "closure_count": 188,
+   "closure_count": 186,
    "gap_candidates": [
     {
      "absorbed_by": "C-1",
@@ -1023,8 +1015,6 @@
   "J-3d-a55",
   "J-3d-pr3103",
   "J-4a",
-  "J-4a-a25",
-  "J-4a-a26",
   "J-4a-a55k",
   "J-4a-pr2903",
   "J-4a-pr3116",
@@ -1152,10 +1142,10 @@
   "VC-1",
   "VC-2"
  ],
- "closure_count": 188,
- "closure_sha256": "ec5a3968cc7c1e63670a3fa2a52d70a3fcc875e2f9b9dfe9c85ddc32b1d756dd",
+ "closure_count": 186,
+ "closure_sha256": "a2a260ab3e52cfd11ef9429494e5732c89ab372805a4bd63877c70aa6aeb6732",
  "inputs": {
-  "model_canonical_sha256": "59a9c3fccc9bf09e34ebd65e0ed9c29427e822a7cf56715b36985c110889478c",
+  "model_canonical_sha256": "dd9d0c48816fcae2acf3d1c3b4b4ec97ec91a95607eaa9e9c0630ab0b986d54e",
   "model_items": 270,
   "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018",
   "roots_canonical_sha256": "8dc93787e239e3abf8d3b6eacd926ccd75b7100995e7be385484e19ea41e5334"
@@ -1936,8 +1926,6 @@
     "J-3d-a54",
     "J-3d-a55",
     "J-3d-pr3103",
-    "J-4a-a25",
-    "J-4a-a26",
     "J-4a-a55k",
     "J-4a-pr2903",
     "J-4a-pr3116",
@@ -2439,8 +2427,6 @@
    "required_by": [
     "D-G9",
     "J-4a",
-    "J-4a-a25",
-    "J-4a-a26",
     "J-4a-a55k",
     "J-4a-pr2903",
     "J-4a-pr3116"
@@ -2538,12 +2524,6 @@
     "J-3d": [
      "item"
     ],
-    "J-4a-a25": [
-     "item"
-    ],
-    "J-4a-a26": [
-     "item"
-    ],
     "J-4a-a55k": [
      "item"
     ],
@@ -2564,50 +2544,6 @@
     "J-4b-pr3108",
     "J-4b-pr3114",
     "J-4b-pr3119"
-   ],
-   "skip_capable": []
-  },
-  "J-4a-a25": {
-   "acceptances": [
-    "i",
-    "ii",
-    "iii",
-    "iv"
-   ],
-   "prerequisites": {
-    "J-0m": [
-     "item"
-    ],
-    "J-3d": [
-     "item"
-    ]
-   },
-   "required_by": [
-    "J-4a",
-    "J-4a-a26"
-   ],
-   "skip_capable": []
-  },
-  "J-4a-a26": {
-   "acceptances": [
-    "i",
-    "ii",
-    "iii",
-    "iv"
-   ],
-   "prerequisites": {
-    "J-0m": [
-     "item"
-    ],
-    "J-3d": [
-     "item"
-    ],
-    "J-4a-a25": [
-     "item"
-    ]
-   },
-   "required_by": [
-    "J-4a"
    ],
    "skip_capable": []
   },
@@ -5732,6 +5668,8 @@
   "D-RETIRE-B-CLAIM-RECOVERY",
   "D-RETIRE-B-DB-BASELINE",
   "D-RETIRE-B-K-INBOX",
+  "J-4a-a25",
+  "J-4a-a26",
   "J-4p-B4",
   "J-7a",
   "J-7a-a62",
@@ -5795,7 +5733,7 @@
   "W4-SAFETY-N01",
   "W4-SAFETY-N02"
  ],
- "outside_count": 82,
+ "outside_count": 84,
  "plan_version": "2.7+A9",
  "schema": "kalayantra.closure/1"
 }
