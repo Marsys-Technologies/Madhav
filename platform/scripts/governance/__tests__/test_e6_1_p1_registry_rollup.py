@@ -102,6 +102,8 @@ PINNED_FINGERPRINTS = {
     29: "834aff17dbef83ddc90ba743e23b83831187c860d2c6cad0f3369cff3120fb79",
     # 30 (SS N-431/N-545, ONE bump): (provisional): SS N-431/N-545 empty_slice_by_conditional: the opt-in verified-conditional exemption of a filtered produced slice, read by a detector over the writer's own run-evidence records (orchestrator_event_register, post_pass_evidence/1); applicability text appended to Vocab.alias (rev 10), Null.blank_rows (rev 11), Narr.checkable (rev 8) and Null.schema_default (rev 11, text only); no NA_CAUSES / NA_RULE_DECISIONS change
     30: "b1acb3f678b5c8fbe343b93d96d8f2db24e2d024b15412aa960056b98bc5f23c",
+    # 31 (SS N-611, ONE bump): (provisional): SS N-611 Build.dag revision 5 (applicability text, one sentence appended): orchestrator bookkeeping tables (BOOKKEEPING_TABLES) are never produced by an asset, so a read of one is not a read of another asset's table; build_table_owners skips them (target_table and count_sql relations), after the Kala count_sql joins of build_runs (migrations 1353-1356) made ka_jivana_parva / ka_kala_darshana / ka_kalasutra its "owners" and ga_vichara's build_runs read a Build.dag back_read FAIL; no NA_CAUSES / NA_RULE_DECISIONS change
+    31: "f9778667891acd5a7ba82cc2667452ada80cff1ae60661f3b2d918fbc56ad438",
 }
 
 
