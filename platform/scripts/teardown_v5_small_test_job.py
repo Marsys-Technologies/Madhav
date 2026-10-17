@@ -441,8 +441,9 @@ def _retention_lines(cur, owned: list[str]) -> list[str]:
 
 
 def _scope_statements(owned: list[str]) -> list[tuple]:
-    """THE deletion scope, in deletion order: (table, count SQL, DELETE SQL, parameters). One list feeds the plan counts and the
-    deletes, so the row count that gates a DELETE is measured with the SAME predicate the DELETE uses."""
+    """THE deletion scope, in deletion order: (table, count SQL, WHERE clause, parameters). One list feeds the plan counts and the
+    deletes, so the row count that gates a DELETE is measured with the SAME predicate the DELETE uses. The DELETE statement itself is
+    written in `_delete_everything`, the one function the reviewed backup scope declares as this module's dynamic write site."""
     by_asset = "asset_id = %s AND chart_id = %s"
     scope = [
         ("asset_provenance_receipts", by_asset, (ASSET_ID, CHART_ID)),
@@ -452,13 +453,12 @@ def _scope_statements(owned: list[str]) -> list[tuple]:
         ("asset_throughput", by_asset, (ASSET_ID, CHART_ID)),
     ]
     scope += [(table, f"chart_id = %s AND generation = %s{extra}", (CHART_ID, GENERATION)) for table, extra in GENERATION_TABLES]
-    return [(table, f"SELECT count(*) AS n FROM {table} WHERE {where}", f"DELETE FROM {table} WHERE {where}", params)
-            for table, where, params in scope]
+    return [(table, f"SELECT count(*) AS n FROM {table} WHERE {where}", where, params) for table, where, params in scope]
 
 
 def _plan_counts(cur, owned: list[str]) -> dict:
     counts: dict = {}
-    for table, count_sql, _delete_sql, params in _scope_statements(owned):
+    for table, count_sql, _where, params in _scope_statements(owned):
         counts[table] = len(owned) if table == "build_runs" else _count(cur, count_sql, params)
     for table in LEGACY_GUARD_TABLES:
         counts[table] = "guard-only (never deleted)" if _table_exists(cur, table) else "absent"
@@ -473,11 +473,11 @@ def _delete_everything(cur, owned: list[str]) -> list[str]:
     `_lock_delete_tables` holds (SHARE ROW EXCLUSIVE excludes any concurrent writer), so it cannot change in between. Returns the tables
     whose measured scope was empty and whose DELETE was therefore skipped, in scope order."""
     skipped: list[str] = []
-    for table, count_sql, delete_sql, params in _scope_statements(owned):
+    for table, count_sql, where, params in _scope_statements(owned):
         if _count(cur, count_sql, params) == 0:
             skipped.append(table)
             continue
-        cur.execute(delete_sql, params)
+        cur.execute(f"DELETE FROM {table} WHERE {where}", params)
     return skipped
 
 
