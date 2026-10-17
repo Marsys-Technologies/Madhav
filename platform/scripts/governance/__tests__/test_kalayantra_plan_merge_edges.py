@@ -142,7 +142,8 @@ def test_only_a_measured_merge_records_the_required_step(plan, case, observation
     if case[0] == "KA-3a":
         head, merge = "a" * 40, "b" * 40
         proof = dict(type="code", reviewed_head=head,
-                     pr=dict(number=9999, state="MERGED", headRefOid=head, mergeCommit={"oid": merge}))
+                     pr=dict(number=9999, state="MERGED", headRefOid=head, mergeCommit={"oid": merge}),
+                     deploy=dict(deployed_sha="c" * 40, run_id=1, contains_merge=True))    # A7 D-46: measured deploy
         log.append(dict(kind="item", item=case[0], actor="stream-K", state="review",
                         detail=f"PR #9999 @ {head}", ts="2026-10-16T15:01:30Z"))
         verdicts = [dict(verdict, head=head, phase="pre_merge"),

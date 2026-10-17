@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import re
 
-from .completion import d46_kind, evidence_requirements, unmet_evidence
+from .completion import d46_kind, d46_requirements, evidence_requirements, unmet_evidence
 from .verdicts import accepted_verdict
 
 
@@ -126,6 +126,8 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
                     fail("unguarded_done", item_id, "terminal event bypassed guarded completion")
                 requirements = evidence_requirements(model, row)
                 if requirements is not None:
+                    if "activation_pending" in ev:    # a D-46 completion: the guard's deploy containment applies
+                        requirements = d46_requirements(requirements, relaxed)
                     # the guard's own requirements, on the log as it stood when the completion was written
                     for gap in unmet_evidence(model, row, seen, completion, requirements, repo=repo):
                         fail(gap["code"], item_id, gap["detail"])

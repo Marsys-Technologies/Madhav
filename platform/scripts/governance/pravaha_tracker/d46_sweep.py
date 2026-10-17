@@ -247,10 +247,14 @@ def render(reports: list[dict]) -> str:
 
 
 def apply(model: dict, evidence: dict, repo: str, events_path: str, observe_detector) -> list[dict]:
-    """Close every would_close item under the event-log lock, through the same guard `done` uses."""
+    """Close every would_close item under the event-log lock, through the same guard `done` uses.
+
+    All-or-nothing per item: the verdict / review events an item needs are staged in memory beside its done event,
+    the guard judges the would-be log, and only a passing item has anything appended (a refusal leaves no writes).
+    """
     from pravaha_tracker.claims import _append, _close, _locked, _read
     from pravaha_tracker.completion import CompletionError, guarded_done_event
-    from pravaha_tracker.events import validate_against_model
+    from pravaha_tracker.events import validate, validate_against_model
     results = []
     fd = _locked(events_path)
     try:
@@ -259,53 +263,55 @@ def apply(model: dict, evidence: dict, repo: str, events_path: str, observe_dete
                 continue
             item = next(i for i in model["items"] if i["id"] == report["item"])
             ev = report["evidence"]
-            events = _read(fd)
+            view, staged = _read(fd), []
+
+            def stage(event: dict) -> None:
+                validate_against_model(event, model, view)
+                event = validate(event)
+                staged.append(event)
+                view.append(event)
+
             owner = str(item.get("owner", "")).upper()
             actor = f"stream-{'S' if owner in ('N', 'V') else owner}:{SWEEPER}"
             try:
                 detector = evidence.get("detectors", {}).get(item["id"]) or observe_detector(item["id"])
                 if report["completion_kind"] == "code":
-                    proof = _code_proof(model, events, evidence, repo, item, ev, actor, fd, _append, validate_against_model)
+                    proof = _code_proof(model, view, evidence, repo, item, ev, actor, stage)
                 else:
-                    _log_verdict(model, events, item, ev, actor, fd, _append, validate_against_model)
+                    _log_verdict(item, ev, stage)
                     proof = {"type": "artifact", "artifact_digest": ev["artifact_digest"], "path": ev["artifact_path"]}
-                events = _read(fd)
-                event = guarded_done_event(model, events, item["id"], actor, detector, proof)
-                validate_against_model(event, model, events)
-                results.append({"item": item["id"], "closed": True, "event": _append(fd, event)})
+                stage(guarded_done_event(model, view, item["id"], actor, detector, proof))
             except (CompletionError, ValueError) as exc:
                 results.append({"item": item["id"], "closed": False, "refused": str(exc)})
+                continue
+            written = [_append(fd, event) for event in staged]
+            results.append({"item": item["id"], "closed": True, "event": written[-1]})
     finally:
         _close(fd)
     return results
 
 
-def _log_verdict(model, events, item, ev, actor, fd, append, validate_against_model, *, phase="pre_merge") -> None:
-    """Make the cockpit-supplied acceptance a verdict event, if the log does not hold it yet."""
+def _log_verdict(item, ev, stage, *, phase="pre_merge") -> None:
+    """Stage the cockpit-supplied acceptance as a verdict event, if the log does not hold it yet."""
     acc = ev["post_deploy_acceptance"] if phase == "post_deploy" else ev["acceptance_ref"]
     if acc["source"] == "event_log":
         return
-    verdict = {"kind": "verdict", "actor": acc["actor"], "item": item["id"], "result": "ACCEPTED", "phase": phase,
-               "detail": f"D-46 criterion v2 acceptance, ref {acc.get('ref')}; recorded by the {SWEEPER}",
-               **({"head": acc["head"]} if acc.get("head") else {"artifact_digest": acc["artifact_digest"]}),
-               **({"ts": acc["ts"]} if acc.get("ts") else {})}
-    validate_against_model(verdict, model, events)
-    append(fd, verdict)
+    stage({"kind": "verdict", "actor": acc["actor"], "item": item["id"], "result": "ACCEPTED", "phase": phase,
+           "detail": f"D-46 criterion v2 acceptance, ref {acc.get('ref')}; recorded by the {SWEEPER}",
+           **({"head": acc["head"]} if acc.get("head") else {"artifact_digest": acc["artifact_digest"]}),
+           **({"ts": acc["ts"]} if acc.get("ts") else {})})
 
 
-def _code_proof(model, events, evidence, repo, item, ev, actor, fd, append, validate_against_model) -> dict:
-    pr = next(p for p in evidence["prs"] if p.get("number") == ev["merged_pr"])
-    _log_verdict(model, events, item, ev, actor, fd, append, validate_against_model)
+def _code_proof(model, events, evidence, repo, item, ev, actor, stage) -> dict:
+    _log_verdict(item, ev, stage)
     if ev.get("post_deploy_acceptance"):
-        _log_verdict(model, events, item, ev, actor, fd, append, validate_against_model, phase="post_deploy")
+        _log_verdict(item, ev, stage, phase="post_deploy")
     registered = any(e.get("kind") == "item" and e.get("item") == item["id"] and e.get("state") == "review"
                      and f"PR #{ev['merged_pr']}" in e.get("detail", "") and ev["head"] in e.get("detail", "")
                      for e in events)
     if not registered:
-        review = {"kind": "item", "actor": actor, "item": item["id"], "state": "review",
-                  "detail": f"PR #{ev['merged_pr']} head {ev['head']} registered by the {SWEEPER} (D-46)"}
-        validate_against_model(review, model, events)
-        append(fd, review)
+        stage({"kind": "item", "actor": actor, "item": item["id"], "state": "review",
+               "detail": f"PR #{ev['merged_pr']} head {ev['head']} registered by the {SWEEPER} (D-46)"})
     run = _first_deploy(repo, evidence, ev["merge_commit"])
     return {"type": "code", "reviewed_head": ev["head"], "repo": repo,
             "pr": {"number": ev["merged_pr"], "state": "MERGED", "headRefOid": ev["head"],

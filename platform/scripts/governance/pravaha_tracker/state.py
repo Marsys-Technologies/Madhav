@@ -34,12 +34,45 @@ DECLARATION_KEYS = ("completion_kind", "producer", "reviewer_rule", "step_eviden
 STATUS_ORDER = ["done", "not_applicable", "running", "review", "ready", "waiting", "blocked", "parked", "failed", "unknown", "conflict"]
 
 
-def open_dependencies(item: dict, rows: dict[str, dict]) -> list[str]:
-    """Ordered completion gates; merge/acceptance evidence never closes a dependency."""
-    terminal = ({"done", "not_applicable"}
-                if item.get("accepts_not_applicable_dependencies") is True else {"done"})
+# A7 D-46: only code/artifact items may complete (be *implemented*) while a gate is open.
+D46_KINDS = ("code", "artifact")
+
+
+def _terminal(item: dict) -> set[str]:
+    return ({"done", "not_applicable"}
+            if item.get("accepts_not_applicable_dependencies") is True else {"done"})
+
+
+def open_dependencies(item: dict, rows: dict[str, dict], *, relaxed: bool = False) -> list[str]:
+    """Ordered completion gates; merge/acceptance evidence never closes a dependency.
+
+    A dependency that is implemented but not yet activated (it carries `activation_pending`) satisfies only a
+    `relaxed` (D-46 code/artifact) dependant; operation, packet, decision and join items keep strict ordered
+    completion (SR-A4-01) and still wait for the upstream to be activated.
+    """
+    terminal = _terminal(item)
     return [dep for dep in item.get("depends_on", [])
-            if rows.get(dep, {}).get("status") not in terminal]
+            if rows.get(dep, {}).get("status") not in terminal
+            or (not relaxed and rows[dep].get("activation_pending"))]
+
+
+def pending_gates(item: dict, rows: dict[str, dict]) -> list[str]:
+    """Transitive D-46 activation gates of `item`: its non-terminal dependencies plus the gates its implemented
+    dependencies are themselves still waiting on. Empty exactly when everything upstream is activated."""
+    terminal, gates = _terminal(item), []
+    for dep in item.get("depends_on", []):
+        row = rows.get(dep, {})
+        for gate in ([dep] if row.get("status") not in terminal else row.get("activation_pending") or []):
+            if gate not in gates:
+                gates.append(gate)
+    return gates
+
+
+def is_relaxed(model: dict, item: dict, row: dict) -> bool:
+    """D-46 applies to `item` (declared code/artifact; an undeclared model: its recorded completion's type)."""
+    if isinstance(model.get("control_plane", {}).get("declarations"), dict):
+        return item.get("completion_kind") in D46_KINDS
+    return row.get("completion_type") in D46_KINDS
 
 
 def _age_s(ts: str | None, now: dt.datetime) -> float | None:
@@ -114,6 +147,7 @@ def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool 
         if completed:
             out.update(status="done", source="guarded:event", evidence=completed.get("evidence"),
                        detail=completed.get("detail", ""), updated_at=completed["ts"])
+            out["completion_type"] = (completed.get("completion") or {}).get("type")
             if det_result is not None:
                 out["checked_at"] = det_result["checked_at"]
                 if det_result["status"] != "done":
@@ -180,6 +214,7 @@ def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool 
     if completed:
         out.update(status="done", source="guarded:event", evidence=completed.get("evidence"),
                    detail=completed.get("detail", ""), updated_at=completed["ts"])
+        out["completion_type"] = (completed.get("completion") or {}).get("type")
         return out
     if last:
         out["status"] = ("conflict" if guarded and last["state"] == "done" and
@@ -264,14 +299,16 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                 if e.get("kind") == "verdict" and e.get("phase", "pre_merge") == "pre_merge" and e.get("item") in items:
                     latest[e["item"]] = e.get("result")
             merged_accepted |= {iid for iid, res in latest.items() if res == "ACCEPTED"}
-    # Resolve joins and recorded decisions together until their strict gates stabilise.
-    for _ in range(len(items) + 1):
+    for s_ in status.values():
+        s_["activation_pending"] = []
+    # Resolve joins, recorded decisions and D-46 activation together until their strict gates stabilise.
+    for _ in range(2 * len(items) + 2):
         changed = False
         for iid, it in items.items():
             s = status[iid]
             deps = it.get("depends_on", [])
             accepts_skips = it.get("accepts_not_applicable_dependencies") is True
-            strict_open = open_dependencies(it, status)
+            strict_open = open_dependencies(it, status, relaxed=is_relaxed(model, it, s))
             start_blockers = [d for d in strict_open if d not in merged_accepted]
             s["deps_open"] = strict_open
             s["deps_open_strict"] = strict_open
@@ -307,6 +344,12 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                 if new == "done" and accepts_skips:
                     s["gaps"] = sorted({origin for dep in deps for origin in
                                         status[dep].get("skip_origin", status[dep].get("gaps", []))})
+            # A7 D-46: an implemented (done) item is activated only when every gate upstream, transitively, is.
+            # Recomputed every pass, so it empties by itself when the last gate closes.
+            pending = pending_gates(it, status) if guarded and s["status"] == "done" else []
+            if s["activation_pending"] != pending:
+                s["activation_pending"] = pending
+                changed = True
         if not changed:
             break
     for iid, it in items.items():
@@ -340,9 +383,6 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             and all(dep in items for dep in s["deps_open"])
         )
         s["gate_blockers"] = list(s["deps_open"]) if s["built_waiting_on_gate"] else []
-        # A7 D-46: an implemented (done) item whose strict gates are still open is implemented but not yet
-        # activated. Recomputed every snapshot, so it empties by itself when the last gate closes.
-        s["activation_pending"] = list(s["deps_open"]) if guarded and s["status"] == "done" else []
 
     # a model that declares its items (relaunch plan v2.7 §6) shows each row's declaration; other models as before
     declared = isinstance(model.get("control_plane", {}).get("declarations"), dict)

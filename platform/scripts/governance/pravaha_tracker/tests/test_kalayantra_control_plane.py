@@ -313,7 +313,9 @@ class GuardedCompletionCases(unittest.TestCase):
         }
         self.pr = {"number": 3210, "headRefOid": self.head, "mergeCommit": {"oid": self.merge},
                    "state": "MERGED"}
-        self.proof = {"type": "code", "reviewed_head": self.head, "pr": self.pr}
+        # A7 D-46: every code item, a data-writing one too, is also contained in a successful main deploy
+        self.deploy = {"deployed_sha": "d" * 40, "run_id": 7, "contains_merge": True}
+        self.proof = {"type": "code", "reviewed_head": self.head, "pr": self.pr, "deploy": self.deploy}
         self.step = {"kind": "item", "actor": "stream-K:k1", "item": "K-1", "state": "done",
                      "step": "tests", "evidence": "suite passed", "ts": self.now}
         self.verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "K-1",
@@ -488,7 +490,8 @@ class GuardedCompletionCases(unittest.TestCase):
             live = ({"item": "K-1", "detector": {"status": "done", "detail": "merged"}}, "live")
             gh = subprocess.CompletedProcess([], 0, stdout=json.dumps(self.pr), stderr="")
             with patch.object(cli, "EVENTS", path), patch.object(cli, "load_model", return_value=self.model), \
-                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh):
+                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh), \
+                    patch.object(cli, "observe_containment", return_value=self.deploy):
                 self.assertEqual(cli.main(["done", "K-1", "--stream", "K", "--pr", "3210",
                                            "--reviewed-head", self.head]), 0)
             with open(path, encoding="utf-8") as handle:
@@ -1184,7 +1187,7 @@ class KU01Fixtures(DeclaredCase):
     def test_data_writing_completion_needs_post_deploy_at_the_merge_commit(self):
         events = [self.review("K-D"), self.verdict("K-D", head=self.head)]
         post = self.verdict("K-D", head=self.merge, phase="post_deploy")
-        self.assert_passes("K-D", [*events, post], self.code_proof())
+        self.assert_passes("K-D", [*events, post], self.code_proof(deploy=self.deploy))
         self.assert_passes("K-D", [*events, post], self.code_proof(deploy=self.deploy))
         wrong = (
             [],                                                                       # missing
@@ -1225,9 +1228,9 @@ class KU01Fixtures(DeclaredCase):
     def test_audit_rechecks_typed_evidence_at_the_end_of_the_log(self):
         events = [self.review("K-D"), self.verdict("K-D", head=self.head),
                   self.verdict("K-D", head=self.merge, phase="post_deploy")]
-        self.assert_passes("K-D", events, self.code_proof())
+        self.assert_passes("K-D", events, self.code_proof(deploy=self.deploy))
         for revoked, code in ((events[1], "rejected_or_stale_verdict"), (events[2], "missing_post_deploy_verdict")):
-            refused, codes = self.both("K-D", events, self.code_proof(), later=[{**revoked, "result": "REJECTED"}])
+            refused, codes = self.both("K-D", events, self.code_proof(deploy=self.deploy), later=[{**revoked, "result": "REJECTED"}])
             self.assertIsNone(refused)                       # the guard saw the log before the revocation
             self.assertEqual(codes, {code})
 

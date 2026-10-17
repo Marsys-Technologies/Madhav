@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from .events import actor_stream
-from .state import build_snapshot, open_dependencies
+from .state import D46_KINDS, build_snapshot, open_dependencies, pending_gates
 from .verdicts import accepted_verdict
 
 
@@ -39,7 +39,6 @@ EVIDENCE_TABLE = {
 # `activation_pending` and the item is ACTIVATED only when they close. Code items also drop the separate step
 # receipts: the PR acceptance covers the code-verifiable steps. Operation, packet, decision and join items keep
 # strict ordered completion (SR-A4-01).
-D46_KINDS = ("code", "artifact")
 
 
 def d46_kind(model: dict, item: dict, proof_type) -> str | None:
@@ -49,6 +48,14 @@ def d46_kind(model: dict, item: dict, proof_type) -> str | None:
     else:
         kind = proof_type
     return kind if kind in D46_KINDS else None
+
+
+def d46_requirements(requirements: dict, relaxed) -> dict:
+    """D-46: EVERY code item is contained in a successful main deploy, measured. A data-writing code item keeps its
+    post-deploy verdict and now also needs the deployment containment (the verdict no longer stands in for it)."""
+    if relaxed == "code" and "deployment_containment" not in requirements["evidence"]:
+        return {**requirements, "evidence": (*requirements["evidence"], "deployment_containment")}
+    return requirements
 
 
 def _production_metadata(value) -> bool:
@@ -220,8 +227,10 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
         raise CompletionError("item is already done")
     if rows[item_id]["status"] == "not_applicable":
         raise CompletionError("item is not applicable")
-    strict = open_dependencies(item, rows)
     relaxed = d46_kind(model, item, proof.get("type"))
+    # an implemented-but-not-activated dependency satisfies only a code/artifact item (D-46); every other kind
+    # still waits for it to be activated (SR-A4-01)
+    strict = open_dependencies(item, rows, relaxed=relaxed is not None)
     activation_pending: list[str] = []
     if strict and relaxed is None:
         raise CompletionError("dependencies remain open: " + ", ".join(strict))
@@ -229,7 +238,8 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
         unknown = [dep for dep in strict if dep not in rows]
         if unknown:    # D-46 defers to another plan item or gate, never to an id the plan does not know
             raise CompletionError("dependencies unknown to the plan: " + ", ".join(unknown))
-        activation_pending = list(strict)
+    if relaxed is not None:
+        activation_pending = pending_gates(item, rows)    # transitive: an upstream's own open gates count too
     steps = item.get("steps", [])
     completed = {ev.get("step") for ev in events if ev.get("kind") == "item" and
                  ev.get("item") == item_id and ev.get("state") == "done" and ev.get("step")}
@@ -242,6 +252,7 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
     requirements = evidence_requirements(model, item) or _undeclared_requirements(item, kind)
     if requirements is None:
         raise CompletionError("unknown typed evidence")
+    requirements = d46_requirements(requirements, relaxed)
     gaps = unmet_evidence(model, item, events, proof, requirements, repo=proof.get("repo"))
     first = gaps[0] if gaps else None
     if first and first["requirement"] in ("declaration", "completion_kind"):

@@ -235,3 +235,97 @@ def test_dashboard_renders_implemented_and_activated_chips():
     assert "Render error" not in shown["foot"]
     assert "<b>1/2</b>implemented" in shown["counts"] and "<b>0/2</b>activated" in shown["counts"]
     assert "implemented, activation pending: K-GATE" in shown["plan"]
+
+
+# ---- review round 1 (PR #3691): B1-B4, one oracle each ------------------------------------------------------------
+# Source: owner direction D-46 — merged + accepted + contained in a successful main deploy for EVERY code item; strict
+# kinds keep SR-A4-01 behind an upstream that is implemented but not activated; activated means the gates are closed.
+
+_RULES = {"v_exact_head_then_deploy_containment": "x", "v_exact_head_then_post_deploy_at_merge_commit": "x",
+          "v_pre_acceptance_then_receipt_readback_digest": "x"}
+_CODE = {"completion_kind": "code", "reviewer_rule": "v_exact_head_then_deploy_containment"}
+
+
+def _declared(*items):
+    m = model_with(*items)
+    m["control_plane"]["declarations"] = {"reviewer_rule": _RULES}
+    return m
+
+
+def _stamped(event):
+    return {**event, "ts": NOW.isoformat()}
+
+
+def _code_log(model, item, head=HEAD):
+    ts = NOW.isoformat()
+    return [{"kind": "item", "actor": "stream-K:k1", "item": item, "state": "review", "detail": f"PR #7 @ {head}",
+             "ts": ts},
+            {"kind": "verdict", "actor": "stream-V:v1", "item": item, "head": head, "phase": "pre_merge",
+             "result": "ACCEPTED", "detail": "ok", "ts": ts}]
+
+
+def _proof(head=HEAD):
+    return {**code_proof(), "reviewed_head": head, "pr": {**code_proof()["pr"], "headRefOid": head}}
+
+
+def test_B1_data_writing_code_item_needs_a_measured_deploy_containment():
+    model = _declared({"id": "K-M", "completion_kind": "code", "depends_on": ["K-GATE"],
+                       "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
+                       "brief": {"migration": "123_x.sql"}}, {"id": "K-GATE"})
+    log = _code_log(model, "K-M") + [{"kind": "verdict", "actor": "stream-V:v1", "item": "K-M", "head": MERGE,
+                                      "phase": "post_deploy", "result": "ACCEPTED", "detail": "ok",
+                                      "ts": NOW.isoformat()}]
+    with pytest.raises(CompletionError, match="no successful deployment"):
+        complete(model, log, "K-M", code_proof(deploy=False))
+    event = complete(model, log, "K-M", code_proof())
+    assert event["deploy_run_id"] == 4242 and event["activation_pending"] == ["K-GATE"]
+
+
+def _chain(*kinds):
+    """K-GATE (open) <- K-C (code, implemented, gate pending) <- one dependant per kind in `kinds`."""
+    first = {"id": "K-C", "depends_on": ["K-GATE"], **_CODE}
+    rest = [{"id": f"K-{i}", "depends_on": ["K-C"], **extra} for i, extra in enumerate(kinds)]
+    model = _declared({"id": "K-GATE"}, first, *rest)
+    log = _code_log(model, "K-C")
+    log.append(_stamped(complete(model, log, "K-C", code_proof())))
+    return model, log
+
+
+def test_B2_strict_dependant_waits_for_an_implemented_but_not_activated_upstream():
+    digest = "d" * 64
+    model, log = _chain({"completion_kind": "operation", "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest"})
+    log.append({"kind": "verdict", "actor": "stream-V:v1", "item": "K-0", "artifact_digest": digest,
+                "phase": "artifact", "result": "ACCEPTED", "detail": "ok", "ts": NOW.isoformat()})
+    proof = {"type": "operation", "artifact_digest": digest, "operation_id": "op1",
+             "receipt": {"operation_id": "op1", "item_id": "K-0", "status": "COMPLETED"}}
+    with pytest.raises(CompletionError, match="dependencies remain open: K-C"):
+        complete(model, log, "K-0", proof)
+    # a code dependant of the same upstream is still allowed to close (D-46 relaxation is for code/artifact only)
+    model, log = _chain(_CODE)
+    h2 = "e" * 40
+    log += _code_log(model, "K-0", h2)
+    assert complete(model, log, "K-0", _proof(h2))["activation_pending"] == ["K-GATE"]
+
+
+def test_B3_activation_is_transitive_so_the_activated_count_does_not_overstate():
+    model, log = _chain(_CODE)
+    h2 = "e" * 40
+    log += _code_log(model, "K-0", h2)
+    event = complete(model, log, "K-0", _proof(h2))
+    assert event["activation_pending"] == ["K-GATE"]          # the upstream's open gate, not just its own deps
+    log.append(_stamped(event))
+    snap, rows = rows_of(model, log)
+    assert snap["overall"]["implemented"] == 2 and snap["overall"]["activated"] == 0, snap["overall"]
+    assert rows["K-0"]["activation_pending"] == ["K-GATE"] and rows["K-C"]["activation_pending"] == ["K-GATE"]
+    assert snap["overall"]["close_ready"] is False
+
+
+def test_B4_a_refused_apply_leaves_the_event_log_untouched(repo, tmp_path):
+    ev = evidence_for(repo)
+    ev["detectors"] = {}                                       # measured live by --apply: the detector is down
+    events_path = tmp_path / "EVENTS.jsonl"
+    events_path.write_text("")
+    results = d46_sweep.apply(sweep_model(), ev, str(repo["path"]), str(events_path),
+                              lambda iid: {"status": "unknown", "detail": "down"})
+    assert results and results[0]["closed"] is False
+    assert events_path.read_text() == ""
