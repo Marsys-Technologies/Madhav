@@ -1,8 +1,10 @@
 ---
 artifact: KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md
 status: ACTIVE — the dated record of owner decisions and owner-delegated calls for KĀLA-YANTRA v3
-version: 1.0
+version: 1.1
 authored_on: 2026-10-11
+changelog:
+  - "1.1 (2026-10-16): records D-OWNER-TESTS-20261016; campaign-wide optimum testing supersedes conflicting reversion and review-round rules."
 record_rule: >
   Append a dated block per decision event. Owner decisions are the native's words; delegated
   calls name the delegate and the owner's delegating instruction. A delegated call never
@@ -91,3 +93,11 @@ instruction: "take a call on my behalf" on the planner's four questions.
   independently reviewed immutable source and either the owner's authorisation (commit id)
   or an effective D-4 surrogate decision after its veto window. Changes to the owner
   decisions themselves remain owner-only.
+
+## 2026-10-16 (~16:03Z) — D-OWNER-TESTS-20261016 (owner, in chat)
+
+The owner directed: "adopt this testing strategy for the entire campaign … make this an authoritative decision and amend any rules that exist." The authoritative verbatim standard and supersession are recorded in [D-OWNER-TESTS-20261016](DECISION_TESTING_STANDARD_v1_0.md).
+
+One bounded review round; a second only for a BLOCKING finding. The reviewer enumerates every distinct production claim in the verdict and proves one source-cited oracle per claim passes at the pinned merged head and fails under its single planted reversion. Every real defect is fixed with fail-on-revert proof. Already-covered variants and changes with no production behaviour are non_blocking and never block MET or trigger another round. No per-mutant oracles, combinatorial variants or golden-capture of current output. N.8, N.7.6, SR-A4-01, A1 and personal-data handling remain unchanged.
+
+(I) INTERPRETATION — model versioning: `plan_model.json` appends `+testing-standard-20261016` to `model_version`, following the existing additive suffix convention (`fleet/kyreconcile.py:343`). All blanket reversion `measures` descriptions and the tests glossary adopt this decision; detector types, paths, patterns and receipt shapes remain unchanged.

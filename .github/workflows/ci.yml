@@ -454,13 +454,21 @@ jobs:
 
   db-integration-tests:
     needs: [changes, generated-artifacts]
+    # A4 D-31 x D-29: a shard job runs exactly when main selects its job; an unselected
+    # PR job is skipped whole and its umbrella accepts that, but any skipped shard of a selected job fails.
     if: ${{ !cancelled() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'db-integration-tests'))) }}
-    name: DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)
+    name: DB shard ${{ matrix.shard }}/4 — DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: platform
     env:
+      CI_DB_SHARD_JOB: db-integration-tests
+      CI_DB_SHARD: '${{ matrix.shard }}/4'
       CI_PR_DB_PROFILES: ${{ github.event_name == 'pull_request' && needs.changes.outputs.db_profiles || '' }}
       NODE_ENV: test
       # Two separate databases, deliberately: samiksha_test carries migration 470
@@ -561,7 +569,7 @@ jobs:
           GOCHARA_REQUIRE_DB: '1'
         run: |
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-8-0 -- --reporter=verbose --no-file-parallelism
-          if [ "${{ (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) }}" = "true" ]; then
+          if [ "${{ matrix.shard }}" = "4" ] && [ "${{ (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) }}" = "true" ]; then
             python3 scripts/gochara/mutation_check_1206.py
           fi
 
@@ -1381,28 +1389,40 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/p3c_persistence_test
         run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest db-integration-tests-93-0 -- --reporter=verbose
 
-  gochara-a55-replace-chain:
-    # A5.5f (G7): the rebuild-replaces-the-whole-candidate-chain suites drive the writer's REAL substeps on the real migrations
-    # (a template database with the sky-event substrate, cloned per test). They run in their OWN job, in parallel, so every PR does
-    # not wait on the serial A5.3 step of db-integration-tests; the job has its own Postgres service, so the cluster roles the A5.3
-    # suites create and drop cannot collide with these. REQUIRED: an unreachable server or an absent ephemeris corpus FAILS (a skipped
-    # live suite is not evidence).
-    #
-    # THE REAL-DATABASE SUITES ARE SPLIT ACROSS PARALLEL `gochara-a55-*` JOBS (each about 15 minutes at most; the old single job reached its
-    # 45-minute limit, CI-A55-SPLIT). EVERY suite that builds a template database must be in the pytest command of one of them (or of the
-    # A5.3 step): `platform/scripts/governance/__tests__/test_ci_changes.py` DISCOVERS such suites on disk and fails if one is in no mandatory
-    # database-enabled command. Add a new slow real-database suite to the job it belongs to, or open another `gochara-a55-<name>` job by
-    # copying this one (the guard hardens every job with that prefix): never put it in a job already near its budget.
-    #   gochara-a55-replace-chain : a55_replace_chain, a55_replace_chain_populated
-    #   gochara-a55-slice-transitions : c46_slice_transitions
-    #   gochara-a55-round2-runner     : c46_slice_round2, c47_ephe_real_runner, c49_wrap_cut_support
-    #   gochara-a55-verifier-fixes    : p1_exclusion_h_unknown, member_geometry_seam, graze_interim
-    #   (next: gochara-a55-teardown, -round2 and -round3 for the c38 real-db modules, gochara-a55-dispatch for c37 real-db)
-    needs: [changes, generated-artifacts]
-    if: ${{ !cancelled() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-replace-chain'))) }}
-    name: Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
+
+  required-db-integration-tests:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    # D-29: this umbrella runs exactly when its job must run (full events, or a PR that selects the job); an
+    # unselected PR job is skipped whole and so is this check, which counts as passing. Once it runs, a failed,
+    # cancelled or skipped shard fails it.
+    name: DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)
+    needs: [changes, db-integration-tests]
+    if: ${{ always() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'db-integration-tests'))) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.db-integration-tests.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::DB shards finished $result; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
+
+  replace-chain-substrate:
+    # R1: each producer runs one REAL full-domain body substep; consumers restore
+    # its checksummed, source-bound rows instead of serially rebuilding all eight.
+    needs: [changes, generated-artifacts]
+    # D-29: main's db_jobs selection already includes this producer whenever its consumer is selected.
+    if: ${{ !cancelled() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'replace-chain-substrate'))) }}
+    name: Sky substrate ${{ matrix.body }} — replace-chain real fixture
+    strategy:
+      fail-fast: false
+      matrix:
+        body: [Sun, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: platform
@@ -1418,14 +1438,11 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
-    env:
-      CI_PR_DB_PROFILES: ${{ github.event_name == 'pull_request' && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Restore source-bound generated files
         uses: ./.github/actions/restore-generated
-      - name: A5.5f - replace-chain suites (REQUIRED, never skipped)
-        if: ${{ (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-replace-chain-1-9'))) }}
+      - name: Build one real substrate body (REQUIRED, never skipped)
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           GOCHARA_A53_REQUIRE_DB: '1'
@@ -1444,7 +1461,113 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_replace_chain_fixture.py" --body "${{ matrix.body }}" --output "$RUNNER_TEMP/replace-chain-substrate/${{ matrix.body }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: replace-chain-substrate-${{ matrix.body }}
+          path: ${{ runner.temp }}/replace-chain-substrate/${{ matrix.body }}
+          if-no-files-found: error
+          retention-days: 1
+
+  gochara-a55-replace-chain:
+    # A5.5f (G7): the rebuild-replaces-the-whole-candidate-chain suites drive the writer's REAL substeps on the real migrations
+    # (a template database with the sky-event substrate, cloned per test). They run in their OWN job, in parallel, so every PR does
+    # not wait on the serial A5.3 step of db-integration-tests; the job has its own Postgres service, so the cluster roles the A5.3
+    # suites create and drop cannot collide with these. REQUIRED: an unreachable server or an absent ephemeris corpus FAILS (a skipped
+    # live suite is not evidence).
+    #
+    # THE REAL-DATABASE SUITES ARE SPLIT ACROSS PARALLEL `gochara-a55-*` JOBS (each about 15 minutes at most; the old single job reached its
+    # 45-minute limit, CI-A55-SPLIT). EVERY suite that builds a template database must be in the pytest command of one of them (or of the
+    # A5.3 step): `platform/scripts/governance/__tests__/test_ci_changes.py` DISCOVERS such suites on disk and fails if one is in no mandatory
+    # database-enabled command. Add a new slow real-database suite to the job it belongs to, or open another `gochara-a55-<name>` job by
+    # copying this one (the guard hardens every job with that prefix): never put it in a job already near its budget.
+    #   gochara-a55-replace-chain : a55_replace_chain, a55_replace_chain_populated
+    #   gochara-a55-slice-transitions : c46_slice_transitions
+    #   gochara-a55-round2-runner     : c46_slice_round2, c47_ephe_real_runner, c49_wrap_cut_support
+    #   gochara-a55-verifier-fixes    : p1_exclusion_h_unknown, member_geometry_seam, graze_interim
+    #   (next: gochara-a55-teardown, -round2 and -round3 for the c38 real-db modules, gochara-a55-dispatch for c37 real-db)
+    needs: [changes, generated-artifacts, replace-chain-substrate]
+    # A4 D-31 x D-29: runs exactly when main selects this job; see required-* umbrella.
+    if: ${{ !cancelled() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-replace-chain'))) }}
+    name: DB shard ${{ matrix.shard }}/4 — Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI_DB_SHARD_JOB: gochara-a55-replace-chain
+      CI_DB_SHARD: '${{ matrix.shard }}/4'
+      CI_PR_DB_PROFILES: ${{ github.event_name == 'pull_request' && needs.changes.outputs.db_profiles || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore source-bound generated files
+        uses: ./.github/actions/restore-generated
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: replace-chain-substrate-*
+          path: ${{ runner.temp }}/replace-chain-substrate
+          merge-multiple: false
+      - name: A5.5f - replace-chain suites (REQUIRED, never skipped)
+        if: ${{ (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-replace-chain-1-9'))) }}
+        env:
+          CI_REPLACE_CHAIN_SUBSTRATE: ${{ runner.temp }}/replace-chain-substrate
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-replace-chain-1-9 -- -q --tb=short -rs -p no:cacheprovider
+
+
+  required-gochara-a55-replace-chain:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    # D-29: this umbrella runs exactly when its job must run (full events, or a PR that selects the job); an
+    # unselected PR job is skipped whole and so is this check, which counts as passing. Once it runs, a failed,
+    # cancelled or skipped shard fails it.
+    name: Gochara A5.5f - a rebuild replaces the whole candidate chain (real writer, throwaway Postgres)
+    needs: [changes, gochara-a55-replace-chain, replace-chain-substrate]
+    if: ${{ always() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-replace-chain'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.gochara-a55-replace-chain.result }}"
+          preparation="${{ needs.replace-chain-substrate.result }}"
+          if [ "$result" != "success" ] || [ "$preparation" != "success" ]; then
+            echo "::error::DB shards finished $result, substrate workers $preparation; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
 
   gochara-a55-slice-transitions:
     # A5.5f / C46: the test-slice transition suite (see the split note on gochara-a55-replace-chain).
@@ -1500,8 +1623,13 @@ jobs:
     # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 10 minutes locally (module test_c38_teardown_real_db plus the populated case); split into three parallel jobs so each stays well inside its budget.
     # See the split note on gochara-a55-replace-chain.
     needs: [changes, generated-artifacts]
+    # A4 D-31 x D-29: runs exactly when main selects this job; see required-* umbrella.
     if: ${{ !cancelled() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-teardown'))) }}
-    name: Gochara C38 - the small-test teardown (real writer, throwaway Postgres)
+    name: DB shard ${{ matrix.shard }}/3 — Gochara C38 - the small-test teardown (real writer, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -1520,6 +1648,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
+      CI_DB_SHARD_JOB: gochara-a55-teardown
+      CI_DB_SHARD: '${{ matrix.shard }}/3'
       CI_PR_DB_PROFILES: ${{ github.event_name == 'pull_request' && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
@@ -1546,6 +1676,27 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-teardown-1-9 -- -q --tb=short -rs -p no:cacheprovider
+
+
+  required-gochara-a55-teardown:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    # D-29: this umbrella runs exactly when its job must run (full events, or a PR that selects the job); an
+    # unselected PR job is skipped whole and so is this check, which counts as passing. Once it runs, a failed,
+    # cancelled or skipped shard fails it.
+    name: Gochara C38 - the small-test teardown (real writer, throwaway Postgres)
+    needs: [changes, gochara-a55-teardown]
+    if: ${{ always() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-teardown'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.gochara-a55-teardown.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::DB shards finished $result; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
 
   gochara-a55-teardown-round2:
     # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 14 minutes locally (26 tests).
@@ -1602,8 +1753,13 @@ jobs:
     # C38: the small-test TEARDOWN executed for real against the chain tables (real writer, real foreign keys, roles, lock races); about 9 minutes locally (16 tests).
     # See the split note on gochara-a55-replace-chain.
     needs: [changes, generated-artifacts]
+    # A4 D-31 x D-29: runs exactly when main selects this job; see required-* umbrella.
     if: ${{ !cancelled() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-teardown-round3'))) }}
-    name: Gochara C38 - the small-test teardown, round 3 (real catalog foreign keys, lock race, interrupted replacement) (real writer, throwaway Postgres)
+    name: DB shard ${{ matrix.shard }}/2 — Gochara C38 - the small-test teardown, round 3 (real catalog foreign keys, lock race, interrupted replacement) (real writer, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -1622,6 +1778,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
+      CI_DB_SHARD_JOB: gochara-a55-teardown-round3
+      CI_DB_SHARD: '${{ matrix.shard }}/2'
       CI_PR_DB_PROFILES: ${{ github.event_name == 'pull_request' && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
@@ -1648,6 +1806,27 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-teardown-round3-1-9 -- -q --tb=short -rs -p no:cacheprovider
+
+
+  required-gochara-a55-teardown-round3:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    # D-29: this umbrella runs exactly when its job must run (full events, or a PR that selects the job); an
+    # unselected PR job is skipped whole and so is this check, which counts as passing. Once it runs, a failed,
+    # cancelled or skipped shard fails it.
+    name: Gochara C38 - the small-test teardown, round 3 (real catalog foreign keys, lock race, interrupted replacement) (real writer, throwaway Postgres)
+    needs: [changes, gochara-a55-teardown-round3]
+    if: ${{ always() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-teardown-round3'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.gochara-a55-teardown-round3.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::DB shards finished $result; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
 
   gochara-a55-measuring-build:
     # Measuring-build PR (steward MEASURING-BUILD, MB-ADDITIONS, TIMEOUT-RULING): the horizon derivation, the manifest basis, the state guard and the fired cap
@@ -1764,8 +1943,13 @@ jobs:
   gochara-a55-round2-runner:
     # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).
     needs: [changes, generated-artifacts]
+    # A4 D-31 x D-29: runs exactly when main selects this job; see required-* umbrella.
     if: ${{ !cancelled() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-round2-runner'))) }}
-    name: Gochara A5.5f - test-slice round 2 and the real runner (real writer, throwaway Postgres)
+    name: DB shard ${{ matrix.shard }}/3 — Gochara A5.5f - test-slice round 2 and the real runner (real writer, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -1784,6 +1968,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
+      CI_DB_SHARD_JOB: gochara-a55-round2-runner
+      CI_DB_SHARD: '${{ matrix.shard }}/3'
       CI_PR_DB_PROFILES: ${{ github.event_name == 'pull_request' && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
@@ -1811,11 +1997,37 @@ jobs:
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-round2-runner-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
+
+  required-gochara-a55-round2-runner:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    # D-29: this umbrella runs exactly when its job must run (full events, or a PR that selects the job); an
+    # unselected PR job is skipped whole and so is this check, which counts as passing. Once it runs, a failed,
+    # cancelled or skipped shard fails it.
+    name: Gochara A5.5f - test-slice round 2 and the real runner (real writer, throwaway Postgres)
+    needs: [changes, gochara-a55-round2-runner]
+    if: ${{ always() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-round2-runner'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.gochara-a55-round2-runner.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::DB shards finished $result; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
+
   gochara-a55-verifier-fixes:
     # C48 / PR 3143 (the in-build verifier fixes: P1 exclusion for H-unknown classes, the member-geometry seam and horizon-edge rules, the slice-only graze interim): three real-database suites, about 14 minutes together.
     needs: [changes, generated-artifacts]
+    # A4 D-31 x D-29: runs exactly when main selects this job; see required-* umbrella.
     if: ${{ !cancelled() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-verifier-fixes'))) }}
-    name: Gochara A5.5f - verifier fixes (P1 exclusion, member geometry, graze interim) (real writer, throwaway Postgres)
+    name: DB shard ${{ matrix.shard }}/3 — Gochara A5.5f - verifier fixes (P1 exclusion, member geometry, graze interim) (real writer, throwaway Postgres)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -1834,6 +2046,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
+      CI_DB_SHARD_JOB: gochara-a55-verifier-fixes
+      CI_DB_SHARD: '${{ matrix.shard }}/3'
       CI_PR_DB_PROFILES: ${{ github.event_name == 'pull_request' && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
@@ -1863,6 +2077,27 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-verifier-fixes-1-9 -- -q --tb=short -rs -p no:cacheprovider
+
+
+  required-gochara-a55-verifier-fixes:
+    # Exact required context retained; a matrix is green only if every leg succeeds.
+    # D-29: this umbrella runs exactly when its job must run (full events, or a PR that selects the job); an
+    # unselected PR job is skipped whole and so is this check, which counts as passing. Once it runs, a failed,
+    # cancelled or skipped shard fails it.
+    name: Gochara A5.5f - verifier fixes (P1 exclusion, member geometry, graze interim) (real writer, throwaway Postgres)
+    needs: [changes, gochara-a55-verifier-fixes]
+    if: ${{ always() && ((github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-verifier-fixes'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+        run: |
+          result="${{ needs.gochara-a55-verifier-fixes.result }}"
+          if [ "$result" != "success" ]; then
+            echo "::error::DB shards finished $result; every shard must succeed"
+            exit 1
+          fi
+          echo "Every DB shard passed"
 
   pratijna-v4-fixture-property-tests:
     needs: [changes, generated-artifacts]
@@ -3346,7 +3581,7 @@ jobs:
 
   full-suite:
     name: Full suite event contract
-    needs: [changes, db-integration-tests, gochara-a55-dispatch, gochara-a55-measuring-build, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, unit-db-tests]
+    needs: [changes, db-integration-tests, gochara-a55-dispatch, gochara-a55-measuring-build, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, replace-chain-substrate, required-db-integration-tests, required-gochara-a55-replace-chain, required-gochara-a55-round2-runner, required-gochara-a55-teardown, required-gochara-a55-teardown-round3, required-gochara-a55-verifier-fixes, unit-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
