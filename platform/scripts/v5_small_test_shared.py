@@ -471,7 +471,8 @@ def evidence_root():
 
 
 def request_hash(req):
-    return evidence_digest({k: v for k, v in req.items() if k != 'acceptance_receipt'})
+    """executor.request_digest, byte for byte (A8 §3.9): without `acceptance_receipt`, `expires_at` and any `*_expires_at` field."""
+    return evidence_digest({k: v for k, v in req.items() if k not in ('acceptance_receipt', 'expires_at') and not k.endswith('_expires_at')})
 
 
 def read_evidence(root, folder, ref):
