@@ -2532,10 +2532,16 @@ jobs:
   # deployable component changed, the corresponding mutation must have actually
   # succeeded. It intentionally does not alter the migration barrier or any
   # protected-owner gate.
+  #
+  # `changes` is skipped only when the upstream Ganga workflow_run did not
+  # conclude success (cancelled/superseded/red): no deployment was attempted, so
+  # nothing was earned or claimed and this job reports SKIPPED instead of a
+  # misleading FAILURE. Once upstream is green `changes` runs, and a failed or
+  # cancelled detector, or a skipped/failed mutation it implies, still fails.
   deployment-outcome:
     name: Require earned deployment outcome
     needs: [changes, migrate, deploy-web, deploy-sidecar, deploy-mcp, deploy-pipeline-job]
-    if: ${{ always() && github.event_name != 'pull_request' }}
+    if: ${{ always() && github.event_name != 'pull_request' && needs.changes.result != 'skipped' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
