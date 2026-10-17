@@ -27,7 +27,7 @@ from typing import Any
 SCHEMA = "seal_approval_payload/1"
 SEAL_IS_NOT_A_FLIP = "A seal is not a flip: sealing a generation publishes it for replay and serves nothing."
 #: the migrations whose ledger evidence the payload carries (filename prefix)
-LEDGER_MIGRATIONS = ("1204", "1206", "1232", "1233", "1240", "1378")
+LEDGER_MIGRATIONS = ("1204", "1206", "1232", "1233", "1240", "1378", "1381")
 _DIGEST = re.compile(r"^[0-9a-f]{64}\Z")
 
 #: the generation-scoped output tables the identity digest covers, with a stable per-table ordering
@@ -261,6 +261,9 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
                      "convention_id": convention, "writer_asset_id": writer_asset,
                      "ephemeris_backend": backend,
                      "input_generation_vector_digest": hashlib.sha256(_canon(vector).encode("utf-8")).hexdigest()},
+        "near_miss_layer": near_miss_layer_status(vector, near_miss_evidence(conn,chart_id,generation,vector)),
+        "near_miss_verification": near_miss_evidence(conn,chart_id,generation,vector),
+        "near_miss_output_identity": "vacuous_under_policy" if manifest_policy(conn, chart_id, generation) == "all_null_candidate/1" else None,
         "result_policy": manifest_policy(conn, chart_id, generation),
         "candidate_gate": {"source": "candidate_adapter/1 over ka_gochara_candidate_gate_violations",
                            "violations": sorted((f"{v['event_class']}/{v['path_id']}@{v['rule_version']}:{v['violation']}"
@@ -290,6 +293,27 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
                                              "manifest; the authoritative gate is the seal's, on the published row"},
         "seal_is_not_a_flip": SEAL_IS_NOT_A_FLIP,
     }
+
+
+def near_miss_layer_status(vector, measured=None):
+    """Ruling 18 §8: absence of the FB-8 pin means stored but NOT seal-covered.
+
+    Even a present pin alone earns no verification; P06b must supply the stage.
+    """
+    if not vector.get('near_miss_layer_version'):
+        return 'stored_uncovered'
+    return 'verified' if measured and measured.get('status') == 'VERIFIED' and _DIGEST.fullmatch(measured.get('digest') or '') else 'unverified'
+
+
+def near_miss_evidence(conn, chart_id, generation, vector):
+    if 'near_miss_layer_version' not in vector:
+        return None
+    rows = conn.execute("SELECT v.near_miss_digest FROM public.ka_gochara_near_miss_verification v "
+        "WHERE v.chart_id=%s AND v.generation=%s AND v.layer_version=1 AND v.near_miss_digest="
+        "public.ka_gochara_near_miss_digest(%s,%s) AND NOT EXISTS "
+        "(SELECT 1 FROM public.ka_gochara_near_miss_violations(%s,%s))",
+        (chart_id,generation,chart_id,generation,chart_id,generation)).fetchall()
+    return {'status':'VERIFIED','digest':rows[0][0]} if rows else None
 
 
 ALL_NULL_POLICY = "all_null_candidate/1"

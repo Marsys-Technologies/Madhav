@@ -40,7 +40,7 @@ BUILDER_TABLES = (
 #: the two verification tables the verifier writes (and the only ones)
 VERIFICATION_TABLES = ("ka_gochara_search_inventory_verification", "ka_gochara_eval_window_verification")
 #: …plus the one table the verifier's `--brief` mode appends to (F-R12-4). The SEALER holds no write on it (its write surface keeps it).
-VERIFIER_WRITE_TABLES = VERIFICATION_TABLES + ("ka_gochara_seal_brief",)
+VERIFIER_WRITE_TABLES = VERIFICATION_TABLES + ("ka_gochara_seal_brief", "ka_gochara_near_miss_verification")
 _WRITE = ("INSERT", "UPDATE", "DELETE", "TRUNCATE")
 #: the L1 tables the independent re-derivations READ (their ACLs belong to the data-plane owner, not to 1378)
 L1_READ_TABLES = ("chart_facts", "chart_dashas")
@@ -531,6 +531,18 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
                                   modules=modules, path_refs=path_refs)
         shared_fp = precondition_fingerprint(conn, chart_id, generation)
     report["preconditions"] = pre
+    # P06b: one generation-wide ephemeris stage, even for a class-subset run.
+    # A disagreement aborts before any class attestations are written.
+    from . import near_miss_verifier as nmv
+    try:
+        with conn.transaction():
+            take_locks(conn, chart_id)
+            if precondition_fingerprint(conn, chart_id, generation) != shared_fp:
+                raise VerificationRefused("stale_inputs", "manifest changed before near-miss verification")
+            report["near_miss"] = nmv.verify_generation(conn, chart_id=chart_id, generation=generation,
+                ephe_path=ephe_path, persist=not report_only)
+    except nmv.NearMissError as exc:
+        raise VerificationDisagrees("near_miss", str(exc)) from exc
     disagreements = []
     for cls in pre["classes"]:
         try:

@@ -333,6 +333,10 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
     if "platform" in stored["ephemeris"]:
         check("ephemeris.platform", runtime_platform(), stored["ephemeris"]["platform"])
     derived.append("ephemeris.library")
+    if "near_miss_layer_version" in stored:
+        if type(stored["near_miss_layer_version"]) is not int or stored["near_miss_layer_version"] != 1:
+            problems.append("near_miss_layer_version: unsupported layer version")
+        derived.append("near_miss_layer_version")
     check("node", _NODE, stored["node"])
     derived.append("node")
     check("implementation", module_digests(modules), stored["implementation"])
