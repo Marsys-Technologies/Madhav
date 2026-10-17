@@ -1,21 +1,21 @@
 {
   "schema": "gochara_dasha_settlement/1",
   "header_comment": "Governed settlement record. Changes require a reviewed PR.",
-  "line": "L1_SETTLED v1 utc=2026-10-07T22:18:24Z pos_build=ca17639b dash_build=ca17639b natal_fp=7e4278be vim13_fp=ee2e8bc7 vim13_rows=1040 dash_all_fp=ea7611f7",
-  "utc": "2026-10-07T22:18:24Z",
-  "pos_build": "ca17639b",
-  "dash_build": "ca17639b",
-  "natal_fp": "7e4278be",
+  "line": "L1_SETTLED v1 utc=2026-10-17T05:41:43Z pos_build=7377833e dash_build=7377833e natal_fp=3c034bdf vim13_fp=ee2e8bc7 vim13_rows=1040 dash_all_fp=ea7611f7",
+  "utc": "2026-10-17T05:41:43Z",
+  "pos_build": "7377833e",
+  "dash_build": "7377833e",
+  "natal_fp": "3c034bdf",
   "vim13_fp": "ee2e8bc7",
   "vim13_rows": 1040,
   "dash_all_fp": "ea7611f7",
-  "run_id": "ca17639b-f3cf-42c7-9866-0a61f3855802",
+  "run_id": "7377833e-5d3b-4e70-8bef-1318904f470e",
   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
   "provenance": {
     "source": "origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md",
-    "commit": "2051951aaa3f4e1b6a55d728f703bc074daf11ef",
+    "commit": "5a8a80ebfc0fc6135020f24d82ff9ed43ab14d73",
     "heading": "L1_SETTLED v1",
     "release_receipt": "SUVARNA-L0L2-CLOSE-REV30-20261013",
-    "rebuild_run": "ca17639b-f3cf-42c7-9866-0a61f3855802"
+    "rebuild_run": "7377833e-5d3b-4e70-8bef-1318904f470e"
   }
 }

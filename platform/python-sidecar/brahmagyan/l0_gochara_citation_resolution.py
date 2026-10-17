@@ -4,7 +4,7 @@ brahmagyan.l0_gochara_citation_resolution - seed + writer logic for bg_gochara_c
 
 TI-L0-20 (SS Q7): the asset had NO writer - it was seeded by migration 565 and repaired by 630 and
 631, so the orchestrator could not dispatch it, Build was unmeasurable and ELEVATED unreachable.
-This module re-seeds the SAME 14 rows from git by delete-then-insert. ROWS is the net result of
+This module upserts the SAME 14 rows from git and prunes obsolete keys. ROWS is the net result of
 migrations 565 + 630 + 631; its content is pinned by the integrity digest migration 631 sealed
 (sha256 f87cfce8...b961be over the ordered rows), which the tests recompute inside PostgreSQL
 from the real migration text - the rows are not retyped from memory.
@@ -168,22 +168,32 @@ _COLUMNS = ("citation_string", "chunk_id", "text_id", "verse_ref", "status",
 
 
 def seed_gochara_citation_resolution(conn, *, dry_run: bool = False) -> dict[str, int]:
-    """Delete-then-insert the 14 rows. Never commits; the caller owns the transaction.
+    """Upsert the 14 rows. Never commits; the caller owns the transaction.
 
     The whole table is writer-owned (a static, chart-agnostic reference table with no
-    foreign key and no other producer), so the replace is unscoped by design; replace-not-
-    accrete means a row removed from ROWS disappears on the next build."""
+    foreign key and no other producer). Prune only obsolete natural keys so a removed
+    mapping disappears on the next build; preserve canonical rows' creation metadata
+    while repairing their content with the L0 ON CONFLICT pattern (CLAUDE.md §N.3)."""
     if dry_run:
         return {"bg_gochara_citation_resolution": len(ROWS), "deleted": 0}
     with conn.cursor() as cur:
-        cur.execute("DELETE FROM bg_gochara_citation_resolution")
+        cur.execute(
+            "DELETE FROM bg_gochara_citation_resolution "
+            "WHERE (citation_string, chunk_id) NOT IN "
+            "(SELECT * FROM unnest(%s::text[], %s::text[]))",
+            ([row["citation_string"] for row in ROWS], [row["chunk_id"] for row in ROWS]),
+        )
         deleted = cur.rowcount
         for row in ROWS:
             cur.execute(
                 "INSERT INTO bg_gochara_citation_resolution "
                 "(citation_string, chunk_id, text_id, verse_ref, status, source_citation, constant_name, note) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (citation_string, chunk_id) DO UPDATE SET "
+                "text_id = EXCLUDED.text_id, verse_ref = EXCLUDED.verse_ref, "
+                "status = EXCLUDED.status, source_citation = EXCLUDED.source_citation, "
+                "constant_name = EXCLUDED.constant_name, note = EXCLUDED.note",
                 tuple(row[c] for c in _COLUMNS),
             )
-    logger.info("[L0/gochara_citation_resolution] replaced %d rows with %d", deleted, len(ROWS))
+    logger.info("[L0/gochara_citation_resolution] pruned %d rows and upserted %d", deleted, len(ROWS))
     return {"bg_gochara_citation_resolution": len(ROWS), "deleted": deleted}
