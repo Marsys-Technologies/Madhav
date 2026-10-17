@@ -312,16 +312,38 @@ def build_small_test_manifest(*, candidate, slice_marker: dict) -> tuple[dict, s
     return manifest, digest
 
 
+def _machine_owned_outputs() -> frozenset[str]:
+    """The repository-root-relative paths of the machine-owned generated outputs (A5 D-33: `OUTPUTS` in governance/ci_generated.py, the one
+    list CI itself uses). Empty when the list cannot be read, so an unreadable list ignores nothing."""
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "governance", "ci_generated.py")
+    try:
+        spec = importlib.util.spec_from_file_location("_ky_ci_generated_outputs", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return frozenset(module.OUTPUTS)
+    except Exception:
+        return frozenset()
+
+
+def _has_unmanaged_changes(porcelain: str) -> bool:
+    """True when a `git status --porcelain` listing names a path that is NOT a machine-owned output. The executor's D-33 overlay regenerates
+    the writer-digest file in the tree it dispatches from; that change is the overlay itself (the digest the manifest pins is the one built
+    from it), not a source edit, so it must not read as 'uncommitted'. Porcelain paths are repository-root-relative."""
+    owned = _machine_owned_outputs()
+    return any(path not in owned for line in porcelain.splitlines() if line.strip() for path in line[3:].split(" -> "))
+
+
 def checkout_commit() -> tuple[str, bool]:
-    """(HEAD commit of the checkout this script runs from, whether the sidecar or the writer-digest file has UNCOMMITTED changes). Best
-    effort: ('unknown', False) when git is unavailable. No shell, fixed arguments."""
+    """(HEAD commit of the checkout this script runs from, whether the sidecar or the writer-digest file has UNCOMMITTED changes other than
+    the machine-owned generated outputs). Best effort: ('unknown', False) when git is unavailable. No shell, fixed arguments."""
     import subprocess
     here = os.path.dirname(os.path.abspath(__file__))
     try:
         head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=here, capture_output=True, text=True, timeout=20, check=True).stdout.strip()
         dirty = subprocess.run(["git", "status", "--porcelain", "--", "python-sidecar", "src/generated/nirmana-writer-digests.json"],
-                               cwd=os.path.join(here, ".."), capture_output=True, text=True, timeout=20, check=True).stdout.strip()
-        return head, bool(dirty)
+                               cwd=os.path.join(here, ".."), capture_output=True, text=True, timeout=20, check=True).stdout
+        return head, _has_unmanaged_changes(dirty)
     except Exception:
         return "unknown", False
 

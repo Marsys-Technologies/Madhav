@@ -135,7 +135,7 @@ def _tree(tmp_path: Path) -> Path:
 
 
 def _collect(root: Path, *args: str) -> tuple[int, list[str], str]:
-    p = subprocess.run([sys.executable, "-m", "pytest", "tests", "-m", "not integration", "--collect-only", "-q", "-p", "no:cacheprovider", *args],
+    p = subprocess.run([sys.executable, "-B", "-m", "pytest", "tests", "-m", "not integration", "--collect-only", "-q", "-p", "no:cacheprovider", *args],
                        cwd=root, env={"PYTHONPATH": str(PLUGINS), "PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
     return p.returncode, [line for line in p.stdout.splitlines() if "::" in line], p.stdout + p.stderr
 
@@ -259,7 +259,7 @@ def test_the_aggregate_keeps_the_required_name_and_needs_all_parts(jobs):
     agg = jobs[AGG_JOB]
     assert agg["name"] == REQUIRED_NAME
     assert set(agg["needs"]) == {"full-suite", STATIC_JOB}
-    assert {SHARD_JOB, "k3-sealed-db-tests"} <= set(jobs["full-suite"]["needs"])
+    assert {SHARD_JOB, "k3-sealed-db-tests", "kala-db-tests"} <= set(jobs["full-suite"]["needs"])
     assert str(agg["if"]) == "${{ always() }}"
     step = agg["steps"][0]
     assert step["env"]["STATIC_RESULT"] == f"${{{{ needs.{STATIC_JOB}.result }}}}"

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
+import { ancestryGit, runWorkflowShell } from './helpers/gochara_workflow_shell'
 
 const root = resolve(__dirname, '../../..')
 const text = readFileSync(resolve(root, '.github/workflows/gochara-verification-job-deploy.yml'), 'utf8')
@@ -12,6 +13,49 @@ const code = text.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n'
 const deploy = (job.steps as any[]).find((s) => String(s.run ?? '').includes('gcloud run jobs deploy'))
 
 describe('gochara-verification-job-deploy.yml', () => {
+  it.each(['yes', 'no'])('executes the reviewed-ancestor guard when contained by main: %s', contained => {
+    const guard = job.steps.find((s: any) => String(s.name).startsWith('Bind the definition'))
+    const result = runWorkflowShell(guard.run, { git: ancestryGit }, {
+      GITHUB_SHA: 'a'.repeat(40), J56_REVIEWED_ON_MAIN: contained,
+    })
+    expect(result.status, result.stderr).toBe(contained === 'yes' ? 0 : 1)
+    expect(result.calls.at(-1)?.args).toEqual(['merge-base', '--is-ancestor', 'a'.repeat(40), 'origin/main'])
+  })
+
+  it('executes deploy and readback with one task and the same pinned timeout and resources', () => {
+    const readback = job.steps.find((s: any) => String(s.run).includes('gochara_verification_job_readback.py'))
+    const result = runWorkflowShell(`${deploy.run}\n${readback.run}`, {
+      gcloud: 'if (args.includes("describe")) console.log("{}");',
+      curl: 'console.log("{}");', python3: '',
+    }, { ...wf.env, IMAGE_DIGEST: `sha256:${'b'.repeat(64)}`, GITHUB_SHA: 'a'.repeat(40) })
+    expect(result.status, result.stderr).toBe(0)
+    const calls = result.calls.filter(c => c.command === 'gcloud' && c.args[2] === 'deploy')
+    expect(calls).toHaveLength(1)
+    const deployed = calls[0].args
+    const checked = result.calls.find(c => c.command === 'python3')!.args
+    const value = (args: string[], flag: string) => {
+      expect(args.filter(a => a === flag)).toHaveLength(1)
+      return args[args.indexOf(flag) + 1]
+    }
+    expect(value(deployed, '--tasks')).toBe('1')
+    expect(value(deployed, '--task-timeout')).toBe('7200')
+    expect(value(checked, '--timeout-seconds')).toBe('7200')
+    for (const [flag, expected] of [['--memory', '8Gi'], ['--cpu', '2']]) {
+      expect(value(deployed, flag)).toBe(expected)
+      expect(value(checked, flag)).toBe(expected)
+    }
+  })
+
+  it.each([0, 23])('executes the isolation preflight and propagates its exit %i', exit => {
+    const preflight = job.steps.find((s: any) => String(s.name).startsWith('Run the secret-isolation preflight'))
+    const result = runWorkflowShell(preflight.run, { npx: `process.exit(${exit});` })
+    expect(result.status, result.stderr).toBe(exit)
+    expect(result.calls).toHaveLength(1)
+    expect(result.calls[0].command).toBe('npx')
+    expect(result.calls[0].args).toEqual(['tsx', 'scripts/data-plane-secret-isolation-preflight.ts'])
+    expect(result.calls[0].cwd).toMatch(/\/platform$/)
+  })
+
   it('is workflow_dispatch only, from main, behind an exact confirmation phrase', () => {
     expect(Object.keys(wf.on)).toEqual(['workflow_dispatch'])
     expect(job.if).toContain("github.ref == 'refs/heads/main'")
