@@ -354,3 +354,19 @@ def test_runner_self_hash_matches_executed_bytes(tmp_path):
     verified = subprocess.run(['shasum', '-a', '256', '-c', 'MANIFEST.sha256'],
                               cwd=out, capture_output=True, text=True)
     assert verified.returncode == 0, verified.stdout + verified.stderr
+
+
+def test_manifest_covers_every_raw_output_once_with_its_actual_digest(tmp_path):
+    proc, out, _log = _run(tmp_path, HAPPY_READBACK)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    entries = [line.split(maxsplit=1) for line in (out / 'MANIFEST.sha256').read_text().splitlines()]
+    names = [name for _digest, name in entries]
+    # Successful verification of a subset is insufficient: both raw readbacks
+    # and the runner identity must be bound into the evidence manifest.
+    assert sorted(names) == ['FN1235-readback.out', 'RUNNER_SHA256', 'SESSION-identity.out']
+    assert sorted(p.name for p in out.glob('*.out')) == ['FN1235-readback.out', 'SESSION-identity.out']
+    for digest, name in entries:
+        assert digest == hashlib.sha256((out / name).read_bytes()).hexdigest(), name
+    assert (out / 'FN1235-readback.out').read_text() == HAPPY_READBACK
+    assert (out / 'SESSION-identity.out').read_text() == (
+        'c49\tc49\tsuvarna_disposable\t127.0.0.1\t1\tPostgreSQL test\n')
