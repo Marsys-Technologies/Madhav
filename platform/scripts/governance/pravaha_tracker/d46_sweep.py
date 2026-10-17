@@ -275,6 +275,9 @@ def apply(model: dict, evidence: dict, repo: str, events_path: str, observe_dete
             actor = f"stream-{'S' if owner in ('N', 'V') else owner}:{SWEEPER}"
             try:
                 detector = evidence.get("detectors", {}).get(item["id"]) or observe_detector(item["id"])
+                if detector.get("status") != "done":    # say what was read, not only that it was not `done`
+                    raise CompletionError(f"declared detector has not passed: status {detector.get('status')!r}"
+                                          f" ({detector.get('detail')})")
                 if report["completion_kind"] == "code":
                     proof = _code_proof(model, view, evidence, repo, item, ev, actor, stage)
                 else:
@@ -327,9 +330,14 @@ def main(argv=None) -> int:
     ap.add_argument("--model", default=cli.MODEL)
     ap.add_argument("--events", default=cli.EVENTS)
     ap.add_argument("--repo", default=os.environ.get("PRAVAHA_REPO", cli.REPO_ROOT))
+    ap.add_argument("--url", default=None,
+                    help="live tracker to measure detectors against (default: PRAVAHA_URL, else the Pravāha "
+                         f"tracker at {cli.URL}; the KĀLA-YANTRA tracker is http://127.0.0.1:8767)")
     ap.add_argument("--json", action="store_true", help="machine-readable report")
     ap.add_argument("--apply", action="store_true", help="write the completions (default: dry-run, writes nothing)")
     a = ap.parse_args(argv)
+    if a.url:
+        cli.URL = a.url.rstrip("/")
     try:
         with open(a.model, encoding="utf-8") as handle:
             model = json.load(handle)
@@ -357,7 +365,7 @@ def main(argv=None) -> int:
     def observe(item_id: str) -> dict:
         observed, via = cli.get("/api/verify?id=" + item_id, timeout=300)
         if via != "live" or not isinstance(observed, dict) or observed.get("item") != item_id:
-            return {"status": "unknown", "detail": f"live detector unavailable ({via})"}
+            return {"status": "unknown", "detail": f"live detector unavailable ({via}) at {cli.URL}"}
         return observed.get("detector") or {}
 
     results = apply(model, evidence, a.repo, a.events, observe)

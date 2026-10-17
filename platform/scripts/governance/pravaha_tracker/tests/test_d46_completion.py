@@ -329,3 +329,54 @@ def test_B4_a_refused_apply_leaves_the_event_log_untouched(repo, tmp_path):
                               lambda iid: {"status": "unknown", "detail": "down"})
     assert results and results[0]["closed"] is False
     assert events_path.read_text() == ""
+
+
+def _tracker(known: dict):
+    """A stand-in tracker answering GET /api/verify?id=<item> from `known`, 404 for any item it does not know."""
+    import http.server
+    import threading
+    from urllib.parse import parse_qs, urlparse
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):    # noqa: N802
+            iid = (parse_qs(urlparse(self.path).query).get("id") or [""])[0]
+            body, code = (json.dumps({"item": iid, "detector": known[iid]}), 200) if iid in known else ("not found", 404)
+            self.send_response(code)
+            self.end_headers()
+            self.wfile.write(body.encode())
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server, f"http://127.0.0.1:{server.server_port}"
+
+
+def test_B5_apply_measures_the_detector_on_the_tracker_it_is_pointed_at_and_names_it_when_it_cannot(
+        repo, tmp_path, monkeypatch, capsys):
+    """2026-10-17: run with the module default (the Pravāha tracker, which does not know KĀLA-YANTRA items) every
+    candidate was refused with a bare "declared detector has not passed". `--url` selects the tracker; a tracker that
+    cannot answer is named in the refusal."""
+    from pravaha_tracker import cli
+    other, other_url = _tracker({})
+    live, live_url = _tracker({"K-C": {"status": "done", "detail": "merged", "source": "detector:branch_merged"}})
+    monkeypatch.setattr(cli, "URL", other_url)    # what an unconfigured `python -m pravaha_tracker.d46_sweep` gets
+    ev = evidence_for(repo)
+    ev["detectors"] = {}
+    model_path, events_path, evidence_path = tmp_path / "model.json", tmp_path / "EVENTS.jsonl", tmp_path / "ev.json"
+    model_path.write_text(json.dumps(sweep_model()))
+    events_path.write_text("")
+    evidence_path.write_text(json.dumps(ev))
+    args = ["--model", str(model_path), "--events", str(events_path), "--evidence", str(evidence_path),
+            "--repo", str(repo["path"]), "--apply"]
+    try:
+        assert d46_sweep.main(args) == 3
+        refusal = capsys.readouterr().out
+        assert "REFUSED K-C" in refusal and f"at {other_url}" in refusal and "'unknown'" in refusal
+        assert events_path.read_text() == ""
+        assert d46_sweep.main([*args, "--url", live_url]) == 0
+        assert [json.loads(x)["item"] for x in events_path.read_text().splitlines() if '"state":"done"' in x] == ["K-C"]
+    finally:
+        other.shutdown()
+        live.shutdown()
