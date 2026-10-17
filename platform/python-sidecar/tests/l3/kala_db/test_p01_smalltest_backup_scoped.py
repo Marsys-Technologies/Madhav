@@ -34,6 +34,14 @@ INSERT INTO p02.audit (note) VALUES ('seed');
 INSERT INTO p02.other VALUES (1, 'must-not-be-archived');
 """
 
+# What the scoped definitions cannot carry: the schema and the trigger function the archived trigger calls. The real
+# restore builds this from the governed L1 bundle; the suite stands in a small synthetic base of the same shape.
+BASE_SQL = """
+CREATE SCHEMA p02;
+CREATE FUNCTION p02.log_change() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN INSERT INTO p02.audit (note) VALUES ('changed ' || NEW.id); RETURN NEW; END $$;
+"""
+
 
 def write_scope(path, written=('p02.written', 'p02.audit'), guarded=('p02.child_of_written',)):
     path.write_text(json.dumps({
@@ -51,6 +59,7 @@ def scoped(isolated_kala_db_dsn, tmp_path, monkeypatch):
     scope_file = tmp_path / 'scope.json'
     write_scope(scope_file)
     monkeypatch.setattr(backup, 'SCOPE_FILE', scope_file)
+    monkeypatch.setattr(backup, 'restore_base_sql', lambda root: (BASE_SQL, {'bundle': 'synthetic', 'migrations': []}))
     monkeypatch.setenv('DATABASE_URL', isolated_kala_db_dsn)
     fixed = backup.scratch_settings
 
@@ -82,7 +91,8 @@ def test_scoped_archive_holds_exactly_scope_plus_fk_parents_and_restores_equal(s
     assert receipt['scope']['tables'] == ['p02.audit', 'p02.parent', 'p02.written']
     assert receipt['scope']['closure'] == ['p02.parent']
     assert 'p02.other' not in receipt['measurements']['tables'] and 'p02.child_of_written' not in receipt['scope']['tables']
-    assert backup.archive_data_tables(folder / 'database.dir', backup.scratch_settings(label)) == set(receipt['scope']['tables'])
+    listed = backup.archive_tables(folder / 'database.dir', backup.scratch_settings(label))
+    assert listed['data'] == listed['definitions'] == set(receipt['scope']['tables'])      # definitions AND data, exactly
     assert receipt['scope']['sequences'] == ['p02.audit_id_seq', 'p02.parent_id_seq', 'p02.written_id_seq']
     assert (folder / 'database.dir').is_dir() and not (folder / 'database.dump').exists()
     proof = backup.restore_verify(folder, label, 'small_test')
@@ -179,11 +189,24 @@ def test_dump_that_leaks_out_of_scope_data_refuses_capture(scoped, monkeypatch):
     real = backup.run_client
 
     def leaky(argv, settings, timeout=14400):
-        real([a for a in argv if not a.startswith('--exclude-table-data')], settings, timeout)
+        real([a for a in argv if not a.startswith(('--table=', '--strict-names'))], settings, timeout)
     monkeypatch.setattr(backup, 'run_client', leaky)
     with pytest.raises(backup.BackupRefused, match='archive data entries differ from the scope'):
         backup.snapshot(tmp_path / 'p02_leak', 'p02_leak', 'small_test')
     assert not (tmp_path / 'p02_leak' / 'capture.json').exists()
+
+
+def test_dump_that_adds_an_out_of_scope_definition_refuses_capture(scoped, monkeypatch):
+    """Definitions are part of the claim too: a table listed without its data is still outside the scope."""
+    dsn, tmp_path, _ = scoped
+    real = backup.run_client
+
+    def widened(argv, settings, timeout=14400):
+        real([*argv, '--table="p02"."other"', '--exclude-table-data="p02"."other"'], settings, timeout)
+    monkeypatch.setattr(backup, 'run_client', widened)
+    with pytest.raises(backup.BackupRefused, match='archive definitions differ from the scope'):
+        backup.snapshot(tmp_path / 'p02_defs', 'p02_defs', 'small_test')
+    assert not (tmp_path / 'p02_defs' / 'capture.json').exists()
 
 
 @pytest.mark.parametrize('operation', ['snapshot', 'restore-verify'])
@@ -227,3 +250,66 @@ def test_tampered_archive_file_is_refused_before_any_restore_connection(scoped, 
     with pytest.raises(backup.BackupRefused, match='file hashes differ'):
         backup.restore_verify(folder, label, 'small_test')
     assert not connections and not (folder / 'restore.json').exists()
+
+
+@pytest.fixture
+def restricted(scoped):
+    """The production shape of SR-J2A-BACKUP-POSITIVE: the backup login can read the scope but another role's
+    table outside it (the planner_inquiry_* tables, owner purna_inquiry_owner) is unreadable to it.
+    Roles are cluster-global, so they carry a unique suffix and are dropped with their objects at teardown."""
+    dsn, tmp_path, scope_file = scoped
+    suffix = uuid.uuid4().hex[:10]
+    owner, login = f'p02_owner_{suffix}', f'p02_app_{suffix}'
+    with psycopg.connect(dsn, autocommit=True) as admin:
+        admin.execute(f'CREATE ROLE {owner} NOLOGIN')
+        admin.execute(f"CREATE ROLE {login} LOGIN PASSWORD 'p02'")
+        admin.execute(f'GRANT USAGE ON SCHEMA p02 TO {login}')
+        admin.execute(f'GRANT SELECT ON p02.parent, p02.written, p02.audit TO {login}')
+        admin.execute(f'GRANT SELECT ON ALL SEQUENCES IN SCHEMA p02 TO {login}')
+        admin.execute(f'CREATE TABLE p02.planner_like (id integer, secret text)')
+        admin.execute(f'ALTER TABLE p02.planner_like OWNER TO {owner}')
+        admin.execute("INSERT INTO p02.planner_like VALUES (1, 'other-role-secret')")
+    app_dsn = psycopg.conninfo.make_conninfo(dsn, user=login, password='p02')
+    with psycopg.connect(app_dsn) as probe:       # the premise: the login really cannot read it
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            probe.execute('SELECT 1 FROM p02.planner_like')
+    yield app_dsn, tmp_path, scope_file
+    with psycopg.connect(dsn, autocommit=True) as admin:
+        admin.execute('DROP TABLE IF EXISTS p02.planner_like')
+        for role in (login, owner):
+            admin.execute(f'DROP OWNED BY {role}')
+            admin.execute(f'DROP ROLE {role}')
+
+
+def test_a_table_outside_the_scope_that_the_login_cannot_read_does_not_break_the_dump(restricted, monkeypatch):
+    """SR-J2A-BACKUP-POSITIVE: only the scope and its FK parents are named, locked and dumped, so another role's
+    unreadable table is never touched; the archive restores equal."""
+    app_dsn, tmp_path, _ = restricted
+    monkeypatch.setenv('DATABASE_URL', app_dsn)
+    folder, label, receipt = capture(app_dsn, tmp_path)
+    assert receipt['status'] == 'captured' and receipt['scope']['tables'] == ['p02.audit', 'p02.parent', 'p02.written']
+    assert not any(b'other-role-secret' in f.read_bytes() for f in (folder / 'database.dir').iterdir())
+    proof = backup.restore_verify(folder, label, 'small_test')
+    assert proof['restore_verified'] is True and proof['measurements'] == receipt['measurements']
+    assert proof['restore_base'] == {'bundle': 'synthetic', 'migrations': []}
+    assert_target_removed(app_dsn, label)
+
+
+def test_a_dump_exclusion_is_a_guarded_fallback_outside_scope_and_closure_with_no_foreign_key_edge(restricted, monkeypatch):
+    app_dsn, tmp_path, scope_file = restricted
+    monkeypatch.setenv('DATABASE_URL', app_dsn)
+
+    def declare(table):
+        raw = json.loads(scope_file.read_text())
+        raw['dump_excludes'] = [{'table': table}]
+        scope_file.write_text(json.dumps(raw))
+    declare('p02.planner_like')
+    _, _, receipt = capture(app_dsn, tmp_path)
+    owner = receipt['scope']['dump_excludes'][0]['owner']
+    assert receipt['scope']['dump_excludes'] == [{'table': 'p02.planner_like', 'owner': owner}] and owner.startswith('p02_owner_')
+    for table, reason in (('p02.parent', 'inside the scope or its foreign-key closure'),
+                          ('p02.written', 'inside the scope or its foreign-key closure'),
+                          ('p02.child_of_written', 'foreign-key edge to the scope data')):
+        declare(table)
+        with pytest.raises(backup.BackupRefused, match=reason):
+            backup.snapshot(tmp_path / ('p02_' + uuid.uuid4().hex), 'p02_guard', 'small_test')
