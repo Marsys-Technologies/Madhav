@@ -3,8 +3,9 @@
 The existing job IDs remain the execution jobs. Their matrices contain shard indices;
 `required-<job-id>` jobs retain the exact original check names and accept only a
 `success` matrix result. Worker names start with the shard index so GitHub
-shortening long names keeps every shard distinct. Umbrellas run with `always()`, so failed, cancelled and skipped
-matrices produce a failing umbrella. The regression test executes each umbrella's
+shortening long names keeps every shard distinct. Umbrellas run when main's D-29 selection requires their job (full events, or a PR that selects it), so once an
+umbrella runs, failed, cancelled and skipped matrices produce a failing umbrella; an unselected PR job and its umbrella are
+skipped together. The regression test executes each umbrella's
 actual shell with all four outcomes.
 
 Each worker retains its original PostgreSQL service, provisioning, test environments,
@@ -22,9 +23,12 @@ positional filename filters use substring matching (`ci_discovery.py:152`).
 - **(I) INTERPRETATION:** a deterministic file-list matrix is represented by an index
   matrix plus runtime discovery, rather than a literal file allowlist rejected by
   #3588's guard. `ci_db_shard_coverage.json` records the resulting file lists.
-- **(I) INTERPRETATION:** these workers also run on docs-only changes. This makes the
-  requested rule that *any skipped shard fails* unconditional; a docs-only exception
-  would weaken that rule (`.github/workflows/ci.yml:473`, `:1355`).
+- **(I) INTERPRETATION:** the shard jobs and their `required-*` umbrellas use main's D-29 selection
+  (`ci_gate.select_db` -> `needs.changes.outputs.db_jobs`) instead of running on every PR. Whenever a job is selected
+  (or on a full event) every shard must run and succeed: a skipped shard fails its umbrella, with no docs-only exception.
+  An unselected PR job is skipped whole, as it was on main, and its umbrella is skipped with it. Alternative: always run
+  the shards on PRs (rejected: it reverses D-29's CI demand halving). The `full-suite` aggregate lists the umbrellas
+  and `replace-chain-substrate`, whose selection comes from `ci_gate.select_db`'s needs closure.
 - **(I) INTERPRETATION:** unmeasured/new files receive a one-second scheduling weight
   until measured. That estimate affects assignment only (`ci_db_shard.py:25`).
 

@@ -183,6 +183,15 @@ def main():
         print('\n'.join(discover(ROOT, profile)))
         return 0
     args = ns.args[1:] if ns.args[:1] == ['--'] else ns.args
+    # D-29: a shared PR DB context runs only its changed discovery profiles.
+    # Apply before shard selection (#3618); full events leave this env unset.
+    if 'CI_PR_DB_PROFILES' in os.environ and os.environ['CI_PR_DB_PROFILES']:
+        selected = json.loads(os.environ['CI_PR_DB_PROFILES'])
+        if not isinstance(selected, list) or not all(isinstance(p, str) for p in selected):
+            raise ValueError('invalid PR DB profile selection')
+        if ns.suite not in selected:
+            print(f'PR DB profile {ns.suite}: unchanged, skipped by design')
+            return 0
     return run(ROOT, profile, args, suite=ns.suite)
 
 

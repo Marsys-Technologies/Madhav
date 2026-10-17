@@ -1,0 +1,220 @@
+{
+  "schema": "ky.kn_b_prebuild/1",
+  "version": "1.0",
+  "status": "built_waiting_on_gate",
+  "source_commit": "ef14167bcc35a321b11d4d189a6b752bf3c658b8",
+  "source_model": "00_ARCHITECTURE/control/kalayantra/plan_model.json",
+  "source_model_sha256": "2743c5a0c70022c5de90ac8acc1984df4a242e364673b742964d8dc79cfabd3b",
+  "baseline_parent_dependencies": [
+    "D-R8",
+    "J-0m",
+    "KA-3a"
+  ],
+  "baseline_downstream_waiters": [
+    "KA3B-N1",
+    "KA3B-N2",
+    "V-KA",
+    "K5-G1a",
+    "J-7",
+    "K9-1",
+    "JOIN-ALL",
+    "J-7-a63",
+    "J-7-b61",
+    "J-7-n-t2"
+  ],
+  "children": [],
+  "custody": {
+    "original_builder": {
+      "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T172345Z-prebuild-ka-3b/result.json",
+      "sha256": null
+    },
+    "original_interpretations": "unavailable; original builder directory absent",
+    "original_per_behavior_receipts": "unavailable; no digest or exhaustive evidence claimed",
+    "artifacts": [
+      {
+        "role": "independent_review",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/result.json",
+        "sha256": "013daaec6fbaec7983bdc553bfb04d17cc70f6af2522d62ead947a9e09971426"
+      },
+      {
+        "role": "independent_review_mutations",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/mutation-evidence.json",
+        "sha256": "1cf1752d6ecee167a58abc87a7c22943d96b2aef54e8be4f7562e39a4fc5106d"
+      },
+      {
+        "role": "independent_review_mutation_harness",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/run_mutations.py",
+        "sha256": "44f72d49ca5a473309913bb7c88f9f4cc4d9d84e83aded97e8144565a47effb1"
+      },
+      {
+        "role": "annual_coverage_repair_builder",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T190353Z-ka3b-fix/result.json",
+        "sha256": "06bd6be5e75c417a82b14487ed5db6c36fb79f677979b1bc393d225ed72f701b"
+      },
+      {
+        "role": "annual_coverage_repair_review",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T191848Z-final-ka3b/result.json",
+        "sha256": "11dcfa77dc694ddad1b126a7b7620ab6e56302da60ff0f80e7280ad823d2dc08"
+      },
+      {
+        "role": "ci_repair_review",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T044801Z-review2-ka-3b/result.json",
+        "sha256": "17b8322a9b963e46194fc8aa004fdcdff002fb32deaf5d01850d797049f94569"
+      },
+      {
+        "role": "field_preparation_independent_review",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T214901Z-review-k5-g1b/result.json",
+        "sha256": "cea68526df45c4960a9a207977a76e680d0e207b88f6c35bb50d2043a5417157"
+      },
+      {
+        "role": "field_preparation_review_explanation",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T214901Z-review-k5-g1b/REVIEW.md",
+        "sha256": "f0a5200d4579bc96df4500f7cd94285cd3b67ee0d9b133afca3adcdc10068514"
+      },
+      {
+        "role": "shared_preparation_reproducer",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T142635Z-pb-kn-b/reproduce_shared_preparation.py",
+        "sha256": "174cb9711ea699d741f3e1e638a2ab711c13a45ed61c564473239d243183cb57"
+      },
+      {
+        "role": "shared_preparation_observation",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T142635Z-pb-kn-b/shared-preparation-observed.json",
+        "sha256": "9bb09124b503688e3f6cd0e0256b55e315b2e02c6b8b8a497623ce11a778e975"
+      },
+      {
+        "role": "shared_preparation_distinguishing_negative",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T142635Z-pb-kn-b/shared-preparation-negative.log",
+        "sha256": "532de7e26471e1dcded827d4bbdbffe27d2774585301934e45b9daa0cb41d496"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "moorti_epoch",
+        "state": "fixed",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/moorti_epoch-fixed.log",
+        "sha256": "3f6c50443e195c2e66743bb1f15803c09738239c30259a28f298f2e8e1fe7b58"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "moorti_epoch",
+        "state": "reverted",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/moorti_epoch-reverted.log",
+        "sha256": "13f2490b0ab1749562fd504811e2e05df0435976e9218b545ce57d946548b875"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "kota_nature",
+        "state": "fixed",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/kota_nature-fixed.log",
+        "sha256": "9e0e8b4b0fc897af54b42dce0ef36a742a2ffa25f0e5fca6d5f7faed79d18a88"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "kota_nature",
+        "state": "reverted",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/kota_nature-reverted.log",
+        "sha256": "3a06d8e781803538eb2847ffd0432e1df64b4a6f779742aa249fb750c3318cd6"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "tithi_method",
+        "state": "fixed",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/tithi_method-fixed.log",
+        "sha256": "7907e0bd6cfe9ec0b501dd061d0e8f50946c52ae9841c2b60675d747c697a40d"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "tithi_method",
+        "state": "reverted",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/tithi_method-reverted.log",
+        "sha256": "945a98c1771cda2b65eb7c2dd4f4cf0efd30459d2ff23a588292076472e19074"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "sudarshana_judgment",
+        "state": "fixed",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/sudarshana_judgment-fixed.log",
+        "sha256": "b79740584441ce24ced2d1bb12688c5527538e22b70961de230208751f60503a"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "sudarshana_judgment",
+        "state": "reverted",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/sudarshana_judgment-reverted.log",
+        "sha256": "44e3696d5d1d0ed55ea5282bf2e16dadadfc3bc9dfa7d380da6a69e397236a0d"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "overlay_score",
+        "state": "fixed",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/overlay_score-fixed.log",
+        "sha256": "b79740584441ce24ced2d1bb12688c5527538e22b70961de230208751f60503a"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "overlay_score",
+        "state": "reverted",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/overlay_score-reverted.log",
+        "sha256": "9f1d43f45278caa01103b831cfd8701fd5ee79cdbe6bcc3f914efbb0d887a62d"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "fingerprint",
+        "state": "fixed",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/fingerprint-fixed.log",
+        "sha256": "7247bc389e92a259139d8afb2fe6b1e41458b8a9b5fbf02710e59ed45f5fa0ae"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "fingerprint",
+        "state": "reverted",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/fingerprint-reverted.log",
+        "sha256": "70abb01844e2ab667d7501ebb0868adaf293afcec8786f16a985e38df945e5bf"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "method_coverage",
+        "state": "fixed",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/method_coverage-fixed.log",
+        "sha256": "16bc9d88af772adaa3f96b7a2f6e7d1cac0c5d7337c878c84ffe63991627f96f"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "method_coverage",
+        "state": "reverted",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/method_coverage-reverted.log",
+        "sha256": "4bf543a795edb14d2fa99fa02e6bfa06e7e4e64e0ec27e6757362a04038c9e90"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "ci_wiring",
+        "state": "fixed",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/ci_wiring-fixed.log",
+        "sha256": "95dbc25d616de4b5334a2baf9a1e23c3f0e8b1e73082fc9e4444f525a36bd649"
+      },
+      {
+        "role": "independent_review_mutation_log",
+        "behavior": "ci_wiring",
+        "state": "reverted",
+        "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T184912Z-review-ka-3b/ci_wiring-reverted.log",
+        "sha256": "74fd27ed5c0495338741e238d1dea9fabb6799b02e621695e8e712c53a819fbb"
+      }
+    ]
+  },
+  "limitations": [
+    "This is an offline custody/registration bundle, not tracker state or a completion receipt.",
+    "Independent review mutations are not original builder receipts.",
+    "Four actual family child IDs, independently accepted judge wiring, exact-head receipts and join registration remain cockpit obligations.",
+    "K5-G1b-N1 remains unfinished: shared schedule/reducers do not imply shared geometry or a performance claim."
+  ],
+  "interpretations": [
+    {
+      "choice": "(I) INTERPRETATION: pre-build the offline reconciliation and preserve accepted-parent state; do not reopen KA-3b or add its carry-forward children as prerequisites.",
+      "alternative": "Convert the accepted parent into a new join in this child job, creating cycles through KA3B-N1/KA3B-N2 or overriding accepted state."
+    },
+    {
+      "choice": "(I) INTERPRETATION: K5-G1b-N1 preparation reproduces the unfinished integration and protects separate estimands; no shared-preparation or runtime-performance completion is claimed.",
+      "alternative": "Replace consumer-conditioned field geometry with the jury Preparation despite their different operands and conditioning."
+    }
+  ],
+  "changelog": "1.0 (2026-10-16): record existing custody and explicit missing evidence; preserve accepted-parent gates and unfinished shared preparation."
+}

@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[4]
 GOV = ROOT / 'platform/scripts/governance'
 sys.path.insert(0, str(GOV))
 import ci_discovery as discovery
+from _ci_gate_test_support import evaluate as discovery_eval
 
 
 def sharding():
@@ -88,12 +89,19 @@ def test_real_partition_is_complete_and_required_names_remain_unique():
         umbrella = jobs['required-'+job]
         assert umbrella['name'] == baseline[job]
         assert sum(j.get('name') == baseline[job] for j in jobs.values()) == 1
-        expected_needs = [job, 'replace-chain-substrate'] if job in mod.NODE_SHARD_JOBS else [job]
+        expected_needs = ['changes', job, 'replace-chain-substrate'] if job in mod.NODE_SHARD_JOBS else ['changes', job]
         assert umbrella['needs'] == expected_needs
-        assert umbrella['if'] == '${{ always() }}'
         assert not umbrella.get('continue-on-error')
-        script = umbrella['steps'][0]['run']
         assert not umbrella['steps'][0].get('continue-on-error')
+        # D-29 x D-31: job and umbrella share ONE selection rule (main's full-suite expects `required-<job>` iff <job> is selected).
+        for event, selected, full, want in (('pull_request', [job], False, True), ('pull_request', [], False, False),
+                                            ('pull_request', ['other'], False, False), ('merge_group', [], False, True),
+                                            ('push', [], False, True), ('workflow_dispatch', [], True, True),
+                                            ('workflow_dispatch', [], False, False)):
+            assert discovery_eval(umbrella['if'], event=event, selected=selected, full=full) is want, (job, event, selected)
+            assert discovery_eval(worker['if'], event=event, selected=selected, full=full) is want, (job, event, selected)
+        script = umbrella['steps'][0]['run']
+        # Once an umbrella runs, ANY non-success shard (failed, cancelled or skipped) or substrate result fails it.
         for result in ('success','failure','skipped','cancelled',''):
             preparation_results = ('success','failure','skipped','cancelled','') if job in mod.NODE_SHARD_JOBS else ('success',)
             for preparation in preparation_results:
@@ -147,16 +155,22 @@ def test_new_file_does_not_turn_an_empty_whole_job_shard_green(tmp_path, monkeyp
 
 
 def test_auxiliary_mutation_evidence_still_runs_once_across_the_matrix():
+    """The 1206 mutation harness runs once, on shard 4, and only on a full event (D-29: never on a selected PR job)."""
+    import re
     jobs = yaml.safe_load((ROOT/'.github/workflows/ci.yml').read_text())['jobs']
     script = next(s['run'] for s in jobs['db-integration-tests']['steps'] if 'mutation_check_1206.py' in s.get('run',''))
     script = '\n'.join(line for line in script.splitlines() if 'ci_discovery.py' not in line)
     script = script.replace('python3 scripts/gochara/mutation_check_1206.py', 'echo MUTATION_RUN')
-    calls = 0
-    for index in range(1,5):
-        proc = subprocess.run(['bash','-e','-c',script.replace('${{ matrix.shard }}',str(index))],capture_output=True,text=True)
-        assert proc.returncode == 0
-        calls += proc.stdout.count('MUTATION_RUN')
-    assert calls == 1
+    (full_expr,) = set(re.findall(r'\$\{\{ (\(github\.event_name.*?inputs\.full_gate\)\)) \}\}', script))
+    for event, full, want in (('merge_group', False, 1), ('push', False, 1), ('workflow_dispatch', True, 1),
+                              ('pull_request', False, 0), ('workflow_dispatch', False, 0)):
+        calls = 0
+        for index in range(1,5):
+            shell = script.replace('${{ matrix.shard }}',str(index)).replace('${{ '+full_expr+' }}', str(discovery_eval('${{ '+full_expr+' }}', event=event, full=full)).lower())
+            proc = subprocess.run(['bash','-e','-c',shell],capture_output=True,text=True)
+            assert proc.returncode == 0
+            calls += proc.stdout.count('MUTATION_RUN')
+        assert calls == want, (event, full)
 
 
 def test_committed_timings_have_recorded_sources_for_every_sharded_job():
@@ -317,8 +331,15 @@ def test_parallel_real_substrate_is_required_before_node_workers():
     assert producer['strategy']['matrix']['body'] == ['Sun', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
     assert producer['strategy']['fail-fast'] is False
     assert not producer.get('continue-on-error')
-    assert producer['if'] == '${{ !cancelled() }}'
-    assert 'generated-artifacts' in producer['needs']
+    # D-29: main's selection (ci_gate) adds this producer whenever its only consumer is selected; the producer's own `if`
+    # follows that selection, so it runs on full events and for a selected consumer, and is skipped otherwise.
+    import ci_gate
+    changed = 'platform/python-sidecar/tests/l3/gochara/test_a55_replace_chain.py'
+    selected, _ = ci_gate.select_db(ROOT, jobs, [changed])
+    assert {'gochara-a55-replace-chain', 'replace-chain-substrate'} <= set(selected)
+    for event, chosen, full, want in (('pull_request', selected, False, True), ('pull_request', [], False, False),
+                                      ('merge_group', [], False, True), ('workflow_dispatch', [], False, False)):
+        assert discovery_eval(producer['if'], event=event, selected=chosen, full=full) is want, (event, chosen)
     steps = worker['steps']
     download = next(s for s in steps if s.get('uses', '').startswith('actions/download-artifact@'))
     assert download['with']['pattern'] == 'replace-chain-substrate-*'

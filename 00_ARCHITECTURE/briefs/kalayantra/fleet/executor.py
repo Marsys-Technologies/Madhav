@@ -253,6 +253,8 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
     r = {"operation_id": req.get("operation_id"), "kind": req.get("kind"), "item_id": req.get("item_id"), "status": status, "reason": reason,
          "exit_code": rc, "stdout_tail": redact(out[-20000:]), "ts": now(), "reviewed_commit": req.get("reviewed_commit"),
          "requested_by": req.get("requested_by"), "kyd": req.get("kyd"), "request_sha256": request_digest(req) if req.get("kind") else None}
+    if lane_selected(req):
+        receipt_lane(req, r, status, rc, out)
     if out:                                           # the complete output is evidence; the tail alone must never be mistaken for it
         body = redact(out); output_path = REC / f"{name}.output.txt"; output_path.write_text(body)
         r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body.encode()).hexdigest(); r["output_bytes"] = len(body.encode())
@@ -273,7 +275,7 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             r["staging"] = proof
         else:
             r.update(status="FAILED", reason="bound measuring staging rollback proof missing; reconcile transaction outcome")
-    if req.get("kind") in ("smalltest_dispatch", "measuring_dispatch") and status == "COMPLETED":
+    if not lane_selected(req) and req.get("kind") in ("smalltest_dispatch", "measuring_dispatch") and status == "COMPLETED":
         # A staging UUID/exit zero is never launch evidence. Only the reviewed
         # wrapper's machine record binds the exact run and remote execution.
         records = []
@@ -293,7 +295,7 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             r["launch"] = launch
         else:
             r.update(status="FAILED", reason="small-test launch identity missing or invalid; reconcile remote outcome")
-    if req.get("kind") in ("smalltest_teardown", "smalltest_teardown_dryrun", "measuring_teardown", "measuring_teardown_dryrun") and status == "COMPLETED":
+    if not lane_selected(req) and req.get("kind") in ("smalltest_teardown", "smalltest_teardown_dryrun", "measuring_teardown", "measuring_teardown_dryrun") and status == "COMPLETED":
         records = []
         for line in out.splitlines():
             if line.startswith("teardown_proof\t"):
@@ -313,6 +315,8 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             if expected == "COMMITTED_AWAITING_ABSENCE": r["status"] = "AWAITING_ABSENCE"
         else:
             r.update(status="FAILED", reason="bound teardown proof missing; reconcile transaction outcome")
+    overlay = overlay_proofs().pop(str(req.get("operation_id")), None)
+    if overlay: r["generated_overlay"] = overlay                 # the proof the executor itself measured, never the child's words
     if extra: r.update(extra)
     with _lock: (REC / f"{name}.json").write_text(json.dumps(r, indent=1))
     log(f"{name} {status} {reason}")
@@ -352,6 +356,10 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
     if not op.get("enabled"): return f"kind {req['kind']} is not enabled (enabled_by {op.get('enabled_by')})"
     if "TO_BE_SET" in op.get("script", "") or "TO_BE_SET" in str(op.get("needs", "")): return "operation script not yet reviewed/landed"
     if req["requested_by"] not in op.get("requesters", ["adhikarin"]): return f"requested_by {req['requested_by']} may not request {req['kind']}"
+    if "dry_run" in req and "lane_target" not in req:
+        return "dry_run requires an explicit lane target"
+    if "lane_target" in req:
+        return validate_lane(req, op, reserved)
     if not caps.get(op["needs"], False): return f"capability_missing: {op['needs']}"
     for capability in op.get("also_needs", []):
         if not caps.get(capability, False): return f"capability_missing: {capability}"
@@ -389,6 +397,234 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
     return smalltest_policy_problem(req)
 
 
+def lane_selected(req: dict) -> bool:
+    return "lane_target" in req
+
+
+def lane_target_settings(req: dict) -> dict:
+    """A structured endpoint, never libpq text, a service or an inherited URL."""
+    target = req.get("lane_target")
+    if (not isinstance(target, dict) or set(target) != {"host", "port", "database"}
+            or target.get("host") not in ("127.0.0.1", "localhost", "::1")
+            or type(target.get("port")) is not int or target["port"] != 55433
+            or not isinstance(target.get("database"), str)
+            or re.fullmatch(r"ky_[a-z][a-z0-9_]{0,54}", target["database"]) is None):
+        raise ValueError("lane target must be one loopback host:55433 and a ky_<lane> database; no other fields")
+    if req.get("dry_run") is not True:
+        raise ValueError("lane target requires dry_run=true")
+    return dict(host=target["host"], hostaddr="::1" if target["host"] == "::1" else "127.0.0.1",
+                port="55433", dbname=target["database"], user="postgres", password="",
+                passfile=os.devnull, options="", sslmode="disable", connect_timeout="10")
+
+
+def validate_lane(req: dict, op: dict, reserved: bool = False) -> str | None:
+    try:
+        lane_target_settings(req)
+    except ValueError as exc:
+        return str(exc)
+    binding = op.get("lane_readback" if req["kind"] == "readback_sql" else "lane_dry_run")
+    if not isinstance(binding, dict) or binding != {"script": "00_ARCHITECTURE/briefs/kalayantra/fleet/lane_smalltest.py", "needs": "none"}:
+        return "operation has no reviewed lane binding"
+    if not isinstance(req.get("request_id"), str) or not SAFE_ID.fullmatch(req["request_id"]):
+        return "lane request_id required with safe characters"
+    if CANONICAL_CHART != req.get("chart_id"):
+        return "chart_id is not the canonical chart"
+    args = req.get("args", {})
+    if not isinstance(args, dict): return "lane args must be an object"
+    if req["kind"] == "readback_sql" and args: return "lane readback takes no SQL or arguments"
+    bad = [key for key in args if key not in op.get("allowed_args", [])]
+    if bad: return "disallowed args " + str(bad)
+    if any(not isinstance(v, str) or not SAFE_ARG.fullmatch(v) for v in args.values()):
+        return "an argument value has unsafe characters"
+    if req["kind"].startswith("backup_") and re.fullmatch(r"[a-z][a-z0-9_]{2,39}", args.get("label", "")) is None:
+        return "lane backup requires a valid label"
+    rc = req.get("reviewed_commit", "")
+    if not isinstance(rc, str) or re.fullmatch(r"[0-9a-f]{40}", rc) is None:
+        return "full reviewed_commit required for a lane operation"
+    if git("merge-base", "--is-ancestor", rc, "origin/main").returncode:
+        return "lane reviewed_commit is not merged to main"
+    for script in (op["script"], binding["script"]):
+        if git("cat-file", "-e", f"{rc}:{script}").returncode:
+            return f"lane script {script} does not exist at reviewed_commit"
+    try:
+        if not dt.datetime.now(dt.timezone.utc) < utc_time(req["expires_at"]):
+            return "lane request expired"
+    except (KeyError, ValueError, TypeError):
+        return "timezone-qualified lane expires_at required"
+    if seen(req["idempotency_key"]) and not reserved: return "idempotency key already used"
+    if "lane_receipts" in req:
+        try: lane_qualification(req)
+        except (ValueError, OSError, KeyError, TypeError): return "lane qualification receipts missing, mismatched or incomplete"
+    # Reuse the reviewed small-test admission policy, with the non-mutating
+    # child mode. Empty scope is the initial rehearsal, never deletion authority.
+    if req["kind"].startswith("smalltest_"):
+        child = dict(req)
+        if "dispatch" in req["kind"]: child["kind"] = "smalltest_dispatch_dryrun"
+        else: child.update(kind="smalltest_teardown_dryrun", smalltest_scope={"empty": True})
+        try: return smalltest_policy(req)["smalltest_request_problem"](child, OPS)
+        except Exception: return "reviewed small-test evidence policy unavailable or invalid"
+    return None
+
+
+def lane_qualification(req: dict) -> list[dict]:
+    """Bind six completed lane rehearsals and their complete output bytes.
+
+    The final readback is an existing readback_sql operation, not a new enabled
+    kind. Receipt files are read only under REC, with no caller-provided paths.
+    """
+    if "lane_receipts" not in req: return []
+    refs = req["lane_receipts"]
+    kinds = {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch_dryrun", "smalltest_dispatch",
+             "smalltest_teardown_dryrun", "smalltest_teardown"}
+    if req.get("kind") != "readback_sql" or not isinstance(refs, list) or len(refs) != 6:
+        raise ValueError("final lane readback requires exactly six receipts")
+    bound = []
+    for ref in refs:
+        if (not isinstance(ref, dict) or set(ref) != {"name", "sha256"}
+                or not isinstance(ref["name"], str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,80}\.json", ref["name"])):
+            raise ValueError("invalid lane receipt reference")
+        path = REC / ref["name"]
+        if path.resolve().parent != REC.resolve(): raise ValueError("lane receipt escapes evidence directory")
+        body = path.read_bytes()
+        if digest_bytes(body) != ref["sha256"]: raise ValueError("lane receipt byte digest differs")
+        record = json.loads(body)
+        if not isinstance(record, dict) or not isinstance(record.get("lane"), dict):
+            raise ValueError("lane receipt and proof must be JSON objects")
+        proof = record["lane"]; kind = record.get("kind")
+        oid = record.get("operation_id", "")
+        if (kind not in kinds or record.get("item_id") != "J-1a" or record.get("status") != "COMPLETED"
+                or type(record.get("exit_code")) is not int or record["exit_code"] != 0
+                or not isinstance(oid, str) or not SAFE_ID.fullmatch(oid) or ref["name"] != oid + ".json"
+                or not isinstance(record.get("request_id"), str) or not SAFE_ID.fullmatch(record["request_id"])
+                or record.get("reviewed_commit") != req["reviewed_commit"]
+                or proof.get("schema") != "ky.smalltest_lane/1" or proof.get("status") != "DRY_RUN_VERIFIED"
+                or proof.get("lane_target") != req["lane_target"] or proof.get("dry_run") is not True
+                or proof.get("independent_readback") is not True or proof.get("unchanged") is not True
+                or proof.get("before_sha256") != proof.get("after_sha256")
+                or not re.fullmatch(r"[0-9a-f]{64}", str(proof.get("after_sha256", "")))
+                or any(proof.get(key) != record.get(key) for key in
+                       ("operation_id", "request_id", "request_sha256", "reviewed_commit", "kind"))
+                or record.get("evidence_sha256") != digest_bytes(json.dumps(proof, sort_keys=True, separators=(",", ":")).encode())):
+            raise ValueError("lane receipt does not prove a bound rehearsal")
+        output = REC / (oid + ".output.txt")
+        if output.resolve().parent != REC.resolve() or digest_bytes(output.read_bytes()) != record.get("output_sha256"):
+            raise ValueError("lane complete output bytes differ")
+        bound.append(dict(kind=kind, operation_id=oid, request_id=record["request_id"],
+                          receipt_sha256=ref["sha256"], output_sha256=record["output_sha256"],
+                          evidence_sha256=record["evidence_sha256"], after_sha256=proof["after_sha256"]))
+    if ({entry["kind"] for entry in bound} != kinds or len({entry["operation_id"] for entry in bound}) != 6
+            or len({entry["request_id"] for entry in bound}) != 6):
+        raise ValueError("six distinct lane operations and requests required")
+    if (req.get("operation_id") in {entry["operation_id"] for entry in bound}
+            or req.get("request_id") in {entry["request_id"] for entry in bound}):
+        raise ValueError("final lane readback identity must be distinct from rehearsals")
+    return bound
+
+
+def overlay_proofs(_store: dict = {}) -> dict:
+    """In-memory hand-off of each operation's generated-overlay proof from execute()/execute_lane() to receipt(); the
+    child's output is never altered (a reader parses it whole) and never trusted for the proof."""
+    return _store
+
+
+def apply_generated_overlay(root: pathlib.Path, commit: str, env: dict, timeout: int = 600) -> tuple[dict | None, str]:
+    """A5 D-33: the machine-owned writer-digest file is deliberately non-authoritative on main; CI/deploy overlay bytes generated from
+    the reviewed commit. Regenerate it in `root` (a tree of `commit`) with the repository's own generator — the narrowest subset of
+    ci_generated.py that covers this file, because the rest of `generate` needs node and npm, which this host does not carry — then
+    verify with the generator's own --check in a second process. Returns (proof, "") or (None, reason); the caller fails closed."""
+    sidecar = root / "platform/python-sidecar"; digests = "platform/src/generated/nirmana-writer-digests.json"
+    child = {k: v for k, v in env.items() if k in {"PATH", "HOME", "LANG", "LC_ALL", "TZ", "TMPDIR", "SE_EPHE_PATH"}}
+    child["PYTHONDONTWRITEBYTECODE"] = "1"                      # a digest generator needs no credential, cloud or database reach
+    module = [PY, "-m", "pipeline.orchestrator.provenance_inventory"]
+    try:
+        for step, argv in (("generate", module), ("check", module + ["--check"])):
+            p = run_group(argv, sidecar, child, timeout)
+            if p.returncode: return None, f"writer-digest {step} exited {p.returncode}: " + redact((p.stderr or p.stdout or "")[-300:])
+        files = {digests: digest_bytes((root / digests).read_bytes())}
+    except (OSError, subprocess.SubprocessError) as e:
+        return None, f"{type(e).__name__}: {redact(str(e))[:300]}"
+    manifest = {"schema": "ky.generated_overlay/1", "source_sha": commit, "files": files}
+    return dict(manifest, manifest_sha256=digest_bytes(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode())), ""
+
+
+def lane_child_env(req: dict, scratch: pathlib.Path) -> dict:
+    env = {k: v for k, v in os.environ.items() if k in {"PATH", "LANG", "LC_ALL", "TZ"}}
+    env.update(KY_OPERATION_REQUEST=json.dumps(req, sort_keys=True, separators=(",", ":")),
+               KY_ROOT=str(scratch), TMPDIR=str(scratch), PGPASSFILE=os.devnull,
+               PYTHONDONTWRITEBYTECODE="1", GIT_OPTIONAL_LOCKS="0",
+               SE_EPHE_PATH=os.environ.get("SE_EPHE_PATH", str(KY_ROOT / "ephe")))
+    return env
+
+
+def execute_lane(req: dict, op: dict) -> tuple[int, str]:
+    """Export only reviewed Git objects; no worktree, credential or cloud call."""
+    import tarfile
+    why = validate_lane(req, op, reserved=True)
+    if why: return 2, why
+    with tempfile.TemporaryDirectory(prefix="lane-", dir=TMP) as directory:
+        scratch = pathlib.Path(directory)
+        archive = scratch / "source.tar"
+        paths = ["platform/scripts", "platform/python-sidecar", "platform/src/generated/nirmana-writer-digests.json", OPS_PATH.rsplit("/", 1)[0]]
+        with archive.open("wb") as stream:
+            result = subprocess.run(["git", "-C", str(GIT), "archive", "--format=tar", req["reviewed_commit"], *paths],
+                                    stdout=stream, stderr=subprocess.PIPE, env=lane_child_env(req, scratch), timeout=120)
+        if result.returncode: return 127, "lane reviewed source export failed"
+        source = scratch / "source"; source.mkdir()
+        with tarfile.open(archive) as bundle: bundle.extractall(source, filter="data")
+        # Stage immutable evidence bytes for the separately connected observer.
+        # It rechecks every digest after this copy, so races fail closed.
+        if "lane_receipts" in req:
+            staged = scratch / "run/ops/receipts"; staged.mkdir(parents=True)
+            for ref in req["lane_receipts"]:
+                for name in (ref["name"], ref["name"][:-5] + ".output.txt"):
+                    (staged / name).write_bytes((REC / name).read_bytes())
+        env = lane_child_env(req, scratch)
+        env["PYTHONPATH"] = str(source / "platform/python-sidecar")
+        overlay, why = apply_generated_overlay(source, req["reviewed_commit"], env)
+        if overlay is None: return 126, "generated overlay refused: " + why
+        overlay_proofs()[req["operation_id"]] = overlay
+        adapter = op.get("lane_readback", op.get("lane_dry_run"))["script"]
+        p = run_group([PY, str(source / adapter), "--dry-run", "--lane-target", json.dumps(req["lane_target"], sort_keys=True)],
+                      source, env, min(int(req.get("timeout_s", 900)), MAX_TIMEOUT))
+        return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
+
+
+def receipt_lane(req: dict, record: dict, status: str, rc: int | None, out: str) -> None:
+    record.update(request_id=req.get("request_id"), lane_target=req.get("lane_target"), dry_run=True,
+                  production=False)
+    if status != "COMPLETED": return
+    proofs = []
+    for line in out.splitlines():
+        try: value = json.loads(line)
+        except ValueError: continue
+        if isinstance(value, dict) and value.get("schema") == "ky.smalltest_lane/1": proofs.append(value)
+    proof = proofs[0] if len(proofs) == 1 else {}
+    valid = (rc == 0 and proof.get("status") == "DRY_RUN_VERIFIED" and proof.get("dry_run") is True
+        and proof.get("independent_readback") is True and proof.get("unchanged") is True
+        and proof.get("before_sha256") == proof.get("after_sha256")
+        and all(re.fullmatch(r"[0-9a-f]{64}", str(proof.get(key, ""))) for key in
+                ("before_sha256", "after_sha256", "script_sha256", "child_output_sha256"))
+        and all(proof.get(key) == req.get(key) for key in
+                ("operation_id", "request_id", "reviewed_commit", "kind", "lane_target"))
+        and proof.get("request_sha256") == request_digest(req))
+    if "lane_receipts" in req:
+        try:
+            expected = lane_qualification(req)
+            valid = (valid and proof.get("qualification") == expected
+                and proof.get("qualification_sha256") == digest_bytes(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode())
+                and all(entry["after_sha256"] == proof.get("after_sha256") for entry in expected))
+        except (ValueError, OSError, KeyError, TypeError): valid = False
+    # Bind the entry script from the reviewed table, not mutable local metadata.
+    table_source = git("show", f"{req.get('reviewed_commit')}:{OPS_PATH}")
+    try: script = json.loads(table_source.stdout)["ops"][req["kind"]]["script"]
+    except (ValueError, KeyError, TypeError, AttributeError): script = None
+    if valid and proof.get("script") == script:
+        record["lane"] = proof
+        record["evidence_sha256"] = digest_bytes(json.dumps(proof, sort_keys=True, separators=(",", ":")).encode())
+    else:
+        record.update(status="FAILED", reason="bound lane dry-run and independent readback proof missing or invalid")
+
+
 def run_group(argv: list[str], cwd: pathlib.Path, env: dict, timeout: int) -> subprocess.CompletedProcess:
     """Run in its own process group and leave nothing behind — a timeout or an exit kills every descendant."""
     # A descendant may inherit stdout/stderr after the direct child exits. Pipes would make
@@ -409,6 +645,8 @@ def run_group(argv: list[str], cwd: pathlib.Path, env: dict, timeout: int) -> su
 
 
 def execute(req: dict, op: dict) -> tuple[int, str]:
+    if lane_selected(req):
+        return execute_lane(req, op)
     oid = req["operation_id"]; script = op["script"]; args: list[str] = list(op.get("fixed_args", []))
     for k, v in (req.get("args") or {}).items(): args += [f"--{k}", str(v)]
     timeout = min(int(req.get("timeout_s", op.get("timeout_s", 3600))), MAX_TIMEOUT)
@@ -442,6 +680,9 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
         elif script.endswith(".py"): argv = [PY, str(wt / script)] + args
         else: argv = ["bash", str(wt / script)] + args
         if not op.get("python_module") and not (wt / script).exists(): return 127, f"script {script} does not exist at {req['reviewed_commit']}"
+        overlay, why = apply_generated_overlay(wt, req["reviewed_commit"], env)
+        if overlay is None: return 126, "generated overlay refused: " + why
+        overlay_proofs()[oid] = overlay
         p = run_group(argv, cwd, env, timeout)
         return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
     finally:
@@ -476,13 +717,16 @@ def main() -> int:
     try: fcntl.flock(instance_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError: return 0                       # another executor owns the boundary
     interrupted = sorted(f.name for f in INFLIGHT.glob("*.json"))
+    lane_interrupted = set()
     for name in interrupted:                               # a restart never re-runs an operation, and never frees the production slot
         f = INFLIGHT / name
         try: req = json.loads(f.read_text())
         except Exception: req = {"operation_id": f.stem}
+        if lane_selected(req): lane_interrupted.add(name)
         receipt(req, "INTERRUPTED", "the executor restarted while this operation was in flight; it was NOT re-run — read the postconditions")
         shutil.move(str(f), DONE / f.name)
-    if interrupted and not FENCE.exists(): FENCE.write_text(json.dumps({"interrupted": interrupted, "ts": now()}))
+    production_interrupted = [name for name in interrupted if name not in lane_interrupted]
+    if production_interrupted and not FENCE.exists(): FENCE.write_text(json.dumps({"interrupted": production_interrupted, "ts": now()}))
     table = None; caps = capabilities(False); last_caps = 0.0; last_sync = 0.0
     log("executor up")
     readers = cf.ThreadPoolExecutor(max_workers=4, thread_name_prefix="read"); builder = cf.ThreadPoolExecutor(max_workers=1, thread_name_prefix="prod")
@@ -501,7 +745,7 @@ def main() -> int:
             try: req = json.loads(f.read_text())
             except Exception as e:
                 receipt({"operation_id": f.stem}, "REFUSED", f"unreadable request: {e}"); shutil.move(str(f), DONE / f.name); continue
-            production = bool((table.get(req.get("kind")) or {}).get("production"))
+            production = bool((table.get(req.get("kind")) or {}).get("production")) and not lane_selected(req)
             if production and FENCE.exists(): continue      # the single production slot is taken; the request waits where it is
             why = validate(req, table, caps)
             if why:

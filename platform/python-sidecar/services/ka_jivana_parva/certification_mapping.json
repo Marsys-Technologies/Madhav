@@ -1,0 +1,162 @@
+{
+  "version": "K6-123/K8-K6/v1",
+  "registry_revision": 30,
+  "asset": "ka_jivana_parva",
+  "scope": "private_fixture_projection_only",
+  "changelog": [
+    "v1 (2026-10-16, K6-N2): current private read-model mapping; legacy serving and K0a assertion-slice evidence remain separate."
+  ],
+  "interpretation": "(I) INTERPRETATION: version-specific private preparation evidence, not changes to live asset_declarations or production certificates. Alternative: overwrite legacy serving declarations with unmeasured candidate claims.",
+  "kind": "data",
+  "carriage": {
+    "nature": "derivation",
+    "served_surface": "private candidate; no live serving claim",
+    "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/k6_candidate.py:361"
+  },
+  "legacy_serving": {
+    "table": "kala_jivana_parva",
+    "evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts:159",
+    "scope": "Legacy surface only; does not read or certify the private candidate projection."
+  },
+  "ldgr_source": {
+    "column": "kala_jivana_parva_candidate.payload",
+    "payload_paths": [
+      "period.provenance",
+      "judge[].provenance",
+      "jury[].provenance",
+      "negative_space[].provenance",
+      "lel[].provenance"
+    ],
+    "state": "Embedded typed source/provenance by row_kind; fixture locators and upstream_refs are not admitted live source resolution."
+  },
+  "provenance_columns": [
+    "payload",
+    "upstream_refs"
+  ],
+  "vocab_alias": null,
+  "prose_none": null,
+  "prose_fields": null,
+  "fidelity_tests": [
+    "tests/l3/kala_db/ka_kalasutra/test_read_models.py::test_ad_names_its_own_lord",
+    "tests/l3/kala_db/ka_kalasutra/test_read_models.py::test_lel_selection_circularity_guard",
+    "tests/l3/kala_db/ka_kalasutra/test_read_models.py::test_same_mechanism_condition_change_is_attributable"
+  ],
+  "null_convention": {
+    "coverage": "incomplete/absent requires reason",
+    "missing_negative_space": "empty_array",
+    "probability": "No probability, confidence, quality or numeric composite is introduced.",
+    "unmeasured": "No full-table or live null grading claimed."
+  },
+  "produced_tables": [
+    "kala_jivana_parva_candidate"
+  ],
+  "density_tier_columns": {
+    "kala_jivana_parva_candidate": "tier"
+  },
+  "stored_tiers": [
+    "fixture_only"
+  ],
+  "live_tier_select": null,
+  "semantic_fingerprint": {
+    "inputs": "Pinned F2 periods, own lord/parent/scenario/ayanamsha, sigma boundary and dossier, F1 mechanism conditions, same-candidate judge/jury/negative-space and explanation-only LEL",
+    "outputs": "Chapter rows preserve exact F2 boundaries and own lord; previous sibling condition diff; LEL excludes selection/scoring; no legacy convergence dependency",
+    "oracles": "tests/l3/kala_db/ka_kalasutra/test_read_models.py::test_ad_names_its_own_lord; tests/l3/kala_db/ka_kalasutra/test_read_models.py::test_lel_selection_circularity_guard; tests/l3/kala_db/ka_kalasutra/test_read_models.py::test_same_mechanism_condition_change_is_attributable",
+    "measured": false
+  },
+  "writer_digest": "platform/src/generated/nirmana-writer-digests.json:ka_jivana_parva",
+  "disposition": "built, waiting on gate; private fixtures only",
+  "production_certification": null,
+  "k8_k6_complete": false,
+  "acceptance_gates": "V-K6 dependency, independent exact-head review, deploy containment, live admission, protected operations, parent completion and K9-4b publication remain separate. Registrar validation alone cannot complete K8-K6; K6-4 mapping belongs to its implementation.",
+  "source_evidence": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/k6_candidate.py:368",
+    "platform/python-sidecar/pipeline/orchestrator/writers/k6_candidate.py:388",
+    "platform/python-sidecar/pipeline/orchestrator/writers/k6_candidate.py:395",
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_read_model_integrity.py:4"
+  ],
+  "gates": {
+    "Build": {
+      "revisions": {
+        "Build.registered": 3,
+        "Build.contract": 2,
+        "Build.target": 2,
+        "Build.dag": 4,
+        "Build.count_integrity": 4,
+        "Build.completion": 7,
+        "Build.exercised": 3,
+        "Build.history": 3,
+        "Build.dep_liveness": 3
+      },
+      "expected_reading": "UNMEASURED: fixture dispatch and real SQL chart/build integrity oracles exist; registry count is latest chart build while integrity is the exact transaction-bound chart/build, including completed builds. Canonical orchestrated completion, dependencies and build history remain unmeasured.",
+      "verdict": "UNMEASURED"
+    },
+    "Idem": {
+      "revisions": {
+        "Idem.pattern": 5
+      },
+      "expected_reading": "UNMEASURED: fixture repeat rebuild and empty rebuild replace only the chart/generation partition through the shared helper; published/retained and legacy rows remain intact. Static helper attribution and live structural detector reading remain unmeasured.",
+      "verdict": "UNMEASURED"
+    },
+    "Earn": {
+      "revisions": {
+        "Earn.build_record": 3,
+        "Earn.service_state": 2
+      },
+      "expected_reading": "UNMEASURED: fixture WriterResult and SQL output are measured by local oracles; real production build_record, service state and timing are unmeasured.",
+      "verdict": "UNMEASURED"
+    },
+    "Vocab": {
+      "revisions": {
+        "Vocab.identity": 3,
+        "Vocab.alias": 10
+      },
+      "expected_reading": "UNMEASURED: fixture model_key preserves natural identities and scenario/convention distinctions. No live natural-key or alias verdict; vocab_alias is null until independently measured.",
+      "verdict": "UNMEASURED"
+    },
+    "Ldgr": {
+      "revisions": {
+        "Ldgr.source_presence": 6
+      },
+      "expected_reading": "UNMEASURED: fixture payload embeds upstream evidence/provenance and upstream_refs pins build, scenario, ayanamsha, source locator and fixture qualification. Source presence is distinct from live id resolution and classical sourcing.",
+      "verdict": "UNMEASURED"
+    },
+    "Dens": {
+      "revisions": {
+        "Dens.served": 14
+      },
+      "expected_reading": "UNMEASURED: fixture chapter rows store tier=fixture_only; the nested judge array does not promote the chapter to testimony and this projection emits no context rows. No served SELECT reads the private table; legacy serving evidence below cannot certify candidate density.",
+      "verdict": "UNMEASURED"
+    },
+    "Narr": {
+      "revisions": {
+        "Narr.agree": 8,
+        "Narr.checkable": 8,
+        "Narr.fidelity_test": 7,
+        "Narr.lint": 7
+      },
+      "expected_reading": "UNMEASURED: fixture SQL projects supplied evidence without composed narrative; copied dossier/source text means no blanket prose_none claim. Bound semantic fidelity tests do not certify live prose or the mixed legacy surfaces.",
+      "verdict": "UNMEASURED"
+    },
+    "Null": {
+      "revisions": {
+        "Null.schema_default": 11,
+        "Null.blank_rows": 11
+      },
+      "expected_reading": "UNMEASURED: fixture coverage is reason-bearing, judge valences stay separate and nullable, and missing negative-space behavior is declared per asset. Both live null graders and live declarations remain unmeasured.",
+      "verdict": "UNMEASURED"
+    },
+    "Carr": {
+      "revisions": {
+        "Carr.D1": 5,
+        "Carr.D2": 3,
+        "Carr.D3": 4
+      },
+      "expected_reading": "NO_DETECTOR for Carr.D2 at current registry revision; fixture SQL derivation and fidelity evidence do not establish independent D3 or live carriage. Other carriage readings remain unmeasured.",
+      "verdict": "NO_DETECTOR",
+      "detector_none": [
+        "Carr.D2"
+      ],
+      "detector_dependency": "A subsequent criterion-registry revision implementing the currently NONE detector and independent measurement are required; no production certificate."
+    }
+  }
+}
