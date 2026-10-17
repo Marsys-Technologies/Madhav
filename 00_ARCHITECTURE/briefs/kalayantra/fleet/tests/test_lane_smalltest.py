@@ -251,9 +251,11 @@ def test_final_independent_readback_binds_all_six_receipt_bytes(ex, table):
     for refs in [req['lane_receipts'][:-1], req['lane_receipts'] + req['lane_receipts'][:1],
                  req['lane_receipts'][:-1] + req['lane_receipts'][:1]]:
         bad = {**req, 'lane_receipts': refs}
-        assert ex.validate(bad, table, {'none': True}) is not None
+        assert ex.validate(bad, table, {'none': True}) is None           # A8 §4: the ritual is no longer an admission precondition ...
+        with pytest.raises(ValueError): ex.lane_qualification(bad)       # ... a request that still carries it is bound at execution and receipt
     output = ex.REC / 'lane-backup_snapshot.output.txt'; output.write_text('changed')
-    assert ex.validate(req, table, {'none': True}) is not None
+    assert ex.validate(req, table, {'none': True}) is None
+    with pytest.raises(ValueError): ex.lane_qualification(req)
 
 
 def test_qualification_refuses_cross_lane_or_changed_receipt_bytes(ex, table):
@@ -270,7 +272,8 @@ def test_qualification_refuses_cross_lane_or_changed_receipt_bytes(ex, table):
             elif mutation == 'failed': value['status'] = 'FAILED'
             elif mutation == 'evidence': value['evidence_sha256'] = '0' * 64
             body = json.dumps(value).encode(); path.write_bytes(body); ref['sha256'] = ex.digest_bytes(body)
-        assert ex.validate(bad, table, {'none': True}) is not None
+        assert ex.validate(bad, table, {'none': True}) is None           # A8 §4: not an admission precondition ...
+        with pytest.raises((ValueError, OSError, KeyError, TypeError)): ex.lane_qualification(bad)   # ... still refused where it is bound
         if mutation not in ('hash', 'escape'): path.write_bytes(original)
 
 
@@ -358,4 +361,5 @@ def test_qualification_malformed_json_shapes_refuse_without_crashing(ex, table, 
     if isinstance(value, dict): value = {**json.loads(path.read_text()), **value}
     body = json.dumps(value).encode(); path.write_bytes(body)
     ref['sha256'] = ex.digest_bytes(body)
-    assert ex.validate(req, table, {'none': True}) is not None
+    assert ex.validate(req, table, {'none': True}) is None               # A8 §4: not an admission precondition ...
+    with pytest.raises((ValueError, OSError, KeyError, TypeError)): ex.lane_qualification(req)   # ... still refused, without crashing, where it is bound
