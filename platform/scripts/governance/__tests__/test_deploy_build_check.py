@@ -6,6 +6,7 @@ with Node, as in test_ci_generated.py; no workflow/API/Docker is dispatched.
 """
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 
@@ -13,6 +14,7 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[4]
+NODE = shutil.which('node') or 'node'
 WORKFLOW = ROOT / '.github/workflows/deploy.yml'
 
 
@@ -128,9 +130,71 @@ def test_main_deployment_and_merge_queue_triggers_stay_unchanged():
     assert doc['jobs']['changes']['if'] == "github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'"
     outcome = doc['jobs']['deployment-outcome']
     assert outcome['name'] == 'Require earned deployment outcome'
-    assert outcome['if'] == "${{ always() && github.event_name != 'pull_request' }}"
+    assert outcome['if'] == ("${{ always() && github.event_name != 'pull_request' "
+                             "&& needs.changes.result != 'skipped' }}")
     assert set(outcome['needs']) == {'changes', 'migrate', 'deploy-web', 'deploy-sidecar', 'deploy-mcp', 'deploy-pipeline-job'}
     assert doc['concurrency']['cancel-in-progress'] == "${{ github.event_name == 'pull_request' }}"
+
+
+def outcome_job_runs(event, changes_result):
+    """Evaluate the real deployment-outcome `if` with Node, as evaluate() does."""
+    script = r'''
+const [condition, event, changes] = JSON.parse(process.argv[1]);
+const github = {event_name: event};
+const needs = {changes: {result: changes}};
+const expr = condition.replace(/^\$\{\{\s*|\s*\}\}$/g, '');
+process.stdout.write(JSON.stringify(Boolean(new Function('github', 'needs', 'always', 'return (' + expr + ')')(
+  github, needs, () => true))));
+'''
+    condition = workflow()['jobs']['deployment-outcome']['if']
+    result = subprocess.run([NODE, '-e', script, json.dumps([condition, event, changes_result])],
+                            capture_output=True, text=True, check=True, timeout=10)
+    return json.loads(result.stdout)
+
+
+def run_outcome_gate(changes_result, web_changed, migrate, web):
+    """Run the real gate script (the job's only step that can fail) offline."""
+    env = {**os.environ, 'OUTCOME_EVENT_NAME': 'workflow_run', 'OUTCOME_SHA': 'a' * 40,
+           'OUTCOME_CHANGES_RESULT': changes_result, 'OUTCOME_FORCE_ALL': 'false',
+           'OUTCOME_WEB_CHANGED': web_changed, 'OUTCOME_SIDECAR_CHANGED': 'false',
+           'OUTCOME_MCP_CHANGED': 'false', 'OUTCOME_PIPELINE_CHANGED': 'false',
+           'OUTCOME_MIGRATE_RESULT': migrate, 'OUTCOME_WEB_RESULT': web,
+           'OUTCOME_SIDECAR_RESULT': 'skipped', 'OUTCOME_MCP_RESULT': 'skipped',
+           'OUTCOME_PIPELINE_RESULT': 'skipped'}
+    env.pop('NODE_ENV', None)
+    return subprocess.run([NODE, '--experimental-strip-types', '--no-warnings',
+                           str(ROOT / 'platform/scripts/ci/deployment_outcome_gate.ts')],
+                          env=env, capture_output=True, text=True, timeout=30)
+
+
+def test_cancelled_or_superseded_upstream_reports_skipped_not_failure():
+    """§N.8: with no green upstream no deployment was attempted, so the outcome
+    job must not run (GitHub reports SKIPPED); a FAILURE there is a false alarm.
+    `changes` is skipped exactly when workflow_run.conclusion != 'success'.
+    """
+    doc = workflow()
+    assert doc['jobs']['changes']['if'] == "github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'"
+    assert doc['jobs']['deployment-outcome']['name'] == 'Require earned deployment outcome'
+    assert not outcome_job_runs('workflow_run', 'skipped')
+
+
+def test_green_upstream_with_skipped_or_failed_deploy_still_fails():
+    """§N.8: the real-failure path is preserved. Upstream green means the
+    detector ran; a deployable change whose migrate/deploy was skipped or failed
+    must still fail, as must a failed or cancelled detector.
+    """
+    for changes_result in ('success', 'failure', 'cancelled'):
+        assert outcome_job_runs('workflow_run', changes_result), changes_result
+    probe = subprocess.run([NODE, '--experimental-strip-types', '--no-warnings', '-e', '0'],
+                           capture_output=True, text=True)
+    if probe.returncode:
+        pytest.skip('node lacks --experimental-strip-types; gate verdicts are covered by vitest')
+    for migrate, web in (('skipped', 'skipped'), ('success', 'failure')):
+        result = run_outcome_gate('success', 'true', migrate, web)
+        assert result.returncode == 1, (migrate, web, result.stdout, result.stderr)
+        assert 'Deployment outcome not earned' in result.stderr
+    assert run_outcome_gate('success', 'true', 'success', 'success').returncode == 0
+    assert run_outcome_gate('failure', 'false', 'skipped', 'skipped').returncode == 1
 
 
 def test_required_contexts_remain_present_and_independent():
