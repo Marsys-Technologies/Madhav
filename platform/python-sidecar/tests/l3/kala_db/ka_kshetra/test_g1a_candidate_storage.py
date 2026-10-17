@@ -162,6 +162,29 @@ def test_production_stage1_consumes_stored_adapters_and_effective_states(data):
     assert any(g['reason']=='negative_space_binding_not_admitted' for g in gaps)
 
 
+def test_suppression_vedha_read_is_scoped_to_this_generation_and_canonical_convention(data):
+    # Claim S8. KA-3a keys interval rows by (chart_id, generation, ayanamsha_id, vedha_kind, graha, t_in)
+    # (platform/migrations/1383_ka_3a_vedha_candidate_intervals.sql:50), so sibling generations and other
+    # conventions legitimately coexist for one chart; K5-G1a "reads only this candidate/convention"
+    # (KALAYANTRA_V3_TRIAGE_v2_2.md:191, ALGO 3.20 G1 (c)). A sibling's interval must never become an
+    # obstruction of this candidate.
+    conn,chart,build=data
+    conn.execute('CREATE TABLE kala_vedha_gochara_interval(chart_id uuid,generation text,ayanamsha_id text,vedha_kind text,graha text,state text,t_in timestamptz,t_out timestamptz,detail jsonb)')
+    conn.execute('CREATE TABLE kala_moorti_nirnaya_candidate(chart_id uuid,generation text,ayanamsha_id text,payload jsonb,method_qualification text,upstream_fingerprint jsonb)')
+    conn.execute('CREATE TABLE kala_obstruction(chart_id uuid,generation text,assertion_id text,effective_state text,interval_start timestamptz,interval_end timestamptz,event_class_id text,assertion jsonb)')
+    from datetime import datetime,timedelta,timezone
+    from services.ka_kshetra.g1_inputs import load_suppression
+    birth=datetime(1984,2,5,5,13,tzinfo=timezone.utc)
+    for gen,ayan,day in [('candidate:g1','lahiri_chitrapaksha',10),
+                         ('candidate:g2','lahiri_chitrapaksha',40),
+                         ('candidate:g1','krishnamurti',70)]:
+        conn.execute('INSERT INTO kala_vedha_gochara_interval VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+            (chart,gen,ayan,'house_vedha','Saturn','active',birth+timedelta(days=day),
+             birth+timedelta(days=day+5),Jsonb({'vedha_house':4})))
+    prims,_=load_suppression(CandidateConnection(conn,'candidate:g1'),chart,'candidate:g1',birth)
+    assert [(p.t_start,p.t_end) for p in prims if p.primitive_kind=='vedha']==[(10.,15.)]
+
+
 def test_candidate_resume_refuses_changed_inputs(data):
     conn,chart,build=data
     scoped=CandidateConnection(conn,'candidate:g1')
