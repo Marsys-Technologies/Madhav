@@ -12,6 +12,7 @@ against real tables in platform/python-sidecar/tests/l3/gochara/test_c38_teardow
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import re
 import sys
@@ -98,6 +99,7 @@ class _Harness:
                           if retention == "default" else retention)
         self.flipped = False
         self.deleted = False
+        self.deleted_tables: set[str] = set()      # SR-J2A-N18: a table reads empty once ITS OWN delete ran (the gate selects between deletes)
         self.end_state_calls = 0
         self.pids = list(pids) if pids else None
         self.lock_held = lock_held
@@ -122,6 +124,10 @@ class _Harness:
                     harness.flipped = True
                 if flat.startswith("DELETE"):
                     harness.deleted = True
+                    deleted = re.match(r"DELETE FROM (\w+)", flat).group(1)
+                    harness.deleted_tables.add(deleted)
+                    if deleted == "build_runs":                                   # ON DELETE CASCADE (migration 171)
+                        harness.deleted_tables.add("build_run_assets")
                 if flat.startswith("SELECT catalog_status"):
                     harness.end_state_calls += 1
                 if "pg_backend_pid() AS pid" in flat:
@@ -216,7 +222,10 @@ class _Harness:
                                     return {"n": 0 if harness.deleted else n}
                     if table in teardown_mod.LEGACY_GUARD_TABLES:
                         return {"n": harness.legacy.get(table, 0)}
-                    return {"n": 0 if harness.deleted else harness.rows.get(table, 0)}
+                    if table == "build_runs":                                      # the owned runs are the members the checks selected
+                        return {"n": 0 if table in harness.deleted_tables else len(harness.members)}
+                    gone = table in harness.deleted_tables or (harness.deleted and table in teardown_mod.CASCADE_PROOF_TABLES)
+                    return {"n": 0 if gone else harness.rows.get(table, 0)}
                 return None
 
         class FakeConn:
@@ -249,7 +258,10 @@ class _Harness:
 
 ROWS = {"ka_gochara_eval_window": 3, "ka_gochara_relationship_record": 4, "ka_gochara_contact": 5,
         "kala_gochara_coverage": 2, "ka_gochara_search_inventory": 2, "kala_gochara_publication": 1,
-        "build_run_assets": 1, "asset_throughput": 1, "asset_provenance_receipts": 1, "asset_freshness": 1}
+        "build_run_assets": 1, "asset_throughput": 1, "asset_provenance_receipts": 1, "asset_freshness": 1,
+        # SR-J2A-N18: a table with no scoped rows is not deleted from, so the populated fixture holds a row in EVERY deletion-scope table
+        "ka_gochara_search_interval": 1, "ka_gochara_search_obligation": 1, "ka_gochara_search_path_pin": 1,
+        "ka_gochara_search_input_snapshot": 1}
 
 
 @contextlib.contextmanager
@@ -342,6 +354,27 @@ def test_execute_happy_path_one_transaction_in_dependency_order_registry_kept():
             assert params == (CHART_ID, "5.0") and "chart_id = %s AND generation = %s" in s
     assert not any("DELETE FROM asset_registry" in s for s in h.statements)
     assert not any("SET is_active" in s for s in h.statements)        # B2: an already-inert row is never updated
+
+
+# ── SR-J2A-N18 (A): absence is proved by SELECT; no DELETE on a table whose scoped count is 0 ───────────────────────────────
+
+def test_n18_a_table_with_no_scoped_rows_gets_no_delete_and_is_named_in_the_receipt(capsys):
+    """Migration 1379's statement-level triggers lock EVERY chart present in a table even for a zero-row DELETE, so a DELETE on an empty
+    scope table fails (N18, P0001) when another chart has rows there. Claim: each table is counted first with the DELETE's own predicate,
+    the DELETE is issued only when the count is > 0, and the skipped tables are named in the receipt."""
+    populated = {"asset_provenance_receipts": 1, "build_run_assets": 1, "ka_gochara_eval_window": 3}
+    h = _Harness(rows=populated)
+    _run(h)
+    deleted = [_table_of(s) for s in h.deletes()]
+    assert deleted == ["asset_provenance_receipts", "build_run_assets", "build_runs", "ka_gochara_eval_window"]
+    assert not {"kala_gochara_publication", "asset_freshness", "asset_throughput", "ka_gochara_contact"} & set(deleted)
+    for s in h.deletes():                      # each DELETE comes straight after the count SELECT with the SAME predicate and params
+        i = h.statements.index(s)
+        assert h.statements[i - 1] == f"SELECT count(*) AS n FROM {_table_of(s)} WHERE " + s.split(" WHERE ", 1)[1]
+        assert h.params[i - 1] == h.params[i]
+    proof = json.loads(capsys.readouterr().out.split("teardown_proof\t")[1].splitlines()[0])
+    assert proof["skipped_empty_tables"] == [t for t, *_ in teardown_mod._scope_statements([RUN_1]) if t not in deleted]
+    assert "kala_gochara_publication" in proof["skipped_empty_tables"]
 
 
 def test_the_locks_are_taken_before_any_ownership_check_and_in_the_orchestrators_order():
