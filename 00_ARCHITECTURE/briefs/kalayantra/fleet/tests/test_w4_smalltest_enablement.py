@@ -85,8 +85,7 @@ def test_unknown_kind_stays_refused(table, executor):
 
 @pytest.mark.parametrize('kind,field', [
     ('smalltest_teardown_dryrun', 'smalltest_scope'),
-    ('smalltest_teardown', 'dryrun_receipt'),
-    ('smalltest_teardown', 'dryrun_acceptance'),
+    ('smalltest_teardown', 'dryrun_receipt'),      # A8 §3.8: a dry run has no acceptance, so its receipt is the whole evidence
     ('smalltest_dispatch', 'absence_receipt'),
     ('smalltest_dispatch', 'absence_acceptance'),
 ])

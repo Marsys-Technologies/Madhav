@@ -382,7 +382,7 @@ def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[d
 
     (I) INTERPRETATION: request_id is the executor's request filename stem. The executor
     moves <operation_id>.json to ops/done and hashes the complete request without its
-    acceptance_receipt field (fleet/executor.py:request_digest, receipt, run_one).
+    acceptance_receipt, expires_at and *_expires_at fields (fleet/executor.py:request_digest, A8 §3.9).
     Acceptance is the latest artifact verdict at the executor receipt's digest, as in
     guarded operation completion; a review job's MET marker alone has no signer identity.
     """
@@ -413,7 +413,7 @@ def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[d
         request = json.load(handle)
     if not isinstance(request, dict):
         raise CompletionError("operation request must be a JSON object")
-    bound = {key: value for key, value in request.items() if key != "acceptance_receipt"}
+    bound = {key: value for key, value in request.items() if key not in ("acceptance_receipt", "expires_at") and not key.endswith("_expires_at")}   # executor.request_digest, A8 §3.9
     request_digest = hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":"),
                                              allow_nan=False).encode("utf-8")).hexdigest()
     requester = request.get("requested_by")
