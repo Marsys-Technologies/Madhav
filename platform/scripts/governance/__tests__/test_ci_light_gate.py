@@ -282,11 +282,47 @@ def test_ci_gate_selects_changed_profiles_on_merge_group_and_nothing_on_main(mon
     for event in ('pull_request', 'merge_group', 'push', 'workflow_dispatch'):
         assert ci_gate.main(['--event', event, '--base', 'B', '--head', 'H']) == 0
         out[event] = capsys.readouterr().out
-    assert 'gochara-a55-replace-chain' in out['merge_group'] and out['merge_group'] == out['pull_request']
+    assert 'gochara-a55-replace-chain' in out['merge_group']
+    parsed = {e: dict(l.split('=', 1) for l in out[e].splitlines()) for e in ('pull_request', 'merge_group')}
+    # the queue = the PR selection plus the SR-CI-SCOPED-SAFEGUARD suites (own oracle below), nothing else
+    for key in ('db_jobs', 'db_profiles'):
+        assert set(json.loads(parsed['pull_request'][key])) <= set(json.loads(parsed['merge_group'][key]))
+    assert {j for j in json.loads(parsed['merge_group']['db_jobs'])} - set(json.loads(parsed['pull_request']['db_jobs'])) \
+        <= ci_gate.QUEUE_ALWAYS_JOBS
     assert out['push'] == out['workflow_dispatch'] == 'db_jobs=[]\ndb_profiles=[]\n'
     monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: None)
     with pytest.raises(ValueError):
         ci_gate.main(['--event', 'merge_group'])
+
+
+def test_combination_sensitive_suites_run_on_every_merge_group_even_for_an_unrelated_change(monkeypatch, capsys):
+    """SR-CI-SCOPED-SAFEGUARD: SAMIKSHA DB Integration (all shards), the Gochara measuring build and the C38 teardown
+    jobs (they failed green-alone/red-combined) run on a merge_group whose diff touches none of their tests; a PR with
+    the same diff, and every other DB job, stay path-scoped; the required checks still pass through the umbrellas."""
+    import ci_changes
+    import ci_gate
+    monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: ['platform/scripts/governance/__tests__/test_nb_kala_ci.py'])
+    out = {}
+    for event in ('pull_request', 'merge_group'):
+        assert ci_gate.main(['--event', event, '--base', 'B', '--head', 'H']) == 0
+        out[event] = dict(line.split('=', 1) for line in capsys.readouterr().out.splitlines())
+    jobs = workflow()['jobs']
+    names = {n: str(j.get('name')) for n, j in jobs.items()}
+    queue_jobs, queue_profiles = json.loads(out['merge_group']['db_jobs']), json.loads(out['merge_group']['db_profiles'])
+    assert out['pull_request'] == {'db_jobs': '[]', 'db_profiles': '[]'}
+    must = {n for n, name in names.items() if jobs[n].get('services') and (
+        'DB Integration Tests (SAMĪKṢĀ' in name or 'Gochara measuring build' in name or 'Gochara C38 - the small-test teardown' in name)}
+    assert len(must) == 5, must
+    assert must <= set(queue_jobs)
+    import ci_discovery
+    shards = {p for p in ci_discovery.profiles() if p.startswith(('db-integration-tests-', 'gochara-a55-measuring-build-', 'gochara-a55-teardown'))}
+    assert shards and shards <= set(queue_profiles)
+    assert set(queue_jobs) == must, 'every other DB job stays path-scoped'
+    for n in sorted(must):
+        assert evaluate(jobs[n].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles), n
+    for n in ('required-db-integration-tests', 'required-gochara-a55-teardown', 'required-gochara-a55-teardown-round3'):
+        assert evaluate(jobs[n].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles), n
+    assert not evaluate(jobs['gochara-a55-replace-chain'].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles)
 
 
 def test_merge_queue_diffs_against_the_group_base_and_every_required_check_reports():

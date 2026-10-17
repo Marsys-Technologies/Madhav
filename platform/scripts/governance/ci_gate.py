@@ -23,6 +23,13 @@ ROOT = Path(__file__).resolve().parents[3]
 # OWNER-CI-SCOPED-QUEUE-20261017: the merge queue selects exactly as a PR does; push/main and
 # full_gate dispatch print empty selections because the workflow runs every heavy job there.
 SCOPED_EVENTS = ('pull_request', 'merge_group')
+# SR-CI-SCOPED-SAFEGUARD (surrogate ruling 2026-10-17): suites that failed "green alone, red combined" run on EVERY
+# merge_group whatever paths changed: DB Integration Tests (SAMIKSHA, all shards), the Gochara measuring build, and
+# the C38 small-test teardown (base + rounds 2 and 3). Job ids in ci.yml; their profiles come from db_profile_owners.
+QUEUE_ALWAYS_JOBS = frozenset({
+    'db-integration-tests', 'gochara-a55-measuring-build',
+    'gochara-a55-teardown', 'gochara-a55-teardown-round2', 'gochara-a55-teardown-round3',
+})
 PROFILE_CALL = re.compile(r'ci_discovery\.py[\"\']?\s+(?:run|pytest|vitest)\s+([\w-]+)\s+--')
 
 
@@ -76,13 +83,13 @@ def _matches(root: Path, spec: dict, paths: list[str], discovered: list[str]) ->
     return False
 
 
-def select_db(root: Path, jobs: dict, paths: list[str]) -> tuple[list[str], list[str]]:
+def select_db(root: Path, jobs: dict, paths: list[str], always_jobs=frozenset()) -> tuple[list[str], list[str]]:
     specs = ci_discovery.profiles()
     selected_jobs: set[str] = set()
     selected_profiles: list[str] = []
     for profile, owners in db_profile_owners(jobs).items():
         spec = specs[profile]
-        if _matches(root, spec, paths, ci_discovery.discover(root, spec)):
+        if any(owner in always_jobs for owner in owners) or _matches(root, spec, paths, ci_discovery.discover(root, spec)):
             selected_profiles.append(profile)
             selected_jobs.update(owners)
     # Accepted #3618 fixture producers are prerequisites, not a second profile list.
@@ -109,7 +116,8 @@ def main(argv=None):
     paths = ci_changes.changed_files(ns.base, ns.head) if scoped else []
     if paths is None or (scoped and not paths):
         raise ValueError('cannot establish the PR/queue diff; refusing a green light gate')
-    selected_jobs, selected_profiles = select_db(ROOT, jobs, paths) if scoped else ([], [])
+    always = QUEUE_ALWAYS_JOBS if ns.event == 'merge_group' else frozenset()
+    selected_jobs, selected_profiles = select_db(ROOT, jobs, paths, always) if scoped else ([], [])
     print('db_jobs=' + json.dumps(selected_jobs, separators=(',', ':')))
     print('db_profiles=' + json.dumps(selected_profiles, separators=(',', ':')))
     return 0
