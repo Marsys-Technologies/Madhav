@@ -1,10 +1,11 @@
 ---
 artifact: J2A_SCOPED_BACKUP
-version: "1.1"
+version: "1.2"
 status: REVIEW_CANDIDATE
 produced_on: 2026-10-17
-authority: surrogate rulings SR-J2A-BACKUP-SCOPE (DECISIONS_SURROGATE.jsonl, 2026-10-16T22:08Z) and SR-J2A-BACKUP-POSITIVE (2026-10-17T01:50Z); amends P01_REWORK_v1_0.md (paired logical backup) and the step-10 text of the small-test sitting checklist
+authority: surrogate rulings SR-J2A-BACKUP-SCOPE (DECISIONS_SURROGATE.jsonl, 2026-10-16T22:08Z), SR-J2A-BACKUP-POSITIVE (2026-10-17T01:50Z) and SR-J2A-RESTORE-BASE (2026-10-17T10:52Z); amends P01_REWORK_v1_0.md (paired logical backup) and the step-10 text of the small-test sitting checklist
 changelog:
+  - "1.2: SR-J2A-RESTORE-BASE. The 2026-10-17T09:04Z restore proof failed (`pg_restore failed`): production had since applied migration 1394 (functions `ka_gochara_governed_chart_statement_lock` / `ka_gochara_touched_chart_statement_lock`, triggers on `kala_gochara_publication` / `kala_gochara_authority`, both in scope), and the pinned, empty `SCOPED_RESTORE_BASE_MIGRATIONS` could not supply them. The restore base is now DERIVED, never pinned: the governed bundle schema plus every migration the archive's own `_migrations_applied` ledger records as applied after the bundle whose file mentions a scope table, each file hash-checked against the ledger. New captures record the ledger digest and the base identity in capture.json; the proof refuses if the ledger differs from the one recorded (or, for a capture that recorded none, from the one the base was derived from). `SCOPED_RESTORE_BASE_MIGRATIONS` is removed."
   - "1.1: SR-J2A-BACKUP-POSITIVE. The 01:48Z production capture failed because the full-schema dump locked relations the backup login (amjis_app) cannot read (four planner_* tables owned by purna_inquiry_owner). The scoped dump now names ONLY the scope plus its foreign-key parents, each with its own -t (definitions and data), so nothing else is locked or dumped; the restore target is built from the governed L1 bundle schema instead of from a production schema dump; a guarded --exclude-table fallback is recorded in capture.json with each table's owner. No grant was widened."
   - "1.0: scoped small-test backup (--scope small_test): reviewed scope file + digest, SQL-aggregate measurement, parallel directory dump, restore proof, validity window, dispatch check."
 ---
@@ -100,10 +101,42 @@ overwrites and the teardown deletes, and the insert-only global Gochara tables n
   definitions then replace the base's copy of exactly the data set (`DROP TABLE … CASCADE`, then `pg_restore`), so the proof tests
   the archive's definitions, not the bundle's. `restore.json` records the base's path, sha256 and migration list. Alternative:
   `--data-only` into the base's own tables (does not test the archived definitions).
-* **(I) INTERPRETATION J2A-B2 — migrations since the bundle.** `SCOPED_RESTORE_BASE_MIGRATIONS` (file, sha256, applied in order after
-  the bundle) is **empty**: the production migration state is not readable from this change. A function, type or column the archive
-  needs and the base lacks makes the restore **fail before any receipt**; the fix is a reviewed entry in that list. Checked locally:
-  every scope table, and every function a trigger on them calls, is in the bundle.
+* **(I) INTERPRETATION J2A-B2 (superseded by SR-J2A-RESTORE-BASE, v1.2) — migrations since the bundle are DERIVED.** The earlier
+  pinned, empty list is gone. At proof time, before any scratch database exists, the script reads the `_migrations_applied`
+  ledger **from the archive** (`pg_restore --data-only --table=_migrations_applied`; that table is in the scope, so the archive
+  holds production's ledger exactly as of the snapshot). The base is the bundle schema **plus**, in ledger (`id`) order, every
+  entry that was applied after the bundle was cut (`SCOPED_RESTORE_BASE_CUT`) and whose repository file mentions a scope table.
+  Each file must exist and hash to the ledger's own `sha256` (else *ledger migration … is missing from the repository* /
+  *differs from the file production applied*): the base is what production ran, or the proof refuses. `restore.json`
+  records `restore_base.migrations` (the files carried) and `restore_base.ledger` (`count`, `sha256`, `source`).
+* **(I) INTERPRETATION J2A-B3 — what "touches a scope table" and "after the bundle" mean.** *Touches* = a whole-word, case-insensitive
+  textual mention of a scope table's name in the migration file (over-inclusion or a dynamic-SQL miss fails the restore loudly,
+  before any receipt). *After the bundle* = `applied_at` later than `SCOPED_RESTORE_BASE_CUT = 2026-10-16T17:10:23Z`, the time
+  `schema.sql` was written (the bundle manifest's `captured_at`, 13:57:45Z, dates the chart data, not the schema; a first
+  attempt with it re-applied migration 1235, already in the schema, and failed its owner guard). The cut is a property of the
+  pinned bundle file like its sha256; production's ledger has no migration between 14:49:45Z (1389, in the bundle) and 22:26:25Z
+  (1393, not), so any cut in that gap gives the same set. Alternatives: carry every post-bundle migration (larger blast radius);
+  derive the cut from the file's mtime (not durable).
+* **Ledger identity (condition 3).** New captures record `migrations_ledger` (`count`, `sha256` over the sorted
+  `(filename, file hash, applied instant)`) read under the same snapshot as the dump, and `restore_base` (bundle path + sha256).
+  The proof refuses (a) *migration ledger in the archive differs from the ledger recorded at capture*, (b) a recorded base that is not
+  the base it would use, (c) *migration ledger at restore differs from the ledger the base was derived from* — the ledger read
+  back from the restored scratch target, checked before the row measurements. A capture by this script lacking those records is
+  refused (*recapture required*).
+* **(I) INTERPRETATION J2A-B4 — the existing, seedless archive.** A capture taken by an earlier script carries no ledger digest and
+  its `script_sha256` no longer equals the script's. `SCOPED_LEGACY_CAPTURE_SCRIPTS` lists the one earlier capture-script digest
+  (`3f967bf9…`, the capture of `w4r1_20261017t090403z`); such a receipt is restored through the same ledger-derived base, with the
+  ledger taken from the archive (`restore_base.ledger.source = archive`) and checked against the archive's measured row count and,
+  after the restore, against the restored target. Any other script digest is refused as before. Alternative: re-capture (rejected by
+  the ruling: re-run the proof against that backup).
+* **(I) INTERPRETATION J2A-B5 — the schema seed is not built.** SR-J2A-RESTORE-BASE prefers a schema seed taken at backup time and
+  allows the ledger-derived base "only if the seed path cannot deliver referenced functions". Judged not deliverable here:
+  `pg_dump` cannot select functions by dependency; a plpgsql body's callees are not recorded in `pg_depend`, so a "referenced
+  functions" seed is the same first-level reading that missed 1394's functions; and a whole-schema seed locks every relation,
+  including the `planner_*` tables the backup login cannot read (the SR-J2A-BACKUP-POSITIVE failure). The ledger-derived base is
+  deterministic, hash-checked file by file, and testable locally. Alternative: a catalogue query of all non-extension functions
+  (`pg_get_functiondef`) under the snapshot as the seed, plus types; to be built if a later migration needs more than the files
+  provide.
 * **Fail-closed (condition 3):** `backup_taken` is written only with the capture receipt, after the archive, the table of contents
   and the measurements are validated; `restore_verified` only after exact equality and target removal. A failed client exit,
   an unmeasured or different table, a changed sequence, a scope or file-hash difference, an existing target or evidence file
@@ -153,7 +186,10 @@ proofs for dispatch altogether.
    unreviewed table* (a write path the review missed: extend the scope by review, never bypass), *over the budget* (§4),
    *capture scope differs from the reviewed scope; recapture required* (the scope changed after capture), *dump exclusion …*
    (§3 fallback declared against the scope or an FK-linked table: remove it), *restore base schema … differs / is not readable*
-   (the governed bundle moved: stop and raise it; do not point the script at another file). A pg_dump failure still withholds the
+   (the governed bundle moved: stop and raise it; do not point the script at another file); *ledger migration … is missing from
+   the repository / differs from the file production applied* (the reviewed commit the executor runs does not hold the migration
+   production applied: run the proof from a commit that does); *migration ledger … differs* (the archive or the restored target is not the
+   state the capture or the base was derived from: stop, raise it, recapture). A pg_dump failure still withholds the
    client's text; `permission denied for table …` there means a scope or closure relation is unreadable to the login — never widen
    grants to fix it; report it.
 
@@ -168,7 +204,13 @@ proofs for dispatch altogether.
 | another role's unreadable table outside the scope no longer breaks the dump | `…::test_a_table_outside_the_scope_that_the_login_cannot_read_does_not_break_the_dump` (real second login) |
 | the dump names exactly the data set, one quoted `-t` each | `test_backup_v5_small_test_scoped.py::test_dump_names_exactly_the_data_set…` |
 | guarded exclusion: outside scope/closure, no FK edge, owner recorded | `…::test_a_dump_exclusion_is_a_guarded_fallback…` |
-| restore base is the hash-checked governed bundle, bootstrapped as its own restore ran; migrations pinned | `test_restore_base_is_the_hash_checked…`, `test_restore_base_migrations_are_applied…` |
+| restore base is the hash-checked governed bundle, bootstrapped as its own restore ran; carried migrations re-hash-checked | `test_restore_base_is_the_hash_checked…`, `test_restore_base_migrations_are_applied…` |
+| migrations after the bundle that touch a scope table are derived from the ledger (not pinned), in ledger order | `test_restore_migrations_are_those_applied_after_the_bundle…` |
+| a ledger migration the repository cannot reproduce exactly refuses the base | `test_a_ledger_migration_the_repository_cannot_reproduce_exactly_refuses_the_base` |
+| a 1394-style post-bundle migration on a scope table is carried and the restore succeeds | `test_p01_smalltest_backup_scoped.py::test_a_post_bundle_migration_on_a_scope_table_is_derived…` (real `pg_dump`/`pg_restore`) |
+| the existing seedless capture restores through the ledger-derived fallback | `…::test_a_capture_taken_before_the_ledger_was_recorded_is_restored…` |
+| a current-script capture without its ledger digest is refused | `…::test_a_capture_by_this_script_without_its_ledger_digest_is_refused` |
+| ledger differing from capture (archive) / from the base's source (restored target) refuses | `…::test_restore_refuses_when_the_archives_ledger…`, `…::test_restore_refuses_when_the_restored_targets_ledger…` |
 | measurement order-independent and change-sensitive | `…::test_sql_measurement_is_order_independent…` |
 | unhonourable scope refused before any dump | `…::test_scope_the_database_cannot_honour…` |
 | sequence drift / leaked data / tampered file / failed client | the four matching tests in the same DB file |
@@ -187,7 +229,10 @@ proofs for dispatch altogether.
 * Row-level security: `public.charts` (a closure parent) has it enabled in the bundle. pg_dump errors, and the SQL measurement would
   silently see filtered rows, for a login that is neither the owner nor `BYPASSRLS`; the earlier full-form backups ran under the
   same login. Not changed here; the local rehearsal needed `BYPASSRLS` for the stand-in login.
-* The restore base is the bundle as of 2026-10-16T22:55Z (J2A-B1/B2); a production migration newer than it that the scope tables
-  depend on fails the restore until pinned in `SCOPED_RESTORE_BASE_MIGRATIONS`.
+* The restore base is the bundle plus the ledger-derived migrations (J2A-B1/B2/B3). A dependency that is neither in the bundle nor in a
+  migration file that mentions a scope table (e.g. a function created by an unrelated-looking migration and called by a carried
+  one) fails the restore loudly before any receipt; it is then fixed by review, not by a pin. Rehearsed 2026-10-17 on the local
+  cluster against the real archive `w4r1_20261017t090403z` (read in place, scratch database dropped): restore equal, one migration
+  carried (1394).
 * Materialized views are refreshed during restore over mostly empty tables; a view that errors on empty inputs would fail the
   restore (loudly, before any receipt).
