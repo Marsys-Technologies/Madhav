@@ -175,7 +175,8 @@ def test_c6_secret_values_and_non_allowlisted_values_never_appear():
     for leaked in ("must-never-appear-in-output", sentinel, "postgresql://u:pw@h/db"):
         assert leaked not in text
     rows = {e["name"]: e for e in CR.measure(None, Cloud(job=job))["job"]["environment"]}
-    assert rows["DATABASE_URL"] == {"name": "DATABASE_URL", "source": "secret", "secret": "data-plane-builder-db-url", "version": "latest"}
+    secret_ref = "data-plane-builder-db-url"   # a Secret Manager ID, not a credential
+    assert rows["DATABASE_URL"] == dict(name="DATABASE_URL", source="secret", secret=secret_ref, version="latest")
     assert rows["SOME_API_TOKEN"] == {"name": "SOME_API_TOKEN", "source": "value", "value_withheld": True}
     assert rows["GCP_PROJECT"]["value"] == "madhav-astrology" and rows["KA_KSHETRA_HASH_SPILL_DIR"]["value"] == "/tmp"
 
