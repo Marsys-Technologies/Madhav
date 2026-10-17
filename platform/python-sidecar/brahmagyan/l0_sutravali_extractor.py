@@ -1667,7 +1667,7 @@ def query_rules(
                            prediction_jsonb, confidence
                     FROM sutravali_rules
                     WHERE antecedent_jsonb @> %s::jsonb
-                    ORDER BY confidence DESC
+                    ORDER BY quality_score DESC NULLS LAST
                     LIMIT %s
                     """,
                     (json.dumps(antecedent_pattern), limit),
@@ -1678,7 +1678,7 @@ def query_rules(
                     SELECT text_id, verse_ref, antecedent_jsonb, predicate_jsonb,
                            prediction_jsonb, confidence
                     FROM sutravali_rules
-                    ORDER BY confidence DESC
+                    ORDER BY quality_score DESC NULLS LAST
                     LIMIT %s
                     """,
                     (limit,),
@@ -1695,7 +1695,7 @@ def query_rules(
                     "antecedent": r[2],
                     "predicate": r[3],
                     "prediction": r[4],
-                    "confidence": float(r[5]),
+                    "confidence": float(r[5]) if r[5] is not None else None,  # TI-L0-23: NULL = not scored
                 }
                 for r in rows
             ],
@@ -1791,7 +1791,7 @@ def read_rule(rule_id: str, conn=None) -> dict[str, Any]:
                 "antecedent": row[3],
                 "predicate": row[4],
                 "prediction": row[5],
-                "confidence": float(row[6]),
+                "confidence": float(row[6]) if row[6] is not None else None,  # TI-L0-23: NULL = not scored
                 "extracted_by": row[7],
                 "extraction_pass_log": row[8],
                 "created_at": str(row[9]),
@@ -1840,7 +1840,7 @@ def list_rules_by_text(text_id: str, limit: int = 50, conn=None) -> dict[str, An
                     "verse_ref": r[1],
                     "antecedent": r[2],
                     "prediction": r[3],
-                    "confidence": float(r[4]),
+                    "confidence": float(r[4]) if r[4] is not None else None,  # TI-L0-23: NULL = not scored
                 }
                 for r in rows
             ],
