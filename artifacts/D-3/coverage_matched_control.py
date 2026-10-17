@@ -4,6 +4,9 @@ with the shuffled-birth control constrained to identical coverage and identical
 scorable-event N as the real chart run. Reuses score_g.py's exact scoring functions
 verbatim (imported, not reimplemented) so the algorithm is unchanged -- only the
 event subset changes.
+
+NOTE (lifeevents-audit F6): `lel_events.json` is no longer committed; re-create it at
+`SG.SCR/lel_events.json` from the canonical LEL (see the note in score_g.py).
 """
 import json, sys
 sys.path.insert(0, "/private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/d6aa9c91-2f4f-4044-8214-8432b8934686/scratchpad")

@@ -8,7 +8,12 @@ at any point — this is why BRIEF_D4A item 4 called for a rescue-or-re-derive p
 
 Files rescued:
 - `score_g.py` — the D-3 per-event scoring script.
-- `lel_events.json` — the LEL event set the D-3 scoring run consumed.
+- `lel_events.json` — the LEL event set the D-3 scoring run consumed. **REMOVED from the repo
+  (lifeevents-audit F6): it was a verbatim copy of the native's private life-event text.** To
+  re-create it: export the canonical LEL (the `mimamsa_lel_query` tool / `life_events` table for
+  the canonical chart, or `01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md`) as 57 objects with keys
+  `event_id, event_date, category, domain, description` into the scorers' `SCR` scratch path. The
+  text remains in git history (not rewritten). `result_g.json` and the other results are unchanged.
 - `pooled_activations.json` — pooled activation windows used by the scorer.
 - `result_g.json` — the D-3 scoring run's output.
 - `coverage_matched_control.py` — A1's coverage-matched control-gap re-analysis script
