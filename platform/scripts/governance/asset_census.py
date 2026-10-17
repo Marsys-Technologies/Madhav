@@ -3063,10 +3063,10 @@ def label_distinct_sql(table: str, entry: str) -> str:
     return f"SELECT DISTINCT (\"{col}\"::jsonb #>> '{{{keys}}}') FROM {table} WHERE {_sw(table, cond)} LIMIT {lim}"
 
 
-def grade_label_columns(entries, fetched) -> dict:
+def grade_label_columns(entries, fetched, reasons=None) -> dict:
     """The Narr.agree contribution of a declared `label_columns` (pure). `fetched`: {column entry: [distinct values] | None (not read)}. FAIL: a stored value the declaration does not list (the vocabulary is
     not closed). PARTIAL: a read that did not happen, or more distinct values than the declared vocabulary can be (>= MAX_LABEL_VALUES + 1). PASS: every stored value is declared (a declared value
-    never seen is ALLOWED and reported)."""
+    never seen is ALLOWED and reported). `reasons` (SS N-605 (c), optional): {column entry: why its read did not happen}; it only adds the cause to the unread entry's text, never changes a verdict."""
     stray, unread, unseen, ok, blocked = [], [], [], [], []
     for d in entries:
         got = fetched.get(d["column"])
@@ -3082,7 +3082,7 @@ def grade_label_columns(entries, fetched) -> dict:
                 ok.append(d["column"])
             continue
         if got is None:
-            unread.append(d["column"])
+            unread.append(f"{d['column']} (the read did not happen: {reasons[d['column']]})" if (reasons or {}).get(d["column"]) else d["column"])
             continue
         if len(got) > MAX_LABEL_VALUES:
             unread.append(f"{d['column']} (more than {MAX_LABEL_VALUES} distinct values)")
@@ -3114,9 +3114,68 @@ def label_fetch_distinct(table: str, entry: str) -> list:
     return [r[0] for r in rows if r and r[0] is not None]
 
 
+_CONNECT_FAIL_LINE = re.compile(r'connection to server (?:at "[^"]*"(?: \([^)]*\))?(?:, port \d+)?|on socket "[^"]*") failed:\s*(.*)', re.I)
+# The ONLY libpq connect-failure causes carried as text (they name no host, user, database or path); anything else after `failed:` is a server answer and is carried as a classification only.
+_CONNECT_CAUSES = {c.casefold(): c for c in ("timeout expired", "Connection refused", "Connection timed out", "No route to host", "Network is unreachable", "No such file or directory", "Permission denied")}
+
+
+def unread_reason(exc) -> str:
+    """SS N-605 (c) (pure): WHY a read did not happen, as a SHORT CLASSIFICATION that names no host, port, socket path, user, database, table or SQL, and carries NO raw server text (cell text is committed under
+    00_ARCHITECTURE/control/census, and `_read_failure_cell` promises 'no psql text, no SQL, no host').
+      a libpq connect failure           `connection to server failed: <cause>` with <cause> one of _CONNECT_CAUSES (`timeout expired`, `Connection refused`, ...), or
+                                        `connection to server failed: the server refused the session` for any other cause after `failed:` (a FATAL: authentication, pg_hba, role or database);
+      anything else                     one of: statement timeout, lock timeout, client timeout, connection lost, permission denied, object does not exist, server refused the session,
+                                        unreadable answer, read refused, operating-system error, read error.
+    It is only ever the cause printed beside a read that did not happen; no verdict reads it."""
+    if isinstance(exc, CheckTimeout):
+        return "client timeout"
+    text = str(exc).strip()
+    first = (text.splitlines() or [""])[0].strip()
+    first = re.sub(r"^(?:psql:\s*)?(?:error:\s*)?", "", first, flags=re.I).strip()
+    m = _CONNECT_FAIL_LINE.fullmatch(first)
+    if m:
+        tail = m.group(1).strip().casefold()
+        cause = _CONNECT_CAUSES.get(tail)
+        if cause is None and any(mk in tail for mk in _CONN_LOSS_MARKERS):
+            return "connection lost"
+        return "connection to server failed: " + (cause or "the server refused the session")
+    low = first.casefold()                                    # the FIRST line only: later lines (LINE 1: ..., DETAIL) may echo a statement or a data literal
+    kind = _read_timeout_kind(exc)
+    if kind == "statement":
+        return "statement timeout"
+    if kind == "lock":
+        return "lock timeout"
+    if any(mk in text.casefold() for mk in _CONN_LOSS_MARKERS) and not first.casefold().startswith("error:"):
+        return "connection lost"
+    if "permission denied" in low:
+        return "permission denied"
+    if "does not exist" in low:
+        return "object does not exist"
+    if "fatal:" in low:
+        return "server refused the session"
+    if isinstance(exc, ReadError):
+        return "unreadable answer"
+    if isinstance(exc, ValueError):
+        return "read refused"
+    if isinstance(exc, OSError):
+        return "operating-system error"
+    return "read error"
+
+
+_LABEL_UNREAD_WHY: dict = {}      # (table, entry) -> why the last `label_read` of it returned None; set by label_read, taken (once) by `label_unread_why`
+
+
+def label_unread_why(table: str, entry: str):
+    """SS N-605 (c): the cause recorded by the last `label_read(table, entry, ...)` that returned None (taken: it is read once), or None when that read recorded none (it did not fail, or `label_read` was replaced). Carries a
+    reason beside an unread entry; never changes what the entry reads."""
+    return _LABEL_UNREAD_WHY.pop((table, entry), None)
+
+
 def label_read(table: str, entry: str, values):
     """One label entry's reading for `grade_label_columns`: the DISTINCT values (a list) while the table is small; when that read is cancelled by a statement timeout, the bounded stray read (a dict); None when the
-    read did not happen (a timeout again, or any other failure: the entry reads PARTIAL 'not read', as before). Never raises."""
+    read did not happen (a timeout again, or any other failure: the entry reads PARTIAL 'not read', as before). Never raises. SS N-605 (c): a None records WHY (`label_unread_why`); a failed connect was already retried
+    once inside `_psql_run` (two attempts in all), so a None here after a connect failure means both attempts failed."""
+    _LABEL_UNREAD_WHY.pop((table, entry), None)
     blk = _scope_block(table)
     if blk:
         return dict(blocked=blk)
@@ -3124,10 +3183,12 @@ def label_read(table: str, entry: str, values):
         return label_fetch_distinct(table, entry)
     except (Unknown, ValueError, OSError) as exc:
         if not _is_statement_timeout(exc):
+            _LABEL_UNREAD_WHY[(table, entry)] = unread_reason(exc)
             return None
     try:
         return label_fetch_stray(table, entry, values)
-    except (Unknown, ValueError, OSError):
+    except (Unknown, ValueError, OSError) as exc2:
+        _LABEL_UNREAD_WHY[(table, entry)] = "the DISTINCT read timed out and the bounded read failed too: " + unread_reason(exc2)
         return None
 
 
@@ -11271,11 +11332,12 @@ def constant_phrases_block_problem(cb, entries, closed=None) -> str | None:
     return None
 
 
-def grade_closed_phrases(corpus: dict, fetched: dict) -> dict:
+def grade_closed_phrases(corpus: dict, fetched: dict, reasons: dict | None = None) -> dict:
     """SS N-430 (pure): the closure reading of the `closed` entries of writer_constant_phrases. `corpus`: {entry: [declared constant_write literals]}; `fetched`: {entry: what label_read returned: a list of
     the DISTINCT stored string values, a dict(stray=[...]) existence read, a dict(blocked=why) or None (not read)}. dict(stray={entry: [values outside the corpus]}, unread={entry: why}, stored={entry:
     [values]}). A stored value outside the corpus is a fact (stray) even from a bounded read; no stored string value at all is NOT a closure (unread: a closure over nothing is vacuous); a read that
-    did not happen is unread. Nothing here FAILs on a read that did not happen."""
+    did not happen is unread. Nothing here FAILs on a read that did not happen.
+    `reasons` (SS N-605 (c), optional): {entry: why its read did not happen}; it only adds the cause to the unread text (`the live read did not happen (<cause>)`), never changes a verdict."""
     stray, unread, stored = {}, {}, {}
     for e, lits in corpus.items():
         got = fetched.get(e)
@@ -11287,7 +11349,7 @@ def grade_closed_phrases(corpus: dict, fetched: dict) -> dict:
             else:
                 unread[e] = "only a bounded existence read ran (no stored value was listed), so which literals are stored is unknown"
         elif got is None:
-            unread[e] = "the live read did not happen"
+            unread[e] = "the live read did not happen" + (f" ({reasons[e]})" if (reasons or {}).get(e) else "")
         else:
             out_of = sorted(v for v in got if v not in set(lits))
             if out_of:
@@ -11339,15 +11401,18 @@ def _apply_constant_phrases(out: dict, pf, ctx: dict, decl) -> None:
     closed_block = None
     if shut:                                                     # SS N-430: the opt-in live closure check (no `closed` anywhere = this branch never runs)
         corpus = {e: sorted({d["literal"] for d in flat if d["entry"] == e and d["form"] == "constant_write"}) for e in shut}
+        own_why = None
         try:
             own = _own3(ctx)
-        except Exception:                                         # noqa: BLE001 -- no owned-table facts: every closed entry is then unread, never passed
-            own = {}
-        fetched = {}
+        except Exception as exc:                                  # noqa: BLE001 -- no owned-table facts: every closed entry is then unread, never passed
+            own, own_why = {}, "the owned-table facts could not be read: " + unread_reason(exc)
+        fetched, why = {}, {}
         for e in shut:
             held = _holders(parse_prose_field(e)[0], own)
             fetched[e] = label_read(held[0], e, corpus[e]) if held else None
-        g = grade_closed_phrases(corpus, fetched)
+            if fetched[e] is None:                                # SS N-605 (c): say why the read did not happen (the verdict is unchanged: unread stays unread)
+                why[e] = label_unread_why(held[0], e) if held else own_why
+        g = grade_closed_phrases(corpus, fetched, why)
         if g["stray"]:
             msg = "; ".join(f"{e} holds a stored value outside the declared literals: {g['stray'][e]!r}" for e in sorted(g["stray"]))
             if isinstance(out.get("Narr.agree"), dict) and out["Narr.agree"].get("v") != FAIL:
@@ -14725,6 +14790,15 @@ def _run_capped(argv: list[str], env: dict, limit: int, cap: int, stdin: bytes |
 #     `could not receive data from server`, `SSL SYSCALL error: EOF detected`, `Connection reset by peer`, `no connection to the server`) and NO `ERROR:` line and no timeout text is run ONE more
 #     time after CONN_RETRY_PAUSE_SECONDS; the read timing entry says `retries: 1`. A second failure is reported exactly as a first one always was. A timeout and an SQL error are never retried;
 #     a statement that is not provably read-only (see `_retry_safe`) is never retried.
+#     SS N-605 (c) / N-607: a connect that TIMED OUT (libpq's `psql: error: connection to server at "<host>", port <n> failed: timeout expired`, or `... failed: Connection timed out`, after PGCONNECT_TIMEOUT)
+#     is retried the same way. Two independent reasons it is safe: `_retry_safe` refuses any batch that is not provably read-only (a write is never re-run, whatever the failure), and a connect timeout means no statement was sent at all. The match is ANCHORED (see _CONNECT_TIMEOUT_LINE): the libpq connect-failure prefix and the timeout wording on the
+#     SAME line, so a data literal or an echoed statement (`LINE 1: ... timeout expired ...`) never counts. A REFUSED connection, `No route to host`, `Network is unreachable`, `could not connect to server`
+#     without a timeout wording, an authentication failure and any other `FATAL:` / `ERROR:` answer are NOT retried: a proxy or database that is down must be surfaced, not masked.
+#     ONE retry mechanism for ALL census reads: the retry lives in `_psql_run`, so it applies to EVERY read-only census psql run (ordinary reads, label reads, the integrity runner's BEGIN READ ONLY), not to
+#     label reads only: a second loop on top of it would double the attempts, and the same lost connect would otherwise cost every other read its verdict. WORST CASE ADDED TIME: one extra connect timeout
+#     (PGCONNECT_TIMEOUT, 10 s by default) plus CONN_RETRY_PAUSE_SECONDS (1 s) = 11 s per read whose connect times out (2 attempts in all, never more). A retried read shows `retries: 1` in `read_timings`.
+#     The markers are ENGLISH-ONLY (libpq's untranslated texts): under a non-English locale nothing matches, so nothing is retried (safe: the read fails as it always did). There is no circuit breaker: against a database
+#     that is unreachable by timeout every read costs about 21 s (10 s + pause + 10 s) instead of 10 s; stopping after N consecutive connect timeouts is a possible follow-up, deliberately not done here.
 CENSUS_STATEMENT_CAP_ENV = "SUVARNA_CENSUS_STATEMENT_CAP_SECS"
 CENSUS_STATEMENT_CAP_MAX_SECONDS = 86_400
 CENSUS_LOCK_TIMEOUT_SECONDS = 5
@@ -14804,7 +14878,7 @@ def drain_read_log() -> list[dict]:
 
 
 def read_timings_summary(entries: list[dict], slowest: int = READ_TIMINGS_SLOWEST_PER_ASSET) -> dict:
-    """The `read_timings` head key: n_reads, total_seconds, the overall maximum (and which read it was), and per asset (sorted by asset id) its read count, total, maximum and its `slowest` reads.
+    """The `read_timings` head key: n_reads, n_retried (the reads that were retried at all, so a retried read cannot fall out of the bounded per-asset lists), total_seconds, the overall maximum (and which read it was), and per asset (sorted by asset id) its read count, total, maximum and its `slowest` reads.
     Bounded: at most `slowest` reads per asset. NOT deterministic (elapsed times); read by no verdict, fingerprint or hash."""
     by: dict[str, list[dict]] = {}
     for e in entries:
@@ -14815,7 +14889,8 @@ def read_timings_summary(entries: list[dict], slowest: int = READ_TIMINGS_SLOWES
         per_asset.append(dict(asset=a, n_reads=len(es), total_seconds=round(sum(e["seconds"] for e in es), 3), max_seconds=round(es[0]["seconds"], 3),
                               slowest=[dict(label=e["label"], seconds=round(e["seconds"], 3), retries=e["retries"], outcome=e["outcome"]) for e in es[:slowest]]))
     worst = max(entries, key=lambda e: e["seconds"]) if entries else None
-    return dict(schema="read_timings/1", unit="seconds", slowest_per_asset=slowest, n_reads=len(entries), total_seconds=round(sum(e["seconds"] for e in entries), 3),
+    return dict(schema="read_timings/1", unit="seconds", slowest_per_asset=slowest, n_reads=len(entries), n_retried=sum(1 for e in entries if (e.get("retries") or 0) >= 1),
+                total_seconds=round(sum(e["seconds"] for e in entries), 3),
                 max_seconds=round(worst["seconds"], 3) if worst else 0.0,
                 max_read=dict(asset=worst.get("asset") or "(layer)", label=worst["label"]) if worst else None, per_asset=per_asset)
 
@@ -14828,7 +14903,8 @@ def read_timings_report(census, top: int = READ_TIMINGS_REPORT_TOP) -> str:
     for layer in sorted(k for k, v in (census or {}).items() if isinstance(v, dict) and isinstance(v.get("read_timings"), dict)):
         rt = census[layer]["read_timings"]
         mr = rt.get("max_read") or {}
-        lines.append(f"{layer}: {rt.get('n_reads', 0)} read(s), {rt.get('total_seconds', 0)} s in total; slowest {rt.get('max_seconds', 0)} s ({mr.get('asset', '-')}: {mr.get('label', '-')})")
+        lines.append(f"{layer}: {rt.get('n_reads', 0)} read(s), {rt.get('total_seconds', 0)} s in total; slowest {rt.get('max_seconds', 0)} s ({mr.get('asset', '-')}: {mr.get('label', '-')})"
+                     + (f"; {rt['n_retried']} read(s) retried" if rt.get("n_retried") else ""))
         flat = [(r["seconds"], pa["asset"], r["label"], r.get("retries", 0), r.get("outcome", "?")) for pa in rt.get("per_asset", []) for r in pa.get("slowest", [])]
         for sec, asset, label, retries, outcome in sorted(flat, key=lambda x: (-x[0], x[1], str(x[2])))[:max(0, int(top))]:
             lines.append(f"  {sec:>9.3f} s  {asset}  {label}  [{outcome}{', retries ' + str(retries) if retries else ''}]")
@@ -14837,16 +14913,25 @@ def read_timings_report(census, top: int = READ_TIMINGS_REPORT_TOP) -> str:
 
 _CONN_LOSS_MARKERS = ("server closed the connection unexpectedly", "connection to server was lost", "could not receive data from server",
                       "ssl syscall error: eof detected", "connection reset by peer", "no connection to the server")
+# A connect that TIMED OUT (SS N-607): libpq never reached the server, so NO statement was sent, and `_psql_run` retries only a batch `_retry_safe` proves read-only (a write is never re-run). English texts only (a non-English locale matches nothing = no retry). Anchored on ONE line: psql's own
+# `psql: error: connection to server (at "<host>", port <n> | on socket "<path>") failed:` prefix directly followed by `timeout expired` (PGCONNECT_TIMEOUT) or `Connection timed out`. Not matched: a refused
+# connection / no route / unreachable network / a missing socket (a down proxy or database is surfaced, not masked), an auth failure (`failed: FATAL: ...`), a statement or lock timeout (an `ERROR:` answer), and
+# any text that merely CONTAINS the words (an echoed statement, a data literal): those never start with psql's prefix.
+_CONNECT_TIMEOUT_LINE = re.compile(r'^psql:\s*error:\s*connection to server\b[^\n]*?\bfailed:\s*(?:timeout expired|connection timed out)\b', re.I | re.M)
 _RETRY_UNSAFE_WORDS = re.compile(r"\b(insert|update|delete|merge|into|copy|truncate|alter|create|drop|grant|revoke|lock|vacuum|call|reindex|cluster|refresh|comment|nextval|setval|set_config|"
                                  r"pg_advisory\w*|pg_notify|lo_\w+|dblink\w*)\b", re.I)
 
 
 def _is_connection_loss(stderr_text: str) -> bool:
-    """psql's stderr says the connection dropped (and is neither a server `ERROR:` nor a timeout)."""
+    """psql's stderr says the connection dropped, or that a connect TIMED OUT before any statement was sent (and is neither a server `ERROR:` nor a statement / lock timeout nor a `FATAL:` answer such as an auth failure)."""
     t = stderr_text.casefold()
     if _read_timeout_kind(t) is not None or any(ln.lstrip().startswith("error:") for ln in t.splitlines()):
         return False
-    return any(m in t for m in _CONN_LOSS_MARKERS)
+    if any(m in t for m in _CONN_LOSS_MARKERS):
+        return True
+    if "FATAL:" in stderr_text or "ERROR:" in stderr_text:                  # a server answer (psql's own lines say lowercase `psql: error:`): the server was reached
+        return False
+    return _CONNECT_TIMEOUT_LINE.search(stderr_text) is not None
 
 
 def _retry_safe(cmds: list[str]) -> bool:
@@ -22449,12 +22534,14 @@ def _measure_prose(aid, decl, r, files, cat, ctables, shared, ptests, vocab) -> 
     lc = decl.get("label_columns") if isinstance(decl, dict) else None
     if lc:
         # E5.7 W2 (SS 2026-10-06): the closed-values LABEL form is checked against the live DISTINCT values, read-only; an undeclared value is a FAIL of Narr.agree
-        fetched = {}
+        fetched, why = {}, {}
         for d in lc:
             held = _holders(parse_prose_field(d["column"])[0], own)
             if held and held[0] in cat["exists"]:
                 fetched[d["column"]] = label_read(held[0], d["column"], d["values"])
-        rec = grade_label_columns(lc, fetched)
+                if fetched[d["column"]] is None:                  # SS N-605 (c): say why the read did not happen (the verdict is unchanged)
+                    why[d["column"]] = label_unread_why(held[0], d["column"])
+        rec = grade_label_columns(lc, fetched, why)
         base_a = out.get("Narr.agree", {})
         if rec["v"] == FAIL:
             out["Narr.agree"] = dict(v=FAIL, measured=rec["measured"], label_columns=rec["label_columns"])
