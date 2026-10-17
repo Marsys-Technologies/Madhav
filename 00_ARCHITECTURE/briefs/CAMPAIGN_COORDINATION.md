@@ -452,6 +452,12 @@ No `L3-REQ`/`PA-REQ` entries exist yet as of this addition (2026-09-20 02:35 IST
 
 ## 6. LOG
 
+### 2026-10-18 00:09 IST — KĀLA-YANTRA / cockpit — note for the Paripraśna custodian: post-deploy smoke trigger disabled on main
+
+- `.github/workflows/pariprashna-post-deploy-smoke.yml` failed all 478 runs on main at "Live authenticated turn" (not a required check).
+  PR #3696 comments out its `workflow_run` trigger (KĀLA-YANTRA A8 §5); `workflow_dispatch` and the `pull_request` self-test stay.
+  Restore the commented block once the web canary credential exists; the DD-7 / W-1 green×7 counter was not advancing on main anyway.
+
 ### 2026-10-08 11:50 IST — KĀLA-YANTRA / conductor — migration 1334 reserved; builders now post their own §2 claims
 
 - §2: 1334 claimed for K0a-3 (PR #3264), renumbered from a 1333 collision with Suvarṇa PR #3289.
