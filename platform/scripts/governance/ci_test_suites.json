@@ -530,7 +530,8 @@
       "cwd": ".",
       "engine": "pytest",
       "include": [
-        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation*.py"
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_overlay*.py"
       ]
     },
     "governance-tool-tests-shard-6-0": {
