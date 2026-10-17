@@ -19025,8 +19025,6 @@
         "J-3d",
         "J-4a-pr2903",
         "J-4a-pr3116",
-        "J-4a-a25",
-        "J-4a-a26",
         "J-4a-a55k"
       ],
       "mandatory": true,
@@ -25515,8 +25513,8 @@
       "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
       "triage": {
         "class": "b",
-        "reason": "Q6 historical evidence/disposition remains owner-open; no historical artifact has been measured by this reconciliation.",
-        "re_entry": "Owner/surrogate reads the actual 4.1 artifacts and records the approved Q6 disposition; no done or superseded outcome is inferred."
+        "reason": "deferred by A9 (SR-A9-INTERP, A9-NB-04): no consuming phase brief reads its output (FINAL_BUILD_SCOPE_v1_0 and the J-4a brief are silent on A2.5/A2.6)",
+        "re_entry": "when the owner/surrogate records the approved Q6 disposition of the historical 4.1 build, or a phase brief names the 4.1 build as a measured input"
       }
     },
     {
@@ -25569,8 +25567,8 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "b",
-        "reason": "Q6 historical evidence/disposition remains owner-open; no historical artifact has been measured by this reconciliation.",
-        "re_entry": "Owner/surrogate reads the actual 4.1 artifacts and records the approved Q6 disposition; no done or superseded outcome is inferred."
+        "reason": "deferred by A9 (SR-A9-INTERP, A9-NB-04): no consuming phase brief reads its output (FINAL_BUILD_SCOPE_v1_0 and the J-4a brief are silent on A2.5/A2.6)",
+        "re_entry": "when J-4a-a25 re-enters and the 4.1 evidence (Link-2, gates, PRAMĀṆIN, benchmark) is wanted by a phase brief"
       }
     },
     {
@@ -26576,9 +26574,8 @@
       "producer": "K",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "b",
-        "reason": "Q6 historical evidence/disposition remains owner-open; no historical artifact has been measured by this reconciliation.",
-        "re_entry": "Owner/surrogate reads the actual 4.1 artifacts and records the approved Q6 disposition; no done or superseded outcome is inferred."
+        "class": "a",
+        "reason": "the '4.1' geometric baseline is a scored baseline named by J-5q-b54 (title '5.0 vs 3.0 vs 4.1'; brief.tests 'independently prove inherited prerequisite: B4.4'); stays in the closure (A9-NB-04 class a)"
       }
     },
     {
