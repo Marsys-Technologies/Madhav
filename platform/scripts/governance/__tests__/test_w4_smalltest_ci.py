@@ -1,4 +1,6 @@
 """The production-deletion safety proofs remain in mandatory CI."""
+from _ci_gate_test_support import runs_in_full_gate
+
 import copy
 from pathlib import Path
 import pytest
@@ -12,7 +14,7 @@ def mandatory_safety_step(jobs, suite=SUITE):
     job = jobs['db-integration-tests']
     steps = [s for s in job['steps'] if suite in str(s.get('run', ''))]
     return (len(steps) == 1 and not job.get('continue-on-error')
-            and not steps[0].get('if') and not steps[0].get('continue-on-error')
+            and runs_in_full_gate(steps[0]) and not steps[0].get('continue-on-error')
             and 'pytest' in steps[0]['run'] and '||' not in steps[0]['run']
             and not any(flag in steps[0]['run'] for flag in (' -k ', ' --deselect', ' --collect-only')))
 
@@ -36,7 +38,7 @@ def test_real_w4_rollback_and_independent_readback_run_in_required_db_job():
     jobs = _ci_load(CI.read_text())['jobs']
     step = next(s for s in jobs['gochara-a55-teardown']['steps'] if
         'tests/l3/gochara/test_w4_smalltest_safety_db.py' in str(s.get('run', '')))
-    assert not step.get('if') and not step.get('continue-on-error')
+    assert runs_in_full_gate(step) and not step.get('continue-on-error')
     assert str(step['env']['GOCHARA_A53_REQUIRE_DB']) == '1'
     assert '--tb=short' in step['run'] and '-p no:cacheprovider' in step['run']
 
