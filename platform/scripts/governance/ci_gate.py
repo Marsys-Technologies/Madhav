@@ -2,7 +2,7 @@
 """D-29 light PR gate: derive DB-profile ownership from ci.yml and discovery.
 
 (I) INTERPRETATION: the brief's changed-profile DB exception qualifies its normal
-PR heavy-job skip. Source/migration-only PRs use full_gate dispatch or the queue.
+PR heavy-job skip. Source/migration-only PRs use full_gate dispatch.
 (I) INTERPRETATION: selection runs the entire affected profile, preserving fixture
 and shard coverage, rather than narrowing it to individual changed files.
 No committed file list: new test family members inherit their discovery context.
@@ -20,6 +20,9 @@ import ci_changes
 import ci_discovery
 
 ROOT = Path(__file__).resolve().parents[3]
+# OWNER-CI-SCOPED-QUEUE-20261017: the merge queue selects exactly as a PR does; push/main and
+# full_gate dispatch print empty selections because the workflow runs every heavy job there.
+SCOPED_EVENTS = ('pull_request', 'merge_group')
 PROFILE_CALL = re.compile(r'ci_discovery\.py[\"\']?\s+(?:run|pytest|vitest)\s+([\w-]+)\s+--')
 
 
@@ -102,10 +105,11 @@ def main(argv=None):
     ap.add_argument('--head', default='HEAD')
     ns = ap.parse_args(argv)
     jobs = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs']
-    paths = ci_changes.changed_files(ns.base, ns.head) if ns.event == 'pull_request' else []
-    if paths is None or (ns.event == 'pull_request' and not paths):
-        raise ValueError('cannot establish the PR diff; refusing a green light gate')
-    selected_jobs, selected_profiles = select_db(ROOT, jobs, paths) if ns.event == 'pull_request' else ([], [])
+    scoped = ns.event in SCOPED_EVENTS
+    paths = ci_changes.changed_files(ns.base, ns.head) if scoped else []
+    if paths is None or (scoped and not paths):
+        raise ValueError('cannot establish the PR/queue diff; refusing a green light gate')
+    selected_jobs, selected_profiles = select_db(ROOT, jobs, paths) if scoped else ([], [])
     print('db_jobs=' + json.dumps(selected_jobs, separators=(',', ':')))
     print('db_profiles=' + json.dumps(selected_profiles, separators=(',', ':')))
     return 0
