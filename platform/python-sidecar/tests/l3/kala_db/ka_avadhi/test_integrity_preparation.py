@@ -202,7 +202,7 @@ def test_existing_mandatory_db_job_collects_preparation_suite():
     assert str(step['env']['KALA_REQUIRE_DB']) == '1'
     assert step['env']['KALA_ADMIN_DSN']
     assert not job.get('continue-on-error') and not step.get('continue-on-error')
-    assert 'changes' in job['needs'] and "docs_only != 'true'" in job['if']
+    assert 'changes' in job['needs'] and runs_in_full_gate(job)
     assert not any(flag in step['run'] for flag in ('--ignore', '--deselect', ' -k ', '||'))
 
 
@@ -239,6 +239,8 @@ from pathlib import Path as _CiPath
 import sys as _ci_sys
 _ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[6] / 'platform/scripts/governance'))
 from ci_discovery import expanded_workflow as _ci_expanded
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[6] / 'platform/scripts/governance/__tests__'))
+from _ci_gate_test_support import runs_in_full_gate
 
 def _ci_load(text):
     import yaml

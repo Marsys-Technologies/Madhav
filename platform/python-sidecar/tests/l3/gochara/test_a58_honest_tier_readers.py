@@ -241,7 +241,7 @@ def test_the_policy_table_is_the_explicit_minimum():
 
 def test_step06a_pinned_read_keeps_vimshottari_strict_and_reads_relabelled_level_one():
     mod = _load_step06a()
-    settled = "ca17639b-f3cf-42c7-9866-0a61f3855802"
+    settled = "7377833e-5d3b-4e70-8bef-1318904f470e"
     rows = [r[:7] + [settled] + r[8:] for r in _rows_from(AFTER)] + [
         # a vimshottari row at an honest-but-unverified tier must NOT enter the pin
         _row("vx", "vimshottari", CM, lord="Saturn", build=settled)]
@@ -266,7 +266,7 @@ def test_readers_refuse_mixed_or_null_builds_hidden_by_tier_or_level(reader, bui
     chart = "482012f1-710e-4a25-994a-93821f5871aa"
     conn = _Conn([
         _row("settled", "vimshottari", T,
-             build="ca17639b-f3cf-42c7-9866-0a61f3855802"),
+             build="7377833e-5d3b-4e70-8bef-1318904f470e"),
         _row("foreign", "vimshottari", tier, level=level, build=build),
     ])
     with pytest.raises(dasha_read.DashaBuildRefused) as refusal:
@@ -289,7 +289,7 @@ class _CountConn:
     def execute(self, sql, params=None):
         self.sql.append(sql)
         if "SELECT DISTINCT coalesce" in sql:
-            out = [("ca17639b-f3cf-42c7-9866-0a61f3855802",)] if self.rows else []
+            out = [("7377833e-5d3b-4e70-8bef-1318904f470e",)] if self.rows else []
         elif "GROUP BY" in sql:
             agg = {}
             for r in self.rows:
