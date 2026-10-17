@@ -2261,6 +2261,14 @@ jobs:
     # that a status field is earned. The script's module docstring enumerates
     # every uncaught class and every deliberate suppression, with counts.
     # Stdlib-only script (no pyyaml needed).
+    #
+    # RUNS ON EVERY EVENT, merge_group INCLUDED (madhav-6d 2026-10-17, after #3625 landed
+    # with a §N.8 violation that only the post-merge main run caught). Deliberately NO
+    # job-level `if` and no `changes` dependency: it is cheap, it must not sit behind the
+    # light-PR gate, and a required check name must be reported (not skipped) by every
+    # merge_group run or the queue blocks forever. The job NAME below is the ruleset's
+    # required-check context — do not rename it. Pinned by
+    # test_earned_signal_gate_runs_on_merge_group in __tests__/test_ci_light_gate.py.
     name: Earned-Signal Gate (§N.8)
     runs-on: ubuntu-latest
 
