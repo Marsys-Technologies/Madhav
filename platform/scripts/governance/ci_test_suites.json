@@ -821,6 +821,13 @@
         "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]s",
         "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]sx"
       ]
+    },
+    "density-census-kcert-assessment": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/retrieval/register_gochara_windows_kcert_assessment*.test.ts"
+      ]
     }
   }
 }
