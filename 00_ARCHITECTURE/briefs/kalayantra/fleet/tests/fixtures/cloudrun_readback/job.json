@@ -1,0 +1,82 @@
+{
+ "apiVersion": "run.googleapis.com/v1",
+ "kind": "Job",
+ "metadata": {
+  "annotations": {
+   "run.googleapis.com/lastModifier": "github-actions@madhav-astrology.iam.gserviceaccount.com"
+  },
+  "generation": 42,
+  "labels": {
+   "cloud.googleapis.com/location": "asia-south1"
+  },
+  "name": "brahma-build-pipeline-job",
+  "namespace": "938361928218"
+ },
+ "spec": {
+  "template": {
+   "spec": {
+    "parallelism": 1,
+    "taskCount": 1,
+    "template": {
+     "spec": {
+      "containers": [
+       {
+        "env": [
+         {
+          "name": "DATABASE_URL",
+          "valueFrom": {
+           "secretKeyRef": {
+            "key": "latest",
+            "name": "data-plane-builder-db-url"
+           }
+          }
+         },
+         {
+          "name": "GCP_PROJECT",
+          "value": "madhav-astrology"
+         },
+         {
+          "name": "PUBSUB_TOPIC",
+          "value": "cockpit-events"
+         },
+         {
+          "name": "KA_KSHETRA_HASH_SPILL_DIR",
+          "value": "/tmp"
+         },
+         {
+          "name": "SOME_API_TOKEN",
+          "value": "must-never-appear-in-output"
+         }
+        ],
+        "image": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:0123456789abcdef0123456789abcdef01234567",
+        "resources": {
+         "limits": {
+          "cpu": "4",
+          "memory": "16Gi"
+         }
+        }
+       }
+      ],
+      "maxRetries": 3,
+      "serviceAccountName": "data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com",
+      "timeoutSeconds": "86400"
+     }
+    }
+   }
+  }
+ },
+ "status": {
+  "conditions": [
+   {
+    "status": "True",
+    "type": "Ready"
+   }
+  ],
+  "executionCount": 3,
+  "latestCreatedExecution": {
+   "createTime": "2026-10-17T10:00:00Z",
+   "name": "brahma-build-pipeline-job-abc12"
+  },
+  "observedGeneration": 42
+ }
+}

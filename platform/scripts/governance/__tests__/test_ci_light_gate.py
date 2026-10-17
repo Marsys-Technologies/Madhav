@@ -188,3 +188,33 @@ def test_db_mutation_harness_runs_once_only_on_full_events():
             assert p.returncode == 0, p.stderr
             calls += p.stdout.count('MUTATION_RUN')
         assert calls == expected, (event, full, calls)
+
+
+def test_earned_signal_gate_runs_on_merge_group():
+    """§N.8 gate must be reported (executed, not skipped) on every full event and on every PR kind.
+
+    madhav-6d 2026-10-17: #3625 landed with a §N.8 violation because the gate was not
+    enforced on the queue. Claim: the job (and its only dependency chain) has no condition
+    that can skip it on merge_group, for docs-only and code changes alike, its required-check
+    name is unchanged, and no step can swallow its failure.
+    """
+    w = workflow()
+    jobs = w['jobs']
+    triggers = w.get('on', w.get(True))
+    assert 'merge_group' in triggers, 'merge_group trigger removed: required checks never report on the queue'
+    gate = jobs['earned-signal-lint']
+    assert gate['name'] == 'Earned-Signal Gate (§N.8)', 'required-check context name must not change'
+    chain, todo = set(), ['earned-signal-lint']
+    while todo:
+        name = todo.pop()
+        needs = jobs[name].get('needs') or []
+        needs = [needs] if isinstance(needs, str) else needs
+        chain.add(name)
+        todo.extend(n for n in needs if n not in chain)
+    assert 'changes' not in chain, 'the gate must not sit behind the light-PR classifier'
+    for name in sorted(chain):
+        for event in ('merge_group', 'push'):
+            for docs in ('true', 'false'):
+                assert evaluate(jobs[name].get('if'), event=event, docs=docs), (name, event, docs)
+    assert 'continue-on-error' not in gate and all('continue-on-error' not in s for s in gate['steps'])
+    assert all(s.get('if') is None for s in gate['steps'] if 'check_earned_signal.py' in s.get('run', ''))

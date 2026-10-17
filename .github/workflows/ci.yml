@@ -2261,6 +2261,14 @@ jobs:
     # that a status field is earned. The script's module docstring enumerates
     # every uncaught class and every deliberate suppression, with counts.
     # Stdlib-only script (no pyyaml needed).
+    #
+    # RUNS ON EVERY EVENT, merge_group INCLUDED (madhav-6d 2026-10-17, after #3625 landed
+    # with a §N.8 violation that only the post-merge main run caught). Deliberately NO
+    # job-level `if` and no `changes` dependency: it is cheap, it must not sit behind the
+    # light-PR gate, and a required check name must be reported (not skipped) by every
+    # merge_group run or the queue blocks forever. The job NAME below is the ruleset's
+    # required-check context — do not rename it. Pinned by
+    # test_earned_signal_gate_runs_on_merge_group in __tests__/test_ci_light_gate.py.
     name: Earned-Signal Gate (§N.8)
     runs-on: ubuntu-latest
 
@@ -2379,6 +2387,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # fleet/tests/test_executor_table.py (run in the shard-1-only step below) reads the plan-pin and model-pin commits with `git show`, so
+          # shard 1 needs full history. The other shards stay shallow: test_e1_1_scorecard.py (shard 3) skips by design on a shallow clone, and
+          # a full clone would switch its two real-repo tests on for this PR as a side effect.
+          fetch-depth: ${{ matrix.shard != 1 && 1 || 0 }}
       - name: Restore source-bound generated files
         uses: ./.github/actions/restore-generated
 
@@ -3085,6 +3098,9 @@ jobs:
       - name: response_budget hardFloor regression test (platform-mcp)
         working-directory: platform-mcp
         run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-6-0 --
+      - name: K-CERT stored citation status projection and honest gaps (platform-mcp)
+        working-directory: platform-mcp
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-kcert-assessment --
       - name: envelope codegen parity test (platform-mcp) — GT-9
         working-directory: platform-mcp
         run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-7-0 --

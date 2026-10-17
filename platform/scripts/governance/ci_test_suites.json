@@ -1,6 +1,13 @@
 {
   "schema": "ci.test_suites/1",
   "suites": {
+    "deploy-build-check-tests": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "platform/scripts/governance/__tests__/test_deploy_build*.py"
+      ]
+    },
     "unit-tests-4-9": {
       "cwd": "platform",
       "engine": "vitest",
@@ -99,7 +106,8 @@
         "tests/l3/gochara/test_horizon*.py",
         "tests/l3/gochara/test_mb_horizon*.py",
         "tests/l3/gochara/test_mb_stretch*.py",
-        "tests/l3/gochara/test_j6r*.py"
+        "tests/l3/gochara/test_j6r*.py",
+        "tests/l3/gochara/test_n18*.py"
       ],
       "discover_db": true
     },
@@ -524,6 +532,8 @@
       "engine": "pytest",
       "include": [
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_overlay*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor*.py"
       ]
     },
@@ -541,7 +551,8 @@
         "platform/scripts/governance/pravaha_tracker/tests/test_verify*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_hang*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py",
-        "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py"
+        "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_decision*.py"
       ]
     },
     "governance-readback-tests-3-0": {
@@ -812,6 +823,13 @@
         "src/lib/pariprashna/samiksha/**/*.spec.[jt]sx",
         "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]s",
         "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]sx"
+      ]
+    },
+    "density-census-kcert-assessment": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/retrieval/register_gochara_windows_kcert_assessment*.test.ts"
       ]
     }
   }
