@@ -14,20 +14,25 @@ from services.gochara_grammar import dasha_data as DD
 from services.gochara_kernel import dasha_read as reader, inventory_verifier as verifier
 
 CHART = "482012f1-710e-4a25-994a-93821f5871aa"
-BUILD = "ca17639b-f3cf-42c7-9866-0a61f3855802"
+BUILD = "7377833e-5d3b-4e70-8bef-1318904f470e"
 UNKNOWN = "22222222-2222-4222-8222-222222222222"  # negative fixture only
-COLLISION = "ca17639b-2222-4222-8222-222222222222"  # negative prefix collision
+COLLISION = "7377833e-2222-4222-8222-222222222222"  # negative prefix collision
 LO, HI = (datetime(2026, 1, day, tzinfo=timezone.utc) for day in (1, 9))
+# Suvarṇa's attestation, copied byte-exactly from origin/campaign-coordination at POSTED_COMMIT
+# (00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md, "2026-10-17T05:41:43Z — SUVARṆA (Exec) → KĀLA-YANTRA: L1_SETTLED v1").
+POSTED_COMMIT = "5a8a80ebfc0fc6135020f24d82ff9ed43ab14d73"
+POSTED_LINE = ("L1_SETTLED v1 utc=2026-10-17T05:41:43Z pos_build=7377833e dash_build=7377833e "
+               "natal_fp=3c034bdf vim13_fp=ee2e8bc7 vim13_rows=1040 dash_all_fp=ea7611f7")
 RECEIPT = {
     "schema": "gochara_dasha_settlement/1",
     "header_comment": "Governed settlement record. Changes require a reviewed PR.",
-    "line": "L1_SETTLED v1 utc=2026-10-07T22:18:24Z pos_build=ca17639b dash_build=ca17639b natal_fp=7e4278be vim13_fp=ee2e8bc7 vim13_rows=1040 dash_all_fp=ea7611f7",
-    "utc": "2026-10-07T22:18:24Z", "pos_build": "ca17639b", "dash_build": "ca17639b",
-    "natal_fp": "7e4278be", "vim13_fp": "ee2e8bc7", "vim13_rows": 1040,
+    "line": POSTED_LINE,
+    "utc": "2026-10-17T05:41:43Z", "pos_build": "7377833e", "dash_build": "7377833e",
+    "natal_fp": "3c034bdf", "vim13_fp": "ee2e8bc7", "vim13_rows": 1040,
     "dash_all_fp": "ea7611f7", "run_id": BUILD, "chart_id": CHART,
     "provenance": {
         "source": "origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md",
-        "commit": "2051951aaa3f4e1b6a55d728f703bc074daf11ef", "heading": "L1_SETTLED v1",
+        "commit": POSTED_COMMIT, "heading": "L1_SETTLED v1",
         "release_receipt": "SUVARNA-L0L2-CLOSE-REV30-20261013", "rebuild_run": BUILD,
     },
 }
@@ -139,8 +144,8 @@ def test_invalid_json_shape_refuses(settlement, invoke, payload):
 @pytest.mark.parametrize("field, value", [
     ("line", RECEIPT["line"].replace("vim13_fp=ee2e8bc7", "vim13_fp=ffffffff")),
     ("line", RECEIPT["line"] + " unknown=1"),
-    ("utc", "2026-02-30T22:18:24Z"),
-    ("dash_build", "22222222"), ("run_id", UNKNOWN), ("run_id", "ca17639b-bad"),
+    ("utc", "2026-02-30T05:41:43Z"),
+    ("dash_build", "22222222"), ("run_id", UNKNOWN), ("run_id", "7377833e-bad"),
     ("chart_id", "bad"), ("vim13_rows", "1040"), ("vim13_rows", True),
     ("schema", "unknown"), ("provenance", {}), ("header_comment", ""),
 ])
@@ -179,6 +184,19 @@ def test_reviewed_record_loads_through_both_independent_paths():
     assert verifier._load_dasha_settlement(CHART)["run_id"] == BUILD
 
 
+def test_governed_record_is_exactly_suvarnas_posted_line():
+    """The committed record binds the posted L1_SETTLED v1 line and nothing else (copied, never synthesised)."""
+    record = json.loads(reader.SETTLEMENT_PATH.read_text(encoding="utf-8"))
+    assert record["line"] == POSTED_LINE
+    assert record["provenance"]["commit"] == POSTED_COMMIT
+    assert (record["run_id"], record["provenance"]["rebuild_run"], record["chart_id"]) == (
+        "7377833e-5d3b-4e70-8bef-1318904f470e", "7377833e-5d3b-4e70-8bef-1318904f470e", CHART)
+    assert (record["utc"], record["pos_build"], record["dash_build"], record["natal_fp"], record["vim13_fp"],
+            record["vim13_rows"], record["dash_all_fp"]) == (
+        "2026-10-17T05:41:43Z", "7377833e", "7377833e", "3c034bdf", "ee2e8bc7", 1040, "ea7611f7")
+    assert reader.load_dasha_settlement(CHART) == record
+
+
 @pytest.mark.parametrize("field", ["pos_build", "natal_fp", "vim13_fp", "dash_all_fp"])
 def test_each_fingerprint_field_must_match_the_line(settlement, invoke, field):
     record = copy.deepcopy(RECEIPT)
@@ -194,8 +212,8 @@ def test_invalid_encoding_is_a_typed_refusal(settlement, invoke):
 
 def test_coherent_but_invalid_date_is_a_typed_refusal(settlement, invoke):
     record = copy.deepcopy(RECEIPT)
-    record["line"] = record["line"].replace("2026-10-07", "2026-02-30")
-    record["utc"] = "2026-02-30T22:18:24Z"
+    record["line"] = record["line"].replace("2026-10-17", "2026-02-30")
+    record["utc"] = "2026-02-30T05:41:43Z"
     settlement.write_text(json.dumps(record))
     refused(invoke, "settlement_malformed")
 
@@ -203,7 +221,7 @@ def test_coherent_but_invalid_date_is_a_typed_refusal(settlement, invoke):
 def test_reviewed_successor_requires_only_a_consistent_receipt(settlement, invoke):
     # Synthetic reviewed-repin fixture; this asserts no future L1 computation.
     record = copy.deepcopy(RECEIPT)
-    record["line"] = record["line"].replace("dash_build=ca17639b", "dash_build=22222222")
+    record["line"] = record["line"].replace("dash_build=7377833e", "dash_build=22222222")
     record["dash_build"] = "22222222"
     record["run_id"] = UNKNOWN
     record["provenance"]["rebuild_run"] = UNKNOWN
