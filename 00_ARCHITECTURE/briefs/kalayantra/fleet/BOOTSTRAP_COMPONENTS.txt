@@ -203,6 +203,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh
 00_ARCHITECTURE/briefs/kalayantra/fleet/precheck_bg.sh
 00_ARCHITECTURE/briefs/kalayantra/fleet/preflight.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/k9_readback.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/readback_sql.sh
 00_ARCHITECTURE/briefs/kalayantra/fleet/regroup_model_v2.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/admit.json

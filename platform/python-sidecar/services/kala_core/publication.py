@@ -1,18 +1,21 @@
 """Disabled K9-23 whole-layer operations over the existing manifest protocol.
 
-Independent digest derivation belongs to the separately dispatched verifier.
-These operations enforce complete input coverage; they invent no semantic PASS.
+The separate verifier must rederive inputs and run reviewed golden comparisons
+for every planned writer/grain. With no registered production oracles it refuses.
 """
 from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from typing import Any
 from uuid import UUID
 
 import psycopg
 from services.kala_core.manifest import Candidate, CandidateNotPublishable, lock_candidate_inputs, publish_candidate, rollback_head
-from services.kala_core.verify import verify_candidate, VerificationRefused
+from services.kala_core.verify import candidate_input_digest, VerificationRefused
+from services.kala_core.publication_checks import semantic_evidence, require_semantic_receipt
+from services.kala_core.rehearsal import ASSETS, WAVES
 
 CANONICAL_CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 
@@ -29,10 +32,23 @@ def _run(conn: Any, run_id: str) -> dict:
         raise ValueError('only an explicit Kāla rebuild plan is permitted')
     if 'ka_bhavishya_lekha' in frozen.plan:
         raise ValueError('issued forecasts are outside the replaceable rebuild set')
+    levels = {asset: level for level, wave in enumerate(WAVES) for asset in wave}
+    if set(frozen.plan) != set(ASSETS):
+        raise ValueError('frozen layer roster must include every replaceable writer and service')
+    wave_levels = [[levels[asset] for asset in wave] for wave in run['plan_manifest']['waves'] if wave]
+    if any(len(set(wave)) != 1 for wave in wave_levels) or any(
+            max(left) > min(right) for left, right in zip(wave_levels,wave_levels[1:])):
+        raise ValueError('frozen layer roster violates stage order')
     return run
 
 
+def _generation(value: str) -> None:
+    if not isinstance(value, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}', value) or value in {'NONE', 'current'}:
+        raise ValueError('generation must be explicit and exclude reserved sentinels')
+
+
 def _candidate(conn: Any, run_id: str, generation: str) -> tuple[Candidate, dict]:
+    _generation(generation)
     query = ('SELECT chart_id, build_id, expected_head_generation, state, conventions '
              'FROM kala_layer_candidate WHERE build_id = %s AND generation = %s')
     row = conn.execute(query,(run_id,generation)).fetchone()
@@ -66,30 +82,51 @@ def _candidate(conn: Any, run_id: str, generation: str) -> tuple[Candidate, dict
                         'WHERE chart_id = %s AND generation = %s',(c.chart_id,generation)).fetchall()
     if set(grains) != {r[0] for r in rows} or any(r[1] not in {'rows','zero_rows'} for r in rows):
         raise CandidateNotPublishable('candidate has absent, unplanned or failed grains')
-    return c, {'run':run,'grains':tuple(sorted(grains))}
+    return c, {'run':run,'grains':tuple(sorted(grains)), 'grains_by_writer':plan}
 
 
-def verify(conn: Any, *, run_id: str, generation: str, independently_derived_digest: str) -> dict:
-    """Bind an externally re-derived digest after checking every planned grain."""
+def verify(conn: Any, *, run_id: str, generation: str, independently_derived_digest: str,
+           semantic_source: str) -> dict:
+    """Independent input AND per-writer golden checks earn one immutable receipt."""
     if conn.execute('SELECT current_user').fetchone()[0] != 'verifier_principal':
         raise VerificationRefused('verification must run as verifier_principal')
-    if len(independently_derived_digest) != 64 or any(c not in '0123456789abcdef' for c in independently_derived_digest):
-        raise VerificationRefused('independent digest must be SHA-256')
     c, detail = _candidate(conn,run_id,generation)
-    verify_candidate(conn,c,independently_derived_digest=independently_derived_digest)
-    return {'status':'INPUT_VERIFICATION_RECORDED','generation':generation,
-            'verified_grains':list(detail['grains']),'semantic_verification':None}
+    stored = candidate_input_digest(conn, c)
+    if independently_derived_digest != stored:
+        raise VerificationRefused('independent digest does not match stored candidate input')
+    semantic = semantic_evidence(conn, c, detail, semantic_source)
+    inserted = conn.execute(
+        "INSERT INTO kala_layer_verification (chart_id,generation,verifier_principal,result,detail) "
+        "VALUES (%s,%s,'verifier_principal','accepted',%s::jsonb) "
+        "ON CONFLICT (chart_id,generation) DO NOTHING RETURNING chart_id",
+        (c.chart_id, c.generation, json.dumps({'input_digest': stored, 'semantic': semantic},sort_keys=True)),
+    ).fetchone()
+    if inserted is None:
+        raise VerificationRefused('candidate already has an immutable receipt; use a new generation')
+    return {'status':'VERIFIED','generation':generation,'run_id':run_id,
+            'verified_grains':list(detail['grains']),'semantic_verification':True,
+            'semantic_source':semantic_source}
 
 
-def publish(conn: Any, *, run_id: str, generation: str, expected_head: str | None) -> dict:
+def publish(conn: Any, *, run_id: str, generation: str, expected_head: str | None, semantic_source: str) -> dict:
     c, detail = _candidate(conn,run_id,generation)
     if expected_head != c.expected_head_generation:
         raise CandidateNotPublishable('request expected-head differs from candidate-open pin')
+    receipt = conn.execute('SELECT detail FROM kala_layer_verification WHERE chart_id=%s AND generation=%s',
+                           (c.chart_id, c.generation)).fetchone()
+    if receipt is None:
+        raise VerificationRefused('candidate lacks independent semantic verification')
+    verification = receipt[0]
+    if not isinstance(verification, dict):
+        raise VerificationRefused('semantic verification detail must be an object')
+    require_semantic_receipt(conn, c, detail, semantic_source, verification.get('semantic'))
     publish_candidate(conn,c,expected_grains=detail['grains'])
     return {'status':'PUBLISHED','generation':generation,'previous_head':expected_head}
 
 
 def rollback(conn: Any, *, generation: str, expected_head: str, chart_id: str = CANONICAL_CHART) -> dict:
+    _generation(generation)
+    _generation(expected_head)
     current = conn.execute(
         "SELECT expected_head_generation FROM kala_layer_candidate "
         "WHERE chart_id = %s AND generation = %s AND state = 'published'",
@@ -105,6 +142,7 @@ def inspect_rebuild(conn: Any, *, run_id: str, assets: str) -> dict:
     run = _run(conn,run_id)
     if assets.split(',') != run['plan']:
         raise ValueError('assets must exactly match the frozen ordered plan')
+    # K9-23 CI: plan inspection runs no dry-run detector; §N.8 requires null.
     return {'status':'PLAN_ONLY','run_id':run_id,'chart_id':str(run['chart_id']),
             'planned_assets':run['plan'],'executed_assets':[],'dry_run_passed':None}
 
@@ -119,6 +157,7 @@ def main(argv=None) -> int:
         else: p.add_argument('--generation',required=True)
         if operation in ('publish','rollback'): p.add_argument('--expected-head',required=True)
         if operation == 'verify': p.add_argument('--independently-derived-digest',required=True)
+        if operation in ('verify','publish'): p.add_argument('--semantic-source',required=True)
     args = parser.parse_args(argv)
     dsn = os.environ.get('DATABASE_URL')
     if not dsn:
@@ -148,10 +187,10 @@ def main(argv=None) -> int:
                     raise ValueError('candidate is absent or outside canonical chart')
                 if args.operation == 'verify':
                     result = verify(conn,run_id=str(args.run_id),generation=args.generation,
-                                    independently_derived_digest=args.independently_derived_digest)
+                                    independently_derived_digest=args.independently_derived_digest,semantic_source=args.semantic_source)
                 else:
                     result = publish(conn,run_id=str(args.run_id),generation=args.generation,
-                                     expected_head=None if args.expected_head == 'NONE' else args.expected_head)
+                                     expected_head=None if args.expected_head == 'NONE' else args.expected_head,semantic_source=args.semantic_source)
         print(json.dumps(result,sort_keys=True))
         return 0
     except ValueError as exc:

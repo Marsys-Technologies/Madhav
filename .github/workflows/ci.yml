@@ -2514,7 +2514,7 @@ jobs:
     # required check 'Governance Tool Tests (pytest)' of ruleset 20141220 since 2026-10-05; no per-shard context is required, so the shard
     # count can change without touching the ruleset.)
     name: Governance Tool Tests (pytest)
-    needs: [changes, governance-tool-tests-shard, governance-readback-tests]
+    needs: [changes, governance-tool-tests-shard, governance-readback-tests, kala-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -2528,8 +2528,12 @@ jobs:
           READBACK_EXPECTED: ${{ github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'governance-readback-tests')) }}
           SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
           READBACK_RESULT: ${{ needs.governance-readback-tests.result }}
+          KALA_DB_RESULT: ${{ needs.kala-db-tests.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
         run: |
+          if [ "$KALA_DB_RESULT" != "success" ] && ! { [ "$KALA_DB_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; }; then
+            echo "::error::Kāla DB Tests must pass for code changes (got '$KALA_DB_RESULT')"; exit 1
+          fi
           if [ "$READBACK_RESULT" = "skipped" ] && [ "$READBACK_EXPECTED" = "false" ]; then
             if [ "$SHARDS_RESULT" = "success" ] || { [ "$SHARDS_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ] && [ "$EVENT_NAME" = "pull_request" ]; }; then
               echo "governance tests passed; unchanged readbacks skipped by event policy"; exit 0

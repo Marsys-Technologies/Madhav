@@ -10,6 +10,7 @@ import pytest
 from psycopg.pq import TransactionStatus
 
 from pipeline.orchestrator import runner as frozen_runner
+from services.kala_core.rehearsal import ASSETS, WAVES
 from tests.l3.kala_db.manifest.test_publication_lifecycle import publication_connections
 
 CANONICAL = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -24,9 +25,10 @@ def operations():
 def planned_run(publication_connections):
     caller, executor = publication_connections
     run_id = str(uuid4())
-    writers = ['ka_yojaka','ka_sangam']
+    # K9-23 (K923B): publication._run requires the complete ordered replaceable roster, so the fixture freezes all of it.
+    writers = list(ASSETS)
     manifest = dict(version='nirmana-run-manifest/v1',chart_id=CANONICAL,scope='layer',scope_target='L3',
-        action='rebuild',waves=[writers],assets=[dict(asset_id=w,scope='chart',depends_on=[],
+        action='rebuild',waves=[list(wave) for wave in WAVES],assets=[dict(asset_id=w,scope='chart',depends_on=[],
         natural_key_partition=None,has_cowriters=False,expected_code_digest='a'*64) for w in writers])
     digest = hashlib.sha256(json.dumps(manifest,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     caller.execute('CREATE TABLE build_runs (id uuid PRIMARY KEY,chart_id uuid,scope text,scope_target text,'

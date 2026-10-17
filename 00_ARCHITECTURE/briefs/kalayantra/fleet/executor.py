@@ -76,6 +76,7 @@ def load_table() -> dict | None:
 
 def capabilities(table_on_main: bool) -> dict:
     caps = {"builder": bool(os.environ.get("KY_BUILDER_DATABASE_URL")), "owner": bool(os.environ.get("KY_OWNER_DATABASE_URL")),
+            "layer_verifier": bool(os.environ.get("KY_LAYER_VERIFIER_DATABASE_URL")),
             "pgenv": pathlib.Path("/Users/Dev/.config/pravaha/pgenv.sh").exists(),
             "gcloud": subprocess.run(["gcloud", "auth", "list", "--format=value(account)"], capture_output=True, text=True).stdout.strip() != "",
             "none": True, "ops_table_on_main": table_on_main, "production_slot": "PENDING" if FENCE.exists() else "free",
@@ -364,6 +365,8 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
     for capability in op.get("also_needs", []):
         if not caps.get(capability, False): return f"capability_missing: {capability}"
     args = req.get("args") or {}
+    if req["kind"] == "readback_sql" and req["item_id"] == "K9-4b" and not re.fullmatch(r"[0-9a-f]{64}", str(args.get("sql-sha256", ""))):
+        return "K9-4b readback requires a prepared SQL digest"
     bad = [k for k in args if k not in op.get("allowed_args", [])]
     if bad: return f"disallowed args {bad}"
     if any(not SAFE_ARG.match(str(v)) for v in args.values()): return "an argument value has unsafe characters"
@@ -653,6 +656,7 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
     env = {k: v for k, v in os.environ.items() if k in CHILD_ENV_ALLOW}          # neither privileged connection reaches a child by default
     if op["needs"] == "builder": env["DATABASE_URL"] = os.environ["KY_BUILDER_DATABASE_URL"]
     elif op["needs"] == "owner": env["DATABASE_URL"] = os.environ["KY_OWNER_DATABASE_URL"]
+    elif op["needs"] == "layer_verifier": env["DATABASE_URL"] = os.environ["KY_LAYER_VERIFIER_DATABASE_URL"]
     env["KY_OPERATION_REQUEST"] = json.dumps(req, sort_keys=True, separators=(",", ":"))
     env["SE_EPHE_PATH"] = os.environ.get("SE_EPHE_PATH", str(KY_ROOT / "ephe")); env["KY_ROOT"] = str(KY_ROOT)
     if not op.get("production"):

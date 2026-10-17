@@ -1,4 +1,4 @@
-"""KV3-B-EXECUTOR-TABLE (relaunch plan v2.7 §2, §5, §6 EXECUTE, §14 B-1): the executor table and the executor's git handle.
+"""K923B executor/table boundary against immutable starting main.
 
 What this proves, and what it deliberately does not touch:
   · the table: every `enabled_by` is a plan-model item; four bootstrap and six J-1a kinds are enabled; every field equals the table at the
@@ -9,7 +9,9 @@ What this proves, and what it deliberately does not touch:
   · the negative cases run through the real `validate` on a temporary KY_ROOT, with KY_SOURCE_REPO a temporary repository
     whose origin is a local path — never the campaign checkout, never the network, never the running executor.
 
-An entry whose state the test cannot read is a failure, not a pass."""
+An entry whose state the test cannot read is a failure, not a pass.
+K923B (this branch) adds only: the disabled K9-23 bindings and `readback_sql` `sql-sha256` in the table, and the explicit verifier
+capability/connection plus K9-4b digest refusal in executor.py; both are pinned exactly below against the starting main (MAIN_PIN)."""
 import ast
 import hashlib
 import importlib.util
@@ -35,6 +37,7 @@ PY_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py"
 SH_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh"
 COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 
+MAIN_PIN = "874ed83fe44e1763d4b8123467874246ff4d95be"  # K923B immutable starting main (origin/main at the 2026-10-17 update)
 PLAN_PIN = "e709f60d7fcd4559227a25a4d5d83d6431c396b6"
 MODEL_PIN = "cf9831bceff36abd5a50e95328b83d16a4c1ce24"  # final J-4p/main integration target
 PINNED_EXECUTOR_SHA256 = "8b9a164f52b307514d7b42f87019070689b1533f624b871a2e1d113408ebdcf7"
@@ -105,7 +108,7 @@ def git_show(rev_path):
 
 
 def base_text(rel):
-    return git_show(f"{PLAN_PIN}:{rel}").decode()
+    return git_show(f"{MAIN_PIN if rel == PY_REL else PLAN_PIN}:{rel}").decode()
 
 
 def load_ops(text):
@@ -180,6 +183,12 @@ def assert_table_matches_pin(now):
         expected[kind]["enabled_by"] = "K9-23"
         assert "TO_BE_SET_BY_K9-3" in expected[kind]["script"]
         expected[kind]["script"] = expected[kind]["script"].replace("TO_BE_SET_BY_K9-3", "TO_BE_SET_BY_K9-23", 1)
+        expected[kind].update(script="platform/python-sidecar/services/kala_core/publication.py",
+                              cwd="platform/python-sidecar", python_module="services.kala_core.publication",
+                              fixed_args=[{"orchestrator_rebuild_dryrun": "rebuild-dryrun", "orchestrator_rebuild": "rebuild",
+                                           "layer_verify": "verify", "layer_publish": "publish", "layer_rollback": "rollback"}[kind]])
+    expected["layer_verify"].update(needs="layer_verifier", allowed_args=["run-id", "generation", "independently-derived-digest", "semantic-source"])
+    expected["layer_publish"]["allowed_args"] = ["run-id", "generation", "expected-head", "semantic-source"]
     expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
     expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
     expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
@@ -197,6 +206,7 @@ def assert_table_matches_pin(now):
     for kind in W4_KINDS | {"readback_sql"}:
         key = "lane_readback" if kind == "readback_sql" else "lane_dry_run"
         expected[kind][key] = {"script": "00_ARCHITECTURE/briefs/kalayantra/fleet/lane_smalltest.py", "needs": "none"}
+    expected["readback_sql"]["allowed_args"] = ["sql_file", "sql-sha256"]
     for kind, entry in now["ops"].items():
         assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
         assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
@@ -227,11 +237,12 @@ def test_table_pin_refuses_unreviewed_measuring_changes(kind, field, value):
         assert_table_matches_pin(now)
 
 
-def test_k9_placeholders_name_k9_23_and_none_is_filled():
+def test_k9_prebuilt_bindings_name_k9_23_and_remain_disabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     for kind in K9_KINDS:
         assert ops[kind]["enabled_by"] == "K9-23"
-        assert ops[kind]["script"].startswith("TO_BE_SET_BY_K9-23"), kind
+        assert ops[kind]["script"] == "platform/python-sidecar/services/kala_core/publication.py", kind
+        assert ops[kind]["enabled"] is False
         assert "K9-3" not in ops[kind]["script"].replace("K9-23", ""), kind
     assert ops["local_schema_seed"]["script"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh"
     assert ops["local_schema_seed"]["fixed_args"] == ["seed"]
@@ -306,6 +317,10 @@ W4_FUNCTION_HASHES = {'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6a
 
 
 def normalize_wave4(base_src, work_src):
+    # K923B: two exact additions, leaving all prior safety hashes intact.
+    work_src = work_src.replace('"layer_verifier": bool(os.environ.get("KY_LAYER_VERIFIER_DATABASE_URL")),\n            ', '', 1)
+    work_src = work_src.replace('    elif op["needs"] == "layer_verifier": env["DATABASE_URL"] = os.environ["KY_LAYER_VERIFIER_DATABASE_URL"]\n', '', 1)
+    work_src = work_src.replace('    if req["kind"] == "readback_sql" and req["item_id"] == "K9-4b" and not re.fullmatch(r"[0-9a-f]{64}", str(args.get("sql-sha256", ""))):\n        return "K9-4b readback requires a prepared SQL digest"\n', '', 1)
     base_seg, work_seg = _segments(base_src), _segments(work_src)
     for name, digest in W4_FUNCTION_HASHES.items():
         segment = work_seg.get(name, "")
@@ -345,19 +360,12 @@ def test_pinned_executor_has_the_pinned_sha256():
     assert hashlib.sha256(git_show(f"{PLAN_PIN}:{PY_REL}")).hexdigest() == PINNED_EXECUTOR_SHA256
 
 
-def test_executor_py_changes_are_only_git_and_exact_reviewed_w4_functions():
+def test_executor_py_changes_are_only_exact_reviewed_k923b_additions():
     assert boundary_violations(base_text(PY_REL), EXECUTOR_PY.read_text()) == []
 
 
-def test_executor_py_remaining_line_diff_is_the_git_line_only():
-    import difflib
-    base_src = base_text(PY_REL)
-    base, work = base_src.splitlines(), normalize_wave4(base_src, EXECUTOR_PY.read_text()).splitlines()
-    changed = [l for l in difflib.unified_diff(base, work, lineterm="", n=0) if l[:1] in "+-" and l[:3] not in ("+++", "---")]
-    for line in changed:
-        body = line[1:].strip()
-        assert body.startswith("GIT = ") or body.startswith("#"), f"unexpected changed line: {line}"
-    assert any(l.startswith("+GIT = ") for l in changed), "the GIT assignment did not change"
+def test_executor_py_normalized_bytes_equal_immutable_starting_main():
+    assert normalize_wave4(base_text(PY_REL), EXECUTOR_PY.read_text()) == base_text(PY_REL)
 
 
 @pytest.mark.parametrize("old,new", [
@@ -449,7 +457,7 @@ def test_executor_sh_differs_from_the_pin_only_in_the_git_assignment():
 GIT_ENV = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
            "GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
            "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}
-ALL_CAPS = {"builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
+ALL_CAPS = {"layer_verifier": True, "builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
 # 2026-10-17 incident: an inherited GIT_DIR beats `-C`, so `git init --bare` re-initialised the SHARED repository. A fixture's git must only see what it made.
 REPO_LOCATING_VARS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE",
                       "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE")
@@ -603,7 +611,7 @@ def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind)
 @pytest.mark.parametrize("kind", K9_KINDS)
 def test_entry_enabled_in_a_copy_with_a_placeholder_script_is_refused(tmp_path, monkeypatch, kind):
     text = OPS_FILE.read_text()
-    w = World(tmp_path, monkeypatch, copy_with(text, kind))
+    w = World(tmp_path, monkeypatch, copy_with(text, kind, script="TO_BE_SET_BY_FIXTURE"))
     table = w.table()
     assert enabled_state(kind, table[kind]) is True and "TO_BE_SET" in table[kind]["script"]
     assert w.mod.validate(w.production_request(kind), table, ALL_CAPS) == "operation script not yet reviewed/landed"
