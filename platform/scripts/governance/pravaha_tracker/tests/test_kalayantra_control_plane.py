@@ -1840,12 +1840,16 @@ class DeclaredSnapshotCases(unittest.TestCase):
         self.assertNotIn("staged", {row["id"]: row for row in snapshot["decisions"]}["D-RETIRE-K-R"])
         self.assertEqual([row["id"] for row in snapshot["native_queue"]], ["D-ASK"])
 
-    def test_committed_model_stages_exactly_its_two_retirements(self):
+    def test_committed_model_stages_exactly_its_retirements(self):
+        # the two B-2 retirements, plus the six owner-authorised not_applicable decisions of Amendment A9
+        # (D-51, D-53, D-54): staged, so none is a question for the native
         with open(COMMITTED_MODEL, encoding="utf-8") as handle:
             model = json.load(handle)
         snapshot = self.snapshot(model=model)
         staged = {row["id"] for row in snapshot["decisions"] if row.get("staged")}
-        self.assertEqual(staged, {"D-RETIRE-B-K-INBOX", "D-RETIRE-B-CLAIM-RECOVERY"})
+        self.assertEqual(staged, {"D-RETIRE-B-K-INBOX", "D-RETIRE-B-CLAIM-RECOVERY", "D-A9-NA-JOIN-ALL",
+                                  "D-A9-NA-K-CERT-2", "D-A9-NA-W4-SAFETY", "D-A9-NA-PROCESS-NOTES",
+                                  "D-A9-NA-OPS-NB-03", "D-A9-NA-PACKET-EXITS"})
         self.assertFalse(staged & {row["id"] for row in snapshot["native_queue"]})
 
 

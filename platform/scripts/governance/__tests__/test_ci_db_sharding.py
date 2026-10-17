@@ -95,7 +95,8 @@ def test_real_partition_is_complete_and_required_names_remain_unique():
         assert not umbrella['steps'][0].get('continue-on-error')
         # D-29 x D-31: job and umbrella share ONE selection rule (main's full-suite expects `required-<job>` iff <job> is selected).
         for event, selected, full, want in (('pull_request', [job], False, True), ('pull_request', [], False, False),
-                                            ('pull_request', ['other'], False, False), ('merge_group', [], False, True),
+                                            ('pull_request', ['other'], False, False), ('merge_group', [], False, False),
+                                            ('merge_group', [job], False, True), ('merge_group', ['other'], False, False),
                                             ('push', [], False, True), ('workflow_dispatch', [], True, True),
                                             ('workflow_dispatch', [], False, False)):
             assert discovery_eval(umbrella['if'], event=event, selected=selected, full=full) is want, (job, event, selected)
@@ -161,8 +162,8 @@ def test_auxiliary_mutation_evidence_still_runs_once_across_the_matrix():
     script = next(s['run'] for s in jobs['db-integration-tests']['steps'] if 'mutation_check_1206.py' in s.get('run',''))
     script = '\n'.join(line for line in script.splitlines() if 'ci_discovery.py' not in line)
     script = script.replace('python3 scripts/gochara/mutation_check_1206.py', 'echo MUTATION_RUN')
-    (full_expr,) = set(re.findall(r'\$\{\{ (\(github\.event_name.*?inputs\.full_gate\)\)) \}\}', script))
-    for event, full, want in (('merge_group', False, 1), ('push', False, 1), ('workflow_dispatch', True, 1),
+    (full_expr,) = set(re.findall(r'\$\{\{ (\(+github\.event_name.*?inputs\.full_gate\)+) \}\}', script))
+    for event, full, want in (('merge_group', False, 0), ('push', False, 1), ('workflow_dispatch', True, 1),
                               ('pull_request', False, 0), ('workflow_dispatch', False, 0)):
         calls = 0
         for index in range(1,5):
@@ -338,7 +339,8 @@ def test_parallel_real_substrate_is_required_before_node_workers():
     selected, _ = ci_gate.select_db(ROOT, jobs, [changed])
     assert {'gochara-a55-replace-chain', 'replace-chain-substrate'} <= set(selected)
     for event, chosen, full, want in (('pull_request', selected, False, True), ('pull_request', [], False, False),
-                                      ('merge_group', [], False, True), ('workflow_dispatch', [], False, False)):
+                                      ('merge_group', [], False, False), ('merge_group', selected, False, True),
+                                      ('push', [], False, True), ('workflow_dispatch', [], False, False)):
         assert discovery_eval(producer['if'], event=event, selected=chosen, full=full) is want, (event, chosen)
     steps = worker['steps']
     download = next(s for s in steps if s.get('uses', '').startswith('actions/download-artifact@'))
