@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -354,8 +354,8 @@
     },
     "triage": {
       "plan": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_2.md §0",
-      "roots": "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v2_1.json",
-      "closure": "00_ARCHITECTURE/control/kalayantra/CLOSURE_v2_1.json",
+      "roots": "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v3.json",
+      "closure": "00_ARCHITECTURE/control/kalayantra/CLOSURE_v3.json",
       "declarations": "00_ARCHITECTURE/control/kalayantra/TRIAGE_DECLARATIONS_v2_2.json",
       "staged_actions": "00_ARCHITECTURE/control/kalayantra/STAGED_MODEL_ACTIONS_v2_2.json (not published; B-2 publishes)",
       "schema_receipt": "00_ARCHITECTURE/control/kalayantra/SCHEMA_RECEIPT_v2_2.json",
@@ -3573,7 +3573,8 @@
       "title": "Builder evidence unavailable",
       "owner": "K",
       "depends_on": [
-        "KA-3b"
+        "KA-3b",
+        "D-A9-NA-PROCESS-NOTES"
       ],
       "mandatory": true,
       "detector": {
@@ -3604,7 +3605,12 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-A9-NA-PROCESS-NOTES",
+        "reason": "process notes (A9 D-53)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-PROCESS-NOTES": "approved"
       }
     },
     {
@@ -3614,7 +3620,8 @@
       "title": "Pre-build acceptance is separate from parent closure",
       "owner": "K",
       "depends_on": [
-        "KA-3b"
+        "KA-3b",
+        "D-A9-NA-PROCESS-NOTES"
       ],
       "mandatory": true,
       "detector": {
@@ -3645,7 +3652,12 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-A9-NA-PROCESS-NOTES",
+        "reason": "process notes (A9 D-53)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-PROCESS-NOTES": "approved"
       }
     },
     {
@@ -3765,7 +3777,8 @@
         "KA-3a",
         "KA-3b",
         "KA-4",
-        "KA-4b"
+        "KA-4b",
+        "D-A9-NA-PACKET-EXITS"
       ],
       "mandatory": true,
       "detector": {
@@ -3787,7 +3800,12 @@
       "producer": "V",
       "reviewer_rule": "v_packet_verdict_bound_to_external_review",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-A9-NA-PACKET-EXITS",
+        "reason": "satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-PACKET-EXITS": "approved"
       }
     },
     {
@@ -4013,7 +4031,8 @@
       "title": "Packet exit K3 on real records: independent review before final K3 acceptance",
       "owner": "V",
       "depends_on": [
-        "K3-2"
+        "K3-2",
+        "D-A9-NA-PACKET-EXITS"
       ],
       "mandatory": true,
       "detector": {
@@ -4035,7 +4054,12 @@
       "producer": "V",
       "reviewer_rule": "v_packet_verdict_bound_to_external_review",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-A9-NA-PACKET-EXITS",
+        "reason": "satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-PACKET-EXITS": "approved"
       }
     },
     {
@@ -4638,7 +4662,8 @@
       "title": "Checkpoint review (Astra): the rubric was applied as frozen and the verdict follows from the outputs",
       "owner": "V",
       "depends_on": [
-        "D-VC"
+        "D-VC",
+        "D-A9-NA-PACKET-EXITS"
       ],
       "mandatory": true,
       "detector": {
@@ -4660,7 +4685,12 @@
       "producer": "V",
       "reviewer_rule": "v_packet_verdict_bound_to_external_review",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-A9-NA-PACKET-EXITS",
+        "reason": "satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-PACKET-EXITS": "approved"
       }
     },
     {
@@ -4856,7 +4886,8 @@
         "K5-2",
         "K5-2b",
         "K5-3",
-        "K5-G1b"
+        "K5-G1b",
+        "D-A9-NA-PACKET-EXITS"
       ],
       "mandatory": true,
       "detector": {
@@ -4879,7 +4910,12 @@
       "producer": "V",
       "reviewer_rule": "v_packet_verdict_bound_to_external_review",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-A9-NA-PACKET-EXITS",
+        "reason": "satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-PACKET-EXITS": "approved"
       }
     },
     {
@@ -5094,7 +5130,8 @@
       "depends_on": [
         "K6-123",
         "K6-4",
-        "K6-5"
+        "K6-5",
+        "D-A9-NA-PACKET-EXITS"
       ],
       "mandatory": true,
       "detector": {
@@ -5116,7 +5153,12 @@
       "producer": "V",
       "reviewer_rule": "v_packet_verdict_bound_to_external_review",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-A9-NA-PACKET-EXITS",
+        "reason": "satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-PACKET-EXITS": "approved"
       }
     },
     {
@@ -5126,7 +5168,9 @@
       "title": "Contracts describe superseded dispatch and integrity targeting",
       "owner": "K",
       "depends_on": [
-        "V-K6"
+        "K6-123",
+        "K6-4",
+        "K6-5"
       ],
       "mandatory": true,
       "detector": {
@@ -5167,7 +5211,9 @@
       "title": "K8-K6 mapping is incomplete for the merged read models",
       "owner": "K",
       "depends_on": [
-        "V-K6"
+        "K6-123",
+        "K6-4",
+        "K6-5"
       ],
       "mandatory": true,
       "detector": {
@@ -5210,7 +5256,9 @@
       "title": "The corruption-masking regression can pass without integrity binding",
       "owner": "K",
       "depends_on": [
-        "V-K6"
+        "K6-123",
+        "K6-4",
+        "K6-5"
       ],
       "mandatory": true,
       "detector": {
@@ -5435,7 +5483,8 @@
       "owner": "K",
       "depends_on": [
         "B-7",
-        "L0-K-RUNNER"
+        "L0-K-RUNNER",
+        "J-6l"
       ],
       "mandatory": true,
       "steps": [
@@ -5499,9 +5548,8 @@
         }
       },
       "triage": {
-        "class": "b",
-        "reason": "KP corpus ingestion feeds only D-T2's corpus count; blocked today on a missing ingestion path",
-        "re_entry": "with D-T2"
+        "class": "a",
+        "reason": "post-flip phase of the campaign, not deferred (A9 D-52; 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)"
       }
     },
     {
@@ -20107,8 +20155,8 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "b",
-        "reason": "legacy ka_gochara writer retirement after the flip; charter §0 line 2 names it, the retained acceptance (ii) names only the sealed flip; deferred by owner decision 2026-10-11",
-        "re_entry": "after J-6l's soak, before Suvarṇa certifies the ka_gochara lifecycle"
+        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "re_entry": "after V-J6 is accepted and the served layer has run one week on 5.0"
       }
     },
     {
@@ -20133,9 +20181,8 @@
       "done_by": "decision",
       "decision": "D-T2",
       "triage": {
-        "class": "b",
-        "reason": "decides only J-7's admission",
-        "re_entry": "with J-7"
+        "class": "a",
+        "reason": "post-flip phase of the campaign, not deferred (A9 D-52; 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)"
       }
     },
     {
@@ -20150,7 +20197,8 @@
         "KA-3b",
         "J-7-a63",
         "J-7-b61",
-        "J-7-n-t2"
+        "J-7-n-t2",
+        "J-6l"
       ],
       "mandatory": false,
       "detector": {
@@ -20187,9 +20235,8 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "b",
-        "reason": "the plan's first deferral candidate: optional Tier-2 Sudarśana, a candidate method outside the sealed '5.0'",
-        "re_entry": "after the flip (J-6l) if D-T2 admits it"
+        "class": "a",
+        "reason": "post-flip phase of the campaign, not deferred (A9 D-52; 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)"
       }
     },
     {
@@ -20223,9 +20270,8 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "b",
-        "reason": "documentation-only L5 hand-off contract; no retained item consumes it",
-        "re_entry": "before L5 reads '5.0'"
+        "class": "a",
+        "reason": "post-flip phase of the campaign, not deferred (A9 D-52; 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)"
       }
     },
     {
@@ -20263,9 +20309,9 @@
       "producer": "K",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "c",
-        "reason": "records the disposition of every remaining Pravāha item under the accepted J0_DISPOSITION (J-0c → J-0); owner decision 2026-10-11",
-        "basis": "J0_DISPOSITION once J-0c is independently accepted"
+        "class": "b",
+        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "re_entry": "at campaign close, as documentation"
       }
     },
     {
@@ -20304,9 +20350,9 @@
       "producer": "S",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "c",
-        "reason": "Pravāha close report; follows J-8a; owner decision 2026-10-11",
-        "basis": "J0_DISPOSITION once J-0c is independently accepted"
+        "class": "b",
+        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "re_entry": "at campaign close, as documentation"
       }
     },
     {
@@ -20379,13 +20425,8 @@
         "V-K0a",
         "V-K12",
         "V-K3",
-        "V-K3b",
         "V-K4",
-        "V-K5",
-        "V-K6",
-        "V-K7",
-        "V-KA",
-        "V-VC"
+        "V-K7"
       ],
       "mandatory": true,
       "steps": [
@@ -20586,7 +20627,9 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "b",
+        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "re_entry": "when Suvarṇa schedules its certification census"
       }
     },
     {
@@ -20711,7 +20754,9 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "b",
+        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "re_entry": "after V-J6 is accepted and the served layer has run one week on 5.0"
       }
     },
     {
@@ -20752,7 +20797,9 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "b",
+        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "re_entry": "after V-J6 is accepted and the served layer has run one week on 5.0"
       }
     },
     {
@@ -20762,10 +20809,7 @@
       "title": "Final packet review (Astra): the rebuilt layer against the plan's exit criteria",
       "owner": "V",
       "depends_on": [
-        "K9-5",
-        "K9-6",
-        "KR-1",
-        "KR-2"
+        "K9-6"
       ],
       "mandatory": true,
       "detector": {
@@ -20956,7 +21000,8 @@
         "K5G1B-ORACLES-NB01",
         "K5G1B-ORACLES-NB02",
         "K5G1B-ORACLES-NB03",
-        "K9-23-N2-NB"
+        "K9-23-N2-NB",
+        "D-A9-NA-JOIN-ALL"
       ],
       "mandatory": true,
       "detector": {
@@ -20984,7 +21029,12 @@
       "producer": "S",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "a_close"
+        "class": "retired",
+        "decision": "D-A9-NA-JOIN-ALL",
+        "reason": "superseded by ACCEPTANCE_ROOTS_v3 (A9 D-51)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-JOIN-ALL": "approved"
       }
     },
     {
@@ -20994,7 +21044,23 @@
       "title": "Close report: the five definition-of-done lines, each MET or NOT MET with its detector evidence; decisions ledger; gaps; measured costs; lessons",
       "owner": "S",
       "depends_on": [
-        "JOIN-ALL"
+        "K9-4b",
+        "K9-6",
+        "J-6l",
+        "J-5s",
+        "V-J6",
+        "K8-REG",
+        "K-CERT",
+        "V-K9",
+        "K-AVADHI-C",
+        "D-T2",
+        "J-7",
+        "J-7-a63",
+        "J-7-b61",
+        "J-7-n-t2",
+        "L0-K",
+        "J-7b",
+        "J-7b-b62"
       ],
       "mandatory": true,
       "detector": {
@@ -22548,7 +22614,8 @@
       "mandatory": true,
       "depends_on": [
         "B-7",
-        "K0-SV"
+        "K0-SV",
+        "D-A9-NA-K-CERT-2"
       ],
       "title": "bg_gochara_citation_resolution gets a registered, dispatchable WriterBase writer (ported from Suvarṇa draft #3055 with the bg_sarvatobhadra_grid half dropped), has_writer true with a correct count_sql, 14 rows equal to production; merged by Suvarṇa in its certification window by 2026-10-11T18:00Z",
       "detector": {
@@ -22582,7 +22649,12 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-A9-NA-K-CERT-2",
+        "reason": "superseded as complete by Suvarṇa PR #3435 (A9 D-53)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-K-CERT-2": "approved"
       }
     },
     {
@@ -23993,8 +24065,8 @@
       "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
       "triage": {
         "class": "b",
-        "reason": "legacy ka_gochara writer retirement after the flip; charter §0 line 2 names it, the retained acceptance (ii) names only the sealed flip; deferred by owner decision 2026-10-11",
-        "re_entry": "after J-6l's soak, before Suvarṇa certifies the ka_gochara lifecycle"
+        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "re_entry": "after V-J6 is accepted and the served layer has run one week on 5.0"
       },
       "packet_code_coverage": "P10",
       "steps": [
@@ -26387,8 +26459,8 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "b",
-        "reason": "legacy ka_gochara writer retirement after the flip; charter §0 line 2 names it, the retained acceptance (ii) names only the sealed flip; deferred by owner decision 2026-10-11",
-        "re_entry": "after J-6l's soak, before Suvarṇa certifies the ka_gochara lifecycle"
+        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "re_entry": "after V-J6 is accepted and the served layer has run one week on 5.0"
       },
       "steps": [
         "retirement_readback"
@@ -26415,7 +26487,8 @@
         "J-0m",
         "D-T2",
         "K1-1b",
-        "KA-3b"
+        "KA-3b",
+        "J-6l"
       ],
       "mandatory": false,
       "detector": {
@@ -26456,9 +26529,8 @@
       "producer": "K",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "b",
-        "reason": "the plan's first deferral candidate: optional Tier-2 Sudarśana, a candidate method outside the sealed '5.0'",
-        "re_entry": "after the flip (J-6l) if D-T2 admits it"
+        "class": "a",
+        "reason": "post-flip phase of the campaign, not deferred (A9 D-52; 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)"
       }
     },
     {
@@ -26596,7 +26668,8 @@
         "J-0m",
         "D-T2",
         "K1-1b",
-        "KA-3b"
+        "KA-3b",
+        "J-6l"
       ],
       "mandatory": false,
       "detector": {
@@ -26637,9 +26710,8 @@
       "producer": "K",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "b",
-        "reason": "the plan's first deferral candidate: optional Tier-2 Sudarśana, a candidate method outside the sealed '5.0'",
-        "re_entry": "after the flip (J-6l) if D-T2 admits it"
+        "class": "a",
+        "reason": "post-flip phase of the campaign, not deferred (A9 D-52; 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)"
       }
     },
     {
@@ -26684,9 +26756,8 @@
       "producer": "K",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "b",
-        "reason": "documentation-only L5 hand-off contract; no retained item consumes it",
-        "re_entry": "before L5 reads '5.0'"
+        "class": "a",
+        "reason": "post-flip phase of the campaign, not deferred (A9 D-52; 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)"
       },
       "steps": [
         "sealed_field_readback"
@@ -26754,9 +26825,9 @@
       "producer": "S",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "c",
-        "reason": "Pravāha close report; follows J-8a; owner decision 2026-10-11",
-        "basis": "J0_DISPOSITION once J-0c is independently accepted"
+        "class": "b",
+        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "re_entry": "at campaign close, as documentation"
       }
     },
     {
@@ -26866,9 +26937,9 @@
       "producer": "S",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "c",
-        "reason": "Pravāha close report; follows J-8a; owner decision 2026-10-11",
-        "basis": "J0_DISPOSITION once J-0c is independently accepted"
+        "class": "b",
+        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "re_entry": "at campaign close, as documentation"
       }
     },
     {
@@ -26957,7 +27028,8 @@
         "J-0m",
         "D-T2",
         "K1-1b",
-        "KA-3b"
+        "KA-3b",
+        "J-6l"
       ],
       "mandatory": false,
       "brief": {
@@ -26981,9 +27053,8 @@
       },
       "producer": "N",
       "triage": {
-        "class": "b",
-        "reason": "Decision residual re-enters only through the existing governed decision; Tier-2 remains conditional.",
-        "re_entry": "Effective D-T2 at the original phase; owner-only and external approval boundaries remain."
+        "class": "a",
+        "reason": "post-flip phase of the campaign, not deferred (A9 D-52; 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)"
       },
       "done_by": "decision",
       "decision": "D-T2"
@@ -27378,7 +27449,8 @@
       "title": "Backup/restore implementation absent at reviewed head",
       "owner": "K",
       "depends_on": [
-        "J-2d"
+        "J-2d",
+        "D-A9-NA-W4-SAFETY"
       ],
       "mandatory": true,
       "detector": {
@@ -27418,7 +27490,12 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-A9-NA-W4-SAFETY",
+        "reason": "superseded by the scoped backup and the executed small test (A9 D-53)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-W4-SAFETY": "approved"
       }
     },
     {
@@ -27428,7 +27505,8 @@
       "title": "Staging pack matches ordered steps and four clean clauses; activation evidence remains owed",
       "owner": "K",
       "depends_on": [
-        "J-2d"
+        "J-2d",
+        "D-A9-NA-W4-SAFETY"
       ],
       "mandatory": true,
       "detector": {
@@ -27461,7 +27539,12 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-A9-NA-W4-SAFETY",
+        "reason": "superseded by the scoped backup and the executed small test (A9 D-53)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-W4-SAFETY": "approved"
       }
     },
     {
@@ -27648,7 +27731,9 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "b",
+        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "re_entry": "when Suvarṇa schedules its certification census"
       }
     },
     {
@@ -27740,7 +27825,8 @@
       "title": "Inherited fleet/model drift prevents a green complete suite",
       "owner": "K",
       "depends_on": [
-        "KV3-B-OPS-CONTRACT"
+        "KV3-B-OPS-CONTRACT",
+        "D-A9-NA-OPS-NB-03"
       ],
       "mandatory": true,
       "detector": {
@@ -27772,7 +27858,12 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-A9-NA-OPS-NB-03",
+        "reason": "fleet tooling (A9 D-53)"
+      },
+      "requires_outcome": {
+        "D-A9-NA-OPS-NB-03": "approved"
       }
     },
     {
@@ -28940,6 +29031,120 @@
       "triage": {
         "class": "a"
       }
+    },
+    {
+      "id": "D-A9-NA-JOIN-ALL",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Not applicable: JOIN-ALL — superseded by ACCEPTANCE_ROOTS_v3 (A9 D-51)",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "done_by": "decision",
+      "decision": "D-A9-NA-JOIN-ALL",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "JOIN-ALL"
+      }
+    },
+    {
+      "id": "D-A9-NA-K-CERT-2",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Not applicable: K-CERT-2 — superseded as complete by Suvarṇa PR #3435 (A9 D-53)",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "done_by": "decision",
+      "decision": "D-A9-NA-K-CERT-2",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "K-CERT-2"
+      }
+    },
+    {
+      "id": "D-A9-NA-W4-SAFETY",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Not applicable: W4-SAFETY-N01, W4-SAFETY-N02 — superseded by the scoped backup and the executed small test (A9 D-53)",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "done_by": "decision",
+      "decision": "D-A9-NA-W4-SAFETY",
+      "triage": {
+        "class": "retire_decision",
+        "retires": [
+          "W4-SAFETY-N01",
+          "W4-SAFETY-N02"
+        ]
+      }
+    },
+    {
+      "id": "D-A9-NA-PROCESS-NOTES",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Not applicable: KA3B-N1, KA3B-N2 — process notes (A9 D-53)",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "done_by": "decision",
+      "decision": "D-A9-NA-PROCESS-NOTES",
+      "triage": {
+        "class": "retire_decision",
+        "retires": [
+          "KA3B-N1",
+          "KA3B-N2"
+        ]
+      }
+    },
+    {
+      "id": "D-A9-NA-OPS-NB-03",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Not applicable: OPS-NB-03 — fleet tooling (A9 D-53)",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "done_by": "decision",
+      "decision": "D-A9-NA-OPS-NB-03",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "OPS-NB-03"
+      }
+    },
+    {
+      "id": "D-A9-NA-PACKET-EXITS",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Not applicable: V-K3b, V-K5, V-K6, V-KA, V-VC — satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "done_by": "decision",
+      "decision": "D-A9-NA-PACKET-EXITS",
+      "triage": {
+        "class": "retire_decision",
+        "retires": [
+          "V-K3b",
+          "V-K5",
+          "V-K6",
+          "V-KA",
+          "V-VC"
+        ]
+      }
     }
   ],
   "decisions": [
@@ -29068,6 +29273,42 @@
       "title": "Replace two shared-path campaign-completion waits with merged-code preconditions",
       "owner": "ADHIKĀRIN (N); surrogate via cockpit, 2026-10-16T14:33:11Z",
       "default": "Approved — /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:71 (SR-A6-EDGES, 2026-10-16T14:33:11Z); KA-3a uses required p05_code_merged (branch_merged d9ba4934f4bfe7c159ecc42e7fcb7190f4b982c1, P05 #3508 / SR-A4-01); K-CERT uses required p07_code_merged (pr_merged 3512, P07; owns [] since SR-A2-11). Preserve every other edge, including KA-3a <- J-4d-pr3018 and J-4c-pr3141/3191/3193; the 1235 protected window and #3516 hold until 1383 applied remain. Evidence: J0_FILE_OWNERSHIP.json proposed_waits/18,21,24,27,30,31 and waits/7,10,13,16,19,20; deploy predecessor failures 10:52Z–14:02Z for 1235. (I) INTERPRETATION: existing required-step live-detector evidence is the merged-code precondition; no new tracker semantics or automatic completion."
+    },
+    {
+      "id": "D-A9-NA-JOIN-ALL",
+      "title": "Not applicable (JOIN-ALL): superseded by ACCEPTANCE_ROOTS_v3 (A9 D-51)",
+      "owner": "native — owner-authorised by Amendment A9 (D-51, D-53, D-54)",
+      "default": "refused — superseded by ACCEPTANCE_ROOTS_v3 (A9 D-51)"
+    },
+    {
+      "id": "D-A9-NA-K-CERT-2",
+      "title": "Not applicable (K-CERT-2): superseded as complete by Suvarṇa PR #3435 (A9 D-53)",
+      "owner": "native — owner-authorised by Amendment A9 (D-51, D-53, D-54)",
+      "default": "refused — superseded as complete by Suvarṇa PR #3435 (A9 D-53)"
+    },
+    {
+      "id": "D-A9-NA-W4-SAFETY",
+      "title": "Not applicable (W4-SAFETY-N01, W4-SAFETY-N02): superseded by the scoped backup and the executed small test (A9 D-53)",
+      "owner": "native — owner-authorised by Amendment A9 (D-51, D-53, D-54)",
+      "default": "refused — superseded by the scoped backup and the executed small test (A9 D-53)"
+    },
+    {
+      "id": "D-A9-NA-PROCESS-NOTES",
+      "title": "Not applicable (KA3B-N1, KA3B-N2): process notes (A9 D-53)",
+      "owner": "native — owner-authorised by Amendment A9 (D-51, D-53, D-54)",
+      "default": "refused — process notes (A9 D-53)"
+    },
+    {
+      "id": "D-A9-NA-OPS-NB-03",
+      "title": "Not applicable (OPS-NB-03): fleet tooling (A9 D-53)",
+      "owner": "native — owner-authorised by Amendment A9 (D-51, D-53, D-54)",
+      "default": "refused — fleet tooling (A9 D-53)"
+    },
+    {
+      "id": "D-A9-NA-PACKET-EXITS",
+      "title": "Not applicable (V-K3b, V-K5, V-K6, V-KA, V-VC): satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)",
+      "owner": "native — owner-authorised by Amendment A9 (D-51, D-53, D-54)",
+      "default": "refused — satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)"
     }
   ],
   "coordination": {

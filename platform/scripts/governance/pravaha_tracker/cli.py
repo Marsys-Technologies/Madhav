@@ -51,7 +51,7 @@ if __package__ in (None, ""):
 from pravaha_tracker.events import EventError, append, actor_slot, actor_stream  # noqa: E402
 from pravaha_tracker.claims import ClaimError, claim_item, renew_claim, release_claim  # noqa: E402
 from pravaha_tracker.audit import audit  # noqa: E402
-from pravaha_tracker.state import build_snapshot  # noqa: E402
+from pravaha_tracker.state import build_snapshot, load_closure  # noqa: E402
 from pravaha_tracker.detectors import git_activity  # noqa: E402
 from pravaha_tracker.completion import CompletionError, guarded_done_event  # noqa: E402
 from pravaha_tracker.claims import _locked, _read, _append, _close  # noqa: E402
@@ -597,7 +597,8 @@ def cmd_status(a) -> int:
         print("tracker unreachable and no snapshot on disk", file=sys.stderr)
         return 3
     o = snap["overall"]
-    print(f"{snap.get('campaign')} — {o['pct']}% · done {o['done']}/{o['total']} · running {o['running']} · ready {o['ready']} · "
+    scope = " (closure)" if o.get("scope") == "closure" else ""
+    print(f"{snap.get('campaign')} — {o['pct']}% · done {o['done']}/{o['total']}{scope} · running {o['running']} · ready {o['ready']} · "
           f"blocked {o['blocked']} · unmeasured {o['unknown']}   [{via}, v{snap.get('version')}]")
     for st in snap.get("streams", []):
         if a.stream and st["id"] != a.stream.upper():
@@ -610,6 +611,8 @@ def cmd_status(a) -> int:
             print(f"     running  {t['id']} {t['title']}")
         if g.get("subject"):
             print(f"     last commit {g.get('last_commit')} on {g.get('branch')}: {g.get('subject')}")
+    if o.get("deferred") and not a.stream:
+        print(f"  Deferred (not counted): {', '.join(d['id'] for d in o['deferred'])}")
     nq = snap.get("native_queue", [])
     if nq and not a.stream:
         print(f"  Native decisions open: {', '.join(d['id'] for d in nq)}")
@@ -689,7 +692,7 @@ def cmd_audit(a) -> int:
         model = load_model()
         findings = audit(model, events, os.path.dirname(EVENTS), since=since,
                          repo=os.environ.get("PRAVAHA_REPO", REPO_ROOT))
-        snapshot = build_snapshot(model, events, {}, {}, {})
+        snapshot = build_snapshot(model, events, {}, {}, {}, closure=load_closure(model))
     except (OSError, KeyError, ValueError) as exc:
         print(f"audit unavailable: {exc}", file=sys.stderr)
         return 2
