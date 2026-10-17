@@ -4249,7 +4249,7 @@
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "notes": [
           "carries K8-K4: Certification mapping for ka_sangam",
-          "Contract (KALA_PIPELINE_CONCEPT_NOTE_v1_1 §5.5, not on main: /Users/Dev/madhav-l3/sangam-final/00_ARCHITECTURE/briefs/l3_families/): one canonical forecast per event identity (class, phase, person, episode); reading signals (L2 MSR signal ids) attach to it as reading_attachments[]; evaluation is clustered by event and shared episode; no event is credited twice (Astra K17)."
+          "Contract (00_ARCHITECTURE/briefs/l3_families/KALA_PIPELINE_CONCEPT_NOTE_v1_1.md §5.5; exact historical source preserved with nb_kala/concept_note_source.json): one canonical forecast per event identity (class, phase, person, episode); reading signals (L2 MSR signal ids) attach to it as reading_attachments[]; evaluation is clustered by event and shared episode; no event is credited twice (Astra K17)."
         ]
       },
       "steps": [
