@@ -24,13 +24,19 @@ Executor request/review/lease/backup gates remain separate from these receipts.
 --scope small_test (default: full, the behaviour above, unchanged) is the J-2a
 SCOPED backup (surrogate ruling SR-J2A-BACKUP-SCOPE; spec
 00_ARCHITECTURE/briefs/kalayantra/fleet/J2A_SCOPED_BACKUP_v1_0.md). It archives
-the complete SCHEMA plus the DATA of exactly the tables the small test can
-write (backup_v5_small_test_scope.json, pinned by sha256) and their foreign-key
-parents, in a pg_dump directory archive taken in parallel under the exported
-snapshot. Row content is measured by bounded SQL aggregates (count and an
+the DEFINITIONS and DATA of exactly the tables the small test can write
+(backup_v5_small_test_scope.json, pinned by sha256) and their foreign-key
+parents, each named by its own pg_dump -t, in a directory archive taken in
+parallel under the exported snapshot. No other relation is locked or dumped, so
+a table the backup login cannot read (SR-J2A-BACKUP-POSITIVE) cannot break it.
+Row content is measured by bounded SQL aggregates (count and an
 order-independent sum of per-row SHA-256), never by streaming sorted row JSON.
 Its receipts carry the scope digest and a validity window; they never claim a
-"complete database".
+"complete database". Restore proof: the scoped definitions cannot recreate the
+functions, types and extensions the tables depend on, so the scratch target is
+first built from the governed L1 bundle schema (never from production's
+catalog), the scope tables are replaced by the archive's own definitions and
+data, and the same counts/digests are compared.
 (I) INTERPRETATION J2A-S1: the second same-snapshot table pass is dropped in
 scoped mode (REPEATABLE READ cannot make it differ); sequences, which are not
 transactional, are still measured before and after the dump.
@@ -189,7 +195,16 @@ SCOPED_DATA_BUDGET_BYTES = 500_000_000
 SCOPED_DUMP_TIMEOUT_S = 900
 SCOPED_RESTORE_TIMEOUT_S = 600
 SCOPED_STATEMENT_TIMEOUT_MS = 300_000
-_SYSTEM_SCHEMAS = "('pg_catalog', 'information_schema')"
+# SR-J2A-BACKUP-POSITIVE restore base: the governed L1 bundle's schema.sql (schema only, in the executor's private
+# run directory; read here, never copied). Its sha256 is the bundle manifest's. The five extensions are the ones the
+# bundle's own strict restore installed. SCOPED_RESTORE_BASE_MIGRATIONS lists, in order, the repository migrations
+# (file name, sha256) applied after the bundle was cut; (I) INTERPRETATION J2A-B2: empty, because the production
+# migration state is not readable by this change and a missing dependency fails the restore loudly, naming itself.
+SCOPED_RESTORE_BASE_PATH = 'run/canonical_l1/20261016T135745Z/schema.sql'
+SCOPED_RESTORE_BASE_SHA256 = '7e15492f09d54b3f4c49e05afe4237b70254d59740e6a1222a0aa4277899700e'
+SCOPED_RESTORE_BASE_EXTENSIONS = ('vector', 'pgcrypto', 'pg_trgm', 'uuid-ossp', 'btree_gist')
+SCOPED_RESTORE_BASE_MIGRATIONS: tuple[tuple[str, str], ...] = ()
+MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / 'migrations'
 
 
 def scoped_validity_seconds() -> int:
@@ -209,15 +224,16 @@ def load_scope(path: Path | None = None) -> dict:
         written = [e['table'] for e in raw['written']]
         context = [e['table'] for e in raw['context']]
         guarded = [e['table'] for e in raw['guarded_children']]
+        excludes = [e['table'] for e in raw.get('dump_excludes', [])]
     except (OSError, ValueError, KeyError, TypeError):
         raise BackupRefused('reviewed scope file missing or malformed') from None
     tables = sorted(set(written) | set(context))
     if (raw.get('schema') != 'ky.smalltest_backup_scope/1' or raw.get('name') != 'small_test' or not written
             or len(set(written)) != len(written) or set(written) & set(context)
-            or any(re.fullmatch(r'[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*', t) is None for t in tables + guarded)):
+            or any(re.fullmatch(r'[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*', t) is None for t in tables + guarded + excludes)):
         raise BackupRefused('reviewed scope file missing or malformed')
     return {'name': raw['name'], 'tables': tables, 'written': sorted(written), 'guarded_children': sorted(guarded),
-            'sha256': scope_digest(raw['name'], tables)}
+            'dump_excludes': sorted(excludes), 'sha256': scope_digest(raw['name'], tables)}
 
 
 def _qualified_oids(conn, names: list[str]) -> dict[str, tuple[int, str]]:
@@ -305,12 +321,33 @@ def scoped_catalog(conn, scope: dict) -> dict:
                                   (oids,)).fetchone()[0])
     if data_bytes > SCOPED_DATA_BUDGET_BYTES:
         raise BackupRefused(f'scoped data is {data_bytes} bytes; over the {SCOPED_DATA_BUDGET_BYTES}-byte 30-minute budget')
-    others = [f'{ns}.{name}' for ns, name in conn.execute(f"""SELECT n.nspname, c.relname
-        FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-        WHERE c.relkind IN ('r', 'p') AND n.nspname NOT IN {_SYSTEM_SCHEMAS} AND n.nspname NOT LIKE 'pg_toast%'
-          AND n.nspname NOT LIKE 'pg_temp_%' ORDER BY 1, 2""").fetchall() if f'{ns}.{name}' not in data]
     return {'tables': sorted(data), 'closure': sorted(set(data) - set(wanted)), 'sequences': sequences,
-            'data_bytes': data_bytes, 'excluded_data': others}
+            'data_bytes': data_bytes, 'dump_excludes': guarded_dump_excludes(conn, scope['dump_excludes'], set(data), oids)}
+
+
+def guarded_dump_excludes(conn, declared: list[str], data: set[str], data_oids: list[int]) -> list[dict]:
+    """The only way a relation outside the explicit -t set is ever named to pg_dump (SR-J2A-BACKUP-POSITIVE, fallback).
+
+    A declared exclusion must lie outside the data set (scope plus foreign-key parents) and have no foreign-key edge
+    to or from it; it is recorded with its catalog owner. Anything else refuses the capture.
+    """
+    out = []
+    for name in declared:
+        if name in data:
+            raise BackupRefused(f'dump exclusion is inside the scope or its foreign-key closure: {name}')
+        row = conn.execute("""SELECT c.oid::bigint, pg_catalog.pg_get_userbyid(c.relowner)
+            FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname || '.' || c.relname = %s AND c.relkind IN ('r', 'p')""", (name,)).fetchone()
+        if row is None:
+            continue
+        linked = conn.execute("""SELECT 1 FROM pg_catalog.pg_constraint k WHERE k.contype = 'f'
+            AND ((k.conrelid = %s::bigint::oid AND k.confrelid = ANY(%s::bigint[]::oid[]))
+              OR (k.confrelid = %s::bigint::oid AND k.conrelid = ANY(%s::bigint[]::oid[]))) LIMIT 1""",
+                              (row[0], data_oids, row[0], data_oids)).fetchone()
+        if linked:
+            raise BackupRefused(f'dump exclusion has a foreign-key edge to the scope data: {name}')
+        out.append({'table': name, 'owner': row[1]})
+    return sorted(out, key=lambda e: e['table'])
 
 
 def _row_aggregate_sql(relation):
@@ -369,15 +406,57 @@ def _lock_down(archive: Path) -> None:
 _TOC_DATA = re.compile(r'^\d+; \d+ \d+ TABLE DATA (\S+) (\S+) \S+$', re.M)
 
 
-def archive_data_tables(archive: Path, settings: dict) -> set[str]:
+_TOC_TABLE = re.compile(r'^\d+; \d+ \d+ TABLE (\S+) (\S+) \S+$', re.M)
+
+
+def archive_tables(archive: Path, settings: dict) -> dict[str, set[str]]:
+    """The relations whose definitions, and whose data, the archive's table of contents lists."""
     listing = client_output(['pg_restore', '--list', str(archive)], settings)
-    return {f'{schema}.{table}' for schema, table in _TOC_DATA.findall(listing)}
+    return {'definitions': {f'{schema}.{table}' for schema, table in _TOC_TABLE.findall(listing)},
+            'data': {f'{schema}.{table}' for schema, table in _TOC_DATA.findall(listing)}}
 
 
-def exclude_data_args(tables: list[str]) -> list[str]:
+def _pattern(table: str) -> str:
     def quote(part):
         return '"' + part.replace('"', '""') + '"'
-    return [f"--exclude-table-data={quote(t.split('.', 1)[0])}.{quote(t.split('.', 1)[1])}" for t in tables]
+    return f"{quote(table.split('.', 1)[0])}.{quote(table.split('.', 1)[1])}"
+
+
+def dump_table_args(tables: list[str], excludes: list[dict]) -> list[str]:
+    """One quoted -t per relation of the data set (no pattern character widens it); --strict-names makes a
+    relation that matches nothing refuse the dump. Nothing else is selected, locked or dumped."""
+    return ['--strict-names', *(f'--table={_pattern(t)}' for t in tables),
+            *(f"--exclude-table={_pattern(e['table'])}" for e in excludes)]
+
+
+def restore_base_sql(root: Path) -> tuple[str, dict]:
+    """The governed L1 bundle schema as one executable script, plus the identity of everything it is built from.
+
+    The bundle's schema.sql is a plain pg_dump with a psql-only restrict/unrestrict guard pair (dropped) and its own
+    CREATE SCHEMA public, which the bundle's strict restore ran after dropping the empty public schema, followed by
+    the five extensions. It is hash-checked against the bundle manifest before use; never printed or copied.
+    """
+    try:
+        raw = (root / SCOPED_RESTORE_BASE_PATH).read_bytes()
+    except OSError:
+        raise BackupRefused('restore base schema (governed L1 bundle) is not readable') from None
+    if hashlib.sha256(raw).hexdigest() != SCOPED_RESTORE_BASE_SHA256:
+        raise BackupRefused('restore base schema differs from the governed L1 bundle')
+    text = ''.join(line for line in raw.decode('utf-8').splitlines(keepends=True)
+                   if not line.startswith(('\\restrict ', '\\unrestrict ')))
+    marker = '\nCREATE SCHEMA public;'
+    if text.count(marker) != 1:
+        raise BackupRefused('restore base schema has no single public schema declaration')
+    end = text.index(marker) + len(marker)
+    extensions = '\n'.join(f'CREATE EXTENSION IF NOT EXISTS "{e}" WITH SCHEMA public;' for e in SCOPED_RESTORE_BASE_EXTENSIONS)
+    parts, applied = ['DROP SCHEMA public;\n', text[:end], '\n', extensions, '\n', text[end:]], []
+    for name, expected in SCOPED_RESTORE_BASE_MIGRATIONS:
+        body = (MIGRATIONS_DIR / name).read_bytes() if re.fullmatch(r'[A-Za-z0-9_.-]+\.sql', name) else b''
+        if hashlib.sha256(body).hexdigest() != expected:
+            raise BackupRefused(f'restore base migration is missing or differs from the reviewed file: {name}')
+        parts.append('\n' + body.decode('utf-8') + '\n')
+        applied.append({'file': name, 'sha256': expected})
+    return ''.join(parts), {'bundle': SCOPED_RESTORE_BASE_PATH, 'sha256': SCOPED_RESTORE_BASE_SHA256, 'migrations': applied}
 
 
 def validate_scoped_capture(receipt: dict, archive: Path, label: str) -> dict:
@@ -392,6 +471,9 @@ def validate_scoped_capture(receipt: dict, archive: Path, label: str) -> dict:
             or not isinstance(scope.get('sequences'), list)
             or set(scope['tables']) != set(current['tables']) | set(scope['closure'])):
         raise BackupRefused('capture scope differs from the reviewed scope; recapture required')
+    if (not isinstance(scope.get('dump_excludes'), list)
+            or any(not isinstance(e, dict) or set(e) != {'table', 'owner'} for e in scope['dump_excludes'])):
+        raise BackupRefused('capture dump exclusions are missing or malformed')
     manifest = receipt.get('archive')
     if (not archive.is_dir() or not isinstance(manifest, dict) or not manifest.get('files')
             or archive_manifest(archive) != {'files': manifest.get('files'), 'sha256': receipt.get('archive_sha256')}):
@@ -584,15 +666,18 @@ def snapshot_scoped(folder: Path, label: str) -> dict:
         catalog = scoped_catalog(conn, scope)
         measured = scoped_measurements(conn, catalog['tables'], catalog['sequences'])
         run_client(['pg_dump', '--format=directory', f'--jobs={SCOPED_DUMP_JOBS}', '--no-owner', '--no-privileges',
-                    f'--snapshot={snapshot_id}', '--file', str(archive), *exclude_data_args(catalog['excluded_data'])],
+                    f'--snapshot={snapshot_id}', '--file', str(archive), *dump_table_args(catalog['tables'], catalog['dump_excludes'])],
                    settings, SCOPED_DUMP_TIMEOUT_S)
         _lock_down(archive)
         # Tables cannot differ inside one REPEATABLE READ snapshot; sequences are not transactional.
         if measure_sequences(conn, catalog['sequences']) != measured['sequences']:
             raise BackupRefused('source sequence state changed during capture')
         conn.rollback()
-    if archive_data_tables(archive, settings) != set(catalog['tables']):
+    listed = archive_tables(archive, settings)
+    if listed['data'] != set(catalog['tables']):
         raise BackupRefused('archive data entries differ from the scope')
+    if listed['definitions'] != set(catalog['tables']):
+        raise BackupRefused('archive definitions differ from the scope')
     manifest = archive_manifest(archive)
     if not manifest['files']:
         raise BackupRefused('empty archive')
@@ -604,12 +689,13 @@ def snapshot_scoped(folder: Path, label: str) -> dict:
                'measurements': measured, 'measurement_method': SCOPED_MEASUREMENT_METHOD,
                'script_sha256': sha256(Path(__file__)),
                'scope': {'name': scope['name'], 'sha256': scope['sha256'], 'tables': catalog['tables'],
-                         'closure': catalog['closure'], 'sequences': catalog['sequences'], 'data_bytes': catalog['data_bytes']},
+                         'closure': catalog['closure'], 'sequences': catalog['sequences'], 'data_bytes': catalog['data_bytes'],
+                         'dump_excludes': catalog['dump_excludes']},
                'validity': {'not_before': snapshot_ts.isoformat(), 'not_after': (snapshot_ts + window).isoformat(),
                             'seconds': int(window.total_seconds())},
-               'coverage': 'SCOPED logical backup, not a complete database: full schema; data, sequences and content '
+               'coverage': 'SCOPED logical backup, not a complete database: definitions, data, sequences and content '
                            'measurements of the listed scope tables and their foreign-key parents only; every other '
-                           "table's data, roles and grants excluded",
+                           "relation's definition and data, functions, types, roles and grants excluded",
                'backup_taken': True, 'restore_verified': None}
     validate_scoped_capture(receipt, archive, label)
     write_receipt(folder / 'capture.json', receipt)
@@ -634,8 +720,14 @@ def restore_verify_scoped(folder: Path, label: str, receipt: dict) -> dict:
             raise BackupRefused('restore target has the source database name')
         if control.execute('SELECT 1 FROM pg_database WHERE datname = %s', (target['dbname'],)).fetchone():
             raise BackupRefused('restore target already exists; no reuse, reset or deletion is permitted')
+        base_sql, base = restore_base_sql(Path(os.environ.get('KY_ROOT', '/Users/Dev/kalayantra')))
         control.execute(sql.SQL('CREATE DATABASE {} TEMPLATE template0').format(sql.Identifier(target['dbname'])))
         try:
+            with psycopg.connect(**dict(target, passfile=os.devnull, options='')) as prep:
+                prep.execute(base_sql)
+                # the archive's own definitions replace the base's copies of exactly the data set
+                for name in receipt['scope']['tables']:
+                    prep.execute(sql.SQL('DROP TABLE IF EXISTS {} CASCADE').format(sql.Identifier(*name.split('.', 1))))
             run_client(['pg_restore', '--exit-on-error', '--single-transaction', '--no-owner', '--no-privileges',
                         '--dbname', target['dbname'], str(archive)], target, SCOPED_RESTORE_TIMEOUT_S)
             with psycopg.connect(**dict(target, passfile=os.devnull, options=''), autocommit=True) as conn:
@@ -649,7 +741,7 @@ def restore_verify_scoped(folder: Path, label: str, receipt: dict) -> dict:
              'ts': datetime.now(timezone.utc).isoformat(), 'archive_sha256': receipt['archive_sha256'],
              'capture_sha256': sha256(folder / 'capture.json'), 'script_sha256': sha256(Path(__file__)),
              'target': {'host': target['host'], 'port': target['port'], 'database': target['dbname']},
-             'measurements': actual, 'scoped': True, 'scope_sha256': receipt['scope']['sha256'],
+             'measurements': actual, 'scoped': True, 'scope_sha256': receipt['scope']['sha256'], 'restore_base': base,
              'snapshot_ts': receipt['snapshot_ts'], 'validity': receipt['validity'],
              'target_removed': True, 'backup_taken': True, 'restore_verified': True}
     write_receipt(folder / 'restore.json', proof)
