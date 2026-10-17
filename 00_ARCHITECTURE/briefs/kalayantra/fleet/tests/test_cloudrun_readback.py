@@ -16,6 +16,17 @@ and one end-to-end test runs the script as a subprocess against a stub `gcloud` 
   C10 the corpus and the image's own attestation are honest nulls, not greens                             (Dockerfile.pipeline sets no label)
   C11 the executor table binds the kind exactly, and the real `validate` refuses anything else            (executor_ops.json, executor.validate)
   C12 end to end through the CLI: one JSON line, exit 0 / 1
+
+SR-J3-READ-KINDS (optional `logs` argument; fixtures/cloudrun_readback/logs_run.json is INVENTED, shaped from the log lines the repo's own code
+prints: stretch_sink.log_line / summary_line, and events.emit_event's "[event] <json>" for asset_runner's `asset.substep`):
+  L1  the fourth call is one fixed `gcloud logging read` scoped to the job, region, execution and a bounded page; no logs argument = no fourth call
+  L2  `logs` needs a well-formed execution; refused before any cloud call otherwise
+  L3  STRETCH_SINK/1 records are counted by kind/reason, de-duplicated by record_id, and reconciled to the STRETCH_SINK_SUMMARY/1 digest
+  L4  a truncated or malformed sink line reads NULL (never zero, never the readable part standing in for the whole)
+  L5  asset.substep: seconds between sub-steps, per-asset elapsed, last index/total; an unreadable time reads null
+  L6  a full or empty page is not reported as a complete count
+  L7  a gcloud logging failure refuses the whole record; nothing but parsed fields reaches the output
+  L8  the executor table and the CLI carry `logs` end to end
 """
 import copy
 import importlib.util
@@ -50,11 +61,12 @@ def fixture(name):
 class Cloud:
     """Doubles `gcloud`: returns the next fixture by the fixed argv, records every call."""
 
-    def __init__(self, job=None, image=None, execution=None, rc=None, stderr=""):
+    def __init__(self, job=None, image=None, execution=None, rc=None, stderr="", logs=None):
         self.calls = []
         self.answers = {"jobs describe": job if job is not None else fixture("job"),
                         "images describe": image if image is not None else fixture("image"),
-                        "executions describe": execution if execution is not None else fixture("execution_succeeded")}
+                        "executions describe": execution if execution is not None else fixture("execution_succeeded"),
+                        "logging read": logs if logs is not None else fixture("logs_run")}
         self.rc = rc or {}
         self.stderr = stderr
 
@@ -316,7 +328,7 @@ def test_c11_table_entry_and_real_validate(tmp_path, monkeypatch):
     table = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
     entry = table["cloudrun_job_readback"]
     assert list(entry)[0] == "enabled" and entry["enabled"] is True and entry["production"] is False
-    assert (entry["needs"], entry["fixed_args"], entry["allowed_args"], entry["requesters"]) == ("gcloud", [], ["execution"], ["adhikarin", "v1", "v2"])
+    assert (entry["needs"], entry["fixed_args"], entry["allowed_args"], entry["requesters"]) == ("gcloud", [], ["execution", "logs"], ["adhikarin", "v1", "v2"])
     assert entry["script"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py" and "also_needs" not in entry
     ex = _executor(tmp_path, monkeypatch)
     caps = {"gcloud": True}
@@ -333,7 +345,7 @@ def test_c11_table_entry_and_real_validate(tmp_path, monkeypatch):
 
 def _stub_gcloud(directory):
     (directory / "answers").mkdir()
-    for name in ("job", "image", "execution_succeeded"):
+    for name in ("job", "image", "execution_succeeded", "logs_run"):
         (directory / "answers" / f"{name}.json").write_text((FIX / f"{name}.json").read_text())
     stub = directory / "gcloud"
     stub.write_text("#!/bin/sh\n"
@@ -341,6 +353,7 @@ def _stub_gcloud(directory):
                     'echo "$@" >> "$D/../calls.log"\n'
                     'echo "ERROR: noisy token ya29.LEAK" >&2\n'
                     'case "$*" in\n'
+                    '  *"logging read"*) cat "$D/logs_run.json" ;;\n'
                     '  *"jobs executions describe"*) cat "$D/execution_succeeded.json" ;;\n'
                     '  *"images describe"*) cat "$D/image.json" ;;\n'
                     '  *"jobs describe"*) cat "$D/job.json" ;;\n'
@@ -361,3 +374,180 @@ def test_c12_cli_end_to_end_prints_one_json_line(tmp_path):
     assert bad.returncode == 1 and json.loads(bad.stdout)["status"] == "REFUSED"
     extra = subprocess.run([sys.executable, "-I", str(SCRIPT), "--format=yaml"], capture_output=True, text=True, env=env, cwd=tmp_path)
     assert extra.returncode == 2 and len((tmp_path / "calls.log").read_text().splitlines()) == 3
+
+
+# ───────────── SR-J3-READ-KINDS: the optional `logs` argument ─────────────
+
+EXEC = "brahma-build-pipeline-job-abc12"
+
+
+def read_logs(entries, execution=EXEC):
+    cloud = Cloud(logs=entries)
+    return CR.measure(execution, cloud, logs=True)["logs"], cloud
+
+
+def test_l1_one_fixed_logging_read_scoped_to_the_job_region_and_execution():
+    record, cloud = read_logs(fixture("logs_run"))
+    assert [c[1:3] for c in cloud.calls] == [["run", "jobs"], ["artifacts", "docker"], ["run", "jobs"], ["logging", "read"]]
+    argv = cloud.calls[-1]
+    assert argv[:3] == ["gcloud", "logging", "read"] and argv[4:] == [f"--project={CR.PROJECT}", "--limit=1000", "--order=desc", "--format=json"]
+    flt = argv[3]
+    for clause in ('resource.type="cloud_run_job"', 'resource.labels.job_name="brahma-build-pipeline-job"', 'resource.labels.location="asia-south1"',
+                   f'labels."run.googleapis.com/execution_name"="{EXEC}"'):
+        assert clause in flt
+    assert record["filter"] == flt and record["page_size"] == 1000
+    plain = Cloud()
+    assert CR.measure(EXEC, plain)["logs"] is None and len(plain.calls) == 3
+
+
+@pytest.mark.parametrize("execution", [None, "nope", "brahma-build-pipeline-job-A", "other-job-abc12"])
+def test_l2_logs_needs_a_well_formed_execution_and_stops_before_any_cloud_call(execution):
+    cloud = Cloud()
+    with pytest.raises(CR.Refused):
+        CR.measure(execution, cloud, logs=True)
+    assert cloud.calls == []
+
+
+def test_l3_sink_records_are_counted_deduplicated_and_reconciled_to_the_summary_digest():
+    entries = fixture("logs_run")
+    duplicate = next(e for e in entries if e["textPayload"].startswith("STRETCH_SINK/1 ") and '"stretch_ordinal": 2' in e["textPayload"] or
+                     e["textPayload"].startswith("STRETCH_SINK/1 ") and '"stretch_ordinal":2' in e["textPayload"])
+    sink, _ = read_logs(entries + [duplicate])
+    sink = sink["sink"]
+    assert sink["record_count"] == 4 and sink["duplicate_record_lines"] == 1
+    assert sink["counts_by_kind_reason"] == {"near_miss/certified_positive_clearance": 1, "omission/crossing_detected": 1, "wrap/ray_band_contains_wrap_cut": 2}
+    assert sink["records_by_event_class"] == {"aspect": 1, "conjunction": 3}
+    # MEASURING_BUILD_CONTRACT v1.0 MB-2.4: record_ids_digest = sha256 hex of the sorted record_ids joined by "\n"
+    assert [(s["event_class"], s["records"], s["records_match_summary"], s["digest_matches_records"]) for s in sink["summaries"]] == [
+        ("aspect", 1, True, True), ("conjunction", 3, True, True)]
+
+
+def test_l3_a_summary_that_the_records_do_not_reproduce_reads_false_not_true():
+    entries = fixture("logs_run")
+    entries = [e for e in entries if not (e["textPayload"].startswith("STRETCH_SINK/1 ") and "00000000000" + "3" in e["textPayload"])]
+    sink, _ = read_logs(entries)
+    row = next(s for s in sink["sink"]["summaries"] if s["event_class"] == "conjunction")
+    assert row["records_match_summary"] is False and row["digest_matches_records"] is False
+
+
+def _chop(entries, startswith, keep):
+    out = copy.deepcopy(entries)
+    target = next(e for e in out if e["textPayload"].startswith(startswith))
+    target["textPayload"] = target["textPayload"][:keep]
+    return out
+
+
+@pytest.mark.parametrize("startswith,keep", [("STRETCH_SINK/1 ", 60), ("STRETCH_SINK/1 ", len("STRETCH_SINK/1 ")), ("STRETCH_SINK/1 ", len("STRETCH_SINK/1")),
+                                              ("STRETCH_SINK_SUMMARY/1 ", 70)])
+def test_l4_a_truncated_sink_line_reads_null_not_zero(startswith, keep):
+    sink_log, _ = read_logs(_chop(fixture("logs_run"), startswith, keep))
+    sink = sink_log["sink"]
+    assert sink_log["unreadable_lines"] == 1
+    assert sink["record_count"] is None and sink["counts_by_kind_reason"] is None and sink["records_by_event_class"] is None   # not 3, not 0
+    assert all(s["records_match_summary"] is None and s["digest_matches_records"] is None for s in sink["summaries"])
+    assert sink["record_count_lower_bound"] >= 0 and sink["counts_by_kind_reason_lower_bound"] is not None          # the readable part is labelled as such
+
+
+@pytest.mark.parametrize("mutate", [lambda r: r.update(schema="stretch_sink/2"), lambda r: r.pop("record_id"), lambda r: r.update(kind=7), lambda r: r.update(reason="")])
+def test_l4_a_well_formed_json_line_of_the_wrong_shape_is_unreadable_too(mutate):
+    entries = copy.deepcopy(fixture("logs_run"))
+    target = next(e for e in entries if e["textPayload"].startswith("STRETCH_SINK/1 "))
+    body = json.loads(target["textPayload"][len("STRETCH_SINK/1 "):])
+    mutate(body)
+    target["textPayload"] = "STRETCH_SINK/1 " + json.dumps(body)
+    record, _ = read_logs(entries)
+    assert record["unreadable_lines"] == 1 and record["sink"]["record_count"] is None
+
+
+def test_l4_a_summary_with_a_bad_field_keeps_the_good_fields_and_reads_the_bad_one_null():
+    entries = copy.deepcopy(fixture("logs_run"))
+    target = next(e for e in entries if e["textPayload"].startswith("STRETCH_SINK_SUMMARY/1 "))
+    body = json.loads(target["textPayload"][len("STRETCH_SINK_SUMMARY/1 "):])
+    body["records"] = "3"                                   # a string, not a count
+    target["textPayload"] = "STRETCH_SINK_SUMMARY/1 " + json.dumps(body)
+    summaries = read_logs(entries)[0]["sink"]["summaries"]
+    bad = next(s for s in summaries if s["records"] is None)
+    assert bad["event_class"] in ("aspect", "conjunction") and bad["records_match_summary"] is None and bad["digest_matches_records"] is True
+
+
+def test_l5_substep_timing_last_index_and_total():
+    sub = read_logs(fixture("logs_run"))[0]["substeps"]
+    assets = {a["asset_id"]: a for a in sub["assets"]}
+    run = assets["ka_gochara_v5"]
+    assert (run["substeps_seen"], run["total"], run["last_index"]) == (3, 3, 3)
+    assert [r["seconds_since_previous"] for r in run["substeps"]] == [None, 5.5, 59.5]          # nanosecond Cloud Logging times, truncated to microseconds
+    assert run["elapsed_seconds"] == 65.0 and run["first_at"] == "2026-10-17T10:00:00.123456789Z"
+    assert sub["last_substep"] == {"asset_id": "ka_gochara_v5", "substep_key": "chunk_c", "index": 3, "total": 3, "at": "2026-10-17T10:01:05.123456789Z"}
+    skipped = assets["ga_dashas"]["substeps"]
+    assert [(r["index"], r["skipped"], r["seconds_since_previous"]) for r in skipped] == [(1, False, None), (2, True, None)]   # a skip did no work: no timing
+
+
+def test_l5_an_unreadable_time_makes_the_dependent_timing_and_last_substep_null():
+    entries = copy.deepcopy(fixture("logs_run"))
+    next(e for e in entries if '"chunk_b"' in e["textPayload"])["timestamp"] = "yesterday"
+    sub = read_logs(entries)[0]["substeps"]
+    run = next(a for a in sub["assets"] if a["asset_id"] == "ka_gochara_v5")
+    assert run["substeps"][1]["seconds_since_previous"] is None and run["substeps"][2]["seconds_since_previous"] is None and run["elapsed_seconds"] == 65.0
+    assert sub["last_substep"] is None                      # one time unread: "the latest" is not known
+
+
+def test_l5_a_malformed_substep_is_counted_unreadable_and_a_run_with_no_substep_lines_has_no_last():
+    entries = copy.deepcopy(fixture("logs_run"))
+    target = next(e for e in entries if '"chunk_a"' in e["textPayload"] and "ka_gochara_v5" in e["textPayload"])
+    target["textPayload"] = target["textPayload"].replace('"index": 1', '"index": 9')            # index beyond total
+    assert read_logs(entries)[0]["unreadable_lines"] == 1
+    without = [e for e in fixture("logs_run") if "asset.substep" not in e["textPayload"]]
+    sub = read_logs(without)[0]["substeps"]
+    assert sub == {"last_substep": None, "assets": []}
+
+
+def test_l6_a_full_page_is_a_lower_bound_and_an_empty_page_is_not_a_zero_count():
+    entries = fixture("logs_run")
+    filler = [{"timestamp": "2026-10-17T09:00:00Z", "textPayload": "noise"}] * (CR.LOG_PAGE_SIZE - len(entries))
+    full, _ = read_logs(entries + filler)
+    assert full["page_full"] is True and full["entries_returned"] == CR.LOG_PAGE_SIZE
+    assert full["sink"]["record_count"] is None and full["sink"]["record_count_lower_bound"] == 4
+    empty, _ = read_logs([])
+    assert empty["entries_returned"] == 0 and empty["sink"]["record_count"] is None and empty["sink"]["record_count_lower_bound"] == 0
+    assert empty["substeps"]["last_substep"] is None
+    assert read_logs(entries)[0]["page_full"] is False
+
+
+def test_l7_a_logging_failure_refuses_the_whole_record_and_stderr_is_not_relayed():
+    cloud = Cloud(rc={"logging read": 1}, stderr="token ya29.LEAK")
+    with pytest.raises(CR.Refused) as caught:
+        CR.measure(EXEC, cloud, logs=True)
+    assert str(caught.value) == "logs: gcloud exited 1" and "ya29" not in str(caught.value)
+    assert "not a JSON array" in refusal(Cloud(logs={"not": "a list"}), None) if False else True
+    with pytest.raises(CR.Refused, match="not a JSON array"):
+        CR.measure(EXEC, Cloud(logs={"not": "a list"}), logs=True)
+    with pytest.raises(CR.Refused, match="entry is not a JSON object"):
+        CR.measure(EXEC, Cloud(logs=["text"]), logs=True)
+
+
+def test_l7_only_parsed_fields_reach_the_output():
+    record, _ = read_logs(fixture("logs_run"))
+    assert "ya29" not in json.dumps(record) and "LEAKED" not in json.dumps(record)
+
+
+def test_l8_table_and_validate_carry_logs_and_the_cli_runs_end_to_end(tmp_path, monkeypatch):
+    table = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
+    ex = _executor(tmp_path, monkeypatch)
+    assert ex.validate(_req(args={"execution": EXEC, "logs": "true"}), table, {"gcloud": True}) is None
+    assert "disallowed args" in ex.validate(_req(args={"execution": EXEC, "logs": "true", "limit": "9"}), table, {"gcloud": True})
+    _stub_gcloud(tmp_path)
+    env = {"PATH": f"{tmp_path}:/usr/bin:/bin", "HOME": str(tmp_path)}
+    calls = tmp_path / "calls.log"
+
+    def run(*args):
+        return subprocess.run([sys.executable, "-I", str(SCRIPT), *args], capture_output=True, text=True, env=env, cwd=tmp_path)
+    done = run("--execution", EXEC, "--logs", "true")
+    assert done.returncode == 0, done.stdout + done.stderr
+    record = json.loads(done.stdout)
+    assert record["logs"]["sink"]["record_count"] == 4 and record["logs"]["substeps"]["last_substep"]["index"] == 3
+    assert "ya29" not in done.stdout + done.stderr and len(calls.read_text().splitlines()) == 4
+    before = len(calls.read_text().splitlines())
+    no_exec = run("--logs", "true")
+    assert no_exec.returncode == 1 and json.loads(no_exec.stdout)["status"] == "REFUSED"
+    assert run("--execution", EXEC, "--logs", "false").returncode == 2
+    assert len(calls.read_text().splitlines()) == before                     # neither the refusal nor the bad flag reached gcloud
