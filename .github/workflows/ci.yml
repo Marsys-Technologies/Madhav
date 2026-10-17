@@ -2391,7 +2391,7 @@ jobs:
           # fleet/tests/test_executor_table.py (run in the shard-1-only step below) reads the plan-pin and model-pin commits with `git show`, so
           # shard 1 needs full history. The other shards stay shallow: test_e1_1_scorecard.py (shard 3) skips by design on a shallow clone, and
           # a full clone would switch its two real-repo tests on for this PR as a side effect.
-          fetch-depth: ${{ matrix.shard == 1 && 0 || 1 }}
+          fetch-depth: ${{ matrix.shard != 1 && 1 || 0 }}
       - name: Restore source-bound generated files
         uses: ./.github/actions/restore-generated
 
