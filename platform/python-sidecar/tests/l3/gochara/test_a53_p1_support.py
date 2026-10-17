@@ -116,7 +116,7 @@ def _world(monkeypatch, tmp_path, faithful):
                                        precision_regime="swiss_bisect_tol_1e-9d", coverage={"truncated": False})
             return sky
 
-    def grain(agent, in_sign, house_for=_lagna_house, anchor=None, anchors=None):
+    def grain(agent, in_sign, house_for=_lagna_house, anchor=None, anchors=None, chart=CHART):
         """Materialise the P1 `agent` Libra-residence grain read under `anchor` = (lord, level) — default: the
         agent's own AD; `in_sign(t)` says when the body is IN Libra."""
         wanted = list(anchors) if anchors else [anchor or (agent, "ad")]      # ONE call: the grain is rebuilt whole
@@ -135,7 +135,7 @@ def _world(monkeypatch, tmp_path, faithful):
                 edges=edges, horizon=(H0, H1),
                 position_at=lambda body, t: 195.0 if in_sign(t) else 15.0, house_for=house_for,
                 sky_convention_id=sky, source_fact_ids=["fact-1"], prerequisites=P1_PREREQS,
-                chart=CHART, dasha_rows_for=rows_for)
+                chart=chart, dasha_rows_for=rows_for)
 
     class W:
         pass
