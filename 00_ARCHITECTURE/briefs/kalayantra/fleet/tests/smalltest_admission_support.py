@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / 'platform/scripts/__tests__'))
 import smalltest_safety_support as evidence
 from test_teardown_v5_small_test import _Harness, RUN_1
 
-ARG_VALUES = {'label': 'fixture', 'sql_file': 'fixture.sql', 'migration': '1304',
+ARG_VALUES = {'label': 'fixture', 'scope': 'small_test', 'sql_file': 'fixture.sql', 'migration': '1304',
               'run': 'all_classes_1y', 'classes': 'all',
               'horizon-start': '2025-04-17T00:00:00+00:00',
               'horizon-end': '2026-04-17T00:00:00+00:00'}
@@ -67,6 +67,7 @@ def request(executor, kind, args=None):
                 req[field] = bound[field]
     if kind == 'smalltest_dispatch':
         req['absence_receipt'], req['absence_acceptance'] = evidence.absence_for(executor.KY_ROOT)
+        req.update(evidence.scoped_backup_for(executor.KY_ROOT))
     return approve(executor, req)
 
 
