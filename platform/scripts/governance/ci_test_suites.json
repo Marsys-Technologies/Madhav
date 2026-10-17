@@ -753,7 +753,8 @@
       "engine": "pytest",
       "include": [
         "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_*smalltest*.py"
-      ]
+      ],
+      "shard_job": "db-integration-tests"
     },
     "governance-readback-tests-mcp": {
       "cwd": "platform-mcp",
