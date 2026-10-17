@@ -81,7 +81,13 @@ MEASURING_BINDINGS = {
         "required_rows": ["2", "3", "7", "9", "11"],
     },
 }
-ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"} | set(P01_BINDINGS)
+# J-2a M6/M7: the one added read-only kind (fleet/CLOUDRUN_READBACK_v1_0.md). Exact binding, not permission for any other op.
+CLOUDRUN_READBACK = {
+    "enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py",
+    "fixed_args": [], "allowed_args": ["execution"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
+    "timeout_s": 600, "enabled_by": "J-2a",
+}
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "local_schema_seed", "finalize"} | set(P01_BINDINGS)
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
@@ -137,7 +143,7 @@ def test_every_enabled_by_is_a_model_item():
     assert not bad, f"enabled_by names an id that is not in the plan model: {bad}"
 
 
-def test_enabled_set_is_exactly_bootstrap_and_six_p01_kinds():
+def test_enabled_set_is_exactly_bootstrap_cloudrun_readback_and_six_p01_kinds():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     assert {k for k, e in ops.items() if enabled_state(k, e)} == ENABLED_KINDS
 
@@ -165,6 +171,7 @@ def assert_table_matches_pin(now):
     expected_order = list(base["ops"])
     pos = expected_order.index("measuring_dispatch") + 1
     expected_order[pos:pos] = ["measuring_dispatch_dryrun", "measuring_teardown_dryrun", "measuring_teardown"]
+    expected_order.insert(expected_order.index("migration_readback") + 1, "cloudrun_job_readback")
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
@@ -178,6 +185,7 @@ def assert_table_matches_pin(now):
     expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
     expected["verification_job"]["needs"] = "gcloud"
     expected.update(json.loads(json.dumps(MEASURING_BINDINGS)))
+    expected["cloudrun_job_readback"] = json.loads(json.dumps(CLOUDRUN_READBACK))
     for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
                         ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
         expected[kind]["prepared_dry_run"] = {
