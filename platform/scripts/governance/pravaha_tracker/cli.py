@@ -377,6 +377,44 @@ def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str,
     return receipt
 
 
+def _teardown_completed(executor: dict, receipts: str, digest: str) -> bool:
+    """A committed production teardown stays AWAITING_ABSENCE by design (fleet/executor.py: the
+    COMMITTED_AWAITING_ABSENCE proof sets that status). It counts as complete only once the executor has
+    published <op>.completion.json after the separate absence readback was accepted: status COMPLETED, the
+    same operation and request, the digest of this very receipt, and the digest of the named absence receipt.
+
+    (I) INTERPRETATION: commit_receipt_sha256 is also bound to this receipt's bytes (the executor writes
+    digest_bytes of the commit receipt there); the alternative of checking only the fields named in the
+    job brief would let a receipt edited after completion pass.
+    """
+    opid = executor["operation_id"]
+    if (executor.get("status") != "AWAITING_ABSENCE"
+            or executor.get("kind") not in ("smalltest_teardown", "measuring_teardown")):
+        return False
+    path = os.path.join(receipts, opid + ".completion.json")
+    try:
+        if os.path.realpath(path) != path:
+            return False
+        with open(path, encoding="utf-8") as handle:
+            completion = json.load(handle)
+        absence = completion.get("absence_receipt")
+        name = absence.get("name") if isinstance(absence, dict) else None
+        if not isinstance(name, str) or re.fullmatch(r"[A-Za-z0-9_.-]+\.json", name) is None:
+            return False
+        absence_path = os.path.join(receipts, name)
+        if os.path.realpath(absence_path) != absence_path:
+            return False
+        with open(absence_path, "rb") as handle:
+            absence_digest = hashlib.sha256(handle.read()).hexdigest()
+    except (OSError, ValueError, AttributeError):
+        return False
+    return (isinstance(completion, dict) and completion.get("status") == "COMPLETED"
+            and completion.get("operation_id") == opid
+            and completion.get("request_sha256") == executor.get("request_sha256")
+            and completion.get("commit_receipt_sha256") == digest
+            and absence.get("sha256") == absence_digest)
+
+
 def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[dict]) -> None:
     """Check the executor's receipt, archived request, measured output and independent acceptance.
 
@@ -402,8 +440,10 @@ def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[d
         raise CompletionError("operation step evidence_sha256 does not match the executor receipt")
     executor = json.loads(raw)
     if (not isinstance(executor, dict) or executor.get("operation_id") != opid
-            or executor.get("item_id") != item["id"] or executor.get("status") != "COMPLETED"
-            or type(executor.get("exit_code")) is not int or executor["exit_code"] != 0):
+            or executor.get("item_id") != item["id"]
+            or type(executor.get("exit_code")) is not int or executor["exit_code"] != 0
+            or not (executor.get("status") == "COMPLETED"
+                    or _teardown_completed(executor, receipts, digest))):
         raise CompletionError("operation step requires this item's COMPLETED executor receipt with exit 0")
 
     request_path = os.path.join(ops, "done", request_id + ".json")
