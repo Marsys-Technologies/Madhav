@@ -334,12 +334,13 @@ class GuardedCompletionCases(unittest.TestCase):
             self.done([self.step, self.review, self.verdict, self.post, rejected])
 
     def test_done_requires_deps_steps_verdict_detector(self):
-        with self.assertRaisesRegex(CompletionError, "steps"):
-            self.done([self.review, self.verdict, self.post])
+        # A7 D-46: a code item needs no step receipt (its PR acceptance covers them); only the detector, verdict and
+        # post-deploy evidence remain, and an operation still waits for its dependencies (SR-A4-01).
+        self.assertTrue(self.done([self.review, self.verdict, self.post])["guarded"])
         with self.assertRaisesRegex(CompletionError, "detector"):
             self.done([self.step, self.review, self.verdict, self.post], detector="pending")
         with self.assertRaisesRegex(CompletionError, "dependencies"):
-            self.done([], item="K-2", proof={"type": "artifact", "artifact_digest": "f" * 64})
+            self.done([], item="K-2", proof={"type": "operation"})
         event = self.done([self.step, self.review, self.verdict, self.post])
         self.assertTrue(event["guarded"])
         self.assertIn(self.merge, event["evidence"])

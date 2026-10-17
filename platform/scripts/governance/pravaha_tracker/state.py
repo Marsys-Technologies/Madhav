@@ -13,6 +13,11 @@ instead requires a guarded done event; a matching detector is evidence only:
 4. An item **done by event**: done only by an event carrying evidence (enforced at write time).
 5. Anything not started whose dependencies are all done is `ready`; otherwise `waiting`.
 
+A7 D-46 (guarded models): a code/artifact item may complete while its dependencies are still open (see
+completion.D46_KINDS). Such a `done` row is *implemented*; it carries `activation_pending` (its open gates) and is
+*activated* only once that list is empty. `overall` reports implemented/total and activated/total; `close_ready`
+needs every applicable item both implemented and activated.
+
 Stream liveness (Pravāha addition): each stream's last heartbeat, last event and last commit are
 shown side by side. A stream with work `running` and no heartbeat for `stale_after_s` is *stale*
 (amber); past `dead_after_s` it is *silent* (red). A stream with nothing running is *idle*, which is
@@ -335,6 +340,9 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             and all(dep in items for dep in s["deps_open"])
         )
         s["gate_blockers"] = list(s["deps_open"]) if s["built_waiting_on_gate"] else []
+        # A7 D-46: an implemented (done) item whose strict gates are still open is implemented but not yet
+        # activated. Recomputed every snapshot, so it empties by itself when the last gate closes.
+        s["activation_pending"] = list(s["deps_open"]) if guarded and s["status"] == "done" else []
 
     # a model that declares its items (relaunch plan v2.7 §6) shows each row's declaration; other models as before
     declared = isinstance(model.get("control_plane", {}).get("declarations"), dict)
@@ -411,6 +419,13 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         "generated_at": now.isoformat(timespec="seconds"),
         "campaign": model.get("campaign"), "subtitle": model.get("subtitle"), "plan_ref": model.get("plan_ref"),
         "overall": {"total": total, "done": counts.get("done", 0),
+                    # A7 D-46 headline: implemented/total with activated/total beside it; close needs both.
+                    "implemented": counts.get("done", 0),
+                    "activated": sum(1 for t in flat if t["status"] == "done" and not t["activation_pending"]),
+                    "activation_pending": sum(1 for t in flat if t["activation_pending"]),
+                    "close_ready": bool(total) and all(
+                        t["status"] == "not_applicable" or (t["status"] == "done" and not t["activation_pending"])
+                        for t in flat),
                     "built_waiting_on_gate": sum(1 for t in flat if t["built_waiting_on_gate"]),
                     "not_applicable": counts.get("not_applicable", 0),
                     "running": counts.get("running", 0) + counts.get("review", 0),

@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import re
 
-from .completion import evidence_requirements, unmet_evidence
+from .completion import d46_kind, evidence_requirements, unmet_evidence
 from .verdicts import accepted_verdict
 
 
@@ -106,10 +106,17 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
                 blocked = True
             if ev.get("state") == "done" and not ev.get("step"):
                 row = items.get(item_id, {})
+                completion = ev.get("completion") if isinstance(ev.get("completion"), dict) else {}
+                relaxed = d46_kind(model, row, completion.get("type"))
+                recorded = ev.get("activation_pending") if isinstance(ev.get("activation_pending"), list) else []
                 for dep in row.get("depends_on", []):
                     if not dependency_done(dep) and not (row.get("accepts_not_applicable_dependencies") and
                                                         dependency_skipped(dep)):
-                        fail("unmet_dependency", item_id, f"{dep} was not terminal at completion")
+                        if relaxed is None:
+                            fail("unmet_dependency", item_id, f"{dep} was not terminal at completion")
+                        elif dep not in recorded:    # D-46: a deferred gate must be recorded, never silent
+                            fail("activation_pending_unrecorded", item_id,
+                                 f"{dep} was not terminal at completion and the completion does not record it")
                 if any(outcomes.get(decision) in ("approved", "refused") and
                        outcomes[decision] != wanted for decision, wanted in
                        row.get("requires_outcome", {}).items()) or (not row.get(
@@ -117,7 +124,6 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
                     fail("skipped_item_completed", item_id, "item completed despite unavailable required input")
                 if model.get("control_plane", {}).get("guarded_completion") and ev.get("guarded") is not True:
                     fail("unguarded_done", item_id, "terminal event bypassed guarded completion")
-                completion = ev.get("completion") if isinstance(ev.get("completion"), dict) else {}
                 requirements = evidence_requirements(model, row)
                 if requirements is not None:
                     # the guard's own requirements, on the log as it stood when the completion was written

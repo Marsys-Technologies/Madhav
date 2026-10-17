@@ -34,6 +34,23 @@ EVIDENCE_TABLE = {
 }
 
 
+# A7 D-46 (owner direction 2026-10-17): a code/artifact item is IMPLEMENTED once merged + accepted + deployed
+# (artifact: digest + independent verdict). Its open dependencies no longer block that; they are recorded as
+# `activation_pending` and the item is ACTIVATED only when they close. Code items also drop the separate step
+# receipts: the PR acceptance covers the code-verifiable steps. Operation, packet, decision and join items keep
+# strict ordered completion (SR-A4-01).
+D46_KINDS = ("code", "artifact")
+
+
+def d46_kind(model: dict, item: dict, proof_type) -> str | None:
+    """The completion kind that decides whether D-46 applies: the declared one, else the proof's own type."""
+    if isinstance(model.get("control_plane", {}).get("declarations"), dict):
+        kind = item.get("completion_kind")
+    else:
+        kind = proof_type
+    return kind if kind in D46_KINDS else None
+
+
 def _production_metadata(value) -> bool:
     """Normalised (plan §8.5): empty, the string NONE and anything that is not text or a list of text say nothing."""
     if isinstance(value, str):
@@ -204,12 +221,19 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
     if rows[item_id]["status"] == "not_applicable":
         raise CompletionError("item is not applicable")
     strict = open_dependencies(item, rows)
-    if strict:
+    relaxed = d46_kind(model, item, proof.get("type"))
+    activation_pending: list[str] = []
+    if strict and relaxed is None:
         raise CompletionError("dependencies remain open: " + ", ".join(strict))
+    if strict:
+        unknown = [dep for dep in strict if dep not in rows]
+        if unknown:    # D-46 defers to another plan item or gate, never to an id the plan does not know
+            raise CompletionError("dependencies unknown to the plan: " + ", ".join(unknown))
+        activation_pending = list(strict)
     steps = item.get("steps", [])
     completed = {ev.get("step") for ev in events if ev.get("kind") == "item" and
                  ev.get("item") == item_id and ev.get("state") == "done" and ev.get("step")}
-    if set(steps) - completed:
+    if set(steps) - completed and relaxed != "code":
         raise CompletionError("steps remain open: " + ", ".join(sorted(set(steps) - completed)))
     if not item.get("detector") or detector.get("status") != "done":
         raise CompletionError("declared detector has not passed")
@@ -234,8 +258,13 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
         raise CompletionError(first["detail"], first["code"])
 
     digest = proof.get("artifact_digest")
+    d46 = {"merged_pr": None, "acceptance_ref": None, "deploy_run_id": None}
     if kind == "code":
         verdict = accepted_verdict(events, item_id, head=head, repo=proof.get("repo"))
+        deploy = proof.get("deploy") if isinstance(proof.get("deploy"), dict) else {}
+        d46.update(merged_pr=observed["number"], deploy_run_id=deploy.get("run_id"),
+                   acceptance_ref={"phase": "pre_merge", "head": head, "verdict_ts": verdict["ts"],
+                                   "actor": verdict.get("actor")})
         if "post_deploy_verdict" in requirements["evidence"]:
             post = accepted_verdict(events, item_id, head=merge, phase="post_deploy")
             evidence = f"PR #{observed['number']} head {head} merged {merge}; verdicts {verdict['ts']}, {post['ts']}"
@@ -245,6 +274,8 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
                         f"deployed {deploy['deployed_sha']} (run {deploy['run_id']}) contains the merge commit")
     elif kind == "artifact":
         verdict = accepted_verdict(events, item_id, artifact_digest=digest, phase="artifact")
+        d46["acceptance_ref"] = {"phase": "artifact", "artifact_digest": digest, "verdict_ts": verdict["ts"],
+                                 "actor": verdict.get("actor")}
         evidence = f"artifact sha256 {digest}; verdict {verdict['ts']}"
     elif kind == "operation":
         verdict = accepted_verdict(events, item_id, artifact_digest=digest, phase="artifact")
@@ -252,6 +283,11 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
     else:
         packet_id = item["detector"]["path"].rsplit("/", 1)[-1].removesuffix(".VERDICT.json")
         evidence = f"packet {packet_id} verdict sha256 {digest}; review sha256 {proof['review_sha256']}"
-    return {"kind": "item", "actor": actor, "item": item_id, "state": "done",
-            "guarded": True, "evidence": evidence, "completion": {"type": kind, **proof},
-            "detail": "guarded completion: dependencies, steps, detector and independent acceptance verified"}
+    event = {"kind": "item", "actor": actor, "item": item_id, "state": "done",
+             "guarded": True, "evidence": evidence, "completion": {"type": kind, **proof},
+             "detail": "guarded completion: dependencies, steps, detector and independent acceptance verified"}
+    if relaxed:
+        event.update(d46, activation_pending=activation_pending,
+                     detail="D-46 implemented: independent acceptance and detector verified" + (
+                         "; activation pending on " + ", ".join(activation_pending) if activation_pending else ""))
+    return event
