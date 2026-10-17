@@ -185,6 +185,9 @@ def admitted_request(ex, kind='smalltest_dispatch', **fields):
               'horizon-end': '2026-04-17T00:00:00+00:00'}, reviewed_commit=S.COMMIT,
         expires_at=(dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=10)).isoformat())
     req.update(fields)
+    if kind == 'smalltest_dispatch':
+        for key, value in S.scoped_backup_for(ex.KY_ROOT).items():
+            req.setdefault(key, value)
     req['acceptance_receipt'] = str(ex.ACC / 'fixture.json')
     (ex.ACC / 'fixture.json').write_text(json.dumps(dict(result='ACCEPTED', by='v1', operation_id=req['operation_id'],
         request_sha256=ex.request_digest(req), reviewed_commit=S.COMMIT, ts=ex.now(),
