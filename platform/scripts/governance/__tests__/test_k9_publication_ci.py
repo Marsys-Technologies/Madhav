@@ -1,5 +1,6 @@
 """The required aggregate must actually fail when the layer DB proof fails."""
 from pathlib import Path
+import json
 import os
 import subprocess
 
@@ -32,5 +33,8 @@ def test_required_shard_selects_bindings_and_database_job_collects_publication()
     # Directory discovery collects the new DB tests. No explicit CI paths added.
     db=all_jobs['kala-db-tests']
     assert not db.get('continue-on-error')
-    steps=[s for s in db['steps'] if 'pytest tests/l3/kala_db ' in s.get('run','')]
+    # Since the pattern-discovery CI (A5 D-33) the job runs profile kala-db-tests-5-0, whose directory list is what collects tests/l3/kala_db.
+    steps=[s for s in db['steps'] if 'ci_discovery.py' in s.get('run','') and 'pytest kala-db-tests-5-0 ' in s.get('run','')]
     assert len(steps)==1 and str(steps[0]['env']['KALA_REQUIRE_DB'])=='1'
+    profile=json.loads((ROOT/'platform/scripts/governance/ci_test_suites.json').read_text())['suites']['kala-db-tests-5-0']
+    assert 'tests/l3/kala_db' in profile['directories'] and profile['cwd']=='platform/python-sidecar'
