@@ -759,7 +759,9 @@ def accepted_cloudrun_execution(readback_id: str, execution_name: str) -> dict |
             and digest_bytes(body) == record.get("output_sha256") and accepted.get("result") == "ACCEPTED"
             and accepted.get("by") in ("v1", "v2", "v3", "v4", "executor-mechanical") and accepted.get("operation_id") == readback_id
             and accepted.get("request_sha256") == record.get("request_sha256")
-            and (accepted.get("by") != "executor-mechanical" or all(value is True for value in (accepted.get("checks") or {}).values()))):
+            and (accepted.get("by") != "executor-mechanical"       # same bar as fence_quiescent: the record's own schema, and every check present and true
+                 or (accepted.get("schema") == "ky.mechanical_acceptance/1" and isinstance(accepted.get("checks"), dict)
+                     and bool(accepted["checks"]) and all(value is True for value in accepted["checks"].values())))):
         return None
     found = []
     for line in body.decode().splitlines():

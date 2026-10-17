@@ -218,8 +218,11 @@ def scenario(w, flaw=None, dispatch=False):
         (m.REC / "cr-1.output.txt").write_text(output)
         (m.REC / "cr-1.json").write_text(json.dumps({"operation_id": "cr-1", "kind": "cloudrun_job_readback", "status": "COMPLETED", "exit_code": 0,
                                                      "request_sha256": "b" * 64, "output_sha256": sha(output)}))
-        (m.ACC / "cr-1.post.json").write_text(json.dumps({"result": "ACCEPTED", "by": "executor-mechanical", "operation_id": "cr-1",
-                                                           "request_sha256": "b" * 64, "checks": {"c": True}}))
+        readback_post = {"schema": "ky.mechanical_acceptance/1", "result": "ACCEPTED", "by": "executor-mechanical", "operation_id": "cr-1",
+                         "request_sha256": "b" * 64, "checks": {"c": True}}
+        if flaw == "readback_empty_checks": readback_post["checks"] = {}
+        if flaw == "readback_no_schema": del readback_post["schema"]
+        (m.ACC / "cr-1.post.json").write_text(json.dumps(readback_post))
         args["execution_readback"] = "cr-1"
     session = {"schema": "ky.session_readback/1", "status": "MEASURED", "marker": m.session_marker(target), "database": "d",
                "sees_all_sessions": flaw != "blind", "sessions": [{"pid": 7, "state": "idle"}] if flaw == "live_session" else [],
@@ -261,6 +264,11 @@ QUIESCENCE = {
     "q9_remote_running": (blocked("remote_running", True), ("remote_execution_terminal=(remote is not None) if needs_remote else True)", "remote_execution_terminal=True)")),
     "q10_teardown": (blocked("teardown"), ('target_is_not_a_teardown=done.get("kind") not in ("smalltest_teardown", "measuring_teardown"),', "target_is_not_a_teardown=True,")),
     "q11_read_only_target": (blocked("readonly_target"), ('target_is_a_production_operation=entry.get("production") is True and "lane_target" not in done,', "target_is_a_production_operation=True,")),
+    "q13_readback_record_unproven": (lambda w: [blocked(f, True)(w) for f in ("readback_empty_checks", "readback_no_schema")],
+                                     ('(accepted.get("by") != "executor-mechanical"       # same bar as fence_quiescent: the record\'s own schema, and every check present and true\n'
+                                      '                 or (accepted.get("schema") == "ky.mechanical_acceptance/1" and isinstance(accepted.get("checks"), dict)\n'
+                                      '                     and bool(accepted["checks"]) and all(value is True for value in accepted["checks"].values())))',
+                                      '(accepted.get("by") != "executor-mechanical" or all(value is True for value in (accepted.get("checks") or {}).values()))')),
     "q12_check_failed": (blocked("check_failed"), ("checks = dict(own_checks,", "checks = dict(")),
 }
 # Q1's reversion removes the whole writer: nothing may then be written.
@@ -402,3 +410,136 @@ def test_s1_fails_on_its_planted_reversion(tmp_path):
 def test_marker_formula_is_the_same_in_the_executor_and_the_script(tmp_path):
     assert World(tmp_path).mod.session_marker("op-session-oracle") == "ky-op-" + sha("op-session-oracle")[:16]
     assert '"ky-op-" + hashlib.sha256(operation.encode()).hexdigest()[:16]' in SESSIONS_SH.read_text()
+
+
+# ───────── the marker reaches every database connection of every production kind eligible for mechanical quiescence (R3694-B1) ─────────
+# A kind is eligible when mechanical_quiescence() can accept it: enabled, production, and not a teardown (executor.py `target_is_not_a_teardown`).
+# Quiescence reads sessions by application_name; a client that opens connections without the marker (pg_dump under a scrubbed environment was the
+# defect) would leave a live session invisible, so "zero sessions" would read green with a backup still running. One row per eligible kind says how
+# its connections get the marker; the table must cover exactly the eligible kinds, so a newly eligible kind cannot slip in unproven.
+import ast
+
+ROOT = FLEET.parents[3]
+PLATFORM_SCRIPTS = ROOT / "platform/scripts"
+TEARDOWN_KINDS = ("smalltest_teardown", "measuring_teardown")
+ELIGIBLE = {kind for kind, entry in TABLE.items() if entry.get("enabled") is True and entry.get("production") is True and kind not in TEARDOWN_KINDS}
+# route "client_env": the op's own psycopg connections inherit PGAPPNAME and every pg_dump / pg_restore client it starts gets it through client_env().
+# route "in_process": every database connection is a psycopg connection opened inside the op's own process from DATABASE_URL (libpq applies PGAPPNAME);
+#   a dispatch's remote Cloud Run execution is not covered here — the execution readback covers it (MECHANICAL_ACCEPTANCE §2).
+MARKER_ROUTE = {
+    "backup_snapshot": "client_env",
+    "backup_restore_verify": "client_env",
+    "smalltest_dispatch_dryrun": "in_process",
+    "smalltest_dispatch": "in_process",
+    "smalltest_teardown_dryrun": "in_process",
+}
+BACKUP_CARRY = "        env['PGAPPNAME'] = os.environ['PGAPPNAME']"
+SUBPROCESS_CALLS = {"run", "Popen", "call", "check_call", "check_output"}
+
+
+def script_path(kind):
+    rel = TABLE[kind]["script"]
+    return ROOT / rel
+
+
+def import_closure(first, overrides):
+    """The op's own source files: the script and every repository module it imports (anywhere in the file), with `overrides` {path: text} applied."""
+    seen, queue = {}, [first]
+    while queue:
+        path = queue.pop()
+        if path in seen: continue
+        seen[path] = overrides.get(path, path.read_text())
+        for node in ast.walk(ast.parse(seen[path])):
+            names = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ""] if isinstance(node, ast.ImportFrom) else []
+            for name in names:
+                for folder in (path.parent, PLATFORM_SCRIPTS):
+                    if (folder / (name.split(".")[0] + ".py")).exists(): queue.append(folder / (name.split(".")[0] + ".py"))
+    return seen
+
+
+def marker_violations(kind, overrides=None):
+    """Why this kind's connections might not carry the marker (empty = none found)."""
+    problems = []
+    for path, text in import_closure(script_path(kind), overrides or {}).items():
+        tree = ast.parse(text)
+        words = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)} | {
+            k.arg for n in ast.walk(tree) if isinstance(n, ast.Call) for k in n.keywords if k.arg}       # code, not comments
+        if any("application_name" in w for w in words): problems.append(f"{path.name} names its own application_name")
+        if any("PGAPPNAME" in w for w in words) and not (path.name == "backup_v5_small_test_job.py" and MARKER_ROUTE[kind] == "client_env"):
+            problems.append(f"{path.name} touches PGAPPNAME")
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in SUBPROCESS_CALLS:
+                env = next((k.value for k in node.keywords if k.arg == "env"), None)
+                if env is not None and not (isinstance(env, ast.Call) and getattr(env.func, "id", "") == "client_env"):
+                    problems.append(f"{path.name}:{node.lineno} starts a process with its own environment")
+            if isinstance(node, ast.Call) and ast.unparse(node.func) in ("os.environ.clear", "os.environ.pop", "os.unsetenv", "os.putenv"):
+                problems.append(f"{path.name}:{node.lineno} edits the process environment")
+            if isinstance(node, ast.Delete) and any(ast.unparse(t).startswith("os.environ") for t in node.targets):
+                problems.append(f"{path.name}:{node.lineno} deletes from the process environment")
+    return problems
+
+
+def test_every_kind_eligible_for_mechanical_quiescence_has_a_marker_route():
+    assert ELIGIBLE == set(MARKER_ROUTE), f"eligible kinds {sorted(ELIGIBLE)} differ from the proven routes {sorted(MARKER_ROUTE)}"
+
+
+@pytest.mark.parametrize("kind", sorted(MARKER_ROUTE))
+def test_no_code_of_an_eligible_kind_strips_or_overrides_the_marker(kind):
+    assert marker_violations(kind) == []
+
+
+def test_a_planted_override_of_the_marker_is_detected():
+    teardown = PLATFORM_SCRIPTS / "teardown_v5_small_test_job.py"
+    planted = teardown.read_text() + "\nos.environ.pop('PGAPPNAME', None)\n"
+    assert marker_violations("smalltest_teardown_dryrun", {teardown: planted}), "an op that strips PGAPPNAME went undetected"
+
+
+def load_backup(text=None):
+    path = PLATFORM_SCRIPTS / "backup_v5_small_test_job.py"
+    source = path.read_text() if text is None else text
+    module = types.ModuleType("backup_under_test"); module.__file__ = str(path)
+    sys.path.insert(0, str(PLATFORM_SCRIPTS))
+    try: exec(compile(source, str(path), "exec"), module.__dict__)
+    finally: sys.path.remove(str(PLATFORM_SCRIPTS))
+    return module
+
+
+def oracle_backup_client_marker(backup, monkeypatch):
+    """A real libpq client started with the environment backup.client_env() builds reports the marker as its application_name on the test cluster."""
+    psycopg = pytest.importorskip("psycopg")
+    settings = dict(host="127.0.0.1", port="55433", user="postgres", dbname="postgres", connect_timeout="5")
+    try:
+        psycopg.connect(**settings).close()
+    except psycopg.OperationalError as exc:
+        if os.environ.get("KALA_REQUIRE_DB") == "1":
+            pytest.fail(f"KALA_REQUIRE_DB=1 but the test cluster is unreachable: {exc}")
+        pytest.skip("test cluster 127.0.0.1:55433 unreachable")
+    marker = "ky-op-" + sha("op-backup-marker")[:16]
+    monkeypatch.setenv("PGAPPNAME", marker)                    # what executor.execute() gives the child
+    env = backup.client_env(settings)
+    assert env.get("PGSERVICE") is None and env["PGPASSFILE"] == os.devnull
+    probe = "import psycopg; print(psycopg.connect('').execute('SELECT application_name FROM pg_stat_activity WHERE pid = pg_backend_pid()').fetchone()[0])"
+    out = subprocess.run([sys.executable, "-c", probe], env=env, capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip() == marker, f"the client's session carries {out.stdout.strip()!r}, not the operation marker: quiescence cannot see it"
+
+
+@pytest.mark.parametrize("kind", sorted(k for k, route in MARKER_ROUTE.items() if route == "client_env"))
+def test_backup_clients_connect_with_the_operation_marker(kind, monkeypatch):
+    oracle_backup_client_marker(load_backup(), monkeypatch)
+
+
+def test_backup_clients_connecting_without_the_marker_is_detected(monkeypatch):
+    text = (PLATFORM_SCRIPTS / "backup_v5_small_test_job.py").read_text()
+    assert text.count(BACKUP_CARRY) == 1
+    with pytest.raises(AssertionError):
+        oracle_backup_client_marker(load_backup(text.replace(BACKUP_CARRY, "        pass")), monkeypatch)
+
+
+def test_backup_client_env_still_drops_every_other_pg_setting_and_the_connection_variables(monkeypatch):
+    backup = load_backup()
+    for name, value in (("PGSERVICE", "prod"), ("PGHOST", "remote"), ("PGPASSWORD", "x"), ("DATABASE_URL", "x"), ("KY_OWNER_DATABASE_URL", "x"), ("PGAPPNAME", "m")):
+        monkeypatch.setenv(name, value)
+    env = backup.client_env(backup.scratch_settings("lbl"))
+    assert env["PGAPPNAME"] == "m" and "PGSERVICE" not in env and "DATABASE_URL" not in env and "KY_OWNER_DATABASE_URL" not in env
+    assert env["PGHOST"] == "127.0.0.1" and env["PGPASSWORD"] != "x"
