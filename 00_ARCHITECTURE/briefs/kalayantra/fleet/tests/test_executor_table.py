@@ -305,10 +305,6 @@ def _segments(src):
 W4_FUNCTION_HASHES = {'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6ab55daa748a71149247f3e2d5a1', 'receipt': 'fe01726e959f02fe1d6d7bba32f72e573f06bb23f901de62334e9f6e1e28aff1', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'validate': 'd07de5f9602ed84043d87f36ed89ceb0c5b535e372150919d2c0250132dea5d1', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': 'b1b3c09684a5b2833004e7f99d59aa5500962245b48cc8f42c2bea030afbb8d3', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': 'd445545193c558f4d1acc522b7f616382a74998b04f4c941b0628e12a190642c', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': '5ed6d1cafe35bff8e83710ee563abad95a433be437ef7970655c7f2a1e7af779', 'main': '8bcabbe56032a38b747ab5a3e117cd3d68c130ee1a4153604a02fb84af6ee510', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3'}
 
 
-# Exact local_schema_seed scratch lifecycle addition; other Wave 4 pins stay unchanged.
-W4_FUNCTION_HASHES["execute"] = 'bef35ad97d5b019df84c7556f5defda7313875d3eb2313f4819e65ab6004f618'
-
-
 def normalize_wave4(base_src, work_src):
     base_seg, work_seg = _segments(base_src), _segments(work_src)
     for name, digest in W4_FUNCTION_HASHES.items():
