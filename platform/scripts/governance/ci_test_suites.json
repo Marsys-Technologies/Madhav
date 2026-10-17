@@ -533,7 +533,8 @@
       "include": [
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_overlay*.py",
-        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table*.py"
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor*.py"
       ]
     },
     "governance-tool-tests-shard-6-0": {
