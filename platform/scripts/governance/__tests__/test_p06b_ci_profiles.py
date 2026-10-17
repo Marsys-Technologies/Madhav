@@ -44,10 +44,11 @@ def test_both_profiles_run_in_required_contexts_with_real_db_and_ephemeris():
     for name,job in jobs.items():
         for step in job.get('steps',[]):
             run=step.get('run','')
-            for suite in ('p06b-python','p06b-typescript'):
-                if f'ci_p06b.py --suite {suite}' in run:
+            for suite,engine in (('p06b-python','pytest'),('p06b-typescript','vitest')):
+                if f'ci_discovery.py" {engine} {suite} --' in run:
                     assert not job.get('continue-on-error') and not step.get('continue-on-error')
-                    assert job['name'] in ('Unit Tests','DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)')
+                    assert name in ('unit-db-tests','db-integration-tests')
+                    assert suite in step['if'], 'the light-PR gate must select the step by its own profile'
                     found[suite]=(step,run)
     assert set(found)=={'p06b-python','p06b-typescript'}
     step,run=found['p06b-python']

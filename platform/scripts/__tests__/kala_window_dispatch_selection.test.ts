@@ -34,11 +34,39 @@ function stepScript(name: string): string {
 
 const SCRIPT = stepScript(STEP)
 
-function run(inputs: Record<string, string>, listText: string | null): { status: number | null; only: string[] | null; out: string } {
+/**
+ * deploy.yml picks the selector by FILE PRESENCE: the automatic selector (governance/kala_protected_migrations.py) when it exists,
+ * else the legacy `sed` read of the .txt seed for a pre-cutover source SHA. A bare sandbox has no selector, so it exercises the
+ * legacy branch only. `withSelector` lays the real selector down the way a checkout has it — the script and its checker COPIED
+ * (so the repo root it derives is the sandbox), the exclusions file copied, the two migration directories linked — so the
+ * production branch is what runs.
+ */
+function layDownSelector(dir: string): void {
+  const gov = path.join(dir, 'platform/scripts/governance')
+  fs.mkdirSync(gov, { recursive: true })
+  for (const f of ['kala_protected_migrations.py', 'check_public_schema_migration_privilege.py']) {
+    fs.copyFileSync(path.join(repoRoot, 'platform/scripts/governance', f), path.join(gov, f))
+  }
+  fs.copyFileSync(
+    path.join(repoRoot, 'platform/scripts/kala_protected_migrations_exclusions.json'),
+    path.join(dir, 'platform/scripts/kala_protected_migrations_exclusions.json'),
+  )
+  for (const d of ['platform/migrations', 'platform/supabase/migrations']) {
+    fs.mkdirSync(path.dirname(path.join(dir, d)), { recursive: true })
+    fs.symlinkSync(path.join(repoRoot, d), path.join(dir, d))
+  }
+}
+
+function run(
+  inputs: Record<string, string>,
+  listText: string | null,
+  opts: { withSelector?: boolean } = {},
+): { status: number | null; only: string[] | null; out: string } {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kala-window-'))
   try {
     fs.mkdirSync(path.join(dir, 'platform', 'scripts'), { recursive: true })
     fs.mkdirSync(path.join(dir, 'bin'))
+    if (opts.withSelector) layDownSelector(dir)
     if (listText !== null) fs.writeFileSync(path.join(dir, 'platform/scripts/kala_protected_migrations.txt'), listText)
     fs.writeFileSync(path.join(dir, 'bin', 'npx'), '#!/bin/sh\nfor a in "$@"; do echo "NPX_ARG:$a"; done\n', { mode: 0o755 })
     const env: Record<string, string> = {
@@ -68,11 +96,18 @@ describe('owner dispatch — the Kāla protected window selection, executed from
     expect(r.only).toEqual(['1330_a.sql', '1334_b.sql'])
   })
 
-  it('selects the checked-in list verbatim (same set and order migrate.ts loads)', () => {
+  it('selects the automatically derived set (same set and order migrate.ts loads), not just the legacy seed', () => {
+    const text = fs.readFileSync(path.join(repoRoot, 'platform/scripts/kala_protected_migrations.txt'), 'utf8')
+    const r = run({ APPLY_KALA_SCHEMA_MIGRATION: 'true' }, text, { withSelector: true })
+    expect(r.status, r.out).toBe(0)
+    expect(r.only).toEqual([...loadKalaProtectedMigrations()])
+  })
+
+  it('a pre-cutover source SHA (no selector script) keeps the legacy seed verbatim', () => {
     const text = fs.readFileSync(path.join(repoRoot, 'platform/scripts/kala_protected_migrations.txt'), 'utf8')
     const r = run({ APPLY_KALA_SCHEMA_MIGRATION: 'true' }, text)
     expect(r.status, r.out).toBe(0)
-    expect(r.only).toEqual([...loadKalaProtectedMigrations()])
+    expect(r.only).toEqual(text.split('\n').map((l) => l.replace(/#.*$/, '').trim()).filter(Boolean))
   })
 
   it('refuses a missing or empty list instead of dispatching an empty window', () => {

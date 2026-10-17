@@ -6,7 +6,8 @@ instead requires a guarded done event; a matching detector is evidence only:
 1. An item with a **detector**: the detector decides `done`. An event may set it running, in review,
    blocked or parked, but an event claiming `done` while the detector disagrees is a *conflict*,
    never done. A detector that cannot measure shows `unknown`, never done.
-2. An item **done by decision**: done when the native's decision is recorded (decided/delegated).
+2. An item **done by decision**: done when the native's final decision is recorded
+   (decided/delegated) and every declared dependency is complete.
 3. An item **done by join**: done when every dependency is done — a join is a fact about the plan,
    so no event can claim it.
 4. An item **done by event**: done only by an event carrying evidence (enforced at write time).
@@ -21,8 +22,12 @@ from __future__ import annotations
 
 import collections
 import datetime as dt
+import json
+from pathlib import Path
 
 from .events import actor_stream
+
+REPO_ROOT = Path(__file__).resolve().parents[4]
 
 DECLARATION_KEYS = ("completion_kind", "producer", "reviewer_rule", "step_evidence")
 STATUS_ORDER = ["done", "not_applicable", "running", "review", "ready", "waiting", "blocked", "parked", "failed", "unknown", "conflict"]
@@ -220,10 +225,60 @@ def _stream_view(stream: dict, flat: list[dict], ix: dict, activity: dict, now: 
             "done": done, "total": len(mine), "progress": (done + sum((t["progress"] or 0) for t in mine if t["status"] != "done")) / len(mine) if mine else 0.0}
 
 
+def load_closure(model: dict, root: Path | None = None) -> dict | None:
+    """The committed acceptance closure the model names (control_plane.triage.closure), or None.
+
+    Amendment A9 D-51: the headline counts over this closure. A model that names no closure, or a file that is
+    absent or unreadable, gives None, so the headline stays plan-wide rather than claiming a scope it cannot read.
+    """
+    ref = ((model.get("control_plane") or {}).get("triage") or {}).get("closure")
+    if not ref:
+        return None
+    try:
+        data = json.loads((Path(root or REPO_ROOT) / ref).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data.get("closure"), list) else None
+
+
+def closure_headline(overall: dict, flat: list[dict], items: dict, closure: dict) -> dict:
+    """Re-scope the headline to the closure's items; deferred items are a separate list (A9 D-51.3).
+
+    The counts are per status, so a later change of what counts as done (implemented/activated) composes by
+    changing the status mapping, not the scoping. A closure member the model does not contain is reported in
+    `missing`, never silently dropped.
+    """
+    members = set(closure["closure"])
+    rows = {t["id"]: t for t in flat}
+    inside = [rows[i] for i in sorted(members) if i in rows]
+    counts = collections.Counter(t["status"] for t in inside)
+    total = len(inside)
+    done = counts.get("done", 0)
+    deferred = [{"id": iid, "status": rows[iid]["status"],
+                 "re_entry": (items[iid].get("triage") or {}).get("re_entry")}
+                for iid in sorted(rows) if iid not in members and (items[iid].get("triage") or {}).get("class") == "b"]
+    return {
+        **overall,
+        "scope": "closure", "closure_sha256": closure.get("closure_sha256"),
+        "total": total, "done": done, "not_applicable": counts.get("not_applicable", 0),
+        "running": counts.get("running", 0) + counts.get("review", 0),
+        "ready": counts.get("ready", 0), "waiting": counts.get("waiting", 0),
+        "blocked": counts.get("blocked", 0) + counts.get("failed", 0) + counts.get("parked", 0),
+        "unknown": counts.get("unknown", 0) + counts.get("conflict", 0),
+        "built_waiting_on_gate": sum(1 for t in inside if t["built_waiting_on_gate"]),
+        "pct": round(100 * done / total, 1) if total else 0.0,
+        "by_status": dict(sorted(counts.items())),
+        "missing": sorted(members - set(rows)),
+        "plan_wide": {k: overall[k] for k in ("total", "done", "not_applicable", "pct")},
+        "deferred": deferred,
+    }
+
+
 def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: dict,
-                   health: dict, activity: dict | None = None, now: dt.datetime | None = None) -> dict:
+                   health: dict, activity: dict | None = None, now: dt.datetime | None = None,
+                   closure: dict | None = None) -> dict:
     """Pure function: everything the dashboard shows. det_results maps item id → detector result dict;
-    activity maps stream id → git activity dict."""
+    activity maps stream id → git activity dict; closure (load_closure) scopes the headline (A9 D-51)."""
     now = now or dt.datetime.now(dt.timezone.utc)
     activity = activity or {}
     ix = index_events(events)
@@ -232,6 +287,14 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     decision_outcomes = model.get("control_plane", {}).get("decision_outcomes")
     status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded,
                                decision_outcomes=decision_outcomes) for iid, it in items.items()}
+
+    # A final ruling is recorded independently of each consuming item's completion.
+    # Seed decision items as waiting so joins/other decisions cannot consume a
+    # provisional done state before its original gates have been resolved.
+    recorded_decisions = {iid for iid, it in items.items()
+                          if it.get("done_by") == "decision" and status[iid]["status"] == "done"}
+    for iid in recorded_decisions:
+        status[iid]["status"] = "waiting"
 
     # Start-at-merge/acceptance remains a scheduling policy only. D-39: deps_open
     # always names strict completion gates, even when work may already start.
@@ -250,7 +313,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                 if e.get("kind") == "verdict" and e.get("phase", "pre_merge") == "pre_merge" and e.get("item") in items:
                     latest[e["item"]] = e.get("result")
             merged_accepted |= {iid for iid, res in latest.items() if res == "ACCEPTED"}
-    # dependencies → readiness; joins resolve here (repeat until stable: joins may depend on joins)
+    # Resolve joins and recorded decisions together until their strict gates stabilise.
     for _ in range(len(items) + 1):
         changed = False
         for iid, it in items.items():
@@ -279,6 +342,11 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                              skip_origin=sorted(set(origins)), detail="required outcome or input unavailable")
                     changed = True
                     continue
+            if iid in recorded_decisions and s["status"] != "not_applicable":
+                new = "waiting" if strict_open else "done"
+                if s["status"] != new:
+                    s["status"] = new
+                    changed = True
             if it.get("done_by") == "join":
                 new = "done" if not strict_open else "waiting"
                 if s["status"] != new:
@@ -393,17 +461,21 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                              and not d.get("staged")],
                             key=lambda d: (rank[d["status"]], -sum(1 for x in d["needed_by"] if status.get(x, {}).get("status") in ("ready", "waiting"))))
 
+    overall = {"total": total, "done": counts.get("done", 0),
+               "built_waiting_on_gate": sum(1 for t in flat if t["built_waiting_on_gate"]),
+               "not_applicable": counts.get("not_applicable", 0),
+               "running": counts.get("running", 0) + counts.get("review", 0),
+               "ready": counts.get("ready", 0), "waiting": counts.get("waiting", 0),
+               "blocked": counts.get("blocked", 0) + counts.get("failed", 0) + counts.get("parked", 0),
+               "unknown": counts.get("unknown", 0) + counts.get("conflict", 0),
+               "pct": round(100 * done_w / total, 1) if total else 0.0}
+    if closure:
+        overall = closure_headline(overall, flat, items, closure)
+
     return {
         "generated_at": now.isoformat(timespec="seconds"),
         "campaign": model.get("campaign"), "subtitle": model.get("subtitle"), "plan_ref": model.get("plan_ref"),
-        "overall": {"total": total, "done": counts.get("done", 0),
-                    "built_waiting_on_gate": sum(1 for t in flat if t["built_waiting_on_gate"]),
-                    "not_applicable": counts.get("not_applicable", 0),
-                    "running": counts.get("running", 0) + counts.get("review", 0),
-                    "ready": counts.get("ready", 0), "waiting": counts.get("waiting", 0),
-                    "blocked": counts.get("blocked", 0) + counts.get("failed", 0) + counts.get("parked", 0),
-                    "unknown": counts.get("unknown", 0) + counts.get("conflict", 0),
-                    "pct": round(100 * done_w / total, 1) if total else 0.0},
+        "overall": overall,
         "streams": streams,
         "phases": phases,
         "tracks": tracks,

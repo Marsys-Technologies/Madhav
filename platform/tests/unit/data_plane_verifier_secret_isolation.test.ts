@@ -377,6 +377,16 @@ describe('C53: the Firebase management service agent is a canonical Google servi
       atProject([{ role: FIREBASE_ROLE, members: [FIREBASE_AGENT] }], `projects/${number}`),
       resolved, ADMIN, number, '')).toThrow(/remains outside the declared control-plane exceptions/)
   })
+
+  it.each(['', 'not-a-number', '123abc', ' 123', '123 ', '-123', '12.3'])('refuses Firebase exemption for malformed project number %j', (number) => {
+    // Keep resource matching and the templated role/member exact. Only the
+    // numeric identity guard can reject this otherwise canonical binding.
+    const member = `serviceAccount:service-${number}@gcp-sa-firebase.iam.gserviceaccount.com`
+    const resource = canonicalResource(`projects/${NUMBER}`, NUMBER)
+    expect(() => assertVerifierInheritedControl(
+      atProject([{ role: FIREBASE_ROLE, members: [member] }], resource),
+      resolved, ADMIN, number, '')).toThrow(/remains outside the declared control-plane exceptions/)
+  })
   it('a DIFFERENT member with that role is refused', () => {
     const other = `serviceAccount:service-111@gcp-sa-firebase.iam.gserviceaccount.com`
     expect(() => assertVerifierInheritedControl(atProject([{ role: FIREBASE_ROLE, members: [other] }]),

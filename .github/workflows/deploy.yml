@@ -12,10 +12,8 @@ on:
   # Dockerfile / Next.js build failures before merge.
   pull_request:
     branches: [main]
-    paths:
-      - 'platform/**'
-      - 'platform-mcp/**'
-      - '.github/workflows/deploy.yml'
+    # Always create the named check; job-level skips still report to protection.
+    # Workflow-level path filtering would leave a required context pending.
   # Manual deploys stay available — but they are held to the SAME CI gate as an automatic
   # deploy unless an operator deliberately overrides it and says why. Until SAMĀPTI this
   # trigger bypassed the CI gate outright (`event_name == 'workflow_dispatch' || ...` on every
@@ -72,7 +70,7 @@ on:
         required: false
         default: false
       kala_schema_migration:
-        description: 'Kāla protected public-schema window — applies, in order, the files listed in platform/scripts/kala_protected_migrations.txt that are not yet applied'
+        description: 'Kāla protected public-schema window — applies the automatically discovered protected public-schema DDL and retained legacy entries, in order'
         type: boolean
         required: false
         default: false
@@ -100,10 +98,76 @@ env:
   DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
+  # PR classification is separate from the production `changes` gate below:
+  # no credentials, deployment-state reads, protected windows or CI-gate changes.
+  pr-changes:
+    name: Detect PR deployable changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      deployable: ${{ steps.classify.outputs.deployable }}
+    steps:
+      - name: Checkout (merge commit and its parents)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Classify deployable inputs
+        id: classify
+        env:
+          GIT_OPTIONAL_LOCKS: '0'
+        run: |
+          python3 - <<'PY'
+          import fnmatch
+          import os
+          import subprocess
+          import sys
+
+          # Web COPY . and sidecar COPY python-sidecar/ (platform context);
+          # MCP and pipeline use repo-root COPYs. Include runtime corpora and
+          # the architecture files copied by the workflow / MCP Dockerfile.
+          # (I) INTERPRETATION: those shipped documents are deployable data;
+          # ordinary 00_ARCHITECTURE/**, docs and plan-model changes are not.
+          patterns = (
+              'platform/**', 'platform-mcp/**',
+              '01_FACTS_LAYER/**', '025_HOLISTIC_SYNTHESIS/**', '035_DISCOVERY_LAYER/**',
+              '00_ARCHITECTURE/CAPABILITY_MANIFEST.json',
+              '00_ARCHITECTURE/manifest_overrides.yaml',
+              '00_ARCHITECTURE/PLANNER_PROMPT_v*.md',
+              '00_ARCHITECTURE/MACRO_PLAN_v2_0.md',
+              '00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md',
+              '00_ARCHITECTURE/CURRENT_STATE_v1_0.md',
+              '.github/workflows/deploy.yml',
+              'Dockerfile*', '**/Dockerfile*', '.dockerignore', '**/.dockerignore',
+              'cloudbuild*.yaml', 'cloudbuild*.yml', '**/cloudbuild*.yaml', '**/cloudbuild*.yml',
+              'package.json', '**/package.json', 'package-lock.json', '**/package-lock.json',
+              'npm-shrinkwrap.json', '**/npm-shrinkwrap.json',
+              'pnpm-lock.yaml', '**/pnpm-lock.yaml', 'yarn.lock', '**/yarn.lock',
+          )
+          deployable = True  # An empty/unreadable diff must never earn a skip (§N.8).
+          try:
+              # HEAD is GitHub's PR merge commit; its first parent is the base.
+              # Diff the whole PR, including deletes and BOTH names of a rename.
+              diff = subprocess.run(
+                  ['git', 'diff', '--name-only', '--no-renames', '-z', 'HEAD^1', 'HEAD'],
+                  capture_output=True, check=True, timeout=60,
+              ).stdout
+              paths = [p for p in diff.decode('utf-8', 'surrogateescape').split('\0') if p]
+              deployable = not paths or any(fnmatch.fnmatchcase(p, pat) for p in paths for pat in patterns)
+          except (OSError, subprocess.SubprocessError) as exc:
+              print(f'::warning::Cannot classify PR diff; running build check: {exc}', file=sys.stderr)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'deployable={str(deployable).lower()}\n')
+          PY
+
   # ── PR build-check: build without push to catch Dockerfile/Next.js failures pre-merge ──
   build-check:
     name: Build Check (PR only)
-    if: github.event_name == 'pull_request'
+    needs: [pr-changes]
+    # !cancelled() overrides implicit success(): a failed detector runs validation.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.pr-changes.outputs.deployable != 'false' }}
     runs-on: ubuntu-latest
     # A PR image build must not hold the merge queue at GitHub Actions' six-hour
     # default when a hosted BuildKit worker stalls before emitting progress.
@@ -1122,13 +1186,19 @@ jobs:
             migrations+=(1202_ai_metering_ledger.sql)
           fi
           if [ "$APPLY_KALA_SCHEMA_MIGRATION" = "true" ]; then
-            # Kāla protected window — every file in platform/scripts/kala_protected_migrations.txt (comments/blank lines
-            # skipped), ascending by number. The routine runner SKIPS these with a ::warning:: (it cannot CREATE in public).
+            # Kāla protected window — the same automatic selector as migrate.ts / CI, plus the immutable
+            # legacy seed, ascending by number. Exclusions are still scanned by the privilege guard. The routine runner SKIPS these with a ::warning:: (it cannot CREATE in public).
             # Re-listing an already-applied file is harmless: migrate.ts --only hash-checks and skips an applied file, so
             # no _migrations_applied filtering is needed here (verified in platform/scripts/__tests__/migrate.test.ts).
             # PRECONDITION (migrate.ts --only refuses unselected unapplied files numbered <= the highest selected): every
             # routine migration numbered below the highest listed file must ALREADY be applied by an ordinary deploy.
             kala_list=platform/scripts/kala_protected_migrations.txt
+            if [ -f platform/scripts/governance/kala_protected_migrations.py ]; then
+              kala_files=$(python3 platform/scripts/governance/kala_protected_migrations.py) || exit 1
+            else
+              # A pre-cutover source SHA keeps its original protected membership.
+              kala_files=$(sed -e 's/#.*$//' -e 's/[[:space:]]//g' "$kala_list" | sort -n) || exit 1
+            fi
             if [ ! -f "$kala_list" ]; then
               echo "::error::$kala_list is missing; the Kāla protected window has nothing to apply."
               exit 1
@@ -1138,7 +1208,7 @@ jobs:
               [ -n "$kala_file" ] || continue
               migrations+=("$kala_file")
               kala_count=$((kala_count + 1))
-            done < <(sed -e 's/#.*$//' -e 's/[[:space:]]//g' "$kala_list" | sort -n)
+            done <<< "$kala_files"
             if [ "$kala_count" -eq 0 ]; then
               echo "::error::$kala_list lists no migration; refusing an empty Kāla window."
               exit 1
@@ -1336,6 +1406,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      actions: read
       contents: read
       id-token: write
 
@@ -1344,6 +1415,47 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.DEPLOY_SHA }}
+
+      # Pre-cutover source trees use their original committed outputs and CI guards.
+      # Emergency dispatch regenerates locally: no CI run/artifact service is required.
+      - name: Find verified generated artifact for this source
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' && !(github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN') }}
+        id: generated-ci
+        uses: actions/github-script@v7
+        env:
+          SOURCE_SHA: ${{ env.DEPLOY_SHA }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+        with:
+          script: |
+            if (process.env.CI_RUN_ID) {
+              core.setOutput('run_id', process.env.CI_RUN_ID);
+            } else {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                ...context.repo, workflow_id: 'ci.yml', head_sha: process.env.SOURCE_SHA,
+                per_page: 100,
+              });
+              // Normal dispatch has already passed the existing CI gate.
+              // Emergency dispatch skips lookup and regenerates below.
+              let accepted;
+              for (const run of runs.filter(r => r.head_sha === process.env.SOURCE_SHA)) {
+                const response = await github.rest.actions.listWorkflowRunArtifacts({
+                  ...context.repo, run_id: run.id, per_page: 100,
+                });
+                if (response.data.artifacts.some(a => a.name === 'ci-generated' && !a.expired)) {
+                  accepted = run;
+                  break;
+                }
+              }
+              if (!accepted) throw new Error('No verified generation artifact for the deployment SHA');
+              core.setOutput('run_id', accepted.id);
+            }
+      - uses: ./.github/actions/restore-generated
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' }}
+        with:
+          run-id: ${{ steps.generated-ci.outputs.run_id }}
+          sha: ${{ env.DEPLOY_SHA }}
+          regenerate: ${{ github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN' }}
+
 
       - name: Verify deployment source provenance
         run: |
@@ -1633,6 +1745,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      actions: read
       contents: read
       id-token: write
 
@@ -1641,6 +1754,47 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.DEPLOY_SHA }}
+
+      # Pre-cutover source trees use their original committed outputs and CI guards.
+      # Emergency dispatch regenerates locally: no CI run/artifact service is required.
+      - name: Find verified generated artifact for this source
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' && !(github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN') }}
+        id: generated-ci
+        uses: actions/github-script@v7
+        env:
+          SOURCE_SHA: ${{ env.DEPLOY_SHA }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+        with:
+          script: |
+            if (process.env.CI_RUN_ID) {
+              core.setOutput('run_id', process.env.CI_RUN_ID);
+            } else {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                ...context.repo, workflow_id: 'ci.yml', head_sha: process.env.SOURCE_SHA,
+                per_page: 100,
+              });
+              // Normal dispatch has already passed the existing CI gate.
+              // Emergency dispatch skips lookup and regenerates below.
+              let accepted;
+              for (const run of runs.filter(r => r.head_sha === process.env.SOURCE_SHA)) {
+                const response = await github.rest.actions.listWorkflowRunArtifacts({
+                  ...context.repo, run_id: run.id, per_page: 100,
+                });
+                if (response.data.artifacts.some(a => a.name === 'ci-generated' && !a.expired)) {
+                  accepted = run;
+                  break;
+                }
+              }
+              if (!accepted) throw new Error('No verified generation artifact for the deployment SHA');
+              core.setOutput('run_id', accepted.id);
+            }
+      - uses: ./.github/actions/restore-generated
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' }}
+        with:
+          run-id: ${{ steps.generated-ci.outputs.run_id }}
+          sha: ${{ env.DEPLOY_SHA }}
+          regenerate: ${{ github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN' }}
+
 
       # #2159: workflow_run.head_sha can resolve to a stale commit under
       # fast-merging queues -- guard against silently building/deploying
@@ -1833,6 +1987,7 @@ jobs:
     name: Build & Deploy MCP
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       id-token: write
     steps:
@@ -1840,6 +1995,47 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.DEPLOY_SHA }}
+
+      # Pre-cutover source trees use their original committed outputs and CI guards.
+      # Emergency dispatch regenerates locally: no CI run/artifact service is required.
+      - name: Find verified generated artifact for this source
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' && !(github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN') }}
+        id: generated-ci
+        uses: actions/github-script@v7
+        env:
+          SOURCE_SHA: ${{ env.DEPLOY_SHA }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+        with:
+          script: |
+            if (process.env.CI_RUN_ID) {
+              core.setOutput('run_id', process.env.CI_RUN_ID);
+            } else {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                ...context.repo, workflow_id: 'ci.yml', head_sha: process.env.SOURCE_SHA,
+                per_page: 100,
+              });
+              // Normal dispatch has already passed the existing CI gate.
+              // Emergency dispatch skips lookup and regenerates below.
+              let accepted;
+              for (const run of runs.filter(r => r.head_sha === process.env.SOURCE_SHA)) {
+                const response = await github.rest.actions.listWorkflowRunArtifacts({
+                  ...context.repo, run_id: run.id, per_page: 100,
+                });
+                if (response.data.artifacts.some(a => a.name === 'ci-generated' && !a.expired)) {
+                  accepted = run;
+                  break;
+                }
+              }
+              if (!accepted) throw new Error('No verified generation artifact for the deployment SHA');
+              core.setOutput('run_id', accepted.id);
+            }
+      - uses: ./.github/actions/restore-generated
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' }}
+        with:
+          run-id: ${{ steps.generated-ci.outputs.run_id }}
+          sha: ${{ env.DEPLOY_SHA }}
+          regenerate: ${{ github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN' }}
+
 
       # #2159: workflow_run.head_sha can resolve to a stale commit under
       # fast-merging queues -- guard against silently building/deploying
@@ -2200,6 +2396,7 @@ jobs:
       (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.pipeline == 'true')
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       id-token: write
     steps:
@@ -2207,6 +2404,47 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.DEPLOY_SHA }}
+
+      # Pre-cutover source trees use their original committed outputs and CI guards.
+      # Emergency dispatch regenerates locally: no CI run/artifact service is required.
+      - name: Find verified generated artifact for this source
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' && !(github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN') }}
+        id: generated-ci
+        uses: actions/github-script@v7
+        env:
+          SOURCE_SHA: ${{ env.DEPLOY_SHA }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+        with:
+          script: |
+            if (process.env.CI_RUN_ID) {
+              core.setOutput('run_id', process.env.CI_RUN_ID);
+            } else {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                ...context.repo, workflow_id: 'ci.yml', head_sha: process.env.SOURCE_SHA,
+                per_page: 100,
+              });
+              // Normal dispatch has already passed the existing CI gate.
+              // Emergency dispatch skips lookup and regenerates below.
+              let accepted;
+              for (const run of runs.filter(r => r.head_sha === process.env.SOURCE_SHA)) {
+                const response = await github.rest.actions.listWorkflowRunArtifacts({
+                  ...context.repo, run_id: run.id, per_page: 100,
+                });
+                if (response.data.artifacts.some(a => a.name === 'ci-generated' && !a.expired)) {
+                  accepted = run;
+                  break;
+                }
+              }
+              if (!accepted) throw new Error('No verified generation artifact for the deployment SHA');
+              core.setOutput('run_id', accepted.id);
+            }
+      - uses: ./.github/actions/restore-generated
+        if: ${{ hashFiles('platform/scripts/governance/ci_generated.py') != '' }}
+        with:
+          run-id: ${{ steps.generated-ci.outputs.run_id }}
+          sha: ${{ env.DEPLOY_SHA }}
+          regenerate: ${{ github.event_name == 'workflow_dispatch' && inputs.ci_gate == 'EMERGENCY-OVERRIDE-CI-NOT-GREEN' }}
+
 
       # #2159: workflow_run.head_sha can resolve to a stale commit under
       # fast-merging queues -- guard against silently building/deploying
@@ -2297,10 +2535,16 @@ jobs:
   # deployable component changed, the corresponding mutation must have actually
   # succeeded. It intentionally does not alter the migration barrier or any
   # protected-owner gate.
+  #
+  # `changes` is skipped only when the upstream Ganga workflow_run did not
+  # conclude success (cancelled/superseded/red): no deployment was attempted, so
+  # nothing was earned or claimed and this job reports SKIPPED instead of a
+  # misleading FAILURE. Once upstream is green `changes` runs, and a failed or
+  # cancelled detector, or a skipped/failed mutation it implies, still fails.
   deployment-outcome:
     name: Require earned deployment outcome
     needs: [changes, migrate, deploy-web, deploy-sidecar, deploy-mcp, deploy-pipeline-job]
-    if: ${{ always() && github.event_name != 'pull_request' }}
+    if: ${{ always() && github.event_name != 'pull_request' && needs.changes.result != 'skipped' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
