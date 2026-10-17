@@ -4,60 +4,67 @@ KĀLA-YANTRA v3 (relaunch plan v2.7 §6 "Verdict publication (controller-owned)"
 §4a.1 "Action records" / "Recovery"; KU-01, of whose fixtures this file owns "invalid inheritance fails").
 
 A verifier job only PROPOSES a verdict in its result file. The controller publishes it — through `ky verdict`,
-under a crash-safe action record — and only after it has itself observed that the job left the reviewed tree
-alone. A boundary failure never publishes ACCEPTED; an unmet requirement publishes nothing at all (not REJECTED
-either: nothing was reviewed that a rejection could be about). Importing this module runs nothing.
+under a crash-safe action record — and only after it has itself observed that the reviewed tree is the one
+proposed about: at the reviewed head, clean. An unmet requirement publishes nothing at all (not REJECTED either:
+nothing was reviewed that a rejection could be about). Importing this module runs nothing.
+
+Amendment A8 (2026-10-17): verdicts bind to the DIFF. The predicate compares `git patch-id --stable` of the two
+reviewed patches and asks `git merge-tree` whether the new head still merges onto main; descent is not required
+(a rebase of the same patch inherits). Publication observes six things (below); the pre-job snapshot, the
+tracked-file hash set and the `kyboundary.sh check` evidence are no longer requirements (`--snapshot` and
+`--boundary` are still accepted, for the callers of v2.7, and not read).
 
 ── Contract A: the predicate (one implementation; the dispatcher and the tracker both import it) ──────────────
     inherits(repo, old_head, new_head) -> bool            fail-closed: inheritance(…)["inherits"] is True
     inheritance(repo, old_head, new_head, *, old_base=None, new_base=None, timeout=60)
-        -> {"inherits": bool, "reason", "old_head", "new_head", "old_base", "new_base"}          never raises
+        -> {"inherits": bool, "reason", "old_head", "new_head", "old_base", "new_base", "patch_id"}  never raises
   A verdict at old_head still holds at new_head ("identical_patch") only if ALL of this is observed:
-    * the four commits are 40-hex commits in `repo`; a base that is not given is `git merge-base <main> <head>`,
-      <main> = origin/main, else main (no such ref, no common ancestor or more than one: "unproven_base");
+    * the four commits are 40-hex commits in `repo`; <main> = origin/main, else main, must exist ("unproven_base":
+      without it there is no base to derive and nothing to merge onto); a base that is not given is
+      `git merge-base <main> <head>` (no common ancestor or more than one: "unproven_base");
     * no base equals its head, given or derived ("unproven_base": a head main already contains derives itself as
       its base, and an empty comparison proves nothing);
-    * each base is an ancestor of its head ("base_not_ancestor"), and old_head of new_head ("not_descendant":
-      an equal patch on another line of history — a rebase — is a new head to review);
+    * each base is an ancestor of its head ("base_not_ancestor");
     * nothing binary changed on either side ("binary_change": "Binary files differ" says nothing about content);
     * the reviewed patch is not empty ("unproven_base");
-    * patch(old_base, old_head) == patch(new_base, new_head) byte for byte ("patch_differs" otherwise), where
-      patch(b, h) = `git diff --no-color --no-ext-diff --no-textconv --no-renames b h` minus its `index` lines
-      and its `@@` hunk headers. White space counts; so do context lines;
-    * and, because dropping the `@@` headers drops WHERE a hunk applies, new_head's tree is exactly the clean
-      three-way result of the reviewed change on new_base (`git merge-tree --write-tree --merge-base=old_base
-      new_base old_head`, no rename detection); a conflict or any other tree is "patch_differs". This still
-      tolerates the line shifts main causes, and refuses a hunk moved to another occurrence of its context.
+    * patch_id(old_base, old_head) == patch_id(new_base, new_head) ("patch_differs" otherwise), where
+      patch_id(b, h) = `git patch-id --stable` of `git diff --no-color --no-ext-diff --no-textconv --no-renames
+      b h`. The id is over the file headers and every hunk line, context included, with hunk positions (the `@@`
+      headers) and blob ids (the `index` lines) left out — so the line shifts main causes do not count, a changed
+      context line does, and so does a hunk moved to another file. `git patch-id` hashes each line with its white
+      space removed: a white-space-only difference does not count either (A8 chose patch-id; `--verbatim` and
+      `--stable` exclude each other in git);
+    * and new_head merges onto <main> without a conflict: `git merge-tree --write-tree <main> new_head` exits 0
+      ("conflicts_with_main" when it reports a conflict). The reviewed change still applies to what main is now.
   old_head == new_head has no shortcut: it is held to the same rules. Anything else — an unknown commit
   ("unknown_commit"), a git that cannot be run, fails or times out ("git_failed") — is False. Ancestry alone is
   never enough: a merge commit whose conflict resolution or whose own content changes the reviewed patch does not
-  inherit, and neither does one added commit.
+  inherit, and neither does one added commit; ancestry is not needed either: a rebase of the identical patch onto
+  a moved main inherits, a rebase that changed the patch does not.
 
 ── Contract B: the verbs — stdout is ONE JSON object {"published", "result", "reasons", "action_id"} ─────────
     snapshot   --worktree W --out S
     publish    --job-id J --item I --phase pre_merge|post_deploy|artifact
                (--head H | --artifact-digest D --artifact-path P)
-               --vslot V --author-id AU --reviewer-id RV --worktree W --snapshot S --job-exit N --result RES
-               --boundary BD --as CID [--events E] [--external-review-path X --external-review-sha256 Y]
+               --vslot V --author-id AU --reviewer-id RV --worktree W --job-exit N --result RES --as CID
+               [--snapshot S] [--boundary BD] [--events E] [--external-review-path X --external-review-sha256 Y]
     invalidate --item I --phase PH (--head H | --artifact-digest D) --vslot V --reason TEXT --as CID [--events E]
     inherit    --repo G --old-head H1 --new-head H2 [--old-base B1 --new-base B2]     prints inheritance(…)
 
   snapshot (BEFORE the job) writes S = {schema, worktree, head, status_porcelain, tracked_sha256, taken_at}.
     tracked_sha256 = sha256 over the sorted (path, work-tree file sha256) list of the tracked files, read from
-    the work tree itself, so an edit hidden from `git status` (--assume-unchanged, --skip-worktree) still shows.
-    An existing S is never replaced (exit 1): a snapshot taken after the job would prove nothing.
+    the work tree itself. An existing S is never replaced (exit 1). Since A8 the snapshot is a record the
+    launchers keep for the job's scratch directory; publish does not read it.
   publish requires, each observed by this process (reason when unmet):
     N = 0 (job_exit_nonzero) · RES is a valid ky.job_result/1 of job J and item I (result_missing,
     result_invalid, result_job_mismatch) with status done (result_not_done) and proposed_verdict.verdict ACCEPTED
     or REJECTED (verdict_not_proposed) whose head / phase / artifact_digest, where given, are the ones being
     published (verdict_head_mismatch, verdict_phase_mismatch, verdict_digest_mismatch) · AU ≠ RV
-    (author_is_reviewer) · S is this worktree's snapshot (snapshot_missing, snapshot_invalid) · W's HEAD is S's
-    (head_moved) and, for pre_merge, H (head_not_reviewed) · `git status --porcelain` is empty (tree_dirty) ·
-    tracked_sha256 is S's (tracked_changed) · artifact: sha256(P) = D (artifact_missing,
-    artifact_digest_mismatch) · BD, the JSON `kyboundary.sh check <J>` printed, is of job J and says `result`
-    "intact" with no boundary flag false (boundary_missing, boundary_invalid, boundary_job_mismatch,
-    boundary_not_intact) · X, when given, is a file whose sha256 is Y (external_review_missing,
-    external_review_sha_mismatch).
+    (author_is_reviewer) · for pre_merge, W's HEAD is H at publish time (head_not_reviewed) · `git status
+    --porcelain --untracked-files=all` of W is empty (tree_dirty) · artifact: sha256(P) = D (artifact_missing,
+    artifact_digest_mismatch) · X, when given, is a file whose sha256 is Y (external_review_missing,
+    external_review_sha_mismatch). W must be observable at all (worktree_unobservable). S and BD, when given,
+    must be absolute paths and are otherwise ignored.
     Then, under the action record VERDICT-<J> (actor: role dispatcher, holder_kind controller, controller_id CID)
     and with an allow-listed environment:
         KY_STREAM=V KY_LANE=<V> $KY_BIN verdict <I> (--head H | --artifact-digest D) --phase <phase>
@@ -81,14 +88,13 @@ either: nothing was reviewed that a rejection could be about). Importing this mo
 
   Exit codes: 0 done · 1 refused or negative · 3 unknown, nothing may proceed · 64 usage · 66 an installation
   input is missing ($KY_RUN, the ky or git program, the worktree directory). Evidence that is missing — the job
-  result, the snapshot, the boundary evidence, the artifact — is an unmet requirement (exit 1), not exit 66.
+  result, the artifact — is an unmet requirement (exit 1), not exit 66.
   Environment: KY_RUN (required: the run directory, absolute) · KY_BIN (default $KY_ROOT/bin/ky) · KY_GIT
   (default /usr/bin/git). Every path argument is absolute.
 
-INTERPRETATION (packet KV3-B-KYVERDICTS; each is stricter than the text, never laxer):
-  * the patch comparison above, descent besides the equal patch, and the base derivation;
-  * a degenerate comparison (a base equal to its head, an empty reviewed patch) is "unproven_base", and the
-    three-way position check beside the byte comparison (review round 1, B-01 and B-02);
+INTERPRETATION (packet KV3-B-KYVERDICTS, as amended by A8; each is stricter than the text, never laxer):
+  * the patch-id comparison above and the base derivation; the conflict probe merges onto <main> as it is now;
+  * a degenerate comparison (a base equal to its head, an empty reviewed patch) is "unproven_base";
   * an unmet publication requirement publishes nothing, not REJECTED;
   * the proposal's phase and artifact_digest are bound like its head; RES must be job J's result for item I;
   * `git status` is asked with --untracked-files=all, so a work-tree config cannot hide a file from it;
@@ -114,7 +120,7 @@ import time
 DEFAULT_GIT = "/usr/bin/git"
 MAIN_REFS = ("refs/remotes/origin/main", "refs/heads/main")
 IDENTICAL = "identical_patch"
-REFUSALS = ("patch_differs", "binary_change", "not_descendant", "base_not_ancestor", "unknown_commit",
+REFUSALS = ("patch_differs", "conflicts_with_main", "binary_change", "base_not_ancestor", "unknown_commit",
             "unproven_base", "git_failed")
 PHASES = ("pre_merge", "post_deploy", "artifact")
 VERDICTS = ("ACCEPTED", "REJECTED")
@@ -128,7 +134,6 @@ KY_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
 GIT_TIMEOUT_S = 120
 KY_TIMEOUT_S = 120
 EVIDENCE_LIMIT = 1 << 20
-BOUNDARY_FLAGS = ("head_unchanged", "status_clean", "tracked_hashes_unchanged", "mechanism_intact")
 _SHA1 = re.compile(r"^[0-9a-f]{40}\Z")
 _SHA256 = re.compile(r"^[0-9a-f]{64}\Z")
 _JOB_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
@@ -168,13 +173,13 @@ def _kill_group(proc):
         pass
 
 
-def _run(argv, cwd, env, timeout):
-    """→ (returncode, stdout, stderr) in bytes. subprocess.TimeoutExpired after the child's group has been killed;
-    OSError when it could not be started."""
-    proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, start_new_session=True)
+def _run(argv, cwd, env, timeout, input=None):
+    """→ (returncode, stdout, stderr) in bytes; `input` bytes, when given, are the child's stdin (else nothing is).
+    subprocess.TimeoutExpired after the child's group has been killed; OSError when it could not be started."""
+    proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
     try:
-        out, err = proc.communicate(timeout=timeout)
+        out, err = proc.communicate(input=input, timeout=timeout)
     except BaseException:
         _kill_group(proc)
         raise
@@ -213,22 +218,23 @@ class _Git:
         self.program, self.repo, self.env = program, repo, _git_env(environ)
         self.deadline = time.monotonic() + timeout
 
-    def __call__(self, *args):
+    def __call__(self, *args, input=None):
         """→ (returncode, stdout bytes); _GitFailed when git cannot be asked or does not answer in time."""
         left = self.deadline - time.monotonic()
         if left <= 0:
             raise _GitFailed("timed out")
         try:
-            code, out, _ = _run([self.program, "-c", "core.fsmonitor=false", *args], self.repo, self.env, left)
+            code, out, _ = _run([self.program, "-c", "core.fsmonitor=false", *args], self.repo, self.env, left,
+                                input=input)
         except subprocess.TimeoutExpired:
             raise _GitFailed("timed out") from None
         except (OSError, ValueError, subprocess.SubprocessError) as e:
             raise _GitFailed(type(e).__name__) from None
         return code, out
 
-    def ok(self, *args):
+    def ok(self, *args, input=None):
         """stdout of a command that must succeed."""
-        code, out = self(*args)
+        code, out = self(*args, input=input)
         if code != 0:
             raise _GitFailed("git %s: exit %d" % (args[0], code))
         return out
@@ -272,44 +278,40 @@ def _derived_base(git, main, head):
 
 
 def _patch(git, base, head):
-    """→ (the reviewed patch as bytes, True when something binary changed)."""
+    """→ (the reviewed patch as `git diff` prints it, True when something binary changed)."""
     raw = git.ok("diff", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames", base, head)
-    kept, binary = [], False
-    for line in raw.split(b"\n"):                    # a hunk's own lines begin ' ', '+', '-' or '\': never these
-        if line.startswith(b"Binary files ") or line == b"GIT binary patch":
-            binary = True
-        if not line.startswith(b"index ") and not line.startswith(b"@@"):
-            kept.append(line)
-    return b"\n".join(kept), binary
+    binary = any(line.startswith(b"Binary files ") or line == b"GIT binary patch" for line in raw.split(b"\n"))
+    return raw, binary
+
+
+def _patch_id(git, patch):
+    """`git patch-id --stable` of one patch → its 40-hex id, or None for a patch that identifies nothing (empty)."""
+    out = git.ok("patch-id", "--stable", input=patch)
+    words = out.decode("ascii", "replace").split()
+    return words[0] if words and _hex40(words[0]) else None
 
 
 def _same_patch(old, new):
-    """THE comparison: the two reviewed patches, byte for byte."""
-    return old == new
+    """THE comparison: the two reviewed patches, by their patch-id (A8)."""
+    return old is not None and old == new
 
 
-def _reviewed_onto(git, old_base, new_base, old_head):
-    """The tree the reviewed change (old_base → old_head) yields on new_base, by a three-way merge; None when it
-    does not apply cleanly there."""
-    code, out = git("merge-tree", "--write-tree", "--no-messages", "-X", "no-renames",
-                    "--merge-base=" + old_base, new_base, old_head)
+def _clean_merge(git, main, head):
+    """THE conflict probe: `git merge-tree --write-tree <main> <head>` → True (a tree, no conflict), False (git
+    reports a conflict); _GitFailed on any other answer."""
+    code, out = git("merge-tree", "--write-tree", "--no-messages", main, head)
     if code == 1:
-        return None
+        return False
     if code != 0:
         raise _GitFailed("git merge-tree: exit %d" % code)
     tree = out.decode("ascii", "replace").split("\n", 1)[0].strip()
     if not _hex40(tree):
         raise _GitFailed("git merge-tree: no tree")
-    return tree
-
-
-def _same_tree(reviewed, observed):
-    """THE position check: the new head is exactly what the reviewed change yields on the new base."""
-    return reviewed is not None and reviewed == observed
+    return True
 
 
 def _compare(repo, result, timeout):
-    """→ IDENTICAL or one of REFUSALS; fills the derived bases into `result`. Raises _GitFailed."""
+    """→ IDENTICAL or one of REFUSALS; fills the derived bases and the patch id into `result`. Raises _GitFailed."""
     git = _Git(_git_program(), repo, timeout)
     old_head, new_head = result["old_head"], result["new_head"]
     if not _hex40(old_head) or not _hex40(new_head):
@@ -317,12 +319,11 @@ def _compare(repo, result, timeout):
     git.ok("rev-parse", "--git-dir")
     if not _is_commit(git, old_head) or not _is_commit(git, new_head):
         return "unknown_commit"
-    main = None
+    main = _main_ref(git)
+    if main is None:
+        return "unproven_base"                      # nothing to derive a base from, nothing to merge onto
     for key, head in (("old_base", old_head), ("new_base", new_head)):
         if result[key] is None:
-            main = main or _main_ref(git)
-            if main is None:
-                return "unproven_base"
             result[key] = _derived_base(git, main, head)
             if result[key] is None:
                 return "unproven_base"
@@ -333,19 +334,16 @@ def _compare(repo, result, timeout):
     if not git.yes("merge-base", "--is-ancestor", result["old_base"], old_head) \
             or not git.yes("merge-base", "--is-ancestor", result["new_base"], new_head):
         return "base_not_ancestor"
-    if not git.yes("merge-base", "--is-ancestor", old_head, new_head):
-        return "not_descendant"
     old_patch, old_binary = _patch(git, result["old_base"], old_head)
     new_patch, new_binary = _patch(git, result["new_base"], new_head)
     if old_binary or new_binary:
         return "binary_change"
     if not old_patch.strip():
         return "unproven_base"                      # nothing was reviewed: an empty patch equals any empty patch
-    if _same_patch(old_patch, new_patch) is not True:
+    result["patch_id"] = _patch_id(git, old_patch)
+    if _same_patch(result["patch_id"], _patch_id(git, new_patch)) is not True:
         return "patch_differs"
-    reviewed = _reviewed_onto(git, result["old_base"], result["new_base"], old_head)
-    observed = git.ok("rev-parse", "--verify", new_head + "^{tree}").decode("ascii", "replace").strip()
-    return IDENTICAL if _same_tree(reviewed, observed) is True else "patch_differs"
+    return IDENTICAL if _clean_merge(git, main, new_head) is True else "conflicts_with_main"
 
 
 def inheritance(repo, old_head, new_head, *, old_base=None, new_base=None, timeout=60):
@@ -355,7 +353,7 @@ def inheritance(repo, old_head, new_head, *, old_base=None, new_base=None, timeo
         return value if isinstance(value, str) else None
 
     result = {"inherits": False, "reason": "git_failed", "old_head": text(old_head), "new_head": text(new_head),
-              "old_base": text(old_base), "new_base": text(new_base)}
+              "old_base": text(old_base), "new_base": text(new_base), "patch_id": None}
     given_bases = (old_base, new_base)
     try:
         if any(b is not None and not isinstance(b, str) for b in given_bases):
@@ -505,9 +503,10 @@ def _tracked_sha256(git, top):
     return digest.hexdigest()
 
 
-def _observe_worktree(worktree, environ):
-    """What the work tree is right now → {"worktree", "head", "status_porcelain", "tracked_sha256"}. _GitFailed
-    when any part of it cannot be observed, or when `worktree` is not the top of a Git work tree."""
+def _observe_worktree(worktree, environ, tracked=True):
+    """What the work tree is right now → {"worktree", "head", "status_porcelain"} plus, with `tracked`,
+    "tracked_sha256" (the snapshot's record; publish does not ask for it). _GitFailed when any part of it cannot be
+    observed, or when `worktree` is not the top of a Git work tree."""
     git = _Git(_git_program(environ), worktree, GIT_TIMEOUT_S, environ)
     top = os.fsdecode(git.ok("rev-parse", "--show-toplevel")).rstrip("\n")
     if not top or os.path.realpath(top) != os.path.realpath(worktree):
@@ -516,8 +515,10 @@ def _observe_worktree(worktree, environ):
     if not _hex40(head):
         raise _GitFailed("HEAD is not a commit")
     status = git.ok("status", "--porcelain", "--untracked-files=all", "--ignore-submodules=none")
-    return {"worktree": os.path.realpath(worktree), "head": head, "status_porcelain": status.decode("utf-8", "replace"),
-            "tracked_sha256": _tracked_sha256(git, top)}
+    seen = {"worktree": os.path.realpath(worktree), "head": head, "status_porcelain": status.decode("utf-8", "replace")}
+    if tracked:
+        seen["tracked_sha256"] = _tracked_sha256(git, top)
+    return seen
 
 
 def _read_ledger(path):
@@ -686,32 +687,16 @@ def _requirements(a, environ):
     if a.author_id.strip().casefold() == a.reviewer_id.strip().casefold():
         reasons.append("author_is_reviewer")
 
-    snapshot, why = _evidence(a.snapshot)
-    if why == "missing":
-        reasons.append("snapshot_missing")
-        snapshot = None
-    elif why or not isinstance(snapshot, dict) or not _hex40(snapshot.get("head")) \
-            or not isinstance(snapshot.get("status_porcelain"), str) \
-            or not isinstance(snapshot.get("tracked_sha256"), str) or not _SHA256.match(snapshot["tracked_sha256"]) \
-            or not isinstance(snapshot.get("worktree"), str) \
-            or os.path.realpath(snapshot["worktree"]) != os.path.realpath(a.worktree):
-        reasons.append("snapshot_invalid")
-        snapshot = None
-    try:
-        now = _observe_worktree(a.worktree, environ)
+    try:                                             # A8: the tree is observed NOW; no pre-job snapshot is compared
+        now = _observe_worktree(a.worktree, environ, tracked=False)
     except _GitFailed:
         reasons.append("worktree_unobservable")
     else:
-        if snapshot is not None and now["head"] != snapshot["head"]:
-            reasons.append("head_moved")
-        if a.phase == "pre_merge" and (snapshot["head"] if snapshot is not None else now["head"]) != a.head:
+        if a.phase == "pre_merge" and now["head"] != a.head:
             reasons.append("head_not_reviewed")
         if now["status_porcelain"] != "":
             reasons.append("tree_dirty")
-        if snapshot is not None and now["tracked_sha256"] != snapshot["tracked_sha256"]:
-            reasons.append("tracked_changed")
         facts["evidence"]["worktree_head"] = now["head"]
-        facts["evidence"]["tracked_sha256"] = now["tracked_sha256"]
 
     if a.phase == "artifact":
         if not os.path.exists(a.artifact_path):
@@ -719,35 +704,12 @@ def _requirements(a, environ):
         elif _sha_file(a.artifact_path) != a.artifact_digest:
             reasons.append("artifact_digest_mismatch")
 
-    boundary, why = _evidence(a.boundary)
-    if why == "missing":
-        reasons.append("boundary_missing")
-    elif why or not isinstance(boundary, dict):
-        reasons.append("boundary_invalid")
-    else:
-        facts["evidence"]["boundary_sha256"] = _sha_file(a.boundary)
-        if boundary.get("job_id") != a.job_id:
-            reasons.append("boundary_job_mismatch")
-        if boundary.get("result") != "intact" or not isinstance(boundary.get("result"), str) \
-                or _a_flag_is_not_true(boundary):
-            reasons.append("boundary_not_intact")
-
     if a.external_review_path:
         if not os.path.exists(a.external_review_path):
             reasons.append("external_review_missing")
         elif _sha_file(a.external_review_path) != a.external_review_sha256:
             reasons.append("external_review_sha_mismatch")
     return reasons, facts
-
-
-def _a_flag_is_not_true(node):
-    """True when, anywhere in the boundary evidence, one of the boundary's own checks is present and not true."""
-    if isinstance(node, dict):
-        return any((key in BOUNDARY_FLAGS and value is not True) or _a_flag_is_not_true(value)
-                   for key, value in node.items())
-    if isinstance(node, list):
-        return any(_a_flag_is_not_true(value) for value in node)
-    return False
 
 
 def _identity(a):
@@ -1003,8 +965,8 @@ def _cmd_inherit(a, _environ):
 USAGE = """usage: kyverdicts.py snapshot --worktree W --out S
        kyverdicts.py publish --job-id J --item I --phase pre_merge|post_deploy|artifact
                              (--head H | --artifact-digest D --artifact-path P)
-                             --vslot V --author-id AU --reviewer-id RV --worktree W --snapshot S --job-exit N
-                             --result RES --boundary BD --as CID [--events E]
+                             --vslot V --author-id AU --reviewer-id RV --worktree W --job-exit N
+                             --result RES --as CID [--snapshot S] [--boundary BD] [--events E]
                              [--external-review-path X --external-review-sha256 Y]
        kyverdicts.py invalidate --item I --phase PH (--head H | --artifact-digest D) --vslot V --reason TEXT
                              --as CID [--events E]
@@ -1030,10 +992,9 @@ def _parser():
         return p
 
     verb("snapshot", ("--worktree", "--out"))
-    p = verb("publish", ("--job-id", "--item", "--vslot", "--author-id", "--reviewer-id", "--worktree",
-                         "--snapshot", "--result", "--boundary"),
+    p = verb("publish", ("--job-id", "--item", "--vslot", "--author-id", "--reviewer-id", "--worktree", "--result"),
              ("--head", "--artifact-digest", "--artifact-path", "--events", "--external-review-path",
-              "--external-review-sha256"))
+              "--external-review-sha256", "--snapshot", "--boundary"))      # the last two: accepted, not read (A8)
     p.add_argument("--phase", required=True, choices=PHASES)
     p.add_argument("--job-exit", required=True, type=int)
     p.add_argument("--as", required=True, dest="as_")
