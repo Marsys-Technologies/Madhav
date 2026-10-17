@@ -85,7 +85,7 @@ def test_rebuild_dryrun_remains_plan_only_without_delegation(planned_run,monkeyp
     try:
         assert ops.main(['rebuild-dryrun','--run-id',fixture.run_id,'--assets',fixture.assets]) == 0
         output = json.loads(capsys.readouterr().out)
-        assert calls == [] and output['status'] == 'PLAN_ONLY' and output['dry_run_passed'] is False
+        assert calls == [] and output['status'] == 'PLAN_ONLY' and output['dry_run_passed'] is None
         assert fixture.caller.execute('SELECT state FROM build_runs WHERE id=%s',(fixture.run_id,)).fetchone() == ('planned',)
         fixture.caller.commit()
     finally:
