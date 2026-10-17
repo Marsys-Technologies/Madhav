@@ -42,6 +42,11 @@ from .test_a55_replace_chain import SHORT, _World, template  # noqa: F401
 
 GOLDEN = Path(__file__).resolve().parent / "fixtures" / "mb_ordinary_golden_j4p.json"
 GOLDEN_COMMIT = "2d75833d3963a61544deaa4c36cc8322cb2cdcb5"
+# The immutable capture recorded the dasha build then settled (L1_SETTLED v1, ca17639b); the snapshot notes name it as
+# "build <uuid first four groups>-<hex>", and the final group is normalised away by `_norm`. A settlement move
+# (dasha_settlement.json) changes only this identity, so the comparison re-points it at the governed record instead of
+# re-capturing the golden or pinning a second literal.
+GOLDEN_SETTLED_BUILD_PREFIX = "ca17639b-f3cf-42c7-9866-"
 # PR #3596 (ci-kalayantra-pb-j4c-a), J4C-A: substrate.DB_BODY and
 # window_sweep.GRAHA_TITLE now derive the same graha mapping from the SSoT.
 # Computed from this tree with implementation_registry.compute(); pin these
@@ -177,6 +182,21 @@ def _load():
     return golden
 
 
+def _follow_settlement(golden: dict) -> dict:
+    """The golden with its one settled-build identity re-pointed at the governed settlement record.
+
+    Only the dasha build named in the snapshot notes moves; the golden must carry that identity exactly once (so the
+    re-pointing is never silent or vacuous) and every other field stays strictly compared.
+    """
+    from services.gochara_kernel import dasha_read
+
+    run_id = dasha_read.load_dasha_settlement(CHART_ID)["run_id"]
+    settled_prefix = run_id.rsplit("-", 1)[0] + "-"
+    text = json.dumps(golden, sort_keys=True)
+    assert text.count(GOLDEN_SETTLED_BUILD_PREFIX) == 1, "the golden names its settled dasha build exactly once"
+    return json.loads(text.replace(GOLDEN_SETTLED_BUILD_PREFIX, settled_prefix))
+
+
 def test_b4_baseline_preserves_final_main_settlement_amendments():
     """Keep final J-4p's outcomes and transcript alongside B4's baseline.
 
@@ -224,7 +244,7 @@ def head(template):
 
 def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read_only_state_guard_select(head):
     got, raw = head
-    want = _load()
+    want = _follow_settlement(_load())
     assert [s["key"] for s in got["substeps"]] == [s["key"] for s in want["substeps"]]
     kinds = {s["key"].split(":")[0].split(" ")[0] for s in want["substeps"]}
     assert kinds >= {"rules", "convention", "body", "manifest", "snapshot", "inventory", "coverage", "record", "window", "verify"}, kinds
