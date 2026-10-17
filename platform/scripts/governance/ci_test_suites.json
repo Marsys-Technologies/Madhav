@@ -530,7 +530,8 @@
       "cwd": ".",
       "engine": "pytest",
       "include": [
-        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation*.py"
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_overlay*.py"
       ]
     },
     "governance-tool-tests-shard-6-0": {
@@ -858,6 +859,13 @@
         "src/lib/pariprashna/samiksha/**/*.spec.[jt]sx",
         "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]s",
         "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]sx"
+      ]
+    },
+    "density-census-kcert-assessment": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/retrieval/register_gochara_windows_kcert_assessment*.test.ts"
       ]
     }
   }

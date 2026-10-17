@@ -3256,6 +3256,9 @@ jobs:
       - name: response_budget hardFloor regression test (platform-mcp)
         working-directory: platform-mcp
         run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-6-0 --
+      - name: K-CERT stored citation status projection and honest gaps (platform-mcp)
+        working-directory: platform-mcp
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-kcert-assessment --
       - name: envelope codegen parity test (platform-mcp) — GT-9
         working-directory: platform-mcp
         run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest density-census-7-0 --

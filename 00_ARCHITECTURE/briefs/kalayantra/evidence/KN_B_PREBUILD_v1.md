@@ -1,8 +1,8 @@
 ---
 artifact: KN_B_PREBUILD
-version: "1.0"
+version: "1.1"
 status: BUILT_WAITING_ON_GATE
-changelog: "1.0 (2026-10-16): digest-bound custody, offline join reconciliation and shared-preparation gap reproduction; no parent or runtime acceptance."
+changelog: "1.1 (2026-10-16): PR #3640 non-blocking dispositions; current packet pins/citations and distinguishing admission proof. 1.0: custody, offline reconciliation and sharing-gap reproduction."
 ---
 
 # KN-B preparation evidence
@@ -58,12 +58,13 @@ python3 -B 00_ARCHITECTURE/briefs/kalayantra/evidence/kn_b_reconcile.py \
   --verify-custody
 ```
 
-The packet admission checker separately refuses three inherited stale source pins
-(plan model, algorithm elevations and judge writer). The baseline packet produces
-the same three refusals. Its size and packet hash pass after this custody edit;
-current-source repinning remains a cockpit readmission prerequisite.
+The packet admission checker now admits the preparation packet after refreshing
+the three inherited stale source pins (plan model, algorithm elevations and judge
+writer), their moved line references and the packet hash. The historical JSON
+bundle's source-model hash still identifies its original inspected snapshot.
+Admission does not establish child registration, runtime acceptance or activation.
 
-Exit 1 means missing or inconsistent offline evidence; it is expected for this
+`kn_b_reconcile.py` exit 1 means missing or inconsistent offline evidence; it is expected for this
 snapshot. The cockpit supplies an audited proposal/bundle with actual registered
 IDs when available. Preserve the pinned baseline dependency/waiter lists when
 preparing that proposal. Reconcile all four family roles and independent judge
@@ -85,8 +86,9 @@ passing synthetic fixtures never establishes live wiring or parent completion.
 Tests are discovered automatically under
 `platform/scripts/governance/__tests__/test_ky_kn_b_reconciliation.py` by the
 required governance shards (`ci_shard.py`). No explicit workflow path is added.
-This checkout has no `ci_discovery.py` or `ci_test_suites.json`; the existing
-governance shard discovery and the existing `test_g1b*.py` CI glob cover the work.
+After PR #3588, `platform/scripts/governance/ci_discovery.py` and
+`ci_test_suites.json` supply CI profile discovery as well. The governance shards
+discover this test file automatically; no workflow or generated output is edited.
 
 **(I) INTERPRETATION:** pre-build offline custody/reconciliation while preserving
 accepted-parent state. Alternative: convert the accepted parent in this child job,
@@ -130,3 +132,37 @@ All live-admission, protected-window, independent acceptance, readback,
 publication and parent-completion prerequisites remain in force. Local fixture
 proofs never discharge them. The existing campaign handshake is inherited; this
 bundle does not close the campaign.
+
+## PR #3640 non-blocking dispositions (2026-10-16)
+
+The reviewed source is `c89bce40b62bfc07d38c6b30dea51fdd1afb25bb`;
+this stacked job starts at its main-merge head
+`4cc67f4e12a08608c3fe9f84e2d1fd48dc21ce36` and addresses the four observations in
+`X-20261016T152150Z-review2-pb-kn-b/REVIEW.md:21–24`.
+Fresh receipts are retained under
+`/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T155640Z-nb-knb/`.
+
+| Finding | Disposition and evidence |
+|---|---|
+| KA3B-N1 | **No code change:** the original result is still absent at the path pinned in `KN_B_PREBUILD_v1.json:28`; `custody-reconciliation.log` reports `original_builder_available=false` and no available-artifact digest errors. Neither independent reviews nor this job can supply the missing builder's authorship, interpretations or receipts. Keep the null digest; cockpit archive recovery remains owed. |
+| KA3B-N2 | **No code/state change:** `plan_model.json:3484–3539` still records branch-merged acceptance, and `KN_B_PREBUILD_v1.json:25` supplies no children. The fresh reconciliation reports the missing parent join and all five correspondences. The synthetic rejection tests continue to enforce independent exact heads, merge/readback mappings, edges, cycles and ownership. Inventing completion data or making the checker green would violate §N.8. Actual registration and authenticated acceptance remain cockpit work. |
+| K5-G1b-N1 | **No runtime change:** `shared-preparation-observation.log` again records two preparations and six geometry builds for two classes/three draws. `--require-shared` still fails. `test_g1b_measure.py` verifies fixed jury-anchor conditioning, shifted field transits, retained natal/clock terms, and bitwise class-specific maxima/quantiles. This is evidence of the outstanding integration, not a sharing fix. |
+| PBKNB-N1 | **Fixed:** preparation packet v1.2 pins the observed bytes and current source locations; the real admission CLI passes. The job-local admission regression first failed on exactly the three stale pins. `PBKNB-N1-proof.json` records exact pre-change packet bytes in `PBKNB-N1-reverted-tree` (exit 1) and fixed packet bytes in `PBKNB-N1-fixed-tree` (exit 0), with identical current source files in both copies. |
+
+**(I) INTERPRETATION:** use the job's explicit no-code disposition option for the
+three evidence/integration observations; do not report their underlying runtime
+or cockpit obligations complete. Alternative: treat this review job as proof of
+historical authorship, authenticated child acceptance or shared geometry.
+The current K5-G1b-N1 brief (`plan_model.json:28016–28032`) explicitly requires
+independent reproduction while preserving the reviewed field behavior. Merely
+caching offsets would leave repeated geometry work; substituting jury draws
+would change the field estimand. The eventual implementation must share
+candidate-bound input preparation across the three separately conditioned
+experiments and prove content-bound resume (architecture plan §6.2(5,7)); these
+receipts confer no performance or runtime-qualification claim. This is a recorded
+no-code disposition for this preparation review, not a waiver of that work.
+
+The admission regression is job-local: permanently requiring this historical
+packet to match every future plan-model revision would impose a new campaign
+freshness gate. Existing reconciliation and field tests remain CI-discovered;
+only the packet and this evidence explanation change in the branch.
