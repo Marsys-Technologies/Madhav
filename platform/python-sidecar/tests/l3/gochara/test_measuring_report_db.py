@@ -156,3 +156,44 @@ def test_read_records_excludes_foreign_chart_generation_and_unadmitted_rows(worl
                                    (value, CHART_ID, GEN)).rowcount
         assert n == 1
         assert mr.read_records(world.conn, CHART_ID, GEN) == []
+
+
+def test_mb6_real_run_producer_basis_survives_manifest_storage_and_rejects_wrong_bounds(world):
+    """Actual producer reads a local run; MB-6 reads its stored JSON, with no LEL table.
+
+    The independent runtime/sink envelope is synthetic, as in the pure MB-6
+    tests: this proves compatibility, not a real measuring operation's verdict.
+    """
+    from pipeline.orchestrator.writers import ContextSpec
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer
+    from .test_mb_horizon_shape_guard import BIRTH_PARAMS
+    from .test_measuring_report import BIRTH, BUILD, H, T, _mb6_view
+
+    _boot_p3(world)
+    run_id = str(uuid.uuid4())
+    # The AM-5 world predates these two reader inputs; stub only their read
+    # columns, as the J-1a fixture does. All publication storage is real DDL.
+    world.conn.execute("CREATE TABLE public.build_runs (id uuid PRIMARY KEY, created_at timestamptz NOT NULL)")
+    world.conn.execute("CREATE TABLE public.kala_gochara_authority (chart_id uuid PRIMARY KEY, authoritative_generation text)")
+    world.conn.execute("INSERT INTO public.build_runs VALUES (%s, %s)", (run_id, T(2026, 10, 5)))
+    ctx = ContextSpec(asset_id=writer.ASSET_ID, build_id=run_id, db_conn=world.conn,
+                      config={"chart_id": CHART_ID, "birth_params": BIRTH_PARAMS}, dry_run=False)
+    basis = writer._derive_horizon(ctx).basis_record()
+    vector = {"stored_scope": "test_slice", "horizon_basis": basis,
+              "test_slice": {"schema": "gochara_v5_test_slice/1", "marker_digest": "d" * 64,
+                             "run": "all_classes_full", "classes": sorted(mr.SCORED_CLASSES),
+                             "horizon": ["1998-01-01", "2084-02-05"]}}
+    evidence = _mb6_view()
+
+    def accept():
+        return mr.read_measuring_acceptance(
+            world.conn, CHART_ID, GEN, expected_horizon=H, birth_date=BIRTH, build_date=BUILD,
+            run_verdict=evidence.run_verdict, sink_counts=evidence.sink_counts)
+
+    _set_manifest(world.conn, vector, horizon=(T(1998, 1, 1), T(2084, 2, 5)))
+    result = accept()
+    assert result["accepted"] is True, result["refusals"]
+    basis["horizon"][0] = "1999-01-01T00:00:00+00:00"
+    _set_manifest(world.conn, vector, horizon=(T(1998, 1, 1), T(2084, 2, 5)))
+    result = accept()
+    assert result["accepted"] is False and "horizon_mismatch" in result["refusals"]

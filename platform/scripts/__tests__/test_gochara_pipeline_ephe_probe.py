@@ -14,9 +14,13 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import stat
 import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 REPO = Path(__file__).resolve().parents[3]
 SCRIPT = REPO / "platform/scripts/gochara-pipeline-ephe-probe.sh"
@@ -51,6 +55,16 @@ def run_probe(tmp_path: Path, *, digests: str | None, gcloud_fail: bool = False,
               drop_tool: str | None = None, mode: str = "--run", script: Path | None = None, project: str | None = None) -> subprocess.CompletedProcess[str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
+    # Even /usr/bin can contain docker on CI runners. Expose only the exact
+    # utilities the probe/stubs need, never a host directory containing CLIs.
+    for tool in ("bash", "cat", "dirname", "grep", "awk", "python3"):
+        target = sys.executable if tool == "python3" else shutil.which(tool)
+        assert target is not None, f"required test utility missing: {tool}"
+        link = bin_dir / tool
+        if not link.exists():
+            link.symlink_to(target)
+    if drop_tool:
+        (bin_dir / drop_tool).unlink(missing_ok=True)
     if drop_tool != "gcloud":
         stub = bin_dir / "gcloud"
         stub.write_text(GCLOUD_STUB % IMAGE, encoding="utf-8")
@@ -64,17 +78,15 @@ def run_probe(tmp_path: Path, *, digests: str | None, gcloud_fail: bool = False,
     (tmp_path / "env.txt").write_text(inspect_env, encoding="utf-8")
 
     env = dict(os.environ)
-    if drop_tool:
-        # a PATH without any real tool dirs: the named tool is genuinely absent
-        env["PATH"] = f"{bin_dir}:/usr/bin:/bin"
-    else:
-        env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
+    env["PATH"] = str(bin_dir)
     env["STUB_LOG"] = str(tmp_path / "stub.log")
     env["DIGESTS_FILE"] = str(tmp_path / "digests.txt")
     env["INSPECT_FILE"] = str(tmp_path / "env.txt")
+    env.pop("GCLOUD_FAIL", None)
     if gcloud_fail:
         env["GCLOUD_FAIL"] = "1"
-    r = subprocess.run(["bash", str(script or SCRIPT), "brahma-build-pipeline-job", "asia-south1", mode, *(["--project", project] if project else [])],
+    r = subprocess.run([str(bin_dir / "bash"), str(script or SCRIPT), "brahma-build-pipeline-job", "asia-south1", mode,
+                        *(["--project", project] if project else [])],
                        env=env, capture_output=True, text=True, timeout=60)
     log = Path(env["STUB_LOG"])
     r.stub_log = log.read_text(encoding="utf-8") if log.exists() else ""  # type: ignore[attr-defined]
@@ -144,6 +156,36 @@ def test_a_missing_tool_is_an_exit2_refusal(tmp_path: Path) -> None:
     assert "REFUSAL: docker not on PATH" in r.stderr
 
 
+@pytest.mark.parametrize("host_has_docker", [False, True])
+@pytest.mark.parametrize("drop_tool", [None, "docker", "gcloud"])
+def test_probe_path_is_isolated_from_host_tools(tmp_path: Path, monkeypatch,
+                                               host_has_docker: bool, drop_tool: str | None) -> None:
+    host_bin = tmp_path / "host-bin"
+    host_bin.mkdir()
+    for tool in ("bash", "cat", "dirname", "grep", "awk"):
+        target = shutil.which(tool)
+        assert target is not None, f"required test utility missing: {tool}"
+        (host_bin / tool).symlink_to(target)
+    marker = tmp_path / "host-tool-ran"
+    for tool in ["host_only_command", "gcloud", *(["docker"] if host_has_docker else [])]:
+        stub = host_bin / tool
+        stub.write_text(f'#!/bin/sh\necho host-tool-ran > "{marker}"\nexit 99\n', encoding="utf-8")
+        stub.chmod(0o755)
+    monkeypatch.setenv("PATH", str(host_bin))
+    # Exercise the child's actual command lookup, including unneeded host tools.
+    wrapper = tmp_path / "probe-wrapper.sh"
+    wrapper.write_text(
+        'if command -v host_only_command >/dev/null; then\n'
+        '  echo "host PATH leaked into probe" >&2; exit 99\nfi\n'
+        f'exec bash "{SCRIPT}" "$@"\n', encoding="utf-8")
+    r = run_probe(tmp_path, digests=good_digests(), drop_tool=drop_tool, script=wrapper)
+    assert r.returncode == (2 if drop_tool else 0), r.stderr
+    if drop_tool:
+        assert f"REFUSAL: {drop_tool} not on PATH" in r.stderr
+        assert r.stub_log == ""
+    assert not marker.exists(), "a host tool ran instead of a test stub"
+
+
 def test_usage_refusal_without_job_and_region() -> None:
     r = subprocess.run(["bash", str(SCRIPT)], capture_output=True, text=True, timeout=30)
     assert r.returncode == 2
@@ -174,9 +216,6 @@ def test_a_missing_pins_file_is_an_exit2_refusal(tmp_path: Path) -> None:
 
 # A failed process substitution used to leave the comparison loop empty and
 # report PASS. Each case below must refuse before any image probe is run.
-import pytest
-
-
 @pytest.mark.parametrize("pin_source", [
     "not valid python !",                          # parser failure
     "UNRELATED = {}",                             # missing assignment

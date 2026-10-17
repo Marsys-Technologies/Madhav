@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
+import { ancestryGit, runWorkflowShell } from './helpers/gochara_workflow_shell'
 
 const root = resolve(__dirname, '../../..')
 const text = readFileSync(resolve(root, '.github/workflows/gochara-seal-approved.yml'), 'utf8')
@@ -15,6 +16,17 @@ const seal = wf.jobs.seal
 const code = (t: string) => t.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n')
 
 describe('gochara-seal-approved.yml', () => {
+  it.each([
+    ['brief', 'yes'], ['brief', 'no'], ['seal', 'yes'], ['seal', 'no'],
+  ])('executes the %s revision guard when reviewed HEAD is on main: %s', (name, contained) => {
+    const guard = wf.jobs[name].steps.find((s: any) => String(s.name).startsWith('Bind to the reviewed sealing revision'))
+    const result = runWorkflowShell(guard.run, { git: ancestryGit }, {
+      GITHUB_SHA: 'a'.repeat(40), EXPECTED_SEALING_COMMIT: 'a'.repeat(40), J56_REVIEWED_ON_MAIN: contained,
+    })
+    expect(result.status, result.stderr).toBe(contained === 'yes' ? 0 : 1)
+    expect(result.calls.at(-1)?.args).toEqual(['merge-base', '--is-ancestor', 'a'.repeat(40), 'origin/main'])
+  })
+
   it('is workflow_dispatch only, from main, behind an exact confirmation phrase', () => {
     expect(Object.keys(wf.on)).toEqual(['workflow_dispatch'])
     expect(brief.if).toContain("github.ref == 'refs/heads/main'")
