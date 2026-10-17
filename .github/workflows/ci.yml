@@ -2425,6 +2425,11 @@ jobs:
       - name: KĀLA-YANTRA operation adapter acceptance harness (OPS-NB-01)
         if: matrix.shard == 1
         run: python -B "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-shard-6-0 -- -q -p no:cacheprovider
+      - name: J6-BINDINGS — disabled authority, decision consumption and live/soak evidence
+        if: matrix.shard == 1
+        run: >-
+          python -B "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-j6-bindings --
+          -q -p no:cacheprovider
       - name: pytest — tracker guarded completion and concurrency (required)
         if: matrix.shard == 1
         env:

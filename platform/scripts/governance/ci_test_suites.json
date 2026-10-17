@@ -107,6 +107,7 @@
         "tests/l3/gochara/test_mb_horizon*.py",
         "tests/l3/gochara/test_mb_stretch*.py",
         "tests/l3/gochara/test_j6r*.py",
+        "tests/l3/gochara/test_j6_bindings*.py",
         "tests/l3/gochara/test_n18*.py"
       ],
       "discover_db": true
@@ -829,6 +830,14 @@
       "engine": "vitest",
       "include": [
         "src/tools/retrieval/register_gochara_windows_kcert_assessment*.test.ts"
+      ]
+    },
+    "governance-tool-tests-j6-bindings": {
+      "cwd": "platform",
+      "engine": "pytest",
+      "include": [
+        "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_j6_head_bindings*.py",
+        "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_j6_live_readback*.py"
       ]
     }
   }

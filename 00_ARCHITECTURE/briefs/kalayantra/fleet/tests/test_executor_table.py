@@ -172,9 +172,13 @@ def assert_table_matches_pin(now):
     pos = expected_order.index("measuring_dispatch") + 1
     expected_order[pos:pos] = ["measuring_dispatch_dryrun", "measuring_teardown_dryrun", "measuring_teardown"]
     expected_order.insert(expected_order.index("migration_readback") + 1, "cloudrun_job_readback")
+    # J6 head-change bindings: each head kind gains an explicit `_dryrun` sibling right after it
+    for head_kind in ("publish_head", "rollback_head"):
+        expected_order.insert(expected_order.index(head_kind) + 1, head_kind + "_dryrun")
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
+    expected["readback_sql"]["allowed_args"] = ["sql_file", "sql_sha256"]   # J6 live readback pins the SQL by digest
     for kind in K9_KINDS:
         assert expected[kind]["enabled_by"] == "K9-3", f"{kind}: the pin no longer says K9-3 — test premise broken"
         expected[kind]["enabled_by"] = "K9-23"
@@ -194,6 +198,25 @@ def assert_table_matches_pin(now):
             "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
     for kind, binding in P01_BINDINGS.items():
         expected[kind].update(enabled=True, **binding)
+    g6_rows = ["exact_generation_manifest_sealed", "every_included_grain_verified",
+        "evaluation_recorded_no_open_engineering_defect", "authority_constraint_deployed",
+        "reader_deployed_sealed_only_no_test_slice", "reader_horizon_and_rollback_probed",
+        "rollback_rehearsal_accepted", "previous_head_retained",
+        "deployed_image_and_migrations_identified", "D-FLIP_approved"]
+    rollback_rows = ["retained_head_bound_to_publish_receipt", "rollback_rehearsal_accepted",
+                     "deployed_image_and_migrations_identified"]
+    for kind in ("publish_head", "rollback_head"):
+        original = expected[kind]
+        for dry in (False, True):
+            entry = {"enabled": False, "needs": "builder",
+                "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py",
+                "fixed_args": ["--kind", kind, "--dry-run" if dry else "--execute"],
+                "allowed_args": ["generation", "manifest-id", "expected-head-sha256"],
+                "production": True, "enabled_by": original["enabled_by"],
+                "required_rows": g6_rows if kind == "publish_head" else rollback_rows}
+            if not dry:
+                entry["prepared_dry_run"] = original["prepared_dry_run"]
+            expected[kind + ("_dryrun" if dry else "")] = entry
     for kind in W4_KINDS | {"readback_sql"}:
         key = "lane_readback" if kind == "readback_sql" else "lane_dry_run"
         expected[kind][key] = {"script": "00_ARCHITECTURE/briefs/kalayantra/fleet/lane_smalltest.py", "needs": "none"}
@@ -302,7 +325,7 @@ def _segments(src):
 # local_schema_seed scratch lifecycle (#3627) and the D-33 generated-overlay hand-off (#3672, d62eb02d4:
 # overlay_proofs, apply_generated_overlay and their call sites in receipt/execute/execute_lane). Each hash is of the merged executor.py function; every
 # other mutation, including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6ab55daa748a71149247f3e2d5a1', 'receipt': 'fe01726e959f02fe1d6d7bba32f72e573f06bb23f901de62334e9f6e1e28aff1', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'validate': 'd07de5f9602ed84043d87f36ed89ceb0c5b535e372150919d2c0250132dea5d1', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': 'b1b3c09684a5b2833004e7f99d59aa5500962245b48cc8f42c2bea030afbb8d3', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': 'd445545193c558f4d1acc522b7f616382a74998b04f4c941b0628e12a190642c', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': '5ed6d1cafe35bff8e83710ee563abad95a433be437ef7970655c7f2a1e7af779', 'main': '8bcabbe56032a38b747ab5a3e117cd3d68c130ee1a4153604a02fb84af6ee510', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3'}
+W4_FUNCTION_HASHES = {'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6ab55daa748a71149247f3e2d5a1', 'receipt': 'e7304d8b62e6d4954c850131a573d5552909bdcf73adf3769ed64e75daf9c271', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'head_policy': '948d21ff7ed3d7e4ba67bfdcf3d11ce042a3c7fef7603d3de852b3beff9a116c', 'head_policy_problem': '7d4d5e7cd616c4a4e0703361630ada5544250aad5907e359618ba5de2491f96f', 'validate': 'ba6c7d5303dcf7830dc92ae21bd3698583280636476a7b53f1fe8b0ef018e859', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': 'b1b3c09684a5b2833004e7f99d59aa5500962245b48cc8f42c2bea030afbb8d3', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': 'd445545193c558f4d1acc522b7f616382a74998b04f4c941b0628e12a190642c', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': '5ed6d1cafe35bff8e83710ee563abad95a433be437ef7970655c7f2a1e7af779', 'main': '8bcabbe56032a38b747ab5a3e117cd3d68c130ee1a4153604a02fb84af6ee510', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3'}
 
 
 def normalize_wave4(base_src, work_src):
