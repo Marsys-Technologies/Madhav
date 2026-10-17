@@ -92,3 +92,56 @@ def test_real_field_result_reaches_nonempty_window_insert():
         None,set(),None,[], 'shape_only',baseline_is_synthetic=True)>0
     row=conn.tables['kala_field_windows'][0]
     assert row['null_R']==3 and row['null_resolution']==.25
+
+
+def test_shared_schedule_cannot_substitute_jury_conditioning_for_field_geometry():
+    """K5-G1b-N1 negative control: equal offsets do not identify experiments."""
+    from services.kala_core.measure import Interval, Witness, prepare_draws, jury_agreement
+    from services.kala_core.measure.field import prepare_field
+    from tests.l3.ka_kshetra.test_stage5_null import _evaluator
+
+    jury = prepare_draws(Interval(0, 40), (
+        Witness('anchor', (Interval(10, 20),)),
+        Witness('other', (Interval(10, 20),)),
+    ), anchor_id='anchor', non_identity_shifts=3, exchangeable=False)
+    field = prepare_field('e', 40, non_identity_shifts=3)
+    assert field.offsets == tuple(d.offset for d in jury.null_draws) == (10., 20., 30.)
+    # The jury keeps its selected anchor fixed in every draw.
+    assert [(s.interval.start, s.interval.end) for s in jury.null_draws[0].segments
+            if 'anchor' in s.support] == [(10., 20.)]
+    ev = _evaluator(horizon=40, hump_at=20)
+    shifted = S5.replicate_evaluator(ev, field.offsets[0])
+    # The field shifts its transit hump and keeps natal/clock terms fixed.
+    assert shifted.envelopes.covariates_at(10)['contact_moon_ref'] == 1.
+    assert ev.envelopes.covariates_at(10).get('contact_moon_ref', 0.) == 0.
+    assert shifted.promise is ev.promise and shifted.clocks == ev.clocks
+    result = jury_agreement(jury, alpha=.05)
+    assert result.experiment.estimand == 'jury_incremental_agreement'
+    assert field.experiment.estimand == 'class_specific_field_maximum:e'
+    assert result.preparation_digest != field.digest
+    assert result.surrogate_diagnostic is True
+
+
+def test_full_reference_field_blocks_preserve_class_specific_null_statistics():
+    """Sharing a schedule must not pool differently conditioned class fields."""
+    from copy import copy
+    from services.kala_core.measure.field import prepare_field, FieldAccumulator
+    from tests.l3.ka_kshetra.test_stage5_null import _evaluator
+
+    first = _evaluator(horizon=40, hump_at=20)
+    second = copy(first)
+    second.event_class = 'other_class'
+    second.lifetime_count = 4.
+    results = []
+    for ev in (first, second):
+        acc = FieldAccumulator(prepare_field(ev.event_class, 40, non_identity_shifts=3), buckets=(1, 3))
+        S5.run_field_block(ev, acc, start=0, end=1)
+        S5.run_field_block(ev, acc, start=1, end=3)
+        actual = acc.finalize()
+        reference = S5.run_null(ev, 40, replicates=4, buckets=(1, 3))
+        assert actual.max_stats == reference.max_stats
+        assert actual.q_threshold.hex() == reference.q_threshold.hex()
+        assert actual.denominator == 4
+        results.append(actual)
+    assert results[0].preparation_digest != results[1].preparation_digest
+    assert results[0].max_stats[1] != results[1].max_stats[1]

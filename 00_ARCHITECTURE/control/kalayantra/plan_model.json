@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -3373,12 +3373,12 @@
         "KA-2",
         "J-4c-pr3141",
         "J-4c-pr3191",
-        "J-4c-pr3193",
-        "J-4d-pr3018"
+        "J-4c-pr3193"
       ],
       "mandatory": true,
       "steps": [
         "p05_code_merged",
+        "gcw_1235_production_applied",
         "overlays_module",
         "vedha_intervals",
         "coverage_and_qualification",
@@ -3428,7 +3428,10 @@
         "notes": [
           "SR-A6-EDGES (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:71 (SR-A6-EDGES, 2026-10-16T14:33:11Z)): replace only the J-4b-pr2817 strict completion edge with required step p05_code_merged using its existing merged-code detector. Evidence: P05 #3508 / SR-A4-01: squash d9ba4934f4bfe7c159ecc42e7fcb7190f4b982c1 contained in origin/main. J0_FILE_OWNERSHIP.json proposed_waits/18,21,24,27,30,31 and waits/7,10,13,16,19,20 identify shared-path waits; ruling cites deploy predecessor failures 10:52Z–14:02Z for 1235.",
           "(I) INTERPRETATION: express the merged-code precondition through the existing required-step / step_evidence live-detector mechanism (platform/scripts/governance/pravaha_tracker/cli.py:364–406; platform/scripts/governance/pravaha_tracker/completion.py:206–215), reusing the producer item's branch_merged / pr_merged detector identity. The alternative is new tracker precondition semantics or a synthetic campaign item; neither is needed. This replaces a scheduling/completion edge with an earned intra-item obligation; all other dependencies, consumer completion detector and independent acceptance remain unchanged.",
-          "SR-A6-EDGES retains J-4d-pr3018 (1235 protected production window) and J-4c-pr3141, J-4c-pr3191, J-4c-pr3193 (P06 #3516 adds 1305/1306/1308 below 1383; hold #3516 until 1383 applied). No production gate or hold is waived."
+          "SR-A6-EDGES retains J-4d-pr3018 (1235 protected production window) and J-4c-pr3141, J-4c-pr3191, J-4c-pr3193 (P06 #3516 adds 1305/1306/1308 below 1383; hold #3516 until 1383 applied). No production gate or hold is waived.",
+          "2026-10-16 lane-2 follow-up to #3634 (7773e670b4342845ba2e052bef2dae644585e058), per cockpit job fu-plan-edges2: classify KA-3a <- J-4d-pr3018 as PRODUCTION, but replace its full campaign-completion edge with required gcw_1235_production_applied. This supersedes only the earlier SR-A6-EDGES note retaining that edge while 1235 was unapplied; no J-4d-pr3018 completion or production acceptance is inferred. Keep J-4c-pr3141/3191/3193 unchanged pending the separate P06 #3516 change.",
+          "Production evidence: /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:70 (SR-A6-GCW), :71 (SR-A6-EDGES); /Users/Dev/kalayantra/run/ops/receipts/sutradhara-gcw-20261016T143214Z-mig.json:2-17 and its .output.txt:2 report 1235_ka_gochara_staged_candidate_evidence_function.sql applied at 2026-10-16 14:25:18.247508+00:00 with sha256 930902f6af470d3a6cdfd1b707ea23e6e365ad8c464004b9ed2a924194353682 (matches the repository file). The -fn.json:8 ACL readback reports SECURITY DEFINER, pinned search_path and exactly the three approved EXECUTE roles. Full output size/hash of both receipts verified by this job. /Users/Dev/kalayantra/run/ops/receipts/sutradhara-kw-20261016T150036Z-mig.output.txt:4-10 separately records 1383-1389 applied at 14:49Z; its full output size/hash also verified. These receipts establish historical observations, not an automatic true precondition.",
+          "(I) INTERPRETATION: reuse #3634’s existing required-step / step_evidence mechanism, using its already-supported db_query detector for production evidence instead of a merge detector. platform/scripts/governance/pravaha_tracker/detectors.py:211-220,310-320 reads the configured live database inside READ ONLY and returns done only for nonempty matching rows; cli.py:364-406 requires a live passing measurement before recording a step, and completion.py:206-215 requires every step. The live campaign tracker must retain its production read-only DB configuration; this job neither reads credentials nor queries production. Alternative: a new receipt-validation detector or precondition API; unnecessary because db_query already measures the exact ledger fact. This is an intra-item completion obligation, not a new scheduling gate, exactly as #3634; all independent review/deployment requirements remain."
         ]
       },
       "completion_kind": "code",
@@ -3441,6 +3444,15 @@
             "type": "branch_merged",
             "ref": "d9ba4934f4bfe7c159ecc42e7fcb7190f4b982c1",
             "measures": "P05 #3508 / SR-A4-01: squash d9ba4934f4bfe7c159ecc42e7fcb7190f4b982c1 contained in origin/main; SR-A6-EDGES merged-code precondition only, independent of J-4b-pr2817 guarded campaign completion."
+          }
+        },
+        "gcw_1235_production_applied": {
+          "evidence": "executor_receipt",
+          "detector": {
+            "type": "db_query",
+            "sql": "SELECT filename, sha256 FROM public._migrations_applied WHERE filename = '1235_ka_gochara_staged_candidate_evidence_function.sql' AND sha256 = '930902f6af470d3a6cdfd1b707ea23e6e365ad8c464004b9ed2a924194353682'",
+            "expect": "nonempty",
+            "measures": "Production readback through the live tracker read-only DB configuration: 1235 is applied with the exact repository SHA-256. Missing row or mismatched filename/hash is pending; unavailable readback is error. The historical executor receipt is provenance, never a file-presence substitute or J-4d-pr3018 campaign completion."
           }
         },
         "overlays_module": {
@@ -3966,7 +3978,10 @@
         ],
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "notes": [
-          "carries K8-K3: Certification mapping for ka_vighnakara"
+          "carries K8-K3: Certification mapping for ka_vighnakara",
+          "2026-10-16 lane-2 edge review: KEEP K3-2 <- J-5s, classification PRODUCTION. K3-2 certification_mapping code is on origin/main in 5be0a5e59ab045f12aa8996ce78848b1257bda53 (#3561, pre-build SR-A4-01); that commit explicitly leaves production activation gated. K3-2 brief.tests requires a rehearsal seeded from the real sealed 5.0 generation through a complete executor readback export with hash and row-count validation; its generation-keyed contract consumes judge records, evidence_against and coverage. J-5s detector observes the canonical chart’s sealed 5.0 publication, while its sealed_observed and manifest_and_job_bound steps and typed operation acceptance bind the real verifier job and manifest. A merged-code step cannot replace these production outputs.",
+          "Evidence: platform/python-sidecar/services/ka_vighnakara/sealed.py:100-140 consumes the complete receipt.output_file and checks bytes/hash, independent row count and key inventory; :148-175 requires 5.0 pins, same-snapshot seal/publication/verifier, a full published manifest and matching verifier execution. platform/python-sidecar/services/ka_vighnakara/SEALED_PREBUILD.md:129-138 explicitly lists the real sealed export and verifier pins as remaining activation gates; fixtures establish code behavior only. The existing certification_mapping step and independent acceptance remain unchanged.",
+          "(I) INTERPRETATION: distinguish the code-only certification_mapping step from acceptance of the whole K3-2 item; retain J-5s because the item still consumes its sealed production output. Alternative: remove J-5s merely because #3561 merged or split out a new code-only item; neither satisfies the current whole-item acceptance. The requested /Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/control/kalayantra/J0_FILE_OWNERSHIP.json is absent; use the real runtime artifact /Users/Dev/kalayantra/run/J0_FILE_OWNERSHIP.json, also cited by SR-A6-EDGES. Its waits/104,129,152,176,197,221,241,261 (first at :84172-84180) name K3-2 shared generated-output paths only; proposed_waits/8 orders inherited 2976 after 2975 on gochara_verification_job_contract.py with existing owner J-5s. These file-ownership waits do not account for or waive K3-2’s explicit sealed-output prerequisite."
         ],
         "contract": "Judge record tables (generation-keyed): ka_gochara_relationship_record (prod_schema.sql:14064; evidence_for_occurrence, evidence_against_occurrence, coverage_*, temporal_support_*, operator_role, admission_state), ka_gochara_eval_window (13860; evidence_for/against, null_states_used, qualification jsonb), kala_gochara_coverage (15576). No column is literally \"vedha state\": the judge's vedha states must be read from where vedha_derive stores them (qualification/null_states) — name the column before claiming."
       },
@@ -4234,7 +4249,7 @@
         "compat": "additive columns/tables only; the rewritten path writes candidate partitions of a NEW generation and never deletes or updates rows of the legacy/published generation; live readers keep reading the published head until K9-4b publishes; a build dispatched on main at this commit completes and leaves served output unchanged",
         "notes": [
           "carries K8-K4: Certification mapping for ka_sangam",
-          "Contract (KALA_PIPELINE_CONCEPT_NOTE_v1_1 §5.5, not on main: /Users/Dev/madhav-l3/sangam-final/00_ARCHITECTURE/briefs/l3_families/): one canonical forecast per event identity (class, phase, person, episode); reading signals (L2 MSR signal ids) attach to it as reading_attachments[]; evaluation is clustered by event and shared episode; no event is credited twice (Astra K17)."
+          "Contract (00_ARCHITECTURE/briefs/l3_families/KALA_PIPELINE_CONCEPT_NOTE_v1_1.md §5.5; exact historical source preserved with nb_kala/concept_note_source.json): one canonical forecast per event identity (class, phase, person, episode); reading signals (L2 MSR signal ids) attach to it as reading_attachments[]; evaluation is clustered by event and shared episode; no event is credited twice (Astra K17)."
         ]
       },
       "steps": [
@@ -4425,7 +4440,7 @@
           "PLAN §6.2 items 5, 8",
           "PLAN §8.1 E2, ruling 5",
           "ALGO 3.20 oracles",
-          "/Users/Dev/madhav-l3/sangam-final/00_ARCHITECTURE/briefs/l3_families/KALA_PIPELINE_CONCEPT_NOTE_v1_1.md §6.6 (K1–K6 table; not on main)"
+          "00_ARCHITECTURE/briefs/l3_families/KALA_PIPELINE_CONCEPT_NOTE_v1_1.md §6.6 (K1–K6 table; exact historical source preserved with nb_kala/concept_note_source.json)"
         ],
         "owns": [
           "platform/python-sidecar/services/ka_kshetra/**",
@@ -20933,7 +20948,15 @@
         "K5-2-null",
         "K5-2-contract",
         "K5-2-qualify",
-        "K5-2-NB-02"
+        "K5-2-NB-02",
+        "JGT-NB-01-R1",
+        "K64-NB-02-R01",
+        "K5-G1A-NB-01",
+        "KCERT-NB-01",
+        "K5G1B-ORACLES-NB01",
+        "K5G1B-ORACLES-NB02",
+        "K5G1B-ORACLES-NB03",
+        "K9-23-N2-NB"
       ],
       "mandatory": true,
       "detector": {
@@ -28576,6 +28599,344 @@
       "completion_kind": "artifact",
       "producer": "K",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "JGT-NB-01-R1",
+      "track": "J",
+      "lane": "J · ordinary registry timeout",
+      "title": "Record the accepted concurrency-test scope excursion",
+      "owner": "K",
+      "depends_on": [
+        "JGT-NB-01"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/nb-kala"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T005815Z-review-jgt-nb-01/REVIEW.md",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/README.md"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/scope_corrections.json"
+        ],
+        "tests": [
+          "Required CI regression and per-finding fail-on-revert proof; see NB-KALA result.json.",
+          "python -B -m pytest platform/scripts/governance/__tests__/test_nb_kala_evidence.py -p no:cacheprovider"
+        ],
+        "compat": "Source preparation only. Preserve exact-head independent review, actual final-head required CI, deploy containment, parent completion and all production activation gates.",
+        "notes": [
+          "(I) INTERPRETATION: these A2 follow-ups share one NB-KALA branch/PR under A5 D-37. The alternative is separate branches despite the owner's single-branch direction.",
+          "Registration is not a completion event; the parent does not depend on its follow-up. The cockpit activates the reviewed model and reconciles actual landing evidence."
+        ],
+        "contract": "Record the accepted concurrency-test scope excursion"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K64-NB-02-R01",
+      "track": "K",
+      "lane": "K · K6 read models",
+      "title": "Record SQL regression and historical generated scope excursions",
+      "owner": "K",
+      "depends_on": [
+        "K64-NB-02"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/nb-kala"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T021707Z-review-k64-nb-02/REVIEW.md",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/README.md"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/scope_corrections.json"
+        ],
+        "tests": [
+          "Required CI regression and per-finding fail-on-revert proof; see NB-KALA result.json.",
+          "python -B -m pytest platform/scripts/governance/__tests__/test_nb_kala_evidence.py -p no:cacheprovider"
+        ],
+        "compat": "Source preparation only. Preserve exact-head independent review, actual final-head required CI, deploy containment, parent completion and all production activation gates.",
+        "notes": [
+          "(I) INTERPRETATION: these A2 follow-ups share one NB-KALA branch/PR under A5 D-37. The alternative is separate branches despite the owner's single-branch direction.",
+          "Registration is not a completion event; the parent does not depend on its follow-up. The cockpit activates the reviewed model and reconciles actual landing evidence."
+        ],
+        "contract": "Record SQL regression and historical generated scope excursions"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-G1A-NB-01",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Bind sealed K3 producer assertions into the private G1 candidate",
+      "owner": "K",
+      "depends_on": [
+        "K5-G1a"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/nb-kala"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T083435Z-review-k5-g1a-oracles/REVIEW.md",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/README.md"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/g1_inputs.py",
+          "platform/python-sidecar/tests/l3/kala_db/ka_kshetra/test_sealed_g1_inputs.py"
+        ],
+        "tests": [
+          "Required CI regression and per-finding fail-on-revert proof; see NB-KALA result.json.",
+          "python -B -m pytest platform/scripts/governance/__tests__/test_nb_kala_evidence.py -p no:cacheprovider"
+        ],
+        "compat": "Source preparation only. Preserve exact-head independent review, actual final-head required CI, deploy containment, parent completion and all production activation gates.",
+        "notes": [
+          "(I) INTERPRETATION: these A2 follow-ups share one NB-KALA branch/PR under A5 D-37. The alternative is separate branches despite the owner's single-branch direction.",
+          "Registration is not a completion event; the parent does not depend on its follow-up. The cockpit activates the reviewed model and reconciles actual landing evidence."
+        ],
+        "contract": "Bind sealed K3 producer assertions into the private G1 candidate"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "KCERT-NB-01",
+      "track": "K",
+      "lane": "K · certification support (Suvarṇa window)",
+      "title": "Require the projection-aware K-CERT MCP regression in Density Census",
+      "owner": "K",
+      "depends_on": [
+        "K-CERT"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/nb-kala"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T094205Z-review-pb-kcert/REVIEW.md",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/README.md"
+        ],
+        "owns": [
+          ".github/workflows/ci.yml",
+          "platform-mcp/src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/README.md"
+        ],
+        "tests": [
+          "Required CI regression and per-finding fail-on-revert proof; see NB-KALA result.json.",
+          "python -B -m pytest platform/scripts/governance/__tests__/test_nb_kala_evidence.py -p no:cacheprovider"
+        ],
+        "compat": "Source preparation only. Preserve exact-head independent review, actual final-head required CI, deploy containment, parent completion and all production activation gates.",
+        "notes": [
+          "(I) INTERPRETATION: these A2 follow-ups share one NB-KALA branch/PR under A5 D-37. The alternative is separate branches despite the owner's single-branch direction.",
+          "Registration is not a completion event; the parent does not depend on its follow-up. The cockpit activates the reviewed model and reconciles actual landing evidence."
+        ],
+        "contract": "Require the projection-aware K-CERT MCP regression in Density Census"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5G1B-ORACLES-NB01",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Bind real Kala database proof into the required Governance Gates aggregate",
+      "owner": "K",
+      "depends_on": [
+        "K5-G1b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/nb-kala"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T100448Z-review-k5-g1b-oracles/REVIEW.md",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/README.md"
+        ],
+        "owns": [
+          ".github/workflows/ci.yml",
+          "platform/scripts/governance/__tests__/test_ci_sidecar_shard.py",
+          "platform/scripts/governance/__tests__/test_nb_kala_ci.py"
+        ],
+        "tests": [
+          "Required CI regression and per-finding fail-on-revert proof; see NB-KALA result.json.",
+          "python -B -m pytest platform/scripts/governance/__tests__/test_nb_kala_evidence.py -p no:cacheprovider"
+        ],
+        "compat": "Source preparation only. Preserve exact-head independent review, actual final-head required CI, deploy containment, parent completion and all production activation gates.",
+        "notes": [
+          "(I) INTERPRETATION: these A2 follow-ups share one NB-KALA branch/PR under A5 D-37. The alternative is separate branches despite the owner's single-branch direction.",
+          "Registration is not a completion event; the parent does not depend on its follow-up. The cockpit activates the reviewed model and reconciles actual landing evidence."
+        ],
+        "contract": "Bind real Kala database proof into the required Governance Gates aggregate"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5G1B-ORACLES-NB02",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Eliminate the legacy per-window Python scan without changing null statistics",
+      "owner": "K",
+      "depends_on": [
+        "K5-G1b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/nb-kala"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T100448Z-review-k5-g1b-oracles/REVIEW.md",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/README.md"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/dhara_null.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/test_g1b_null_cost.py"
+        ],
+        "tests": [
+          "Required CI regression and per-finding fail-on-revert proof; see NB-KALA result.json.",
+          "python -B -m pytest platform/scripts/governance/__tests__/test_nb_kala_evidence.py -p no:cacheprovider"
+        ],
+        "compat": "Source preparation only. Preserve exact-head independent review, actual final-head required CI, deploy containment, parent completion and all production activation gates.",
+        "notes": [
+          "(I) INTERPRETATION: these A2 follow-ups share one NB-KALA branch/PR under A5 D-37. The alternative is separate branches despite the owner's single-branch direction.",
+          "Registration is not a completion event; the parent does not depend on its follow-up. The cockpit activates the reviewed model and reconciles actual landing evidence."
+        ],
+        "contract": "Eliminate the legacy per-window Python scan without changing null statistics"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5G1B-ORACLES-NB03",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Preserve the exact concept note and repair the governed K1-K6 locator",
+      "owner": "K",
+      "depends_on": [
+        "K5-G1b"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/nb-kala"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T100448Z-review-k5-g1b-oracles/REVIEW.md",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/README.md"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/l3_families/KALA_PIPELINE_CONCEPT_NOTE_v1_1.md",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/concept_note_source.json",
+          "00_ARCHITECTURE/control/kalayantra/plan_model.json"
+        ],
+        "tests": [
+          "Required CI regression and per-finding fail-on-revert proof; see NB-KALA result.json.",
+          "python -B -m pytest platform/scripts/governance/__tests__/test_nb_kala_evidence.py -p no:cacheprovider"
+        ],
+        "compat": "Source preparation only. Preserve exact-head independent review, actual final-head required CI, deploy containment, parent completion and all production activation gates.",
+        "notes": [
+          "(I) INTERPRETATION: these A2 follow-ups share one NB-KALA branch/PR under A5 D-37. The alternative is separate branches despite the owner's single-branch direction.",
+          "Registration is not a completion event; the parent does not depend on its follow-up. The cockpit activates the reviewed model and reconciles actual landing evidence."
+        ],
+        "contract": "Preserve the exact concept note and repair the governed K1-K6 locator"
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K9-23-N2-NB",
+      "track": "K",
+      "lane": "K · K9 rebuild",
+      "title": "Commit real planned-to-completed delegation and incomplete-readback regressions",
+      "owner": "K",
+      "depends_on": [
+        "K9-23-N2"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/nb-kala"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3–2.4 (D-17)",
+          "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T092415Z-review-pb-k9-23-n2/REVIEW.md",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/README.md"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/kala_core/publication.py",
+          "platform/python-sidecar/tests/l3/kala_db/manifest/test_rebuild_delegation.py",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/nb_kala/source_imports.json"
+        ],
+        "tests": [
+          "python -B -m pytest tests/l3/kala_db/manifest -p no:cacheprovider",
+          "A copy with the new regression removed must let execute_run removal survive; the behavioral mutation detector must fail. With the regression present, the same production-only mutation fails on real stored planned-run delegation assertions."
+        ],
+        "compat": "Source preparation only. Preserve exact-head independent review, actual final-head required CI, deploy containment, parent completion and all production activation gates.",
+        "notes": [
+          "(I) INTERPRETATION: these A2 follow-ups share one NB-KALA branch/PR under A5 D-37. The alternative is separate branches despite the owner's single-branch direction.",
+          "Registration is not a completion event; the parent does not depend on its follow-up. The cockpit activates the reviewed model and reconciles actual landing evidence."
+        ],
+        "contract": "Exactly one frozen run-ID delegation, completed-only success, and planned/failed/absent refusals. Rebuild dryrun remains PLAN_ONLY. The accepted publication module is a byte-exact bounded dependency; executor operations stay disabled."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
         "class": "a"
       }
