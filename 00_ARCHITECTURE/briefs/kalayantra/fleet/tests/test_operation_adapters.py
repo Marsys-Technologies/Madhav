@@ -80,6 +80,9 @@ def fixture_table():
     table = real_table()
     for kind, mode in (("orchestrator_rebuild_dryrun", "--dry-run"), ("orchestrator_rebuild", "--execute")):
         table[kind] = dict(table[kind], enabled=True, script=WRAPPER_REL, fixed_args=[mode], required_rows=["2", "3"])
+        # This harness runs its file wrapper, independent of the real module binding.
+        table[kind].pop("python_module", None)
+        table[kind].pop("cwd", None)
     return table
 
 def lease_text(rows):

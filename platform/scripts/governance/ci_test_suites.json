@@ -828,6 +828,13 @@
       "include": [
         "src/tools/retrieval/register_gochara_windows_kcert_assessment*.test.ts"
       ]
+    },
+    "governance-tool-tests-k9-publication": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_k9_publication*.py"
+      ]
     }
   }
 }

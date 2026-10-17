@@ -120,11 +120,13 @@ def test_ci_matrix_count_and_name_agree(jobs):
 def test_the_aggregate_job_keeps_the_original_required_name_and_fails_on_any_non_success(jobs):
     agg = jobs["governance-tool-tests"]
     assert agg["name"] == "Governance Tool Tests (pytest)"
-    assert set(agg["needs"]) == {"changes", "governance-tool-tests-shard", "governance-readback-tests"}
+    assert set(agg["needs"]) == {"changes", "governance-tool-tests-shard", "governance-readback-tests", "kala-db-tests"}
     assert "always()" in str(agg["if"])
     step = agg["steps"][0]
     assert step["env"]["SHARDS_RESULT"] == "${{ needs.governance-tool-tests-shard.result }}"
     assert step["env"]["READBACK_RESULT"] == "${{ needs.governance-readback-tests.result }}"
+    assert step["env"]["KALA_DB_RESULT"] == "${{ needs.kala-db-tests.result }}"
+    assert "'kala-db-tests'" in step["env"]["KALA_DB_EXPECTED"]
     assert step["env"]["DOCS_ONLY"] == "${{ needs.changes.outputs.docs_only }}"
     assert "exit 1" in step["run"]
 
@@ -141,13 +143,16 @@ def test_no_other_job_still_runs_the_whole_directory_as_one_pytest_call(jobs):
                                                  ("cancelled", "true", False), ("failure", "true", False), ("failure", "", False),
                                                  ("cancelled", "", False), ("", "true", False), ("", "", False)])
 @pytest.mark.parametrize("readback", ["success", "skipped", "cancelled", "failure", ""])
-def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate_unless_docs_only_skipped_it(jobs, result, docs_only, ok, readback):
-    """N-98 A + the fast path: run the aggregate job's own script with each `needs.<shard>.result` and docs_only: only success, or skipped
+@pytest.mark.parametrize("kala_db", ["success", "skipped", "cancelled", "failure", ""])
+@pytest.mark.parametrize("kala_db_expected", ["false", "true"])
+def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate_unless_docs_only_skipped_it(jobs, result, docs_only, ok, readback, kala_db, kala_db_expected):
+    """N-98 A + the fast path: run the aggregate job's own script with each shard, readback and Kāla DB result and docs_only: only success, or skipped
     together with docs_only=true, may pass."""
     script = jobs["governance-tool-tests"]["steps"][0]["run"]
-    p = subprocess.run(["bash", "-c", script], env={**os.environ, "SHARDS_RESULT": result, "READBACK_RESULT": readback, "DOCS_ONLY": docs_only, "EVENT_NAME": "pull_request", "READBACK_EXPECTED": "false"}, capture_output=True, text=True)
+    p = subprocess.run(["bash", "-c", script], env={**os.environ, "SHARDS_RESULT": result, "READBACK_RESULT": readback, "KALA_DB_RESULT": kala_db, "KALA_DB_EXPECTED": kala_db_expected, "DOCS_ONLY": docs_only, "EVENT_NAME": "pull_request", "READBACK_EXPECTED": "false"}, capture_output=True, text=True)
     ok = ok and (readback in ("success", "skipped") if result == "success" else readback == "skipped")
-    assert (p.returncode == 0) is ok, (result, readback, docs_only, p.stdout, p.stderr)
+    ok = ok and (kala_db == "success" or (kala_db == "skipped" and (docs_only == "true" or kala_db_expected == "false")))
+    assert (p.returncode == 0) is ok, (result, readback, kala_db, kala_db_expected, docs_only, p.stdout, p.stderr)
     assert ("::error::" in p.stdout) is (not ok)
 
 

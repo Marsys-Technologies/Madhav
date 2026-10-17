@@ -35,6 +35,7 @@ SH_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh"
 COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 
 PLAN_PIN = "e709f60d7fcd4559227a25a4d5d83d6431c396b6"
+TABLE_PIN = "cc9f509b480461880be80b225ff44b084995b3d7"  # reviewed Wave 4/measuring preparation
 MODEL_PIN = "cf9831bceff36abd5a50e95328b83d16a4c1ce24"  # final J-4p/main integration target
 PINNED_EXECUTOR_SHA256 = "8b9a164f52b307514d7b42f87019070689b1533f624b871a2e1d113408ebdcf7"
 DEFAULT_SOURCE_REPO = "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign"
@@ -171,7 +172,15 @@ def assert_table_matches_pin(now):
         assert expected[kind]["enabled_by"] == "K9-3", f"{kind}: the pin no longer says K9-3 — test premise broken"
         expected[kind]["enabled_by"] = "K9-23"
         assert "TO_BE_SET_BY_K9-3" in expected[kind]["script"]
-        expected[kind]["script"] = expected[kind]["script"].replace("TO_BE_SET_BY_K9-3", "TO_BE_SET_BY_K9-23", 1)
+        # K9-23 binds the five still-disabled operations to the publication module (the only K9-23 edit).
+        expected[kind]["script"] = "platform/python-sidecar/services/kala_core/publication.py"
+        expected[kind]["cwd"] = "platform/python-sidecar"
+        expected[kind]["python_module"] = "services.kala_core.publication"
+        expected[kind]["fixed_args"] = [{"orchestrator_rebuild_dryrun": "rebuild-dryrun",
+            "orchestrator_rebuild": "rebuild", "layer_verify": "verify", "layer_publish": "publish",
+            "layer_rollback": "rollback"}[kind]]
+    expected["layer_verify"]["needs"] = "layer_verifier"
+    expected["layer_verify"]["allowed_args"] = ["run-id", "generation", "independently-derived-digest"]
     expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
     expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
     expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
@@ -218,11 +227,12 @@ def test_table_pin_refuses_unreviewed_measuring_changes(kind, field, value):
         assert_table_matches_pin(now)
 
 
-def test_k9_placeholders_name_k9_23_and_none_is_filled():
+def test_k9_prebuilt_bindings_name_k9_23_and_remain_disabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     for kind in K9_KINDS:
         assert ops[kind]["enabled_by"] == "K9-23"
-        assert ops[kind]["script"].startswith("TO_BE_SET_BY_K9-23"), kind
+        assert ops[kind]["script"] == "platform/python-sidecar/services/kala_core/publication.py", kind
+        assert ops[kind]["enabled"] is False
         assert "K9-3" not in ops[kind]["script"].replace("K9-23", ""), kind
     assert ops["local_schema_seed"]["script"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh"
     assert ops["local_schema_seed"]["fixed_args"] == ["seed"]
@@ -290,14 +300,18 @@ def _segments(src):
 
 
 # Exact Wave 4 safety-fix, #3607 (f847ba24d) measuring and J-1a lane additions, including the
-# local_schema_seed scratch lifecycle (#3627). Each hash is of the merged executor.py function; every
+# local_schema_seed scratch lifecycle (#3627) and the D-33 generated-overlay hand-off (#3672). Each hash is of the merged executor.py function; every
 # other mutation, including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6ab55daa748a71149247f3e2d5a1', 'receipt': 'cf89fb1564168d7baa010204b899f27b64f4d035bcaf999d162ce12e229e8c6f', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'validate': 'd07de5f9602ed84043d87f36ed89ceb0c5b535e372150919d2c0250132dea5d1', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': 'b1b3c09684a5b2833004e7f99d59aa5500962245b48cc8f42c2bea030afbb8d3', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': '5966b5b440608cb18eb6f0dccbad1e28ff20b40d800d178785e4918adea3fe7b', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': 'dba944fbf9e53119f9cf5e9136aa4ecb34519a819cd49b68e0cc0e4267bd21e7', 'main': '8bcabbe56032a38b747ab5a3e117cd3d68c130ee1a4153604a02fb84af6ee510'}
+W4_FUNCTION_HASHES = {'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6ab55daa748a71149247f3e2d5a1', 'receipt': 'fe01726e959f02fe1d6d7bba32f72e573f06bb23f901de62334e9f6e1e28aff1', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'validate': 'd07de5f9602ed84043d87f36ed89ceb0c5b535e372150919d2c0250132dea5d1', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': 'b1b3c09684a5b2833004e7f99d59aa5500962245b48cc8f42c2bea030afbb8d3', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': 'd445545193c558f4d1acc522b7f616382a74998b04f4c941b0628e12a190642c', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': '5ed6d1cafe35bff8e83710ee563abad95a433be437ef7970655c7f2a1e7af779', 'main': '8bcabbe56032a38b747ab5a3e117cd3d68c130ee1a4153604a02fb84af6ee510', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3'}
+
+
+# Exact K9-23 additions: a distinct verifier capability and one-connection injection (`execute` = main's reviewed function plus the K9-23 branch).
+K9_FUNCTION_HASHES = {'capabilities': '5ebe1c302e6b797c2af0da3bb72b7a9aadca4b40663645396aab217a27b9b675', 'execute': '867c1e7c4e9a7659c9ab2cd691a791e986effb28c48435e708767ac51dce4617'}
 
 
 def normalize_wave4(base_src, work_src):
     base_seg, work_seg = _segments(base_src), _segments(work_src)
-    for name, digest in W4_FUNCTION_HASHES.items():
+    for name, digest in (W4_FUNCTION_HASHES | K9_FUNCTION_HASHES).items():
         segment = work_seg.get(name, "")
         if hashlib.sha256(segment.encode()).hexdigest() == digest:
             if name in base_seg:
@@ -439,7 +453,7 @@ def test_executor_sh_differs_from_the_pin_only_in_the_git_assignment():
 GIT_ENV = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
            "GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
            "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}
-ALL_CAPS = {"builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
+ALL_CAPS = {"layer_verifier": True, "builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
 
 
 def _git(cwd, *args):
@@ -543,7 +557,7 @@ def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind)
 @pytest.mark.parametrize("kind", K9_KINDS)
 def test_entry_enabled_in_a_copy_with_a_placeholder_script_is_refused(tmp_path, monkeypatch, kind):
     text = OPS_FILE.read_text()
-    w = World(tmp_path, monkeypatch, copy_with(text, kind))
+    w = World(tmp_path, monkeypatch, copy_with(text, kind, script="TO_BE_SET_BY_FIXTURE"))
     table = w.table()
     assert enabled_state(kind, table[kind]) is True and "TO_BE_SET" in table[kind]["script"]
     assert w.mod.validate(w.production_request(kind), table, ALL_CAPS) == "operation script not yet reviewed/landed"

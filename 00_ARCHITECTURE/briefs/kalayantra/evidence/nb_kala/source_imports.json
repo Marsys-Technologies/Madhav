@@ -3,8 +3,8 @@
   "sources": [
     {
       "path": "platform/python-sidecar/services/kala_core/publication.py",
-      "source_commit": "d1c027d63f765638c9adca49bd580d6509a19a1c",
-      "sha256": "e9e924a9250307533e43050de0a8e8cc6fb38e887e0f787a38382b02da664d5e",
+      "source_commit": "f19cab4f86dc699321784c37e5cccacd1614ab01",
+      "sha256": "1f3fad7ad60fc12c52afb27dad60b2f6c1926e8f875051d84566d2a755774c4a",
       "byte_exact": true
     },
     {
