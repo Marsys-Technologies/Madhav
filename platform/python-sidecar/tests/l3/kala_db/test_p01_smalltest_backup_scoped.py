@@ -76,6 +76,10 @@ def scoped(isolated_kala_db_dsn, tmp_path, monkeypatch):
     monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_SHA256', hashlib.sha256(BASE_SQL.encode()).hexdigest())
     monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_CUT', '2026-01-01T00:00:00+00:00')
     monkeypatch.setattr(backup, 'MIGRATIONS_DIR', migrations)
+    # The real bundle needs its five extensions (pgvector among them); the synthetic one needs none, and the throwaway CI
+    # Postgres (PG16) ships without pgvector. That the real base installs them is proved with no database in
+    # platform/scripts/__tests__/test_backup_v5_small_test_scoped.py (restore_base_is_the_hash_checked_governed_bundle...).
+    monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_EXTENSIONS', ())
     monkeypatch.setenv('DATABASE_URL', isolated_kala_db_dsn)
     fixed = backup.scratch_settings
 
