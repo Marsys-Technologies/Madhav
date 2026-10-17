@@ -28,6 +28,12 @@ Seven amendments in three days each cut a visible symptom, and the ceremony grew
 | Jobs for one valid scoped backup (five attempts across re-identification) | 20 pre-acceptance + 5 post + 2 quiescence |
 | Pack versions of the J-2a request pack in 36 hours | 7 (v3.2 → v3.7.2); 98 identities re-minted in 24 h |
 | Tracker `done` movement in the last 24 h, against 47 PRs merged | 80 → 83 |
+| 72-hour conversion (active agent time) | 151 PRs merged, 18 items done; 1.8 agent-hours per merged PR, 15.1 per done item |
+| Merged PRs with no done item | 124 of 151: 59 were fleet governance or tooling with no tracker item at all; 37 sit behind open chain dependencies |
+| Where agent time went | verification of all kinds 32%; merge, CI repair, tooling and planning overhead 31%; building and fixing 20% |
+| Review value (why the review itself stays) | 72% of PRs closed in one round; of 32 first-round rejections, 18 were real behavioural defects and 10 were false-green signals; only 4 were pure test demands |
+| Production operations | 123 executor requests; the 56 that needed acceptance took a median 94 minutes and 2.4 reviewer jobs each; read-only ones ran on pickup |
+| Standing CI noise | the Paripraśna post-deploy smoke failed every one of its 478 runs on `main` (1 minute each, not a required check); the Ganga gate failed on 49% of branch runs; 63 CI-repair jobs (38 hours) worked against that background |
 
 ## §2 · What is NOT touched
 
@@ -95,6 +101,8 @@ Retired means: not binding, not to be rebuilt, not to be cited as authority. Cod
 **Fast lane (cockpit-owned scripts; ordered to the cockpit with the audit's edit list):** `mk_task.py` for the six recurring brief families; one landing path (`cx_post.sh` → `mergeup.sh` → preflight → arm; `landfix.sh`, `after_merge.sh`, `lift_freeze.sh`, `prep_postfreeze.sh`, `requeue_dropped.sh`, `jump_queue.sh` deleted); `mergeup.sh` with prefix normalisation, auto-launched conflict job, per-PR counter; 3-way resolver for `plan_model.json`; `review_wave.sh` without checks (3) and (5) and without child fan-out; no step reviews for code items; `prebuild_items.sh` two-phase limit; pack: one signer request, read-only ops mechanically accepted, `MAIN` from `SOURCE_PINS.json` at runtime, per-attempt identities, `--backup-label auto`, `expires_at` out of the digest, R1 deleted, one `window.sh`, `lease_row.py take` for the whole window with auto-renew, `PACK/env.sh` written by the pack; `watch.sh` without the hourly and steps hooks; `autolaunch.sh` logging state changes only.
 
 **Header:** `COMMON_HEADER.md` names this amendment and the kept rules as the authority order; the testing standard appears once; Codex branches removed.
+
+**CI noise (cockpit, one PR):** the Paripraśna post-deploy smoke's `workflow_run` trigger on `main` is disabled until its owning campaign repairs the live authenticated turn (478 of 478 failures; not a required check; a note goes to the coordination log §6); the deploy workflow's earned-outcome gate reports SKIPPED, not FAILURE, when its upstream run was cancelled or superseded, so a cancelled run no longer reads as a red deploy. Target: Ganga gate failure rate on branches under 15% once generated outputs come only from CI and the local pre-flight is universal.
 
 ## §6 · How a job reads the rules from now on
 
