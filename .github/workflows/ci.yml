@@ -2387,6 +2387,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # fleet/tests/test_executor_table.py reads the plan-pin and model-pin commits with `git show`
       - name: Restore source-bound generated files
         uses: ./.github/actions/restore-generated
 
