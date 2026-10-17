@@ -42,7 +42,8 @@ def _full_suite(result, event, selected, ref='refs/heads/x', full_gate='', extra
 # skip it only when the change classifier did not select it (ci.yml header, D-29).
 @pytest.mark.parametrize('result', ['success', 'failure', 'cancelled', 'skipped', ''])
 @pytest.mark.parametrize('event,ref,full_gate,selected,executes', [
-    ('merge_group', 'refs/heads/x', '', [], True),
+    ('merge_group', 'refs/heads/x', '', ['kala-db-tests'], True),
+    ('merge_group', 'refs/heads/x', '', [], False),
     ('push', 'refs/heads/main', '', [], True),
     ('workflow_dispatch', 'refs/heads/x', 'true', [], True),
     ('pull_request', 'refs/heads/x', '', ['kala-db-tests'], True),
@@ -71,7 +72,7 @@ def _expression(text, event, ref='refs/heads/x', full_gate=False, db_jobs=(), db
     return bool(eval(source, scope))  # noqa: S307 - repository-owned workflow text only
 
 
-FULL_EVENTS = [('merge_group', 'refs/heads/x', False), ('push', 'refs/heads/main', False),
+FULL_EVENTS = [('push', 'refs/heads/main', False),
                ('workflow_dispatch', 'refs/heads/x', True)]
 
 
@@ -94,10 +95,11 @@ def test_kala_db_job_and_every_test_step_execute_on_each_full_event(event, ref, 
         assert _expression(step['if'], event, ref, full_gate), step['name']
 
 
-def test_kala_db_job_is_skipped_on_a_pull_request_that_did_not_select_it():
+@pytest.mark.parametrize('event', ['pull_request', 'merge_group'])
+def test_kala_db_job_is_skipped_on_a_pull_request_that_did_not_select_it(event):
     job = _raw_job('kala-db-tests')
-    assert not _expression(job['if'], 'pull_request')
-    assert _expression(job['if'], 'pull_request', db_jobs=['kala-db-tests'])
+    assert not _expression(job['if'], event)
+    assert _expression(job['if'], event, db_jobs=['kala-db-tests'])
 
 
 def test_kala_db_steps_make_a_missing_database_or_a_skip_fatal():
