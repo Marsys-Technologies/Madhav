@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+p1-ledger-child-20261017",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -19122,6 +19122,55 @@
       }
     },
     {
+      "id": "J-2a-P1L",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "P1 derivation ledger: every stored period_running_at='false' lists its consulted (lord, level) daśā rows in consumed_dasha_row_ids (J-2a run 1 finding)",
+      "owner": "K",
+      "depends_on": [
+        "J-2a"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/j-2a-p1l"
+      },
+      "brief": {
+        "spec": [
+          "origin/kalayantra/velocity-a2:00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md §2.3 (D-17: every non-severe open finding becomes a tracked child; reviewer rule unchanged)",
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl SR-J2A-RUN1-FAILED and SR-J2A-RUN1-FAILED-AMEND-1 (J-2a run 1, run e22f0ac0, ended as a measured FAILED terminal: P1 support verification failed on 7 records; option A = PR #3688 verifier fix, merged on review ACCEPT; option B = this child, REQUIRED before the flip)",
+          "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py:1185-1205 (SNAPSHOT substep binds consumed_dasha_row_ids only for pinned-build rows of levels 1-3 that overlap the horizon) and :1443-1470 (P1 record grains read the pinned build lazily through make_period_rows_for and call verify_p1_support)",
+          "platform/python-sidecar/services/gochara_kernel/record_verifier.py:1-51 (P1 support re-derived from the snapshot-bound daśā rows and compared with the stored period_running_at result)",
+          "platform/python-sidecar/tests/l3/gochara/test_a53_p1_support.py (existing P1 support oracles; the case 'anchor whose periods all lie outside the horizon' from PR #3688)",
+          "CLAUDE.md §I B.3 (every L2+ claim lists the L1 fact IDs it consumes), §N.7.6 (honest null), §N.8 (earned signal)"
+        ],
+        "owns": [
+          "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py",
+          "platform/python-sidecar/tests/l3/gochara/test_a53_p1_support.py"
+        ],
+        "tests": [
+          "completion detector (N.8): for the chart x generation, every stored period_running_at='false' P1 record has each consulted (lord, level) anchor row of the pinned build (chart/lahiri/vimshottari/two_pass_verified/levels 1-3) listed in the snapshot's consumed_dasha_row_ids. The oracle is a real-SQL test that FAILS on today's main data shape (an anchor whose (lord, level) rows all lie outside the horizon is stored 'false' while consumed_dasha_row_ids holds none of them) and passes once the snapshot binds the consulted rows",
+          "a 'false' that rests on pinned rows outside the horizon is ledgered (B.3), while an anchor with truly no (lord, level) row in the pinned build stays unrestricted with 'unknown' (N.7.6), unchanged",
+          "per-finding fail-on-revert proof on a job-local copy with the writer change reverted: the detector fails there and passes with the fix (Amendment A2 §2.4)"
+        ],
+        "compat": "PR #3688's verifier reads has_rows from DISTINCT (lord, level) held in the pinned build; once this child lands the verifier may return to snapshot-only reads (the snapshot then carries every consulted row). Stored period_running_at values, the horizon and snapshot identity/content binding stay as built; no migration is declared",
+        "notes": [
+          "D-17 carry-forward registered as the option-B child of SR-J2A-RUN1-FAILED-AMEND-1. It is NOT on the measuring build's path: J-2b, J-2c, J-2d, J-RUN2-RESOLVED and every J-3* item must not depend on it, and run 2 proceeds on PR #3688 alone.",
+          "PRE-D-FLIP precondition: D-FLIP lists this item in depends_on beside the other flip preconditions (J-5q, J-5s, J-6r); the flip is not approved while the ledger gap is open.",
+          "WRITER RE-REVIEW REQUIRED (frozen-contract-adjacent rule): the change edits the registered ka_gochara_v5 writer's SNAPSHOT substep; the writer must be re-reviewed by an independent reviewer for CLAUDE.md §N.2 (no commit, no asset_throughput write, per-chart delete-then-insert, chart_id and birth_params from ctx.config) in addition to the exact-head code review. Any need for an orchestrator contract change is a STOP raised with the native.",
+          "(I) INTERPRETATION: id J-2a-P1L = the parent item J-2a plus a short finding tag, following J-4p-B4 (parent-finding) naming; the alternative was a J2A-P1L-style finding id as in J4P-B4-NB1 (reserved there for non-blocking children, and this one blocks the flip).",
+          "(I) INTERPRETATION: depends_on is the parent J-2a (as J-4p-B4 depends on J-4p) so the tracker derives waiting/ready without a stored status; the alternative, no dependency, would break the parent-child convention. J-2a gates nothing in this item's work, so the fix may be built while J-2a is open."
+        ],
+        "contract": "SR-J2A-RUN1-FAILED-AMEND-1 B: every stored period_running_at='false' has its consulted (lord, level) rows in consumed_dasha_row_ids; the SNAPSHOT substep binds the rows the builder consulted for every P1 anchor (not only rows overlapping the horizon), so the verifier's snapshot-only read agrees with the builder (B.3). No orchestrator contract change."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
       "id": "J-4b",
       "track": "J",
       "lane": "J · Gochara 5.0 absorbed",
@@ -19863,7 +19912,8 @@
       "depends_on": [
         "J-5q",
         "J-5s",
-        "J-6r"
+        "J-6r",
+        "J-2a-P1L"
       ],
       "mandatory": true,
       "brief": {
@@ -19871,7 +19921,7 @@
           "SURROGATE G6",
           "ASTRA charter review §4.10"
         ],
-        "notes": "Native direction NR-KALA-DIRECTION-20261007: Gochara is the way forward; evaluation scores are recorded as the tuning baseline and never block the flip. An engineering defect (unsealed, unverified, wrong or missing results, a failing reader or rollback probe) → deferred with the remediation items named, re-decided once they land. The evaluation protocol is never changed to make a score look better."
+        "notes": "Native direction NR-KALA-DIRECTION-20261007: Gochara is the way forward; evaluation scores are recorded as the tuning baseline and never block the flip. An engineering defect (unsealed, unverified, wrong or missing results, a failing reader or rollback probe) → deferred with the remediation items named, re-decided once they land. The evaluation protocol is never changed to make a score look better. PRE-D-FLIP precondition (SR-J2A-RUN1-FAILED-AMEND-1 B): the child J-2a-P1L (P1 derivation ledger) must be merged before the flip; it is not on the measuring build's path."
       },
       "done_by": "decision",
       "decision": "D-FLIP",
