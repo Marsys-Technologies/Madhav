@@ -11,7 +11,7 @@ from uuid import UUID
 from services.gochara_kernel import dasha_read
 
 CHART = "482012f1-710e-4a25-994a-93821f5871aa"
-BUILD = "ca17639b-f3cf-42c7-9866-0a61f3855802"
+BUILD = "7377833e-5d3b-4e70-8bef-1318904f470e"
 ROW = UUID("11111111-1111-4111-8111-111111111111")
 LO = datetime(2026, 1, 1, tzinfo=timezone.utc)
 HI = datetime(2026, 1, 9, tzinfo=timezone.utc)

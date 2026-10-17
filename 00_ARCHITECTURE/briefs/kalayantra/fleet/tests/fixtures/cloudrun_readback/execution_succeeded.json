@@ -1,0 +1,49 @@
+{
+ "apiVersion": "run.googleapis.com/v1",
+ "kind": "Execution",
+ "metadata": {
+  "labels": {
+   "run.googleapis.com/job": "brahma-build-pipeline-job"
+  },
+  "name": "brahma-build-pipeline-job-abc12"
+ },
+ "spec": {
+  "parallelism": 1,
+  "taskCount": 1,
+  "template": {
+   "spec": {
+    "containers": [
+     {
+      "args": [
+       "--run-id",
+       "11111111-2222-3333-4444-555555555555"
+      ],
+      "image": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:0123456789abcdef0123456789abcdef01234567",
+      "resources": {
+       "limits": {
+        "cpu": "4",
+        "memory": "16Gi"
+       }
+      }
+     }
+    ],
+    "maxRetries": 3,
+    "serviceAccountName": "data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com",
+    "timeoutSeconds": "86400"
+   }
+  }
+ },
+ "status": {
+  "completionTime": "2026-10-17T10:41:30Z",
+  "conditions": [
+   {
+    "lastTransitionTime": "2026-10-17T10:41:30Z",
+    "status": "True",
+    "type": "Completed"
+   }
+  ],
+  "logUri": "https://console.cloud.google.com/logs/viewer?project=madhav-astrology&resource=cloud_run_job",
+  "startTime": "2026-10-17T10:01:00Z",
+  "succeededCount": 1
+ }
+}

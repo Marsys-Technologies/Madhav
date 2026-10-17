@@ -1040,6 +1040,19 @@ def test_db3_uncommitted_changes_under_the_sidecar_are_warned_about(capsys, monk
     assert "WARNING" in out.err and "UNCOMMITTED" in out.err and "deadbeef" in out.err
 
 
+def test_db3_only_the_machine_owned_overlay_dirt_is_not_warned_about_but_a_real_source_change_still_is(capsys, monkeypatch):
+    """A5 D-33: the executor's overlay regenerates the machine-owned writer-digest file in the dispatch tree, so that file alone differing from
+    the commit is not an uncommitted SOURCE change (no 'UNCOMMITTED' warning); any other path in the same listing still is. Real `git status
+    --porcelain` paths are repository-root-relative (`platform/...`)."""
+    overlay = " M platform/src/generated/nirmana-writer-digests.json\n M platform/python-sidecar/services/gochara_kernel/implementation_digest.lock.json\n"
+    _fake_git(monkeypatch, head="deadbeef", porcelain=overlay)
+    clean = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "JOB IMAGE MUST MATCH THIS CHECKOUT" in clean.err and "WARNING" not in clean.err and "UNCOMMITTED" not in clean.err
+    _fake_git(monkeypatch, head="deadbeef", porcelain=overlay + " M platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py\n")
+    dirty = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "WARNING" in dirty.err and "UNCOMMITTED" in dirty.err
+
+
 def test_db3_checkout_commit_never_uses_a_shell_and_degrades_to_unknown():
     import inspect
     source = inspect.getsource(dispatch.checkout_commit)
