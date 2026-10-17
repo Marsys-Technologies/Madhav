@@ -25,5 +25,5 @@ class GocharaCitationResolutionWriter(WriterBase):
             asset_id=self.asset_id,
             rows_inserted=counts['bg_gochara_citation_resolution'],
             duration_seconds=time.time() - t0,
-            notes=f'bg_gochara_citation_resolution: {counts} (delete-then-insert from git source; 13 honest corpus gaps)',
+            notes=f'bg_gochara_citation_resolution: {counts} (upsert from git source; 13 honest corpus gaps)',
         )
