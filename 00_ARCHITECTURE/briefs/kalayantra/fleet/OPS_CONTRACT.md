@@ -56,6 +56,10 @@ already-merged implementation and history. Delete the stale branch's dispatcher
 coupling from this helper and harness. Deleting main's retired-but-preserved code
 would contradict A4 §2.3(c).
 
+**Added read-only kind (J-2a M6/M7):** `cloudrun_job_readback` is a fifth enabled non-production
+kind; it is measurement only and is specified in `CLOUDRUN_READBACK_v1_0.md`. It does not widen
+I2: no production, dispatch or teardown kind changes.
+
 **(I) INTERPRETATION I2:** “Every op stays disabled” means every production or newly
 prepared operation stays disabled. Preserve main's four existing enabled
 read/local kinds (`readback_sql`, `migration_readback`, `local_schema_seed`,

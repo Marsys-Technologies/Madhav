@@ -1,9 +1,10 @@
 ---
 artifact: P01_REWORK
-version: "1.1"
+version: "1.2"
 status: REVIEW_CANDIDATE
 produced_on: 2026-10-15
 changelog:
+  - "1.2: AMENDMENT (J-2a, SR-J2A-BACKUP-SCOPE): the paired logical backup gains a SCOPED form, `--scope small_test` (default `full` unchanged); spec and runbook in fleet/J2A_SCOPED_BACKUP_v1_0.md. P01-I1 applies to the full form only."
   - "1.1: integrate final J-4p/main; retain main launch bridge and earned model receipts; qualify real backup restore locally."
   - "1.0: P01-B1 settlement caller regressions; P01-B2 executable bindings, measured teardown absence, paired logical backup/restore, explicit residual scope and CI coverage."
 ---
@@ -73,3 +74,12 @@ The integration job retains its result, command logs and revert-proof copies in 
 Final focused results: 329 script/operation tests, 236 governed-daśā/backup tests, 58 safe executor/launch tests, 193 governance CI tests and 91 N-137 tests pass. The seven Git-writing governance cases and 28 executor World-fixture cases are not run under this job's explicit prohibition. Both real backup fixes have passing fixed-tree and failing reverted-copy proofs. The supplemental inherited C46/A55/C37/C38/launch-bridge run reports 151 passed and is then cleanly interrupted during the first broader C38 teardown build to honor the 45-minute job bound; no full C38-suite pass is claimed. Its completed cases include the full real dispatch → runner → teardown path. Required CI admission remains separate.
 
 During testing, shared `origin/main` advanced to `901ebaa36249623d6ba487b3e77c32a8ef5f4b43`. This job resolves the existing merge target `MERGE_HEAD=cf9831bceff36abd5a50e95328b83d16a4c1ce24`; it does not start another merge. The model completion-detector regression names that immutable target rather than a mutable remote ref. The P01 diff against that target is whitespace-clean; the staged merge inherits the target's unchanged EOF blank-line warning in `platform/python-sidecar/tests/l3/gochara/test_p09_real_seal.py:36`.
+
+## Amendment 1.2 — scoped backup (J-2a)
+
+The full-database backup measured every row of 507 tables by streaming server-sorted row JSON and failed with SQLSTATE 53400
+(`temp_file_limit`) on `kala_field`. P01-I1 ("broadened to the complete logical DB") therefore now describes the `--scope full` form
+only. The scoped form (`--scope small_test`) archives the complete schema and the data of the reviewed small-test write set plus
+its foreign-key parents, measures by SQL aggregate, dumps in parallel under the exported snapshot, and states a validity window
+that the dispatch policy enforces. The fail-closed receipts (BG-01) are unchanged. Specification, runbook, interpretations and the
+claim-to-test map: `00_ARCHITECTURE/briefs/kalayantra/fleet/J2A_SCOPED_BACKUP_v1_0.md`.

@@ -1,0 +1,18 @@
+{
+  "schema": "ky.source_dependency/1",
+  "sources": [
+    {
+      "path": "platform/python-sidecar/services/kala_core/publication.py",
+      "source_commit": "d1c027d63f765638c9adca49bd580d6509a19a1c",
+      "sha256": "1dfa5fa7b275bf1252aee13a13ef90e6fbfc37bcf2a7361235787fe0de81b689",
+      "byte_exact": true
+    },
+    {
+      "path": "platform-mcp/src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts",
+      "source_commit": "1f34e7cf1291255534deea59e5521c03b32ef755",
+      "sha256": "f0144029af8c34e499b78b69b51f6049e23bc2260e77e386cd452fd8d3a7a8f7",
+      "byte_exact": true
+    }
+  ],
+  "activation_authorized": false
+}
