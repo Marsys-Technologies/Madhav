@@ -1,12 +1,13 @@
 ---
 title: KĀLA-YANTRA v3 owner decisions — Amendment A4 (one engine, no owner decisions, Wave 4 shortened)
-version: 1.0
+version: 1.1
 status: CURRENT
 date: 2026-10-15
 amends: Amendment A1 (D-12 enforcement, D-16), Amendment A3 (D-22.3, D-24), KALAYANTRA_RELAUNCH_PLAN_v2_7.md (§7 dispatcher lane, §16 close), the Wave 4 plan-model entries J-2c and J-2d, D-* items
 precedence: where this amendment and any amended document disagree, THIS AMENDMENT GOVERNS. Amended files stay byte-identical, as A1–A3 did.
 changelog:
-  - 1.0 (2026-10-15): created on the owner direction of 2026-10-15 ~17:00Z (native, in chat): pick one engine and close the other gracefully without losing its work; stop routing decisions to the owner immediately; the Wave 4 shortening decision delegated to the owner's analysis session; everything else from the restriction audit approved.
+  - "1.1 (2026-10-16): D-OWNER-TESTS-20261016 replaces the A2 review-cap reference."
+  - "1.0 (2026-10-15): created on the owner direction of 2026-10-15 ~17:00Z (native, in chat): pick one engine and close the other gracefully without losing its work; stop routing decisions to the owner immediately; the Wave 4 shortening decision delegated to the owner's analysis session; everything else from the restriction audit approved."
 ---
 
 # Amendment A4 — one engine, no owner decisions, Wave 4 shortened
@@ -21,7 +22,7 @@ Pick one of the two engines for the highest implementation velocity; the one not
 
 1. **Decision.** The cockpit's fast lane (`cx.sh` → Codex job → `cx_post.sh` commit/push/PR → independent review → merge queue) is the campaign's only model-job engine from this amendment on.
 2. **Why.** Jobs launched: fast lane 133 on 14 Oct and 64 on 15 Oct; dispatcher lane 43 and 0. The dispatcher lane's remaining work (GitHub call failures, slot-database provisioning races, qualification receipts) closes no Kāla capability.
-3. **Graceful closure, nothing lost.** (a) Live `J-*` jobs finish. (b) `kyctl.sh stop dispatcher`; `in.marsys.kalayantra.dispatcher` unloaded; the planner, conductor and veto loops stay off (A1 D-11). (c) The dispatcher's merged code, `run/jobs` records, journals and receipts stay untouched. (d) `B-DB-BASELINE` → `not_applicable`, reason "dispatcher lane retired, D-28". (e) `KV3-B-OPS-CONTRACT` (#3485) is executor work (production operations, A1 D-13) and finishes under the A2 two-round cap. (f) Fleet-lane worktrees: clean ones removed under the owner policy; dirty ones bundled to `/Users/Dev/Archives/` first. (g) The executor, tracker, test cluster, watchdog and launcher are kept: the fast lane uses them.
+3. **Graceful closure, nothing lost.** (a) Live `J-*` jobs finish. (b) `kyctl.sh stop dispatcher`; `in.marsys.kalayantra.dispatcher` unloaded; the planner, conductor and veto loops stay off (A1 D-11). (c) The dispatcher's merged code, `run/jobs` records, journals and receipts stay untouched. (d) `B-DB-BASELINE` → `not_applicable`, reason "dispatcher lane retired, D-28". (e) `KV3-B-OPS-CONTRACT` (#3485) is executor work (production operations, A1 D-13) and finishes under [D-OWNER-TESTS-20261016](DECISION_TESTING_STANDARD_v1_0.md): one bounded review round, a second only for a BLOCKING finding; real defects fixed regardless. (f) Fleet-lane worktrees: clean ones removed under the owner policy; dirty ones bundled to `/Users/Dev/Archives/` first. (g) The executor, tracker, test cluster, watchdog and launcher are kept: the fast lane uses them.
 4. **The fast lane gains the dispatcher's one missing function: launch on ready.** When the tracker shows an item `ready` with a packet or task template and no live job for it, the launcher starts its build job without waiting for the cockpit. Review, acceptance and merge stay with the cockpit and the merge queue.
 
 ## §3 · D-29 — no decision reaches the owner
