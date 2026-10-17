@@ -553,7 +553,7 @@
         "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_decision*.py",
-        "platform/scripts/governance/pravaha_tracker/tests/test_tracker_reconciliation.py"
+        "platform/scripts/governance/pravaha_tracker/tests/test_tracker_reconcil*.py"
       ]
     },
     "governance-readback-tests-3-0": {
