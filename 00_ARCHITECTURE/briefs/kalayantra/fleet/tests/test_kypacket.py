@@ -1,7 +1,8 @@
-"""`kypacket.py check` (relaunch plan v2.7 §8; packet KV3-B-KYPACKET): one admitted packet of each kind, one packet
-refused with exactly each reason code, the own-input (exit 66) and usage (exit 64) refusals, and the calibration of
-the byte bound — on packets and a throwaway git repository built under the pytest base. The command line is the
-contract, so every case runs the script as a child process."""
+"""`kypacket.py check` (relaunch plan v2.7 §8; packet KV3-B-KYPACKET; Amendment A8: pins by revision only): one
+admitted packet of each kind, one packet refused with exactly each reason code, one admitted with exactly each
+warning, the own-input (exit 66) and usage (exit 64) refusals, and the calibration of the byte bound — on packets and
+a throwaway git repository built under the pytest base. The command line is the contract, so every case runs the
+script as a child process."""
 import hashlib
 import json
 import os
@@ -31,11 +32,12 @@ import kypacket  # noqa: E402
 PLAN_TEXT = "# Plan\n\nAlpha line one.\nAlpha line two — with §8.\n\nBeta paragraph, one line.\n"
 NOTES_OLD = "note one\nnote two\n"
 NOTES_NEW = "note one\nnote two, revised\n"
+GONE_TEXT = "a source that was later removed from the working tree\n"
 TEST_TEXT = "def test_feature():\n    assert False, 'expected 12 windows, found 0'\n"
 EXCERPT = "```excerpt plan §8\nAlpha line one.\nAlpha line two — with §8.\n```\n"
 ZEROS = "0" * 64
 ABSENT_COMMIT = "1" * 40
-KU = json.loads((FLEET / "templates" / "ku_bindings.json").read_text(encoding="utf-8"))["clauses"]
+REPORT_KEYS = ["schema", "packet", "id", "admitted", "packet_sha256", "size", "labels", "reasons", "warnings"]
 
 
 def sha(data) -> str:
@@ -50,7 +52,8 @@ def git(repo, *args) -> str:
 
 
 class World:
-    """the throwaway repository and what the packets pin in it"""
+    """the throwaway repository and what the packets pin in it: c1 holds docs/NOTES.md as NOTES_OLD and docs/GONE.md;
+    c2 (the working tree) holds NOTES_NEW and no docs/GONE.md"""
 
     def __init__(self, base: Path):
         self.repo = base / "repo"
@@ -58,10 +61,12 @@ class World:
         git(self.repo, "init", "-q")
         self.put("docs/PLAN.md", PLAN_TEXT)
         self.put("docs/NOTES.md", NOTES_OLD)
+        self.put("docs/GONE.md", GONE_TEXT)
         self.put("tests/test_feature.py", TEST_TEXT)
         self.put(f"{RECEIPTS}/SCHEMA_RECEIPT_v9_9.json", json.dumps({"schema_receipt_id": "SR-TEST-1"}))
         self.c1 = self.commit("one")
         self.put("docs/NOTES.md", NOTES_NEW)
+        (self.repo / "docs" / "GONE.md").unlink()
         self.c2 = self.commit("two")
         self.plan_blob = git(self.repo, "rev-parse", f"{self.c1}:docs/PLAN.md")
 
@@ -120,7 +125,8 @@ def world(tmp_path_factory) -> World:
 
 
 def render(front: dict, body: str, stamp: bool = True) -> bytes:
-    """the packet file: fenced front matter, then the body; stamped per the packet's check 3"""
+    """the packet file: fenced front matter, then the body. `stamp` writes the B-1 self-hash into packet_sha256 —
+    kept so the fixtures look like the real packets; since A8 nothing checks it"""
     text = "```json\n" + json.dumps(front, ensure_ascii=False, indent=1) + "\n```\n" + body
     data = text.encode("utf-8")
     if stamp and front.get("packet_sha256") == ZEROS:
@@ -141,10 +147,23 @@ def run(packet, repo, script=SCRIPT, **env):
                           env=dict(GIT_ENV, **env), capture_output=True, text=True)
 
 
-def admitted(done) -> dict:
+def stderr_lines(done, report):
+    """stderr is one `refused:` line per reason, then one `warning:` line per warning, nothing else"""
+    lines = done.stderr.splitlines()
+    assert len(lines) == len(report["reasons"]) + len(report["warnings"]), done.stderr
+    for line, reason in zip(lines, report["reasons"]):
+        assert line == f"refused: {reason['code']}: {reason['detail']}"
+    for line, warning in zip(lines[len(report["reasons"]):], report["warnings"]):
+        assert line == f"warning: {warning['code']}: {warning['detail']}"
+
+
+def admitted(done, warnings=()) -> dict:
+    """exit 0, no reason, exactly the named warning codes"""
     assert done.returncode == 0, done.stdout + done.stderr
     report = json.loads(done.stdout)
-    assert report["admitted"] is True and report["reasons"] == [] and done.stderr == ""
+    assert report["admitted"] is True and report["reasons"] == []
+    assert [w["code"] for w in report["warnings"]] == list(warnings), report["warnings"]
+    stderr_lines(done, report)
     return report
 
 
@@ -154,10 +173,7 @@ def refused(done, code: str) -> dict:
     report = json.loads(done.stdout)
     assert report["schema"] == "ky.packet_check/1" and report["admitted"] is False
     assert {reason["code"] for reason in report["reasons"]} == {code}, report["reasons"]
-    lines = done.stderr.splitlines()
-    assert len(lines) == len(report["reasons"])
-    for line, reason in zip(lines, report["reasons"]):
-        assert line == f"refused: {reason['code']}: {reason['detail']}"
+    stderr_lines(done, report)
     return report
 
 
@@ -168,14 +184,13 @@ def test_a_bootstrap_packet_is_admitted_and_the_report_has_the_contract_shape(wo
     packet = write(tmp_path, world.bootstrap())
     report = admitted(run(packet, world.repo))
     data = packet.read_bytes()
-    stamped = json.loads(data.decode().split("```")[1][len("json"):])["packet_sha256"]
-    assert list(report) == ["schema", "packet", "id", "admitted", "packet_sha256", "size", "labels", "reasons"]
+    assert list(report) == REPORT_KEYS
     assert report["schema"] == "ky.packet_check/1"
     assert report["packet"] == str(packet) and os.path.isabs(report["packet"])
     assert report["id"] == "KV3-B-DEMO"
-    assert report["packet_sha256"] == stamped == sha(data.replace(stamped.encode(), ZEROS.encode()))
+    assert report["packet_sha256"] == sha(data), "the plain sha256 of the file: what the launch input carries"
     assert report["size"] == {"method": "calibrated_byte_bound", "bytes": len(data), "bound": 9000, "tokens": None}
-    assert report["labels"] == []
+    assert report["labels"] == [] and report["warnings"] == []
 
 
 def test_a_feature_packet_is_admitted(world, tmp_path):
@@ -255,7 +270,7 @@ def test_front_matter_that_is_not_one_strict_json_object_is_refused(world, tmp_p
         packet.parent.mkdir()
         packet.write_bytes(data)
         report = refused(run(packet, world.repo), "front_matter_json")
-        assert report["packet_sha256"] is None, label
+        assert report["packet_sha256"] == sha(data), label           # the file was read: its plain sha256
         assert report["size"]["bytes"] == len(data), label
 
 
@@ -276,36 +291,19 @@ def test_an_id_that_is_not_the_name_s_id_is_refused(world, tmp_path):
 
 
 # --------------------------------------------------------------------------------------------------------------
-# 3 packet_sha256
+# 3 one packet_sha256 member — its value is not recomputed (A8)
 # --------------------------------------------------------------------------------------------------------------
-def test_one_changed_body_byte_is_refused_and_the_computed_value_is_named(world, tmp_path):
+def test_a8_the_front_matter_hash_is_not_recomputed(world, tmp_path):
+    """Before A8 one changed body byte, an unstamped packet and a changed front-matter byte were each refused with
+    `packet_sha256`. The field is carried, not checked: all three are admitted."""
     packet = write(tmp_path, world.bootstrap())
     data = bytearray(packet.read_bytes())
-    stamped = admitted(run(packet, world.repo))["packet_sha256"]
-    at = data.index(b"# demo") + 2
-    data[at] ^= 0x01
+    data[data.index(b"# demo") + 2] ^= 0x01
     packet.write_bytes(bytes(data))
-    report = refused(run(packet, world.repo), "packet_sha256")
-    computed = sha(bytes(data).replace(stamped.encode(), ZEROS.encode()))
-    assert report["packet_sha256"] == computed != stamped
-    assert computed in report["reasons"][0]["detail"]
-
-
-def test_an_unstamped_packet_and_a_changed_front_matter_byte_are_refused(world, tmp_path):
-    refused(run(write(tmp_path, world.bootstrap(), stamp=False), world.repo), "packet_sha256")
+    assert admitted(run(packet, world.repo))["packet_sha256"] == sha(bytes(data))
+    admitted(run(write(tmp_path, world.bootstrap(), stamp=False), world.repo))
     packet = write(tmp_path, world.bootstrap())
     packet.write_bytes(packet.read_bytes().replace(b"test (plan", b"Test (plan", 1))
-    refused(run(packet, world.repo), "packet_sha256")
-
-
-def test_the_hash_is_over_the_file_with_only_the_field_zeroed(world, tmp_path):
-    """the plain sha256 of the file (the launch input's hash, ruling P19) is not the front matter's"""
-    front = world.bootstrap()
-    data = render(front, "# demo\n\n" + EXCERPT, stamp=False)
-    packet = tmp_path / "PACKET_KV3-B-DEMO_v1.md"
-    packet.write_bytes(data.replace(ZEROS.encode(), sha(data.replace(ZEROS.encode(), b"")).encode()))
-    refused(run(packet, world.repo), "packet_sha256")
-    packet.write_bytes(data.replace(ZEROS.encode(), sha(data).encode()))
     admitted(run(packet, world.repo))
 
 
@@ -316,57 +314,69 @@ def test_a_second_packet_sha256_member_makes_the_field_ambiguous(world, tmp_path
     packet = tmp_path / "PACKET_KV3-SCHEMA-1_v1.md"
     packet.write_bytes(data)
     report = refused(run(packet, world.repo), "packet_sha256")
-    assert report["packet_sha256"] is None
+    assert report["packet_sha256"] == sha(data)
+    front["intended_schema"] = {"other": ZEROS}
+    admitted(run(write(tmp_path, front), world.repo))
 
 
 # --------------------------------------------------------------------------------------------------------------
-# 4 pins
+# 4 pins: the blob at the pinned revision, and only it (A8)
 # --------------------------------------------------------------------------------------------------------------
-def two_sources(world, **bad) -> list:
-    """the plan, which carries the excerpt, and a second source that the case breaks"""
-    second = {"path": "docs/NOTES.md", "revision": "v1", "section_range": "all", "sha256": sha(NOTES_NEW)}
-    second.update(bad)
-    return [world.plan_source(), second]
+def two_sources(world, **second) -> list:
+    """the plan and a second source, docs/NOTES.md as the working tree has it (NOTES_NEW, c2), that the case alters"""
+    notes = {"path": "docs/NOTES.md", "revision": world.c2, "section_range": "all", "sha256": sha(NOTES_NEW)}
+    notes.update(second)
+    return [world.plan_source(), notes]
 
 
-def test_a_spec_source_that_is_not_in_the_repository_is_refused(world, tmp_path):
+def test_a8_a_pin_is_satisfied_by_the_blob_at_its_revision_not_by_the_working_tree(world, tmp_path):
+    """docs/NOTES.md at c1 is NOTES_OLD; the working tree has NOTES_NEW. Pinned at c1 with sha256(NOTES_OLD) the
+    source is admitted (before A8: spec_source_sha256, the working file hashed otherwise)."""
+    front = world.bootstrap(spec_sources=two_sources(world, revision=world.c1, sha256=sha(NOTES_OLD)))
+    admitted(run(write(tmp_path, front), world.repo))
+    assert (world.repo / "docs" / "NOTES.md").read_text(encoding="utf-8") == NOTES_NEW
+
+
+def test_a8_a_source_gone_from_the_working_tree_is_pinned_at_the_revision_that_holds_it(world, tmp_path):
+    assert not (world.repo / "docs" / "GONE.md").exists()
+    front = world.bootstrap(spec_sources=two_sources(world, path="docs/GONE.md", revision=world.c1,
+                                                     sha256=sha(GONE_TEXT)))
+    admitted(run(write(tmp_path, front), world.repo))
+    front = world.bootstrap(spec_sources=two_sources(world, path="docs/GONE.md", sha256=sha(GONE_TEXT)))  # at c2
+    report = refused(run(write(tmp_path, front), world.repo), "spec_source_missing")
+    assert f"{world.c2}:docs/GONE.md" in report["reasons"][0]["detail"]
+
+
+def test_a8_a_pin_whose_blob_at_the_revision_differs_is_refused(world, tmp_path):
+    front = world.bootstrap(spec_sources=two_sources(world, sha256=sha(NOTES_OLD)))      # c2 holds NOTES_NEW
+    report = refused(run(write(tmp_path, front), world.repo), "spec_source_sha256")
+    assert sha(NOTES_NEW) in report["reasons"][0]["detail"] and world.c2 in report["reasons"][0]["detail"]
+    front = world.bootstrap(spec_sources=two_sources(world, revision=world.c1))           # c1 holds NOTES_OLD
+    refused(run(write(tmp_path, front), world.repo), "spec_source_sha256")
+
+
+def test_a_spec_source_path_that_is_not_in_the_repository_at_the_revision_is_refused(world, tmp_path):
     for path in ("docs/ABSENT.md", "docs", "/etc/hosts", str(world.repo / "docs/NOTES.md")):
         front = world.bootstrap(spec_sources=two_sources(world, path=path))
         report = refused(run(write(tmp_path, front), world.repo), "spec_source_missing")
         assert path in report["reasons"][0]["detail"]
 
 
-def test_a_spec_source_reached_through_a_symlink_out_of_the_repository_is_refused(world, tmp_path):
-    outside = tmp_path / "outside.md"
-    outside.write_text(NOTES_NEW, encoding="utf-8")
-    link = world.repo / "docs" / "LINK.md"
-    link.symlink_to(outside)
-    try:
-        front = world.bootstrap(spec_sources=two_sources(world, path="docs/LINK.md"))
-        refused(run(write(tmp_path, front), world.repo), "spec_source_missing")
-    finally:
-        link.unlink()
-
-
-def test_a_spec_source_with_another_sha256_is_refused(world, tmp_path):
-    front = world.bootstrap(spec_sources=two_sources(world, sha256=sha(NOTES_OLD)))
-    report = refused(run(write(tmp_path, front), world.repo), "spec_source_sha256")
-    assert sha(NOTES_NEW) in report["reasons"][0]["detail"]
-
-
-def test_a_pinned_commit_without_that_blob_is_refused(world, tmp_path):
-    cases = {"the blob at that commit differs": world.c1, "no such commit": ABSENT_COMMIT,
-             "a blob id, not a commit": world.plan_blob}
-    for label, revision in cases.items():
+def test_a_revision_that_is_not_a_commit_in_the_repository_is_refused(world, tmp_path):
+    for label, revision in {"no such commit": ABSENT_COMMIT, "a blob id, not a commit": world.plan_blob}.items():
         front = world.bootstrap(spec_sources=two_sources(world, revision=revision))
-        refused(run(write(tmp_path, front), world.repo), "spec_source_revision")
-    front = world.bootstrap(spec_sources=two_sources(world, revision=world.c2))
-    admitted(run(write(tmp_path, front), world.repo))
+        report = refused(run(write(tmp_path, front), world.repo), "spec_source_revision")
+        assert revision in report["reasons"][0]["detail"], label
 
 
-def test_a_revision_that_is_a_document_version_is_pinned_by_its_sha256_alone(world, tmp_path):
+def test_a8_a_revision_that_is_a_document_version_is_a_warning_not_a_pin(world, tmp_path):
+    """"v2.7" names no commit: the repository cannot answer for the sha256. The packet is admitted with the warning
+    `spec_source_unpinned`, whatever the sha256 says (before A8 the working file was hashed against it)."""
+    front = world.bootstrap(spec_sources=[world.plan_source(revision="v2.7", sha256=sha("another plan"))])
+    report = admitted(run(write(tmp_path, front), world.repo), warnings=["spec_source_unpinned"])
+    assert "docs/PLAN.md" in report["warnings"][0]["detail"] and "v2.7" in report["warnings"][0]["detail"]
     front = world.bootstrap(spec_sources=[world.plan_source(revision="v2.7")])
-    admitted(run(write(tmp_path, front), world.repo))
+    admitted(run(write(tmp_path, front), world.repo), warnings=["spec_source_unpinned"])
 
 
 def test_an_original_failing_base_that_is_not_a_commit_is_refused(world, tmp_path):
@@ -398,7 +408,7 @@ def test_a_receipt_outside_the_receipt_location_does_not_resolve(world, tmp_path
 
 
 # --------------------------------------------------------------------------------------------------------------
-# 5 size
+# size: a warning (A8)
 # --------------------------------------------------------------------------------------------------------------
 def sized(world, tmp_path, size: int) -> Path:
     body = "# demo\n\n" + EXCERPT
@@ -408,9 +418,10 @@ def sized(world, tmp_path, size: int) -> Path:
     return packet
 
 
-def test_a_9001_byte_packet_is_refused_and_a_9000_byte_packet_is_admitted(world, tmp_path):
-    report = refused(run(sized(world, tmp_path, 9001), world.repo), "oversize")
+def test_a8_a_9001_byte_packet_is_admitted_with_the_oversize_warning_and_a_9000_byte_packet_without(world, tmp_path):
+    report = admitted(run(sized(world, tmp_path, 9001), world.repo), warnings=["oversize"])
     assert report["size"] == {"method": "calibrated_byte_bound", "bytes": 9001, "bound": 9000, "tokens": None}
+    assert "9001" in report["warnings"][0]["detail"] and "9000" in report["warnings"][0]["detail"]
     assert admitted(run(sized(world, tmp_path, 9000), world.repo))["size"]["bytes"] == 9000
 
 
@@ -424,16 +435,22 @@ def test_every_measured_card_is_under_4000_tokens_at_the_byte_bound():
 
 
 # --------------------------------------------------------------------------------------------------------------
-# 6 test availability
+# 5 test availability
 # --------------------------------------------------------------------------------------------------------------
 def test_a_feature_packet_whose_test_blob_is_not_available_is_refused(world, tmp_path):
     good = world.feature()["test_commits"][0]
-    cases = {"another digest": dict(good, digest=sha("other")), "no such path": dict(good, path="tests/absent.py"),
-             "no such commit": dict(good, sha=ABSENT_COMMIT)}
+    cases = {"no such path": dict(good, path="tests/absent.py"), "no such commit": dict(good, sha=ABSENT_COMMIT)}
     for label, entry in cases.items():
         front = world.feature(test_commits=[good, entry])
         report = refused(run(write(tmp_path, front), world.repo), "test_unavailable")
         assert len(report["reasons"]) == 1 and entry["path"] in report["reasons"][0]["detail"], label
+
+
+def test_a8_a_test_commit_digest_is_carried_not_pinned(world, tmp_path):
+    """the blob must exist; its sha256 is the launch input's business (kyd_admit reads it from the front matter)"""
+    good = world.feature()["test_commits"][0]
+    front = world.feature(test_commits=[good, dict(good, digest=sha("other"))])
+    admitted(run(write(tmp_path, front), world.repo))
 
 
 @pytest.mark.parametrize("command", [
@@ -460,117 +477,39 @@ def test_a_bootstrap_command_that_names_a_d1_path_is_available(world, tmp_path, 
 
 
 # --------------------------------------------------------------------------------------------------------------
-# 7 excerpts
+# gone with A8: excerpts, reconciliation lines and KU clauses are not checked; labels are reported
 # --------------------------------------------------------------------------------------------------------------
-@pytest.mark.parametrize("block", [
-    "```excerpt plan §8\nAlpha line one.\nAlpha line two - with §8.\n```\n",
-    "```excerpt plan §8\nAlpha line one.\n\nAlpha line two — with §8.\n```\n",
-    "```excerpt plan §8\nAlpha line one. \n```\n",
-    "```excerpt notes\nnote one\n```\n",
-    "```excerpt plan §8\n```\n",
-    "```excerpt plan §8\nAlpha line one.\n",
-    "```excerpt plan §8\nAlpha line one.\n``` \n",
-])
-def test_an_excerpt_absent_from_its_pinned_sources_is_refused(world, tmp_path, block):
-    report = refused(run(write(tmp_path, world.bootstrap(), "# demo\n\n" + block), world.repo),
-                     "excerpt_not_in_source")
-    assert len(report["reasons"]) == 1
-
-
-def test_every_excerpt_is_checked_and_part_of_a_line_is_an_excerpt(world, tmp_path):
-    part = "```excerpt plan, part of a line\nparagraph, one\n```\n"
-    admitted(run(write(tmp_path, world.bootstrap(), "# demo\n\n" + EXCERPT + part), world.repo))
-    bad = "```excerpt plan\nGamma.\n```\n"
-    report = refused(run(write(tmp_path, world.bootstrap(), "# demo\n\n" + EXCERPT + bad + bad), world.repo),
-                     "excerpt_not_in_source")
-    assert len(report["reasons"]) == 2
-
-
-def test_an_excerpt_is_not_sought_in_a_source_whose_pin_failed(world, tmp_path):
-    """the working file is the pinned source only while it hashes to the pin"""
-    front = world.bootstrap(spec_sources=[world.plan_source(sha256=sha("another plan"), revision="v2.7")])
-    done = run(write(tmp_path, front), world.repo)
-    assert done.returncode == 1
-    assert [r["code"] for r in json.loads(done.stdout)["reasons"]] == ["spec_source_sha256", "excerpt_not_in_source"]
-
-
-@pytest.mark.parametrize("body", [
-    "# demo\n\nAlpha line one.\n",
-    "# demo\n\n```\nAlpha line one.\n```\n",
-    "# demo\n\n```text\nAlpha line one.\n```\n",
-    "# demo\n\n```text\n```excerpt plan\nAlpha line one.\n```\n",
-    "# demo\n\n ```excerpt plan\nAlpha line one.\n```\n",
-])
-def test_a_packet_with_no_excerpt_block_is_refused(world, tmp_path, body):
-    refused(run(write(tmp_path, world.bootstrap(), body), world.repo), "no_excerpt")
-
-
-# --------------------------------------------------------------------------------------------------------------
-# 8 reconciliation
-# --------------------------------------------------------------------------------------------------------------
-@pytest.mark.parametrize("line", [
-    "Reconciliation: the existing procedure stays as it is.",
-    "Reconciliation: the existing procedure is `docs/NOTES.md`.",
-    "Reconciliation: the existing procedure is docs/PLAN.md.",
-    "Reconciliation: see `docs/PLAN.md §8`.",
-])
-def test_a_reconciliation_line_that_names_no_pinned_source_is_refused(world, tmp_path, line):
-    body = "# demo\n\n" + EXCERPT + line + "\n"
-    report = refused(run(write(tmp_path, world.bootstrap(), body), world.repo), "reconciliation_unpinned")
-    assert len(report["reasons"]) == 1
-
-
-def test_a_reconciliation_line_that_names_a_pinned_source_is_bound(world, tmp_path):
-    body = ("# demo\n\n" + EXCERPT + "Reconciliation: `tools/x.py` is as `docs/PLAN.md` says.\n"
-            "8. Reconciliation: a numbered line is not a claim.\n")
-    admitted(run(write(tmp_path, world.bootstrap(), body), world.repo))
-    report = refused(run(write(tmp_path, world.bootstrap(), body + "Reconciliation: none.\n"), world.repo),
-                     "reconciliation_unpinned")
-    assert len(report["reasons"]) == 1
-
-
-# --------------------------------------------------------------------------------------------------------------
-# 9 KU bindings
-# --------------------------------------------------------------------------------------------------------------
-def ku_body(*texts) -> str:
-    return "# demo\n\n" + EXCERPT + "".join(f"```\n{text}\n```\n" for text in texts)
-
-
 def owning(world, *paths) -> dict:
     return world.bootstrap(d1_paths=list(paths) + ["tools/tests/test_demo.py"])
 
 
-def test_ku_01_altered_by_one_character_in_a_packet_owning_kyverdicts_is_refused(world, tmp_path):
-    text = KU["KU-01"]["text"]
-    front = owning(world, f"{F}/kyverdicts.py")
-    assert admitted(run(write(tmp_path, front, ku_body(text)), world.repo))["labels"] == ["kyverdicts"]
-    for altered in (text.replace("Audit", "audit", 1), text.replace("\n\n", "\n", 1), text[:-1]):
-        assert altered != text
-        report = refused(run(write(tmp_path, front, ku_body(altered)), world.repo), "ku_clause_missing")
-        assert [r["detail"] for r in report["reasons"]] == ["KU-01"]
-        assert report["labels"] == ["kyverdicts"]
-    report = refused(run(write(tmp_path, front), world.repo), "ku_clause_missing")
-    assert [r["detail"] for r in report["reasons"]] == ["KU-01"]
+def test_a8_excerpts_reconciliation_lines_and_ku_clauses_are_not_checked(world, tmp_path):
+    """each of these bodies was a refusal before A8 (excerpt_not_in_source, no_excerpt, reconciliation_unpinned,
+    ku_clause_missing); the packet owning kyverdicts.py carries its label and is admitted without any clause"""
+    bodies = ["# demo\n\n```excerpt plan\nGamma.\n```\n", "# demo\n", "# demo\n\n```excerpt plan §8\nAlpha line one.\n",
+              "# demo\n\n" + EXCERPT + "Reconciliation: none.\n"]
+    for body in bodies:
+        assert admitted(run(write(tmp_path, owning(world, f"{F}/kyverdicts.py"), body), world.repo))["labels"] == \
+            ["kyverdicts"]
+    code = SCRIPT.read_text(encoding="utf-8").split('"""', 2)[2]     # the script after its docstring
+    assert "ku_bindings" not in code and "excerpt" not in code.lower() and "Reconciliation" not in code
 
 
-def test_each_registry_label_binds_the_clauses_that_require_it(world, tmp_path):
+def test_labels_name_what_the_packet_owns(world, tmp_path):
     for label, path in kypacket.REGISTRY.items():
         owned = path + "state.py" if path.endswith("/") else path
-        needed = sorted(ku for ku, clause in KU.items() if label in clause["required_in"])
-        assert needed, label
-        report = refused(run(write(tmp_path, owning(world, owned)), world.repo), "ku_clause_missing")
-        assert [r["detail"] for r in report["reasons"]] == needed and report["labels"] == [label]
-        body = ku_body(*(KU[ku]["text"] for ku in needed))
-        assert admitted(run(write(tmp_path, owning(world, owned), body), world.repo))["labels"] == [label]
+        assert admitted(run(write(tmp_path, owning(world, owned)), world.repo))["labels"] == [label]
+    front = owning(world, f"{F}/kyverdicts.py", f"{F}/kyversion.sh", f"{T}/verdicts.py")
+    assert admitted(run(write(tmp_path, front), world.repo))["labels"] == ["kyverdicts", "kyversion",
+                                                                             "tracker-semantics"]
 
 
-def test_the_registry_is_the_packet_s_and_covers_every_binding():
+def test_the_registry_is_the_packet_s():
     assert kypacket.REGISTRY == {
         "kyverdicts": f"{F}/kyverdicts.py", "kylock": f"{F}/kylock.sh", "kyversion": f"{F}/kyversion.sh",
         "local-db": f"{F}/local_db.sh", "preflight-v3": f"{F}/preflight.sh", "finalize-v3": f"{F}/finalize.sh",
         "dispatcher-ready-receipts": f"{F}/kyd_admit.py", "kyloop-crash-cleanup": f"{F}/kyloop.py",
         "tracker-semantics": f"{T}/"}
-    assert {label for clause in KU.values() for label in clause["required_in"]} == set(kypacket.REGISTRY)
 
 
 def test_a_path_beside_the_tracker_directory_carries_no_label(world, tmp_path):
@@ -578,19 +517,13 @@ def test_a_path_beside_the_tracker_directory_carries_no_label(world, tmp_path):
     assert admitted(run(write(tmp_path, front), world.repo))["labels"] == []
 
 
-def test_a_packet_owning_two_components_carries_every_clause(world, tmp_path):
-    front = owning(world, f"{F}/kyverdicts.py", f"{F}/kyversion.sh", f"{T}/verdicts.py")
-    report = refused(run(write(tmp_path, front, ku_body(KU["KU-01"]["text"])), world.repo), "ku_clause_missing")
-    assert [r["detail"] for r in report["reasons"]] == ["KU-03"]
-    assert report["labels"] == ["kyverdicts", "kyversion", "tracker-semantics"]
-
-
 # --------------------------------------------------------------------------------------------------------------
 # every failure is reported; no pass without a check
 # --------------------------------------------------------------------------------------------------------------
 def test_every_failure_is_reported_in_one_run(world, tmp_path):
     front = world.feature(original_failing_base=ABSENT_COMMIT, schema_receipt_id="SR-NONE", max_loops=9,
-                          spec_sources=[world.plan_source(), world.plan_source(path="docs/ABSENT.md")])
+                          spec_sources=[world.plan_source(), world.plan_source(path="docs/ABSENT.md"),
+                                        world.plan_source(revision="v2.7")])
     packet = write(tmp_path, front, "# demo\n\nReconciliation: none.\n" + "x" * 9000 + "\n",
                    name="PACKET_OTHER_v1.md")
     packet.write_bytes(packet.read_bytes() + b"\n")
@@ -598,9 +531,10 @@ def test_every_failure_is_reported_in_one_run(world, tmp_path):
     assert done.returncode == 1
     report = json.loads(done.stdout)
     assert [r["code"] for r in report["reasons"]] == [
-        "schema", "name_id_mismatch", "packet_sha256", "spec_source_missing", "spec_source_revision",
-        "commit_unknown", "schema_receipt_unresolved", "oversize", "no_excerpt", "reconciliation_unpinned"]
-    assert done.stderr.count("\n") == len(report["reasons"]) and report["admitted"] is False
+        "schema", "name_id_mismatch", "spec_source_missing", "commit_unknown", "schema_receipt_unresolved"]
+    assert [w["code"] for w in report["warnings"]] == ["spec_source_unpinned", "oversize"]
+    stderr_lines(done, report)
+    assert report["admitted"] is False
 
 
 def test_a_git_that_cannot_read_objects_never_admits(world, tmp_path):
@@ -619,11 +553,10 @@ def test_a_git_that_cannot_read_objects_never_admits(world, tmp_path):
 # exit 66: an own input is missing, unreadable or invalid
 # --------------------------------------------------------------------------------------------------------------
 def tool(tmp_path: Path) -> Path:
-    """a copy of the script and of what it reads beside itself"""
+    """a copy of the script and of what it reads beside itself (A8: no templates/ku_bindings.json)"""
     root = tmp_path / "tool"
     (root / "schemas").mkdir(parents=True)
-    (root / "templates").mkdir()
-    for name in ("kypacket.py", "kyschema.py", "schemas/packet.json", "templates/ku_bindings.json"):
+    for name in ("kypacket.py", "kyschema.py", "schemas/packet.json"):
         shutil.copyfile(FLEET / name, root / name)
     return root
 
@@ -633,56 +566,13 @@ def own_input_refused(done):
     assert done.stdout == "" and done.stderr.startswith("kypacket: ")
 
 
-def rewrite_bindings(root: Path, change):
-    path = root / "templates" / "ku_bindings.json"
-    bindings = json.loads(path.read_text(encoding="utf-8"))
-    change(bindings)
-    path.write_text(json.dumps(bindings, ensure_ascii=False, indent=1), encoding="utf-8")
-
-
-def test_the_copied_tool_admits_as_the_original_does(world, tmp_path):
-    admitted(run(write(tmp_path, world.bootstrap()), world.repo, script=tool(tmp_path) / "kypacket.py"))
-
-
-def test_a_required_in_label_outside_the_registry_is_exit_66(world, tmp_path):
+def test_the_copied_tool_admits_as_the_original_does_without_ku_bindings(world, tmp_path):
     root = tool(tmp_path)
-    rewrite_bindings(root, lambda b: b["clauses"]["KU-03"]["required_in"].append("kyunknown"))
-    done = run(write(tmp_path, world.bootstrap()), world.repo, script=root / "kypacket.py")
-    own_input_refused(done)
-    assert "kyunknown" in done.stderr and "KU-03" in done.stderr
+    assert not (root / "templates").exists()
+    admitted(run(write(tmp_path, world.bootstrap()), world.repo, script=root / "kypacket.py"))
 
 
-def test_a_clause_whose_text_is_not_its_text_sha256_is_exit_66(world, tmp_path):
-    root = tool(tmp_path)
-
-    def alter(bindings):
-        bindings["clauses"]["KU-01"]["text"] = bindings["clauses"]["KU-01"]["text"].replace("Audit", "audit", 1)
-
-    rewrite_bindings(root, alter)
-    done = run(write(tmp_path, world.bootstrap()), world.repo, script=root / "kypacket.py")
-    own_input_refused(done)
-    assert "KU-01" in done.stderr
-
-
-@pytest.mark.parametrize("change", [
-    lambda b: b.pop("clauses"),
-    lambda b: b.update(clauses={}),
-    lambda b: b.update(clauses=[]),
-    lambda b: b.update(schema="ky.ku_bindings/2"),
-    lambda b: b["clauses"]["KU-02"].pop("required_in"),
-    lambda b: b["clauses"]["KU-02"].update(required_in=[]),
-    lambda b: b["clauses"]["KU-02"].update(required_in="local-db"),
-    lambda b: b["clauses"]["KU-02"].pop("text_sha256"),
-    lambda b: b["clauses"]["KU-02"].update(text="", text_sha256=sha("")),
-    lambda b: b["clauses"].update({"KU-04": "text"}),
-])
-def test_malformed_bindings_are_exit_66(world, tmp_path, change):
-    root = tool(tmp_path)
-    rewrite_bindings(root, change)
-    own_input_refused(run(write(tmp_path, world.bootstrap()), world.repo, script=root / "kypacket.py"))
-
-
-@pytest.mark.parametrize("name", ["kyschema.py", "schemas/packet.json", "templates/ku_bindings.json"])
+@pytest.mark.parametrize("name", ["kyschema.py", "schemas/packet.json"])
 def test_a_missing_or_unparseable_own_file_is_exit_66(world, tmp_path, name):
     root = tool(tmp_path)
     packet = write(tmp_path, world.bootstrap())
@@ -740,12 +630,19 @@ def test_the_script_imports_the_standard_library_only():
 
 
 # --------------------------------------------------------------------------------------------------------------
-# every reason code, alone
+# every reason code, alone; every warning code, alone
 # --------------------------------------------------------------------------------------------------------------
-def _raw(tmp_path, data: bytes) -> Path:
-    packet = tmp_path / "PACKET_KV3-B-DEMO_v1.md"
+def _raw(tmp_path, data: bytes, name="PACKET_KV3-B-DEMO_v1.md") -> Path:
+    packet = tmp_path / name
     packet.write_bytes(data)
     return packet
+
+
+def _two_members(w, t) -> Path:
+    """a schema-prerequisite packet whose intended_schema writes a second packet_sha256 member (the schema allows
+    it; the one-member check does not)"""
+    front = w.common(id="KV3-SCHEMA-1", kind="schema-prerequisite", intended_schema={"packet_sha256": ZEROS})
+    return _raw(t, render(front, "# demo\n\n" + EXCERPT, stamp=False), name="PACKET_KV3-SCHEMA-1_v1.md")
 
 
 ALONE = {
@@ -753,25 +650,27 @@ ALONE = {
     "front_matter_json": lambda w, t: _raw(t, ("```json\n[]\n```\n" + EXCERPT).encode()),
     "schema": lambda w, t: write(t, w.bootstrap(max_loops=9)),
     "name_id_mismatch": lambda w, t: write(t, w.bootstrap(), name="PACKET_KV3-B-OTHER_v1.md"),
-    "packet_sha256": lambda w, t: _raw(t, render(w.bootstrap(), "# demo\n\n" + EXCERPT) + b"\n"),
+    "packet_sha256": _two_members,
     "spec_source_missing": lambda w, t: write(t, w.bootstrap(spec_sources=two_sources(w, path="docs/ABSENT.md"))),
     "spec_source_sha256": lambda w, t: write(t, w.bootstrap(spec_sources=two_sources(w, sha256=sha(NOTES_OLD)))),
-    "spec_source_revision": lambda w, t: write(t, w.bootstrap(spec_sources=two_sources(w, revision=w.c1))),
+    "spec_source_revision": lambda w, t: write(t, w.bootstrap(spec_sources=two_sources(w, revision=ABSENT_COMMIT))),
     "commit_unknown": lambda w, t: write(t, w.feature(original_failing_base=ABSENT_COMMIT)),
     "schema_receipt_unresolved": lambda w, t: write(t, w.artifact(schema_receipt_id="SR-TEST-2")),
-    "oversize": lambda w, t: sized(w, t, 9001),
     "test_unavailable": lambda w, t: write(t, w.feature(test_commits=[
-        {"sha": w.c1, "digest": sha("other"), "path": "tests/test_feature.py"}])),
-    "excerpt_not_in_source": lambda w, t: write(t, w.bootstrap(), "# demo\n\n```excerpt plan\nGamma.\n```\n"),
-    "no_excerpt": lambda w, t: write(t, w.bootstrap(), "# demo\n"),
-    "reconciliation_unpinned": lambda w, t: write(t, w.bootstrap(), "# demo\n\n" + EXCERPT + "Reconciliation: none.\n"),
-    "ku_clause_missing": lambda w, t: write(t, owning(w, f"{F}/kyverdicts.py"),
-                                            ku_body(KU["KU-01"]["text"].replace("Audit", "audit", 1))),
+        {"sha": w.c1, "digest": sha(TEST_TEXT), "path": "tests/absent.py"}])),
+}
+
+WARNED = {
+    "spec_source_unpinned": lambda w, t: write(t, w.bootstrap(spec_sources=[w.plan_source(revision="v2.7")])),
+    "oversize": lambda w, t: sized(w, t, 9001),
 }
 
 
-def test_the_reason_codes_are_the_packet_s_sixteen():
-    assert set(ALONE) == set(kypacket.REASON_CODES) and len(kypacket.REASON_CODES) == 16
+def test_the_reason_codes_are_the_packet_s_eleven_and_the_warnings_two():
+    assert set(ALONE) == set(kypacket.REASON_CODES) and len(kypacket.REASON_CODES) == 11
+    assert set(WARNED) == set(kypacket.WARNING_CODES) and len(kypacket.WARNING_CODES) == 2
+    for gone in ("oversize", "excerpt_not_in_source", "no_excerpt", "reconciliation_unpinned", "ku_clause_missing"):
+        assert gone not in kypacket.REASON_CODES
 
 
 @pytest.mark.parametrize("code", sorted(ALONE))
@@ -780,3 +679,11 @@ def test_each_reason_code_has_a_packet_refused_with_exactly_it(world, tmp_path, 
     report = refused(done, code)
     assert len(report["reasons"]) == 1
     assert done.stderr.startswith(f"refused: {code}: ")
+
+
+@pytest.mark.parametrize("code", sorted(WARNED))
+def test_each_warning_code_has_a_packet_admitted_with_exactly_it(world, tmp_path, code):
+    done = run(WARNED[code](world, tmp_path), world.repo)
+    report = admitted(done, warnings=[code])
+    assert len(report["warnings"]) == 1
+    assert done.stderr.startswith(f"warning: {code}: ")

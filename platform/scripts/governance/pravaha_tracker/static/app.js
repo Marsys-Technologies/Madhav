@@ -158,7 +158,7 @@
     const chip = (k, v) => `<span class="chip st-${k}"><b>${v}</b>${esc(LABEL[k] || k)}</span>`;
     $("counts").innerHTML = [chip("done", o.done), chip("running", o.running), chip("ready", o.ready), chip("waiting", o.waiting),
       `<span class="chip"><b>${o.built_waiting_on_gate ?? 0}</b>built, waiting on gate</span>`,
-      chip("blocked", o.blocked), chip("unknown", o.unknown), `<span class="chip"><b>${o.total}</b>items in plan</span>`].join("");
+      chip("blocked", o.blocked), chip("unknown", o.unknown), `<span class="chip"><b>${o.total}</b>${o.scope === "closure" ? "items in the closure" : "items in plan"}</span>${o.scope === "closure" ? `<span class="chip"><b>${(o.deferred || []).length}</b>deferred (not counted)</span>` : ""}`].join("");
   }
 
   function renderHealth() {
