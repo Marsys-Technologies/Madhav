@@ -284,14 +284,15 @@ def test_an_agent_with_no_daśā_rows_is_unrestricted_with_an_explicit_unknown(w
                              event_class="marriage") == {"records": 1, "restricted": 0}
 
 
-def test_an_anchor_whose_periods_all_lie_outside_the_horizon_is_computed_empty_and_false_not_unknown(world):
-    """J-2a run 1: the snapshot binds only the daśā rows OVERLAPPING the horizon; an anchor lord that HAS rows at its level
+def test_an_anchor_whose_periods_all_lie_outside_the_horizon_is_computed_empty_and_false_not_unknown(legacy_world):
+    """J-2a run 1 (a LEGACY snapshot, which reads the pinned build; a snapshot that owns its copy reads the copy alone and holds only the rows overlapping the horizon, so
+    "held anywhere in the build" is not a question the copy can answer — the copy arm and the copy-reading builder agree on the copy): the snapshot binds only the daśā rows OVERLAPPING the horizon; an anchor lord that HAS rows at its level
     in the pinned build, none of them overlapping the horizon, simply does not run in it — period_running_at is `false`
     with an empty (computed) support, exactly as the builder stores it. 'No rows' (⇒ unrestricted + `unknown`) means L1
     holds no row for that (lord, level) at all, NOT 'none inside the horizon'. Phaladīpikā XX.38 reads a bhukti lord's
     period only while it runs; a lord whose period lies wholly before/after the horizon does not run in it. The detector
     (§N.8) is `has_rows`: it must read false ONLY for a (lord, level) with no pinned row anywhere."""
-    w = world
+    w = legacy_world
     w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])   # Venus AD: a past year only
     w.boot()
     w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
