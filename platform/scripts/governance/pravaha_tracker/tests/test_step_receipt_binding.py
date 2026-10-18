@@ -567,7 +567,8 @@ def test_accepts_composed_receipt_whose_components_are_verified_executor_receipt
 @pytest.mark.parametrize("problem", [
     "component_digest_changed", "component_missing", "component_failed", "component_exit_nonzero",
     "acceptance_digest_changed", "absence_without_acceptance", "no_independent_acceptance",
-    "component_outside_root",
+    "component_outside_root", "run_parts_without_receipt", "acceptance_not_accepted",
+    "acceptance_for_other_operation",
 ])
 def test_refuses_composed_receipt_with_an_unverified_component(operation_step, tmp_path, problem):
     w = operation_step
@@ -589,6 +590,17 @@ def test_refuses_composed_receipt_with_an_unverified_component(operation_step, t
         run["absence"]["acceptance"] = []
     elif problem == "no_independent_acceptance":
         w.verdict["result"] = "REJECTED"
+    elif problem == "run_parts_without_receipt":
+        # N.8: a run of parts that cite no executor receipt verifies zero components and must not pass.
+        w.executor["runs"] = [{"run": 1, **{part: {} for part in
+                                            ("dispatch", "terminal", "execution_readback", "absence")}}]
+    elif problem in ("acceptance_not_accepted", "acceptance_for_other_operation"):
+        # B.3/B.10: a cited acceptance record is read, not merely digest-bound.
+        post = acceptance / "J-2x.absence.post.json"
+        record = json.loads(post.read_text())
+        record.update(result="REJECTED") if problem == "acceptance_not_accepted" else record.update(operation_id="J-2x.other")
+        post.write_text(json.dumps(record))
+        run["absence"]["acceptance"] = [{"name": post.name, "sha256": hashlib.sha256(post.read_bytes()).hexdigest()}]
     else:
         run["dispatch"]["receipt"]["name"] = "../J-2x.dispatch.json"
     w.sync()

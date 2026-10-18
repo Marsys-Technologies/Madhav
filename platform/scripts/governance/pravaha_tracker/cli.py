@@ -457,6 +457,8 @@ def _check_composed_components(composed: dict, opid: str, step, item_id: str, op
     for run in runs:
         if not isinstance(run, dict) or any(not isinstance(run.get(part), dict) for part in _COMPOSED_RUN_PARTS):
             raise CompletionError("composed operation receipt lacks a run's dispatch/terminal/execution/absence")
+        if any("receipt" not in run[part] for part in _COMPOSED_RUN_PARTS):
+            raise CompletionError("composed operation receipt cites no executor receipt for a run part")
         for part, cite in run.items():
             if not isinstance(cite, dict) or "receipt" not in cite:
                 continue
@@ -477,7 +479,10 @@ def _check_composed_components(composed: dict, opid: str, step, item_id: str, op
                 raise CompletionError(f"composed component {component_id} cites no accepted evidence")
             for entry in accepted:
                 entry = entry if isinstance(entry, dict) else {}
-                digest_of(acceptance, entry.get("name"), entry.get("sha256"))
+                record = json.loads(digest_of(acceptance, entry.get("name"), entry.get("sha256")))
+                if (not isinstance(record, dict) or record.get("result") != "ACCEPTED"
+                        or record.get("operation_id") != component_id):
+                    raise CompletionError(f"composed component {component_id} cites an acceptance that is not ACCEPTED for it")
 
 
 def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[dict]) -> None:
