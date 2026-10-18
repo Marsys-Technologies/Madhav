@@ -540,7 +540,7 @@ MUTANTS.update({
 })
 
 MUTANTS.update({
-    'builder.pd-withholding': ('record_store.py', 'test_nd_h_builder_registry_pg.py::test_pd_dispositor_testimony_is_withheld_even_when_the_same_lord_is_an_ad_karaka', 'if _unwritable(_anchor(e), e.period_anchor_level):', 'if _unwritable(_anchor(e)):'),
+    'builder.pd-withholding': ('record_store.py', 'test_nd_h_builder_registry_pg.py::test_pd_dispositor_testimony_is_withheld_even_when_the_same_lord_is_an_ad_karaka', 'if _unwritable(_anchor(edge), edge.period_anchor_level):', 'if _unwritable(_anchor(edge)):'),
 })
 
 MUTANTS.update({
@@ -549,44 +549,13 @@ MUTANTS.update({
 
 MUTANTS.update({'fixture.setup-cleanup': ('../../tests/l3/gochara/test_a55_replace_chain.py',
                            'test_p06_final_rule_verification.py::test_golden_fixture_drops_its_owned_database_when_substrate_setup_is_interrupted',
-                           '    try:\n'
-                           '        conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)\n'
-                           '        try:\n'
-                           '            RuleRegistryStore(conn).seed()\n'
-                           '            w = writer_mod.GocharaV5Writer()\n'
-                           '            for key in [writer_mod.CONVENTION_SUBSTEP] + '
-                           '[f"{writer_mod.BODY_SUBSTEP_PREFIX}{b}"\n'
-                           '                                                          for b in '
-                           'writer_mod.SUBSTRATE_BODIES]:\n'
-                           '                ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="tpl", '
-                           'db_conn=conn, dry_run=False,\n'
-                           '                                  config={"chart_id": CHART_ID, "horizon": LONG, '
-                           '"ephe_path": EPHE_PATH})\n'
-                           '                with conn.transaction():\n'
-                           '                    w.run_substep(ctx, SubStep(key=key, label=key))\n'
-                           '        finally:\n'
-                           '            conn.close()\n'
-                           '        yield admin, name, dsn\n'
-                           '    finally:\n'
-                           '        drop_am5_database(admin, name)',
-                           '    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)\n'
-                           '    try:\n'
-                           '        RuleRegistryStore(conn).seed()\n'
-                           '        w = writer_mod.GocharaV5Writer()\n'
-                           '        for key in [writer_mod.CONVENTION_SUBSTEP] + '
-                           '[f"{writer_mod.BODY_SUBSTEP_PREFIX}{b}"\n'
-                           '                                                      for b in '
-                           'writer_mod.SUBSTRATE_BODIES]:\n'
-                           '            ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="tpl", '
-                           'db_conn=conn, dry_run=False,\n'
-                           '                              config={"chart_id": CHART_ID, "horizon": LONG, '
-                           '"ephe_path": EPHE_PATH})\n'
-                           '            with conn.transaction():\n'
-                           '                w.run_substep(ctx, SubStep(key=key, label=key))\n'
-                           '    finally:\n'
+                           '    except BaseException:\n'
                            '        conn.close()\n'
-                           '    yield admin, name, dsn\n'
-                           '    drop_am5_database(admin, name)')})
+                           '        drop_am5_database(admin, name)\n'
+                           '        raise\n',
+                           '    except BaseException:\n'
+                           '        conn.close()\n'
+                           '        raise\n')})
 
 def classify(returncode, xml_path):
     try:
@@ -635,7 +604,8 @@ def main(argv=None):
     for rel in paths:
         if not rel or not (rel.startswith(('platform/python-sidecar/', 'platform/migrations/', 'platform/scripts/seed/'))
                            or rel in ('.github/workflows/ci.yml', 'platform/scripts/governance/no_real_cloud_guard.py',
-                                      'platform/scripts/governance/no_real_cloud_pytest.py')):
+                                      'platform/scripts/governance/no_real_cloud_pytest.py',
+                                      'platform/scripts/governance/git_env_scrub.py')):
             continue
         src = repo / rel
         if src.is_symlink():
