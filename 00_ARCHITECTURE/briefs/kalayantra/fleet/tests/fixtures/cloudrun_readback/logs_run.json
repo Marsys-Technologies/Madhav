@@ -1,0 +1,194 @@
+[
+ {
+  "insertId": "x236671",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "INFO",
+  "textPayload": "STRETCH_SINK_SUMMARY/1 {\"counts_by_kind_reason\": {\"omission/crossing_detected\": 1}, \"event_class\": \"aspect\", \"generation\": 1, \"record_ids_digest\": \"76f912a0d43a3ea14e2cb441fbb677d1fe1c3082b8fdcdf86c37a0b3aa3f2d18\", \"records\": 1, \"schema\": \"stretch_sink_summary/1\"}",
+  "timestamp": "2026-10-17T10:02:00.000000001Z"
+ },
+ {
+  "insertId": "x128211",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "INFO",
+  "textPayload": "STRETCH_SINK_SUMMARY/1 {\"counts_by_kind_reason\": {\"near_miss/certified_positive_clearance\": 1, \"wrap/ray_band_contains_wrap_cut\": 2}, \"event_class\": \"conjunction\", \"generation\": 1, \"record_ids_digest\": \"9ad05a983bc43593d65e80630f7d288f0d51bf3f123f37a5ba1c65f7a26bef64\", \"records\": 3, \"schema\": \"stretch_sink_summary/1\"}",
+  "timestamp": "2026-10-17T10:02:00.000000000Z"
+ },
+ {
+  "insertId": "x522984",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "WARNING",
+  "textPayload": "STRETCH_SINK/1 {\"body\": \"Saturn\", \"canonical_target\": \"point:10.0\", \"event_class\": \"aspect\", \"kind\": \"omission\", \"reason\": \"crossing_detected\", \"record_id\": \"00000000-0000-8000-8000-000000000004\", \"relation\": \"conjunction\", \"schema\": \"stretch_sink/1\", \"stretch_ordinal\": 4}",
+  "timestamp": "2026-10-17T10:01:59.500000000Z"
+ },
+ {
+  "insertId": "x226698",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "INFO",
+  "textPayload": "STRETCH_SINK/1 {\"body\": \"Saturn\", \"canonical_target\": \"point:10.0\", \"event_class\": \"conjunction\", \"kind\": \"wrap\", \"reason\": \"ray_band_contains_wrap_cut\", \"record_id\": \"00000000-0000-8000-8000-000000000003\", \"relation\": \"conjunction\", \"schema\": \"stretch_sink/1\", \"stretch_ordinal\": 3}",
+  "timestamp": "2026-10-17T10:01:59.500000000Z"
+ },
+ {
+  "insertId": "x645125",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "INFO",
+  "textPayload": "STRETCH_SINK/1 {\"body\": \"Saturn\", \"canonical_target\": \"point:10.0\", \"event_class\": \"conjunction\", \"kind\": \"wrap\", \"reason\": \"ray_band_contains_wrap_cut\", \"record_id\": \"00000000-0000-8000-8000-000000000002\", \"relation\": \"conjunction\", \"schema\": \"stretch_sink/1\", \"stretch_ordinal\": 2}",
+  "timestamp": "2026-10-17T10:01:59.500000000Z"
+ },
+ {
+  "insertId": "x286883",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "WARNING",
+  "textPayload": "STRETCH_SINK/1 {\"body\": \"Saturn\", \"canonical_target\": \"point:10.0\", \"event_class\": \"conjunction\", \"kind\": \"near_miss\", \"reason\": \"certified_positive_clearance\", \"record_id\": \"00000000-0000-8000-8000-000000000001\", \"relation\": \"conjunction\", \"schema\": \"stretch_sink/1\", \"stretch_ordinal\": 1}",
+  "timestamp": "2026-10-17T10:01:59.500000000Z"
+ },
+ {
+  "insertId": "x547237",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "INFO",
+  "textPayload": "[event] {\"type\": \"asset.substep\", \"chart_id\": \"00000000-0000-4000-8000-000000000000\", \"asset_id\": \"ka_gochara_v5\", \"substep_key\": \"chunk_c\", \"substep_label\": \"chunk_c\", \"index\": 3, \"total\": 3, \"rows_written\": 30}",
+  "timestamp": "2026-10-17T10:01:05.123456789Z"
+ },
+ {
+  "insertId": "x891998",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "INFO",
+  "textPayload": "[event] {\"type\": \"asset.substep\", \"chart_id\": \"00000000-0000-4000-8000-000000000000\", \"asset_id\": \"ka_gochara_v5\", \"substep_key\": \"chunk_b\", \"substep_label\": \"chunk_b\", \"index\": 2, \"total\": 3, \"rows_written\": 20}",
+  "timestamp": "2026-10-17T10:00:05.623456789Z"
+ },
+ {
+  "insertId": "x135824",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "INFO",
+  "textPayload": "[event] {\"type\": \"asset.substep\", \"chart_id\": \"00000000-0000-4000-8000-000000000000\", \"asset_id\": \"ga_dashas\", \"substep_key\": \"chunk_skip\", \"substep_label\": \"chunk_skip\", \"index\": 2, \"total\": 2, \"skipped\": true}",
+  "timestamp": "2026-10-17T10:00:05.000000000Z"
+ },
+ {
+  "insertId": "x174558",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "INFO",
+  "textPayload": "[event] {\"type\": \"asset.substep\", \"chart_id\": \"00000000-0000-4000-8000-000000000000\", \"asset_id\": \"ka_gochara_v5\", \"substep_key\": \"chunk_a\", \"substep_label\": \"chunk_a\", \"index\": 1, \"total\": 3, \"rows_written\": 10}",
+  "timestamp": "2026-10-17T10:00:00.123456789Z"
+ },
+ {
+  "insertId": "x399015",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "INFO",
+  "textPayload": "[event] {\"type\": \"asset.substep\", \"chart_id\": \"00000000-0000-4000-8000-000000000000\", \"asset_id\": \"ga_dashas\", \"substep_key\": \"chunk_a\", \"substep_label\": \"chunk_a\", \"index\": 1, \"total\": 2, \"rows_written\": 5}",
+  "timestamp": "2026-10-17T09:59:30.000000000Z"
+ },
+ {
+  "insertId": "x515394",
+  "labels": {
+   "run.googleapis.com/execution_name": "brahma-build-pipeline-job-abc12"
+  },
+  "resource": {
+   "labels": {
+    "job_name": "brahma-build-pipeline-job",
+    "location": "asia-south1"
+   },
+   "type": "cloud_run_job"
+  },
+  "severity": "INFO",
+  "textPayload": "unrelated line carrying ya29.LEAKED-TOKEN and nothing parseable",
+  "timestamp": "2026-10-17T09:59:00.000000000Z"
+ }
+]
