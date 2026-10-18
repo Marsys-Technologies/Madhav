@@ -50,13 +50,26 @@ def _task_spec(ex: dict) -> dict:
     return t
 
 
-def _conds(ex: dict) -> dict:
-    return {c.get("type"): c.get("status") for c in ((ex.get("status") or {}).get("conditions") or []) if isinstance(c, dict)}
+def _conds(ex: dict) -> dict | None:
+    conditions = (ex.get("status") or {}).get("conditions", [])
+    if not isinstance(conditions, list):
+        return None
+    result = {}
+    for condition in conditions:
+        if not isinstance(condition, dict):
+            return None
+        name = condition.get("type")
+        if not isinstance(name, str) or not name or name in result:
+            return None                   # duplicates cannot be resolved by API array order
+        result[name] = condition.get("status")
+    return result
 
 
 def state(ex: dict) -> str:
     st = ex.get("status") or {}
     c = _conds(ex)
+    if c is None:
+        return "FAILED"                   # malformed/ambiguous evidence never authorizes an envelope
     import gochara_verification_job_contract as vjc
     n = lambda k: vjc.parse_int64(st.get(k)) if st.get(k) is not None else 0               # noqa: E731 — int32/int64 counts: number or canonical decimal string
     if None in (n("succeededCount"), n("failedCount"), n("cancelledCount")):

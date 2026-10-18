@@ -601,6 +601,24 @@ def test_the_execution_state_drives_the_wait_loop():
     assert xc.state({"status": {"cancelledCount": 1}}) == "FAILED"
 
 
+@pytest.mark.parametrize("conditions", [
+    [{"type": "Completed", "status": "False"}, {"type": "Completed", "status": "True"}],
+    [{"type": "Completed", "status": "True"}, {"type": "Completed", "status": "False"}],
+    [{"type": "Completed", "status": "True"}, {"type": "Completed", "status": "True"}],
+    [None, {"type": "Completed", "status": "True"}],
+    {"Completed": "True"},
+])
+def test_j5s_ambiguous_completion_is_failed_in_the_wait_cli_and_refuses_an_envelope(tmp_path, capsys, conditions):
+    ex = execution()
+    ex["status"]["conditions"] = conditions
+    path = tmp_path / "execution.json"
+    path.write_text(json.dumps(ex))
+    assert xc.main(["state", "--execution-file", str(path)]) == 0
+    assert capsys.readouterr().out.strip() == "FAILED"
+    with pytest.raises(xc.Refused, match="FAILED"):
+        xcheck(ex)
+
+
 # ── the reconciliation after the seal (R13-4) ───────────────────────────────────────────────────────────────────────────────────
 
 def _rc(pub, seals, recs):
@@ -722,9 +740,9 @@ def test_a_disagreeing_triggering_actor_is_refused_before_the_seal_job(world):
     assert r.returncode == 2 and "differs from the workflow's triggering actor" in r.stderr and not called(world)
 
 
-@pytest.mark.parametrize("rc,needle", [(2, "SEAL JOB REFUSED"), (3, "approval does not match"), (4, "OWN-CHECKOUT check failed"), (5, "rolled back"), (7, "rolled back")])
+@pytest.mark.parametrize("rc,needle", [(2, "SEAL JOB REFUSED"), (3, "approval does not match"), (4, "OWN-CHECKOUT check failed"), (5, "outcome is unknown"), (7, "outcome is unknown")])
 def test_the_seal_jobs_non_zero_status_fails_the_run_unchanged(world, rc, needle):
-    """Including a failure AFTER publication: the seal job owns the transaction and rolls publication back; the workflow's job is to FAIL the run and say so (never swallow it)."""
+    """A non-zero exit propagates; an ambiguous commit needs readback before retry."""
     r = orch(world, SEAL_RC=str(rc))
     assert r.returncode == rc and needle in r.stderr, (rc, r.stdout, r.stderr)
     assert called(world)
@@ -907,7 +925,8 @@ def test_p08_the_pre_execution_definition_refuses_multiple_or_invalid_tasks(tmp_
     assert xc.main(['job-image', '--job-file', str(jf), '--image-digest', IMG, '--image-repo', REPO, '--runner-commit', SHA, '--secret-name', 'gochara-verifier-db-url', '--service-account', SA]) == 2
 
 
-def test_p08_reconciliation_uses_one_read_only_snapshot():
+@pytest.mark.parametrize('chart,generation', [(CHART, GEN), ('11111111-1111-1111-1111-111111111111', '5.1')])
+def test_p08_reconciliation_uses_one_read_only_snapshot(chart, generation):
     from contextlib import contextmanager
     class Cursor:
         def __init__(self, rows): self.rows = rows
@@ -925,11 +944,15 @@ def test_p08_reconciliation_uses_one_read_only_snapshot():
             assert self.in_transaction, 'all seal-state reads must share one snapshot'
             self.sql.append(sql)
             if sql.startswith('SET TRANSACTION'): return Cursor([])
+            # a12: all three reads must bind the exact requested chart/generation,
+            # even when another generation has a different publication state.
+            assert ' '.join(sql.split()).endswith('WHERE chart_id = %s::uuid AND generation = %s')
+            assert args == (chart, generation)
             if 'SELECT status' in sql: return Cursor([('candidate',)])
             if 'count(*)' in sql: return Cursor([(0,)])
             return Cursor([])
     conn = Conn()
-    assert rc_.read_state(conn, CHART, GEN) == ('candidate', 0, [])
+    assert rc_.read_state(conn, chart, generation) == ('candidate', 0, [])
     assert conn.sql[0] == 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY'
 
 

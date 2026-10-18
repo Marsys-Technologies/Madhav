@@ -87,6 +87,34 @@ def test_refuses_stale_boundary_or_future_database_time(bridge, tmp_path, age):
         launch(bridge, tmp_path, conn, lambda *a: pytest.fail("must not launch stale run"))
 
 
+def test_c14_database_clock_controls_budget_and_invalid_age_has_no_launch_effect(bridge, tmp_path):
+    """Contract: V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md:106 (ten minutes);
+    P01_REWORK_v1_0.md:65 (retain the governed launch bridge).
+
+    The synthetic database date is independent of the host clock. An admissible
+    run gets only the whole seconds left; expired/future runs earn no claim.
+    """
+    conn = Connection()
+    conn.clock = CREATED + dt.timedelta(seconds=125, microseconds=250000)
+    calls = []
+    launch(bridge, tmp_path / "valid", conn,
+           lambda run_id, timeout_s: calls.append((run_id, timeout_s)) or "brahma-build-pipeline-job-abc12")
+    assert calls == [(RUN, 474)]
+    assert [sql for sql, _ in conn.queries if "clock_timestamp" in sql] == [
+        "SELECT clock_timestamp() AS db_now", "SELECT clock_timestamp() AS db_now"]
+
+    for label, age in (("expired", 600), ("future", -1)):
+        conn = Connection()
+        conn.clock = CREATED + dt.timedelta(seconds=age)
+        calls.clear()
+        claim_dir = tmp_path / label
+        with pytest.raises(bridge.Refused):
+            launch(bridge, claim_dir, conn,
+                   lambda *args: calls.append(args) or "brahma-build-pipeline-job-abc12")
+        assert calls == [] and not claim_dir.exists()
+        assert any("clock_timestamp" in sql for sql, _ in conn.queries)
+
+
 @pytest.mark.parametrize("changes", [dict(id="00000000-2222-4333-8444-555555555555"), dict(chart_id="other"),
     dict(state="running"), dict(started_at=CREATED), dict(triggered_by="other"), dict(scope="chart"),
     dict(scope_target="other"), dict(action="build"), dict(plan=["other"]), dict(plan_manifest_digest="0" * 64),
@@ -158,16 +186,14 @@ def test_executor_receipt_carries_structured_launch_identity(tmp_path, monkeypat
     assert receipt["status"] == "FAILED", "staging-only exit must not become a launch receipt"
 
 
-def test_launch_requires_cloud_capability_as_well_as_builder(monkeypatch):
-    executor = load("executor")
+def test_launch_requires_cloud_capability_as_well_as_builder(tmp_path, monkeypatch):
+    from smalltest_admission_support import ARG_VALUES, caps, load_executor, request
+    executor = load_executor(tmp_path, monkeypatch)
     table = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
-    op = {**table["smalltest_dispatch"], "enabled": True, "production": False}
-    req = dict(operation_id="cap-test", kind="smalltest_dispatch", item_id="fixture", idempotency_key="fresh",
-               requested_by="adhikarin", kyd="fixture", args={})
-    monkeypatch.setattr(executor, "seen", lambda *a: False)
-    monkeypatch.setattr(executor, "smalltest_policy_problem", lambda req: None)  # this non-production fixture isolates capability admission
-    assert executor.validate(req, {"smalltest_dispatch": op}, {"builder": True, "gcloud": False}) == "capability_missing: gcloud"
-    assert executor.validate(req, {"smalltest_dispatch": op}, {"builder": True, "gcloud": True}) is None
+    req = request(executor, "smalltest_dispatch",
+                  {key: ARG_VALUES[key] for key in table["smalltest_dispatch"]["allowed_args"]})
+    assert executor.validate(req, table, {**caps(), "gcloud": False}) == "capability_missing: gcloud"
+    assert executor.validate(req, table, caps()) is None
 
 
 def test_stage_once_uses_exact_uuid_and_rolls_back_only_readback(bridge, tmp_path, capsys):
@@ -248,3 +274,12 @@ def test_smalltest_rollback_binding_has_required_steward_intent():
     op = json.loads((FLEET / "executor_ops.json").read_text())["ops"]["smalltest_dispatch_dryrun"]
     assert op["fixed_args"] == ["--i-am-steward", "--after-settled-1", "--dry-run"]
     assert "--execute" not in op["fixed_args"] and op["enabled"] is True
+
+
+def test_table_enables_dispatch_only_through_launch_bridge():
+    ops = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
+    op = ops["smalltest_dispatch"]
+    assert op["script"].endswith("/smalltest_launch.py"), "staging alone is not dispatch"
+    assert op["enabled"] is True and op["needs"] == "builder"
+    assert op["also_needs"] == ["gcloud"]
+    assert op["allowed_args"] == ["run", "classes", "horizon-start", "horizon-end"]
