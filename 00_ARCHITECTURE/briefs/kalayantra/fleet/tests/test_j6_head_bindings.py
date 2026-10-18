@@ -254,8 +254,11 @@ def test_completion_rejects_unbound_readback_query_even_if_output_was_plausible(
 
 def test_readback_driver_checks_requested_query_digest_before_connecting(tmp_path,monkeypatch):
     # Execute the real embedded Python, with only the DB connect boundary faked.
-    # No pgenv/secret is sourced, no socket or database is opened.
-    import psycopg
+    # No pgenv/secret is sourced, no socket or database is opened. The governance-tool-tests job installs only
+    # pyyaml+pytest, so the driver module is always a stand-in here (the embedded code only calls psycopg.connect).
+    import types
+    psycopg=types.ModuleType('psycopg');psycopg.connect=None
+    monkeypatch.setitem(sys.modules,'psycopg',psycopg)
     root=tmp_path/'ky';sql=root/'run/ops/sql/j6.sql';sql.parent.mkdir(parents=True)
     sql.write_text('SELECT 1 AS observed;')
     source=(FLEET/'readback_sql.sh').read_text().split("<<'KYPY'\n",1)[1].split('\nKYPY',1)[0]

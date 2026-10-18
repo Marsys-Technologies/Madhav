@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 
 import psycopg
+from psycopg.conninfo import make_conninfo
 import pytest
 
 from .test_j6r_rehearsal_db import rehearsal_database, db, _heads
@@ -18,6 +19,11 @@ ROOT = Path(__file__).resolve().parents[5]
 FLEET = ROOT/'00_ARCHITECTURE/briefs/kalayantra/fleet'
 sys.path.insert(0, str(FLEET))
 import head_operation as head
+
+
+def fresh(conn):
+    # conn.info.dsn omits the password that CI's disposable Postgres requires (see test_j6r_rehearsal_db).
+    return psycopg.connect(make_conninfo(conn.info.dsn, password=conn.info.password), autocommit=True)
 
 
 def req(conn, mids, kind='publish_head_dryrun'):
@@ -46,7 +52,7 @@ def test_committed_flip_then_explicit_rollback_across_fresh_connections(rehearsa
     try:
         proof = head.change_head(conn, request, dry_run=False)
         assert proof['status'] == 'COMMITTED_AWAITING_READBACK' and proof['rollback_confirmed'] is False
-        with psycopg.connect(conn.info.dsn, autocommit=True) as observer:
+        with fresh(conn) as observer:
             assert head.read_head(observer, CHART_ID) == proof['after']
             assert head.observe(observer, request) == head.expected_readback(request)
         rb = copy.deepcopy(request)
@@ -56,7 +62,7 @@ def test_committed_flip_then_explicit_rollback_across_fresh_connections(rehearsa
         rb['args'] = {'generation':'3.0','manifest-id':'none','expected-head-sha256':head.sha(proof['after'])}
         rolled = head.change_head(conn, rb, dry_run=False)
         assert rolled['retained_rows_equal'] is True
-        with psycopg.connect(conn.info.dsn, autocommit=True) as observer:
+        with fresh(conn) as observer:
             assert _heads(observer) == before
             assert head.observe(observer, rb) == head.expected_readback(rb)
     finally:
