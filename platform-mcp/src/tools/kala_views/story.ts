@@ -93,7 +93,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
-import { kalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias, publishedRequestSchema } from './registry_alias.js'
 import {
   makeKalaEnvelope,
   fetchCalibrationMaturity,
@@ -197,6 +197,7 @@ export async function fetchTopInsight(
 // ── Input schema ─────────────────────────────────────────────────────────────────────
 
 export const KalaStoryInputShape = {
+  published_request: publishedRequestSchema,
   chart_id: z.string().uuid().describe('Chart UUID. Required — no default chart.'),
   top_k: z.number().int().min(1).max(739).optional().describe('Max source parva rows to fetch before dedup (default: all — 739).'),
   question_frame: z.object({
