@@ -219,7 +219,8 @@ G8_OPT_OUT_ALLOWLIST = frozenset({
     "test_a53_r11_seal_brief.py", "test_a53_r12_boundary.py", "test_a53_r12_persisted_brief.py", "test_a53_r12_seal_job.py",
     "test_a53_r15_amendments.py", "test_a53_r10_complete_records.py", "test_a53_r11_generation_wide.py", "test_a53_r11_p1_independence.py",
     "test_a53_r13_own_checkout.py", "test_a53_r13_producer.py", "test_a53_r13_sealed_boundary.py", "test_a53_r13_timeouts.py",
-    "test_a53_r14_sealed_contacts.py", "test_a53_r16_amendments.py", "test_c46_slice_round2.py"})
+    "test_a53_r14_sealed_contacts.py", "test_a53_r16_amendments.py", "test_c46_slice_round2.py",
+    "test_p09_real_seal.py"})
 
 
 @pytest.fixture()

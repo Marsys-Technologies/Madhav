@@ -176,6 +176,7 @@ EXPECTED_OPERATION_OWNERS = {
     ("services/gochara_kernel/knots.py", "_assert_moon_file_backend"),
     ("services/gochara_kernel/knots.py", "calc_sidereal_lon"),
     ("services/gochara_kernel/knots.py", "calc_sidereal_lon_speed"),
+    ("services/gochara_kernel/near_miss_verifier.py", "at"),                      # P06b: the verifier's own serialized Swiss probe (_ephemeris_position)
     ("services/gochara_v3/engine.py", "_evaluate_single_from_context"),
     ("services/gochara_v3/mechanisms/w30_nodal_drishti.py", "compute"),
     ("services/ka_kshetra/stage0_kinematics.py", "_sidereal_offset_series"),

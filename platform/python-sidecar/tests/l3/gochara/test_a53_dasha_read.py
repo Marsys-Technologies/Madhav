@@ -188,9 +188,13 @@ class _PopulationConn:
         self.consumed_build = consumed_build
         self.sql = []
 
-    def execute(self, sql, params):
+    def execute(self, sql, params=()):
         self.sql.append((sql, params))
-        if "search_input_snapshot" in sql:
+        if "information_schema" in sql:
+            self.result = [(0,)]          # a LEGACY snapshot (no copy columns): the 1206-era check against live L1 is the one under test
+        elif "consumed_fact_ids" in sql:  # P06b: the verifier reads the snapshot's copies first (snapshot_copies); ids only here
+            self.result = [(["22222222-2222-4222-8222-222222222222"], ["11111111-1111-4111-8111-111111111111"])]
+        elif "search_input_snapshot" in sql:
             self.result = [(["11111111-1111-4111-8111-111111111111"],)]
         elif "search_inventory" in sql:
             self.result = [(T(1), T(9))]
