@@ -140,3 +140,33 @@ def test_a_missing_evidence_dir_is_an_exit2_refusal(tmp_path: Path) -> None:
     r = run_pack(tmp_path / "no-such-dir")
     assert r.returncode == 2
     assert "REFUSAL: --evidence-dir is not a directory" in r.stderr
+
+
+def test_top_manifest_has_canonical_bytewise_path_order_on_every_run(tmp_path: Path, monkeypatch) -> None:
+    build_tree(tmp_path)
+    # The index intentionally records pack time. Pin that input while proving
+    # byte repeatability; crossing a wall-clock second is not an order defect.
+    clock_bin = tmp_path / "clock-bin"
+    clock_bin.mkdir()
+    date = clock_bin / "date"
+    date.write_text("#!/bin/sh\nprintf '%s\\n' '2026-10-16T00:00:00Z'\n", encoding="utf-8")
+    date.chmod(0o755)
+    monkeypatch.setenv("PATH", str(clock_bin) + os.pathsep + os.environ["PATH"])
+    # Include non-ASCII names so locale-sensitive ordering cannot substitute
+    # for the declared LC_ALL=C order.
+    for name in ("z-last.out", "A-first.out", "évidence.out"):
+        (tmp_path / name).write_text(name + "\n", encoding="utf-8")
+    previous = None
+    for _ in range(2):
+        r = run_pack(tmp_path)
+        assert r.returncode == 0, r.stderr
+        manifest = (tmp_path / "MANIFEST.sha256").read_bytes()
+        paths = [line.split(b"  ", 1)[1] for line in manifest.splitlines()]
+        assert paths == sorted(paths)
+        assert len(paths) == len(set(paths)) and paths
+        for line in manifest.splitlines():
+            digest, rel = line.split(b"  ", 1)
+            assert hashlib.sha256((tmp_path / rel.decode()).read_bytes()).hexdigest().encode() == digest
+        if previous is not None:
+            assert manifest == previous
+        previous = manifest
