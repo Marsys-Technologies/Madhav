@@ -22,7 +22,7 @@ record — status REFUSED, exit 1 — so a partial record can never be mistaken 
              matched a strict RFC 3339 shape, never raw gcloud text) to the same filter, and entries are de-duplicated by insertId. If the
              cap, the time budget, an unpageable time or a stuck cursor stops the reading before the oldest entry, `truncated` is true and
              every count reads NULL (lower bounds are still given); a short page is the proof the read is complete. Parsed: `STRETCH_SINK/1` records (counted
-             by kind/reason, de-duplicated by record_id), `STRETCH_SINK_SUMMARY/1` lines (reconciled against the records), and `asset.substep`
+             by kind/reason, de-duplicated by (event_class, record_id)), `STRETCH_SINK_SUMMARY/1` lines (reconciled against the records), and `asset.substep`
              events (log-entry times between consecutive sub-steps, last index/total). A line that cannot be read as the thing it claims to
              be (truncated, wrong shape) reads NULL in every field that depended on it and is counted in `unreadable_lines`; it is never
              zero and is never skipped silently (CLAUDE.md §N.8).
@@ -413,24 +413,32 @@ def _substep_report(rows):
 def _sink_report(records, summaries, unreadable, duplicates, truncated, entries_returned):
     by_kind: dict[str, int] = {}
     by_class: dict[str, list] = {}
-    for record in records.values():
+    kinds_by_class: dict[str, dict[str, int]] = {}
+    for record in records.values():                                   # records is keyed (event_class, record_id): one row per class per id
         key = f"{record['kind']}/{record['reason']}"
         by_kind[key] = by_kind.get(key, 0) + 1
         by_class.setdefault(record["event_class"], []).append(record["record_id"])
+        per_class = kinds_by_class.setdefault(record["event_class"], {})
+        per_class[key] = per_class.get(key, 0) + 1
     # A total is a COUNT only when nothing could have been missed or misread: a truncated read, an unreadable line or an empty read
     # makes it a lower bound, and the count itself reads null (N.8: never the readable-part total standing in for the whole).
     exact = not truncated and not unreadable and entries_returned > 0
     shown = []
     for summary in summaries:
         ids = by_class.get(summary["event_class"], [])
+        read_kinds = dict(sorted(kinds_by_class.get(summary["event_class"], {}).items()))
         shown.append({**summary,
+                      "read_counts_by_kind_reason": read_kinds if exact else None,
+                      "read_counts_by_kind_reason_lower_bound": read_kinds,
                       "records_match_summary": (len(ids) == summary["records"]) if exact and summary["records"] is not None else None,
+                      "counts_by_kind_match_summary": (read_kinds == summary["counts_by_kind_reason"]) if exact and summary["counts_by_kind_reason"] is not None else None,
                       "digest_matches_records": (hashlib.sha256("\n".join(sorted(ids)).encode("utf-8")).hexdigest() == summary["record_ids_digest"])
                       if exact and summary["record_ids_digest"] is not None else None})
     return {"record_count": len(records) if exact else None, "record_count_lower_bound": len(records),
             "counts_by_kind_reason": dict(sorted(by_kind.items())) if exact else None,
             "counts_by_kind_reason_lower_bound": dict(sorted(by_kind.items())),
             "records_by_event_class": {key: len(ids) for key, ids in sorted(by_class.items())} if exact else None,
+            "counts_by_kind_reason_by_event_class": {key: dict(sorted(v.items())) for key, v in sorted(kinds_by_class.items())} if exact else None,
             "duplicate_record_lines": duplicates, "summaries": shown}
 
 
@@ -483,7 +491,7 @@ def measure_logs(name: str, runner, monotonic=time.monotonic) -> dict:
     # a total order, so equal inputs give equal output whatever order gcloud broke time ties in: newest first, then insertId/JSON
     floor = dt.datetime.min.replace(tzinfo=dt.timezone.utc)
     entries.sort(key=lambda e: (_log_time(e.get("timestamp")) or floor, _entry_key(e)), reverse=True)
-    records: dict[str, dict] = {}
+    records: dict[tuple[str, str], dict] = {}                          # (event_class, record_id): the id has no event_class in it (stretch_sink.record_id), so classes share ids
     summaries, rows = [], []
     unreadable = duplicates = 0
     for entry in entries:
@@ -500,10 +508,10 @@ def measure_logs(name: str, runner, monotonic=time.monotonic) -> dict:
                 record = _read_sink_record(_object_from(line[line.index(SINK_MARK) + len(SINK_MARK):]))
                 if record is None:
                     unreadable += 1
-                elif record["record_id"] in records:
+                elif (record["event_class"], record["record_id"]) in records:
                     duplicates += 1
                 else:
-                    records[record["record_id"]] = record
+                    records[(record["event_class"], record["record_id"])] = record
             elif SUBSTEP_MARK in line:
                 step = _read_substep(_object_from(line[line.index("{"):])) if "{" in line else None     # the "[event] " prefix is not part of the JSON
                 if step is None:
