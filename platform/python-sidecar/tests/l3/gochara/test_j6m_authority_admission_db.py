@@ -6,6 +6,10 @@ pairs. Their setup bypasses seal insertion guards deliberately: this suite tests
 which existing seals authority admission accepts, not whether sealing is earned.
 """
 from pathlib import Path
+import hashlib
+import json
+import os
+import subprocess
 import uuid
 
 import psycopg
@@ -20,9 +24,8 @@ MIGRATIONS = ROOT / 'platform/migrations'
 FOLLOWUP = '1382_gochara_authority_no_truncate.sql'
 
 
-@pytest.fixture(scope='module')
-def authority_db():
-    admin, name, dsn = create_am5_database('j6m')
+def _authority_database(*, apply_followup=True, tag='j6m'):
+    admin, name, dsn = create_am5_database(tag)
     conn = None
     try:
         conn = psycopg.connect(dsn, autocommit=True)
@@ -69,7 +72,7 @@ def authority_db():
             # Optional only so the same behavioral oracle runs on the revert
             # copy (1379 alone), exposing TRUNCATE's actual effect rather than
             # failing on a missing file. The static suite requires the file.
-            if (MIGRATIONS / FOLLOWUP).exists():
+            if apply_followup and (MIGRATIONS / FOLLOWUP).exists():
                 conn.execute((MIGRATIONS / FOLLOWUP).read_text())
         assert conn.execute('TABLE public.kala_gochara_authority').fetchall() == before
         yield conn
@@ -77,6 +80,18 @@ def authority_db():
         if conn is not None:
             conn.close()
         drop_am5_database(admin, name)
+
+
+@pytest.fixture(scope='module')
+def authority_db():
+    yield from _authority_database()
+
+
+@pytest.fixture
+def runner_db():
+    # Use the same guarded lifecycle and real predecessor chain, but let the
+    # actual TypeScript runner own 1382's transaction and ledger insertion.
+    yield from _authority_database(apply_followup=False, tag='j6mr1')
 
 
 @pytest.fixture
@@ -242,3 +257,197 @@ def test_followup_refuses_missing_sealed_constraint_before_creating_trigger(db):
     # Savepoint rollback preserves the previously validated deployment.
     assert db.execute("SELECT tgenabled FROM pg_trigger WHERE tgrelid='public.kala_gochara_authority'::regclass"
                       " AND tgname='kala_gochara_authority_no_truncate'").fetchone() == ('A',)
+
+
+def _guard(conn):
+    return conn.execute(
+        "SELECT oid,tgenabled,tgtype,tgnargs,tgqual,pg_get_triggerdef(oid),"
+        " tgfoid='public.ka_gochara_refuse_truncate()'::regprocedure AS correct_function"
+        " FROM pg_trigger WHERE tgrelid='public.kala_gochara_authority'::regclass"
+        " AND tgname='kala_gochara_authority_no_truncate' AND NOT tgisinternal").fetchone()
+
+
+def _assert_guard(conn):
+    guard = _guard(conn)
+    assert guard is not None
+    assert guard[1:5] == ('A', 34, 0, None)
+    assert guard[6] is True
+    return guard
+
+
+def _authority_rows(conn):
+    return conn.execute('SELECT * FROM public.kala_gochara_authority ORDER BY chart_id').fetchall()
+
+
+def _runner(conn, directory, *, dry_run=False, protected=True):
+    """Run the imported production runner, never its CLI or an external DB.
+
+    Only the existing guarded fixture's explicit connection parameters cross
+    stdin. Child errors expose a class/code, never a DSN or database error text.
+    CI has platform/node_modules; a local job may supply read-only dependencies.
+    """
+    settings = psycopg.conninfo.conninfo_to_dict(make_conninfo(ADMIN_DSN, dbname=conn.info.dbname))
+    assert settings['host'] in ('127.0.0.1', 'localhost', '::1')
+    assert conn.info.dbname.startswith('a53t_')
+    config = {key: settings[key] for key in ('host', 'port', 'user', 'password') if key in settings}
+    config['database'] = conn.info.dbname
+    address = conn.execute('SELECT inet_server_addr()::text').fetchone()[0]
+    modules = Path(os.environ.get('J6M_R1_NODE_MODULES', ROOT / 'platform/node_modules'))
+    registration = modules / 'tsx/dist/cjs/index.cjs'
+    assert registration.is_file(), 'npm ci is required for the real migration-runner proof'
+    javascript = r"""
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const {Client} = require('pg');
+const {runMigrations} = require(process.argv[1]);
+const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+const client = new Client({...input.config, connectionTimeoutMillis: 3000});
+(async () => {
+  try {
+    await client.connect();
+    const probe = await client.query('SELECT current_database() AS db, inet_server_addr()::text AS address');
+    assert.equal(probe.rows[0].db, input.config.database);
+    assert.equal(probe.rows[0].address, input.address);
+    const options = {dryRun: input.dryRun, disclosures: new Map(), renumberDisclosures: new Map()};
+    if (input.protected) options.only = new Set([input.filename]);
+    const ran = await runMigrations(client, [input.directory], options);
+    console.log('J6M_R1_RESULT=' + JSON.stringify({ran}));
+  } catch (error) {
+    console.log('J6M_R1_RESULT=' + JSON.stringify({error: error.constructor.name, code: error.code ?? null}));
+  } finally {
+    await client.end();
+  }
+})().catch(() => { process.exitCode = 1; });
+"""
+    child = subprocess.run(
+        ['node', '--require', str(registration), '--eval', javascript, str(ROOT / 'platform/scripts/migrate.ts')],
+        input=json.dumps({'config': config, 'address': address, 'directory': str(directory),
+                          'dryRun': dry_run, 'protected': protected, 'filename': FOLLOWUP}),
+        env={**os.environ, 'NODE_ENV': 'test', 'TSX_DISABLE_CACHE': '1',
+             'MIGRATE_APPLY_PROTECTED': ''},
+        cwd=ROOT / 'platform', capture_output=True, text=True, timeout=30)
+    assert child.returncode == 0, 'migration-runner harness failed (child error text withheld)'
+    records = [line.removeprefix('J6M_R1_RESULT=') for line in child.stdout.splitlines()
+               if line.startswith('J6M_R1_RESULT=')]
+    assert len(records) == 1, 'migration-runner harness returned no unique result'
+    return json.loads(records[0])
+
+
+def _runner_directory(tmp_path):
+    directory = tmp_path / 'migrations'
+    directory.mkdir()
+    (directory / FOLLOWUP).write_bytes((MIGRATIONS / FOLLOWUP).read_bytes())
+    return directory
+
+
+@pytest.mark.parametrize('dry_run', [False, True])
+def test_runner_defers_unapplied_1382_outside_protected_window(runner_db, tmp_path, dry_run):
+    conn = runner_db
+    before = _authority_rows(conn)
+    assert _runner(conn, _runner_directory(tmp_path), dry_run=dry_run, protected=False) == {'ran': []}
+    assert _guard(conn) is None
+    assert conn.execute('SELECT count(*) FROM public._migrations_applied WHERE filename=%s',
+                        (FOLLOWUP,)).fetchone() == (0,)
+    assert _authority_rows(conn) == before
+
+
+def test_runner_failed_1382_preflight_rolls_back_without_ledger(runner_db, tmp_path):
+    conn = runner_db
+    conn.execute('ALTER TABLE public.kala_gochara_authority DROP CONSTRAINT kga_sealed_authority_ck')
+    before = _authority_rows(conn)
+    assert _runner(conn, _runner_directory(tmp_path)) == {'error': 'DatabaseError', 'code': 'P0001'}
+    assert _guard(conn) is None and _authority_rows(conn) == before
+    assert conn.execute('SELECT count(*) FROM public._migrations_applied WHERE filename=%s',
+                        (FOLLOWUP,)).fetchone() == (0,)
+
+
+def test_runner_ledger_failure_rolls_back_1382_ddl_and_preserves_rows(runner_db, tmp_path):
+    conn = runner_db
+    # Refuse only this fixture's ledger insertion AFTER 1382's DDL succeeded.
+    # Without the runner-owned transaction the trigger would remain installed
+    # without an applied record and subsequent runner attempts would fail 42710.
+    conn.execute("CREATE FUNCTION public.j6mr1_refuse_ledger() RETURNS trigger LANGUAGE plpgsql AS $$"
+                 " BEGIN IF NEW.filename = '1382_gochara_authority_no_truncate.sql' THEN"
+                 " RAISE EXCEPTION 'fixture ledger refusal'; END IF; RETURN NEW; END $$")
+    conn.execute('CREATE TRIGGER j6mr1_refuse_ledger BEFORE INSERT ON public._migrations_applied'
+                 ' FOR EACH ROW EXECUTE FUNCTION public.j6mr1_refuse_ledger()')
+    before = _authority_rows(conn)
+    assert _runner(conn, _runner_directory(tmp_path)) == {'error': 'DatabaseError', 'code': 'P0001'}
+    assert _guard(conn) is None and _authority_rows(conn) == before
+    assert conn.execute('SELECT count(*) FROM public._migrations_applied WHERE filename=%s',
+                        (FOLLOWUP,)).fetchone() == (0,)
+
+
+@pytest.mark.parametrize('dry_run', [False, True])
+@pytest.mark.parametrize('protected', [False, True])
+def test_runner_applies_once_then_hash_matching_repeat_preserves_guard_and_ledger(
+        runner_db, tmp_path, dry_run, protected):
+    conn = runner_db
+    directory = _runner_directory(tmp_path)
+    before = _authority_rows(conn)
+    assert _guard(conn) is None
+    assert _runner(conn, directory) == {'ran': [FOLLOWUP]}
+    guard = _assert_guard(conn)
+    ledger_sql = 'SELECT * FROM public._migrations_applied WHERE filename=%s'
+    ledger = conn.execute(ledger_sql, (FOLLOWUP,)).fetchall()
+    assert len(ledger) == 1
+    assert conn.execute('SELECT sha256 FROM public._migrations_applied WHERE filename=%s',
+                        (FOLLOWUP,)).fetchone() == (hashlib.sha256((directory / FOLLOWUP).read_bytes()).hexdigest(),)
+    assert _runner(conn, directory, dry_run=dry_run, protected=protected) == {'ran': []}
+    assert _assert_guard(conn) == guard  # Includes OID: no drop/recreate disguised as a skip.
+    assert conn.execute(ledger_sql, (FOLLOWUP,)).fetchall() == ledger
+    assert _authority_rows(conn) == before
+    for mode in ('origin', 'replica'):
+        with pytest.raises(psycopg.errors.RaiseException, match='TRUNCATE refused on kala_gochara_authority'):
+            with conn.transaction():
+                conn.execute(f'SET LOCAL session_replication_role = {mode}')
+                conn.execute('TRUNCATE public.kala_gochara_authority')
+    assert _authority_rows(conn) == before
+
+
+@pytest.mark.parametrize('dry_run', [False, True])
+@pytest.mark.parametrize('protected', [False, True])
+def test_runner_refuses_changed_1382_bytes_even_for_preview_and_routine_skip(
+        runner_db, tmp_path, dry_run, protected):
+    conn = runner_db
+    directory = _runner_directory(tmp_path)
+    assert _runner(conn, directory) == {'ran': [FOLLOWUP]}
+    guard, rows = _assert_guard(conn), _authority_rows(conn)
+    ledger = conn.execute('SELECT * FROM public._migrations_applied WHERE filename=%s', (FOLLOWUP,)).fetchall()
+    with (directory / FOLLOWUP).open('a') as changed:
+        changed.write('\n-- same SQL identity, changed immutable bytes\n')
+    assert _runner(conn, directory, dry_run=dry_run, protected=protected) == {
+        'error': 'MigrationHashMismatchError', 'code': None}
+    assert _assert_guard(conn) == guard and _authority_rows(conn) == rows
+    assert conn.execute('SELECT * FROM public._migrations_applied WHERE filename=%s', (FOLLOWUP,)).fetchall() == ledger
+
+
+@pytest.mark.parametrize('generation', ['3.0', '5.0'])
+@pytest.mark.parametrize('mode', ['origin', 'replica'])
+def test_raw_1382_replay_is_42710_and_preserves_exact_rows_and_always_guard(db, generation, mode):
+    db.execute(f'SET LOCAL session_replication_role = {mode}')
+    _set(db, generation)
+    before, guard = _authority_rows(db), _assert_guard(db)
+    with pytest.raises(psycopg.errors.DuplicateObject) as refused:
+        with db.transaction():
+            db.execute((MIGRATIONS / FOLLOWUP).read_text())
+    assert refused.value.sqlstate == '42710'
+    assert _authority_rows(db) == before and _assert_guard(db) == guard
+    with pytest.raises(psycopg.errors.RaiseException, match='TRUNCATE refused on kala_gochara_authority'):
+        with db.transaction():
+            db.execute('TRUNCATE public.kala_gochara_authority')
+    assert _authority_rows(db) == before
+
+
+def test_runner_skip_does_not_replace_required_catalog_readback(runner_db, tmp_path):
+    conn = runner_db
+    directory = _runner_directory(tmp_path)
+    assert _runner(conn, directory) == {'ran': [FOLLOWUP]}
+    with conn.transaction(force_rollback=True):
+        conn.execute('ALTER TABLE public.kala_gochara_authority DISABLE TRIGGER kala_gochara_authority_no_truncate')
+        # The runner checks the committed ledger, not live catalog drift. The
+        # separate readback must reject this state even after a successful skip.
+        assert _runner(conn, directory) == {'ran': []}
+        with pytest.raises(AssertionError):
+            _assert_guard(conn)
+    _assert_guard(conn)

@@ -14,6 +14,7 @@ import json
 import re
 import subprocess
 import threading
+import urllib.error
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -53,8 +54,10 @@ def stamp(moment):
 class FakeCloud:
     """A stateful stand-in for gcloud + the testIamPermissions endpoint. `stuck` makes pause/resume exit 0 yet change nothing (the exit status is a lie)."""
 
-    def __init__(self, state="ENABLED", granted=reaper.PERMISSIONS, stuck=False, describe_fails=False, fetch_fails=False):
+    def __init__(self, state="ENABLED", granted=reaper.PERMISSIONS, stuck=False, describe_fails=False, fetch_fails=False, invalid=(), batch_error=None,
+                 policy=None, policy_fails=False):
         self.state, self.granted, self.stuck, self.describe_fails, self.fetch_fails = state, list(granted), stuck, describe_fails, fetch_fails
+        self.invalid, self.batch_error, self.policy, self.policy_fails = set(invalid), batch_error, policy, policy_fails
         self.calls, self.fetches = [], []
 
     def __call__(self, argv):
@@ -71,16 +74,30 @@ class FakeCloud:
             return done()
         if argv[:3] == ["gcloud", "auth", "list"]: return done(PRINCIPAL + "\n")
         if argv[:3] == ["gcloud", "auth", "print-access-token"]: return done(SECRET_TOKEN + "\n")
+        if argv[:4] == ["gcloud", "projects", "get-iam-policy", "madhav-astrology"]:
+            assert argv[4:] == ["--format=json"], argv
+            if self.policy_fails: return done("", 1)
+            return done(json.dumps(self.policy if self.policy is not None else {"bindings": [], "etag": "BwX"}))
         raise AssertionError("unexpected external call: " + repr(argv))
 
     def fetch(self, url, token, body):
         self.fetches.append((url, body))
         if self.fetch_fails: raise OSError("network down")
         assert token == SECRET_TOKEN and url.endswith("/projects/madhav-astrology:testIamPermissions")
+        bad = [p for p in body["permissions"] if p in self.invalid]
+        if bad:
+            raise google_error(400, f"Invalid permission {bad[0]} for resource projects/madhav-astrology (sent {SECRET_TOKEN} by {PRINCIPAL})")
+        if self.batch_error and len(body["permissions"]) > 1:
+            raise google_error(*self.batch_error)
         return {"permissions": [p for p in body["permissions"] if p in self.granted]}
 
     def verbs(self):
         return [c[3] for c in self.calls if c[:3] == ["gcloud", "scheduler", "jobs"]]
+
+
+def google_error(code, message):
+    body = json.dumps({"error": {"code": code, "message": message, "status": "INVALID_ARGUMENT"}}).encode()
+    return urllib.error.HTTPError("https://cloudresourcemanager.googleapis.com/", code, "error", {}, io.BytesIO(body))
 
 
 class Forbidden:
@@ -440,6 +457,138 @@ def test_c6_the_executor_accepts_a_partial_readback_only_with_a_null_state(world
     partial = reaper.run("readback", False, None, None, {"KY_OPERATION_REQUEST": json.dumps(req)}, runner=cloud, fetch=cloud.fetch)[1]
     assert partial["status"] == "PARTIAL" and world.mod.scheduler_proof(req, 0, json.dumps(partial))[1] is None
     assert world.mod.scheduler_proof(req, 0, json.dumps(dict(partial, state="ENABLED")))[1]
+
+
+# ───────────────────────────── C10 per-permission fallback and Google's error (HTTP 400 fix) ─────────────────────────────
+# Sources: Google Cloud Run IAM permissions reference (run.executions.cancel is a valid permission); Cloud Resource Manager v1
+# projects.testIamPermissions (body {"permissions": [...]}; wildcards not allowed); CLAUDE.md §N.8 / §N.7.6.
+def permissions_of(cloud):
+    return run_script("readback", cloud)[1]["permissions"]
+
+
+def test_c10_all_granted_is_measured_and_the_batch_is_one_call():
+    cloud = FakeCloud("ENABLED")
+    p = permissions_of(cloud)
+    assert p["status"] == "MEASURED" and p["granted"] == list(reaper.PERMISSIONS) and p["missing"] == [] and p["invalid"] == [] and p["reason"] is None
+    assert len(cloud.fetches) == 1                                           # no fallback when the batch answered
+
+
+def test_c10_a_missing_permission_is_measured_and_listed():
+    p = permissions_of(FakeCloud("ENABLED", granted=["cloudscheduler.jobs.pause", "cloudscheduler.jobs.get", "run.executions.cancel"]))
+    assert p["status"] == "MEASURED" and p["missing"] == ["cloudscheduler.jobs.resume"] and p["invalid"] == []
+    assert p["results"]["cloudscheduler.jobs.resume"]["result"] == "missing"
+
+
+def test_c10_a_batch_400_falls_back_to_one_call_per_permission_and_reports_an_invalid_name_as_invalid_never_granted():
+    cloud = FakeCloud("ENABLED", invalid=["run.executions.cancel"])
+    p = permissions_of(cloud)
+    assert [body["permissions"] for _, body in cloud.fetches] == [list(reaper.PERMISSIONS)] + [[n] for n in reaper.PERMISSIONS]
+    assert p["status"] == "MEASURED" and p["invalid"] == ["run.executions.cancel"]
+    assert "run.executions.cancel" not in (p["granted"] or []) and "run.executions.cancel" not in (p["missing"] or [])
+    assert p["results"]["run.executions.cancel"]["result"] == "invalid_permission" and "HTTP 400" in p["results"]["run.executions.cancel"]["reason"]
+    assert p["granted"] == ["cloudscheduler.jobs.pause", "cloudscheduler.jobs.resume", "cloudscheduler.jobs.get"]
+    assert p["reason"].startswith("batch testIamPermissions: HTTP 400: Invalid permission run.executions.cancel")
+
+
+def test_c10_google_message_is_recorded_sanitised_and_bounded():
+    cloud = FakeCloud("ENABLED", invalid=["run.executions.cancel"])
+    out = io.StringIO()
+    reaper.main(["--action", "readback"], environ={}, runner=cloud, fetch=cloud.fetch, out=out)
+    text = out.getvalue()
+    assert SECRET_TOKEN not in text and "ya29" not in text and "<token>" in text and "<email>" in text
+    assert PRINCIPAL in text                                                 # only through identity.principal, as before
+    assert json.loads(text)["permissions"]["reason"].count(PRINCIPAL) == 0
+    long = FakeCloud("ENABLED", batch_error=(400, "x " * 600))
+    reason = permissions_of(long)["reason"]
+    assert len(reason.split("HTTP 400: ")[1].split(";")[0]) <= 300
+
+
+def test_c10_a_fallback_that_cannot_answer_every_permission_is_unavailable_never_green():
+    cloud = FakeCloud("ENABLED", batch_error=(403, "Permission denied on resource project madhav-astrology."), invalid=[])
+    original = cloud.fetch
+    def fetch(url, token, body):
+        if body["permissions"] == ["cloudscheduler.jobs.get"]: raise google_error(403, "denied")
+        return original(url, token, body)
+    out = io.StringIO()
+    reaper.main(["--action", "readback"], environ={}, runner=cloud, fetch=fetch, out=out)
+    p = json.loads(out.getvalue())["permissions"]
+    assert p["status"] == "UNAVAILABLE" and p["granted"] is None and p["missing"] is None
+    assert p["results"]["cloudscheduler.jobs.get"]["result"] == "unmeasured" and p["results"]["cloudscheduler.jobs.pause"]["result"] == "granted"
+    assert "no definite answer for: cloudscheduler.jobs.get" in p["reason"]
+
+
+def test_c10_a_400_with_no_answered_control_does_not_condemn_the_names():
+    cloud = FakeCloud("ENABLED", invalid=list(reaper.PERMISSIONS))
+    p = permissions_of(cloud)
+    assert p["status"] == "UNAVAILABLE" and p["invalid"] is None
+    assert {r["result"] for r in p["results"].values()} == {"unmeasured"}
+
+
+def test_c10_a_5xx_or_network_failure_on_the_batch_does_not_fan_out():
+    cloud = FakeCloud("ENABLED", batch_error=(503, "backend unavailable"))
+    p = permissions_of(cloud)
+    assert p["status"] == "UNAVAILABLE" and p["reason"] == "testIamPermissions: HTTP 503: backend unavailable" and len(cloud.fetches) == 1
+
+
+# ───────────────────────────── C11 policy-read basis (SR-IAM-MEASURE) ─────────────────────────────
+# Sources: IAM basic roles (roles/owner and roles/editor include all Cloud Run and Cloud Scheduler permissions), roles/run.admin (run.executions.cancel),
+# roles/cloudscheduler.admin (cloudscheduler.jobs.pause/resume/get) — Google Cloud IAM roles reference.
+OTHERS = "user:someone.else@example.com"
+
+
+def policy_of(*bindings):
+    return {"bindings": list(bindings), "etag": "BwX", "version": 3}
+
+
+def policy_read_of(cloud):
+    return run_script("readback", cloud)[1]["policy_read"]
+
+
+def test_c11_an_unconditional_owner_binding_is_measured_granted_for_cancel_and_scheduler():
+    pr = policy_read_of(FakeCloud(policy=policy_of({"role": "roles/owner", "members": [f"serviceAccount:{PRINCIPAL}", OTHERS]})))
+    assert pr["status"] == "MEASURED" and pr["principal_roles"] == [{"role": "roles/owner", "conditional": False, "condition_title": None}]
+    assert (pr["cancel_basis"], pr["cancel_basis_role"]) == ("MEASURED_GRANTED", "roles/owner")
+    assert (pr["scheduler_basis"], pr["scheduler_basis_role"]) == ("MEASURED_GRANTED", "roles/owner")
+
+
+def test_c11_the_user_member_form_and_the_specific_admin_roles_count():
+    cloud = FakeCloud(policy=policy_of({"role": "roles/run.admin", "members": [f"user:{PRINCIPAL}"]}, {"role": "roles/cloudscheduler.admin", "members": [f"user:{PRINCIPAL}"]}))
+    pr = policy_read_of(cloud)
+    assert (pr["cancel_basis"], pr["cancel_basis_role"]) == ("MEASURED_GRANTED", "roles/run.admin")
+    assert (pr["scheduler_basis"], pr["scheduler_basis_role"]) == ("MEASURED_GRANTED", "roles/cloudscheduler.admin")
+
+
+def test_c11_a_conditional_owner_binding_is_not_proven_and_only_its_title_is_kept():
+    condition = {"title": "expires-2026-12", "expression": "request.time < timestamp('2026-12-31T00:00:00Z') && resource.name.startsWith('SECRET')"}
+    cloud = FakeCloud(policy=policy_of({"role": "roles/owner", "members": [f"serviceAccount:{PRINCIPAL}"], "condition": condition}))
+    out = io.StringIO()
+    reaper.main(["--action", "readback"], environ={}, runner=cloud, fetch=cloud.fetch, out=out)
+    pr = json.loads(out.getvalue())["policy_read"]
+    assert pr["principal_roles"] == [{"role": "roles/owner", "conditional": True, "condition_title": "expires-2026-12"}]
+    assert pr["cancel_basis"] == "NOT_PROVEN" and pr["scheduler_basis"] == "NOT_PROVEN" and pr["cancel_basis_role"] is None
+    assert "SECRET" not in out.getvalue()                                    # the expression is never recorded
+
+
+def test_c11_other_members_bindings_never_appear_in_the_record():
+    cloud = FakeCloud(policy=policy_of({"role": "roles/owner", "members": [OTHERS, "group:admins@example.com"]},
+                                       {"role": "roles/viewer", "members": [f"serviceAccount:{PRINCIPAL}"]}))
+    out = io.StringIO()
+    reaper.main(["--action", "readback"], environ={}, runner=cloud, fetch=cloud.fetch, out=out)
+    record = json.loads(out.getvalue())
+    assert "someone.else" not in out.getvalue() and "admins@example.com" not in out.getvalue() and "BwX" not in out.getvalue()
+    assert [r["role"] for r in record["policy_read"]["principal_roles"]] == ["roles/viewer"]
+    assert record["policy_read"]["cancel_basis"] == "NOT_PROVEN"
+
+
+def test_c11_a_failed_policy_read_is_null_with_a_reason_never_granted():
+    pr = policy_read_of(FakeCloud(policy_fails=True))
+    assert pr["status"] is None and pr["cancel_basis"] is None and pr["scheduler_basis"] is None and pr["principal_roles"] is None
+    assert pr["reason"] == "iam policy: gcloud exited 1"
+
+
+def test_c11_an_unreadable_policy_shape_is_null_never_granted():
+    pr = policy_read_of(FakeCloud(policy={"bindings": "owner"}))
+    assert pr["status"] is None and pr["cancel_basis"] is None and "unexpected answer shape" in pr["reason"]
 
 
 # ───────────────────────────── C7 the backstop survives an executor restart ─────────────────────────────
