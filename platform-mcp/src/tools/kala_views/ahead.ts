@@ -93,7 +93,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../../types.js'
-import { kalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias, publishedRequestSchema } from './registry_alias.js'
 import { autofileAheadWindows, type AheadAutofileResult } from '../../lib/ahead_autofile.js'
 import {
   makeKalaEnvelope,
@@ -2259,6 +2259,7 @@ const QuestionFrameSchema = z
   )
 
 const InputSchema = z.object({
+  published_request: publishedRequestSchema,
   chart_id: z.string().uuid().describe('UUID of the chart. Required — no default chart.'),
   ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')."),
   horizon_years: z.number().int().min(1).max(20).optional().describe('Forecast horizon in years (default: 5).'),
