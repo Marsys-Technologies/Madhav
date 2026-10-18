@@ -53,7 +53,7 @@ from pravaha_tracker.claims import ClaimError, claim_item, renew_claim, release_
 from pravaha_tracker.audit import audit  # noqa: E402
 from pravaha_tracker.state import build_snapshot, load_closure, reconciliation_line  # noqa: E402
 from pravaha_tracker.detectors import git_activity  # noqa: E402
-from pravaha_tracker.completion import CompletionError, guarded_done_event  # noqa: E402
+from pravaha_tracker.completion import COMPOSED_RECEIPT_SCHEMA, CompletionError, guarded_done_event  # noqa: E402
 from pravaha_tracker.claims import _locked, _read, _append, _close  # noqa: E402
 from pravaha_tracker.events import validate_against_model  # noqa: E402
 from pravaha_tracker.verdicts import accepted_verdict  # noqa: E402
@@ -283,6 +283,14 @@ def cmd_guarded_done(a, actor: str) -> int:
             proof = {"type": "operation", "artifact_digest": hashlib.sha256(raw).hexdigest(),
                      "operation_id": a.operation_id, "receipt": receipt,
                      "path": os.path.realpath(a.operation_receipt)}
+            if isinstance(receipt, dict) and receipt.get("schema") == COMPOSED_RECEIPT_SCHEMA:
+                # Same admission as `ky step` (#3716): every cited component must verify; completion.py then
+                # accepts the composed receipt as the item's completed receipt (the accepted verdict at its
+                # digest is still required there).
+                if not isinstance(a.operation_id, str) or not a.operation_id:
+                    raise CompletionError("composed operation receipt needs --operation-id")
+                _check_composed_components(receipt, a.operation_id, _ANY_STEP, a.item, _ops_dir())
+                proof["composed_components_verified"] = True
         elif a.packet_verdict:
             declared = item.get("detector", {}).get("path")
             if os.path.realpath(a.packet_verdict) != os.path.realpath(declared or ""):
@@ -433,8 +441,12 @@ def _teardown_completed(executor: dict, receipts: str, digest: str) -> bool:
             and absence.get("sha256") == absence_digest)
 
 
-COMPOSED_RECEIPT_SCHEMA = "ky.a55i_both_runs/1"
+_ANY_STEP = object()    # guarded completion records no step: the composed receipt's own step is not compared
 _COMPOSED_RUN_PARTS = ("dispatch", "terminal", "execution_readback", "absence")
+
+
+def _ops_dir() -> str:
+    return os.path.realpath(os.path.join(os.environ.get("PRAVAHA_HOME", HOME), "run", "ops"))
 
 
 def _check_composed_components(composed: dict, opid: str, step, item_id: str, ops: str) -> None:
@@ -453,7 +465,7 @@ def _check_composed_components(composed: dict, opid: str, step, item_id: str, op
     acceptance = os.path.join(ops, "acceptance")
     runs = composed.get("runs")
     if (composed.get("item") != item_id or composed.get("operation_id") != opid
-            or composed.get("step") != step or not isinstance(runs, list) or not runs):
+            or (step is not _ANY_STEP and composed.get("step") != step) or not isinstance(runs, list) or not runs):
         raise CompletionError("composed operation receipt does not name this item, operation and step")
 
     def digest_of(directory: str, name, expected) -> bytes:
@@ -516,7 +528,7 @@ def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[d
     if (not isinstance(opid, str) or re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", opid) is None
             or opid in (".", "..") or request_id != opid):
         raise CompletionError("operation step must name the same executor operation and request")
-    ops = os.path.realpath(os.path.join(os.environ.get("PRAVAHA_HOME", HOME), "run", "ops"))
+    ops = _ops_dir()
     receipts = os.path.join(ops, "receipts")
     path = os.path.join(receipts, opid + ".json")
     if os.path.realpath(path) != path:

@@ -838,3 +838,53 @@ def test_refuses_composed_receipt_with_an_unverified_component(operation_step, t
         run["dispatch"]["receipt"]["name"] = "../J-2x.dispatch.json"
     w.sync()
     w.run(expected=2)
+
+
+def _ready_for_done(w):
+    """Fixture model has one track and one item: no open dependency, the one recorded step is all there is."""
+    w.item.update(depends_on=[], track="K", steps=[w.step])
+    w.run(expected=0)    # the step is recorded first, as in life
+
+
+def _done(w, expected):
+    """`ky done` on the guarded operation path (guarded_done_event, completion.py)."""
+    _ready_for_done(w)
+    before = w.events.read_bytes()
+    code = cli.main(["done", w.item["id"], "--stream", "S", "--operation-receipt", str(w.executor_path),
+                     "--operation-id", w.item["id"]])
+    assert code == expected
+    if expected:
+        assert w.events.read_bytes() == before, "refusal must append no event"
+    else:
+        event = json.loads(w.events.read_text().splitlines()[-1])
+        assert (event["item"], event["state"], event.get("guarded")) == (w.item["id"], "done", True)
+        assert event["completion"]["artifact_digest"] == hashlib.sha256(w.executor_path.read_bytes()).hexdigest()
+
+
+def test_done_accepts_composed_receipt_whose_components_are_verified(operation_step, tmp_path):
+    _composed(operation_step, tmp_path)
+    _done(operation_step, expected=0)
+
+
+def test_done_refuses_composed_receipt_whose_component_digest_changed(operation_step, tmp_path):
+    receipts, _ = _composed(operation_step, tmp_path)
+    w = operation_step
+    _ready_for_done(w)    # the step passes while the components are intact; the component is then altered
+    target = receipts / "J-2x.dispatch.json"
+    target.write_text(target.read_text().replace('"exit_code": 0', '"exit_code": 0, "x": 1'))
+    before = w.events.read_bytes()
+    code = cli.main(["done", w.item["id"], "--stream", "S", "--operation-receipt", str(w.executor_path),
+                     "--operation-id", w.item["id"]])
+    assert code == 2 and w.events.read_bytes() == before
+
+
+def test_done_refuses_composed_receipt_without_the_accepted_verdict_at_its_digest(operation_step, tmp_path):
+    _composed(operation_step, tmp_path)
+    w = operation_step
+    w.verdict["result"] = "REJECTED"
+    w.sync()
+    w.item.update(depends_on=[], track="K", steps=[])
+    before = w.events.read_bytes()
+    code = cli.main(["done", w.item["id"], "--stream", "S", "--operation-receipt", str(w.executor_path),
+                     "--operation-id", w.item["id"]])
+    assert code == 2 and w.events.read_bytes() == before

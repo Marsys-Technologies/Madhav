@@ -3114,7 +3114,7 @@ def test_committed_read_evidence_repoints_and_kinds():
     L = "platform/src/lib/retrieval/registry/layers/"
     want = {
         "bo_sangati": L + "L2_bodha/query_domain_reading.ts:831",
-        "ka_gochara": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1842",
+        "ka_gochara": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1858",
         "mi_bhavisya": L + "L5_mimamsa/query_predictions.ts:138",
         "ph_nimitta": L + "L4_phala/query_predictive_anchors.ts:139",
         "mi_darshana": L + "L5_mimamsa/query_insights.ts:225",
