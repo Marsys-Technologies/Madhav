@@ -6,7 +6,7 @@ from services.gochara_intensity import permission as perm
 from services.gochara_kernel import dasha_read as DR
 
 CHART = '482012f1-710e-4a25-994a-93821f5871aa'
-BUILD = 'ca17639b-f3cf-42c7-9866-0a61f3855802'
+BUILD = '7377833e-5d3b-4e70-8bef-1318904f470e'
 UNKNOWN = '33333333-3333-4333-8333-333333333333'
 
 

@@ -1,6 +1,13 @@
 {
   "schema": "ci.test_suites/1",
   "suites": {
+    "deploy-build-check-tests": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "platform/scripts/governance/__tests__/test_deploy_build*.py"
+      ]
+    },
     "unit-tests-4-9": {
       "cwd": "platform",
       "engine": "vitest",
@@ -41,7 +48,9 @@
       "engine": "pytest",
       "include": [
         "tests/l3/ka_bhavishya_lekha/test_certification*.py",
-        "tests/l3/ka_kshetra/test_g1*.py"
+        "tests/l3/ka_kshetra/test_g1*.py",
+        "tests/l3/ka_vedha_gochara/test_ka3a_overlays_module_oracles*.py",
+        "tests/l3/ka_vedha_gochara/test_ka3a_coverage_and_qualification_*.py"
       ],
       "directories": [
         "tests/l3/kala_db",
@@ -97,7 +106,8 @@
         "tests/l3/gochara/test_horizon*.py",
         "tests/l3/gochara/test_mb_horizon*.py",
         "tests/l3/gochara/test_mb_stretch*.py",
-        "tests/l3/gochara/test_j6r*.py"
+        "tests/l3/gochara/test_j6r*.py",
+        "tests/l3/gochara/test_n18*.py"
       ],
       "discover_db": true
     },
@@ -521,7 +531,10 @@
       "cwd": ".",
       "engine": "pytest",
       "include": [
-        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation*.py"
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_overlay*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor*.py"
       ]
     },
     "governance-tool-tests-shard-6-0": {
@@ -538,7 +551,9 @@
         "platform/scripts/governance/pravaha_tracker/tests/test_verify*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_hang*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py",
-        "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py"
+        "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_decision*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_tracker_reconcil*.py"
       ]
     },
     "governance-readback-tests-3-0": {
@@ -739,7 +754,8 @@
       "engine": "pytest",
       "include": [
         "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_*smalltest*.py"
-      ]
+      ],
+      "shard_job": "db-integration-tests"
     },
     "governance-readback-tests-mcp": {
       "cwd": "platform-mcp",
@@ -754,6 +770,68 @@
       "engine": "pytest",
       "include": [
         "tests/test_migration_1235_evidence*.py"
+      ]
+    },
+    "k5-g1a-oracles": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/ka_kshetra/test_g1a*.py",
+        "tests/l3/kala_db/ka_kshetra/test_g1a*.py"
+      ]
+    },
+    "unit-db-tests-l0-parihara": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [],
+      "directories": [
+        "tests/l3/l0_parihara"
+      ]
+    },
+    "kala-db-tests-parihara": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [],
+      "directories": [
+        "tests/l3/ka_muhurta_seva"
+      ]
+    },
+    "k3-sealed-db-tests-all": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [],
+      "directories": [
+        "tests/l3/ka_vighnakara",
+        "tests/l3/kala_db/ka_vighnakara"
+      ]
+    },
+    "db-integration-tests-7-0": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "tests/pariprashna/samiksha/**/*.test.[jt]s",
+        "tests/pariprashna/samiksha/**/*.test.[jt]sx",
+        "tests/pariprashna/samiksha/**/*.test.[cm][jt]s",
+        "tests/pariprashna/samiksha/**/*.test.[cm][jt]sx",
+        "tests/pariprashna/samiksha/**/*.spec.[jt]s",
+        "tests/pariprashna/samiksha/**/*.spec.[jt]sx",
+        "tests/pariprashna/samiksha/**/*.spec.[cm][jt]s",
+        "tests/pariprashna/samiksha/**/*.spec.[cm][jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.test.[jt]s",
+        "src/lib/pariprashna/samiksha/**/*.test.[jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.test.[cm][jt]s",
+        "src/lib/pariprashna/samiksha/**/*.test.[cm][jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.spec.[jt]s",
+        "src/lib/pariprashna/samiksha/**/*.spec.[jt]sx",
+        "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]s",
+        "src/lib/pariprashna/samiksha/**/*.spec.[cm][jt]sx"
+      ]
+    },
+    "density-census-kcert-assessment": {
+      "cwd": "platform-mcp",
+      "engine": "vitest",
+      "include": [
+        "src/tools/retrieval/register_gochara_windows_kcert_assessment*.test.ts"
       ]
     },
     "unit-tests-protected-window": {
