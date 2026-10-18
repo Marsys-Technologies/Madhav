@@ -22,5 +22,6 @@ def evaluate(condition, *, event, selected=(), profiles=(), full=False, census=F
 
 
 def runs_in_full_gate(job):
+    # OWNER-CI-SCOPED-QUEUE-20261017: the merge queue is NOT a full event any more (it is scoped like a PR).
     return all(evaluate(job.get("if"), event=event, full=full, docs="true")
-               for event, full in (("merge_group", False), ("push", False), ("workflow_dispatch", True)))
+               for event, full in (("push", False), ("workflow_dispatch", True)))
