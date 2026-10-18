@@ -504,3 +504,21 @@ def test_the_executor_table_lets_a_backup_request_carry_the_scope_and_nothing_el
     for kind in ('backup_snapshot', 'backup_restore_verify'):
         assert ops[kind]['allowed_args'] == ['label', 'scope'], kind
         assert ops[kind]['fixed_args'][-1] == '--execute'
+
+
+# ---- C9: the dispatch script's own --execute policy measures the scope (the only fresh-content gate in production) ------
+
+def test_the_dispatch_execute_policy_measures_the_scope_and_refuses_a_backup_whose_content_changed(backup, shared, tmp_path, monkeypatch):
+    """SR-BACKUP-VALIDITY-A8 §3.10/§4: with the clock gone, `_smalltest_request_policy` (what `--execute` runs before staging) is the
+    only production check that reads the database. It must hand backup.measure_scope_now to the evidence policy: a 9 h old backup
+    is admitted while the fresh measurement equals the recorded digest, and refused as soon as it differs."""
+    dispatch = importlib.import_module('dispatch_v5_small_test_job')
+    old = write_evidence(tmp_path, shared, started=datetime.now(timezone.utc) - timedelta(hours=9))
+    monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)
+    req = {'kind': 'smalltest_dispatch', 'args': {'run': 'one_class_full', 'classes': 'marriage'}, **old}
+    unchanged = now_measure()
+    monkeypatch.setattr(backup, 'measure_scope_now', unchanged)
+    assert dispatch._smalltest_request_policy(req, tmp_path) is None
+    assert unchanged.seen == [(['public.a', 'public.b'], ['public.a_id_seq'])]       # it really measured the recorded relations
+    monkeypatch.setattr(backup, 'measure_scope_now', now_measure(changed='public.a'))
+    assert 'content has changed' in dispatch._smalltest_request_policy(req, tmp_path)
