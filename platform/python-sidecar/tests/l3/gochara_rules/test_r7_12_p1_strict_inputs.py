@@ -177,3 +177,41 @@ def test_dignity_category_calls_l1_over_a_complete_row_and_refuses_incomplete_ro
             P.dignity_category("Sun", "Leo", deg, DIG)
     with pytest.raises(StrictInputError, match="sign_unknown"):
         P.dignity_category("Sun", "Nowhere", 3.0, DIG)
+
+
+@pytest.mark.parametrize("row_kind", ["mapping", "namedtuple"])
+def test_database_numeric_operands_and_rows_preserve_combustion_boundaries(row_kind):
+    """psycopg NUMERICs and namedtuple rows must reach the real L1 rule."""
+    from collections import namedtuple
+    from decimal import Decimal
+
+    rows = [dict(r, orb_degrees=Decimal(str(r["orb_degrees"])),
+                 deep_orb_degrees=Decimal(str(r["deep_orb_degrees"]))) for r in COMB]
+    if row_kind == "namedtuple":
+        Row = namedtuple("CombustionRow", rows[0].keys())
+        rows = [Row(**r) for r in rows]
+    try:
+        out = P.combustion_state("Jupiter", Decimal("311"), Decimal("300"), False, rows)
+    except StrictInputError as exc:
+        raise AssertionError(f"valid database operands were refused: {exc.reason}") from exc
+    assert out == {"applicable": True, "is_combust": True, "is_deeply_combust": False,
+                   "arc_deg": 11.0, "limit_deg": 11.0}
+    assert P.combustion_state("Jupiter", Decimal("311.01"), Decimal("300"), False, rows)["is_combust"] is False
+
+
+@pytest.mark.parametrize("rule,bad,reason", [
+    ("compute_tatkalika_relation", "neutral", "tatkalika_unrecognised"),
+    ("compute_panchadha_maitri", "unrecognised", "panchadha_unrecognised"),
+])
+def test_divergent_l1_maitri_vocabulary_is_a_named_qualification_failure(monkeypatch, rule, bad, reason):
+    # Dependency-contract fault injection: no unknown L1 label may become a
+    # plausible category or escape as KeyError at this layer boundary.
+    monkeypatch.setattr(L1, rule, lambda *args: bad)
+    try:
+        P.maitri_category("Mars", "Taurus", "Gemini", NAIS)
+    except StrictInputError as exc:
+        assert exc.reason == reason
+    except Exception as exc:
+        raise AssertionError(f"expected named {reason}, got {type(exc).__name__}: {exc}") from exc
+    else:
+        raise AssertionError(f"expected named {reason}, got a qualified category")

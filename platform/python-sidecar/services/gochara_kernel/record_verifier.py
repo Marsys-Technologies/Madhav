@@ -165,12 +165,12 @@ def expected_p1_anchors(agent: str, sign_index: int) -> set[tuple[str, str]]:
     return out
 
 
-def _testimony_lords(natal: dict, lagna: float, event_class: str) -> set[str]:
+def _testimony_lords(natal: dict, lagna: float, event_class: str, rule_version="1.0.0", level=None) -> set[str]:
     """The period lords whose natal relation to the class is `testimony` — from THIS verifier's own relation
     (`inventory_verifier.period_lord_relation`, R11-2): no shared code with the builder's `permission` module."""
     from .inventory_verifier import period_lord_relation
     chart = {"lagna": lagna, "natal": natal}
-    return {g for g in _GRAHAS7 if period_lord_relation(g, event_class, chart)["licence"] == "testimony"}
+    return {g for g in _GRAHAS7 if period_lord_relation(g, event_class, chart, rule_version=rule_version, level=level)["licence"] == "testimony"}
 
 
 def expected_p1_contacts(position_at, lo, hi, *, excluded_agents) -> list[dict]:
@@ -198,7 +198,7 @@ def expected_p1_contacts(position_at, lo, hi, *, excluded_agents) -> list[dict]:
 
 
 def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str, position_at,
-                      excluded_agents=None) -> dict:
+                      excluded_agents=None, rule_version="1.0.0") -> dict:
     """Start from the EXPECTED CONTACT SET (R9-2 iii), not from the records: every P1 contact the ephemeris says exists
     over the class's inventory horizon must be in the ledger and must carry exactly the derived anchor set (minus the
     anchor lords whose period-lord relation is `testimony`, D3). A contact with EVERY anchored record omitted, a contact
@@ -212,7 +212,7 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
     validated marker and passes the DEFAULT scope's exclusion."""
     from . import contact_reconstruct as cr
     from .inventory_verifier import _UNKNOWN_H, Unverifiable, read_chart
-    if event_class in _UNKNOWN_H:
+    if event_class in _UNKNOWN_H and rule_version != "1.2.0":
         # ST-H-UNKNOWN-20261002: P1 is EXCLUDED for this class (its signature houses are unknown, so P1's natal-relationship prerequisite is
         # unevaluable and nothing is minted). There is no expected population to certify, so no geometry is needed either: verify the EXCLUSION
         # (zero P1 records; any one fails by name) and return the excluded marker. Keyed on the verifier's OWN class table, never on emptiness.
@@ -236,7 +236,8 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
     if snap is None:
         raise Unverifiable("no snapshot to read the natal positions from")
     natal = read_chart(conn, snap[0] if not isinstance(snap, dict) else next(iter(snap.values())))
-    testimony = _testimony_lords(natal["natal"], natal["lagna"], event_class)
+    testimony = {lv: _testimony_lords(natal["natal"], natal["lagna"], event_class, rule_version, lv)
+                 for lv in ("md", "ad", "pd")}
 
     stored = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
         "SELECT c.contact_id::text, c.body, o.canonical_target, c.t_in, c.t_out, c.delta_lambda"
@@ -256,6 +257,8 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
         by_contact.setdefault(cid, Counter())[(lord, level)] += 1       # R11-2: a MULTISET — a duplicate record counts
         # R9-5: the PD level is explicitly authorised TESTIMONY (own literals); MD and AD are the verse's scored readings
         want = (("testimony", "uncited_extension", PD_RULING) if level == "pd" else ("scored", "verse_cited", None))
+        from .nd_h_tables import record_stamp
+        want = record_stamp(event_class, "P1", rule_version, "period_lord", level) or want
         if (role, prov, ruling) != want:
             role_problems.append(f"record on contact {cid} ({lord}, {level}): stored (role, provenance, ruling) "
                                  f"{(role, prov, ruling)} != {want}")
@@ -269,7 +272,7 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
     problems: list[str] = []
     matched: set[str] = set()
     for e in expected:
-        want = Counter({a: 1 for a in e["anchors"] if a[0] not in testimony})
+        want = Counter({a: 1 for a in e["anchors"] if a[0] not in testimony[a[1]]})
         hit = None
         for cid, body, target, t_in, t_out, dl in stored:
             if body == e["agent"] and target == e["target"]:
