@@ -11,6 +11,7 @@ describe('ordinary migration tracker capability', () => {
     try {
       writeFileSync(join(directory, '1041_compatibility.sql'), 'SELECT 1;')
       const query = vi.fn(async (sql: string) => {
+        if (sql === "SELECT current_setting('role') AS role") return { rows: [{ role: 'none' }] }
         if (sql.includes("to_regclass('public._migrations_applied')")) return { rows: [{ present: true }] }
         if (sql.includes('SELECT filename, sha256, sql_identity FROM _migrations_applied')) return { rows: [] }
         return { rows: [] }
