@@ -29,7 +29,10 @@ class CompletionError(ValueError):
 # completion that `unmet_evidence` finds a gap in; `audit.audit` reports the same gap under the same code.
 EVIDENCE_TABLE = {
     "v_exact_head_then_deploy_containment": ("code", ("reviewed_head_verdict", "deployment_containment")),
-    "v_exact_head_then_post_deploy_at_merge_commit": ("code", ("reviewed_head_verdict", "post_deploy_verdict")),
+    # A8 §4 / plan v3.0 §I retired the post-deploy verdict (SR-POSTDEPLOY-RETIRED): the rule name stays declared in
+    # the plans, but a data-writing code item now needs exactly what any code item needs. The `post_deploy` verdict
+    # TYPE stays readable (events.py, verdicts.py): recorded post-deploy events remain valid history.
+    "v_exact_head_then_post_deploy_at_merge_commit": ("code", ("reviewed_head_verdict", "deployment_containment")),
     "v_artifact_digest_reviewer_not_author": ("artifact", ("artifact_verdict",)),
     "finalizer_independent_review_artifact_digest": ("artifact", ("artifact_verdict",)),
     "v_pre_acceptance_then_receipt_readback_digest": ("operation", ("completed_receipt", "artifact_verdict")),
@@ -54,8 +57,8 @@ def d46_kind(model: dict, item: dict, proof_type) -> str | None:
 
 
 def d46_requirements(requirements: dict, relaxed) -> dict:
-    """D-46: EVERY code item is contained in a successful main deploy, measured. A data-writing code item keeps its
-    post-deploy verdict and now also needs the deployment containment (the verdict no longer stands in for it)."""
+    """D-46: EVERY code item is contained in a successful main deploy, measured (a data-writing one too; its
+    post-deploy verdict is retired, A8 §4)."""
     if relaxed == "code" and "deployment_containment" not in requirements["evidence"]:
         return {**requirements, "evidence": (*requirements["evidence"], "deployment_containment")}
     return requirements
@@ -97,16 +100,13 @@ def evidence_requirements(model: dict, item: dict) -> dict | None:
         conflict = f"reviewer_rule {rule!r} is not a declared rule"
     elif kind != entry[0]:
         conflict = f"completion_kind {kind!r} contradicts reviewer_rule {rule} ({entry[0]})"
-    elif entry[0] == "code" and ("post_deploy_verdict" in entry[1]) != writes_data(item):
-        conflict = (f"reviewer_rule {rule} contradicts the brief, which "
-                    f"{'declares' if writes_data(item) else 'declares no'} migration or operation")
     return {"reviewer_rule": rule, "completion_kind": entry[0] if entry else None,
             "evidence": entry[1] if entry else (), "conflict": conflict}
 
 
 def _undeclared_requirements(item: dict, kind) -> dict | None:
     """A model without declarations: the proof's own type selects the evidence, as before."""
-    evidence = {"code": ("reviewed_head_verdict", "post_deploy_verdict" if writes_data(item) else "deployment_containment"),
+    evidence = {"code": ("reviewed_head_verdict", "deployment_containment"),
                 "artifact": ("artifact_verdict",), "operation": ("completed_receipt", "artifact_verdict"),
                 "packet": ("packet_verdict", "artifact_verdict")}.get(kind if isinstance(kind, str) else None)
     if evidence is None:
@@ -171,11 +171,6 @@ def unmet_evidence(model: dict, item: dict, events: list[dict], completion: dict
                     or deploy.get("contains_merge") is not True or not deploy.get("run_id")):
                 gap("missing_deployment_containment", requirement,
                     "no successful deployment of main containing the merge commit was observed")
-        elif requirement == "post_deploy_verdict":
-            # a migration or production operation keeps the second, post-deploy verdict (amendment §5)
-            merge = _code_mapping(completion)[2]
-            if merge is None or not independent(accepted_verdict(events, item_id, head=merge, phase="post_deploy")):
-                gap("missing_post_deploy_verdict", requirement, "independent post-deploy verdict at merge commit is missing")
         elif requirement == "completed_receipt":
             receipt, operation_id = completion.get("receipt"), completion.get("operation_id")
             # A composed receipt (ky.a55i_both_runs/1) has no status or item_id of its own: it counts only when
@@ -286,13 +281,8 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
         d46.update(merged_pr=observed["number"], deploy_run_id=deploy.get("run_id"),
                    acceptance_ref={"phase": "pre_merge", "head": head, "verdict_ts": verdict["ts"],
                                    "actor": verdict.get("actor")})
-        if "post_deploy_verdict" in requirements["evidence"]:
-            post = accepted_verdict(events, item_id, head=merge, phase="post_deploy")
-            evidence = f"PR #{observed['number']} head {head} merged {merge}; verdicts {verdict['ts']}, {post['ts']}"
-        else:
-            deploy = proof["deploy"]
-            evidence = (f"PR #{observed['number']} head {head} merged {merge}; verdict {verdict['ts']}; "
-                        f"deployed {deploy['deployed_sha']} (run {deploy['run_id']}) contains the merge commit")
+        evidence = (f"PR #{observed['number']} head {head} merged {merge}; verdict {verdict['ts']}; "
+                    f"deployed {deploy['deployed_sha']} (run {deploy['run_id']}) contains the merge commit")
     elif kind == "artifact":
         verdict = accepted_verdict(events, item_id, artifact_digest=digest, phase="artifact")
         d46["acceptance_ref"] = {"phase": "artifact", "artifact_digest": digest, "verdict_ts": verdict["ts"],
