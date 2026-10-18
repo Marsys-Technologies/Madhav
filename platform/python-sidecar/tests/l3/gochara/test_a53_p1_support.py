@@ -412,10 +412,10 @@ def _snapshot_ids(conn):
         (CHART_ID, GEN)).fetchone()[0]}
 
 
-def test_a_false_period_running_at_has_its_consulted_anchor_rows_in_the_snapshot_ledger(world):
+def test_a_false_period_running_at_has_its_consulted_anchor_rows_in_the_snapshot_ledger(legacy_world):
     """The completion detector (item J-2a-P1L): an anchor (lord, level) held in the pinned build, every row outside the
     horizon, is stored 'false' — and each of those rows is listed in consumed_dasha_row_ids (B.3)."""
-    w = world
+    w = legacy_world
     w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC)),       # Venus AD, wholly before
                    (2, datetime(2027, 3, 1, tzinfo=UTC), datetime(2027, 6, 1, tzinfo=UTC))])      # Venus AD, wholly after
     w.boot()
@@ -426,11 +426,11 @@ def test_a_false_period_running_at_has_its_consulted_anchor_rows_in_the_snapshot
     assert {str(uuid.UUID(int=900)), str(uuid.UUID(int=901))} <= _snapshot_ids(w.conn)
 
 
-def test_an_anchor_with_no_row_in_the_pinned_build_stays_unknown_and_unrestricted(world):
+def test_an_anchor_with_no_row_in_the_pinned_build_stays_unknown_and_unrestricted(legacy_world):
     """N.7.6 unchanged: no (lord, level) row ANYWHERE in the pinned build (here Venus holds no AD row, only a Mars one) ⇒
     the support is the unrestricted contact span and the prerequisite an explicit 'unknown', never 'false'; there is
     no row to ledger, so the completion detector has nothing to find."""
-    w = world
+    w = legacy_world
     w.set_lord_periods([("mars", 2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])
     w.boot()
     w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
@@ -441,10 +441,10 @@ def test_an_anchor_with_no_row_in_the_pinned_build_stays_unknown_and_unrestricte
         "records": 1, "restricted": 0}
 
 
-def test_the_snapshot_binds_no_anchor_rows_while_p1_minting_is_closed(world, monkeypatch):
+def test_the_snapshot_binds_no_anchor_rows_while_p1_minting_is_closed(legacy_world, monkeypatch):
     """Rows are ledgered because the builder CONSULTS them; with P1 minting closed (named gate) nothing consults a row,
     so the snapshot is the horizon-overlapping set only, as before."""
-    w = world
+    w = legacy_world
     w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])
     monkeypatch.setattr(writer_mod, "p1_minting_closed_reason", lambda conn: writer_mod.P1_MINTING_GATE)
     w.boot()
@@ -480,11 +480,11 @@ def test_the_population_check_still_refuses_an_out_of_horizon_row_whose_group_is
     assert any("lies wholly outside the horizon (an extra row)" in p and before["dasha_row_id"] in p for p in problems)
 
 
-def test_the_seal_time_population_check_accepts_the_ledgered_snapshot(world):
+def test_the_seal_time_population_check_accepts_the_ledgered_snapshot(legacy_world):
     """The ledger must not block sealing: the verifier's own query-based population check (verification job) accepts a
     snapshot that holds the out-of-horizon rows of a consulted anchor group."""
     from services.gochara_kernel import inventory_verifier as inv
-    w = world
+    w = legacy_world
     w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])
     w.boot()
     assert str(uuid.UUID(int=900)) in _snapshot_ids(w.conn)
