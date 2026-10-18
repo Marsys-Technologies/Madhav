@@ -32,7 +32,7 @@ while true; do
         fi
         last_hold=""
         echo "$(date -u +%FT%TZ) dispatching window at $head for: $(echo $new | tr '\n' ' ')"
-        gh workflow run deploy.yml --ref main -f kala_schema_migration=true 2>&1 | tail -1
+        gh workflow run deploy.yml --ref main -f kala_schema_migration=true ${KY_KWA_OWN_LEASE:+-f window_lease_id="$KY_KWA_OWN_LEASE"} 2>&1 | tail -1
         sleep 30; rid=$(gh run list --workflow deploy.yml --event workflow_dispatch --limit 1 --json databaseId -q '.[0].databaseId')
         until [ "$(gh run view $rid --json status -q .status 2>/dev/null)" = completed ]; do sleep 60; done
         concl=$(gh run view $rid --json conclusion -q .conclusion); echo "$(date -u +%FT%TZ) run $rid: $concl"

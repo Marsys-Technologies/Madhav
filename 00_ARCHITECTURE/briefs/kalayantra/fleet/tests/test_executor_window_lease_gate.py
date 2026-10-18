@@ -212,6 +212,20 @@ def test_c7_auto_dispatcher_dispatches_under_its_own_lease(tmp_path):
     assert "kala_schema_migration=true" in dispatched, p.stdout + p.stderr
 
 
+def test_c7_auto_dispatcher_names_its_own_lease_to_the_deploy_gate(tmp_path):
+    """B-1: deploy.yml re-runs the gate with --own-lease "$WINDOW_LEASE_ID"; a dispatch that omits window_lease_id makes its own lease foreign there."""
+    p, dispatched = _run_auto(tmp_path / "a", table(("MINE", 5, "ACTIVE")), own="MINE")
+    assert "-f window_lease_id=MINE" in dispatched, p.stdout + p.stderr
+    # The deploy-side check, fed exactly what was dispatched, passes; the same run without the input is refused.
+    world = World(tmp_path / "b", table(("MINE", 5, "ACTIVE")))
+    sent = re.search(r"window_lease_id=(\S+)", dispatched).group(1)
+    assert world.run_gate(own=sent)[0] == 0
+    assert world.run_gate(own="")[0] != 0
+    # With no own lease the dispatcher sends no window_lease_id (unchanged behaviour).
+    p, dispatched = _run_auto(tmp_path / "c", table(("L-1", 5, "RELEASED")))
+    assert "window_lease_id" not in dispatched, p.stdout + p.stderr
+
+
 def test_c7_auto_dispatcher_holds_when_the_table_is_unreadable_or_the_gate_is_missing(tmp_path):
     p, dispatched = _run_auto(tmp_path / "a", None)   # no campaign-coordination branch
     assert dispatched == "" and "HOLD lease gate" in p.stdout, p.stdout + p.stderr
