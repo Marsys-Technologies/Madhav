@@ -83,6 +83,43 @@ def test_family_and_independent_wiring_overlap_reports_gap_and_cli_failure(
                and family_id in gap and wiring_id in gap for gap in gaps)
 
 
+@pytest.mark.parametrize('family_suffix,wiring_suffix,overlapping', [
+    ('**', 'window_sweep.py', True),
+    ('window_*.py', '*_sweep.py', True),
+    ('nbknb_future/**', 'nbknb_future/window_sweep.py', True),
+    ('nbknb_future/**', 'nbknb_future/*.py', True),
+    ('nbknb_future/window_*.py', 'nbknb_future/*_sweep.py', True),
+    ('nbknb_family/**', 'nbknb_wiring/**', False),
+    ('*', 'nbknb_future/window_sweep.py', False),
+])
+def test_ownership_path_sets_reject_intersections_and_keep_disjoint_sets(
+        tmp_path, family_suffix, wiring_suffix, overlapping):
+    # PACKET_KA-3b_v1.md §6 rejects overlap; CLAUDE.md §N.8 requires
+    # a detector that can read false. Sets intersect independently of whether
+    # a future file exists; a single-segment * cannot cross a directory boundary.
+    prefix = 'platform/python-sidecar/services/gochara_kernel/'
+    family_path, wiring_path = prefix + family_suffix, prefix + wiring_suffix
+    assert (ROOT / (prefix + 'window_sweep.py')).is_file()
+    assert not (ROOT / (prefix + 'nbknb_future')).exists()
+    model, evidence = admitted_fixture(tmp_path)
+    family_id, wiring_id = 'fixture-moorti_nirnaya', 'fixture-judge_vedha_wiring'
+    next(r for r in model['items'] if r['id'] == family_id)['brief']['owns'].append(family_path)
+    next(r for r in model['items'] if r['id'] == wiring_id)['brief']['owns'] = [wiring_path]
+    model_path, evidence_path = tmp_path / 'model.json', tmp_path / 'evidence.json'
+    model_path.write_text(json.dumps(model))
+    evidence_path.write_text(json.dumps(evidence))
+    result = subprocess.run(
+        [sys.executable, '-B', str(SCRIPT), '--model', str(model_path),
+         '--evidence', str(evidence_path)], capture_output=True, text=True, check=False)
+    assert result.returncode == int(overlapping), result.stdout + result.stderr
+    gaps = json.loads(result.stdout)['offline_gaps']
+    if overlapping:
+        assert any('ownership overlap' in gap and family_path in gap and wiring_path in gap
+                   and family_id in gap and wiring_id in gap for gap in gaps), gaps
+    else:
+        assert gaps == []
+
+
 @pytest.mark.parametrize('role', ROLES)
 def test_missing_family_or_wiring_cannot_be_replaced_by_adapter_preacceptance(tmp_path, role):
     model, evidence = admitted_fixture(tmp_path)

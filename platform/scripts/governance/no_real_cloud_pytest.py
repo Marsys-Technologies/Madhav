@@ -12,6 +12,9 @@ import no_real_cloud_guard as _guard
 
 _guard.ensure_installed()
 
+# Every conftest that installs the cloud guard also drops GIT_DIR & co (2026-10-17 shared-repo core.bare incident): see git_env_scrub.py.
+import git_env_scrub  # noqa: F401,E402
+
 
 @pytest.fixture(autouse=True)
 def _no_swallowed_cloud_attempts(request):

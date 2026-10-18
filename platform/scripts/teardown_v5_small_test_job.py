@@ -81,7 +81,10 @@ identity as the stamped manifest (snapshot vector equal; inventory input digest,
      calibration ledgers, ...) and deleting the manifest would fail on a NO ACTION reference (the legacy contacts'
      `input_generation_vector_id`). Named, with table, column and count, instead of a bare SQLSTATE.
 
-Then deletes, in ONE commit, in this order: provenance receipts and the freshness row of this asset on the chart; build_run_assets
+Then deletes, in ONE commit, each table only when a SELECT of its scoped rows (the DELETE's own predicate, under the table locks) counts
+more than zero (SR-J2A-N18: a zero-row DELETE still fires migration 1379's statement-level triggers, which lock EVERY chart present in
+the table, so it fails when another chart holds rows there; a table measured empty gets no DELETE and is named under
+`skipped_empty_tables` in the receipt), in this order: provenance receipts and the freshness row of this asset on the chart; build_run_assets
 and build_runs of the exclusively-owned test runs (by id); the asset_throughput row; the OUTPUT CHAIN of (chart, '5.0') in the
 order RecordStore.delete_generation_chain uses; the SEARCH INVENTORY in the order InventoryStore.delete_generation_inventory uses,
 then the input snapshot; the candidate manifest. The asset_registry row is KEPT; it is touched ONLY when it is found ACTIVE (then
@@ -437,33 +440,45 @@ def _retention_lines(cur, owned: list[str]) -> list[str]:
     return lines
 
 
+def _scope_statements(owned: list[str]) -> list[tuple]:
+    """THE deletion scope, in deletion order: (table, count SQL, WHERE clause, parameters). One list feeds the plan counts and the
+    deletes, so the row count that gates a DELETE is measured with the SAME predicate the DELETE uses. The DELETE statement itself is
+    written in `_delete_everything`, the one function the reviewed backup scope declares as this module's dynamic write site."""
+    by_asset = "asset_id = %s AND chart_id = %s"
+    scope = [
+        ("asset_provenance_receipts", by_asset, (ASSET_ID, CHART_ID)),
+        ("asset_freshness", by_asset, (ASSET_ID, CHART_ID)),
+        ("build_run_assets", "run_id = ANY(%s::uuid[])", (owned,)),
+        ("build_runs", "id = ANY(%s::uuid[])", (owned,)),
+        ("asset_throughput", by_asset, (ASSET_ID, CHART_ID)),
+    ]
+    scope += [(table, f"chart_id = %s AND generation = %s{extra}", (CHART_ID, GENERATION)) for table, extra in GENERATION_TABLES]
+    return [(table, f"SELECT count(*) AS n FROM {table} WHERE {where}", where, params) for table, where, params in scope]
+
+
 def _plan_counts(cur, owned: list[str]) -> dict:
     counts: dict = {}
-    counts["asset_provenance_receipts"] = _count(
-        cur, "SELECT count(*) AS n FROM asset_provenance_receipts WHERE asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID))
-    counts["asset_freshness"] = _count(
-        cur, "SELECT count(*) AS n FROM asset_freshness WHERE asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID))
-    counts["build_run_assets"] = _count(
-        cur, "SELECT count(*) AS n FROM build_run_assets WHERE run_id = ANY(%s::uuid[])", (owned,))
-    counts["build_runs"] = len(owned)
-    counts["asset_throughput"] = _count(
-        cur, "SELECT count(*) AS n FROM asset_throughput WHERE asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID))
-    for table, extra in GENERATION_TABLES:
-        counts[table] = _count(
-            cur, f"SELECT count(*) AS n FROM {table} WHERE chart_id = %s AND generation = %s{extra}", (CHART_ID, GENERATION))
+    for table, count_sql, _where, params in _scope_statements(owned):
+        counts[table] = len(owned) if table == "build_runs" else _count(cur, count_sql, params)
     for table in LEGACY_GUARD_TABLES:
         counts[table] = "guard-only (never deleted)" if _table_exists(cur, table) else "absent"
     return counts
 
 
-def _delete_everything(cur, owned: list[str]) -> None:
-    cur.execute("DELETE FROM asset_provenance_receipts WHERE asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID))
-    cur.execute("DELETE FROM asset_freshness WHERE asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID))
-    cur.execute("DELETE FROM build_run_assets WHERE run_id = ANY(%s::uuid[])", (owned,))
-    cur.execute("DELETE FROM build_runs WHERE id = ANY(%s::uuid[])", (owned,))
-    cur.execute("DELETE FROM asset_throughput WHERE asset_id = %s AND chart_id = %s", (ASSET_ID, CHART_ID))
-    for table, extra in GENERATION_TABLES:
-        cur.execute(f"DELETE FROM {table} WHERE chart_id = %s AND generation = %s{extra}", (CHART_ID, GENERATION))
+def _delete_everything(cur, owned: list[str]) -> list[str]:
+    """Delete the scope, table by table, in order. SR-J2A-N18 (A): absence is proved by SELECT first. A table whose scoped row count is
+    0 gets NO DELETE statement at all: a zero-row DELETE still fires the table's STATEMENT-level triggers (migration 1379's
+    `*_statement_lock` locks EVERY chart present in the table, not only this one), so with another chart's rows present it raised N18
+    (P0001) although it would have deleted nothing. The count is measured here, immediately before its DELETE, under the table locks
+    `_lock_delete_tables` holds (SHARE ROW EXCLUSIVE excludes any concurrent writer), so it cannot change in between. Returns the tables
+    whose measured scope was empty and whose DELETE was therefore skipped, in scope order."""
+    skipped: list[str] = []
+    for table, count_sql, where, params in _scope_statements(owned):
+        if _count(cur, count_sql, params) == 0:
+            skipped.append(table)
+            continue
+        cur.execute(f"DELETE FROM {table} WHERE {where}", params)
+    return skipped
 
 
 # These children are deleted by foreign-key cascade, but absence is measured too.
@@ -646,7 +661,8 @@ def teardown(*, dry_run: bool = True) -> None:
                  "status": "ROLLED_BACK" if dry_run else "COMMITTED_AWAITING_ABSENCE",
                  "rollback_confirmed": dry_run}
         # THE SAME STATEMENTS in both modes: the deletes, the registry restore and the end-state validation run in this transaction
-        _delete_everything(cur, owned)
+        skipped_empty = _delete_everything(cur, owned)     # SELECT first; no DELETE on a table whose scoped count is 0 (SR-J2A-N18)
+        proof["skipped_empty_tables"] = skipped_empty
         if registry_active:                                # ONLY a row found active is touched: no UPDATE privilege otherwise needed
             cur.execute("UPDATE asset_registry SET is_active = false WHERE asset_id = %s", (ASSET_ID,))
         _validate_registry_row(cur)
@@ -657,7 +673,7 @@ def teardown(*, dry_run: bool = True) -> None:
         # the report is prepared BEFORE the COMMIT: nothing after the COMMIT can fail for want of data or work
         report = ("dry_run" if dry_run else "executed", counts, retention + [f"stamp: {n}" for n in checked.notes],
                   {"schema": "ky.smalltest_absence/1", "chart_id": CHART_ID, "generation": GENERATION,
-                   "owned_run_ids": owned, "counts": absence,
+                   "owned_run_ids": owned, "counts": absence, "skipped_empty_tables": skipped_empty,
                    "status": "rehearsed_then_rolled_back" if dry_run else "committed",
                    "observation": "after deletion, before commit, under teardown locks"})
         if dry_run:

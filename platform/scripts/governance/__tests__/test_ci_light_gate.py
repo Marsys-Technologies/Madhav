@@ -72,10 +72,11 @@ def test_pull_request_has_light_checks_and_skips_unrelated_heavy_jobs():
 
 
 
-@pytest.mark.parametrize('event,full,expected', [('merge_group', False, True), ('push', False, True),
+@pytest.mark.parametrize('event,full,expected', [('push', False, True),
                                                ('workflow_dispatch', True, True), ('workflow_dispatch', False, False)])
 def test_full_events_execute_every_heavy_job_even_for_docs_changes(event, full, expected):
-    """Brief (b,c,d): queue/main/full dispatch runs every heavy leg, including docs changes."""
+    """Brief (b,c,d), OWNER-CI-SCOPED-QUEUE-20261017: main/full dispatch runs every heavy leg, including docs changes.
+    The merge queue is deliberately NOT here any more: it is scoped like a PR (tests below)."""
     w = workflow()
     triggers = w.get('on', w.get(True))
     assert triggers['workflow_dispatch']['inputs']['full_gate']['type'] == 'boolean'
@@ -152,6 +153,7 @@ def test_required_aggregate_propagates_every_heavy_failure_and_unexpected_skip()
     assert 'full-suite' in jobs['governance-gates']['needs']
     step = agg['steps'][0]
     for event, full in [('merge_group', False), ('push', False), ('workflow_dispatch', True), ('pull_request', False)]:
+        scoped = event in ('pull_request', 'merge_group')
         expected = {n: {'result': 'success'} for n in agg['needs']}
         env = {**os.environ, 'EVENT_NAME': event, 'FULL_GATE': str(full).lower(), 'REF': 'refs/heads/main',
                'DB_JOBS': '[]', 'NEEDS_JSON': json.dumps(expected)}
@@ -161,16 +163,16 @@ def test_required_aggregate_propagates_every_heavy_failure_and_unexpected_skip()
             for result in ('failure', 'cancelled', 'skipped'):
                 cases = {**expected, name: {'result': result}}
                 p = subprocess.run(['bash', '-e', '-c', step['run']], env={**env, 'NEEDS_JSON': json.dumps(cases)}, capture_output=True, text=True)
-                allowed = event == 'pull_request' and result == 'skipped'
+                allowed = scoped and result == 'skipped'
                 assert (p.returncode == 0) is allowed, (event, name, result, p.stdout, p.stderr)
-        # On PRs a selected DB job must succeed; unselected skips alone are permitted.
-        if event == 'pull_request':
+        # On PRs and the queue a selected DB job must succeed; unselected skips alone are permitted.
+        if scoped:
             name = sorted(db_jobs(jobs))[0]
             env.update(DB_JOBS=json.dumps([name]), NEEDS_JSON=json.dumps({**expected, name: {'result': 'skipped'}}))
             assert subprocess.run(['bash', '-e', '-c', step['run']], env=env, capture_output=True).returncode != 0
 
 
-def test_db_mutation_harness_runs_once_only_on_full_events():
+def test_db_mutation_harness_runs_once_only_on_full_events():  # the queue is scoped, not full
     """Brief (b,d): selected PR suites do not also pay for auxiliary P06 mutations."""
     jobs = workflow()['jobs']
     worker = jobs['db-integration-tests']
@@ -178,7 +180,7 @@ def test_db_mutation_harness_runs_once_only_on_full_events():
     source = '\n'.join(line for line in source.splitlines() if 'ci_discovery.py' not in line)
     source = source.replace('python3 scripts/gochara/mutation_check_1206.py', 'echo MUTATION_RUN')
     shards = worker.get('strategy', {}).get('matrix', {}).get('shard', [1])
-    for event, full, expected in [('pull_request', False, 0), ('merge_group', False, 1),
+    for event, full, expected in [('pull_request', False, 0), ('merge_group', False, 0),
                                   ('push', False, 1), ('workflow_dispatch', True, 1), ('workflow_dispatch', False, 0)]:
         calls = 0
         for shard in shards:
@@ -188,3 +190,159 @@ def test_db_mutation_harness_runs_once_only_on_full_events():
             assert p.returncode == 0, p.stderr
             calls += p.stdout.count('MUTATION_RUN')
         assert calls == expected, (event, full, calls)
+
+
+def test_earned_signal_gate_runs_on_merge_group():
+    """§N.8 gate must be reported (executed, not skipped) on every full event and on every PR kind.
+
+    madhav-6d 2026-10-17: #3625 landed with a §N.8 violation because the gate was not
+    enforced on the queue. Claim: the job (and its only dependency chain) has no condition
+    that can skip it on merge_group, for docs-only and code changes alike, its required-check
+    name is unchanged, and no step can swallow its failure.
+    """
+    w = workflow()
+    jobs = w['jobs']
+    triggers = w.get('on', w.get(True))
+    assert 'merge_group' in triggers, 'merge_group trigger removed: required checks never report on the queue'
+    gate = jobs['earned-signal-lint']
+    assert gate['name'] == 'Earned-Signal Gate (§N.8)', 'required-check context name must not change'
+    chain, todo = set(), ['earned-signal-lint']
+    while todo:
+        name = todo.pop()
+        needs = jobs[name].get('needs') or []
+        needs = [needs] if isinstance(needs, str) else needs
+        chain.add(name)
+        todo.extend(n for n in needs if n not in chain)
+    assert 'changes' not in chain, 'the gate must not sit behind the light-PR classifier'
+    for name in sorted(chain):
+        for event in ('merge_group', 'push'):
+            for docs in ('true', 'false'):
+                assert evaluate(jobs[name].get('if'), event=event, docs=docs), (name, event, docs)
+    assert 'continue-on-error' not in gate and all('continue-on-error' not in s for s in gate['steps'])
+    assert all(s.get('if') is None for s in gate['steps'] if 'check_earned_signal.py' in s.get('run', ''))
+
+
+def _scoped_state(jobs):
+    """Selection fixtures: nothing selected, and every DB job + discovered profile selected."""
+    import ci_gate
+    owners = ci_gate.db_profile_owners(jobs)
+    return [
+        dict(selected=(), profiles=()),
+        dict(selected=sorted({j for o in owners.values() for j in o} | db_jobs(jobs)), profiles=sorted(owners)),
+    ]
+
+
+def test_merge_queue_selects_exactly_what_a_pull_request_selects():
+    """OWNER-CI-SCOPED-QUEUE-20261017 claim 1: every `if` (job and step) gives the same verdict on merge_group as on a PR.
+
+    Oracle is the PR contract itself (D-29 scoped selection, test above); a job or step that still lists
+    merge_group among the full events would run unselected heavy work on the queue and differ here.
+    """
+    jobs = workflow()['jobs']
+    checked = 0
+    for state in _scoped_state(jobs):
+        for docs in ('false',):
+            for name, job in jobs.items():
+                for where, cond in [(name, job.get('if'))] + [(f"{name}/{st.get('name')}", st.get('if')) for st in job.get('steps', [])]:
+                    if cond is None or 'github.event_name' not in str(cond):
+                        continue
+                    pr = evaluate(cond, event='pull_request', docs=docs, **state)
+                    mg = evaluate(cond, event='merge_group', docs=docs, **state)
+                    assert pr == mg, (where, state['selected'][:1])
+                    checked += 1
+    assert checked > 100
+    heavy_unselected = [n for n in heavy_jobs(jobs) if evaluate(jobs[n].get('if'), event='merge_group')]
+    assert heavy_unselected == [], f'merge_group runs heavy jobs nothing selected: {heavy_unselected}'
+
+
+def test_merge_queue_hands_the_changed_profiles_to_discovery():
+    """Claim 1b: CI_PR_DB_PROFILES is fed on merge_group, else a selected job would run its whole profile list."""
+    jobs = workflow()['jobs']
+    seen = 0
+    for name, job in jobs.items():
+        value = (job.get('env') or {}).get('CI_PR_DB_PROFILES')
+        if value is None:
+            continue
+        seen += 1
+        # evaluate() yields truthiness: the profile JSON is non-empty on the queue / PR and '' on full events.
+        assert evaluate(value, event='merge_group', profiles=('some-profile',)), name
+        assert evaluate(value, event='pull_request', profiles=('some-profile',)), name
+        assert not evaluate(value, event='push', profiles=('some-profile',)), name
+        assert not evaluate(value, event='workflow_dispatch', full=True, profiles=('some-profile',)), name
+    assert seen >= 8
+
+
+def test_ci_gate_selects_changed_profiles_on_merge_group_and_nothing_on_main(monkeypatch, capsys):
+    """Claim 1c: `ci_gate.py --event merge_group` prints the same selection as a PR; push/dispatch print none."""
+    import ci_changes
+    import ci_gate
+    changed = ['platform/python-sidecar/tests/l3/gochara/test_a55_replace_chain.py']
+    monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: changed)
+    out = {}
+    for event in ('pull_request', 'merge_group', 'push', 'workflow_dispatch'):
+        assert ci_gate.main(['--event', event, '--base', 'B', '--head', 'H']) == 0
+        out[event] = capsys.readouterr().out
+    assert 'gochara-a55-replace-chain' in out['merge_group']
+    parsed = {e: dict(l.split('=', 1) for l in out[e].splitlines()) for e in ('pull_request', 'merge_group')}
+    # the queue = the PR selection plus the SR-CI-SCOPED-SAFEGUARD suites (own oracle below), nothing else
+    for key in ('db_jobs', 'db_profiles'):
+        assert set(json.loads(parsed['pull_request'][key])) <= set(json.loads(parsed['merge_group'][key]))
+    assert {j for j in json.loads(parsed['merge_group']['db_jobs'])} - set(json.loads(parsed['pull_request']['db_jobs'])) \
+        <= ci_gate.QUEUE_ALWAYS_JOBS
+    assert out['push'] == out['workflow_dispatch'] == 'db_jobs=[]\ndb_profiles=[]\n'
+    monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: None)
+    with pytest.raises(ValueError):
+        ci_gate.main(['--event', 'merge_group'])
+
+
+def test_combination_sensitive_suites_run_on_every_merge_group_even_for_an_unrelated_change(monkeypatch, capsys):
+    """SR-CI-SCOPED-SAFEGUARD: SAMIKSHA DB Integration (all shards), the Gochara measuring build and the C38 teardown
+    jobs (they failed green-alone/red-combined) run on a merge_group whose diff touches none of their tests; a PR with
+    the same diff, and every other DB job, stay path-scoped; the required checks still pass through the umbrellas."""
+    import ci_changes
+    import ci_gate
+    monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: ['platform/scripts/governance/__tests__/test_nb_kala_ci.py'])
+    out = {}
+    for event in ('pull_request', 'merge_group'):
+        assert ci_gate.main(['--event', event, '--base', 'B', '--head', 'H']) == 0
+        out[event] = dict(line.split('=', 1) for line in capsys.readouterr().out.splitlines())
+    jobs = workflow()['jobs']
+    names = {n: str(j.get('name')) for n, j in jobs.items()}
+    queue_jobs, queue_profiles = json.loads(out['merge_group']['db_jobs']), json.loads(out['merge_group']['db_profiles'])
+    assert out['pull_request'] == {'db_jobs': '[]', 'db_profiles': '[]'}
+    must = {n for n, name in names.items() if jobs[n].get('services') and (
+        'DB Integration Tests (SAMĪKṢĀ' in name or 'Gochara measuring build' in name or 'Gochara C38 - the small-test teardown' in name)}
+    assert len(must) == 5, must
+    assert must <= set(queue_jobs)
+    import ci_discovery
+    shards = {p for p in ci_discovery.profiles() if p.startswith(('db-integration-tests-', 'gochara-a55-measuring-build-', 'gochara-a55-teardown'))}
+    assert shards and shards <= set(queue_profiles)
+    assert set(queue_jobs) == must, 'every other DB job stays path-scoped'
+    for n in sorted(must):
+        assert evaluate(jobs[n].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles), n
+    for n in ('required-db-integration-tests', 'required-gochara-a55-teardown', 'required-gochara-a55-teardown-round3'):
+        assert evaluate(jobs[n].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles), n
+    assert not evaluate(jobs['gochara-a55-replace-chain'].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles)
+
+
+def test_merge_queue_diffs_against_the_group_base_and_every_required_check_reports():
+    """Claim 3: required contexts still report on the queue; the queue diff uses merge_group.base_sha (fail-closed)."""
+    w = workflow()
+    jobs = w['jobs']
+    assert 'merge_group' in w.get('on', w.get(True))
+    step = next(s for s in jobs['changes']['steps'] if s.get('id') == 'select-db')
+    assert step['env']['MERGE_GROUP_BASE_SHA'] == '${{ github.event.merge_group.base_sha }}'
+    assert 'fetch --no-tags --depth=1 origin "$MERGE_GROUP_BASE_SHA"' in step['run'] and '--base "$base"' in step['run']
+    historical = json.loads((ROOT / 'platform/scripts/governance/ci_discovery_baseline.json').read_text())['job_names']
+    by_name = {j.get('name'): n for n, j in jobs.items()}
+    # Light/aggregate required contexts run on the queue exactly as on a PR, with nothing selected.
+    for context in sorted(REQUIRED | set(historical.values())):
+        key = by_name[context] if context in by_name else None
+        assert key, f'required context {context!r} has no job: it would never report on the queue'
+        if '${{' in context:
+            assert 'matrix' in jobs[key]['strategy'], context
+    for key in ('typecheck', 'unit-tests', 'secret-scan', 'earned-signal-lint', 'governance-tool-tests', 'governance-gates-static',
+                'full-suite', 'governance-gates'):
+        assert evaluate(jobs[key].get('if'), event='merge_group'), key
+    # A skipped heavy job rolls up to a passing aggregate on the queue, as on a PR (aggregate test above).
+    assert not any(evaluate(jobs[n].get('if'), event='merge_group') for n in heavy_jobs(jobs))
