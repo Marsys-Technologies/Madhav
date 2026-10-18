@@ -37,9 +37,27 @@ def database():
 
 
 def environment(conn):
-    # Credential-free local fixture; never put a DSN on argv or print it.
-    return dict(os.environ, PGHOST=conn.info.host, PGPORT=str(conn.info.port),
-                PGDATABASE=conn.info.dbname, PGUSER=conn.info.user)
+    # Never put a DSN on argv or print it. The CI Postgres service authenticates over TCP with a
+    # password (the local cluster is trust), so the psql child must inherit the fixture connection's
+    # password through libpq's environment, exactly as the executor does (readback.py header).
+    env = dict(os.environ, PGHOST=conn.info.host, PGPORT=str(conn.info.port),
+               PGDATABASE=conn.info.dbname, PGUSER=conn.info.user)
+    if conn.info.password:
+        env['PGPASSWORD'] = conn.info.password
+    return env
+
+
+def test_environment_forwards_the_fixture_password_to_the_psql_child():
+    # CI parity without a second server: a password-authenticated service must reach psql via libpq env.
+    class Info:
+        host, port, dbname, user, password = '127.0.0.1', 5432, 'a53t_j4ops_x', 'postgres', 'ci-secret'
+
+    class Conn:
+        info = Info()
+
+    assert environment(Conn())['PGPASSWORD'] == 'ci-secret'
+    Info.password = ''
+    assert environment(Conn()).get('PGPASSWORD') == os.environ.get('PGPASSWORD')
 
 
 def run_capture(conn, name, phase='provision'):
