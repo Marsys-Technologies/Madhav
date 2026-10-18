@@ -68,6 +68,9 @@ def _matches(root: Path, spec: dict, paths: list[str], discovered: list[str]) ->
     directories = [posixpath.normpath(f'{spec["cwd"]}/{path}').rstrip('/') + '/'
                    for path in discovered if (cwd / path).is_dir()]
     for path in paths:
+        # A profile may also own non-test source paths (repo-root globs): a change to one runs the whole profile.
+        if any(_glob_matches(path, pat) for pat in spec.get('path_triggers', [])):
+            return True
         if path in selected or (_test_file(path, spec['engine']) and any(path.startswith(d) for d in directories)):
             return True
         # A deleted/renamed-away file is absent from discover(); retain its old
