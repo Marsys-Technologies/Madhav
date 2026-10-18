@@ -1,0 +1,67 @@
+{
+  "version": "1.0",
+  "status": "preparation_only",
+  "date": "2026-10-16",
+  "changelog": ["1.0: clarify the J1A-STEP-02 unit-oracle follow-up and preserve every operational and integration gate."],
+  "item": "J1A-STEP-02",
+  "parent_item": "J-1a",
+  "scope_built": [
+    "eight unit-oracle gaps and their mandatory CI binding (PR #3586)"
+  ],
+  "left_out": [
+    "sibling launch/dry-run qualification",
+    "parent J-1a completion",
+    "operational/phase closure"
+  ],
+  "activation_gates": [
+    {
+      "id": "J1A-STEP-01",
+      "status": "required_before_closure",
+      "evidence": "Sibling PR #3585 supplies the launch/dry-run repair and publication-guard oracles for J-1a-pr3140. Recheck both dispatch shapes and all enabled script bindings together at the admitted merged head; unit-oracle acceptance alone does not qualify launch."
+    },
+    {
+      "id": "J0M-Q055",
+      "finding": "STEP-3140-03",
+      "status": "required_before_closure",
+      "model_obligation": "J-1a-pr3140: bind 'small-test prerequisite checklist' to a reviewed item or specific gate/evidence contract before claim. Its literal requirement is retained in brief.tests; no guessed target, gate result or terminal source status.",
+      "evidence": "00_ARCHITECTURE/control/kalayantra/plan_model.json:15258-15260; J-1a-pr3140 brief.tests retains the inherited checklist. This preparation neither earns nor waives it. Bind the reviewed checklist contract and earn its actual evidence before operational/phase closure."
+    },
+    {
+      "id": "J-1a",
+      "status": "required_before_closure",
+      "evidence": "00_ARCHITECTURE/control/kalayantra/plan_model.json:18129-18196: original dependencies/children, packet_oracles_verified and executable_smalltest_bindings remain required. The controller must earn typed completion; this handoff emits no completion or acceptance receipt."
+    },
+    {
+      "id": "exact_head_ci",
+      "status": "required_before_closure",
+      "evidence": "Complete mandatory CI at the exact reviewed/admitted head before integration or operational reliance, including the complete C38 base/populated/W4, round-2 and round-3 suites and real launch checks. Local passing checks supplement CI; interrupted, timed-out, skipped or partial suites do not satisfy this gate."
+    },
+    {
+      "id": "deployed_source",
+      "status": "required_before_closure",
+      "evidence": "Reviewed merged-main scripts/table/digests, required child acceptance and successful actual deployed-source containment. Refresh operation, image, writer, rule, migration and model-activation pins at use; historical source acceptance cannot stand in for current deployment."
+    },
+    {
+      "id": "operational_acceptance",
+      "status": "required_before_closure",
+      "evidence": "Fresh complete backup and actual scratch restore equality; image/role/window/lease/request identity; independently accepted dry run and matching real plan; numerical census and complete writer-plan/log comparison; terminal remote execution and no-later-writer proof; per-candidate teardown rehearsal/commit/independent absence; J-2d-a55i composite receipt when run 2 is required. Preserve dependency order and all G8 gates."
+    }
+  ],
+  "validation_limits": {
+    "J1A-UO-N2": "The prior review's unchanged W4/launch selection hit its 900-second timeout after two teardown tests; its two launch checks were not completed and that suite was not green. Fresh local results belong in the current job's result.json and do not rewrite historical evidence.",
+    "W4-SAFETY-CHILDREN-N02": "Prior full C38 rounds were interrupted after 3, 7 and 2 completed cases; those were not full-suite passes. Require complete exact-head mandatory CI before integration or operational reliance, even after a successful local rerun.",
+    "connectivity_deferral": false
+  },
+  "activation_recipes": "00_ARCHITECTURE/briefs/kalayantra/W4_RUN2_ACTIVATION_RECIPES_v1_0.md",
+  "sources": [
+    "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T055451Z-review-j-1a-unit-oracles/REVIEW.md:17-19",
+    "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T055136Z-review-j-1a-oracles/REVIEW.md:30-39",
+    "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T075359Z-review-w4-safety-children/REVIEW.md:23-24"
+  ],
+  "interpretations": [
+    {
+      "choice": "(I) INTERPRETATION: J1A-STEP-02 is the narrow unit-oracle follow-up label, not a new plan-model item or parent completion. This committed handoff supplements the immutable historical builder result.",
+      "alternative": "Treat the builder's parent J-1a label as certification of full readiness, or modify another job's historical result."
+    }
+  ]
+}
