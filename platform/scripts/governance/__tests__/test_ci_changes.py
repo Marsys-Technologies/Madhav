@@ -5,8 +5,10 @@ measure mandatory execution on full events; cheap checks retain their PR policy.
 """
 from __future__ import annotations
 
-from _ci_gate_test_support import runs_in_full_gate
+from _ci_gate_test_support import evaluate, runs_in_full_gate
 
+import fnmatch
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -233,12 +235,13 @@ def test_cli_fails_closed(tmp_path):
 
 # ---------------------------------------------------------------- the workflow wiring -----------------------------------------------------
 
-HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
+HEAVY = ("replace-chain-substrate", "typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
-         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")
+         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build", "gochara-j5s-full-class-seal")
 NEVER_SKIPPED = ("generated-artifacts", "changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
                  "governance-gates-static",       # the required Governance Gates check's parts (sharded 2026-10-08): never skipped, as before
-                 "coverage-gate", "density-census", "governance-tool-tests")
+                 "coverage-gate", "density-census", "governance-tool-tests",
+                 "db-runner-probe")               # SR-SELFHOSTED-SPLIT: no `if`, no needs -- it must answer for every event or the DB jobs lose their runs-on
 
 
 @pytest.fixture(scope="module")
@@ -262,6 +265,8 @@ def test_every_filtered_job_needs_changes_and_preserves_its_event_policy(jobs, n
 def test_the_cheap_and_required_gates_are_never_skipped_by_the_fast_path(jobs, name):
     j = jobs[name]
     assert "docs_only" not in str(j.get("if", "")), name
+    if name == "governance-gates":
+        assert str(j["if"]) == "${{ always() }}"
     if name not in {"governance-tool-tests", "governance-gates"}:
         assert "changes" not in (j.get("needs") if isinstance(j.get("needs"), list) else [j.get("needs")]), name
 
@@ -285,7 +290,9 @@ def test_the_trigger_set_is_unchanged_so_push_and_merge_group_still_run_everythi
 
 
 def test_every_job_in_ci_yml_is_classified_here_so_a_new_heavy_job_is_a_conscious_choice(jobs):
-    unknown = set(jobs) - set(HEAVY) - set(NEVER_SKIPPED) - {"census-battery", "unit-db-tests", "full-suite", "governance-gates-py-sidecar-shard", "replace-chain-substrate"} - {name for name in jobs if name.startswith("required-")}
+    from ci_db_shard import JOB_SHARDS
+    umbrellas = {"required-"+name for name in JOB_SHARDS}
+    unknown = set(jobs) - umbrellas - set(HEAVY) - set(NEVER_SKIPPED) - {"census-battery", "unit-db-tests", "full-suite", "governance-gates-py-sidecar-shard"}
     assert not unknown, f"classify these jobs as HEAVY (skipped on docs-only) or NEVER_SKIPPED: {sorted(unknown)}"
 
 
@@ -380,7 +387,13 @@ def _pytest_suites(step_run: str) -> list[str]:
         line = line.strip()
         if line.startswith("#") or "pytest" not in line:
             continue
-        out += [t for t in line.split() if t.startswith("tests/") and t.endswith(".py")]
+        for token in line.split():
+            if token.startswith("tests/") and token.endswith(".py"):
+                if any(char in token for char in '*?['):
+                    cwd = GOCHARA_TESTS.parents[2]
+                    out += sorted(path.relative_to(cwd).as_posix() for path in cwd.glob(token) if path.is_file())
+                else:
+                    out.append(token)
     return out
 
 
@@ -699,6 +712,38 @@ def test_measuring_dump_service_exposes_a_local_socket_for_the_disposable_guard(
     assert step["env"]["GOCHARA_A53_ADMIN_DSN"] == next(s for s in peer["steps"] if "GOCHARA_A53_ADMIN_DSN" in s.get("env", {}))["env"]["GOCHARA_A53_ADMIN_DSN"]
 
 
+@pytest.mark.parametrize("suite", [
+    "scripts/__tests__/test_gochara_pipeline_ephe_probe.py",
+    "scripts/__tests__/test_gochara_sitting_evidence_pack.py",
+])
+def test_j3ab_script_oracles_are_mandatory_and_unfiltered_in_ci(jobs, suite):
+    import shlex
+
+    job = jobs["db-integration-tests"]
+    assert not job.get("continue-on-error")
+    assert job["defaults"]["run"]["working-directory"] == "platform"
+    commands = []
+    for step in job["steps"]:
+        for line in str(step.get("run", "")).replace("\\\n", " ").splitlines():
+            if line.lstrip().startswith("#") or "pytest" not in line or suite not in line:
+                continue
+            tokens = shlex.split(line, comments=True)
+            if "pytest" not in tokens or suite not in tokens:
+                continue
+            # Since #3668 every DB step carries the profile gate: it must run in the whole full gate and
+            # on a PR that selects the discovery profile owning the suite; no other skip condition.
+            args = tokens[tokens.index("pytest") + 1:]
+            assert not step.get("continue-on-error") and runs_in_full_gate(step)
+            suites = json.loads((Path(__file__).resolve().parents[1] / "ci_test_suites.json").read_text())["suites"]
+            owners = [n for n, spec in suites.items() if any(fnmatch.fnmatch(suite, g) for g in spec["include"])]
+            assert owners, f"{suite} is owned by no discovery profile"
+            assert all(evaluate(step.get("if"), event="pull_request", profiles=[n]) for n in owners)
+            assert not any(t.split("=")[0] in _FORBIDDEN_FLAGS for t in args)
+            assert not any(t in {"||", ";", "|", "&&"} for t in tokens)
+            commands.append(tokens)
+    assert commands, f"{suite} is outside discovery and must run in mandatory CI"
+
+
 @pytest.mark.parametrize("case_count,skipped,ok", [(5, False, True), (5, True, False), (4, False, False), (0, False, False)])
 def test_p07_ci_rejects_skipped_or_missing_migration_1235_cases(jobs, tmp_path, case_count, skipped, ok):
     """Execute the shipped CI check: a skip or lost case cannot earn a DB pass."""
@@ -716,17 +761,59 @@ def test_p07_ci_rejects_skipped_or_missing_migration_1235_cases(jobs, tmp_path, 
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
 
 
-@pytest.mark.parametrize("case_count,skipped,ok", [(30, False, True), (30, True, False), (29, False, False), (0, False, False)])
-def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok):
-    """Both ported MCP suites must execute their 17 + 13 cases; skips cannot earn green."""
+@pytest.mark.parametrize("step_name,report_name", [
+    ("P07 — ported Gochara publication oracles (REQUIRED)", "gochara-mcp.xml"),
+    ("J4D — governed generation reader oracles (required; skips fail)", "gochara-j4d.xml"),
+])
+@pytest.mark.parametrize("case_count,skipped,ok", [(50, False, True), (50, True, False), (49, False, False), (0, False, False)])
+def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok, step_name, report_name):
+    """Each required reader step executes all 22 + 28 cases; skips cannot earn green."""
     import shlex
     steps = [s for s in jobs["governance-readback-tests"]["steps"]
-             if "src/tools/retrieval/register_gochara_contact_ledger.test.ts" in str(s.get("run", ""))]
+             if s.get("name") == step_name]
     assert len(steps) == 1
     command = next(shlex.split(line) for line in steps[0]["run"].splitlines() if "ET.parse(" in line)
     cases = ["<testcase />"] * case_count
     if skipped and cases:
         cases[0] = "<testcase><skipped /></testcase>"
-    (tmp_path / "gochara-mcp.xml").write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
+    (tmp_path / report_name).write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
     proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
+
+
+def test_j5s_glob_is_discovered_by_the_mandatory_db_guard():
+    selected = _pytest_suites('python -m pytest tests/l3/gochara/test_j5s_*_db.py -q')
+    assert selected == ['tests/l3/gochara/test_j5s_full_class_seal_db.py']
+
+
+@pytest.mark.parametrize('j5s,docs,others,expected', [
+    ('success', 'false', 'success', 0), ('failure', 'false', 'success', 1),
+    ('cancelled', 'false', 'success', 1), ('skipped', 'false', 'success', 1),
+    ('skipped', 'true', 'skipped', 0),
+])
+def test_j5s_result_is_required_by_the_existing_protected_umbrella(jobs, j5s, docs, others, expected):
+    umbrella = jobs['governance-tool-tests']
+    assert 'gochara-j5s-full-class-seal' in umbrella['needs']
+    step = umbrella['steps'][0]
+    assert step['env']['J5S_RESULT'] == '${{ needs.gochara-j5s-full-class-seal.result }}'
+    result = subprocess.run(['bash', '-c', step['run']], capture_output=True, text=True,
+                            env={'SHARDS_RESULT': others, 'READBACK_RESULT': others, 'EVENT_NAME': 'pull_request',
+                                 'READBACK_EXPECTED': 'false', 'J5S_EXPECTED': 'false' if docs == 'true' else 'true',
+                                 'J5S_RESULT': j5s, 'DOCS_ONLY': docs})
+    assert result.returncode == expected
+
+
+@pytest.mark.parametrize('event,expected_flag,j5s,code', [
+    ('pull_request', 'false', 'skipped', 0),    # light PR that did not select the J5S profile: skip is by design
+    ('pull_request', 'true', 'skipped', 1),     # selected on a PR: a skip would hide a missing rehearsal
+    ('merge_group', 'true', 'skipped', 1),      # full events must run it
+    ('merge_group', 'true', 'success', 0),
+])
+def test_j5s_skip_is_accepted_only_when_the_light_gate_did_not_expect_it(jobs, event, expected_flag, j5s, code):
+    step = jobs['governance-tool-tests']['steps'][0]
+    assert 'J5S_EXPECTED' in step['env']
+    result = subprocess.run(['bash', '-c', step['run']], capture_output=True, text=True,
+                            env={'SHARDS_RESULT': 'success', 'READBACK_RESULT': 'success', 'EVENT_NAME': event,
+                                 'READBACK_EXPECTED': 'true', 'J5S_EXPECTED': expected_flag,
+                                 'J5S_RESULT': j5s, 'DOCS_ONLY': 'false'})
+    assert result.returncode == code, result.stdout

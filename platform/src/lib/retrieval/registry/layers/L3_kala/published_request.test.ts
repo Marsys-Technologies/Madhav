@@ -16,11 +16,19 @@ it.each(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'])
     db.mockReset().mockResolvedValue({ rows: [{ manifest, coverage: [], sources: [{ table: 'kala_obstruction', total: 1,
       rows: [{ id: 1, generation: manifest.generation, assertion_id: 'k9-sentinel',
         assertion: { payload: { effective_state: 'information_unavailable', release: { kind: 'unknown', instant: null } } } }] }] }] })
-    const result = await getCapability(uri)!.handler!({ chart_id: chart, published_request }, {})
+    const capability = getCapability(uri)!
+    expect(capability.density_contract).toEqual({
+      paginated: true, facets: ['event_class', 'source_table'], empty_reason: true,
+    })
+    const result = await capability.handler!({ chart_id: chart, published_request }, {})
     expect(result.is_error).toBe(false)
     expect(result.content).toMatchObject({ view, chart_id: chart, ...manifest, rows: [{ data: { assertion: {
       payload: { effective_state: 'information_unavailable', release: { instant: null } },
     } } }] })
+    expect(result.content).toMatchObject({
+      density_contract: capability.density_contract, empty_reason: null,
+      pagination: { total_matching: 1, returned: 1, more_available: false, limit_per_source: 1, offset_per_source: 0 },
+    })
     expect(db).toHaveBeenCalledTimes(1)
     expect(db.mock.calls[0][1][0]).toBe(chart)
     expect(db.mock.calls[0][1][1]).toBe(published_request.at)
@@ -34,12 +42,20 @@ it.each([null, [], 'now', { chart_id: 'other' }, { at: '2026-10-16T12:00:00Z', e
     expect((result.content as Record<string, unknown>).empty_reason).toBe('invalid_request')
     expect(db).not.toHaveBeenCalled()
   })
-it('never falls back to legacy, a candidate or evaluated silence when publication is absent or SQL fails', async () => {
-  const { makePublicView } = await import('./view_common')
-  db.mockReset().mockResolvedValueOnce({ rows: [{ manifest: null, coverage: [], sources: [] }] })
-  expect((await makePublicView('now').handler!({ chart_id: chart, published_request }, {})).content)
-    .toMatchObject({ manifest_id: null, empty_reason: 'unpublished', rows: [] })
-  db.mockRejectedValueOnce(new Error('unavailable'))
-  expect(await makePublicView('now').handler!({ chart_id: chart, published_request }, {}))
-    .toMatchObject({ is_error: true, content: { manifest_id: null, empty_reason: 'query_failed' } })
-})
+it.each(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'])
+  ('public %s discloses empty published pages, absent publication and SQL errors', async view => {
+    await import('./index')
+    const { getCapability } = await import('../../index')
+    const capability = getCapability(`marsys://tool/L3/kala_${view}_get`)!
+    db.mockReset().mockResolvedValueOnce({ rows: [{ manifest, coverage: [], sources: [] }] })
+    expect((await capability.handler!({ chart_id: chart, published_request }, {})).content)
+      .toMatchObject({ ...manifest, empty_reason: 'no_matching_rows', rows: [],
+        density_contract: capability.density_contract,
+        pagination: { total_matching: 0, returned: 0, more_available: false, limit_per_source: 1, offset_per_source: 0 } })
+    db.mockReset().mockResolvedValueOnce({ rows: [{ manifest: null, coverage: [], sources: [] }] })
+    expect((await capability.handler!({ chart_id: chart, published_request }, {})).content)
+      .toMatchObject({ manifest_id: null, empty_reason: 'unpublished', rows: [] })
+    db.mockRejectedValueOnce(new Error('unavailable'))
+    expect(await capability.handler!({ chart_id: chart, published_request }, {}))
+      .toMatchObject({ is_error: true, content: { manifest_id: null, empty_reason: 'query_failed' } })
+  })

@@ -56,6 +56,14 @@ J4C_IMPLEMENTATION = {
     "geometry": "22f14a9c648a497b7702ab4ee3263fc37100ab5d352e01d60bd254c9384efc43",
     "window": "3afc40476aec141bc635309b09f32084c475ad3bd03e6f100101d52475d2c507",
 }
+# PR #3693 (kalayantra/p1-anchor-fix): record_store.materialise_record_grain now WRITES the contact of a P1 transit whose every anchor is a
+# testimony lord (it wrote nothing before; the record stays unminted, kgrr_ruling_ck). That edit to `record_store` (a geometry-stage module) is the ONLY
+# source change to the geometry stage: with main's record_store.py restored the geometry digest is exactly J4C_IMPLEMENTATION["geometry"] above.
+# Computed from this tree with implementation_registry.compute(). The golden fixture itself is not re-captured; every non-implementation
+# component, outcome, row count and SQL shape is still compared to it unchanged.
+P1_ANCHOR_IMPLEMENTATION = {
+    "geometry": "b47f2fb901d42c8a44625da1b1a05774f1e265350b4816cc43dbed081563a6f8",
+}
 # the REAL runner's birth parameters shape (birth_params._to_birth_params): main ignores them, an ordinary HEAD build must too
 BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, "longitude_deg": 85.8245, "tz_offset_hours": 5.5, "place_name": "Bhubaneswar",
                 "subject_label": "native"}
@@ -266,7 +274,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     No `horizon_basis` or `test_slice` component may appear in an ordinary run.
     """
     got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
-    want["implementation"] = {**want["implementation"], **J4C_IMPLEMENTATION}
+    want["implementation"] = {**want["implementation"], **J4C_IMPLEMENTATION, **P1_ANCHOR_IMPLEMENTATION}
     assert "horizon_basis" not in got and "test_slice" not in got
 
     same_host = got["ephemeris"]["platform"] == want["ephemeris"]["platform"]
@@ -281,6 +289,9 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     assert comparable(got) == comparable(want), "non-implementation components equal the pre-B4 baseline (excluding another host's library identity)"
     assert set(got["implementation"]) == set(want["implementation"])
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
-    assert differing == ["evaluation"], differing
-    assert got["implementation"]["geometry"] == want["implementation"]["geometry"]
-    assert got["implementation"]["window"] == want["implementation"]["window"]
+    assert differing == ["evaluation", "geometry", "window"], differing
+    # J4C-B changes the version-aware record store (geometry), independent
+    # derivation (evaluation), and rank-only factor support / job (window).
+    # All SQL, row counts, outcomes and non-implementation inputs stay pinned.
+    from services.gochara_kernel import input_vector as iv, input_vector_verifier as ivv
+    assert got["implementation"] == ivv.module_digests(iv.IMPLEMENTATION_MODULES)

@@ -9,8 +9,11 @@ from __future__ import annotations
 import re
 
 from .events import actor_stream
-from .state import build_snapshot, open_dependencies
+from .state import D46_KINDS, build_snapshot, open_dependencies, pending_gates
 from .verdicts import accepted_verdict
+
+
+COMPOSED_RECEIPT_SCHEMA = "ky.a55i_both_runs/1"    # the one composed-receipt schema (cli._check_composed_components)
 
 
 class CompletionError(ValueError):
@@ -26,12 +29,39 @@ class CompletionError(ValueError):
 # completion that `unmet_evidence` finds a gap in; `audit.audit` reports the same gap under the same code.
 EVIDENCE_TABLE = {
     "v_exact_head_then_deploy_containment": ("code", ("reviewed_head_verdict", "deployment_containment")),
-    "v_exact_head_then_post_deploy_at_merge_commit": ("code", ("reviewed_head_verdict", "post_deploy_verdict")),
+    # A8 §4 / plan v3.0 §I retired the post-deploy verdict (SR-POSTDEPLOY-RETIRED): the rule name stays declared in
+    # the plans, but a data-writing code item now needs exactly what any code item needs. The `post_deploy` verdict
+    # TYPE stays readable (events.py, verdicts.py): recorded post-deploy events remain valid history.
+    "v_exact_head_then_post_deploy_at_merge_commit": ("code", ("reviewed_head_verdict", "deployment_containment")),
     "v_artifact_digest_reviewer_not_author": ("artifact", ("artifact_verdict",)),
     "finalizer_independent_review_artifact_digest": ("artifact", ("artifact_verdict",)),
     "v_pre_acceptance_then_receipt_readback_digest": ("operation", ("completed_receipt", "artifact_verdict")),
     "v_packet_verdict_bound_to_external_review": ("packet", ("packet_verdict", "artifact_verdict")),
 }
+
+
+# A7 D-46 (owner direction 2026-10-17): a code/artifact item is IMPLEMENTED once merged + accepted + deployed
+# (artifact: digest + independent verdict). Its open dependencies no longer block that; they are recorded as
+# `activation_pending` and the item is ACTIVATED only when they close. Code items also drop the separate step
+# receipts: the PR acceptance covers the code-verifiable steps. Operation, packet, decision and join items keep
+# strict ordered completion (SR-A4-01).
+
+
+def d46_kind(model: dict, item: dict, proof_type) -> str | None:
+    """The completion kind that decides whether D-46 applies: the declared one, else the proof's own type."""
+    if isinstance(model.get("control_plane", {}).get("declarations"), dict):
+        kind = item.get("completion_kind")
+    else:
+        kind = proof_type
+    return kind if kind in D46_KINDS else None
+
+
+def d46_requirements(requirements: dict, relaxed) -> dict:
+    """D-46: EVERY code item is contained in a successful main deploy, measured (a data-writing one too; its
+    post-deploy verdict is retired, A8 §4)."""
+    if relaxed == "code" and "deployment_containment" not in requirements["evidence"]:
+        return {**requirements, "evidence": (*requirements["evidence"], "deployment_containment")}
+    return requirements
 
 
 def _production_metadata(value) -> bool:
@@ -70,16 +100,13 @@ def evidence_requirements(model: dict, item: dict) -> dict | None:
         conflict = f"reviewer_rule {rule!r} is not a declared rule"
     elif kind != entry[0]:
         conflict = f"completion_kind {kind!r} contradicts reviewer_rule {rule} ({entry[0]})"
-    elif entry[0] == "code" and ("post_deploy_verdict" in entry[1]) != writes_data(item):
-        conflict = (f"reviewer_rule {rule} contradicts the brief, which "
-                    f"{'declares' if writes_data(item) else 'declares no'} migration or operation")
     return {"reviewer_rule": rule, "completion_kind": entry[0] if entry else None,
             "evidence": entry[1] if entry else (), "conflict": conflict}
 
 
 def _undeclared_requirements(item: dict, kind) -> dict | None:
     """A model without declarations: the proof's own type selects the evidence, as before."""
-    evidence = {"code": ("reviewed_head_verdict", "post_deploy_verdict" if writes_data(item) else "deployment_containment"),
+    evidence = {"code": ("reviewed_head_verdict", "deployment_containment"),
                 "artifact": ("artifact_verdict",), "operation": ("completed_receipt", "artifact_verdict"),
                 "packet": ("packet_verdict", "artifact_verdict")}.get(kind if isinstance(kind, str) else None)
     if evidence is None:
@@ -144,16 +171,18 @@ def unmet_evidence(model: dict, item: dict, events: list[dict], completion: dict
                     or deploy.get("contains_merge") is not True or not deploy.get("run_id")):
                 gap("missing_deployment_containment", requirement,
                     "no successful deployment of main containing the merge commit was observed")
-        elif requirement == "post_deploy_verdict":
-            # a migration or production operation keeps the second, post-deploy verdict (amendment §5)
-            merge = _code_mapping(completion)[2]
-            if merge is None or not independent(accepted_verdict(events, item_id, head=merge, phase="post_deploy")):
-                gap("missing_post_deploy_verdict", requirement, "independent post-deploy verdict at merge commit is missing")
         elif requirement == "completed_receipt":
             receipt, operation_id = completion.get("receipt"), completion.get("operation_id")
+            # A composed receipt (ky.a55i_both_runs/1) has no status or item_id of its own: it counts only when
+            # the caller verified every cited component (cli._check_composed_components) and it names this item.
+            composed = isinstance(receipt, dict) and receipt.get("schema") == COMPOSED_RECEIPT_SCHEMA
+            if composed:
+                bound = completion.get("composed_components_verified") is True and receipt.get("item") == item_id
+            else:
+                bound = (isinstance(receipt, dict) and receipt.get("item_id") == item_id
+                         and receipt.get("status") == "COMPLETED")
             if (not isinstance(receipt, dict) or not isinstance(operation_id, str) or not operation_id
-                    or not _sha(digest, 64) or receipt.get("operation_id") != operation_id
-                    or receipt.get("item_id") != item_id or receipt.get("status") != "COMPLETED"):
+                    or not _sha(digest, 64) or receipt.get("operation_id") != operation_id or not bound):
                 gap("unbound_operation", requirement, "operation requires a completed receipt for this item and identity")
         elif requirement == "packet_verdict":
             packet, review_digest = completion.get("packet"), completion.get("review_sha256")
@@ -203,13 +232,23 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
         raise CompletionError("item is already done")
     if rows[item_id]["status"] == "not_applicable":
         raise CompletionError("item is not applicable")
-    strict = open_dependencies(item, rows)
-    if strict:
+    relaxed = d46_kind(model, item, proof.get("type"))
+    # an implemented-but-not-activated dependency satisfies only a code/artifact item (D-46); every other kind
+    # still waits for it to be activated (SR-A4-01)
+    strict = open_dependencies(item, rows, relaxed=relaxed is not None)
+    activation_pending: list[str] = []
+    if strict and relaxed is None:
         raise CompletionError("dependencies remain open: " + ", ".join(strict))
+    if strict:
+        unknown = [dep for dep in strict if dep not in rows]
+        if unknown:    # D-46 defers to another plan item or gate, never to an id the plan does not know
+            raise CompletionError("dependencies unknown to the plan: " + ", ".join(unknown))
+    if relaxed is not None:
+        activation_pending = pending_gates(item, rows)    # transitive: an upstream's own open gates count too
     steps = item.get("steps", [])
     completed = {ev.get("step") for ev in events if ev.get("kind") == "item" and
                  ev.get("item") == item_id and ev.get("state") == "done" and ev.get("step")}
-    if set(steps) - completed:
+    if set(steps) - completed and relaxed != "code":
         raise CompletionError("steps remain open: " + ", ".join(sorted(set(steps) - completed)))
     if not item.get("detector") or detector.get("status") != "done":
         raise CompletionError("declared detector has not passed")
@@ -218,6 +257,7 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
     requirements = evidence_requirements(model, item) or _undeclared_requirements(item, kind)
     if requirements is None:
         raise CompletionError("unknown typed evidence")
+    requirements = d46_requirements(requirements, relaxed)
     gaps = unmet_evidence(model, item, events, proof, requirements, repo=proof.get("repo"))
     first = gaps[0] if gaps else None
     if first and first["requirement"] in ("declaration", "completion_kind"):
@@ -234,17 +274,19 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
         raise CompletionError(first["detail"], first["code"])
 
     digest = proof.get("artifact_digest")
+    d46 = {"merged_pr": None, "acceptance_ref": None, "deploy_run_id": None}
     if kind == "code":
         verdict = accepted_verdict(events, item_id, head=head, repo=proof.get("repo"))
-        if "post_deploy_verdict" in requirements["evidence"]:
-            post = accepted_verdict(events, item_id, head=merge, phase="post_deploy")
-            evidence = f"PR #{observed['number']} head {head} merged {merge}; verdicts {verdict['ts']}, {post['ts']}"
-        else:
-            deploy = proof["deploy"]
-            evidence = (f"PR #{observed['number']} head {head} merged {merge}; verdict {verdict['ts']}; "
-                        f"deployed {deploy['deployed_sha']} (run {deploy['run_id']}) contains the merge commit")
+        deploy = proof.get("deploy") if isinstance(proof.get("deploy"), dict) else {}
+        d46.update(merged_pr=observed["number"], deploy_run_id=deploy.get("run_id"),
+                   acceptance_ref={"phase": "pre_merge", "head": head, "verdict_ts": verdict["ts"],
+                                   "actor": verdict.get("actor")})
+        evidence = (f"PR #{observed['number']} head {head} merged {merge}; verdict {verdict['ts']}; "
+                    f"deployed {deploy['deployed_sha']} (run {deploy['run_id']}) contains the merge commit")
     elif kind == "artifact":
         verdict = accepted_verdict(events, item_id, artifact_digest=digest, phase="artifact")
+        d46["acceptance_ref"] = {"phase": "artifact", "artifact_digest": digest, "verdict_ts": verdict["ts"],
+                                 "actor": verdict.get("actor")}
         evidence = f"artifact sha256 {digest}; verdict {verdict['ts']}"
     elif kind == "operation":
         verdict = accepted_verdict(events, item_id, artifact_digest=digest, phase="artifact")
@@ -252,6 +294,11 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
     else:
         packet_id = item["detector"]["path"].rsplit("/", 1)[-1].removesuffix(".VERDICT.json")
         evidence = f"packet {packet_id} verdict sha256 {digest}; review sha256 {proof['review_sha256']}"
-    return {"kind": "item", "actor": actor, "item": item_id, "state": "done",
-            "guarded": True, "evidence": evidence, "completion": {"type": kind, **proof},
-            "detail": "guarded completion: dependencies, steps, detector and independent acceptance verified"}
+    event = {"kind": "item", "actor": actor, "item": item_id, "state": "done",
+             "guarded": True, "evidence": evidence, "completion": {"type": kind, **proof},
+             "detail": "guarded completion: dependencies, steps, detector and independent acceptance verified"}
+    if relaxed:
+        event.update(d46, activation_pending=activation_pending,
+                     detail="D-46 implemented: independent acceptance and detector verified" + (
+                         "; activation pending on " + ", ".join(activation_pending) if activation_pending else ""))
+    return event

@@ -37,11 +37,16 @@ def canonical(value):
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
-def cloud_launcher(run_id, timeout_s):
-    """Fixed target, one async request; neither credentials nor commands in output."""
+def cloud_launcher(run_id, timeout_s, *, update_env_vars=None):
+    """Fixed target, one async request; neither credentials nor commands in output.
+
+    `update_env_vars` is a fixed, caller-coded per-execution override (never request input), e.g.
+    "PUBSUB_DISABLED=1"; None leaves the job's own environment untouched (the small-test launch).
+    """
+    env_flag = [f"--update-env-vars={update_env_vars}"] if update_env_vars else []
     result = subprocess.run(
         ["gcloud", "run", "jobs", "execute", JOB, "--project=madhav-astrology", "--region=asia-south1",
-         f"--args=--run-id,{run_id}", "--async", "--format=value(metadata.name)"],
+         *env_flag, f"--args=--run-id,{run_id}", "--async", "--format=value(metadata.name)"],
         capture_output=True, text=True, timeout=timeout_s, check=False)
     if result.returncode:
         raise Refused("remote launch failed or outcome unknown; reconcile the retained claim, never retry")

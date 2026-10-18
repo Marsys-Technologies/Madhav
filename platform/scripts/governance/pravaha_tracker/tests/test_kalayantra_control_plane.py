@@ -313,7 +313,9 @@ class GuardedCompletionCases(unittest.TestCase):
         }
         self.pr = {"number": 3210, "headRefOid": self.head, "mergeCommit": {"oid": self.merge},
                    "state": "MERGED"}
-        self.proof = {"type": "code", "reviewed_head": self.head, "pr": self.pr}
+        # A7 D-46: every code item, a data-writing one too, is also contained in a successful main deploy
+        self.deploy = {"deployed_sha": "d" * 40, "run_id": 7, "contains_merge": True}
+        self.proof = {"type": "code", "reviewed_head": self.head, "pr": self.pr, "deploy": self.deploy}
         self.step = {"kind": "item", "actor": "stream-K:k1", "item": "K-1", "state": "done",
                      "step": "tests", "evidence": "suite passed", "ts": self.now}
         self.verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "K-1",
@@ -334,12 +336,13 @@ class GuardedCompletionCases(unittest.TestCase):
             self.done([self.step, self.review, self.verdict, self.post, rejected])
 
     def test_done_requires_deps_steps_verdict_detector(self):
-        with self.assertRaisesRegex(CompletionError, "steps"):
-            self.done([self.review, self.verdict, self.post])
+        # A7 D-46: a code item needs no step receipt (its PR acceptance covers them); only the detector, verdict and
+        # post-deploy evidence remain, and an operation still waits for its dependencies (SR-A4-01).
+        self.assertTrue(self.done([self.review, self.verdict, self.post])["guarded"])
         with self.assertRaisesRegex(CompletionError, "detector"):
             self.done([self.step, self.review, self.verdict, self.post], detector="pending")
         with self.assertRaisesRegex(CompletionError, "dependencies"):
-            self.done([], item="K-2", proof={"type": "artifact", "artifact_digest": "f" * 64})
+            self.done([], item="K-2", proof={"type": "operation"})
         event = self.done([self.step, self.review, self.verdict, self.post])
         self.assertTrue(event["guarded"])
         self.assertIn(self.merge, event["evidence"])
@@ -353,11 +356,11 @@ class GuardedCompletionCases(unittest.TestCase):
         with self.assertRaisesRegex(CompletionError, "merge commit"):
             self.done([self.step, self.review, self.verdict, self.post], proof={**self.proof, "pr": unmerged})
 
-    def test_review_registration_and_post_deploy_verdict_are_required(self):
+    def test_review_registration_is_required_and_post_deploy_verdict_is_not(self):
         with self.assertRaisesRegex(CompletionError, "registered"):
             self.done([self.step, self.verdict, self.post])
-        with self.assertRaisesRegex(CompletionError, "post-deploy"):
-            self.done([self.step, self.review, self.verdict])
+        # A8 §4 (SR-POSTDEPLOY-RETIRED): the post-deploy verdict is retired; the reviewed-head verdict suffices
+        self.assertTrue(self.done([self.step, self.review, self.verdict])["guarded"])
 
     def test_artifact_item_completes_without_a_fictional_git_head(self):
         digest = "f" * 64
@@ -487,7 +490,8 @@ class GuardedCompletionCases(unittest.TestCase):
             live = ({"item": "K-1", "detector": {"status": "done", "detail": "merged"}}, "live")
             gh = subprocess.CompletedProcess([], 0, stdout=json.dumps(self.pr), stderr="")
             with patch.object(cli, "EVENTS", path), patch.object(cli, "load_model", return_value=self.model), \
-                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh):
+                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh), \
+                    patch.object(cli, "observe_containment", return_value=self.deploy):
                 self.assertEqual(cli.main(["done", "K-1", "--stream", "K", "--pr", "3210",
                                            "--reviewed-head", self.head]), 0)
             with open(path, encoding="utf-8") as handle:
@@ -953,11 +957,13 @@ class VelocityAmendmentCases(unittest.TestCase):
             self.done([self.review, self.verdict], {**self.proof, "deploy": {"deployed_sha": self.deployed,
                                                                                "run_id": 42, "contains_merge": False}})
 
-    def test_data_writing_item_still_needs_post_deploy_verdict(self):
+    def test_data_writing_item_completes_without_post_deploy_verdict_but_needs_containment(self):
         model = json.loads(json.dumps(self.model)); model["items"][0]["brief"]["migration"] = "1401_x.sql"
         proof = {**self.proof, "deploy": {"deployed_sha": self.deployed, "run_id": 42, "contains_merge": True}}
-        with self.assertRaisesRegex(CompletionError, "post-deploy"):
-            guarded_done_event(model, [self.review, self.verdict], "K-C", "stream-K:k1", {"status": "done"}, proof)
+        event = guarded_done_event(model, [self.review, self.verdict], "K-C", "stream-K:k1", {"status": "done"}, proof)
+        self.assertIn("contains the merge commit", event["evidence"])
+        with self.assertRaisesRegex(CompletionError, "deployment"):
+            guarded_done_event(model, [self.review, self.verdict], "K-C", "stream-K:k1", {"status": "done"}, self.proof)
 
     def test_verdict_survives_merge_only_push_but_not_a_new_commit(self):
         """Rewritten for the shared reviewed-patch predicate (plan §6): the tracker asks `kyverdicts.inherits`
@@ -1180,26 +1186,21 @@ class KU01Fixtures(DeclaredCase):
         post = self.verdict("K-C", head=self.merge, phase="post_deploy")
         self.assert_refused("missing_deployment_containment", "K-C", [*events, post], self.code_proof())
 
-    def test_data_writing_completion_needs_post_deploy_at_the_merge_commit(self):
+    def test_data_writing_completion_needs_containment_and_no_post_deploy_verdict(self):
+        """A8 §4 / plan v3.0 §I (SR-POSTDEPLOY-RETIRED): a data-writing code item (a migration in its brief) completes
+        on the reviewed-head verdict plus measured deployment containment; no post-deploy verdict is asked for."""
         events = [self.review("K-D"), self.verdict("K-D", head=self.head)]
+        self.assert_passes("K-D", events, self.code_proof(deploy=self.deploy))
+        # an existing post_deploy event stays valid history: it neither blocks the completion nor stands in for containment
         post = self.verdict("K-D", head=self.merge, phase="post_deploy")
-        self.assert_passes("K-D", [*events, post], self.code_proof())
         self.assert_passes("K-D", [*events, post], self.code_proof(deploy=self.deploy))
-        wrong = (
-            [],                                                                       # missing
-            [self.verdict("K-D", head=self.other, phase="post_deploy")],              # another commit
-            [self.verdict("K-D", head=self.head, phase="post_deploy")],               # the reviewed head, not the merge
-            [self.verdict("K-D", head=self.merge, phase="pre_merge")],                # the merge commit, wrong phase
-            [self.verdict("K-C", head=self.merge, phase="post_deploy")],              # another item
-            [post, {**post, "result": "REJECTED"}],                                   # revoked
-            [{**post, "actor": "stream-K:k2"}],                                       # not the verdict stream
-        )
-        for extra in wrong:
+        for extra in ([], [post]):
             with self.subTest(extra=extra):
-                # recorded containment never stands in for the post-deploy verdict
-                codes = self.assert_refused("missing_post_deploy_verdict", "K-D", [*events, *extra],
-                                            self.code_proof(deploy=self.deploy))
-                self.assertNotIn("missing_deployment_containment", codes)
+                codes = self.assert_refused("missing_deployment_containment", "K-D", [*events, *extra],
+                                            self.code_proof())
+                self.assertNotIn("missing_post_deploy_verdict", codes)
+        self.assertEqual(evidence_requirements(self.model, self.model["items"][1])["evidence"],
+                         ("reviewed_head_verdict", "deployment_containment"))
 
     def test_invalid_inheritance_fails(self):
         old, repo = "e" * 40, "/fixture/repo"
@@ -1222,13 +1223,12 @@ class KU01Fixtures(DeclaredCase):
             self.assert_refused("rejected_or_stale_verdict", "K-C", [*events, rejected], proof)
 
     def test_audit_rechecks_typed_evidence_at_the_end_of_the_log(self):
-        events = [self.review("K-D"), self.verdict("K-D", head=self.head),
-                  self.verdict("K-D", head=self.merge, phase="post_deploy")]
-        self.assert_passes("K-D", events, self.code_proof())
-        for revoked, code in ((events[1], "rejected_or_stale_verdict"), (events[2], "missing_post_deploy_verdict")):
-            refused, codes = self.both("K-D", events, self.code_proof(), later=[{**revoked, "result": "REJECTED"}])
-            self.assertIsNone(refused)                       # the guard saw the log before the revocation
-            self.assertEqual(codes, {code})
+        events = [self.review("K-D"), self.verdict("K-D", head=self.head)]
+        self.assert_passes("K-D", events, self.code_proof(deploy=self.deploy))
+        refused, codes = self.both("K-D", events, self.code_proof(deploy=self.deploy),
+                                   later=[{**events[1], "result": "REJECTED"}])
+        self.assertIsNone(refused)                           # the guard saw the log before the revocation
+        self.assertEqual(codes, {"rejected_or_stale_verdict"})
 
 
 class EvidenceTableCases(DeclaredCase):
@@ -1236,7 +1236,7 @@ class EvidenceTableCases(DeclaredCase):
 
     def test_table_covers_every_declared_rule_and_nothing_else(self):
         want = {CONTAINMENT: ("code", ("reviewed_head_verdict", "deployment_containment")),
-                POST_DEPLOY: ("code", ("reviewed_head_verdict", "post_deploy_verdict")),
+                POST_DEPLOY: ("code", ("reviewed_head_verdict", "deployment_containment")),   # retired verdict: SR-POSTDEPLOY-RETIRED
                 ARTIFACT: ("artifact", ("artifact_verdict",)),
                 FINALIZER: ("artifact", ("artifact_verdict",)),
                 OPERATION: ("operation", ("completed_receipt", "artifact_verdict")),
@@ -1258,7 +1258,8 @@ class EvidenceTableCases(DeclaredCase):
             self.assertIsNone(req["conflict"], row["id"])
             self.assertEqual(req["completion_kind"], row["completion_kind"])
             if row["completion_kind"] == "code":
-                self.assertEqual("post_deploy_verdict" in req["evidence"], writes_data(row), row["id"])
+                self.assertNotIn("post_deploy_verdict", req["evidence"], row["id"])    # retired (A8 §4)
+                self.assertIn("deployment_containment", req["evidence"], row["id"])
 
     def test_writes_data_normalises_migration_metadata(self):
         for brief, expected in (
@@ -1292,14 +1293,13 @@ class EvidenceTableCases(DeclaredCase):
         self.assert_passes("N-A", events, artifact)
 
     def test_guard_and_audit_refuse_a_declaration_that_contradicts_the_item(self):
-        events = [self.review("K-C"), self.verdict("K-C", head=self.head),
-                  self.verdict("K-C", head=self.merge, phase="post_deploy")]
+        events = [self.review("K-C"), self.verdict("K-C", head=self.head)]
         proof = self.code_proof(deploy=self.deploy)
         self.assert_passes("K-C", events, proof)
         row = self.model["items"][0]
-        for change in ({"brief": {"migration": "1402_x.sql"}},                       # data-writing under containment
-                       {"reviewer_rule": POST_DEPLOY},                               # post-deploy rule, writes nothing
-                       {"reviewer_rule": ARTIFACT}, {"completion_kind": "artifact"},  # rule and kind disagree
+        # (a migration under the containment rule, or the post-deploy rule on a non-writing item, is no longer a
+        # conflict: both rules now require the same evidence, A8 §4)
+        for change in ({"reviewer_rule": ARTIFACT}, {"completion_kind": "artifact"},  # rule and kind disagree
                        {"reviewer_rule": "v_trust_me"}, {"reviewer_rule": None}, {"completion_kind": None}):
             with self.subTest(change=change):
                 saved = dict(row)
@@ -1734,9 +1734,10 @@ class AuditCommandCases(DeclaredCase):
             self.assertRegex(line, r"^FAIL [a-z_]+ [A-Za-z0-9-]+: \S")
         found = {tuple(line.split(":")[0].split()[1:]) for line in fails}
         self.assertLessEqual({("missing_deployment_containment", "K-C"), ("rejected_or_stale_verdict", "K-D"),
-                              ("missing_post_deploy_verdict", "K-D"), ("completion_kind_mismatch", "N-A"),
+                              ("completion_kind_mismatch", "N-A"),
                               ("unbound_operation", "N-OP"), ("missing_artifact_verdict", "N-OP")}, found)
         self.assertNotIn(("missing_post_deploy_verdict", "K-C"), found)
+        self.assertNotIn(("missing_post_deploy_verdict", "K-D"), found)      # retired for a data-writing item (A8 §4)
 
     def test_audit_unavailable_is_exit_2(self):
         def broken():
@@ -1836,12 +1837,16 @@ class DeclaredSnapshotCases(unittest.TestCase):
         self.assertNotIn("staged", {row["id"]: row for row in snapshot["decisions"]}["D-RETIRE-K-R"])
         self.assertEqual([row["id"] for row in snapshot["native_queue"]], ["D-ASK"])
 
-    def test_committed_model_stages_exactly_its_two_retirements(self):
+    def test_committed_model_stages_exactly_its_retirements(self):
+        # the two B-2 retirements, plus the six owner-authorised not_applicable decisions of Amendment A9
+        # (D-51, D-53, D-54): staged, so none is a question for the native
         with open(COMMITTED_MODEL, encoding="utf-8") as handle:
             model = json.load(handle)
         snapshot = self.snapshot(model=model)
         staged = {row["id"] for row in snapshot["decisions"] if row.get("staged")}
-        self.assertEqual(staged, {"D-RETIRE-B-K-INBOX", "D-RETIRE-B-CLAIM-RECOVERY"})
+        self.assertEqual(staged, {"D-RETIRE-B-K-INBOX", "D-RETIRE-B-CLAIM-RECOVERY", "D-A9-NA-JOIN-ALL",
+                                  "D-A9-NA-K-CERT-2", "D-A9-NA-W4-SAFETY", "D-A9-NA-PROCESS-NOTES",
+                                  "D-A9-NA-OPS-NB-03", "D-A9-NA-PACKET-EXITS"})
         self.assertFalse(staged & {row["id"] for row in snapshot["native_queue"]})
 
 

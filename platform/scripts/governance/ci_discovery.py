@@ -137,19 +137,31 @@ def workflow_problems(text: str) -> list[str]:
     return problems
 
 
-def run(root: Path, profile: dict, args: list[str]) -> int:
-    files = discover(root, profile)
+def run(root: Path, profile: dict, args: list[str], *, suite: str | None = None) -> int:
+    from ci_db_shard import NODE_SHARD_JOBS, selected_files
+    full_files = discover(root, profile)
+    files = selected_files(root, suite, profile, full_files)
+    if not files:
+        return 0  # this step has no files on this shard; never run an unfiltered runner
     command = ([sys.executable, '-m', 'pytest'] if profile['engine'] == 'pytest'
                else ['npx', '--no-install', 'vitest', 'run', '--no-cache'])
     quarantine = profile.get('quarantine', {})
     if quarantine and (profile['engine'] != 'vitest' or any(len(reason.strip()) < 12 for reason in quarantine.values()) or any(any(c in path for c in '*?[') for path in quarantine)):
         raise ValueError('quarantine requires Vitest paths and reviewable reasons')
     exclusions = [arg for path in quarantine for arg in ('--exclude', path)]
+    if profile['engine'] == 'vitest' and os.environ.get('CI_DB_SHARD'):
+        # Vitest positional filters are substrings: x.test.ts also matches x.test.tsx.
+        # Exclude the other shard files explicitly so each file really runs once.
+        exclusions += [arg for path in full_files if path not in files for arg in ('--exclude', path)]
     if profile.get('workers'):
         exclusions += ['--minWorkers=1', f"--maxWorkers={profile['workers']}"]
     if profile.get('test_timeout_ms'):
         exclusions += [f"--testTimeout={profile['test_timeout_ms']}"]
-    return subprocess.call([*command, *files, *exclusions, *args], cwd=root / profile['cwd'])
+    execution_env = os.environ.copy()
+    if os.environ.get('CI_DB_SHARD_JOB') in NODE_SHARD_JOBS:
+        exclusions += ['-p', 'ci_db_node_shard']
+        execution_env['PYTHONPATH'] = os.pathsep.join(filter(None, [str(Path(__file__).parent), execution_env.get('PYTHONPATH')]))
+    return subprocess.call([*command, *files, *exclusions, *args], cwd=root / profile['cwd'], env=execution_env)
 
 
 def main():
@@ -180,7 +192,7 @@ def main():
         if ns.suite not in selected:
             print(f'PR DB profile {ns.suite}: unchanged, skipped by design')
             return 0
-    return run(ROOT, profile, args)
+    return run(ROOT, profile, args, suite=ns.suite)
 
 
 def expanded_workflow(jobs: dict, root: Path = ROOT) -> dict:
