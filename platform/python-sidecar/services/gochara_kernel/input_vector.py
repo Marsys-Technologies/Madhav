@@ -57,7 +57,7 @@ IMPLEMENTATION_MODULES = {
         "substrate", "targets")),
     "evaluation": tuple(_K + m for m in (
         "chart_context", "coverage", "dasha_read", "rehearsal_settlement", "ephemeris_pins", "evaluator", "horizon", "input_vector", "input_vector_verifier",
-        "inventory", "inventory_store", "inventory_verifier", "ledger", "lifecycle", "native_conn",
+        "inventory", "inventory_store", "inventory_verifier", "nd_h_tables", "ledger", "lifecycle", "native_conn",
         "record_derivation", "record_verifier", "scope_response",
         "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",) + tuple(_R + m for m in (
         "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "flat_selector", "frames",
