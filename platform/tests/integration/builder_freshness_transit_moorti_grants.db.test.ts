@@ -31,6 +31,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Pool } from 'pg'
+import { acquireClusterRoleLock, ensureRole } from './builder_role_fixture'
 import fs from 'fs'
 import path from 'path'
 
@@ -90,6 +91,7 @@ const FRESHNESS_UPSERT = (() => {
 const MOORTI_UPSERT = extractUpsert(L0_TRANSIT_PY_PATH, 'bg_transit_moorti')
 
 let pool: Pool
+let releaseRoleLock: (() => Promise<void>) | undefined
 
 /** Run `fn` on a connection AS the builder-mirror role, inside a rolled-back transaction by default. */
 type Q = (sql: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[]; rowCount: number | null }>
@@ -157,6 +159,8 @@ describe.skipIf(!TEST_DB_URL)('migration 1217 — builder grants on asset_freshn
       )
     }
     pool = new Pool({ connectionString: TEST_DB_URL })
+    // Cluster-wide role: serialise against every other suite that mirrors data_plane_builder.
+    releaseRoleLock = await acquireClusterRoleLock(TEST_DB_URL!)
 
     await pool.query(`
       DROP TABLE IF EXISTS asset_freshness, bg_transit_moorti, charts, asset_registry CASCADE;
@@ -194,17 +198,14 @@ describe.skipIf(!TEST_DB_URL)('migration 1217 — builder grants on asset_freshn
     // Owner mirrors amjis_app: owns both tables, NO CREATE on schema public.
     // Builder mirrors data_plane_builder's production ACL on these two tables
     // (relacl: r = SELECT only) and holds zero role memberships.
+    for (const role of [OWNER_ROLE, BUILDER_ROLE, NON_OWNER_ROLE, NO_PRIV_ROLE]) await ensureRole(pool, role)
     await pool.query(`
-      CREATE ROLE ${OWNER_ROLE} NOLOGIN;
-      CREATE ROLE ${BUILDER_ROLE} NOLOGIN;
-      CREATE ROLE ${NON_OWNER_ROLE} NOLOGIN;
-      CREATE ROLE ${NO_PRIV_ROLE} NOLOGIN;
       ALTER TABLE asset_freshness OWNER TO ${OWNER_ROLE};
       ALTER TABLE bg_transit_moorti OWNER TO ${OWNER_ROLE};
       GRANT USAGE ON SCHEMA public TO ${OWNER_ROLE}, ${BUILDER_ROLE}, ${NON_OWNER_ROLE}, ${NO_PRIV_ROLE};
       GRANT SELECT ON asset_freshness, bg_transit_moorti TO ${BUILDER_ROLE}, ${NON_OWNER_ROLE};
     `)
-  })
+  }, 120_000)
 
   afterAll(async () => {
     if (!pool) return
@@ -220,6 +221,7 @@ describe.skipIf(!TEST_DB_URL)('migration 1217 — builder grants on asset_freshn
       DROP ROLE IF EXISTS ${NO_PRIV_ROLE};
     `)
     await pool.end()
+    await releaseRoleLock?.()
   })
 
   it('extracted the real upsert statements from source (drift guard)', () => {
