@@ -233,7 +233,7 @@ def test_cli_fails_closed(tmp_path):
 
 # ---------------------------------------------------------------- the workflow wiring -----------------------------------------------------
 
-HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
+HEAVY = ("replace-chain-substrate", "typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
          "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")
 NEVER_SKIPPED = ("generated-artifacts", "changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
@@ -285,7 +285,9 @@ def test_the_trigger_set_is_unchanged_so_push_and_merge_group_still_run_everythi
 
 
 def test_every_job_in_ci_yml_is_classified_here_so_a_new_heavy_job_is_a_conscious_choice(jobs):
-    unknown = set(jobs) - set(HEAVY) - set(NEVER_SKIPPED) - {"census-battery", "unit-db-tests", "full-suite", "governance-gates-py-sidecar-shard", "replace-chain-substrate"} - {name for name in jobs if name.startswith("required-")}
+    from ci_db_shard import JOB_SHARDS
+    umbrellas = {"required-"+name for name in JOB_SHARDS}
+    unknown = set(jobs) - umbrellas - set(HEAVY) - set(NEVER_SKIPPED) - {"census-battery", "unit-db-tests", "full-suite", "governance-gates-py-sidecar-shard"}
     assert not unknown, f"classify these jobs as HEAVY (skipped on docs-only) or NEVER_SKIPPED: {sorted(unknown)}"
 
 
@@ -716,17 +718,21 @@ def test_p07_ci_rejects_skipped_or_missing_migration_1235_cases(jobs, tmp_path, 
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
 
 
-@pytest.mark.parametrize("case_count,skipped,ok", [(30, False, True), (30, True, False), (29, False, False), (0, False, False)])
-def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok):
-    """Both ported MCP suites must execute their 17 + 13 cases; skips cannot earn green."""
+@pytest.mark.parametrize("step_name,report_name", [
+    ("P07 — ported Gochara publication oracles (REQUIRED)", "gochara-mcp.xml"),
+    ("J4D — governed generation reader oracles (required; skips fail)", "gochara-j4d.xml"),
+])
+@pytest.mark.parametrize("case_count,skipped,ok", [(50, False, True), (50, True, False), (49, False, False), (0, False, False)])
+def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok, step_name, report_name):
+    """Each required reader step executes all 22 + 28 cases; skips cannot earn green."""
     import shlex
     steps = [s for s in jobs["governance-readback-tests"]["steps"]
-             if "src/tools/retrieval/register_gochara_contact_ledger.test.ts" in str(s.get("run", ""))]
+             if s.get("name") == step_name]
     assert len(steps) == 1
     command = next(shlex.split(line) for line in steps[0]["run"].splitlines() if "ET.parse(" in line)
     cases = ["<testcase />"] * case_count
     if skipped and cases:
         cases[0] = "<testcase><skipped /></testcase>"
-    (tmp_path / "gochara-mcp.xml").write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
+    (tmp_path / report_name).write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
     proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr

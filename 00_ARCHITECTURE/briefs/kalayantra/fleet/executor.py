@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""KĀLA-YANTRA fixed-operation executor v1.2 (charter §7) — the ONLY process that holds a production credential.
+"""KĀLA-YANTRA fixed-operation executor v1.3 (charter §7; Amendment A8 §3.8–§3.11) — the ONLY process that holds a production credential.
 
 What it trusts: nothing an agent can edit in a working tree. The operations table and every script it runs are read from
 `origin/main` — i.e. only what was reviewed and merged:
@@ -12,14 +12,21 @@ Loop: read run/ops/requests/*.json → validate → (production: take the single
 before execution → run in its own process group → write run/ops/receipts/<operation_id>.json (redacted; the complete output
 goes to <operation_id>.output.txt with its sha256) → move the request to run/ops/done/.
 
-Production approval binds the COMPLETE request: the verifier's acceptance receipt carries the sha256 of the request (sorted
-compact JSON, without the `acceptance_receipt` field), a timestamp, the checklist rows the operation's table entry requires
-and the backup / restore / dry-run attestations. The lease must be the ONLY unexpired ACTIVE row of the shared lease table.
+Production approval binds the request (A8 §3.9): ONE verifier lane's acceptance receipt carries the sha256 of the request as
+sorted compact JSON without the fields that may lawfully change after signing — `acceptance_receipt`, `expires_at` and any
+`*_expires_at` lease-expiry field (see request_digest) — plus the attestations the kind needs: `dry_run_passed` for a mutating
+kind and `backup_taken` for a `*_teardown`. It is valid from its timestamp until the request's `expires_at`; there is no age cap.
+The lease must be the ONLY unexpired ACTIVE row of the shared lease table. `*_dryrun` kinds are `production: false` — read-only
+with a credential: no lease, acceptance or fence, but a merged `reviewed_commit` (they run in its tree) and a rollback proof in
+the receipt.
 
-The production slot is a FENCE file, run/ops/PRODUCTION_PENDING.json. It is written before a production operation starts and
-is RETAINED afterwards — success, failure or interruption — because a dispatch can return while its remote job still runs.
-Only the owner surrogate removes it, after the verifier's quiescence receipt for that request. Read-only operations are not
-fenced and run in parallel. A production operation in flight at a restart is NEVER re-run: its receipt says INTERRUPTED.
+The production slot is a FENCE file, run/ops/PRODUCTION_PENDING.json. Only a REMOTE-ASYNCHRONOUS kind takes it (A8 §3.11: the
+table's `remote_async: true`, or a named dispatch / century / verification job) — written before the operation starts and
+RETAINED afterwards — success, failure or interruption — because a dispatch returns while its remote job still runs. Only the
+owner surrogate removes it, after the quiescence receipt for that request. Synchronous production kinds take no fence (the one
+production worker serialises them); read-only operations are not fenced and run in parallel. A production operation in flight
+at a restart is NEVER re-run: its receipt says INTERRUPTED. A refused executor refresh (HOLD, STOP, queued or in-flight work,
+an unproven fence) is logged as REFRESH_REFUSED and recorded in run/ops/EXECUTOR_REFRESH.json; this snapshot keeps serving.
 A child process receives an allow-listed environment plus, at most, the ONE connection its operation needs.
 """
 from __future__ import annotations
@@ -38,7 +45,8 @@ REDACT = [re.compile(r"postgres(?:ql)?://[^\s'\"]+", re.I), re.compile(r"(passwo
 SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]{1,80}$"); SAFE_ARG = re.compile(r"^[A-Za-z0-9_.:,=/@+-]{1,300}$"); SHA = re.compile(r"^[0-9a-f]{7,40}$")
 CHILD_ENV_ALLOW = {"HOME", "PATH", "LANG", "LC_ALL", "TZ", "TMPDIR", "USER", "LOGNAME", "CLOUDSDK_CONFIG", "GOOGLE_APPLICATION_CREDENTIALS"}
 SEEN = OPS / "idempotency.jsonl"; MAX_TIMEOUT = 6 * 3600
-APPROVAL_MAX_AGE_S = 3 * 3600      # an acceptance is written in the verifier's cycle and used in the surrogate's next one
+UNBOUND_REQUEST_FIELDS = frozenset({"acceptance_receipt", "expires_at"})   # A8 §3.9: plus any `*_expires_at` field — see request_digest; mirrored by kyd_kinds_ops.request_digest and v5_small_test_shared.request_hash
+REMOTE_ASYNC_KINDS = frozenset({"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"})   # A8 §3.11: work continues remotely after the child returns — fenced even if a table drops `remote_async`
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
 _lock = threading.Lock()
 
@@ -123,7 +131,10 @@ def fence_quiescent() -> bool:
     accepted = (isinstance(request_sha256, str) and re.fullmatch(r"[0-9a-f]{64}", request_sha256) is not None
             and proof.get("operation_id") == operation_id and proof.get("request_sha256") == request_sha256
             and proof.get("result") == "ACCEPTED"
-            and proof.get("by") in ("v1", "v2", "v3", "v4") and bool(proof.get("ts")))
+            and proof.get("by") in ("v1", "v2", "v3", "v4", "executor-mechanical") and bool(proof.get("ts")))
+    if accepted and proof.get("by") == "executor-mechanical":      # A7 D-44: only the executor's own measured record, with every check true
+        accepted = (proof.get("schema") == "ky.mechanical_quiescence/1" and isinstance(proof.get("checks"), dict)
+                    and bool(proof["checks"]) and all(value is True for value in proof["checks"].values()))
     if not accepted:
         return False
     try:
@@ -187,18 +198,21 @@ def handover_from_main() -> str | None:
     return None
 
 def refresh_from_main_or_fail_closed() -> bool:
-    """Refresh this snapshot, returning true only when it is safe to admit work.
+    """Refresh this snapshot; true when the running revision is proven current, false when the refresh was refused.
 
     A changed source is atomically staged and then exec'd in this same
-    credential-bearing process.  A failed or unsafe refresh deliberately
-    leaves this process alive but closes admission rather than running a
-    stale snapshot against new requests.
+    credential-bearing process.  A refused or unprovable refresh is what fails
+    closed — the handover does not happen — and it is logged as
+    ``REFRESH_REFUSED <reason>`` and recorded in EXECUTOR_REFRESH.json.  It
+    does NOT close admission (A8 §5): a merged executor change plus a queued
+    request must not stop all operations; the current reviewed snapshot keeps
+    serving until it is idle and the handover can proceed.
     """
     before = running_revision()
     why = handover_from_main()
     if why:
         REFRESH.write_text(json.dumps({"result": "REFUSED", "reason": why, "ts": now()}, indent=1))
-        log(f"executor refresh refused: {why}")
+        log(f"REFRESH_REFUSED {why}")
         return False
     if running_revision() != before:
         os.execv(PY, [PY, str(EXEC / "executor.py")])
@@ -206,6 +220,7 @@ def refresh_from_main_or_fail_closed() -> bool:
     commit = main_revision()
     if source is None or commit is None or digest_bytes(source) != running_revision():
         REFRESH.write_text(json.dumps({"result": "REFUSED", "reason": "running revision cannot be proven current", "ts": now()}, indent=1))
+        log("REFRESH_REFUSED running revision cannot be proven current")
         return False
     REFRESH.write_text(json.dumps({"result": "ACTIVE", "main_revision": commit,
                                    "executor_revision": running_revision(), "ts": now()}, indent=1))
@@ -240,7 +255,11 @@ def lease_live(lease_id: str) -> bool:
     return active == [lease_id]
 
 def request_digest(req: dict) -> str:
-    bound = {k: v for k, v in req.items() if k != "acceptance_receipt"}
+    """The sha256 an acceptance binds (A8 §3.9): the request as sorted compact JSON without the fields that may lawfully change after
+    signing — `acceptance_receipt`, `expires_at` and any `*_expires_at` lease-expiry field — so a lease renewal or an expiry extension never
+    voids an acceptance. operation_id, kind, item_id, args, reviewed_commit, chart_id, lease_id and every other field stay bound. Mirrored byte
+    for byte by kyd_kinds_ops.request_digest (the signer) and platform/scripts/v5_small_test_shared.request_hash (the children check their own binding)."""
+    bound = {k: v for k, v in req.items() if k not in UNBOUND_REQUEST_FIELDS and not k.endswith("_expires_at")}
     return hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 def utc_time(value: str) -> dt.datetime:
@@ -368,6 +387,11 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
     bad = [k for k in args if k not in op.get("allowed_args", [])]
     if bad: return f"disallowed args {bad}"
     if any(not SAFE_ARG.match(str(v)) for v in args.values()): return "an argument value has unsafe characters"
+    if not op.get("production") and req["kind"].endswith("_dryrun"):
+        # A8 §3.8: read-only with a credential — no lease, acceptance or fence; but a credentialed child only ever runs a reviewed, merged tree
+        rc = str(req.get("reviewed_commit", ""))
+        if not SHA.match(rc): return "reviewed_commit required for a dry-run operation"
+        if git("merge-base", "--is-ancestor", rc, "origin/main").returncode != 0: return "reviewed_commit is not merged to main"
     if op.get("production"):
         if req.get("chart_id") != CANONICAL_CHART: return "chart_id is not the canonical chart"
         if not req.get("lease_id") or not lease_live(req["lease_id"]): return "lease is not the single unexpired ACTIVE row on origin/campaign-coordination"
@@ -384,15 +408,12 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         if a.get("reviewed_commit") != rc: return "the acceptance receipt names a different reviewed_commit"
         try:
             current = dt.datetime.now(dt.timezone.utc); issued = utc_time(a["ts"]); expires = utc_time(req["expires_at"])
-            if not issued <= current < expires or (current - issued).total_seconds() > APPROVAL_MAX_AGE_S: return "approval expired or not yet valid"
+            if not issued <= current < expires: return "approval expired or not yet valid"      # A8 §4: no age cap — valid until the request's own expiry
         except (KeyError, TypeError, ValueError): return "valid approval timestamp and a timezone-qualified request expires_at required"
         if a.get("request_sha256") != request_digest(req): return "approval does not bind the complete request"
-        kind = req["kind"]; required = []
-        if kind != "backup_snapshot": required.append("backup_taken")
-        if kind not in ("backup_snapshot", "backup_restore_verify"): required.append("restore_verified")
-        if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"):
-            required.append("dry_run_passed")
-            if any((a.get("rows") or {}).get(k) is not True for k in op.get("required_rows", [])): return "required pre-acceptance rows are not all true"
+        kind = req["kind"]; required = []                                        # A8 §5: `required_rows` and `restore_verified` are retired as preconditions
+        if kind.endswith("_teardown"): required.append("backup_taken")
+        if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"): required.append("dry_run_passed")
         if any((a.get("checks") or {}).get(k) is not True for k in required): return "required backup/restore/dry-run attestation missing"
     if not reserved and seen(req["idempotency_key"]): return "idempotency key already used"
     return smalltest_policy_problem(req)
@@ -400,6 +421,12 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
 
 def lane_selected(req: dict) -> bool:
     return "lane_target" in req
+
+
+def remote_async(kind: str, op: dict) -> bool:
+    """A8 §3.11: only a kind whose work continues on a remote system after its child returns takes the production fence — the table's
+    `remote_async: true`, or one of REMOTE_ASYNC_KINDS even if a table drops the flag. A synchronous kind is finished when its child is."""
+    return op.get("remote_async") is True or kind in REMOTE_ASYNC_KINDS
 
 
 def lane_target_settings(req: dict) -> dict:
@@ -453,9 +480,7 @@ def validate_lane(req: dict, op: dict, reserved: bool = False) -> str | None:
     except (KeyError, ValueError, TypeError):
         return "timezone-qualified lane expires_at required"
     if seen(req["idempotency_key"]) and not reserved: return "idempotency key already used"
-    if "lane_receipts" in req:
-        try: lane_qualification(req)
-        except (ValueError, OSError, KeyError, TypeError): return "lane qualification receipts missing, mismatched or incomplete"
+    # A8 §4: the J-1a lane qualification ritual (`lane_receipts`) is no longer an admission precondition; see execute_lane / receipt_lane.
     # Reuse the reviewed small-test admission policy, with the non-mutating
     # child mode. Empty scope is the initial rehearsal, never deletion authority.
     if req["kind"].startswith("smalltest_"):
@@ -572,12 +597,15 @@ def execute_lane(req: dict, op: dict) -> tuple[int, str]:
         if result.returncode: return 127, "lane reviewed source export failed"
         source = scratch / "source"; source.mkdir()
         with tarfile.open(archive) as bundle: bundle.extractall(source, filter="data")
-        # Stage immutable evidence bytes for the separately connected observer.
-        # It rechecks every digest after this copy, so races fail closed.
+        # A request that still carries the retired J-1a ritual (A8 §4) is bound here and at the receipt, never at admission: stage the
+        # evidence bytes for the separately connected observer only through lane_qualification, whose checks keep every name inside
+        # REC. The observer rechecks every digest after this copy, so races fail closed.
         if "lane_receipts" in req:
+            try: bound = lane_qualification(req)
+            except (ValueError, OSError, KeyError, TypeError): return 2, "lane qualification receipts missing, mismatched or incomplete"
             staged = scratch / "run/ops/receipts"; staged.mkdir(parents=True)
-            for ref in req["lane_receipts"]:
-                for name in (ref["name"], ref["name"][:-5] + ".output.txt"):
+            for entry in bound:
+                for name in (entry["operation_id"] + ".json", entry["operation_id"] + ".output.txt"):
                     (staged / name).write_bytes((REC / name).read_bytes())
         env = lane_child_env(req, scratch)
         env["PYTHONPATH"] = str(source / "platform/python-sidecar")
@@ -656,8 +684,9 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
     elif op["needs"] == "owner": env["DATABASE_URL"] = os.environ["KY_OWNER_DATABASE_URL"]
     elif op["needs"] == "layer_verifier": env["DATABASE_URL"] = os.environ["KY_LAYER_VERIFIER_DATABASE_URL"]
     env["KY_OPERATION_REQUEST"] = json.dumps(req, sort_keys=True, separators=(",", ":"))
+    env["PGAPPNAME"] = session_marker(oid)                                      # A7 D-44: libpq tags every connection this child opens, so quiescence can see them
     env["SE_EPHE_PATH"] = os.environ.get("SE_EPHE_PATH", str(KY_ROOT / "ephe")); env["KY_ROOT"] = str(KY_ROOT)
-    if not op.get("production"):
+    if not op.get("production") and not req["kind"].endswith("_dryrun"):     # a `*_dryrun` is production:false (A8 §3.8) yet runs in its reviewed tree below
         src = git("show", f"origin/main:{script}")
         if src.returncode != 0: return 127, f"script {script} is not on origin/main"
         tmp = TMP / f"{oid}.{pathlib.Path(script).name}"; tmp.write_text(src.stdout); tmp.chmod(0o700)
@@ -691,6 +720,154 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
         git("worktree", "remove", "--force", str(wt), timeout=300)
 
 
+def session_marker(operation_id: str) -> str:
+    """A7 D-44: the application_name (PGAPPNAME) every database connection of this operation's child carries. Before this, no operation set
+    a marker. A remote execution (Cloud Run) opens its own connections without it: those are covered by the execution readback instead."""
+    return "ky-op-" + hashlib.sha256(operation_id.encode()).hexdigest()[:16]
+
+
+def write_new_json(path: pathlib.Path, document: dict) -> bool:
+    """Publish `document` at `path` atomically (temp file + hard link); an existing path is never replaced — returns False."""
+    pending = path.with_name("." + path.name + f".pending-{os.getpid()}")
+    try:
+        with pending.open("x") as stream:
+            stream.write(json.dumps(document, indent=1)); stream.flush(); os.fsync(stream.fileno())
+        os.link(pending, path)
+        return True
+    except FileExistsError:
+        return False
+    finally:
+        pending.unlink(missing_ok=True)
+
+
+def measured_identity(req: dict, archived: pathlib.Path) -> tuple[dict, bytes, bytes, dict]:
+    """A7 D-44: re-measure from the files the executor itself wrote (never from the process that ran) that `req` ended COMPLETED with exit 0,
+    that the archived request is the one the receipt binds, and that the output file is the one the receipt digests.
+    Returns (receipt, receipt bytes, output bytes, checks); a check is True only when its comparison held."""
+    oid = req["operation_id"]
+    receipt_bytes = (REC / f"{oid}.json").read_bytes(); record = json.loads(receipt_bytes)
+    body = (REC / f"{oid}.output.txt").read_bytes()
+    archived_sha = request_digest(json.loads(archived.read_text()))
+    entry = (load_table() or {}).get(req["kind"]) or {}
+    commit = req.get("reviewed_commit")
+    checks = {
+        "receipt_completed_exit_zero": record.get("status") == "COMPLETED" and type(record.get("exit_code")) is int and record["exit_code"] == 0,
+        "receipt_names_this_operation": record.get("operation_id") == oid and record.get("kind") == req["kind"],
+        "archived_request_sha_equals_receipt": archived_sha == record.get("request_sha256") == request_digest(req),
+        "output_sha_equals_receipt": digest_bytes(body) == record.get("output_sha256"),
+        "reviewed_commit_merged": (isinstance(commit, str) and SHA.fullmatch(commit) is not None and commit == record.get("reviewed_commit")
+                                   and git("merge-base", "--is-ancestor", commit, "origin/main").returncode == 0),
+        "kind_read_only_per_table": entry.get("read_only") is True and entry.get("production") is False,
+        "not_a_lane_rehearsal": not lane_selected(req) and "lane_target" not in record,
+    }
+    return record, receipt_bytes, body, {k: bool(v) for k, v in checks.items()}
+
+
+def mechanical_post_acceptance(req: dict, archived: pathlib.Path) -> str | None:
+    """A7 D-44: a COMPLETED exit-0 read-only operation is accepted by the executor itself — no reviewer. Writes acceptance/<op>.post.json
+    (by executor-mechanical) only when every identity check above holds; otherwise nothing (honest null) and the reason is returned.
+    It judges nothing about the readback's content: op-specific pass criteria stay with whoever consumes it."""
+    record, receipt_bytes, body, checks = measured_identity(req, archived)
+    failed = sorted(k for k, v in checks.items() if not v)
+    if failed: return "not accepted: " + ", ".join(failed)
+    document = {"schema": "ky.mechanical_acceptance/1", "phase": "post", "by": "executor-mechanical", "result": "ACCEPTED",
+                "operation_id": req["operation_id"], "kind": req["kind"], "request_sha256": record["request_sha256"],
+                "reviewed_commit": record["reviewed_commit"], "exit_code": 0, "output_sha256": record["output_sha256"],
+                "receipt_sha256": digest_bytes(receipt_bytes), "checks": checks, "ts": now()}
+    return None if write_new_json(ACC / f"{req['operation_id']}.post.json", document) else "acceptance already exists; left untouched"
+
+
+def accepted_cloudrun_execution(readback_id: str, execution_name: str) -> dict | None:
+    """The terminal state of `execution_name` as an ACCEPTED cloudrun_job_readback measured it (None when not provable or still running)."""
+    if not SAFE_ID.fullmatch(readback_id): return None
+    record = json.loads((REC / f"{readback_id}.json").read_text()); body = (REC / f"{readback_id}.output.txt").read_bytes()
+    accepted = json.loads((ACC / f"{readback_id}.post.json").read_text())
+    if not (record.get("kind") == "cloudrun_job_readback" and record.get("status") == "COMPLETED" and record.get("exit_code") == 0
+            and digest_bytes(body) == record.get("output_sha256") and accepted.get("result") == "ACCEPTED"
+            and accepted.get("by") in ("v1", "v2", "v3", "v4", "executor-mechanical") and accepted.get("operation_id") == readback_id
+            and accepted.get("request_sha256") == record.get("request_sha256")
+            and (accepted.get("by") != "executor-mechanical"       # same bar as fence_quiescent: the record's own schema, and every check present and true
+                 or (accepted.get("schema") == "ky.mechanical_acceptance/1" and isinstance(accepted.get("checks"), dict)
+                     and bool(accepted["checks"]) and all(value is True for value in accepted["checks"].values())))):
+        return None
+    found = []
+    for line in body.decode().splitlines():
+        try: value = json.loads(line)
+        except ValueError: continue
+        if isinstance(value, dict) and value.get("schema") == "ky.cloudrun_readback/1": found.append(value)
+    measured = (found[0].get("execution") if len(found) == 1 and found[0].get("status") == "MEASURED" else None) or {}
+    if measured.get("name") != execution_name or measured.get("outcome") not in ("SUCCEEDED", "FAILED"): return None
+    return {"readback_operation_id": readback_id, "execution": execution_name, "outcome": measured["outcome"],
+            "completion_time": measured.get("completion_time"), "readback_output_sha256": record["output_sha256"]}
+
+
+def mechanical_quiescence(req: dict, archived: pathlib.Path) -> str | None:
+    """A7 D-44: `req` is a completed quiescence_check naming a fenced production operation (args.operation). The executor measures, from its
+    own files and the check's session readback, that the operation is quiet — receipt terminal, not in flight, the fence names it, no live
+    database session carries its marker (and the readback could see every role's sessions), and, for a dispatch, the remote execution is in a
+    terminal state per an ACCEPTED cloudrun_job_readback (args.execution_readback). Writes acceptance/<target>.quiescence.json (by
+    executor-mechanical) only if every check holds; fence_quiescent() re-validates it and the cockpit's release-fence then accepts it.
+    A teardown is never written here: its release needs the consumer-judged absence evidence the check cannot supply."""
+    args = req.get("args") or {}; target = str(args.get("operation", ""))
+    if not SAFE_ID.fullmatch(target): return "target operation id missing or unsafe"
+    own, own_bytes, body, own_checks = measured_identity(req, archived)
+    target_bytes = (REC / f"{target}.json").read_bytes(); done = json.loads(target_bytes)
+    entry = (load_table() or {}).get(done.get("kind")) or {}
+    try: fence = json.loads(FENCE.read_text())
+    except (OSError, ValueError): fence = {}
+    inflight = []
+    for path in INFLIGHT.glob("*.json"):
+        try: inflight.append(json.loads(path.read_text()).get("operation_id"))
+        except (OSError, ValueError): inflight.append(None)       # an unreadable in-flight entry is unproven quiet
+    found = []
+    for line in body.decode().splitlines():
+        try: value = json.loads(line)
+        except ValueError: continue
+        if isinstance(value, dict) and value.get("schema") == "ky.session_readback/1": found.append(value)
+    sessions = found[0] if len(found) == 1 else {}
+    marker = session_marker(target)
+    needs_remote = done.get("kind") in ("smalltest_dispatch", "measuring_dispatch") or isinstance(done.get("launch"), dict)
+    remote = None
+    if needs_remote:
+        try: remote = accepted_cloudrun_execution(str(args.get("execution_readback", "")), str((done.get("launch") or {}).get("execution_name", "")))
+        except (OSError, ValueError, TypeError, AttributeError): remote = None
+    try: after_terminal = utc_time(sessions["measured_at"]) >= utc_time(done["ts"])
+    except (KeyError, TypeError, ValueError): after_terminal = False
+    checks = dict(own_checks,
+        target_is_a_production_operation=entry.get("production") is True and "lane_target" not in done,
+        target_is_not_a_teardown=done.get("kind") not in ("smalltest_teardown", "measuring_teardown"),
+        target_receipt_terminal=done.get("operation_id") == target and done.get("status") in ("COMPLETED", "FAILED", "AWAITING_ABSENCE"),
+        fence_names_the_target_request=fence.get("operation_id") == target and bool(done.get("request_sha256")) and fence.get("request_sha256") == done.get("request_sha256"),
+        target_not_in_flight=None not in inflight and target not in inflight,
+        session_readback_bound_to_the_target_marker=(sessions.get("status") == "MEASURED" and sessions.get("marker") == marker == done.get("session_marker")),
+        session_readback_sees_every_role=sessions.get("sees_all_sessions") is True,
+        session_readback_after_the_target_ended=after_terminal,
+        no_live_session_carries_the_marker=sessions.get("sessions") == [],
+        remote_execution_terminal=(remote is not None) if needs_remote else True)
+    checks = {k: bool(v) for k, v in checks.items()}
+    failed = sorted(k for k, v in checks.items() if not v)
+    if failed: return "not quiescent: " + ", ".join(failed)
+    document = {"schema": "ky.mechanical_quiescence/1", "by": "executor-mechanical", "result": "ACCEPTED", "operation_id": target,
+                "kind": done["kind"], "request_sha256": done["request_sha256"], "reviewed_commit": done.get("reviewed_commit"),
+                "target_receipt_sha256": digest_bytes(target_bytes), "checks": checks,
+                "session_check": {"operation_id": req["operation_id"], "receipt_sha256": digest_bytes(own_bytes), "marker": marker,
+                                  "database": sessions.get("database"), "measured_at": sessions["measured_at"], "live_sessions": 0},
+                "remote_execution": remote, "ts": now()}
+    return None if write_new_json(ACC / f"{target}.quiescence.json", document) else "quiescence record already exists; left untouched"
+
+
+def mechanical_acceptance(req: dict, archived: pathlib.Path) -> None:
+    """A7 D-44: after a request is archived, write the executor's mechanical acceptance records it is entitled to. Never raises, never
+    blocks the queue; the outcome (written, or the exact reason nothing was) goes to the log. Whether the kind is read-only is measured
+    inside measured_identity from the table, so a writing kind is simply "not accepted"."""
+    try:
+        log(f"{req['operation_id']} mechanical post-acceptance: {mechanical_post_acceptance(req, archived) or 'written'}")
+        if req["kind"] == "quiescence_check":
+            log(f"{(req.get('args') or {}).get('operation')} mechanical quiescence: {mechanical_quiescence(req, archived) or 'written'}")
+    except Exception as e:
+        log(f"{req.get('operation_id')} mechanical acceptance error: {type(e).__name__}")
+
+
 def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
     try:
         # authorisation is re-checked immediately before execution, not only when the request was queued
@@ -703,7 +880,8 @@ def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
         if why:
             receipt(req, "REFUSED", why); return
         rc, out = execute(req, op)
-        receipt(req, "COMPLETED" if rc == 0 else "FAILED", "" if rc == 0 else "non-zero exit (read the postconditions; an exit status proves nothing)", rc, out)
+        receipt(req, "COMPLETED" if rc == 0 else "FAILED", "" if rc == 0 else "non-zero exit (read the postconditions; an exit status proves nothing)", rc, out,
+                None if lane_selected(req) else {"session_marker": session_marker(req["operation_id"])})
     except subprocess.TimeoutExpired as e:
         receipt(req, "FAILED", "timeout — the local process group was killed; a remote job may still be running: read the postconditions", 124, str(e))
     except Exception as e:
@@ -711,6 +889,7 @@ def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
     finally:
         try: shutil.move(str(path), DONE / path.name)
         except Exception: pass
+        mechanical_acceptance(req, DONE / path.name)
 
 
 def main() -> int:
@@ -737,7 +916,8 @@ def main() -> int:
         if time.time() - last_sync > 60:
             try:
                 sync()
-                table = load_table() if refresh_from_main_or_fail_closed() else None
+                refresh_from_main_or_fail_closed()           # A8 §5: a refused refresh is logged REFRESH_REFUSED and recorded; this snapshot keeps serving
+                table = load_table()
             except Exception as e: log(f"sync failed: {e}"); table = None
             last_sync = time.time()
         if time.time() - last_caps > 300: caps = capabilities(table is not None); last_caps = time.time()
@@ -752,7 +932,8 @@ def main() -> int:
             why = validate(req, table, caps)
             if why:
                 receipt(req, "REFUSED", why); shutil.move(str(f), DONE / f.name); continue
-            if production: FENCE.write_text(json.dumps({"operation_id": req["operation_id"], "request_sha256": request_digest(req), "ts": now()}))
+            if production and remote_async(req["kind"], table[req["kind"]]):     # A8 §3.11: a synchronous kind takes no fence
+                FENCE.write_text(json.dumps({"operation_id": req["operation_id"], "request_sha256": request_digest(req), "ts": now()}))
             mark_seen(req["idempotency_key"], req["operation_id"])
             flight = INFLIGHT / f.name; shutil.move(str(f), flight)
             op = table[req["kind"]]

@@ -447,7 +447,7 @@ def _seed_windows_inputs(conn, chart) -> None:
                 " lord_graha, start_iso, end_iso, build_id,"
                 " verification_pass_status)"
                 " VALUES (%s, %s, 'lahiri_chitrapaksha', 'vimshottari',"
-                " %s, %s, %s, %s, %s, 'ca17639b-f3cf-42c7-9866-0a61f3855802', 'two_pass_verified')",
+                " %s, %s, %s, %s, %s, '7377833e-5d3b-4e70-8bef-1318904f470e', 'two_pass_verified')",
                 (row_id, chart, level, parent, lord, start, end))
     conn.commit()
 

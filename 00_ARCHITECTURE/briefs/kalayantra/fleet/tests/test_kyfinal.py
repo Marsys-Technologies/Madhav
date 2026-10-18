@@ -15,7 +15,7 @@ from types import SimpleNamespace
 
 import pytest
 from test_kymanifest import rig as manifest_rig, git, km, sha
-from test_kypacket import World as PacketWorld, render, EXCERPT
+from test_kypacket import World as PacketWorld, render, EXCERPT, PLAN_TEXT
 from test_kygate import digest_without
 import kyfinal
 
@@ -349,8 +349,8 @@ def test_refusals_are_named_and_write_nothing(final_rig, change, reason):
         write(f.rehearsal, doc)
     elif change == "validator":
         f.validator.write_text("import sys\nsys.exit(9)\n")
-    elif change == "packet":
-        f.packet.write_bytes(f.packet.read_bytes() + b"tamper")
+    elif change == "packet":                       # A8: a pin that the blob at its revision does not satisfy
+        f.packet.write_bytes(broken_pin(f.packet.read_bytes()))
     elif change == "qualification":
         write(f.r.run / "planner.json", {"result": "FAIL"})
     elif change in ("tracker", "receipt"):
@@ -485,14 +485,40 @@ def test_real_consumers_detect_tampering_after_finalisation(final_rig, target):
     assert gate.returncode == 75 and "reason=final_acceptance_unverified" in gate.stdout, gate.stdout + gate.stderr
 
 
-def test_validator_cannot_leave_a_packet_with_changed_spec_sources_admitted(final_rig):
+def broken_pin(packet: bytes) -> bytes:
+    """the packet with its docs/PLAN.md pin pointing at another sha256: the blob at the pinned revision no longer
+    satisfies it (A8: pins are satisfied by the blob at the revision only — a working-tree edit is no refusal)"""
+    pinned = hashlib.sha256(PLAN_TEXT.encode("utf-8")).hexdigest().encode("ascii")
+    assert packet.count(pinned) == 1
+    return packet.replace(pinned, b"0" * 64, 1)
+
+
+def test_validator_cannot_leave_a_packet_it_rewrote_admitted(final_rig):
+    """Packets are admitted again AFTER the backfill validator ran, against the bytes observed before it. Before A8
+    this case had the validator rewrite docs/PLAN.md in the working tree (kypacket.py refused the re-admission);
+    since A8 a working-tree edit is not a pin, so the validator breaks the packet's own pin instead — and the
+    re-observation refuses the changed packet (`inputs_changed`), writing nothing."""
     f = final_rig
-    source = f.r.repo / 'docs/PLAN.md'
-    f.validator.write_text(f"from pathlib import Path\nPath({str(source)!r}).write_text('changed spec')\n" + f.validator.read_text().replace("from __future__ import annotations\n", ""))
+    f.validator.write_text(
+        f"from pathlib import Path\np = Path({str(f.packet)!r})\n"
+        f"p.write_bytes(p.read_bytes().replace({hashlib.sha256(PLAN_TEXT.encode('utf-8')).hexdigest()!r}.encode(), "
+        f"b'0' * 64, 1))\n" + f.validator.read_text().replace("from __future__ import annotations\n", ""))
     done = f.build()
-    assert done.returncode == 1 and 'packet_not_admitted' in done.stderr, done.stdout + done.stderr
+    assert done.returncode == 1 and 'inputs_changed' in done.stderr and str(f.packet) in done.stderr, \
+        done.stdout + done.stderr
     assert not (f.r.run / 'VERSIONS.json').exists()
     assert read(f.out_receipt)['mode'] == 'bootstrap'
+
+
+def test_a8_a_working_tree_edit_of_a_spec_source_is_not_a_packet_refusal(final_rig):
+    """The counterpart: the validator rewrites docs/PLAN.md in the working tree. The pin is the blob at the pinned
+    revision (A8), so the packet stays admitted and the build is not refused on its account."""
+    f = final_rig
+    source = f.r.repo / 'docs/PLAN.md'
+    f.validator.write_text(f"from pathlib import Path\nPath({str(source)!r}).write_text('changed spec')\n"
+                           + f.validator.read_text().replace("from __future__ import annotations\n", ""))
+    done = f.build()
+    assert 'packet_not_admitted' not in done.stderr, done.stdout + done.stderr
 
 
 def test_ambiguous_json_coverage_cannot_earn_acceptance(final_rig):
