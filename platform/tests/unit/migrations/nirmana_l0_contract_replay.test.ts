@@ -71,7 +71,10 @@ describe('Nirmana T0 sky-calendar replay ordering', () => {
       fs.writeFileSync(path.join(dir, '594_nirmana_t0_sky_calendar_contract.sql'), 'SELECT 594;')
       fs.writeFileSync(path.join(dir, '597_nirmana_t0_sky_calendar_replay_compat.sql'), 'SELECT 597;')
       const client = {
-        query: vi.fn(async () => ({ rows: [] })),
+        query: vi.fn(async (sql: string) => {
+          if (sql === "SELECT current_setting('role') AS role") return { rows: [{ role: 'none' }] }
+          return { rows: [] }
+        }),
       } as unknown as PoolClient
 
       await expect(runMigrations(client, [dir], {
@@ -97,6 +100,7 @@ describe('Nirmana T0 sky-calendar replay ordering', () => {
       const applied = [{ filename: compatibilityName, sha256: compatibilityHash, sql_identity: null }]
       const client = {
         query: vi.fn(async (sql: string) => {
+          if (sql === "SELECT current_setting('role') AS role") return { rows: [{ role: 'none' }] }
           if (sql.includes('SELECT filename, sha256, sql_identity FROM _migrations_applied')) {
             return { rows: applied }
           }
