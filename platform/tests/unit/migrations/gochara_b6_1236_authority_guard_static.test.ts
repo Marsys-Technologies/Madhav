@@ -38,6 +38,7 @@ describe('kala_gochara_authority writers — allow-list gate', () => {
   const ALLOWED = new Set([
     'platform/python-sidecar/scripts/kala_gochara_cutover/step08_flip.py',                       // the operator flip (D-FLIP is the native's)
     'platform/python-sidecar/scripts/kala_gochara_cutover/j6r_rehearsal.py',                     // J-6r: guarded lane/test DB rehearsal; executor remains disabled
+    'platform/python-sidecar/scripts/kala_gochara_cutover/authority_operation.py',               // J-6m/J-6r: disabled executor child, sealed head compare-and-swap + retained-head restore (executor supplies DATABASE_URL)
     'platform/scripts/gochara/flip_authority.py',                                                // chart-agnostic operator flip tooling (MR-08)
     'platform/scripts/gochara/rollback_authority.py',                                            // its rollback (DELETE the row)
     'platform/scripts/dispatch_utkarsha_w63_authority_flip_abhinandan.py',                       // one-off W6.3 flip (historical, operator-run)
