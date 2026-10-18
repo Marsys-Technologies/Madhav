@@ -557,6 +557,10 @@ def publish_candidate(conn, chart_id: str, generation: str, convention_id: str,
             f"has status {row[1]!r}; a rebuild after publication is a NEW "
             f"generation label (plan §4.7)"
         )
+    # The replace is CONDITIONAL on the row still being a candidate (Codex round 4 follow-up (d)): between the status read above and this
+    # UPDATE a publish can flip the row, and an unconditional UPDATE would then rewrite the input vector of a PUBLISHED manifest (a stale
+    # caller could even stamp it as a test slice). The draft database CHECK (PR 3140) refuses a published slice stamp; this makes the
+    # rewrite of any non-candidate vector impossible from the writer's own path.
     replaced = conn.execute(
         """
         UPDATE kala_gochara_publication
