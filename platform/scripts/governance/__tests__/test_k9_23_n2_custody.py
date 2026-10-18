@@ -45,7 +45,7 @@ def test_preparation_preserves_disabled_production_operations():
     for kind in ("orchestrator_rebuild_dryrun", "orchestrator_rebuild",
                  "layer_verify", "layer_publish", "layer_rollback"):
         assert ops[kind]["enabled"] is False, kind
-        assert ops[kind]["production"] is True, kind
+        assert ops[kind]["production"] is (not kind.endswith("_dryrun")), kind   # A8 §3.8: a dry run is read-only with a credential
 
 
 def test_owed_proof_distinguishes_delegation_and_incomplete_outcome():
