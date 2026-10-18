@@ -5,8 +5,10 @@ measure mandatory execution on full events; cheap checks retain their PR policy.
 """
 from __future__ import annotations
 
-from _ci_gate_test_support import runs_in_full_gate
+from _ci_gate_test_support import evaluate, runs_in_full_gate
 
+import fnmatch
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -701,6 +703,38 @@ def test_measuring_dump_service_exposes_a_local_socket_for_the_disposable_guard(
     assert step["env"]["GOCHARA_A53_ADMIN_DSN"] == next(s for s in peer["steps"] if "GOCHARA_A53_ADMIN_DSN" in s.get("env", {}))["env"]["GOCHARA_A53_ADMIN_DSN"]
 
 
+@pytest.mark.parametrize("suite", [
+    "scripts/__tests__/test_gochara_pipeline_ephe_probe.py",
+    "scripts/__tests__/test_gochara_sitting_evidence_pack.py",
+])
+def test_j3ab_script_oracles_are_mandatory_and_unfiltered_in_ci(jobs, suite):
+    import shlex
+
+    job = jobs["db-integration-tests"]
+    assert not job.get("continue-on-error")
+    assert job["defaults"]["run"]["working-directory"] == "platform"
+    commands = []
+    for step in job["steps"]:
+        for line in str(step.get("run", "")).replace("\\\n", " ").splitlines():
+            if line.lstrip().startswith("#") or "pytest" not in line or suite not in line:
+                continue
+            tokens = shlex.split(line, comments=True)
+            if "pytest" not in tokens or suite not in tokens:
+                continue
+            # Since #3668 every DB step carries the profile gate: it must run in the whole full gate and
+            # on a PR that selects the discovery profile owning the suite; no other skip condition.
+            args = tokens[tokens.index("pytest") + 1:]
+            assert not step.get("continue-on-error") and runs_in_full_gate(step)
+            suites = json.loads((Path(__file__).resolve().parents[1] / "ci_test_suites.json").read_text())["suites"]
+            owners = [n for n, spec in suites.items() if any(fnmatch.fnmatch(suite, g) for g in spec["include"])]
+            assert owners, f"{suite} is owned by no discovery profile"
+            assert all(evaluate(step.get("if"), event="pull_request", profiles=[n]) for n in owners)
+            assert not any(t.split("=")[0] in _FORBIDDEN_FLAGS for t in args)
+            assert not any(t in {"||", ";", "|", "&&"} for t in tokens)
+            commands.append(tokens)
+    assert commands, f"{suite} is outside discovery and must run in mandatory CI"
+
+
 @pytest.mark.parametrize("case_count,skipped,ok", [(5, False, True), (5, True, False), (4, False, False), (0, False, False)])
 def test_p07_ci_rejects_skipped_or_missing_migration_1235_cases(jobs, tmp_path, case_count, skipped, ok):
     """Execute the shipped CI check: a skip or lost case cannot earn a DB pass."""
@@ -718,17 +752,21 @@ def test_p07_ci_rejects_skipped_or_missing_migration_1235_cases(jobs, tmp_path, 
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
 
 
-@pytest.mark.parametrize("case_count,skipped,ok", [(30, False, True), (30, True, False), (29, False, False), (0, False, False)])
-def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok):
-    """Both ported MCP suites must execute their 17 + 13 cases; skips cannot earn green."""
+@pytest.mark.parametrize("step_name,report_name", [
+    ("P07 — ported Gochara publication oracles (REQUIRED)", "gochara-mcp.xml"),
+    ("J4D — governed generation reader oracles (required; skips fail)", "gochara-j4d.xml"),
+])
+@pytest.mark.parametrize("case_count,skipped,ok", [(50, False, True), (50, True, False), (49, False, False), (0, False, False)])
+def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok, step_name, report_name):
+    """Each required reader step executes all 22 + 28 cases; skips cannot earn green."""
     import shlex
     steps = [s for s in jobs["governance-readback-tests"]["steps"]
-             if "src/tools/retrieval/register_gochara_contact_ledger.test.ts" in str(s.get("run", ""))]
+             if s.get("name") == step_name]
     assert len(steps) == 1
     command = next(shlex.split(line) for line in steps[0]["run"].splitlines() if "ET.parse(" in line)
     cases = ["<testcase />"] * case_count
     if skipped and cases:
         cases[0] = "<testcase><skipped /></testcase>"
-    (tmp_path / "gochara-mcp.xml").write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
+    (tmp_path / report_name).write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
     proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr

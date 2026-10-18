@@ -224,6 +224,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/plan_model.base.json.gz
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_bootstrap_safety.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_a8.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_finalize_v3.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_install.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyalloc.py

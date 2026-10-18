@@ -83,7 +83,7 @@ CASES = [
     ('J-4b-pr3119', 'firebase-builder-leak', IAM, "if (verifierControlOnly && binding.role === 'roles/firebase.managementServiceAgent')", "if (binding.role === 'roles/firebase.managementServiceAgent')",
      ts('tests/unit/data_plane_verifier_secret_isolation.test.ts', 'cross-gate')),
     ('J-4b', 'public-original-revert', WINDOW,
-     "EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl WHERE acl.grantee = 0 AND acl.privilege_type = 'EXECUTE')",
+     "EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE')",
      "has_function_privilege('PUBLIC', p.oid, 'EXECUTE')",
      py(WINDOW_TEST, 'test_public_execute_query_checks_the_public_acl_without_a_public_role')),
     ('J-4b', 'audit-original-revert', AUDIT, None, None,
