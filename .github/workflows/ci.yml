@@ -2492,7 +2492,7 @@ jobs:
         working-directory: platform-mcp
         run: npm ci
       - name: J4D — governed generation reader oracles (required; skips fail)
-        if: ${{ (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'governance-readback-tests-j4d'))) }}
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'governance-readback-tests-j4d'))) }}
         working-directory: platform-mcp
         run: |
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest governance-readback-tests-j4d -- --reporter=default --reporter=junit --outputFile=gochara-j4d.xml
