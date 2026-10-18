@@ -9,11 +9,11 @@ never waits on an external call. Operation items still close from executor recei
 Item -> PR, in this order (a PR from an earlier step is never replaced by a later one):
 1. the PR the plan model names: `detector.pr`, `detector.packet_pr`, or the PR that squash-merged `detector.ref`
    when that is a commit; a bundle child names its bundle's PR here;
-2. otherwise a `detector.ref` branch: the merged PR whose head branch it is;
-3. otherwise the merged PR on main whose diff contains EVERY path the item owns.
-A named PR must also carry the item (it is a bundle): at least one owned path in its diff and every owned path
-present in its merged tree (an owned file that an earlier merged PR already landed is still there). A PR found by
-step 3 is the bundle by construction, so it must contain all of them in its diff.
+2. otherwise a `detector.ref` branch: the merged PR whose head branch it is.
+An item with neither is not derived: no PR on main is guessed from the files an item owns (an old PR that touched
+the same files is not the item's acceptance). A bundle child names its bundle's PR in the plan model (step 1).
+A PR must also carry the item (it is a bundle): at least one owned path in its diff and every owned path
+present in its merged tree (an owned file that an earlier merged PR already landed is still there).
 """
 from __future__ import annotations
 
@@ -30,7 +30,6 @@ DEPLOY_WORKFLOW = "Deploy to Cloud Run"
 SOURCE = "derived:merged+deployed"
 REFRESH_S = 60.0           # how often the background refresh re-reads GitHub and git
 MERGED_LIST_LIMIT = 300    # one `gh pr list` call maps head branches of the newest merged PRs
-SEARCH_COMMIT_CAP = 50     # commits inspected, oldest first, when searching main for a PR carrying all owned paths
 
 _SHA = re.compile(r"[0-9a-f]{40}")
 _SQUASH_SUBJECT = re.compile(r"\(#(\d+)\)\s*$")
@@ -72,16 +71,14 @@ def named_prs(item: dict, source) -> list[int]:
     return found
 
 
-def _carries(item: dict, source, merge: str, *, named: bool) -> bool:
+def _carries(item: dict, source, merge: str) -> bool:
     owns = _owns(item)
     diff = source.diff_paths(merge)
     if diff is None:
         return False
     if not owns:
-        return named           # nothing to compare: only a PR the plan model names can stand for the item
-    if named:
-        return any(p in diff for p in owns) and all(source.has_path(merge, p) for p in owns)
-    return all(p in diff for p in owns)
+        return True            # nothing to compare: the PR the plan model names stands for the item
+    return any(p in diff for p in owns) and all(source.has_path(merge, p) for p in owns)
 
 
 def _proof(number: int, pr: dict, merge: str, deploy: dict) -> dict:
@@ -92,14 +89,14 @@ def _proof(number: int, pr: dict, merge: str, deploy: dict) -> dict:
                          f"(run {deploy['run_id']}) contains the merge commit; the PR's merged review is the acceptance")}
 
 
-def _accepted(item: dict, source, number: int, *, named: bool) -> dict | None:
+def _accepted(item: dict, source, number: int) -> dict | None:
     """The proof when PR `number` is merged, carries the item and is contained in a successful main deploy."""
     pr = source.pr(number)
     if not isinstance(pr, dict) or pr.get("state") != "MERGED":
         return None
     commit = pr.get("mergeCommit") if isinstance(pr.get("mergeCommit"), dict) else {}
     merge = commit.get("oid")
-    if not _sha(merge) or not _carries(item, source, merge, named=named):
+    if not _sha(merge) or not _carries(item, source, merge):
         return None
     deploy = source.deployed(merge)
     if (not isinstance(deploy, dict) or deploy.get("contains_merge") is not True or not deploy.get("run_id")
@@ -110,17 +107,14 @@ def _accepted(item: dict, source, number: int, *, named: bool) -> dict | None:
 
 def derive_item(item: dict, source) -> dict | None:
     named = named_prs(item, source)
-    candidates = [(n, True) for n in named]
+    candidates = list(named)
     if not candidates:
         ref = item["detector"].get("ref")
         branch = ref.split("/", 1)[1] if isinstance(ref, str) and ref.startswith("origin/") else None
         if branch:
-            candidates = [(n, True) for n in source.merged_prs_for_branch(branch)]
-        if not candidates and _owns(item):
-            found = source.pr_carrying_paths(_owns(item))
-            candidates = [(found, False)] if found is not None else []
-    for number, is_named in candidates:
-        proof = _accepted(item, source, number, named=is_named)
+            candidates = list(source.merged_prs_for_branch(branch))
+    for number in candidates:
+        proof = _accepted(item, source, number)
         if proof:
             return proof
     return None
@@ -156,7 +150,6 @@ class GitHubSource:
         self._contained: dict[str, dict] = {}
         self._not_contained: dict[str, float] = {}
         self._runs: tuple[float, list[dict]] | None = None
-        self._searched: dict[tuple, int | None] = {}
         self._main: str | None = None
 
     def _call(self, cmd: list[str]) -> tuple[int, str]:
@@ -244,26 +237,6 @@ class GitHubSource:
         with self._lock:
             self._paths[(merge, path)] = rc == 0
         return rc == 0
-
-    def pr_carrying_paths(self, owns: list[str]) -> int | None:
-        """The oldest squash-merged commit on main whose diff holds every owned path, as its PR number."""
-        key = (self._main, tuple(owns))
-        with self._lock:
-            if key in self._searched:
-                return self._searched[key]
-        rc, out = D._run(["git", "log", "origin/main", "--first-parent", "--format=%H", "--", owns[0]], cwd=self.repo)
-        found = None
-        if rc == 0:
-            for sha in reversed(out.split()[:SEARCH_COMMIT_CAP]):
-                diff = self.diff_paths(sha)
-                if diff is not None and all(p in diff for p in owns):
-                    found = self.pr_of_commit(sha)
-                    if found is not None:
-                        break
-        if rc == 0:
-            with self._lock:
-                self._searched[key] = found
-        return found
 
     def deployed(self, merge: str) -> dict:
         """A successful `workflow_run` deploy of main whose sha contains `merge` (cli.observe_containment's rule)."""

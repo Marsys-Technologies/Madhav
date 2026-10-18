@@ -33,10 +33,10 @@ OTHER = "d" * 40
 class FakeSource:
     """What GitHub and git would say. `deployed_merges` are the merge commits a successful main deploy contains."""
 
-    def __init__(self, prs=None, diffs=None, trees=None, deployed_merges=(), heads=None, searched=None, commits=None):
+    def __init__(self, prs=None, diffs=None, trees=None, deployed_merges=(), heads=None, commits=None):
         self.prs, self.diffs, self.trees = prs or {}, diffs or {}, trees or {}
         self.deployed_merges, self.heads = set(deployed_merges), heads or {}
-        self.searched, self.commits = searched or {}, commits or {}
+        self.commits = commits or {}
 
     def pr(self, number):
         return self.prs.get(number)
@@ -52,9 +52,6 @@ class FakeSource:
 
     def has_path(self, merge, path):
         return path in self.trees.get(merge, self.diffs.get(merge, ()))
-
-    def pr_carrying_paths(self, owns):
-        return self.searched.get(tuple(owns))
 
     def deployed(self, merge):
         if merge in self.deployed_merges:
@@ -192,18 +189,19 @@ def test_branch_ref_maps_to_the_merged_pr_of_that_head_branch():
     assert M.derive(model, source)["K-BR"]["pr"] == 12
 
 
-def test_unnamed_child_maps_to_the_pr_whose_diff_holds_all_owned_paths():
-    model = model_of(item("K5-CHILD", {"type": "branch_merged", "ref": "origin/kalayantra/k5-2"}, owns=["a.py", "b.py"]))
-    source = FakeSource(prs={3555: merged(3555, MERGE)}, diffs={MERGE: ["a.py", "b.py", "c.py"]},
-                        searched={("a.py", "b.py"): 3555}, deployed_merges=[MERGE])
-    assert M.derive(model, source)["K5-CHILD"]["pr"] == 3555
+def test_open_item_is_not_done_from_an_old_pr_that_touched_its_owned_files():
+    """B-1 (review of #3741): an OPEN repair item with no named PR and no merged branch PR must stay open, even
+    when an old merged+deployed PR on main holds every file it owns (K5G1A-R1 -> #949 shape). N.8: "some PR touched
+    these files" is a proxy, not the item's own merged review."""
+    owns = ["services/ka_kshetra/writer.py", "services/ka_kshetra/stage5_null.py"]
+    repair = item("K5G1A-R1", {"type": "branch_merged", "ref": "origin/kalayantra/k5g1a-r1"}, owns=owns)
 
+    class OldPrOffered(FakeSource):
+        def pr_carrying_paths(self, owns):      # a source that offers the old PR must not be asked, or believed
+            return 949
 
-def test_unnamed_child_is_not_done_when_the_found_pr_misses_an_owned_path():
-    model = model_of(item("K5-CHILD", {"type": "branch_merged", "ref": "origin/kalayantra/k5-2"}, owns=["a.py", "b.py"]))
-    source = FakeSource(prs={3555: merged(3555, MERGE)}, diffs={MERGE: ["a.py"]},
-                        searched={("a.py", "b.py"): 3555}, deployed_merges=[MERGE])
-    assert M.derive(model, source) == {}
+    source = OldPrOffered(prs={949: merged(949, MERGE)}, diffs={MERGE: owns}, deployed_merges=[MERGE], heads={})
+    assert M.derive(model_of(repair), source) == {}
 
 
 # ---- claim 6: only code items are derived; operations and decisions keep their own closers ------------------------
