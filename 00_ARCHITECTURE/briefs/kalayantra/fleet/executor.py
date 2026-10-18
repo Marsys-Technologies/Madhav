@@ -500,7 +500,9 @@ def measuring_cancel_proof(req: dict, rc: int | None, out: str) -> tuple[dict | 
     return rec, None
 
 
-def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str = "", extra: dict | None = None) -> None:
+def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str = "", extra: dict | None = None, stdout: str | None = None) -> None:
+    """`out` is the complete evidence (stdout, then stderr). `stdout` is the child's stdout alone: the one stream a whole-document proof is parsed from,
+    because a child may lawfully print advisory lines on stderr. A caller that does not pass it supplies no proof stream, so such a proof reads as missing."""
     name = req.get("operation_id") if SAFE_ID.match(str(req.get("operation_id", ""))) else "unknown"
     r = {"operation_id": req.get("operation_id"), "kind": req.get("kind"), "item_id": req.get("item_id"), "status": status, "reason": reason,
          "exit_code": rc, "stdout_tail": redact(out[-20000:]), "ts": now(), "reviewed_commit": req.get("reviewed_commit"),
@@ -512,7 +514,7 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
         r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body.encode()).hexdigest(); r["output_bytes"] = len(body.encode())
     if req.get("kind") == "measuring_dispatch_dryrun" and status == "COMPLETED":
         try:
-            proof = json.loads(out)
+            proof = json.loads(stdout or "")                      # stdout only: the advisory lines on stderr are evidence, never part of the proof
             manifest = proof.get("plan_manifest") or {}
             valid = (rc == 0 and proof.get("schema") == "ky.measuring_staging/1"
                 and proof.get("status") == "ROLLED_BACK" and proof.get("rollback_confirmed") is True
@@ -779,6 +781,12 @@ def lane_qualification(req: dict) -> list[dict]:
     return bound
 
 
+def child_stdouts(_store: dict = {}) -> dict:
+    """In-memory hand-off of each operation's child stdout (alone, without stderr) from execute() to receipt(); execute() keeps returning the
+    combined output that is the evidence file."""
+    return _store
+
+
 def overlay_proofs(_store: dict = {}) -> dict:
     """In-memory hand-off of each operation's generated-overlay proof from execute()/execute_lane() to receipt(); the
     child's output is never altered (a reader parses it whole) and never trusted for the proof."""
@@ -933,6 +941,7 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
                 p = run_group(argv, KY_ROOT, env, timeout)
         finally:
             tmp.unlink(missing_ok=True)
+        child_stdouts()[oid] = p.stdout or ""
         return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
     wt = EXEC / f"op-{oid}"
     a = git("worktree", "add", "--detach", str(wt), req["reviewed_commit"], timeout=600)
@@ -947,6 +956,7 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
         if overlay is None: return 126, "generated overlay refused: " + why
         overlay_proofs()[oid] = overlay
         p = run_group(argv, cwd, env, timeout)
+        child_stdouts()[oid] = p.stdout or ""
         return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
     finally:
         git("worktree", "remove", "--force", str(wt), timeout=300)
@@ -1113,13 +1123,14 @@ def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
             receipt(req, "REFUSED", why); return
         if req["kind"] == "scheduler_pause": arm_scheduler_backstop(req)      # SR-J3-REAPER-PAUSE: armed BEFORE the pause runs; a refusal to arm stops the pause
         rc, out = execute(req, op)
+        stdout = child_stdouts().pop(req["operation_id"], None)
         extra = None if lane_selected(req) else {"session_marker": session_marker(req["operation_id"])}
         proof, problem = scheduler_proof(req, rc, out) if extra is not None and req["kind"] in SCHEDULER_ACTION else (None, None)
         if proof is not None: extra["scheduler"] = proof        # the state read back AFTER the action, as the reviewed script measured it
         cancelled, cancel_problem = measuring_cancel_proof(req, rc, out) if extra is not None and req["kind"] in ("measuring_cancel", "measuring_cancel_dryrun") else (None, None)
         if cancelled is not None: extra["cancel"] = cancelled   # likewise: the execution state read back after the cancel (CANCELLED, or the observed state beside a FAILED receipt)
         ok = rc == 0 and problem is None and cancel_problem is None
-        receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra)
+        receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra, stdout)
         if ok and req["kind"] == "scheduler_resume": scheduler_backstop_satisfy(req)
     except subprocess.TimeoutExpired as e:
         receipt(req, "FAILED", "timeout — the local process group was killed; a remote job may still be running: read the postconditions", 124, str(e))
