@@ -1,9 +1,11 @@
 ---
 artifact: KALAYANTRA_VELOCITY_AMENDMENT
-version: "1.0"
+version: "1.1"
 status: PREPARED — owner-approved 2026-10-08 ~00:30 IST (surrogate retained at the owner's direction); APPLIES at the morning hand-over (Stage 0 of the Codex→Claude transition). Until then the charter v1.1 rules stand.
 amends: KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md (v1.1) §3, §4.2, §4.4, §5, §6, §8, §9, §10, §11 — this file wins where they disagree; everything not named here is unchanged.
 produced_on: 2026-10-08
+changelog:
+  - "1.1 (2026-10-16): D-OWNER-TESTS-20261016 supersedes historical per-mutant testing wording; retired operational rules stay retired."
 produced_in: 'Claude Code (Fable 5.1), owner session, from the measured event log of 2026-10-06 16:30Z → 2026-10-08 00:00Z and the Suvarṇa delegate''s account of its own speed-up (2026-10-08 00:20 IST)'
 ---
 
@@ -42,7 +44,7 @@ Lanes k1…k8 (ceiling 8, raised to 12 by the conductor when READY exceeds free 
 
 ## §2 · Items — one unit of real work, not one file
 
-An item is a coherent engineering unit of **300 – 800 changed lines**, one branch, one PR, delivered with its tests and the mutations that must fail. The per-file splits of the v1.1 model are regrouped before the next family opens; items already running keep their shape. The regrouping (model PR at hand-over, applied by the conductor):
+An item is a coherent engineering unit of **300 – 800 changed lines**, one branch, one PR, delivered with its one doctrine-grounded oracle per distinct production claim under D-OWNER-TESTS-20261016. The per-file splits of the v1.1 model are regrouped before the next family opens; items already running keep their shape. The regrouping (model PR at hand-over, applied by the conductor):
 
 | v1.1 items | v2.0 item(s) | Note |
 |---|---|---|
@@ -66,7 +68,7 @@ Replaces charter §5. A builder cycle is **one item worked to its finished PR**,
 - Builders run **the item's own tests and mutations** locally (`fleet/precheck.sh --item` mode: secret scan on the diff, compile, the brief's tests). The whole-suite local run is retired; **required CI is the full gate**, as it always was.
 - The lane test environment equals the CI environment (one `KALA_ADMIN_DSN` convention, one `KALA_REQUIRE_DB=1`); the environment-mismatch rejection class is closed by construction.
 - Verifiers review the **diff** against the pinned plan sections and run the item's tests and mutations at the PR head. They do not re-run the suite CI already ran.
-- Mutation checks live **inside the PR's own tests** ("fails on base, passes on head", one assertion per oracle); a separate mutation stage is not run.
+- Testing follows [D-OWNER-TESTS-20261016](DECISION_TESTING_STANDARD_v1_0.md): the reviewer enumerates every distinct production claim in the verdict and shows one source-cited oracle passes at the pinned merged head and fails under its single planted reversion. Real defects are fixed with fail-on-revert proof. Already-covered variants/no-behaviour changes are non_blocking; no per-mutant oracles or captured-current-output goldens. One bounded round; a second only for a BLOCKING finding.
 
 ## §5 · Verdicts and completion
 

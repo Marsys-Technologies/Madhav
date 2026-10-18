@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { assertGeneralRunnerMayApplyPublicSchema } from '../migrate'
 
 /**
  * Pravāha B6.0 / Codex round 19 R19-1 — the owner's dispatch (`gh workflow run deploy.yml -f gochara_contracts_schema_migration=true`) must
@@ -14,10 +15,8 @@ import path from 'node:path'
  * arguments, then asserts what was selected. A selection the SQL hash checks cannot see (the files are right, the workflow does not name them) is
  * exactly the defect this guards: the round-18 integration carried #2961's older 1153–1157-only list and would have applied NOTHING at row 8.
  *
- * Run it on #2961's head, on the integration ref and — as the merge control of the protected train — on merged `main` with
- * WINDOW_MERGE_CONTROL=1 (then every selected file must exist on the tree, the selection must equal migrate.ts's protected set for the Gochara
- * files, and 1378 stays outside the protected selection even on trees that contain it).
- * (I) INTERPRETATION: source presence is not evidence of application or SETTLED-1; those remain operational gates.
+ * On the current tree every selected file must exist and the selection must equal migrate.ts's protected Gochara set.
+ * P05 has already landed 1378: it must remain routine and outside this protected-window selection.
  */
 const repoRoot = path.resolve(__dirname, '../../..')
 const workflowText = fs.readFileSync(path.join(repoRoot, '.github/workflows/deploy.yml'), 'utf8')
@@ -130,9 +129,7 @@ describe('owner dispatch — the protected window selection, executed from deplo
     expect((workflowText.match(/DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS: \$\{\{ vars\.DATA_PLANE_VERIFIER_CONTROL_EXCEPTIONS \}\}/g) ?? []).length).toBeGreaterThanOrEqual(4)
   })
 
-  // Source/selection control retained from protected-train checklist row 7, reusable on later trees.
-  // Run with WINDOW_MERGE_CONTROL=1; reported SKIPPED, not passed, elsewhere. Does not certify an operational gate.
-  describe.runIf(process.env.WINDOW_MERGE_CONTROL === '1')('merge control on merged main', () => {
+  describe('current protected-window and post-window source boundary', () => {
     it('every selected file exists on this tree and the Gochara protected set in migrate.ts equals the selection', () => {
       const dir = path.join(repoRoot, 'platform/migrations')
       expect(WINDOW_FILES.filter((f) => !fs.existsSync(path.join(dir, f)))).toEqual([])
@@ -141,10 +138,13 @@ describe('owner dispatch — the protected window selection, executed from deplo
       expect(refused.sort()).toEqual([...WINDOW_FILES].sort())
     })
 
-    it('keeps routine 1378 outside the protected dispatch even when its source is present', () => {
-      const r = run({ APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: 'true' })
-      expect(r.status, r.out).toBe(0)
-      expect(r.only!.filter((f) => f.startsWith('1378_'))).toEqual([])
+    it('the landed 1378 grant migration is routine and is never selected in the protected window', () => {
+      const file = '1378_gochara_verifier_sealer_inventory_grants.sql'
+      expect(fs.readdirSync(path.join(repoRoot, 'platform/migrations')).filter((f) => f.startsWith('1378_'))).toEqual([file])
+      const outcome = run({ APPLY_GOCHARA_CONTRACTS_SCHEMA_MIGRATION: 'true' })
+      expect(outcome.status, outcome.out).toBe(0)
+      expect(outcome.only).not.toContain(file)
+      expect(() => assertGeneralRunnerMayApplyPublicSchema(file, false)).not.toThrow()
     })
   })
 })

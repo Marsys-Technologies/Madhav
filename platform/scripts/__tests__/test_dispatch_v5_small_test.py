@@ -171,10 +171,10 @@ def test_manifest_carries_the_slice_marker_and_digests_it_and_the_registry_depen
     assert digest == hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def test_expected_registry_row_is_the_1304_values():
+def test_expected_registry_row_is_the_1304_values_with_the_1395_timeout():
     e = dispatch.EXPECTED_REGISTRY_ROW
     assert (e["has_substeps"], e["writer_timeout_seconds"], e["depends_on"], e["target_table"], e["is_active"]) == (
-        True, 28800, ["ga_positions", "ga_dashas"], "ka_gochara_eval_window", False)
+        True, 72000, ["ga_positions", "ga_dashas"], "ka_gochara_eval_window", False)
 
 
 import re as _re  # noqa: E402
@@ -220,9 +220,14 @@ def test_the_1304_parity_covers_every_admission_field_when_the_migration_is_in_t
     landed = parse_1304(MIGRATION_1304.read_text(encoding="utf-8"))
     expected = dispatch.EXPECTED_REGISTRY_ROW
     assert REQUIRED_PARITY_FIELDS <= set(landed)
-    for field in REQUIRED_PARITY_FIELDS:
+    for field in REQUIRED_PARITY_FIELDS - {"writer_timeout_seconds"}:
         assert landed[field] is not None or field in ("health_probe", "integrity_check_sql", "estimated_seconds"), f"{field}: not found in 1304"
         assert expected[field] == landed[field], f"{field}: the dispatch expects {expected[field]!r}, migration 1304 lands/checks {landed[field]!r}"
+    # writer_timeout_seconds: 1304 landed 28800, migration 1395 (J-3c cap, SR-J3-CAP-LIVE) raised it; the deployed row, which the dispatch validates, holds 1395's value.
+    assert landed["writer_timeout_seconds"] == 28800, "1304 changed: the 1395 guard (prior value exactly 28800) must be re-derived"
+    m1395 = (REPO / "platform/migrations/1395_ka_gochara_v5_writer_timeout_72000.sql").read_text(encoding="utf-8")
+    raised = int(_re.search(r"^\s+SET writer_timeout_seconds = (\d+)\s*$", m1395, _re.M).group(1))
+    assert expected["writer_timeout_seconds"] == raised, f"the dispatch expects {expected['writer_timeout_seconds']!r}, migration 1395 lands {raised!r}"
     assert set(expected) == REQUIRED_PARITY_FIELDS | {"scope"}                 # every expected field is covered (scope: 1243's, untouched by 1304)
 
 
@@ -933,10 +938,10 @@ def test_the_execute_within_ten_minutes_notice_is_printed_and_documented(capsys)
 
 
 def test_r7_the_ci_installs_the_sidecar_requirements_before_the_step_that_imports_the_writer():
-    ci = (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    ci = _ci_text((REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     select = ci.index("Nirmāṇa L0 — install writer test runtime")
     install = ci.index("python -m pip install -r python-sidecar/requirements-ci.txt", select)
-    dispatch_step = ci.index("python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py")
+    dispatch_step = ci.index("scripts/__tests__/test_dispatch_v5_small_test.py")
     assert select < install < dispatch_step
 
 
@@ -1038,6 +1043,19 @@ def test_db3_uncommitted_changes_under_the_sidecar_are_warned_about(capsys, monk
     _fake_git(monkeypatch, head="deadbeef", porcelain=" M python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py")
     out = _run_main(_Harness(), BASE_ARGV, capsys)
     assert "WARNING" in out.err and "UNCOMMITTED" in out.err and "deadbeef" in out.err
+
+
+def test_db3_only_the_machine_owned_overlay_dirt_is_not_warned_about_but_a_real_source_change_still_is(capsys, monkeypatch):
+    """A5 D-33: the executor's overlay regenerates the machine-owned writer-digest file in the dispatch tree, so that file alone differing from
+    the commit is not an uncommitted SOURCE change (no 'UNCOMMITTED' warning); any other path in the same listing still is. Real `git status
+    --porcelain` paths are repository-root-relative (`platform/...`)."""
+    overlay = " M platform/src/generated/nirmana-writer-digests.json\n M platform/python-sidecar/services/gochara_kernel/implementation_digest.lock.json\n"
+    _fake_git(monkeypatch, head="deadbeef", porcelain=overlay)
+    clean = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "JOB IMAGE MUST MATCH THIS CHECKOUT" in clean.err and "WARNING" not in clean.err and "UNCOMMITTED" not in clean.err
+    _fake_git(monkeypatch, head="deadbeef", porcelain=overlay + " M platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py\n")
+    dirty = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "WARNING" in dirty.err and "UNCOMMITTED" in dirty.err
 
 
 def test_db3_checkout_commit_never_uses_a_shell_and_degrades_to_unknown():
@@ -1165,3 +1183,9 @@ def test_dedicated_measuring_marker_refuses_widened_or_short_scope(kwargs):
     import dispatch_v5_measuring_job as measuring
     with pytest.raises(RuntimeError):
         measuring.build_slice_marker(**kwargs)
+
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[3] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow_text as _ci_text

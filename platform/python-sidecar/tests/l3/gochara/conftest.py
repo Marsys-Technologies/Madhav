@@ -204,3 +204,32 @@ def _fresh_contact_reconstruct_cache():
     contact_reconstruct._CACHE.clear()
     yield
     contact_reconstruct._CACHE.clear()
+
+
+# ── SR-HYG-LOCAL-OVERLAY: the writer-digest overlay CI applies, applied to local DB runs ─────────────────────────
+# platform/src/generated/nirmana-writer-digests.json is a CI-generated output, deliberately non-authoritative on main
+# (A5 D-33): the `generated-artifacts` job and the KALA executor (`apply_generated_overlay`) regenerate it from the tree under
+# test with `pipeline.orchestrator.provenance_inventory` before anything reads it. A bare local run reads the stale committed
+# copy instead, so a manifest built from it disagrees with `get_writer_source_hash`. This fixture does what the overlay does,
+# into a test-owned temp file, and repoints the dispatch loader's module-level path at it (test-only; production code and the
+# committed file are untouched, and the loader's default path is unchanged for every non-test caller).
+@pytest.fixture(scope="session")
+def writer_digest_overlay(tmp_path_factory):
+    from pipeline.orchestrator.provenance_inventory import build_inventory, render_inventory
+
+    out = tmp_path_factory.mktemp("writer_digest_overlay") / "nirmana-writer-digests.json"
+    out.write_text(render_inventory(build_inventory()), encoding="utf-8")
+    return out
+
+
+@pytest.fixture()
+def digest_overlay_applied(writer_digest_overlay, monkeypatch):
+    import sys
+
+    scripts = str(Path(__file__).resolve().parents[5] / "platform" / "scripts")
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    import dispatch_frozen_rebuild
+
+    monkeypatch.setattr(dispatch_frozen_rebuild, "WRITER_DIGESTS_PATH", writer_digest_overlay)
+    return writer_digest_overlay
