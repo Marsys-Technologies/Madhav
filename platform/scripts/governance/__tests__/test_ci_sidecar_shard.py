@@ -44,7 +44,7 @@ ORIGINAL_ARGS = (
 )
 #: The steps of the original job other than the sidecar pytest step, in order: they now run in the static job.
 STATIC_STEPS = (
-    "Checkout", "Setup Python", "Install Python dependencies",
+    "Checkout", "Restore source-bound generated files", "Setup Python", "Install Python dependencies",
     "SR-A6-GCW — protected migration window scheduling",
     "drift_detector — repo scan", "schema_validator — repo scan",
     "msr_referential_integrity — self-test (§N.5 constituent guard)",
@@ -136,7 +136,7 @@ def _tree(tmp_path: Path) -> Path:
 
 
 def _collect(root: Path, *args: str) -> tuple[int, list[str], str]:
-    p = subprocess.run([sys.executable, "-m", "pytest", "tests", "-m", "not integration", "--collect-only", "-q", "-p", "no:cacheprovider", *args],
+    p = subprocess.run([sys.executable, "-B", "-m", "pytest", "tests", "-m", "not integration", "--collect-only", "-q", "-p", "no:cacheprovider", *args],
                        cwd=root, env={"PYTHONPATH": str(PLUGINS), "PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
     return p.returncode, [line for line in p.stdout.splitlines() if "::" in line], p.stdout + p.stderr
 
@@ -181,7 +181,7 @@ def jobs():
 
 
 def _pytest_step(job: dict) -> dict:
-    steps = [s for s in job["steps"] if "pytest tests/ bodha_writers/__tests__" in str(s.get("run", ""))]
+    steps = [s for s in job["steps"] if "--ci-shard" in str(s.get("run", ""))]
     assert len(steps) == 1
     return steps[0]
 
@@ -189,7 +189,7 @@ def _pytest_step(job: dict) -> dict:
 def _command(run: str) -> str:
     """The pytest command line of the step, continuation lines joined."""
     joined = run.replace("\\\n", " ")
-    line = next(ln for ln in joined.splitlines() if "pytest tests/ bodha_writers/__tests__" in ln)
+    line = next(ln for ln in joined.splitlines() if "--ci-shard" in ln)
     return " ".join(line.split())
 
 
@@ -207,7 +207,19 @@ def test_the_shard_matrix_count_and_name_agree(jobs):
 
 def test_every_shard_runs_the_original_command_unchanged_plus_the_shard_arguments(jobs):
     cmd = _command(_pytest_step(jobs[SHARD_JOB])["run"])
-    assert cmd.startswith('PYTHONPATH="$sidecar_shard_plugin_dir" pytest ' + ORIGINAL_ARGS + " -p sidecar_shard --ci-shard "), cmd
+    assert 'ci_discovery.py" pytest ' in cmd, cmd
+    import ci_discovery
+    key = cmd.split('ci_discovery.py" pytest ', 1)[1].split()[0]
+    selected = ci_discovery.discover(ROOT, ci_discovery.profiles()[key])
+    import shlex
+    for token in shlex.split(ORIGINAL_ARGS):
+        if token.startswith('--') or token in ('-m', 'not integration'):
+            continue
+        assert token.rstrip('/') in {entry.rstrip('/') for entry in selected}, token
+    original_ignores = {token for token in shlex.split(ORIGINAL_ARGS) if token.startswith('--ignore=')}
+    actual_ignores = {token for token in shlex.split(cmd) if token.startswith('--ignore=')}
+    assert actual_ignores == original_ignores
+    assert '-m "not integration"' in cmd
     run = _pytest_step(jobs[SHARD_JOB])["run"]
     assert 'sidecar_shard_plugin_dir="$GITHUB_WORKSPACE/platform/scripts/governance/pytest_plugins"' in run
     assert (ROOT / "platform/scripts/governance/pytest_plugins/sidecar_shard.py").is_file()
@@ -235,25 +247,24 @@ def test_the_static_job_keeps_every_other_original_step_in_order(jobs):
     st = jobs[STATIC_JOB]
     assert tuple(s.get("name") for s in st["steps"]) == STATIC_STEPS
     assert not any("pytest tests/ bodha_writers" in str(s.get("run", "")) for s in st["steps"])
-    assert st["steps"][0]["with"]["fetch-depth"] == 0 and st["steps"][1]["with"]["python-version"] == "3.11"
+    assert st["steps"][0]["with"]["fetch-depth"] == 0 and st["steps"][2]["with"]["python-version"] == "3.11"
 
 
 def test_the_sidecar_suite_runs_only_sharded(jobs):
     """No job runs the whole selection unsharded any more (it would double the runtime), and only the shard job runs it at all."""
-    holders = [name for name, j in jobs.items() for s in j.get("steps", []) if "pytest tests/ bodha_writers/__tests__" in str(s.get("run", ""))]
+    holders = [name for name, j in jobs.items() for s in j.get("steps", []) if "--ci-shard" in str(s.get("run", ""))]
     assert holders == [SHARD_JOB]
 
 
 def test_the_aggregate_keeps_the_required_name_and_needs_all_parts(jobs):
     agg = jobs[AGG_JOB]
     assert agg["name"] == REQUIRED_NAME
-    assert set(agg["needs"]) == {"changes", STATIC_JOB, SHARD_JOB, "k3-sealed-db-tests"}
+    assert set(agg["needs"]) == {"full-suite", STATIC_JOB}
+    assert {SHARD_JOB, "k3-sealed-db-tests", "kala-db-tests"} <= set(jobs["full-suite"]["needs"])
     assert str(agg["if"]) == "${{ always() }}"
     step = agg["steps"][0]
     assert step["env"]["STATIC_RESULT"] == f"${{{{ needs.{STATIC_JOB}.result }}}}"
-    assert step["env"]["SHARDS_RESULT"] == f"${{{{ needs.{SHARD_JOB}.result }}}}"
-    assert step["env"]["K3_RESULT"] == "${{ needs.k3-sealed-db-tests.result }}"
-    assert step["env"]["DOCS_ONLY"] == "${{ needs.changes.outputs.docs_only }}"
+    assert step["env"]["FULL_SUITE_RESULT"] == "${{ needs.full-suite.result }}"
     assert sum(1 for j in jobs.values() if j.get("name") == REQUIRED_NAME) == 1
 
 
@@ -261,17 +272,14 @@ RESULTS = ("success", "failure", "cancelled", "skipped", "")
 
 
 @pytest.mark.parametrize("static", RESULTS)
-@pytest.mark.parametrize("shards", RESULTS)
-@pytest.mark.parametrize("k3", RESULTS)
-@pytest.mark.parametrize("docs_only", ("true", "false", ""))
-def test_the_aggregate_requires_static_and_shards_and_k3_or_docs_only_skip(jobs, static, shards, k3, docs_only):
-    """Run the real aggregate: only K3 may skip, and only on an explicit docs-only change."""
+@pytest.mark.parametrize("full_suite", RESULTS)
+def test_the_aggregate_requires_static_and_the_full_suite_event_contract(jobs, static, full_suite):
+    """The protected check consumes the measured event contract, including K3 and all shards."""
     script = jobs[AGG_JOB]["steps"][0]["run"]
-    p = subprocess.run(["bash", "-c", script], env={"STATIC_RESULT": static, "SHARDS_RESULT": shards, "K3_RESULT": k3, "DOCS_ONLY": docs_only, "PATH": "/usr/bin:/bin"},
+    p = subprocess.run(["bash", "-c", script], env={"STATIC_RESULT": static, "FULL_SUITE_RESULT": full_suite, "PATH": "/usr/bin:/bin"},
                        capture_output=True, text=True)
-    ok = (static == "success" and shards == "success"
-          and (k3 == "success" or (k3 == "skipped" and docs_only == "true")))
-    assert (p.returncode == 0) is ok, (static, shards, k3, docs_only, p.stdout, p.stderr)
+    ok = static == "success" and full_suite == "success"
+    assert (p.returncode == 0) is ok, (static, full_suite, p.stdout, p.stderr)
     assert ("::error::" in p.stdout) is (not ok)
 
 
@@ -286,7 +294,7 @@ def test_no_part_can_turn_red_green_or_narrow_what_runs(jobs):
         assert "continue-on-error" not in job, jname
         needs = job.get("needs") or []
         # K3-2 adds a docs-only-aware SQL dependency; the aggregate itself always runs.
-        if jname != AGG_JOB:
+        if jname == STATIC_JOB:
             assert "changes" not in ([needs] if isinstance(needs, str) else needs), jname
         assert "docs_only" not in str(job.get("if", "")), jname
         for st in job["steps"]:
