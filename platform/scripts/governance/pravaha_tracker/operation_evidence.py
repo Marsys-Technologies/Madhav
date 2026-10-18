@@ -10,6 +10,8 @@ from pathlib import Path
 
 from pravaha_tracker.completion import CompletionError
 
+SOAK_STEP = ('J-6l-a61', 'owner_soak_rule_and_live_readback')
+
 
 def load_bound(reference, base):
     if not isinstance(reference, dict) or not isinstance(reference.get('path'), str):
@@ -50,10 +52,10 @@ def check_operation_evidence(receipt, reviewed_step, result_path):
             or readback.get('executor_receipt_sha256') != sources['receipt'].get('sha256')
             or readback.get('result') != 'ACCEPTED' or readback.get('by') not in ('v1', 'v2', 'v3', 'v4')):
         raise CompletionError('source request/receipt/independent readback chain mismatch')
-    soak_step = (receipt.get('item') == 'J-6l-a61'
-                 and receipt.get('step') == 'owner_soak_rule_and_live_readback')
+    soak_step = (receipt.get('item'), receipt.get('step')) == SOAK_STEP
     if soak_step and evidence.get('schema') != 'ky.served_soak/1':
         raise CompletionError('served soak requires measured sample evidence')
     if evidence.get('schema') == 'ky.served_soak/1':
         from pravaha_tracker.served_soak import check_soak
         check_soak(evidence, path, request=request, readback=readback, reviewed_step=reviewed_step)
+    return sources['receipt']['sha256']  # the executor receipt this chain names

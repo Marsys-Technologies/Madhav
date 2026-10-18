@@ -1,0 +1,8 @@
+{
+ "image_summary": {
+  "digest": "sha256:abababababababababababababababababababababababababababababababab",
+  "fully_qualified_digest": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline@sha256:abababababababababababababababababababababababababababababababab",
+  "registry": "asia-south1-docker.pkg.dev",
+  "repository": "madhav-astrology/amjis/brahma-pipeline"
+ }
+}

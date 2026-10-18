@@ -23,7 +23,7 @@ KINDS = ('backup_snapshot', 'backup_restore_verify', 'smalltest_dispatch_dryrun'
 
 
 def argv_for(op):
-    values = {'label': 'p01_fixture', 'run': 'one_class_full', 'classes': 'marriage',
+    values = {'label': 'p01_fixture', 'scope': 'small_test', 'run': 'one_class_full', 'classes': 'marriage',
               'horizon-start': '1998-01-01T00:00:00+00:00',
               'horizon-end': '2026-04-17T00:00:00+00:00'}
     return op['fixed_args'] + [a for key in op['allowed_args'] for a in (f'--{key}', values[key])]
@@ -36,7 +36,7 @@ def test_enabled_table_argv_agrees_with_script(kind):
     assert (ROOT / op['script']).is_file(), op['script']
     assert op['production'] is True
     assert op['enabled_by'] == 'J-1a'
-    assert op['allowed_args'] == (['label'] if kind.startswith('backup_') else
+    assert op['allowed_args'] == (['label', 'scope'] if kind.startswith('backup_') else
                                  ['run', 'classes', 'horizon-start', 'horizon-end'] if 'dispatch' in kind else [])
     if kind == 'smalltest_dispatch':
         # Final main owns remote launching; the bridge injects the reviewed staging argv.

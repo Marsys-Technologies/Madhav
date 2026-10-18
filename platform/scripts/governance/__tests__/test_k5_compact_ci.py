@@ -1,4 +1,6 @@
 """K5-2 stays isolated and its detector tests cannot fall out of required CI."""
+from _ci_gate_test_support import runs_in_full_gate
+
 import ast
 from pathlib import Path
 
@@ -15,8 +17,10 @@ def test_compact_suite_is_explicit_in_mandatory_governance_shard():
     assert '-p no:cacheprovider' in steps[0]['run']
     assert not steps[0].get('continue-on-error', False)
     assert not job.get('continue-on-error', False)
-    assert 'governance-gates-py-sidecar-shard' in jobs['governance-gates']['needs']
-    assert 'SHARDS_RESULT' in jobs['governance-gates']['steps'][0]['run']
+    assert runs_in_full_gate(job)
+    assert 'governance-gates-py-sidecar-shard' in jobs['full-suite']['needs']
+    assert 'full-suite' in jobs['governance-gates']['needs']
+    assert 'FULL_SUITE_RESULT' in jobs['governance-gates']['steps'][0]['run']
 
 
 def test_no_existing_live_module_imports_compact_trial():

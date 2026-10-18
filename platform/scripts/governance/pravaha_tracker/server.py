@@ -41,7 +41,7 @@ if __package__ in (None, ""):
 
 from pravaha_tracker import detectors as D  # noqa: E402
 from pravaha_tracker.events import EventLog  # noqa: E402
-from pravaha_tracker.state import build_snapshot  # noqa: E402
+from pravaha_tracker.state import build_snapshot, load_closure  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
@@ -334,7 +334,8 @@ class Engine:
                 r = self.det.get(i["detector"])
                 if r is not None:
                     det_results[i["id"]] = r.to_dict()
-        snap = build_snapshot(self.model, list(self.log.events), det_results, {}, self._sample_health(), self.activity)
+        snap = build_snapshot(self.model, list(self.log.events), det_results, {}, self._sample_health(), self.activity,
+                              closure=load_closure(self.model))
         body = {k: v for k, v in snap.items() if k != "generated_at"}
         digest = hashlib.sha256(json.dumps(_strip_ages(body), sort_keys=True, default=str).encode()).hexdigest()
         with self.cond:

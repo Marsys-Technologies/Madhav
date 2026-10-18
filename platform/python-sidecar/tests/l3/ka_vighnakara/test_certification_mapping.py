@@ -47,9 +47,10 @@ def test_sealed_sql_suite_is_a_required_governance_dependency():
     import sys
     import yaml
     sys.path.insert(0, str(ROOT / 'platform/scripts/governance'))
-    from ci_discovery import expanded_workflow_text
-    jobs=yaml.safe_load((ROOT/'.github/workflows/ci.yml').read_text())['jobs']
-    assert 'k3-sealed-db-tests' in jobs['governance-gates']['needs']
+    from ci_discovery import expanded_workflow_text, expanded_workflow
+    jobs=expanded_workflow(yaml.safe_load((ROOT/'.github/workflows/ci.yml').read_text())['jobs'])
+    assert 'k3-sealed-db-tests' in jobs['full-suite']['needs']
+    assert 'full-suite' in jobs['governance-gates']['needs']
     job=jobs['k3-sealed-db-tests']
     commands='\n'.join(step.get('run','') for step in job['steps'])
     assert 'tests/l3/ka_vighnakara tests/l3/kala_db/ka_vighnakara' in commands
@@ -59,4 +60,5 @@ def test_sealed_sql_suite_is_a_required_governance_dependency():
     required={'tests/l3/kala_db', 'tests/l3/ka_bhavishya_lekha/test_certification_mapping.py'}
     assert any(required <= set(shlex.split(line)) for line in old_commands.splitlines() if 'pytest' in line)
     gate_commands='\n'.join(step.get('run','') for step in jobs['governance-gates']['steps'])
-    assert 'K3_RESULT' in gate_commands and 'DOCS_ONLY' in gate_commands
+    assert 'FULL_SUITE_RESULT' in gate_commands
+    assert jobs['full-suite']['steps'][0]['env']['NEEDS_JSON'] == '${{ toJSON(needs) }}'

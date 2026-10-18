@@ -13,7 +13,7 @@ import pytest
 from services.gochara_kernel import contact_reconstruct as cr
 from services.gochara_kernel import record_verifier as rv
 
-from .test_a53_inventory import CHART_ID, H0, H1
+from .test_a53_inventory import CHART, CHART_ID, H0, H1
 from .test_a53_p1_anchor import SAT_AD, SUN_AD, SUN_LIBRA, _anchors, _pos, _quiet, _sun_in_libra
 from .test_a53_p1_support import GEN, _t, world  # noqa: F401
 
@@ -140,6 +140,36 @@ def test_a_class_with_no_contacts_and_no_records_passes_the_zero_case(world):
     w.set_lord_periods([("sun", 2, _t(1, 1), _t(1, 20))])
     w.boot()
     assert _anchors(w, position_at=_pos({}))["contacts"] == 0
+
+
+SAT_LIBRA = _pos({"saturn": [(_t(1, 10), _t(2, 20))]})
+
+
+def _saturn_testimony(w):
+    """Saturn natal in Taurus: it neither occupies nor owns a marriage signature house, but its dispositor Venus owns
+    Libra ∈ H ⇒ licence TESTIMONY (Phaladīpikā XX.34–38 read through spec §2.2: dispositorship annotates, never
+    licenses). Saturn in Libra (its exaltation sign) is read ONLY under the anchor Saturn (XX.34–35/37) ⇒ every anchor
+    of that contact is a testimony lord. Returns the chart the BUILDER is given."""
+    w.conn.execute("UPDATE public.chart_facts SET fact_value_num = 45.0 WHERE fact_id = 'fact-SAT'")
+    return {**CHART, "natal": {**CHART["natal"], "Saturn": 45.0}}
+
+
+def test_a_contact_whose_every_anchor_is_a_testimony_lord_is_still_written_with_no_record_on_it(world):
+    """The lane rehearsal's defect. D3 (A5_3 brief, deferral D3 / AM-21 part 2): a testimony-licence anchor has no ruling_ref
+    (kgrr_ruling_ck), so its RECORDS are not minted — but the transit CONTACT is a sky fact that the pinned search obligation
+    (anchor-free, `_p1_obligation_bytes`) owes the ledger, and `verify_p1_anchors` / `contact_certify` both demand it ('contacts
+    expected but no records' passes only with the contact present, no anchored records, derived set empty). The builder used to
+    skip the whole work item, so whether the contact existed depended on some other path having written it first."""
+    w = world
+    chart = _saturn_testimony(w)
+    w.set_lord_periods([("saturn", 2, _t(1, 1), _t(2, 5))])
+    w.boot()
+    w.seed("saturn", [(180.0, _t(1, 10)), (210.0, _t(2, 20))])
+    counts = w.grain("saturn", lambda t: _t(1, 10) <= t < _t(2, 20), anchors=[("saturn", lv) for lv in ("md", "ad", "pd")],
+                     chart=chart)
+    assert counts["records"] == 0 and counts["contacts"] == 1 and counts["unwritable_testimony"] == 3
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'").fetchone()[0] == 0
+    assert _anchors(w, position_at=SAT_LIBRA)["contacts"] == 1
 
 
 def test_an_interior_gap_the_support_bridges_is_caught(world):
