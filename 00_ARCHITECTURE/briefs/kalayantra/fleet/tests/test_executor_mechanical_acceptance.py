@@ -431,6 +431,7 @@ MARKER_ROUTE = {
     "backup_snapshot": "client_env",
     "backup_restore_verify": "client_env",
     "smalltest_dispatch": "in_process",
+    "measuring_dispatch": "in_process",     # J-3a: measuring_launch.py opens only psycopg connections from DATABASE_URL (no PGAPPNAME/application_name in its closure — the next test)
 }
 # A8 §3 fences only remote_async kinds; the *_dryrun kinds are production:false in executor_ops.json, so they are not eligible and carry no row.
 # Teardowns (smalltest_teardown, measuring_teardown) stay excluded by TEARDOWN_KINDS: executor.py `target_is_not_a_teardown` still refuses them.
