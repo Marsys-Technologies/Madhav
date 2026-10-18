@@ -277,6 +277,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+      # platform's program reaches platform-mcp sources through the K9-6 registry test
+      # (views_registry.integration.test.ts imports tools/kala_views/register_all), so
+      # their MCP SDK / zod imports must resolve here as well.
+      - name: Install platform-mcp dependencies for imported sources
+        run: npm ci --prefix ../platform-mcp
       - name: tsc — src only (exclude tests)
         # Capture tsc output; only fail on errors outside test directories.
         # Uses || true so set -e doesn't abort before we can inspect output.
@@ -422,6 +427,14 @@ jobs:
           python-version: '3.11'
       - name: Install sidecar CI dependencies
         run: python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+      # Directory discovery includes the public registry/MCP boundary.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install serving-boundary test dependencies
+        run: |
+          npm ci --prefix platform
+          npm ci --prefix platform-mcp
       - name: Install PostgreSQL 16 logical backup clients
         run: |
           sudo apt-get update
@@ -690,6 +703,17 @@ jobs:
           # Fixture absence is fatal here; collection by the DB-free sidecar shard alone is insufficient.
           # Pinned to the sidecar directory so the glob holds wherever earlier lines of this step leave the shell.
           (cd "$GITHUB_WORKSPACE/platform/python-sidecar" && python -B -m pytest tests/l3/gochara/test_j4ops_*.py -q -rs -p no:cacheprovider)
+
+      - name: Install MCP dependencies for published public-view SQL tests
+        working-directory: platform-mcp
+        run: npm ci
+
+      # disposable_sql.test_support.ts shells out to `python3` and imports psycopg (plus the
+      # sidecar disposable-DB guard, which imports psycopg too). The only other pip install in
+      # this job sits inside the 9-12 step, which a PR that selects just the 10-0 profile skips,
+      # so without this the K9-6 public-view SQL tests die on ModuleNotFoundError: psycopg.
+      - name: Install psycopg for published public-view SQL tests
+        run: python3 -m pip install 'psycopg[binary]>=3.2' --quiet
 
       - name: K7-3 — stage readers before and after protected migration 1376
         if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'db-integration-tests-10-0'))) }}
