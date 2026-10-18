@@ -21,7 +21,7 @@ def test_authority_followup_is_protected_and_has_no_pointer_dml():
 
 
 def test_both_j6m_suites_run_in_mandatory_fail_closed_db_step():
-    ci = (ROOT / '.github/workflows/ci.yml').read_text()
+    ci = _ci_text((ROOT / '.github/workflows/ci.yml').read_text())
     step = ci.split('- name: Pravāha A5.3 —', 1)[1].split('\n      - name:', 1)[0]
     assert "GOCHARA_A53_REQUIRE_DB: '1'" in step
     assert 'continue-on-error' not in step
@@ -39,6 +39,12 @@ def test_prebuild_preserves_disabled_authority_operations_and_deferred_helper():
     # The rejected P09 helper was deferred on main. Do not recreate the B1
     # readiness-only mutation path during this admission-only prebuild.
     assert not (ROOT / 'platform/python-sidecar/services/gochara_kernel/authority_head.py').exists()
+
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[5] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow_text as _ci_text
 
 
 def test_j6mr1_specifies_runner_idempotency_without_changing_applied_sql_or_activation():

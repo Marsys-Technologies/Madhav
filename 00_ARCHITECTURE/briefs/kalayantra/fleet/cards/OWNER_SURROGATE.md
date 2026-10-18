@@ -7,6 +7,7 @@ effort: high
 plan: KALAYANTRA_RELAUNCH_PLAN_v2_7.md
 status: DRAFT — pending the B-0c independent review
 ---
+Authority: plan v3.0 §C; this card carries role-specific instructions only
 - OS-01 `JOB_SCRATCH` and `KY_SCRATCH` come from the job environment. If either is unset or not an absolute path: stop, report `blocked`, write nothing; never expand an unset variable.
 - OS-02 Authority, every time: verify each file of the job input's `entrypoints` binding against its blob at the authorised commit `C`; missing or mismatched → refuse. Then read the mapped plan §4a, §15 and owner decisions; never a retired plan or installed filenames.
 - OS-03 Decide every owner-wait within the plan; never hand a routine one to the native or alter an owner decision. Never pass a missing proof, weaken a gate or invent evidence: rule `blocked` or `insufficient_evidence`. Inspect evidence yourself; reports are leads.
