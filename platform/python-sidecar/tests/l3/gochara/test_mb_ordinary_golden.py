@@ -47,7 +47,8 @@ GOLDEN_SETTLED_BUILD_PREFIX = "7377833e-5d3b-4e70-8bef-"
 # P06b (ruling 18): P06b edits governed sources of all three stages (input_vector / input_vector_verifier feed geometry and evaluation; seal_brief.py and
 # verification_job.py feed the window stage), so those three digests MUST differ from the parent's. The window identity is pinned exactly (computed from this tree with
 # implementation_registry.compute()), so another window-code change requires review; geometry and evaluation are pinned by the parent comparison only.
-P06B_WINDOW_IMPLEMENTATION = "2809556a4535d722803abae7f701712ed79e2d7571225018229c28d214e0112c"
+# Re-pinned after merging main (seal_brief.py / verification_job.py in the window stage also changed on main): 2809556a... was this tree before the merge.
+P06B_WINDOW_IMPLEMENTATION = "d886cc893d597c170a83dbce91f2f89be2c302def6d949e935e1ca859bfa62d5"
 # the REAL runner's birth parameters shape (birth_params._to_birth_params): main ignores them, an ordinary HEAD build must too
 BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, "longitude_deg": 85.8245, "tz_offset_hours": 5.5, "place_name": "Bhubaneswar",
                 "subject_label": "native"}
