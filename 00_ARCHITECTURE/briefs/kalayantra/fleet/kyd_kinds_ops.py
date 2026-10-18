@@ -468,16 +468,14 @@ def static_validate(req, entry):
 
 
 def required_checks(kind):
-    """executor.validate's attestation rule: (names of the checks that must be true, whether required_rows apply)."""
+    """executor.validate's attestation rule (A8 §5), names of the checks that must be true: `backup_taken` for a *_teardown and
+    `dry_run_passed` for a mutating kind. `restore_verified` and the table's `required_rows` are retired as preconditions."""
     required = []
-    if kind != "backup_snapshot":
+    if kind.endswith("_teardown"):
         required.append("backup_taken")
-    if kind not in ("backup_snapshot", "backup_restore_verify"):
-        required.append("restore_verified")
-    mutating = kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun")
-    if mutating:
+    if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"):
         required.append("dry_run_passed")
-    return required, mutating
+    return required
 
 
 def op_steps(model_item):
@@ -905,11 +903,8 @@ def _finish_pre_accept(ctx, job):
     rows = {} if rows is None else rows
     if not isinstance(checks, dict) or not isinstance(rows, dict):
         return _fail("PRE-ACCEPT", item, "attestation_missing", "checks / rows are not objects")
-    needed, mutating = required_checks(req["kind"])
-    if any(checks.get(k) is not True for k in needed):
-        return _fail("PRE-ACCEPT", item, "attestation_missing", "a required backup / restore / dry-run check is not true")
-    if mutating and any(rows.get(k) is not True for k in entry.get("required_rows", [])):
-        return _fail("PRE-ACCEPT", item, "rows_not_true", "a required row of the table entry is not true")
+    if any(checks.get(k) is not True for k in required_checks(req["kind"])):
+        return _fail("PRE-ACCEPT", item, "attestation_missing", "a required backup / dry-run check is not true")
     record = {"result": "ACCEPTED", "operation_id": req["operation_id"], "by": slot, "reviewed_commit": req.get("reviewed_commit"),
               "ts": _now(ctx), "request_sha256": prepared["request_sha256"], "rows": rows, "checks": checks}
     path = _acceptance_path(run, req["operation_id"])

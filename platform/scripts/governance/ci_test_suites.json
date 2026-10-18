@@ -182,7 +182,8 @@
       "cwd": "platform",
       "engine": "vitest",
       "include": [
-        "tests/integration/gochara_contract_builder_grants.db*.test.ts"
+        "tests/integration/gochara_contract_builder_grants.db*.test.ts",
+        "tests/integration/builder_role_fixture.db*.test.ts"
       ]
     },
     "db-integration-tests-30-0": {
