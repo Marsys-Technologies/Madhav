@@ -17,7 +17,8 @@ the running tracker uses a separate installed snapshot and changes only at B-2.
   `--phase artifact`; a changed head or later rejection invalidates acceptance.
 - `done <ID>` checks eligible dependencies, every declared step, the live
   detector and typed evidence. Code needs the registered PR at the reviewed
-  head, its squash merge commit and a post-deploy verdict. Artifact, operation
+  head, its squash merge commit and a successful main deploy that contains it (the post-deploy
+  verdict is retired, A8 §4). Artifact, operation
   and packet completions bind their digests, receipts and independent verdicts.
   A completed event remains durable when a detector later flaps; audit reports
   the discrepancy. S completes independently accepted N- and V-owned items.
@@ -45,6 +46,17 @@ the running tracker uses a separate installed snapshot and changes only at B-2.
 - `audit --since kickoff` checks duplicate or expired claims, bad completion
   evidence, unmet dependencies, unbound operations or fences, and intervals
   with no earned progress. It lists skipped mandatory items separately.
+
+## SR-BOLD-07: code items are done when merged and deployed
+
+The server derives each tick, from `gh` and local git it already reads (`merged_deployed.py`; no credential, off the
+tick path, cached), that a declared `completion_kind: code` item with a `pr_merged`/`branch_merged` detector is `done`
+when its PR is MERGED and the merge commit is contained in a successful `workflow_run` deploy of main. The PR's merged
+review is the acceptance: no verdict event is written or needed. Item -> PR: `detector.pr` / `packet_pr` / the PR that
+squash-merged `detector.ref`; else the merged PR of the `ref` head branch; else the merged PR whose diff holds every
+owned path. A bundle child counts only when at least one of its owned paths is in the bundle's diff and every owned
+path is in its merged tree. The row reads `source: derived:merged+deployed` with `merged_pr` and `deploy_run_id`; an
+earlier guarded completion event still wins. Operation items close from executor receipts, decisions from the ledger.
 
 ## A7 D-46: implemented vs. activated
 

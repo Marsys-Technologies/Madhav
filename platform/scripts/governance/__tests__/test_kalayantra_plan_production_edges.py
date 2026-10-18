@@ -148,10 +148,10 @@ def test_operation_item_cannot_replace_bound_receipt_with_live_query(tmp_path, m
     assert not events.exists()
 
 
-def test_ka3a_d46_implements_without_step_receipts_but_keeps_post_deploy_verdict():
+def test_ka3a_d46_implements_without_step_receipts_and_without_a_post_deploy_verdict():
     """A7 D-46: a code item drops separate step receipts (the PR acceptance covers them) and its open upstream
-    becomes `activation_pending` (KA-3a's only production wait was that step, so none is left); the production protection that remains is the independent post-deploy verdict
-    (amendment §5: KA-3a declares a migration), which no step receipt or deploy replaces."""
+    becomes `activation_pending` (KA-3a's only production wait was that step, so none is left); the post-deploy verdict is retired (A8 §4, SR-POSTDEPLOY-RETIRED): KA-3a declares
+    a migration yet completes on the reviewed-head verdict plus measured deployment containment."""
     plan = model()
     production_spec(plan)
     events = accepted_inputs(plan, {"KA-3a", "J-4d-pr3018"})
@@ -160,9 +160,11 @@ def test_ka3a_d46_implements_without_step_receipts_but_keeps_post_deploy_verdict
     done = guarded_done_event(plan, events + accepted, "KA-3a", "stream-K", {"status": "done"}, proof)
     assert STEP in item(plan, "KA-3a")["steps"] and not any(ev.get("step") for ev in events)
     assert done["activation_pending"] == []
-    missing, proof = code_acceptance("KA-3a", post_deploy=False)
-    with pytest.raises(CompletionError, match="independent post-deploy verdict at merge commit is missing"):
-        guarded_done_event(plan, events + missing, "KA-3a", "stream-K", {"status": "done"}, proof)
+    bare, proof = code_acceptance("KA-3a", post_deploy=False)
+    assert guarded_done_event(plan, events + bare, "KA-3a", "stream-K", {"status": "done"}, proof)["guarded"]
+    proof["deploy"]["contains_merge"] = False
+    with pytest.raises(CompletionError, match="no successful deployment of main containing the merge commit"):
+        guarded_done_event(plan, events + bare, "KA-3a", "stream-K", {"status": "done"}, proof)
 
 
 def test_k32_d46_implements_with_sealed_production_output_pending_but_operation_kind_still_waits():
