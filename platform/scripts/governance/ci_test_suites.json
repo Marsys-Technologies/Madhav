@@ -109,6 +109,7 @@
         "tests/l3/gochara/test_w2*.py",
         "tests/l3/gochara/test_p09*.py",
         "tests/l3/gochara/test_j7b*.py",
+        "tests/l3/gochara/test_j4ops_*.py",
         "tests/l3/gochara/test_j6m*.py",
         "tests/l3/gochara/test_horizon*.py",
         "tests/l3/gochara/test_mb_horizon*.py",
