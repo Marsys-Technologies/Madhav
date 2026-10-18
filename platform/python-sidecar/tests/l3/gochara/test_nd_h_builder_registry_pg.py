@@ -57,8 +57,8 @@ def _rows(conn, sql, params=()):
 
 def test_the_whole_bound_catalogue_seeds_and_every_1_2_0_row_is_stored_as_declared(pg):
     counts = _seeded(pg)
-    assert counts["paths"] == len(rr.BOUND_PATH_REFS) == 8 and counts["seals"] == 8
-    assert counts["factors"] == len(rr.BOUND_FACTOR_REFS)
+    assert counts["paths"] == len(rr.bound_path_refs()) == 8 and counts["seals"] == 8
+    assert counts["factors"] == len(rr.bound_factor_refs())
     stored = {(p, v): (prov, role, ruling, score) for p, v, prov, role, ruling, score in _rows(
         pg, "SELECT path_id, rule_version, provenance, operator_role, ruling_ref, score_rule"
             " FROM public.ka_gochara_rule_path")}
@@ -331,3 +331,32 @@ def test_final_rule_records_keep_the_exact_coverage_facts_the_schema_requires(pg
         " (r.chart_id, r.generation, r.coverage_partition_kind, r.coverage_partition_key)"
         " WHERE r.chart_id = %s AND r.generation = %s", (CHART_ID, '5.38')).fetchone()
     assert equal is True
+
+
+@pytest.fixture(autouse=True)
+def _explicit_final_candidate_profile():
+    from services.gochara_kernel import rule_registry
+    with rule_registry.rule_profile(final_rules=True):
+        yield
+
+
+def test_pd_dispositor_testimony_is_withheld_even_when_the_same_lord_is_an_ad_karaka(pg):
+    """One lord has separate AD and PD licences; never reuse AD's karakatva for PD."""
+    from services.gochara_rules import permission
+    chart = {'lagna_deg': CHART_ARIES['lagna_deg'],
+             'natal': {**NATAL, 'Sun': 195.0, 'Venus': 255.0}}
+    assert permission.period_lord_relation('Sun', 'parental_event', chart,
+        rule_version=V, level='ad')['relation'] == 'karakatva'
+    assert permission.period_lord_relation('Sun', 'parental_event', chart,
+        rule_version=V, level='pd')['relation'] == 'dispositorship'
+    edges = [e for e in ev.enumerate_edges('parental_event', 'P1', chart, rule_version=V)
+             if e.transit and e.agent == 'sun' and e.relation == 'residence'
+             and e.obj.canonical_target == LIBRA and e.period_anchor_lord == 'sun'
+             and e.period_anchor_level in ('ad', 'pd')]
+    assert len(edges) == 2
+    counts, _ = _coverage_and_grain(pg, event_class='parental_event', path_id='P1', chart=chart,
+        edges=edges, generation='6.12', bodies=('Sun',),
+        dasha_rows_for=lambda a, level=None: _running('sun').get(a, []))
+    assert counts['records'] == 1 and counts['unwritable_testimony'] == 1
+    assert pg.execute("SELECT period_anchor_level FROM public.ka_gochara_relationship_record"
+                      " WHERE generation = '6.12'").fetchall() == [('ad',)]

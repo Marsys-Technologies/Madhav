@@ -271,10 +271,7 @@ def test_p2_gain_classes_all_covered_non_adverse_empty():
 def test_p2_adverse_classes_all_covered():
     for cls, row in ev.CLASS_BY_NAME.items():
         if row["polarity"] == "adverse" and cls != "birth_anchor":
-            if cls == "parental_event":
-                assert ev.enumerate_edges(cls, "P2", CHART) == []  # ND-H item 5, father's class
-            else:
-                assert ev.enumerate_edges(cls, "P2", CHART), cls
+            assert ev.enumerate_edges(cls, "P2", CHART), cls
 
 
 # ── (c2) P1 ───────────────────────────────────────────────────────────────────

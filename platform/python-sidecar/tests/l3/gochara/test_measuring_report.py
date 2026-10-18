@@ -1030,3 +1030,137 @@ def test_mb6_nonfatal_sink_evidence_is_unknown_when_absent_never_a_refusal(kind,
         view.sink_counts[kind] = bad
     result = _mb6_accept(view)
     assert result["accepted"] is True and result["sink_counts"][kind] is None
+
+
+def test_horizon_detail_reports_every_missing_id_in_stable_date_order():
+    rows = [BIRTH_ROW, LEL(date(2001, 1, 1), conf="year_only", lel_id=None, event_id="later"),
+            LEL(date(1996, 3, 3), lel_id=None, event_id="earlier"), LEL(date(1998, 2, 16))]
+    for ordered in (rows, list(reversed(rows))):
+        detail = derive_chart_horizon_detail(BIRTH, ordered, BUILD)
+        assert detail["rows_without_lel_id"] == [
+            {"event_id": "earlier", "event_date": "1996-03-03"},
+            {"event_id": "later", "event_date": "2001-01-01"}]
+        assert (detail["start"], detail["end"], detail["excluded_undated"]) == (*H, 2)
+
+
+@pytest.mark.parametrize("value", ["2000-01-01T00:00:00+00:00", date(2000, 1, 1), None, 0])
+def test_support_instants_require_datetimes_and_refuse_with_the_named_error(value):
+    record = SupportRecord("marriage", "P3", "saturn", ((value, T(2000, 1, 2)),))
+    _refuses(lambda: class_share_report([record], [], H), "instant_unreadable")
+
+
+def test_a_missing_birth_event_date_has_the_named_lel_date_refusal():
+    row = dict(BIRTH_ROW, event_date=None)
+    _refuses(lambda: fully_dated_events([row], birth_date=BIRTH), "lel_date_missing")
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")])
+def test_nonfinite_window_lengths_cannot_be_reported_as_statistics(value):
+    _refuses(lambda: length_distribution([1.0, value]), "length_not_finite")
+
+
+def test_an_inverted_window_is_refused_even_when_it_would_be_clipped_out():
+    for end in (T(1999, 1, 1), T(2001, 1, 1)):
+        _refuses(lambda: clip_windows_for_scoring(
+            [("marriage", "P1", T(2000, 1, 2), T(2000, 1, 1))], end), "interval_inverted")
+
+
+def _rehash_basis_rows(basis):
+    import json
+    from hashlib import sha256
+    basis["consumed_rows_digest"] = sha256(json.dumps(
+        basis["consumed_rows"], sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+
+
+@pytest.mark.parametrize("damage,reason", [
+    ("missing_column", "horizon_basis_missing"),
+    ("empty_id", "horizon_basis_invalid: event_ids"),
+    ("reordered", "horizon_basis_invalid: row_order"),
+])
+def test_even_a_rehashed_basis_must_have_complete_identifiable_canonical_rows(damage, reason):
+    view = _mb6_view()
+    basis = view.horizon_basis
+    if damage == "missing_column":
+        del basis["consumed_rows"][0]["category"]
+    elif damage == "empty_id":
+        basis["consumed_rows"][0]["event_id"] = ""
+        basis["birth_row"]["event_id"] = ""
+    else:
+        basis["consumed_rows"].reverse()
+    _rehash_basis_rows(basis)
+    result = _mb6_accept(view)
+    assert result["accepted"] is False and reason in result["refusals"]
+
+
+def _writer_measuring_basis():
+    # Integration oracle only: the verifier's implementation never imports
+    # writer helpers. The actual producer must round-trip through its consumer.
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer
+    from .test_mb_horizon_shape_guard import BIRTH_PARAMS, _Conn, _ctx, _marker
+    conn = _Conn(created=T(2026, 10, 5), manifest={writer.TEST_SLICE_KEY: _marker()})
+    ctx = _ctx(conn, birth_params=BIRTH_PARAMS)
+    basis = writer._horizon_basis(ctx, writer._test_slice(ctx))
+    assert not any("life_events" in sql for sql, _ in conn.statements)
+    return basis
+
+
+def test_mb6_accepts_the_actual_writers_outcome_free_ruled_scope_basis():
+    view = _mb6_view()
+    view.horizon_basis = _writer_measuring_basis()
+    result = _mb6_accept(view)
+    assert result["accepted"] is True, result["refusals"]
+    assert result["marker_digest_verified"] is None
+
+
+@pytest.mark.parametrize("field,bad", [
+    ("basis", "build_date"), ("rule", "invented"),
+    ("birth_date", "1985-02-05"), ("build_date", "1997-01-01"),
+    ("chart_id", "other-chart"), ("horizon", ["1999-01-01", "2084-02-05"]),
+    ("rows_total", 1), ("rows_total", False), ("excluded_not_fully_dated", 1),
+    ("excluded_not_fully_dated", False), ("consumed_rows_digest", "0" * 64),
+    ("chosen", {"event_id": "outcome"}), ("birth_row", {"event_id": "birth"}),
+    ("fully_dated_readings", {"conjunction_start": "1998-01-01"}),
+    ("shape_readings", {"event_date_start": "1998-01-01"}),
+    ("flag_exact_but_id_undated", [{"event_id": "outcome"}]),
+    ("rows_without_lel_id", [{"event_id": "outcome"}]),
+    ("consumed_rows", [{"event_id": "outcome"}]),
+])
+def test_outcome_free_basis_is_validated_not_accepted_by_rule_label_alone(field, bad):
+    view = _mb6_view()
+    view.horizon_basis = _writer_measuring_basis()
+    view.horizon_basis[field] = bad
+    if field == "consumed_rows":
+        _rehash_basis_rows(view.horizon_basis)
+    result = _mb6_accept(view)
+    assert result["accepted"] is False
+    assert any(r.startswith(("horizon_basis_", "horizon_mismatch")) for r in result["refusals"])
+
+
+def test_outcome_free_basis_cannot_smuggle_a_complete_rehashed_outcome_capture():
+    legacy_rows = _mb6_view().horizon_basis["consumed_rows"]
+    view = _mb6_view()
+    basis = view.horizon_basis = _writer_measuring_basis()
+    basis["consumed_rows"] = legacy_rows
+    basis["rows_total"] = len(legacy_rows)
+    _rehash_basis_rows(basis)
+    result = _mb6_accept(view)
+    assert result["accepted"] is False
+    assert "horizon_basis_invalid: ruled_scope" in result["refusals"]
+
+
+def test_ruled_basis_recomputes_the_centenary_from_independently_supplied_birth():
+    view = _mb6_view()
+    view.horizon_basis = _writer_measuring_basis()
+    view.horizon_basis["birth_date"] = "1983-02-05"
+    result = mr.measuring_acceptance(view, expected_horizon=H, birth_date=date(1983, 2, 5),
+                                    build_date=BUILD, chart_id=view.horizon_basis["chart_id"])
+    assert result["accepted"] is False and "horizon_mismatch" in result["refusals"]
+
+
+def test_ruled_basis_cannot_claim_a_start_after_the_independent_build_date():
+    view = _mb6_view()
+    view.horizon_basis = _writer_measuring_basis()
+    view.horizon_basis["build_date"] = "1997-12-31"
+    result = mr.measuring_acceptance(view, expected_horizon=H, birth_date=BIRTH,
+                                    build_date=date(1997, 12, 31), chart_id=view.horizon_basis["chart_id"])
+    assert result["accepted"] is False and "horizon_start_in_future" in result["refusals"]

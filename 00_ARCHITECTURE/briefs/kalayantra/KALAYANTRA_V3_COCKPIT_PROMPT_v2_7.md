@@ -1,4 +1,5 @@
 ---
+status: HISTORICAL — superseded by v3.0 (A8)
 artifact: KALAYANTRA_V3_COCKPIT_PROMPT_v2_7.md
 version: 2.7
 paired_plan: KALAYANTRA_RELAUNCH_PLAN_v2_7.md (v2.7)

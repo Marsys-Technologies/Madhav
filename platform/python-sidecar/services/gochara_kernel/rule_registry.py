@@ -59,6 +59,8 @@ refuses later membership, F3/N5).
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from services.gochara_rules import registry as rules_registry
 
@@ -81,15 +83,31 @@ NATAL_RELATIONS = (
 # Paths bound in this step (D1: P6 rides day_on_demand).
 #: ND-H-20261005 (FB-30): the P1/P3/P4 rows at rule_version 1.2.0 — the eight classes' tiers and kārakas.
 ND_H_PATH_REFS = tuple((pid, rules_registry.ND_H_VERSION) for pid in ("P1", "P3", "P4"))
-BOUND_PATH_REFS = ((("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0"))
-                   + ND_H_PATH_REFS)
+BOUND_PATH_REFS = (("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0"))
 BOUND_PATHS = tuple(dict.fromkeys(pid for pid, _v in BOUND_PATH_REFS))
+
+
+# Final-rule helpers require an explicit context; the production writer keeps
+# the legacy profile unless its candidate configuration opts in. Context-local state
+# prevents one concurrent writer from changing another writer's selection.
+_FINAL_RULES = ContextVar("gochara_final_rules", default=False)
+
+
+@contextmanager
+def rule_profile(*, final_rules: bool):
+    if type(final_rules) is not bool:
+        raise ValueError("gochara_v5_final_rules must be a boolean")
+    token = _FINAL_RULES.set(final_rules)
+    try:
+        yield
+    finally:
+        _FINAL_RULES.reset(token)
 
 
 def bound_path_refs() -> tuple[tuple[str, str], ...]:
     """The CURRENT bound CATALOGUE — every sealed (path, version) — read at call time (a consumer never
     captures the tuple at import)."""
-    return tuple(BOUND_PATH_REFS)
+    return tuple(dict.fromkeys(tuple(BOUND_PATH_REFS) + (ND_H_PATH_REFS if _FINAL_RULES.get() else ())))
 
 
 # R8-2 (Codex round 8): the bound CATALOGUE is not the SELECTION. `BOUND_PATH_REFS` is every (path, version)
@@ -115,10 +133,10 @@ def selected_versions_for(event_class: str) -> dict[str, str]:
     overrides applied; refuses a selection that is not sealed in the bound catalogue."""
     selected = dict(SELECTED_PATH_REFS)
     for (cls, pid), version in CLASS_SELECTION_OVERRIDES.items():
-        if cls == event_class:
+        if cls == event_class and (_FINAL_RULES.get() or version != rules_registry.ND_H_VERSION):
             selected[pid] = version
     for pid, version in selected.items():
-        if (pid, version) not in BOUND_PATH_REFS:
+        if (pid, version) not in bound_path_refs():
             raise ValueError(f"selected {pid}@{version} is not in the bound catalogue")
     return selected
 
@@ -217,8 +235,14 @@ _FACTOR_OPERAND_TOKEN = {
 # Factors bound in this step (D2: sad_bala_summary deferred — units conflict).
 # `karaka_agent` exists from 1.2.0 only (ND-H K-A); every other bound factor stays at its 1.0.0 row.
 _FACTOR_FIRST_VERSION = {"karaka_agent": rules_registry.ND_H_VERSION}
-BOUND_FACTOR_REFS = tuple((fid, _FACTOR_FIRST_VERSION.get(fid, "1.0.0")) for fid in _FACTOR_DIRECTION)
+BOUND_FACTOR_REFS = tuple((fid, _FACTOR_FIRST_VERSION.get(fid, "1.0.0")) for fid in _FACTOR_DIRECTION if fid != "karaka_agent")
 BOUND_FACTORS = tuple(dict.fromkeys(fid for fid, _v in BOUND_FACTOR_REFS))
+
+
+def bound_factor_refs():
+    return tuple(dict.fromkeys(tuple(BOUND_FACTOR_REFS) +
+                               ((("karaka_agent", rules_registry.ND_H_VERSION),) if _FINAL_RULES.get() else ())))
+
 
 # E6: predicate declarations (id → (operator, operands)).
 PREDICATES: dict[str, tuple[str, dict]] = {
@@ -332,7 +356,7 @@ def decode_factor_selector(fid: str, selector: dict) -> dict | None:
 def factor_rows() -> list[dict]:
     """Stream B's FACTORS bound per E4/E5 at their EXPLICIT references (sad_bala_summary deferred, D2)."""
     rows = []
-    for fid, version in BOUND_FACTOR_REFS:
+    for fid, version in bound_factor_refs():
         src = rules_registry.FACTORS[(fid, version)]
         units = src["units"]
         if units not in ("degrees", "days", "count", "unitless"):
@@ -361,7 +385,7 @@ def factor_rows() -> list[dict]:
 
 def path_rows() -> list[dict]:
     rows = []
-    for pid, version in BOUND_PATH_REFS:
+    for pid, version in bound_path_refs():
         src = rules_registry.RULE_PATHS[(pid, version)]
         frame_kind, frame_arg = _PATH_FRAME[pid]
         rows.append({
@@ -382,7 +406,7 @@ def path_rows() -> list[dict]:
 
 def prerequisite_rows() -> list[dict]:
     rows = []
-    for pid, version in BOUND_PATH_REFS:
+    for pid, version in bound_path_refs():
         src = rules_registry.RULE_PATHS[(pid, version)]
         for ordinal, (pred_id, pred_version) in enumerate(src["prerequisites"], start=1):
             rows.append({
@@ -395,7 +419,7 @@ def prerequisite_rows() -> list[dict]:
 
 def soft_factor_rows() -> list[dict]:
     rows = []
-    for pid, version in BOUND_PATH_REFS:
+    for pid, version in bound_path_refs():
         src = rules_registry.RULE_PATHS[(pid, version)]
         for factor_id, factor_version in src["soft_factors"]:
             rows.append({
@@ -416,11 +440,11 @@ def _membership_consistent() -> None:
         if pid in seen:
             raise ValueError(f"selected path {pid} appears twice — at most one version per path")
         seen.add(pid)
-        if (pid, version) not in BOUND_PATH_REFS:
+        if (pid, version) not in bound_path_refs():
             raise ValueError(f"selected path reference {(pid, version)} is not in the bound catalogue")
     declared_predicates = set(BOUND_PREDICATE_REFS)
-    declared_factors = set(BOUND_FACTOR_REFS)
-    for ref in BOUND_PATH_REFS:
+    declared_factors = set(bound_factor_refs())
+    for ref in bound_path_refs():
         if ref not in rules_registry.RULE_PATHS:
             raise ValueError(f"bound path reference {ref} is not in the catalogue")
         src = rules_registry.RULE_PATHS[ref]
@@ -518,7 +542,7 @@ class RuleRegistryStore:
             tally(self._bind("ka_gochara_rule_path_soft_factor",
                              ("path_id", "rule_version", "factor_id",
                               "factor_rule_version"), row), "soft_factors")
-        for pid, version in BOUND_PATH_REFS:
+        for pid, version in bound_path_refs():
             tally(self._bind("ka_gochara_rule_path_seal",
                              ("path_id", "rule_version"),
                              {"path_id": pid, "rule_version": version}),

@@ -58,7 +58,7 @@ def _second_build_row(w, tier="single"):
 
 def test_a_clean_single_pinned_build_is_accepted_by_both_sides(built):
     w = built
-    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["ca17639b-f3cf-42c7-9866-0a61f3855802"]
+    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["7377833e-5d3b-4e70-8bef-1318904f470e"]
     _verified(w)
     assert inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)["consumed"] > 0
 
@@ -107,7 +107,7 @@ def test_other_systems_and_other_ayanamshas_do_not_count_as_builds(built):
     w.conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, lord_graha, start_iso, end_iso,"
                    " build_id, verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, 'yogini', 1, lord_graha, start_iso, end_iso,"
                    " %s::uuid, 'single' FROM public.chart_dashas WHERE level_n = 1 LIMIT 1", (ANOTHER,))
-    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["ca17639b-f3cf-42c7-9866-0a61f3855802"]
+    assert dasha_read.assert_single_pinned_build(w.conn, CHART_ID) == ["7377833e-5d3b-4e70-8bef-1318904f470e"]
 
 
 # ── (d) the absolute probe ──────────────────────────────────────────────────────────────────────────────────────────
@@ -131,7 +131,7 @@ def test_the_real_probe_reproduces_the_constant_on_the_pinned_corpus_from_the_ma
 # ── J-4p: both independently implemented sides accept the chart's settled build ─────────────────────────────────────
 
 @pytest.mark.parametrize("build", [
-    "ca17639b-f3cf-42c7-9866-0a61f3855802",
+    "7377833e-5d3b-4e70-8bef-1318904f470e",
 ])
 def test_reader_and_independent_verifier_accept_the_same_single_build(build):
     from datetime import datetime, timezone

@@ -414,6 +414,8 @@ def _test_slice(ctx: ContextSpec) -> TestSlice | None:
     manifest = _plan_manifest(ctx)
     if manifest is None or TEST_SLICE_KEY not in manifest:
         return None
+    if ctx.config.get("gochara_v5_final_rules") is True:
+        raise TestSliceRefusal("final_rules_require_candidate: a test slice always uses the measuring rules")
     marker = manifest[TEST_SLICE_KEY]
     # FB-4, `all_classes_full` ONLY (steward MB-CODEX-1 ruling 1): the marker's outer bound is the chart's DERIVED horizon whenever the run carries the chart's birth
     # parameters (the orchestrator always passes them), so a marker staged for a different horizon than the chart inputs now derive is refused by name. The two older
@@ -955,6 +957,18 @@ def _class_of_grain(key: str) -> str | None:
     return None
 
 
+def _with_rule_profile(method):
+    """Pre-build isolation: final rules require explicit candidate configuration."""
+    from functools import wraps
+
+    @wraps(method)
+    def profiled(self, ctx, *args, **kwargs):
+        final = ctx.config.get("gochara_v5_final_rules", False)
+        with gk_rule_registry.rule_profile(final_rules=final):
+            return method(self, ctx, *args, **kwargs)
+    return profiled
+
+
 @register(ASSET_ID)
 class GocharaV5Writer(WriterBase):
     """Pravāha A5.3: the '5.0' writer — phase-1 geometry store landed.
@@ -970,6 +984,7 @@ class GocharaV5Writer(WriterBase):
     # No delegated modules yet (the template's source_paths surface is unused
     # here — nothing to delegate to until pins 3-7).
 
+    @_with_rule_profile
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
         """Plan (pin 5): 'rules' → 'convention' → 'body:<Body>' ×8.
 
@@ -1031,6 +1046,7 @@ class GocharaV5Writer(WriterBase):
                 label=f"independent inventory verification: {event_class}"))
         return steps
 
+    @_with_rule_profile
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
         """One substep per the pin-5 grain ('rules' | 'convention' | per-body).
 

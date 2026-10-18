@@ -6,6 +6,7 @@ file, shaped like the real one: a written table, a table written only by a
 trigger, an FK parent that is not listed (the runtime closure must add it) and a
 table outside the scope that holds rows the archive must NOT contain.
 """
+import hashlib
 import json
 import sys
 import uuid
@@ -19,6 +20,10 @@ import backup_v5_small_test_job as backup
 
 SCHEMA_SQL = """
 DROP SCHEMA IF EXISTS p02 CASCADE;
+DROP TABLE IF EXISTS public._migrations_applied;
+CREATE TABLE public._migrations_applied (id serial PRIMARY KEY, filename text UNIQUE NOT NULL,
+    applied_at timestamptz NOT NULL DEFAULT now(), sha256 text NOT NULL, sql_identity text);
+INSERT INTO public._migrations_applied (filename, applied_at, sha256) VALUES ('0001_legacy.sql', '2025-01-01 00:00:00.5+00', 'legacytoken');
 CREATE SCHEMA p02;
 CREATE TABLE p02.parent (id serial PRIMARY KEY, label text);
 CREATE TABLE p02.written (id serial PRIMARY KEY, parent_id integer REFERENCES p02.parent(id), value text, extra jsonb);
@@ -35,18 +40,20 @@ INSERT INTO p02.other VALUES (1, 'must-not-be-archived');
 """
 
 # What the scoped definitions cannot carry: the schema and the trigger function the archived trigger calls. The real
-# restore builds this from the governed L1 bundle; the suite stands in a small synthetic base of the same shape.
+# restore builds this from the governed L1 bundle; the suite stands in a small synthetic bundle of the same shape.
 BASE_SQL = """
+CREATE SCHEMA public;
 CREATE SCHEMA p02;
 CREATE FUNCTION p02.log_change() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN INSERT INTO p02.audit (note) VALUES ('changed ' || NEW.id); RETURN NEW; END $$;
 """
 
 
-def write_scope(path, written=('p02.written', 'p02.audit'), guarded=('p02.child_of_written',)):
+def write_scope(path, written=('p02.written', 'p02.audit'), guarded=('p02.child_of_written',),
+                context=('public._migrations_applied',)):
     path.write_text(json.dumps({
         'schema': 'ky.smalltest_backup_scope/1', 'name': 'small_test',
-        'written': [{'table': t} for t in written], 'context': [],
+        'written': [{'table': t} for t in written], 'context': [{'table': t} for t in context],
         'guarded_children': [{'table': t} for t in guarded]}))
 
 
@@ -59,7 +66,20 @@ def scoped(isolated_kala_db_dsn, tmp_path, monkeypatch):
     scope_file = tmp_path / 'scope.json'
     write_scope(scope_file)
     monkeypatch.setattr(backup, 'SCOPE_FILE', scope_file)
-    monkeypatch.setattr(backup, 'restore_base_sql', lambda root: (BASE_SQL, {'bundle': 'synthetic', 'migrations': []}))
+    # the REAL restore_base_sql runs, against a synthetic bundle (absolute path: independent of KY_ROOT), a synthetic
+    # migrations directory and a cut between the legacy ledger row (2025) and anything a test applies "now"
+    bundle = tmp_path / 'bundle_schema.sql'
+    bundle.write_bytes(BASE_SQL.encode())
+    migrations = tmp_path / 'migrations'
+    migrations.mkdir()
+    monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_PATH', str(bundle))
+    monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_SHA256', hashlib.sha256(BASE_SQL.encode()).hexdigest())
+    monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_CUT', '2026-01-01T00:00:00+00:00')
+    monkeypatch.setattr(backup, 'MIGRATIONS_DIR', migrations)
+    # The real bundle needs its five extensions (pgvector among them); the synthetic one needs none, and the throwaway CI
+    # Postgres (PG16) ships without pgvector. That the real base installs them is proved with no database in
+    # platform/scripts/__tests__/test_backup_v5_small_test_scoped.py (restore_base_is_the_hash_checked_governed_bundle...).
+    monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_EXTENSIONS', ())
     monkeypatch.setenv('DATABASE_URL', isolated_kala_db_dsn)
     fixed = backup.scratch_settings
 
@@ -88,12 +108,13 @@ def test_scoped_archive_holds_exactly_scope_plus_fk_parents_and_restores_equal(s
     assert receipt['schema'] == 'ky.smalltest_backup/2' and receipt['backup_taken'] is True
     assert receipt['restore_verified'] is None
     # the unlisted FK parent is added by the runtime closure; the unrelated table is not archived
-    assert receipt['scope']['tables'] == ['p02.audit', 'p02.parent', 'p02.written']
+    assert receipt['scope']['tables'] == ['p02.audit', 'p02.parent', 'p02.written', 'public._migrations_applied']
     assert receipt['scope']['closure'] == ['p02.parent']
     assert 'p02.other' not in receipt['measurements']['tables'] and 'p02.child_of_written' not in receipt['scope']['tables']
     listed = backup.archive_tables(folder / 'database.dir', backup.scratch_settings(label))
     assert listed['data'] == listed['definitions'] == set(receipt['scope']['tables'])      # definitions AND data, exactly
-    assert receipt['scope']['sequences'] == ['p02.audit_id_seq', 'p02.parent_id_seq', 'p02.written_id_seq']
+    assert receipt['scope']['sequences'] == ['p02.audit_id_seq', 'p02.parent_id_seq', 'p02.written_id_seq',
+                                             'public._migrations_applied_id_seq']
     assert (folder / 'database.dir').is_dir() and not (folder / 'database.dump').exists()
     proof = backup.restore_verify(folder, label, 'small_test')
     assert proof['restore_verified'] is True and proof['target_removed'] is True and proof['scoped'] is True
@@ -224,7 +245,7 @@ def test_failed_client_cannot_earn_scoped_success_after_writing_a_real_archive(s
 
     def failed_exit(argv, **kwargs):
         result = real_run(argv, **kwargs)
-        if argv[1:2] == ['--list']:
+        if argv[1:2] == ['--list'] or '--data-only' in argv:    # catalogue and ledger reads, not the restore itself
             return result
         assert result.returncode == 0, 'the real local client must complete before exit injection'
         clients.append(argv[0])
@@ -264,7 +285,8 @@ def restricted(scoped):
         admin.execute(f'CREATE ROLE {owner} NOLOGIN')
         admin.execute(f"CREATE ROLE {login} LOGIN PASSWORD 'p02'")
         admin.execute(f'GRANT USAGE ON SCHEMA p02 TO {login}')
-        admin.execute(f'GRANT SELECT ON p02.parent, p02.written, p02.audit TO {login}')
+        admin.execute(f'GRANT SELECT ON p02.parent, p02.written, p02.audit, public._migrations_applied TO {login}')
+        admin.execute(f'GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO {login}')
         admin.execute(f'GRANT SELECT ON ALL SEQUENCES IN SCHEMA p02 TO {login}')
         admin.execute(f'CREATE TABLE p02.planner_like (id integer, secret text)')
         admin.execute(f'ALTER TABLE p02.planner_like OWNER TO {owner}')
@@ -287,11 +309,13 @@ def test_a_table_outside_the_scope_that_the_login_cannot_read_does_not_break_the
     app_dsn, tmp_path, _ = restricted
     monkeypatch.setenv('DATABASE_URL', app_dsn)
     folder, label, receipt = capture(app_dsn, tmp_path)
-    assert receipt['status'] == 'captured' and receipt['scope']['tables'] == ['p02.audit', 'p02.parent', 'p02.written']
+    assert receipt['status'] == 'captured' and receipt['scope']['tables'] == [
+        'p02.audit', 'p02.parent', 'p02.written', 'public._migrations_applied']
     assert not any(b'other-role-secret' in f.read_bytes() for f in (folder / 'database.dir').iterdir())
     proof = backup.restore_verify(folder, label, 'small_test')
     assert proof['restore_verified'] is True and proof['measurements'] == receipt['measurements']
-    assert proof['restore_base'] == {'bundle': 'synthetic', 'migrations': []}
+    assert proof['restore_base']['migrations'] == [] and proof['restore_base']['ledger']['source'] == 'capture'
+    assert proof['restore_base']['ledger'] == dict(receipt['migrations_ledger'], source='capture')
     assert_target_removed(app_dsn, label)
 
 
@@ -313,3 +337,105 @@ def test_a_dump_exclusion_is_a_guarded_fallback_outside_scope_and_closure_with_n
         declare(table)
         with pytest.raises(backup.BackupRefused, match=reason):
             backup.snapshot(tmp_path / ('p02_' + uuid.uuid4().hex), 'p02_guard', 'small_test')
+
+
+# ---- SR-J2A-RESTORE-BASE: the restore base is derived from the ledger the archive carries --------------------------------
+
+GUARD_SQL = """CREATE FUNCTION p02.guard_change() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN PERFORM 1 FROM p02.written; RETURN NEW; END $$;
+"""
+
+
+@pytest.fixture
+def guard_after_bundle(scoped):
+    """The migration-1394 shape: after the bundle was cut, production gained a function and a trigger on a scope table.
+    The bundle's base lacks the function; the migration that created it is in the repository and in production's ledger."""
+    dsn, tmp_path, _ = scoped
+    (tmp_path / 'migrations' / '9001_guard_written.sql').write_text(GUARD_SQL)
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute(GUARD_SQL)
+        conn.execute('CREATE TRIGGER written_guard BEFORE UPDATE ON p02.written FOR EACH STATEMENT EXECUTE FUNCTION p02.guard_change()')
+        conn.execute("INSERT INTO public._migrations_applied (filename, applied_at, sha256) VALUES ('9001_guard_written.sql', now(), %s)",
+                     (hashlib.sha256(GUARD_SQL.encode()).hexdigest(),))
+    return dsn, tmp_path
+
+
+def rewrite_capture(folder, change):
+    path = folder / 'capture.json'
+    receipt = json.loads(path.read_text())
+    change(receipt)
+    path.write_text(json.dumps(receipt))
+
+
+def test_a_post_bundle_migration_on_a_scope_table_is_derived_from_the_ledger_and_the_restore_succeeds(guard_after_bundle):
+    """Claim 1 (the 1394 failure): the archive's trigger calls a function only a post-bundle migration creates; the base
+    carries that migration because production's ledger says it was applied, not because anyone pinned it."""
+    dsn, tmp_path = guard_after_bundle
+    folder, label, receipt = capture(dsn, tmp_path)
+    assert receipt['migrations_ledger']['count'] == 2 and receipt['restore_base']['bundle'] == backup.SCOPED_RESTORE_BASE_PATH
+    proof = backup.restore_verify(folder, label, 'small_test')
+    assert proof['restore_verified'] is True and proof['measurements'] == receipt['measurements']
+    assert [m['file'] for m in proof['restore_base']['migrations']] == ['9001_guard_written.sql']     # the 2025 row is in the bundle
+    assert proof['restore_base']['ledger'] == dict(receipt['migrations_ledger'], source='capture')
+    assert_target_removed(dsn, label)
+
+
+def test_a_capture_taken_before_the_ledger_was_recorded_is_restored_through_the_ledger_derived_fallback(guard_after_bundle, monkeypatch):
+    """Claim 2 (the existing archive w4r1_20261017t090403z): no ledger digest in capture.json, an earlier script's identity;
+    the ledger is read from the archive itself. Without that script being listed it is refused as before."""
+    dsn, tmp_path = guard_after_bundle
+    folder, label, _ = capture(dsn, tmp_path)
+    earlier = '5' * 64
+
+    def as_earlier_script(receipt):
+        del receipt['migrations_ledger'], receipt['restore_base']
+        receipt['script_sha256'] = earlier
+    rewrite_capture(folder, as_earlier_script)
+    with pytest.raises(backup.BackupRefused, match='capture script identity changed'):
+        backup.restore_verify(folder, label, 'small_test')
+    monkeypatch.setattr(backup, 'SCOPED_LEGACY_CAPTURE_SCRIPTS', {earlier: 'an earlier seedless capture'})
+    proof = backup.restore_verify(folder, label, 'small_test')
+    assert proof['restore_verified'] is True and proof['restore_base']['ledger']['source'] == 'archive'
+    assert [m['file'] for m in proof['restore_base']['migrations']] == ['9001_guard_written.sql']
+    assert_target_removed(dsn, label)
+
+
+def test_a_capture_by_this_script_without_its_ledger_digest_is_refused(guard_after_bundle):
+    dsn, tmp_path = guard_after_bundle
+    folder, label, _ = capture(dsn, tmp_path)
+    rewrite_capture(folder, lambda r: r.pop('migrations_ledger'))
+    with pytest.raises(backup.BackupRefused, match='records no migration ledger'):
+        backup.restore_verify(folder, label, 'small_test')
+    assert not (folder / 'restore.json').exists()
+    assert_target_removed(dsn, label)
+
+
+def test_restore_refuses_when_the_archives_ledger_is_not_the_ledger_recorded_at_capture(guard_after_bundle, monkeypatch):
+    """Claim 3a: the ledger at proof time must be the ledger at capture; refused before any scratch database exists."""
+    dsn, tmp_path = guard_after_bundle
+    folder, label, _ = capture(dsn, tmp_path)
+    rewrite_capture(folder, lambda r: r['migrations_ledger'].update(sha256='0' * 64))
+    connections = []
+    real = psycopg.connect
+    monkeypatch.setattr(psycopg, 'connect', lambda *a, **k: connections.append(1) or real(*a, **k))
+    with pytest.raises(backup.BackupRefused, match='differs from the ledger recorded at capture'):
+        backup.restore_verify(folder, label, 'small_test')
+    assert not connections and not (folder / 'restore.json').exists()
+
+
+def test_restore_refuses_when_the_restored_targets_ledger_is_not_the_one_the_base_was_derived_from(guard_after_bundle, monkeypatch):
+    """Claim 3b: the ledger read back from the restored scratch target must equal the ledger the base was derived from."""
+    dsn, tmp_path = guard_after_bundle
+    folder, label, _ = capture(dsn, tmp_path)
+    real = backup.run_client
+
+    def drift(argv, settings, timeout=14400):
+        real(argv, settings, timeout)
+        if '--dbname' in argv:
+            with psycopg.connect(**settings, autocommit=True) as target:
+                target.execute("UPDATE public._migrations_applied SET filename = 'tampered.sql' WHERE filename = '9001_guard_written.sql'")
+    monkeypatch.setattr(backup, 'run_client', drift)
+    with pytest.raises(backup.BackupRefused, match='migration ledger at restore differs'):
+        backup.restore_verify(folder, label, 'small_test')
+    assert not (folder / 'restore.json').exists()
+    assert_target_removed(dsn, label)

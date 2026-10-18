@@ -175,7 +175,7 @@ def default_answers(ledger: list[str]) -> list[tuple[str, str]]:
         ("has_schema_privilege('amjis_app'", "f"),
         ("1204_gochara_av_qualifier_object_role", B3A_ANSWER),
         ("pg_get_userbyid", ""),
-        ("has_function_privilege('PUBLIC'", ""),
+        ("aclexplode(COALESCE(p.proacl", ""),
         ("ka_gochara_boundary_guard_inventory", GUARD_ROWS),
         ("C34 test registry readback", ""),
         ("C34 test privilege readback", ""),
@@ -559,7 +559,7 @@ STOP_CASES = [
     ("post-window", {"1204_gochara_av_qualifier_object_role":
                      B3A_ANSWER.replace("ab" * 32, "ff" * 32)}, "P9-window-files-ledger"),
     ("post-window", {"pg_get_userbyid": "relation\tka_gochara_x\tpostgres"}, "P9-ka-gochara-ownership"),
-    ("post-window", {"has_function_privilege('PUBLIC'": "ka_gochara_evil"}, "P9-public-execute"),
+    ("post-window", {"aclexplode(COALESCE(p.proacl": "ka_gochara_evil"}, "P9-public-execute"),
     ("post-window", {"SELECT filename FROM public._migrations_applied":
                      "\n".join(sorted(POST_LEDGER + ["1378_evil.sql"]))}, "P9-ledger-diff"),
     ("post-window", {"C34 test trigger manifest": "TRG\tkala_gochara_coverage\ttg_a"}, "W5-manifest"),
@@ -675,7 +675,8 @@ LEGACY_TABLES = ('kala_gochara_publication', 'kala_gochara_coverage',
 
 
 @pytest.mark.parametrize('relation', LEGACY_TABLES)
-def test_real_w1_detects_other_chart_governed_rows(disposable_pg, monkeypatch, tmp_path, relation):
+@pytest.mark.parametrize('generation', ['5.4', '6.0', '10.0'])
+def test_real_w1_detects_other_chart_governed_rows(disposable_pg, monkeypatch, tmp_path, relation, generation):
     cl = disposable_pg
     for table in LEGACY_TABLES:
         cl.psql(f'DROP TABLE IF EXISTS {table} CASCADE; CREATE TABLE {table} (chart_id uuid, generation text)')
@@ -687,14 +688,14 @@ def test_real_w1_detects_other_chart_governed_rows(disposable_pg, monkeypatch, t
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert 'PASS W1-governed-rows ' in proc.stdout
     # Exactly one foreign governed row in each of the four possible relations must STOP.
-    cl.psql(f"INSERT INTO {relation} VALUES ('{OTHER}', '5.4')")
+    cl.psql(f"INSERT INTO {relation} VALUES ('{OTHER}', '{generation}')")
     dirty = tmp_path / 'dirty'
     dirty.mkdir()
     proc = _real_window_check(cl, monkeypatch, dirty, 'check_w1')
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert 'STOP W1-governed-rows ' in proc.stderr
     assert f'{relation}:1row(s)' in proc.stderr
-    assert (dirty / 'out' / f'W1-{relation}.out').read_text() == f'{OTHER}\t5.4\n'
+    assert (dirty / 'out' / f'W1-{relation}.out').read_text() == f'{OTHER}\t{generation}\n'
 
 
 def test_real_registry_writer_count_and_committed_pin(disposable_pg, monkeypatch, tmp_path):
@@ -720,6 +721,44 @@ def test_real_registry_writer_count_and_committed_pin(disposable_pg, monkeypatch
     assert (tmp_path / 'out/R2-1243-writers.out').read_text() == '3\n'
     assert (tmp_path / 'out/R2-1243-rowcount.out').read_text() == '4\n'
     assert (tmp_path / 'out/R2-1243-fingerprints.out').read_text() == '2\n'
+
+
+@pytest.mark.parametrize('candidate', ['ka_gochara_v4_41_candidate', 'ka_gochara_v5'])
+@pytest.mark.parametrize('contamination', ['dependent', 'asset_provenance_receipts',
+                                        'build_run_assets', 'asset_throughput'])
+def test_real_registry_refuses_dependents_and_each_runtime_evidence_source(
+        disposable_pg, monkeypatch, tmp_path, candidate, contamination):
+    cl = disposable_pg
+    clean = tmp_path / 'clean'
+    clean.mkdir()
+    # The same catalog fixture and original pinned SQL must PASS before adding
+    # exactly one contaminant, so an unrelated gate failure cannot earn this proof.
+    test_real_registry_writer_count_and_committed_pin(cl, monkeypatch, clean)
+    if contamination == 'dependent':
+        # This fixture row has no fingerprint contract. Update only its dependency;
+        # the fixture's receipt-invalidation trap is unrelated to this readback.
+        cl.psql('DROP TRIGGER nirmana_registry_receipt_invalidation ON asset_registry')
+        cl.psql(f"UPDATE asset_registry SET depends_on=ARRAY['{candidate}'] WHERE asset_id='fixture_writer'")
+        expected = '1\n'
+        capture = 'R2-1243-dependents.out'
+        diagnostic = 'dependents=1/0;'
+    else:
+        cl.psql(f"INSERT INTO {contamination} (asset_id) VALUES ('{candidate}')")
+        expected = {'asset_provenance_receipts': '1\t0\t0\n',
+                    'build_run_assets': '0\t1\t0\n',
+                    'asset_throughput': '0\t0\t1\n'}[contamination]
+        capture = 'R2-1243-evidence.out'
+        diagnostic = f"evidence='{expected.strip()}'"
+    dirty = tmp_path / 'dirty'
+    dirty.mkdir()
+    proc = _real_window_check(cl, monkeypatch, dirty, 'check_registry_1243',
+                             ('--sql-dir', str(Path(__file__).parent / 'fixtures'),
+                              '--expect-registry-rows', '4', '--expect-writers', '3'))
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert 'STOP R2-registry-1243 ' in proc.stderr
+    assert diagnostic in proc.stderr
+    assert 'PASS R2-registry-1243 ' not in proc.stdout
+    assert (dirty / 'out' / capture).read_text() == expected
 
 
 def _assert_capture_evidence(out, capture, rows):
