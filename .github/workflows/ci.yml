@@ -217,6 +217,11 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+      # platform's program reaches platform-mcp sources through the K9-6 registry test
+      # (views_registry.integration.test.ts imports tools/kala_views/register_all), so
+      # their MCP SDK / zod imports must resolve here as well.
+      - name: Install platform-mcp dependencies for imported sources
+        run: npm ci --prefix ../platform-mcp
       - name: tsc — src only (exclude tests)
         # Capture tsc output; only fail on errors outside test directories.
         # Uses || true so set -e doesn't abort before we can inspect output.
