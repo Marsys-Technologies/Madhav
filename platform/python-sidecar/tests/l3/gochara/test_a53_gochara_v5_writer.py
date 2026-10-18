@@ -453,3 +453,30 @@ def test_writer_module_source_has_no_connection_lifecycle_or_throughput():
     rest = src.replace(guard, "").replace(inspect.getsource(writer_mod.AssetNotBuilding), "")
     assert "asset_throughput" not in rest, "asset_throughput may appear only inside the state guard (_require_building / AssetNotBuilding)"
     assert "SELECT state FROM public.asset_throughput" in guard and "INSERT" not in guard.upper().replace("INSERT_", "")
+
+
+def test_final_rules_are_opt_in_and_do_not_change_the_default_writer(_record_phase_fakes):
+    w = writer_mod.GocharaV5Writer()
+    ctx = _ctx()
+    w.run_substep(ctx, SubStep(key='record:parental_event:P2', label=''))
+    old = _record_phase_fakes['grain'][-1]['edges']
+    assert old and {e.rule_version for e in old} == {'1.0.0'}
+    ctx.config['gochara_v5_final_rules'] = True
+    w.run_substep(ctx, SubStep(key='record:parental_event:P2', label=''))
+    assert _record_phase_fakes['grain'][-1]['edges'] == []
+
+
+def test_final_rules_cannot_be_selected_for_a_test_slice(monkeypatch):
+    ctx = _ctx()
+    ctx.config['gochara_v5_final_rules'] = True
+    monkeypatch.setattr(writer_mod, '_plan_manifest', lambda c: {writer_mod.TEST_SLICE_KEY: {}})
+    with pytest.raises(writer_mod.TestSliceRefusal, match='final_rules_require_candidate'):
+        writer_mod.GocharaV5Writer().plan_substeps(ctx)
+
+
+@pytest.mark.parametrize('value', [None, 1, 'true'])
+def test_a_truthy_non_boolean_final_rule_flag_is_refused(value):
+    ctx = _ctx()
+    ctx.config['gochara_v5_final_rules'] = value
+    with pytest.raises(ValueError, match='must be a boolean'):
+        writer_mod.GocharaV5Writer().plan_substeps(ctx)

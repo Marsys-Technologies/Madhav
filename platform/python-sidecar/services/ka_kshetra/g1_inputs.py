@@ -6,6 +6,7 @@ KA-3b mūrti is testimony: its intervals are retained without a numeric bridge; 
 """
 from datetime import datetime, timedelta, timezone
 import math
+import hashlib
 
 from .stage1_symbolization import PrimitiveRow, _box_envelope, build_moorti_primitive
 
@@ -47,7 +48,84 @@ def field_days(value, birth):
     return (instant(value) - instant(birth)).total_seconds() / SECONDS_PER_DAY
 
 
-def suppression_primitives(chart, birth, vedha, moorti, negative, *, allow_fixture=False):
+def _sealed_binding_matches(row, chart, generation, binding):
+    """Admit stored v2 assertions only under their exact nonfixture candidate.
+
+    K3 storage validates the full export and producer semantics. This boundary
+    checks the stored projection, producer pins and correspondence again; it
+    does not rederive a transit, defeat or measurement.
+    """
+    from services.ka_vighnakara.sealed import (
+        VERSION, canonical, row_key, wire, stamp, _pin, _coverage_reason, _clock_reason,
+    )
+    try:
+        conventions = binding['conventions']
+        assertion = row['assertion']
+        provenance = assertion['provenance']
+        pins = provenance['pins']
+        if (binding['state'] != 'building' or conventions.get('fixture') is True
+                or not generation or not generation.startswith('candidate:')
+                or not conventions.get('negative_space') or pins != conventions['negative_space']
+                or pins['chart_id'] != str(chart) or pins['judge_generation'] != '5.0'
+                or pins['ayanamsha_id'] != CANONICAL_AYANAMSHA
+                or not pins.get('upstream_fingerprint') or 'f2_scenario_id' not in pins
+                or any(not pins.get(key) for key in ('manifest_id', 'verifier_execution_id',
+                    'natal_build_id', 'judge_build_id', 'vedha_generation', 'f1_generation', 'convention_id'))
+                or row['negative_space_contract_version'] != VERSION
+                or assertion['contract_version'] != VERSION
+                or assertion['acceptance_scope'] != 'sealed_producers'
+                or str(row['chart_id']) != str(chart) or assertion['chart_id'] != str(chart)
+                or row['generation'] != generation or assertion['generation'] != generation):
+            return False
+        for key in ('assertion_id', 'effective_state', 'event_class_id', 'exposure', 'knowledge',
+                    'rule_conclusion', 'defeat_state', 'measurement', 'null_reason'):
+            if row[key] != assertion[key]:
+                return False
+        interval = (instant(row['interval_start']), instant(row['interval_end']))
+        if (interval[0] >= interval[1] or interval != tuple(instant(assertion['interval'][key]) for key in ('t0', 't1'))
+                or assertion['measurement'] != 'not_estimated_here'):
+            return False
+        record = provenance['record']
+        identity = [str(chart), generation,
+            record['record_id'] if record else row_key('coverage', provenance['coverage']),
+            assertion['mechanism'], wire(*(stamp(assertion['interval'][key]) for key in ('t0', 't1')))]
+        if row['assertion_id'] != 'k3:' + hashlib.sha256(canonical(identity).encode()).hexdigest():
+            return False
+        if assertion['effective_state'] == 'obstruction_in_force':
+            correspondence = provenance['correspondence']
+            _pin(provenance['F1'], pins, pins['f1_generation'])
+            _pin(provenance['header'], pins, pins['vedha_generation'])
+            _pin(provenance['coverage'], pins, pins['judge_generation'])
+            if (str(provenance['coverage']['build_id']) != pins['judge_build_id']
+                    or str(provenance['header']['natal_build_id']) != pins['natal_build_id']
+                    or provenance['header']['upstream_fingerprint'] != pins['upstream_fingerprint']
+                    or _coverage_reason(provenance['coverage'], record, assertion['interval'], pins)
+                    or _clock_reason(provenance['F2'], assertion['interval'], pins, correspondence['f2_system'])
+                    or provenance['F2']['applicability'] != 'applicable'):
+                return False
+            if (assertion['exposure'] != 'in_risk_set' or assertion['knowledge'] not in ('searched', 'complete')
+                    or assertion['defeat_state'] != 'active' or assertion['null_reason'] is not None
+                    or assertion['rule_conclusion'] not in ('adverse', 'obstructed', 'denied')
+                    or record['fixture'] is not False or record['chart_id'] != str(chart)
+                    or record['generation'] != pins['judge_generation']
+                    or record['event_class'] != assertion['event_class_id']
+                    or correspondence['record_id'] != record['record_id']
+                    or correspondence['contact_id'] != record['contact_id']
+                    or correspondence['event_class_id'] != assertion['event_class_id']
+                    or correspondence['assertion_id'] != assertion['source_assertion_id']
+                    or correspondence['f1_id'] != provenance['F1']['id']
+                    or provenance['F1']['generation'] != pins['f1_generation']
+                    or assertion['roots']['record_ids'] != [record['record_id']]
+                    or assertion['roots']['contact_ids'] != [record['contact_id']]
+                    or not assertion['roots']['fact_ids']
+                    or not assertion['source']['text'] or not assertion['source']['locator']):
+                return False
+        return True
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return False
+
+
+def suppression_primitives(chart, birth, vedha, moorti, negative, *, allow_fixture=False, generation=None, binding=None):
     """Reference upstream intervals; never derive a transit or cancellation.
 
     Cancelled candidates contribute no obstruction. Missing strength is a gap,
@@ -70,6 +148,8 @@ def suppression_primitives(chart, birth, vedha, moorti, negative, *, allow_fixtu
             source_table='kala_vedha_gochara_interval',source_pk=row.get('source_ref')))
     for row in moorti:
         if row.get('null_reason') or row.get('quality_tier') is None:
+            mask(row['graha'],'kala_moorti_nirnaya_candidate',row.get('source_ref'),
+                 row['t_in'],row['t_out'],'moorti_information_unavailable')
             gaps.append({'source_ref':row.get('source_ref'), 'reason':'moorti_information_unavailable'})
             continue
         lo,hi=field_days(row['t_in'],birth),field_days(row['t_out'],birth)
@@ -81,12 +161,16 @@ def suppression_primitives(chart, birth, vedha, moorti, negative, *, allow_fixtu
     for row in negative:
         state=row['effective_state']
         scope=(row.get('assertion') or {}).get('acceptance_scope')
-        if scope != 'fixture_only' or not allow_fixture or state != 'obstruction_in_force':
+        fixture = scope == 'fixture_only' and allow_fixture
+        sealed = scope == 'sealed_producers' and _sealed_binding_matches(row, chart, generation, binding)
+        admitted = fixture or sealed
+        if not admitted or state != 'obstruction_in_force':
             mask(row['assertion_id'],'kala_obstruction',row['assertion_id'],row['interval_start'],row['interval_end'],state)
-        if scope != 'fixture_only' or not allow_fixture:
+        if not admitted:
             gaps.append({'source_ref':row['assertion_id'], 'reason':'negative_space_binding_not_admitted'})
             continue
-        gaps.append({'source_ref':row['assertion_id'], 'reason':'fixture_only_prebuild'})
+        gaps.append({'source_ref':row['assertion_id'], 'reason':
+            'fixture_only_prebuild' if fixture else 'sealed_producers_prebuild;measurement_not_estimated_here'})
         if state != 'obstruction_in_force':
             if state in ('obstruction_partly_cancelled','obstruction_contested','information_unavailable'):
                 gaps.append({'source_ref':row['assertion_id'],'reason':state})
@@ -103,7 +187,7 @@ def load_suppression(conn, chart, generation, birth):
     from psycopg.rows import dict_row
     gaps=[]
     with conn.cursor(row_factory=dict_row) as cur:
-        cur.execute('SELECT conventions FROM kala_layer_candidate WHERE chart_id=%s AND generation=%s', (chart,generation))
+        cur.execute('SELECT conventions,state FROM kala_layer_candidate WHERE chart_id=%s AND generation=%s', (chart,generation))
         binding=cur.fetchone()
         allow_fixture=bool(binding and binding['conventions'].get('fixture') is True)
         cur.execute('SELECT * FROM kala_vedha_gochara_interval WHERE chart_id=%s AND generation=%s '
@@ -122,11 +206,12 @@ def load_suppression(conn, chart, generation, birth):
             for entry in payload.entries:
                 row=dict(entry); row['source_ref']=f"{generation}:moorti:{row['graha']}:{row['t_in']}"
                 moorti.append(row)
-        cur.execute('SELECT assertion_id,effective_state,interval_start,interval_end,event_class_id,assertion '
+        cur.execute('SELECT * '
                     'FROM kala_obstruction WHERE chart_id=%s AND generation=%s ORDER BY assertion_id', (chart,generation))
         negative=cur.fetchall()
     for name,rows in [('vedha',vedha),('moorti',moorti),('negative_space',negative)]:
         if not rows:
             gaps.append({'source_ref':name,'reason':'information_unavailable'})
-    prims,detail=suppression_primitives(chart,birth,vedha,moorti,negative,allow_fixture=allow_fixture)
+    prims,detail=suppression_primitives(chart,birth,vedha,moorti,negative,allow_fixture=allow_fixture,
+        generation=generation,binding=binding)
     return prims,gaps+detail

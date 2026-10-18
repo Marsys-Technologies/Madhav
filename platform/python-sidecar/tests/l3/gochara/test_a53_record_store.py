@@ -1381,16 +1381,16 @@ def test_p1_natal_bhava_relationship_scored_none_and_unknown():
 
 def test_p1_testimony_licence_lords_are_not_minted_and_the_count_names_them():
     """A lord whose only natal relation is a testimony kind (non-node dispositorship —
-    no clause, no ruling_ref: D3) cannot be written (kgrr_ruling_ck): not minted,
-    counted, never silently dropped. Saturn (the anchor lord) natal in Taurus ⇒ its dispositor Venus owns
-    Libra ∈ H."""
+    no clause, no ruling_ref: D3) cannot be written (kgrr_ruling_ck): its RECORD is not minted,
+    counted, never silently dropped — but the CONTACT (a sky fact the pinned search owes the ledger) is.
+    Saturn (the anchor lord) natal in Taurus ⇒ its dispositor Venus owns Libra ∈ H."""
     chart = {**CHART, "natal": {**CHART["natal"], "Saturn": 45.0}}
     sat = _p1_libra_edge("saturn")                      # anchor (saturn, ad): the licence is the ANCHOR lord's
     store = FakeStore({"saturn": [_crossing(10, 180.0), _crossing(200, 210.0)]})
     kw = _p1_kwargs(store, [sat], {})
     kw["chart"] = chart
     counts = rs.materialise_record_grain(store, **kw)
-    assert counts["records"] == 0 and counts["contacts"] == 0
+    assert counts["records"] == 0 and counts["contacts"] == 1
     assert counts["unwritable_testimony"] == 1
 
 

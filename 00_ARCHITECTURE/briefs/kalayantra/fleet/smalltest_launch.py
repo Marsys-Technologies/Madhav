@@ -4,6 +4,8 @@
 Only the credential-bearing executor invokes this entry point after pre-acceptance.
 A durable per-run claim precedes the remote call and survives every outcome. It is
 never cleared automatically: a timeout/interrupt may mean the job was launched.
+The explicit --dry-run rehearses staging and rolls it back, without a claim or
+remote launch; it uses the dispatcher's normal admission checks and report.
 """
 from __future__ import annotations
 
@@ -35,11 +37,16 @@ def canonical(value):
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
-def cloud_launcher(run_id, timeout_s):
-    """Fixed target, one async request; neither credentials nor commands in output."""
+def cloud_launcher(run_id, timeout_s, *, update_env_vars=None):
+    """Fixed target, one async request; neither credentials nor commands in output.
+
+    `update_env_vars` is a fixed, caller-coded per-execution override (never request input), e.g.
+    "PUBSUB_DISABLED=1"; None leaves the job's own environment untouched (the small-test launch).
+    """
+    env_flag = [f"--update-env-vars={update_env_vars}"] if update_env_vars else []
     result = subprocess.run(
         ["gcloud", "run", "jobs", "execute", JOB, "--project=madhav-astrology", "--region=asia-south1",
-         f"--args=--run-id,{run_id}", "--async", "--format=value(metadata.name)"],
+         *env_flag, f"--args=--run-id,{run_id}", "--async", "--format=value(metadata.name)"],
         capture_output=True, text=True, timeout=timeout_s, check=False)
     if result.returncode:
         raise Refused("remote launch failed or outcome unknown; reconcile the retained claim, never retry")
@@ -79,7 +86,7 @@ def _write_claim(path, value, *, exclusive=False):
         os.close(directory)
 
 
-def launch_staged(*, run_id, expected_manifest, connection, claim_dir, launcher=cloud_launcher):
+def launch_staged(*, run_id, expected_manifest, connection, claim_dir, launcher=cloud_launcher, launch_schema="ky.smalltest_launch/1"):
     """Caller owns transaction; hold run/asset row locks until launch returns.
 
     `launcher(run_id, timeout_s)` is injectable. All identity and age checks run
@@ -110,7 +117,7 @@ def launch_staged(*, run_id, expected_manifest, connection, claim_dir, launcher=
     claim_dir = Path(claim_dir)
     claim_dir.mkdir(parents=True, exist_ok=True)
     path = claim_dir / f"{run_id}.json"
-    record = dict(schema="ky.smalltest_launch/1", status="LAUNCH_PENDING", run_id=run_id, chart_id=CHART,
+    record = dict(schema=launch_schema, status="LAUNCH_PENDING", run_id=run_id, chart_id=CHART,
                   asset_id=ASSET, plan_manifest_digest=digest, created_at=row["created_at"].isoformat(),
                   execute_by=(row["created_at"] + dt.timedelta(minutes=10)).isoformat(), execution_name=None)
     _write_claim(path, record, exclusive=True)
@@ -124,27 +131,31 @@ def launch_staged(*, run_id, expected_manifest, connection, claim_dir, launcher=
     return record
 
 
-def run(argv=None, *, dispatcher=None, connect=None, launcher=cloud_launcher, claim_dir=None):
+def run(argv=None, *, dispatcher=None, connect=None, launcher=cloud_launcher, claim_dir=None, launch_schema="ky.smalltest_launch/1"):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", required=True, choices=("all_classes_1y", "one_class_full", "all_classes_full"))
     parser.add_argument("--classes", default="all")
     parser.add_argument("--horizon-start")
     parser.add_argument("--horizon-end")
+    parser.add_argument("--dry-run", action="store_true", help="rehearse staging and roll back; never launch")
     args = parser.parse_args(argv)
     if dispatcher is None:
         scripts = Path(__file__).resolve().parents[4] / "platform/scripts"
         sys.path.insert(0, str(scripts))
         import dispatch_v5_small_test_job as dispatcher
+    marker = dispatcher.build_slice_marker(run=args.run, classes=args.classes,
+                                            horizon_start=args.horizon_start, horizon_end=args.horizon_end)
+    staging = ["--i-am-steward", "--after-settled-1", "--dry-run" if args.dry_run else "--execute",
+               "--run", args.run, "--classes", args.classes]
+    for key in ("horizon_start", "horizon_end"):
+        if getattr(args, key) is not None:
+            staging += ["--" + key.replace("_", "-"), getattr(args, key)]
+    if args.dry_run:
+        return dispatcher.main(staging)
     if connect is None:
         import psycopg
         import psycopg.rows
         connect = lambda: psycopg.connect(os.environ["DATABASE_URL"], row_factory=psycopg.rows.dict_row)
-    marker = dispatcher.build_slice_marker(run=args.run, classes=args.classes,
-                                            horizon_start=args.horizon_start, horizon_end=args.horizon_end)
-    staging = ["--i-am-steward", "--after-settled-1", "--execute", "--run", args.run, "--classes", args.classes]
-    for key in ("horizon_start", "horizon_end"):
-        if getattr(args, key) is not None:
-            staging += ["--" + key.replace("_", "-"), getattr(args, key)]
     output = io.StringIO()
     # Preserve the dispatcher's safe error/commit-unknown behavior. Never stage
     # again if it throws, even when a run id was printed or COMMIT was sent.
@@ -160,7 +171,7 @@ def run(argv=None, *, dispatcher=None, connect=None, launcher=cloud_launcher, cl
         manifest, _ = dispatcher.build_small_test_manifest(candidate=candidate, slice_marker=marker)
         result = launch_staged(run_id=run_id, expected_manifest=manifest, connection=conn,
                                claim_dir=claim_dir or Path(os.environ["KY_ROOT"]) / "run/ops/smalltest_launch",
-                               launcher=launcher)
+                               launcher=launcher, launch_schema=launch_schema)
         print(canonical(result), flush=True)
         return result
     finally:

@@ -23,7 +23,7 @@ KINDS = ('backup_snapshot', 'backup_restore_verify', 'smalltest_dispatch_dryrun'
 
 
 def argv_for(op):
-    values = {'label': 'p01_fixture', 'run': 'one_class_full', 'classes': 'marriage',
+    values = {'label': 'p01_fixture', 'scope': 'small_test', 'run': 'one_class_full', 'classes': 'marriage',
               'horizon-start': '1998-01-01T00:00:00+00:00',
               'horizon-end': '2026-04-17T00:00:00+00:00'}
     return op['fixed_args'] + [a for key in op['allowed_args'] for a in (f'--{key}', values[key])]
@@ -34,9 +34,9 @@ def test_enabled_table_argv_agrees_with_script(kind):
     op = json.loads(TABLE.read_text())['ops'][kind]
     assert op['enabled'] is True
     assert (ROOT / op['script']).is_file(), op['script']
-    assert op['production'] is True
+    assert op['production'] is (not kind.endswith('_dryrun'))     # A8 §3.8: a dry run is read-only with a credential
     assert op['enabled_by'] == 'J-1a'
-    assert op['allowed_args'] == (['label'] if kind.startswith('backup_') else
+    assert op['allowed_args'] == (['label', 'scope'] if kind.startswith('backup_') else
                                  ['run', 'classes', 'horizon-start', 'horizon-end'] if 'dispatch' in kind else [])
     if kind == 'smalltest_dispatch':
         # Final main owns remote launching; the bridge injects the reviewed staging argv.
@@ -189,7 +189,7 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
                 'SHA': importlib.import_module('re').compile(r'^[0-9a-f]{40}$'),
                 'CANONICAL_CHART': '482012f1-710e-4a25-994a-93821f5871aa', 'ACC': accepted_dir,
                 'lease_live': lambda lease: True, 'git': lambda *args: types.SimpleNamespace(returncode=0),
-                'dt': dt, 'json': json, 'APPROVAL_MAX_AGE_S': 10800, 'seen': lambda key: False,
+                'dt': dt, 'json': json, 'seen': lambda key: False,
                 'utc_time': lambda value: dt.datetime.fromisoformat(value),
                 'smalltest_policy_problem': lambda req: None, 'request_digest': lambda req: 'synthetic_bound_digest'}
     exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), 'exec'), globals_)
@@ -198,19 +198,27 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     request = {'operation_id': 'p01_fixture', 'kind': kind, 'item_id': 'J-1a', 'idempotency_key': 'p01_fixture',
                'requested_by': 'adhikarin', 'kyd': 'synthetic', 'chart_id': globals_['CANONICAL_CHART'], 'lease_id': 'synthetic'}
     caps = {'owner': True, 'builder': True, 'gcloud': True}
-    assert 'pre-acceptance receipt missing' in validate(request, table, caps)
+    dry_run = kind.endswith('_dryrun')
+    if dry_run:      # A8 §3.8: production:false — no lease or acceptance, but only a merged reviewed tree may run with the credential
+        assert validate(request, table, caps) == 'reviewed_commit required for a dry-run operation'
+    else:
+        assert 'pre-acceptance receipt missing' in validate(request, table, caps)
     assert 'disallowed args' in validate(dict(request, args={'run-id': 'synthetic'}), table, caps)
     assert 'may not request' in validate(dict(request, requested_by='v1'), table, caps)
     request.update(reviewed_commit='a'*40, expires_at=(dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1)).isoformat())
+    if dry_run:
+        assert validate(request, table, caps) is None
+        return
     receipt = {'result': 'ACCEPTED', 'operation_id': request['operation_id'], 'by': 'v1',
                'reviewed_commit': request['reviewed_commit'], 'request_sha256': 'synthetic_bound_digest',
                'ts': dt.datetime.now(dt.timezone.utc).isoformat(), 'checks': {}, 'rows': {}}
     path = accepted_dir / 'receipt.json'
     request['acceptance_receipt'] = str(path)
     path.write_text(json.dumps(receipt))
-    if kind != 'backup_snapshot':
-        assert 'attestation missing' in validate(request, table, caps) or 'rows are not all true' in validate(request, table, caps)
-    receipt.update(checks={'backup_taken': True, 'restore_verified': True, 'dry_run_passed': True},
-                   rows={key: True for key in table[kind]['required_rows']})
+    if kind in ('smalltest_dispatch', 'smalltest_teardown'):    # A8 §5: dry_run_passed for a mutating kind, backup_taken for a teardown; nothing else
+        assert 'attestation missing' in validate(request, table, caps)
+    else:
+        assert validate(request, table, caps) is None
+    receipt.update(checks={'backup_taken': True, 'dry_run_passed': True})
     path.write_text(json.dumps(receipt))
     assert validate(request, table, caps) is None

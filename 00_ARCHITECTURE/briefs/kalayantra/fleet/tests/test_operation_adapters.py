@@ -32,7 +32,8 @@ COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 PROTECTED = [EXECUTOR_PY, OPS_FILE, DISPATCH_PY, PREFLIGHT_TS]
 P01_KINDS = {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch_dryrun",
              "smalltest_dispatch", "smalltest_teardown_dryrun", "smalltest_teardown"}
-ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"} | P01_KINDS
+MEASURING_KINDS = {"measuring_dispatch_dryrun", "measuring_dispatch", "measuring_teardown_dryrun", "measuring_teardown"}   # J-3a
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS | MEASURING_KINDS
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 ITEM = "K9-FIXTURE"
 LEASE = "LEASE-KY-FIXTURE"
@@ -79,7 +80,7 @@ def fixture_table():
     the fixture wrapper as script, the mode in fixed_args (I3). Every other entry is the table's, byte for byte."""
     table = real_table()
     for kind, mode in (("orchestrator_rebuild_dryrun", "--dry-run"), ("orchestrator_rebuild", "--execute")):
-        table[kind] = dict(table[kind], enabled=True, script=WRAPPER_REL, fixed_args=[mode], required_rows=["2", "3"])
+        table[kind] = dict(table[kind], enabled=True, script=WRAPPER_REL, fixed_args=[mode])
     return table
 
 def lease_text(rows):
@@ -194,6 +195,8 @@ class Bench:
         self.launched, self.event_log = [], {}
         self.wrapper = fixture_wrapper
         X.git, X.capabilities, X.run_group = self.git, lambda _: dict(ALL_CAPS), self.process
+        # The writer-digest overlay (J-2a M12) has its own oracles in test_executor_overlay.py; here `process` is the one wrapper.
+        X.apply_generated_overlay = lambda root, commit, env, timeout=600: ({"schema": "ky.generated_overlay/1", "source_sha": commit, "files": {}}, "")
         self.run = X.RUN
 
     def process(self, argv, cwd, env, timeout):
@@ -350,18 +353,20 @@ def test_a_changed_request_or_head_an_expired_acceptance_or_an_omitted_check_ref
 
     ago = lambda **delta: (dt.datetime.now(dt.timezone.utc) - dt.timedelta(**delta)).isoformat(timespec="seconds")
     expired = "approval expired or not yet valid"
-    assert with_acceptance(ts=ago(hours=3, seconds=30)) == expired                       # older than the three-hour limit
+    assert with_acceptance(ts=ago(hours=3, seconds=30)) is None                         # A8 §4: no age cap — valid until the request's expires_at
     assert with_acceptance(ts=ago(hours=-1)) == expired                                 # issued in the future
     assert with_acceptance(ts="2026-10-13T08:00:00").startswith("valid approval timestamp")       # no timezone
-    assert validate(dict(req, expires_at=ago(seconds=5))) in (expired, binds)           # the request's own expiry is bound too
+    assert validate(dict(req, expires_at=ago(seconds=5))) == expired                    # A8 §3.9: expires_at is outside the digest; only the clock refuses
+    assert validate(dict(req, expires_at=ago(days=-3))) is None                         # an extension voids nothing
     assert with_acceptance(by="b1").startswith("pre-acceptance receipt is not an ACCEPTED receipt")
     assert with_acceptance(result="REJECTED").startswith("pre-acceptance receipt is not an ACCEPTED receipt")
-    for check in ("backup_taken", "restore_verified", "dry_run_passed"):
+    for check in ("dry_run_passed",):                                                  # A8 §5: the one attestation a mutating non-teardown kind needs
         partial = {k: v for k, v in accepted["checks"].items() if k != check}
         assert with_acceptance(checks=partial) == "required backup/restore/dry-run attestation missing", check
         assert with_acceptance(checks=dict(accepted["checks"], **{check: "true"})) == "required backup/restore/dry-run attestation missing"
-    assert with_acceptance(rows={"2": True}) == "required pre-acceptance rows are not all true"
-    assert with_acceptance(rows={"2": True, "3": False}) == "required pre-acceptance rows are not all true"
+    for retired in ("backup_taken", "restore_verified"):                               # A8 §5: retired as preconditions (backup_taken stays for *_teardown only)
+        assert with_acceptance(checks={k: v for k, v in accepted["checks"].items() if k != retired}) is None, retired
+    assert with_acceptance(rows={"2": True, "3": False}) is None                        # A8 §5: required_rows retired
 
     lease = "lease is not the single unexpired ACTIVE row on origin/campaign-coordination"
     bench.git.leases = [(LEASE, 24, "ACTIVE"), ("LEASE-OTHER", 24, "ACTIVE")]
@@ -833,7 +838,7 @@ def test_remote_plan_matches_the_current_wave4_launcher(monkeypatch):
 def test_only_p01_production_kinds_are_enabled_and_wave4_launch_stays_bound(bench):
     table = real_table()
     assert {k for k, v in table.items() if v["enabled"]} == ENABLED_KINDS
-    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == P01_KINDS
+    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == {k for k in P01_KINDS | MEASURING_KINDS if not k.endswith("_dryrun")}   # A8 §3.8
     entry = table["smalltest_dispatch"]
     assert entry["script"].endswith("/smalltest_launch.py") and entry["also_needs"] == ["gcloud"]
     for kind in ("smalltest_dispatch",):

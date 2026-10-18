@@ -64,6 +64,7 @@ def test_good_tree_verifies_and_indexes_everything(tmp_path: Path) -> None:
     build_tree(tmp_path)
     note = tmp_path / "steward-note.md"
     note.write_text("the sitting was quiet\n", encoding="utf-8")
+    evidence = {"./" + p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*") if p.is_file()}
     r = run_pack(tmp_path, "--note", str(note))
     assert r.returncode == 0, r.stderr
     index = (tmp_path / "SITTING_EVIDENCE_INDEX.md").read_text(encoding="utf-8")
@@ -75,6 +76,8 @@ def test_good_tree_verifies_and_indexes_everything(tmp_path: Path) -> None:
     # emission order within pre-window: W3 line precedes R2 line
     assert index.index("W3-legacy-relations") < index.index("R2-ledger-1243")
     top = (tmp_path / "MANIFEST.sha256").read_text(encoding="utf-8")
+    listed = {line.split("  ", 1)[1] for line in top.splitlines()}
+    assert listed == evidence | {"./SITTING_EVIDENCE_INDEX.md"}
     assert "./SITTING_EVIDENCE_INDEX.md" in top and "./pre-window/MANIFEST.sha256" in top
     check = subprocess.run(["shasum", "-a", "256", "-c", "MANIFEST.sha256"],
                            cwd=tmp_path, capture_output=True, text=True, timeout=60)
@@ -101,6 +104,28 @@ def test_a_missing_phase_stops_unless_allowed(tmp_path: Path) -> None:
     assert "## Phase: pre-train" in index and "MISSING (allowed by --allow-missing)" in index
 
 
+def test_an_existing_phase_without_its_manifest_stops_unless_allowed(tmp_path: Path) -> None:
+    build_tree(tmp_path)
+    (tmp_path / "pre-train/MANIFEST.sha256").unlink()
+    r = run_pack(tmp_path)
+    assert r.returncode == 1
+    assert "MISSING PHASE: pre-train has no MANIFEST.sha256" in r.stderr
+    assert "1 evidence failure(s)" in r.stderr
+    allowed = run_pack(tmp_path, "--allow-missing", "pre-train")
+    assert allowed.returncode == 0, allowed.stderr
+    assert "MISSING (allowed by --allow-missing): no MANIFEST.sha256" in (tmp_path / "SITTING_EVIDENCE_INDEX.md").read_text()
+
+
+def test_missing_listed_evidence_stops_even_in_an_allowed_phase(tmp_path: Path) -> None:
+    build_tree(tmp_path)
+    (tmp_path / "pre-train/R7-roles-exist.out").unlink()
+    r = run_pack(tmp_path, "--allow-missing", "pre-train")
+    assert r.returncode == 1
+    assert "MANIFEST MISMATCH: pre-train/R7-roles-exist.out is listed but absent" in r.stderr
+    assert "1 evidence failure(s)" in r.stderr
+    assert "| R7-roles-exist | MISSING |" in (tmp_path / "SITTING_EVIDENCE_INDEX.md").read_text()
+
+
 def test_a_symlink_escaping_the_dir_is_an_exit2_refusal(tmp_path: Path) -> None:
     build_tree(tmp_path)
     outside = tmp_path.parent / "outside-secret.txt"
@@ -115,3 +140,33 @@ def test_a_missing_evidence_dir_is_an_exit2_refusal(tmp_path: Path) -> None:
     r = run_pack(tmp_path / "no-such-dir")
     assert r.returncode == 2
     assert "REFUSAL: --evidence-dir is not a directory" in r.stderr
+
+
+def test_top_manifest_has_canonical_bytewise_path_order_on_every_run(tmp_path: Path, monkeypatch) -> None:
+    build_tree(tmp_path)
+    # The index intentionally records pack time. Pin that input while proving
+    # byte repeatability; crossing a wall-clock second is not an order defect.
+    clock_bin = tmp_path / "clock-bin"
+    clock_bin.mkdir()
+    date = clock_bin / "date"
+    date.write_text("#!/bin/sh\nprintf '%s\\n' '2026-10-16T00:00:00Z'\n", encoding="utf-8")
+    date.chmod(0o755)
+    monkeypatch.setenv("PATH", str(clock_bin) + os.pathsep + os.environ["PATH"])
+    # Include non-ASCII names so locale-sensitive ordering cannot substitute
+    # for the declared LC_ALL=C order.
+    for name in ("z-last.out", "A-first.out", "évidence.out"):
+        (tmp_path / name).write_text(name + "\n", encoding="utf-8")
+    previous = None
+    for _ in range(2):
+        r = run_pack(tmp_path)
+        assert r.returncode == 0, r.stderr
+        manifest = (tmp_path / "MANIFEST.sha256").read_bytes()
+        paths = [line.split(b"  ", 1)[1] for line in manifest.splitlines()]
+        assert paths == sorted(paths)
+        assert len(paths) == len(set(paths)) and paths
+        for line in manifest.splitlines():
+            digest, rel = line.split(b"  ", 1)
+            assert hashlib.sha256((tmp_path / rel.decode()).read_bytes()).hexdigest().encode() == digest
+        if previous is not None:
+            assert manifest == previous
+        previous = manifest
