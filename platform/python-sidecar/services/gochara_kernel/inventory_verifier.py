@@ -740,8 +740,9 @@ def rederive_aspect_span_runs(
 # the CONSUMED set itself against the contract it is TOLD (its own constants, not the builder's):
 #   * every consumed row is of this chart, ayanāṃśa, system and tier, levels 1–3, and — for the canonical
 #     chart — the single settled build selected by this verifier's own all-tier query;
-#   * no consumed row lies wholly outside the horizon (an EXTRA), and no pinned-build row overlapping the
-#     horizon is missing (an OMITTED);
+#   * no consumed row lies wholly outside the horizon (an EXTRA) unless its whole (lord, level) group of the pinned
+#     build is consumed — the P1 builder judges period_running_at from every row of an anchor (lord, level), so those
+#     rows are ledgered whole (J-2a-P1L, B.3) — and no pinned-build row overlapping the horizon is missing (an OMITTED);
 #   * no two pinned rows conflict on the same (level, parent, start) with different contract fields.
 
 _C_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
@@ -816,6 +817,14 @@ def _load_dasha_settlement(chart_id: str) -> dict:
     return doc
 
 
+def _group_wholly_consumed(row: Mapping[str, Any], pinned: Sequence[Mapping[str, Any]], consumed_ids: set) -> bool:
+    """Is every pinned-build row of `row`'s (lord, level) in the consumed set? The only way a row outside the horizon is
+    a consulted anchor row rather than an extra: the builder reads an anchor's rows whole, never a part."""
+    key = (str(row["lord_graha"]).lower(), int(row["level_n"]))
+    group = [str(p["dasha_row_id"]) for p in pinned if (str(p["lord_graha"]).lower(), int(p["level_n"])) == key]
+    return bool(group) and all(g in consumed_ids for g in group)
+
+
 def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequence[Mapping[str, Any]], *,
                            chart_id: str, horizon: tuple, consumed_ids: Sequence[str]) -> list[str]:
     """Pure: the violations (empty = the population is the §4.0 population). `consumed` are the rows the
@@ -857,7 +866,7 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
             out.append(f"row {rid}: tier {r['verification_pass_status']!r} is not {_C_TIER}")
         if int(r["level_n"]) not in _C_LEVELS:
             out.append(f"row {rid}: level {r['level_n']} is not MD/AD/PD")
-        if not (r["start_iso"] < hi and r["end_iso"] > lo):
+        if not (r["start_iso"] < hi and r["end_iso"] > lo) and not _group_wholly_consumed(r, pinned, found):
             out.append(f"row {rid}: lies wholly outside the horizon (an extra row)")
     want = {str(r["dasha_row_id"]) for r in pinned if r["start_iso"] < hi and r["end_iso"] > lo}
     for rid in sorted(want - found):
