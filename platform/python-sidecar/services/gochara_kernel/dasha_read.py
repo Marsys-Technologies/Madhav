@@ -117,10 +117,11 @@ def load_dasha_settlement(chart_id: str) -> dict:
     return record
 
 
-def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict:
+def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict], *, conn=None) -> dict:
     """Bind eligible rows to the receipt's named full run, never to row order."""
     from services.gochara_rules.permission import DASHA_READ_CONTRACT
-    settlement = load_dasha_settlement(chart_id)
+    from services.gochara_kernel.rehearsal_settlement import settlement_for_connection
+    settlement = settlement_for_connection(conn, chart_id, load_dasha_settlement)
     vim = [p for p in dasha_periods if p.get("system_id") == PINNED_SYSTEM]
     if any(p.get("build_id") is None for p in vim):
         raise DashaBuildRefused("dasha_build_null", f"NULL Vimśottarī build for chart {chart_id}")
@@ -130,10 +131,13 @@ def select_dasha_read_contract(chart_id: str, dasha_periods: list[dict]) -> dict
     build = settlement["run_id"]
     if builds != [build]:
         raise DashaBuildRefused("settled_build_absent", f"named build {build} is not the eligible build for chart {chart_id}")
-    return {"system_id": PINNED_SYSTEM, "build_id": build,
+    contract = {"system_id": PINNED_SYSTEM, "build_id": build,
             "tier": DD.READ_CONTRACT_TIER,
             "ayanamsha_id": DASHA_READ_CONTRACT["ayanamsha_id"],
             "basis": "governed L1_SETTLED receipt and one matching eligible build", "builds_seen": builds}
+    if settlement.get("synthetic") is True:
+        contract.update(synthetic=True, basis="SYNTHETIC-REHEARSAL-ONLY and one matching eligible build")
+    return contract
 
 
 def _population_query(conn, sql, params):
@@ -170,7 +174,7 @@ def load_pinned_vimshottari(conn, chart_id: str) -> tuple[list[dict], dict]:
     assert_single_pinned_build(conn, chart_id)                     # G6: one non-NULL build, before tier filtering
     raw = _fetch_dasha_periods_multilevel(
         conn, chart_id, systems=[PINNED_SYSTEM], canonicalize=False)
-    contract = select_dasha_read_contract(chart_id, raw)
+    contract = select_dasha_read_contract(chart_id, raw, conn=conn)
     contract["raw_vimshottari_rows"] = len(raw)
     rows = _fetch_dasha_periods_multilevel(
         conn, chart_id, systems=[PINNED_SYSTEM], build_id=contract["build_id"])
@@ -569,7 +573,8 @@ def observe_dasha_tiers(conn, chart_id, ayanamsha_id, systems, levels):
     without turning those rows into eligible period operands.
     """
     _require_governed_ayanamsha(ayanamsha_id)
-    settlement = load_dasha_settlement(chart_id)
+    from services.gochara_kernel.rehearsal_settlement import settlement_for_connection
+    settlement = settlement_for_connection(conn, chart_id, load_dasha_settlement)
     _assert_governed_system_builds(conn, chart_id, ayanamsha_id, systems, settlement["run_id"])
     level_sql = " AND level_n = ANY(%s)" if levels is not None else ""
     params = [chart_id, ayanamsha_id, list(systems), settlement["run_id"]]
@@ -582,10 +587,10 @@ def observe_dasha_tiers(conn, chart_id, ayanamsha_id, systems, levels):
         " GROUP BY 1, 2, 3 ORDER BY 1, 2, 3", params)
 
 
-def validate_live_dasha_periods(chart_id, periods, ayanamsha_id):
+def validate_live_dasha_periods(chart_id, periods, ayanamsha_id, *, conn=None):
     """Validate preloaded live operands; explicit conn=None fixtures stay pure."""
     _require_governed_ayanamsha(ayanamsha_id)
-    contract = select_dasha_read_contract(chart_id, periods)
+    contract = select_dasha_read_contract(chart_id, periods, conn=conn)
     for row in periods:
         if row.get("build_id") is None:
             raise DashaBuildRefused("dasha_build_null", "preloaded live operand has no build")

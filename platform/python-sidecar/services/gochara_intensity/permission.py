@@ -256,7 +256,7 @@ def compute_permission(
     if dasha_periods is not None:
         if conn is not None:
             from services.gochara_kernel.dasha_read import validate_live_dasha_periods
-            validate_live_dasha_periods(chart_id, dasha_periods, ayanamsha_id)
+            validate_live_dasha_periods(chart_id, dasha_periods, ayanamsha_id, conn=conn)
         periods = dasha_periods
     else:
         with savepoint_scope(conn, "dasha_periods"):
