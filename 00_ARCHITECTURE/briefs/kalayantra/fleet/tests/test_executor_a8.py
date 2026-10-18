@@ -177,7 +177,7 @@ def test_every_dry_run_kind_is_read_only_with_a_credential_in_the_table():
     ops = json.loads(OPS_FILE.read_text())["ops"]
     dry = {k for k in ops if k.endswith("_dryrun")}
     assert dry == {"smalltest_dispatch_dryrun", "smalltest_teardown_dryrun", "measuring_dispatch_dryrun", "measuring_teardown_dryrun",
-                   "orchestrator_rebuild_dryrun"}
+                   "orchestrator_rebuild_dryrun", "publish_head_dryrun", "rollback_head_dryrun"}      # J-6m / J-6r transactional dry-runs
     for kind in dry:
         assert ops[kind]["production"] is False, kind
         assert ops[kind]["needs"] in ("builder", "owner"), kind                       # the credential stays
