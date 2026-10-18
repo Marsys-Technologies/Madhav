@@ -45,6 +45,15 @@ def heavy_jobs(jobs):
     return db_jobs(jobs) | {'governance-gates-py-sidecar-shard', 'governance-gates-gochara'} | {n for n in jobs if n.startswith('required-')}
 
 
+# SR-BOLD-08(a): umbrellas that run on EVERY event and earn their verdict in a script (their own oracles below), so they are not
+# "skipped when unselected" like the rest of the heavy family.
+REPORTING_UMBRELLAS = {'required-db-integration-tests'}
+
+
+def skippable_heavy_jobs(jobs):
+    return heavy_jobs(jobs) - REPORTING_UMBRELLAS
+
+
 def test_pull_request_has_light_checks_and_skips_unrelated_heavy_jobs():
     """Brief (a,b): ordinary code PR pays only the light gate, all required names report."""
     jobs = workflow()['jobs']
@@ -52,7 +61,7 @@ def test_pull_request_has_light_checks_and_skips_unrelated_heavy_jobs():
     assert REQUIRED <= names
     historical = json.loads((ROOT / 'platform/scripts/governance/ci_discovery_baseline.json').read_text())
     assert set(historical['job_names'].values()) <= names, 'every original context, including any protected name, must report'
-    for name in heavy_jobs(jobs):
+    for name in skippable_heavy_jobs(jobs):
         assert not evaluate(jobs[name].get('if'), event='pull_request'), name
     for name in ('typecheck', 'typecheck-mcp', 'unit-tests', 'generated-artifacts', 'secret-scan',
                  'naming-lint', 'fact-category-pin-lint', 'earned-signal-lint', 'governance-tool-tests-shard'):
@@ -84,7 +93,7 @@ def test_full_events_execute_every_heavy_job_even_for_docs_changes(event, full, 
     assert triggers['push']['branches'] == ['main'] and triggers['merge_group']['branches'] == ['main']
     if event == 'workflow_dispatch':
         assert not evaluate(w['jobs']['census-battery']['if'], event=event, full=full)
-    for name in heavy_jobs(w['jobs']):
+    for name in skippable_heavy_jobs(w['jobs']):
         assert evaluate(w['jobs'][name].get('if'), event=event, full=full, docs='true') is expected, name
         if expected and name in db_jobs(w['jobs']):
             import ci_gate
@@ -251,7 +260,7 @@ def test_merge_queue_selects_exactly_what_a_pull_request_selects():
                     assert pr == mg, (where, state['selected'][:1])
                     checked += 1
     assert checked > 100
-    heavy_unselected = [n for n in heavy_jobs(jobs) if evaluate(jobs[n].get('if'), event='merge_group')]
+    heavy_unselected = [n for n in skippable_heavy_jobs(jobs) if evaluate(jobs[n].get('if'), event='merge_group')]
     assert heavy_unselected == [], f'merge_group runs heavy jobs nothing selected: {heavy_unselected}'
 
 
@@ -289,7 +298,7 @@ def test_ci_gate_selects_changed_profiles_on_merge_group_and_nothing_on_main(mon
         assert set(json.loads(parsed['pull_request'][key])) <= set(json.loads(parsed['merge_group'][key]))
     assert {j for j in json.loads(parsed['merge_group']['db_jobs'])} - set(json.loads(parsed['pull_request']['db_jobs'])) \
         <= ci_gate.QUEUE_ALWAYS_JOBS
-    assert out['push'] == out['workflow_dispatch'] == 'db_jobs=[]\ndb_profiles=[]\n'
+    assert out['push'] == out['workflow_dispatch'] == 'db_jobs=[]\ndb_profiles=[]\nrun_combination_suites=true\n'
     monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: None)
     with pytest.raises(ValueError):
         ci_gate.main(['--event', 'merge_group'])
@@ -309,7 +318,7 @@ def test_combination_sensitive_suites_run_on_every_merge_group_even_for_an_unrel
     jobs = workflow()['jobs']
     names = {n: str(j.get('name')) for n, j in jobs.items()}
     queue_jobs, queue_profiles = json.loads(out['merge_group']['db_jobs']), json.loads(out['merge_group']['db_profiles'])
-    assert out['pull_request'] == {'db_jobs': '[]', 'db_profiles': '[]'}
+    assert out['pull_request'] == {'db_jobs': '[]', 'db_profiles': '[]', 'run_combination_suites': 'false'}
     must = {n for n, name in names.items() if jobs[n].get('services') and (
         'DB Integration Tests (SAMĪKṢĀ' in name or 'Gochara measuring build' in name or 'Gochara C38 - the small-test teardown' in name)}
     assert len(must) == 5, must
@@ -345,4 +354,4 @@ def test_merge_queue_diffs_against_the_group_base_and_every_required_check_repor
                 'full-suite', 'governance-gates'):
         assert evaluate(jobs[key].get('if'), event='merge_group'), key
     # A skipped heavy job rolls up to a passing aggregate on the queue, as on a PR (aggregate test above).
-    assert not any(evaluate(jobs[n].get('if'), event='merge_group') for n in heavy_jobs(jobs))
+    assert not any(evaluate(jobs[n].get('if'), event='merge_group') for n in skippable_heavy_jobs(jobs))
