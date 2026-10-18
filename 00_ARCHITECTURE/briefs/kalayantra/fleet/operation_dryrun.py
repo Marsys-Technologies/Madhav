@@ -28,18 +28,6 @@ SURFACES = {
         "blockers": ["allocate reviewed remote job launcher and dry-run kind through a real child",
                      "verify disabled deployed definition, immutable image and verifier-only runtime secret",
                      "report-only is REPORT_ONLY, never VERIFIED or a seal brief"]},
-    "publish_head": {
-        "args": {"generation": "5.0"}, "caps": ["builder"], "runtime_principal": "data_plane_builder", "phase": "J-6m",
-        "source": "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
-        "blockers": ["allocate governed 5.0 authority-switch wrapper and dry-run kind through a real child",
-                     "accepted sealed generation, retained previous head, compare-and-swap and readback evidence",
-                     "legacy flip script is not qualified for this governed path"]},
-    "rollback_head": {
-        "args": {}, "caps": ["builder"], "runtime_principal": "data_plane_builder", "phase": "J-6r",
-        "source": "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
-        "blockers": ["allocate retained-head rollback rehearsal and dry-run kind through a real child",
-                     "pin expected current head and retained previous head in the reviewed request contract",
-                     "legacy rollback deletes authority and falls back to v1; it cannot prove retained-head rollback"]},
     "protected_apply": {
         "args": {}, "caps": [], "runtime_principal": "protected workflow ownership-admin", "phase": "J-4b-a55j / P06b",
         "source": "platform/scripts/kala_protected_migrations.txt",
@@ -70,7 +58,7 @@ def prepare(kind, args):
     proposal = kind in ("protected_apply", "provision", "seal")
     return dict(schema="ky.operation_preparation/1", kind=kind, status="PREPARATION_ONLY", enabled=False,
                 binding_status="PROPOSAL_REQUIRES_CHILD" if proposal else "DISABLED_PENDING_PHASE",
-                chart_id="482012f1-710e-4a25-994a-93821f5871aa", generation=None if kind == "rollback_head" else "5.0", args=dict(args),
+                chart_id="482012f1-710e-4a25-994a-93821f5871aa", generation="5.0", args=dict(args),
                 executor_capabilities=list(entry["caps"]), runtime_principal=entry["runtime_principal"],
                 enable_at=entry["phase"], source=entry["source"], blockers=list(entry["blockers"]),
                 external_human_approval_required=proposal, dry_run_passed=False)

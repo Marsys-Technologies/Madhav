@@ -3,7 +3,7 @@ artifact: W4_EXECUTOR_BINDINGS
 version: 1.1
 status: PREPARATION_ONLY — independent review, integration and phase enablement outstanding
 produced_on: 2026-10-15
-changelog: "v1.1 (2026-10-16): J3C-BINDINGS supersedes measuring proposal metadata with dedicated disabled bindings; v1.0: initial launch/preparation surfaces."
+changelog: "v1.2 (2026-10-18): publish_head / rollback_head and their dry-run siblings are bound and enabled (J-6m / J-6r, SR-PREBUILD-ALL); v1.1 (2026-10-16): J3C-BINDINGS supersedes measuring proposal metadata with dedicated disabled bindings; v1.0: initial launch/preparation surfaces."
 ---
 
 # Wave 4 step 7 — executable launch bridge and later preparation
@@ -67,7 +67,7 @@ existing dispatcher's two required steward flags as fixed args.
 
 ## Disabled preparation surfaces
 
-`prepared_dry_run` metadata on the five existing later kinds describes an explicit
+`prepared_dry_run` metadata on the existing later kinds that are not yet bound (J-6m / J-6r have real siblings) describes an explicit
 no-effect request preview via `operation_dryrun.py --dry-run --kind <kind>` and the
 kind's bounded arguments. The executor never treats nested metadata as a kind.
 The preview returns `PREPARATION_ONLY`, blockers and **dry_run_passed=false**.
@@ -79,8 +79,8 @@ proposed request and its gaps reviewable now.
 | measuring_dispatch | run=all_classes_full, classes=all | builder + gcloud | J-3a/J-3c; staging rollback and actual launch qualification |
 | century_dispatch | classes=all | gcloud | J-4d/J-4e; final-rules 5.0 launcher; confirm any staging builder requirement |
 | verification_job | generation=5.0 | gcloud | phase 10 after P06b; remote launcher and immutable job-definition readback |
-| publish_head | generation=5.0 | builder | J-6m; governed switch, retained head and compare-and-swap contract |
-| rollback_head | no target presumed; request contract awaits measured retained head | builder | J-6r; retained-head rehearsal contract, not deletion-to-v1 |
+| publish_head | ENABLED (SR-PREBUILD-ALL): generation, manifest-id, expected-head | builder | J-6m; `kala_gochara_cutover/publish_head.py --execute`, sibling `publish_head_dryrun` (`--dry-run`, read-only transaction); V-lane signer stays required (SR-MINIMAL-PROTECTION) |
+| rollback_head | ENABLED (SR-PREBUILD-ALL): generation (the recorded previous head), expected-head | builder | J-6r; `kala_gochara_cutover/rollback_head.py --execute`, sibling `rollback_head_dryrun`; restores the retained head, never deletion-to-v1; V-lane signer stays required |
 
 The additional disabled `measuring_dispatch.staging_dry_run` descriptor binds the
 **real transaction rollback** path: the existing dispatcher with fixed steward,
@@ -117,7 +117,7 @@ for the verifier or sealer.
 
 Proposed future kind names, **not allocated or executable**:
 `measuring_dispatch_dryrun`, `century_dispatch_dryrun`,
-`verification_job_dryrun`, `publish_head_dryrun`, `rollback_head_dryrun`,
+`verification_job_dryrun`,
 `protected_apply`, `protected_apply_dryrun`, `provision`, `provision_dryrun`,
 `seal`, `seal_dryrun`. Cockpit must decide names, child allocation, exact request
 inputs, capabilities and enable-at-phase gates. Century, authority switching and

@@ -17,11 +17,13 @@ def test_j6r_suites_are_mandatory_fail_closed_and_keep_existing_j6m_paths():
     assert '-p no:cacheprovider' in command
 
 
-def test_prebuild_never_enables_executor_or_forges_real_rehearsal_acceptance():
+def test_prebuild_binds_executor_ops_but_never_forges_real_rehearsal_acceptance():
     ops = json.loads((ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json').read_text())['ops']
-    for name in ('publish_head', 'rollback_head'):
-        assert ops[name]['enabled'] is False
-        assert ops[name]['script'].startswith('TO_BE_SET_')
+    for name, script in (('publish_head', 'publish_head.py'), ('rollback_head', 'rollback_head.py')):
+        # SR-PREBUILD-ALL: bound to the reviewed governed-path scripts, each with a read-only dry-run sibling.
+        for kind, production in ((name, True), (name + '_dryrun', False)):
+            assert ops[kind]['enabled'] is True and ops[kind]['production'] is production
+            assert ops[kind]['script'] == f'platform/python-sidecar/scripts/kala_gochara_cutover/{script}'
     model = json.loads((ROOT / '00_ARCHITECTURE/control/kalayantra/plan_model.json').read_text())
     item = next(row for row in model['items'] if row['id'] == 'J-6r')
     assert item['completion_kind'] == 'artifact'

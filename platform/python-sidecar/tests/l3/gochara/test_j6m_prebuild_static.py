@@ -31,11 +31,13 @@ def test_both_j6m_suites_run_in_mandatory_fail_closed_db_step():
     assert '-p no:cacheprovider' in command
 
 
-def test_prebuild_preserves_disabled_authority_operations_and_deferred_helper():
+def test_prebuild_binds_authority_operations_to_reviewed_scripts_and_defers_helper():
     ops = json.loads((ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json').read_text())['ops']
-    for name in ('publish_head', 'rollback_head'):
-        assert ops[name]['enabled'] is False
-        assert ops[name]['script'].startswith('TO_BE_SET_')
+    for name, script in (('publish_head', 'publish_head.py'), ('rollback_head', 'rollback_head.py')):
+        # SR-PREBUILD-ALL: bound to the reviewed governed-path scripts, each with a read-only dry-run sibling.
+        for kind, production in ((name, True), (name + '_dryrun', False)):
+            assert ops[kind]['enabled'] is True and ops[kind]['production'] is production
+            assert ops[kind]['script'] == f'platform/python-sidecar/scripts/kala_gochara_cutover/{script}'
     # The rejected P09 helper was deferred on main. Do not recreate the B1
     # readiness-only mutation path during this admission-only prebuild.
     assert not (ROOT / 'platform/python-sidecar/services/gochara_kernel/authority_head.py').exists()

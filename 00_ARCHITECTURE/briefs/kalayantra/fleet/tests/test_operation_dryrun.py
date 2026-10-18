@@ -21,8 +21,6 @@ def load():
     ("measuring_dispatch", {"run": "all_classes_full", "classes": "all"}, ["builder", "gcloud"]),
     ("century_dispatch", {"classes": "all"}, ["gcloud"]),
     ("verification_job", {"generation": "5.0"}, ["gcloud"]),
-    ("publish_head", {"generation": "5.0"}, ["builder"]),
-    ("rollback_head", {}, ["builder"]),
 ])
 def test_existing_kind_has_disabled_bounded_preparation(kind, args, cap):
     mod = load()
@@ -39,8 +37,9 @@ def test_existing_kind_has_disabled_bounded_preparation(kind, args, cap):
 @pytest.mark.parametrize("kind,args", [
     ("measuring_dispatch", {"run": "one_class_full", "classes": "all"}),
     ("century_dispatch", {"classes": "marriage"}), ("century_dispatch", {"classes": "all", "execute": "true"}),
-    ("verification_job", {"generation": "4.1"}), ("publish_head", {"generation": "5.0", "sql": "UPDATE"}),
-    ("rollback_head", {"generation": "v1"}), ("not_allocated", {})])
+    ("verification_job", {"generation": "4.1"}),
+    ("publish_head", {"generation": "5.0"}), ("rollback_head", {}),      # SR-PREBUILD-ALL: bound for real; no preparation surface remains
+    ("not_allocated", {})])
 def test_refuses_widened_unlisted_or_wrong_generation_requests(kind, args):
     with pytest.raises(ValueError):
         load().prepare(kind, args)
@@ -76,9 +75,3 @@ def test_measuring_preparation_binds_the_real_rollback_path_without_overrides():
     assert surface["fixed_args"] == ["--i-am-steward", "--after-settled-1", "--dry-run"]
     assert surface["allowed_args"] == ["run", "classes"]
 
-
-def test_rollback_never_invents_the_retained_generation():
-    result = load().prepare("rollback_head", {})
-    assert result["generation"] is None
-    with pytest.raises(ValueError):
-        load().prepare("rollback_head", {"generation": "5.0"})

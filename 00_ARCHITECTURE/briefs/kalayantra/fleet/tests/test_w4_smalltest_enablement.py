@@ -27,7 +27,8 @@ MEASURING = {
     "measuring_teardown_dryrun": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--dry-run"], [], "J-3d"),
     "measuring_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], [], "J-3d"),
 }
-DISABLED = {"verification_job", "century_dispatch", "publish_head", "rollback_head",
+J6 = {"publish_head", "publish_head_dryrun", "rollback_head", "rollback_head_dryrun"}   # SR-PREBUILD-ALL: J-6m / J-6r bound and enabled
+DISABLED = {"verification_job", "century_dispatch",
             "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"}
 
 
@@ -42,8 +43,8 @@ def executor(tmp_path, monkeypatch):
 
 
 def test_only_six_wave4_measuring_and_scheduler_ops_are_newly_enabled(table):
-    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | DISABLED
-    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER
+    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | J6 | DISABLED
+    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | J6
     for kind in DISABLED:
         assert table[kind]["enabled"] is False
         if "prepared_dry_run" in table[kind]:

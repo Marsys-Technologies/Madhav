@@ -435,6 +435,8 @@ MARKER_ROUTE = {
     "scheduler_resume": "no_database",
     "measuring_cancel": "no_database",      # SR-J3-CANCEL-NULL: gcloud only, no DATABASE_URL; synchronous, never fenced
     "measuring_dispatch": "in_process",     # J-3a: measuring_launch.py opens only psycopg connections from DATABASE_URL (no PGAPPNAME/application_name in its closure — the next test)
+    "publish_head": "in_process",           # J-6m: head_ops.connect opens only a psycopg connection from DATABASE_URL (live-session proof: test_j6m_j6r_head_operations_db)
+    "rollback_head": "in_process",          # J-6r: same module
 }
 # A8 §3 fences only remote_async kinds; the *_dryrun kinds are production:false in executor_ops.json, so they are not eligible and carry no row.
 # Teardowns (smalltest_teardown, measuring_teardown) stay excluded by TEARDOWN_KINDS: executor.py `target_is_not_a_teardown` still refuses them.

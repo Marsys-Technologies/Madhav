@@ -81,6 +81,12 @@ MEASURING_BINDINGS = {
     },
 }
 # A8 §3.11: the kinds whose work continues remotely after the child returns — the only ones that take the production fence.
+J6_BINDINGS = {      # SR-PREBUILD-ALL: J-6m / J-6r bound to the governed-path scripts, each with a read-only dry-run sibling
+    "publish_head": ("J-6m", "publish_head.py", "--execute", ["generation", "manifest-id", "expected-head"], True),
+    "publish_head_dryrun": ("J-6m", "publish_head.py", "--dry-run", ["generation", "manifest-id", "expected-head"], False),
+    "rollback_head": ("J-6r", "rollback_head.py", "--execute", ["generation", "expected-head"], True),
+    "rollback_head_dryrun": ("J-6r", "rollback_head.py", "--dry-run", ["generation", "expected-head"], False),
+}
 REMOTE_ASYNC_KINDS = {"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"}
 # J-2a M6/M7: the one added read-only kind (fleet/CLOUDRUN_READBACK_v1_0.md). Exact binding, not permission for any other op.
 CLOUDRUN_READBACK = {
@@ -114,10 +120,11 @@ SCHEDULER_BINDINGS = {
     "measuring_cancel": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_cancel.py", "fixed_args": [],   # SR-J3-CANCEL-NULL
                          "allowed_args": ["execution"], "production": True, "timeout_s": 900, "enabled_by": "J-3c"},
 }
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(J6_BINDINGS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
+FUTURE_P10 = {item: kind for item, kind in P10.items() if item not in ("J-1a", "J-6m", "J-6r")}   # J-6m / J-6r are enabled (SR-PREBUILD-ALL)
 BOUNDARY_FUNCTIONS = ["validate", "execute", "run_one", "main", "lease_live", "request_digest", "fence_quiescent",
                       "refresh_refusal_reason", "handover_from_main", "refresh_from_main_or_fail_closed",
                       "capabilities", "run_group"]
@@ -185,7 +192,7 @@ def test_p10_entries_present_with_only_j1a_enabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     for item, kind in P10.items():
         assert kind in ops, f"{kind} is missing"
-        assert enabled_state(kind, ops[kind]) is (item == "J-1a"), f"{kind} has unexpected enablement"
+        assert enabled_state(kind, ops[kind]) is (item in ("J-1a", "J-6m", "J-6r")), f"{kind} has unexpected enablement"
         assert ops[kind]["enabled_by"] == item
 
 
@@ -200,6 +207,8 @@ def assert_table_matches_pin(now):
     expected_order[pos:pos] = ["measuring_dispatch_dryrun", "measuring_teardown_dryrun", "measuring_teardown"]
     expected_order.insert(expected_order.index("migration_readback") + 1, "cloudrun_job_readback")
     expected_order.insert(expected_order.index("cloudrun_job_readback") + 1, "quiescence_check")
+    expected_order[expected_order.index("publish_head") + 1:expected_order.index("publish_head") + 1] = ["publish_head_dryrun"]
+    expected_order[expected_order.index("rollback_head") + 1:expected_order.index("rollback_head") + 1] = ["rollback_head_dryrun"]
     expected_order += list(SCHEDULER_BINDINGS)                      # SR-J3-REAPER-PAUSE: appended last
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
@@ -220,11 +229,14 @@ def assert_table_matches_pin(now):
     for kind in READ_ONLY_KINDS[:3]:
         expected[kind]["read_only"] = True
     for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
-                        ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
+                        ("verification_job", "phase 10 after P06b")]:
         expected[kind]["prepared_dry_run"] = {
             "enabled": False, "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py",
             "fixed_args": ["--dry-run", "--kind", kind], "allowed_args": expected[kind]["allowed_args"], "enable_at": phase,
             "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
+    for kind, (item, script, mode, allowed, production) in J6_BINDINGS.items():
+        expected[kind] = {"enabled": True, "needs": "builder", "script": "platform/python-sidecar/scripts/kala_gochara_cutover/" + script,
+                          "fixed_args": [mode], "allowed_args": allowed, "production": production, "timeout_s": 1800, "enabled_by": item}
     for kind, binding in P01_BINDINGS.items():
         expected[kind].update(enabled=True, **binding)
     for kind in W4_KINDS | {"readback_sql"}:
@@ -293,7 +305,7 @@ def test_model_completion_detector_preserves_main_authority(item, kind):
     detector = detector_definition(item)
     assert detector == main_item["detector"]
     assert not detector.get("path", "").endswith("/" + OPS_REL)
-    assert enabled_state(kind, load_ops(OPS_FILE.read_text())["ops"][kind]) is (item == "J-1a")
+    assert enabled_state(kind, load_ops(OPS_FILE.read_text())["ops"][kind]) is (item in ("J-1a", "J-6m", "J-6r"))
 
 
 def test_detector_state_unreadable_is_a_failure():
@@ -653,7 +665,7 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head", *K9_KINDS])
+@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", *K9_KINDS])
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)
@@ -759,13 +771,13 @@ def test_enabled_set_is_exactly_bootstrap_plus_wave4():
 
 def test_p10_entries_present_and_disabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
-    for item, kind in {item: kind for item, kind in P10.items() if item != "J-1a"}.items():
+    for item, kind in FUTURE_P10.items():
         assert kind in ops, f"{kind} is missing"
         assert enabled_state(kind, ops[kind]) is False, f"{kind} must be disabled"
         assert ops[kind]["enabled_by"] == item
 
 
-@pytest.mark.parametrize("item,kind", sorted({item: kind for item, kind in P10.items() if item != "J-1a"}.items()))
+@pytest.mark.parametrize("item,kind", sorted(FUTURE_P10.items()))
 def test_future_table_enablement_and_typed_model_detectors_stay_separate(item, kind):
     # The reconciled model uses packet/rehearsal evidence, not enabled-string
     # completion. Preserve the legacy first-key format without inventing a detector.
@@ -860,3 +872,51 @@ def test_nonseed_child_does_not_inherit_caller_scratch_or_connections(tmp_path, 
                              {"script": "fixture.py", "needs": "none", "production": False})
     assert rc == 0, output
     assert not list(mod.EXEC.iterdir()) and not list(mod.TMP.iterdir())
+
+
+# ───────────────────────── J-6m / J-6r: publish_head and rollback_head (SR-PREBUILD-ALL, SR-MINIMAL-PROTECTION) ─────────────────────────
+
+J6_REQUESTS = {
+    "publish_head": {"generation": "5.0", "manifest-id": "0b9d3c2e-6c1f-4b8e-9a53-2f1d7c8e4a10", "expected-head": "3.0"},
+    "rollback_head": {"generation": "3.0", "expected-head": "5.0"},
+}
+
+
+@pytest.mark.parametrize("kind", sorted(J6_REQUESTS))
+def test_j6_production_kinds_need_a_v_lane_signer_and_a_passed_dry_run(tmp_path, monkeypatch, kind):
+    """SR-MINIMAL-PROTECTION: a serving change keeps a V1 signer, so the executor's mechanical record can never admit it (validate: v1..v4 only)."""
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    table = w.table()
+    base = w.production_request(kind, args=dict(J6_REQUESTS[kind]))
+    assert w.mod.validate(w.accept(base, by="v1"), table, ALL_CAPS) is None
+    mechanical = w.accept(w.production_request(kind, args=dict(J6_REQUESTS[kind]), operation_id="op-2", idempotency_key="key-2"), by="executor-mechanical")
+    assert "not an ACCEPTED receipt by a verifier lane" in w.mod.validate(mechanical, table, ALL_CAPS)
+    no_dry_run = w.production_request(kind, args=dict(J6_REQUESTS[kind]), operation_id="op-3", idempotency_key="key-3")
+    why = w.mod.validate(w.accept(no_dry_run, checks={"dry_run_passed": False}), table, ALL_CAPS)
+    assert why == "required backup/restore/dry-run attestation missing"
+
+
+@pytest.mark.parametrize("kind", sorted(J6_REQUESTS))
+def test_j6_requests_are_limited_to_the_pinned_arguments(tmp_path, monkeypatch, kind):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    table = w.table()
+    assert set(table[kind]["allowed_args"]) == set(J6_REQUESTS[kind]) and table[kind]["fixed_args"] == ["--execute"]
+    for extra in ({"sql": "UPDATE x"}, {"dry-run": "true"}, {"execute": "true"}):
+        why = w.mod.validate(w.accept(w.production_request(kind, args={**J6_REQUESTS[kind], **extra})), table, ALL_CAPS)
+        assert why is not None and why.startswith("disallowed args"), (extra, why)
+    bad = w.production_request(kind, args={**J6_REQUESTS[kind], "generation": "5.0; DROP"})
+    assert w.mod.validate(w.accept(bad), table, ALL_CAPS) == "an argument value has unsafe characters"
+
+
+@pytest.mark.parametrize("kind", sorted(J6_REQUESTS))
+def test_j6_dry_run_siblings_are_read_only_kinds_for_the_same_script_and_arguments(tmp_path, monkeypatch, kind):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    table = w.table()
+    real, dry = table[kind], table[kind + "_dryrun"]
+    assert dry["production"] is False and dry["enabled"] is True and dry["fixed_args"] == ["--dry-run"]
+    assert (dry["script"], dry["allowed_args"], dry["needs"]) == (real["script"], real["allowed_args"], real["needs"])
+    req = w.production_request(kind + "_dryrun", args=dict(J6_REQUESTS[kind]))
+    for key in ("lease_id", "chart_id"):
+        req.pop(key)                                           # a dry run needs no lease, signer or fence (A8 §3.8), only a merged reviewed_commit
+    assert w.mod.validate(req, table, ALL_CAPS) is None
+    assert "reviewed_commit required" in w.mod.validate(dict(req, reviewed_commit=""), table, ALL_CAPS)
