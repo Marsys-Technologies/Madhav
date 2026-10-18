@@ -49,6 +49,13 @@ GOLDEN_SETTLED_BUILD_PREFIX = "7377833e-5d3b-4e70-8bef-"
 # implementation_registry.compute()), so another window-code change requires review; geometry and evaluation are pinned by the parent comparison only.
 # Re-pinned after merging main (seal_brief.py / verification_job.py in the window stage also changed on main): 2809556a... was this tree before the merge.
 P06B_WINDOW_IMPLEMENTATION = "d886cc893d597c170a83dbce91f2f89be2c302def6d949e935e1ca859bfa62d5"
+# J-2a-P1L (SR-J2A-P1L-NOW, B.3): the snapshot now ledgers every pinned daśā row the P1 builder CONSULTS for a record's
+# period_running_at (all rows of an anchor (lord, level), wherever they lie), not only the rows overlapping the horizon. The a55
+# template chart holds 6 pinned rows (test_a53_inventory.DASHA); the horizon [2025-01-01, 2025-01-20) overlaps 4 of them
+# (Saturn MD, Venus AD, Mars PD, Rahu PD) — the golden's "4 daśā rows" — and the marriage P1 anchors (Sun AD, Jupiter PD) consult the
+# other 2 (rows 3 and 6, wholly after the horizon): 4 + 2 = 6. The immutable fixture is not re-captured; only this one count moves.
+GOLDEN_SNAPSHOT_DASHA_ROWS = "10 L1 facts, 4 daśā rows"
+P1L_SNAPSHOT_DASHA_ROWS = "10 L1 facts, 6 daśā rows"
 # the REAL runner's birth parameters shape (birth_params._to_birth_params): main ignores them, an ordinary HEAD build must too
 BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, "longitude_deg": 85.8245, "tz_offset_hours": 5.5, "place_name": "Bhubaneswar",
                 "subject_label": "native"}
@@ -57,6 +64,12 @@ GUARD_SELECT = "SELECT state FROM public.asset_throughput WHERE chart_id = %s AN
 LAYER_SELECT = ("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL AND "
                 "to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL AND "
                 "to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL")
+# J-2a-P1L: the snapshot substep reads the applied schema ONCE through p1_minting_closed_reason (RecordStore.p1_anchor_columns_available) to
+# decide whether the P1 anchor rows are consulted (and so ledgered). Like the state guard it is checked separately — its exact text, one
+# parameter, exactly once — and, in the snapshot substep only (the golden's snapshot never issued it; coverage already did), excluded from
+# the statement summary before it is compared with the golden.
+P1_GATE_SELECT = ("SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_relationship_record'::regclass"
+                  " AND attname = ANY(%s) AND NOT attisdropped AND attnum > 0")
 PERIOD_GUARD_SELECT = " ".join("""
     WITH governed_chart_dashas AS (
         SELECT * FROM public.chart_dashas
@@ -201,6 +214,16 @@ def _follow_settlement(golden: dict) -> dict:
     return json.loads(text.replace(GOLDEN_SETTLED_BUILD_PREFIX, settled_prefix))
 
 
+def _follow_p1_ledger(golden: dict) -> dict:
+    """The golden with its one snapshot daśā-row count moved to the J-2a-P1L ledger (see P1L_SNAPSHOT_DASHA_ROWS).
+
+    The golden must carry the old count exactly once (the adaptation is never silent or vacuous); everything else stays strictly compared.
+    """
+    text = json.dumps(golden, sort_keys=True, ensure_ascii=False)
+    assert text.count(GOLDEN_SNAPSHOT_DASHA_ROWS) == 1, "the golden names its snapshot daśā-row count exactly once"
+    return json.loads(text.replace(GOLDEN_SNAPSHOT_DASHA_ROWS, P1L_SNAPSHOT_DASHA_ROWS))
+
+
 def test_b4_baseline_preserves_final_main_settlement_amendments():
     """Keep final J-4p's outcomes and transcript alongside B4's baseline.
 
@@ -248,7 +271,7 @@ def head(template):
 
 def test_every_substep_kind_of_a_markerless_run_equals_its_parent_except_the_one_read_only_layer_probe(head):
     got, raw = head
-    want = _follow_settlement(_load())
+    want = _follow_p1_ledger(_follow_settlement(_load()))
     assert [s["key"] for s in got["substeps"]] == [s["key"] for s in want["substeps"]]
     kinds = {s["key"].split(":")[0].split(" ")[0] for s in want["substeps"]}
     assert kinds >= {"rules", "convention", "body", "manifest", "snapshot", "inventory", "coverage", "record", "window", "verify"}, kinds
@@ -264,6 +287,9 @@ def test_every_substep_kind_of_a_markerless_run_equals_its_parent_except_the_one
         layer = [s for s in raw[key] if s == [LAYER_SELECT, 0]]
         assert len(layer) == (1 if key == "manifest" else 0), (key, layer)
         rest = [s for s in raw[key] if s != [LAYER_SELECT, 0]]
+        if key == writer_mod.SNAPSHOT_SUBSTEP:       # J-2a-P1L: the new P1-minting schema read; every other substep keeps its own P1 gate reads, compared unchanged
+            assert rest.count([P1_GATE_SELECT, 1]) == 1, f"{key}: expected the new P1-minting schema read exactly once"
+            rest.remove([P1_GATE_SELECT, 1])
         assert _summarise(rest) == m["statements"], f"{key}: the statements other than the one authorized read-only probe differ from the P06 parent"
 
 
