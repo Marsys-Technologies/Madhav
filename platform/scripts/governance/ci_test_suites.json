@@ -1,6 +1,13 @@
 {
   "schema": "ci.test_suites/1",
   "suites": {
+    "selfhosted-fork-guard-tests": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "platform/scripts/governance/__tests__/test_selfhosted_fork_guard*.py"
+      ]
+    },
     "deploy-build-check-tests": {
       "cwd": ".",
       "engine": "pytest",
