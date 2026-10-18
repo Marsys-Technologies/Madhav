@@ -33,6 +33,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Pool } from 'pg'
+import { acquireClusterRoleLock, ensureRole } from './builder_role_fixture'
 import fs from 'fs'
 import path from 'path'
 
@@ -59,6 +60,7 @@ const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 const BUILDER_ROLE = 'data_plane_builder'
 
 let pool: Pool
+let releaseRoleLock: (() => Promise<void>) | undefined
 
 function read(file: string) {
   return fs.readFileSync(MIG(file), 'utf8')
@@ -118,6 +120,8 @@ describe.skipIf(!TEST_DB_URL)('migration 1216 — gochara contract builder grant
     }
 
     pool = new Pool({ connectionString: TEST_DB_URL })
+    // Cluster-wide role: serialise against every other suite that mirrors data_plane_builder.
+    releaseRoleLock = await acquireClusterRoleLock(TEST_DB_URL!)
 
     await pool.query(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`)
 
@@ -140,20 +144,23 @@ describe.skipIf(!TEST_DB_URL)('migration 1216 — gochara contract builder grant
 
     // A role mirroring data_plane_builder's relevant production grants before
     // 1216: USAGE on schema public, NOTHING on any gochara contract table.
+    await ensureRole(pool, BUILDER_ROLE)
     await pool.query(`
-      CREATE ROLE ${BUILDER_ROLE} NOLOGIN;
       GRANT USAGE ON SCHEMA public TO ${BUILDER_ROLE};
     `)
-  })
+  }, 120_000)
 
   afterAll(async () => {
     if (!pool) return
     await pool.query(`
       DROP SCHEMA public CASCADE;
       CREATE SCHEMA public;
-      DROP ROLE IF EXISTS ${BUILDER_ROLE};
     `)
+    // Roles are cluster-global: a dependent object in another disposable
+    // database must not turn cleanup into a failure.
+    await pool.query(`DROP ROLE IF EXISTS ${BUILDER_ROLE}`).catch(() => {})
     await pool.end()
+    await releaseRoleLock?.()
   })
 
   it('FAILS BEFORE: the builder cannot insert a kala convention row', async () => {

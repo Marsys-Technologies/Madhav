@@ -51,6 +51,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Pool } from 'pg'
+import { acquireClusterRoleLock, ensureRole } from './builder_role_fixture'
 import fs from 'fs'
 import path from 'path'
 
@@ -96,6 +97,7 @@ const GRANTED: Record<string, string> = {
 }
 
 let pool: Pool
+let releaseRoleLock: (() => Promise<void>) | undefined
 
 /** Execute `sql` on one connection as the given role (SET ROLE; reset afterwards). */
 async function asRole(role: string, sql: string, params: unknown[] = []) {
@@ -266,6 +268,8 @@ describe.skipIf(!TEST_DB_URL)(
         )
       }
       pool = new Pool({ connectionString: TEST_DB_URL })
+      // Cluster-wide role: serialise against every other suite that mirrors data_plane_builder.
+      releaseRoleLock = await acquireClusterRoleLock(TEST_DB_URL!)
       await pool.query(`DROP SCHEMA IF EXISTS public CASCADE`)
       // Roles are cluster-global: another disposable database on the same cluster
       // may still depend on them, so clear only THIS database's dependencies and
@@ -296,7 +300,7 @@ describe.skipIf(!TEST_DB_URL)(
         await applyAsOwner(file)
         await pool.query(`INSERT INTO public._migrations_applied (filename) VALUES ($1)`, [file])
       }
-    })
+    }, 120_000)
 
     afterAll(async () => {
       if (!pool) return
@@ -307,6 +311,7 @@ describe.skipIf(!TEST_DB_URL)(
         await pool.query(`DROP ROLE IF EXISTS ${role}`).catch(() => {})
       }
       await pool.end()
+      await releaseRoleLock?.()
     })
 
     it('CONTROL: the mirror is deployment-faithful — owner-created functions, PUBLIC execute revoked, builder holds none of the 42', async () => {
