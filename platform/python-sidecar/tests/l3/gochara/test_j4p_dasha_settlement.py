@@ -49,9 +49,12 @@ class Conn:
     def __init__(self, builds, tier="two_pass_verified"):
         self.builds, self.tier, self.pins = builds, tier, []
 
-    def execute(self, sql, params):
-        if "search_input_snapshot" in sql:
-            self.result = [([row(BUILD)["dasha_row_id"]],)]
+    def execute(self, sql, params=()):
+        if "information_schema.columns" in sql:
+            self.result = [(0,)]                    # a snapshot with no copy columns: the verifier's legacy (ids-only) path
+        elif "search_input_snapshot" in sql:
+            ids = [row(BUILD)["dasha_row_id"]]
+            self.result = [([], ids)] if "consumed_fact_ids" in sql else [(ids,)]
         elif "search_inventory" in sql:
             self.result = [(LO, HI)]
         elif "SELECT DISTINCT" in sql:

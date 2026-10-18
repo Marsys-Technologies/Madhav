@@ -326,7 +326,10 @@ describe('DENS-SERVED (SS N-212 L2 / M3): the contract claims are checked static
     for (const c of getCatalog()) {
       if (!c.density_contract) continue
       const inputs = Object.keys(c.input_schema ?? {})
-      for (const f of c.density_contract.facets) if (!inputs.includes(f)) gaps.push(`${c.name}:${f}`)
+      // K9-6: the public kala_*_get views take their stage selectors (event_class, source_table, ...) as
+      // properties of the one declared `published_request` input; a facet is real if it is that input's property.
+      const selectors = Object.keys(c.input_schema?.['published_request']?.properties ?? {})
+      for (const f of c.density_contract.facets) if (!inputs.includes(f) && !selectors.includes(f)) gaps.push(`${c.name}:${f}`)
     }
     expect(new Set(gaps)).toEqual(KNOWN_FACET_GAPS)
   })

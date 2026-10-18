@@ -66,7 +66,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../../types.js'
-import { kalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias, publishedRequestSchema } from './registry_alias.js'
 import { stageDensityBudgetSections } from './stage_budget.js'
 import { publishedNowDisclosure, validPublishedNowInstant, type PublishedNowDisclosure } from './published_now.js'
 import {
@@ -2239,6 +2239,7 @@ const QuestionFrameSchema = z
   )
 
 const InputSchema = z.object({
+  published_request: publishedRequestSchema,
   chart_id: z.string().uuid().describe('UUID of the chart. Required — no default chart.'),
   ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')."),
   as_of: z

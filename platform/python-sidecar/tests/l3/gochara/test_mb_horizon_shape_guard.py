@@ -448,7 +448,9 @@ def test_the_modules_that_entered_the_implementation_identity_are_named():
     cur = iv.IMPLEMENTATION_MODULES
     assert {st: tuple(m for m in cur[st] if m not in MAIN_IMPLEMENTATION_MODULES[st]) for st in MAIN_IMPLEMENTATION_MODULES} == {
         "geometry": ("services.gochara_kernel.near_miss_verifier", "services.gochara_kernel.stretch_sink"),
-        "evaluation": ("services.gochara_kernel.horizon",)}, "the modules that ENTERED the identity"
+        # nd_h_tables (PR #3604, J4C-B) is already in the accepted-P06 baseline literal above, so it did not ENTER relative to it; rehearsal_settlement (PR #3667) did.
+        "evaluation": ("services.gochara_kernel.rehearsal_settlement", "services.gochara_kernel.horizon"),
+    }, "the modules that ENTERED the identity"
     assert all(m in cur[st] for st in MAIN_IMPLEMENTATION_MODULES for m in MAIN_IMPLEMENTATION_MODULES[st]), "nothing LEFT it"
 
 

@@ -1141,7 +1141,12 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
     upstream scope ITSELF from live `chart_dashas` (every Vimśottarī / lahiri MD, AD, PD row overlapping the horizon, EVERY tier and build), judges it by the
     same contract, and requires the stored copy to be exactly that scope, row for row and field for field. The frozen-build pin is enforced there, at build
     time, where it belongs. A LEGACY snapshot (no copy) keeps the 1206-era check against live L1."""
-    settlement = _load_dasha_settlement(chart_id)
+    # The verifier imports nothing from the builder (test_the_verifier_imports_nothing_from_the_builder), so the rehearsal
+    # connection is recognised by a marker on its CLASS, not by an import; a raw or mocked connection never carries it.
+    if getattr(type(conn), "synthetic_settlement_authority", False) is True:
+        settlement = conn.settlement(chart_id)
+    else:
+        settlement = _load_dasha_settlement(chart_id)
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot"
         " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
@@ -1218,8 +1223,11 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
                                       horizon=(horizon[0], horizon[1]), consumed_ids=ids)
     if problems:
         raise Unverifiable("consumed daśā population violates the §4.0 read contract: " + "; ".join(problems))
-    return {"consumed": len(consumed), "pinned_overlapping": sum(
+    result = {"consumed": len(consumed), "pinned_overlapping": sum(
         1 for r in pinned if r["start_iso"] < horizon[1] and r["end_iso"] > horizon[0])}
+    if settlement.get("synthetic") is True:
+        result.update(synthetic_settlement=True, production_acceptance=False)
+    return result
 
 
 __all__ += ["check_dasha_population", "validate_consumed_dasha_population", "copy_contract_violations", "fact_copy_violations",

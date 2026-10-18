@@ -386,6 +386,26 @@ def _policy_disclosure(policy: str) -> str:
     return f"{policy} — this brief makes no all-NULL claim; the result policy above governs what this generation may contain"
 
 
+def _inventory_attests_class(payload: dict, cls: dict) -> bool:
+    """An empty window-grain set still requires the matching independent inventory.
+
+    The combined candidate gate checks that every INCLUDED grain is verified;
+    excluded/computed-empty paths require no invented window attestation.
+    """
+    digest = cls.get("inventory_digest")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        return False
+    try:
+        rows = [json.loads(raw) for raw in
+                (payload.get("attestations") or {}).get("ka_gochara_search_inventory_verification", [])]
+    except (ValueError, TypeError):
+        return False
+    mine = [row for row in rows if isinstance(row, dict) and
+            (row.get("chart_id"), row.get("generation"), row.get("event_class")) ==
+            (payload.get("chart_id"), payload.get("generation"), cls.get("event_class"))]
+    return bool(mine) and all(row.get("rederived_inventory_digest") == digest for row in mine)
+
+
 def _current_and_complete(payload: dict) -> list[str]:
     """Why this candidate cannot be briefed (empty = it can): a gate violation, a grain that is not VERIFIED, a class with no
     attestation at all, a runner that is not the manifest's pinned code."""
@@ -393,7 +413,7 @@ def _current_and_complete(payload: dict) -> list[str]:
     if not payload["classes"]:
         problems.append("the generation has no search inventory")
     for c in payload["classes"]:
-        if not c["grains"]:
+        if not c["grains"] and not _inventory_attests_class(payload, c):
             problems.append(f"{c['event_class']}: no window verification persisted")
         for g in c["grains"]:
             if g["status"] != "VERIFIED":
