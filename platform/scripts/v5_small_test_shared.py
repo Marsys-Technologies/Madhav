@@ -500,15 +500,27 @@ def read_evidence(root, folder, ref):
         raise Refused('referenced evidence unreadable') from None
 
 
+def independent_acceptance(a):
+    """A verifier lane's (v1..v4) acceptance, or the executor's own MECHANICAL pre-acceptance (OWNER-MINIMAL-PROTECTION-NOW): schema
+    ky.mechanical_acceptance/1, phase pre, and every check recorded true. executor.mechanical_pre_acceptance writes it only for a request that equals a
+    verified pack fill with a completed dry run and a live lease; deletions and serving changes never get one."""
+    if a.get('by') in ('v1', 'v2', 'v3', 'v4'):
+        return True
+    checks = a.get('checks')
+    return (a.get('by') == 'executor-mechanical' and a.get('schema') == 'ky.mechanical_acceptance/1' and a.get('phase') == 'pre'
+            and isinstance(checks, dict) and bool(checks) and all(v is True for v in checks.values()))
+
+
 def acceptance(req, root):
     import json
     from pathlib import Path
     try:
-        path = Path(req['acceptance_receipt'])
+        # a mechanically accepted request names no acceptance_receipt: its record is acceptance/<operation_id>.json (and only a pack-fill request may omit one)
+        path = Path(req['acceptance_receipt']) if req.get('acceptance_receipt') or not req.get('pack_fill') else root / 'acceptance' / (str(req['operation_id']) + '.json')
         if path.resolve().parent != (root / 'acceptance').resolve():
             raise Refused('request acceptance outside executor directory')
         a = json.loads(path.read_text())
-        if (a.get('result') != 'ACCEPTED' or a.get('by') not in ('v1', 'v2', 'v3', 'v4')
+        if (a.get('result') != 'ACCEPTED' or not independent_acceptance(a)
                 or a.get('operation_id') != req.get('operation_id')
                 or not req.get('reviewed_commit') or a.get('reviewed_commit') != req['reviewed_commit']
                 or a.get('request_sha256') != request_hash(req) or req.get('chart_id') != CHART_ID):
@@ -523,7 +535,7 @@ def accepted_receipt(root, receipt_ref, acceptance_ref, kind):
     a = read_evidence(root, 'acceptance', acceptance_ref)
     if (r.get('kind') != kind or r.get('status') not in ('COMPLETED', 'AWAITING_ABSENCE') or r.get('exit_code') != 0
             or not r.get('request_sha256') or not r.get('reviewed_commit')
-            or a.get('result') != 'ACCEPTED' or a.get('by') not in ('v1', 'v2', 'v3', 'v4')
+            or a.get('result') != 'ACCEPTED' or not independent_acceptance(a)
             or a.get('operation_id') != r.get('operation_id')
             or a.get('request_sha256') != r['request_sha256'] or a.get('reviewed_commit') != r['reviewed_commit']):
         raise Refused('operation receipt is not independently accepted for this request')
