@@ -23,7 +23,14 @@ def test_lane_profile_is_required_and_runs_on_its_guarded_endpoint():
     assert 'governance-tool-tests-shard' in jobs['governance-tool-tests']['needs']
     assert 'SHARDS_RESULT' in jobs['governance-tool-tests']['steps'][0]['run']
     checkout = next(s for s in job['steps'] if s.get('uses', '').startswith('actions/checkout@'))
-    assert checkout['with']['fetch-depth'] == 0, 'real merged-base lookup needs origin/main history'
+    depth = checkout['with']['fetch-depth']
+    # Main gives shard 1 full history and keeps the others shallow: `matrix.shard != 1 && 1 || 0`. Evaluate it for the shard that
+    # runs the lane step (`matrix.shard == 1`, asserted above); a literal 0 is also full history.
+    if isinstance(depth, str):
+        assert depth == '${{ matrix.shard != 1 && 1 || 0 }}', f'unrecognised fetch-depth expression {depth!r}'
+        shard = 1
+        depth = 1 if shard != 1 else 0
+    assert depth == 0, 'real merged-base lookup needs origin/main history on the shard that runs the lane step'
     assert step['env']['KALA_REQUIRE_DB'] == '1'
     assert step['env']['GOCHARA_A53_REQUIRE_DB'] == '1'
     dsn = 'postgresql://postgres@127.0.0.1:55433/postgres'

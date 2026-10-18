@@ -174,7 +174,8 @@ def test_slow_detector_verify_does_not_delay_cached_health(engine, http):
 
 
 @pytest.mark.parametrize("shell", [False, True])
-def test_hung_git_timeout_kills_descendants_holding_output_pipes(tmp_path, monkeypatch, shell):
+@pytest.mark.parametrize("startup_delay", [0, 1.25], ids=["normal-start", "delayed-start"])
+def test_hung_git_timeout_kills_descendants_holding_output_pipes(tmp_path, monkeypatch, shell, startup_delay):
     """Killing only git leaves ssh/helpers alive with inherited stdout/stderr."""
     git = tmp_path / "git"
     parent_pid, child_pid, heartbeat = (tmp_path / name for name in ("parent", "child", "heartbeat"))
@@ -182,6 +183,8 @@ def test_hung_git_timeout_kills_descendants_holding_output_pipes(tmp_path, monke
 import os, signal, subprocess, sys, time
 from pathlib import Path
 root = Path(__file__).parent
+if len(sys.argv) == 1 or sys.argv[1] != "helper":
+    time.sleep({startup_delay})
 if len(sys.argv) > 1 and sys.argv[1] == "helper":
     signal.signal(signal.SIGTERM, signal.SIG_IGN)
     (root / "child").write_text(str(os.getpid()))
@@ -195,6 +198,16 @@ while True: time.sleep(1)
     git.chmod(0o700)
     monkeypatch.setenv("PATH", str(tmp_path) + os.pathsep + os.environ.get("PATH", ""))
     result = []
+    helper_ready = threading.Event()
+    communicate = D.subprocess.Popen.communicate
+
+    def communicate_after_ready(process, *args, **kwargs):
+        # Exercise the real timeout/kill/drain path only after the fixture is ready.
+        # Interpreter startup has its own bounded allowance below.
+        assert helper_ready.wait(10), "stub startup exceeded readiness deadline"
+        return communicate(process, *args, **kwargs)
+
+    monkeypatch.setattr(D.subprocess.Popen, "communicate", communicate_after_ready)
 
     def run():
         try:
@@ -205,6 +218,11 @@ while True: time.sleep(1)
     thread = threading.Thread(target=run)
     try:
         thread.start()
+        deadline = time.monotonic() + 10
+        while not heartbeat.exists() and thread.is_alive() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert heartbeat.exists(), "stub helper never became ready"
+        helper_ready.set()
         thread.join(2.5)
         assert not thread.is_alive(), "timeout waited on pipes still held by a child"
         assert len(result) == 1 and isinstance(result[0], D.subprocess.TimeoutExpired)
@@ -213,6 +231,7 @@ while True: time.sleep(1)
         time.sleep(0.12)
         assert heartbeat.read_text() == first, "timed-out git left its helper alive"
     finally:
+        helper_ready.set()
         for path in (parent_pid, child_pid):
             if path.exists():
                 pid = int(path.read_text())

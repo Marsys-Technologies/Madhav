@@ -3,6 +3,7 @@
 The source is this candidate checkout; merged-source admission is tested
 separately. No production operation, mock DB, cloud command or Git write.
 """
+import contextlib
 import importlib.util
 import json
 import os
@@ -24,20 +25,32 @@ from tests.l3.gochara.test_c38_teardown_real_db import STUB_DDL
 from tests.l3._disposable_db_guard import assert_disposable_connection
 
 
-@pytest.fixture(scope='module')
-def lane_db():
+@contextlib.contextmanager
+def _lane_database(prefix, tag, *, seed=None):
+    """The suite's guarded ky_* lane database. With `seed`, the REAL authority migrations (527, 1236, 1379, 1382) are applied before the
+    stubs and `seed(conn)` runs between 1236 and 1379 (production's other-chart rows predate 1379's guards), so the 1379 statement-lock
+    triggers are live exactly as in production (SR-J2A-N18)."""
     settings = psycopg.conninfo.conninfo_to_dict(base.ADMIN_DSN)
     if settings.get('host') not in ('127.0.0.1', 'localhost') or settings.get('port') != '55433':
         message = 'lane CLI fixture requires explicit loopback cluster port 55433; no other database is contacted'
         if os.environ.get('KALA_REQUIRE_DB') == '1': pytest.fail(message)
         pytest.skip(message)
     previous = base.DB_PREFIX
-    base.DB_PREFIX = 'ky_j1atest_'
+    base.DB_PREFIX = prefix
     admin = None
     try:
-        admin, name, dsn = base.create_am5_database('cli')
+        admin, name, dsn = base.create_am5_database(tag)
         with psycopg.connect(dsn, autocommit=True) as conn:
             assert_disposable_connection(conn, name)
+            if seed is not None:
+                migrations = ROOT / 'platform/migrations'
+                conn.execute('CREATE TABLE public.kala_gochara_windows (chart_id uuid, generation text)')
+                conn.execute((ROOT / 'platform/supabase/migrations/527_kala_gochara_generation_authority.sql').read_text())
+                conn.execute((migrations / '1236_gochara_authority_refuses_governed_generation.sql').read_text())
+                seed(conn)
+                with conn.transaction():
+                    conn.execute((migrations / '1379_gochara_sealed_authority.sql').read_text())
+                    conn.execute((migrations / '1382_gochara_authority_no_truncate.sql').read_text())
             for ddl in STUB_DDL: conn.execute(ddl)
             conn.execute('ALTER TABLE asset_registry ADD COLUMN layer text DEFAULT \'L3\', ADD COLUMN natural_key_partition text')
             conn.execute('ALTER TABLE build_runs ADD COLUMN action text, ADD COLUMN plan jsonb')
@@ -50,11 +63,17 @@ def lane_db():
             cols = list(row)
             conn.execute(sql.SQL('INSERT INTO asset_registry ({}) VALUES ({})').format(
                 sql.SQL(',').join(map(sql.Identifier, cols)), sql.SQL(',').join(sql.Placeholder() for _ in cols)), list(row.values()))
-        yield dict(host='127.0.0.1', port=55433, database=name)
+        yield dict(host='127.0.0.1', port=55433, database=name), dsn
     finally:
         if admin is not None:
             base.drop_am5_database(admin, name)
         base.DB_PREFIX = previous
+
+
+@pytest.fixture(scope='module')
+def lane_db():
+    with _lane_database('ky_j1atest_', 'cli') as (target, _dsn):
+        yield target
 
 
 @pytest.mark.parametrize('kind', KINDS + ('readback_sql',))
@@ -159,3 +178,70 @@ def test_executor_export_six_receipts_and_final_independent_readback(lane_db, tm
     assert {entry['kind'] for entry in final['lane']['qualification']} == set(KINDS)
     assert final['request_id'] == req['request_id'] and len(final['evidence_sha256']) == 64
     assert not list(ex.TMP.iterdir()), 'all private source exports must be removed'
+
+
+CANONICAL = '482012f1-710e-4a25-994a-93821f5871aa'
+FOREIGN = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'     # the non-canonical chart production holds in both tables (readback 20261017T060309Z)
+
+
+def _seed_production_shape(conn):
+    """What production holds and ky_b1 did not: kala_gochara_publication has the canonical 4.0 rolled_back row AND a second, non-canonical
+    chart's 4.0 candidate; kala_gochara_authority holds one non-canonical chart (and the canonical 3.0 head)."""
+    conn.execute("INSERT INTO public.kala_gochara_convention (convention_id,zodiac,ayanamsha,sidereal_method,node_model,node_source,"
+                 "epoch_convention,time_scale,house_system,ephemeris_mode,method_version)"
+                 " VALUES ('n18-fixture','f','f','f','f','f','f','f','f','f','f')")
+    for chart, status, digest in ((CANONICAL, 'rolled_back', 'sha256:fixture'), (FOREIGN, 'candidate', 'sha256:unpublished-candidate')):
+        conn.execute("INSERT INTO public.kala_gochara_publication (chart_id,generation,writer_asset_id,convention_id,"
+                     "input_generation_vector,ephemeris_backend,horizon,row_counts,content_digest,status)"
+                     " VALUES (%s,'4.0','ka_gochara','n18-fixture','{}','{}',tstzrange('2025-01-01 UTC','2025-02-01 UTC','[)'),'{}',%s,%s)",
+                     (chart, digest, status))
+    for chart in (CANONICAL, FOREIGN):
+        conn.execute("INSERT INTO public.kala_gochara_authority (chart_id,authoritative_generation,flipped_at,flipped_by,evidence_ref)"
+                     " VALUES (%s,'3.0','2025-01-01 UTC','fixture','retained-head')", (chart,))
+
+
+def _foreign_rows(dsn):
+    with psycopg.connect(dsn) as conn:
+        return (conn.execute('SELECT chart_id::text, generation, status, content_digest FROM public.kala_gochara_publication ORDER BY 1,2').fetchall(),
+                conn.execute('SELECT chart_id::text, authoritative_generation FROM public.kala_gochara_authority ORDER BY 1').fetchall())
+
+
+@pytest.fixture(scope='module')
+def lane_db_production_shape():
+    with _lane_database('ky_n18test_', 'cli', seed=_seed_production_shape) as (target, dsn):
+        yield target, dsn
+
+
+def test_n18_fixture_reproduces_the_production_hazard(lane_db_production_shape):
+    """Detector for the claim below: a zero-row DELETE on the manifest table, bound to the canonical chart, DOES raise P0001 here.
+    Without this the next test could pass on a database that never had the hazard (CLAUDE.md N.8)."""
+    _target, dsn = lane_db_production_shape
+    with psycopg.connect(dsn) as conn:
+        conn.execute('SELECT public.ka_gochara_lock_chart(%s::uuid)', (CANONICAL,))
+        with pytest.raises(psycopg.errors.RaiseException) as raised:
+            conn.execute("DELETE FROM public.kala_gochara_publication WHERE chart_id=%s AND generation='5.0'", (CANONICAL,))
+        assert raised.value.sqlstate == 'P0001'
+        conn.rollback()
+
+
+def test_n18_empty_teardown_dry_run_with_another_charts_rows_present_passes_and_changes_nothing(lane_db_production_shape, tmp_path):
+    """SR-J2A-N18 (A): the EMPTY dry run proves absence by SELECT and issues no DELETE on a table whose scoped count is 0, so another
+    chart's manifest/authority rows (statement-level triggers lock every chart present) can no longer fail it with P0001."""
+    import executor as ex
+    import teardown_v5_small_test_job as td
+    target, dsn = lane_db_production_shape
+    before = _foreign_rows(dsn)
+    assert sorted(row[0] for row in before[0]) == sorted([CANONICAL, FOREIGN]) and FOREIGN in [row[0] for row in before[1]]
+    req = request('smalltest_teardown_dryrun'); req['lane_target'] = target
+    env = ex.lane_child_env(req, tmp_path)
+    env['PYTHONPATH'] = str(SIDECAR)
+    result = subprocess.run([sys.executable, str(FLEET / 'lane_smalltest.py'), '--dry-run',
+        '--lane-target', json.dumps(target)], env=env, cwd=ROOT, capture_output=True, text=True, timeout=120)
+    assert result.returncode == 0, result.stdout + result.stderr
+    proof = json.loads([line for line in result.stdout.splitlines() if line.startswith('{"after_sha256"')][0])
+    assert proof['status'] == 'DRY_RUN_VERIFIED' and proof['unchanged'] is True and proof['before_sha256'] == proof['after_sha256']
+    teardown = json.loads(result.stdout.split('teardown_proof\t')[1].splitlines()[0])
+    assert teardown['status'] == 'ROLLED_BACK' and teardown['rollback_confirmed'] is True
+    # every table of the deletion scope was measured empty and skipped, in scope order; nothing was deleted from
+    assert teardown['skipped_empty_tables'] == [name for name, *_ in td._scope_statements([])]
+    assert _foreign_rows(dsn) == before

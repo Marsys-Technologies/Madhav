@@ -129,6 +129,41 @@ def test_writer_leaves_transaction_and_connection_owned_by_caller(db):
     assert db.execute("SELECT COUNT(*) AS n FROM bg_gochara_citation_resolution").fetchone()["n"] == 13
 
 
+def test_l0_upsert_repairs_content_without_recreating_canonical_rows(db):
+    """Deleting canonical rows loses creation metadata even when the digest passes."""
+    instance = writer()
+    insert_live(db)
+    db.execute("UPDATE bg_gochara_citation_resolution "
+               "SET created_at='2001-02-03T04:05:06Z'")
+    before = db.execute("SELECT citation_string, chunk_id, created_at "
+                        "FROM bg_gochara_citation_resolution ORDER BY citation_string, chunk_id").fetchall()
+    db.execute("UPDATE bg_gochara_citation_resolution SET verse_ref='TAMPERED' "
+               "WHERE constant_name='GOCHARA_PHALA_BPHS_29'")
+    db.commit()
+    for _ in range(2):
+        result = instance.run(context(db))
+        assert result.asset_id == ASSET
+        assert result.rows_inserted == 14
+        assert rows(db) == LIVE
+        assert next(iter(db.execute(sealed_sql()).fetchone().values())) is True
+        assert db.execute("SELECT citation_string, chunk_id, created_at "
+                          "FROM bg_gochara_citation_resolution "
+                          "ORDER BY citation_string, chunk_id").fetchall() == before
+        db.commit()
+
+
+def test_upsert_prunes_retired_natural_keys_and_restores_missing_rows(db):
+    """Upsert alone must not leave obsolete mappings alongside the sealed seed."""
+    insert_live(db)
+    db.execute("UPDATE bg_gochara_citation_resolution SET chunk_id='CORPUS_GAP:retired' "
+               "WHERE constant_name='GOCHARA_PHALA_BPHS_29'")
+    assert next(iter(db.execute(sealed_sql()).fetchone().values())) is False
+    instance = writer()
+    instance.run(context(db))
+    assert rows(db) == LIVE
+    assert next(iter(db.execute(sealed_sql()).fetchone().values())) is True
+
+
 def test_dry_run_does_not_replace_existing_rows(db):
     instance = writer()
     insert_live(db)

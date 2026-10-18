@@ -25,7 +25,7 @@ def rows(build):
     return [{"system_id": "vimshottari", "build_id": build, "level_n": 1}]
 
 
-@pytest.mark.parametrize("build", ["ca17639b-f3cf-42c7-9866-0a61f3855802"])
+@pytest.mark.parametrize("build", ["7377833e-5d3b-4e70-8bef-1318904f470e"])
 def test_reader_and_verifier_accept_the_same_single_settled_build(build):
     from datetime import datetime, timezone
     a, b = datetime(2025, 1, 1, tzinfo=timezone.utc), datetime(2025, 2, 1, tzinfo=timezone.utc)
