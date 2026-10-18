@@ -1,0 +1,11 @@
+--- a/platform-mcp/src/tools/retrieval/register_gochara_windows.ts
++++ b/platform-mcp/src/tools/retrieval/register_gochara_windows.ts
+@@ -796,7 +796,7 @@
+   // Build parameterized IN clause: $1, $2, ...
+   const placeholders = strings.map((_, i) => `$${i + 1}`).join(', ')
+   const sql =
+-    `SELECT citation_string, chunk_id, text_id, verse_ref, status ` +
++    `SELECT citation_string, chunk_id, text_id, verse_ref ` +
+     `FROM bg_gochara_citation_resolution ` +
+     `WHERE citation_string IN (${placeholders})`
+ 

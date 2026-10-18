@@ -1,0 +1,58 @@
+
+ RUN  v2.1.9 /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/negative-selection/platform-mcp
+
+ × src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts > Independent bounded K-CERT assessment > selects stored status and serves resolved, stored unresolved, and absent-row honest gap distinctly
+   → expected 'SELECT citation_string, chunk_id, tex…' to match /SELECT\s+citation_string, chunk_id, t…/
+ × src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts > Independent bounded K-CERT assessment > preserves the returned stored resolved status through query projection
+   → expected [ 'unresolved', 'unresolved' ] to deeply equal [ 'resolved', 'unresolved' ]
+ ✓ src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts > Independent bounded K-CERT assessment > all-unresolved rows earn the honest gap note; no citations earn empty refs and null note
+ ✓ src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts > Independent bounded K-CERT assessment > null/missing returned status stays unresolved and a query failure exposes an honest gap
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts > Independent bounded K-CERT assessment > selects stored status and serves resolved, stored unresolved, and absent-row honest gap distinctly
+AssertionError: expected 'SELECT citation_string, chunk_id, tex…' to match /SELECT\s+citation_string, chunk_id, t…/
+
+- Expected: 
+/SELECT\s+citation_string, chunk_id, text_id, verse_ref, status\s+FROM bg_gochara_citation_resolution/
+
++ Received: 
+"SELECT citation_string, chunk_id, text_id, verse_ref FROM bg_gochara_citation_resolution WHERE citation_string IN ($1, $2, $3)"
+
+ ❯ src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts:28:25
+     26|   const map = await fetchVerseRefs(new Set(['known','gap','absent']), …
+     27|   expect(calls).toHaveLength(1)
+     28|   expect(calls[0]!.sql).toMatch(/SELECT\s+citation_string, chunk_id, t…
+       |                         ^
+     29|   expect(calls[0]!.params).toEqual(['known','gap','absent'])
+     30|   expect(calls[0]!.sql).not.toMatch(/WHERE[\s\S]*status\s*=/i)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts > Independent bounded K-CERT assessment > preserves the returned stored resolved status through query projection
+AssertionError: expected [ 'unresolved', 'unresolved' ] to deeply equal [ 'resolved', 'unresolved' ]
+
+- Expected
++ Received
+
+  Array [
+-   "resolved",
++   "unresolved",
+    "unresolved",
+  ]
+
+ ❯ src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts:42:76
+     40|  it('preserves the returned stored resolved status through query proje…
+     41|   proxy(stored); const map=await fetchVerseRefs(new Set(['known','gap'…
+     42|   expect(enrich(map,['known','gap']).citation_verse_refs.map(r=>r.stat…
+       |                                                                            ^
+     43|  })
+     44|  it('all-unresolved rows earn the honest gap note; no citations earn e…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed (4)
+   Start at  15:39:51
+   Duration  304ms (transform 133ms, setup 0ms, collect 187ms, tests 19ms, environment 0ms, prepare 32ms)
+

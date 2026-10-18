@@ -88,10 +88,11 @@ def test_unread_4_1_evidence_is_deferred_and_no_longer_gates_j_4a(items, closure
         assert items[iid]["triage"]["class"] == "b" and items[iid]["triage"]["re_entry"]
 
 
-def test_the_4_1_baseline_named_by_the_retrodiction_brief_stays_in_the_closure(items, closure):  # NB-04 class (a)
-    assert any("prerequisite: B4.4" in t for t in items["J-5q-b54"]["brief"]["tests"])
-    assert "J-3a-b44" in closure["closure"] and items["J-3a-b44"]["triage"]["class"] == "a"
-    assert "J-3a-b44" in items["J-3a"]["depends_on"]
+def test_the_4_1_baseline_is_parked_with_a25_and_outside_the_closure(items, closure):  # SR-A9-NB-04-B44 / SR-CLOSURE-272
+    # J-3a-b44 scores the '4.1' baseline, which cannot exist while J-4a-a25 (the '4.1' build) is parked: same re-entry
+    assert items["J-3a-b44"]["triage"]["class"] == "b"
+    assert items["J-3a-b44"]["triage"]["re_entry"] == items["J-4a-a25"]["triage"]["re_entry"]
+    assert "J-3a-b44" not in closure["closure"] and "J-3a-b44" not in items["J-3a"]["depends_on"]
 
 
 def test_k9_4a_follows_the_flip_without_the_retired_exits(items):  # §5
