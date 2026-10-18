@@ -25,6 +25,10 @@ ASSET_ID = "ka_gochara_v5"
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 TRIGGERED_BY = "gochara-v5-small-test"
 GENERATION = "5.0"
+# The century (final, ordinary candidate) build's own run trigger: a century run carries NO slice marker, so it is never mistaken for
+# a small-test or measuring run (and the small-test/measuring teardown, which is bound to TRIGGERED_BY and the stamp, never selects it).
+CENTURY_TRIGGERED_BY = "gochara-v5-century"
+CENTURY_ITEM = "J-4e"
 
 # (table, extra WHERE) — the generation's OUTPUT. The order is the teardown's deletion order (the kernel's own: RecordStore.
 # delete_generation_chain, InventoryStore.delete_generation_inventory; a test runs the REAL helpers against a recording connection).
@@ -373,12 +377,15 @@ def generation_ownership(cur, owned: list[str], *, remedy: str, unproven: str, n
     return manifest, rows
 
 
-def end_state_problems(cur) -> list[str]:
+def end_state_problems(cur, triggers: tuple = (TRIGGERED_BY,)) -> list[str]:
     """The Nirmana N-137 end state for the v5 asset (definitions.ts, NIRMANA_STAGED_INERT_CANDIDATE_RULES and runtimeEvidenceSql):
     catalog_status not RETIRED, nothing depends on the asset, and NO receipt or build_run_assets row of the asset on ANY chart
     from a run that is not a 'gochara-v5-small-test' run (a receipt whose run is gone reads as non-test). Returned as named
     problems; empty means the monitor would still exclude the asset as an unsealed test candidate."""
     problems: list[str] = []
+    # The default (one trigger) is the monitor's predicate, byte for byte; the century teardown passes its own trigger as well.
+    trigger_sql, trigger_arg = (("b.triggered_by = %s", triggers[0]) if len(triggers) == 1
+                                else ("b.triggered_by = ANY(%s::text[])", list(triggers)))
     cur.execute("SELECT catalog_status FROM asset_registry WHERE asset_id = %s", (ASSET_ID,))
     row = cur.fetchone()
     if row is None:
@@ -393,7 +400,7 @@ def end_state_problems(cur) -> list[str]:
         """SELECT r.chart_id, count(*) AS n FROM asset_provenance_receipts r
            WHERE r.asset_id = %s
              AND NOT EXISTS (SELECT 1 FROM build_runs b WHERE b.id = r.build_id AND b.triggered_by = %s)
-           GROUP BY r.chart_id""", (ASSET_ID, TRIGGERED_BY))
+           GROUP BY r.chart_id""".replace("b.triggered_by = %s", trigger_sql), (ASSET_ID, trigger_arg))
     receipts = cur.fetchall()
     if receipts:
         problems.append("receipts of the asset from a non-test run (or with no run link) exist on chart(s) "
@@ -402,7 +409,7 @@ def end_state_problems(cur) -> list[str]:
         """SELECT b0.chart_id, count(*) AS n FROM build_run_assets a LEFT JOIN build_runs b0 ON b0.id = a.run_id
            WHERE a.asset_id = %s
              AND NOT EXISTS (SELECT 1 FROM build_runs b WHERE b.id = a.run_id AND b.triggered_by = %s)
-           GROUP BY b0.chart_id""", (ASSET_ID, TRIGGERED_BY))
+           GROUP BY b0.chart_id""".replace("b.triggered_by = %s", trigger_sql), (ASSET_ID, trigger_arg))
     run_assets = cur.fetchall()
     if run_assets:
         problems.append("build_run_assets rows of the asset from a non-test run exist on chart(s) "
@@ -545,22 +552,26 @@ def staged_scope(req, root):
     import re
     import uuid
     measuring = req.get('kind') in ('measuring_teardown', 'measuring_teardown_dryrun')
+    century = req.get('kind') in ('century_teardown', 'century_teardown_dryrun')
     if measuring and req.get('item_id') != 'J-3d':
         raise Refused('measuring teardown belongs to J-3d')
-    scope = req.get('measuring_scope' if measuring else 'smalltest_scope')
+    if century and req.get('item_id') != CENTURY_ITEM:
+        raise Refused('century teardown belongs to ' + CENTURY_ITEM)
+    scope = req.get('century_scope' if century else 'measuring_scope' if measuring else 'smalltest_scope')
     if not isinstance(scope, dict):
         raise Refused('identified staged small-test scope required')
     if scope.get('empty') is True:
         if req.get('kind') != 'smalltest_teardown_dryrun' or scope != {'empty': True}:
             raise Refused('empty scope is for the initial teardown rehearsal only')
         return scope
-    r, a = accepted_receipt(root, scope.get('dispatch_receipt'), scope.get('dispatch_acceptance'), 'measuring_dispatch' if measuring else 'smalltest_dispatch')
+    r, a = accepted_receipt(root, scope.get('dispatch_receipt'), scope.get('dispatch_acceptance'),
+                            'century_dispatch' if century else 'measuring_dispatch' if measuring else 'smalltest_dispatch')
     launch = r.get('launch') or {}
     try:
         valid_uuid = str(uuid.UUID(str(scope.get('run_id')))) == scope.get('run_id')
     except ValueError:
         valid_uuid = False
-    if (not valid_uuid or r.get('item_id') not in (('J-3c',) if measuring else ('J-2a', 'J-2c')) or r.get('status') != 'COMPLETED'
+    if (not valid_uuid or r.get('item_id') not in ((CENTURY_ITEM,) if century else ('J-3c',) if measuring else ('J-2a', 'J-2c')) or r.get('status') != 'COMPLETED'
             or launch.get('status') != 'LAUNCHED' or launch.get('run_id') != scope.get('run_id')
             or launch.get('chart_id') != CHART_ID or launch.get('asset_id') != ASSET_ID
             or scope.get('chart_id') != CHART_ID or scope.get('generation') != GENERATION
@@ -570,18 +581,18 @@ def staged_scope(req, root):
             or not ((scope.get('manifest_id') is None and scope.get('input_vector_sha256') is None)
                     or (scope.get('manifest_id') and re.fullmatch(r'[0-9a-f]{64}', str(scope.get('input_vector_sha256', '')))))):
         raise Refused('scope differs from the accepted staged launch/manifest identity')
-    if measuring and (launch.get('schema') != 'ky.measuring_launch/1'
+    if (measuring or century) and (launch.get('schema') != ('ky.century_launch/1' if century else 'ky.measuring_launch/1')
             or not re.fullmatch(r'[0-9a-f]{64}', str(scope.get('input_vector_sha256', '')))
             or not re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', str(scope.get('manifest_id', '')))):
-        raise Refused('measuring scope requires its actual launch, candidate manifest and input vector')
+        raise Refused(('century' if century else 'measuring') + ' scope requires its actual launch, candidate manifest and input vector')
     return scope
 
 
 def dryrun_evidence(req, root, scope, rowset_sha256=None):
-    measuring = req.get('kind') == 'measuring_teardown'
-    r = completed_receipt(root, req.get('dryrun_receipt'), 'measuring_teardown_dryrun' if measuring else 'smalltest_teardown_dryrun')
+    family = 'century' if req.get('kind') == 'century_teardown' else 'measuring' if req.get('kind') == 'measuring_teardown' else 'smalltest'
+    r = completed_receipt(root, req.get('dryrun_receipt'), family + '_teardown_dryrun')
     p = r.get('teardown') or {}
-    if (r.get('reviewed_commit') != req.get('reviewed_commit') or r.get('status') != 'COMPLETED' or p.get('schema') != ('ky.measuring_teardown/1' if measuring else 'ky.smalltest_teardown/1')
+    if (r.get('reviewed_commit') != req.get('reviewed_commit') or r.get('status') != 'COMPLETED' or p.get('schema') != f'ky.{family}_teardown/1'
             or p.get('status') != 'ROLLED_BACK' or p.get('rollback_confirmed') is not True
             or p.get('scope') != scope or p.get('scope_sha256') != evidence_digest(scope)
             or p.get('request_sha256') != r.get('request_sha256') or p.get('operation_id') != r.get('operation_id')
@@ -594,6 +605,11 @@ def dryrun_evidence(req, root, scope, rowset_sha256=None):
     except (KeyError, ValueError, TypeError):
         raise Refused('successful dry-run receipt must precede this accepted teardown request') from None
     return p
+
+
+# Every launch / committed-teardown kind a lifecycle can contain: an absence proof is only ever bound to the LATEST of them.
+DISPATCH_KINDS = ('smalltest_dispatch', 'measuring_dispatch', 'century_dispatch')
+TEARDOWN_KINDS = ('smalltest_teardown', 'measuring_teardown', 'century_teardown')
 
 
 def absence_evidence(req, root, *, teardown_receipt=None):
@@ -656,13 +672,13 @@ def absence_evidence(req, root, *, teardown_receipt=None):
                 old = json.loads(path.read_text())
             except (OSError, ValueError):
                 raise Refused('prior operation evidence unreadable') from None
-            if ((old.get('kind') in ('smalltest_teardown', 'measuring_teardown') and (old.get('teardown') or {}).get('status') == 'COMMITTED_AWAITING_ABSENCE')
-                    or (old.get('kind') in ('smalltest_dispatch', 'measuring_dispatch') and old.get('status') == 'COMPLETED' and old.get('launch'))):
+            if ((old.get('kind') in TEARDOWN_KINDS and (old.get('teardown') or {}).get('status') == 'COMMITTED_AWAITING_ABSENCE')
+                    or (old.get('kind') in DISPATCH_KINDS and old.get('status') == 'COMPLETED' and old.get('launch'))):
                 raise Refused('prior teardown requires its own independent absence')
     else:
         proof = committed.get('teardown') or {}
-        if (committed.get('kind') not in ('smalltest_teardown', 'measuring_teardown')
-                or proof.get('schema') != ('ky.measuring_teardown/1' if committed.get('kind') == 'measuring_teardown' else 'ky.smalltest_teardown/1')
+        if (committed.get('kind') not in TEARDOWN_KINDS
+                or proof.get('schema') != 'ky.' + str(committed.get('kind')) + '/1'
                 or committed.get('exit_code') != 0
                 or committed.get('status') not in ('AWAITING_ABSENCE', 'COMPLETED')
                 or proof.get('status') != 'COMMITTED_AWAITING_ABSENCE'
@@ -681,7 +697,7 @@ def absence_evidence(req, root, *, teardown_receipt=None):
         for path in (root / 'receipts').glob('*.json'):
             try:
                 old = json.loads(path.read_text())
-                if (old.get('kind') in ('smalltest_dispatch', 'measuring_dispatch') and old.get('status') == 'COMPLETED'
+                if (old.get('kind') in DISPATCH_KINDS and old.get('status') == 'COMPLETED'
                         and old.get('launch') and datetime.fromisoformat(old['ts']) > datetime.fromisoformat(committed['ts'])):
                     raise Refused('a later staged launch requires its own teardown and independent absence')
             except (OSError, ValueError, KeyError, TypeError):
@@ -828,7 +844,9 @@ def absence_readback_sql(committed=None):
     gen = "'" + GENERATION + "'"
     asset = "'" + ASSET_ID + "'"
     run = "(" + literal(proof['run_id']) + " #>> '{}')::uuid" if scope else None
-    run_where = f"id = {run}" if run else f"chart_id = {chart} AND triggered_by = '{TRIGGERED_BY}'"
+    # a century teardown's census counts the century trigger; every other lifecycle keeps the small-test one, byte for byte
+    trigger = CENTURY_TRIGGERED_BY if committed and committed.get('kind') == 'century_teardown' else TRIGGERED_BY
+    run_where = f"id = {run}" if run else f"chart_id = {chart} AND triggered_by = '{trigger}'"
     queries = {t: f"SELECT count(*) FROM {t} WHERE chart_id = {chart} AND generation = {gen}{extra}"
                for t, extra in OUTPUT_TABLES + (("kala_gochara_publication", ""),)}
     for t in ('ka_gochara_eval_window_record', 'ka_gochara_record_prerequisite',
@@ -839,7 +857,7 @@ def absence_readback_sql(committed=None):
     queries['build_runs'] = f"SELECT count(*) FROM build_runs WHERE {run_where}"
     queries['build_run_assets'] = (f"SELECT count(*) FROM build_run_assets WHERE run_id = {run}" if run else
                                   f"SELECT count(*) FROM build_run_assets WHERE asset_id = {asset}")
-    queries['owned_test_runs'] = f"SELECT count(*) FROM build_runs WHERE chart_id = {chart} AND triggered_by = '{TRIGGERED_BY}'"
+    queries['owned_test_runs'] = f"SELECT count(*) FROM build_runs WHERE chart_id = {chart} AND triggered_by = '{trigger}'"
     counts = ', '.join("'" + table + "', (" + sql + ")" for table, sql in sorted(queries.items()))
     return ("SELECT (" + literal(proof) + " || jsonb_build_object('counts', jsonb_build_object(" + counts + "), "
             "'registry_inert', (SELECT is_active IS FALSE FROM asset_registry WHERE asset_id = " + asset + ")))::text AS absence_proof")
@@ -888,3 +906,137 @@ def measuring_dryrun_evidence(req, root, manifest_digest=None):
     except (KeyError, ValueError, TypeError):
         raise Refused('measuring staging rollback must precede the accepted launch request') from None
     return p
+
+
+# ───────────────────────────── the century (final, ordinary candidate) build ─────────────────────────────
+# SR-PREBUILD-ALL: the century launch is the measuring launch minus the test slice. Same gates (accepted request, live lease, scoped backup,
+# a rollback-confirmed staging dry run before the real staging, one durable launch claim, a previous lifecycle independently absent), but
+# the staged run carries NO slice marker and its own trigger, so the candidate it builds is an ordinary, sealable one.
+CENTURY_ARGS = {'classes': 'all'}
+CENTURY_EXECUTION_ENV = 'PUBSUB_DISABLED=1'      # J-3 gate: Pub/Sub on would publish asset.substep and print nothing the log read could see
+
+
+def century_request_problem(req, root):
+    """Century-only file evidence admission, loaded from reviewed source (the executor loads this module alone, from the reviewed commit)."""
+    try:
+        kind = req.get('kind')
+        if kind in ('century_dispatch', 'century_dispatch_dryrun'):
+            if req.get('item_id') != CENTURY_ITEM:
+                raise Refused('century dispatch belongs to ' + CENTURY_ITEM)
+            if (req.get('args') or {}) != CENTURY_ARGS:
+                raise Refused('century request requires only all classes')
+            # Even a staging rollback may not bypass the previous lifecycle: generation '5.0' must be independently absent.
+            absence_evidence(req, root)
+            if kind == 'century_dispatch':
+                scoped_backup_problem(req, root)
+                century_dryrun_evidence(req, root)
+        elif kind in ('century_teardown', 'century_teardown_dryrun'):
+            scope = staged_scope(req, root)
+            if kind == 'century_teardown':
+                dryrun_evidence(req, root, scope)
+        else:
+            raise Refused('unknown century operation kind')
+        return None
+    except (Refused, KeyError, TypeError, ValueError) as exc:
+        return str(exc) if isinstance(exc, Refused) else 'malformed century evidence'
+
+
+def century_dryrun_evidence(req, root, manifest_digest=None):
+    """A real completed staging rollback, same source/args/manifest, before launch (no V acceptance of a dry run, A8 §3.8)."""
+    r = completed_receipt(root, req.get('dryrun_receipt'), 'century_dispatch_dryrun')
+    p = r.get('staging') or {}
+    manifest = p.get('plan_manifest')
+    if (r.get('status') != 'COMPLETED' or r.get('item_id') != CENTURY_ITEM or r.get('reviewed_commit') != req.get('reviewed_commit')
+            or p.get('schema') != 'ky.century_staging/1' or p.get('status') != 'ROLLED_BACK'
+            or p.get('rollback_confirmed') is not True or p.get('args') != req.get('args')
+            or p.get('triggered_by') != CENTURY_TRIGGERED_BY or not isinstance(manifest, dict) or 'gochara_v5_test_slice' in manifest
+            or p.get('operation_id') != r.get('operation_id') or p.get('request_sha256') != r.get('request_sha256')
+            or p.get('plan_manifest_digest') != evidence_digest(manifest)
+            or (manifest_digest is not None and p.get('plan_manifest_digest') != manifest_digest)):
+        raise Refused('accepted century staging rollback for the same source, args and manifest required')
+    from datetime import datetime
+    try:
+        if datetime.fromisoformat(r['ts']) >= datetime.fromisoformat(acceptance(req, root)['ts']):
+            raise ValueError()
+    except (KeyError, ValueError, TypeError):
+        raise Refused('century staging rollback must precede the accepted launch request') from None
+    return p
+
+
+def century_generation_ownership(cur, owned: list[str], *, remedy: str, notes: list[str] | None = None, lock: bool = False):
+    """Is the existing generation '5.0' output of this chart PROVEN to be an ORDINARY candidate built by an owned century run?
+    (The counterpart of `generation_ownership`, whose proof is a test-slice STAMP: a century candidate has none.) Returns
+    `(manifest_row_or_None, output_rows)`; raises `Refused` by name otherwise. `owned` is the ids of the century runs.
+
+    The proof, all of it measured here: the manifest is a CANDIDATE (published / sealed / serving are refused earlier by
+    `refuse_if_frozen`) whose input vector is the ordinary one — `stored_scope` the default and NO `test_slice` component (a stamped
+    candidate belongs to the small-test / measuring teardown and is refused by name); every owned run is a century run whose staged
+    manifest carries NO slice marker and whose digest is its own; the stored input snapshot carries the manifest's own vector; every
+    search-inventory header carries the snapshot's input digest and the manifest's horizon; and every event_class coverage partition was
+    written by an owned run. Reads only (apart from the optional manifest row lock)."""
+    notes = notes if notes is not None else []
+    module = writer()
+    rows = generation_rows(cur)
+    cur.execute("SELECT manifest_id, status, input_generation_vector, horizon FROM kala_gochara_publication WHERE chart_id = %s AND generation = %s"
+                + (" FOR UPDATE" if lock else ""), (CHART_ID, GENERATION))
+    manifest = cur.fetchone()
+    if not (rows or manifest):
+        return None, 0
+    if manifest is None:
+        raise Refused(f"{rows} generation '5.0' output row(s) exist for chart {CHART_ID} with NO manifest — nothing proves they are the "
+                      "century run's; they are left as they are")
+    vector = manifest["input_generation_vector"]
+    if manifest["status"] != "candidate":
+        raise Refused(f"the '5.0' manifest of chart {CHART_ID} has status {manifest['status']!r}, not 'candidate' — a century teardown never "
+                      f"touches anything else; {rows} output row(s) are left as they are")
+    if (not isinstance(vector, dict) or vector.get("stored_scope") != module.gk_input_vector.STORED_SCOPE or "test_slice" in vector):
+        raise Refused(f"the '5.0' manifest of chart {CHART_ID} is not an ordinary century candidate (stored_scope "
+                      f"{vector.get('stored_scope') if isinstance(vector, dict) else None!r}, test_slice component "
+                      f"{'present' if isinstance(vector, dict) and 'test_slice' in vector else 'absent'}) — a test-slice candidate is "
+                      "torn down by the small-test / measuring teardown, never by this one")
+    run_manifests = []
+    if owned:
+        cur.execute("SELECT id, plan_manifest, plan_manifest_digest FROM build_runs WHERE id = ANY(%s::uuid[]) AND triggered_by = %s",
+                    (owned, CENTURY_TRIGGERED_BY))
+        run_manifests = cur.fetchall()
+    if not owned or len(run_manifests) != len(owned):
+        raise Refused(f"the '5.0' candidate of chart {CHART_ID} is not tied to an owned '{CENTURY_TRIGGERED_BY}' run — a historical "
+                      f"trigger tag never authorises acting on an unproven candidate; {rows} output row(s) are left as they are. {remedy}")
+    for run in run_manifests:
+        staged = run["plan_manifest"]
+        if (not isinstance(staged, dict) or module.TEST_SLICE_KEY in staged or module._manifest_digest(staged) != run["plan_manifest_digest"]):
+            raise Refused(f"century run {run['id']}: its staged manifest carries a slice marker, or does not match its own digest — "
+                          f"it is not an ordinary century run; {remedy}")
+    cur.execute(
+        """SELECT (s.input_generation_vector = p.input_generation_vector) AS same_vector, s.input_digest
+           FROM ka_gochara_search_input_snapshot s
+           JOIN kala_gochara_publication p ON p.chart_id = s.chart_id AND p.generation = s.generation
+           WHERE s.chart_id = %s AND s.generation = %s""", (CHART_ID, GENERATION))
+    snapshot = cur.fetchone()
+    if snapshot is None:
+        if rows:
+            raise Refused(f"{rows} generation '5.0' output row(s) exist for chart {CHART_ID} but no input snapshot binds them to the "
+                          f"manifest — their origin is unproven; {remedy}")
+        return manifest, rows
+    if snapshot["same_vector"] is not True:
+        raise Refused(f"the stored input snapshot of chart {CHART_ID} '5.0' carries ANOTHER input vector than the manifest — the output is "
+                      f"not provably the century run's; {remedy}")
+    cur.execute(
+        """SELECT count(*) AS n FROM ka_gochara_search_inventory i
+           JOIN ka_gochara_search_input_snapshot s ON s.chart_id = i.chart_id AND s.generation = i.generation
+           JOIN kala_gochara_publication p ON p.chart_id = i.chart_id AND p.generation = i.generation
+           WHERE i.chart_id = %s AND i.generation = %s AND (i.input_digest <> s.input_digest OR i.horizon <> p.horizon)""",
+        (CHART_ID, GENERATION))
+    bad = int(cur.fetchone()["n"])
+    if bad:
+        raise Refused(f"{bad} inventory header(s) of chart {CHART_ID} '5.0' do not carry the manifest's identity (input digest or horizon) "
+                      f"— the output is not provably the century run's; {remedy}")
+    cur.execute("SELECT count(*) AS n FROM kala_gochara_coverage WHERE chart_id = %s AND generation = %s AND partition_kind = 'event_class'"
+                " AND (build_id IS NULL OR NOT (build_id = ANY(%s::text[])))", (CHART_ID, GENERATION, list(owned)))
+    foreign = int(cur.fetchone()["n"])
+    if foreign:
+        raise Refused(f"{foreign} event_class coverage partition(s) of chart {CHART_ID} '5.0' were not written by the identified century "
+                      f"run — the output is not provably its own; {remedy}")
+    notes.append("proved as an ordinary century candidate: default stored_scope, no test_slice stamp, owned century run(s) with an unmarked "
+                 "manifest, snapshot / inventory / coverage tied to it")
+    return manifest, rows

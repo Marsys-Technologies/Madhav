@@ -12,6 +12,13 @@ WAVE 4 SAFETY BOUNDARY (supersedes generic historical cleanup notes below):
   verifier acceptance are required for the executor's separate completion receipt. CLI flags and unreferenced booleans alone are insufficient.
 
 
+CENTURY KINDS (SR-TEARDOWN-AUTHORITY-GATE item 3). `century_teardown_dryrun` / `century_teardown` run THIS script with a `century_scope` (run_id scope) for the rows
+  of a CENTURY candidate: an ordinary generation '5.0' candidate built by a 'gochara-v5-century' run (dispatch_v5_century_job.py), which carries no
+  test-slice stamp. The small-test and measuring kinds REFUSE such rows by name (their guards select the small-test trigger and prove ownership by the
+  stamp); the century kinds swap exactly those two things — the owned trigger, and `shared.century_generation_ownership` (candidate status, default
+  stored_scope, no test_slice component, an unmarked staged manifest, snapshot / inventory / coverage tied to the one identified run) — and keep every
+  other guard, lock, delete, the rowset-digest rollback proof and the absence census. Fleet/CENTURY_BINDINGS_v1_0.md has the gates.
+
 RUNNING IT
   DESTRUCTION NEEDS INTENT. The default is a dry run. A dry run and an execution run the SAME statements and validations in the
   same transaction — every lock, every refusal check, every DELETE, the registry UPDATE and the end-state validation — and differ
@@ -117,7 +124,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))     # the shared proof module sits next to this script
 import v5_small_test_shared as shared  # noqa: E402
 from v5_small_test_shared import (  # noqa: E402,F401  (re-exported: the tests and the runbook read these names here)
-    ASSET_ID, CHAIN_TABLES, CHART_ID, GENERATION, INVENTORY_TABLES, OUTPUT_TABLES, TRIGGERED_BY, Refused)
+    ASSET_ID, CHAIN_TABLES, CENTURY_TRIGGERED_BY, CHART_ID, GENERATION, INVENTORY_TABLES, OUTPUT_TABLES, TRIGGERED_BY, Refused)
 
 TeardownRefused = Refused
 _writer, _count, _table_exists = shared.writer, shared.count, shared.table_exists
@@ -290,10 +297,16 @@ def _members(cur) -> list:
     return cur.fetchall()
 
 
-def _refusal_checks(cur) -> "Checked":
+def _refusal_checks(cur, century: bool = False) -> "Checked":
     """Every guard, fail-closed, evaluated INSIDE the locks. Raises TeardownRefused; nothing is deleted. Returns the ids of the
     small-test runs this teardown may delete (every one proven to be exclusively this asset's) and whether the registry row was found
-    ACTIVE (only then is it updated)."""
+    ACTIVE (only then is it updated).
+
+    `century=True` (the century_teardown kinds, SR-TEARDOWN-AUTHORITY-GATE item 3): the same guards with the century run trigger in place of
+    the small-test one, and the century candidate proof (`shared.century_generation_ownership`: an ordinary candidate, no stamp) in place
+    of the test-slice stamp proof. A small-test / measuring run is then a NON-owned run and refuses, exactly as a century run does for
+    the small-test teardown."""
+    run_trigger = CENTURY_TRIGGERED_BY if century else TRIGGERED_BY
     shared.refuse_if_frozen(cur)                      # published / sealed / serving: the SAME check the dispatch makes
 
     notes: list[str] = []
@@ -317,12 +330,12 @@ def _refusal_checks(cur) -> "Checked":
     locked = {str(r["id"]) for r in members}
     if not locked <= set(selected) or (set(selected) - locked):
         raise TeardownRefused("the set of small-test runs changed while it was being locked; nothing was deleted — run it again")
-    non_test = [str(r["id"]) for r in members if r["triggered_by"] != TRIGGERED_BY]
+    non_test = [str(r["id"]) for r in members if r["triggered_by"] != run_trigger]
     if non_test:
         raise TeardownRefused(
             f"{len(non_test)} NON-test build run(s) include {ASSET_ID} on chart {CHART_ID} (run ids {non_test}; "
-            f"triggered_by other than '{TRIGGERED_BY}'; layer runs and multi-asset sets count) — a real build was dispatched; "
-            "this script only removes the small test")
+            f"triggered_by other than '{run_trigger}'; layer runs and multi-asset sets count) — a real build was dispatched; "
+            f"this script only removes the {'century run' if century else 'small test'}")
     owned: list[str] = []
     for r in members:
         targets = {t.strip() for t in (r["scope_target"] or "").split(",") if t.strip()}
@@ -368,7 +381,7 @@ def _refusal_checks(cur) -> "Checked":
     if foreign_links:
         raise TeardownRefused(
             f"provenance receipt(s) of {ASSET_ID} on chart {CHART_ID} belong to run(s) {foreign_links} that are not "
-            f"'{TRIGGERED_BY}' runs of this asset — those are not small-test evidence")
+            f"'{run_trigger}' runs of this asset — those are not {'century' if century else 'small-test'} evidence")
 
     # OTHER REFERENCES to the owned runs, found from the catalog: deleting a run sets every ON DELETE SET NULL reference to NULL
     # (conversations, the prediction and calibration ledgers, ...) and a NO ACTION one makes the DELETE fail; name them instead
@@ -393,9 +406,12 @@ def _refusal_checks(cur) -> "Checked":
 
     # OWNERSHIP of the generation's output: the SHARED proof (v5_small_test_shared, the one copy the dispatch uses too): the CURRENT
     # manifest must PROVE this test's slice, and the stored snapshot and inventory headers must carry the SAME vector identity
-    manifest, _rows = shared.generation_ownership(
-        cur, owned, notes=notes, lock=True, require_run=True, remedy=f"see the runbook {RUNBOOK}",
-        unproven="this script never touches output it cannot prove is a small test's")
+    if century:
+        manifest, _rows = shared.century_generation_ownership(cur, owned, notes=notes, lock=True, remedy=f"see the runbook {RUNBOOK}")
+    else:
+        manifest, _rows = shared.generation_ownership(
+            cur, owned, notes=notes, lock=True, require_run=True, remedy=f"see the runbook {RUNBOOK}",
+            unproven="this script never touches output it cannot prove is a small test's")
     if manifest is not None:
         # the manifest is deleted last: any table that references it (found from the catalog) other than the ones this script deletes
         # first — notably kala_gochara_contacts.input_generation_vector_id, NO ACTION — would make that DELETE fail with a bare SQLSTATE
@@ -419,7 +435,7 @@ def _refusal_checks(cur) -> "Checked":
                 "inert fires migration 596's registry invalidation, which marks the asset's freshness stale on EVERY chart. "
                 "Refusing rather than changing other charts' projections; investigate why another chart holds freshness for the "
                 "small-test asset first")
-    problems = _end_state_problems(cur)
+    problems = _end_state_problems(cur, (TRIGGERED_BY, CENTURY_TRIGGERED_BY) if century else (TRIGGERED_BY,))
     if problems:
         raise TeardownRefused("the N-137 end state does not hold: " + "; ".join(problems))
     return Checked(owned, bool(reg is not None and reg["is_active"] is True), notes)
@@ -486,7 +502,7 @@ CASCADE_PROOF_TABLES = ("ka_gochara_eval_window_record", "ka_gochara_record_prer
                         "ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification")
 
 
-def _absence_counts(cur, owned: list[str]) -> dict[str, int]:
+def _absence_counts(cur, owned: list[str], trigger: str = TRIGGERED_BY) -> dict[str, int]:
     """Read every deleted scope after deletion, under the same locks/transaction.
 
     Moon coverage is deliberately retained; only event_class coverage is absent.
@@ -500,15 +516,15 @@ def _absence_counts(cur, owned: list[str]) -> dict[str, int]:
     counts["build_run_assets"] = _count(cur, "SELECT count(*) AS n FROM build_run_assets WHERE run_id = ANY(%s::uuid[])", (owned,))
     counts["build_runs"] = _count(cur, "SELECT count(*) AS n FROM build_runs WHERE id = ANY(%s::uuid[])", (owned,))
     counts["owned_test_runs"] = _count(cur, "SELECT count(*) AS n FROM build_runs WHERE chart_id = %s AND triggered_by = %s",
-                                       (CHART_ID, TRIGGERED_BY))
+                                       (CHART_ID, trigger))
     for table, extra in GENERATION_TABLES + tuple((t, "") for t in CASCADE_PROOF_TABLES):
         counts[table] = _count(cur, f"SELECT count(*) AS n FROM {table} WHERE chart_id = %s AND generation = %s{extra}",
                                (CHART_ID, GENERATION))
     return counts
 
 
-def _prove_absence(cur, owned: list[str]) -> dict[str, int]:
-    counts = _absence_counts(cur, owned)
+def _prove_absence(cur, owned: list[str], trigger: str = TRIGGERED_BY) -> dict[str, int]:
+    counts = _absence_counts(cur, owned, trigger) if trigger != TRIGGERED_BY else _absence_counts(cur, owned)
     remaining = {table: n for table, n in counts.items() if n != 0}
     if remaining:
         raise TeardownRefused(f"absence proof failed: surviving rows {remaining}; success is not claimed")
@@ -558,6 +574,9 @@ def _bound_scope(cur, owned, req):
             or runs[0]["plan_manifest_digest"] != scope["plan_manifest_digest"]
             or shared.evidence_digest(runs[0]["plan_manifest"]) != scope["plan_manifest_digest"]):
         raise TeardownRefused("staged launch UUID/manifest does not match the surviving run")
+    century = req.get("kind") in CENTURY_KINDS
+    if century and _writer().TEST_SLICE_KEY in runs[0]["plan_manifest"]:
+        raise TeardownRefused("century teardown refuses a run that carries a test-slice marker (that is the small-test / measuring teardown's)")
     if req.get("kind") in ("measuring_teardown", "measuring_teardown_dryrun"):
         marker = runs[0]["plan_manifest"].get("gochara_v5_test_slice")
         try:
@@ -571,6 +590,8 @@ def _bound_scope(cur, owned, req):
     if manifest is None and scope.get("manifest_id") is None and scope.get("input_vector_sha256") is None:
         if shared.generation_rows(cur):
             raise TeardownRefused("staged run has output without an identified candidate")
+        if century:
+            return scope
         try:
             _writer()._validate_test_slice(runs[0]["plan_manifest"][_writer().TEST_SLICE_KEY])
         except Exception:
@@ -579,17 +600,22 @@ def _bound_scope(cur, owned, req):
     if (not manifest or manifest["status"] != "candidate" or str(manifest["manifest_id"]) != scope["manifest_id"]
             or shared.evidence_digest(manifest["input_generation_vector"]) != scope["input_vector_sha256"]):
         raise TeardownRefused("candidate manifest/vector differs from the identified staged run")
-    # No reconstruction: the original surviving run is the only stamp preimage.
-    problem, _, _, matched = shared.prove_stamp(manifest["input_generation_vector"],
-        [(scope["run_id"], runs[0]["plan_manifest"], runs[0]["plan_manifest_digest"])], require_run=True)
-    if problem or matched != owned:
-        raise TeardownRefused("candidate is not proved by the identified staged run's original marker")
+    if not century:
+        # No reconstruction: the original surviving run is the only stamp preimage.
+        problem, _, _, matched = shared.prove_stamp(manifest["input_generation_vector"],
+            [(scope["run_id"], runs[0]["plan_manifest"], runs[0]["plan_manifest_digest"])], require_run=True)
+        if problem or matched != owned:
+            raise TeardownRefused("candidate is not proved by the identified staged run's original marker")
     foreign_coverage = _count(cur,
         "SELECT count(*) AS n FROM kala_gochara_coverage WHERE chart_id = %s AND generation = %s"
         " AND partition_kind = 'event_class' AND build_id IS DISTINCT FROM %s", (CHART_ID, GENERATION, scope["run_id"]))
     if foreign_coverage:
         raise TeardownRefused("generation coverage was not created by the identified staged run")
     return scope
+
+
+CENTURY_KINDS = ("century_teardown", "century_teardown_dryrun")
+TEARDOWN_KINDS = ("smalltest_teardown", "measuring_teardown", "century_teardown")
 
 
 def _lock_delete_tables(cur):
@@ -618,8 +644,18 @@ def _rowset_digest(cur, owned):
     return shared.evidence_digest(rows)
 
 
+def _century_requested() -> bool:
+    """Does the executor's request name a century teardown kind? A best-effort PEEK, used only to pick which guards run first; the
+    request itself is validated (acceptance, kind, scope) further down, and `teardown` refuses if the validated kind disagrees."""
+    try:
+        return json.loads(os.environ["KY_OPERATION_REQUEST"]).get("kind") in CENTURY_KINDS
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return False
+
+
 def teardown(*, dry_run: bool = True) -> None:
     lane_req = shared.lane_rehearsal_request() if dry_run else None
+    century = lane_req is None and _century_requested()
     import psycopg
     import psycopg.rows
 
@@ -643,19 +679,22 @@ def teardown(*, dry_run: bool = True) -> None:
         _require_direct_connection(conn)                   # refuses a pooled connection (the session lock would hold nothing)
         _take_locks(cur)                                   # BEFORE any ownership check; held to commit / rollback
         _lock_delete_tables(cur)
-        checked = _refusal_checks(cur)
+        checked = _refusal_checks(cur, century=True) if century else _refusal_checks(cur)
         owned, registry_active = checked.owned, checked.registry_active
         _validate_registry_row(cur, check_active=False)
         retention = _retention_lines(cur, owned)
         counts = _plan_counts(cur, owned)
         req = lane_req if lane_req is not None else shared.operation_request()
-        if req.get("kind") not in (("smalltest_teardown", "smalltest_teardown_dryrun", "measuring_teardown", "measuring_teardown_dryrun") if dry_run else ("smalltest_teardown", "measuring_teardown")):
+        kinds = ("smalltest_teardown", "smalltest_teardown_dryrun", "measuring_teardown", "measuring_teardown_dryrun", *CENTURY_KINDS)
+        if req.get("kind") not in (kinds if dry_run else TEARDOWN_KINDS):
             raise TeardownRefused("executor operation kind and teardown mode differ")
+        if (req["kind"] in CENTURY_KINDS) is not century:
+            raise TeardownRefused("executor operation kind differs from the guards that ran for it")
         scope = _bound_scope(cur, owned, req)
         rowset_sha256 = _rowset_digest(cur, owned)
         if not dry_run:
             shared.dryrun_evidence(req, shared.evidence_root(), scope, rowset_sha256)
-        proof = {"schema": "ky.measuring_teardown/1" if req["kind"].startswith("measuring_") else "ky.smalltest_teardown/1", "operation_id": req["operation_id"],
+        proof = {"schema": "ky." + req["kind"].split("_dryrun")[0] + "/1", "operation_id": req["operation_id"],
                  "request_sha256": shared.request_hash(req), "scope": scope,
                  "scope_sha256": shared.evidence_digest(scope), "rowset_sha256": rowset_sha256,
                  "status": "ROLLED_BACK" if dry_run else "COMMITTED_AWAITING_ABSENCE",
@@ -666,10 +705,10 @@ def teardown(*, dry_run: bool = True) -> None:
         if registry_active:                                # ONLY a row found active is touched: no UPDATE privilege otherwise needed
             cur.execute("UPDATE asset_registry SET is_active = false WHERE asset_id = %s", (ASSET_ID,))
         _validate_registry_row(cur)
-        post = _end_state_problems(cur)
+        post = _end_state_problems(cur, (TRIGGERED_BY, CENTURY_TRIGGERED_BY) if century else (TRIGGERED_BY,))
         if post:
             raise TeardownRefused("the N-137 end state does not hold after the deletes, so success is not claimed: " + "; ".join(post))
-        absence = _prove_absence(cur, owned)
+        absence = _prove_absence(cur, owned, CENTURY_TRIGGERED_BY) if century else _prove_absence(cur, owned)
         # the report is prepared BEFORE the COMMIT: nothing after the COMMIT can fail for want of data or work
         report = ("dry_run" if dry_run else "executed", counts, retention + [f"stamp: {n}" for n in checked.notes],
                   {"schema": "ky.smalltest_absence/1", "chart_id": CHART_ID, "generation": GENERATION,

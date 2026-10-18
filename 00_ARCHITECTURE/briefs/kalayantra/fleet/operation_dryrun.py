@@ -18,10 +18,11 @@ SURFACES = {
                      "approved canonical offline input and deployment-faithful builder-role rehearsal",
                      "accepted density/cap projection and Cloud Run timeout readback"]},
     "century_dispatch": {
-        "args": {"classes": "all"}, "caps": ["gcloud"], "runtime_principal": "data_plane_builder", "phase": "J-4d / J-4e",
-        "source": "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
-        "blockers": ["allocate final-rules 5.0 launch and dry-run binding through a real child; legacy century entry is 4.1",
-                     "P06b qualification, D-G9, measured cap/timeout and D-CLOUD", "confirm whether staging adds builder capability"]},
+        "args": {"classes": "all"}, "caps": ["builder", "gcloud"], "runtime_principal": "data_plane_builder", "phase": "J-4d / J-4e",
+        "source": "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py",
+        "blockers": ["P06b qualification, D-G9 and the N-G9 horizon decision (the writer, not the launcher, chooses what '5.0' answers)",
+                     "accepted density/cap projection and Cloud Run timeout readback, then D-CLOUD",
+                     "the real kind demands its century_dispatch_dryrun staging rollback, a scoped backup, the live lease and independent acceptance"]},
     "verification_job": {
         "args": {"generation": "5.0"}, "caps": ["gcloud"], "runtime_principal": "gochara_verifier", "phase": "phase 10, after P06b",
         "source": "platform/python-sidecar/pipeline/orchestrator/verification_job.py",

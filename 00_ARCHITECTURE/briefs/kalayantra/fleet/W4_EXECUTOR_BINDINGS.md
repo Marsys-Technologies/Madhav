@@ -115,7 +115,9 @@ for the verifier or sealer.
   implementation job; no new tracker child id is invented. Cockpit must register
   the real child and bind review/source before this wrapper becomes executable.
 
-Proposed future kind names, **not allocated or executable**:
+**Update (SR-PREBUILD-ALL, 2026-10-18):** the century family is allocated and bound — see `CENTURY_BINDINGS_v1_0.md`.
+
+Proposed future kind names, **not allocated or executable** (the measuring and century dryrun/teardown kinds have since been allocated):
 `measuring_dispatch_dryrun`, `century_dispatch_dryrun`,
 `verification_job_dryrun`, `publish_head_dryrun`, `rollback_head_dryrun`,
 `protected_apply`, `protected_apply_dryrun`, `provision`, `provision_dryrun`,
