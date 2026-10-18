@@ -1245,8 +1245,6 @@ jobs:
         # This test fails on that old path (mutation-checked) — keep it collected.
         run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-81-0 -- -q
 
-      - name: Gochara v5 dispatch, ephemeris probe and sitting evidence oracles
-        if: ${{ (github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || (github.event_name == 'pull_request' && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'db-integration-tests-82-0'))) }}
       - name: Gochara v5 small-test dispatch — the marker it builds is accepted by the writer's own validator
         if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'db-integration-tests-82-0'))) }}
         # The dispatch used to carry its own copy of the slice rules (classes the writer never scored, date-only
