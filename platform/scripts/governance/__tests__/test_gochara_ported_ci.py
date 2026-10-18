@@ -20,6 +20,7 @@ CI = Path(__file__).resolve().parents[4] / '.github/workflows/ci.yml'
 READBACK_SUITES = (
     'platform/scripts/__tests__/test_gochara_window_readbacks.py',
     'platform/scripts/__tests__/test_fn_1235_readbacks.py',
+    'platform/scripts/__tests__/test_gochara_rehearsal.py',
 )
 AM7 = 'tests/integration/gochara_b6_v15_migrations.db.test.ts'
 

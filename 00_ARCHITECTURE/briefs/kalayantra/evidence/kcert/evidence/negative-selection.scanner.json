@@ -1,0 +1,188 @@
+{
+  "label": "negative-selection",
+  "root": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/negative-selection",
+  "catalog_columns_source": "platform/supabase/migrations/565_bg_gochara_citation_resolution.sql:65-77",
+  "catalog_columns": [
+    "citation_string",
+    "chunk_id",
+    "text_id",
+    "verse_ref",
+    "status",
+    "source_citation",
+    "constant_name",
+    "note",
+    "created_at"
+  ],
+  "with_custodian_declaration": {
+    "grade": {
+      "v": "PARTIAL",
+      "measured": "STRUCTURAL: 1 module(s) reach it by code: platform-mcp/src/tools/retrieval/register_gochara_windows.ts; a referencing capability declares density_contract but platform-mcp/src/tools/retrieval/register_gochara_windows.ts: no tier column in its served select"
+    },
+    "capability_scan": {
+      "modules": [
+        "platform-mcp/src/tools/retrieval/register_gochara_windows.ts"
+      ],
+      "label_only": [],
+      "label_comment": [],
+      "density": 0,
+      "note": "",
+      "scanned": true,
+      "comment_only": [],
+      "dense": [],
+      "declared": [
+        [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          [
+            "no tier column in its served select"
+          ]
+        ]
+      ],
+      "facet_dense": [],
+      "tier_only": [],
+      "served": 1,
+      "shared_only": [],
+      "outside": [],
+      "outside_named": [
+        "platform/src/app/api/mcp/db/query/route.ts (holds the table and selects FROM a run-time table name)"
+      ],
+      "unparsed": [],
+      "elsewhere": [],
+      "served_at": [
+        [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          800,
+          800
+        ]
+      ],
+      "reach_at": [
+        [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          800,
+          "53139895"
+        ],
+        [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          888,
+          "dbd8eac7"
+        ],
+        [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          889,
+          "baace73b"
+        ],
+        [
+          "platform/src/app/api/mcp/db/query/route.ts",
+          149,
+          "7f28dbfe"
+        ],
+        [
+          "platform/src/lib/nirmana-elevation/definitions.ts",
+          17,
+          "5c2b311e"
+        ]
+      ],
+      "reach_dynamic": [
+        "platform-mcp/src/tools/retrieval/register_gochara_windows.ts"
+      ],
+      "shared_tokens": [],
+      "tokens": [
+        "bg_gochara_citation_resolution"
+      ],
+      "roots": [
+        "platform/src/lib/retrieval/registry/layers",
+        "platform-mcp/src/tools",
+        "platform-mcp/src/lib"
+      ],
+      "facet_attributed": [],
+      "facet_bound": [],
+      "facet_bound_credited": [],
+      "dynamic_resolved": []
+    }
+  },
+  "without_declaration": {
+    "grade": {
+      "v": "PARTIAL",
+      "measured": "STRUCTURAL: 1 module(s) reach it by code: platform-mcp/src/tools/retrieval/register_gochara_windows.ts; a referencing capability declares density_contract but platform-mcp/src/tools/retrieval/register_gochara_windows.ts: no tier column in its served select"
+    },
+    "capability_scan": {
+      "modules": [
+        "platform-mcp/src/tools/retrieval/register_gochara_windows.ts"
+      ],
+      "label_only": [],
+      "label_comment": [],
+      "density": 0,
+      "note": "",
+      "scanned": true,
+      "comment_only": [],
+      "dense": [],
+      "declared": [
+        [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          [
+            "no tier column in its served select"
+          ]
+        ]
+      ],
+      "facet_dense": [],
+      "tier_only": [],
+      "served": 1,
+      "shared_only": [],
+      "outside": [],
+      "outside_named": [
+        "platform/src/app/api/mcp/db/query/route.ts (holds the table and selects FROM a run-time table name)"
+      ],
+      "unparsed": [],
+      "elsewhere": [],
+      "served_at": [
+        [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          800,
+          800
+        ]
+      ],
+      "reach_at": [
+        [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          800,
+          "53139895"
+        ],
+        [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          888,
+          "dbd8eac7"
+        ],
+        [
+          "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+          889,
+          "baace73b"
+        ],
+        [
+          "platform/src/app/api/mcp/db/query/route.ts",
+          149,
+          "7f28dbfe"
+        ],
+        [
+          "platform/src/lib/nirmana-elevation/definitions.ts",
+          17,
+          "5c2b311e"
+        ]
+      ],
+      "reach_dynamic": [
+        "platform-mcp/src/tools/retrieval/register_gochara_windows.ts"
+      ],
+      "shared_tokens": [],
+      "tokens": [
+        "bg_gochara_citation_resolution"
+      ],
+      "roots": [
+        "platform/src/lib/retrieval/registry/layers",
+        "platform-mcp/src/tools",
+        "platform-mcp/src/lib"
+      ],
+      "facet_attributed": [],
+      "facet_bound": [],
+      "facet_bound_credited": [],
+      "dynamic_resolved": []
+    }
+  }
+}

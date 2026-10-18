@@ -27,6 +27,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Pool } from 'pg'
+import { acquireClusterRoleLock, ensureRole } from './builder_role_fixture'
 import fs from 'fs'
 import path from 'path'
 
@@ -47,6 +48,7 @@ const GRANT_MIGRATION_PATH = path.resolve(
 const BUILDER_ROLE = 'data_plane_builder'
 
 let pool: Pool
+let releaseRoleLock: (() => Promise<void>) | undefined
 
 async function builderSelect() {
   const client = await pool.connect()
@@ -80,6 +82,8 @@ describe.skipIf(!TEST_DB_URL)('migration 1225 — bg_transit_av_gates builder SE
     }
 
     pool = new Pool({ connectionString: TEST_DB_URL })
+    // Cluster-wide role: serialise against every other suite that mirrors data_plane_builder.
+    releaseRoleLock = await acquireClusterRoleLock(TEST_DB_URL!)
 
     await pool.query(`
       DROP TABLE IF EXISTS bg_transit_av_gates CASCADE;
@@ -90,7 +94,7 @@ describe.skipIf(!TEST_DB_URL)('migration 1225 — bg_transit_av_gates builder SE
     )
     roleCreatedBySuite = !roleCheck.rows[0]!.exists
     if (roleCreatedBySuite) {
-      await pool.query(`CREATE ROLE ${BUILDER_ROLE} NOLOGIN`)
+      await ensureRole(pool, BUILDER_ROLE)
     } else {
       // Scrub privileges held in THIS database so the before-state is exactly
       // "USAGE on schema public, nothing on bg_transit_av_gates".
@@ -117,7 +121,7 @@ describe.skipIf(!TEST_DB_URL)('migration 1225 — bg_transit_av_gates builder SE
     // A role with EXACTLY data_plane_builder's relevant production grants for
     // this path: USAGE on schema public, NOTHING on bg_transit_av_gates.
     await pool.query(`GRANT USAGE ON SCHEMA public TO ${BUILDER_ROLE}`)
-  })
+  }, 120_000)
 
   afterAll(async () => {
     if (!pool) return
@@ -131,6 +135,7 @@ describe.skipIf(!TEST_DB_URL)('migration 1225 — bg_transit_av_gates builder SE
       await pool.query(`DROP ROLE ${BUILDER_ROLE}`)
     }
     await pool.end()
+    await releaseRoleLock?.()
   })
 
   it('FAILS BEFORE: SELECT under the builder-mirror role is denied on bg_transit_av_gates', async () => {

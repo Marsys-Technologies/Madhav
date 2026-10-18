@@ -219,3 +219,27 @@ def test_discovered_tracker_tests_have_runtime_dependencies_in_required_shards(j
     node = [s for s in steps[:run_index] if s.get("uses", "").startswith("actions/setup-node@")]
     assert len(node) == 1 and node[0]["with"]["node-version"]
     assert "if" not in node[0], "the feature file can land in any shard"
+
+
+def test_tracker_external_isolation_runs_in_required_governance_shard():
+    """Dropping the sleep-60 regressions from CI must fail the required gate."""
+    import shlex
+
+    import yaml
+
+    from ci_discovery import expanded_workflow
+    jobs = expanded_workflow(yaml.safe_load(CI.read_text())["jobs"])
+    shard = jobs["governance-tool-tests-shard"]
+    suite = "platform/scripts/governance/pravaha_tracker/tests/test_external_isolation.py"
+    commands = [step for step in shard["steps"]
+                if suite in shlex.split(str(step.get("run", "")))
+                or str(Path(suite).parent) in shlex.split(str(step.get("run", "")))]
+    assert commands, "external isolation regressions have no required CI invocation"
+    for step in commands:
+        words = shlex.split(step["run"])
+        assert "pytest" in words and "--collect-only" not in words
+        assert "--deselect" not in words and "-k" not in words
+        assert step.get("if") in (None, "matrix.shard == 1")
+        assert not step.get("continue-on-error", False)
+        assert "||" not in words
+    assert "governance-tool-tests-shard" in jobs["governance-tool-tests"]["needs"]
