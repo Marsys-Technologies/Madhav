@@ -568,7 +568,8 @@
       "include": [
         "platform/scripts/__tests__/test_gochara_window_readbacks*.py",
         "platform/scripts/__tests__/test_gochara_sitting_evidence*.py",
-        "platform/scripts/__tests__/test_fn*.py"
+        "platform/scripts/__tests__/test_fn*.py",
+        "platform/scripts/__tests__/test_gochara_rehearsal*.py"
       ]
     },
     "governance-gates-py-sidecar-shard-3-29": {
