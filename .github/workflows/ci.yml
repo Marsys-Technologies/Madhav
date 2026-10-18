@@ -273,68 +273,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
-      - name: Protected window — DDL and ledger atomicity and PUBLIC ACL readback (required)
-        env:
-          KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
-          KALA_REQUIRE_DB: '1'
-        # Own random disposable DB; no cluster-role changes. Real 1376 rollback
-        # injection covers both routine and --only; real psql runs the P9 query.
-        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-protected-window -- --no-cache
-      - name: Pre-pull test images from mirror.gcr.io (Docker Hub anonymous pull rate limit)
-        # Tests that `docker run postgres:16` themselves would otherwise pull from Docker Hub and
-        # hit 'toomanyrequests'; the same library image is pulled from Google's mirror and tagged
-        # with the name the tests use.
-        run: |
-          docker pull mirror.gcr.io/library/postgres:16
-          docker tag mirror.gcr.io/library/postgres:16 postgres:16
-
-      - name: Nirmāṇa elevation — required dedicated writer handoff contract
-        # Local throwaway DB only: the test rejects a non-test DB name and
-        # proves both generic-insert denial and dedicated-login detector access.
-        env:
-          PGPASSWORD: postgres
-          NIRMANA_ELEVATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_elevation_test
-          NIRMANA_EVIDENCE_EXECUTOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_evidence_executor_test
-          NIRMANA_EVIDENCE_PREFLIGHT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_evidence_preflight_test
-        run: |
-          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
-            -c "CREATE DATABASE nirmana_elevation_test;"
-          psql -h localhost -U postgres -d nirmana_elevation_test -v ON_ERROR_STOP=1 \
-            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
-          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
-            -c "CREATE DATABASE nirmana_evidence_executor_test;"
-          psql -h localhost -U postgres -d nirmana_evidence_executor_test -v ON_ERROR_STOP=1 \
-            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
-          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
-            -c "CREATE DATABASE nirmana_evidence_preflight_test;"
-          psql -h localhost -U postgres -d nirmana_evidence_preflight_test -v ON_ERROR_STOP=1 \
-            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
-          # PostgreSQL roles are cluster-wide.  These two real suites both
-          # exercise fixed production role names, so execute them serially
-          # even though each owns a different disposable database.
-          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-4-9 -- --reporter=verbose
-          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-4-10 -- --reporter=verbose
-          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-4-11 -- --reporter=verbose
-
-      # L0M-B1: use the existing required Unit Tests context and its Postgres
-      # service. Advisory-only execution cannot establish required DB coverage.
-      - name: L0-M — setup Python for the required source-preparation gate
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: L0-M — install source-preparation test dependencies
-        # This SQL/YAML-only suite imports no chart engine or service modules.
-        run: python -m pip install 'psycopg[binary]>=3.2' 'pyyaml>=6.0' 'pytest>=8.3'
-
-      - name: L0-M — typed source preparation against real Postgres (required)
-        env:
-          KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
-          KALA_REQUIRE_DB: '1'
-        run: |
-          cd python-sidecar
-          python -m pytest tests/l3/l0_parihara -q -rs --tb=short -p no:cacheprovider
-
       - name: MIG-1 — migration number guard (cross-directory duplicate)
         # DURABLE GUARD. SAMĀPTI brief v2.0 §4.4 · protocol:
         # 00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md
@@ -3600,6 +3538,14 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+      - name: Protected window — DDL and ledger atomicity and PUBLIC ACL readback (required)
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'unit-tests-protected-window'))) }}
+        env:
+          KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          KALA_REQUIRE_DB: '1'
+        # Own random disposable DB; no cluster-role changes. Real 1376 rollback
+        # injection covers both routine and --only; real psql runs the P9 query.
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-protected-window -- --no-cache
       - name: Pre-pull test images from mirror.gcr.io (Docker Hub anonymous pull rate limit)
         # Tests that `docker run postgres:16` themselves would otherwise pull from Docker Hub and
         # hit 'toomanyrequests'; the same library image is pulled from Google's mirror and tagged

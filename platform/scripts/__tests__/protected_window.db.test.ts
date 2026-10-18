@@ -1,4 +1,4 @@
-/** A6 D-41: real PostgreSQL regressions, required in CI's Unit Tests job.
+/** A6 D-41: real PostgreSQL regressions, required in CI's Unit DB contracts job.
  * The fixture owns one random database on an explicitly loopback cluster;
  * it never changes cluster roles or relies on a production schema snapshot.
  */
