@@ -5,6 +5,8 @@ The Python command includes real-cluster cases and rejects skipped JUnit results
 """
 from __future__ import annotations
 
+from _ci_gate_test_support import runs_in_full_gate
+
 import copy
 import shlex
 import subprocess
@@ -44,8 +46,8 @@ def _readback_problems(jobs):
         problems.append('readback result not checked by aggregate')
     if job.get('continue-on-error') or 'changes' not in str(job.get('needs', '')):
         problems.append('optional readback job')
-    if "needs.changes.outputs.docs_only != 'true'" not in str(job.get('if', '')):
-        problems.append('not fail closed for code changes')
+    if not runs_in_full_gate(job):
+        problems.append('not fail closed for full events')
     if not any('apt-get install' in str(s.get('run', '')) and 'postgresql' in str(s.get('run', ''))
                for s in job.get('steps', [])):
         problems.append('no PostgreSQL server binaries installed')
@@ -56,7 +58,7 @@ def _readback_problems(jobs):
             problems.append('missing suite: ' + suite)
         for step in matches:
             commands = [c[c.index('pytest') + 1:] for c in _commands(step) if 'pytest' in c]
-            if step.get('if') or step.get('continue-on-error'):
+            if not runs_in_full_gate(step) or step.get('continue-on-error'):
                 problems.append('optional pytest step')
             if any(any(t in ('-k', '-m', '--deselect', '--ignore', '--collect-only', '||', ';', '|')
                        or t.startswith(('--deselect=', '--ignore=')) for t in c) for c in commands):
@@ -76,7 +78,7 @@ def test_am7_runs_in_the_db_enabled_gochara_command(jobs):
     step = steps[0]
     assert step['env']['GOCHARA_A51_TEST_DATABASE_URL'].endswith('/gochara_a51_test')
     assert str(step['env']['GOCHARA_REQUIRE_DB']) == '1'
-    assert not step.get('if') and not step.get('continue-on-error')
+    assert runs_in_full_gate(step) and not step.get('continue-on-error')
     assert '--no-file-parallelism' in step['run']
 
 

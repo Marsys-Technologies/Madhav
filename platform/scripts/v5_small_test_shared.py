@@ -419,6 +419,39 @@ def evidence_digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
+
+def lane_rehearsal_request():
+    """Only the initial empty LOCAL teardown rehearsal; never execute authority.
+
+    Production's operation_request/acceptance path is unchanged. Called before
+    connecting, only from teardown(dry_run=True). No service, implicit libpq
+    defaults, host override or populated scope may enter this exception.
+    """
+    import json
+    import re
+    try: req = json.loads(os.environ.get('KY_OPERATION_REQUEST', '{}'))
+    except (TypeError, ValueError): return None
+    if not isinstance(req, dict) or 'lane_target' not in req: return None
+    target = req.get('lane_target')
+    if (req.get('kind') != 'smalltest_teardown_dryrun' or req.get('dry_run') is not True
+            or req.get('smalltest_scope') != {'empty': True} or req.get('chart_id') != CHART_ID
+            or not isinstance(target, dict) or set(target) != {'host', 'port', 'database'}
+            or target.get('host') not in ('127.0.0.1', 'localhost', '::1')
+            or type(target.get('port')) is not int or target['port'] != 55433
+            or not isinstance(target.get('database'), str)
+            or re.fullmatch(r'ky_[a-z][a-z0-9_]{0,54}', target['database']) is None):
+        raise Refused('local lane exception requires dry-run kind and an empty scope on ky_<lane>')
+    from psycopg.conninfo import conninfo_to_dict
+    try: settings = conninfo_to_dict(os.environ.get('DATABASE_URL', ''))
+    except Exception: raise Refused('lane rehearsal connection settings invalid') from None
+    expected = dict(host=target['host'], hostaddr='::1' if target['host'] == '::1' else '127.0.0.1',
+                    port='55433', dbname=target['database'], user='postgres', password='',
+                    passfile=os.devnull, options='', sslmode='disable', connect_timeout='10')
+    if settings != expected or any(key.startswith('PG') and key != 'PGPASSFILE' for key in os.environ):
+        raise Refused('lane rehearsal connection must be explicit and match the local target')
+    return req
+
+
 def operation_request():
     import json
     try:
@@ -647,6 +680,84 @@ def absence_evidence(req, root, *, teardown_receipt=None):
     return p
 
 
+# J-2a SCOPED backup (backup_v5_small_test_job.py --scope small_test; spec fleet/J2A_SCOPED_BACKUP_v1_0.md).
+# The digest is the reviewed scope file's (backup_v5_small_test_scope.json) and is pinned HERE because the executor
+# loads this module alone, from the reviewed commit; a test ties the pin to the file. The window is how long a scoped
+# backup stays a valid pre-test record: outside it the dispatch requires a fresh backup + restore proof.
+SCOPED_BACKUP_SCOPE_SHA256 = "489330948aecf7b6fdaa52d00a8f8fa8735e4ed1dcd27a14ee957bd43c07b528"
+SCOPED_BACKUP_VALIDITY_S = 4 * 3600
+
+
+def full_backup_window_problem(proof, label, folder, root, now=None):
+    """A full-form (/1) proof names its backup only with the same freshness bound as a scoped one."""
+    from datetime import datetime, timedelta, timezone
+    if (proof.get('status') != 'verified' or proof.get('label') != label or proof.get('restore_verified') is not True
+            or proof.get('backup_taken') is not True or proof.get('target_removed') is not True):
+        raise Refused('full backup restore proof is not a verified proof for this label')
+    capture = read_evidence(root, folder, {'name': 'capture.json', 'sha256': proof.get('capture_sha256')})
+    if (capture.get('schema') != 'ky.smalltest_backup/1' or capture.get('label') != label
+            or capture.get('archive_sha256') != proof.get('archive_sha256')):
+        raise Refused('full backup restore proof does not match its capture')
+    try:
+        start = datetime.fromisoformat(capture['ts'])
+        taken = datetime.fromisoformat(proof['ts'])
+        if start.tzinfo is None or taken.tzinfo is None:
+            raise ValueError()
+    except (KeyError, TypeError, ValueError):
+        raise Refused('full backup has no timestamp inside a validity window') from None
+    instant = now or datetime.now(timezone.utc)
+    if not start <= taken <= instant <= start + timedelta(seconds=SCOPED_BACKUP_VALIDITY_S):
+        raise Refused('backup is outside its validity window; a fresh backup and restore proof are required')
+
+
+def scoped_backup_problem(req, root, now=None):
+    """A `smalltest_dispatch` MUST name its backup (`backup_label` + the restore proof's `backup_restore_sha256`), and
+    that proof must be taken no more than SCOPED_BACKUP_VALIDITY_S ago (SR-J2A-BACKUP-SCOPE condition 4). A scoped proof
+    (schema /2) must be a verified proof of the pinned scope; a full proof (schema /1) is accepted only with the same
+    window, measured from its capture receipt's `ts`. Raises Refused.
+
+    (I) INTERPRETATION J2A-S2 (replaces the earlier opt-in reading): no label, no restore-proof digest, or a /1 proof
+    without a readable timestamp is refused, never silently allowed. (I) INTERPRETATION J2A-S4: the /1 capture has no
+    snapshot instant, so its window starts at the capture receipt's `ts`, written after the dump; alternative: refuse
+    every /1 proof."""
+    label = req.get('backup_label')
+    if label is None or req.get('backup_restore_sha256') is None:
+        raise Refused('a dispatch must name its backup_label and backup_restore_sha256; run a fresh backup and restore proof')
+    import re
+    from datetime import datetime, timedelta, timezone
+    if not isinstance(label, str) or not re.fullmatch(r'[a-z][a-z0-9_]{2,39}', label):
+        raise Refused('backup label malformed')
+    folder = 'backups/' + label
+    proof = read_evidence(root, folder, {'name': 'restore.json', 'sha256': req.get('backup_restore_sha256')})
+    if proof.get('schema') == 'ky.smalltest_restore/1':
+        return full_backup_window_problem(proof, label, folder, root, now)
+    if (proof.get('schema') != 'ky.smalltest_restore/2' or proof.get('status') != 'verified' or proof.get('label') != label
+            or proof.get('scoped') is not True or proof.get('restore_verified') is not True
+            or proof.get('backup_taken') is not True or proof.get('target_removed') is not True):
+        raise Refused('scoped backup restore proof is not a verified proof for this label')
+    if proof.get('scope_sha256') != SCOPED_BACKUP_SCOPE_SHA256:
+        raise Refused('scoped backup covers a scope other than the reviewed one')
+    capture = read_evidence(root, folder, {'name': 'capture.json', 'sha256': proof.get('capture_sha256')})
+    scope = capture.get('scope') or {}
+    window = capture.get('validity') or {}
+    try:
+        start = datetime.fromisoformat(window['not_before'])
+        end = datetime.fromisoformat(window['not_after'])
+        taken = datetime.fromisoformat(proof['ts'])
+        if (start.tzinfo is None or end.tzinfo is None or taken.tzinfo is None
+                or end - start != timedelta(seconds=SCOPED_BACKUP_VALIDITY_S) or window.get('seconds') != SCOPED_BACKUP_VALIDITY_S):
+            raise ValueError()
+    except (KeyError, TypeError, ValueError):
+        raise Refused('scoped backup validity window missing or malformed') from None
+    if (capture.get('schema') != 'ky.smalltest_backup/2' or capture.get('label') != label
+            or scope.get('sha256') != SCOPED_BACKUP_SCOPE_SHA256 or capture.get('archive_sha256') != proof.get('archive_sha256')
+            or proof.get('validity') != window):
+        raise Refused('scoped backup restore proof does not match its capture')
+    instant = now or datetime.now(timezone.utc)
+    if not start <= taken <= instant <= end:
+        raise Refused('scoped backup is outside its validity window; a fresh backup and restore proof are required')
+
+
 def smalltest_request_problem(req, root):
     """Pure file evidence admission; used from the reviewed source by executor."""
     try:
@@ -670,6 +781,7 @@ def smalltest_request_problem(req, root):
                     raise Refused('annual small test requires timezone-qualified bounds of at most 366 days') from None
             if kind == 'smalltest_dispatch':
                 absence_evidence(req, root)
+                scoped_backup_problem(req, root)
         elif kind in ('smalltest_teardown', 'smalltest_teardown_dryrun'):
             scope = staged_scope(req, root)
             if kind == 'smalltest_teardown':

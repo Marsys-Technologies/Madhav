@@ -375,3 +375,19 @@ def test_separate_1235_operation_is_explicitly_not_applicable_only_when_wholly_a
     finally:
         cl.psql("DELETE FROM public._migrations_applied WHERE filename = '" + LEDGER_NAME + "'")
         cl.psql('DROP FUNCTION IF EXISTS public.ka_gochara_staged_candidate_has_runtime_evidence(text)')
+
+
+def test_manifest_covers_every_raw_output_once_with_its_actual_digest(tmp_path):
+    proc, out, _log = _run(tmp_path, HAPPY_READBACK)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    entries = [line.split(maxsplit=1) for line in (out / 'MANIFEST.sha256').read_text().splitlines()]
+    names = [name for _digest, name in entries]
+    # Successful verification of a subset is insufficient: both raw readbacks
+    # and the runner identity must be bound into the evidence manifest.
+    assert sorted(names) == ['FN1235-readback.out', 'RUNNER_SHA256', 'SESSION-identity.out']
+    assert sorted(p.name for p in out.glob('*.out')) == ['FN1235-readback.out', 'SESSION-identity.out']
+    for digest, name in entries:
+        assert digest == hashlib.sha256((out / name).read_bytes()).hexdigest(), name
+    assert (out / 'FN1235-readback.out').read_text() == HAPPY_READBACK
+    assert (out / 'SESSION-identity.out').read_text() == (
+        'c49\tc49\tsuvarna_disposable\t127.0.0.1\t1\tPostgreSQL test\n')

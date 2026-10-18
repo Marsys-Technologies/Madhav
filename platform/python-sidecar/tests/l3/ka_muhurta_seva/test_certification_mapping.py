@@ -262,7 +262,8 @@ def test_mapping_runs_in_mandatory_governance_and_evaluator_ci():
                for run in runs)
     assert not shard.get('continue-on-error')
     aggregate = jobs['governance-gates']
-    assert 'governance-gates-py-sidecar-shard' in aggregate['needs']
+    assert 'full-suite' in aggregate['needs']
+    assert 'governance-gates-py-sidecar-shard' in jobs['full-suite']['needs']
     assert 'always()' in aggregate['if']
     assert not aggregate.get('continue-on-error')
     assert any('tests/l3/ka_muhurta_seva -q' in step.get('run', '')

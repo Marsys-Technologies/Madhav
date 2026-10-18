@@ -9,6 +9,10 @@ what was stored, and the stored `period_running_at` result with what that suppor
   anchor with running rows : stored support == contact ∩ D(anchor lord, anchor level); result == true iff non-empty
   anchor with NO rows      : stored support == the contact span (unrestricted);        result == 'unknown'
 
+"NO rows" = the pinned settled build holds no row for the anchor (lord, level) ANYWHERE. The snapshot binds only the rows
+overlapping the horizon, so an anchor held in the build but running wholly outside the horizon is NOT "no rows": its
+running set is empty, the support is `computed_empty` and the result `false` (J-2a run 1).
+
 where D(X, ℓ) = the union of the half-open `[start, end)` intervals of the snapshot-bound level-ℓ rows whose lord is X
 and the ANCHOR (X, ℓ) is the record's own `period_anchor_lord` / `period_anchor_level` (AM-21 part 2) — NOT the transiting
 agent's periods and not every level. For Phaladīpikā XX.38 (the Sun/Jupiter entering a bhukti lord's sign) the two differ.
@@ -18,7 +22,7 @@ gap), narrower (discarding a valid later portion) or on the wrong pieces fails t
 """
 from __future__ import annotations
 
-from .inventory_verifier import RECORD_SUPPORT_SQL as _SQL
+from .inventory_verifier import RECORD_SUPPORT_PINS as _PINS, RECORD_SUPPORT_SQL as _SQL
 
 
 def _scalar(row) -> int:
@@ -39,13 +43,14 @@ def verify_p1_support(conn, *, chart_id: str, generation: str, event_class: str)
         if _scalar(n):
             raise RuntimeError("P1 records exist on a schema without the period-anchor columns (1233)")
         return {"records": 0, "restricted": 0}
-    rows = conn.execute(_SQL, {"chart": chart_id, "gen": generation, "cls": event_class}).fetchall()
+    rows = conn.execute(_SQL, {"chart": chart_id, "gen": generation, "cls": event_class, **_PINS}).fetchall()
     problems: list[str] = []
     restricted = 0
     for rid, stored, expected, equal, expected_empty, result, has_rows in rows:
         if not equal:
-            problems.append(f"record {rid}: stored support {stored} != the contact restricted to the running "
-                            f"periods {expected}")
+            what = ("the contact restricted to the running periods" if has_rows else
+                    "the unrestricted contact span (no daśā row for the anchor in the pinned build)")
+            problems.append(f"record {rid}: stored support {stored} != {what} {expected}")
         want = ("unknown" if not has_rows else ("false" if expected_empty else "true"))
         if result != want:
             problems.append(f"record {rid}: period_running_at stored {result!r}, the support implies {want!r}")

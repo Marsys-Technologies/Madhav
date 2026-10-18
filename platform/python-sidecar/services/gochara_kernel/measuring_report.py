@@ -1,8 +1,9 @@
 """Read-only, independent measurements for the unsealed all_classes_full build.
 
 Specification: MEASURING_BUILD_CONTRACT_v1_0.md, amendment v1.0.1 and
-MB-1/MB-5/MB-6. This module imports no builder rules. Its horizon is derived
-from supplied stored life-event rows; it never recomputes L1 chart facts.
+MB-1/MB-5/MB-6. This module imports no builder rules. Its horizon is checked
+against ruled scope and independent chart/run inputs, or re-derived from legacy
+captured life-event rows; it never recomputes L1 chart facts.
 
 Build shares use UTC half-open days; scored shares use IST inclusive dates
 (1998-01-01 through 2026-04-17). P4 intersects the agents' instant unions
@@ -321,14 +322,19 @@ def _runtime_refusals(evidence, *, status, stored_scope):
 
 
 def _horizon_basis_refusals(basis, *, chart_id, birth_date, build_date, expected_horizon):
-    """Re-derive from the manifest's consumed rows alone (MB-1.4/1.5)."""
+    """Validate the producer's ruled scope or re-derive a legacy captured basis.
+
+    (I) INTERPRETATION: P03's outcome-free field scope takes precedence
+    over the historical outcome-selected scope. Both records are checked
+    independently here; a ruled-scope label never bypasses evidence checks.
+    """
     required = {"schema", "rule", "chart_id", "birth_date", "build_date", "horizon", "basis",
                 "chosen", "birth_row", "fully_dated_readings", "shape_readings",
                 "excluded_not_fully_dated", "rows_total", "consumed_rows", "consumed_rows_digest"}
     if not isinstance(basis, dict) or not required <= basis.keys():
         return ["horizon_basis_missing"]
     try:
-        if basis["schema"] != "horizon_basis/1" or basis["rule"] != "ruling7+ruling13":
+        if basis["schema"] != "horizon_basis/1" or basis["rule"] not in {"ruling7+ruling13", "ruled_scope+birth_centenary"}:
             raise MeasuringReportError("horizon_basis_invalid: schema_or_rule")
         birth = birth_date_of(birth_date)
         if not isinstance(build_date, date):
@@ -352,6 +358,30 @@ def _horizon_basis_refusals(basis, *, chart_id, birth_date, build_date, expected
                                    ensure_ascii=False, allow_nan=False).encode("utf-8")).hexdigest()
         if basis["consumed_rows_digest"] != digest:
             raise MeasuringReportError("horizon_basis_digest_mismatch")
+        if basis["rule"] == "ruled_scope+birth_centenary":
+            # The field writer consumes no outcome rows. Verify that claim,
+            # then derive its bounds from the independent context and ruling.
+            if (basis["basis"] != "ruled_horizon" or rows
+                    or type(basis["excluded_not_fully_dated"]) is not int
+                    or basis["excluded_not_fully_dated"] != 0
+                    or basis["chosen"] is not None or basis["birth_row"] is not None
+                    or basis["fully_dated_readings"] != {} or basis["shape_readings"] != {}
+                    or basis.get("flag_exact_but_id_undated") != []
+                    or basis.get("rows_without_lel_id") != []):
+                raise MeasuringReportError("horizon_basis_invalid: ruled_scope")
+            try:
+                centenary = birth.replace(year=birth.year + 100)
+            except ValueError:
+                raise MeasuringReportError("horizon_birth_anniversary_undefined") from None
+            ruled_bounds = (RULED_MEASURING_HORIZON[0], centenary)
+            if problem := horizon_problem(ruled_bounds, birth_date=birth):
+                raise MeasuringReportError(problem)
+            if ruled_bounds[0] > today:
+                raise MeasuringReportError("horizon_start_in_future")
+            if (ruled_bounds != tuple(as_utc_date(v) for v in expected_horizon)
+                    or ruled_bounds != tuple(as_utc_date(v) for v in basis["horizon"])):
+                return ["horizon_mismatch"]
+            return []
         # Reconstruct the stored reader shape explicitly; no live log or builder helper.
         events = [{**r, "provenance": {"lel_id": r["provenance_lel_id"],
                                       "subcategory": r["provenance_subcategory"]}} for r in rows]
@@ -715,7 +745,7 @@ def read_measuring_acceptance(conn, chart_id, generation, *, expected_horizon, b
     """Read-only MB-6 caller for verifier B (J-3b); no evidence defaults to PASS.
 
     Runtime/log and independently checked sink evidence are explicit inputs;
-    the consumed-row basis comes from the captured manifest, never today's LEL.
+    the scope basis comes from the captured manifest, never today's LEL.
     Reader refusals join all other findings rather than disappearing.
     """
     try:
