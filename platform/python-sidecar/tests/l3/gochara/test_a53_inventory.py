@@ -46,7 +46,7 @@ def _row(i, level, lord, a, b):
 DASHA_PARENT = {1: None, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3}
 L0_VEDHA_ROWS = [tuple(r) for r in json.loads(
     (Path(__file__).resolve().parents[1] / "gochara_rules" / "fixtures" / "l0_vedha_rows_2026_10_02.json").read_text())]
-PINNED_BUILD = "75524b3e-102a-43ec-8cee-3f57fee752c3"      # the frozen §4.0 contract build
+PINNED_BUILD = "7377833e-5d3b-4e70-8bef-1318904f470e"      # governed settlement; synthetic period fixtures below
 
 
 # Pinned Vimśottarī rows around the class horizon [2025-01-01, 2025-03-01): each level
@@ -550,9 +550,9 @@ def test_the_verifier_imports_nothing_from_the_builder():
     bad = {m for m in imported if any(f in m.replace("inventory_verifier", "") for f in forbidden)}
     assert not bad, f"the verifier must be independent of the builder: {bad}"
     # stdlib only (the aspect-to-span re-derivation needs `datetime.timedelta`; R9-10: `json` reads the
-    # manifest's stored_scope)
+    # manifest's stored_scope; re/pathlib/uuid validate the reviewed settlement independently)
     # + `brahmagyan.verification_vocab`: the SANCTIONED tier vocabulary (TAP-6 forbids the literal outside it) — a constant, no builder logic
-    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime", "json", "brahmagyan.verification_vocab", ".nd_h_tables"}, imported
+    assert imported <= {"__future__", "hashlib", "typing", "decimal", "datetime", "json", "re", "pathlib", "uuid", "brahmagyan.verification_vocab", ".nd_h_tables"}, imported
 
 
 def test_the_seal_check_sees_exactly_what_is_missing_after_the_builder_alone(am5):

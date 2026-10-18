@@ -138,7 +138,12 @@ def module_digests(modules: dict) -> dict:
             spec = importlib.util.find_spec(name)
             if spec is None or not spec.origin:
                 raise RuntimeError(f"implementation: {name} cannot be located")
-            per[name] = hashlib.sha256(open(spec.origin, encoding="utf-8").read().encode("utf-8")).hexdigest()
+            source = open(spec.origin, encoding="utf-8").read()
+            if name == "services.gochara_kernel.dasha_read":
+                # Independent identity of the same reviewed authority bytes.
+                from pathlib import Path
+                source += "\0" + Path(spec.origin).with_name("dasha_settlement.json").read_text(encoding="utf-8")
+            per[name] = hashlib.sha256(source.encode("utf-8")).hexdigest()
         out[stage] = hashlib.sha256(_json.dumps(per, sort_keys=True, separators=(",", ":"),
                                                  ensure_ascii=False).encode("utf-8")).hexdigest()
     return out

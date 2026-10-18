@@ -104,7 +104,6 @@
 # area: cards — role cards, coverage table, Astra KU-01…KU-03 replacements
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP_REVIEWER.md
-00_ARCHITECTURE/briefs/kalayantra/fleet/cards/COVERAGE_BOOTSTRAP.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_BUILDER.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_VERIFIER.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/TOKEN_MEASUREMENT.json
@@ -155,7 +154,6 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/accept/README.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/accept/j0_disposition.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/ADHIKARIN.md
-00_ARCHITECTURE/briefs/kalayantra/fleet/cards/COVERAGE.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/KARAKA.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/PARIKSAKA.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/accept_j0c/disposition.json
@@ -167,6 +165,7 @@
 # area: wave-b — assembled control-plane implementations, dependencies and their tests/fixtures
 00_ARCHITECTURE/briefs/kalayantra/fleet/FROZEN_PATHS.txt
 00_ARCHITECTURE/briefs/kalayantra/fleet/README.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/COMMON_HEADER_v3.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/bin/ky
 00_ARCHITECTURE/briefs/kalayantra/fleet/bin/kybrief
 00_ARCHITECTURE/briefs/kalayantra/fleet/claude_cycle.py
@@ -292,6 +291,20 @@ platform/scripts/governance/pravaha_tracker/verdicts.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.ruling.json
 
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.tests.codex.json
+
+# area: executor-operations — shared adapter contract and current Wave 4 preparation
+00_ARCHITECTURE/briefs/kalayantra/fleet/OPS_CONTRACT.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/W4_EXECUTOR_BINDINGS.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/operation_adapters.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/CLOUDRUN_READBACK_v1_0.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_dryrun.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cloudrun_readback.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_launch.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/conftest.py
 
 # tranche: deferred
 # Listed and hash-pinned, but not installed or launch-authorising.

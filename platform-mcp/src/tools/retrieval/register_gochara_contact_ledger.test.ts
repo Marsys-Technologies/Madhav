@@ -240,60 +240,83 @@ describe('queryContactLedger — WP7 P-4', () => {
       .mockResolvedValueOnce(jsonRes([]))                                  // coverage partitions
   }
 
+  const SEALED = (sealed: boolean) => jsonRes([{ sealed }])
+
   it('a governed (5.x) generation that is PUBLISHED and SEALED is served', async () => {
-    mockFetch
-      .mockResolvedValueOnce(MANIFEST('published'))
-      .mockResolvedValueOnce(jsonRes([{ present: true }]))                 // the seal relation exists
-      .mockResolvedValueOnce(jsonRes([{ sealed: true }]))                  // and holds this generation
+    mockFetch.mockResolvedValueOnce(MANIFEST('published')).mockResolvedValueOnce(SEALED(true))
     serveData()
     const res = await queryContactLedger({ chart_id: CHART, generation: '5.0' }, principal)
     expect(res.refusal).toBeUndefined()
     expect(res.diagnostic).toBeUndefined()
     expect(res.status).toBe('ok')
     expect(res.hard_floor.count).toBe(1)
+    expect(sqlOf(1)).toBe('SELECT EXISTS (SELECT 1 FROM ka_gochara_generation_seal WHERE chart_id = $1::uuid AND generation = $2) AS sealed')
   })
 
   it('an interrupted slice-to-full rebuild (new UNSTAMPED candidate manifest, old chain) is NOT served as ok — no contact or coverage SQL', async () => {
     // between the manifest substep and the snapshot substep the manifest already carries the new vector (no slice stamp), so the
     // slice guard passes; the status rule is what stops it
-    mockFetch.mockResolvedValueOnce(MANIFEST('candidate'))
+    mockFetch.mockResolvedValueOnce(MANIFEST('candidate')).mockResolvedValueOnce(SEALED(false))
     const res = await queryContactLedger({ chart_id: CHART, generation: '5.0' }, principal)
     expect(res.status).toBe('not_computed')
     expect(res.refusal).toBe('candidate_not_served')
     expect(res.hard_floor).toEqual({ confirmed: [], count: 0 })
     expect(res.coverage.partitions).toEqual([])
     expect(res.coverage.note).toMatch(/not published and sealed/)
-    expect(mockFetch).toHaveBeenCalledTimes(1)                            // the manifest read only
+    expect(mockFetch).toHaveBeenCalledTimes(2)                            // the manifest read and the seal lookup only
   })
 
   it('published but NOT sealed is refused too', async () => {
-    mockFetch
-      .mockResolvedValueOnce(MANIFEST('published'))
-      .mockResolvedValueOnce(jsonRes([{ present: true }]))
-      .mockResolvedValueOnce(jsonRes([{ sealed: false }]))
+    mockFetch.mockResolvedValueOnce(MANIFEST('published')).mockResolvedValueOnce(SEALED(false))
     const res = await queryContactLedger({ chart_id: CHART, generation: '5.0' }, principal)
     expect(res.refusal).toBe('candidate_not_served')
-    expect(mockFetch).toHaveBeenCalledTimes(3)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 
-  it('a missing seal relation counts as not sealed, and a governed generation with NO manifest is refused', async () => {
-    mockFetch.mockResolvedValueOnce(MANIFEST('published')).mockResolvedValueOnce(jsonRes([{ present: false }]))
-    expect((await queryContactLedger({ chart_id: CHART, generation: '5.0' }, principal)).refusal).toBe('candidate_not_served')
-    mockFetch.mockReset()
-    mockFetch.mockResolvedValueOnce(jsonRes([]))                          // no manifest row at all
+  it('a governed generation with NO manifest is refused', async () => {
+    mockFetch.mockResolvedValueOnce(jsonRes([])).mockResolvedValueOnce(SEALED(false))      // no manifest row at all
     const none = await queryContactLedger({ chart_id: CHART, generation: '5.0' }, principal)
     expect(none.refusal).toBe('candidate_not_served')
     expect(none.manifest).toBeNull()
   })
 
+  it('a FAILED seal lookup never serves: refused, and the response says the lookup failed', async () => {
+    mockFetch.mockResolvedValueOnce(MANIFEST('published'))
+      .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({}), text: async () => 'Rejected by whitelist' })
+    const res = await queryContactLedger({ chart_id: CHART, generation: '5.0' }, principal)
+    expect(res.refusal).toBe('candidate_not_served')
+    expect(res.coverage.note).toMatch(/seal lookup failed/)
+  })
+
+  it('(b) a SUPERSEDED generation that WAS sealed is refused, and a diagnostic read reports sealed TRUE (seal history is independent of status)', async () => {
+    mockFetch.mockResolvedValueOnce(MANIFEST('superseded')).mockResolvedValueOnce(SEALED(true))
+    const refused = await queryContactLedger({ chart_id: CHART, generation: '5.0' }, principal)
+    expect(refused.refusal).toBe('candidate_not_served')
+    expect(refused.coverage.note).toMatch(/manifest superseded, sealed/)
+    mockFetch.mockReset()
+    mockFetch.mockResolvedValueOnce(MANIFEST('withdrawn')).mockResolvedValueOnce(SEALED(true))
+    serveData()
+    const diag = await queryContactLedger({ chart_id: CHART, generation: '5.0', diagnostic: true }, principal)
+    expect(diag.status).toBe('ok')
+    expect(diag.diagnostic).toMatchObject({ manifest_status: 'withdrawn', sealed: true })
+  })
+
   it('diagnostic=true reads an unsealed governed generation, LABELLED as diagnostic', async () => {
-    mockFetch.mockResolvedValueOnce(MANIFEST('candidate'))
+    mockFetch.mockResolvedValueOnce(MANIFEST('candidate')).mockResolvedValueOnce(SEALED(false))
     serveData()
     const res = await queryContactLedger({ chart_id: CHART, generation: '5.0', diagnostic: true }, principal)
     expect(res.status).toBe('ok')
     expect(res.refusal).toBeUndefined()
     expect(res.diagnostic).toMatchObject({ served_unpublished_generation: true, manifest_status: 'candidate', sealed: false })
     expect(res.diagnostic?.note).toMatch(/NOT a coverage statement/)
+  })
+
+  it('a diagnostic read whose seal lookup FAILED reports sealed null, never false', async () => {
+    mockFetch.mockResolvedValueOnce(MANIFEST('candidate'))
+      .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({}), text: async () => 'Rejected' })
+    serveData()
+    const res = await queryContactLedger({ chart_id: CHART, generation: '5.0', diagnostic: true }, principal)
+    expect(res.diagnostic).toMatchObject({ sealed: null, seal_lookup_failed: true })
   })
 
   it('diagnostic=true never serves a TEST SLICE', async () => {
@@ -303,7 +326,7 @@ describe('queryContactLedger — WP7 P-4', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it('legacy generations are unchanged: 4.0 candidate-free reads need no seal and issue no seal query', async () => {
+  it('legacy generations are unchanged: 4.0 reads need no seal and issue no seal query', async () => {
     mockFetch
       .mockResolvedValueOnce(MANIFEST('published'))
     serveData()

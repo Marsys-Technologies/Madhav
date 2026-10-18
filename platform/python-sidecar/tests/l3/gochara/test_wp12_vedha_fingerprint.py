@@ -8,7 +8,8 @@ report that — no code path existed that could read "stale".
 
 What this file proves:
   * the fingerprint is deterministic and sensitive to exactly the inputs consumed;
-  * a rebuild stamps it on every house_vedha row;
+  * archived house_vedha row shapes carry it through retained serializers
+    (KA-3a has retired rolling Vedha dispatch; no writer activation is claimed);
   * the detector reads STALE for (a) a changed upstream rule and (b) rows that
     carry no fingerprint at all — the pre-existing 132-row situation — and FRESH
     only after a rebuild;
@@ -96,7 +97,7 @@ def db():
     c.execute(MIGRATION_1082.read_text())
     c.close()
     seed = psycopg.connect(WP6_DSN)
-    _seed(seed)
+    _seed(seed, real_ephemeris=True)
     seed.commit()
     seed.close()
     yield
@@ -104,24 +105,11 @@ def db():
 
 
 def _build():
-    import services.ka_vedha_gochara.writer as vw
-
-    conn = psycopg.connect(WP6_DSN)
-    ctx = SimpleNamespace(db_conn=conn, config={"chart_id": CHART_ID}, dry_run=False)
-    orig = vw._compute_ayanamsha_offset
-    vw._compute_ayanamsha_offset = lambda _d: 0.0
-    try:
-        vw.KaVedhaGocharaWriter().run(ctx)
-        conn.commit()
-    finally:
-        vw._compute_ayanamsha_offset = orig
-        conn.close()
-    # Step 3 §4.5: the gate now reads ALL vedha kinds, but the §3 row stamps (a
-    # fingerprint on sarvatobhadra/latta rows) are a LATER step-3 part — until
-    # then the writer stamps only house_vedha rows. Narrow the fixture to the
-    # stamped kind so this suite's subject (the fingerprint gate) is what is
-    # exercised, never an unstamped row the writer cannot yet produce.
-    _exec("DELETE FROM kala_vedha_gochara WHERE vedha_kind <> 'house_vedha'")
+    # (I) INTERPRETATION: read compatibility after KA-3a retired the rolling
+    # writer. Seed archived rows through retained production serializers.
+    from .test_wp9_stamp_columns import _legacy_vedha_read_fixture
+    with psycopg.connect(WP6_DSN) as conn:
+        _legacy_vedha_read_fixture(conn, house_only=True)
 
 
 def _check():
@@ -137,6 +125,7 @@ def _exec(sql, params=()):
 
 
 def test_rebuild_stamps_the_fingerprint_and_the_detector_reads_fresh(db):
+    """Historical oracle ID: archived-row serializers replace retired dispatch."""
     _build()
     with psycopg.connect(WP6_DSN, autocommit=True) as c:
         n, n_fp = c.execute(
@@ -257,13 +246,10 @@ def _build_moorti():
 
     conn = psycopg.connect(WP6_DSN)
     ctx = SimpleNamespace(db_conn=conn, config={"chart_id": CHART_ID}, dry_run=False)
-    orig = mw._compute_ayanamsha_offset
-    mw._compute_ayanamsha_offset = lambda _d: 0.0
     try:
         mw.KaMoortiNirnayaWriter().run(ctx)
         conn.commit()
     finally:
-        mw._compute_ayanamsha_offset = orig
         conn.close()
 
 

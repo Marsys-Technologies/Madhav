@@ -18,6 +18,9 @@ afresh. A SEALED generation is refused up front (the DB refuses too).
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 import json as _json
 from datetime import datetime
 from typing import Any, Sequence
@@ -178,7 +181,8 @@ class InventoryStore:
 
     def consumed_dasha_rows(self, chart_id: str, generation: str) -> list[DashaRow]:
         """The pinned daśā rows the snapshot CONSUMED (the inventory is cut at exactly the rows the snapshot's digest covers, never a fresh read).
-        With 1305 they come from the snapshot's own COPY (so they exist after any later L1 rebuild); a legacy snapshot is read by id."""
+        With 1305 they come from the snapshot's own COPY (so they exist after any later L1 rebuild); a legacy snapshot is read by id through the
+        governed daśā query."""
         copy = None
         if self.snapshot_copy_available():
             r = self.conn.execute(
@@ -191,13 +195,9 @@ class InventoryStore:
             return [DashaRow(str(e["metadata"]["dasha_row_id"]), int(e["key"]["level_n"]), str(e["content"]["lord_graha"]).lower(),
                              datetime.fromisoformat(e["key"]["start_iso"]).astimezone(_tz.utc),
                              datetime.fromisoformat(e["content"]["end_iso"]).astimezone(_tz.utc)) for e in rows]
-        rows = self.conn.execute(
-            "SELECT d.dasha_row_id::text, d.level_n, d.lord_graha, d.start_iso, d.end_iso"
-            " FROM public.chart_dashas d"
-            " JOIN public.ka_gochara_search_input_snapshot s"
-            "   ON d.chart_id = s.chart_id AND d.dasha_row_id = ANY (s.consumed_dasha_row_ids)"
-            " WHERE s.chart_id = %s AND s.generation = %s ORDER BY d.level_n, d.start_iso",
-            (chart_id, generation)).fetchall()
+        rows = execute_governed_dasha_query(
+            self.conn, chart_id, dasha_query('snapshot_consumed_rows'),
+            (chart_id, generation), ayanamsha_id="lahiri_chitrapaksha").fetchall()
         return [DashaRow(r[0], int(r[1]), str(r[2]).lower(), r[3], r[4]) for r in rows]
 
     def moon_scope_available(self) -> bool:

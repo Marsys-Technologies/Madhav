@@ -1,0 +1,120 @@
+{
+  "version": "K5-G1b/v1",
+  "registry_revision": 30,
+  "asset": "ka_kshetra",
+  "scope": "Candidate-only G1 pre-build SR-A4-01; no activated output or production certificate",
+  "kind": "data",
+  "carriage": {
+    "nature": "derivation",
+    "served_surface": "Private candidate tables only; no served surface; ordinary dispatch is inactive",
+    "evidence": "platform/python-sidecar/services/ka_kshetra/writer.py:279"
+  },
+  "ldgr_source": {
+    "column": "kala_field_provenance_candidate.source_fact_id",
+    "state": "Existing L1 references; whole-table production resolution unmeasured"
+  },
+  "vocab_alias": null,
+  "prose_fields": null,
+  "fidelity_tests": [
+    "tests/l3/ka_kshetra/test_g1b_insights.py::test_normalized_promise_absence_is_typed_model_silence",
+    "tests/l3/ka_kshetra/test_g1b_manifest.py::test_complete_dependency_digest_is_recomputed_for_each_mutation"
+  ],
+  "null_convention": "Typed evaluated_silent is not measured_lower_rate. Unknown axes stay null. Null is a surrogate alignment diagnostic; no event odds or production reliability claim.",
+  "produced_tables": [
+    "kala_field_candidate",
+    "kala_field_null_candidate",
+    "kala_field_windows_candidate",
+    "kala_field_salience_candidate",
+    "kala_insights_candidate",
+    "kala_timeline_spec_candidate",
+    "kala_field_snapshots_candidate",
+    "kala_layer_candidate_grain"
+  ],
+  "density_tier_columns": [
+    "confidence_tier"
+  ],
+  "semantic_fingerprint": {
+    "inputs": "Full FieldPins plus candidate model digest, conventions, rules and all other attested grain vectors",
+    "outputs": "Independent content digest in the ka_kshetra:snapshot manifest grain",
+    "oracles": "tests/l3/ka_kshetra/test_g1b_manifest.py"
+  },
+  "writer_digest": "platform/src/generated/nirmana-writer-digests.json:ka_kshetra",
+  "disposition": "Pre-build only; ordinary dispatch leaves legacy/published generations unchanged. Freeze baseline at actual merged head; protected activation and independent verification remain gates.",
+  "production_certification": null,
+  "gates": {
+    "Build": {
+      "revisions": {
+        "Build.registered": 3,
+        "Build.contract": 2,
+        "Build.target": 2,
+        "Build.dag": 4,
+        "Build.count_integrity": 4,
+        "Build.completion": 7,
+        "Build.exercised": 3,
+        "Build.history": 3,
+        "Build.dep_liveness": 3
+      },
+      "expected_reading": "UNMEASURED in production. Candidate structural oracles are code evidence only; no census PASS claimed."
+    },
+    "Idem": {
+      "revisions": {
+        "Idem.pattern": 5
+      },
+      "expected_reading": "UNMEASURED in production. Candidate structural oracles are code evidence only; no census PASS claimed."
+    },
+    "Earn": {
+      "revisions": {
+        "Earn.build_record": 3,
+        "Earn.service_state": 2
+      },
+      "expected_reading": "UNMEASURED in production. Candidate structural oracles are code evidence only; no census PASS claimed."
+    },
+    "Vocab": {
+      "revisions": {
+        "Vocab.identity": 3,
+        "Vocab.alias": 10
+      },
+      "expected_reading": "UNMEASURED in production. Candidate structural oracles are code evidence only; no census PASS claimed."
+    },
+    "Ldgr": {
+      "revisions": {
+        "Ldgr.source_presence": 6
+      },
+      "expected_reading": "UNMEASURED in production. Candidate structural oracles are code evidence only; no census PASS claimed."
+    },
+    "Dens": {
+      "revisions": {
+        "Dens.served": 14
+      },
+      "expected_reading": "UNMEASURED in production. Candidate structural oracles are code evidence only; no census PASS claimed."
+    },
+    "Narr": {
+      "revisions": {
+        "Narr.agree": 8,
+        "Narr.checkable": 8,
+        "Narr.fidelity_test": 7,
+        "Narr.lint": 7
+      },
+      "expected_reading": "UNMEASURED in production. Candidate structural oracles are code evidence only; no census PASS claimed."
+    },
+    "Null": {
+      "revisions": {
+        "Null.schema_default": 11,
+        "Null.blank_rows": 11
+      },
+      "expected_reading": "UNMEASURED in production. Candidate structural oracles are code evidence only; no census PASS claimed."
+    },
+    "Carr": {
+      "revisions": {
+        "Carr.D1": 5,
+        "Carr.D2": 3,
+        "Carr.D3": 4
+      },
+      "expected_reading": "UNMEASURED in production. Candidate structural oracles are code evidence only; no census PASS claimed. NO_DETECTOR for the explicitly listed missing detectors.",
+      "detector_none": [
+        "Carr.D2"
+      ],
+      "detector_dependency": "Future independently accepted registry detector revision; no proxy PASS."
+    }
+  }
+}

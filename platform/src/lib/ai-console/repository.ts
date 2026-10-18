@@ -248,7 +248,6 @@ function firstIncompatibleRole(compatibleRoles: readonly AiRole[], roles: readon
   return roles.find(role => !compatibleRoles.includes(role))
 }
 
-/** Exact target read for one resolution. It never decrypts, spawns, repairs, or searches alternatives. */
 /**
  * Internal carrier: the prepare-time latch (PR #3109, C45) — validation_state
  * latched away from 'reachable' with nothing left to revalidate it. Carries the
@@ -268,8 +267,8 @@ class LatchedCliInstallationError extends AiConsoleError {
 }
 
 /** Prepare-time revalidation of a latched CLI: at most once per installation
- * per interval (the row's own last_checked_at, including thrown/aborted
- * recovery attempts), with a short bounded timeout. */
+ * per interval (the row's own last_checked_at — every validateCli write, success
+ * or failure, refreshes it), with a short bounded timeout. */
 const PREPARE_CLI_REVALIDATION_INTERVAL_MINUTES = 15
 const PREPARE_CLI_REVALIDATION_TIMEOUT_MS = 20_000
 
@@ -282,24 +281,24 @@ async function attemptPrepareCliRevalidation(userId: string, cliId: string): Pro
   if (checkedAt && Date.now() - checkedAt.getTime() < PREPARE_CLI_REVALIDATION_INTERVAL_MINUTES * 60_000) {
     return false                                                   // rate-limited: one attempt per interval
   }
-  const attemptedAt = new Date()
   try {
+    // Claim the interval atomically across hosts before any external work. A
+    // failed/throwing validation also consumes the interval; a SELECT alone
+    // permits concurrent prepares to launch duplicate probes.
+    const claimed = await query(`UPDATE ai_cli_installations SET last_checked_at=clock_timestamp()
+      WHERE cli_id=$1 AND validation_state IN ('untested','unreachable','needs_attention')
+        AND (last_checked_at IS NULL OR last_checked_at <= clock_timestamp() - ($2 * interval '1 minute'))
+      RETURNING cli_id`, [cliId, PREPARE_CLI_REVALIDATION_INTERVAL_MINUTES])
+    if (!claimed.rows.length) return false
     const { validateCli } = await import('./cli/validation')
     const result = await validateCli(userId, cliId, AbortSignal.timeout(PREPARE_CLI_REVALIDATION_TIMEOUT_MS))
     return result.state === 'reachable'
   } catch {
-    // Aborted validation restores its previous row, including last_checked_at.
-    // Retain this attempt's window without changing the restored visible state
-    // or moving a newer validation's timestamp backwards.
-    try {
-      await query(`UPDATE ai_cli_installations
-        SET last_checked_at=GREATEST(last_checked_at,$2::timestamptz),updated_at=clock_timestamp()
-        WHERE cli_id=$1`, [cliId, attemptedAt])
-    } catch { /* Preserve the caller's safe terminal error if the database is unavailable. */ }
     return false                                                   // the caller rethrows today's code
   }
 }
 
+/** Exact target read for one resolution. It never decrypts, spawns, repairs, or searches alternatives. */
 async function loadRoutingTarget(client: Client, userId: string, target: RoleTarget, roles: readonly AiRole[]): Promise<RoutingTarget> {
   if (target.kind === 'provider_model') {
     if (!uuidSchema.safeParse(target.connectionId).success) throw notFound()

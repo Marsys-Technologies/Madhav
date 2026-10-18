@@ -163,7 +163,7 @@ def _world(monkeypatch, tmp_path, faithful, apply_1305=True):
                                        precision_regime="swiss_bisect_tol_1e-9d", coverage={"truncated": False})
             return sky
 
-    def grain(agent, in_sign, house_for=_lagna_house, anchor=None, anchors=None):
+    def grain(agent, in_sign, house_for=_lagna_house, anchor=None, anchors=None, chart=CHART):
         """Materialise the P1 `agent` Libra-residence grain read under `anchor` = (lord, level) — default: the
         agent's own AD; `in_sign(t)` says when the body is IN Libra."""
         wanted = list(anchors) if anchors else [anchor or (agent, "ad")]      # ONE call: the grain is rebuilt whole
@@ -182,7 +182,7 @@ def _world(monkeypatch, tmp_path, faithful, apply_1305=True):
                 edges=edges, horizon=(H0, H1),
                 position_at=lambda body, t: 195.0 if in_sign(t) else 15.0, house_for=house_for,
                 sky_convention_id=sky, source_fact_ids=["fact-1"], prerequisites=P1_PREREQS,
-                chart=CHART, dasha_rows_for=rows_for)
+                chart=chart, dasha_rows_for=rows_for)
 
     class W:
         pass
@@ -282,6 +282,36 @@ def test_an_agent_with_no_daśā_rows_is_unrestricted_with_an_explicit_unknown(w
     assert _supports(w.conn) == [[(_t(1, 10), _t(1, 25))]] and _results(w.conn) == ["unknown"]
     assert verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN,
                              event_class="marriage") == {"records": 1, "restricted": 0}
+
+
+def test_an_anchor_whose_periods_all_lie_outside_the_horizon_is_computed_empty_and_false_not_unknown(world):
+    """J-2a run 1: the snapshot binds only the daśā rows OVERLAPPING the horizon; an anchor lord that HAS rows at its level
+    in the pinned build, none of them overlapping the horizon, simply does not run in it — period_running_at is `false`
+    with an empty (computed) support, exactly as the builder stores it. 'No rows' (⇒ unrestricted + `unknown`) means L1
+    holds no row for that (lord, level) at all, NOT 'none inside the horizon'. Phaladīpikā XX.38 reads a bhukti lord's
+    period only while it runs; a lord whose period lies wholly before/after the horizon does not run in it. The detector
+    (§N.8) is `has_rows`: it must read false ONLY for a (lord, level) with no pinned row anywhere."""
+    w = world
+    w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])   # Venus AD: a past year only
+    w.boot()
+    w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+    w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+    assert _supports(w.conn) == [[]] and _results(w.conn) == ["false"]
+    assert w.conn.execute("SELECT temporal_support_state FROM public.ka_gochara_relationship_record"
+                          " WHERE path_id = 'P1'").fetchone()[0] == "computed_empty"
+    assert verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN,
+                             event_class="marriage") == {"records": 1, "restricted": 1}
+
+
+def test_a_failed_support_check_names_which_case_it_is_in():
+    """The message must say whether the expected support is the contact ∩ the running periods or, with no rows for the
+    anchor, the unrestricted contact span (honest text only; the check itself is unchanged)."""
+    rows = [("r1", "{}", "{[a,b)}", False, False, "false", False)]
+    with pytest.raises(RuntimeError, match=r"unrestricted contact span.*no daśā row for the anchor"):
+        verify_p1_support(_RowsConn(rows), chart_id=CHART_ID, generation=GEN, event_class="marriage")
+    rows = [("r1", "{}", "{[a,b)}", False, False, "true", True)]
+    with pytest.raises(RuntimeError, match=r"the contact restricted to the running periods"):
+        verify_p1_support(_RowsConn(rows), chart_id=CHART_ID, generation=GEN, event_class="marriage")
 
 
 def test_a_later_change_of_live_periods_does_not_unverify_a_generation_that_owns_its_copy(world):

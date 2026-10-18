@@ -46,13 +46,52 @@ the running tracker uses a separate installed snapshot and changes only at B-2.
   evidence, unmet dependencies, unbound operations or fences, and intervals
   with no earned progress. It lists skipped mandatory items separately.
 
+## A7 D-46: implemented vs. activated
+
+A code or artifact item (declared `completion_kind`, else the proof's type) is *implemented* — `done` — once merged,
+independently accepted and contained in a successful main deploy (artifact: digest + independent verdict). Its open
+dependencies no longer block `done`; they are written to the completion event as `activation_pending`, together with
+`merged_pr`, `acceptance_ref` and `deploy_run_id`. Code items need no separate step receipts. Operation, packet,
+decision, join and verdict items keep strict ordered completion (SR-A4-01). The snapshot reports per row
+`activation_pending` (recomputed, so it empties when the last gate closes) and in `overall`: `implemented`,
+`activated`, `activation_pending` and `close_ready` (every applicable item implemented AND activated).
+`audit` reports `activation_pending_unrecorded` for a deferred gate the completion does not name.
+
+`python3 -m pravaha_tracker.d46_sweep --evidence <file>` (run with `PYTHONPATH=platform/scripts/governance`) lists
+what would close and what is missing, reading git read-only; `--apply` writes the completions through the same guard.
+The evidence file (schema `ky.d46_evidence/1`) is documented in the module docstring.
+
+## Tracker responsiveness
+
+Health and state requests read the last complete snapshot. Health requests never
+run power, socket, filesystem or detector probes; only freshness and recent errors
+are updated in memory. Snapshot persistence runs outside the publication lock.
+Subprocesses have their own sessions and their process groups are killed on timeout.
+
+`PRAVAHA_TICK_BUDGET_S` defaults to 8 seconds. A tick that exceeds it records an
+abandonment in `tick_errors`, retains the last complete model/event cursor/snapshot,
+and makes health return 503. One collector may remain blocked until its I/O unwinds;
+its late result is discarded and replacement collectors do not accumulate. The
+next successful tick restores health. Stream git activity remains independent of
+the tick and uses the same subprocess timeout cleanup.
+
+Guarded `done` calls `/api/verify` with `KY_VERIFY_TIMEOUT_S` (positive finite
+seconds, default 300). A timeout reports “tracker timed out”; a connection failure
+reports “tracker unreachable”. Verification never accepts a persisted snapshot or
+a completed fetch's TTL. Same-ref fetches already in flight share their live
+result (including failure); unrelated refs fetch independently. Verification runs
+on the request thread outside the four dashboard workers, and new dashboard polls
+defer until active verifications finish. Failed fetches refuse completion rather
+than measuring stale refs.
+
 ## Acceptance command
 
 From the repository root:
 
 ```sh
-PYTHONPATH=platform/scripts/governance python3 -m unittest discover \
-  -s platform/scripts/governance/pravaha_tracker/tests -p 'test_*.py' -q
+TMPDIR="$JOB_SCRATCH" PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONPATH=platform/scripts/governance python3 -m pytest -p no:cacheprovider \
+  --basetemp="$JOB_SCRATCH/pytest-tracker" platform/scripts/governance/pravaha_tracker/tests -q
 ```
 
 The B-1b author run passed 71 tests, including the legacy Pravāha suite and

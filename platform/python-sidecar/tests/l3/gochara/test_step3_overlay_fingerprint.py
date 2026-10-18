@@ -27,17 +27,23 @@ What this file proves (each on production code, §N.8):
   * the '4.1' candidate's gate call (check_overlay_freshness + gate_allows_overlays)
     still works unchanged.
 
-Pure tests run anywhere; the PG test uses the disposable WP6 Postgres only and skips
+Pure tests run anywhere; the PG tests create and drop their own guarded database and skip
 NOT_RUN when unreachable. Scope per the task: SERIES_NODE_MODE stays 'true', no formula
 version bump, no row-stamp or R-KETU change (later step-3 parts) — so the writers stamp
 only house_vedha rows with a fingerprint today, and the PG fixture narrows the vedha
 table to that kind before the gate runs (the §3 stamps arrive with the row-stamp part).
+
+Current-main adaptation: KA-3a has retired rolling Vedha dispatch. Its read
+compatibility is tested on explicitly seeded archived row shapes, while the
+retained Moorti writer is executed. The candidate adapter stays inert.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 from types import SimpleNamespace
+
+from tests.l3.kala_db.conftest import isolated_kala_db_dsn
 
 import psycopg
 import pytest
@@ -171,8 +177,18 @@ def test_l1_identity_digest_is_sensitive_to_build_id_and_value():
 
 
 # ── PG: build → fresh; each new component moves the verdict ─────────────────
+@pytest.fixture(scope="module")
+def overlay_database():
+    """Own isolated database; never reuse the historical WP6 database."""
+    yield from isolated_kala_db_dsn.__wrapped__()
+
+
 @pytest.fixture()
-def db():
+def db(overlay_database, monkeypatch):
+    import sys
+    from . import test_wp9_stamp_columns as stamps
+    monkeypatch.setattr(sys.modules[__name__], "WP6_DSN", overlay_database)
+    monkeypatch.setattr(stamps, "WP6_DSN", overlay_database)
     if not _wp6_reachable():
         pytest.skip("NOT_RUN: disposable WP6 database unreachable")
     c = psycopg.connect(WP6_DSN, autocommit=True)
@@ -196,7 +212,7 @@ def _build_writers():
     import services.ka_moorti_nirnaya.writer as mw
     import services.ka_vedha_gochara.writer as vw
 
-    for mod, cls in ((vw, vw.KaVedhaGocharaWriter), (mw, mw.KaMoortiNirnayaWriter)):
+    for mod, cls in ((mw, mw.KaMoortiNirnayaWriter),):
         conn = psycopg.connect(WP6_DSN)
         ctx = SimpleNamespace(db_conn=conn, config={"chart_id": CHART_ID}, dry_run=False)
         orig = mod._compute_ayanamsha_offset
@@ -216,11 +232,15 @@ def _build_writers():
             if orig_grading is not None:
                 mod.KERNEL_INSTANT_GRADING = orig_grading
             conn.close()
-    # The §3 row stamps (a fingerprint on sarvatobhadra/latta rows) are a LATER step-3
-    # part; until then the writer stamps only house_vedha rows, and the gate reads ALL
-    # kinds — narrow the fixture to the stamped kind so its subject (the fingerprint
-    # gate) is what is exercised, never an unstamped row the writer cannot yet produce.
-    _exec("DELETE FROM kala_vedha_gochara WHERE vedha_kind <> 'house_vedha'")
+    # (I) INTERPRETATION: KA-3a retired the legacy Vedha writer. Exercise
+    # published-row compatibility with an explicit archived-row fixture; never
+    # reactivate the rolling writer to satisfy a historical test harness.
+    from .test_wp9_stamp_columns import TestStampCheckConstraints
+    with psycopg.connect(WP6_DSN) as conn:
+        row = TestStampCheckConstraints()._base_row(
+            grid_basis=None, grid_school_tag=None,
+            detail=json.dumps({"upstream_fingerprint": current_fingerprint(conn, CHART_ID)}))
+        conn.execute(vw._INSERT_SQL, row)
 
 
 def _fresh_reports():
@@ -329,3 +349,26 @@ def test_unstamped_rows_of_any_kind_count_as_stale(db):
     with psycopg.connect(WP6_DSN, autocommit=True) as c:
         r = check_house_vedha_freshness(c, CHART_ID)
     assert r.state == STALE and r.missing == 1 and r.components["unstamped"] == 1
+
+
+@pytest.mark.parametrize("component,value", [("formula_version", "obsolete-version"), ("l1", {})])
+def test_each_stored_identity_component_independently_refuses_the_gate(db, component, value):
+    _build_writers()
+    assert gate_allows_overlays(_fresh_reports())
+    _exec("UPDATE kala_vedha_gochara SET detail = jsonb_set(detail, ARRAY['upstream_fingerprint', %s], %s::jsonb)",
+          (component, json.dumps(value)))
+    _exec("UPDATE kala_moorti_nirnaya SET upstream_fingerprint = jsonb_set(upstream_fingerprint, ARRAY[%s], %s::jsonb)",
+          (component, json.dumps(value)))
+    reports = _fresh_reports()
+    assert not gate_allows_overlays(reports)
+    for report in reports.values():
+        assert report.state == STALE and report.components[component] == report.total > 0
+
+
+def test_l1_stored_value_change_refuses_the_gate_even_with_the_same_build(db):
+    _build_writers()
+    assert gate_allows_overlays(_fresh_reports())
+    _exec("UPDATE chart_facts SET fact_value_num = fact_value_num + 0.000001")
+    reports = _fresh_reports()
+    assert not gate_allows_overlays(reports)
+    assert all(r.state == STALE and r.components['l1'] == r.total > 0 for r in reports.values())

@@ -90,7 +90,7 @@ def _covers(outer, lo: datetime, hi: datetime) -> bool:
 
 
 def _sealed_window_attestation(conn, chart_id, generation, event_class):
-    """Use the approval-bound immutable result set; None requests the legacy replay.
+    """Use the approval-bound immutable result set; None means evidence is unavailable.
 
     1153/1155/1156/1206/1240 freeze the sealed content and verification rows.
     The approval receipt is tied to the published manifest and immutable seal.
@@ -196,6 +196,9 @@ def _completeness(conn: Any, chart_id: str, generation: str, event_class: str,
                     "migration 1240 is not applied: window verification cannot be established")
     if sealed_read:
         attested = _sealed_window_attestation(conn, chart_id, generation, event_class)
+        if attested is None:
+            return fail('evidence_unavailable', 'sealed_window_attestation_unavailable',
+                        'no approval-bound immutable window verification is available for this seal')
         if attested is False:
             return fail('unverified', 'sealed_window_attestation_incompatible',
                         'immutable verification results do not cover the stored window grains')

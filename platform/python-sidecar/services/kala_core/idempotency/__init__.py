@@ -33,6 +33,12 @@ class PublishCandidate:
 # Literal table names are intentional: the Idem detector needs to see each
 # writer-owned DELETE, and a caller must not turn this into arbitrary SQL.
 _DELETE_CANDIDATE = {
+    "kala_moorti_nirnaya_candidate": "DELETE FROM kala_moorti_nirnaya_candidate WHERE chart_id = %s AND generation = %s",
+    "kala_kota_chakra_candidate": "DELETE FROM kala_kota_chakra_candidate WHERE chart_id = %s AND generation = %s",
+    "kala_tithi_pravesha_candidate": "DELETE FROM kala_tithi_pravesha_candidate WHERE chart_id = %s AND generation = %s",
+    "kala_sudarshana_varsha_candidate": "DELETE FROM kala_sudarshana_varsha_candidate WHERE chart_id = %s AND generation = %s",
+    "kala_vedha_gochara_candidate": "DELETE FROM kala_vedha_gochara_candidate WHERE chart_id = %s AND generation = %s",
+    "kala_vedha_gochara_interval": "DELETE FROM kala_vedha_gochara_interval WHERE chart_id = %s AND generation = %s",
     "kala_activation_candidate": "DELETE FROM kala_activation_candidate WHERE chart_id = %s AND generation = %s",
     "kala_darshana_candidate": "DELETE FROM kala_darshana_candidate WHERE chart_id = %s AND generation = %s",
     "kala_jivana_parva_candidate": "DELETE FROM kala_jivana_parva_candidate WHERE chart_id = %s AND generation = %s",
@@ -46,6 +52,7 @@ _DELETE_CANDIDATE = {
     "kala_field_snapshots": "DELETE FROM kala_field_snapshots WHERE chart_id = %s AND generation = %s",
     "kala_activation": "DELETE FROM kala_activation WHERE chart_id = %s AND generation = %s",
     "kala_darshana": "DELETE FROM kala_darshana WHERE chart_id = %s AND generation = %s",
+    "kala_taranga_candidate": "DELETE FROM kala_taranga_candidate WHERE chart_id = %s AND generation = %s",
     "kala_taranga": "DELETE FROM kala_taranga WHERE chart_id = %s AND generation = %s",
     "kala_jivana_parva": "DELETE FROM kala_jivana_parva WHERE chart_id = %s AND generation = %s",
 }

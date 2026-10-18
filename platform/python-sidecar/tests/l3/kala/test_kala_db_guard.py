@@ -132,7 +132,7 @@ def test_planted_database_connection_is_rejected(source):
 
 
 def test_ci_collects_canary_and_entire_db_directory():
-    workflow = CI.read_text(encoding="utf-8")
+    workflow = _ci_text(CI.read_text(encoding="utf-8"))
     assert "pytest tests/ bodha_writers/__tests__" in workflow
     assert (TESTS / "l3" / "kala" / "test_ci_canary.py").is_file()
     assert "kala-db-tests:" in workflow
@@ -140,9 +140,10 @@ def test_ci_collects_canary_and_entire_db_directory():
     # Additional explicit test targets must not invalidate directory discovery.
     steps = yaml.safe_load(workflow)["jobs"]["kala-db-tests"]["steps"]
     commands = [shlex.split(step["run"]) for step in steps if "run" in step]
+    # -B is an interpreter flag and does not change pytest directory discovery.
     assert any(
-        command[:3] == ["python", "-m", "pytest"]
-        and {"tests/l3/kala_db", "-q", "-rs"} <= set(command[3:])
+        [token for token in command[:4] if token != "-B"][:3] == ["python", "-m", "pytest"]
+        and {"tests/l3/kala_db", "-q", "-rs"} <= set(command)
         for command in commands
     )
 
@@ -179,3 +180,8 @@ def test_required_database_job_rejects_skips(monkeypatch):
         pluginmanager=SimpleNamespace(get_plugin=lambda name: reporter)))
     pytest_sessionfinish(session, 0)
     assert session.exitstatus == pytest.ExitCode.TESTS_FAILED
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[5] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow_text as _ci_text

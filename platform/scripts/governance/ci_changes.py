@@ -6,8 +6,8 @@
 
 FAIL-CLOSED: `docs_only=true` is printed ONLY for a pull_request event with a non-empty changed-file list in which EVERY file (old and new
 name of a rename, deleted files included: `--no-renames`) is a documentation file. An error, an empty list, an unreadable diff, a push /
-merge_group / workflow_dispatch event all print `docs_only=false`, so every job runs (post-merge runs on main and the merge queue always
-run everything).
+merge_group / workflow_dispatch event all print `docs_only=false`, so every light job runs (post-merge runs on main run everything; the merge
+queue runs every light job plus the DB profiles its diff touches -- OWNER-CI-SCOPED-QUEUE-20261017, see ci_gate.py).
 
 A DOCS file is a `*.md` / `*.txt` (extension compared case-insensitively) that lives under `00_ARCHITECTURE/` or `99_ARCHIVE/` and is NOT:
 under `.github/`, `00_ARCHITECTURE/control/`, `00_ARCHITECTURE/autonomy/`, a tests / fixtures / migrations / node_modules directory (any case);

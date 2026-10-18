@@ -258,6 +258,11 @@ def disposable_dsn():
     """A brand-new throwaway database on the pinned disposable cluster —
     created for the test, dropped afterwards. Skips (NOT_RUN) unless the
     cluster IS the pinned disposable one."""
+    if os.environ.get("KALA_ADMIN_DSN"):
+        # Current CI convention: the shared guarded fixture owns lifecycle.
+        from tests.l3.kala_db.conftest import isolated_kala_db_dsn
+        yield from isolated_kala_db_dsn.__wrapped__()
+        return
     try:
         admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=3)
     except UnsafeAdminDSN:
@@ -446,7 +451,7 @@ def _seed_windows_inputs(conn, chart) -> None:
                 " lord_graha, start_iso, end_iso, build_id,"
                 " verification_pass_status)"
                 " VALUES (%s, %s, 'lahiri_chitrapaksha', 'vimshottari',"
-                " %s, %s, %s, %s, %s, '75524b3e-102a-43ec-8cee-3f57fee752c3', 'two_pass_verified')",
+                " %s, %s, %s, %s, %s, '7377833e-5d3b-4e70-8bef-1318904f470e', 'two_pass_verified')",
                 (row_id, chart, level, parent, lord, start, end))
     conn.commit()
 

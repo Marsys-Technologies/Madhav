@@ -11,7 +11,10 @@ skips NOT_RUN when unreachable. The fixture builds the two base tables with
 their real DDL (migrations 525/526), applies migration 1082, seeds minimal
 reference tables (bg_transit_rules, bg_phaladeepika_latta,
 bg_vedha_malefic_scale, bg_transit_moorti, chart_facts) plus a synthetic
-ephemeris_daily, then runs BOTH writers end-to-end.
+ephemeris_daily, then runs the retained Moorti writer. Since KA-3a retired rolling Vedha
+dispatch, its historical oracle IDs exercise archived read-compatible row
+shapes through the retained pure production serializers; they do not claim
+that a Vedha writer ran or activate the candidate adapter.
 """
 from __future__ import annotations
 
@@ -27,6 +30,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 import psycopg  # noqa: E402
+from ._real_swiss_daily import real_ephemeris_rows
 
 WP6_DSN = os.environ.get(
     "WP6_LEDGER_DSN", "postgresql://wp6:local@localhost:55433/wp6"
@@ -384,7 +388,7 @@ def ephemeris_rows(horizon_start, days, lon_fn, retro_fn):
     return rows
 
 
-def _seed(conn: psycopg.Connection) -> None:
+def _seed(conn: psycopg.Connection, *, real_ephemeris=False) -> None:
     today = date.today()
     horizon_start = today - timedelta(days=HORIZON_BACK_DAYS)
 
@@ -428,11 +432,70 @@ def _seed(conn: psycopg.Connection) -> None:
         days = (HORIZON_BACK_DAYS + HORIZON_FORWARD_DAYS) + 1
         cur.executemany(
             EPHEMERIS_INSERT_SQL,
-            ephemeris_rows(horizon_start, days, _body_lon, None),
+            (real_ephemeris_rows(horizon_start, days)
+             if real_ephemeris else ephemeris_rows(horizon_start, days, _body_lon, None)),
         )
 
 
-@pytest.fixture(scope="session")
+def _legacy_vedha_read_fixture(conn, *, house_only=False):
+    """Archived row shapes for reader/gate compatibility after KA-3a.
+
+    This is not a writer rehearsal or a sky computation. The retained pure
+    production serializers compute the stamps/details; literal oracles below
+    still verify them. No test enables the retired rolling writer.
+    """
+    import services.ka_vedha_gochara.writer as vw
+    from services.ka_vedha_gochara.freshness import current_fingerprint
+    from services.ka_vedha_gochara.logic import source_qualification_for, corpus_verifiable_for
+
+    fp = current_fingerprint(conn, CHART_ID)
+    start, end = date(2026, 1, 1), date(2026, 2, 1)
+    rows = []
+    for (graha, house), rule in vw._fetch_vedha_rules(conn).items():
+        title = graha.capitalize()
+        vedha_house = rule['vedha_house']
+        run = {'sign_idx': house - 1, 'start_date': start, 'end_date': end}
+        detail = vw._house_vedha_detail(
+            upstream_fp=fp, graha=title, run=run, house=house,
+            vedha_house=vedha_house, vedha_sign_idx=vedha_house - 1,
+            rule=rule, uncited=False, intervals=[], excepted=[],
+            horizon_start=start, horizon_end=end)
+        rows.append(dict(vedha_kind='house_vedha', graha=title,
+                         classical_citation=rule['classical_citation'],
+                         uncited_extension=False, grid_basis=None,
+                         detail=detail, primary_house=house, vedha_house=vedha_house))
+    if not house_only:
+        rows.append(dict(vedha_kind='sarvatobhadra', graha='Mars',
+                         classical_citation=vw.SARVATOBHADRA_CITATION,
+                         uncited_extension=True, grid_basis='algorithmic_approximation',
+                         detail={'target_nakshatra_idx': 0}))
+        rule = vw._fetch_latta_rules(conn)['Venus']
+        rows.append(dict(vedha_kind='latta', graha='Venus',
+                         classical_citation=rule['source_citation'],
+                         uncited_extension=False, grid_basis=None,
+                         detail={'janma_nakshatra_idx': 0, 'latta_nakshatra_idx': 0,
+                                 'count_from_graha': rule['count_from_graha'],
+                                 'direction': rule['direction']}))
+    conn.execute('DELETE FROM kala_vedha_gochara WHERE chart_id=%s', (CHART_ID,))
+    for row in rows:
+        row.update(chart_id=CHART_ID, ayanamsha_id='lahiri_chitrapaksha',
+                   window_start=start, window_end=end,
+                   start_truncated=False, end_truncated=False,
+                   janma_reference_fact_id=JANMA_FACT_ID,
+                   grid_school_tag=None, formula_version=vw.FORMULA_VERSION,
+                   precision_regime='date_grain')
+        row['source_qualification'] = source_qualification_for(
+            row['vedha_kind'], row['grid_basis'], classical_citation=row['classical_citation'])
+        row['corpus_verifiable'] = corpus_verifiable_for(
+            row['vedha_kind'], grid_basis=row['grid_basis'],
+            classical_citation=row['classical_citation'], graha=row['graha'],
+            primary_house=row.get('primary_house'), vedha_house=row.get('vedha_house'))
+        row['detail'] = json.dumps(row['detail'])
+        conn.execute(vw._INSERT_SQL, row)
+    return len(rows)
+
+
+@pytest.fixture(scope="module")
 def wp9_schema():
     if not _wp6_reachable():
         pytest.skip("NOT_RUN: disposable WP6 database unreachable")
@@ -442,34 +505,28 @@ def wp9_schema():
     conn.close()
 
     seed_conn = psycopg.connect(WP6_DSN)
-    _seed(seed_conn)
+    _seed(seed_conn, real_ephemeris=True)
     seed_conn.commit()
     seed_conn.close()
     return True
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def wp9_built(wp9_schema):
-    """Runs both writers end-to-end against the seeded fixture (once per session)."""
+    """Retained Moorti writer plus archived Vedha reader compatibility rows."""
     import services.ka_vedha_gochara.writer as vedha_writer
     import services.ka_moorti_nirnaya.writer as moorti_writer
 
     conn = psycopg.connect(WP6_DSN)
     ctx = SimpleNamespace(db_conn=conn, config={"chart_id": CHART_ID}, dry_run=False)
 
-    orig_vedha_offset = vedha_writer._compute_ayanamsha_offset
-    orig_moorti_offset = moorti_writer._compute_ayanamsha_offset
-    vedha_writer._compute_ayanamsha_offset = lambda _d: 0.0
-    moorti_writer._compute_ayanamsha_offset = lambda _d: 0.0
     try:
-        vedha_result = vedha_writer.KaVedhaGocharaWriter().run(ctx)
+        legacy_vedha_rows = _legacy_vedha_read_fixture(conn)
         moorti_result = moorti_writer.KaMoortiNirnayaWriter().run(ctx)
         conn.commit()
     finally:
-        vedha_writer._compute_ayanamsha_offset = orig_vedha_offset
-        moorti_writer._compute_ayanamsha_offset = orig_moorti_offset
         conn.close()
-    return {"vedha": vedha_result, "moorti": moorti_result}
+    return {"legacy_vedha_rows": legacy_vedha_rows, "moorti": moorti_result}
 
 
 @pytest.fixture()
@@ -556,8 +613,13 @@ def _fetch_all(dsn: str, table: str) -> list[dict]:
 
 
 class TestWriterStamps:
+    """Historical oracle IDs; Vedha now tests archived read compatibility.
+
+    Moorti still exercises the production writer. No legacy Vedha dispatch
+    is enabled or claimed by this fixture.
+    """
     def test_writers_inserted_rows(self, wp9_built):
-        assert wp9_built["vedha"].rows_inserted > 0
+        assert wp9_built["legacy_vedha_rows"] > 0
         assert wp9_built["moorti"].rows_inserted > 0
 
     def test_every_vedha_row_fully_stamped(self, wp9_built):
@@ -609,15 +671,16 @@ class TestWriterStamps:
         assert rows, "expected moorti rows"
         computed = [r for r in rows if r["moorti_computed"]]
         uncomputed = [r for r in rows if not r["moorti_computed"]]
-        # The Sun sign-2 run (days 100..130) is the one non-truncated run.
+        # Real daily rows include many non-truncated runs. Slow movers can
+        # legitimately fail to match an ingress instant and remain date-grain;
+        # the writer documents that fallback rather than inventing precision.
         assert computed, "expected at least one moorti-computed row"
         for r in computed:
             assert r["source_qualification"] == "algorithmic_approximation"
-            # WP9 5.3: non-truncated runs are graded at the true kernel
-            # sign-ingress instant -> instant_grain (day-grain only remains
-            # on runs the kernel could not solve).
-            assert r["precision_regime"] == "instant_grain"
+            assert r["precision_regime"] in ("instant_grain", "date_grain")
             assert r["corpus_verifiable"] is False
+        sun = [r for r in computed if r["graha"] == "Sun"]
+        assert sun and all(r["precision_regime"] == "instant_grain" for r in sun)
         assert uncomputed, "expected moorti-uncomputed rows (truncated horizon runs)"
         for r in uncomputed:
             assert r["source_qualification"] == "unsourced"

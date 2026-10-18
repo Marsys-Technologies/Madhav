@@ -64,6 +64,9 @@ change; no new table; no migration in this lane's scope).
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 import json
 import logging
 import math
@@ -199,16 +202,10 @@ def _load_natal_longitudes(conn, chart: ChartRef) -> dict[str, float]:
 def _load_dasha_periods(conn, chart: ChartRef) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     with conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT lord_graha, start_date, end_date
-            FROM chart_dashas
-            WHERE chart_id = %s AND ayanamsha_id = %s
-              AND system_id = 'vimshottari' AND level_n = 1
-            ORDER BY start_date
-            """,
+        execute_governed_dasha_query(
+            conn, chart.chart_id, dasha_query('taranga_md_periods'),
             (chart.chart_id, chart.ayanamsha_id),
-        )
+         ayanamsha_id=chart.ayanamsha_id, cursor=cur)
         for row in _rows_as_dicts(cur):
             start = row["start_date"]
             end = row["end_date"]

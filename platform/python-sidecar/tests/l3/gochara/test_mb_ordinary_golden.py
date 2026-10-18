@@ -1,9 +1,9 @@
-"""The measuring-build changes leave an ORDINARY (markerless) final-rules build observably identical to accepted P06.
+"""An ordinary (markerless) build is observably identical to its accepted parent: P06's final-rules build on current main, before P06b's near-miss seal integration.
 
-The golden (`fixtures/mb_ordinary_golden_main.json`, historical oracle filename retained) was recaptured by running this file's capture on
-UNMODIFIED production sources from accepted P06 commit adc6b81ea, before integrating P03. The P03-era golden from 75eeda4c9 predates P06's
-final-rule registry, snapshot copies and expected-class census; keeping that baseline would require reverting P06's ordinary-build semantics.
-(I) INTERPRETATION: preserve the ordinary-build noninterference oracle against the accepted final-rules parent, with every comparison unchanged.
+The active golden, `fixtures/mb_ordinary_golden_p06.json`, was produced by this file's capture, run unmodified, on a scratch copy of the merged tree (main plus the
+accepted P06 lineage) with the P06b-only production changes reversed; its provenance records the reversed patch's hash and paths. (I) INTERPRETATION: main's
+`mb_ordinary_golden_j4p.json` predates P06's final rules, snapshot copies and class census, so it cannot baseline a tree that carries P06; the baseline is re-captured
+by the same method and main's fixtures stay byte-for-byte unchanged (the B4 baseline test below still compares them with each other). Every comparison stays strict.
 
     MB_GOLDEN_OUT=<path> python -m pytest tests/l3/gochara/test_mb_ordinary_golden.py -k capture
 
@@ -13,12 +13,11 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
     and notes, or the refusal's type and message), the SQL statements it issued through the connection (whitespace-normalised text and parameter count, kept as a count
     per distinct statement shape plus the sha256 of the ordered sequence), and the row count of every ka_gochara_* / kala_gochara_* table after it;
   * the candidate manifest's input vector, every component.
-HEAD must equal it except (a) `implementation.*` (geometry/evaluation gained measuring modules; window includes P05's grants-provenance correction and P06b's near-miss seal integration, pinned below) and (b) ONE extra
-read-only statement per non-dry-run substep: the state guard's `SELECT state FROM public.asset_throughput ...` (a deliberate change to every v5 build).
-P06b also permits exactly one layer-catalogue probe on the new manifest substep and moves the governed window-stage identity; the saved golden bytes are unchanged.
+HEAD must equal it except `implementation.*` (P06b's edited governed sources; the window identity is pinned below) and ONE extra read-only statement on the
+new manifest substep: the near-miss layer catalogue probe. The state guard and B5's period guard are in the golden (the parent has them) and compared like every
+other statement.
 Texts are normalised only for values that differ between two runs of the SAME tree (per-world ids and the digests derived from them, in the notes): hex runs of 12+
-characters (or a truncated id before an ellipsis) and UUIDs.
-"""
+characters (or a truncated id before an ellipsis) and UUIDs. Two captures on main agree exactly after that."""
 from __future__ import annotations
 
 import hashlib
@@ -36,8 +35,19 @@ from .conftest import EPHE_PATH
 from .test_a53_inventory import CHART_ID
 from .test_a55_replace_chain import SHORT, _World, template  # noqa: F401
 
-GOLDEN = Path(__file__).resolve().parent / "fixtures" / "mb_ordinary_golden_main.json"
-GOLDEN_COMMIT = "adc6b81ea"
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+GOLDEN = FIXTURES / "mb_ordinary_golden_p06.json"
+GOLDEN_COMMIT = "p06-parent-merge-2cb0bee5d3d52ec509f42ec8298663188ceec624"
+J4P_GOLDEN = FIXTURES / "mb_ordinary_golden_j4p.json"
+J4P_GOLDEN_COMMIT = "2d75833d3963a61544deaa4c36cc8322cb2cdcb5"
+# The capture recorded the dasha build then settled (L1_SETTLED v1, 7377833e); the snapshot notes name it as "build <uuid first four groups>-<hex>", and the final
+# group is normalised away by `_norm`. A settlement move (dasha_settlement.json) changes only this identity, so the comparison re-points it at the governed record
+# instead of re-capturing the golden or pinning a second literal.
+GOLDEN_SETTLED_BUILD_PREFIX = "7377833e-5d3b-4e70-8bef-"
+# P06b (ruling 18): P06b edits governed sources of all three stages (input_vector / input_vector_verifier feed geometry and evaluation; seal_brief.py and
+# verification_job.py feed the window stage), so those three digests MUST differ from the parent's. The window identity is pinned exactly (computed from this tree with
+# implementation_registry.compute()), so another window-code change requires review; geometry and evaluation are pinned by the parent comparison only.
+P06B_WINDOW_IMPLEMENTATION = "247c15a44537219bcff01602a14968c6f535983b157bfdd50533e524f0806586"
 # the REAL runner's birth parameters shape (birth_params._to_birth_params): main ignores them, an ordinary HEAD build must too
 BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, "longitude_deg": 85.8245, "tz_offset_hours": 5.5, "place_name": "Bhubaneswar",
                 "subject_label": "native"}
@@ -46,6 +56,17 @@ GUARD_SELECT = "SELECT state FROM public.asset_throughput WHERE chart_id = %s AN
 LAYER_SELECT = ("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL AND "
                 "to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL AND "
                 "to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL")
+PERIOD_GUARD_SELECT = " ".join("""
+    WITH governed_chart_dashas AS (
+        SELECT * FROM public.chart_dashas
+        WHERE chart_id = %s AND ayanamsha_id = %s AND build_id = %s
+          AND system_id = ANY(%s) AND level_n BETWEEN 1 AND 4
+          AND (verification_pass_status = %s
+               OR (system_id = %s AND level_n = %s AND verification_pass_status = ANY(%s))
+               OR (system_id = %s AND level_n = %s AND verification_pass_status = ANY(%s))))
+    SELECT dasha_row_id, start_iso, end_iso FROM governed_chart_dashas
+    WHERE start_iso IS NULL OR end_iso IS NULL OR end_iso <= start_iso LIMIT 1
+""".split())
 
 
 class _Rec:
@@ -143,11 +164,79 @@ def test_capture_the_markerless_run(template):
     assert got["substeps"] and "manifest_vector" in got
 
 
-# ── the comparison (HEAD against the golden from main) ──────────────────────────────────────────────────────────────────────────
+# ── the comparison (HEAD against the P06 parent golden) ───────────────────────────────────────────────────────────────────────
 
 def _load():
-    assert GOLDEN.exists(), f"the golden from main ({GOLDEN_COMMIT}) is missing: {GOLDEN}"
-    return json.loads(GOLDEN.read_text(encoding="utf-8"))
+    assert GOLDEN.exists(), f"the P06 parent golden ({GOLDEN_COMMIT}) is missing: {GOLDEN}"
+    golden = json.loads(GOLDEN.read_text(encoding="utf-8"))
+    assert golden["golden_commit"] == GOLDEN_COMMIT
+    assert golden["provenance"]["sql_adaptations"] == {}, "the P06 parent golden is an unadapted capture"
+    return golden
+
+
+def _load_j4p():
+    assert J4P_GOLDEN.exists(), f"the pre-B4 golden ({J4P_GOLDEN_COMMIT}) is missing: {J4P_GOLDEN}"
+    golden = json.loads(J4P_GOLDEN.read_text(encoding="utf-8"))
+    assert golden["golden_commit"] == J4P_GOLDEN_COMMIT
+    assert golden["provenance"]["sql_adaptations"] == {
+        "state_guard_selects_removed": 12,
+        "b4_cte_positive_bounds_predicates_removed": 1,
+    }
+    return golden
+
+
+def _follow_settlement(golden: dict) -> dict:
+    """The golden with its one settled-build identity re-pointed at the governed settlement record.
+
+    Only the dasha build named in the snapshot notes moves; the golden must carry that identity exactly once (so the
+    re-pointing is never silent or vacuous) and every other field stays strictly compared.
+    """
+    from services.gochara_kernel import dasha_read
+
+    run_id = dasha_read.load_dasha_settlement(CHART_ID)["run_id"]
+    settled_prefix = run_id.rsplit("-", 1)[0] + "-"
+    text = json.dumps(golden, sort_keys=True)
+    assert text.count(GOLDEN_SETTLED_BUILD_PREFIX) == 1, "the golden names its settled dasha build exactly once"
+    return json.loads(text.replace(GOLDEN_SETTLED_BUILD_PREFIX, settled_prefix))
+
+
+def test_b4_baseline_preserves_final_main_settlement_amendments():
+    """Keep final J-4p's outcomes and transcript alongside B4's baseline.
+
+    B4 deliberately removes one positive-bounds SQL predicate; B5's additional
+    guard is counted separately below. No other main SQL shape may change.
+    """
+    main = json.loads(FIXTURES.joinpath("mb_ordinary_golden_main.json").read_text())
+    b4 = _load_j4p()
+    assert [s["key"] for s in b4["substeps"]] == [s["key"] for s in main["substeps"]]
+    for got, want in zip(b4["substeps"], main["substeps"]):
+        assert got["outcome"] == want["outcome"], want["key"]
+        assert got["counts"] == want["counts"], want["key"]
+        if want["key"] == "inventory:marriage":
+            shapes = want["statements"]["shapes"]
+            assert sum(n for sql, n in shapes.items()
+                       if "AND start_iso < end_iso AND" in sql) == 1
+            assert got["statements"]["shapes"] == {
+                sql.replace("AND start_iso < end_iso AND", "AND"): n
+                for sql, n in shapes.items()
+            }
+            assert got["statements"]["count"] == want["statements"]["count"]
+        else:
+            assert got["statements"] == want["statements"], want["key"]
+    assert b4["manifest_vector"]["implementation"]["window"] == (
+        "beaa23107518458b89bb8fe498a8b3682ffe67fb08951196a69c7b18db123aa4")
+    # The two immutable captures used different local Swiss library builds;
+    # their corpus, version and numerical probe must still agree exactly.
+    for key, value in main["manifest_vector"].items():
+        if key == "implementation":
+            continue
+        if key == "ephemeris":
+            value = {k: v for k, v in value.items() if k != "library_sha256"}
+            actual = {k: v for k, v in b4["manifest_vector"][key].items()
+                      if k != "library_sha256"}
+        else:
+            actual = b4["manifest_vector"][key]
+        assert actual == value, key
 
 
 @pytest.fixture(scope="module")
@@ -156,29 +245,30 @@ def head(template):
     return capture(template, raw), raw
 
 
-def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read_only_state_guard_select(head):
+def test_every_substep_kind_of_a_markerless_run_equals_its_parent_except_the_one_read_only_layer_probe(head):
     got, raw = head
-    want = _load()
+    want = _follow_settlement(_load())
     assert [s["key"] for s in got["substeps"]] == [s["key"] for s in want["substeps"]]
     kinds = {s["key"].split(":")[0].split(" ")[0] for s in want["substeps"]}
     assert kinds >= {"rules", "convention", "body", "manifest", "snapshot", "inventory", "coverage", "record", "window", "verify"}, kinds
     for g, m in zip(got["substeps"], want["substeps"]):
         key = m["key"]
-        assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from main's"
-        assert g["counts"] == m["counts"], f"{key}: the table row counts differ from main's"
+        assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from the P06 parent"
+        assert g["counts"] == m["counts"], f"{key}: the table row counts differ from the P06 parent"
         guard = [s for s in raw[key] if s == [GUARD_SELECT, 2]]
-        layer = [s for s in raw[key] if s == [LAYER_SELECT, 0]]
-        # P06b adds only this catalogue probe while creating a NEW manifest. Replay
-        # restates the stored pin without probing; all output/row/digest assertions stay.
-        assert len(layer) == (1 if key == "manifest" else 0), (key, layer)
-        rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [LAYER_SELECT, 0])]
+        period_guard = [s for s in raw[key] if s == [PERIOD_GUARD_SELECT, 11]]
+        assert len(period_guard) == (1 if key == "inventory:marriage" else 0), f"{key}: expected the B5 period guard exactly once before the inventory projection"
         assert len(guard) == (0 if "[dry_run]" in key else 1), f"{key}: expected exactly one state-guard SELECT per non-dry-run substep, saw {len(guard)}"
-        assert _summarise(rest) == m["statements"], f"{key}: the statements other than the two authorized read-only probes differ from main's"
+        # P06b adds only this catalogue probe while creating a NEW manifest. Replay restates the stored pin without probing.
+        layer = [s for s in raw[key] if s == [LAYER_SELECT, 0]]
+        assert len(layer) == (1 if key == "manifest" else 0), (key, layer)
+        rest = [s for s in raw[key] if s != [LAYER_SELECT, 0]]
+        assert _summarise(rest) == m["statements"], f"{key}: the statements other than the one authorized read-only probe differ from the P06 parent"
 
 
-def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
-    """Every component of the stored vector of a markerless run equals the golden from main's, except `implementation.*`: those MUST differ (the code changed), and the
-    differing stages are geometry/evaluation (measuring modules) and window (P05's grants provenance and P06b's seal integration). No `horizon_basis` and no `test_slice` component."""
+def test_the_ordinary_manifest_vector_equals_its_parent_in_every_component_except_the_implementation_identity(head):
+    """Every component of the stored vector of a markerless run equals the parent's, except `implementation.*` (P06b's edited governed sources: those digests MUST differ,
+    the window stage is pinned exactly). No `horizon_basis` and no `test_slice` component may appear in an ordinary run."""
     got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
     assert "horizon_basis" not in got and "test_slice" not in got
 
@@ -191,15 +281,8 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
         out = {k: x for k, x in v.items() if k != "implementation"}
         out["ephemeris"] = {k: x for k, x in v["ephemeris"].items() if k not in host_bound}
         return out
-    assert comparable(got) == comparable(want), "every component except the implementation identity (and, on another host, the host library's own identity) equals main's"
+    assert comparable(got) == comparable(want), "non-implementation components equal the P06 parent (excluding another host's library identity)"
     assert set(got["implementation"]) == set(want["implementation"])
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
     assert differing == ["evaluation", "geometry", "window"], differing
-    # P05 d9ba4934f (#3508), already present at P03's merge e5bdc641f, changed
-    # services/gochara_kernel/seal_brief.py's LEDGER_MIGRATIONS from 1241 to
-    # 1378 and verification_job.py's matching comments/privilege diagnostic.
-    # P06b adds near-miss seal/verification integration to these governed sources.
-    # Both modules are hashed in IMPLEMENTATION_MODULES["window"]. Ordinary
-    # inputs/outcomes above still equal the original golden; pin this reviewed
-    # source identity exactly so another window-code change requires review.
-    assert got["implementation"]["window"] == "247c15a44537219bcff01602a14968c6f535983b157bfdd50533e524f0806586"
+    assert got["implementation"]["window"] == P06B_WINDOW_IMPLEMENTATION

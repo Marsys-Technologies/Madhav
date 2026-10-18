@@ -2,14 +2,14 @@
 {"id":"KA-4c","kind":"feature","wave":null,"build_tier":"sonnet","routing_reason":"Ruled evaluator.","needs_chart_data":false,"max_loops":3,"plan_version":"2.7","spec_sources":[{"path":"00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md","revision":"8482540d666f8ea930bf9e62214cf9002b25adec","section_range":"\u00a75 base contract; \u00a78; \u00a79","sha256":"96061d91fbc6ac4cd461311944029ee7edffab0b0263c33fe08ce77c954ba90c"}],"schema_receipt_id":null,"pw_mechanism_version":null,"release_pins":{"dash_build":null,"registry_revision":null},"packet_sha256":null,"original_failing_base":null,"test_commits":[],"expected_failing_assertion":null}
 ```
 # KA-4c v1 · DRAFT
-v1 DRAFT; initial; register KA-4c.
+v1.1 DRAFT; changelog: 20261016.
 ## 1. Pins / prerequisites
 Prefixes: Y=platform/python-sidecar; F=00_ARCHITECTURE/briefs/kalayantra/fleet; S=/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3; U=S/engines/surrogate/SURROGATE_ANSWERS_01-02.md; O=S/engines/lane2/owner/OWNER_RULINGS_DIGEST_A.md; B=S/engines/lane2/B4_RULINGS.md.
 P=spec_sources path; short basenames resolve to listed reads. Definition U:19,21; O:58,60. Mirror/pin rulings (B:19; notes).
 Prerequisite facts: KA-4 accepted head/squash in base (U:19; P:330-337); F/FROZEN_PATHS.txt; pins/tests/slot/template (B:13-14). Parallel fixtures allowed; real acceptance needs L0-M grammar/rows/receipt, not only 1332 (U:13,23; P:538-540).
 Read Owns and Y/services/ka_muhurta_seva/service.py:38-61; Y/services/kala_core/sky/ephemeris.py:88-111,171-201,236-309; Y/services/kala_core/sky/coverage.py:42-100; Y/brahmagyan/dignity_oracle.py:92-148; Y/brahmagyan/l0_formula_constants.py:28-44; Y/ga_writers/ga_vargas_writer.py:475-513; Y/ga_writers/ga_condition_writer.py:64-69,183-276,350-419; Y/routers/transit_search.py:25-55; Y/main.py:29-34,90-93; Y/routers/yoga_formation_band.py:610-624; platform/supabase/migrations/544_bg_parihara_rules.sql:63-80; platform/migrations/1332_l0_muhurta_parihara_scope_prepare.sql:13-24. Caller: platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts:126-152; reference Y/pipeline/orchestrator/writers/bg_muhurta_lattice.py:72-74.
 ## 2. Owns
-Owns (Y-relative): services/ka_muhurta_seva/parihara_eval.py; routers/parihara_evaluate.py; main.py (import/one guarded include); tests/l3/ka_muhurta_seva/test_parihara_eval.py; tests/l3/ka_muhurta_seva/test_parihara_evaluate.py; tests/l3/ka_muhurta_seva/test_parihara_db.py; tests/l3/ka_muhurta_seva/parihara_predicates.json. U:19 allocations; shared L0-M grammar fixtures. No generators/exports; KA-4b consumer.
+Owns (Y-relative): services/ka_muhurta_seva/parihara_eval.py; routers/parihara_evaluate.py; main.py (import/one guarded include); tests/l3/ka_muhurta_seva/test_parihara_eval.py; tests/l3/ka_muhurta_seva/test_parihara_evaluate.py; tests/l3/kala_db/ka_muhurta_seva/test_parihara_db.py; tests/l3/ka_muhurta_seva/parihara_predicates.json. U:19 allocations; shared L0-M grammar fixtures. No generators/exports; KA-4b consumer.
 ## 3. Excerpt
 P:538, pin above:
 ```excerpt
@@ -41,7 +41,7 @@ Unassessable reasons: strong→strength_undefined; agents unknown→dosha_agents
 ## 5. Metadata
 brief.migration=null; brief.op=null; writes_data=false; migration_class=null; window_batch_id=null. No binding (U:19).
 ## 6. Acceptance
-Tests first; each negative kills its scratch mutant:
+Tests first; one reversion/claim:
 
 - Unguarded: configured synthetic key absent/wrong→401; route/transit compatibility.
 - DefaultPlace: invalid time/place→422; missing location reason; explicit origin/equal-coordinate caller round-trip.
@@ -55,9 +55,9 @@ Tests first; each negative kills its scratch mutant:
 - EmptyResidual: applies/all false/false+unknown/empty/never_cancelled/conflicting applies matrix.
 - LostSource: all rule metadata/ids round-trip, never changes applicability.
 - StubbedDB: L0-M scoped round-trip; DB/schema error refuses; writes rejected.
-cwd Y: `python3 -B -m pytest tests/l3/ka_muhurta_seva -p no:cacheprovider --basetemp="$JOB_SCRATCH/pytest"`
+cwd Y: `python3 -B -m pytest tests/l3/ka_muhurta_seva tests/l3/kala_db/ka_muhurta_seva -p no:cacheprovider --basetemp="$JOB_SCRATCH/pytest"`
 cwd repo: `KY_ITEM=KA-4c bash /Users/Dev/kalayantra/fleet_live/precheck.sh --item`
-TESTS=three newline-delimited test paths from Owns (P:494-495). Exit 0/no skips/all mutants killed. Accepted L0-M loopback slot; guards Y/tests/_disposable_guard.py:20-57. Foreground Python/process/loopback DB; offline unit/TestClient; no external network. Pin committed red/base/digests; already-green needs review (P:544-551). CI/Kāla DB Tests/exact-head review (P:146-151,381); route/grammar/state/sky/DB detectors.
+TESTS=three newline-delimited test paths from Owns (P:494-495). Exit0/no skips; D-OWNER-TESTS-20261016. Accepted L0-M loopback slot; guards Y/tests/_disposable_guard.py:20-57. Foreground Python/process/loopback DB; offline unit/TestClient; no external network. Pin committed red/base/digests; already-green needs review (P:544-551). CI/Kāla DB Tests/exact-head review (P:146-151,381); route/grammar/state/sky/DB detectors.
 ## 7. Evidence
 Frozen inspection.json (B:13; P:552-553): head/base/deps/schema/slot/tests/mutants/facts/compatibility. No readback; builder≠verifier.
 ## 8. PR

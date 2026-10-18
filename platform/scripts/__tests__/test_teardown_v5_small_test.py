@@ -12,6 +12,7 @@ against real tables in platform/python-sidecar/tests/l3/gochara/test_c38_teardow
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import re
 import sys
@@ -98,12 +99,16 @@ class _Harness:
                           if retention == "default" else retention)
         self.flipped = False
         self.deleted = False
+        self.deleted_tables: set[str] = set()      # SR-J2A-N18: a table reads empty once ITS OWN delete ran (the gate selects between deletes)
         self.end_state_calls = 0
         self.pids = list(pids) if pids else None
         self.lock_held = lock_held
         self.references = references or {}
         self.rollback_at = []
-        self.run_manifests = run_manifests or []
+        self.run_manifests = run_manifests if run_manifests is not None else [
+            {"id": str(r["id"]), "plan_manifest": {_W.TEST_SLICE_KEY: ONE_MARKER_FOR_TESTS},
+             "plan_manifest_digest": _W._manifest_digest({_W.TEST_SLICE_KEY: ONE_MARKER_FOR_TESTS})}
+            for r in self.members]
         self.fk_shapes = fk_shapes or {}
         self.chain_outside = chain_outside or {}
         self.close_error = close_error
@@ -119,6 +124,10 @@ class _Harness:
                     harness.flipped = True
                 if flat.startswith("DELETE"):
                     harness.deleted = True
+                    deleted = re.match(r"DELETE FROM (\w+)", flat).group(1)
+                    harness.deleted_tables.add(deleted)
+                    if deleted == "build_runs":                                   # ON DELETE CASCADE (migration 171)
+                        harness.deleted_tables.add("build_run_assets")
                 if flat.startswith("SELECT catalog_status"):
                     harness.end_state_calls += 1
                 if "pg_backend_pid() AS pid" in flat:
@@ -201,6 +210,8 @@ class _Harness:
                     return dict({"windows": 0, "records": 0, "coverage": 0}, **harness.chain_outside)
                 if "FROM asset_freshness WHERE asset_id = %s AND chart_id IS DISTINCT FROM" in s:
                     return {"n": harness.freshness_elsewhere}
+                if "AND build_id IS DISTINCT FROM %s" in s:
+                    return {"n": getattr(harness, "foreign_coverage", 0)}
                 m = re.search(r"count\(\*\) AS n FROM (\w+) WHERE", s)
                 if m:
                     table = m.group(1)
@@ -208,10 +219,13 @@ class _Harness:
                         for refs in harness.references.values():
                             for (t, c, a, n) in refs:
                                 if t == table:
-                                    return {"n": n}
+                                    return {"n": 0 if harness.deleted else n}
                     if table in teardown_mod.LEGACY_GUARD_TABLES:
                         return {"n": harness.legacy.get(table, 0)}
-                    return {"n": harness.rows.get(table, 0)}
+                    if table == "build_runs":                                      # the owned runs are the members the checks selected
+                        return {"n": 0 if table in harness.deleted_tables else len(harness.members)}
+                    gone = table in harness.deleted_tables or (harness.deleted and table in teardown_mod.CASCADE_PROOF_TABLES)
+                    return {"n": 0 if gone else harness.rows.get(table, 0)}
                 return None
 
         class FakeConn:
@@ -244,11 +258,14 @@ class _Harness:
 
 ROWS = {"ka_gochara_eval_window": 3, "ka_gochara_relationship_record": 4, "ka_gochara_contact": 5,
         "kala_gochara_coverage": 2, "ka_gochara_search_inventory": 2, "kala_gochara_publication": 1,
-        "build_run_assets": 1, "asset_throughput": 1, "asset_provenance_receipts": 1, "asset_freshness": 1}
+        "build_run_assets": 1, "asset_throughput": 1, "asset_provenance_receipts": 1, "asset_freshness": 1,
+        # SR-J2A-N18: a table with no scoped rows is not deleted from, so the populated fixture holds a row in EVERY deletion-scope table
+        "ka_gochara_search_interval": 1, "ka_gochara_search_obligation": 1, "ka_gochara_search_path_pin": 1,
+        "ka_gochara_search_input_snapshot": 1}
 
 
 @contextlib.contextmanager
-def _patched(harness, *, database_url="postgresql://fake/fake"):
+def _patched(harness, *, database_url="postgresql://fake/fake", bind=True):
     fake_psycopg = types.ModuleType("psycopg")
     fake_rows = types.ModuleType("psycopg.rows")
     fake_rows.dict_row = object()
@@ -263,6 +280,23 @@ def _patched(harness, *, database_url="postgresql://fake/fake"):
     fake_psycopg.connect = connect
     saved = {k: v for k, v in sys.modules.items() if k.startswith("psycopg")}
     prior = os.environ.get("DATABASE_URL")
+    prior_request = os.environ.get("KY_OPERATION_REQUEST")
+    prior_root = os.environ.get("KY_ROOT")
+    evidence_dir = None
+    if bind:
+        import tempfile
+        import json
+        from smalltest_safety_support import scope_for, request_for
+        evidence_dir = tempfile.TemporaryDirectory(prefix="w4-evidence-", dir=os.environ.get("TMPDIR"))
+        os.environ["KY_ROOT"] = evidence_dir.name
+        run = harness.run_manifests[0] if harness.run_manifests else {
+            "id": RUN_1, "plan_manifest": {_W.TEST_SLICE_KEY: ONE_MARKER_FOR_TESTS}}
+        candidate = harness.manifest or STAMPED
+        scope = scope_for(evidence_dir.name, str(run["id"]), run["plan_manifest"], candidate)
+        tables = {t for t, _ in teardown_mod.GENERATION_TABLES} | set(teardown_mod.CASCADE_PROOF_TABLES) | {
+            "asset_registry", "build_runs", "build_run_assets", "asset_throughput", "asset_freshness", "asset_provenance_receipts"}
+        req = request_for(evidence_dir.name, scope, rowset_sha256=teardown_mod.shared.evidence_digest({t: [] for t in tables}))
+        os.environ["KY_OPERATION_REQUEST"] = json.dumps(req)
     try:
         sys.modules["psycopg"], sys.modules["psycopg.rows"] = fake_psycopg, fake_rows
         if database_url is None:
@@ -275,6 +309,13 @@ def _patched(harness, *, database_url="postgresql://fake/fake"):
         for name in ("psycopg", "psycopg.rows"):
             sys.modules.pop(name, None)
         sys.modules.update(saved)
+        for name, value in (("KY_ROOT", prior_root), ("KY_OPERATION_REQUEST", prior_request)):
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+        if evidence_dir:
+            evidence_dir.cleanup()
         if prior is None:
             os.environ.pop("DATABASE_URL", None)
         else:
@@ -315,6 +356,27 @@ def test_execute_happy_path_one_transaction_in_dependency_order_registry_kept():
     assert not any("SET is_active" in s for s in h.statements)        # B2: an already-inert row is never updated
 
 
+# ── SR-J2A-N18 (A): absence is proved by SELECT; no DELETE on a table whose scoped count is 0 ───────────────────────────────
+
+def test_n18_a_table_with_no_scoped_rows_gets_no_delete_and_is_named_in_the_receipt(capsys):
+    """Migration 1379's statement-level triggers lock EVERY chart present in a table even for a zero-row DELETE, so a DELETE on an empty
+    scope table fails (N18, P0001) when another chart has rows there. Claim: each table is counted first with the DELETE's own predicate,
+    the DELETE is issued only when the count is > 0, and the skipped tables are named in the receipt."""
+    populated = {"asset_provenance_receipts": 1, "build_run_assets": 1, "ka_gochara_eval_window": 3}
+    h = _Harness(rows=populated)
+    _run(h)
+    deleted = [_table_of(s) for s in h.deletes()]
+    assert deleted == ["asset_provenance_receipts", "build_run_assets", "build_runs", "ka_gochara_eval_window"]
+    assert not {"kala_gochara_publication", "asset_freshness", "asset_throughput", "ka_gochara_contact"} & set(deleted)
+    for s in h.deletes():                      # each DELETE comes straight after the count SELECT with the SAME predicate and params
+        i = h.statements.index(s)
+        assert h.statements[i - 1] == f"SELECT count(*) AS n FROM {_table_of(s)} WHERE " + s.split(" WHERE ", 1)[1]
+        assert h.params[i - 1] == h.params[i]
+    proof = json.loads(capsys.readouterr().out.split("teardown_proof\t")[1].splitlines()[0])
+    assert proof["skipped_empty_tables"] == [t for t, *_ in teardown_mod._scope_statements([RUN_1]) if t not in deleted]
+    assert "kala_gochara_publication" in proof["skipped_empty_tables"]
+
+
 def test_the_locks_are_taken_before_any_ownership_check_and_in_the_orchestrators_order():
     """Codex P1-1: the orchestrator exclusion lock (non-blocking), then lock_timeout, then the Gochara chart lock, and ONLY THEN
     the first SELECT that judges ownership."""
@@ -326,7 +388,8 @@ def test_the_locks_are_taken_before_any_ownership_check_and_in_the_orchestrators
     assert "FROM pg_locks" in s[4]                                      # the lock is held by THIS backend
     assert "set_config('lock_timeout'" in s[5] and h.params[5] == (teardown_mod.LOCK_TIMEOUT,)
     assert "ka_gochara_lock_chart" in s[6] and h.params[6] == (CHART_ID,)
-    assert "status = 'published'" in s[7]                              # the first check comes after all of them
+    assert s[7].startswith("LOCK TABLE")
+    assert "status = 'published'" in s[8]                              # the first check comes after all of them
     first_delete = next(i for i, x in enumerate(s) if x.startswith("DELETE"))
     assert first_delete > 7 and h.commits == 1
 
@@ -390,6 +453,22 @@ def test_membership_is_read_from_build_run_assets_and_the_scope_target_tokens():
     assert "build_run_assets" in sql and "string_to_array(r.scope_target, ',')" in sql and "triggered_by" in sql
 
 
+def test_c31_ownership_guard_preserves_non_test_and_mixed_asset_runs():
+    """Contract: P01_REWORK_v1_0.md:27 (preserve chart-wide ownership);
+    PACKET_J-1a_v1.md, section 6 (role/ownership/stamp failures unchanged).
+
+    Use the accepted run UUID and a valid original marker, so later scope or
+    stamp checks cannot accidentally substitute for the non-test-origin guard.
+    """
+    for run in (_test_run(assets=[ASSET, "ka_other"]),
+                _test_run(triggered_by="cockpit-manual-build")):
+        h = _Harness(members=[run])
+        with pytest.raises(teardown_mod.TeardownRefused):
+            _run(h)
+        assert not h.deletes() and not h.commits and not h.flipped
+        assert h.closed
+
+
 @pytest.mark.parametrize("run", [
     _test_run(assets=[ASSET, "ga_positions"]),
     _test_run(scope="asset_set", scope_target=f"{ASSET},ga_positions"),
@@ -417,6 +496,20 @@ def test_a_null_linked_receipt_is_refused_and_named_even_when_the_manifest_is_st
     with pytest.raises(teardown_mod.TeardownRefused, match="NO run link.*orphan-part"):
         _run(h)
     assert h.deletes() == []
+
+
+def test_c32_null_link_cannot_borrow_a_surviving_tests_valid_marker():
+    """Contract: V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md:19,48-50:
+    no run link means unprovable origin; delete nothing pending steward recovery.
+
+    A valid owned run and stamped candidate do not establish the orphan's origin.
+    Assert preservation, independently of which redundant refusal fires first.
+    """
+    h = _Harness(receipts=[{"partition_key": "orphan-part", "build_id": None}])
+    with pytest.raises(teardown_mod.TeardownRefused):
+        _run(h)
+    assert not h.deletes() and not h.commits and not h.flipped
+    assert h.closed
 
 
 def test_a_receipt_linked_to_a_run_that_is_not_an_owned_test_run_is_refused():
@@ -479,7 +572,7 @@ def _comp(**changes):
         "naive_horizon", "wrong_schema", "wrong_digest", "extra_field"])
 def test_a_stamp_is_validated_by_the_writers_own_validator_and_digest(vector, why):
     h = _Harness(manifest={"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": vector, "horizon": HORIZON})
-    with pytest.raises(teardown_mod.TeardownRefused, match=re.escape(why)):
+    with pytest.raises(teardown_mod.TeardownRefused, match=re.escape(why) + "|ORIGINAL marker preimage"):
         _run(h)
     assert h.deletes() == []
 
@@ -514,8 +607,9 @@ def test_output_without_a_snapshot_is_refused_and_a_manifest_alone_is_not():
     with pytest.raises(teardown_mod.TeardownRefused, match="no input snapshot binds them"):
         _run(h)
     h = _Harness(snapshot=None, rows={}, members=[], receipts=[])         # a stamped manifest and nothing else: removable
-    _run(h)
-    assert h.commits == 1
+    with pytest.raises(teardown_mod.TeardownRefused, match="run-proven stamp is required"):
+        _run(h)
+    assert not h.commits and not h.deletes()
 
 
 def test_inventory_headers_must_carry_the_stamped_manifests_identity():
@@ -539,12 +633,27 @@ def test_output_rows_without_any_manifest_are_refused():
     assert h.deletes() == []
 
 
-def test_a_complete_stamp_proves_the_test_slice_even_when_the_run_rows_were_pruned():
+def test_a_complete_stamp_does_not_authorize_teardown_after_the_run_was_pruned():
     h = _Harness(members=[], receipts=[], manifest="stamped")
-    _run(h)
-    assert h.commits == 1
-    tables = [_table_of(s) for s in h.deletes()]
-    assert "build_runs" in tables and h.params[h.statements.index(next(s for s in h.deletes() if _table_of(s) == "build_runs"))] == ([],)
+    with pytest.raises(teardown_mod.TeardownRefused, match="run-proven stamp is required"):
+        _run(h)
+    assert not h.deletes() and not h.commits
+
+
+def test_c33_ownership_check_itself_requires_a_surviving_original_marker():
+    """Contract: V5_SMALLTEST_TEARDOWN_RUNBOOK_v1_0.md:10,29,35:
+    no pruned-run reconstruction. Test the ownership decision before the later
+    request-scope check, which independently refuses a missing staged run.
+    """
+    surviving = _Harness()
+    checked = teardown_mod._refusal_checks(surviving.conn.cursor())
+    assert checked.owned == [RUN_1]
+
+    pruned = _Harness(members=[], receipts=[], run_manifests=[])
+    with pytest.raises(teardown_mod.TeardownRefused):
+        teardown_mod._refusal_checks(pruned.conn.cursor())
+    assert not pruned.deletes() and not pruned.commits and not pruned.flipped
+
 
 
 OLD_START, OLD_END = "1998-01-01T00:00:00+00:00", "2026-04-17T00:00:00+00:00"           # the bounds of every marker issued before the measuring build, as LITERALS
@@ -557,37 +666,32 @@ def _stamped_for(marker):
 
 
 @pytest.mark.parametrize("run, classes", [("one_class_full", [_W.SCORED_CLASSES[0]]), ("all_classes_1y", list(_W.SCORED_CLASSES))], ids=["one_class_full", "all_classes_1y"])
-def test_a_previously_issued_marker_with_the_old_bounds_still_proves_the_stamp_and_tears_down(run, classes):
-    """Codex blocker 7: an owned, unsealed candidate stamped by a one_class_full (or all_classes_1y) marker with the OLD bounds must stay teardown-eligible, through
-    the reconstruction fallback (no run row survives) which re-validates the marker with the writer's CURRENT validator: that validator keeps the old bounds for
-    the old shapes, so the stamp proves and the deletions run, exactly as before the measuring build."""
+def test_a_previously_issued_marker_with_old_bounds_cannot_reconstruct_pruned_run_authority(run, classes):
     horizon = [OLD_START, OLD_END] if run == "one_class_full" else ["2025-04-01T00:00:00+00:00", "2026-04-01T00:00:00+00:00"]
     marker = {"schema": "gochara_v5_test_slice/1", "run": run, "horizon": horizon, "classes": classes}
     h = _Harness(members=[], receipts=[], manifest=_stamped_for(marker))
-    _run(h)
-    assert h.commits == 1 and h.deletes(), "the old-shape stamp proved and the teardown ran"
-    if run == "one_class_full":
-        assert [x.isoformat() for x in _W._validate_test_slice(marker).horizon] == horizon, "the bounds are the literal old pair"
+    with pytest.raises(teardown_mod.TeardownRefused, match="run-proven stamp is required"):
+        _run(h)
+    assert not h.deletes() and not h.commits
 
 
-def test_a_new_all_classes_full_stamp_proves_against_the_derived_pair_and_a_new_shape_with_the_old_bounds_is_refused():
+
+def test_measuring_stamp_does_not_authorize_a_pruned_smalltest_teardown():
     full = {"schema": "gochara_v5_test_slice/1", "run": "all_classes_full", "horizon": ["1998-01-01T00:00:00+00:00", "2084-02-05T00:00:00+00:00"],
             "classes": list(_W.SCORED_CLASSES)}
     h = _Harness(members=[], receipts=[], manifest=_stamped_for(full))
-    _run(h)
-    assert h.commits == 1 and h.deletes()
-    forged = dict(STAMP["test_slice"], run="all_classes_full", classes=list(_W.SCORED_CLASSES), horizon=[OLD_START, OLD_END])
-    bad = {"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": {"stored_scope": _W.TEST_SLICE_SCOPE, "test_slice": forged}, "horizon": HORIZON}
-    h2 = _Harness(members=[], receipts=[], manifest=bad)
-    with pytest.raises(teardown_mod.TeardownRefused, match="fails the writer's own validation"):
-        _run(h2)
-    assert h2.deletes() == []
+    with pytest.raises(teardown_mod.TeardownRefused, match="run-proven stamp is required"):
+        _run(h)
+    assert not h.deletes() and not h.commits
 
 
-def test_nothing_at_all_is_a_clean_noop_teardown():
+
+def test_real_teardown_without_an_identified_run_refuses_even_when_empty():
     h = _Harness(rows={}, members=[], receipts=[], manifest=None)
-    _run(h)
-    assert h.commits == 1 and len(h.deletes()) == 5 + len(GEN_TABLES)         # every delete is scoped; they just match nothing
+    with pytest.raises(teardown_mod.TeardownRefused, match="identified staged run"):
+        _run(h)
+    assert not h.deletes() and not h.commits
+
 
 
 # ── the legacy ledger tables ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -1049,7 +1153,8 @@ def test_b3_every_table_the_script_touches_is_in_the_documented_privilege_list()
     assert "UPDATE(is_active)" in rp["when_registry_active"]["asset_registry"]
     assert "ka_gochara_lock_chart(uuid)" in rp["execute"]
     verification = {"ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification"}
-    assert not verification & (set(rp["select_delete"]) | set(rp["select"]))   # removed by cascade: no privilege needed
+    assert verification <= set(rp["select"])   # read absence after cascade; never DELETE the children directly
+    assert not verification & set(rp["select_delete"])
 
 
 def test_b3_the_runbook_names_every_object_in_the_documented_privilege_list():
@@ -1089,8 +1194,8 @@ def test_item2_a_marker_written_with_z_timestamps_and_another_class_order_is_pro
 
 def test_item2_the_same_stamp_without_a_surviving_run_row_is_refused_and_the_refusal_says_why():
     _marker, _sliced, stamp, horizon, _manifest = _original_marker_stamp()
-    h = _Harness(manifest={"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": stamp, "horizon": horizon})
-    with pytest.raises(teardown_mod.TeardownRefused, match=r"original marker preimage could not prove it \(no owned run row survives\).*reconstruction"):
+    h = _Harness(manifest={"manifest_id": MANIFEST_ID, "status": "candidate", "input_generation_vector": stamp, "horizon": horizon}, run_manifests=[])
+    with pytest.raises(teardown_mod.TeardownRefused, match="run-proven stamp is required"):
         _run(h)
     assert h.deletes() == []
 
@@ -1138,7 +1243,7 @@ def test_item2_the_dry_run_listing_says_how_the_stamp_was_proved(capsys):
     assert f"stamp\tproved against the ORIGINAL marker of run {RUN_1}" in capsys.readouterr().out
     h = _Harness()                                                                    # the default stamp, no run row
     _run(h, dry_run=True)
-    assert "stamp\tproved by RECONSTRUCTION" in capsys.readouterr().out
+    assert "stamp\tproved against the ORIGINAL marker" in capsys.readouterr().out
 
 
 def test_item2_a_canonically_dispatched_marker_round_trips_through_writer_and_teardown():
@@ -1228,12 +1333,12 @@ def test_the_ownership_proof_and_the_n137_predicate_are_the_shared_modules_not_a
 def test_the_ci_installs_the_sidecar_requirements_into_the_selected_python_before_the_unit_steps_that_import_the_writer():
     """Codex PR 3097 item 7: the unit steps import the real writer (scipy and the rest); the interpreter selected by setup-python must
     get the sidecar's CI requirements before them."""
-    ci = (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    ci = _ci_text((REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     select = ci.index("Nirmāṇa L0 — install writer test runtime")
     install = ci.index("python -m pip install -r python-sidecar/requirements-ci.txt", select)
-    teardown_step = ci.index("python -m pytest scripts/__tests__/test_teardown_v5_small_test.py")
+    teardown_step = ci.index("scripts/__tests__/test_teardown_v5_small_test.py")
     assert select < install < teardown_step
-    dispatch = ci.find("python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py")
+    dispatch = ci.find("scripts/__tests__/test_dispatch_v5_small_test.py")
     assert dispatch == -1 or select < install < dispatch
 
 
@@ -1355,8 +1460,9 @@ def test_t4_a_surviving_run_with_the_right_marker_proves_a_canonical_stamp_and_n
     _run(ok)
     assert ok.commits == 1
     none = _Harness(run_manifests=[])
-    _run(none)
-    assert none.commits == 1
+    with pytest.raises(teardown_mod.TeardownRefused, match="run-proven stamp is required"):
+        _run(none)
+    assert not none.commits and not none.deletes()
 
 
 def test_t5_the_recovery_identity_includes_output_digest_spec_sha256():
@@ -1376,8 +1482,9 @@ def test_d3_an_interrupted_replacement_proved_by_owned_runs_on_both_sides_is_rem
     runs = [{"id": RUN_1, "plan_manifest": later, "plan_manifest_digest": _W._manifest_digest(later)},
             {"id": str(uuid.uuid4()), "plan_manifest": early, "plan_manifest_digest": _W._manifest_digest(early)}]
     h = _Harness(snapshot=snap, run_manifests=runs, members=[_test_run(), _test_run(runs[1]["id"])])
-    _run(h)
-    assert h.commits == 1                                                             # removable: both sides are run-proven
+    with pytest.raises(teardown_mod.TeardownRefused, match="identified staged run"):
+        _run(h)
+    assert not h.commits and not h.deletes()  # two runs exceed this request's authorization
     # the earlier run's row is gone: the snapshot's stamp cannot be proved, so it stays refused
     h = _Harness(snapshot=snap, run_manifests=runs[:1])
     with pytest.raises(teardown_mod.TeardownRefused, match="older stamp is not proved by an owned test run"):
@@ -1473,8 +1580,9 @@ def test_r5_two_distinct_surviving_runs_with_identical_markers_satisfy_the_rule(
     runs = [{"id": RUN_1, "plan_manifest": manifest, "plan_manifest_digest": _W._manifest_digest(manifest)},
             {"id": other, "plan_manifest": manifest, "plan_manifest_digest": _W._manifest_digest(manifest)}]
     h = _Harness(snapshot=_same_marker_snapshot(), run_manifests=runs, members=[_test_run(), _test_run(other)])
-    _run(h)
-    assert h.commits == 1
+    with pytest.raises(teardown_mod.TeardownRefused, match="identified staged run"):
+        _run(h)
+    assert not h.commits and not h.deletes()
 
 
 def test_r5_the_proof_returns_every_matching_run_id():
@@ -1485,3 +1593,8 @@ def test_r5_the_proof_returns_every_matching_run_id():
     problem, _source, _sliced, matched = shared.prove_stamp(STAMP, runs)
     assert problem is None and matched == [RUN_1, other]
     assert shared.prove_stamp(STAMP, [])[3] == []                                              # a reconstruction names no run
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[3] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow_text as _ci_text

@@ -9,6 +9,10 @@ what was stored, and the stored `period_running_at` result with what that suppor
   anchor with running rows : stored support == contact ∩ D(anchor lord, anchor level); result == true iff non-empty
   anchor with NO rows      : stored support == the contact span (unrestricted);        result == 'unknown'
 
+"NO rows" = the pinned settled build holds no row for the anchor (lord, level) ANYWHERE. The snapshot binds only the rows
+overlapping the horizon, so an anchor held in the build but running wholly outside the horizon is NOT "no rows": its
+running set is empty, the support is `computed_empty` and the result `false` (J-2a run 1).
+
 where D(X, ℓ) = the union of the half-open `[start, end)` intervals of the snapshot-bound level-ℓ rows whose lord is X
 and the ANCHOR (X, ℓ) is the record's own `period_anchor_lord` / `period_anchor_level` (AM-21 part 2) — NOT the transiting
 agent's periods and not every level. For Phaladīpikā XX.38 (the Sun/Jupiter entering a bhukti lord's sign) the two differ.
@@ -17,6 +21,8 @@ It imports nothing from the builder. A support that is wider than the permission
 gap), narrower (discarding a valid later portion) or on the wrong pieces fails the build.
 """
 from __future__ import annotations
+
+from .inventory_verifier import RECORD_SUPPORT_PINS as _PINS, RECORD_SUPPORT_SQL as _SQL_LEGACY_BASE
 
 _SQL_TEMPLATE = """
 WITH snap AS (
@@ -28,7 +34,7 @@ src AS (
   SELECT lower(e.value #>> '{content,lord_graha}') AS lord, (e.value #>> '{key,level_n}')::int AS level_n,
          (e.value #>> '{key,start_iso}')::timestamptz AS s, (e.value #>> '{content,end_iso}')::timestamptz AS e
   FROM snap, jsonb_array_elements(snap.copy) AS e(value)
-  WHERE jsonb_typeof(snap.copy) = 'array'@@LEGACY_ARM@@),
+  WHERE jsonb_typeof(snap.copy) = 'array'),
 runs AS (
   SELECT lord, level_n, range_agg(tstzrange(s, e, '[)')) AS m
   FROM src WHERE level_n IN (1, 2, 3)
@@ -58,15 +64,9 @@ FROM rec LEFT JOIN runs ON (runs.lord, runs.level_n) = (rec.lord, rec.level_n)
 """
 
 # A snapshot WITH a copy (1305, G12) is read from the copy ALONE: the statement must not even NAME the live relation (so it runs with live L1 gone, and
-# without privileges on it). Only a LEGACY snapshot (ids, no copy) keeps the live arm, as before.
-_LEGACY_ARM = """
-  UNION ALL
-  SELECT lower(d.lord_graha), d.level_n, d.start_iso, d.end_iso
-  FROM public.chart_dashas d, snap
-  WHERE (snap.copy IS NULL OR jsonb_typeof(snap.copy) <> 'array')                -- LEGACY snapshot: read by id from live L1, as before
-    AND d.chart_id = %(chart)s AND d.dasha_row_id = ANY (snap.ids)"""
-_SQL_COPY = _SQL_TEMPLATE.replace("@@LEGACY_ARM@@", "")
-_SQL_LEGACY = _SQL_TEMPLATE.replace("@@LEGACY_ARM@@", _LEGACY_ARM)
+# without privileges on it). Only a LEGACY snapshot (ids, no copy) keeps the live statement (`RECORD_SUPPORT_SQL`, with its pinned-build `held` probe).
+_SQL_COPY = _SQL_TEMPLATE
+_SQL_LEGACY = _SQL_LEGACY_BASE
 _SNAPSHOT_HAS_COPY = """
 SELECT jsonb_typeof(to_jsonb(s) -> 'consumed_dasha_rows') = 'array' FROM public.ka_gochara_search_input_snapshot s
 WHERE s.chart_id = %(chart)s AND s.generation = %(gen)s"""
@@ -92,13 +92,14 @@ def verify_p1_support(conn, *, chart_id: str, generation: str, event_class: str)
         return {"records": 0, "restricted": 0}
     has_copy = conn.execute(_SNAPSHOT_HAS_COPY, {"chart": chart_id, "gen": generation}).fetchone()
     sql = _SQL_COPY if (has_copy is not None and _scalar(has_copy) is True) else _SQL_LEGACY
-    rows = conn.execute(sql, {"chart": chart_id, "gen": generation, "cls": event_class}).fetchall()
+    rows = conn.execute(sql, {"chart": chart_id, "gen": generation, "cls": event_class, **_PINS}).fetchall()
     problems: list[str] = []
     restricted = 0
     for rid, stored, expected, equal, expected_empty, result, has_rows in rows:
         if not equal:
-            problems.append(f"record {rid}: stored support {stored} != the contact restricted to the running "
-                            f"periods {expected}")
+            what = ("the contact restricted to the running periods" if has_rows else
+                    "the unrestricted contact span (no daśā row for the anchor in the pinned build)")
+            problems.append(f"record {rid}: stored support {stored} != {what} {expected}")
         want = ("unknown" if not has_rows else ("false" if expected_empty else "true"))
         if result != want:
             problems.append(f"record {rid}: period_running_at stored {result!r}, the support implies {want!r}")

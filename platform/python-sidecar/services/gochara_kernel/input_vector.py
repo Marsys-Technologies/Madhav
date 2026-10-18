@@ -442,7 +442,11 @@ def rulings_digest(rulings: Iterable[dict]) -> str:
 
 def _module_source_digest(name: str) -> str:
     mod = importlib.import_module(name)
-    return _sha(Path(mod.__file__).read_text(encoding="utf-8"))
+    source = Path(mod.__file__).read_text(encoding="utf-8")
+    if name == "services.gochara_kernel.dasha_read":
+        # The reviewed settlement is part of this implementation's authority.
+        source += "\0" + Path(mod.__file__).with_name("dasha_settlement.json").read_text(encoding="utf-8")
+    return _sha(source)
 
 
 def implementation_digests(modules: dict | None = None) -> dict:

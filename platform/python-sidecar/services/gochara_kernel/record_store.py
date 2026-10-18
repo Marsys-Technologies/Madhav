@@ -1338,10 +1338,7 @@ def materialise_record_grain(
             house = house_for(e, span.sign)
             if house is None:
                 continue
-            if _unwritable(_anchor(e), e.period_anchor_level):
-                unwritable_testimony += 1
-                continue
-            work.append((e, m, house))
+            work.append((e, m, house))      # a testimony-anchor edge is kept: its CONTACT is still owed (see the write loop)
 
     # Point occurrences (3/N): house from the TARGET point's sign (the natal
     # house the transit contacts). An unresolvable anchor ⇒ not minted
@@ -1409,6 +1406,12 @@ def materialise_record_grain(
             written_contacts.add(str(m["contact"].contact_id))
             counts["contacts"] += 1
             counts["truncated_contacts"] += 1 if span.t_exact is None else 0
+        if _unwritable(_anchor(edge), edge.period_anchor_level):
+            # D3: a testimony-licence anchor has no ruling_ref to satisfy kgrr_ruling_ck, so its RECORD is not minted (named in the
+            # counts, never dropped). The CONTACT is a sky fact the pinned search obligation owes the ledger whatever the licence
+            # (contact_certify and verify_p1_anchors both require it): it is written above, with no record on it.
+            counts["unwritable_testimony"] += 1
+            continue
         # kgrr_transit_natal_ck: a TRANSIT record always restates a precision object (N7); a
         # truncated contact restates 'clipped_truncated' with null deltas (1155 precision_ok)
         precision = ({

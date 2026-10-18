@@ -825,3 +825,14 @@ class TestNoCommitRollback:
             f"Found actual commit/rollback calls in ka_dasha_kala:\n"
             + "\n".join(actual_code_violations)
         )
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; real refusal coverage is J4P's."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.ka_dasha_kala.tree_walk'),
+                        "execute_governed_dasha_query", emulated_projection)
+    monkeypatch.setattr(importlib.import_module('services.ka_dasha_kala.service'),
+                        "execute_governed_dasha_query", emulated_projection)

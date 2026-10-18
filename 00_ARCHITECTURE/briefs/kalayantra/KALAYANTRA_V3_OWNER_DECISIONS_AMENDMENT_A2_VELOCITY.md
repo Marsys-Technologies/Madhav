@@ -1,11 +1,12 @@
 ---
 title: KĀLA-YANTRA v3 owner decisions — Amendment A2 (throughput)
-version: 1.0
+version: 1.1
 status: CURRENT
 date: 2026-10-15
 amends: KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md and Amendment A1 (D-14, D-16), KALAYANTRA_RELAUNCH_PLAN_v2_7.md (§8 escalation, max_loops), the cockpit fast-lane launcher and its COMMON_HEADER
 precedence: where this amendment and any amended document disagree, THIS AMENDMENT GOVERNS. Amended files stay byte-identical (packets pin their hashes), exactly as A1 did.
 changelog:
+  - "1.1 (2026-10-16): D-OWNER-TESTS-20261016 replaces D-17 review/acceptance rules; fixed-finding proof and other safeguards retained."
   - 1.0 (2026-10-15): created on the owner direction of 2026-10-15 (native, in chat, ~08:55Z, "Approved for everything") approving the throughput plan derived from the measured run of 2026-10-14.
 ---
 
@@ -30,14 +31,14 @@ changelog:
 
 Not a bottleneck: CI (median 2 min) and merge latency (median 1.6 h).
 
-## §2 · D-17 — review rounds are capped; findings become items
+## §2 · D-17 — optimum testing and bounded review (amended 2026-10-16)
 
-1. **Two rounds.** An item (or packet) gets at most **two** independent review rounds after its first build. Rounds already spent before this amendment count.
-2. **After round two the item is accepted as it stands**, unless a finding is **severe**: it could corrupt or delete stored data, break a production serving path or deploy, weaken a security or credential boundary, or touch a FROZEN path (root CLAUDE.md §N.2). A severe finding parks the item and the owner surrogate records **one** ruling: fix now (one more round, final), split, or retire.
-3. **Every non-severe open finding becomes its own tracked item** in the plan model (child of the item, `waiting`/`ready`, reviewer rule unchanged), citing the review file and finding id. Nothing is dropped and nothing is waived silently; the acceptance verdict lists the findings it carried forward.
+1. **One bounded review round.** [D-OWNER-TESTS-20261016](DECISION_TESTING_STANDARD_v1_0.md) governs campaign-wide; a second round is permitted only for a BLOCKING finding. Non_blocking findings never trigger another round.
+2. **MET is earned per distinct production claim.** Oracles pass at the pinned merged head. The REVIEWER, not the author, enumerates every distinct production claim from the brief, packet and cited classical rules in the verdict; each has a doctrine-grounded oracle (classical source cited; B.3/B.10) whose single planted reversion fails at that head. Every real defect is fixed with fail-on-revert proof; no automatic acceptance based on rounds spent.
+3. **Optimum tests.** Plant at most one reversion per claim; no combinatorial variants or per-mutant oracle demands. An already-covered variant or a change with no production behaviour is non_blocking and never blocks MET. Never golden-capture current output. Known real defects are fixed regardless; they are not carried forward to obtain acceptance.
 4. **The fixer proves its own fix.** A FIX/REWORK job's result must include, per finding, a test that fails on a copy with the fix reverted and passes with it (the revert applied to a copy under the job folder). The re-reviewer checks that evidence and the diff; it does not re-derive the whole packet.
 5. **Six-job budget.** Every model job that names an item counts against it (build, fix, rework, CI repair, merge repair, review, re-review). The **seventh** job for an item needs a recorded surrogate ruling: continue (with a reason), split, or retire. The cockpit keeps the count per item in `run/JOB_BUDGET.json`.
-6. **The fleet dispatcher aligns:** default `max_loops` becomes **2** (plan §8 said 3); A1 D-14's "REJECTED twice → park" is unchanged and now coincides with the cap.
+6. **Dispatcher safety limits are not acceptance.** The retired dispatcher's `max_loops: 2` and A1 D-14 automatic-stop safeguards remain operational limits. They neither authorize a second round for non_blocking findings nor confer MET; D-OWNER-TESTS-20261016 governs testing and review rounds.
 7. **No review of a head that is already queued to merge**, and no re-review triggered only by a merge from main with no conflict in the item's own paths (the existing "approval carries over" record is used instead).
 
 This does not lower the acceptance bar for what is reviewed: every review still runs the earned-signal standard (root CLAUDE.md §N.8). It stops the bar from being re-set every round.
@@ -77,7 +78,7 @@ This does not lower the acceptance bar for what is reviewed: every review still 
 |---|---|---|
 | 1 | Launcher default `locked` → `full`; COMMON_HEADER DB paragraph replaced (§3.3) | next DB job's `run.sh` shows the full sandbox; header diff recorded |
 | 2 | `run/JOB_BUDGET.json` built from existing job folders; rounds counted for open items | file lists every open item with jobs and rounds so far |
-| 3 | §2 applied to open items: the five open Wave 4 packets (P01, P03, P04, P06, P07) and J-4p | each has its round count; any at round two is accepted or parked with a ruling; carried findings are plan-model children |
+| 3 | §2 applied to open items: the five open Wave 4 packets (P01, P03, P04, P06, P07) and J-4p | each has its reviewer-enumerated distinct claims, passing merged-head oracles and one failing reversion per claim; real defects fixed; non_blocking variants never trigger another round |
 | 4 | D-17…D-21 appended to `run/DECISIONS_SURROGATE.jsonl` and the tracker as owner decisions (`decided_by: owner direction 2026-10-15`) | entries present |
 | 5 | Watchdog installed (`watchdog/README.md`), session id pinned to the cockpit session | **Done 2026-10-15 09:04Z** by the owner's analysis session: `com.madhav.kalayantra.watchdog` loaded, pinned to session 94345d41, first check logged "session live, no action" |
 | 6 | Dispatcher `max_loops` default 3 → 2 by a reviewed fleet change | merged PR |

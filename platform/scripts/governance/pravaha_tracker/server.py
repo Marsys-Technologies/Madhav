@@ -31,6 +31,7 @@ import threading
 import time
 import traceback
 import collections
+import copy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -40,7 +41,7 @@ if __package__ in (None, ""):
 
 from pravaha_tracker import detectors as D  # noqa: E402
 from pravaha_tracker.events import EventLog  # noqa: E402
-from pravaha_tracker.state import build_snapshot  # noqa: E402
+from pravaha_tracker.state import build_snapshot, load_closure  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
@@ -63,6 +64,7 @@ def default_config() -> dict:
         "db_port": int(os.environ.get("PRAVAHA_DB_PORT", "5433")),
         "detectors_enabled": os.environ.get("PRAVAHA_DETECTORS", "1") != "0",
         "git_every_s": int(os.environ.get("PRAVAHA_GIT_EVERY_S", "20")),
+        "tick_budget_s": float(os.environ.get("PRAVAHA_TICK_BUDGET_S", "8")),
         "backup_every_s": int(os.environ.get("PRAVAHA_BACKUP_EVERY_S", "600")),
     }
 
@@ -93,6 +95,13 @@ class Engine:
         self._last_build = 0.0
         self.cond = threading.Condition()
         self._stop = threading.Event()
+        self._tick_lock = threading.Lock()
+        self._tick_worker: threading.Thread | None = None
+        self._tick_abandoned = False
+        self._cancelled = threading.Event()
+        self._deadline = float("inf")
+        self._tick_history: list[str] = []
+        self._dirty_generation = 0
         self.tick_errors: collections.deque = collections.deque(maxlen=20)
         self._load_persisted()
 
@@ -113,7 +122,15 @@ class Engine:
         self._stop.set()
 
     def _mark_dirty(self) -> None:
-        self._dirty = True
+        with self.cond:
+            self._dirty = True
+            self._dirty_generation += 1
+
+    def _record_error(self, message: str) -> None:
+        with self.cond:
+            self.tick_errors.append(message)
+            self._dirty = True
+            self._dirty_generation += 1
 
     # ---- the loop ----------------------------------------------------------------------------
     def _loop(self) -> None:
@@ -121,23 +138,85 @@ class Engine:
             try:
                 self.tick()
             except Exception:  # the loop must never die
-                self.tick_errors.append(dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
-                                        + " " + traceback.format_exc(limit=2)[-400:])
+                self._record_error(dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+                                   + " " + traceback.format_exc(limit=2)[-400:])
             self._stop.wait(1.0)
 
     def tick(self) -> None:
-        self._last_tick = time.time()
+        """Collect on isolated state, then publish only a timely completed tick.
+
+        Python cannot interrupt arbitrary blocked filesystem/detector code safely.
+        Keep at most one collector, abandon its output on timeout, and serve the last
+        complete snapshot until it unwinds. Never accumulate replacement workers.
+        """
+        if not self._tick_lock.acquire(blocking=False):
+            return
+        try:
+            budget = max(0.01, float(self.cfg.get("tick_budget_s", 8)))
+            deadline = time.monotonic() + budget
+            if self._tick_worker is not None and self._tick_worker.is_alive():
+                return
+            with self.cond:
+                stage = copy.copy(self)
+                # Everything mutated by a collector is private; detector cache and
+                # cfg are intentionally shared services. Published models/snapshots
+                # are replaced, never mutated, by the collector.
+                stage.log = copy.copy(self.log)
+                stage.log.events = list(self.log.events)
+                stage.log._lock = threading.Lock()
+                stage.cond = threading.Condition()
+                stage.tick_errors = collections.deque(maxlen=20)
+                stage._tick_history = list(self.tick_errors)
+                stage._cancelled = threading.Event()
+                stage._deadline = deadline
+                generation = self._dirty_generation
+            errors = []
+            completed = []
+
+            def collect():
+                try:
+                    stage._collect_tick()
+                except Exception as exc:
+                    errors.append(exc)
+                finally:
+                    completed.append(time.monotonic())
+
+            self._tick_worker = threading.Thread(target=collect, name="tick-collector", daemon=True)
+            self._tick_worker.start()
+            self._tick_worker.join(max(0, deadline - time.monotonic()))
+            if self._tick_worker.is_alive() or not completed or completed[0] > deadline:
+                stage._cancelled.set()
+                self._tick_abandoned = True
+                self._record_error(f"tick budget exceeded ({budget:g}s); result abandoned")
+                return
+            if errors:
+                raise errors[0]
+            with self.cond:
+                for name in ("model", "model_error", "_model_mtime", "log", "_seen_events",
+                             "_backup_at", "_backup_info", "_last_build", "_digest", "version", "snapshot"):
+                    setattr(self, name, getattr(stage, name))
+                self._dirty = stage._dirty or generation != self._dirty_generation
+                self.tick_errors.extend(stage.tick_errors)
+                self._last_tick = time.time()
+                self._tick_abandoned = False
+                self.cond.notify_all()
+            if time.time() - self._activity_at > self.cfg["git_every_s"] and not self._activity_running:
+                self._activity_running = True
+                threading.Thread(target=self._refresh_activity, name="git-activity", daemon=True).start()
+        finally:
+            self._tick_lock.release()
+
+    def _collect_tick(self) -> None:
         self._reload_model()
         if self.log.refresh():
             self._dirty = True
             self._recheck_touched()
         if self.cfg["detectors_enabled"]:
             self.det.poll([i["detector"] for i in self.model.get("items", []) if i.get("detector")])
-        if time.time() - self._activity_at > self.cfg["git_every_s"] and not self._activity_running:
-            self._activity_running = True
-            threading.Thread(target=self._refresh_activity, name="git-activity", daemon=True).start()
         if time.time() - self._backup_at > self.cfg["backup_every_s"]:
             self._backup()
+        if self._cancelled.is_set():
+            return
         if self._dirty or time.time() - self._last_build > 5:
             self._dirty = False
             self._rebuild()
@@ -184,11 +263,13 @@ class Engine:
                 live = [a for a in acts if a.get("last_commit_ts")]
                 latest = max(live, key=lambda a: a["last_commit_ts"]) if live else (acts[0] if acts else {"error": "no worktree yet"})
                 out[s["id"]] = {**latest, "all": acts}
-            if out != self.activity:
-                self.activity = out
-                self._dirty = True
+            with self.cond:
+                if out != self.activity:
+                    self.activity = out
+                    self._dirty = True
+                    self._dirty_generation += 1
         except Exception as exc:  # noqa: BLE001
-            self.tick_errors.append(f"git activity: {exc}")
+            self._record_error(f"git activity: {exc}")
         finally:
             self._activity_at = time.time()
             self._activity_running = False
@@ -212,6 +293,17 @@ class Engine:
             self.tick_errors.append(f"backup failed: {exc}")
 
     def health(self) -> dict:
+        """Request-safe: only cached values and in-memory freshness, never I/O."""
+        with self.cond:
+            cached = dict(self.snapshot.get("health", {}))
+            cached.update(server_started_at=self.started_at.isoformat(timespec="seconds"),
+                          engine_tick_age_s=round(time.time() - self._last_tick, 1),
+                          git_activity_age_s=round(time.time() - self._activity_at, 1) if self._activity_at else None,
+                          tick_abandoned=self._tick_abandoned, tick_errors=list(self.tick_errors)[-3:])
+        return cached
+
+    def _sample_health(self) -> dict:
+        """External probes run only in the budgeted collector, outside publication locks."""
         errs = []
         for i in self.model.get("items", []):
             if i.get("detector"):
@@ -231,7 +323,7 @@ class Engine:
             "model_error": self.model_error,
             "detector_errors": errs,
             "git_activity_age_s": round(time.time() - self._activity_at, 1) if self._activity_at else None,
-            "tick_errors": list(self.tick_errors)[-3:],
+            "tick_errors": (self._tick_history + list(self.tick_errors))[-3:],
         }
 
     def _rebuild(self) -> None:
@@ -242,17 +334,24 @@ class Engine:
                 r = self.det.get(i["detector"])
                 if r is not None:
                     det_results[i["id"]] = r.to_dict()
-        snap = build_snapshot(self.model, list(self.log.events), det_results, {}, self.health(), self.activity)
+        snap = build_snapshot(self.model, list(self.log.events), det_results, {}, self._sample_health(), self.activity,
+                              closure=load_closure(self.model))
         body = {k: v for k, v in snap.items() if k != "generated_at"}
         digest = hashlib.sha256(json.dumps(_strip_ages(body), sort_keys=True, default=str).encode()).hexdigest()
         with self.cond:
             if digest != self._digest:
                 self.version += 1
                 self._digest = digest
-                self._persist(snap)
+                changed = True
+            else:
+                changed = False
             snap["version"] = self.version
             self.snapshot = snap
             self.cond.notify_all()
+        # Persistence can block on a filesystem. It must never own the lock that
+        # all state/health/SSE readers need.
+        if changed and not self._cancelled.is_set():
+            self._persist(snap)
 
     def _persist(self, snap: dict) -> None:
         path = self.cfg["snapshot"]
@@ -261,9 +360,16 @@ class Engine:
             tmp = f"{path}.tmp.{os.getpid()}"
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump({**snap, "version": self.version}, f, ensure_ascii=False, default=str)
-            os.replace(tmp, path)
+            if not self._cancelled.is_set() and time.monotonic() < self._deadline:
+                os.replace(tmp, path)
         except OSError as exc:
-            self.tick_errors.append(f"snapshot persist failed: {exc}")
+            self._record_error(f"snapshot persist failed: {exc}")
+        finally:
+            if "tmp" in locals():
+                try:
+                    os.unlink(tmp)
+                except FileNotFoundError:
+                    pass
 
 
 def check_model(model: dict) -> list[str]:
@@ -379,7 +485,8 @@ def make_handler(engine: Engine):
             if path == "/api/state":
                 return self._json(snap)
             if path == "/api/health":
-                h = {"ok": engine.health()["engine_tick_age_s"] < 10, "version": engine.version, **engine.health()}
+                h = engine.health()
+                h.update(ok=h["engine_tick_age_s"] < 10 and not h["tick_abandoned"], version=snap.get("version", 0))
                 return self._json(h, 200 if h["ok"] else 503)
             if path == "/api/next":
                 sid = (q.get("stream") or [""])[0].upper()
