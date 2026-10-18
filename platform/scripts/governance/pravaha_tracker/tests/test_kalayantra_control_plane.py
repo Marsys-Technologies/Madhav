@@ -6,6 +6,7 @@ import contextlib
 import hashlib
 import io
 import json
+from pathlib import Path
 import os
 import subprocess
 import sys
@@ -312,7 +313,9 @@ class GuardedCompletionCases(unittest.TestCase):
         }
         self.pr = {"number": 3210, "headRefOid": self.head, "mergeCommit": {"oid": self.merge},
                    "state": "MERGED"}
-        self.proof = {"type": "code", "reviewed_head": self.head, "pr": self.pr}
+        # A7 D-46: every code item, a data-writing one too, is also contained in a successful main deploy
+        self.deploy = {"deployed_sha": "d" * 40, "run_id": 7, "contains_merge": True}
+        self.proof = {"type": "code", "reviewed_head": self.head, "pr": self.pr, "deploy": self.deploy}
         self.step = {"kind": "item", "actor": "stream-K:k1", "item": "K-1", "state": "done",
                      "step": "tests", "evidence": "suite passed", "ts": self.now}
         self.verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "K-1",
@@ -333,12 +336,13 @@ class GuardedCompletionCases(unittest.TestCase):
             self.done([self.step, self.review, self.verdict, self.post, rejected])
 
     def test_done_requires_deps_steps_verdict_detector(self):
-        with self.assertRaisesRegex(CompletionError, "steps"):
-            self.done([self.review, self.verdict, self.post])
+        # A7 D-46: a code item needs no step receipt (its PR acceptance covers them); only the detector, verdict and
+        # post-deploy evidence remain, and an operation still waits for its dependencies (SR-A4-01).
+        self.assertTrue(self.done([self.review, self.verdict, self.post])["guarded"])
         with self.assertRaisesRegex(CompletionError, "detector"):
             self.done([self.step, self.review, self.verdict, self.post], detector="pending")
         with self.assertRaisesRegex(CompletionError, "dependencies"):
-            self.done([], item="K-2", proof={"type": "artifact", "artifact_digest": "f" * 64})
+            self.done([], item="K-2", proof={"type": "operation"})
         event = self.done([self.step, self.review, self.verdict, self.post])
         self.assertTrue(event["guarded"])
         self.assertIn(self.merge, event["evidence"])
@@ -486,7 +490,8 @@ class GuardedCompletionCases(unittest.TestCase):
             live = ({"item": "K-1", "detector": {"status": "done", "detail": "merged"}}, "live")
             gh = subprocess.CompletedProcess([], 0, stdout=json.dumps(self.pr), stderr="")
             with patch.object(cli, "EVENTS", path), patch.object(cli, "load_model", return_value=self.model), \
-                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh):
+                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh), \
+                    patch.object(cli, "observe_containment", return_value=self.deploy):
                 self.assertEqual(cli.main(["done", "K-1", "--stream", "K", "--pr", "3210",
                                            "--reviewed-head", self.head]), 0)
             with open(path, encoding="utf-8") as handle:
@@ -494,6 +499,20 @@ class GuardedCompletionCases(unittest.TestCase):
             self.assertEqual(events[-1]["state"], "done")
             self.assertTrue(events[-1]["guarded"])
             self.assertEqual(events[-1]["completion"]["pr"]["mergeCommit"]["oid"], self.merge)
+
+    def test_cli_refuses_failed_live_measurement_despite_ready_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "EVENTS.jsonl")
+            for event in (self.step, self.review, self.verdict, self.post):
+                append(path, event, self.model)
+            before = Path(path).read_bytes()
+            live = ({"item": "K-1", "detector": {"status": "error", "detail": "fetch failed"}}, "live")
+            gh = subprocess.CompletedProcess([], 0, stdout=json.dumps(self.pr), stderr="")
+            with patch.object(cli, "EVENTS", path), patch.object(cli, "load_model", return_value=self.model), \
+                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh):
+                self.assertEqual(cli.main(["done", "K-1", "--stream", "K", "--pr", "3210",
+                                           "--reviewed-head", self.head]), 2)
+            self.assertEqual(Path(path).read_bytes(), before)
 
 
 class StructuredDecisionCases(unittest.TestCase):
@@ -944,22 +963,13 @@ class VelocityAmendmentCases(unittest.TestCase):
         with self.assertRaisesRegex(CompletionError, "post-deploy"):
             guarded_done_event(model, [self.review, self.verdict], "K-C", "stream-K:k1", {"status": "done"}, proof)
 
-    def _git(self, cwd, *args):
-        env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x", "GIT_COMMITTER_NAME": "t",
-               "GIT_COMMITTER_EMAIL": "t@x"}
-        return subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, text=True, check=True).stdout.strip()
-
     def test_verdict_survives_merge_only_push_but_not_a_new_commit(self):
         """Rewritten for the shared reviewed-patch predicate (plan §6): the tracker asks `kyverdicts.inherits`
         and nothing else; ancestry alone, a missing predicate or any answer other than True inherits nothing."""
         with tempfile.TemporaryDirectory() as repo:
-            g = lambda *a: self._git(repo, *a)
-            g("init", "-q", "-b", "main"); pathlib_write(repo, "base.txt", "0"); g("add", "."); g("commit", "-qm", "base")
-            g("checkout", "-qb", "feature"); pathlib_write(repo, "f.txt", "1"); g("add", "."); g("commit", "-qm", "work")
-            h1 = g("rev-parse", "HEAD")
-            g("checkout", "-q", "main"); pathlib_write(repo, "m.txt", "2"); g("add", "."); g("commit", "-qm", "main moves")
-            g("checkout", "-q", "feature"); g("merge", "-q", "--no-edit", "main"); h2 = g("rev-parse", "HEAD")
-            pathlib_write(repo, "f.txt", "3"); g("add", "."); g("commit", "-qm", "more work"); h3 = g("rev-parse", "HEAD")
+            # Inheritance is decided exclusively by the injected shared predicate.
+            # Real git commits add no coverage here and require write access to git.
+            h1, h2, h3 = "a" * 40, "d" * 40, "e" * 40
             verdict = {**self.verdict, "head": h1}
             calls = []
             with predicate(True, calls):
@@ -1177,7 +1187,7 @@ class KU01Fixtures(DeclaredCase):
     def test_data_writing_completion_needs_post_deploy_at_the_merge_commit(self):
         events = [self.review("K-D"), self.verdict("K-D", head=self.head)]
         post = self.verdict("K-D", head=self.merge, phase="post_deploy")
-        self.assert_passes("K-D", [*events, post], self.code_proof())
+        self.assert_passes("K-D", [*events, post], self.code_proof(deploy=self.deploy))
         self.assert_passes("K-D", [*events, post], self.code_proof(deploy=self.deploy))
         wrong = (
             [],                                                                       # missing
@@ -1218,9 +1228,9 @@ class KU01Fixtures(DeclaredCase):
     def test_audit_rechecks_typed_evidence_at_the_end_of_the_log(self):
         events = [self.review("K-D"), self.verdict("K-D", head=self.head),
                   self.verdict("K-D", head=self.merge, phase="post_deploy")]
-        self.assert_passes("K-D", events, self.code_proof())
+        self.assert_passes("K-D", events, self.code_proof(deploy=self.deploy))
         for revoked, code in ((events[1], "rejected_or_stale_verdict"), (events[2], "missing_post_deploy_verdict")):
-            refused, codes = self.both("K-D", events, self.code_proof(), later=[{**revoked, "result": "REJECTED"}])
+            refused, codes = self.both("K-D", events, self.code_proof(deploy=self.deploy), later=[{**revoked, "result": "REJECTED"}])
             self.assertIsNone(refused)                       # the guard saw the log before the revocation
             self.assertEqual(codes, {code})
 
@@ -1830,12 +1840,16 @@ class DeclaredSnapshotCases(unittest.TestCase):
         self.assertNotIn("staged", {row["id"]: row for row in snapshot["decisions"]}["D-RETIRE-K-R"])
         self.assertEqual([row["id"] for row in snapshot["native_queue"]], ["D-ASK"])
 
-    def test_committed_model_stages_exactly_its_two_retirements(self):
+    def test_committed_model_stages_exactly_its_retirements(self):
+        # the two B-2 retirements, plus the six owner-authorised not_applicable decisions of Amendment A9
+        # (D-51, D-53, D-54): staged, so none is a question for the native
         with open(COMMITTED_MODEL, encoding="utf-8") as handle:
             model = json.load(handle)
         snapshot = self.snapshot(model=model)
         staged = {row["id"] for row in snapshot["decisions"] if row.get("staged")}
-        self.assertEqual(staged, {"D-RETIRE-B-K-INBOX", "D-RETIRE-B-CLAIM-RECOVERY"})
+        self.assertEqual(staged, {"D-RETIRE-B-K-INBOX", "D-RETIRE-B-CLAIM-RECOVERY", "D-A9-NA-JOIN-ALL",
+                                  "D-A9-NA-K-CERT-2", "D-A9-NA-W4-SAFETY", "D-A9-NA-PROCESS-NOTES",
+                                  "D-A9-NA-OPS-NB-03", "D-A9-NA-PACKET-EXITS"})
         self.assertFalse(staged & {row["id"] for row in snapshot["native_queue"]})
 
 

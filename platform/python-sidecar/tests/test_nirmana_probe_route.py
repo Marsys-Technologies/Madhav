@@ -203,13 +203,21 @@ def _post(client: TestClient, *, key: str | None = API_KEY, **overrides):
     return client.post("/internal/nirmana/probe", json=body, headers=headers)
 
 
-def test_probe_route_is_mounted_on_deployed_sidecar_app():
+def test_probe_route_is_mounted_on_deployed_sidecar_app(monkeypatch: pytest.MonkeyPatch):
+    import sys
+    from types import ModuleType
+    import dotenv
+
+    # Mount/auth smoke only: never load .env or call a database driver.
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda: None)
+    monkeypatch.setenv("PYTHON_SIDECAR_API_KEY", API_KEY)
+    monkeypatch.setitem(sys.modules, "asyncpg", ModuleType("asyncpg"))
     from main import app
 
-    assert any(
-        route.path == "/internal/nirmana/probe" and "POST" in (route.methods or set())
-        for route in app.routes
-    )
+    # Exercise actual dispatch, including FastAPI's lazily included routers.
+    # An absent mount yields 404; authentication refuses before probe execution.
+    response = TestClient(app).post("/internal/nirmana/probe", json={})
+    assert response.status_code in (401, 403)
 
 
 @pytest.mark.parametrize("key", [None, "", "wrong-key"])

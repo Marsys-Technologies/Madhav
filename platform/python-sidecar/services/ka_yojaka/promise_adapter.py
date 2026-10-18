@@ -12,12 +12,16 @@ import hashlib
 import json
 import math
 from collections.abc import Iterable, Mapping
+from brahmagyan.verification_vocab import TWO_PASS_VERIFIED
 
 from services.gochara_rules.registry import YOGA_EVENT_MAP
 from services.kala_core.promise import (
-    Conclusion, Defeat, EdgePolarity, FactState, Mechanism, MechanismRoute,
+    Conclusion, Defeat, EdgePolarity, EventRelation, FactState, Mechanism, MechanismRoute,
     PromiseEdge, PromiseGraph, PromiseNode,
+    UnassessedReason,
 )
+from services.ka_yojaka.structural_adapter import structural_bundle
+from services.ka_yojaka.attachment_adapter import attach_sources
 
 
 @dataclass(frozen=True)
@@ -81,13 +85,14 @@ def _target(fact_ids, facts):
 
 
 def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: Iterable[Mapping],
-                 *, bindings=EVENT_BINDINGS) -> list[dict]:
+                 *, bindings=EVENT_BINDINGS, cgm=(), pratijna=(), served_locators=()) -> list[dict]:
     """Retain formations; compute only sourced, convention-local conclusions.
 
     Cancellation adapter contract: L0 bhanga_rules_jsonb must name kind, rule_id,
     version, locator, target canonical yoga and event class. L1 grounds_jsonb
     must separately name cancellation_evidence[{rule_id,fact_ids}]. Older
-    producers without that information are unqualified, never guessed. NBRY's
+    producers without a sourced target are unqualified, never guessed. A named
+    fired target with absent/ambiguous evidence stays unresolved. NBRY's
     flag describes its own formation; only a separately identified target can
     be defeated. These contracts do not write or alter either source layer.
     """
@@ -95,6 +100,7 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
     firings = sorted((r for r in firings if r.get("fired") is True),
                      key=lambda r: (str(r["ayanamsha_id"]), str(r["yoga_canonical_id"])))
     signals = list(signals)
+    cgm, pratijna = list(cgm), list(pratijna)
     graphs: dict[str, PromiseGraph] = {}
     available: dict[str, dict] = {}
     for fact in facts:
@@ -106,6 +112,7 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
         graph = graphs.setdefault(ayan, PromiseGraph())
         local_facts = available.get(ayan, {})
         state = "present" if fact_ids and set(fact_ids) <= local_facts.keys() else "missing_fact"
+        target = _target(fact_ids, local_facts)
         source = json.dumps({"l1": f"ga_yoga_firings:{firing['id']}", "l0": canonical,
                              "citations": firing.get("classical_citations") or []}, sort_keys=True)
         matches = [b for b in bindings if b.canonical_id == canonical]
@@ -133,7 +140,13 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
                 graph.add_mechanism(Mechanism(mechanism_id, MechanismRoute.ADMITTED,
                     event_class, (formation_node, *participants), fact_ids, binding.source))
                 graph.add_conclusion(Conclusion(conclusion_id, mechanism_id,
-                    FactState(state), fact_ids))
+                    FactState(state), fact_ids,
+                    # (I) INTERPRETATION: use only the existing explicit target
+                    # identity and sourced binding relation; no target fallback.
+                    target_id=target['identity'] if target else None,
+                    valence=(None if binding.relation == EventRelation.CONDITIONS else
+                             EdgePolarity(binding.relation)),
+                    event_relation=EventRelation(binding.relation)))
                 graph_nodes = [asdict(graph.nodes[n]) for n in (formation_node, *participants)]
             output.append(dict(
                 mechanism_id=mechanism_id, conclusion_id=conclusion_id,
@@ -145,8 +158,12 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
                 qualification=("sourced" if qualified else "ambiguous_event_binding" if ambiguous else
                     "missing_l0_rule" if not firing.get("formation_rule_jsonb") or not firing.get("classical_citations") else "unbound_event_class"),
                 effective_state="unresolved", scored=False, defeats=[], excepts=[],
-                cancellation_unqualified=[], target=_target(fact_ids, local_facts),
+                cancellation_unqualified=[], target=target,
                 constituent_planets=list(firing.get("constituent_planets") or []),
+                yoga_tier=firing.get('verification_pass_status'),
+                null_reason=(None if firing.get('verification_pass_status') is not None else
+                             'ga_yoga_firings_carries_no_verification_tier'),
+                judgment_flags=[] if firing.get('verification_pass_status') is not None else ['yoga_tier_unavailable'],
                 attachments=sorted({str(s["signal_id"]) for s in signals
                     if str(s["ayanamsha_id"]) == ayan and fact_ids
                     and set(fact_ids) <= set(_ids(s.get("constituent_facts_array")))}),
@@ -159,40 +176,71 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
         specs = firing.get("bhanga_rules_jsonb") or []
         grounds = firing.get("grounds_jsonb") or {}
         evidence = grounds.get("cancellation_evidence", []) if isinstance(grounds, dict) else []
-        applied = False
+        retained = False
         for spec in specs if isinstance(specs, list) else []:
             if not isinstance(spec, dict) or not all(spec.get(k) for k in (
                 "rule_id", "rule_version", "source_locator", "target_yoga_canonical_id", "target_event_class_id")):
                 continue
-            # A matching L1 evaluation is mandatory; no substring matching.
-            records = [e for e in evidence if e.get("rule_id") == spec["rule_id"]]
-            if len(records) != 1 or firing.get("bhanga_rule_fired") != spec["rule_id"] or spec.get("kind") not in {"defeats", "excepts"}:
+            # The fired rule must match exactly; evidence cardinality cannot
+            # erase its separately named target.
+            if firing.get("bhanga_rule_fired") != spec["rule_id"] or spec.get("kind") not in {"defeats", "excepts"}:
                 continue
             if canonical == "neecha_bhanga_raja_yoga" and spec["target_yoga_canonical_id"] == canonical:
                 continue
             cid = f"{ayan}:{spec['target_yoga_canonical_id']}:{spec['target_event_class_id']}:conclusion"
             target = by_conclusion.get(cid)
-            refs = _ids(records[0].get("fact_ids"))
-            if not target or target["conclusion_id"] not in graphs[ayan].conclusions or not refs or not set(refs) <= available.get(ayan, {}).keys():
+            if not target or target["conclusion_id"] not in graphs[ayan].conclusions:
                 continue
-            defeat = Defeat(cid, refs, spec["rule_id"], spec["kind"])
+            records = [e for e in evidence if isinstance(e, dict) and e.get("rule_id") == spec["rule_id"]] if isinstance(evidence, list) else []
+            evidence_reason = (UnassessedReason.DEFEAT_EVIDENCE_MISSING if not records else
+                               UnassessedReason.DEFEAT_EVIDENCE_AMBIGUOUS if len(records) > 1 else None)
+            # (I) INTERPRETATION: duplicate records, even identical ones, remain
+            # ambiguous. Their union of ids is audit data, never earned grounding.
+            refs = _ids([fact_id for record in records for fact_id in _ids(record.get("fact_ids"))])
+            # Retain named evidence even when its roots are missing: the graph
+            # earns defeat only after grounding, otherwise it reports unresolved.
+            # (I) INTERPRETATION: identify each evidence row by its L1 firing id,
+            # target conclusion, kind and sourced rule id.
+            defeat = Defeat(cid, refs, spec["rule_id"], spec["kind"],
+                defeat_id=f"ga_yoga_firings:{firing['id']}:{cid}:{spec['kind']}:{spec['rule_id']}",
+                evidence_reason=evidence_reason)
             graphs[ayan].add_defeat(defeat)
             target[spec["kind"]].append({**asdict(defeat), "fact_ids": list(refs),
-                "rule_version": spec["rule_version"], "source_locator": spec["source_locator"]})
-            applied = True
-        if not applied and canonical != "neecha_bhanga_raja_yoga":
+                "rule_version": spec["rule_version"], "source_locator": spec["source_locator"],
+                "evidence_records": [dict(record) for record in records]})
+            retained = True
+        if not retained and canonical != "neecha_bhanga_raja_yoga":
             for row in output:
                 if row["ayanamsha_id"] == ayan and row["canonical_id"] == canonical:
                     row["cancellation_unqualified"].append("missing_sourced_target_or_evidence")
     for row in output:
         graph = graphs[row["ayanamsha_id"]]
-        if row["conclusion_id"] in graph.conclusions and row["fact_state"] == "present" and not row["cancellation_unqualified"]:
-            row["effective_state"] = graph.effective_state(row["conclusion_id"], available.get(row["ayanamsha_id"], {})).value
+        if row["conclusion_id"] in graph.conclusions and row["fact_state"] == "present":
+            result = graph.effective_result(row["conclusion_id"], available.get(row["ayanamsha_id"], {}))
+            if not row['cancellation_unqualified'] or result.null_reason is not None:
+                row["effective_state"] = result.state.value
+            if result.null_reason is not None:
+                row['effective_reason'] = dict(null_reason=result.null_reason.value,
+                    conclusion_ids=list(result.conclusion_ids), defeat_ids=list(result.defeat_ids))
+                if result.null_reason is UnassessedReason.MISSING_DEFEAT_FACTS:
+                    row['effective_reason']['missing_fact_ids'] = list(result.missing_fact_ids)
+                if result.null_reason in {UnassessedReason.DEFEAT_EVIDENCE_MISSING,
+                                          UnassessedReason.DEFEAT_EVIDENCE_AMBIGUOUS}:
+                    row['effective_reason']['evidence_fact_ids'] = list(result.evidence_fact_ids)
+                row['null_reason'] = result.null_reason.value
+                row['judgment_flags'].append(result.null_reason.value)
             row["scored"] = row["effective_state"] == "in_force"
+    output.extend(structural_bundle(facts, served_locators=served_locators))
     attached = {signal_id for row in output for signal_id in row["attachments"]}
     for signal in sorted(signals, key=lambda s: str(s["signal_id"])):
         signal_id, ayan = str(signal["signal_id"]), str(signal["ayanamsha_id"])
-        if signal_id in attached:
+        config = signal.get('configuration_jsonb') or {}
+        equivalent = any(signal_id in row['attachments']
+                         and config.get('event_class_id') == row['event_class_id']
+                         and not config.get('assumptions') for row in output)
+        # (I) INTERPRETATION: a signal without an event proposal or assumptions
+        # is only an attachment; explicit distinct proposals remain testimony.
+        if signal_id in attached and (equivalent or not config):
             continue
         refs = _ids(signal.get("constituent_facts_array"))
         config = signal.get("configuration_jsonb") or {}
@@ -211,4 +259,17 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
             target=_target(refs, available.get(ayan, {})), constituent_planets=[], attachments=[signal_id],
             assumptions=config.get("assumptions"),
         ))
-    return output
+    attach_sources(output, available, signals, cgm, pratijna)
+    return sorted(output, key=mechanism_density_key)
+
+
+def mechanism_density_key(row):
+    """Earned fact verification precedes an unavailable yoga verification tier."""
+    if row.get('null_reason') in {reason.value for reason in UnassessedReason}:
+        return (2, str(row['mechanism_id']))
+    tiers = row.get('constituent_fact_tiers') or {}
+    fact_verified = bool(row.get('fact_ids')) and set(tiers) == set(row['fact_ids']) and all(
+        tier == TWO_PASS_VERIFIED for tier in tiers.values())
+    unverified_yoga = bool(row.get('canonical_id')) and row.get('yoga_tier') != TWO_PASS_VERIFIED
+    rank = 0 if fact_verified and not unverified_yoga else 1 if unverified_yoga else 2
+    return (rank, str(row['mechanism_id']))

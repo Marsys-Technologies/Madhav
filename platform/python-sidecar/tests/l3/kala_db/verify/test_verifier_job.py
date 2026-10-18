@@ -11,7 +11,8 @@ import sys
 import uuid
 
 import psycopg
-from psycopg.conninfo import make_conninfo
+from psycopg import sql
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
 
 def _digest(input_vector: str) -> str:
@@ -76,7 +77,8 @@ def test_verifier_job_runs_in_a_separate_process_as_verifier_principal(kala_db_d
             "result text NOT NULL, detail jsonb NOT NULL, "
             "PRIMARY KEY (chart_id, generation))"
         )
-        conn.execute("GRANT USAGE ON SCHEMA public TO verifier_principal")
+        schema = conn.execute("SELECT current_schema()").fetchone()[0]
+        conn.execute(sql.SQL("GRANT USAGE ON SCHEMA {} TO verifier_principal").format(sql.Identifier(schema)))
         conn.execute("GRANT SELECT ON kala_layer_candidate_grain TO verifier_principal")
         conn.execute("GRANT INSERT ON kala_layer_verification TO verifier_principal")
         conn.execute(
@@ -93,9 +95,10 @@ def test_verifier_job_runs_in_a_separate_process_as_verifier_principal(kala_db_d
             "(chart_id, generation, grain_key, input_vector) VALUES (%s, %s, 'grain', 'stored')",
             (chart_id, generation),
         )
-        verifier_dsn = make_conninfo(kala_db_dsn, options="-c role=verifier_principal")
+        options = conninfo_to_dict(kala_db_dsn).get("options", "")
+        verifier_dsn = make_conninfo(kala_db_dsn, options=f"{options} -c role=verifier_principal")
         sidecar_root = Path(__file__).resolve().parents[4]
-        child_env = {"KALA_VERIFIER_DSN": verifier_dsn, "PYTHONPATH": str(sidecar_root)}
+        child_env = {"KALA_VERIFIER_DSN": verifier_dsn, "PYTHONPATH": str(sidecar_root), "PYTHONDONTWRITEBYTECODE": "1"}
         privilege_probe = subprocess.run(
             [
                 sys.executable,
@@ -139,8 +142,21 @@ def test_verifier_job_runs_in_a_separate_process_as_verifier_principal(kala_db_d
             "SELECT verifier_principal, result, detail->>'input_digest' "
             "FROM kala_layer_verification"
         ).fetchall() == [("verifier_principal", "accepted", _digest("stored"))]
+        # An existing immutable key never reports a fresh successful verify,
+        # including when a resumed build has changed the grain's inputs.
+        for vector in ("stored", "B"):
+            conn.execute("UPDATE kala_layer_candidate_grain SET input_vector = %s", (vector,))
+            retry = subprocess.run(
+                [*completed.args[:-1], _digest(vector)], cwd=sidecar_root, env=child_env,
+                capture_output=True, text=True,
+            )
+            assert retry.returncode != 0
+            assert "immutable receipt" in retry.stderr
+            assert conn.execute(
+                "SELECT detail->>'input_digest' FROM kala_layer_verification"
+            ).fetchall() == [(_digest("stored"),)]
         if role_created:
             conn.execute("REVOKE ALL PRIVILEGES ON kala_layer_candidate_grain FROM verifier_principal")
             conn.execute("REVOKE ALL PRIVILEGES ON kala_layer_verification FROM verifier_principal")
-            conn.execute("REVOKE ALL PRIVILEGES ON SCHEMA public FROM verifier_principal")
+            conn.execute(sql.SQL("REVOKE ALL PRIVILEGES ON SCHEMA {} FROM verifier_principal").format(sql.Identifier(schema)))
             conn.execute("DROP ROLE verifier_principal")

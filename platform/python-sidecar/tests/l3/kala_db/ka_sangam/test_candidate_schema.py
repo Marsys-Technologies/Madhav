@@ -4,12 +4,16 @@ from uuid import uuid4
 import psycopg
 from psycopg.types.json import Jsonb
 import pytest
-from tests.l3.kala_db.conftest import kala_db_dsn
 
 ROOT=Path(__file__).parents[5]
 MIGRATION=ROOT/'migrations/1350_kala_jury_candidate.sql'
 CHART=str(uuid4()); CHART2=str(uuid4())
 GEN='candidate:fixture:1'
+SCHEMA='jury_schema_fixture_' + uuid4().hex
+
+
+def migration_sql():
+    return MIGRATION.read_text().replace('public.', SCHEMA + '.')
 LEGACY_COLUMNS=('convergence_id','chart_id','window_start','window_end','convergence_score',
  'constituent_factors','source_citation','computed_at','signal_id','mode','peak_date',
  'orb_strength','rarity_years','confidence_score','confidence_label','independent_current_count',
@@ -24,7 +28,18 @@ def test_additive_migration_exists_and_is_protected():
 @pytest.fixture(scope='module')
 def database(kala_db_dsn):
     assert MIGRATION.exists(), 'K4 candidate migration absent on base'
-    with psycopg.connect(kala_db_dsn) as c:
+    with psycopg.connect(kala_db_dsn, autocommit=True) as setup:
+        setup.execute(psycopg.sql.SQL('CREATE SCHEMA {}').format(psycopg.sql.Identifier(SCHEMA)))
+    scoped_dsn = psycopg.conninfo.make_conninfo(kala_db_dsn, options='-c search_path=' + SCHEMA + ',public')
+    try:
+        yield from _database(scoped_dsn)
+    finally:
+        with psycopg.connect(kala_db_dsn, autocommit=True) as cleanup:
+            cleanup.execute(psycopg.sql.SQL('DROP SCHEMA {} CASCADE').format(psycopg.sql.Identifier(SCHEMA)))
+
+
+def _database(scoped_dsn):
+    with psycopg.connect(scoped_dsn) as c:
         c.execute('CREATE TABLE charts(id uuid PRIMARY KEY)')
         c.execute('CREATE TABLE kala_layer_candidate(chart_id uuid NOT NULL REFERENCES charts(id), generation text NOT NULL, PRIMARY KEY(chart_id,generation))')
         c.execute('CREATE TABLE kala_layer_head(chart_id uuid PRIMARY KEY,generation text NOT NULL)')
@@ -36,10 +51,10 @@ def database(kala_db_dsn):
         c.execute('INSERT INTO kala_layer_head VALUES (%s,%s)',(CHART,'published:legacy'))
         before=c.execute('SELECT row_to_json(x)::text FROM kala_convergence x').fetchall()
         head=c.execute('SELECT * FROM kala_layer_head').fetchall()
-        c.execute(MIGRATION.read_text())
+        c.execute(migration_sql())
         assert c.execute('SELECT row_to_json(x)::text FROM kala_convergence x').fetchall()==before
         assert c.execute('SELECT * FROM kala_layer_head').fetchall()==head
-    return kala_db_dsn
+    yield scoped_dsn
 
 
 @pytest.fixture
@@ -64,11 +79,11 @@ def insert(c,**updates):
 def test_legacy_columns_rows_and_published_head_byte_compatible(conn):
     before=conn.execute('SELECT row_to_json(x)::text FROM kala_convergence x').fetchall()
     head=conn.execute('SELECT * FROM kala_layer_head').fetchall()
-    conn.execute(MIGRATION.read_text())
+    conn.execute(migration_sql())
     insert(conn)
     assert conn.execute('SELECT row_to_json(x)::text FROM kala_convergence x').fetchall()==before
     assert conn.execute('SELECT * FROM kala_layer_head').fetchall()==head
-    assert tuple(x[0] for x in conn.execute("SELECT column_name FROM information_schema.columns WHERE table_name='kala_convergence' ORDER BY ordinal_position"))==LEGACY_COLUMNS
+    assert tuple(x[0] for x in conn.execute("SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='kala_convergence' ORDER BY ordinal_position"))==LEGACY_COLUMNS
 
 
 def test_partition_identity_includes_chart_generation_and_class(conn):
@@ -87,7 +102,7 @@ def test_scoped_replacement_and_rollback_reapply_leave_other_partitions(conn):
         insert(conn)
         assert conn.execute('SELECT chart_id,generation,event_class,assertion_id FROM kala_jury_candidate ORDER BY 1,2,3,4').fetchall()==before
         conn.execute('ROLLBACK TO SAVEPOINT oracle')
-    conn.execute(MIGRATION.read_text())
+    conn.execute(migration_sql())
     assert conn.execute('SELECT chart_id,generation,event_class,assertion_id FROM kala_jury_candidate ORDER BY 1,2,3,4').fetchall()==before
 
 

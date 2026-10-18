@@ -13,6 +13,7 @@ from tests.l3.kala_db.conftest import kala_db_dsn  # noqa: F401 — module-local
 ROOT = Path(__file__).parents[5]
 MIGRATION = ROOT / "migrations/1351_issued_forecast_lifecycle.sql"
 FINITE_INTERVALS = ROOT / "migrations/1352_issued_forecast_finite_intervals.sql"
+GUARDS = [ROOT / "migrations/1380_issued_forecast_immutability_guard.sql"]
 CHART = UUID("11111111-1111-4111-8111-111111111111")
 ISSUE = UUID("22222222-2222-4222-8222-222222222222")
 OUTCOME = UUID("33333333-3333-4333-8333-333333333333")
@@ -29,6 +30,8 @@ def database(kala_db_dsn):
         conn.execute("INSERT INTO kala_layer_candidate VALUES (%s, 'fixture:v1')", (CHART,))
         conn.execute(MIGRATION.read_text())
         conn.execute(FINITE_INTERVALS.read_text())
+        for guard in GUARDS:
+            conn.execute(guard.read_text())
     return kala_db_dsn
 
 
@@ -116,9 +119,16 @@ def test_refinements_are_distinct_issues_but_credit_clusters_by_episode(conn):
 @pytest.mark.parametrize("statement", [
     "UPDATE issued_forecast SET delivered_statement = 'rewritten'",
     "UPDATE issued_forecast SET version = 2",
+    "UPDATE issued_forecast SET point_functional = 'midpoint'",
+    "UPDATE issued_forecast SET episode = 'career:2'",
+    "UPDATE issued_forecast SET phase = 'onset'",
+    "UPDATE issued_forecast SET affected_person = 'partner'",
     "DELETE FROM issued_forecast",
     "TRUNCATE issued_forecast CASCADE",
     "UPDATE issued_forecast_outcome SET observation = '{}'::jsonb",
+    "UPDATE issued_forecast_outcome SET observed_at = observed_at + interval '1 day'",
+    "UPDATE issued_forecast_outcome SET recorded_at = recorded_at + interval '1 day'",
+    "UPDATE issued_forecast_outcome SET outcome_id = gen_random_uuid()",
     "DELETE FROM issued_forecast_outcome",
     "TRUNCATE issued_forecast_outcome",
 ])
@@ -187,3 +197,42 @@ def test_reapplying_migration_preserves_issues_and_outcomes(conn):
     conn.execute(MIGRATION.read_text())
     conn.execute(FINITE_INTERVALS.read_text())
     assert conn.execute("SELECT to_jsonb(i) FROM issued_forecast i").fetchall() == before
+
+
+@pytest.mark.parametrize('table', ['issued_forecast', 'issued_forecast_outcome'])
+def test_each_declared_truncate_guard_independently_refuses_empty_table(conn, table):
+    # Empty tables have no row guards to mask a missing statement trigger.
+    # Disable only the neighbour's guard so CASCADE cannot mask this one either.
+    neighbour = ('issued_forecast_outcome' if table == 'issued_forecast' else 'issued_forecast')
+    conn.execute(f'ALTER TABLE {neighbour} DISABLE TRIGGER USER')
+    with pytest.raises(psycopg.errors.ObjectNotInPrerequisiteState) as refused:
+        with conn.transaction():
+            conn.execute(f'TRUNCATE {table} CASCADE')
+    assert f'on {table} refused' in str(refused.value)
+
+
+@pytest.mark.parametrize('table,column,change', [
+    ('issued_forecast', 'delivered_statement', "point_functional = 'midpoint'"),
+    ('issued_forecast_outcome', 'observation', "observed_at = observed_at + interval '1 day'"),
+])
+def test_guard_migration_repairs_narrowed_update_triggers_without_rewriting_history(conn, table, column, change):
+    insert(conn)
+    outcome(conn)
+    before = [conn.execute(f'SELECT to_jsonb(t) FROM {name} t').fetchall()
+              for name in ('issued_forecast', 'issued_forecast_outcome')]
+    trigger = f'{table}_immutable_rows'
+    conn.execute(f'DROP TRIGGER {trigger} ON {table}')
+    conn.execute(f'CREATE TRIGGER {trigger} BEFORE UPDATE OF {column} OR DELETE ON {table} '
+                 'FOR EACH ROW EXECUTE FUNCTION public.issued_forecast_refuse_mutation()')
+    # Simulate an installed narrow trigger; the additive guard must repair it.
+    # 1351 alone uses IF NOT EXISTS and demonstrably leaves this drift intact.
+    for migration in [MIGRATION, FINITE_INTERVALS, *GUARDS]:
+        conn.execute(migration.read_text())
+    for guard in GUARDS:  # Reapplication must be safe with delivered rows present.
+        conn.execute(guard.read_text())
+    with pytest.raises(psycopg.errors.ObjectNotInPrerequisiteState):
+        with conn.transaction():
+            conn.execute(f'UPDATE {table} SET {change}')
+    after = [conn.execute(f'SELECT to_jsonb(t) FROM {name} t').fetchall()
+             for name in ('issued_forecast', 'issued_forecast_outcome')]
+    assert after == before

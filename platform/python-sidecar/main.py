@@ -92,6 +92,10 @@ app.include_router(sutravali_router.router, prefix="/api/brahma", dependencies=[
 from routers import transit_search as transit_search_router
 app.include_router(transit_search_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
 
+# Scoped muhūrta parihāra evaluator (KA-4b preparation; L0-M typed source required).
+from routers import parihara_evaluate as parihara_evaluate_router
+app.include_router(parihara_evaluate_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
 # W2 dark-set wiring — ka_graha_sancara (GT-50): live graha positions at an
 # arbitrary UTC instant. Retrieval call_ephemeris_at_t capability calls
 # /api/compute/ephemeris_at_t. See routers/ephemeris.py's compute_router
@@ -139,6 +143,10 @@ app.include_router(_bodha_bundle.router, prefix="/api/compute/brahma", dependenc
 from routers import yoga_formation_band as yoga_formation_band_router
 app.include_router(yoga_formation_band_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
 
+# Sealed generation reader: additive until the governed authority flip.
+from routers import gochara_v5 as gochara_v5_router
+app.include_router(gochara_v5_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
 # Nirmana lifecycle evidence — deployed, authenticated typed service-probe runner.
 # This router owns a stricter fail-closed key check than the legacy sidecar routes:
 # an absent server credential is unavailable, never anonymous access.
@@ -148,3 +156,7 @@ app.include_router(nirmana_probe_router.router, prefix="/internal/nirmana")
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+# K7-4 authenticated, stateless forecaster-window comparator.
+from services.ka_tulana.ranker import router as tulana_router
+app.include_router(tulana_router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])

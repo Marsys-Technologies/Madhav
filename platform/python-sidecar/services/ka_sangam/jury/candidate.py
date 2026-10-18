@@ -26,14 +26,42 @@ from .evidence import GROUPS, Node, Use, Support, corroboration, evidence_graph
 from .groups import Group, declarations
 from .jaimini import MethodOutput, consume
 
-VERSION = 'k4-2aw:class_input:v1'
+VERSION = 'k4-2aw:class_input:v2'
+
+
+class ExperimentExposure(Typed):
+    """Producer-declared shift domain, distinct from the selected window W.
+
+    (I) INTERPRETATION: fixture licensing is an explicit coverage/source binding,
+    not a jury-chosen larger interval. Live producer admission is still owed.
+    """
+    horizon: Interval
+    coverage_ref: Ref
+    source_refs: tuple[Ref, ...] = Field(min_length=1)
+
+
+class SelectionAncestry(Typed):
+    """Complete fixture parent ancestry bound to this exact source assertion."""
+    assertion_id: Ref
+    method: Ref
+    rule_version: Ref
+    source_locator: Ref
+    input_vector_hash: Annotated[str, Field(pattern=r'^[0-9a-f]{64}$')]
+    parents: dict[Ref, Annotated[tuple[Ref, ...], Field(min_length=1)]]
+    review_refs: tuple[Ref, ...] = Field(min_length=1)
+
+    @property
+    def ancestry(self):
+        return frozenset(a for ancestors in self.parents.values() for a in ancestors)
 
 
 class ClassInput(Typed):
-    contract_version: Literal['k4-2aw:class_input:v1']
+    contract_version: Literal['k4-2aw:class_input:v2']
     acceptance_scope: Literal['fixture_only']
     anchor: AssertionEnvelope
     upstream_refs: dict[Literal['judge', 'negative_space', 'F1', 'F2'], tuple[Ref, ...]]
+    experiment_exposure: ExperimentExposure
+    selection_ancestry: SelectionAncestry
     nodes: tuple[Node, ...]
     uses: tuple[Use, ...]
     groups: tuple[Group, ...]
@@ -69,6 +97,25 @@ class ClassInput(Typed):
             raise ValueError('private candidate generation required')
         if set(self.upstream_refs) != {'judge', 'negative_space', 'F1', 'F2'} or not all(self.upstream_refs.values()):
             raise ValueError('all evaluated upstream input references must be pinned')
+        exposure = self.experiment_exposure
+        upstream = {ref for refs in self.upstream_refs.values() for ref in refs}
+        if (exposure.coverage_ref != self.anchor.coverage_ref
+                or not set(exposure.source_refs) <= upstream
+                or exposure.horizon.start > self.horizon.start or exposure.horizon.end < self.horizon.end):
+            raise ValueError('experiment exposure must cover W and bind its coverage and upstream sources')
+        selection = self.selection_ancestry
+        if (selection.assertion_id != self.anchor.assertion_id or selection.method != self.anchor.method
+                or selection.rule_version != self.anchor.rule_version
+                or selection.source_locator != self.anchor.source.locator
+                or selection.input_vector_hash != self.anchor.input_vector_hash
+                or set(selection.parents) != set(self.anchor.derivation_parents)
+                or self.anchor.method not in selection.ancestry):
+            raise ValueError('complete selection ancestry must bind the exact anchor and every derivation parent')
+        # PLAN §10 / ALGO §3.19 forbid G-J corroboration of a P8 selection.
+        # (I) INTERPRETATION: P8 is the plan's explicit fixture path spelling;
+        # no live method/source mapping is admitted by this boundary check.
+        if self.anchor.method == 'P8' and not {'jaimini_cara', 'rasi_drishti'} <= selection.ancestry:
+            raise ValueError('P8 selection ancestry unresolved')
         if {g.group_id for g in self.groups} != GROUPS or len(self.groups) != len(GROUPS):
             raise ValueError('declare each school exactly once')
         source_roots = {r.root_id for r in evidence_graph(self.nodes, self.uses)}
@@ -81,14 +128,14 @@ class ClassInput(Typed):
             # supplied uses/opinions which bypass its admission checks.
             raise ValueError('G-J testimony requires a complete method output')
         intervals = [u.interval for u in self.uses] + [o.interval for o in self.opinions]
-        if any(i.start < self.horizon.start or i.end > self.horizon.end for i in intervals):
-            raise ValueError('input outside class horizon')
+        if any(i.start < exposure.horizon.start or i.end > exposure.horizon.end for i in intervals):
+            raise ValueError('input outside experiment exposure')
         if any(o.event_class != self.event_class for o in self.opinions):
             raise ValueError('opinion outside class grain')
         if any(not o.groups <= GROUPS for o in self.opinions):
             raise ValueError('unknown opinion school')
-        if self.jaimini and (self.jaimini.event_class != self.event_class or self.jaimini.horizon != self.horizon):
-            raise ValueError('complete method output outside class horizon')
+        if self.jaimini and (self.jaimini.event_class != self.event_class or self.jaimini.horizon != exposure.horizon):
+            raise ValueError('complete method output outside experiment exposure')
         return self
 
 
@@ -142,11 +189,11 @@ def _class_evidence(value):
     if any(n.node_id == anchor_id for n in value.nodes):
         raise ValueError('reserved selection node identity')
     nodes = (*value.nodes, Node(anchor_id, roots, selection_roots=frozenset(value.anchor.used_for_selection)))
-    uses = (*value.uses, Use(anchor_id, 'G-P', value.horizon, 'selects'))
+    uses = (*value.uses, Use(anchor_id, 'G-P', value.horizon, 'selects', value.selection_ancestry.ancestry))
     roster = _roster(value)
     opinions = list(value.opinions)
     if value.jaimini is None:
-        roster['G-J'] = declarations(value.horizon)[1]
+        roster['G-J'] = declarations(value.experiment_exposure.horizon)[1]
     else:
         method = consume(value.jaimini)
         roster['G-J'] = method.group
@@ -190,8 +237,13 @@ def compute(value: ClassInput) -> CandidateResult:
     nodes, uses, roster, opinions = _class_evidence(value)
     support = _admitted_support(value.horizon, nodes, uses, roster)
     opinions = _supported_opinions(opinions, support)
-    measured = agreement(value.horizon, nodes, uses, roster.values(), alpha=value.alpha,
-        exchangeable=value.exchangeable, non_identity_shifts=value.non_identity_shifts)
+    measured = agreement(value.experiment_exposure.horizon, nodes, uses, roster.values(), alpha=value.alpha,
+        exchangeable=value.exchangeable, non_identity_shifts=value.non_identity_shifts,
+        conditioning_intervals=(value.horizon,))
+    # Null draws use the declared exposure; stored observations/contests belong
+    # only to W. Do not expand the served window to the null's shift domain.
+    measured = replace(measured, segments=tuple(replace(s, interval=i) for s in measured.segments
+        for i in intersect_intervals((s.interval,), (value.horizon,), value.horizon)))
     identity = json.dumps([value.event_class, value.horizon.start, value.horizon.end], separators=(',', ':'))
     assertion_id = 'jury:' + hashlib.sha256(identity.encode()).hexdigest()
     forecasts = () if value.event_identity is None else (CanonicalForecast(
@@ -256,6 +308,8 @@ def write_candidate(ctx, value: ClassInput, *, joint_points=()) -> int:
     roots = {'source_ids': sorted({r.root_id for r in measured.evidence})}
     provenance = {'contract_version': VERSION, 'acceptance_scope': 'fixture_only',
         'anchor': value.anchor.model_dump(mode='json'), 'upstream_refs': value.upstream_refs,
+        'experiment_exposure': value.experiment_exposure.model_dump(mode='json'),
+        'selection_ancestry': value.selection_ancestry.model_dump(mode='json'),
         'axis': 'utc_unix_seconds', 'sequences': [asdict(s) for s in result.sequences],
         'reading_attachment_report': result.attachments.model_dump(mode='json'),
         'turning_points': [asdict(p) for p in joint_points if value.event_class in p.event_classes]}
@@ -272,7 +326,8 @@ def write_candidate(ctx, value: ClassInput, *, joint_points=()) -> int:
             VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',
             (*grain, result.assertion_id, value.anchor.interval.t0, value.anchor.interval.t1,
              _json(value.anchor.subject.model_dump(mode='json')), _json(roots), _json(provenance),
-             _json({'coverage_ref': value.anchor.coverage_ref, 'horizon': asdict(value.horizon)}),
+             _json({'coverage_ref': value.anchor.coverage_ref, 'horizon': asdict(value.horizon),
+                    'experiment_horizon': asdict(value.experiment_exposure.horizon)}),
              _json(graph), _json([asdict(g) for g in measured.groups]), _json(measured.witness_signature),
              measured.conditional.effect, _json(_null(measured.conditional)),
              None if measured.pipeline is None else _json(_null(measured.pipeline)),

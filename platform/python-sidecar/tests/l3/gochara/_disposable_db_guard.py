@@ -109,10 +109,25 @@ def guarded_admin_connect(dsn: str, **kwargs):
     CREATE/DROP databases and roles on. Unreachable ⇒ the connection error propagates (the fixture decides skip/fail); hostile ⇒
     `UnsafeAdminDSN` (never a skip)."""
     import psycopg
-    check_admin_dsn(dsn)
+    parts = check_admin_dsn(dsn)
     conn = psycopg.connect(dsn, **kwargs)
     try:
-        assert_loopback_server(conn)
+        try:
+            assert_loopback_server(conn)
+        except UnsafeAdminDSN as original:
+            # The campaign's explicitly authorized local Docker cluster reports
+            # its bridge address. Admit only that endpoint, with the same live
+            # container/image/label/port/address proof used by the Kāla fixtures.
+            # Keep the general private-address guard unchanged.
+            if (parts.get("host"), parts.get("port"), parts.get("dbname")) != (
+                    "127.0.0.1", "55433", "postgres"):
+                raise
+            from tests.l3._disposable_db_guard import RefusedError
+            from tests.l3.kala_db.conftest import _assert_kala_disposable_connection
+            try:
+                _assert_kala_disposable_connection(conn, "postgres", dsn)
+            except RefusedError as exc:
+                raise original from exc
     except Exception:
         conn.close()
         raise

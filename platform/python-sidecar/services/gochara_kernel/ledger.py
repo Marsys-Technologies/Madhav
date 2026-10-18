@@ -22,6 +22,8 @@ the whole generation-scoped write — the WP6 crash/resume test depends on it.
 from __future__ import annotations
 
 import hashlib
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import json
 import math
 from datetime import datetime, timezone
@@ -201,7 +203,7 @@ _CONTACT_COLUMNS = (
     "tier_basis",
     "convention_id", "ephemeris_backend", "evidence_fact_ids",
     "classical_citation", "uncited_extension", "corpus_verifiable",
-    "input_generation_vector_id", "build_id", "computed_at",
+    "input_generation_vector_id", "build_id", "computed_at", "verification_pass_status",
 )
 
 _COVERAGE_COLUMNS = (
@@ -350,18 +352,21 @@ def _normalize_episode(ep: dict, chart_id: str, generation: str,
         manifest_id,
         build_id,
         computed_at or datetime.now(timezone.utc),
+        UNVERIFIED_DEFAULT,  # Row geometry/role is not a second derivation.
     )
 
 
 def _insert_contact_rows(conn, rows: list[tuple]) -> None:
     if not rows:
         return
-    cols = ", ".join(_CONTACT_COLUMNS)
-    placeholders = ", ".join(["%s"] * len(_CONTACT_COLUMNS))
     with conn.cursor() as cur:
+        store_tier = has_stored_verification(cur, "kala_gochara_contacts")
+        columns = _CONTACT_COLUMNS if store_tier else _CONTACT_COLUMNS[:-1]
+        cols = ", ".join(columns)
+        placeholders = ", ".join(["%s"] * len(columns))
         cur.executemany(
             f"INSERT INTO kala_gochara_contacts ({cols}) VALUES ({placeholders})",
-            rows,
+            rows if store_tier else [row[:-1] for row in rows],
         )
 
 
@@ -552,16 +557,27 @@ def publish_candidate(conn, chart_id: str, generation: str, convention_id: str,
             f"has status {row[1]!r}; a rebuild after publication is a NEW "
             f"generation label (plan §4.7)"
         )
-    conn.execute(
+    # The replace is CONDITIONAL on the row still being a candidate (Codex round 4 follow-up (d)): between the status read above and this
+    # UPDATE a publish can flip the row, and an unconditional UPDATE would then rewrite the input vector of a PUBLISHED manifest (a stale
+    # caller could even stamp it as a test slice). The draft database CHECK (PR 3140) refuses a published slice stamp; this makes the
+    # rewrite of any non-candidate vector impossible from the writer's own path.
+    replaced = conn.execute(
         """
         UPDATE kala_gochara_publication
         SET convention_id = %s, input_generation_vector = %s,
             ephemeris_backend = %s, horizon = %s::tstzrange,
             row_counts = '{}'::jsonb, content_digest = 'sha256:unpublished-candidate'
-        WHERE manifest_id = %s
+        WHERE manifest_id = %s AND status = 'candidate'
         """,
         (convention_id, vector, ephem, horizon, row[0]),
     )
+    # The status read above can be stale after another transaction publishes.
+    # Keep the replacement conditional even if database triggers are bypassed.
+    if getattr(replaced, "rowcount", None) == 0:
+        raise PublishedGenerationRefusal(
+            f"publish_candidate refused: the manifest for generation {generation!r} was no longer a candidate when it was replaced "
+            "(it changed status after it was read — a stale caller); nothing was rewritten"
+        )
     return str(row[0])
 
 

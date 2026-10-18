@@ -21,10 +21,10 @@ def fixture_input(event_class='career', generation=GEN, chart=CHART):
         assertion_id='judge:fixture', chart_id=chart, generation=generation, stage='judge',
         method='fixture:judge', rule_version='fixture:1',
         subject=dict(event_class=event_class, affected_person='native', objects=[]),
-        frame='fixture:frame', period_anchor=dict(system='vimshottari', MD='Jupiter',
+        frame='moon', period_anchor=dict(system='vimshottari', MD='Jupiter',
             AD='Saturn', applicability='applicable'),
         interval=dict(t0=datetime.fromtimestamp(T, timezone.utc),
-            t1=datetime.fromtimestamp(T + 30, timezone.utc)), grain='day',
+            t1=datetime.fromtimestamp(T + 10, timezone.utc)), grain='day',
         resolution=dict(computation='fixture', source_licensed='fixture', empirically_supported=None),
         role='selects', roots=dict(contact_ids=['selected:contact'], record_ids=[], fact_ids=[]),
         derivation_parents=['fixture:upstream'], used_for_selection=['selected:contact'],
@@ -33,8 +33,14 @@ def fixture_input(event_class='career', generation=GEN, chart=CHART):
         precision=dict(method='fixture', delta_lambda=None, delta_t=None), input_vector_hash='a' * 64))
     groups = tuple(admit(g, ('fixture:' + g.group_id,), (H,), ('fixture:review',))
                    if g.group_id == 'G-P' else g for g in declarations(H))
-    return dict(contract_version='k4-2aw:class_input:v1', acceptance_scope='fixture_only',
+    return dict(contract_version='k4-2aw:class_input:v2', acceptance_scope='fixture_only',
         anchor=envelope, upstream_refs={k: ('fixture:' + k,) for k in ('judge', 'negative_space', 'F1', 'F2')},
+        experiment_exposure=dict(horizon=H, coverage_ref=envelope.coverage_ref,
+            source_refs=('fixture:judge', 'fixture:negative_space')),
+        selection_ancestry=dict(assertion_id=envelope.assertion_id, method=envelope.method,
+            rule_version=envelope.rule_version, source_locator=envelope.source.locator,
+            input_vector_hash=envelope.input_vector_hash,
+            parents={'fixture:upstream': ('fixture:judge',)}, review_refs=('fixture:review',)),
         nodes=(Node('p', frozenset({'judge:other'})),),
         uses=(Use('p', 'G-P', Interval(T, T + 10), 'corroborates'),), groups=groups,
         opinions=(Opinion(event_class, Interval(T, T + 10), 'supportive',
@@ -97,7 +103,7 @@ def test_plan_is_read_only_and_per_class(monkeypatch):
     assert [s.key for s in writer.plan_substeps(ctx)] == ['class:career']
 
 
-def test_legacy_dispatch_preserves_the_original_plan(monkeypatch):
+def test_default_dispatch_retains_legacy_plan_until_build_safe_retirement(monkeypatch):
     module = importlib.import_module('pipeline.orchestrator.writers.ka_sangam')
     sentinel = object()
     monkeypatch.setattr(module._LegacyKaSangamWriter, 'plan_substeps', lambda self, ctx: sentinel)

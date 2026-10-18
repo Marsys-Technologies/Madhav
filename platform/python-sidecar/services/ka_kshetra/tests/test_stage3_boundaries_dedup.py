@@ -228,3 +228,12 @@ class TestWriteBoundaryRowsBatch:
         assert len(captured_params[0]) == 14, (
             f"Expected 14 param values per row, got {len(captured_params[0])}"
         )
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; real refusal coverage is J4P's."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.ka_kshetra.stage3_clocks'),
+                        "execute_governed_dasha_query", emulated_projection)

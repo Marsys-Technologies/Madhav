@@ -8,6 +8,9 @@ Read-only: the caller owns the connection and transaction.
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query, DashaBuildRefused)
+
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -96,14 +99,15 @@ class KaDashaKalaService:
         )
 
     def boundaries(
-        self, chart_id: str, system: str, *, build_id: str, ayanamsha_id: str, tier: str,
+        self, chart_id: str, system: str, *, as_of: datetime, build_id: str, ayanamsha_id: str, tier: str,
         level: Literal["MD", "AD", "PD", "SD"] | None = None,
         uncertainty: clocks.BoundaryUncertainty | None = None,
+        method_facts: clocks.AshtottariFacts | clocks.KalachakraFacts | None = None,
     ) -> list[clocks.Boundary]:
         """F2 source boundaries with admitted uncertainty, no eligibility scores."""
         return clocks.boundaries(
-            self._conn, chart_id, system, build_id=build_id, ayanamsha_id=ayanamsha_id,
-            tier=tier, level=level, uncertainty=uncertainty,
+            self._conn, chart_id, system, as_of=as_of, build_id=build_id, ayanamsha_id=ayanamsha_id,
+            tier=tier, level=level, uncertainty=uncertainty, method_facts=method_facts,
         )
 
     def scenarios(
@@ -219,6 +223,8 @@ class KaDashaKalaService:
                     "[ka_dasha_kala] system=%s found %d eligible intervals",
                     sys_id, len(intervals),
                 )
+            except DashaBuildRefused:
+                raise
             except Exception as exc:
                 # A result that lists a failed system in ``systems_queried`` is
                 # indistinguishable from complete evidence to callers.  The L3
@@ -301,14 +307,8 @@ class KaDashaKalaService:
         Return a dict of {system_id: row_count} for the given chart+ayanamsha.
         Used by health-check and self-test.
         """
-        sql = """
-            SELECT system_id, COUNT(*) AS cnt
-            FROM chart_dashas
-            WHERE chart_id = %s AND ayanamsha_id = %s
-            GROUP BY system_id
-            ORDER BY system_id
-        """
-        rows = self._conn.execute(sql, [chart_id, ayanamsha_id]).fetchall()
+        sql = dasha_query('dasha_system_counts')
+        rows = execute_governed_dasha_query(self._conn, chart_id, sql, [chart_id, ayanamsha_id], ayanamsha_id=ayanamsha_id).fetchall()
         if not rows:
             return {}
         if isinstance(rows[0], dict):

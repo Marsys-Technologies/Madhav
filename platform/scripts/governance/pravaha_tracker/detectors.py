@@ -26,12 +26,13 @@ import json
 import os
 import re
 import socket
+import signal
 import subprocess
 import threading
 import time
 import urllib.error
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 
 from .events import now_iso
@@ -58,11 +59,30 @@ class Config:
     home: str              # PRAVAHA_HOME
 
 
-def _run(cmd, cwd: str | None = None, timeout: int = 60, shell: bool = False) -> tuple[int, str]:
+def _run(cmd, cwd: str | None = None, timeout: float = 60, shell: bool = False) -> tuple[int, str]:
     env = dict(os.environ)
     env["PATH"] = env.get("PATH", "") + ":" + ENV_PATH
-    p = subprocess.run(cmd, cwd=cwd, timeout=timeout, shell=shell, capture_output=True, text=True, env=env)
-    return p.returncode, (p.stdout if p.returncode == 0 else (p.stderr or p.stdout))
+    env.update(GIT_OPTIONAL_LOCKS="0", GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never")
+    # A git/psql shell can leave helpers holding its output pipes. Killing only the
+    # immediate child neither stops those helpers nor bounds a subsequent pipe drain.
+    p = subprocess.Popen(cmd, cwd=cwd, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         stdin=subprocess.DEVNULL, text=True, env=env, start_new_session=True)
+    try:
+        out, err = p.communicate(timeout=timeout)
+    except BaseException:
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        try:
+            p.communicate(timeout=1)
+        except subprocess.TimeoutExpired:
+            # Even a helper that deliberately escaped the group cannot hold us here.
+            p.stdout.close()
+            p.stderr.close()
+            p.wait(timeout=1)
+        raise
+    return p.returncode, (out if p.returncode == 0 else (err or out))
 
 
 class Detectors:
@@ -78,7 +98,11 @@ class Detectors:
         self._lock = threading.Lock()
         self._pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="detector")
         self._fetched: dict[str, float] = {}
+        # This lock protects bookkeeping only; remote I/O never holds it.
         self._fetch_lock = threading.Lock()
+        self._fetching: dict[str, tuple[Future, int]] = {}
+        self._live = threading.local()
+        self._verifying = 0
 
     @staticmethod
     def key(spec: dict) -> str:
@@ -90,7 +114,7 @@ class Detectors:
         for spec in specs:
             k = self.key(spec)
             with self._lock:
-                if k in self._inflight or self._due.get(k, 0) > now:
+                if self._verifying or k in self._inflight or self._due.get(k, 0) > now:
                     continue
                 self._inflight.add(k)
             self._pool.submit(self._run_one, k, spec)
@@ -118,12 +142,22 @@ class Detectors:
 
     def verify(self, spec: dict) -> DetectorResult:
         """Measure once for a guarded completion, bypassing dashboard cache."""
+        requested_at = time.monotonic_ns()
         typ = spec.get("type", "?")
+        with self._lock:
+            self._verifying += 1
+        previous = getattr(self._live, "verify", None)
+        self._live.verify = requested_at
         try:
+            # Run on the request thread, never behind the dashboard worker pool.
             return getattr(self, "d_" + typ)(spec)
         except Exception as exc:
             return DetectorResult("error", f"{typ}: {type(exc).__name__}: {exc}"[:300],
                                   now_iso(), f"detector:{typ}")
+        finally:
+            self._live.verify = previous
+            with self._lock:
+                self._verifying -= 1
 
     def force(self) -> None:
         """Expire every cached result (used when an event arrives, so evidence is re-checked promptly)."""
@@ -132,11 +166,42 @@ class Detectors:
 
     # -- helpers ------------------------------------------------------------------------------
     def _fetch(self, remote_branch: str) -> None:
-        with self._fetch_lock:
-            if time.time() - self._fetched.get(remote_branch, 0) < 60:
+        requested_at = getattr(self._live, "verify", None)
+        while True:
+            with self._fetch_lock:
+                entry = self._fetching.get(remote_branch)
+                if entry is None:
+                    # Only dashboard polling may reuse a completed fetch's TTL.
+                    if requested_at is None and time.time() - self._fetched.get(remote_branch, 0) < 60:
+                        return
+                    flight = Future()
+                    self._fetching[remote_branch] = (flight, time.monotonic_ns())
+                    break
+                flight, started_at = entry
+            if requested_at is None or started_at >= requested_at:
+                # Share only a measurement that qualifies for this request.
+                flight.result()
                 return
-            _run(["git", "fetch", "-q", "origin", remote_branch], cwd=self.cfg.repo, timeout=90)
-            self._fetched[remote_branch] = time.time()
+            # Serialize behind an older same-ref fetch, but neither its success
+            # nor its failure measures the branch for this verification request.
+            try:
+                flight.result()
+            except Exception:
+                pass
+        try:
+            rc, out = _run(["git", "fetch", "-q", "origin", remote_branch], cwd=self.cfg.repo, timeout=90)
+            if rc != 0:
+                raise RuntimeError(f"git fetch {remote_branch}: {out.strip()[:160]}")
+        except BaseException as exc:
+            with self._fetch_lock:
+                flight.set_exception(exc)
+                del self._fetching[remote_branch]
+            raise
+        else:
+            with self._fetch_lock:
+                self._fetched[remote_branch] = time.time()
+                flight.set_result(None)
+                del self._fetching[remote_branch]
 
     def _resolve_ref(self, ref: str) -> str:
         if ref.startswith("origin/"):

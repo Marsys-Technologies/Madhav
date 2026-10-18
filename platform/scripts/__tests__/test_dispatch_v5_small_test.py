@@ -85,6 +85,29 @@ def test_one_class_full_marker_is_accepted_by_the_writer_and_defaults_to_the_ful
     assert sl.run == "one_class_full" and sl.horizon == WRITER.DEFAULT_HORIZON and sl.classes == (ONE,)
 
 
+def test_measuring_build_is_refused_by_the_smalltest_dispatch_even_though_writer_supports_it():
+    with pytest.raises(RuntimeError, match="measuring phase is disabled"):
+        dispatch.build_slice_marker(run="all_classes_full", classes="all")
+    marker = {"schema": "gochara_v5_test_slice/1", "run": "all_classes_full", "classes": ALL,
+              "horizon": [x.isoformat() for x in WRITER.MEASURING_HORIZON]}
+    assert WRITER._validate_test_slice(marker).run == "all_classes_full"
+
+
+@pytest.mark.parametrize("kw, why", [
+    (dict(classes=ONE), "one class is not the measuring build"),
+    (dict(horizon_start="2025-04-01T00:00:00+00:00", horizon_end="2026-04-01T00:00:00+00:00"), "a narrower horizon is not the full horizon"),
+    (dict(horizon_start="1998-01-01T00:00:00+00:00", horizon_end="2084-02-06T00:00:00+00:00"), "past the derived end"),
+    (dict(horizon_start="1997-12-31T00:00:00+00:00", horizon_end="2084-02-05T00:00:00+00:00"), "before the derived start"),
+])
+def test_all_classes_full_refuses_a_subset_or_any_horizon_but_the_full_one(kw, why):
+    with pytest.raises((RuntimeError, WRITER.TestSliceRefusal)):
+        dispatch.build_slice_marker(run="all_classes_full", **kw)
+
+
+def test_all_classes_full_is_a_known_run_of_the_dispatch_and_of_the_writer_and_the_two_lists_are_equal():
+    assert "all_classes_full" in dispatch.SLICE_RUNS and tuple(WRITER.TEST_SLICE_RUNS) == dispatch.SLICE_RUNS
+
+
 def test_classes_all_equals_the_default_and_a_comma_list_is_stripped():
     assert dispatch.build_slice_marker(run="all_classes_1y", classes="all", horizon_start=START,
                                        horizon_end=END) == MARKER
@@ -108,8 +131,8 @@ def test_non_utc_offsets_are_stored_in_utc():
     (dict(run="all_classes_1y"), "no horizon for the 1-year run"),
     (dict(run="all_classes_1y", horizon_start="2024-01-01T00:00:00+00:00",
           horizon_end="2026-01-01T00:00:00+00:00"), "longer than a year, inside the horizon"),
-    (dict(run="all_classes_1y", horizon_start="2026-01-01T00:00:00+00:00",
-          horizon_end="2026-04-18T00:00:00+00:00"), "past DEFAULT_HORIZON end"),
+    (dict(run="all_classes_1y", horizon_start="2083-06-01T00:00:00+00:00",
+          horizon_end="2084-02-06T00:00:00+00:00"), "past DEFAULT_HORIZON end"),
     (dict(run="all_classes_1y", classes=f"{ONE}", horizon_start=START, horizon_end=END), "1y run with one class"),
     (dict(run="all_classes_1y", classes="solar", horizon_start=START, horizon_end=END), "not a scored class"),
     (dict(run="all_classes_1y", classes=" , ", horizon_start=START, horizon_end=END), "empty list"),
@@ -353,6 +376,17 @@ def _run_main(harness: _Harness, argv: list[str], capsys):
     fake_psycopg.connect = lambda *a, **k: harness.conn
     saved = {k: v for k, v in sys.modules.items() if k.startswith("psycopg")}
     prior_db_url = os.environ.get("DATABASE_URL")
+    prior_root, prior_request = os.environ.get("KY_ROOT"), os.environ.get("KY_OPERATION_REQUEST")
+    import tempfile
+    import smalltest_safety_support as S
+    evidence = tempfile.TemporaryDirectory(prefix="w4-dispatch-", dir=os.environ.get("TMPDIR"))
+    rr, ar = S.absence_for(evidence.name)
+    bound_args = {key: argv[argv.index("--" + key) + 1] for key in
+                  ("run", "classes", "horizon-start", "horizon-end") if "--" + key in argv}
+    bound_args.setdefault("classes", "all")
+    request = S.authorize(evidence.name, dict(operation_id="dispatch", kind="smalltest_dispatch", args=bound_args,
+                                             absence_receipt=rr, absence_acceptance=ar))
+    os.environ["KY_ROOT"], os.environ["KY_OPERATION_REQUEST"] = evidence.name, json.dumps(request)
     try:
         sys.modules["psycopg"] = fake_psycopg
         sys.modules["psycopg.rows"] = fake_rows
@@ -363,6 +397,10 @@ def _run_main(harness: _Harness, argv: list[str], capsys):
         for name in ("psycopg", "psycopg.rows"):
             sys.modules.pop(name, None)
         sys.modules.update(saved)
+        for key, value in (("KY_ROOT", prior_root), ("KY_OPERATION_REQUEST", prior_request)):
+            if value is None: os.environ.pop(key, None)
+            else: os.environ[key] = value
+        evidence.cleanup()
         if prior_db_url is None:
             os.environ.pop("DATABASE_URL", None)
         else:
@@ -407,6 +445,17 @@ def test_dry_run_rolls_back_and_prints_the_plan(capsys):
     assert plan["triggered_by"] == "gochara-v5-small-test"
     assert plan["asset_id"] == "ka_gochara_v5" and plan["chart_id"] == CHART_ID
     assert plan["plan_manifest"]["gochara_v5_test_slice"] == MARKER
+
+
+def test_the_dry_run_says_in_one_sentence_that_the_horizon_shown_is_the_markers_and_the_writer_checks_it_against_the_database_derivation(capsys):
+    """MEASURING_BUILD_CONTRACT v1.0 MB-1.3 (steward ruling 1): the dispatch has no database before staging, so its dry run says what the horizon it shows IS."""
+    out = _run_main(_Harness(), BASE + ["--dry-run"], capsys)
+    sentence = [ln for ln in out.err.splitlines() if "[dry-run] HORIZON:" in ln]
+    assert len(sentence) == 1
+    assert "is the one the marker carries" in sentence[0] and "the writer checks it against the database derivation at run time" in sentence[0]
+    assert MARKER["horizon"][0] in sentence[0] and MARKER["horizon"][1] in sentence[0]
+    real = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "[dry-run] HORIZON:" not in real.err, "a dry-run sentence, not a real dispatch line"
 
 
 def test_dependents_refuse_the_dispatch(capsys):
@@ -527,6 +576,17 @@ def _run_cli(harness, argv, capsys, *, connect_error=None, database_url="postgre
     fake_psycopg.connect = connect
     saved = {k: v for k, v in sys.modules.items() if k.startswith("psycopg")}
     prior = os.environ.get("DATABASE_URL")
+    prior_root, prior_request = os.environ.get("KY_ROOT"), os.environ.get("KY_OPERATION_REQUEST")
+    import tempfile
+    import smalltest_safety_support as S
+    evidence = tempfile.TemporaryDirectory(prefix="w4-dispatch-", dir=os.environ.get("TMPDIR"))
+    rr, ar = S.absence_for(evidence.name)
+    bound_args = {key: argv[argv.index("--" + key) + 1] for key in
+                  ("run", "classes", "horizon-start", "horizon-end") if "--" + key in argv}
+    bound_args.setdefault("classes", "all")
+    request = S.authorize(evidence.name, dict(operation_id="dispatch", kind="smalltest_dispatch", args=bound_args,
+                                             absence_receipt=rr, absence_acceptance=ar))
+    os.environ["KY_ROOT"], os.environ["KY_OPERATION_REQUEST"] = evidence.name, json.dumps(request)
     try:
         sys.modules["psycopg"], sys.modules["psycopg.rows"] = fake_psycopg, fake_rows
         if database_url is None:
@@ -544,6 +604,10 @@ def _run_cli(harness, argv, capsys, *, connect_error=None, database_url="postgre
         for name in ("psycopg", "psycopg.rows"):
             sys.modules.pop(name, None)
         sys.modules.update(saved)
+        for key, value in (("KY_ROOT", prior_root), ("KY_OPERATION_REQUEST", prior_request)):
+            if value is None: os.environ.pop(key, None)
+            else: os.environ[key] = value
+        evidence.cleanup()
         if prior is None:
             os.environ.pop("DATABASE_URL", None)
         else:
@@ -671,7 +735,8 @@ def test_the_staged_marker_is_the_writers_normal_form_so_its_digest_is_the_compo
     ("all_classes_1y", dict(classes="all", horizon_start="2025-04-17T00:00:00+00:00", horizon_end="2026-04-17T00:00:00+00:00")),
     ("all_classes_1y", dict(classes=",".join(reversed(ALL)), horizon_start="2025-04-01T00:00:00Z", horizon_end="2026-03-01T00:00:00Z")),
     ("one_class_full", dict(classes=ONE)),
-], ids=["all_default_order", "all_scrambled_Z_timestamps", "one_class_full"])
+    ("all_classes_full", dict()),
+], ids=["all_default_order", "all_scrambled_Z_timestamps", "one_class_full", "all_classes_full"])
 def test_a_dispatched_marker_round_trips_through_the_writer_and_the_teardown_validation(run, kw):
     """What a dispatch stages is accepted by the writer, stamped by the writer's own component, and the TEARDOWN's stamp validation
     accepts that stamp (by reconstruction, with no run row at all). Skipped until the teardown script (PR 3098) is in the tree."""
@@ -680,6 +745,10 @@ def test_a_dispatched_marker_round_trips_through_the_writer_and_the_teardown_val
         pytest.skip("teardown_v5_small_test_job.py is not in this tree yet (PR 3098); the round trip is asserted once both are")
     import types as _t
     import teardown_v5_small_test_job as td
+    if run == "all_classes_full":
+        with pytest.raises(RuntimeError, match="measuring phase is disabled"):
+            dispatch.build_slice_marker(run=run, **kw)
+        return
     marker = dispatch.build_slice_marker(run=run, **kw)
     sliced = WRITER._validate_test_slice(marker)
     vector = {"stored_scope": WRITER.TEST_SLICE_SCOPE, "test_slice": WRITER._slice_component(sliced)}
@@ -864,10 +933,10 @@ def test_the_execute_within_ten_minutes_notice_is_printed_and_documented(capsys)
 
 
 def test_r7_the_ci_installs_the_sidecar_requirements_before_the_step_that_imports_the_writer():
-    ci = (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    ci = _ci_text((REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     select = ci.index("Nirmāṇa L0 — install writer test runtime")
     install = ci.index("python -m pip install -r python-sidecar/requirements-ci.txt", select)
-    dispatch_step = ci.index("python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py")
+    dispatch_step = ci.index("scripts/__tests__/test_dispatch_v5_small_test.py")
     assert select < install < dispatch_step
 
 
@@ -969,6 +1038,19 @@ def test_db3_uncommitted_changes_under_the_sidecar_are_warned_about(capsys, monk
     _fake_git(monkeypatch, head="deadbeef", porcelain=" M python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py")
     out = _run_main(_Harness(), BASE_ARGV, capsys)
     assert "WARNING" in out.err and "UNCOMMITTED" in out.err and "deadbeef" in out.err
+
+
+def test_db3_only_the_machine_owned_overlay_dirt_is_not_warned_about_but_a_real_source_change_still_is(capsys, monkeypatch):
+    """A5 D-33: the executor's overlay regenerates the machine-owned writer-digest file in the dispatch tree, so that file alone differing from
+    the commit is not an uncommitted SOURCE change (no 'UNCOMMITTED' warning); any other path in the same listing still is. Real `git status
+    --porcelain` paths are repository-root-relative (`platform/...`)."""
+    overlay = " M platform/src/generated/nirmana-writer-digests.json\n M platform/python-sidecar/services/gochara_kernel/implementation_digest.lock.json\n"
+    _fake_git(monkeypatch, head="deadbeef", porcelain=overlay)
+    clean = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "JOB IMAGE MUST MATCH THIS CHECKOUT" in clean.err and "WARNING" not in clean.err and "UNCOMMITTED" not in clean.err
+    _fake_git(monkeypatch, head="deadbeef", porcelain=overlay + " M platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py\n")
+    dirty = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "WARNING" in dirty.err and "UNCOMMITTED" in dirty.err
 
 
 def test_db3_checkout_commit_never_uses_a_shell_and_degrades_to_unknown():
@@ -1074,3 +1156,31 @@ def test_an_empty_string_probe_or_integrity_check_reads_as_null(capsys):
     h2 = _Harness(registry_row=dict(dispatch.EXPECTED_REGISTRY_ROW, integrity_check_sql=" "))
     with pytest.raises(RuntimeError, match="integrity_check_sql"):
         _run_main(h2, BASE + ["--dry-run"], capsys)               # a non-empty value is still refused
+
+
+# J3C-BINDINGS: real writer shape validation; no chart computation/ephemeris calls.
+def test_dedicated_measuring_marker_is_exact_full_shape_while_smalltest_stays_closed():
+    import dispatch_v5_measuring_job as measuring
+    marker = measuring.build_slice_marker(run='all_classes_full', classes='all')
+    validated = WRITER._validate_test_slice(marker)
+    assert validated.run == 'all_classes_full'
+    assert list(validated.classes) == list(WRITER.SCORED_CLASSES) and len(validated.classes) == 26
+    assert (validated.horizon[1] - validated.horizon[0]).days == 31446
+    assert validated.horizon == WRITER.MEASURING_HORIZON
+    with pytest.raises(RuntimeError, match='measuring phase is disabled'):
+        dispatch.build_slice_marker(run='all_classes_full', classes='all')
+
+
+@pytest.mark.parametrize('kwargs', [dict(run='one_class_full', classes='all'),
+    dict(run='all_classes_full', classes='marriage'), dict(run='all_classes_full', horizon_start=START),
+    dict(run='all_classes_full', horizon_end=END)])
+def test_dedicated_measuring_marker_refuses_widened_or_short_scope(kwargs):
+    import dispatch_v5_measuring_job as measuring
+    with pytest.raises(RuntimeError):
+        measuring.build_slice_marker(**kwargs)
+
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[3] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow_text as _ci_text

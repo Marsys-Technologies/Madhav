@@ -229,6 +229,45 @@ def test_intents(case, tmp_path):
     assert tree(tmp_path) == before, "intents is read-only: nothing on disk may change"
 
 
+@pytest.mark.parametrize("packet_loops,want", [(None, 2), (1, 1), (3, 3), (5, 5)])
+def test_build_max_loops_default_and_packet_override(tmp_path, packet_loops, want):
+    """A2 D-17 §2.6: an omitted cap defaults to two; explicit packet caps win."""
+    world = copy.deepcopy(CASES[0]["world"])
+    world["priority"] = ["K-1"]
+    front = world["packets"]["K-1"]["1"]
+    front.pop("max_loops")
+    if packet_loops is not None:
+        front["max_loops"] = packet_loops
+    tokens = tokens_for(tmp_path)
+    lay_out(tokens, world)
+    intent, = B.intents(Ctx(tokens, world))
+    assert intent["kind"] == "BUILD"
+    assert intent["header"]["max_loops"] == want
+
+
+@pytest.mark.parametrize("packet_loops,job_loops,want", [(None, None, 2), (None, 4, 4), (3, 4, 3)])
+def test_rework_max_loops_default_and_overrides(tmp_path, packet_loops, job_loops, want):
+    """The default changes without changing packet > prior job > default precedence."""
+    world = copy.deepcopy(next(c["world"] for c in CASES
+                               if c["name"] == "escalation_one_rejection_on_a_sonnet_head"))
+    front = world["packets"]["K-1"]["1"]
+    front.pop("max_loops")
+    if packet_loops is not None:
+        front["max_loops"] = packet_loops
+    job, = world["jobs"].values()
+    job.pop("max_loops")
+    if job_loops is not None:
+        job["max_loops"] = job_loops
+    tokens = tokens_for(tmp_path)
+    lay_out(tokens, world)
+    ctx = Ctx(tokens, world)
+    intent, = B.intents(ctx)
+    assert intent["kind"] == "REWORK"
+    assert intent["header"]["max_loops"] == want
+    command = ctx.calls[0]["sh"]
+    assert command[command.index("--max-loops") + 1] == str(want)
+
+
 @pytest.mark.parametrize("case", by_op("start") + by_op("finish"))
 def test_start_and_finish(case, tmp_path):
     job_id = case["job"]["job_id"]

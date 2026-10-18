@@ -21,6 +21,8 @@ and real panchāṅga calls.  Detection hierarchy:
 NEVER commits or rollbacks — orchestrator owns the transaction.
 """
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import logging
 from datetime import date as DateType
 from typing import Optional
@@ -289,6 +291,7 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(obs['detail']),
                     f"ka_vighnakara:v2.0:conv={conv_id}",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         # ── WP-2.1 / F-L10-018: dasha-anchored obstruction reachability ────────
@@ -327,17 +330,19 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(detail),
                     f"ka_vighnakara:v2.0:dasha_anchor",
+                    UNVERIFIED_DEFAULT,
                 ))
 
         if rows:
             with conn.cursor() as cur:
+                store_tier = has_stored_verification(cur, 'kala_obstruction')
                 cur.executemany(
-                    """INSERT INTO kala_obstruction (
+                    f"""INSERT INTO kala_obstruction (
                         chart_id, convergence_id, signal_id,
                         obstruction_type, severity, severity_score, override_score,
-                        obstruction_detail, source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    rows,
+                        obstruction_detail, source_citation{", verification_pass_status" if store_tier else ""}
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})""",
+                    rows if store_tier else [row[:-1] for row in rows],
                 )
 
         return WriterResult(asset_id='ka_vighnakara', rows_inserted=len(rows))
@@ -1001,11 +1006,18 @@ def _detect_obstructions(peak_date, convergence_score: float = 0.5,
 
 @register('ka_vighnakara')
 class KaVighnakaraWriter(_LegacyKaVighnakaraWriter):
-    """Legacy dispatch plus KYD-134 explicitly selected consumer fixtures."""
+    """Explicit sealed-producer candidates, KYD-134 fixtures, legacy dispatch."""
 
     def run(self, ctx) -> WriterResult:
         if ctx.dry_run:
             return WriterResult('ka_vighnakara', 0, notes='dry_run=True')
+        if 'negative_space_sealed' in ctx.config:
+            if ctx.config.get('negative_space_fixture_inputs') is not None:
+                raise ValueError('sealed and fixture dispatch are mutually exclusive')
+            from services.ka_vighnakara.sealed_storage import write_sealed_candidate
+            count = write_sealed_candidate(ctx)
+            return WriterResult('ka_vighnakara', count,
+                                notes='K3-2 sealed producer candidate; publication unchanged')
         if 'negative_space_fixture_inputs' in ctx.config:
             from services.ka_vighnakara.model import Finding
             from services.ka_vighnakara.storage import write_fixture_candidate

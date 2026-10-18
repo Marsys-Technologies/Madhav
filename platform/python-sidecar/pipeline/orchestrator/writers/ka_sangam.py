@@ -4,11 +4,18 @@ FROZEN orchestrator contract: @register, run(ctx) -> WriterResult
 Orchestrator owns the transaction — writer must NOT commit or rollback
 NEVER writes to any bodha_* table.
 
-Reads kala_activation_predicates (written by ka_yojaka), runs Mode A + Mode B
-convergence search, inserts ranked windows into kala_convergence.
+Consumes explicitly licensed jury fixture inputs. Default production dispatch
+retains Mode A-D behind the legacy shim until a qualified build-safe retirement.
+Stored legacy rows remain available to readers; fixture output is not live jury
+admission or a retirement claim.
 """
+
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
 import hashlib
 import json
+from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
+from services.kala_core.stored_verification import has_stored_verification
 import logging
 from datetime import date
 
@@ -871,10 +878,10 @@ class _LegacyKaSangamWriter(WriterBase):
     def _derive_birth_year(self, conn, chart_id: str) -> int | None:
         """Derive birth year from the earliest MD start in chart_dashas. Returns None if unavailable."""
         with conn.cursor() as cur:
-            cur.execute(
-                "SELECT MIN(start_date) AS birth_date FROM chart_dashas WHERE chart_id = %s AND level_n = 1",
+            execute_governed_dasha_query(
+                conn, chart_id, dasha_query('sangam_birth_anchor'),
                 (chart_id,),
-            )
+             ayanamsha_id="lahiri_chitrapaksha", cursor=cur)
             row = cur.fetchone()
             if row and row['birth_date']:
                 return row['birth_date'].year
@@ -892,6 +899,7 @@ class _LegacyKaSangamWriter(WriterBase):
 
     def _insert_windows(self, cur, chart_id, deduped: list[dict], horizon_tier: str) -> int:
         """Insert a tier's deduped windows into kala_convergence; return count."""
+        store_tier = has_stored_verification(cur, 'kala_convergence')
         rows_inserted = 0
         # JL-014: within-chart relative tier, computed once over this batch's
         # convergence_score distribution (additive to I-21's absolute confidence_label).
@@ -936,7 +944,7 @@ class _LegacyKaSangamWriter(WriterBase):
                 icc = independent_current_count(currents)
 
                 cur.execute(
-                    """
+                    f"""
                     INSERT INTO kala_convergence (
                         chart_id, window_start, window_end, convergence_score,
                         constituent_factors, source_citation, computed_at,
@@ -944,7 +952,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         confidence_score, confidence_label,
                         independent_current_count, is_off_dasha_discovery,
                         horizon_tier, domain,
-                        confidence_label_relative, tier_basis
+                        confidence_label_relative, tier_basis{", verification_pass_status" if store_tier else ""}
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -952,7 +960,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         %s, %s,
                         %s, %s,
                         %s, %s,
-                        %s, %s
+                        %s, %s{", %s" if store_tier else ""}
                     )
                     """,
                     (
@@ -977,6 +985,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         # JL-014: interim within-chart percentile tier + provenance flag
                         c_label_relative,
                         'relative_uncalibrated',
+                        *((UNVERIFIED_DEFAULT,) if store_tier else ()),
                     ),
                 )
                 rows_inserted += 1
@@ -1173,7 +1182,14 @@ class _LegacyKaSangamWriter(WriterBase):
 
 @register('ka_sangam')
 class KaSangamWriter(_LegacyKaSangamWriter):
-    """Per-class candidate consumer; Modes A–D retain default compatibility."""
+    """Per-class fixture consumer with a build-safe legacy production shim.
+
+    (I) INTERPRETATION: retirement is deferred until qualified live inputs and
+    a build-safe cutover exist. An empty plan would misclassify stored legacy
+    rows as completed jury output; an unavailable pending step would fail a
+    whole-layer run (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md §2/§7.1;
+    CLAUDE.md §N.8.4). Keep real legacy production rather than claiming either.
+    """
 
     def plan_substeps(self, ctx) -> list[SubStep]:
         if 'jury_fixture_inputs' not in ctx.config:

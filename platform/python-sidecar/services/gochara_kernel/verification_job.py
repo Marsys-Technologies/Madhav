@@ -42,7 +42,7 @@ VERIFICATION_TABLES = ("ka_gochara_search_inventory_verification", "ka_gochara_e
 #: …plus the one table the verifier's `--brief` mode appends to (F-R12-4). The SEALER holds no write on it (its write surface keeps it).
 VERIFIER_WRITE_TABLES = VERIFICATION_TABLES + ("ka_gochara_seal_brief",)
 _WRITE = ("INSERT", "UPDATE", "DELETE", "TRUNCATE")
-#: the L1 tables the independent re-derivations READ (their ACLs belong to the data-plane owner, not to 1241)
+#: the L1 tables the independent re-derivations READ (their ACLs belong to the data-plane owner, not to 1378)
 L1_READ_TABLES = ("chart_facts", "chart_dashas")
 
 
@@ -134,7 +134,7 @@ def check_identity(conn) -> dict:
         raise VerificationRefused(
             "no_verifier_privilege",
             f"verifier lacks SELECT on {'/'.join(l1_missing)} — the L1 read ACLs belong to the data-plane owner and the "
-            "verifier/sealer grants migration (1241) does not grant them", exit_code=EXIT_PRIVILEGE)
+            "verifier/sealer grants migration (1378) does not grant them", exit_code=EXIT_PRIVILEGE)
     missing = [t for t in VERIFICATION_TABLES
                if _one(conn.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{t}",)).fetchone()) is True
                and not _one(conn.execute("SELECT has_table_privilege(current_user, %s, 'INSERT')",
@@ -410,9 +410,10 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
         # population is exactly the case the expected-contact derivation exists to catch (the conditional skip,
         # keyed on whether any anchored record SURVIVED, is gone)
         if rv._anchor_columns(conn):
-            out["p1"]["anchors"] = stage("p1_anchors", lambda: rv.verify_p1_anchors(
-                conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at))
             p1_version = next(v for p, v in pins if p == "P1")
+            out["p1"]["anchors"] = stage("p1_anchors", lambda: rv.verify_p1_anchors(
+                conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at,
+                **({"rule_version": p1_version} if p1_version != "1.0.0" else {})))
             out["p1"]["results"] = stage("p1_results", lambda: rd.verify_p1_results(
                 conn, chart_id=chart_id, generation=generation, event_class=event_class, rule_version=p1_version,
                 chart=chart, policy=policy))
@@ -423,6 +424,9 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     for path_id, version in pins:
         grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
                      rule_version=version)
+        if version == "1.2.0":
+            out.setdefault("final_rules", {})[path_id] = stage(
+                f"final_rules {path_id}", lambda g=grain: rd.verify_final_rule_records(conn, chart=chart, **g))
         derived = None
         if path_id != "P1":
             # R10-1: every record the path MUST hold, derived from the obligations × the certified contacts × the bound
@@ -442,7 +446,7 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     out["windows"] = windows
     if persist:
         # ORDER (Stream B's all-guards rehearsal): the WINDOW verifications first, the 1206 inventory row last — the class's
-        # candidate gate refuses until every included grain has a window verification. 1241 gives the verifier SELECT+INSERT
+        # candidate gate refuses until every included grain has a window verification. 1378 gives the verifier SELECT+INSERT
         # on the inventory verification table and NO DELETE: a re-run replaces nothing there (`write_verification` is
         # idempotent for an identical digest, and a rebuilt inventory chain removes its own verification); the 1240 rows are
         # replaced by `record_verification` (the verifier holds DELETE on its own table, pre-seal).

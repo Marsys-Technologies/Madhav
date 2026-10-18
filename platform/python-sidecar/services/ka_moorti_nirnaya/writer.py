@@ -53,6 +53,8 @@ from services.w2g.node_series import (
     assert_one_row_per_date,
     node_mode_differs_from_kernel,
 )
+from services.gochara_kernel.node_series_digest import node_series_identity
+from services.gochara_kernel.l1_identity import l1_operand_identity
 from services.ka_graha_sancara.engine import NAKSHATRAS, NAK_SIZE_DEG, SIGNS
 from services.gochara_kernel.overlays import date_to_jd as _date_to_jd
 from services.ka_moorti_nirnaya.logic import (
@@ -93,6 +95,12 @@ FROM chart_facts
 WHERE chart_id = %s AND ayanamsha_id = %s
   AND fact_category = 'graha_position' AND fact_subject = 'MOON' AND fact_key = 'longitude_sidereal'
 """
+
+# Step 3 §4: the L1 operands this writer actually reads, declared next to their
+# own SQL — the writer, the freshness gate and the '4.1' manifest all fold their
+# identity into the upstream fingerprint via the ONE shared helper
+# (gochara_kernel.l1_identity.l1_operand_identity).
+L1_OPERANDS = (("graha_position", "MOON", "longitude_sidereal"),)
 
 _FETCH_EPHEMERIS_RANGE_SQL = f"""
 SELECT date, body, tropical_longitude
@@ -217,6 +225,7 @@ def _build_kernel_arcs(
     from services.gochara_kernel import arcs as kernel_arcs
     from services.gochara_kernel.contacts import find_boundary_roots
     from services.gochara_kernel.knots import EphemerisBackendError
+    from brahmagyan.l0_ephemeris import _tropical_to_jd
 
     index_by_body: dict[str, Any] = {}
     roots_by_body: dict[str, list[Any]] = {}
@@ -225,7 +234,9 @@ def _build_kernel_arcs(
         daily = daily_by_body.get(body) or []
         if len(daily) < 4:
             continue
-        jds = [_date_to_jd(d) for d, _lon in daily]
+        # L0 ephemeris_daily values are sampled at noon UT. The overlay's
+        # DATE-to-midnight seam describes window bounds, not sample instants.
+        jds = [_tropical_to_jd(d) for d, _lon in daily]
         lons = [lon for _d, lon in daily]
         try:
             idx = kernel_arcs.build_arc_index(body, jds, lons)
@@ -355,6 +366,19 @@ class KaMoortiNirnayaWriter(WriterBase):
     asset_id = "ka_moorti_nirnaya"
 
     def run(self, ctx) -> WriterResult:
+        # SR-A4-01: only an explicit typed candidate payload enters the new
+        # path. Normal dispatch keeps the published legacy computation intact.
+        if "ka_adapter_payload" in ctx.config:
+            from services.kala_core.overlays.contested import AdapterPayload
+            from services.kala_core.overlays.contested_storage import replace_candidate
+
+            payload = ctx.config["ka_adapter_payload"]
+            if not isinstance(payload, AdapterPayload) or "ka_" + payload.family != self.asset_id:
+                raise ValueError("candidate payload family does not match registered writer")
+            count = replace_candidate(ctx, payload)
+            return WriterResult(asset_id=self.asset_id, rows_inserted=count,
+                                notes="SR-A4-01 candidate only; publication unchanged")
+
         conn = ctx.db_conn
         chart_id = ctx.config["chart_id"]
 
@@ -371,9 +395,6 @@ class KaMoortiNirnayaWriter(WriterBase):
         janma_nak_idx, janma_fact_id = janma
 
         moorti_table = _fetch_moorti_table(conn)
-        # §12.9: digest of exactly the bg_transit_moorti rows this build consumes, stamped on
-        # every row so an upstream change is DETECTABLE (services.ka_vedha_gochara.freshness).
-        upstream_fp_json = json.dumps(moorti_upstream_fingerprint(moorti_table))
         if not moorti_table:
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0,
@@ -409,6 +430,20 @@ class KaMoortiNirnayaWriter(WriterBase):
                     + "; prior partition preserved"
                 ),
             )
+
+        # §12.9: digest of exactly the bg_transit_moorti rows this build consumes, stamped on
+        # every row so an upstream change is DETECTABLE (services.ka_vedha_gochara.freshness).
+        # Step 3 §4: the fingerprint also carries the consumed node-series identity
+        # (L0-owned node_series_digest_v1), the consumed L1 natal-operand identity and
+        # this writer's formula_version. Computed only after every graceful refusal
+        # above — an absent node series RAISES here, and that raise must not pre-empt
+        # the coverage refusal (spec §7 test 6: no write, no TRUE fallback).
+        upstream_fp_json = json.dumps(moorti_upstream_fingerprint(
+            moorti_table,
+            node_series=node_series_identity(conn),
+            l1=l1_operand_identity(conn, chart_id, CANONICAL_AYANAMSHA, L1_OPERANDS),
+            formula_version=FORMULA_VERSION,
+        ))
 
         moon_daily = daily_by_body.get("Moon") or []
         moon_nak_by_date: dict[date, int] = {

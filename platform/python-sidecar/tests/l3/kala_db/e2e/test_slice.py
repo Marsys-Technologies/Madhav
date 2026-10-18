@@ -105,6 +105,32 @@ def test_registry_query_returns_the_pinned_candidate_and_never_current(conn):
     assert conn.execute(sql, (CHART, "current")).fetchall() == []
 
 
+@pytest.mark.parametrize("mutation", ["frame", "system", "MD", "AD", "PD", "sign_lord", "yogini_lord"])
+def test_invalid_identities_never_reach_storage_or_registry(conn, mutation):
+    seed(conn)
+    candidate(conn)
+    row = deepcopy(envelope())
+    if mutation == "frame":
+        row["frame"] = "unrecognised_frame"
+    elif mutation == "system":
+        row["period_anchor"]["system"] = "unknown_system"
+    elif mutation in {"MD", "AD", "PD"}:
+        row["period_anchor"][mutation] = "Aries"
+    else:
+        row["period_anchor"].update(
+            system="chara" if mutation == "sign_lord" else "yogini", MD="SAT", AD="MER",
+        )
+    before = legacy(conn)
+    with pytest.raises(ValueError):
+        KaKalaDarshanaWriter().run(ctx(conn, row))
+    for table in ("kala_obstruction", "kala_darshana"):
+        assert conn.execute(f"SELECT count(*) FROM {table} WHERE generation IS NOT NULL").fetchone() == (0,)
+    ts = (REPO / "platform/src/lib/retrieval/registry/layers/L3_kala/query_assertion_fixture.ts").read_text()
+    query = re.search(r"export const ASSERTION_FIXTURE_SQL = `(.*?)`", ts, re.S).group(1)
+    assert conn.execute(query.replace("$1", "%s").replace("$2", "%s"), (CHART, "candidate-a")).fetchall() == []
+    assert legacy(conn) == before
+
+
 def test_testimony_writes_no_numeric_contribution(conn):
     seed(conn)
     candidate(conn)

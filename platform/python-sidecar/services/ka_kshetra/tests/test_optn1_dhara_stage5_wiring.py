@@ -21,6 +21,16 @@ from services.ka_kshetra.dhara_null import NullResult
 from services.ka_kshetra.stage5_null import DURATION_BUCKETS
 
 
+@pytest.fixture(autouse=True)
+def candidate_plan_harness(monkeypatch):
+    from services.ka_kshetra import candidate, g1_inputs
+    def bind(ctx, **kwargs):
+        ctx.db_conn.generation='candidate:unit'
+        return ctx.db_conn, {}
+    monkeypatch.setattr(W,'_candidate_engine',lambda:W._engine_version())
+    monkeypatch.setattr(candidate,'bind_candidate',bind)
+    monkeypatch.setattr(g1_inputs,'load_suppression',lambda *args:([],[]))
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
@@ -73,9 +83,10 @@ class TestPlanSubstepsAnalyticEmitsStage5Dhara:
 
         # Minimal mock context
         ctx = MagicMock()
+        ctx.config={'chart_id':'test-chart-id','birth_params':{'datetime_iso':'1984-02-05T10:43:00+05:30'}}
         ctx.db_conn = MagicMock()
-        ctx.config = MagicMock()
-        ctx.config.chart_id = 'test-chart-id'
+        ctx.config = {'chart_id':'test-chart-id','kshetra_g1_candidate':'candidate:unit',
+                      'as_of':'2020-01-01T00:00:00+00:00','birth_params':{'datetime_iso':'1984-02-05T10:43:00+05:30'}}
 
         # Patch all the helper methods that require real DB data
         with patch.object(KaKshetraWriter, '_load_birth_instant', return_value=('1984-02-05', '10:43:00')), \
@@ -167,9 +178,10 @@ class TestPlanSubstepsSampledEmitsStage5Blocks:
 
         writer = _make_writer_instance()
         ctx = MagicMock()
+        ctx.config={'chart_id':'test-chart-id','birth_params':{'datetime_iso':'1984-02-05T10:43:00+05:30'}}
         ctx.db_conn = MagicMock()
-        ctx.config = MagicMock()
-        ctx.config.chart_id = 'test-chart-id'
+        ctx.config = {'chart_id':'test-chart-id','kshetra_g1_candidate':'candidate:unit',
+                      'as_of':'2020-01-01T00:00:00+00:00','birth_params':{'datetime_iso':'1984-02-05T10:43:00+05:30'}}
 
         with patch.object(KaKshetraWriter, '_load_birth_instant', return_value=('1984-02-05', '10:43:00')), \
              patch.object(KaKshetraWriter, '_corpus_pin', return_value='corpuspin'), \
@@ -219,8 +231,8 @@ class TestResumeVersionIs10:
     """v10 adds the W0 preservation preflight atop DHARA v1.2 identity."""
 
     def test_resume_version_is_10(self):
-        assert W._RESUME_VERSION == 10, (
-            f'_RESUME_VERSION must be 10 (DP-SD-017 W0 preservation), '
+        assert W._RESUME_VERSION == 11, (
+            f'_RESUME_VERSION must be 11 (G1 candidate isolation), '
             f'got {W._RESUME_VERSION!r}'
         )
 
@@ -245,6 +257,7 @@ class TestRunStage5DharaRouting:
         writer._plugin_stages = []
 
         ctx = MagicMock()
+        ctx.config={'chart_id':'test-chart-id','birth_params':{'datetime_iso':'1984-02-05T10:43:00+05:30'}}
         ctx.db_conn = MagicMock()
 
         from pipeline.orchestrator.writers import SubStep
@@ -273,6 +286,7 @@ class TestRunStage5DharaRouting:
         writer._plugin_stages = []
 
         ctx = MagicMock()
+        ctx.config={'chart_id':'test-chart-id','birth_params':{'datetime_iso':'1984-02-05T10:43:00+05:30'}}
         ctx.db_conn = MagicMock()
 
         from pipeline.orchestrator.writers import SubStep

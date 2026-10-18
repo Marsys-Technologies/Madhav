@@ -19,7 +19,8 @@ GEN = 'candidate:CODEX-k6'
 WRITERS = [KaKalasutraWriter, KaKalaDarshanaWriter, KaJivanaParvaWriter]
 ASSETS = list(MODELS)
 MIGRATIONS = ['1353_k6_kalasutra_candidate.sql', '1354_k6_darshana_candidate.sql',
-              '1355_k6_jivana_candidate.sql', '1356_k6_read_model_build_scoped_detectors.sql']
+              '1355_k6_jivana_candidate.sql', '1356_k6_read_model_build_scoped_detectors.sql',
+              '1375_k6_integrity_chart_build_binding.sql']
 
 
 def evidence():
@@ -317,5 +318,9 @@ def test_detector_never_counts_retained_generation(db,asset):
 def test_later_legacy_build_keeps_original_count_and_integrity(db,asset):
     WRITERS[ASSETS.index(asset)]().run(ctx(db))
     db.execute("INSERT INTO build_runs VALUES ('00000000-0000-0000-0000-000000000606',%s,'completed','2001-01-01')",(CHART,))
+    # A manual standalone probe must name the legacy build it is verifying.
+    db.execute("SELECT set_config('kala.integrity_chart_id',%s,true), "
+               "set_config('kala.integrity_build_id',%s,true)",
+               (CHART,'00000000-0000-0000-0000-000000000606'))
     count,check=db.execute('SELECT count_sql,integrity_check_sql FROM asset_registry WHERE asset_id=%s',(asset,)).fetchone()
     assert (db.execute(count.replace('$1','%s'),(CHART,CHART)).fetchone()[0],db.execute(check).fetchone()[0])==(1,True)

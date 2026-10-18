@@ -782,207 +782,113 @@ def _probe_graha_sancara(probe_spec: dict) -> dict[str, Any]:
 # `tree_walk.walk_eligible_intervals`, still out of scope).
 #
 # The check constructs two FIXED, synthetic WindowInput records (not fetched
-# from any chart) and asserts the I-11 composite formula (native-ratified
-# weights: 0.40 convergence / 0.25 rarity / 0.20 confidence / 0.15 proximity)
-# produces the exact pinned composite scores AND the exact rank order AND the
-# exact compare() decisive_factor/recommendation — a genuine re-derivation of
-# the deterministic math, not a bare "did it return something" check.
-_TULANA_REQUIRED_FIELDS = frozenset(
-    {
-        "forensic_reference_date",
-        "forensic_window_a",
-        "forensic_window_b",
-        "forensic_expected_composite_a",
-        "forensic_expected_composite_b",
-        "forensic_expected_winner_window_id",
-        "forensic_expected_decisive_factor",
-    }
-)
-_TULANA_WINDOW_FIELDS = frozenset(
-    {"window_id", "mode", "peak_date", "convergence_score", "confidence_label", "rarity_years"}
-)
+# from any chart). K7-4 keeps the probe_type and DB-free interface while
+# pinning the Pareto front, order and dominance table independently of the
+# writer self-test. Migration 849 is immutable; the new probe replaces its
+# registry JSON through an additive ka_tulana-only UPDATE.
+_TULANA_PARETO_REQUIRED_FIELDS = frozenset({"contract_version", "date_from", "date_to", "windows",
+    "expected_order", "expected_front", "expected_relation", "expected_reason", "expected_axes"})
 
-
-def _validated_tulana_window(spec: dict, field_name: str):
-    from datetime import date as date_cls
-    from services.ka_tulana.ranker import WindowInput
-
-    if not isinstance(spec, dict):
-        raise ValueError(f"{field_name} must be an object")
-    missing = sorted(_TULANA_WINDOW_FIELDS - spec.keys())
-    if missing:
-        raise ValueError(f"{field_name} missing fields: {', '.join(missing)}")
-    try:
-        peak_date = date_cls.fromisoformat(spec["peak_date"])
-    except (TypeError, ValueError) as exc:
-        raise ValueError(f"{field_name}.peak_date must be a valid ISO-8601 date") from exc
-    return WindowInput(
-        window_id=spec["window_id"],
-        mode=spec["mode"],
-        peak_date=peak_date,
-        convergence_score=float(spec["convergence_score"]),
-        confidence_label=spec["confidence_label"],
-        rarity_years=float(spec["rarity_years"]),
-    )
+# Historical schema validation for immutable migration 849. An absent version
+# selects a scoped compatibility detector; an explicit unknown version refuses.
+_TULANA_REQUIRED_FIELDS = frozenset({"forensic_reference_date", "forensic_window_a", "forensic_window_b",
+    "forensic_expected_composite_a", "forensic_expected_composite_b",
+    "forensic_expected_winner_window_id", "forensic_expected_decisive_factor"})
 
 
 def _validated_tulana_probe_config(probe_spec: dict) -> dict[str, Any]:
-    """Return normalized registry inputs or fail closed on an incomplete probe."""
-    from datetime import date as date_cls
+    from datetime import date
+    import math
 
-    missing = sorted(_TULANA_REQUIRED_FIELDS - probe_spec.keys())
-    if missing:
-        raise ValueError(f"missing required fields: {', '.join(missing)}")
-
-    try:
-        reference_date = date_cls.fromisoformat(probe_spec["forensic_reference_date"])
-    except (TypeError, ValueError) as exc:
-        raise ValueError("forensic_reference_date must be a valid ISO-8601 date") from exc
-
-    window_a = _validated_tulana_window(probe_spec["forensic_window_a"], "forensic_window_a")
-    window_b = _validated_tulana_window(probe_spec["forensic_window_b"], "forensic_window_b")
-
-    def _score(field: str) -> float:
-        value = probe_spec[field]
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            raise ValueError(f"{field} must be a number")
-        return float(value)
-
-    winner_id = probe_spec["forensic_expected_winner_window_id"]
-    if not isinstance(winner_id, str) or not winner_id.strip():
-        raise ValueError("forensic_expected_winner_window_id must be a non-empty string")
-    if winner_id not in (window_a.window_id, window_b.window_id):
-        raise ValueError(
-            "forensic_expected_winner_window_id must match forensic_window_a or forensic_window_b's window_id"
-        )
-
-    decisive_factor = probe_spec["forensic_expected_decisive_factor"]
-    if not isinstance(decisive_factor, str) or not decisive_factor.strip():
-        raise ValueError("forensic_expected_decisive_factor must be a non-empty string")
-
-    return {
-        "reference_date": reference_date,
-        "window_a": window_a,
-        "window_b": window_b,
-        "expected_composite_a": _score("forensic_expected_composite_a"),
-        "expected_composite_b": _score("forensic_expected_composite_b"),
-        "expected_winner_window_id": winner_id,
-        "expected_decisive_factor": decisive_factor,
-    }
+    if not _TULANA_REQUIRED_FIELDS <= probe_spec.keys():
+        raise ValueError("incomplete historical Tulana probe shape")
+    date.fromisoformat(probe_spec["forensic_reference_date"])
+    identities = set()
+    for field in ("forensic_window_a", "forensic_window_b"):
+        window = probe_spec[field]
+        if not isinstance(window, dict) or not {"window_id", "mode", "peak_date", "convergence_score", "confidence_label", "rarity_years"} <= window.keys():
+            raise ValueError("invalid historical Tulana window shape")
+        date.fromisoformat(window["peak_date"])
+        identities.add(window["window_id"])
+        for key in ("convergence_score", "rarity_years"):
+            value = window[key]
+            if type(value) not in (int, float) or not math.isfinite(value):
+                raise ValueError("finite historical numeric field required")
+    if len(identities) != 2 or probe_spec["forensic_expected_winner_window_id"] not in identities:
+        raise ValueError("invalid historical window identity")
+    return dict(probe_spec)
 
 
-# Float-tolerance for composite-score comparisons — the I-11 formula's own
-# rounding is to 4 decimal places (ranker.py's `_composite()`), so anything
-# tighter than that would be fragile against the module's own precision.
-_TULANA_SCORE_EPSILON = 1e-4
+def _tulana_probe_oracle(probe_spec):
+    """Select by the stored contract, never by the code's deployment date.
+
+    (I) INTERPRETATION K7-B2: before 1377, the legacy dates/identities exercise
+    current comparison through a single-day synthetic projection. Confidence,
+    convergence and rarity are NOT substitutes for current axes. Historical
+    weighted expectations are retired and explicitly outside this signal.
+    """
+    from datetime import date, timedelta
+    from services.ka_tulana.ranker import VERSION, CompareRequest
+
+    if "contract_version" in probe_spec:
+        missing = sorted(_TULANA_PARETO_REQUIRED_FIELDS - probe_spec.keys())
+        if missing or probe_spec["contract_version"] != VERSION:
+            raise ValueError(f"unsupported/incomplete tulana probe contract: {missing}")
+        request = CompareRequest.model_validate({k: probe_spec[k] for k in ("windows", "date_from", "date_to")})
+        return request, probe_spec, VERSION, "versioned Pareto front/order/relations"
+
+    config = _validated_tulana_probe_config(probe_spec)
+    ref = date.fromisoformat(config["forensic_reference_date"])
+    windows = sorted((config["forensic_window_a"], config["forensic_window_b"]), key=lambda w: w["window_id"])
+    projected = [dict(chart_id="probe:849", field_snapshot_id="probe:849", window_id=w["window_id"],
+                      window_start=w["peak_date"], window_end=w["peak_date"]) for w in windows]
+    days = {w["window_id"]: max(0, (date.fromisoformat(w["peak_date"]) - ref).days) for w in windows}
+    a, b = [w["window_id"] for w in windows]
+    nearest = "tie" if abs(days[a] - days[b]) <= 1 else "A_better" if days[a] < days[b] else "B_better"
+    expected = dict(expected_order=sorted(days, key=lambda identity: (days[identity], identity)),
+                    expected_front=sorted(days), expected_relation="incomparable", expected_reason="unavailable",
+                    expected_axes={"nearest": nearest, "strongest": "unavailable", "most_robust": "unavailable"})
+    request = CompareRequest(windows=projected, date_from=ref, date_to=ref + timedelta(days=90))
+    return request, expected, "849:unversioned", (
+        "849 compatibility: synthetic date/identity projection, nearest and unavailable axes; "
+        "retired weighted scores/winner/decisive factor are not measured")
 
 
 def _probe_tulana(probe_spec: dict) -> dict[str, Any]:
-    checks: list[dict] = []
-    failures: list[str] = []
-
+    """Same dispatcher, earned detectors on both sides of migration 1377."""
+    checks, failures = [], []
     try:
-        config = _validated_tulana_probe_config(probe_spec)
+        from services.ka_tulana.ranker import KaTulanaService
+        request, oracle, version, scope = _tulana_probe_oracle(probe_spec)
+        if len(request.windows) != 2:
+            raise ValueError("two fixed forensic windows required")
         _add_check(checks, failures, "probe_config_valid", True)
-    except (TypeError, ValueError) as exc:
-        _add_check(
-            checks,
-            failures,
-            "probe_config_valid",
-            False,
-            f"invalid tulana health_probe contract: {exc}",
-            error=str(exc),
-        )
-        return _aggregate(checks, failures)
-
-    # Check 1: single canonical implementation importable
-    try:
-        from services.ka_tulana.ranker import KaTulanaService  # noqa: F401
         _add_check(checks, failures, "single_engine_importable", True)
-    except ImportError as exc:
-        _add_check(checks, failures, "single_engine_importable", False,
-                    f"import failed: {exc}", error=str(exc))
+    except (ImportError, TypeError, ValueError) as exc:
+        _add_check(checks, failures, "probe_config_valid", False, str(exc))
         return _aggregate(checks, failures)
-
-    # Check 2: rank_windows() produces the exact pinned composite scores AND
-    # rank order for two fixed, synthetic windows — a genuine re-derivation of
-    # the I-11 weighted-sum formula, not a bare "returned a list" check.
+    # Each oracle measures relations independently, so a fabricated tie breaks both.
     try:
-        from services.ka_tulana.ranker import KaTulanaService
-
-        svc = KaTulanaService()
-        ranked = svc.rank_windows(
-            [config["window_a"], config["window_b"]], reference_date=config["reference_date"]
-        )
-        by_id = {r.window.window_id: r for r in ranked}
-        composite_a = by_id[config["window_a"].window_id].factors.composite
-        composite_b = by_id[config["window_b"].window_id].factors.composite
-
-        composite_a_ok = abs(composite_a - config["expected_composite_a"]) < _TULANA_SCORE_EPSILON
-        composite_b_ok = abs(composite_b - config["expected_composite_b"]) < _TULANA_SCORE_EPSILON
-        expected_first = (
-            config["window_a"].window_id
-            if config["expected_composite_a"] >= config["expected_composite_b"]
-            else config["window_b"].window_id
-        )
-        rank_order_ok = ranked[0].window.window_id == expected_first
-        rank_failures = []
-        if not composite_a_ok:
-            rank_failures.append(
-                f"composite_a={composite_a!r}, expected {config['expected_composite_a']!r}"
-            )
-        if not composite_b_ok:
-            rank_failures.append(
-                f"composite_b={composite_b!r}, expected {config['expected_composite_b']!r}"
-            )
-        if not rank_order_ok:
-            rank_failures.append(
-                f"rank #1 was {ranked[0].window.window_id!r}, expected {expected_first!r}"
-            )
-        _add_check(
-            checks, failures, "forensic_composite_and_rank_order",
-            composite_a_ok and composite_b_ok and rank_order_ok,
-            "; ".join(rank_failures),
-            composite_a=composite_a, composite_b=composite_b,
-        )
+        result = KaTulanaService().compare_windows(**request.model_dump())
+        pair = result["comparisons"][0]
+        axes_ok = {k:v["relation"] for k,v in pair["axes"].items()} == oracle["expected_axes"]
+        ok = (result["ordered"] == oracle["expected_order"]
+              and result["front"] == oracle["expected_front"]
+              and pair["relation"] == oracle["expected_relation"]
+              and pair["reason"] == oracle["expected_reason"] and axes_ok)
+        _add_check(checks, failures, "forensic_front_and_order", ok, "Pareto front/order/relation mismatch" if not ok else "", scope=scope)
     except Exception as exc:
-        _add_check(checks, failures, "forensic_composite_and_rank_order", False,
-                    f"rank_windows failed: {exc}", error=str(exc))
-        return _aggregate(checks, failures)
-
-    # Check 3: compare() picks the same winner via the same decisive factor —
-    # a second, independent code path over the identical two windows, proving
-    # the two entry points (rank_windows vs compare) agree with each other and
-    # with the pinned FORENSIC expectation, not just internally self-consistent.
+        _add_check(checks, failures, "forensic_front_and_order", False, str(exc), scope=scope)
     try:
-        from services.ka_tulana.ranker import KaTulanaService
-
-        svc = KaTulanaService()
-        verdict = svc.compare(
-            config["window_a"], config["window_b"], reference_date=config["reference_date"]
-        )
-        winner_ok = verdict.winner.window_id == config["expected_winner_window_id"]
-        decisive_ok = verdict.decisive_factor == config["expected_decisive_factor"]
-        compare_failures = []
-        if not winner_ok:
-            compare_failures.append(
-                f"winner={verdict.winner.window_id!r}, expected {config['expected_winner_window_id']!r}"
-            )
-        if not decisive_ok:
-            compare_failures.append(
-                f"decisive_factor={verdict.decisive_factor!r}, expected {config['expected_decisive_factor']!r}"
-            )
-        _add_check(
-            checks, failures, "forensic_compare_verdict",
-            winner_ok and decisive_ok,
-            "; ".join(compare_failures),
-            winner=verdict.winner.window_id, decisive_factor=verdict.decisive_factor,
-        )
+        pair = KaTulanaService().compare(request.windows[0], request.windows[1],
+            reference_date=request.date_from, date_to=request.date_to)
+        ok = (pair["relation"] == oracle["expected_relation"] and pair["reason"] == oracle["expected_reason"]
+              and {k:v["relation"] for k,v in pair["axes"].items()} == oracle["expected_axes"])
+        _add_check(checks, failures, "forensic_compare_verdict", ok, "dominance table mismatch" if not ok else "", scope=scope)
     except Exception as exc:
-        _add_check(checks, failures, "forensic_compare_verdict", False,
-                    f"compare failed: {exc}", error=str(exc))
-
-    return _aggregate(checks, failures)
+        _add_check(checks, failures, "forensic_compare_verdict", False, str(exc), scope=scope)
+    return {**_aggregate(checks, failures), "stored_contract_version": version,
+            "scope": scope, "retired_expectations_measured": False}
 
 
 # ── ka_dasha_kala probe (DB-free PROXY check — D-CND-34 ruling, #2071/#2067) ─────────

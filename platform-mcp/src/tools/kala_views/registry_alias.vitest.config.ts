@@ -4,5 +4,5 @@ import { defineConfig } from 'vitest/config'
 // Test-only integration with the platform descriptor. Runtime packages remain separate.
 export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('../../../../platform/src/', import.meta.url)) } },
-  test: { environment: 'node', include: ['src/**/*.test.ts'] },
+  test: { environment: 'node', include: ['src/**/*.test.ts'], cache: false, maxWorkers: 2, minWorkers: 1 },
 })

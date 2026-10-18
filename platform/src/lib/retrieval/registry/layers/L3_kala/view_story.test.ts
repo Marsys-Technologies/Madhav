@@ -14,7 +14,7 @@ it('STORY reads stored stages and manifest, preserves nulls/roots and separate d
   ] }] })
   const result = await storyViewCapability.handler!({ chart_id: 'chart' }, {})
   expect(result.content).toMatchObject({ view: 'story', manifest_id: 'build', empty_reason: null,
-    density: { confirmed: 1, testimony: 0, catalog_only: 0 },
+    density: { confirmed: 0, testimony: 0, catalog_only: 0, unknown: 1 },
     rows: [{ data: { assertion: { roots: { contact_ids: ['c1'] }, payload: { release: { instant: null } } } },
       drill: { args: { assertion_id: 'a1' } } }],
   })

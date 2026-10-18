@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-12T17:07:09.816Z",
+  "generated_at": "2026-10-12T20:35:24.582Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"chat\", merged with cap.family_overrides[family] per model family (types.ts FamilyOverrideSpec)",
   "families": [
@@ -1536,6 +1536,10 @@
             "as_of": {
               "type": "string",
               "description": "YYYY-MM-DD; omission retains the legacy today default."
+            },
+            "at": {
+              "type": "string",
+              "description": "Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of."
             }
           },
           "required": [
@@ -7352,6 +7356,10 @@
             "as_of": {
               "type": "string",
               "description": "YYYY-MM-DD; omission retains the legacy today default."
+            },
+            "at": {
+              "type": "string",
+              "description": "Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of."
             }
           },
           "required": [
@@ -13168,6 +13176,10 @@
             "as_of": {
               "type": "string",
               "description": "YYYY-MM-DD; omission retains the legacy today default."
+            },
+            "at": {
+              "type": "string",
+              "description": "Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of."
             }
           },
           "required": [
@@ -18984,6 +18996,10 @@
             "as_of": {
               "type": "string",
               "description": "YYYY-MM-DD; omission retains the legacy today default."
+            },
+            "at": {
+              "type": "string",
+              "description": "Optional exact ISO instant with timezone for an additive published_now snapshot; never inferred from as_of."
             }
           },
           "required": [

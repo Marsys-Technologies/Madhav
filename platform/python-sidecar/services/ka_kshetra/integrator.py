@@ -148,8 +148,8 @@ def _refine(
     depth: int,
     out: list[Segment],
 ) -> None:
-    a = ln_lambda(t0)
-    b = ln_lambda(t1)
+    a = ln_lambda(math.nextafter(t0, t1))
+    b = ln_lambda(math.nextafter(t1, t0))
     width = t1 - t0
     gamma = (b - a) / width
     tm = 0.5 * (t0 + t1)

@@ -40,6 +40,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Sequence
 
+from brahmagyan.graha_vocabulary import to_title
+
 from . import targets
 
 
@@ -236,12 +238,14 @@ class IdentityCollisionError(RuntimeError):
     loud build failure, never a silent dedup."""
 
 
-#: Kernel body name → substrate (DB) body domain value (kgpo/kgse body checks).
-DB_BODY = {
-    "Sun": "sun", "Mars": "mars", "Mercury": "mercury", "Jupiter": "jupiter",
-    "Venus": "venus", "Saturn": "saturn", "Rahu": "rahu", "Ketu": "ketu",
-    "Moon": "moon",
-}
+#: The nine grahas of the kernel's (mean-node) convention, as SSoT subject codes (doctrine note, Suvarna
+#: M20261003T121557: the MEAN nodes; following the TRUE nodes would be a doctrine question, not a mapping edit).
+_NINE_GRAHA_CODES = ("SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN")
+
+#: Kernel body name → substrate (DB) body domain value (kgpo/kgse body checks) — derived from the
+#: brahmagyan.graha_vocabulary SSoT (R17 adoption over addition — the local literal retired onto the SSoT
+#: helpers after the protected window).
+DB_BODY = {to_title(code): to_title(code).lower() for code in _NINE_GRAHA_CODES}
 
 #: Kernel boundary relation → §6.1 event_kind (kgse_event_kind_ck).
 DB_EVENT_KIND = {
@@ -294,6 +298,15 @@ def production_arc_index(body: str, ephe_path: str | None):
     from services.gochara_kernel.knots import sample_knots
     ks = sample_knots(body, SUBSTRATE_DOMAIN_START.date(), SUBSTRATE_DOMAIN_END.date(), ephe_path)
     return gk_arcs.build_arc_index(body, ks.knot_jds, ks.longitudes_deg)
+
+
+def stored_station_instant(body: str, jd_spline: float, ephe_path: str | None) -> datetime:
+    """The instant the substrate STORES as `t_exact` of the station whose arc-index (spline) instant is `jd_spline`: `jd_to_utc(refine_station(...).jd)`, the very
+    expression `SkyEventStore.build_boundary_substrate` evaluates for its station rows. READ-ONLY reporting helper (the MEASURING BUILD's sink reports `station_at`
+    with it, MEASURING_BUILD_CONTRACT MB-2.3); nothing in the build's computation calls it, so the existing computation is untouched."""
+    from services.gochara_kernel.knots import refine_station
+    return jd_to_utc(refine_station(body, jd_spline, ephe_path).jd)
+
 
 
 class SkyEventStore:
@@ -583,6 +596,7 @@ class SkyEventStore:
 
 __all__ += [
     "production_arc_index",
+    "stored_station_instant",
     "STATION_OLD_FALSE_REGIME",
     "STATION_PRECISION_REGIME",
     "StationRegimeConflict",

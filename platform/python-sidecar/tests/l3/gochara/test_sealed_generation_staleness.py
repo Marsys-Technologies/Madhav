@@ -1,0 +1,250 @@
+"""C35 — tests for scripts/gochara/sealed_generation_staleness.py.
+
+No database: a psycopg3-shaped fake connection answers by substring-matching the SQL
+the script issues, so the tests prove (a) the script calls ONLY the existing
+migration-1206 functions and never re-implements their logic, (b) the session is
+forced read-only before any check statement, (c) fresh -> exit 0, stale (l1 drift /
+daśā drift / completeness violation) -> exit 4, and any failure to run (no snapshot,
+driver/DB error, no DATABASE_URL) -> exit 3.
+"""
+from __future__ import annotations
+
+import importlib.util
+import sys
+import types
+from pathlib import Path
+
+import pytest
+
+REPO = Path(__file__).resolve().parents[5]
+MODULE_PATH = REPO / "platform/python-sidecar/scripts/gochara/sealed_generation_staleness.py"
+SPEC = importlib.util.spec_from_file_location("sealed_generation_staleness", MODULE_PATH)
+assert SPEC and SPEC.loader
+staleness = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(staleness)
+
+CHART = "482012f1-710e-4a25-994a-93821f5871aa"
+GENERATION = "5.0"
+SNAP_ROW = (["fact-a", "fact-b"], ["11111111-1111-1111-1111-111111111111"], "L1SNAP", "DASHASNAP")
+
+
+class FakeCursor:
+    def __init__(self, conn: "FakeConn") -> None:
+        self.conn = conn
+
+    def __enter__(self) -> "FakeCursor":
+        return self
+
+    def __exit__(self, *exc) -> bool:
+        return False
+
+    def execute(self, sql: str, params: list | None = None) -> None:
+        self.conn.executed.append((sql, params))
+        self.conn.result = self.conn.router(sql, params)
+
+    def fetchone(self):
+        return self.conn.result[0] if self.conn.result else None
+
+    def fetchall(self) -> list:
+        return self.conn.result
+
+
+class FakeConn:
+    def __init__(self, router) -> None:
+        self.router = router
+        self.executed: list[tuple[str, list | None]] = []
+        self.result: list = []
+
+    def cursor(self) -> FakeCursor:
+        return FakeCursor(self)
+
+    def __enter__(self) -> "FakeConn":
+        return self
+
+    def __exit__(self, *exc) -> bool:
+        return False
+
+
+def make_router(
+    snap=SNAP_ROW,
+    live_l1: str = "L1SNAP",
+    live_dasha: str = "DASHASNAP",
+    violations: list | None = None,
+    sealed: bool = True,
+):
+    def router(sql: str, params):
+        if "FROM public.ka_gochara_generation_seal" in sql:
+            assert params == [CHART, GENERATION]
+            assert "p.manifest_id = s.manifest_id" in sql
+            assert "p.chart_id = s.chart_id" in sql and "p.generation = s.generation" in sql
+            return [(sealed,)]
+        if "FROM public.ka_gochara_search_input_snapshot" in sql:
+            return [snap] if snap is not None else []
+        if "ka_gochara_search_l1_facts_digest" in sql:
+            assert params[0] == CHART and params[1] == list(SNAP_ROW[0])
+            return [(live_l1,)]
+        if "ka_gochara_search_dasha_digest" in sql:
+            assert params[0] == CHART and params[1] == list(SNAP_ROW[1])
+            return [(live_dasha,)]
+        if "ka_gochara_search_completeness_violations" in sql:
+            assert params == [CHART, GENERATION]
+            return list(violations or [])
+        if sql.startswith("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY"):
+            return []
+        raise AssertionError(f"unexpected SQL: {sql}")
+
+    return router
+
+
+def test_fresh_exit0(capsys) -> None:
+    conn = FakeConn(make_router())
+    assert staleness.run(conn, CHART, GENERATION) == 0
+    report = __import__("json").loads(capsys.readouterr().out)
+    assert report["status"] == "fresh"
+    assert report["reasons"] == []
+    assert report["chart_id"] == CHART and report["generation"] == GENERATION
+
+
+def test_l1_drift_exit4(capsys) -> None:
+    conn = FakeConn(make_router(live_l1="L1DRIFTED"))
+    assert staleness.run(conn, CHART, GENERATION) == 4
+    report = __import__("json").loads(capsys.readouterr().out)
+    assert report["status"] == "stale"
+    assert any("l1_facts_digest drift" in r and "L1SNAP" in r and "L1DRIFTED" in r for r in report["reasons"])
+
+
+def test_dasha_drift_exit4(capsys) -> None:
+    conn = FakeConn(make_router(live_dasha="DASHADRIFTED"))
+    assert staleness.run(conn, CHART, GENERATION) == 4
+    report = __import__("json").loads(capsys.readouterr().out)
+    assert any("dasha_digest drift" in r for r in report["reasons"])
+
+
+def test_completeness_violation_exit4(capsys) -> None:
+    violations = [("conjunction", "partition_without_inventory", "event_class partition has no search inventory")]
+    conn = FakeConn(make_router(violations=violations))
+    assert staleness.run(conn, CHART, GENERATION) == 4
+    report = __import__("json").loads(capsys.readouterr().out)
+    assert any("conjunction" in r and "partition_without_inventory" in r for r in report["reasons"])
+
+
+@pytest.mark.parametrize("chart,generation", [(CHART, "5.0"), ("11111111-1111-1111-1111-111111111111", "5.1")])
+def test_snapshot_read_binds_both_requested_chart_and_generation(chart, generation):
+    """s05: a digest from a different generation cannot establish freshness."""
+    def scoped(sql, params):
+        # A matching seal/manifest is checked before reading its input snapshot.
+        if "FROM public.ka_gochara_generation_seal" in sql:
+            assert params == [chart, generation]
+            assert "p.manifest_id = s.manifest_id" in sql
+            assert "p.chart_id = s.chart_id" in sql and "p.generation = s.generation" in sql
+            return [(True,)]
+        if "FROM public.ka_gochara_search_input_snapshot" in sql:
+            assert " ".join(sql.split()).endswith("WHERE chart_id = %s AND generation = %s")
+            assert params == [chart, generation]
+            return [SNAP_ROW]
+        if "ka_gochara_search_l1_facts_digest" in sql:
+            assert params == [chart, list(SNAP_ROW[0])]
+            return [("L1SNAP",)]
+        if "ka_gochara_search_dasha_digest" in sql:
+            assert params == [chart, list(SNAP_ROW[1])]
+            return [("DASHASNAP",)]
+        assert "ka_gochara_search_completeness_violations" in sql
+        assert params == [chart, generation]
+        return []
+
+    assert staleness.check_staleness(FakeConn(scoped), chart, generation)["status"] == "fresh"
+
+
+def test_every_completeness_violation_is_reported_in_order(capsys):
+    """s06: reporting only the first violation hides independent stale inputs."""
+    violations = [
+        ("conjunction", "partition_without_inventory", "no inventory"),
+        ("marriage", "input_digest_drift", "consumed facts changed"),
+    ]
+    assert staleness.run(FakeConn(make_router(violations=violations)), CHART, GENERATION) == 4
+    report = __import__("json").loads(capsys.readouterr().out)
+    assert report["status"] == "stale"
+    assert report["reasons"] == [
+        "completeness violation [conjunction] partition_without_inventory: no inventory",
+        "completeness violation [marriage] input_digest_drift: consumed facts changed",
+    ]
+
+
+def test_missing_snapshot_raises() -> None:
+    conn = FakeConn(make_router(snap=None))
+    with pytest.raises(staleness.SnapshotMissing):
+        staleness.check_staleness(conn, CHART, GENERATION)
+
+
+def test_session_is_forced_read_only_before_any_check() -> None:
+    conn = FakeConn(make_router())
+    assert staleness.run(conn, CHART, GENERATION) == 0
+    statements = [sql for sql, _ in conn.executed]
+    assert statements[0] == "SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY"
+    for sql in statements[1:]:
+        assert sql.lstrip().upper().startswith("SELECT"), sql
+
+
+def _patch_main(monkeypatch, conn, dsn: str | None = "postgresql://fake"):
+    fake_psycopg = types.SimpleNamespace(connect=lambda _dsn, autocommit=True: conn)
+    monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
+    monkeypatch.setattr(sys, "argv", ["sealed_generation_staleness.py", "--chart-id", CHART, "--generation", GENERATION])
+    if dsn is None:
+        monkeypatch.delenv("DATABASE_URL", raising=False)
+    else:
+        monkeypatch.setenv("DATABASE_URL", dsn)
+
+
+def test_main_fresh_exit0(monkeypatch, capsys) -> None:
+    _patch_main(monkeypatch, FakeConn(make_router()))
+    assert staleness.main() == 0
+    assert "fresh" in capsys.readouterr().out
+
+
+def test_main_stale_exit4(monkeypatch, capsys) -> None:
+    _patch_main(monkeypatch, FakeConn(make_router(live_l1="X")))
+    assert staleness.main() == 4
+
+
+def test_main_missing_snapshot_exit3(monkeypatch, capsys) -> None:
+    _patch_main(monkeypatch, FakeConn(make_router(snap=None)))
+    assert staleness.main() == 3
+    assert "no sealed input snapshot" in capsys.readouterr().err
+
+
+def test_main_db_error_exit3(monkeypatch, capsys) -> None:
+    def boom(sql, params):
+        raise RuntimeError("connection reset")
+
+    _patch_main(monkeypatch, FakeConn(boom))
+    assert staleness.main() == 3
+    assert "could not run" in capsys.readouterr().err
+
+
+def test_main_no_database_url_exit3(monkeypatch, capsys) -> None:
+    _patch_main(monkeypatch, FakeConn(make_router()), dsn=None)
+    assert staleness.main() == 3
+    assert "DATABASE_URL is required" in capsys.readouterr().err
+
+
+# J5Q: a snapshot alone is not a seal (1153's seal has no manifest FK).
+def test_snapshot_without_matching_seal_is_never_fresh(monkeypatch, capsys):
+    _patch_main(monkeypatch, FakeConn(make_router(sealed=False)))
+    assert staleness.main() == 3
+    assert "no matching generation seal and manifest" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("index", [2, 3])
+def test_unknown_snapshot_digest_is_never_fresh(index, monkeypatch, capsys):
+    snap = list(SNAP_ROW)
+    snap[index] = None
+    _patch_main(monkeypatch, FakeConn(make_router(snap=tuple(snap), **{"live_l1" if index == 2 else "live_dasha": None})))
+    assert staleness.main() == 3
+    assert "missing snapshot digest" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("key", ["live_l1", "live_dasha"])
+def test_unknown_live_digest_is_not_fresh(key, capsys):
+    conn = FakeConn(make_router(**{key: None}))
+    assert staleness.run(conn, CHART, GENERATION) == 4
+    assert "stale" in capsys.readouterr().out

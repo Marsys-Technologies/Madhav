@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import re
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -119,10 +120,11 @@ def test_ci_matrix_count_and_name_agree(jobs):
 def test_the_aggregate_job_keeps_the_original_required_name_and_fails_on_any_non_success(jobs):
     agg = jobs["governance-tool-tests"]
     assert agg["name"] == "Governance Tool Tests (pytest)"
-    assert set(agg["needs"]) == {"changes", "governance-tool-tests-shard"}
+    assert set(agg["needs"]) == {"changes", "governance-tool-tests-shard", "governance-readback-tests"}
     assert "always()" in str(agg["if"])
     step = agg["steps"][0]
     assert step["env"]["SHARDS_RESULT"] == "${{ needs.governance-tool-tests-shard.result }}"
+    assert step["env"]["READBACK_RESULT"] == "${{ needs.governance-readback-tests.result }}"
     assert step["env"]["DOCS_ONLY"] == "${{ needs.changes.outputs.docs_only }}"
     assert "exit 1" in step["run"]
 
@@ -138,12 +140,14 @@ def test_no_other_job_still_runs_the_whole_directory_as_one_pytest_call(jobs):
                                                  ("skipped", "false", False), ("skipped", "", False),   # skipped for any other reason: NOT green
                                                  ("cancelled", "true", False), ("failure", "true", False), ("failure", "", False),
                                                  ("cancelled", "", False), ("", "true", False), ("", "", False)])
-def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate_unless_docs_only_skipped_it(jobs, result, docs_only, ok):
+@pytest.mark.parametrize("readback", ["success", "skipped", "cancelled", "failure", ""])
+def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate_unless_docs_only_skipped_it(jobs, result, docs_only, ok, readback):
     """N-98 A + the fast path: run the aggregate job's own script with each `needs.<shard>.result` and docs_only: only success, or skipped
     together with docs_only=true, may pass."""
     script = jobs["governance-tool-tests"]["steps"][0]["run"]
-    p = subprocess.run(["bash", "-c", script], env={"SHARDS_RESULT": result, "DOCS_ONLY": docs_only, "PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
-    assert (p.returncode == 0) is ok, (result, docs_only, p.stdout, p.stderr)
+    p = subprocess.run(["bash", "-c", script], env={**os.environ, "SHARDS_RESULT": result, "READBACK_RESULT": readback, "DOCS_ONLY": docs_only, "EVENT_NAME": "pull_request", "READBACK_EXPECTED": "false"}, capture_output=True, text=True)
+    ok = ok and (readback in ("success", "skipped") if result == "success" else readback == "skipped")
+    assert (p.returncode == 0) is ok, (result, readback, docs_only, p.stdout, p.stderr)
     assert ("::error::" in p.stdout) is (not ok)
 
 
@@ -155,7 +159,7 @@ def test_the_aggregate_script_fails_when_the_result_is_not_even_set(jobs):
 
 def test_no_step_can_turn_a_failing_shard_green_or_narrow_what_runs(jobs):
     """Review N-103: continue-on-error, `|| true`, --co/--collect-only and --deselect would each make the aggregate green without the tests passing."""
-    for jname in ("governance-tool-tests-shard", "governance-tool-tests"):
+    for jname in ("governance-tool-tests-shard", "governance-readback-tests", "governance-tool-tests"):
         job = jobs[jname]
         assert "continue-on-error" not in job, jname
         for st in job["steps"]:
@@ -173,3 +177,20 @@ def test_verify_exits_nonzero_on_a_broken_partition(tmp_path):
     (tmp_path / "test_only.py").write_text("x")
     p = subprocess.run([sys.executable, str(HERE.parent / "ci_shard.py"), "--count", "2", "--verify", "--root", str(tmp_path)], capture_output=True, text=True)
     assert p.returncode == 1 and "empty shard" in p.stderr           # two shards, one file: an empty shard fails the run
+
+
+def test_tracker_suite_is_mandatory_in_governance_shards():
+    import yaml
+
+    from ci_discovery import expanded_workflow
+    job = expanded_workflow(yaml.safe_load(CI.read_text())["jobs"])["governance-tool-tests-shard"]
+    tracker = [step for step in job["steps"]
+               if "platform/scripts/governance/pravaha_tracker/tests/test_verify_priority.py" in step.get("run", "")]
+    assert len(tracker) == 1, "tracker regressions must run in required governance CI"
+    assert tracker[0].get("continue-on-error", False) is False
+    assert tracker[0].get("if") == "matrix.shard == 1"
+    assert tracker[0]["env"]["PYTHONPATH"] == "platform/scripts/governance"
+    assert "-p no:cacheprovider" in tracker[0]["run"]
+    assert "platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py" in tracker[0]["run"]
+    assert "test_kalayantra_control_plane.py" in tracker[0]["run"]
+    assert "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt_binding.py" in tracker[0]["run"]

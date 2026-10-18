@@ -28,6 +28,8 @@ from pathlib import Path
 import psycopg
 import pytest
 
+from ._smalltest_executor_evidence import executor_bound_smalltest  # noqa: F401
+
 from pipeline.orchestrator.writers import ContextSpec, SubStep
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 
@@ -54,7 +56,8 @@ STUB_DDL = (
     " created_at timestamptz NOT NULL DEFAULT now())",
     # migration 171: ON DELETE CASCADE (the stub used to omit it; the teardown's understood-relationship exemption is keyed on the action)
     "CREATE TABLE public.build_run_assets (run_id uuid NOT NULL REFERENCES public.build_runs(id) ON DELETE CASCADE, asset_id text)",
-    "CREATE TABLE public.asset_throughput (chart_id uuid, asset_id text)",
+    # migration 169 carries `state`; a row of a run in flight reads `building` (the writer's state guard reads it), hence the default of this stub
+    "CREATE TABLE public.asset_throughput (chart_id uuid, asset_id text, state text NOT NULL DEFAULT 'building')",
     # migration 596: the run link is SET NULL when the run row is deleted
     "CREATE TABLE public.asset_provenance_receipts (asset_id text NOT NULL REFERENCES public.asset_registry(asset_id)"
     " ON DELETE CASCADE, chart_id uuid, partition_key text NOT NULL DEFAULT 'p',"
@@ -268,7 +271,7 @@ def test_a_second_execution_is_a_clean_noop(tworld):
     _built_stamped_with_test_run(w)
     _teardown(w)
     after_first = _snapshot(w)
-    _teardown(w)                                                     # nothing left: every delete matches nothing
+    _refused_and_untouched(w, "identified staged run")  # no surviving authorized run
     assert _snapshot(w) == after_first
 
 
@@ -315,12 +318,11 @@ def test_a_null_linked_receipt_is_refused_and_named_even_with_a_stamped_manifest
     _refused_and_untouched(w, "NO run link.*orphan-part")
 
 
-def test_a_pruned_test_run_with_a_stamped_manifest_and_no_receipts_is_removable(tworld):
+def test_a_pruned_test_run_with_a_stamp_and_no_receipts_refuses(tworld):
     w = tworld
     rid = _slice_run(w, receipt=False)
     _prune(w, rid)
-    _teardown(w)
-    assert all(n == 0 for n in _counts(w).values())
+    _refused_and_untouched(w, "run-proven stamp is required")
 
 
 def test_deleting_the_run_orphans_the_receipt_which_is_why_receipts_are_deleted_by_asset_and_chart(tworld):
