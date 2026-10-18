@@ -59,7 +59,13 @@ def test_bound_set_is_p1_to_p5_p6_deferred():
     assert "sad_bala_summary" not in rr.BOUND_FACTORS
 
 
-def test_every_membership_reference_resolves():
+@pytest.fixture(params=[False, True], ids=["legacy_profile", "final_rules_profile"])
+def final(request):
+    with rr.rule_profile(final_rules=request.param):
+        yield request.param
+
+
+def test_every_membership_reference_resolves(final):
     rr._membership_consistent()  # raises on a dangling/bare reference
     declared_predicates = {r["predicate_id"] for r in rr.predicate_rows()}
     declared_factors = {r["factor_id"] for r in rr.factor_rows()}
@@ -68,12 +74,12 @@ def test_every_membership_reference_resolves():
         assert row["predicate_rule_version"] == rr.RULE_VERSION
         assert row["ordinal"] >= 1
     # each soft factor is referenced at ITS OWN bound version (R5: never "every row at the global RULE_VERSION");
-    # the one factor that does not exist at 1.0.0 is karaka_agent (ND-H-20261005, from 1.2.0)
-    bound = dict(rr.BOUND_FACTOR_REFS)
+    # the one factor that does not exist at 1.0.0 is karaka_agent (ND-H-20261005, from 1.2.0; bound only under the final-rules profile)
+    bound = dict(rr.bound_factor_refs())
     for row in rr.soft_factor_rows():
         assert row["factor_id"] in declared_factors
         assert row["factor_rule_version"] == bound[row["factor_id"]]
-    assert {f for f, v in rr.BOUND_FACTOR_REFS if v != rr.RULE_VERSION} == {"karaka_agent"}
+    assert {f for f, v in rr.bound_factor_refs() if v != rr.RULE_VERSION} == ({"karaka_agent"} if final else set())
 
 
 def test_prerequisite_ordinals_are_contiguous_per_path():

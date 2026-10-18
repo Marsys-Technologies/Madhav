@@ -385,8 +385,8 @@ def test_1_2_0_is_bound_and_selected_for_the_eight_classes_only():
             continue
         assert set(rr.selected_versions_for(cls).values()) == {"1.0.0"}
     rr._membership_consistent()
-    assert ("karaka_agent", V) in rr.BOUND_FACTOR_REFS
-    assert not [r for r in rr.BOUND_PATH_REFS + rr.BOUND_FACTOR_REFS if r[1] == "1.1.0"]      # 1.1.0 stays unbound
+    assert ("karaka_agent", V) in rr.bound_factor_refs()
+    assert not [r for r in rr.bound_path_refs() + rr.bound_factor_refs() if r[1] == "1.1.0"]      # 1.1.0 stays unbound
 
 
 def test_the_bound_1_2_0_rows_carry_the_rulings_stamp_and_the_pre_existing_rows_are_unchanged():
@@ -805,3 +805,51 @@ def test_the_guard_is_not_evaluated_when_p4_was_not_supplied():
     guard = rep["classes"]["property_acquisition"]["dvi_guard"]
     assert guard["p4_alone_share"] is None and guard["exceeds_band"] is None
     assert guard["revert_dvi_to_support_next_generation"] == []
+
+
+@pytest.mark.parametrize('cls', EIGHT)
+def test_builder_and_independent_verifier_tables_equal_the_literal_ruling(cls):
+    """FB-38: independent data plus the literal ruling, not shared builders."""
+    from services.gochara_kernel import nd_h_tables as verifier
+    independent = {tier: tuple(sorted(getattr(verifier.TIERS[cls], tier)))
+                   for tier in ('core', 'dvi', 'support')}
+    assert independent == RULED_TIERS[cls] == reg.tier_table_lagna(V)[cls]
+    assert {k.lower() for k, roles in RULED_KARAKAS[cls].items() if 'K-A' in roles} == verifier.KARAKA_A[cls]
+    assert {k.lower() for k, roles in RULED_KARAKAS[cls].items() if 'K-B' in roles} == (
+        {verifier.KARAKA_B_LUMINARY[cls]} if cls in verifier.KARAKA_B_LUMINARY else set())
+
+
+def test_legacy_profile_keeps_the_measuring_catalogue_and_selection_isolated():
+    """Preparing final rules must not change the measuring build's inputs."""
+    with rr.rule_profile(final_rules=False):
+        assert rr.bound_path_refs() == tuple((p, '1.0.0') for p in ('P1', 'P2', 'P3', 'P4', 'P5'))
+        assert rr.selected_versions_for('property_acquisition')['P3'] == '1.0.0'
+        assert rr.selected_versions_for('bereavement')['P4'] == '1.0.0'
+        assert len(rr.path_rows()) == 5
+        assert not [row for row in rr.factor_rows() if row['factor_id'] == 'karaka_agent']
+    assert rr.selected_versions_for('property_acquisition')['P3'] == '1.2.0'
+
+
+@pytest.mark.parametrize('cls', EIGHT + ['bereavement', 'marriage'])
+def test_final_inventory_pin_bytes_equal_independent_verifier(cls):
+    from services.gochara_kernel import inventory_verifier as verifier
+    path_exclusions, unknown = inv.standing_exclusions()
+    selected = rr.selected_versions_for(cls)
+    plan = _plan(cls)
+    expected = verifier.derive_class_pins(
+        cls, {'lagna': CHART['lagna_deg'], 'natal': {k.lower(): v for k, v in CHART['natal'].items()}},
+        rr.bound_path_refs(), excluded_agents=('moon',), selected_versions={p.lower(): v for p, v in selected.items()},
+        path_exclusions={p.lower(): {'reason': v.reason, 'basis': v.basis, 'ruling_ref': v.ruling_ref}
+                         for p, v in path_exclusions.items()},
+        h_unknown_exclusion={'reason': unknown.reason, 'basis': unknown.basis, 'ruling_ref': unknown.ruling_ref})
+    actual = [{'path': p.path_id.lower(), 'version': p.rule_version, 'disposition': p.disposition,
+               'reason': p.exclusion_reason or '', 'ruling': p.ruling_ref or '', 'basis': p.basis or '',
+               'obligations': sorted(o.canonical_bytes for o in p.obligations)} for p in plan.values()]
+    assert actual == expected
+
+
+@pytest.fixture(autouse=True)
+def _explicit_final_candidate_profile():
+    from services.gochara_kernel import rule_registry
+    with rule_registry.rule_profile(final_rules=True):
+        yield

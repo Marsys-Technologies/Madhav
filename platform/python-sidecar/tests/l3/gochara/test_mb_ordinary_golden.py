@@ -37,7 +37,7 @@ from .test_a55_replace_chain import SHORT, _World, template  # noqa: F401
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 GOLDEN = FIXTURES / "mb_ordinary_golden_p06.json"
-GOLDEN_COMMIT = "p06-parent-merge-2cb0bee5d3d52ec509f42ec8298663188ceec624"
+GOLDEN_COMMIT = "p06-parent-merge-2fa1cafdf207d9243f8f89b34b42e15b580a3830"
 J4P_GOLDEN = FIXTURES / "mb_ordinary_golden_j4p.json"
 J4P_GOLDEN_COMMIT = "2d75833d3963a61544deaa4c36cc8322cb2cdcb5"
 # The capture recorded the dasha build then settled (L1_SETTLED v1, 7377833e); the snapshot notes name it as "build <uuid first four groups>-<hex>", and the final
@@ -47,7 +47,7 @@ GOLDEN_SETTLED_BUILD_PREFIX = "7377833e-5d3b-4e70-8bef-"
 # P06b (ruling 18): P06b edits governed sources of all three stages (input_vector / input_vector_verifier feed geometry and evaluation; seal_brief.py and
 # verification_job.py feed the window stage), so those three digests MUST differ from the parent's. The window identity is pinned exactly (computed from this tree with
 # implementation_registry.compute()), so another window-code change requires review; geometry and evaluation are pinned by the parent comparison only.
-P06B_WINDOW_IMPLEMENTATION = "247c15a44537219bcff01602a14968c6f535983b157bfdd50533e524f0806586"
+P06B_WINDOW_IMPLEMENTATION = "2809556a4535d722803abae7f701712ed79e2d7571225018229c28d214e0112c"
 # the REAL runner's birth parameters shape (birth_params._to_birth_params): main ignores them, an ordinary HEAD build must too
 BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, "longitude_deg": 85.8245, "tz_offset_hours": 5.5, "place_name": "Bhubaneswar",
                 "subject_label": "native"}

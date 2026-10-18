@@ -138,3 +138,10 @@ def test_the_extractor_reads_a_real_stored_window_and_writes_nothing(grain):
 def test_the_extractor_on_a_generation_with_no_window_reports_no_class_and_does_not_invent_one(grain):
     rep = dx.report_from_store(grain, chart_id=CHART_ID, generation=GEN, tz=UTC)
     assert rep["classes"] == {} and rep["horizon_days"] == 400
+
+
+@pytest.fixture(autouse=True)
+def _explicit_final_candidate_profile():
+    from services.gochara_kernel import rule_registry
+    with rule_registry.rule_profile(final_rules=True):
+        yield

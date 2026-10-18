@@ -460,12 +460,19 @@ def test_writer_module_source_has_no_connection_lifecycle_or_throughput():
 
 
 # ── ND-H-20261005 item 5: the WRITER mints no P2 record for parental_event under its ND-H selection ──────────
+# (final rules are opt-in on main: these run under the explicit candidate profile)
+
+def _final_ctx():
+    ctx = _ctx()
+    ctx.config['gochara_v5_final_rules'] = True
+    return ctx
+
 
 def test_the_writer_hands_the_materialiser_no_p2_edge_for_parental_event(_record_phase_fakes):
     """Not the inventory pin: the record substep itself. The writer enumerates each (class, path) grain directly, so
     the suppression must hold in the enumerator it calls — zero edges reach the materialiser, so nothing is minted."""
     w = writer_mod.GocharaV5Writer()
-    w.run_substep(_ctx(), SubStep(key="record:parental_event:P2", label=""))
+    w.run_substep(_final_ctx(), SubStep(key="record:parental_event:P2", label=""))
     (kw,) = _record_phase_fakes["grain"]
     assert (kw["event_class"], kw["path_id"]) == ("parental_event", "P2")
     assert kw["edges"] == []
@@ -473,7 +480,7 @@ def test_the_writer_hands_the_materialiser_no_p2_edge_for_parental_event(_record
 
 def test_the_coverage_partition_of_parental_event_declares_no_p2_edge(_record_phase_fakes):
     w = writer_mod.GocharaV5Writer()
-    w.run_substep(_ctx(), SubStep(key="coverage:parental_event", label=""))
+    w.run_substep(_final_ctx(), SubStep(key="coverage:parental_event", label=""))
     (kw,) = _record_phase_fakes["coverage"]
     assert kw["class_edges"] and not [e for e in kw["class_edges"] if e.path_id == "P2"]
     assert {e.path_id for e in kw["class_edges"]} == {"P1", "P3", "P4"}
@@ -485,10 +492,35 @@ def test_the_p2_suppression_is_parental_event_only_and_lifts_with_the_selection(
     selection the writer mints the P2 rows it used to (so the suppression is the ruling's, not a blanket edit)."""
     from services.gochara_kernel import rule_registry as rr
     w = writer_mod.GocharaV5Writer()
-    w.run_substep(_ctx(), SubStep(key="record:financial_deception:P2", label=""))
+    w.run_substep(_final_ctx(), SubStep(key="record:financial_deception:P2", label=""))
     assert _record_phase_fakes["grain"][-1]["edges"]
     monkeypatch.setattr(rr, "CLASS_SELECTION_OVERRIDES",
                         {k: v for k, v in rr.CLASS_SELECTION_OVERRIDES.items() if k[0] != "parental_event"})
-    w.run_substep(_ctx(), SubStep(key="record:parental_event:P2", label=""))
+    w.run_substep(_final_ctx(), SubStep(key="record:parental_event:P2", label=""))
     edges = _record_phase_fakes["grain"][-1]["edges"]
     assert edges and {(e.path_id, e.rule_version, e.affected_person) for e in edges} == {("P2", "1.0.0", "native")}
+def test_final_rules_are_opt_in_and_do_not_change_the_default_writer(_record_phase_fakes):
+    w = writer_mod.GocharaV5Writer()
+    ctx = _ctx()
+    w.run_substep(ctx, SubStep(key='record:parental_event:P2', label=''))
+    old = _record_phase_fakes['grain'][-1]['edges']
+    assert old and {e.rule_version for e in old} == {'1.0.0'}
+    ctx.config['gochara_v5_final_rules'] = True
+    w.run_substep(ctx, SubStep(key='record:parental_event:P2', label=''))
+    assert _record_phase_fakes['grain'][-1]['edges'] == []
+
+
+def test_final_rules_cannot_be_selected_for_a_test_slice(monkeypatch):
+    ctx = _ctx()
+    ctx.config['gochara_v5_final_rules'] = True
+    monkeypatch.setattr(writer_mod, '_plan_manifest', lambda c: {writer_mod.TEST_SLICE_KEY: {}})
+    with pytest.raises(writer_mod.TestSliceRefusal, match='final_rules_require_candidate'):
+        writer_mod.GocharaV5Writer().plan_substeps(ctx)
+
+
+@pytest.mark.parametrize('value', [None, 1, 'true'])
+def test_a_truthy_non_boolean_final_rule_flag_is_refused(value):
+    ctx = _ctx()
+    ctx.config['gochara_v5_final_rules'] = value
+    with pytest.raises(ValueError, match='must be a boolean'):
+        writer_mod.GocharaV5Writer().plan_substeps(ctx)

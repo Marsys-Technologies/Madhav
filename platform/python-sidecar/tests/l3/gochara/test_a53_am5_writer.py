@@ -58,12 +58,15 @@ def run(am5, monkeypatch, tmp_path):
     RuleRegistryStore(am5).seed()
     w = writer_mod.GocharaV5Writer()
 
+    extra = {}                      # a test may add candidate config (e.g. the explicit final-rules profile)
+
     def step(key):
         ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-1", db_conn=am5,
-                          config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe},
+                          config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe, **extra},
                           dry_run=False)
         with am5.transaction():
             return w.run_substep(ctx, SubStep(key=key, label=key))
+    step.config = extra
     return step, am5
 
 
@@ -140,6 +143,10 @@ def test_the_verifier_derives_every_included_path_so_a_class_without_its_contact
 
 def test_a_formerly_h_unknown_class_plans_under_the_final_rule_version(run):
     step, conn = run
+    from services.gochara_kernel import rule_registry as rr
+    step.config["gochara_v5_final_rules"] = True        # final rules are an explicit candidate profile on main
+    with rr.rule_profile(final_rules=True):
+        RuleRegistryStore(conn).seed()                  # seals the 1.2.0 rows beside the fixture's legacy seed
     for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP,
               writer_mod.SNAPSHOT_SUBSTEP):
         step(k)

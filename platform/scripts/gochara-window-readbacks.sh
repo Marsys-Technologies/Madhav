@@ -473,7 +473,9 @@ check_ownership() { # B3b (row 9): every ka_gochara_*/kala_gochara_* relation an
 
 check_public_execute() { # B3c (row 9): PUBLIC EXECUTE revoked on every ka_gochara_* function
   local out
-  out="$(run_sql P9-public-execute "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname ~ '^ka_gochara_' AND has_function_privilege('PUBLIC', p.oid, 'EXECUTE') ORDER BY 1")" || return 0
+  # PUBLIC is ACL grantee 0, not a pg_roles entry. NULL proacl means the
+  # default function ACL, which includes PUBLIC EXECUTE and must also STOP.
+  out="$(run_sql P9-public-execute "SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname ~ '^ka_gochara_' AND EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE') ORDER BY 1")" || return 0
   if [ -z "$out" ]; then
     _pass P9-public-execute "PUBLIC holds EXECUTE on no ka_gochara_* function"
   else

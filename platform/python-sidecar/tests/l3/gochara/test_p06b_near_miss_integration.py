@@ -319,6 +319,9 @@ def test_final_rules_grain_requires_layer_pin_even_before_search_rows_exist(chai
     from .conftest import EPHE_PATH
     c=chain
     _apply(c)
+    from services.gochara_kernel import rule_registry as rr
+    with rr.rule_profile(final_rules=True):     # the 1.2.0 rows are sealed only under the explicit final-rules profile (the fixture's own seed is the legacy catalogue)
+        rr.RuleRegistryStore(c).seed()
     sky=c.execute('SELECT sky_convention_id FROM ka_gochara_convention_bridge').fetchone()[0]
     with c.transaction():
         vj.take_locks(c,CHART_ID)

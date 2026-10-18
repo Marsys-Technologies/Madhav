@@ -131,7 +131,7 @@ def test_fb38_fb70_builder_fixture_verifier_three_way_equality():
     import hashlib, json
     from pathlib import Path
     from services.gochara_rules import registry as reg
-    fixture = Path(__file__).resolve().parents[5] / '00_ARCHITECTURE/briefs/pravaha/decisions/fixtures/FB35_TABLE_v1_2.json'
+    fixture = Path(__file__).resolve().parent / 'fixtures/fb35_table_v1_2.json'
     assert hashlib.sha256(fixture.read_bytes()).hexdigest() == 'acfa58c79c85515b6728d1f32347032be3a9542f206177217474b4cc5cffeb2e'
     rows = json.loads(fixture.read_text())['classes']
     for cls, row in rows.items():
@@ -371,3 +371,105 @@ def test_the_final_rule_annotations_are_stored_verbatim_in_the_frozen_inventory_
     detail = next(iv.detail for iv in plan.intervals if iv.ob_id in p4)
     assert len(detail['final_rule_context']['dvi_absorbed_by_core']) == 4
     assert detail['record_factors']
+
+
+@pytest.fixture(autouse=True)
+def _explicit_final_candidate_profile():
+    from services.gochara_kernel import rule_registry
+    with rule_registry.rule_profile(final_rules=True):
+        yield
+
+
+def test_verification_job_refuses_final_metadata_before_window_verification(monkeypatch):
+    """The real job must call the independent metadata detector, and fail closed."""
+    from services.gochara_kernel import verification_job as job, record_derivation as rd
+    from services.gochara_kernel import contact_certify, window_gate, result_policy
+    lo, hi = datetime(2025, 1, 1, tzinfo=timezone.utc), datetime(2025, 2, 1, tzinfo=timezone.utc)
+    monkeypatch.setattr(job, 'take_locks', lambda *a: None)
+    monkeypatch.setattr(job, '_inventory_header', lambda *a: (lo, hi, 'inventory', 'ledger'))
+    monkeypatch.setattr(job, 'class_fingerprint', lambda *a: {})
+    monkeypatch.setattr(job, '_sealed_paths', lambda *a: [('P3', '1.2.0')])
+    monkeypatch.setattr(job, '_included_pins', lambda *a: [('P3', '1.2.0')])
+    monkeypatch.setattr(window_gate, 'generation_output_problems', lambda *a: [])
+    monkeypatch.setattr(result_policy, 'manifest_policy', lambda *a: None)
+    monkeypatch.setattr(verifier, 'stored_selection', lambda *a, **k: {'p3': '1.2.0'})
+    monkeypatch.setattr(verifier, 'rederive_inventory_digest', lambda *a, **k: {'digest': 'inventory', 'obligations': []})
+    monkeypatch.setattr(verifier, 'rederive_ledger_digest', lambda *a, **k: 'ledger')
+    monkeypatch.setattr(verifier, 'read_chart_snapshot', lambda *a: VCHART)      # the snapshot's copy (G12), the job's only natal read
+    monkeypatch.setattr(contact_certify, 'certify_contact_geometry', lambda *a, **k: {})
+    def refuse(conn, **kw):
+        assert kw['chart'] == VCHART and kw['rule_version'] == '1.2.0'
+        raise RuntimeError('karaka_agent_mismatch: record corrupt')
+    monkeypatch.setattr(rd, 'verify_final_rule_records', refuse)
+    def must_not_run(*a, **kw):
+        pytest.fail('record/window checks ran without checking final metadata')
+    monkeypatch.setattr(rd, 'verify_path_records', must_not_run)
+    class Conn:
+        def execute(self, *a, **kw):
+            return self
+        def fetchone(self):
+            return (['snapshot-fact'],)
+    with pytest.raises(job.VerificationDisagrees, match='karaka_agent_mismatch'):
+        job._verify_class(Conn(), chart_id='chart', generation='candidate', event_class='business_launch',
+            position_at=None, configured_selection={'P3': '1.2.0'}, path_rulings={}, h_unknown={},
+            moon_scope_domain=False, factor_rows_for=lambda *a: [], drishti_bound=False,
+            vedha_bound=False, persist=False)
+
+
+@pytest.mark.parametrize('final', [False, True])
+def test_verification_cli_uses_the_same_explicit_candidate_profile(final, monkeypatch):
+    import psycopg
+    from pipeline.orchestrator import verification_job as cli
+    from services.gochara_kernel import rule_registry as rr
+    monkeypatch.setenv(cli.ENV_URL, 'postgresql://postgres@127.0.0.1:55433/postgres')
+    monkeypatch.setattr(cli, '_moon_scope_available', lambda conn: False)
+    closed, observed = [], []
+    class Conn:
+        def close(self):
+            closed.append(True)
+    monkeypatch.setattr(psycopg, 'connect', lambda *a, **kw: Conn())
+    def run(conn, **kw):
+        observed.append(kw['configured_selection_for']('property_acquisition')['P3'])
+        assert (('P3', '1.2.0') in kw['path_refs']) is final
+        return {'exit_code': 0}
+    monkeypatch.setattr(cli.vj, 'run', run)
+    args = ['--chart', 'test-chart', '--ephe-path', '/unused-by-this-parser-test']
+    if final:
+        args.append('--final-rules')
+    assert cli.main(args) == 0
+    assert observed == (['1.2.0'] if final else ['1.0.0'])
+    assert closed == [True]
+    # The surrounding final-test fixture's context was restored after either CLI run.
+    assert rr.selected_versions_for('property_acquisition')['P3'] == '1.2.0'
+
+
+def test_golden_fixture_drops_its_owned_database_when_substrate_setup_is_interrupted(monkeypatch):
+    """Setup failures must not leave a template DB behind on the shared local cluster."""
+    import psycopg
+    from . import test_a55_replace_chain as harness
+    from .test_a53_record_store import ADMIN_DSN
+    from ._disposable_db_guard import guarded_admin_connect
+    created = []
+    real_create = harness.create_am5_database
+    def capture(*args, **kwargs):
+        out = real_create(*args, **kwargs)
+        created.append(out)
+        return out
+    def interrupt(*args, **kwargs):
+        raise RuntimeError('deliberate substrate setup interruption')
+    monkeypatch.setattr(harness, 'create_am5_database', capture)
+    monkeypatch.setattr(harness.writer_mod.GocharaV5Writer, 'run_substep', interrupt)
+    iterator = harness.template.__wrapped__()
+    try:
+        with pytest.raises(RuntimeError, match='deliberate substrate setup interruption'):
+            next(iterator)
+        assert len(created) == 1
+        with guarded_admin_connect(ADMIN_DSN, autocommit=True) as admin:
+            assert admin.execute('SELECT 1 FROM pg_database WHERE datname = %s',
+                                 (created[0][1],)).fetchone() is None
+    finally:
+        # A red run cleans only the exact database this invocation created.
+        iterator.close()
+        for admin, name, _ in created:
+            if not admin.closed:
+                harness.drop_am5_database(admin, name)
