@@ -41,12 +41,12 @@ def test_measuring_bindings_are_real_but_disabled(kind, script, needs):
     assert kind in ops, f'missing dedicated measuring kind {kind}'
     op = ops[kind]
     assert op['enabled'] is False
-    assert op['production'] is True and op['needs'] == needs
+    assert op['production'] is (not kind.endswith('_dryrun')) and op['needs'] == needs   # A8 §3.8: a dry run is read-only with a credential
     assert op['script'].endswith('/' + script) and (ROOT / op['script']).is_file()
-    assert op['required_rows'] == ['2', '3', '7', '9', '11']
+    assert 'required_rows' not in op                                                     # A8 §5: retired
     assert op['allowed_args'] == (['run', 'classes'] if 'dispatch' in kind else [])
     if kind == 'measuring_dispatch':
-        assert op['also_needs'] == ['gcloud']
+        assert op['also_needs'] == ['gcloud'] and op['remote_async'] is True             # A8 §3.11: the remote launch takes the fence
     executor = load('executor')
     req = dict(operation_id='fixture', kind=kind, item_id='J-3c', idempotency_key='fixture', requested_by='adhikarin', kyd='fixture')
     assert 'not enabled' in executor.validate(req, ops, {'builder': True, 'owner': True, 'gcloud': True})
