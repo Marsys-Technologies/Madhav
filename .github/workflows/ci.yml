@@ -112,6 +112,14 @@ permissions:
 # a red main is fixed forward.
 # The required Governance Gates aggregate depends on full-suite, so a failure,
 # cancellation or unexpected full-event skip in any heavy context blocks main.
+# SR-BOLD-08(a) (owner-confirmed 2026-10-18), CI shape: a pull_request is scoped by changed paths exactly as the queue is, and the
+# combination-sensitive family is MERGE_GROUP-ONLY: DB Integration Tests (SAMIKSHA, all shards) and the Governance Tool Tests shards
+# do not run on a PR (ci_gate.py PR_DEFERRED_DB_JOBS; `run_combination_suites` below). The queue runs them on the PR merged with
+# current main and the fast/ preflight runs them locally before a PR is armed (SR-PREFLIGHT-FULL). Every required check name still
+# reports on every PR: the two required umbrellas (`required-db-integration-tests`, `governance-tool-tests`) report success with
+# "deferred to the merge queue" ONLY when `changes` succeeded and proved the deferral, and fail otherwise. `Full suite event
+# contract` stays on every event (seconds): it is the detector that a PR skip is an expected skip. A PR that changes the scoping
+# itself (ci_gate.SCOPER_PATHS: this file, ci_gate/ci_changes/ci_discovery, ci_test_suites.json) runs the whole family on the PR.
 # (I) INTERPRETATION: the changed-profile DB exception in (a) qualifies (b)'s PR skip.
 # (I) INTERPRETATION: full_gate runs source gates; live census needs a separate opt-in.
 jobs:
@@ -168,6 +176,8 @@ jobs:
       docs_only: ${{ steps.classify.outputs.docs_only }}
       db_jobs: ${{ steps.select-db.outputs.db_jobs }}
       db_profiles: ${{ steps.select-db.outputs.db_profiles }}
+      # 'false' only on a pull_request that proved the combination-sensitive family is merge_group-only for it (SR-BOLD-08a).
+      run_combination_suites: ${{ steps.select-db.outputs.run_combination_suites }}
     steps:
       - uses: actions/setup-python@v5
         with:
@@ -1469,18 +1479,48 @@ jobs:
     # cancelled or skipped shard fails it.
     name: DB Integration Tests (SAMĪKṢĀ, throwaway Postgres)
     needs: [changes, db-integration-tests]
-    if: ${{ always() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'db-integration-tests'))) }}
+    # SR-BOLD-08(a): runs on EVERY event so the required name always reports a verdict it earned. DB Integration Tests are
+    # merge_group-only: on a PR the shards are skipped and this check says so, passing ONLY when `changes` succeeded and the
+    # event is a pull_request whose scoping proved the shards not applicable. Anything else unexpected is red.
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every DB shard succeeded (failure, cancellation and skips are fatal)
+      - name: Every DB shard succeeded; a PR skip passes only when the scoping proved it not applicable
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          FULL_GATE: ${{ inputs.full_gate }}
+          DB_JOBS: ${{ needs.changes.outputs.db_jobs }}
+          RUN_COMBINATION: ${{ needs.changes.outputs.run_combination_suites }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          SHARDS_RESULT: ${{ needs.db-integration-tests.result }}
         run: |
-          result="${{ needs.db-integration-tests.result }}"
-          if [ "$result" != "success" ]; then
-            echo "::error::DB shards finished $result; every shard must succeed"
-            exit 1
+          full=false
+          if { [ "$EVENT_NAME" = push ] && [ "$REF" = refs/heads/main ]; } || { [ "$EVENT_NAME" = workflow_dispatch ] && [ "$FULL_GATE" = true ]; }; then full=true; fi
+          selected=false
+          case "$EVENT_NAME" in pull_request|merge_group)
+            case "${DB_JOBS:-[]}" in *'"db-integration-tests"'*) selected=true ;; esac ;;
+          esac
+          if [ "$full" = true ] || [ "$selected" = true ]; then
+            if [ "$SHARDS_RESULT" != "success" ]; then
+              echo "::error::DB shards finished $SHARDS_RESULT; every shard must succeed"
+              exit 1
+            fi
+            echo "Every DB shard passed"
+            exit 0
           fi
-          echo "Every DB shard passed"
+          if [ "$EVENT_NAME" = pull_request ] && [ "$CHANGES_RESULT" = success ] && [ "$SHARDS_RESULT" = skipped ]; then
+            if [ "$RUN_COMBINATION" = false ]; then
+              msg="NOT APPLICABLE on this PR: DB Integration Tests are merge_group-only (SR-BOLD-08a); the merge queue runs every shard"
+            else
+              msg="NOT APPLICABLE on this PR: its diff touches no SAMIKSHA DB test (path-scoped)"
+            fi
+            echo "$msg"; echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "::error::DB shards '$SHARDS_RESULT' on '$EVENT_NAME' (changes '$CHANGES_RESULT'): no scoping proof for a skip"
+          exit 1
 
   replace-chain-substrate:
     # R1: each producer runs one REAL full-domain body substep; consumers restore
@@ -2681,7 +2721,9 @@ jobs:
 
   governance-tool-tests-shard:
     needs: [changes, generated-artifacts]
-    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' }}
+    # SR-BOLD-08(a): merge_group-only. `run_combination_suites` is 'false' only on a pull_request that does not touch the scoping
+    # rules (ci_gate.py); any other value, including the empty output of a failed `changes`, runs the shards (fail-closed).
+    if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' && needs.changes.outputs.run_combination_suites != 'false' }}
     # Suvarṇa E4.1 (sharded, Exec Suvarṇa): discovers governance/__tests__ and pravaha_tracker/tests, so the landed Nikaṣa tools and the
     # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a live DB skip on their
     # own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on this tree skip via conftest.
@@ -2868,10 +2910,22 @@ jobs:
           SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
           READBACK_RESULT: ${{ needs.governance-readback-tests.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+          RUN_COMBINATION: ${{ needs.changes.outputs.run_combination_suites }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
         run: |
+          # A skipped shard set is "not applicable" only on a pull_request and only for the
+          # two proven reasons: a docs-only diff (only a succeeded `changes` can say so), or the merge_group-only deferral (SR-BOLD-08a).
+          shards_not_applicable=false
+          if [ "$SHARDS_RESULT" = "skipped" ] && [ "$EVENT_NAME" = "pull_request" ] \
+             && { [ "$DOCS_ONLY" = "true" ] || { [ "$RUN_COMBINATION" = "false" ] && [ "$CHANGES_RESULT" = "success" ]; }; }; then shards_not_applicable=true; fi
           if [ "$READBACK_RESULT" = "skipped" ] && [ "$READBACK_EXPECTED" = "false" ]; then
-            if [ "$SHARDS_RESULT" = "success" ] || { [ "$SHARDS_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ] && [ "$EVENT_NAME" = "pull_request" ]; }; then
-              echo "governance tests passed; unchanged readbacks skipped by event policy"; exit 0
+            if [ "$SHARDS_RESULT" = "success" ] || [ "$shards_not_applicable" = "true" ]; then
+              echo "governance tests passed; unchanged readbacks skipped by event policy"
+              if [ "$shards_not_applicable" = "true" ]; then
+                msg="Governance Tool Tests shards NOT APPLICABLE on this PR: merge_group-only (SR-BOLD-08a) or docs-only; the merge queue runs them"
+                echo "$msg"; echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+              fi
+              exit 0
             fi
           fi
           if [ "$SHARDS_RESULT" = "success" ] && [ "$READBACK_RESULT" = "success" ]; then echo "all governance test shards and readbacks passed"; exit 0; fi

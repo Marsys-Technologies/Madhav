@@ -40,6 +40,7 @@ if __package__ in (None, ""):
     __package__ = "pravaha_tracker"
 
 from pravaha_tracker import detectors as D  # noqa: E402
+from pravaha_tracker.merged_deployed import CodeDone  # noqa: E402
 from pravaha_tracker.events import EventLog  # noqa: E402
 from pravaha_tracker.state import build_snapshot, load_closure  # noqa: E402
 
@@ -78,6 +79,8 @@ class Engine:
         self.log = EventLog(cfg["events"])
         self.det = D.Detectors(D.Config(repo=cfg["repo"], pgenv=cfg["pgenv"], home=cfg["home"]),
                                on_change=self._mark_dirty)
+        # SR-BOLD-07: code items done when merged + deployed; read off the tick path, results cached
+        self.code_done = CodeDone(cfg["repo"], sources=self.det.sources, on_change=self._mark_dirty)
         self.model: dict = {"tracks": [], "items": [], "decisions": [], "streams": []}
         self.model_error: str | None = None
         self._model_mtime = None
@@ -221,6 +224,8 @@ class Engine:
             self._recheck_touched()
         if self.cfg["detectors_enabled"]:
             self.det.poll([i["detector"] for i in self.model.get("items", []) if i.get("detector")])
+            if self.code_done.due():
+                self.code_done.poll(self.model, skip=self._completed_by_event())
         if time.time() - self._backup_at > self.cfg["backup_every_s"]:
             self._backup()
         if self._cancelled.is_set():
@@ -228,6 +233,11 @@ class Engine:
         if self._dirty or time.time() - self._last_build > 5:
             self._dirty = False
             self._rebuild()
+
+    def _completed_by_event(self) -> set:
+        """Items a guarded done event already closed: the merged+deployed derivation need not look at them."""
+        return {e.get("item") for e in self.log.events
+                if e.get("kind") == "item" and e.get("state") == "done" and not e.get("step") and e.get("guarded") is True}
 
     def _recheck_touched(self) -> None:
         """An item event just arrived: re-measure that item's detector now, not at its next TTL."""
@@ -353,6 +363,7 @@ class Engine:
             "backup": self._backup_info,
             "model_error": self.model_error,
             "detector_errors": errs,
+            "code_done_error": self.code_done.error,
             "git_activity_age_s": round(time.time() - self._activity_at, 1) if self._activity_at else None,
             "tick_errors": (self._tick_history + list(self.tick_errors))[-3:],
         }
@@ -366,7 +377,8 @@ class Engine:
                 if r is not None:
                     det_results[i["id"]] = r.to_dict()
         snap = build_snapshot(self.model, list(self.log.events), det_results, {}, self._sample_health(), self.activity,
-                              closure=load_closure(self.model))
+                              closure=load_closure(self.model),
+                              derived_done=self.code_done.results())
         body = {k: v for k, v in snap.items() if k != "generated_at"}
         digest = hashlib.sha256(json.dumps(_strip_ages(body), sort_keys=True, default=str).encode()).hexdigest()
         with self.cond:

@@ -12,6 +12,9 @@ instead requires a guarded done event; a matching detector is evidence only:
    so no event can claim it.
 4. An item **done by event**: done only by an event carrying evidence (enforced at write time).
 5. Anything not started whose dependencies are all done is `ready`; otherwise `waiting`.
+6. SR-BOLD-07: a declared code item is also `done` when its PR is merged and contained in a successful deploy of
+   main (merged_deployed.py) — the PR's merged review is its acceptance; no verdict event is written or needed.
+   Operation items still close from executor receipts and decisions from the ledger.
 
 A7 D-46 (guarded models): a code/artifact item may complete while its dependencies are still open (see
 completion.D46_KINDS). Such a `done` row is *implemented*; it carries `activation_pending` (its open gates) and is
@@ -31,6 +34,7 @@ import json
 import os
 from pathlib import Path
 
+from . import merged_deployed
 from .events import actor_stream
 
 # A live install runs a copy of this file outside the repository; PRAVAHA_REPO names the repository it reads
@@ -126,7 +130,7 @@ def decision_status(evs: list[dict]) -> tuple[str, dict | None]:
 
 
 def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool = False,
-                decision_outcomes: dict | None = None) -> dict:
+                decision_outcomes: dict | None = None, derived: dict | None = None) -> dict:
     all_evs = ix["items"].get(item["id"], [])
     evs = [e for e in all_evs if not e.get("step")]
     step_evs = [e for e in all_evs if e.get("step")]
@@ -159,6 +163,15 @@ def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool 
                 out["checked_at"] = det_result["checked_at"]
                 if det_result["status"] != "done":
                     out["detector_warning"] = det_result["detail"]
+            return out
+        if derived and item.get("completion_kind") == "code":
+            # SR-BOLD-07: a code item whose PR is merged and contained in a successful main deploy is done. The
+            # PR's merged review is the acceptance, so no verdict event stands behind this (merged_deployed.py).
+            out.update(status="done", source=merged_deployed.SOURCE, evidence=derived["evidence"],
+                       detail=derived["detail"], completion_type="code", merged_pr=derived["pr"],
+                       deploy_run_id=derived["deploy_run_id"])
+            if det_result is not None:
+                out["checked_at"] = det_result["checked_at"]
             return out
         if det_result is None:
             out.update(status="unknown", detail="not yet measured")
@@ -426,17 +439,20 @@ def closure_headline(overall: dict, flat: list[dict], items: dict, closure: dict
 
 def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: dict,
                    health: dict, activity: dict | None = None, now: dt.datetime | None = None,
-                   closure: dict | None = None) -> dict:
+                   closure: dict | None = None, derived_done: dict | None = None) -> dict:
     """Pure function: everything the dashboard shows. det_results maps item id → detector result dict;
-    activity maps stream id → git activity dict; closure (load_closure) scopes the headline (A9 D-51)."""
+    activity maps stream id → git activity dict; closure (load_closure) scopes the headline (A9 D-51);
+    derived_done maps code item id → merged+deployed proof (merged_deployed.derive, SR-BOLD-07)."""
     now = now or dt.datetime.now(dt.timezone.utc)
     activity = activity or {}
     ix = index_events(events)
     items = {i["id"]: dict(i) for i in model["items"]}
     guarded = model.get("control_plane", {}).get("guarded_completion") is True
     decision_outcomes = model.get("control_plane", {}).get("decision_outcomes")
+    derived_done = derived_done or {}
     status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded,
-                               decision_outcomes=decision_outcomes) for iid, it in items.items()}
+                               decision_outcomes=decision_outcomes, derived=derived_done.get(iid))
+              for iid, it in items.items()}
 
     # A final ruling is recorded independently of each consuming item's completion.
     # Seed decision items as waiting so joins/other decisions cannot consume a
