@@ -412,6 +412,11 @@
         "scripts/__tests__/test_p01*.py",
         "scripts/__tests__/test_backup*.py",
         "scripts/__tests__/test_w4*.py"
+      ],
+      "path_triggers": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
+        "**/kyd_kinds_*.py"
       ]
     },
     "db-integration-tests-85-0": {
@@ -556,6 +561,7 @@
       "include": [
         "platform/scripts/governance/pravaha_tracker/tests/test_verify*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_hang*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_external_isolation*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_decision*.py",
@@ -568,7 +574,8 @@
       "include": [
         "platform/scripts/__tests__/test_gochara_window_readbacks*.py",
         "platform/scripts/__tests__/test_gochara_sitting_evidence*.py",
-        "platform/scripts/__tests__/test_fn*.py"
+        "platform/scripts/__tests__/test_fn*.py",
+        "platform/scripts/__tests__/test_gochara_rehearsal*.py"
       ]
     },
     "governance-gates-py-sidecar-shard-3-29": {

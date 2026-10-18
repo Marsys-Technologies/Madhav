@@ -1,5 +1,6 @@
 """K3 → G1 synthetic producer/storage integration, never a live-seal claim."""
 from copy import deepcopy
+import json
 from datetime import datetime, timezone
 
 import pytest
@@ -140,7 +141,10 @@ def test_sealed_nonactive_states_keep_edges_and_never_gain_scalar(stored, state)
     (('provenance','F2','tier'), 'single'),
     (('provenance','F2','applicability'), 'unknown'),
     (('roots','fact_ids'), []),
+    (('roots','record_ids'), ['other']),
+    (('roots','contact_ids'), ['other']),
     (('source','locator'), ''),
+    (('source','text'), ''),
 ])
 def test_corrupt_stored_correspondence_is_not_an_in_force_input(stored, path, value):
     identity, payload = stored.execute("SELECT assertion_id,assertion FROM kala_obstruction "
@@ -170,3 +174,68 @@ def test_published_candidate_cannot_be_used_as_a_private_prebuild_binding(stored
     prims, gaps = consume(stored)
     assert not any(p.primitive_kind == 'negative_space' for p in prims)
     assert any(g['reason'] == 'negative_space_binding_not_admitted' for g in gaps)
+
+
+# K3's own CHECK already rejects the divergent rows below. G1 re-checks the stored
+# projection (g1_inputs.py `_sealed_binding_matches`), so these oracles simulate a
+# damaged or hand-edited store by dropping that CHECK in the disposable database.
+def damaged_store(conn):
+    conn.execute('ALTER TABLE kala_obstruction DROP CONSTRAINT kala_obstruction_k3_sealed_check')
+    return conn
+
+
+def refused(conn):
+    prims, gaps = consume(conn)
+    assert not any(p.primitive_kind == 'negative_space' for p in prims)
+    assert any(g['reason'] == 'negative_space_binding_not_admitted' for g in gaps)
+
+
+@pytest.mark.parametrize('column,value', [
+    ('effective_state', 'obstruction_cancelled'), ('event_class_id', 'other'),
+    ('exposure', 'outside_risk_set'), ('knowledge', 'unsearched'),
+    ('rule_conclusion', 'supportive'), ('defeat_state', 'cancelled'),
+    ('null_reason', 'forged'), ('measurement', 'estimated')])
+def test_indexed_column_disagreeing_with_sealed_assertion_is_refused(stored, column, value):
+    damaged_store(stored).execute(f'UPDATE kala_obstruction SET {column}=%s', (value,))
+    refused(stored)
+
+
+@pytest.mark.parametrize('column,shift', [('interval_start', '-1 day'), ('interval_end', '1 day')])
+def test_interval_column_disagreeing_with_sealed_assertion_is_refused(stored, column, shift):
+    damaged_store(stored).execute(f"UPDATE kala_obstruction SET {column}={column}+%s::interval", (shift,))
+    refused(stored)
+
+
+@pytest.mark.parametrize('field,value', [
+    ('exposure', 'outside_risk_set'), ('knowledge', 'unsearched'), ('rule_conclusion', 'supportive'),
+    ('defeat_state', 'contested'), ('null_reason', 'forged'), ('measurement', 'estimated')])
+def test_consistently_rewritten_in_force_qualifier_is_not_an_obstruction(stored, field, value):
+    # Column and assertion agree, effective_state still claims in force: the
+    # in-force qualifiers must hold on their own, not only agree with each other.
+    damaged_store(stored).execute(f"UPDATE kala_obstruction SET {field}=%s, "
+        f"assertion=jsonb_set(assertion,%s,%s)", (value, [field], Jsonb(value)))
+    refused(stored)
+
+
+@pytest.mark.parametrize('target', ['row', 'assertion'])
+def test_contract_version_must_match_on_both_row_and_assertion(stored, target):
+    damaged_store(stored)
+    if target == 'row':
+        stored.execute("UPDATE kala_obstruction SET negative_space_contract_version='k3-negative-space/2.0.1'")
+    else:
+        stored.execute("UPDATE kala_obstruction SET assertion=jsonb_set(assertion,'{contract_version}','\"k3-negative-space/2.0.1\"')")
+    refused(stored)
+
+
+@pytest.mark.parametrize('old,new', [('lahiri_chitrapaksha', 'other_ayanamsha'), ('5.0', '5.1')])
+def test_canonical_ayanamsha_and_judge_generation_are_required_even_if_consistently_rebound(stored, old, new):
+    # Rewrite every occurrence in the stored assertion and the candidate
+    # convention together, so the sub-pins still agree; only the canonical-value
+    # requirement itself can refuse this.
+    damaged_store(stored)
+    swap = lambda value: json.loads(json.dumps(value).replace(json.dumps(old), json.dumps(new)))
+    ident, payload = stored.execute('SELECT assertion_id,assertion FROM kala_obstruction').fetchone()
+    stored.execute('UPDATE kala_obstruction SET assertion=%s WHERE assertion_id=%s', (Jsonb(swap(payload)), ident))
+    conventions = stored.execute('SELECT conventions FROM kala_layer_candidate').fetchone()[0]
+    stored.execute('UPDATE kala_layer_candidate SET conventions=%s', (Jsonb(swap(conventions)),))
+    refused(stored)
