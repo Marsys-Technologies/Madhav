@@ -54,10 +54,10 @@ describe('ka_gochara_v5 registry-row conformance (ORCHESTRATOR_CONVERGENCE_CLOSE
 
   // §5 "has_substeps=true if heavy": CLOSED by migration 1304 (PR 3101). The writer's class sets `has_substeps = True` and plans
   // rules → convention → body×8 → manifest → snapshot → per-class inventory/coverage/record/verify. The timeout is the one
-  // small-test AND measuring-build cap (steward TIMEOUT-RULING, 8 h): a healthy run must never be ended by it.
-  it('declares has_substeps=true and the 8-hour writer cap (closed by migration 1304)', () => {
+  // small-test AND measuring-build cap (steward TIMEOUT-RULING, 8 h); raised to 20 h by migration 1395 (SR-J3-CAP-LIVE: the measuring build is projected at 34,593 s). A healthy run must never be ended by it.
+  it('declares has_substeps=true and the 20-hour writer cap (8 h from migration 1304, raised by migration 1395, SR-J3-CAP-LIVE)', () => {
     expect(row().has_substeps).toBe(true)
-    expect((row() as unknown as { writer_timeout_seconds?: number }).writer_timeout_seconds).toBe(28800)
+    expect((row() as unknown as { writer_timeout_seconds?: number }).writer_timeout_seconds).toBe(72000)
   })
 
   // CLAUDE.md §N.4 — count_sql must count what the writer writes (the ka_gochara cockpit-count defect, migration 1230, in miniature):
