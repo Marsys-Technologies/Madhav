@@ -240,7 +240,8 @@ HEAVY = ("replace-chain-substrate", "typecheck", "typecheck-mcp", "unit-tests", 
          "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")
 NEVER_SKIPPED = ("generated-artifacts", "changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
                  "governance-gates-static",       # the required Governance Gates check's parts (sharded 2026-10-08): never skipped, as before
-                 "coverage-gate", "density-census", "governance-tool-tests")
+                 "coverage-gate", "density-census", "governance-tool-tests",
+                 "db-runner-probe")               # SR-SELFHOSTED-SPLIT: no `if`, no needs -- it must answer for every event or the DB jobs lose their runs-on
 
 
 @pytest.fixture(scope="module")
