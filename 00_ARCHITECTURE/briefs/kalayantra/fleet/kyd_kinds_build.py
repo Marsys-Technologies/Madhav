@@ -99,7 +99,8 @@ start      re-derives the job's intent from ctx as it is now and refuses a job w
 finish     BUILD, REWORK: accept a legacy lane registration after the job's claim, otherwise validate its
            result.json and observe origin head, PR head/number and packet-scoped changed paths. The controller
            writes review/block as the still-claimed job lane and reads the event back before terminal release.
-           VERIFY, ARTIFACT: `bash kyboundary.sh check <job_id>`; only on exit 0 `kyverdicts.py publish …` (argv
+           VERIFY, ARTIFACT: `bash kyboundary.sh check <job_id>` (a released job: its preserved boundary.check.json
+           must be this job's, intact); only then `kyverdicts.py publish …` (argv
            as the packet gives it; AU = the actor of the latest review event, RV = stream-V:<slot>). 0 → done;
            else failed, and nothing is published. A value publish needs that the job does not carry (exit code,
            result path, slot, controller) is never invented: failed, nothing published.
@@ -1083,6 +1084,25 @@ def _recover_review(ctx, job, intent):
     return _register_result(ctx, job, doc, source=old)
 
 
+def _preserved_boundary_refusal(scratch, job_id):
+    """None when scratch/boundary.check.json is this job's intact attestation, else a named refusal."""
+    path = os.path.join(scratch, "boundary.check.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except FileNotFoundError:
+        return "boundary_missing"
+    except (OSError, ValueError):
+        return "boundary_unreadable"
+    if not isinstance(doc, dict):
+        return "boundary_unreadable"
+    if doc.get("job_id") != job_id:
+        return "boundary_job_mismatch"
+    if doc.get("result") != "intact" or doc.get("mechanism_intact") is not True:
+        return "boundary_not_intact"
+    return None
+
+
 def _publish(ctx, job):
     """Verdict publication is the controller's: boundary evidence first, then kyverdicts.py publish."""
     kind, item, job_id = job.get("kind"), job.get("item"), job.get("job_id")
@@ -1093,9 +1113,15 @@ def _publish(ctx, job):
     steps = (job.get("checkpoint") or {}).get("steps") or {}
     released = job.get("phase") == "ended" and "boundary" in steps
     # (I) INTERPRETATION: terminal release removes the verifier view. Replaying check would destroy its
-    # original attestation. For an ended/released job, publish validates the preserved boundary evidence
-    # and freshly observes the worktree against the pre-job snapshot; never rebuild a verifier view here.
-    if not released:
+    # original attestation. For an ended/released job, _publish itself validates the preserved
+    # boundary.check.json (kyverdicts.py no longer reads it, A8) and kyverdicts observes the worktree afresh;
+    # never rebuild a verifier view here.
+    if released:
+        refused = _preserved_boundary_refusal(scratch, job_id)
+        if refused:
+            return _result("failed", "preserved boundary evidence: %s: nothing published" % refused,
+                           refused)
+    else:
         rc, _, _ = ctx.sh(["bash", _fleet(ctx, "kyboundary.sh"), "check", job_id])
         if rc != 0:
             return _result("failed", "kyboundary check exit %r: nothing published" % (rc,),
