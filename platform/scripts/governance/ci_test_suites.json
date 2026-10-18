@@ -395,7 +395,9 @@
       "cwd": "platform",
       "engine": "pytest",
       "include": [
-        "scripts/__tests__/test_dispatch_v5*.py"
+        "scripts/__tests__/test_dispatch_v5*.py",
+        "scripts/__tests__/test_gochara_pipeline_ephe_probe*.py",
+        "scripts/__tests__/test_gochara_sitting_evidence_pack*.py"
       ]
     },
     "db-integration-tests-83-0": {
