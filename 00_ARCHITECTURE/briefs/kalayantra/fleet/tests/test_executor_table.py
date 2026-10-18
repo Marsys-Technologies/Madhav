@@ -81,6 +81,26 @@ MEASURING_BINDINGS = {
         "required_rows": ["2", "3", "7", "9", "11"],
     },
 }
+# J-6m / J-6r (J6MR_PREBUILD.md): exact disabled bindings of the four authority-head kinds to the executor's own adapter module. Not permission to enable them.
+_HEAD_MODULE = "platform/python-sidecar/scripts/kala_gochara_cutover/authority_operation.py"
+
+
+def _head_binding(kind, mode, allowed, item):
+    return {
+        "enabled": False, "needs": "builder", "script": _HEAD_MODULE, "fixed_args": ["--kind", kind, mode],
+        "allowed_args": allowed, "production": True, "enabled_by": item, "required_rows": ["2", "3", "7", "9", "11"],
+        "timeout_s": 120, "cwd": "platform/python-sidecar", "python_module": "scripts.kala_gochara_cutover.authority_operation",
+    }
+
+
+_PUBLISH_ARGS = ["generation", "manifest-id", "expected-head"]
+_ROLLBACK_ARGS = ["generation", "expected-head", "source-operation", "source-sha256"]
+HEAD_BINDINGS = {
+    "publish_head": _head_binding("publish_head", "--execute", _PUBLISH_ARGS, "J-6m"),
+    "publish_head_dryrun": _head_binding("publish_head", "--dry-run", _PUBLISH_ARGS, "J-6m"),
+    "rollback_head": _head_binding("rollback_head", "--execute", _ROLLBACK_ARGS, "J-6r"),
+    "rollback_head_dryrun": _head_binding("rollback_head", "--dry-run", _ROLLBACK_ARGS, "J-6r"),
+}
 # J-2a M6/M7: the one added read-only kind (fleet/CLOUDRUN_READBACK_v1_0.md). Exact binding, not permission for any other op.
 CLOUDRUN_READBACK = {
     "enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py",
@@ -180,6 +200,8 @@ def assert_table_matches_pin(now):
     expected_order[pos:pos] = ["measuring_dispatch_dryrun", "measuring_teardown_dryrun", "measuring_teardown"]
     expected_order.insert(expected_order.index("migration_readback") + 1, "cloudrun_job_readback")
     expected_order.insert(expected_order.index("cloudrun_job_readback") + 1, "quiescence_check")
+    for kind in ("publish_head", "rollback_head"):
+        expected_order.insert(expected_order.index(kind) + 1, kind + "_dryrun")
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
@@ -197,12 +219,16 @@ def assert_table_matches_pin(now):
     expected["quiescence_check"] = json.loads(json.dumps(QUIESCENCE_CHECK))
     for kind in READ_ONLY_KINDS[:3]:
         expected[kind]["read_only"] = True
+    expected.update(json.loads(json.dumps(HEAD_BINDINGS)))
     for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
                         ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
+        bound = kind in HEAD_BINDINGS
         expected[kind]["prepared_dry_run"] = {
             "enabled": False, "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py",
-            "fixed_args": ["--dry-run", "--kind", kind], "allowed_args": expected[kind]["allowed_args"], "enable_at": phase,
-            "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
+            "fixed_args": ["--dry-run", "--kind", kind], "allowed_args": ["generation"] if bound else expected[kind]["allowed_args"],
+            "enable_at": phase,
+            "attestation": ("PREPARATION_ONLY; dry_run_passed=false; preview is not the real transactional dryrun kind" if bound
+                            else "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement")}
     for kind, binding in P01_BINDINGS.items():
         expected[kind].update(enabled=True, **binding)
     for kind in W4_KINDS | {"readback_sql"}:
@@ -225,7 +251,7 @@ def test_table_pin_refuses_an_extra_kind():
         assert_table_matches_pin(now)
 
 
-@pytest.mark.parametrize("kind", MEASURING_BINDINGS)
+@pytest.mark.parametrize("kind", [*MEASURING_BINDINGS, *HEAD_BINDINGS])
 @pytest.mark.parametrize("field,value", [
     ("enabled", True), ("script", "platform/scripts/unreviewed.py"),
     ("fixed_args", ["--execute"]), ("allowed_args", ["unreviewed"]),
