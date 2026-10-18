@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """D-29 light PR gate: derive DB-profile ownership from ci.yml and discovery.
 
+SR-BOLD-08(a): also decides `run_combination_suites` -- false only on a pull_request that leaves the scoping rules alone
+(DB Integration Tests and the Governance Tool Tests shards are then merge_group-only; see PR_DEFERRED_DB_JOBS).
+
 (I) INTERPRETATION: the brief's changed-profile DB exception qualifies its normal
 PR heavy-job skip. Source/migration-only PRs use full_gate dispatch.
 (I) INTERPRETATION: selection runs the entire affected profile, preserving fixture
@@ -29,6 +32,22 @@ SCOPED_EVENTS = ('pull_request', 'merge_group')
 QUEUE_ALWAYS_JOBS = frozenset({
     'db-integration-tests', 'gochara-a55-measuring-build',
     'gochara-a55-teardown', 'gochara-a55-teardown-round2', 'gochara-a55-teardown-round3',
+})
+# SR-BOLD-08(a) (owner-confirmed 2026-10-18): the same combination-sensitive family is MERGE_GROUP-ONLY. A pull_request does not
+# run DB Integration Tests (SAMIKSHA, all shards, even when its diff touches their tests) nor the Governance Tool Tests shards; the
+# queue runs both on the PR merged with current main -- the only place "green alone, red combined" can be measured -- and the
+# fast/ preflight (SR-PREFLIGHT-FULL) runs them locally before a PR is armed. Their required names still report on the PR:
+# `required-db-integration-tests` and `governance-tool-tests` say "deferred to the merge queue" and pass ONLY when `changes`
+# proved the deferral (see their steps in ci.yml). Job ids in ci.yml.
+PR_DEFERRED_DB_JOBS = frozenset({'db-integration-tests'})
+# The scoper cannot vouch for a change to itself: a pull_request whose diff touches the scoping rules, the workflow or the
+# discovery that feeds them runs the whole family on the PR (fail-safe). Repo-relative paths, exact match.
+SCOPER_PATHS = frozenset({
+    '.github/workflows/ci.yml',
+    'platform/scripts/governance/ci_gate.py',
+    'platform/scripts/governance/ci_changes.py',
+    'platform/scripts/governance/ci_discovery.py',
+    'platform/scripts/governance/ci_test_suites.json',
 })
 PROFILE_CALL = re.compile(r'ci_discovery\.py[\"\']?\s+(?:run|pytest|vitest)\s+([\w-]+)\s+--')
 
@@ -68,6 +87,9 @@ def _matches(root: Path, spec: dict, paths: list[str], discovered: list[str]) ->
     directories = [posixpath.normpath(f'{spec["cwd"]}/{path}').rstrip('/') + '/'
                    for path in discovered if (cwd / path).is_dir()]
     for path in paths:
+        # A profile may also own non-test source paths (repo-root globs): a change to one runs the whole profile.
+        if any(_glob_matches(path, pat) for pat in spec.get('path_triggers', [])):
+            return True
         if path in selected or (_test_file(path, spec['engine']) and any(path.startswith(d) for d in directories)):
             return True
         # A deleted/renamed-away file is absent from discover(); retain its old
@@ -83,12 +105,21 @@ def _matches(root: Path, spec: dict, paths: list[str], discovered: list[str]) ->
     return False
 
 
-def select_db(root: Path, jobs: dict, paths: list[str], always_jobs=frozenset()) -> tuple[list[str], list[str]]:
+def combination_suites_run(event: str, paths: list[str]) -> bool:
+    """True when the combination-sensitive family runs in THIS event. Only a pull_request defers it, and only when its diff
+    is non-empty and touches none of SCOPER_PATHS; every other event (queue, main, dispatch) runs it."""
+    return event != 'pull_request' or any(path in SCOPER_PATHS for path in paths)
+
+
+def select_db(root: Path, jobs: dict, paths: list[str], always_jobs=frozenset(), deferred_jobs=frozenset()) -> tuple[list[str], list[str]]:
     specs = ci_discovery.profiles()
     selected_jobs: set[str] = set()
     selected_profiles: list[str] = []
     for profile, owners in db_profile_owners(jobs).items():
         spec = specs[profile]
+        owners = [owner for owner in owners if owner not in deferred_jobs]
+        if not owners:
+            continue
         if any(owner in always_jobs for owner in owners) or _matches(root, spec, paths, ci_discovery.discover(root, spec)):
             selected_profiles.append(profile)
             selected_jobs.update(owners)
@@ -117,9 +148,12 @@ def main(argv=None):
     if paths is None or (scoped and not paths):
         raise ValueError('cannot establish the PR/queue diff; refusing a green light gate')
     always = QUEUE_ALWAYS_JOBS if ns.event == 'merge_group' else frozenset()
-    selected_jobs, selected_profiles = select_db(ROOT, jobs, paths, always) if scoped else ([], [])
+    run_combination = combination_suites_run(ns.event, paths)
+    deferred = frozenset() if run_combination else PR_DEFERRED_DB_JOBS
+    selected_jobs, selected_profiles = select_db(ROOT, jobs, paths, always, deferred) if scoped else ([], [])
     print('db_jobs=' + json.dumps(selected_jobs, separators=(',', ':')))
     print('db_profiles=' + json.dumps(selected_profiles, separators=(',', ':')))
+    print('run_combination_suites=' + ('true' if run_combination else 'false'))
     return 0
 
 

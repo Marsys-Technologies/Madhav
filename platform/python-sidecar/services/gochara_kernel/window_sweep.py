@@ -68,7 +68,7 @@ DIRECTIONAL_PATHS = frozenset({"P2"})
 CATEGORICAL_PATHS = frozenset({"P1"})
 SWEEP_PATHS = FOR_ONLY_PATHS | DIRECTIONAL_PATHS | CATEGORICAL_PATHS
 CATEGORICAL_FACTORS = frozenset({"dignity_of_transit_sign", "combustion", "agent_nature",
-                                 "maitri_compound"})
+                                 "maitri_compound", "karaka_agent"})
 
 # A factor row's `direction` that says only "which way is stronger" assigns no channel; one that
 # names a channel/valence declares an against-channel operand; anything else is ambiguous.

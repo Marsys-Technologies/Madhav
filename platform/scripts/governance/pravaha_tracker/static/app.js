@@ -52,7 +52,7 @@
   function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
   function accept(s, via) {
     if (!s || !s.tracks) return;
-    snap = s; lastMsg = lastAlive = Date.now(); tickAge = 0;
+    snap = s; lastMsg = lastAlive = Date.now(); tickAge = s.tick_age_s ?? s.health?.engine_tick_age_s ?? 0;
     if (via === "live") mode = "live"; else if (mode !== "live") mode = "polling";
     render();
   }
@@ -163,19 +163,24 @@
       chip("done", o.done), chip("running", o.running), chip("ready", o.ready), chip("waiting", o.waiting),
       `<span class="chip"><b>${o.built_waiting_on_gate ?? 0}</b>built, waiting on gate</span>`,
       chip("blocked", o.blocked), chip("unknown", o.unknown), `<span class="chip"><b>${o.total}</b>${o.scope === "closure" ? "items in the closure" : "items in plan"}</span>${o.scope === "closure" ? `<span class="chip"><b>${(o.deferred || []).length}</b>deferred (not counted)</span>` : ""}`].join("");
+    const r = o.reconciliation, sw = r && r.side_work, fp = r && r.finish_path;
+    if (r) $("counts").innerHTML += `<span class="chip"><b>${fp.done}/${fp.total}</b>finish path done</span><span class="chip"><b>${sw.done}/${sw.total}</b>side work done</span><span class="chip"><b>${r.deferred.total}</b>deferred</span><span class="chip"><b>${r.cancelled.total}</b>cancelled</span><span class="chip"><b>${r.bookkeeping_decisions.total}+${r.done_outside_plan.total}</b>decisions recorded + done outside plan</span><span class="chip"><b>${r.plan_items}</b>plan items, each counted once</span>`;
   }
 
   function renderHealth() {
     const h = snap.health || {};
+    const staleSources = Object.entries(h.sources || {}).filter(([, source]) => source.stale);
+    const checksDegraded = (h.detector_errors?.length || 0) > 0 || staleSources.length > 0;
     const items = [
       [h.event_log?.malformed ? "warn" : (h.event_log?.exists ? "ok" : "warn"), `Event log: ${h.event_log?.events ?? 0} events${h.event_log?.malformed ? `, ${h.event_log.malformed} malformed` : ""}`],
       [h.last_event_age_s == null ? "warn" : "ok", `Last event: ${ago(h.last_event_at)}`],
-      [(h.detector_errors?.length || 0) ? "warn" : "ok", `Checkers: ${(h.detector_errors?.length || 0) ? h.detector_errors.length + " unmeasured" : "all measuring"}`],
+      [checksDegraded ? "warn" : "ok", `Checkers: ${checksDegraded ? "stale or unmeasured" : "all measuring"}`],
       [h.db_credentials ? (h.db_proxy ? "ok" : "warn") : "warn", `Database checks: ${h.db_credentials ? (h.db_proxy ? "proxy up" : "proxy down") : "no read-only credential set (D-T1)"}`],
       [h.backup?.last ? "ok" : "warn", `Backup: ${h.backup?.last ? ago(h.backup.last) : "pending"}`],
-      [h.power === "ac" ? "ok" : "warn", `Power: ${h.power || "?"}`],
+      [h.power === "ac" && !h.sources?.power?.stale ? "ok" : "warn", `Power: ${h.power || "?"}`],
       [h.hold ? "warn" : "ok", `Hold switch: ${h.hold ? "ON — no new work" : "off"}`],
     ];
+    staleSources.forEach(([name, source]) => items.push(["warn", `${name}: stale (${source.age_s == null ? "unmeasured" : dur(source.age_s) + " old"})`]));
     if (h.model_error) items.push(["bad", h.model_error]);
     if (h.restored_from_disk) items.push(["warn", "Showing last saved state while starting"]);
     (h.tick_errors || []).forEach((e) => items.push(["bad", "engine: " + e.slice(0, 120)]));

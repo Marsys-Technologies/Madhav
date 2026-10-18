@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -3370,10 +3370,7 @@
         "J-0m",
         "K0a-4",
         "KA-1w",
-        "KA-2",
-        "J-4c-pr3141",
-        "J-4c-pr3191",
-        "J-4c-pr3193"
+        "KA-2"
       ],
       "mandatory": true,
       "steps": [
@@ -3383,7 +3380,9 @@
         "vedha_intervals",
         "coverage_and_qualification",
         "writer_digest_regenerated",
-        "oracles"
+        "oracles",
+        "p06_code_merged",
+        "gcw2_1305_1306_1308_applied"
       ],
       "detector": {
         "type": "branch_merged",
@@ -3431,7 +3430,10 @@
           "SR-A6-EDGES retains J-4d-pr3018 (1235 protected production window) and J-4c-pr3141, J-4c-pr3191, J-4c-pr3193 (P06 #3516 adds 1305/1306/1308 below 1383; hold #3516 until 1383 applied). No production gate or hold is waived.",
           "2026-10-16 lane-2 follow-up to #3634 (7773e670b4342845ba2e052bef2dae644585e058), per cockpit job fu-plan-edges2: classify KA-3a <- J-4d-pr3018 as PRODUCTION, but replace its full campaign-completion edge with required gcw_1235_production_applied. This supersedes only the earlier SR-A6-EDGES note retaining that edge while 1235 was unapplied; no J-4d-pr3018 completion or production acceptance is inferred. Keep J-4c-pr3141/3191/3193 unchanged pending the separate P06 #3516 change.",
           "Production evidence: /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:70 (SR-A6-GCW), :71 (SR-A6-EDGES); /Users/Dev/kalayantra/run/ops/receipts/sutradhara-gcw-20261016T143214Z-mig.json:2-17 and its .output.txt:2 report 1235_ka_gochara_staged_candidate_evidence_function.sql applied at 2026-10-16 14:25:18.247508+00:00 with sha256 930902f6af470d3a6cdfd1b707ea23e6e365ad8c464004b9ed2a924194353682 (matches the repository file). The -fn.json:8 ACL readback reports SECURITY DEFINER, pinned search_path and exactly the three approved EXECUTE roles. Full output size/hash of both receipts verified by this job. /Users/Dev/kalayantra/run/ops/receipts/sutradhara-kw-20261016T150036Z-mig.output.txt:4-10 separately records 1383-1389 applied at 14:49Z; its full output size/hash also verified. These receipts establish historical observations, not an automatic true precondition.",
-          "(I) INTERPRETATION: reuse #3634’s existing required-step / step_evidence mechanism, using its already-supported db_query detector for production evidence instead of a merge detector. platform/scripts/governance/pravaha_tracker/detectors.py:211-220,310-320 reads the configured live database inside READ ONLY and returns done only for nonempty matching rows; cli.py:364-406 requires a live passing measurement before recording a step, and completion.py:206-215 requires every step. The live campaign tracker must retain its production read-only DB configuration; this job neither reads credentials nor queries production. Alternative: a new receipt-validation detector or precondition API; unnecessary because db_query already measures the exact ledger fact. This is an intra-item completion obligation, not a new scheduling gate, exactly as #3634; all independent review/deployment requirements remain."
+          "(I) INTERPRETATION: reuse #3634’s existing required-step / step_evidence mechanism, using its already-supported db_query detector for production evidence instead of a merge detector. platform/scripts/governance/pravaha_tracker/detectors.py:211-220,310-320 reads the configured live database inside READ ONLY and returns done only for nonempty matching rows; cli.py:364-406 requires a live passing measurement before recording a step, and completion.py:206-215 requires every step. The live campaign tracker must retain its production read-only DB configuration; this job neither reads credentials nor queries production. Alternative: a new receipt-validation detector or precondition API; unnecessary because db_query already measures the exact ledger fact. This is an intra-item completion obligation, not a new scheduling gate, exactly as #3634; all independent review/deployment requirements remain.",
+          "2026-10-16 lane-2 follow-up (cockpit job fu-plan-edges3), SR-A6-EDGES + SR-A6-GCW2: replace KA-3a <- J-4c-pr3141, J-4c-pr3191, J-4c-pr3193 (kept as PRODUCTION only because P06 #3516 adds 1305/1306/1308 below KA-3a's 1383, the deploy predecessor rule) with the same mechanism as #3634/#3643: (a) required step p06_code_merged (pr_merged 3516) and (b) required step gcw2_1305_1306_1308_applied (db_query). Every other KA-3a edge (J-0m, K0a-4, KA-1w, KA-2) is unchanged; J-4c-pr3141/3191/3193 stay in the model and keep their other dependents. Lands after #3643 and #3516.",
+          "Evidence: /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:71 (SR-A6-EDGES: they become CODE once #3516 adds 1305/1306/1308 below 1383) and :76 (SR-A6-GCW2, 2026-10-16T15:49:41Z: merge #3516, then run the gochara_contracts protected window applying 1305, 1306, 1308 in order, reading each back in _migrations_applied at sha256 = file). 1383-1389 are applied in production (readback 14:49Z, sutradhara-kw-20261016T150036Z-mig.output.txt:4-10). File sha256 values computed from `git show origin/kalayantra/w4-p06:platform/migrations/<file>`: 1305_gochara_snapshot_owns_l1_copy.sql b7ad2ba40ae81b29a2672c41a9f44212c67347e382dabefa153227a93da19a31; 1306_gochara_expected_class_census.sql b55e244e0e76fe783ad10e25656ecace29ead19ef7625a0668098e6529b2c574; 1308_gochara_near_miss_storage.sql bc7a220970b91d2d60b1532368e106df673f63a56d573d88acd78857e665204b. If #3516 changes any of the three files before it merges, the hashes in gcw2_1305_1306_1308_applied must be re-derived (until then the detector reads false, never green).",
+          "(I) INTERPRETATION: use pr_merged 3516 (as the job brief directs) rather than branch_merged on a squash SHA, which is not yet known; the alternative is switching to branch_merged once the squash lands. Express all-three-applied as ONE db_query returning a row only when count(DISTINCT filename) over the three exact (filename, sha256) pairs equals 3, so a partial application, a wrong hash or an unreachable ledger can never read true; the alternative is three separate steps, unnecessary because SR-A6-GCW2 applies them as one ordered window. Merged-code and production are separate steps so a merge without application stays visibly open. J-4c-pr3141/3191/3193 completion is no longer required for KA-3a; their own code review stays with their own items."
         ]
       },
       "completion_kind": "code",
@@ -3498,6 +3500,23 @@
             "path": "/Users/Dev/kalayantra/run/reviews/steps/KA-3a.oracles.json",
             "pattern": "\\A\\{\"head\":\"[0-9a-f]{40}\",\"item\":\"KA\\-3a\",\"merged_on_main\":true,\"mutation_verified\":true,\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"oracles\",\"verdict\":\"MET\"\\}\\n?\\Z",
             "measures": "one canonical receipt per step (whole file must match exactly: no extra, duplicate or conflicting fields), written only from an independent review that executed the step's oracles at the pinned merged head; the reviewer, not the author, enumerated every distinct production claim from the brief, packet and cited classical rules in the verdict, showed each claim has at least one doctrine-grounded oracle (classical source cited; B.3/B.10) whose single planted reversion failed at that head, and verified every real defect was fixed with fail-on-revert evidence (D-OWNER-TESTS-20261016; CLAUDE.md N.8; same earned-signal class as the V-* packet verdicts)"
+          }
+        },
+        "p06_code_merged": {
+          "evidence": "pr_head_evidence",
+          "detector": {
+            "type": "pr_merged",
+            "pr": 3516,
+            "measures": "P06 #3516 (carrying PR of J-4c-pr3141/3191/3193 and migrations 1305/1306/1308) is MERGED; SR-A6-EDGES + SR-A6-GCW2 merged-code precondition only, replacing the strict completion edges to those three items. A merged PR is not a production application: that is gcw2_1305_1306_1308_applied."
+          }
+        },
+        "gcw2_1305_1306_1308_applied": {
+          "evidence": "executor_receipt",
+          "detector": {
+            "type": "db_query",
+            "sql": "SELECT n FROM (SELECT count(DISTINCT filename) AS n FROM public._migrations_applied WHERE (filename = '1305_gochara_snapshot_owns_l1_copy.sql' AND sha256 = 'b7ad2ba40ae81b29a2672c41a9f44212c67347e382dabefa153227a93da19a31') OR (filename = '1306_gochara_expected_class_census.sql' AND sha256 = 'b55e244e0e76fe783ad10e25656ecace29ead19ef7625a0668098e6529b2c574') OR (filename = '1308_gochara_near_miss_storage.sql' AND sha256 = 'bc7a220970b91d2d60b1532368e106df673f63a56d573d88acd78857e665204b')) t WHERE n = 3",
+            "expect": "nonempty",
+            "measures": "Production readback through the live tracker read-only DB configuration: ALL THREE of 1305, 1306 and 1308 are in public._migrations_applied with the exact sha256 of the file on origin/kalayantra/w4-p06 (#3516). Any missing row or mismatched hash is pending (a partial application reads false); unavailable readback is error. The SR-A6-GCW2 executor receipt is provenance, never a file-presence substitute."
           }
         }
       },
@@ -4608,7 +4627,8 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/vc-2"
+        "ref": "origin/kalayantra/vc-2",
+        "measures": "UNMEASURED until origin/kalayantra/vc-2 exists (no branch yet; SR-DETECTOR-REFS 2026-10-18): this is not a pass and not a failure of the item; it is read as not yet measured. Once the branch exists it measures that its PR is contained in origin/main; guarded completion additionally requires exact-head acceptance."
       },
       "brief": {
         "spec": [
@@ -4802,7 +4822,9 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-COMPACT",
+        "reason": "D-COMPACT refused (PRE-D-COMPACT: K5-2 numerical contract NC11-NC13/NC17 fail; dense path retained) — SR-CLOSURE-272"
       }
     },
     {
@@ -5494,7 +5516,8 @@
       ],
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/l0-k"
+        "ref": "origin/kalayantra/l0-k",
+        "measures": "UNMEASURED until origin/kalayantra/l0-k exists (no branch yet; SR-DETECTOR-REFS 2026-10-18): this is not a pass and not a failure of the item; it is read as not yet measured. Once the branch exists it measures that its PR is contained in origin/main; guarded completion additionally requires exact-head acceptance."
       },
       "brief": {
         "spec": [
@@ -18646,8 +18669,7 @@
       "depends_on": [
         "J-RUN2-RESOLVED",
         "J-3a-pr2914",
-        "J-3a-pr3144",
-        "J-3a-b44"
+        "J-3a-pr3144"
       ],
       "mandatory": true,
       "detector": {
@@ -18819,7 +18841,8 @@
         "J-3b",
         "J-3c-pr2923",
         "J-3c-pr3194",
-        "J-3c-a52"
+        "J-3c-a52",
+        "J-3-SUBSTEP-LOG"
       ],
       "mandatory": true,
       "steps": [
@@ -19208,6 +19231,53 @@
           "(I) INTERPRETATION: depends_on is the parent J-2a (as J-4p-B4 depends on J-4p) so the tracker derives waiting/ready without a stored status; the alternative, no dependency, would break the parent-child convention. J-2a gates nothing in this item's work, so the fix may be built while J-2a is open."
         ],
         "contract": "SR-J2A-RUN1-FAILED-AMEND-1 B: every stored period_running_at='false' has its consulted (lord, level) rows in consumed_dasha_row_ids; the SNAPSHOT substep binds the rows the builder consulted for every P1 anchor (not only rows overlapping the horizon), so the verifier's snapshot-only read agrees with the builder (B.3). No orchestrator contract change."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "J-3-SUBSTEP-LOG",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Measuring launch sets PUBSUB_DISABLED=1 for its own execution so asset.substep reaches Cloud Logging (J-3 gate evidence)",
+      "owner": "K",
+      "depends_on": [
+        "J-3a"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/j3-substep-log",
+        "measures": "This item's PR is contained in origin/main; the oracle test_smalltest_measuring_substep_log.py (S1-S3) ships in the same PR and runs in the fleet pytest profile."
+      },
+      "brief": {
+        "spec": [
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl SR-J2D-TEARDOWN-EVIDENCE item 2 (the J-3 gate reads sub-step progress from the execution's job log; with Pub/Sub on, asset.substep is published to the topic and never printed)",
+          "platform/python-sidecar/pipeline/orchestrator/events.py:202-205 (emit_event: PUBSUB_DISABLED set, or PUBSUB_TOPIC unset, prints every event to stdout as '[event] <json>'; otherwise publishes and prints nothing)",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py (_read_substep / measure_logs: parses the '[event] ' asset.substep lines; last_index and total per asset) and CLOUDRUN_READBACK_v1_0.md (I) INTERPRETATION on PUBSUB_TOPIC",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py cloud_launcher (the one fixed 'gcloud run jobs execute') and measuring_launch.py (the measuring bridge)",
+          "CLAUDE.md §N.7.6 (honest null), §N.8 (earned signal)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_launch.py",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_measuring_substep_log.py"
+        ],
+        "tests": [
+          "completion detector (N.8): with the measuring launch's argv, a job whose own environment has Pub/Sub on prints every asset.substep as '[event] <json>' (real emit_event), the real logs reader reports last index == total, and the J-3 gate reads PASS",
+          "planted reversion (single): the launch without the override leaves the job log with no sub-step lines; the reader reports no sub-steps and the gate reads NULL, never PASS",
+          "the small-test launch's argv is unchanged (existing test_smalltest_launch.py pin and test_operation_adapters.py plan-equality pin stay green)"
+        ],
+        "compat": "Per-execution override only (gcloud run jobs execute --update-env-vars=PUBSUB_DISABLED=1); the Cloud Run job's stored environment is not modified, so the cockpit SSE feed of every other execution is unchanged. No orchestrator code is touched (FROZEN paths untouched).",
+        "notes": [
+          "Required before J-3c dispatch: J-3c lists this item in depends_on, so the measuring build is not dispatched until the sub-step log evidence path is in place.",
+          "(I) INTERPRETATION: only the measuring launch (measuring_launch.py's default launcher) carries the override; the small-test launch and the operation_adapters.remote_execute_argv plan are left as they were (the latter is pinned equal to the small-test launcher). century_dispatch has no launch script yet (TO_BE_SET_BY_J-4d); J-4d adds the same override to its launcher. Alternative: set the override inside the shared cloud_launcher for every dispatch kind, rejected because it changes the enabled small-test run's event feed unasked.",
+          "(I) INTERPRETATION: the J-3 gate predicate used in the oracle is 'every measured asset has last_index == total, else null'; no gate code exists in the repo to import, so the predicate is stated in the test."
+        ]
       },
       "completion_kind": "code",
       "producer": "K",
@@ -20251,7 +20321,7 @@
       "mandatory": false,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/j-7"
+        "ref": "origin/kalayantra/pb-j7"
       },
       "brief": {
         "spec": [
@@ -20457,7 +20527,9 @@
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
         "class": "a"
-      }
+      },
+      "accepts_not_applicable_dependencies": true,
+      "notes": "D-COMPACT refused 2026-10-16 (dense path retained): K5-2b is not_applicable; the rehearsal builds the applicable path, so K9-1 accepts not-applicable dependencies (prevents a false not_applicable cascade into K9-4a/K9-4b/K9-6/K9-23/KR-1/KR-2)."
     },
     {
       "id": "K9-4a",
@@ -20697,7 +20769,7 @@
       ],
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k9-6"
+        "ref": "origin/kalayantra/pb-k9-final"
       },
       "brief": {
         "spec": [
@@ -22718,7 +22790,7 @@
       "title": "ka_avadhi builds clean on 482012f1: the post-write integrity check's conjunct (c) lord_condition_fact_refs (RED by design under W2 M4 since 2026-09-10) is made to hold or honestly re-scoped, so Suvarṇa's single rebuild tail does not error; merged by Suvarṇa in its window",
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k-avadhi-conjunct-c"
+        "ref": "origin/kalayantra/k-avadhi-c"
       },
       "brief": {
         "spec": [
@@ -26624,8 +26696,9 @@
       "producer": "K",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "a",
-        "reason": "the '4.1' geometric baseline is a scored baseline named by J-5q-b54 (title '5.0 vs 3.0 vs 4.1'; brief.tests 'independently prove inherited prerequisite: B4.4'); stays in the closure (A9-NB-04 class a)"
+        "class": "b",
+        "reason": "deferred by A9 (SR-A9-INTERP, A9-NB-04): its '4.1' baseline cannot exist while J-4a-a25 is parked; no consuming phase brief reads its output (FINAL_BUILD_SCOPE_v1_0 and the J-4a brief are silent on A2.5/A2.6) — SR-A9-NB-04-B44 (SR-CLOSURE-272)",
+        "re_entry": "when the owner/surrogate records the approved Q6 disposition of the historical 4.1 build, or a phase brief names the 4.1 build as a measured input"
       }
     },
     {
