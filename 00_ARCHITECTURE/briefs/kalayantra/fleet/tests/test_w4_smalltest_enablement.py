@@ -7,7 +7,7 @@ import pytest
 from smalltest_admission_support import ARG_VALUES, approve, caps, load_executor, request
 
 FLEET = Path(__file__).resolve().parents[1]
-BASE_ENABLED = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"}
+BASE_ENABLED = {"readback_sql", "migration_readback", "cloudrun_job_readback", "local_schema_seed", "finalize"}
 W4 = {
     "backup_snapshot": ("owner", "platform/scripts/backup_v5_small_test_job.py", ["--operation", "snapshot", "--execute"], ["label", "scope"]),
     "backup_restore_verify": ("owner", "platform/scripts/backup_v5_small_test_job.py", ["--operation", "restore-verify", "--execute"], ["label", "scope"]),

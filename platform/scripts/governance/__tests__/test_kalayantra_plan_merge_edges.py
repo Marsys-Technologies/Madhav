@@ -66,6 +66,19 @@ def test_merge_obligation_blocks_completion_without_waiting_for_producer(plan, c
     rows = {row["id"]: row for track in view["tracks"] for row in track["items"]}
     assert rows[case[1]]["status"] != "done"
     assert rows[case[0]]["deps_open_strict"] == []
+    if case[0] == "KA-3a":
+        # A7 D-46: a code item has no step receipts; the merge is earned by the live PR mapping in its proof
+        head = "a" * 40
+        accepted = [dict(kind="item", item=case[0], actor="stream-K", state="review", detail=f"PR #9999 @ {head}",
+                         ts="2026-10-16T15:01:30Z"),
+                    dict(kind="verdict", actor="stream-V", item=case[0], result="ACCEPTED", head=head,
+                         phase="pre_merge", ts="2026-10-16T15:02:00Z")]
+        unmerged = dict(type="code", reviewed_head=head,
+                        pr=dict(number=9999, state="OPEN", headRefOid=head, mergeCommit=None),
+                        deploy=dict(deployed_sha="c" * 40, run_id=1, contains_merge=True))
+        with pytest.raises(CompletionError, match="live PR does not map the reviewed head to a merge commit"):
+            guarded_done_event(plan, events + accepted, case[0], "stream-K", {"status": "done"}, unmerged)
+        return
     with pytest.raises(CompletionError, match="steps remain open: " + case[2]):
         guarded_done_event(plan, events, case[0], "stream-K", {"status": "done"}, {})
 
@@ -142,7 +155,8 @@ def test_only_a_measured_merge_records_the_required_step(plan, case, observation
     if case[0] == "KA-3a":
         head, merge = "a" * 40, "b" * 40
         proof = dict(type="code", reviewed_head=head,
-                     pr=dict(number=9999, state="MERGED", headRefOid=head, mergeCommit={"oid": merge}))
+                     pr=dict(number=9999, state="MERGED", headRefOid=head, mergeCommit={"oid": merge}),
+                     deploy=dict(deployed_sha="c" * 40, run_id=1, contains_merge=True))    # A7 D-46: measured deploy
         log.append(dict(kind="item", item=case[0], actor="stream-K", state="review",
                         detail=f"PR #9999 @ {head}", ts="2026-10-16T15:01:30Z"))
         verdicts = [dict(verdict, head=head, phase="pre_merge"),
