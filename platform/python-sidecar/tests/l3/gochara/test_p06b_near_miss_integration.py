@@ -10,6 +10,7 @@ from services.gochara_kernel import near_miss_verifier as nv
 from services.gochara_kernel import input_vector as iv
 from services.gochara_kernel import seal_brief as sb
 from .test_near_miss_verifier import _derive, parabola, TC
+from ._p06_prerequisite import classify, require_p06
 
 MIGRATIONS = Path(__file__).resolve().parents[4] / 'migrations'
 MIGRATION = '1381_gochara_near_miss_seal_integration.sql'
@@ -79,8 +80,19 @@ def test_new_migration_is_protected_and_every_apply_has_its_own_readback():
     assert 'readback_1381_near_miss_seal.sql' in deploy
 
 
+def test_p06_landing_gate_skips_only_when_p06_is_wholly_absent_and_refuses_a_half_landed_p06():
+    """The gate that lets the P06-dependent tests wait for P06 reads false on a partial landing (P06B_PREBUILD_v1_0 landing order)."""
+    names = ('migration 1305', 'migration 1306', 'migration 1308', 'module near_miss', 'helper apply_1305')
+    assert classify(dict.fromkeys(names, False)) == 'absent'
+    assert classify(dict.fromkeys(names, True)) == 'complete'
+    for i in range(len(names)):
+        assert classify({n: n == names[i] for n in names}) == 'partial'
+        assert classify({n: n != names[i] for n in names}) == 'partial'
+
+
 @pytest.fixture()
 def chain():
+    require_p06()
     import psycopg
     from .test_a53_inventory import create_am5_database, drop_am5_database, _boot
     admin, name, dsn = create_am5_database('p06b', apply_1305=True)
@@ -451,6 +463,7 @@ def test_a_stationless_contact_root_outside_the_domain_is_followed_not_called_a_
 
 
 def test_new_verification_table_preserves_builder_verifier_sealer_separation():
+    require_p06()
     import psycopg
     from .test_a53_inventory import create_am5_database, drop_am5_database
     admin,name,dsn=create_am5_database('p06bacl',faithful=True,apply_1305=True)

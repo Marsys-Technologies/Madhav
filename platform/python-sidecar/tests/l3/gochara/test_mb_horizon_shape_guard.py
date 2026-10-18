@@ -446,7 +446,8 @@ def test_the_two_modules_that_entered_the_implementation_identity_are_named():
     generated from unmodified main) is in test_mb_ordinary_golden; this test does not compare the code with itself."""
     cur = iv.IMPLEMENTATION_MODULES
     assert {st: tuple(m for m in cur[st] if m not in MAIN_IMPLEMENTATION_MODULES[st]) for st in MAIN_IMPLEMENTATION_MODULES} == {
-        "geometry": ("services.gochara_kernel.stretch_sink",), "evaluation": ("services.gochara_kernel.horizon",)}, "the modules that ENTERED the identity"
+        "geometry": ("services.gochara_kernel.near_miss_verifier", "services.gochara_kernel.stretch_sink"),   # near_miss_verifier: P06b's independent near-miss geometry
+        "evaluation": ("services.gochara_kernel.horizon",)}, "the modules that ENTERED the identity"
     assert all(m in cur[st] for st in MAIN_IMPLEMENTATION_MODULES for m in MAIN_IMPLEMENTATION_MODULES[st]), "nothing LEFT it"
 
 

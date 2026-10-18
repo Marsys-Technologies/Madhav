@@ -23,8 +23,12 @@ from datetime import datetime, timezone
 
 import pytest
 
-from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
-from services.gochara_kernel import near_miss as nm
+from ._p06_prerequisite import require_p06
+
+require_p06(module_level=True)        # P06's builder module and migration 1308 are the world under test: wait for P06, refuse a half-landed one
+
+from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod  # noqa: E402
+from services.gochara_kernel import near_miss as nm  # noqa: E402
 
 from . import test_a53_inventory as base
 from .test_a53_record_store import MIGRATIONS
