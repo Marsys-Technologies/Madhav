@@ -319,6 +319,16 @@ describe('queryContactLedger — WP7 P-4', () => {
     expect(res.diagnostic).toMatchObject({ sealed: null, seal_lookup_failed: true })
   })
 
+  it.each([
+    { rows: [] }, { rows: [{}] }, { rows: [{ sealed: null }] }, { rows: [{ sealed: 'true' }] },
+    { rows: [{ sealed: true }, { sealed: true }] },
+  ])('malformed seal reply remains unknown in diagnostics: %j', async ({ rows }) => {
+    mockFetch.mockResolvedValueOnce(MANIFEST('published')).mockResolvedValueOnce(jsonRes(rows))
+    serveData()
+    const res = await queryContactLedger({ chart_id: CHART, generation: '5.0', diagnostic: true }, principal)
+    expect(res.diagnostic).toMatchObject({ sealed: null, seal_lookup_failed: true })
+  })
+
   it('diagnostic=true never serves a TEST SLICE', async () => {
     mockFetch.mockResolvedValueOnce(MANIFEST('candidate', { stored_scope: 'test_slice', has_test_slice: true }))
     const res = await queryContactLedger({ chart_id: CHART, generation: '5.0', diagnostic: true }, principal)

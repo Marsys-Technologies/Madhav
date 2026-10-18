@@ -132,6 +132,32 @@ def test_the_view_reports_the_paths_that_hold_rows(world):
     assert ("marriage", "P3") in v.class_paths_with_rows and v.classes_with_records == frozenset({"marriage"})
 
 
+@pytest.mark.parametrize("column,value", [
+    ("chart_id", "11111111-1111-4111-8111-111111111111"),
+    ("generation", "oracle-other-generation"),
+    ("admission_state", "not_admitted"),
+])
+def test_read_records_excludes_foreign_chart_generation_and_unadmitted_rows(world, column, value):
+    _boot_p3(world)
+    expected = [mr.SupportRecord("marriage", "P3", "saturn", ((_t(1, 10), _t(2, 20)),), "base")]
+    assert mr.read_records(world.conn, CHART_ID, GEN) == expected
+    # Query a different chart/generation while valid native rows exist. The
+    # production schema still enforces its canonical-chart/generation pins;
+    # the reader must independently honor its requested identity.
+    if column == "chart_id":
+        assert mr.read_records(world.conn, value, GEN) == []
+    elif column == "generation":
+        assert mr.read_records(world.conn, CHART_ID, value) == []
+    else:
+        with world.conn.transaction():
+            world.conn.execute("SET LOCAL session_replication_role = replica")
+            n = world.conn.execute("UPDATE public.ka_gochara_relationship_record SET admission_state = %s "
+                                   "WHERE chart_id = %s AND generation = %s AND admission_state = 'admitted'",
+                                   (value, CHART_ID, GEN)).rowcount
+        assert n == 1
+        assert mr.read_records(world.conn, CHART_ID, GEN) == []
+
+
 def test_mb6_real_run_producer_basis_survives_manifest_storage_and_rejects_wrong_bounds(world):
     """Actual producer reads a local run; MB-6 reads its stored JSON, with no LEL table.
 
