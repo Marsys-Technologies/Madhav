@@ -87,7 +87,7 @@ MEASURING_BINDINGS = {
 # J-2a M6/M7: the one added read-only kind (fleet/CLOUDRUN_READBACK_v1_0.md). Exact binding, not permission for any other op.
 CLOUDRUN_READBACK = {
     "enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py",
-    "fixed_args": [], "allowed_args": ["execution"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
+    "fixed_args": [], "allowed_args": ["execution", "logs"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
     "timeout_s": 600, "enabled_by": "J-2a",
 }
 ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "local_schema_seed", "finalize"} | set(P01_BINDINGS)
