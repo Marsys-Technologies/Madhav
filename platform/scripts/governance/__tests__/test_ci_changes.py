@@ -265,6 +265,8 @@ def test_every_filtered_job_needs_changes_and_preserves_its_event_policy(jobs, n
 def test_the_cheap_and_required_gates_are_never_skipped_by_the_fast_path(jobs, name):
     j = jobs[name]
     assert "docs_only" not in str(j.get("if", "")), name
+    if name == "governance-gates":
+        assert str(j["if"]) == "${{ always() }}"
     if name not in {"governance-tool-tests", "governance-gates"}:
         assert "changes" not in (j.get("needs") if isinstance(j.get("needs"), list) else [j.get("needs")]), name
 
@@ -386,17 +388,6 @@ def _pytest_suites(step_run: str) -> list[str]:
         if line.startswith("#") or "pytest" not in line:
             continue
         for token in line.split():
-            if not (token.startswith("tests/") and token.endswith(".py")):
-                continue
-            # Shell-expanded globs are real suite selections too. Resolve them
-            # against the same sidecar directory the required CI step uses.
-            if any(char in token for char in "*?["):
-                sidecar = GOCHARA_TESTS.parents[2]
-                out += [path.relative_to(sidecar).as_posix() for path in sorted(sidecar.glob(token)) if path.is_file()]
-            else:
-                out.append(token)
-
-
             if token.startswith("tests/") and token.endswith(".py"):
                 if any(char in token for char in '*?['):
                     cwd = GOCHARA_TESTS.parents[2]
