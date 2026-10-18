@@ -1225,6 +1225,7 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
 __all__ += ["check_dasha_population", "validate_consumed_dasha_population", "copy_contract_violations", "fact_copy_violations",
             "dasha_copy_violations", "period_contract_violations"]
 
+
 # Snapshot-bound record verification SQL; deliberately independent of the builder.
 #: the pins of the "held" probe below (the verifier's own §4.0 literals: ayanāṃśa, system, tier)
 RECORD_SUPPORT_PINS = {"ayan": _C_AYANAMSHA, "system": _C_SYSTEM, "tier": _C_TIER}

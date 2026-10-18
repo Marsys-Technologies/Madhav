@@ -51,10 +51,11 @@ def test_exact_script_capability_and_argv(table, kind):
     assert op["script"] == script
     assert op["fixed_args"] == fixed
     assert op["allowed_args"] == allowed
-    assert op["production"] is True and op["enabled_by"] == "J-1a"
+    assert op["production"] is (not kind.endswith("_dryrun")) and op["enabled_by"] == "J-1a"   # A8 §3.8: a dry run is read-only with a credential
     assert op.get("requesters", ["adhikarin"]) == ["adhikarin"]
     assert op.get("also_needs", []) == (["gcloud"] if kind == "smalltest_dispatch" else [])
-    assert op["required_rows"] == ([] if kind.startswith("backup_") else ["2", "3", "7", "9", "11"])
+    assert "required_rows" not in op                                                           # A8 §5: retired
+    assert op.get("remote_async", False) is (kind == "smalltest_dispatch")                      # A8 §3.11: only the remote launch takes the fence
 
 
 @pytest.mark.parametrize("kind", list(W4) + ["readback_sql", "migration_readback"])

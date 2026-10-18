@@ -13,6 +13,9 @@ from .state import D46_KINDS, build_snapshot, open_dependencies, pending_gates
 from .verdicts import accepted_verdict
 
 
+COMPOSED_RECEIPT_SCHEMA = "ky.a55i_both_runs/1"    # the one composed-receipt schema (cli._check_composed_components)
+
+
 class CompletionError(ValueError):
     """A refused completion. ``code`` is the audit code of the unmet typed evidence, when that is the reason."""
 
@@ -175,9 +178,16 @@ def unmet_evidence(model: dict, item: dict, events: list[dict], completion: dict
                 gap("missing_post_deploy_verdict", requirement, "independent post-deploy verdict at merge commit is missing")
         elif requirement == "completed_receipt":
             receipt, operation_id = completion.get("receipt"), completion.get("operation_id")
+            # A composed receipt (ky.a55i_both_runs/1) has no status or item_id of its own: it counts only when
+            # the caller verified every cited component (cli._check_composed_components) and it names this item.
+            composed = isinstance(receipt, dict) and receipt.get("schema") == COMPOSED_RECEIPT_SCHEMA
+            if composed:
+                bound = completion.get("composed_components_verified") is True and receipt.get("item") == item_id
+            else:
+                bound = (isinstance(receipt, dict) and receipt.get("item_id") == item_id
+                         and receipt.get("status") == "COMPLETED")
             if (not isinstance(receipt, dict) or not isinstance(operation_id, str) or not operation_id
-                    or not _sha(digest, 64) or receipt.get("operation_id") != operation_id
-                    or receipt.get("item_id") != item_id or receipt.get("status") != "COMPLETED"):
+                    or not _sha(digest, 64) or receipt.get("operation_id") != operation_id or not bound):
                 gap("unbound_operation", requirement, "operation requires a completed receipt for this item and identity")
         elif requirement == "packet_verdict":
             packet, review_digest = completion.get("packet"), completion.get("review_sha256")
