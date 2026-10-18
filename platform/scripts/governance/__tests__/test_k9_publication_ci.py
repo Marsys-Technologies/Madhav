@@ -21,7 +21,7 @@ def test_required_aggregate_earns_its_kala_db_status(db,docs,expected,exit_code)
     assert 'kala-db-tests' in gate['needs']
     step=gate['steps'][0]
     run=subprocess.run(['bash','-c',step['run']], env={**os.environ,'KALA_DB_RESULT':db,'KALA_DB_EXPECTED':expected,'DOCS_ONLY':docs,
-                        'READBACK_RESULT':'success','SHARDS_RESULT':'success'},capture_output=True,text=True,timeout=5)
+                        'READBACK_RESULT':'success','SHARDS_RESULT':'success','J5S_RESULT':'success','J5S_EXPECTED':'true'},capture_output=True,text=True,timeout=5)
     assert run.returncode==exit_code,run.stdout+run.stderr
 
 
