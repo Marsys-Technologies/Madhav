@@ -1,29 +1,25 @@
 """Wave 4 steps 10–16 admission: no git writes, cloud calls or DB connections."""
-import datetime as dt
-import importlib.util
 import json
-import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
-FLEET = Path(__file__).resolve().parents[1]
-SCRIPTS = FLEET.parents[3] / "platform" / "scripts"
-sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "__tests__"))
-import smalltest_safety_support as evidence
+from smalltest_admission_support import ARG_VALUES, approve, caps, load_executor, request
 
-BASE_ENABLED = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"}
+FLEET = Path(__file__).resolve().parents[1]
+BASE_ENABLED = {"readback_sql", "migration_readback", "cloudrun_job_readback", "local_schema_seed", "finalize"}
+# A7 D-44 (owner direction): the one read-only kind added after Wave 4; enabled by B-1, not a Wave 4 op, so it is named here rather than folded into W4.
+D44_READ_ONLY = {"quiescence_check"}
 W4 = {
-    "backup_snapshot": ("owner", "platform/scripts/backup_v5_small_test_job.py", ["--operation", "snapshot", "--execute"], ["label"]),
-    "backup_restore_verify": ("owner", "platform/scripts/backup_v5_small_test_job.py", ["--operation", "restore-verify", "--execute"], ["label"]),
+    "backup_snapshot": ("owner", "platform/scripts/backup_v5_small_test_job.py", ["--operation", "snapshot", "--execute"], ["label", "scope"]),
+    "backup_restore_verify": ("owner", "platform/scripts/backup_v5_small_test_job.py", ["--operation", "restore-verify", "--execute"], ["label", "scope"]),
     "smalltest_dispatch_dryrun": ("builder", "platform/scripts/dispatch_v5_small_test_job.py", ["--i-am-steward", "--after-settled-1", "--dry-run"], ["run", "classes", "horizon-start", "horizon-end"]),
     "smalltest_dispatch": ("builder", "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py", [], ["run", "classes", "horizon-start", "horizon-end"]),
     "smalltest_teardown_dryrun": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--dry-run"], []),
     "smalltest_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], []),
 }
 DISABLED = {"measuring_dispatch", "verification_job", "century_dispatch", "publish_head", "rollback_head",
+            "measuring_dispatch_dryrun", "measuring_teardown", "measuring_teardown_dryrun",
             "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"}
 
 
@@ -34,49 +30,12 @@ def table():
 
 @pytest.fixture
 def executor(tmp_path, monkeypatch):
-    monkeypatch.setenv("KY_ROOT", str(tmp_path))
-    spec = importlib.util.spec_from_file_location("w4_executor", FLEET / "executor.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    # Only validate() runs. All external observations are injected; execution is forbidden.
-    monkeypatch.setattr(mod, "lease_live", lambda _: True)
-    source = (SCRIPTS / "v5_small_test_shared.py").read_text()
-    monkeypatch.setattr(mod, "git", lambda *a, **kw: SimpleNamespace(returncode=0, stdout=source))
-    monkeypatch.setattr(mod, "seen", lambda _: False)
-    mod.ACC.mkdir(parents=True)
-    return mod
-
-
-def request(executor, kind, args=None):
-    req = dict(operation_id="w4-proof", idempotency_key="w4-proof", item_id="J-2a", kind=kind,
-               requested_by="adhikarin", kyd="PRE-D-TEARDOWN", chart_id=executor.CANONICAL_CHART,
-               lease_id="fixture", reviewed_commit="a" * 40, args=args or {},
-               expires_at=(dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=10)).isoformat())
-    # Supply the same file-bound evidence required by main's P01 safety policy.
-    if kind == "smalltest_dispatch":
-        req["absence_receipt"], req["absence_acceptance"] = evidence.absence_for(executor.KY_ROOT)
-    elif kind in ("smalltest_teardown", "smalltest_teardown_dryrun"):
-        scope = evidence.scope_for(executor.KY_ROOT, evidence.RUN, {"fixture": "manifest"}, None)
-        req["smalltest_scope"] = scope
-        if kind == "smalltest_teardown":
-            prior = evidence.request_for(executor.KY_ROOT, scope, rowset_sha256="c" * 64)
-            req.update({key: prior[key] for key in ("dryrun_receipt", "dryrun_acceptance")})
-    acceptance = executor.ACC / "w4-proof.json"
-    req["acceptance_receipt"] = str(acceptance)
-    acceptance.write_text(json.dumps(dict(result="ACCEPTED", by="v1", operation_id=req["operation_id"],
-        reviewed_commit=req["reviewed_commit"], ts=executor.now(), request_sha256=executor.request_digest(req),
-        rows={k: True for k in ["2", "3", "7", "9", "11"]},
-        checks=dict(backup_taken=True, restore_verified=True, dry_run_passed=True))))
-    return req
-
-
-def caps():
-    return {k: True for k in ["owner", "builder", "gcloud", "pgenv", "none"]}
+    return load_executor(tmp_path, monkeypatch)
 
 
 def test_only_six_wave4_ops_are_newly_enabled(table):
-    assert set(table) == BASE_ENABLED | set(W4) | DISABLED
-    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | set(W4)
+    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | DISABLED
+    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4)
     for kind in DISABLED:
         assert table[kind]["enabled"] is False
         if "prepared_dry_run" in table[kind]:
@@ -100,9 +59,7 @@ def test_exact_script_capability_and_argv(table, kind):
 
 @pytest.mark.parametrize("kind", list(W4) + ["readback_sql", "migration_readback"])
 def test_real_validate_accepts_only_listed_arguments(table, executor, kind):
-    values = {"run": "one_class_full", "classes": "marriage",
-              "horizon-start": "1998-01-01T00:00:00+00:00", "horizon-end": "2026-04-17T00:00:00+00:00"}
-    args = {name: values.get(name, "fixture") for name in table[kind]["allowed_args"]}
+    args = {name: ARG_VALUES[name] for name in table[kind]["allowed_args"]}
     req = request(executor, kind, args)
     assert executor.validate(req, table, caps()) is None
     for name in ["execute", "run-id", "operation", "i-am-steward", "sql", "generation"]:
@@ -125,3 +82,33 @@ def test_every_future_operation_stays_refused(table, executor, kind):
 
 def test_unknown_kind_stays_refused(table, executor):
     assert executor.validate(request(executor, "unlisted"), table, caps()) == "unknown kind unlisted"
+
+
+@pytest.mark.parametrize('kind,field', [
+    ('smalltest_teardown_dryrun', 'smalltest_scope'),
+    ('smalltest_teardown', 'dryrun_receipt'),
+    ('smalltest_teardown', 'dryrun_acceptance'),
+    ('smalltest_dispatch', 'absence_receipt'),
+    ('smalltest_dispatch', 'absence_acceptance'),
+])
+def test_valid_authorization_cannot_replace_required_evidence(table, executor, kind, field):
+    args = {key: ARG_VALUES[key] for key in table[kind]['allowed_args']}
+    req = request(executor, kind, args)
+    assert executor.validate(req, table, caps()) is None
+    del req[field]
+    approve(executor, req)  # Keep complete-request approval valid; exercise the evidence detector.
+    assert executor.validate(req, table, caps()) == (
+        'identified staged small-test scope required' if field == 'smalltest_scope'
+        else 'named evidence reference required')
+
+
+@pytest.mark.parametrize('kind,field', [
+    ('smalltest_teardown', 'dryrun_receipt'),
+    ('smalltest_dispatch', 'absence_receipt'),
+])
+def test_changed_evidence_bytes_refuse_even_with_valid_request_approval(table, executor, kind, field):
+    req = request(executor, kind, {key: ARG_VALUES[key] for key in table[kind]['allowed_args']})
+    assert executor.validate(req, table, caps()) is None
+    path = executor.REC / req[field]['name']
+    path.write_text(path.read_text() + '\n')
+    assert executor.validate(req, table, caps()) == 'evidence byte digest mismatch'

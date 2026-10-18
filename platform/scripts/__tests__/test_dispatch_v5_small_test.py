@@ -933,10 +933,10 @@ def test_the_execute_within_ten_minutes_notice_is_printed_and_documented(capsys)
 
 
 def test_r7_the_ci_installs_the_sidecar_requirements_before_the_step_that_imports_the_writer():
-    ci = (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    ci = _ci_text((REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     select = ci.index("Nirmāṇa L0 — install writer test runtime")
     install = ci.index("python -m pip install -r python-sidecar/requirements-ci.txt", select)
-    dispatch_step = ci.index("python -m pytest scripts/__tests__/test_dispatch_v5_small_test.py")
+    dispatch_step = ci.index("scripts/__tests__/test_dispatch_v5_small_test.py")
     assert select < install < dispatch_step
 
 
@@ -1038,6 +1038,19 @@ def test_db3_uncommitted_changes_under_the_sidecar_are_warned_about(capsys, monk
     _fake_git(monkeypatch, head="deadbeef", porcelain=" M python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py")
     out = _run_main(_Harness(), BASE_ARGV, capsys)
     assert "WARNING" in out.err and "UNCOMMITTED" in out.err and "deadbeef" in out.err
+
+
+def test_db3_only_the_machine_owned_overlay_dirt_is_not_warned_about_but_a_real_source_change_still_is(capsys, monkeypatch):
+    """A5 D-33: the executor's overlay regenerates the machine-owned writer-digest file in the dispatch tree, so that file alone differing from
+    the commit is not an uncommitted SOURCE change (no 'UNCOMMITTED' warning); any other path in the same listing still is. Real `git status
+    --porcelain` paths are repository-root-relative (`platform/...`)."""
+    overlay = " M platform/src/generated/nirmana-writer-digests.json\n M platform/python-sidecar/services/gochara_kernel/implementation_digest.lock.json\n"
+    _fake_git(monkeypatch, head="deadbeef", porcelain=overlay)
+    clean = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "JOB IMAGE MUST MATCH THIS CHECKOUT" in clean.err and "WARNING" not in clean.err and "UNCOMMITTED" not in clean.err
+    _fake_git(monkeypatch, head="deadbeef", porcelain=overlay + " M platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py\n")
+    dirty = _run_main(_Harness(), BASE_ARGV, capsys)
+    assert "WARNING" in dirty.err and "UNCOMMITTED" in dirty.err
 
 
 def test_db3_checkout_commit_never_uses_a_shell_and_degrades_to_unknown():
@@ -1143,3 +1156,31 @@ def test_an_empty_string_probe_or_integrity_check_reads_as_null(capsys):
     h2 = _Harness(registry_row=dict(dispatch.EXPECTED_REGISTRY_ROW, integrity_check_sql=" "))
     with pytest.raises(RuntimeError, match="integrity_check_sql"):
         _run_main(h2, BASE + ["--dry-run"], capsys)               # a non-empty value is still refused
+
+
+# J3C-BINDINGS: real writer shape validation; no chart computation/ephemeris calls.
+def test_dedicated_measuring_marker_is_exact_full_shape_while_smalltest_stays_closed():
+    import dispatch_v5_measuring_job as measuring
+    marker = measuring.build_slice_marker(run='all_classes_full', classes='all')
+    validated = WRITER._validate_test_slice(marker)
+    assert validated.run == 'all_classes_full'
+    assert list(validated.classes) == list(WRITER.SCORED_CLASSES) and len(validated.classes) == 26
+    assert (validated.horizon[1] - validated.horizon[0]).days == 31446
+    assert validated.horizon == WRITER.MEASURING_HORIZON
+    with pytest.raises(RuntimeError, match='measuring phase is disabled'):
+        dispatch.build_slice_marker(run='all_classes_full', classes='all')
+
+
+@pytest.mark.parametrize('kwargs', [dict(run='one_class_full', classes='all'),
+    dict(run='all_classes_full', classes='marriage'), dict(run='all_classes_full', horizon_start=START),
+    dict(run='all_classes_full', horizon_end=END)])
+def test_dedicated_measuring_marker_refuses_widened_or_short_scope(kwargs):
+    import dispatch_v5_measuring_job as measuring
+    with pytest.raises(RuntimeError):
+        measuring.build_slice_marker(**kwargs)
+
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[3] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow_text as _ci_text

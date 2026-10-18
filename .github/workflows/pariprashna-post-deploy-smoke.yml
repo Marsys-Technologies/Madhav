@@ -82,9 +82,12 @@ name: Paripraśna Post-Deploy Behaviour Smoke (P3-E / PB-4 F-6)
 
 on:
   workflow_dispatch: {}
-  workflow_run:
-    workflows: ['Deploy to Cloud Run']
-    types: [completed]
+  # workflow_run on main disabled 2026-10-17 (KALA-YANTRA A8 §5): the live authenticated turn has failed every run on main
+  # (478/478, "Live authenticated turn"); it is not a required check. Re-enable by restoring the block below once the web
+  # canary credential exists — see CAMPAIGN_COORDINATION §6 note for the Paripraśna custodian.
+  # workflow_run:
+  #   workflows: ['Deploy to Cloud Run']
+  #   types: [completed]
   pull_request:
     branches: [main]
     paths:

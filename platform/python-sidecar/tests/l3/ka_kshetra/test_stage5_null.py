@@ -33,20 +33,21 @@ class TestShiftGrid:
         # NO RNG ANYWHERE (§5.5). Hash-replay depends on it: a seeded PRNG would
         # tie the field hash to library-internal generator behaviour.
         g = S5.shift_grid(horizon_days=1000.0, replicates=4)
-        assert g == [250.0, 500.0, 750.0, 1000.0]
+        assert g == [250.0, 500.0, 750.0]
 
-    def test_grid_has_exactly_R_shifts_starting_at_r_equals_one(self):
+    def test_grid_has_R_minus_one_shifts_excluding_the_identity(self):
         g = S5.shift_grid(horizon_days=36525.0, replicates=256)
-        assert len(g) == 256
+        assert len(g) == 255
         assert g[0] == pytest.approx(36525.0 / 256)
-        assert g[-1] == pytest.approx(36525.0)
+        assert g[-1] == pytest.approx(255 * 36525.0 / 256)
 
     def test_grid_is_reproducible(self):
         assert S5.shift_grid(36525.0, 256) == S5.shift_grid(36525.0, 256)
 
-    def test_zero_replicates_is_rejected(self):
+    @pytest.mark.parametrize('replicates', [0, 1])
+    def test_no_nonidentity_replicates_is_rejected(self, replicates):
         with pytest.raises(ValueError):
-            S5.shift_grid(100.0, 0)
+            S5.shift_grid(100.0, replicates)
 
 
 # ── bucket selection ─────────────────────────────────────────────────────────
@@ -88,9 +89,9 @@ class TestNullP:
         # exceptional; scoring it the other way would inflate significance.
         assert S5.null_p([5.0, 1.0, 1.0, 1.0], lambda_obs=5.0) == pytest.approx(2.0 / 5.0)
 
-    def test_resolution_is_one_over_R_plus_one(self):
-        assert S5.null_resolution(256) == pytest.approx(1.0 / 257.0)
-        assert S5.null_resolution(256) == pytest.approx(0.00389, abs=1e-5)
+    def test_resolution_counts_the_observation_once_in_R(self):
+        assert S5.null_resolution(256) == pytest.approx(1.0 / 256.0)
+        assert S5.null_resolution(1024) == 1.0 / 1024.0
 
     def test_exceeding_flag_uses_the_declared_alpha(self):
         assert S5.null_exceeding(0.05) is True
@@ -101,8 +102,8 @@ class TestNullP:
         # LAW ZERO: we do not report a precision the replicate count cannot
         # support. This is the arithmetic guarantee behind serving null_p
         # alongside null_R and null_resolution.
-        for k in range(0, 257):
-            stats = [99.0] * k + [0.0] * (256 - k)
+        for k in range(0, 256):
+            stats = [99.0] * k + [0.0] * (255 - k)
             p = S5.null_p(stats, lambda_obs=1.0)
             assert p >= S5.null_resolution(256) - 1e-15
 

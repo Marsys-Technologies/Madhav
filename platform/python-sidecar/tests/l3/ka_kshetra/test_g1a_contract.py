@@ -1,4 +1,18 @@
-"""G1a behavioral oracles: independently recomputed axes and operator roots."""
+"""G1a behavioral oracles: independently recomputed axes and operator roots.
+
+Rule locators (no JH-parity oracle, CLAUDE.md §N.4):
+* ALGO = 00_ARCHITECTURE/briefs/l3_families/
+  KALA_ASSET_ALGORITHM_ELEVATIONS_v1_1.md:300–308 (§3.13): uncited legacy
+  mūrti has no admitted numeric bridge; D-PADMIT permits testimony only.
+* ALGO :442–454 (§3.20): G1 formula, pinned axis/rarity, complete operator
+  partition; 1023 nonidentity shifts + observation. Statistics and seeded
+  coefficients are engineering conventions, never classical probabilities.
+* PLAN = 00_ARCHITECTURE/briefs/l3_families/
+  KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md:282–285 (§6.2 items 4–5):
+  scenario/risk-mask edges and shift seams survive every representation.
+Classical vedha inputs trace to Phaladīpikā XXVI 3–8 via ALGO §3.12;
+these consumer tests inherit supplied intervals, never re-judge a transit.
+"""
 from datetime import datetime, timezone, timedelta
 from types import SimpleNamespace
 import hashlib
@@ -211,6 +225,135 @@ def test_unavailable_and_cancelled_masks_keep_edges_without_a_scalar():
     assert env.obstructions_at(8)=={} and env.obstructions_at(24)=={}
 
 
+@pytest.mark.parametrize('unavailable', [
+    {'null_reason': 'information_unavailable', 'quality_tier': 4},
+    {'quality_tier': None},
+    {},
+])
+def test_unavailable_moorti_mask_survives_null_entry_and_wrap(unavailable):
+    from services.ka_kshetra.g1_inputs import suppression_primitives
+    from services.ka_kshetra import stage5_null as S5
+    from services.ka_kshetra.contracts import PromisePrior
+    birth = datetime(2001, 1, 1, tzinfo=timezone.utc)
+    # Real KA-3b entries use Julian dates, including a leading unavailable span.
+    row = dict(graha='Mars', t_in=2451910.5, t_out=2451914.5,
+               moorti_name='loha', source_ref='candidate:moorti:Mars:2451910.5',
+               **unavailable)
+    prims, gaps = suppression_primitives('chart', birth, [], [row], [])
+    assert gaps == [{'source_ref': row['source_ref'], 'reason': 'moorti_information_unavailable'}]
+    assert len(prims) == 1
+    mask = prims[0]
+    assert (mask.primitive_kind, mask.polarity, mask.source_table, mask.source_pk) == (
+        'input_mask', 'neutral', 'kala_moorti_nirnaya_candidate', row['source_ref'])
+    assert mask.envelope == [(0., 0.), (4., 0.)]
+    env = S4.EnvelopeIndex([S4.Primitive(p.primitive_kind, p.subject, p.object_ref,
+        p.polarity, p.class_label, tuple(p.envelope), p.source_pk,
+        p.source_fact_id, p.source_table) for p in prims], 10.)
+    ev = S4.FieldEvaluator(event_class='career', lifetime_count=1., promise=PromisePrior(.5),
+        clocks=[], ladder={}, envelopes=env, weights={'beta:x7': 99.}, horizon_days=10.)
+    empty = S4.FieldEvaluator(event_class='career', lifetime_count=1., promise=PromisePrior(.5),
+        clocks=[], ladder={}, envelopes=S4.EnvelopeIndex([], 10.), weights=ev.weights, horizon_days=10.)
+    assert {0., 4., 10.} <= set(S5._null_breakpoints(ev))
+    shifted = S5.replicate_evaluator(ev, 1.5)
+    assert {0., 2.5, 8.5, 10.} <= set(S5._null_breakpoints(shifted))
+    for index in (env, shifted.envelopes):
+        assert all(p.source_pk == row['source_ref'] and p.source_table == mask.source_table
+                   for p in index.supportive)
+        for t in (0., 1., 2.5, 4., 8.5, 9.9):
+            assert index.covariates_at(t) == {} and index.obstructions_at(t) == {}
+    for t in (0., 1., 3., 5., 9.):
+        assert ev.ln_lambda(t) == empty.ln_lambda(t) == shifted.ln_lambda(t)
+    segments = S5._null_build_segments(shifted)
+    assert {0., 2.5, 8.5, 10.} <= {s.t_start for s in segments} | {s.t_end for s in segments}
+
+
+def test_sampled_candidate_dispatch_runs_the_pinned_nonidentity_experiment(monkeypatch):
+    from services.ka_kshetra import writer as W, stage5_null as S5
+    from services.ka_kshetra.contracts import PromisePrior
+    from .fake_db import FakeConn, FakeCtx
+    from .fixtures import build_tables, CHART_ID, EVENT_CLASS
+    monkeypatch.setattr(W, 'HORIZON_DAYS', 10.)
+    monkeypatch.setattr(W.KaKshetraWriter, '_optional_stage_plugins', lambda *a: [])
+    conn = FakeConn(build_tables())
+    ctx = FakeCtx(conn, CHART_ID)
+    writer = W.KaKshetraWriter()
+    steps = writer.plan_substeps(ctx)
+    assert writer._pins.config_pin['segment_engine'] == 'sampled'
+    ev = S4.FieldEvaluator(event_class=EVENT_CLASS, lifetime_count=1., promise=PromisePrior(.5),
+        clocks=[], ladder={}, envelopes=S4.EnvelopeIndex([
+            primitive('contact_moon_ref', [(2.31, 0.), (2.37, 1.), (2.43, 0.)])], 10.),
+        weights={'beta:x1': 2.}, horizon_days=10., extra_breakpoints=(4.13,))
+    acc = writer._new_null_accumulator(EVENT_CLASS)
+    cctx = SimpleNamespace(evaluator=ev, null_accumulator=acc,
+        temporal_shape='punctual', baseline_is_synthetic=False)
+    monkeypatch.setattr(writer, '_class_context', lambda *a: cctx)
+    # Stage 5 must read the committed observation; store the real reference segments.
+    conn.tables['kala_field'] = [dict(chart_id=CHART_ID, event_class=EVENT_CLASS,
+        segment_index=i, **vars(s)) for i, s in enumerate(ev.build_segments())]
+    shifts, partitions = [], []
+    real_replicate, real_build = S5.replicate_evaluator, S5._null_build_segments
+    def replicate(field, delta):
+        shifts.append(delta)
+        return real_replicate(field, delta)
+    def build(field):
+        actual = real_build(field)
+        reference = field.build_segments()
+        assert actual == reference
+        partitions.append(tuple(field.breakpoints()))
+        return actual
+    monkeypatch.setattr(S5, 'replicate_evaluator', replicate)
+    monkeypatch.setattr(S5, '_null_build_segments', build)
+    blocks = [s for s in steps if s.key.startswith('stage5:')]
+    assert len(blocks) == 64
+    for step in blocks[:-1]:
+        writer.run_substep(ctx, step)
+    finalize = next(s for s in steps if s.key.startswith('stage5finalize:'))
+    with pytest.raises(S4.UpstreamStageIncomplete, match='1008/1023'):
+        writer.run_substep(ctx, finalize)
+    writer.run_substep(ctx, blocks[-1])
+    assert shifts == [r * (10. / 1024) for r in range(1, 1024)]
+    assert S5.shift_grid(10., S5.DEFAULT_REPLICATES) == shifts
+    assert all(0. < delta < 10. for delta in shifts)
+    assert len(partitions) == 1023 and all(4.13 in p for p in partitions)
+    result = acc.finalize()
+    assert result.replicates == 1023 and result.denominator == 1024
+    assert result.shift_grid_step == 10. / 1024
+    assert result.resolution == 1. / 1024
+    assert all(len(stats) == 1023 for stats in result.max_stats.values())
+    assert S5.null_p([0.] * 1023, 1.) == result.resolution
+    assert S5.null_p([1.] * 1023, 1.) == 1.
+    writer.run_substep(ctx, finalize)
+    assert len(conn.tables['kala_field_null']) == 10
+    assert all(r['replicates'] == 1023 and len(r['null_max_stats']) == 1023
+               and r['shift_grid_step'] == 10. / 1024 for r in conn.tables['kala_field_null'])
+    assert conn.tables['kala_field_windows'], 'the real peak must exercise persisted window resolution'
+    assert all(r['null_R'] == 1023 and r['null_resolution'] == 1. / 1024
+               and r['null_p'] >= r['null_resolution'] for r in conn.tables['kala_field_windows'])
+
+
+@pytest.mark.parametrize('replicates', [8, 1024])
+def test_sampled_experiment_provenance_is_derived_from_execution_config(monkeypatch, replicates):
+    from services.ka_kshetra import writer as W, stage5_null as S5
+    from .fake_db import FakeConn, FakeCtx
+    from .fixtures import build_tables, CHART_ID
+    monkeypatch.setattr(W, 'candidate_null_shifts', lambda: replicates - 1)
+    monkeypatch.setattr(W.KaKshetraWriter, '_optional_stage_plugins', lambda *a: [])
+    writer = W.KaKshetraWriter()
+    writer.plan_substeps(FakeCtx(FakeConn(build_tables()), CHART_ID))
+    config = writer._pins.config_pin
+    assert config['null_replicates'] == replicates - 1
+    assert config['null_experiment'] == 'class_specific_field_maximum'
+    assert config['null_denominator'] == replicates
+    assert config['null_configuration'] == {
+        'replicates': replicates, 'shift_count': replicates - 1,
+        'denominator': replicates, 'resolution': 1. / replicates,
+        'shift_grid_step': W.HORIZON_DAYS / replicates,
+        'schedule': 'delta_r=r*H/R; r=1..R-1; observation counted once',
+    }
+    assert f'{replicates - 1} non-identity shifts + observation' in config['constant_provenance']['null']
+    assert f'denominator={replicates}' in config['constant_provenance']['null']
+
+
 def test_lagna_contact_target_inherits_the_real_pinned_L1_key():
     class Conn:
         def execute(self,sql,params): self.sql=sql;return self
@@ -219,3 +362,128 @@ def test_lagna_contact_target_inherits_the_real_pinned_L1_key():
     assert S0.fetch_natal_longitude(conn,'chart','natal_lagna','LAGNA')==39.2
     assert "fact_category = 'graha_position'" in conn.sql
     assert 'ORDER BY fact_id' in conn.sql
+
+
+@pytest.mark.parametrize('name,tier', [('svarna',1),('rajata',2),('tamra',3),('loha',4)])
+def test_moorti_testimony_cannot_change_the_forecast_rate(name, tier):
+    """ALGO §3.13: uncited legacy mūrti is testimony, never a scored factor.
+
+    There is no admitted classical numeric bridge. In particular loha does
+    not imply u=1 or any other suppression strength (D-PADMIT; §N.4).
+    Catches moorti_polarity_numeric_bridge at its field consumer.
+    """
+    from services.ka_kshetra.g1_inputs import suppression_primitives
+    from services.ka_kshetra.contracts import PromisePrior
+    birth = datetime(2001,1,1,tzinfo=timezone.utc)
+    rows,gaps = suppression_primitives('chart',birth,[],[{
+        'graha':'Mars', 't_in':birth+timedelta(days=2.37),
+        't_out':birth+timedelta(days=6.71), 'moorti_name':name,
+        'quality_tier':tier, 'source_ref':'m1'}],[])
+    env = S4.EnvelopeIndex([S4.Primitive(p.primitive_kind,p.subject,p.object_ref,
+        p.polarity,p.class_label,tuple(p.envelope)) for p in rows],10)
+    ev = S4.FieldEvaluator(event_class='career',lifetime_count=1,
+        promise=PromisePrior(.5),clocks=[],ladder={},envelopes=env,
+        weights={'rho:default':.75},horizon_days=10)
+    # G1 §3.20's product has S=1 for testimony: hand-derived multiplicative
+    # identity, not a comparison against another production evaluator.
+    assert env.obstructions_at(4) == {}
+    assert ev.terms_at(4).suppression_term == 1.
+    # W2 §5.1 C-1/C-2: lambda0=1/36525 days, Ptilde=.05+.95*.5=.525.
+    # The baseline is per century, independent of this ten-day test horizon;
+    # mūrti adds no factor to these seeded engineering operands.
+    assert ev.ln_lambda(4) == pytest.approx(math.log(.525/36525), abs=1e-12)
+    assert ev.ln_lambda(4) == ev.ln_lambda(1)
+    assert any('numeric_bridge_not_admitted' in g['reason'] for g in gaps)
+
+
+@pytest.mark.parametrize('unavailable', [
+    {'null_reason':'information_unavailable'}, {'quality_tier':None},
+])
+def test_unavailable_moorti_retains_mask_edges_without_scoring(unavailable):
+    """PLAN §6.2 item 4: unavailable risk masks retain both interval edges.
+
+    ALGO §3.13's missing source cannot establish a scalar, even when the
+    interval is known. This is a mask, not a fabricated classical judgment.
+    """
+    from services.ka_kshetra.g1_inputs import suppression_primitives
+    birth = datetime(2001,1,1,tzinfo=timezone.utc)
+    rows,gaps = suppression_primitives('chart',birth,[],[{
+        'graha':'Mars','t_in':birth+timedelta(days=2.37),
+        't_out':birth+timedelta(days=6.71),'source_ref':'m-gap',**unavailable}],[])
+    env = S4.EnvelopeIndex([S4.Primitive(p.primitive_kind,p.subject,p.object_ref,
+        p.polarity,p.class_label,tuple(p.envelope),p.source_pk,
+        p.source_fact_id,p.source_table) for p in rows],10)
+    assert {0.,2.37,6.71,10.} <= set(env.breakpoints())
+    assert env.obstructions_at(4) == {}
+    assert [(p.source_pk,p.source_table) for p in rows] == [('m-gap','kala_moorti_nirnaya_candidate')]
+    assert gaps == [{'source_ref':'m-gap','reason':'moorti_information_unavailable'}]
+
+
+def test_layer0_retains_non_grid_kinematic_scenario_and_mask_edges():
+    """PLAN §6.2 item 4 and ALGO §3.20(g): full operator partition.
+
+    Neither a clock nor decade seam implies these three interior edges;
+    dropping extra_breakpoints must remove an observable Layer0 knot.
+    """
+    from services.ka_kshetra.layer0 import assemble_knot_set_with_decade_seams
+    ev = SimpleNamespace(horizon_days=10.,ladder={},envelopes=S4.EnvelopeIndex([],10),
+                         extra_breakpoints=(2.37,4.13,6.71,-1.,11.,float('nan')))
+    assert list(assemble_knot_set_with_decade_seams(ev)) == [
+        0.,1.,2.,2.37,3.,4.,4.13,5.,6.,6.71,7.,8.,9.,10.]
+
+
+def test_sampled_null_uses_1023_nonidentity_shifts_and_observation():
+    """ALGO §3.20 and PLAN §6.2 item 5: 1023+1=1024, no identity draw.
+
+    This is the declared G1 engineering surrogate, not a classical odds rule
+    or JH-parity oracle. Exercise the default consumer, including stored stats.
+    """
+    from services.ka_kshetra import stage5_null as S5
+    from services.ka_kshetra.contracts import PromisePrior
+    shifts = S5.shift_grid(10.,S5.DEFAULT_REPLICATES)
+    assert len(shifts) == 1023
+    assert shifts == pytest.approx([r*10/1024 for r in range(1,1024)])
+    assert all(0 < d < 10 for d in shifts)
+    ev = S4.FieldEvaluator(event_class='career',lifetime_count=1,
+        promise=PromisePrior(.5),clocks=[],ladder={},
+        envelopes=S4.EnvelopeIndex([],10),weights={},horizon_days=10)
+    result = S5.run_null(ev,10,buckets=(1,))
+    assert len(result.max_stats[1]) == result.shift_count == 1023
+    assert result.replicates == 1024
+    assert result.shift_grid_step == 10/1024
+    assert S5.null_p(result.max_stats[1],100.) == 1/1024
+    assert S5.null_resolution(result.replicates) == 1/1024
+
+
+def test_production_boundary_oracles_run_in_required_no_skip_ci():
+    """§N.8: an optional database job cannot earn a mandatory oracle signal."""
+    from pathlib import Path
+    import importlib.util
+    import shlex
+    import yaml
+    root = Path(__file__).resolve().parents[5]
+    # A5 D-33: inspect the real discovered selection, retaining every oracle assertion.
+    spec = importlib.util.spec_from_file_location("ci_discovery", root/"platform/scripts/governance/ci_discovery.py")
+    discovery = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(discovery)
+    jobs = yaml.safe_load((root/'.github/workflows/ci.yml').read_text())['jobs']
+    jobs = discovery.expanded_workflow(jobs)
+    # PR #3668 light-PR split: governance-gates requires full-suite, which requires the DB job.
+    assert 'full-suite' in jobs['governance-gates']['needs']
+    assert 'k3-sealed-db-tests' in jobs['full-suite']['needs']
+    job = jobs['k3-sealed-db-tests']
+    assert job['env']['KALA_REQUIRE_DB'] == '1'
+    assert not job.get('continue-on-error')
+    step = next(s for s in job['steps'] if s.get('name','').startswith('K5-G1a —'))
+    assert not step.get('continue-on-error')
+    # Full events (merge group, main push, full_gate dispatch) run it unconditionally; a light PR only
+    # when its diff touches the k5-g1a-oracles profile.
+    for token in ("github.event_name == 'merge_group'", "github.event_name == 'push' && github.ref == 'refs/heads/main'",
+                  "inputs.full_gate", "'k5-g1a-oracles'"):
+        assert token in step['if']
+    args = shlex.split(step['run'])
+    assert {'tests/l3/ka_kshetra/test_g1a_contract.py',
+            'tests/l3/ka_kshetra/test_g1a_candidate_sql.py',
+            'tests/l3/kala_db/ka_kshetra/test_g1a_candidate_storage.py'} <= set(args)
+    assert '-k' not in args and '-m' in args and args[args.index('-m')+1] == 'pytest'
+    assert '-p' in args and args[args.index('-p')+1] == 'no:cacheprovider'

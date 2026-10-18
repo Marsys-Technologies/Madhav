@@ -39,9 +39,16 @@ INTERPRETATION (each is the packet's "(I)" or is needed to make a row executable
       accepted_head measures it not accepted. An unknown acceptance at the unchanged recorded head cancels nothing.
   I4  Only a `head_changed` cancel can invalidate, and only the latest pre_merge verdict when it is ACCEPTED at
       another head and the shared predicate measures that the new head does not inherit it (exit 1). Exit 0 keeps
-      it; any other answer invalidates nothing, journals `inherit unknown` and fails the job (`inherit_unknown`).
-      The verifier slot is read from that verdict's actor (`stream-V:<slot>`). Invalidation is issued even when
+      it. Any other answer (A8) invalidates nothing, journals `inherit unknown` and falls back to requesting ONE
+      independent review of the new head (I10) — the job does not fail on that account. The verifier slot is read
+      from that verdict's actor (`stream-V:<slot>`). Invalidation, like the review request, is issued even when
       the cancel itself could not be confirmed: the new head is unreviewed either way.
+  I10 A review request (A8) is the file <run>/review_requests/<item>.json (`ky.review_request/1`:
+      item, pr, head, old_head, reason, job_id, requested_at), written once per head (an existing request for the
+      same head is kept). accepted_head honours it: a head whose inheritance the predicate cannot measure answers
+      None — "not accepted, review it" — instead of "unknown" when its review is requested, so the build kinds
+      launch the VERIFY; a measured answer (exit 0 or 1) and a verdict at the head come first. A queue submission at
+      that head retires the request to review_requests/done/ (the acceptance it rests on was measured).
   I5  Under a `[PROTECTED-WINDOW]` title every `platform/migrations/*.sql` path of the PR must be named in
       `platform/scripts/kala_protected_migrations.txt` as it is at the PR head (the PR observation does not say
       which files are added, so every migration file of the PR counts).
@@ -82,6 +89,7 @@ PROTECTED_LIST = "platform/scripts/kala_protected_migrations.txt"
 MIGRATIONS = "platform/migrations/"
 REQUEST_SCHEMA = "ky.merge_request/1"
 QUEUED_SCHEMA = "ky.merge_queued/1"
+REVIEW_REQUEST_SCHEMA = "ky.review_request/1"
 MERGE_OPTIONS = [{"id": "merge", "text": "Submit the PR to the merge queue at that head."},
                  {"id": "hold", "text": "Do not merge; the request stays parked."}]
 REGEN_TIMEOUT = 3600            # kyregen.sh merges, regenerates, tests and pushes inside one call
@@ -273,12 +281,43 @@ def _inherit(ctx, item, old_head, new_head):
     return rc
 
 
+def _review_request_path(ctx, item):
+    return _path(ctx, "run") / "review_requests" / ("%s.json" % item)
+
+
+def _review_requested(ctx, item, head):
+    """True when a readable review request (I10) for this item names this head."""
+    doc = _read_json(str(_review_request_path(ctx, item)))
+    return isinstance(doc, dict) and doc.get("schema") == REVIEW_REQUEST_SCHEMA and doc.get("item") == item \
+        and doc.get("head") == head
+
+
+def _request_review(ctx, item, number, head, old_head, reason, job_id):
+    """Write the one review request for this head (I10) → what happened, in words. An existing request for the
+    same head is kept; one for another head is replaced (that head is no longer the PR's)."""
+    path = _review_request_path(ctx, item)
+    if _review_requested(ctx, item, head):
+        return "one independent review of %s already requested (%s)" % (head, path)
+    _write_json(path, {"schema": REVIEW_REQUEST_SCHEMA, "item": item, "pr": number, "head": head, "old_head": old_head,
+                       "reason": reason, "job_id": job_id, "requested_at": _utc()})
+    return "one independent review of %s requested (%s)" % (head, path)
+
+
+def _retire_review_request(ctx, item, head):
+    """A queue submission at `head` rests on a measured acceptance: a request to review that head is moved to done/."""
+    path = _review_request_path(ctx, item)
+    if _review_requested(ctx, item, head):
+        os.makedirs(str(path.parent / "done"), exist_ok=True)
+        os.replace(str(path), str(path.parent / "done" / path.name))
+
+
 def accepted_head(ctx, item):
     """The head at which the item is independently accepted NOW (served to the other modules as ctx.accepted).
 
     H = the head in the item's latest `review` event. {head: H, via: "direct"} if the latest pre_merge verdict at H
     is ACCEPTED; {head: H, via: H0} if there is no verdict at H, the latest pre_merge verdict is ACCEPTED at an
-    older H0 and the shared predicate says H inherits it; None if not accepted; "unknown" if that cannot be told.
+    older H0 and the shared predicate says H inherits it; None if not accepted; "unknown" if that cannot be told —
+    unless a review of H is requested (I10): then None, so that the review is launched.
     """
     events = _events(ctx, item)
     if events is None:
@@ -296,7 +335,9 @@ def accepted_head(ctx, item):
     rc = _inherit(ctx, item, latest["head"], head)
     if rc == 0:
         return {"head": head, "via": latest["head"]}
-    return None if rc == 1 else UNKNOWN
+    if rc == 1:
+        return None
+    return None if _review_requested(ctx, item, head) else UNKNOWN
 
 
 # ── REGEN ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -553,6 +594,7 @@ def _start_submit(ctx, job, intent):
     if _valid_request(request, item) and request["registered_head"] == head:
         os.makedirs(str(request_path.parent / "done"), exist_ok=True)
         os.replace(str(request_path), str(request_path.parent / "done" / request_path.name))
+    _retire_review_request(ctx, item, head)
     return _result("done", "PR #%d queued (auto-merge, squash) at the accepted head %s" % (number, head))
 
 
@@ -584,13 +626,13 @@ def _start_cancel(ctx, job, intent, events):
         inherits = _inherit(ctx, item, old, new_head)
         if inherits == 0:
             done.append("%s inherits the acceptance at %s; it needs fresh admission" % (new_head, old))
-        elif inherits != 1:
+        elif inherits != 1:                                                                  # I10 (A8)
             text = ("PR #%d head changed from %s to %s after queueing; whether the new head inherits the acceptance "
                     "at %s is unknown (kyverdicts.py inherit exit %s): nothing invalidated"
                     % (number, header["registered_head"], new_head, old, "unknown" if inherits is None else inherits))
-            problems.append(text)
-            fp = fp or "inherit_unknown"
-            ctx.journal("inherit unknown", "%s: %s" % (item, text))
+            requested = _request_review(ctx, item, number, new_head, old, text, job["job_id"])
+            done.append("%s; %s" % (text, requested))
+            ctx.journal("inherit unknown", "%s: %s; %s" % (item, text, requested))
         else:
             slot = VSLOT_RE.match(latest.get("actor") or "")
             reason = "PR #%d head changed to %s after queueing; the new head does not inherit the review" \
