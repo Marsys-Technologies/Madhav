@@ -172,8 +172,11 @@ class KaTarangaWriter(WriterBase):
             rows.append(dict(chart_id=chart,generation=gen,month=month,scope_kind=kind,scope_id=scope,
                 integral=math.fsum(cell['values']), units='expected_events', risk_set=None,
                 risk_set_null_reason='upstream_risk_set_unavailable',
-                judge_window_count=len(cell['windows']) if judge_gen else None,
-                judge_count_null_reason=None if judge_gen else 'judge_generation_unpinned',
+                # K64-NB-02: a pin (or matching windows) does not establish
+                # complete month/class coverage. Until the upstream judge
+                # contract is admitted, retain references but assert no count.
+                judge_window_count=None,
+                judge_count_null_reason='judge_completeness_unavailable' if judge_gen else 'judge_generation_unpinned',
                 overlap_flag=cell['overlap'], formula_version=FORMULA_VERSION,
                 source_refs=Jsonb(dict(field_snapshot_ids=sorted(cell['snapshots']),
                     field_segment_ids=sorted(cell['segments']),event_classes=sorted(cell['classes']),

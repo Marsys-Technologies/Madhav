@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import pytest
 
+from ._smalltest_executor_evidence import executor_bound_smalltest  # noqa: F401
+
 from .test_c38_teardown_real_db import (ASSET, CHART_ID, _counts, _slice_run, _snapshot, _teardown, td, template, tworld)  # noqa: F401
 
 

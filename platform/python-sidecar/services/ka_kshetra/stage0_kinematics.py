@@ -625,7 +625,7 @@ def _sidereal_offset_series(jds: Sequence[float], ayanamsha: str) -> list[float]
 
 
 def fetch_ephemeris_series(conn, body: str, date_start: date, date_end: date,
-                            ayanamsha: str = CANONICAL_AYANAMSHA) -> dict:
+                            ayanamsha: str = CANONICAL_AYANAMSHA, *, origin: datetime | None = None) -> dict:
     """Read `ephemeris_daily` (stored tropical) for `body` over
     [date_start, date_end] and derive sidereal longitude at read time.
 
@@ -656,7 +656,13 @@ def fetch_ephemeris_series(conn, body: str, date_start: date, date_end: date,
     latitude = [float(_get(r, "latitude", 2)) for r in rows]
     speed = [float(_get(r, "speed_dps", 3)) for r in rows]
 
-    t_days = [(d - J2000_EPOCH).days for d in dates]
+    # ephemeris_daily stores noon-UT samples. The candidate axis starts at
+    # the actual birth instant; the legacy helper remains J2000 for old callers.
+    if origin is None:
+        t_days = [(d - J2000_EPOCH).days for d in dates]
+    else:
+        from .g1_inputs import field_days
+        t_days = [field_days(datetime(d.year,d.month,d.day,12,tzinfo=timezone.utc), origin) for d in dates]
     import swisseph as swe  # noqa: PLC0415
     jds = [swe.julday(d.year, d.month, d.day, 12.0) for d in dates]
     offsets = _sidereal_offset_series(jds, ayanamsha)
@@ -679,8 +685,9 @@ def fetch_natal_longitude(conn, chart_id: str, target_kind: str, target_ref: str
         row = conn.execute(
             """SELECT fact_value_num FROM chart_facts
                WHERE chart_id = %s AND fact_subject = %s
-                 AND fact_key = 'longitude' AND ayanamsha_id = %s
-               LIMIT 1""",
+                 AND fact_category = 'graha_position'
+                 AND fact_key = 'longitude_sidereal' AND ayanamsha_id = %s
+               ORDER BY fact_id LIMIT 1""",
             [chart_id, subject, ayanamsha],
         ).fetchone()
     else:
@@ -690,7 +697,7 @@ def fetch_natal_longitude(conn, chart_id: str, target_kind: str, target_ref: str
                WHERE chart_id = %s AND ayanamsha_id = %s
                  AND fact_category = 'graha_position' AND fact_subject = %s
                  AND fact_key = 'longitude_sidereal'
-               LIMIT 1""",
+               ORDER BY fact_id LIMIT 1""",
             [chart_id, ayanamsha, subject],
         ).fetchone()
     if row is None:
@@ -849,7 +856,7 @@ DO UPDATE SET
 """
 
 
-def write_kinematics_rows(conn, rows: Sequence[KinematicsRow]) -> int:
+def write_kinematics_rows(conn, rows: Sequence[KinematicsRow], *, origin: datetime | None = None) -> int:
     """Batch-inserts all rows via cursor.executemany() to avoid per-row round-trip
     latency (L1f fix — same class as L1d stage3_clocks fix, SAMPURTI campaign).
 
@@ -861,7 +868,7 @@ def write_kinematics_rows(conn, rows: Sequence[KinematicsRow]) -> int:
     params = [
         [
             r.chart_id, r.event_kind, r.body, r.target_kind, r.target_ref,
-            r.t_days, t_days_to_datetime(r.t_days), r.longitude_deg, r.velocity_dps,
+            r.t_days, (origin + timedelta(days=r.t_days) if origin else t_days_to_datetime(r.t_days)), r.longitude_deg, r.velocity_dps,
             r.latitude_deg, r.episode_id, r.dwell_days, r.dwell_weight,
             r.orb_deg, r.orb_source, r.eclipse_candidate, r.gamma_proxy,
             r.precision_regime, r.ayanamsha_id,
@@ -978,13 +985,15 @@ def run_substep(ctx, step) -> object:
             notes=f'dry-run: stage0 kinematics {step.key} not executed',
         )
     body = step.key.split(':', 1)[1]
-    birth_date = _birth_date_from_config(ctx.config)
+    from .g1_inputs import birth_instant
+    origin = birth_instant(ctx.config)
+    birth_date = origin.date()
 
-    date_start = birth_date
+    date_start = birth_date - _td(days=1)
     date_end = birth_date + _td(days=int(HORIZON_DAYS) + 1)
 
     # Build the Hermite spline for this body over the full horizon.
-    series = fetch_ephemeris_series(conn, body, date_start, date_end, CANONICAL_AYANAMSHA)
+    series = fetch_ephemeris_series(conn, body, date_start, date_end, CANONICAL_AYANAMSHA, origin=origin)
     t_days_list = series["t_days"]
     lon_list = series["longitude_deg"]
     speed_list = series["speed_dps"]
@@ -1028,7 +1037,7 @@ def run_substep(ctx, step) -> object:
     # ── Syzygy (new/full Moon — Moon body only) ───────────────────────────
     if body == "Moon":
         sun_series = fetch_ephemeris_series(conn, "Sun", date_start, date_end,
-                                            CANONICAL_AYANAMSHA)
+                                            CANONICAL_AYANAMSHA, origin=origin)
         sun_spline = build_spline(sun_series["t_days"], sun_series["longitude_deg"],
                                   sun_series["speed_dps"])
         # Moon's latitude spline (for eclipse_candidate / gamma_proxy).
@@ -1039,5 +1048,5 @@ def run_substep(ctx, step) -> object:
         rows.extend(syzygy_rows(chart_id, spline, sun_spline, lat_spline, syz_roots,
                                 CANONICAL_AYANAMSHA))
 
-    n = write_kinematics_rows(conn, rows)
+    n = write_kinematics_rows(conn, rows, origin=origin)
     return WriterResult(asset_id='ka_kshetra', rows_inserted=n)

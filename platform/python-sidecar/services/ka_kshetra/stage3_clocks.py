@@ -719,7 +719,7 @@ def evaluate_applicability(
     birth_dt: datetime | None = None,
 ) -> ClockApplicability:
     """The full §4.1 algorithm for one (chart, system). `reference_dt`
-    defaults to now (UTC) -- see module docstring #9 for why mudda's
+    must be pinned explicitly (UTC) -- see module docstring #9 for why mudda's
     "evaluated t" is read as a representative build-time instant.
 
     `birth_dt` anchors the field horizon (design §5.2's H = 36525 days FROM
@@ -731,7 +731,11 @@ def evaluate_applicability(
     if meta is None:
         raise ValueError(f"unknown system_id for Law-1 applicability: {system_id!r}")
 
-    ref_dt = reference_dt or datetime.now(timezone.utc)
+    if reference_dt is None:
+        raise ValueError('explicit as_of/reference_dt required')
+    if reference_dt.tzinfo is None:
+        raise ValueError('as_of/reference_dt requires an offset')
+    ref_dt = reference_dt.astimezone(timezone.utc)
 
     jurisdiction_state, exclusion_reason = _evaluate_jurisdiction(
         system_id, chart_id, conn, birth_dt=birth_dt, ayanamsha_id=ayanamsha_id,
@@ -802,7 +806,11 @@ def applicable_systems(
 
     `birth_dt` (optional) anchors the field horizon for `vimshottari_kp`'s
     jurisdiction step — see `evaluate_applicability`."""
-    ref_dt = reference_dt or datetime.now(timezone.utc)
+    if reference_dt is None:
+        raise ValueError('explicit as_of/reference_dt required')
+    if reference_dt.tzinfo is None:
+        raise ValueError('as_of/reference_dt requires an offset')
+    ref_dt = reference_dt.astimezone(timezone.utc)
     return [
         evaluate_applicability(
             chart_id, sid, conn,
@@ -1021,7 +1029,8 @@ def compute_boundaries_for_system(
     for r in dict_rows:
         level = LEVEL_TEXT_BY_N[int(r["level_n"])]
         lord = r.get("lord_graha") or r.get("lord_sign")
-        t_boundary = to_t_days(r["start_iso"])
+        from .g1_inputs import birth_instant, field_days
+        t_boundary = field_days(r["start_iso"], birth_instant({"birth_params":birth_params}))
         period_days = float(r["duration_days"])
         support = U.evaluate_precision_support(t_boundary, sigma_t_days, period_days)
         out.append(
@@ -1277,20 +1286,15 @@ def run_substep(ctx, step) -> object:
     birth_params = ctx.config.get('birth_params') or {}
     ayanamsha_id = DEFAULT_AYANAMSHA_ID
 
-    # Reconstruct the birth datetime for the field horizon anchor (§5.2).
-    birth_dt: Optional[datetime] = None
-    iso = birth_params.get('datetime_iso')
-    if iso:
-        from datetime import timedelta as _td
-        local_dt = datetime.fromisoformat(iso)
-        utc_dt = local_dt - _td(hours=float(birth_params.get('tz_offset_hours', 0.0)))
-        birth_dt = utc_dt.replace(tzinfo=timezone.utc)
+    from .g1_inputs import birth_instant, pinned_as_of
+    birth_dt = birth_instant(ctx.config)
+    as_of = pinned_as_of(ctx.config)
 
     # Evaluate clock applicability for every dasha system.
     applicabilities = applicable_systems(
         chart_id, conn,
         ayanamsha_id=ayanamsha_id,
-        birth_dt=birth_dt,
+        birth_dt=birth_dt, reference_dt=as_of,
     )
     n_clocks = write_clock_rows(chart_id, applicabilities, conn)
 

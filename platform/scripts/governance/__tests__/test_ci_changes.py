@@ -1,8 +1,11 @@
-"""test_ci_changes.py: the CI fast path. A docs-only pull request skips the heavy jobs; ANY code, data, config or workflow file runs everything;
-a failed/empty/unreadable classification and every non-pull_request event run everything (fail closed). The workflow wiring is pinned too: every
-heavy job needs `changes` and runs unless docs_only is exactly 'true'; the cheap/required gates are never skipped.
+"""test_ci_changes.py: docs-only light-check classification remains fail closed.
+D-29 DB/heavy jobs now have full-event/changed-profile selection; the pure classifier
+still distinguishes pinned documents and code. Fixture and suite-membership guards
+measure mandatory execution on full events; cheap checks retain their PR policy.
 """
 from __future__ import annotations
+
+from _ci_gate_test_support import runs_in_full_gate
 
 import subprocess
 import sys
@@ -230,11 +233,11 @@ def test_cli_fails_closed(tmp_path):
 
 # ---------------------------------------------------------------- the workflow wiring -----------------------------------------------------
 
-HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
+HEAVY = ("replace-chain-substrate", "typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
          "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")
-NEVER_SKIPPED = ("changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
-                 "governance-gates-static", "governance-gates-py-sidecar-shard",       # the required Governance Gates check's parts (sharded 2026-10-08): never skipped, as before
+NEVER_SKIPPED = ("generated-artifacts", "changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
+                 "governance-gates-static",       # the required Governance Gates check's parts (sharded 2026-10-08): never skipped, as before
                  "coverage-gate", "density-census", "governance-tool-tests")
 
 
@@ -243,22 +246,23 @@ def jobs():
     yaml = pytest.importorskip("yaml")
     if not CI.is_file():
         pytest.skip("no ci.yml on this tree")
-    return yaml.safe_load(CI.read_text())["jobs"]
+    from ci_discovery import expanded_workflow
+    return expanded_workflow(yaml.safe_load(CI.read_text())["jobs"])
 
 
 @pytest.mark.parametrize("name", HEAVY)
-def test_every_heavy_job_needs_changes_and_runs_unless_docs_only_is_exactly_true(jobs, name):
+def test_every_filtered_job_needs_changes_and_preserves_its_event_policy(jobs, name):
     j = jobs[name]
     assert j["needs"] in ("changes", ["changes"]) or "changes" in j["needs"]
     cond = str(j["if"])
-    assert "!cancelled()" in cond and "needs.changes.outputs.docs_only != 'true'" in cond and "== 'false'" not in cond   # an unset/failed output RUNS the job
+    assert "!cancelled()" in cond and (runs_in_full_gate(j) if "github.event_name" in cond else "needs.changes.outputs.docs_only != 'true'" in cond)
 
 
 @pytest.mark.parametrize("name", NEVER_SKIPPED)
 def test_the_cheap_and_required_gates_are_never_skipped_by_the_fast_path(jobs, name):
     j = jobs[name]
     assert "docs_only" not in str(j.get("if", "")), name
-    if name != "governance-tool-tests":
+    if name not in {"governance-tool-tests", "governance-gates"}:
         assert "changes" not in (j.get("needs") if isinstance(j.get("needs"), list) else [j.get("needs")]), name
 
 
@@ -281,7 +285,9 @@ def test_the_trigger_set_is_unchanged_so_push_and_merge_group_still_run_everythi
 
 
 def test_every_job_in_ci_yml_is_classified_here_so_a_new_heavy_job_is_a_conscious_choice(jobs):
-    unknown = set(jobs) - set(HEAVY) - set(NEVER_SKIPPED) - {"census-battery"}
+    from ci_db_shard import JOB_SHARDS
+    umbrellas = {"required-"+name for name in JOB_SHARDS}
+    unknown = set(jobs) - umbrellas - set(HEAVY) - set(NEVER_SKIPPED) - {"census-battery", "unit-db-tests", "full-suite", "governance-gates-py-sidecar-shard"}
     assert not unknown, f"classify these jobs as HEAVY (skipped on docs-only) or NEVER_SKIPPED: {sorted(unknown)}"
 
 
@@ -461,8 +467,8 @@ def _am10_db_problems(jobs):
         if AM10_SUITE not in _job_suites(job):
             continue
         problems = _a55_problems(job, (AM10_SUITE,))
-        if "needs.changes.outputs.docs_only != 'true'" not in str(job.get("if", "")):
-            problems.append("AM-10 job can skip a code change")
+        if not runs_in_full_gate(job):
+            problems.append("AM-10 job can skip a full event")
         for step in job["steps"]:
             if AM10_SUITE not in _pytest_suites(step.get("run", "")):
                 continue
@@ -471,7 +477,7 @@ def _am10_db_problems(jobs):
                 problems.append("AM-10 missing-URL failures are not required")
             if not env.get("GOCHARA_A51_TEST_DATABASE_URL"):
                 problems.append("AM-10 has no disposable database URL")
-            if step.get("if"):
+            if not runs_in_full_gate(step):
                 problems.append("AM-10 step can be skipped")
         return problems
     return ["AM-10 suite is in no mandatory gochara-a55 DB command"]
@@ -605,6 +611,37 @@ def test_the_a55_guard_catches_every_way_of_weakening_each_job(jobs):
             assert _a55_problems(mutated, expected), f"{jname}: the guard accepted the mutation: {name}"
 
 
+# P07-R2: the ported publication oracles must execute, not merely be discovered.
+def test_p07_mcp_oracles_run_in_the_required_readback_job(jobs):
+    job = jobs["governance-readback-tests"]
+    assert not job.get("continue-on-error", False)
+    commands = [s for s in job["steps"] if "vitest run" in str(s.get("run", ""))]
+    for suite in ("src/tools/retrieval/register_gochara_contact_ledger.test.ts",
+                  "src/tools/retrieval/register_gochara_windows_governed_gate.test.ts"):
+        matching = [s for s in commands if suite in s["run"].split()]
+        assert matching, f"{suite} has no mandatory MCP test command"
+        assert all(s.get("working-directory") == "platform-mcp" for s in matching)
+        assert all(not s.get("continue-on-error", False) and runs_in_full_gate(s)
+                   and not any(x in s["run"] for x in ("||", "--passWithNoTests", "-t ", "--testNamePattern")) for s in matching)
+
+
+def test_p07_migration_1235_runs_fail_closed_in_the_disposable_db_job(jobs):
+    job = jobs["governance-readback-tests"]
+    assert "governance-readback-tests" in jobs["governance-tool-tests"]["needs"]
+    assert "postgres" in job.get("services", {}) and not job.get("continue-on-error", False)
+    suite = "tests/test_migration_1235_evidence_function.py"
+    steps = [s for s in job["steps"] if suite in _pytest_suites(str(s.get("run", "")))]
+    assert len(steps) == 1, "all five 1235 cases need one explicit mandatory DB command"
+    step = steps[0]
+    assert step["working-directory"] == "platform/python-sidecar"
+    assert step["env"]["GOCHARA_REQUIRE_DB"] == '1'
+    assert step["env"]["GOCHARA_A51_TEST_DATABASE_URL"] == "postgresql://postgres:postgres@localhost:55433/postgres"
+    assert not step.get("continue-on-error", False) and runs_in_full_gate(step)
+    assert "||" not in step["run"]
+    args = next(line.split("pytest", 1)[1] for line in step["run"].splitlines() if "pytest" in line)
+    assert not any(x in args for x in ("--deselect", "--ignore", "-k ", "-m ", "::"))
+
+
 def test_kala_certification_mapping_oracle_runs_with_its_required_db_neighbours(jobs):
     suite = "tests/l3/ka_bhavishya_lekha/test_certification_mapping.py"
     assert not jobs["kala-db-tests"].get("continue-on-error")
@@ -617,7 +654,7 @@ def test_kala_certification_mapping_oracle_runs_with_its_required_db_neighbours(
         assert str(step["env"]["KALA_REQUIRE_DB"]) == "1"
         assert step["env"].get("KALA_ADMIN_DSN")
         assert not step.get("continue-on-error")
-        assert not step.get("if")
+        assert runs_in_full_gate(step)
         args = run.split()[run.split().index("pytest") + 1:]
         assert not any(token.split("=")[0] in _FORBIDDEN_FLAGS for token in args)
         assert not any(token in run.split() for token in ("||", ";", "|"))
@@ -642,7 +679,7 @@ def test_kala_k6_5_regression_suites_run_in_the_mandatory_db_command(jobs, suite
                     if token.startswith('tests/')]
         assert (ROOT / 'platform/python-sidecar' / suite).is_file()
         assert any(Path(suite).is_relative_to(Path(path)) for path in selected), suite
-        assert not step.get('if') and not step.get('continue-on-error')
+        assert runs_in_full_gate(step) and not step.get('continue-on-error')
         assert str(step['env']['KALA_REQUIRE_DB']) == '1'
         assert step['env'].get('KALA_ADMIN_DSN')
         args = str(step['run']).split()[str(step['run']).split().index('pytest') + 1:]
@@ -662,3 +699,36 @@ def test_measuring_dump_service_exposes_a_local_socket_for_the_disposable_guard(
     assert socket_dir == "/var/run/postgresql"
     assert f"{socket_dir}:/var/run/postgresql" in service["volumes"]
     assert step["env"]["GOCHARA_A53_ADMIN_DSN"] == next(s for s in peer["steps"] if "GOCHARA_A53_ADMIN_DSN" in s.get("env", {}))["env"]["GOCHARA_A53_ADMIN_DSN"]
+
+
+@pytest.mark.parametrize("case_count,skipped,ok", [(5, False, True), (5, True, False), (4, False, False), (0, False, False)])
+def test_p07_ci_rejects_skipped_or_missing_migration_1235_cases(jobs, tmp_path, case_count, skipped, ok):
+    """Execute the shipped CI check: a skip or lost case cannot earn a DB pass."""
+    import shlex
+    steps = [s for s in jobs["governance-readback-tests"]["steps"]
+             if "tests/test_migration_1235_evidence_function.py" in str(s.get("run", ""))]
+    assert len(steps) == 1, "required migration 1235 CI command is missing"
+    step = steps[0]
+    command = next(shlex.split(line) for line in step["run"].splitlines() if "ET.parse(" in line)
+    cases = ["<testcase />"] * case_count
+    if skipped and cases:
+        cases[0] = "<testcase><skipped /></testcase>"
+    (tmp_path / "migration-1235.xml").write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
+    proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)
+    assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
+
+
+@pytest.mark.parametrize("case_count,skipped,ok", [(30, False, True), (30, True, False), (29, False, False), (0, False, False)])
+def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count, skipped, ok):
+    """Both ported MCP suites must execute their 17 + 13 cases; skips cannot earn green."""
+    import shlex
+    steps = [s for s in jobs["governance-readback-tests"]["steps"]
+             if "src/tools/retrieval/register_gochara_contact_ledger.test.ts" in str(s.get("run", ""))]
+    assert len(steps) == 1
+    command = next(shlex.split(line) for line in steps[0]["run"].splitlines() if "ET.parse(" in line)
+    cases = ["<testcase />"] * case_count
+    if skipped and cases:
+        cases[0] = "<testcase><skipped /></testcase>"
+    (tmp_path / "gochara-mcp.xml").write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
+    proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)
+    assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr

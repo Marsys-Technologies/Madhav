@@ -435,6 +435,17 @@ describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposabl
     expect(JSON.stringify(p.rows[0]?.object_selector)).toContain('av_qualifier')
   })
 
+  it.each([
+    ['empty selector', []],
+    ['extra key', [{ agent: 'mars', relation: 'conjunction', object_role: 'karaka', extra: true }]],
+    ['unknown agent', [{ agent: 'pluto', relation: 'conjunction', object_role: 'karaka' }]],
+    ['unknown relation', [{ agent: 'mars', relation: 'unknown', object_role: 'karaka' }]],
+  ])('AM-7 selector preserves the v1.0 refusal of %s', async (_label, selector) => {
+    const result = await pool.query('SELECT public.ka_gochara_object_selector_ok($1::jsonb) AS ok',
+      [JSON.stringify(selector)])
+    expect(result.rows[0].ok).toBe(false)
+  })
+
   it("AM-8 SPLIT: ka_gochara_frame_ok keeps exactly its v1.0 arms; frame_kind='inherited' is REFUSED", async () => {
     const r = await pool.query(`
       SELECT public.ka_gochara_frame_ok('inherited', NULL) AS inh_null,
@@ -481,6 +492,25 @@ describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposabl
     expect(r.rows[0]!.n).toBe(0)
   })
 
+  it('missing 1155 ledger prerequisite refuses both standalone and embedded 1204 gates before DDL', async () => {
+    await resetSchema()
+    await withTempDir(CONTRACT_FILES, async dir => {
+      const c = await pool.connect()
+      try {
+        await runMigrations(c, [dir], { only: new Set(CONTRACT_FILES), disclosures: new Map(), renumberDisclosures: new Map() })
+      } finally { c.release() }
+    })
+    // Keep every prerequisite object valid; only the ordered-execution evidence is absent.
+    await pool.query("DELETE FROM _migrations_applied WHERE filename = '1155_gochara_relationship_record.sql'")
+    const gate = readFileSync(path.resolve(process.cwd(),
+      'python-sidecar/scripts/kala_gochara_cutover/preflight_1204_av_qualifier_object_role.sql'), 'utf8')
+    await expect(pool.query(gate)).rejects.toThrow(/prerequisite_migration_not_applied :: 1155_/)
+    await expect(pool.query(mig(M1204))).rejects.toThrow(/prerequisite_migration_not_applied :: 1155_/)
+    const result = await pool.query("SELECT ka_gochara_object_selector_ok('[{\"agent\":\"mars\",\"relation\":\"residence\",\"object_role\":\"av_qualifier\"}]'::jsonb) AS ok")
+    expect(result.rows[0].ok).toBe(false)
+    expect((await pool.query("SELECT filename FROM _migrations_applied WHERE starts_with(filename, '1204_')")).rows).toEqual([])
+  })
+
   it('replay is BLOCKED: the embedded gate refuses an already-applied file', async () => {
     await resetSchema()
     await withTempDir(WINDOW_FILES, async dir => {
@@ -493,5 +523,71 @@ describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposabl
     })
     // A bare re-run of 1204's own file (out of band — e.g. psql) hits its gate
     await expect(pool.query(mig(M1204))).rejects.toThrow(/preflight 1204 BLOCKED/)
+  })
+
+  describe.each(['embedded', 'standalone'] as const)('%s 1204 preflight environment refusals', (source) => {
+    function preflight(): string {
+      return source === 'embedded' ? mig(M1204) : readFileSync(path.resolve(process.cwd(),
+        'python-sidecar/scripts/kala_gochara_cutover/preflight_1204_av_qualifier_object_role.sql'), 'utf8')
+    }
+
+    it.each(['USAGE', 'CREATE'] as const)('reports missing schema %s using the actual role privileges', async (privilege) => {
+      const c = await pool.connect()
+      // Roles and their grants are transaction-local fixtures; ROLLBACK removes them.
+      await c.query('BEGIN')
+      try {
+        const role = `am7_gate_${process.pid}`
+        await c.query(`CREATE ROLE ${role} NOLOGIN`)
+        await c.query('REVOKE ALL ON SCHEMA public FROM PUBLIC')
+        await c.query(`GRANT ${privilege === 'USAGE' ? 'CREATE' : 'USAGE'} ON SCHEMA public TO ${role}`)
+        await c.query(`SET LOCAL ROLE ${role}`)
+        const state = await c.query("SELECT has_schema_privilege('public', $1) AS allowed", [privilege])
+        expect(state.rows[0].allowed).toBe(false)
+        // PostgreSQL resolves the full gate's ::regclass constants before its
+        // CTE runs and itself refuses missing USAGE. Execute the shipped finding
+        // arm independently so that implicit refusal cannot conceal a disabled
+        // explicit privilege detector in either copy of the gate.
+        const failure = `no_${privilege.toLowerCase()}_privilege_on_public`
+        const arm = preflight().match(new RegExp(`SELECT '${failure}', current_user\\s+WHERE [\\s\\S]*?(?=\\s+UNION ALL)`))
+        expect(arm, `executable ${failure} finding arm`).not.toBeNull()
+        const findings = await c.query(arm![0])
+        expect(findings.rows).toHaveLength(1)
+        expect(Object.values(findings.rows[0])).toEqual([failure, role])
+      } finally {
+        await c.query('ROLLBACK')
+        c.release()
+      }
+    })
+
+    it.each(['CREATE', 'function'] as const)('the full gate refuses missing %s before any DDL', async (missing) => {
+      await resetSchema()
+      await withTempDir(CONTRACT_FILES, async dir => {
+        const c = await pool.connect()
+        try {
+          await runMigrations(c, [dir], { only: new Set(CONTRACT_FILES), disclosures: new Map(), renumberDisclosures: new Map() })
+        } finally { c.release() }
+      })
+      const c = await pool.connect()
+      await c.query('BEGIN')
+      try {
+        const role = `am7_gate_${process.pid}`
+        await c.query(`CREATE ROLE ${role} NOLOGIN`)
+        await c.query('REVOKE ALL ON SCHEMA public FROM PUBLIC')
+        await c.query(`GRANT USAGE ON SCHEMA public TO ${role}`)
+        await c.query(`GRANT SELECT ON _migrations_applied TO ${role}`)
+        await c.query(`ALTER TABLE ka_gochara_relationship_record OWNER TO ${role}`)
+        if (missing === 'function') {
+          await c.query(`GRANT CREATE ON SCHEMA public TO ${role}`)
+          await c.query('DROP FUNCTION ka_gochara_object_selector_ok(jsonb) CASCADE')
+        }
+        await c.query(`SET LOCAL ROLE ${role}`)
+        await expect(c.query(preflight())).rejects.toThrow(missing === 'CREATE'
+          ? /preflight 1204 BLOCKED[\s\S]*no_create_privilege_on_public/
+          : /preflight 1204 BLOCKED[\s\S]*function_missing/)
+      } finally {
+        await c.query('ROLLBACK')
+        c.release()
+      }
+    })
   })
 })
