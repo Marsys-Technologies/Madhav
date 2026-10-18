@@ -36,7 +36,11 @@ describe('P06b per-migration catalogue readbacks', () => {
       fs.writeFileSync(path.join(dir, filename), 'SELECT 1381;')
       fs.writeFileSync(path.join(dir, '1382_test_successor.sql'), 'SELECT 1382;')
       const calls: string[] = []
-      const client = { query: async (s: string) => { calls.push(s.trim()); return { rows: [] } } }
+      // The runner restores the entry role after each migration body (migrate.ts, main's atomic DDL+ledger commit).
+      const client = { query: async (s: string) => {
+        calls.push(s.trim())
+        return { rows: s.trim() === "SELECT current_setting('role') AS role" ? [{ role: 'none' }] : [] }
+      } }
       await runMigrations(client as unknown as PoolClient, [dir], {
         only: new Set([filename, '1382_test_successor.sql']),
         disclosures: new Map(), renumberDisclosures: new Map(),
