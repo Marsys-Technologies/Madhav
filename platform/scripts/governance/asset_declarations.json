@@ -305,7 +305,7 @@
     "reaches": [
      "platform-mcp/src/lib/kala_ritual_resonance.ts:575#793c8cf1",
      "platform-mcp/src/lib/kala_ritual_resonance.ts:578#f40f8b9b",
-     "platform-mcp/src/tools/kala_views/priority.ts:501#c444ed33",
+     "platform-mcp/src/tools/kala_views/priority.ts:502#c444ed33",
      "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts:21#2216951f"
     ]
    },
