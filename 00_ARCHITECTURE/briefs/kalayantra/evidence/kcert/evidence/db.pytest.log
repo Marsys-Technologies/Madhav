@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-9.1.1, pluggy-1.6.0 -- /Users/Dev/kalayantra/venv/bin/python3
+swiss .se1 corpus: SE_EPHE_PATH=/Users/Dev/kalayantra/ephe
+rootdir: /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/src/platform/python-sidecar
+plugins: langsmith-0.14.4, anyio-4.15.1
+collecting ... collected 12 items
+
+tests/l3/kala_db/test_k_cert_citation_resolution.py::test_registered_writer_honors_frozen_contract_and_dry_run PASSED [  8%]
+tests/l3/kala_db/test_k_cert_citation_resolution.py::test_seed_matches_the_independent_live_fixture PASSED [ 16%]
+tests/l3/kala_db/test_k_cert_citation_resolution.py::test_registry_bootstrap_matches_dispatchable_writer PASSED [ 25%]
+tests/l3/kala_db/test_k_cert_citation_resolution.py::test_real_writer_repairs_damaged_content_and_recomputes_sealed_digest PASSED [ 33%]
+tests/l3/kala_db/test_k_cert_citation_resolution.py::test_writer_leaves_transaction_and_connection_owned_by_caller PASSED [ 41%]
+tests/l3/kala_db/test_k_cert_citation_resolution.py::test_dry_run_does_not_replace_existing_rows PASSED [ 50%]
+tests/l3/kala_db/test_k_cert_citation_resolution.py::test_sealed_oracle_rejects_seed_mutations[rename] PASSED [ 58%]
+tests/l3/kala_db/test_k_cert_citation_resolution.py::test_sealed_oracle_rejects_seed_mutations[invent_chunk] PASSED [ 66%]
+tests/l3/kala_db/test_k_cert_citation_resolution.py::test_sealed_oracle_rejects_seed_mutations[missing_row] PASSED [ 75%]
+tests/l3/kala_db/test_k_cert_citation_resolution.py::test_migration_makes_exactly_one_asset_plannable_and_count_truthful PASSED [ 83%]
+tests/l3/kala_db/test_k_cert_citation_resolution.py::test_migration_refuses_a_missing_registry_contract PASSED [ 91%]
+tests/l3/kala_db/test_kcert_independent_assessment.py::test_actual_catalog_and_scanner_with_stored_resolved_unresolved PASSED [100%]
+
+============================== 12 passed in 7.15s ==============================
