@@ -1,0 +1,12 @@
+{
+  "main_sha": "4ed06a493faef9659ce1005280cf6130982bd0a6",
+  "integration_sha": "829d8db1df1005e414623cf21b7e0999a6f9bf31",
+  "files": {
+    "CLAUDE.md": "788abf51023f6585b54e8e682a58a097495b0fcc13f510ad4409f41cd4165e0b",
+    "platform-mcp/src/tools/retrieval/register_gochara_windows.ts": "b034e41e92450004a6510936d31298d4a3ff7bfab8b278dd176215a3515f44bd",
+    "platform/scripts/governance/asset_census.py": "523f50ea74e24875f650f13b0659d4ee6165a0ec0eb864124b2e3d3fccf8c60b",
+    "platform/scripts/governance/asset_declarations.json": "2a088beeb944b83c47b1c382f1a8b8271fbf255f8fb3da807b39c9320842c7d8",
+    "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md": "f251df647108b6057a9ddc03fc03eba1ada9e6a142e41f73fdfb9696fe3cad2f",
+    "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md": "96061d91fbc6ac4cd461311944029ee7edffab0b0263c33fe08ce77c954ba90c"
+  }
+}

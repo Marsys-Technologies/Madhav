@@ -22,7 +22,8 @@
 #   * executes the ONE pinned SQL file only after its sha256 matches PINNED_SHA256_fn_1235_evidence_readback_sql
 #     and it carries no backslash-led line (a psql meta-command);
 #   * prints 'PASS <id>' / 'STOP <id>' per check; exit 0 = all PASS, 1 = a STOP,
-#     2 = a preflight REFUSAL;
+#     2 = a preflight REFUSAL; optional --if-applied returns 3 / NOT_APPLICABLE
+#     only when both the migration ledger row and function are absent;
 #   * writes every raw output under --out plus a sha256 MANIFEST and its OWN sha256 as
 #     RUNNER_SHA256;
 #   * NEVER issues a write: every statement is SELECT/SHOW and the session is read-only.
@@ -30,15 +31,17 @@ set -euo pipefail
 
 OUT=""
 EXPECT_DB=""
+IF_APPLIED=0
 SQL_FILE="platform/scripts/readbacks/fn_1235_evidence_readback.sql"
 
 usage() {
-  echo "usage: $0 --out DIR [--sql-file PATH] [--expect-db NAME]" >&2
+  echo "usage: $0 --out DIR [--sql-file PATH] [--expect-db NAME] [--if-applied]" >&2
   exit 2
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --if-applied) IF_APPLIED=1 ;;
     --out) OUT="${2:?--out needs a directory}"; shift ;;
     --sql-file) SQL_FILE="${2:?--sql-file needs a path}"; shift ;;
     --expect-db) EXPECT_DB="${2:?--expect-db needs a database name}"; shift ;;
@@ -152,6 +155,17 @@ if [ -n "$EXPECT_DB" ]; then
     exit 2
   fi
   echo "PASS SESSION-expect-db current_database()=$db matches --expect-db"
+fi
+
+# Before the protected window applies 1235, an explicit applicability probe may report absence.
+# Exit 3 is a recorded disposition, never an applied/PASS receipt. Any partial
+# state still runs all strict checks and fails if inconsistent.
+if [ "$IF_APPLIED" = 1 ]; then
+  applicability="$(run_sql FN1235-applicability "SELECT (SELECT count(*) FROM public._migrations_applied WHERE filename = '$LEDGER_NAME'), to_regprocedure('public.ka_gochara_staged_candidate_has_runtime_evidence(text)') IS NOT NULL")" || exit 1
+  if [ "$applicability" = "$(printf '0\tf')" ]; then
+    echo "NOT_APPLICABLE FN1235 1235 has no ledger row or function; no applied receipt"
+    exit 3
+  fi
 fi
 
 # ── the readback itself ─────────────────────────────────────────────────────

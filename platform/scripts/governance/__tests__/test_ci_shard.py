@@ -120,11 +120,12 @@ def test_ci_matrix_count_and_name_agree(jobs):
 def test_the_aggregate_job_keeps_the_original_required_name_and_fails_on_any_non_success(jobs):
     agg = jobs["governance-tool-tests"]
     assert agg["name"] == "Governance Tool Tests (pytest)"
-    assert set(agg["needs"]) == {"changes", "governance-tool-tests-shard", "governance-readback-tests"}
+    assert set(agg["needs"]) == {"changes", "governance-tool-tests-shard", "governance-readback-tests", "gochara-j5s-full-class-seal"}
     assert "always()" in str(agg["if"])
     step = agg["steps"][0]
     assert step["env"]["SHARDS_RESULT"] == "${{ needs.governance-tool-tests-shard.result }}"
     assert step["env"]["READBACK_RESULT"] == "${{ needs.governance-readback-tests.result }}"
+    assert step["env"]["J5S_RESULT"] == "${{ needs.gochara-j5s-full-class-seal.result }}"
     assert step["env"]["DOCS_ONLY"] == "${{ needs.changes.outputs.docs_only }}"
     assert "exit 1" in step["run"]
 
@@ -145,7 +146,7 @@ def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate_unless_docs_
     """N-98 A + the fast path: run the aggregate job's own script with each `needs.<shard>.result` and docs_only: only success, or skipped
     together with docs_only=true, may pass."""
     script = jobs["governance-tool-tests"]["steps"][0]["run"]
-    p = subprocess.run(["bash", "-c", script], env={**os.environ, "SHARDS_RESULT": result, "READBACK_RESULT": readback, "DOCS_ONLY": docs_only, "EVENT_NAME": "pull_request", "READBACK_EXPECTED": "false"}, capture_output=True, text=True)
+    p = subprocess.run(["bash", "-c", script], env={**os.environ, "SHARDS_RESULT": result, "READBACK_RESULT": readback, "DOCS_ONLY": docs_only, "EVENT_NAME": "pull_request", "READBACK_EXPECTED": "false", "J5S_RESULT": "success", "J5S_EXPECTED": "true"}, capture_output=True, text=True)
     ok = ok and (readback in ("success", "skipped") if result == "success" else readback == "skipped")
     assert (p.returncode == 0) is ok, (result, readback, docs_only, p.stdout, p.stderr)
     assert ("::error::" in p.stdout) is (not ok)
@@ -194,3 +195,27 @@ def test_tracker_suite_is_mandatory_in_governance_shards():
     assert "platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py" in tracker[0]["run"]
     assert "test_kalayantra_control_plane.py" in tracker[0]["run"]
     assert "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt_binding.py" in tracker[0]["run"]
+
+
+def test_tracker_external_isolation_runs_in_required_governance_shard():
+    """Dropping the sleep-60 regressions from CI must fail the required gate."""
+    import shlex
+
+    import yaml
+
+    from ci_discovery import expanded_workflow
+    jobs = expanded_workflow(yaml.safe_load(CI.read_text())["jobs"])
+    shard = jobs["governance-tool-tests-shard"]
+    suite = "platform/scripts/governance/pravaha_tracker/tests/test_external_isolation.py"
+    commands = [step for step in shard["steps"]
+                if suite in shlex.split(str(step.get("run", "")))
+                or str(Path(suite).parent) in shlex.split(str(step.get("run", "")))]
+    assert commands, "external isolation regressions have no required CI invocation"
+    for step in commands:
+        words = shlex.split(step["run"])
+        assert "pytest" in words and "--collect-only" not in words
+        assert "--deselect" not in words and "-k" not in words
+        assert step.get("if") in (None, "matrix.shard == 1")
+        assert not step.get("continue-on-error", False)
+        assert "||" not in words
+    assert "governance-tool-tests-shard" in jobs["governance-tool-tests"]["needs"]

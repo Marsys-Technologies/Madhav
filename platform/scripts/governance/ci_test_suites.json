@@ -1,6 +1,13 @@
 {
   "schema": "ci.test_suites/1",
   "suites": {
+    "selfhosted-fork-guard-tests": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "platform/scripts/governance/__tests__/test_selfhosted_fork_guard*.py"
+      ]
+    },
     "deploy-build-check-tests": {
       "cwd": ".",
       "engine": "pytest",
@@ -102,6 +109,7 @@
         "tests/l3/gochara/test_w2*.py",
         "tests/l3/gochara/test_p09*.py",
         "tests/l3/gochara/test_j7b*.py",
+        "tests/l3/gochara/test_j4ops_*.py",
         "tests/l3/gochara/test_j6m*.py",
         "tests/l3/gochara/test_horizon*.py",
         "tests/l3/gochara/test_mb_horizon*.py",
@@ -412,6 +420,11 @@
         "scripts/__tests__/test_p01*.py",
         "scripts/__tests__/test_backup*.py",
         "scripts/__tests__/test_w4*.py"
+      ],
+      "path_triggers": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
+        "**/kyd_kinds_*.py"
       ]
     },
     "db-integration-tests-85-0": {
@@ -499,6 +512,13 @@
         "tests/l3/gochara_eval/test_dump*.py"
       ]
     },
+    "gochara-j5s-full-class-seal": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_j5s_*_db.py"
+      ]
+    },
     "gochara-a55-dispatch-1-9": {
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
@@ -556,10 +576,12 @@
       "include": [
         "platform/scripts/governance/pravaha_tracker/tests/test_verify*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_hang*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_external_isolation*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_decision*.py",
-        "platform/scripts/governance/pravaha_tracker/tests/test_tracker_reconcil*.py"
+        "platform/scripts/governance/pravaha_tracker/tests/test_tracker_reconcil*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_merged_deployed*.py"
       ]
     },
     "governance-readback-tests-3-0": {
@@ -568,7 +590,8 @@
       "include": [
         "platform/scripts/__tests__/test_gochara_window_readbacks*.py",
         "platform/scripts/__tests__/test_gochara_sitting_evidence*.py",
-        "platform/scripts/__tests__/test_fn*.py"
+        "platform/scripts/__tests__/test_fn*.py",
+        "platform/scripts/__tests__/test_gochara_rehearsal*.py"
       ]
     },
     "governance-gates-py-sidecar-shard-3-29": {

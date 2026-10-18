@@ -32,6 +32,13 @@ export interface LegacyViewAdapter {
 }
 const legacyCommon: InputSchema = {
   chart_id: { type: 'string', required: true, description: 'Explicit chart UUID; no chart default.' },
+  published_request: { type: 'object', description: 'Explicit published-stage selectors. Opts into the stage response; omitted requests retain the legacy contract.',
+    properties: {
+      at: { type: 'string' }, date_from: { type: 'string' }, date_to: { type: 'string' },
+      event_class: { type: 'string' }, assertion_id: { type: 'string' },
+      source_table: { type: 'string' }, record_id: { type: 'string' },
+      limit: { type: 'number' }, offset: { type: 'number' },
+    } },
   question_frame: { type: 'object', description: 'Forwarded without reinterpretation to the established handler.',
     properties: Object.fromEntries(['domain', 'entity', 'horizon', 'intent_verb', 'stakes', 'comparison_target']
       .map(key => [key, { type: 'string' }])) },
@@ -121,28 +128,36 @@ export function makePublicView(view: ViewName): CapabilityDescriptor {
   const uri = viewRoutes[view].public_uri
   return {
     uri, name: contract.public_name, type: 'tool', layer: 'L3',
-    description: `Kāla ${view} legacy compatibility contract. The public adapter is unavailable in the web registry; ${contract.stage_uri} is a separate published-stage reader with different inputs and outputs.`,
+    description: `Kāla ${view}: explicit published_request selectors serve ${contract.stage_uri}'s published-stage envelope. Requests without published_request retain the legacy contract, whose web adapter is unavailable.`,
     scope: 'per_chart', archetype: 'temporal', traversal_level: 'L-OVERVIEW', tool_role: 'umbrella',
     emits_references: false, grounds_to: { l1_fact_ids: false }, lel_capable: false,
     required_inputs: ['chart_id'], input_schema: contract.input_schema,
     annotations: { read_only: true, idempotent: true, destructive: false, open_world: false },
+    // Applies to explicit published_request responses; legacy envelopes remain verbatim.
+    density_contract: { paginated: true, facets: ['event_class', 'source_table'], empty_reason: true },
     semantic_capabilities: [{
       scu_id: `scu.catalog.${contract.public_name}`, version: 1, label: `Kāla ${view} public compatibility contract`,
-      description: 'Preserves established inputs and envelopes through an explicit authenticated legacy adapter; does not claim a stage-reader cutover.',
+      description: 'Explicit published_request selectors opt into the published-stage envelope. Established requests retain their authenticated legacy contract.',
       kind: 'temporal', domains: ['timing'], concepts: [contract.public_name, 'kala'],
       intents: ['assess', 'sequence', 'verify'], horizons: ['historical', 'current', 'future'], scope: 'chart',
       inputs: Object.keys(contract.input_schema).map(key => key === 'chart_id' ? key : `${key}?`),
-      outputs: ['empty_reason', 'unavailable_stage_bindings'], primary_binding_uri: uri,
+      outputs: ['empty_reason', 'unavailable_stage_bindings', 'manifest_id', 'generation', 'rows', 'density', 'coverage', 'pagination'], primary_binding_uri: uri,
       provenance_requirements: ['chart_id'], freshness_policy: 'No answer-readiness claim from name resolution alone.',
       entitlement: 'native', safety_notes: ['No implicit legacy identity/time conversion or successful empty envelope.'],
       known_gaps: ['The authenticated MCP adapter and unchanged-generator bridge regeneration belong to K7-1b.',
-        'The web registry has no installed legacy adapter; it returns an explicit unavailable error.',
-        'Legacy-to-published cutover requires response golden equivalence; no cutover is enabled by this descriptor.'],
+        'The web registry has no installed legacy adapter; requests without published_request return an explicit unavailable error.',
+        'No implicit legacy-to-stage conversion or production acceptance is enabled by the explicit request path.'],
       availability_dispositions: [{ binding_id: `registry:${uri}`, status: 'deliberately_dark',
         reason: 'Name reach is additive; legacy execution and published-generation equivalence are separate evidence gates.',
         source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts'] }], editorial: true,
     }],
-    handler: makeLegacyViewHandler(view),
+    async handler(args, context) {
+      if (Object.hasOwn(args, 'published_request')) {
+        const { servePublishedRequest } = await import('./published_request')
+        return servePublishedRequest(view, args, context)
+      }
+      return makeLegacyViewHandler(view)(args, context)
+    },
   }
 }
 type Data = Record<string, unknown>
