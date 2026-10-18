@@ -13,8 +13,7 @@ and an EVIDENCE FILE supplied by the cockpit (it has `gh`; this module never cal
      "acceptances": [{"item": "K3-2", "criterion": "v2", "result": "ACCEPTED", "actor": "stream-V:<slot>",
                       "ts": "<iso>", "ref": "<review job id or PR comment url>",
                       "pr": 3561, "head": "<40>"}      # code: the exact reviewed head
-                     | {... "artifact_digest": "<64>"} # artifact
-                     | {... "phase": "post_deploy", "head": "<merge commit>"}],   # data-writing code items
+                     | {... "artifact_digest": "<64>"}],  # artifact (post-deploy acceptances are retired, A8 §4)
      "deploys": [{"run_id": 123, "head_sha": "<40>", "conclusion": "success", "event": "workflow_run",
                   "branch": "main", "created_at": "<iso>"}],
      "detectors": {"K3-2": {"status": "done", "detail": "..."}}}   # optional; --apply asks the live tracker
@@ -36,7 +35,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     __package__ = "pravaha_tracker"
 
-from pravaha_tracker.completion import D46_KINDS, d46_kind, evidence_requirements, writes_data  # noqa: E402
+from pravaha_tracker.completion import D46_KINDS, d46_kind, evidence_requirements  # noqa: E402
 from pravaha_tracker.events import actor_stream  # noqa: E402
 from pravaha_tracker.state import build_snapshot  # noqa: E402
 from pravaha_tracker.verdicts import accepted_verdict  # noqa: E402
@@ -202,11 +201,6 @@ def _code_evidence(model, events, evidence, repo, item, main_sha, ev, missing) -
     requirements = evidence_requirements(model, item)
     if requirements and requirements["conflict"]:
         missing.append("declaration conflict: " + requirements["conflict"])
-    elif writes_data(item) or "post_deploy_verdict" in (requirements or {}).get("evidence", ()):
-        post = _acceptance(model, events, evidence, item, head=merge, phase="post_deploy")
-        ev["post_deploy_acceptance"] = post
-        if post is None:
-            missing.append("data-writing item: no independent post-deploy acceptance at the merge commit")
 
 
 def _artifact_evidence(model, events, evidence, item, ev, missing) -> None:
@@ -296,7 +290,7 @@ def apply(model: dict, evidence: dict, repo: str, events_path: str, observe_dete
 
 def _log_verdict(item, ev, stage, *, phase="pre_merge") -> None:
     """Stage the cockpit-supplied acceptance as a verdict event, if the log does not hold it yet."""
-    acc = ev["post_deploy_acceptance"] if phase == "post_deploy" else ev["acceptance_ref"]
+    acc = ev["acceptance_ref"]
     if acc["source"] == "event_log":
         return
     stage({"kind": "verdict", "actor": acc["actor"], "item": item["id"], "result": "ACCEPTED", "phase": phase,
@@ -307,8 +301,6 @@ def _log_verdict(item, ev, stage, *, phase="pre_merge") -> None:
 
 def _code_proof(model, events, evidence, repo, item, ev, actor, stage) -> dict:
     _log_verdict(item, ev, stage)
-    if ev.get("post_deploy_acceptance"):
-        _log_verdict(item, ev, stage, phase="post_deploy")
     registered = any(e.get("kind") == "item" and e.get("item") == item["id"] and e.get("state") == "review"
                      and f"PR #{ev['merged_pr']}" in e.get("detail", "") and ev["head"] in e.get("detail", "")
                      for e in events)
