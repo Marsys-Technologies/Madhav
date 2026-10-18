@@ -254,14 +254,18 @@ def test_completion_rejects_unbound_readback_query_even_if_output_was_plausible(
 def test_readback_driver_checks_requested_query_digest_before_connecting(tmp_path,monkeypatch):
     # Execute the real embedded Python, with only the DB connect boundary faked.
     # No pgenv/secret is sourced, no socket or database is opened.
-    import psycopg
+    # The governance shard installs only pyyaml and pytest, so the driver module is always a stand-in here: the script
+    # only needs a `psycopg.connect` it can call, and the test only needs to see that it is never called.
+    import types
+    psycopg=types.ModuleType('psycopg')
+    monkeypatch.setitem(sys.modules,'psycopg',psycopg)
     root=tmp_path/'ky';sql=root/'run/ops/sql/j6.sql';sql.parent.mkdir(parents=True)
     sql.write_text('SELECT 1 AS observed;')
     source=(FLEET/'readback_sql.sh').read_text().split("<<'KYPY'\n",1)[1].split('\nKYPY',1)[0]
     connected=[]
     def forbidden(*a,**kw):
         connected.append(1);raise AssertionError('connection attempted before digest refusal')
-    monkeypatch.setattr(psycopg,'connect',forbidden)
+    psycopg.connect=forbidden
     monkeypatch.setattr(sys,'argv',['readback',str(root),'run/ops/sql/j6.sql','','0'*64])
     with pytest.raises(SystemExit,match='digest'):
         exec(compile(source,'readback_sql.sh embedded Python','exec'),{'__name__':'__main__'})
