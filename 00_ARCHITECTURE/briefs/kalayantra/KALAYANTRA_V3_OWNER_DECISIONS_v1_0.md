@@ -1,9 +1,10 @@
 ---
 artifact: KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md
 status: ACTIVE — the dated record of owner decisions and owner-delegated calls for KĀLA-YANTRA v3
-version: 1.1
+version: 1.2
 authored_on: 2026-10-11
 changelog:
+  - "1.2 (2026-10-18): records D-OWNER-ENGINE-20261017 (and its -ROLES record) in the native's words as recorded live; records D-OWNER-TESTS-20261016 by reference; points to Amendment A8 and to KALAYANTRA_RELAUNCH_PLAN_v3_0.md, the one operative plan."
   - "1.1 (2026-10-16): records D-OWNER-TESTS-20261016; campaign-wide optimum testing supersedes conflicting reversion and review-round rules."
 record_rule: >
   Append a dated block per decision event. Owner decisions are the native's words; delegated
@@ -101,3 +102,17 @@ The owner directed: "adopt this testing strategy for the entire campaign … mak
 One bounded review round; a second only for a BLOCKING finding. The reviewer enumerates every distinct production claim in the verdict and proves one source-cited oracle per claim passes at the pinned merged head and fails under its single planted reversion. Every real defect is fixed with fail-on-revert proof. Already-covered variants and changes with no production behaviour are non_blocking and never block MET or trigger another round. No per-mutant oracles, combinatorial variants or golden-capture of current output. N.8, N.7.6, SR-A4-01, A1 and personal-data handling remain unchanged.
 
 (I) INTERPRETATION — model versioning: `plan_model.json` appends `+testing-standard-20261016` to `model_version`, following the existing additive suffix convention (`fleet/kyreconcile.py:343`). All blanket reversion `measures` descriptions and the tests glossary adopt this decision; detector types, paths, patterns and receipt shapes remain unchanged.
+
+## 2026-10-16 (18:31Z and 18:32Z) — D-OWNER-ENGINE-20261017 (owner, in chat, direct; recorded live in `/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl` as `D-OWNER-ENGINE-20261017` and `D-OWNER-ENGINE-20261017-ROLES`)
+
+**Owner direction (native), as the live records carry it:** "Move all fast-lane agent jobs from Codex (gpt-6.1-sol) to Claude agents … Continue with Claude agents until the owner asks to switch." Roles, superseding the all-Sonnet routing of the first record the same evening: **builders run on Claude Sonnet 5.5 (`claude-sonnet-5-5`), verifiers on Claude Opus 5.5 (`claude-opus-5-5`), both effort high; the owner surrogate runs on Claude Fable 5.1 (`claude-fable-5-1`), effort high.** Every fast-lane job is a Claude job; no Codex engine remains.
+
+Implementation as recorded (cockpit): `fast/ENGINE=claude`; `cx.sh` launches `claude -p --model <role model> --effort high` and routes by job slug (`review*`, `confirm-*`, `steps-*`, `*-steps`, `rehearse*`, `*approve*`, `verify*` → verifier on Opus 5.5; everything else → builder on Sonnet 5.5; `KY_MODEL` / `KY_ENGINE` override per call); launcher commits are co-authored by the model that produced them; the surrogate's model is set in its own session by the owner; jobs already running on Codex finished as they were. Smoke tests `X-20261016T183051Z-smoke-claude` (Sonnet) and `confirm-smoke-opus` (Opus) passed. Consequence recorded here: A3 D-27 (Claude as overflow for Codex) has no engine left to overflow from and is superseded. Plan v3.0 §D carries this decision.
+
+## 2026-10-16 (~16:03Z) — D-OWNER-TESTS-20261016, by reference
+
+Recorded in the 2026-10-16 block above and verbatim in [DECISION_TESTING_STANDARD_v1_0.md](DECISION_TESTING_STANDARD_v1_0.md). It is the testing standard of plan v3.0 §C.2 and of `fleet/COMMON_HEADER_v3.md`, where it appears once. This entry changes nothing in it.
+
+## 2026-10-17 (~18:00Z) — Amendment A8 and the one operative plan (owner direction; pointer)
+
+`KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A8_MINIMAL_GATES.md` (branch `kalayantra/velocity-a8`, head 27323c8ae until merged) is the owner-directed minimal gate model: its §3 is the whole gate list, its §4 the retirement list (retired = not binding, not to be rebuilt, not to be cited as authority). `KALAYANTRA_RELAUNCH_PLAN_v3_0.md` folds A1–A8 into the ONE operative plan, carries A8 §3 verbatim as its §C and this file's kept rules as its §B, and supersedes `KALAYANTRA_RELAUNCH_PLAN_v2_7.md` and `KALAYANTRA_V3_COCKPIT_PROMPT_v2_7.md` (both marked HISTORICAL). Authority order from this date: root CLAUDE.md §I/§N → the owner's kept rules (A1, as amended by A3 §8 and A8 §2) → plan v3.0 §C → the packet. Changes to this file remain owner-only (D-12); delegated calls under an owner direction are recorded as such.

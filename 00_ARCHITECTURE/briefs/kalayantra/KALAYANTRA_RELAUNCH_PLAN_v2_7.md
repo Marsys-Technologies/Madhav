@@ -1,4 +1,5 @@
 ---
+status: HISTORICAL — superseded by v3.0 (A8)
 artifact: KALAYANTRA_RELAUNCH_PLAN_v2_7.md
 status: DRAFT — for Astra's confirmation review, then native approval. Supersedes v2.2 (ASTRA_REVIEW v2.2: PROCEED-WITH-FIXES, KU-01…KU-03 → B-0c). v2.7 applies Astra's confirmation review of v2.6 (PROCEED-WITH-FIXES, KY-01); v2.6 applied KX-01…KX-03; v2.5 applied KW-01…KW-06; v2.4 applied the delta review of v2.3 (KV-01…KV-08) to the autonomy model the owner directed on 2026-10-11 (resume-anywhere sessions, a persistent owner surrogate, headless loops under launchd, zero-idle scheduling) and the two launch defects the planner proved by execution (P-1 `--bare` cannot sign in; P-2 program version). On approval this plan and its paired prompts and cards are the only operating rules of KĀLA-YANTRA v3; CHARTER v1.2 keeps §0 (goal) and its five hash-pinned specification documents; the VELOCITY AMENDMENT is retired; the strategy is historical rationale only.
 version: 2.7
