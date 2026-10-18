@@ -172,15 +172,42 @@ def test_preconditions_are_dry_run_passed_and_backup_taken_for_a_teardown_only(t
     assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": True, "backup_taken": "true"}), table, ALL_CAPS) == MISSING   # the boolean, never prose
 
 
+def test_the_signers_required_checks_are_exactly_what_the_executor_demands(tmp_path, monkeypatch):
+    """kyd_kinds_ops.required_checks is the signer's mirror of executor.validate's attestation rule (A8 §5). For every production kind of the
+    real table: the executor admits an acceptance whose checks are exactly required_checks(kind), and refuses one missing any of them."""
+    kyd = _load_module("a8_kyd_required_checks", FLEET / "kyd_kinds_ops.py")
+    ops = json.loads(OPS_FILE.read_text())
+    ops["ops"]["fixture_teardown"] = {"enabled": True, "needs": "owner", "script": "platform/scripts/fixture.py", "fixed_args": [],
+                                      "allowed_args": [], "production": True, "enabled_by": "J-1a"}
+    kinds = []
+    for kind, entry in ops["ops"].items():
+        if entry.get("production") and "TO_BE_SET" not in entry.get("script", ""):
+            entry["enabled"] = True
+            kinds.append(kind)
+    assert {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch", "smalltest_teardown", "fixture_teardown"} <= set(kinds)
+    w = World(tmp_path, monkeypatch, json.dumps(ops))
+    table = w.table()
+    for kind in kinds:
+        required = kyd.required_checks(kind)
+        req = w.production_request(kind)
+        assert w.mod.validate(w.accept(req, checks={k: True for k in required}), table, ALL_CAPS) != MISSING, kind        # nothing more is demanded
+        for dropped in required:
+            partial = {k: True for k in required if k != dropped}
+            assert w.mod.validate(w.accept(req, checks=partial), table, ALL_CAPS) == MISSING, (kind, dropped)              # nothing less
+    assert kyd.required_checks("smalltest_teardown") == ["backup_taken", "dry_run_passed"]
+    assert kyd.required_checks("smalltest_dispatch") == ["dry_run_passed"]
+    assert kyd.required_checks("backup_snapshot") == [] and kyd.required_checks("smalltest_teardown_dryrun") == []
+
+
 # 5 ── *_dryrun kinds
 def test_every_dry_run_kind_is_read_only_with_a_credential_in_the_table():
     ops = json.loads(OPS_FILE.read_text())["ops"]
     dry = {k for k in ops if k.endswith("_dryrun")}
     assert dry == {"smalltest_dispatch_dryrun", "smalltest_teardown_dryrun", "measuring_dispatch_dryrun", "measuring_teardown_dryrun",
-                   "orchestrator_rebuild_dryrun"}
+                   "orchestrator_rebuild_dryrun", "scheduler_pause_dryrun", "scheduler_resume_dryrun", "measuring_cancel_dryrun"}
     for kind in dry:
         assert ops[kind]["production"] is False, kind
-        assert ops[kind]["needs"] in ("builder", "owner"), kind                       # the credential stays
+        assert ops[kind]["needs"] in ("builder", "owner", "gcloud"), kind             # the credential stays (the scheduler pair holds the executor's gcloud identity and makes no call)
         assert "required_rows" not in ops[kind] and "remote_async" not in ops[kind], kind
 
 
