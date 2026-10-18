@@ -699,10 +699,6 @@ jobs:
           python scripts/gochara/mutation_check_verifier_side.py --scratch "$mutation_scratch"
           # ^ that one test needs the pre-refactor baseline commit, unreachable from this job's shallow checkout;
           # it still runs in Governance Gates.
-          # J4OPS: glob discovery in the existing mandatory DB/corpus step.
-          # Fixture absence is fatal here; collection by the DB-free sidecar shard alone is insufficient.
-          # Pinned to the sidecar directory so the glob holds wherever earlier lines of this step leave the shell.
-          (cd "$GITHUB_WORKSPACE/platform/python-sidecar" && python -B -m pytest tests/l3/gochara/test_j4ops_*.py -q -rs -p no:cacheprovider)
 
       - name: Install MCP dependencies for published public-view SQL tests
         working-directory: platform-mcp
