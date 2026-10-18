@@ -186,8 +186,9 @@ def write_once(path, obj):
 
 
 def request_digest(req):
-    """executor.request_digest: sha256 of the request as sorted compact JSON without `acceptance_receipt`."""
-    bound = {k: v for k, v in req.items() if k != "acceptance_receipt"}
+    """executor.request_digest, byte for byte (A8 §3.9): sha256 of the request as sorted compact JSON without `acceptance_receipt`,
+    `expires_at` and any `*_expires_at` lease-expiry field — a lease renewal or an expiry extension never voids an acceptance."""
+    bound = {k: v for k, v in req.items() if k not in ("acceptance_receipt", "expires_at") and not k.endswith("_expires_at")}
     return hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
