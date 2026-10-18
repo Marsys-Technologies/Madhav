@@ -33,6 +33,15 @@
  *      older than 15 min → 'error'.
  *      ⇒ Heartbeat must advance last_built_at at least every 15 min while an asset is building.
  *
+ * HYG-REAPER-LONG-SUBSTEP: "15 min" above is the DEFAULT. An asset whose healthy substep
+ * is itself longer (ka_gochara_v5: measured 1,086.8 s, J-3c) is given a per-asset
+ * threshold in ./stuckAssetThresholds.ts, applied to BOTH clauses: clause 2 reaps a
+ * 'building' row only when stale beyond GREATEST(15 min, its override), and clause 1 also
+ * counts a 'building' row's heartbeat inside its override window as evidence of life.
+ * An override only lengthens grace; assets without one are byte-for-byte unchanged, and a
+ * dead writer is still reaped once silent beyond its own threshold. No orchestrator
+ * (FROZEN) code is touched.
+ *
  * INCIDENT (2026-07-31/08-01, ka_gochara_sweep chart 1c826d5a, run e5cde4dc): clause 1's
  * original 10-min window (and its reliance on asset_throughput alone) false-killed a run
  * whose Cloud Run container was ALIVE and progressing — build_substep_progress showed
@@ -63,6 +72,11 @@ import { verifyOidcToken } from '@/lib/auth/oidc'
 import { query } from '@/lib/db/client'
 import { classifyStuckCandidate } from './classifyStuckCandidate'
 import { ORPHAN_RUN_MESSAGE, STUCK_ASSET_MESSAGE, UNDISPATCHED_RUN_MESSAGE } from './watchdogMessages'
+import {
+  aliveWithinOverrideSql,
+  staleBeyondOverrideSql,
+  stuckThresholdOverrideParams,
+} from './stuckAssetThresholds'
 
 const WATCHDOG_OIDC_AUDIENCE = process.env.WATCHDOG_SCHEDULER_OIDC_AUDIENCE
   ?? 'https://amjis-web-938361928218.asia-south1.run.app'
@@ -130,6 +144,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Mirrors the reference CTE shape (_terminalize_preflight_failure,
   // platform/python-sidecar/pipeline/orchestrator/runner.py:325-337), extended to
   // two target states since this reaper can find a run in either shape.
+  const [thresholdOverrideIds, thresholdOverrideSecs] = stuckThresholdOverrideParams()
   const orphanRuns = await query<{ id: string; chart_id: string }>(
     `WITH failed_run AS (
        UPDATE build_runs
@@ -146,6 +161,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
            WHERE chart_id = build_runs.chart_id
              AND completed_at > NOW() - INTERVAL '15 minutes'
          )
+         -- HYG-REAPER-LONG-SUBSTEP: a third, additive evidence of life — an in-flight
+         -- asset whose per-asset threshold (stuckAssetThresholds.ts) still covers its
+         -- last heartbeat. Only assets with an override can match.
+         AND NOT ${aliveWithinOverrideSql('build_runs.chart_id', '$2', '$3')}
        RETURNING id, chart_id
      ),
      aborted_queued AS (
@@ -163,10 +182,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
        RETURNING 1
      )
      SELECT id, chart_id FROM failed_run`,
-    [ORPHAN_RUN_MESSAGE]
+    [ORPHAN_RUN_MESSAGE, thresholdOverrideIds, thresholdOverrideSecs]
   )
 
-  // 2. asset_throughput stuck building > 15 min — RR-fix (D-3) Part B: before
+  // 2. asset_throughput stuck building > 15 min (default; per-asset override via
+  //    stuckAssetThresholds.ts, HYG-REAPER-LONG-SUBSTEP) — RR-fix (D-3) Part B: before
   //    blindly marking these as errored, probe each candidate's actual data via
   //    asset_registry.count_sql, mirroring the orchestrator's data-presence-probe
   //    pattern (_data_rows_present / _guard_state_write, commit b13640d1,
@@ -228,7 +248,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
      FROM asset_throughput at
      JOIN asset_registry ar ON ar.asset_id = at.asset_id
      WHERE at.state = 'building'
-       AND at.last_built_at < NOW() - INTERVAL '15 minutes'`
+       AND at.last_built_at < NOW() - INTERVAL '15 minutes'
+       -- HYG-REAPER-LONG-SUBSTEP: stale beyond the asset's own threshold too (an override
+       -- only lengthens; no override => this predicate is TRUE and the 15 min above decides).
+       AND ${staleBeyondOverrideSql('at.asset_id', 'at.last_built_at', '$1', '$2')}`,
+    [thresholdOverrideIds, thresholdOverrideSecs]
   )
 
   const rescued: { chart_id: string | null; asset_id: string; rows: number }[] = []
@@ -371,6 +395,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                  last_error = $1
              WHERE state = 'building'
                AND last_built_at < NOW() - INTERVAL '15 minutes'
+               AND ${staleBeyondOverrideSql('asset_throughput.asset_id', 'asset_throughput.last_built_at', `$${trulyStuck.length * 2 + 2}`, `$${trulyStuck.length * 2 + 3}`)}
                AND (${trulyStuck.map((_, i) => `(chart_id IS NOT DISTINCT FROM $${i * 2 + 2} AND asset_id = $${i * 2 + 3})`).join(' OR ')})
              RETURNING chart_id, asset_id
            ),
@@ -389,7 +414,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
              RETURNING 1
            )
            SELECT chart_id, asset_id FROM stuck`,
-          [STUCK_ASSET_MESSAGE, ...trulyStuck.flatMap((c) => [c.chart_id, c.asset_id])]
+          [
+            STUCK_ASSET_MESSAGE,
+            ...trulyStuck.flatMap((c) => [c.chart_id, c.asset_id]),
+            thresholdOverrideIds,
+            thresholdOverrideSecs,
+          ]
         )
       : { rows: [] as { chart_id: string; asset_id: string }[], rowCount: 0 }
 

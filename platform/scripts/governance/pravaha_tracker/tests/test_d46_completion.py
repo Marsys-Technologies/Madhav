@@ -201,6 +201,19 @@ def test_sweep_lists_closable_items_with_evidence_and_holds_the_rest(repo):
     assert r["status"] == "not_closable" and "acceptance" in r["missing"][0]
 
 
+def test_sweep_closes_a_data_writing_item_without_a_post_deploy_acceptance_apply_included(repo, tmp_path):
+    """A8 §4 / SR-POSTDEPLOY-RETIRED: the sweep asks a migration item for the same evidence as any code item."""
+    model = sweep_model()
+    model["items"][0]["brief"] = {"migration": "1401_x.sql"}
+    r = report(d46_sweep.classify(model, [], evidence_for(repo), str(repo["path"])), "K-C")
+    assert r["status"] == "would_close" and r["missing"] == []
+    events_path = tmp_path / "EVENTS.jsonl"
+    events_path.write_text("")
+    results = d46_sweep.apply(model, evidence_for(repo), str(repo["path"]), str(events_path),
+                              lambda iid: {"status": "done", "detail": "merged"})
+    assert results[0]["closed"] is True
+
+
 def test_sweep_dry_run_writes_nothing_and_apply_closes_through_the_guard(repo, tmp_path, capsys):
     model_path, events_path, evidence_path = tmp_path / "model.json", tmp_path / "EVENTS.jsonl", tmp_path / "ev.json"
     model_path.write_text(json.dumps(sweep_model()))

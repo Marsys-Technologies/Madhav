@@ -116,6 +116,26 @@ def _observed(response: Any, generation: str) -> dict:
     return {'generation': generation, 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)}
 
 
+def _admissible_target(conn: Any, chart_id: str, generation: str, manifest_id: str) -> tuple:
+    """The sealed, published, non-test-slice 5.x manifest, or refuse. Returns (manifest_id, horizon_upper)."""
+    target = conn.execute(
+        'SELECT p.manifest_id::text, upper(p.horizon) FROM public.kala_gochara_publication p'
+        ' JOIN public.ka_gochara_generation_seal s ON s.chart_id=p.chart_id'
+        ' AND s.generation=p.generation AND s.manifest_id=p.manifest_id'
+        " WHERE p.chart_id=%s AND p.generation=%s AND p.manifest_id=%s::uuid AND p.status='published'"
+        " AND coalesce(p.input_generation_vector->>'stored_scope','') <> 'test_slice'"
+        " AND NOT (p.input_generation_vector ? 'test_slice')",
+        (chart_id, generation, manifest_id)).fetchone()
+    if target is None or not re.fullmatch(r'([5-9]|[1-9][0-9]+)\.[0-9]+', generation):
+        raise RehearsalRefused('target_not_admissible')
+    return target
+
+
+def _flipped_identity_ok(served: Any, chart_id: str, generation: str, manifest_id: str) -> bool:
+    return (isinstance(served, dict) and served.get('refusal') is None and served.get('chart_id') == chart_id
+            and served.get('generation') == generation and served.get('manifest_id') == manifest_id)
+
+
 def rehearse(conn: Any, *, chart_id: str, expected_previous: str, generation: str,
              manifest_id: str, legacy_reader: Callable, request: dict | None = None) -> dict:
     """Flip, serve, explicitly CAS back, compare bytes/retention; roll back all.
@@ -131,25 +151,14 @@ def rehearse(conn: Any, *, chart_id: str, expected_previous: str, generation: st
         previous = read_head(conn, chart_id)
         if previous.generation != expected_previous or previous.generation == generation:
             raise RehearsalRefused('previous_head_changed')
-        target = conn.execute(
-            'SELECT p.manifest_id::text, upper(p.horizon) FROM public.kala_gochara_publication p'
-            ' JOIN public.ka_gochara_generation_seal s ON s.chart_id=p.chart_id'
-            ' AND s.generation=p.generation AND s.manifest_id=p.manifest_id'
-            " WHERE p.chart_id=%s AND p.generation=%s AND p.manifest_id=%s::uuid AND p.status='published'"
-            " AND coalesce(p.input_generation_vector->>'stored_scope','') <> 'test_slice'"
-            " AND NOT (p.input_generation_vector ? 'test_slice')",
-            (chart_id, generation, manifest_id)).fetchone()
-        if target is None or not re.fullmatch(r'([5-9]|[1-9][0-9]+)\.[0-9]+', generation):
-            raise RehearsalRefused('target_not_admissible')
+        target = _admissible_target(conn, chart_id, generation, manifest_id)
         retained_before = _retained(conn, chart_id)
         before = serving_reader.read_authoritative(conn, chart_id, legacy_reader=legacy_reader, **request)
         before_bytes = _wire(before)
         flipped = Head(generation, datetime.now(timezone.utc), 'J-6r-prebuild', f'manifest:{target[0]}')
         compare_and_swap(conn, chart_id, previous, flipped)
         served = serving_reader.read_authoritative(conn, chart_id, legacy_reader=legacy_reader, **request)
-        if (not isinstance(served, dict) or served.get('refusal') is not None
-                or served.get('chart_id') != chart_id or served.get('generation') != generation
-                or served.get('manifest_id') != target[0]):
+        if not _flipped_identity_ok(served, chart_id, generation, target[0]):
             raise RehearsalRefused('flipped_reader_identity_or_admission_failed')
         # The manifest's exclusive upper edge is outside; never invent a date.
         outside = serving_reader.read_authoritative(conn, chart_id, legacy_reader=legacy_reader,
@@ -181,3 +190,93 @@ def rehearse(conn: Any, *, chart_id: str, expected_previous: str, generation: st
             'retained_before': retained_before, 'retained_after_flip': retained_after_flip,
             'retained_after_rollback': retained_after_rollback,
         }
+
+
+def rehearse_committed(dsn: str, *, chart_id: str, expected_previous: str, generation: str,
+                       manifest_id: str, legacy_reader: Callable, request: dict | None = None) -> dict:
+    """Lane rehearsal across COMMITTED snapshots: flip, serve, roll back, serve, compare bytes.
+
+    Unlike ``rehearse`` (one rolled-back transaction), the flip and the rollback
+    are each committed by the writer session, and every read runs in its own
+    fresh read-only session, as separate requests of a deployed reader would.
+    Only a lane database (``_require_lane``) is accepted. The previous head is
+    never deleted: both moves are compare-and-swap UPDATEs of the one authority
+    row. A failed check leaves the head restored (best effort in ``finally``).
+    Emits identifiers, counts and digests only; ``acceptance`` stays None
+    (acceptance is the separate, independent step of J-6r / G6).
+    """
+    import psycopg  # local: the transactional rehearsal above needs no driver import
+    request = dict(request or {})
+    reader_pids: set[int] = set()
+
+    def fresh(fn):
+        with psycopg.connect(dsn, autocommit=True, connect_timeout=5) as reader:
+            _require_lane(reader)
+            reader.read_only = True
+            reader_pids.add(reader.execute('SELECT pg_backend_pid()').fetchone()[0])
+            return fn(reader)
+
+    def read(**extra):
+        return fresh(lambda r: serving_reader.read_authoritative(
+            r, chart_id, legacy_reader=legacy_reader, **{**request, **extra}))
+
+    with psycopg.connect(dsn, autocommit=True, connect_timeout=5) as writer:
+        _require_lane(writer)
+        writer_pid = writer.execute('SELECT pg_backend_pid()').fetchone()[0]
+        with writer.transaction():
+            writer.execute('SELECT public.ka_gochara_lock_chart(%s::uuid)', (chart_id,))
+            previous = read_head(writer, chart_id)
+            if previous.generation != expected_previous or previous.generation == generation:
+                raise RehearsalRefused('previous_head_changed')
+            target = _admissible_target(writer, chart_id, generation, manifest_id)
+        retained_before = fresh(lambda r: _retained(r, chart_id))
+        before = read()
+        before_bytes = _wire(before)
+        flipped = Head(generation, datetime.now(timezone.utc), 'J-6r-lane', f'manifest:{target[0]}')
+        try:
+            with writer.transaction():
+                writer.execute('SELECT public.ka_gochara_lock_chart(%s::uuid)', (chart_id,))
+                compare_and_swap(writer, chart_id, previous, flipped)
+            served = read()
+            if not _flipped_identity_ok(served, chart_id, generation, target[0]):
+                raise RehearsalRefused('flipped_reader_identity_or_admission_failed')
+            outside = read(at_instant=target[1])
+            if (outside.get('refusal') or {}).get('code') != 'outside_served_horizon':
+                raise RehearsalRefused('outside_horizon_probe_failed')
+            retained_after_flip = fresh(lambda r: _retained(r, chart_id))
+            if retained_after_flip != retained_before:
+                raise RehearsalRefused('retained_rows_changed')
+            with writer.transaction():
+                writer.execute('SELECT public.ka_gochara_lock_chart(%s::uuid)', (chart_id,))
+                compare_and_swap(writer, chart_id, flipped, previous)
+        finally:
+            with writer.transaction():  # no-op after the explicit rollback above
+                writer.execute('SELECT public.ka_gochara_lock_chart(%s::uuid)', (chart_id,))
+                current = read_head(writer, chart_id)
+                if current.generation != previous.generation:
+                    compare_and_swap(writer, chart_id, current, previous)
+        after = read()
+        bytes_equal = _wire(after) == before_bytes
+        if not bytes_equal:
+            raise RehearsalRefused('rollback_response_bytes_changed')
+        retained_after_rollback = fresh(lambda r: _retained(r, chart_id))
+        if retained_before != retained_after_rollback:
+            raise RehearsalRefused('retained_rows_changed')
+        if read_head(writer, chart_id) != previous:
+            raise RehearsalRefused('previous_head_not_restored')
+        if writer_pid in reader_pids:
+            raise RehearsalRefused('reads_not_in_separate_sessions')
+    return {
+        'schema': 'ky.j6r_lane_rehearsal/1', 'acceptance': None, 'production_activated': False,
+        'chart_id': chart_id, 'target': {'generation': generation, 'manifest_id': target[0]},
+        'previous_head': {'generation': previous.generation},
+        'before': _observed(before, previous.generation),
+        'flipped': {**_observed(served, generation), 'manifest_id': served['manifest_id'],
+                    'class_completeness': {c['event_class']: c['completeness'] for c in served['classes']}},
+        'after': _observed(after, previous.generation), 'rollback_bytes_equal': bytes_equal,
+        'previous_head_retained': retained_before == retained_after_flip == retained_after_rollback,
+        'previous_head_restored': True, 'outside_horizon_refusal': outside['refusal']['code'],
+        'separate_reader_sessions': True, 'reader_sessions': len(reader_pids),
+        'retained_before': retained_before, 'retained_after_flip': retained_after_flip,
+        'retained_after_rollback': retained_after_rollback,
+    }
