@@ -18,6 +18,8 @@ changelog:
   - "1.0 (2026-10-06): first version."
 ---
 
+> **HISTORICAL — SUPERSEDED (SR-TEARDOWN-AUTHORITY-GATE).** The v2.7 owner-surrogate ceremony described below (entrypoint hash verification, veto window, exact-head, the GitHub click as a hard stop) no longer applies. The current rules are plan v3.0 §C (the gate list) and §J (decision index) in `00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v3_0.md`; where this document and plan v3.0 disagree, plan v3.0 governs.
+
 # KĀLA-YANTRA — owner surrogate charter
 
 ## 1 · Purpose
