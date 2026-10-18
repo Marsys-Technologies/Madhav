@@ -27,7 +27,12 @@ MEASURING = {
     "measuring_teardown_dryrun": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--dry-run"], [], "J-3d"),
     "measuring_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], [], "J-3d"),
 }
-DISABLED = {"verification_job", "century_dispatch", "publish_head", "rollback_head",
+# J-4b (SR-PREBUILD-ALL): the verification launcher and its dry-run sibling. kind: (needs, script, fixed_args, allowed_args, production, timeout_s)
+VERIFICATION = {
+    "verification_job_dryrun": ("gcloud", "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", ["--dry-run"], ["generation"], False, 600),
+    "verification_job": ("gcloud", "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", [], ["generation"], True, 900),
+}
+DISABLED = {"century_dispatch", "publish_head", "rollback_head",
             "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"}
 
 
@@ -42,8 +47,8 @@ def executor(tmp_path, monkeypatch):
 
 
 def test_only_six_wave4_measuring_and_scheduler_ops_are_newly_enabled(table):
-    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | DISABLED
-    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER
+    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION) | DISABLED
+    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION)
     for kind in DISABLED:
         assert table[kind]["enabled"] is False
         if "prepared_dry_run" in table[kind]:
@@ -159,3 +164,56 @@ def test_measuring_requests_reach_the_reviewed_measuring_policy_not_the_enableme
     assert why is not None and "not enabled" not in why
     if "dispatch" in kind:
         assert why == "measuring dispatch belongs to J-3c"
+
+
+# ───────────── J-4b: the verification kinds (SR-PREBUILD-ALL; SR-TEARDOWN-AUTHORITY-GATE item 2: every enabled kind has its dry-run sibling) ─────────────
+@pytest.mark.parametrize("kind", VERIFICATION)
+def test_verification_exact_script_capability_and_argv(table, kind):
+    op = table[kind]
+    needs, script, fixed, allowed, production, timeout = VERIFICATION[kind]
+    assert op["enabled"] is True and next(iter(op)) == "enabled" and op["enabled_by"] == "J-4b"
+    assert op["needs"] == needs and op["script"] == script and (FLEET.parents[3] / script).is_file()   # never TO_BE_SET
+    assert op["fixed_args"] == fixed and op["allowed_args"] == allowed and op["production"] is production and op["timeout_s"] == timeout
+    assert op.get("requesters", ["adhikarin"]) == ["adhikarin"] and op.get("also_needs", []) == []
+    assert "required_rows" not in op and op.get("remote_async", False) is (kind == "verification_job")  # A8 §3.11: only the remote launch takes the fence
+
+
+def test_the_verification_dry_run_sibling_runs_the_same_script_as_the_launch(table):
+    assert table["verification_job_dryrun"]["script"] == table["verification_job"]["script"]
+    assert table["verification_job_dryrun"]["allowed_args"] == table["verification_job"]["allowed_args"]
+
+
+@pytest.mark.parametrize("kind", VERIFICATION)
+def test_verification_missing_the_gcloud_capability_is_refused(table, executor, kind):
+    assert executor.validate(request(executor, kind, {"generation": "5.0"}), table, {**caps(), "gcloud": False}) == "capability_missing: gcloud"
+
+
+@pytest.mark.parametrize("kind", VERIFICATION)
+def test_verification_validate_refuses_every_argument_but_generation(table, executor, kind):
+    for name in ["brief", "sealing-commit", "report-only", "final-rules", "chart", "class", "run", "classes", "execution", "sql"]:
+        assert executor.validate(request(executor, kind, {name: "fixture"}), table, caps()) == f"disallowed args ['{name}']"
+
+
+def test_verification_dry_run_is_admitted_with_a_merged_commit_and_the_launch_needs_its_full_approval(table, executor):
+    dry = request(executor, "verification_job_dryrun", {"generation": "5.0"})
+    assert executor.validate(dry, table, caps()) is None
+    for field in ("lease_id", "acceptance_receipt"):                              # the launch is a production kind: lease and acceptance are mandatory
+        launch = request(executor, "verification_job", {"generation": "5.0"})
+        assert executor.validate(launch, table, caps()) is None
+        del launch[field]
+        assert executor.validate(launch, table, caps()) is not None
+    launch = request(executor, "verification_job", {"generation": "5.0"})
+    launch["chart_id"] = "362f9f17-0000-0000-0000-000000000000"
+    assert executor.validate(launch, table, caps()) == "chart_id is not the canonical chart"
+
+
+def test_the_launch_needs_a_dry_run_attestation_and_the_dry_run_does_not(table, executor):
+    launch = request(executor, "verification_job", {"generation": "5.0"})
+    approve(executor, launch)
+    path = executor.ACC / (launch["operation_id"] + ".json")
+    accepted = json.loads(path.read_text())
+    accepted["checks"]["dry_run_passed"] = False
+    path.write_text(json.dumps(accepted))
+    assert executor.validate(launch, table, caps()) == "required backup/restore/dry-run attestation missing"
+    dry = request(executor, "verification_job_dryrun", {"generation": "5.0"})
+    assert executor.validate(dry, table, caps()) is None

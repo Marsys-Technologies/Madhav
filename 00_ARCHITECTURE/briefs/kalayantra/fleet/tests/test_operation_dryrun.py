@@ -30,7 +30,7 @@ def test_existing_kind_has_disabled_bounded_preparation(kind, args, cap):
     assert result["status"] == "PREPARATION_ONLY" and result["dry_run_passed"] is False
     assert result["executor_capabilities"] == cap and result["blockers"]
     op = json.loads((FLEET / "executor_ops.json").read_text())["ops"][kind]
-    assert op["enabled"] is (kind == "measuring_dispatch")      # J-3a enabled the kind; the prepared surface stays disabled review metadata
+    assert op["enabled"] is (kind in ("measuring_dispatch", "verification_job"))      # J-3a / J-4b enabled the kind; the prepared surface stays disabled review metadata
     surface = op["prepared_dry_run"]
     assert surface["enabled"] is False and surface["script"].endswith("/operation_dryrun.py")
     assert surface["fixed_args"] == ["--dry-run", "--kind", kind]

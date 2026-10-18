@@ -434,6 +434,7 @@ MARKER_ROUTE = {
     "scheduler_pause": "no_database",       # SR-J3-REAPER-PAUSE: needs gcloud only, no DATABASE_URL, no connection at all (test_executor_scheduler_reaper pins that); synchronous, never fenced
     "scheduler_resume": "no_database",
     "measuring_cancel": "no_database",      # SR-J3-CANCEL-NULL: gcloud only, no DATABASE_URL; synchronous, never fenced
+    "verification_job": "no_database",      # J-4b: verification_launch.py needs gcloud only (no DATABASE_URL, no connection; the verifier's own task holds its credential). Its REMOTE execution is NOT measured by the mechanical quiescence (executor.py needs_remote and cloudrun_job_readback cover the build job only): see the J-4b notes
     "measuring_dispatch": "in_process",     # J-3a: measuring_launch.py opens only psycopg connections from DATABASE_URL (no PGAPPNAME/application_name in its closure — the next test)
 }
 # A8 §3 fences only remote_async kinds; the *_dryrun kinds are production:false in executor_ops.json, so they are not eligible and carry no row.

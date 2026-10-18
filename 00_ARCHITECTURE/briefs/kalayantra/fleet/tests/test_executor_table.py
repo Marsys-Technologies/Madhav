@@ -114,7 +114,15 @@ SCHEDULER_BINDINGS = {
     "measuring_cancel": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_cancel.py", "fixed_args": [],   # SR-J3-CANCEL-NULL
                          "allowed_args": ["execution"], "production": True, "timeout_s": 900, "enabled_by": "J-3c"},
 }
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds
+# J-4b (SR-PREBUILD-ALL): the verification launcher and its dry-run sibling, bound exactly (fleet/verification_launch.py). The flag is the only enablement edit.
+VERIFICATION_BINDINGS = {
+    "verification_job": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", "fixed_args": [],
+                         "allowed_args": ["generation"], "production": True, "remote_async": True, "timeout_s": 900, "enabled_by": "J-4b"},
+    "verification_job_dryrun": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", "fixed_args": ["--dry-run"],
+                                "allowed_args": ["generation"], "production": False, "timeout_s": 600, "enabled_by": "J-4b"},
+}
+ENABLED_P10_ITEMS = {"J-1a", "J-4b"}      # the P10 items whose kind is enabled: J-1a (smalltest_dispatch) and J-4b (verification_job)
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(VERIFICATION_BINDINGS)   # J-4b: the two verification kinds; J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
@@ -181,11 +189,11 @@ def test_enabled_is_the_first_key_of_every_entry():
         assert next(iter(entry)) == "enabled", f"{kind}: first key is {next(iter(entry))}"
 
 
-def test_p10_entries_present_with_only_j1a_enabled():
+def test_p10_entries_present_with_only_j1a_and_j4b_enabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     for item, kind in P10.items():
         assert kind in ops, f"{kind} is missing"
-        assert enabled_state(kind, ops[kind]) is (item == "J-1a"), f"{kind} has unexpected enablement"
+        assert enabled_state(kind, ops[kind]) is (item in ENABLED_P10_ITEMS), f"{kind} has unexpected enablement"
         assert ops[kind]["enabled_by"] == item
 
 
@@ -198,6 +206,7 @@ def assert_table_matches_pin(now):
     expected_order = list(base["ops"])
     pos = expected_order.index("measuring_dispatch") + 1
     expected_order[pos:pos] = ["measuring_dispatch_dryrun", "measuring_teardown_dryrun", "measuring_teardown"]
+    expected_order.insert(expected_order.index("verification_job") + 1, "verification_job_dryrun")      # J-4b: the sibling sits right after its kind
     expected_order.insert(expected_order.index("migration_readback") + 1, "cloudrun_job_readback")
     expected_order.insert(expected_order.index("cloudrun_job_readback") + 1, "quiescence_check")
     expected_order += list(SCHEDULER_BINDINGS)                      # SR-J3-REAPER-PAUSE: appended last
@@ -214,6 +223,7 @@ def assert_table_matches_pin(now):
     expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
     expected["verification_job"]["needs"] = "gcloud"
     expected.update(json.loads(json.dumps(MEASURING_BINDINGS)))
+    expected.update(json.loads(json.dumps(VERIFICATION_BINDINGS)))
     expected["cloudrun_job_readback"] = json.loads(json.dumps(CLOUDRUN_READBACK))
     expected["quiescence_check"] = json.loads(json.dumps(QUIESCENCE_CHECK))
     expected.update(json.loads(json.dumps(SCHEDULER_BINDINGS)))
@@ -264,6 +274,19 @@ def test_table_pin_refuses_unreviewed_measuring_changes(kind, field, value):
         assert_table_matches_pin(now)
 
 
+@pytest.mark.parametrize("kind", VERIFICATION_BINDINGS)
+@pytest.mark.parametrize("field,value", [
+    ("enabled", False), ("script", "platform/scripts/unreviewed.py"),
+    ("fixed_args", ["--brief"]), ("allowed_args", ["generation", "sealing-commit"]), ("production", not True),
+])
+def test_table_pin_refuses_unreviewed_verification_changes(kind, field, value):
+    now = load_ops(OPS_FILE.read_text())
+    assert_table_matches_pin(now)
+    now["ops"][kind][field] = value if field != "production" else (not now["ops"][kind]["production"])
+    with pytest.raises(AssertionError, match=re.escape(f"{kind}.{field}")):
+        assert_table_matches_pin(now)
+
+
 def test_k9_placeholders_name_k9_23_and_none_is_filled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     for kind in K9_KINDS:
@@ -293,7 +316,7 @@ def test_model_completion_detector_preserves_main_authority(item, kind):
     detector = detector_definition(item)
     assert detector == main_item["detector"]
     assert not detector.get("path", "").endswith("/" + OPS_REL)
-    assert enabled_state(kind, load_ops(OPS_FILE.read_text())["ops"][kind]) is (item == "J-1a")
+    assert enabled_state(kind, load_ops(OPS_FILE.read_text())["ops"][kind]) is (item in ENABLED_P10_ITEMS)
 
 
 def test_detector_state_unreadable_is_a_failure():
@@ -653,7 +676,7 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head", *K9_KINDS])
+@pytest.mark.parametrize("kind", ["century_dispatch", "publish_head", "rollback_head", *K9_KINDS])
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)
@@ -759,13 +782,13 @@ def test_enabled_set_is_exactly_bootstrap_plus_wave4():
 
 def test_p10_entries_present_and_disabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
-    for item, kind in {item: kind for item, kind in P10.items() if item != "J-1a"}.items():
+    for item, kind in {item: kind for item, kind in P10.items() if item not in ENABLED_P10_ITEMS}.items():
         assert kind in ops, f"{kind} is missing"
         assert enabled_state(kind, ops[kind]) is False, f"{kind} must be disabled"
         assert ops[kind]["enabled_by"] == item
 
 
-@pytest.mark.parametrize("item,kind", sorted({item: kind for item, kind in P10.items() if item != "J-1a"}.items()))
+@pytest.mark.parametrize("item,kind", sorted({item: kind for item, kind in P10.items() if item not in ENABLED_P10_ITEMS}.items()))
 def test_future_table_enablement_and_typed_model_detectors_stay_separate(item, kind):
     # The reconciled model uses packet/rehearsal evidence, not enabled-string
     # completion. Preserve the legacy first-key format without inventing a detector.
