@@ -107,7 +107,8 @@ def test_not_applicable_does_not_spread_into_the_closure(decided):
 def test_the_headline_denominator_is_the_closure_and_every_deferred_item_is_listed(decided):
     _, snap = decided
     o = snap["overall"]
-    assert o["total"] == 186 and o["plan_wide"]["total"] == 270
+    # plan-wide 271 = 270 + J-2a-P1L (#3689, a PRE-D-FLIP child item outside the closure); the closure stays 186
+    assert o["total"] == 186 and o["plan_wide"]["total"] == 271
     listed = {d["id"]: d for d in o["deferred"]}
     assert set(DEFERRED + DEFERRED_NB04) <= set(listed)
     assert all(listed[i]["re_entry"] for i in DEFERRED + DEFERRED_NB04)
