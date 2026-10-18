@@ -58,13 +58,13 @@ if [ "$MODE" = "write" ]; then
     "cd '$ROOT/platform/python-sidecar' && '$PY' -m pipeline.orchestrator.provenance_inventory --check" \
     "cd '$ROOT/platform/python-sidecar' && '$PY' -m pipeline.orchestrator.provenance_inventory"
   ensure "2/4 capability estate census" \
-    "cd '$ROOT/platform' && npm run -s codegen:capability-estate-census:check" \
-    "cd '$ROOT/platform' && npx tsx --conditions=react-server scripts/generate_capability_estate_census.ts"
+    "cd '$ROOT/platform' && node --import tsx --conditions=react-server scripts/generate_capability_estate_census.ts --check" \
+    "cd '$ROOT/platform' && node --import tsx --conditions=react-server scripts/generate_capability_estate_census.ts"
   # The snapshot stores a reviewed generated_at; it is pinned to SNAPSHOT_STAMP (never invent a new timestamp), so a refresh does not rewrite that
   # line and either side of a conflict converges on the same bytes. A stamp that differs from SNAPSHOT_STAMP is rewritten even if the check passes.
   ensure "3/4 capability knowledge snapshot" \
-    "cd '$ROOT/platform' && npm run -s codegen:capability-knowledge:check && '$PY' -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))[\"generated_at\"] == sys.argv[2] else 1)' '$SNAPSHOT' '$SNAPSHOT_STAMP'" \
-    "cd '$ROOT/platform' && npx tsx --conditions=react-server scripts/generate_capability_knowledge.ts '--generated-at=$SNAPSHOT_STAMP'"
+    "cd '$ROOT/platform' && node --import tsx --conditions=react-server scripts/generate_capability_knowledge.ts --check && '$PY' -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))[\"generated_at\"] == sys.argv[2] else 1)' '$SNAPSHOT' '$SNAPSHOT_STAMP'" \
+    "cd '$ROOT/platform' && node --import tsx --conditions=react-server scripts/generate_capability_knowledge.ts '--generated-at=$SNAPSHOT_STAMP'"
   ensure "4/4 registry coverage report" \
     "cd '$ROOT' && '$PY' platform/scripts/governance/asset_census.py --registry-check --check" \
     "cd '$ROOT' && '$PY' platform/scripts/governance/asset_census.py --registry-check"
@@ -84,8 +84,8 @@ run_check() {
   fi
 }
 run_check "writer digests current" bash -c "cd '$ROOT/platform/python-sidecar' && '$PY' -m pipeline.orchestrator.provenance_inventory --check"
-run_check "capability estate census current" bash -c "cd '$ROOT/platform' && npm run -s codegen:capability-estate-census:check"
-run_check "capability knowledge snapshot current" bash -c "cd '$ROOT/platform' && npm run -s codegen:capability-knowledge:check"
+run_check "capability estate census current" bash -c "cd '$ROOT/platform' && node --import tsx --conditions=react-server scripts/generate_capability_estate_census.ts --check"
+run_check "capability knowledge snapshot current" bash -c "cd '$ROOT/platform' && node --import tsx --conditions=react-server scripts/generate_capability_knowledge.ts --check"
 run_check "registry coverage report current" bash -c "cd '$ROOT' && '$PY' platform/scripts/governance/asset_census.py --registry-check --check"
 
 say "registry fingerprint pin"

@@ -146,9 +146,9 @@ def merge_candidates(rows: list[dict]) -> dict[str, list[CandWindow]]:
                 continue
             _s, pk, si = g[0][0], g[0][2], g[0][3]
             for w in g[1:]:
-                if w[3] > si + TIE_TOL:
+                if w[3] - si >= TIE_TOL:
                     pk, si = w[2], w[3]
-                elif abs(w[3] - si) <= TIE_TOL:
+                elif abs(w[3] - si) < TIE_TOL:
                     pk = min(pk, w[2])
             merged.append(CandWindow(c, ws0, we0, pk, si, 0, len(g)))
         out[c] = merged

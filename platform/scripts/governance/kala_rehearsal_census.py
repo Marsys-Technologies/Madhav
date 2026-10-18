@@ -18,6 +18,7 @@ import copy
 from datetime import datetime
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 import sys
@@ -49,8 +50,15 @@ def _strict_object(pairs):
     return result
 
 
+def _finite_float(value):
+    number = float(value)
+    _require(math.isfinite(number), f"non-finite JSON number: {value}")
+    return number
+
+
 def _read_json(blob):
-    return json.loads(blob, object_pairs_hook=_strict_object)
+    return json.loads(blob, object_pairs_hook=_strict_object,
+                      parse_float=_finite_float, parse_constant=_finite_float)
 
 
 def _inventory(repo):
@@ -200,7 +208,7 @@ def render_markdown(report):
     lines += ['', '## Population and evidence', '']
     for asset in report['assets']:
         lines.append(f"- `{asset['asset']}`: {asset['disposition']}; `{asset['source']}`.")
-    lines += ['', '```json', json.dumps({k: report[k] for k in ('source', 'summary', 'mismatches', 'certifier_refusals')}, indent=2), '```', '',
+    lines += ['', '```json', json.dumps({k: report[k] for k in ('source', 'summary', 'mismatches', 'certifier_refusals')}, indent=2, allow_nan=False), '```', '',
               '## Execution and activation gates', '',
               '- K9-4b rebuild/verification and KR-1/KR-2 dispositions must complete or be explicitly ruled not applicable.',
               '- Capture a real guarded off-production L3 census with registry revision/fingerprint, declarations SHA-256/version and explicit chart scope.',
@@ -228,7 +236,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         report = build_report(args.repo, args.census, _read_json(args.expectations.read_bytes()) if args.expectations else None)
-        output = render_markdown(report) if args.format == 'markdown' else json.dumps(report, indent=2) + '\n'
+        output = render_markdown(report) if args.format == 'markdown' else json.dumps(report, indent=2, allow_nan=False) + '\n'
         if args.check:
             _require(args.out is not None and args.out.is_file() and args.out.read_text() == output, 'stale/missing output')
         elif args.out:

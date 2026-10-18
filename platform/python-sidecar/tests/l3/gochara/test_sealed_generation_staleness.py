@@ -70,8 +70,14 @@ def make_router(
     live_l1: str = "L1SNAP",
     live_dasha: str = "DASHASNAP",
     violations: list | None = None,
+    sealed: bool = True,
 ):
     def router(sql: str, params):
+        if "FROM public.ka_gochara_generation_seal" in sql:
+            assert params == [CHART, GENERATION]
+            assert "p.manifest_id = s.manifest_id" in sql
+            assert "p.chart_id = s.chart_id" in sql and "p.generation = s.generation" in sql
+            return [(sealed,)]
         if "FROM public.ka_gochara_search_input_snapshot" in sql:
             return [snap] if snap is not None else []
         if "ka_gochara_search_l1_facts_digest" in sql:
@@ -120,6 +126,48 @@ def test_completeness_violation_exit4(capsys) -> None:
     assert staleness.run(conn, CHART, GENERATION) == 4
     report = __import__("json").loads(capsys.readouterr().out)
     assert any("conjunction" in r and "partition_without_inventory" in r for r in report["reasons"])
+
+
+@pytest.mark.parametrize("chart,generation", [(CHART, "5.0"), ("11111111-1111-1111-1111-111111111111", "5.1")])
+def test_snapshot_read_binds_both_requested_chart_and_generation(chart, generation):
+    """s05: a digest from a different generation cannot establish freshness."""
+    def scoped(sql, params):
+        # A matching seal/manifest is checked before reading its input snapshot.
+        if "FROM public.ka_gochara_generation_seal" in sql:
+            assert params == [chart, generation]
+            assert "p.manifest_id = s.manifest_id" in sql
+            assert "p.chart_id = s.chart_id" in sql and "p.generation = s.generation" in sql
+            return [(True,)]
+        if "FROM public.ka_gochara_search_input_snapshot" in sql:
+            assert " ".join(sql.split()).endswith("WHERE chart_id = %s AND generation = %s")
+            assert params == [chart, generation]
+            return [SNAP_ROW]
+        if "ka_gochara_search_l1_facts_digest" in sql:
+            assert params == [chart, list(SNAP_ROW[0])]
+            return [("L1SNAP",)]
+        if "ka_gochara_search_dasha_digest" in sql:
+            assert params == [chart, list(SNAP_ROW[1])]
+            return [("DASHASNAP",)]
+        assert "ka_gochara_search_completeness_violations" in sql
+        assert params == [chart, generation]
+        return []
+
+    assert staleness.check_staleness(FakeConn(scoped), chart, generation)["status"] == "fresh"
+
+
+def test_every_completeness_violation_is_reported_in_order(capsys):
+    """s06: reporting only the first violation hides independent stale inputs."""
+    violations = [
+        ("conjunction", "partition_without_inventory", "no inventory"),
+        ("marriage", "input_digest_drift", "consumed facts changed"),
+    ]
+    assert staleness.run(FakeConn(make_router(violations=violations)), CHART, GENERATION) == 4
+    report = __import__("json").loads(capsys.readouterr().out)
+    assert report["status"] == "stale"
+    assert report["reasons"] == [
+        "completeness violation [conjunction] partition_without_inventory: no inventory",
+        "completeness violation [marriage] input_digest_drift: consumed facts changed",
+    ]
 
 
 def test_missing_snapshot_raises() -> None:
@@ -177,3 +225,26 @@ def test_main_no_database_url_exit3(monkeypatch, capsys) -> None:
     _patch_main(monkeypatch, FakeConn(make_router()), dsn=None)
     assert staleness.main() == 3
     assert "DATABASE_URL is required" in capsys.readouterr().err
+
+
+# J5Q: a snapshot alone is not a seal (1153's seal has no manifest FK).
+def test_snapshot_without_matching_seal_is_never_fresh(monkeypatch, capsys):
+    _patch_main(monkeypatch, FakeConn(make_router(sealed=False)))
+    assert staleness.main() == 3
+    assert "no matching generation seal and manifest" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("index", [2, 3])
+def test_unknown_snapshot_digest_is_never_fresh(index, monkeypatch, capsys):
+    snap = list(SNAP_ROW)
+    snap[index] = None
+    _patch_main(monkeypatch, FakeConn(make_router(snap=tuple(snap), **{"live_l1" if index == 2 else "live_dasha": None})))
+    assert staleness.main() == 3
+    assert "missing snapshot digest" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("key", ["live_l1", "live_dasha"])
+def test_unknown_live_digest_is_not_fresh(key, capsys):
+    conn = FakeConn(make_router(**{key: None}))
+    assert staleness.run(conn, CHART, GENERATION) == 4
+    assert "stale" in capsys.readouterr().out

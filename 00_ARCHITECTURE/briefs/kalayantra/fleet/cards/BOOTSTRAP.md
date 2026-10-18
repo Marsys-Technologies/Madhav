@@ -7,6 +7,7 @@ effort: high
 plan: KALAYANTRA_RELAUNCH_PLAN_v2_7.md
 status: DRAFT — pending the B-0c independent review
 ---
+Authority: plan v3.0 §C; this card carries role-specific instructions only
 Precedence: CLAUDE.md §I/§N > owner decisions > plan > card > packet.
 
 - BS-01 Build the one component your `bootstrap` packet names, in the header's worktree and branch, then exit. No new worktree, copy or branch.

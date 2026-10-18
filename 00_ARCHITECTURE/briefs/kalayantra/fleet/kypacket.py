@@ -1,60 +1,58 @@
 #!/usr/bin/env python3
 """kypacket.py — admission check of one KĀLA-YANTRA v3 work-order packet.
 
-Relaunch plan v2.7 §8 (packets are "admitted by `kypacket.py check`"), §7 (an oversized packet is rejected at
-admission, not at launch), §14 B-1; packet KV3-B-KYPACKET. Read-only, one packet per call, standard library only.
-Every decision here is script logic: no model, no network, nothing written.
+Relaunch plan v2.7 §8 (packets are "admitted by `kypacket.py check`"), §14 B-1; packet KV3-B-KYPACKET; Amendment A8
+(2026-10-17): a pin is satisfied by the blob at its pinned revision, and by nothing else — the working tree is not
+consulted. Read-only, one packet per call, standard library only. Every decision here is script logic: no model, no
+network, nothing written.
 
 Usage:
   kypacket.py check <PACKET.md> --repo <absolute repository root>
 Exit: 0 admitted · 1 refused · 64 usage · 66 an own input is missing, unreadable or invalid (the repository; git;
-      schemas/packet.json, templates/ku_bindings.json and kyschema.py, all read beside this script)
-      70 an internal error. Non-zero is never admission.
+      schemas/packet.json and kyschema.py, both read beside this script) · 70 an internal error. Non-zero is never
+      admission.
 stdout (exit 0 and 1 only): one JSON object
-  {"schema":"ky.packet_check/1","packet":<absolute path>,"id","admitted":<bool>,"packet_sha256":<computed>,
-   "size":{"method":"calibrated_byte_bound","bytes","bound":9000,"tokens":null},"labels":[],"reasons":[{"code","detail"}]}
-stderr: `refused: <code>: <detail>`, one line per reason.
+  {"schema":"ky.packet_check/1","packet":<absolute path>,"id","admitted":<bool>,"packet_sha256":<sha256 of the file>,
+   "size":{"method":"calibrated_byte_bound","bytes","bound":9000,"tokens":null},"labels":[],
+   "reasons":[{"code","detail"}],"warnings":[{"code","detail"}]}
+stderr: `refused: <code>: <detail>`, one line per reason, then `warning: <code>: <detail>`, one line per warning.
 Environment: KY_GIT (default /usr/bin/git); git only reads (rev-parse, cat-file).
 
-The nine checks. All of them run and every failure is reported; `admitted` is true only when none gave a reason.
-A check whose input an earlier check refused (no front matter, no verified source) gives no pass of its own: the
-earlier reason already refuses the packet.
+The five checks. All of them run and every failure is reported; `admitted` is true only when none gave a reason. A
+warning is reported beside the reasons and refuses nothing. A check whose input an earlier check refused (no front
+matter) gives no pass of its own: the earlier reason already refuses the packet.
   1 format          the name is PACKET_<ID>_v<n>.md and the path is one regular file (not a link); UTF-8; the first
                     line is exactly ```json; the text up to the next line of exactly ``` is one strict JSON object
                                                                            → not_single_file, front_matter_json
   2 schema          kyschema.validate against schemas/packet.json; `id` equals the name's <ID>
                                                                            → schema, name_id_mismatch
-  3 packet_sha256   sha256 of the file's bytes with the 64 hex digits of that field's value replaced by 64 zeros
-                    (as the B-1 packets are stamped); the field must be the only "packet_sha256" member written in
-                    the front matter                                       → packet_sha256 (detail: the computed value)
-  4 pins            each spec_sources[].path is a file under the repository hashing to its sha256; where revision
-                    is a 40-hex commit, the blob <revision>:<path> exists with that sha256; original_failing_base
-                    is a commit; a non-null schema_receipt_id is the schema_receipt_id of a
-                    00_ARCHITECTURE/control/kalayantra/SCHEMA_RECEIPT_v*.json
-                      → spec_source_missing, spec_source_sha256, spec_source_revision, commit_unknown,
-                        schema_receipt_unresolved
-  5 size            file bytes ≤ 9000                                      → oversize
-  6 tests           feature: every test_commits[] blob <sha>:<path> exists with sha256 `digest`;
-                    bootstrap: acceptance.command names (as one shell word, or as the file of a pytest node id) at
-                    least one path listed in d1_paths                      → test_unavailable
-  7 excerpts        every fenced block whose info string starts with `excerpt` has content that occurs byte for
-                    byte in a spec_sources file whose pin (4, sha256) held; at least one such block
-                                                                           → excerpt_not_in_source, no_excerpt
-  8 reconciliation  every line starting `Reconciliation:` names, as one backtick span, a spec_sources[].path. This
-                    shows the claim is bound to a pinned source, not that it is true.
-                                                                           → reconciliation_unpinned
-  9 KU bindings     the packet's labels are the REGISTRY labels whose path is in d1_paths; for each clause of
-                    ku_bindings.json naming one of them in required_in the packet's bytes contain the clause text
-                                                                           → ku_clause_missing (detail: the KU id)
-ku_bindings.json itself is an own input: a clause whose text does not hash to its text_sha256, or a required_in
-label that is not a REGISTRY key, is exit 66.
+  3 one member      the front matter writes exactly one "packet_sha256" member, holding the 64 hex digits the parsed
+                    field holds. Its value is not recomputed here (A8): the launch input's packet_sha256 is the
+                    plain sha256 of the file and is compared by kyboot.py   → packet_sha256
+  4 pins            each spec_sources[] whose `revision` is a 40-hex commit: the commit exists, the blob
+                    <revision>:<path> exists, and its sha256 is the pinned one. A `revision` that is not a commit
+                    (a document version such as "v2.7") pins nothing the repository can answer for: the warning
+                    `spec_source_unpinned`, not a refusal. original_failing_base is a commit; a non-null
+                    schema_receipt_id is the schema_receipt_id of a 00_ARCHITECTURE/control/kalayantra/
+                    SCHEMA_RECEIPT_v*.json (read from the repository root, where the receipts live)
+                      → spec_source_revision (no such commit), spec_source_missing (no such blob at it),
+                        spec_source_sha256 (another blob), commit_unknown, schema_receipt_unresolved
+  5 tests           feature: every test_commits[] blob <sha>:<path> exists (its `digest` is carried for the launch
+                    input, not pinned here); bootstrap: acceptance.command names (as one shell word, or as the file
+                    of a pytest node id) at least one path listed in d1_paths  → test_unavailable
+  size (a warning)  file bytes > 9000 → `oversize`; the packet is admitted all the same.
+
+`labels` are the REGISTRY labels whose path is in d1_paths — what the packet owns, for the reader; nothing is bound to
+them here.
+
+Gone with A8 (each refused what the pinned source already answers for, or what the builder re-reads anyway): the
+working-tree hash of a spec source, the front matter's self-hash, the byte-for-byte excerpt check, the "every
+Reconciliation line names a pinned path" check, the KU clause text check (templates/ku_bindings.json is no own
+input), the size refusal and the test_commits digest pin.
 
 The size bound is a calibrated byte bound and is reported as one: 4,000 tokens ÷ 0.444 tokens per byte, the highest
 ratio measured with the real program (cards/TOKEN_MEASUREMENT.json) being 0.418. Nothing here measures tokens, so
 `size.tokens` is null.
-
-Two hashes exist and both are kept (ruling P19): the front matter's follows check 3; a launch input's packet_sha256
-is the plain sha256 of the file and is compared by kyboot.py, not here.
 """
 from __future__ import annotations
 
@@ -77,9 +75,8 @@ F = "00_ARCHITECTURE/briefs/kalayantra/fleet"
 T = "platform/scripts/governance/pravaha_tracker"
 RECEIPT_DIR = "00_ARCHITECTURE/control/kalayantra"
 RECEIPT_GLOB = "SCHEMA_RECEIPT_v*.json"
-KU_BINDINGS_SCHEMA = "ky.ku_bindings/1"
 
-# 4,000 tokens ÷ 0.444 tokens per byte (plan §7/§8: a packet is ≤ 4 k tokens)
+# 4,000 tokens ÷ 0.444 tokens per byte (plan §7/§8: a packet is ≤ 4 k tokens); since A8 a bound to warn about
 BYTE_BOUND = 9000
 
 # component label → the path that carries it; a value ending in "/" is carried by every path under it
@@ -101,17 +98,12 @@ REASON_CODES = (
     "packet_sha256",
     "spec_source_missing", "spec_source_sha256", "spec_source_revision", "commit_unknown",
     "schema_receipt_unresolved",
-    "oversize",
     "test_unavailable",
-    "excerpt_not_in_source", "no_excerpt",
-    "reconciliation_unpinned",
-    "ku_clause_missing",
 )
+WARNING_CODES = ("spec_source_unpinned", "oversize")
 
 FENCE = "```"
 FRONT_OPEN = "```json"
-EXCERPT_INFO = "excerpt"
-RECONCILIATION = "Reconciliation:"
 GIT_TIMEOUT_S = 60
 # the environment's own repository selection must not replace --repo
 GIT_ENV_DROPPED = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY", "GIT_COMMON_DIR",
@@ -119,10 +111,8 @@ GIT_ENV_DROPPED = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIR
 
 _NAME = re.compile(r"PACKET_(?P<id>[A-Za-z0-9][A-Za-z0-9._-]{0,63})_v(?P<n>[1-9][0-9]*)\.md\Z")
 _HEX40 = re.compile(r"[0-9a-f]{40}\Z")
-_HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 _SHA_FIELD = re.compile(rb'"packet_sha256"\s*:\s*"([0-9a-f]{64})"')
 _SHA_MEMBER = re.compile(rb'"packet_sha256"\s*:')
-_BACKTICKS = re.compile(r"`([^`]+)`")
 
 
 class OwnInputError(Exception):
@@ -171,42 +161,6 @@ def _load_schema(kyschema, here: Path):
     return schema
 
 
-def _load_bindings(kyschema, here: Path) -> dict:
-    """KU id → (text bytes, required_in labels); every clause hashes to its text_sha256, every label is registered"""
-    path = here / "templates" / "ku_bindings.json"
-    bindings = _load_own_json(kyschema, path)
-
-    def bad(detail):
-        return OwnInputError(f"{path} is invalid: {detail}")
-
-    if not isinstance(bindings, dict) or bindings.get("schema") != KU_BINDINGS_SCHEMA:
-        raise bad(f"schema is not {KU_BINDINGS_SCHEMA}")
-    clauses = bindings.get("clauses")
-    if not isinstance(clauses, dict) or not clauses:
-        raise bad("clauses is not a non-empty object")
-    out = {}
-    for ku, clause in clauses.items():
-        if not isinstance(clause, dict):
-            raise bad(f"{ku}: not an object")
-        text, required_in = clause.get("text"), clause.get("required_in")
-        if not isinstance(text, str) or not text:
-            raise bad(f"{ku}: text is not a non-empty string")
-        try:
-            data = text.encode("utf-8")
-        except UnicodeEncodeError:
-            raise bad(f"{ku}: text is not UTF-8") from None
-        if clause.get("text_sha256") != sha256_hex(data):
-            raise bad(f"{ku}: sha256(text) {sha256_hex(data)} is not text_sha256 {clause.get('text_sha256')!r}")
-        if not isinstance(required_in, list) or not required_in \
-                or not all(isinstance(label, str) for label in required_in):
-            raise bad(f"{ku}: required_in is not a non-empty list of labels")
-        for label in required_in:
-            if label not in REGISTRY:
-                raise bad(f"{ku}: required_in label {label!r} is not a REGISTRY key")
-        out[ku] = (data, tuple(required_in))
-    return out
-
-
 class Git:
     """read-only git on one repository root"""
 
@@ -243,7 +197,7 @@ class Git:
         return self.run("cat-file", "-e", f"{name}^{{commit}}")[0] == 0
 
     def working_file(self, path: str):
-        """the bytes of the regular file `path` under the repository root, or None"""
+        """the bytes of the regular file `path` under the repository root, or None (the receipts are read so)"""
         if not path or os.path.isabs(path) or "\\" in path or any(p in ("", ".", "..") for p in path.split("/")):
             return None
         full = os.path.realpath(os.path.join(self.root, path))
@@ -259,23 +213,25 @@ class Git:
 # the packet
 # --------------------------------------------------------------------------------------------------------------
 class Check:
-    def __init__(self, packet: str, git: Git, kyschema, schema, bindings):
+    def __init__(self, packet: str, git: Git, kyschema, schema):
         self.path = os.path.abspath(packet)
-        self.git, self.kyschema, self.schema, self.bindings = git, kyschema, schema, bindings
+        self.git, self.kyschema, self.schema = git, kyschema, schema
         self.reasons: list = []
+        self.warnings: list = []
         self.raw = None          # the file's bytes
         self.lines = None        # its lines, when it is UTF-8
         self.front = None        # the front matter object
         self.front_span = None   # (start, end) of the front matter text in raw
-        self.body_at = None      # index in lines of the first body line
         self.name_id = None
-        self.computed = None
         self.labels: list = []
-        self.sources: dict = {}  # spec_sources path → bytes, for the sources whose sha256 pin held
 
     def refuse(self, code: str, detail):
         assert code in REASON_CODES, code
         self.reasons.append({"code": code, "detail": _one_line(detail)})
+
+    def warn(self, code: str, detail):
+        assert code in WARNING_CODES, code
+        self.warnings.append({"code": code, "detail": _one_line(detail)})
 
     def field(self, name, kind):
         """a front matter member of the expected type, else None (the schema check names the fault)"""
@@ -286,20 +242,17 @@ class Check:
         self.format()
         if self.front is not None:
             self.schema_and_id()
-            self.packet_sha256()
+            self.one_member()
             self.pins()
-        self.size()
-        if self.front is not None:
             self.test_availability()
-            self.excerpts()
-            self.reconciliation()
-            self.ku_bindings()
+            self.labelled()
+        self.size()
         declared = self.field("id", str)
         return {"schema": SCHEMA, "packet": self.path, "id": declared if declared is not None else self.name_id,
-                "admitted": not self.reasons, "packet_sha256": self.computed,
+                "admitted": not self.reasons, "packet_sha256": None if self.raw is None else sha256_hex(self.raw),
                 "size": {"method": "calibrated_byte_bound", "bytes": None if self.raw is None else len(self.raw),
                          "bound": BYTE_BOUND, "tokens": None},
-                "labels": self.labels, "reasons": self.reasons}
+                "labels": self.labels, "reasons": self.reasons, "warnings": self.warnings}
 
     # 1
     def format(self):
@@ -341,7 +294,7 @@ class Check:
             self.refuse("front_matter_json", "the front matter is not one JSON object")
             return
         start = len((FRONT_OPEN + "\n").encode("utf-8"))
-        self.front, self.body_at = front, close + 1
+        self.front = front
         self.front_span = (start, start + len(front_text.encode("utf-8")))
 
     # 2
@@ -353,20 +306,15 @@ class Check:
             self.refuse("name_id_mismatch", f"id {declared} is not the name's {self.name_id}")
 
     # 3
-    def packet_sha256(self):
+    def one_member(self):
         start, end = self.front_span
         front_bytes = self.raw[start:end]
         fields = list(_SHA_FIELD.finditer(front_bytes))
         declared = self.front.get("packet_sha256")
         if len(fields) != 1 or len(_SHA_MEMBER.findall(front_bytes)) != 1 \
                 or not isinstance(declared, str) or fields[0].group(1).decode("ascii") != declared:
-            self.refuse("packet_sha256", "not computable: the front matter does not write exactly one "
-                                         "packet_sha256 member holding 64 hex digits")
-            return
-        at = start + fields[0].start(1)
-        self.computed = sha256_hex(self.raw[:at] + b"0" * 64 + self.raw[at + 64:])
-        if self.computed != declared:
-            self.refuse("packet_sha256", f"computed {self.computed}, the front matter says {declared}")
+            self.refuse("packet_sha256", "the front matter does not write exactly one packet_sha256 member "
+                                         "holding 64 hex digits")
 
     # 4
     def pins(self):
@@ -376,20 +324,19 @@ class Check:
             path, pinned, revision = source.get("path"), source.get("sha256"), source.get("revision")
             if not isinstance(path, str) or not isinstance(pinned, str):
                 continue
-            data = self.git.working_file(path)
-            if data is None:
-                self.refuse("spec_source_missing", f"{path}: no such file under {self.git.root}")
-            elif sha256_hex(data) != pinned:
-                self.refuse("spec_source_sha256", f"{path}: the file is {sha256_hex(data)}, the pin is {pinned}")
-            else:
-                self.sources[path] = data
-            if isinstance(revision, str) and _HEX40.match(revision):
-                blob = self.git.blob(revision, path)
-                if blob is None:
-                    self.refuse("spec_source_revision", f"{path}: no blob {revision}:{path}")
-                elif sha256_hex(blob) != pinned:
-                    self.refuse("spec_source_revision",
-                                f"{path}: the blob at {revision} is {sha256_hex(blob)}, the pin is {pinned}")
+            if not isinstance(revision, str) or not _HEX40.match(revision):
+                self.warn("spec_source_unpinned", f"{path}: revision {revision!r} is not a commit; the pin {pinned} "
+                                                  f"is not checked against the repository")
+                continue
+            if not self.git.is_commit(revision):
+                self.refuse("spec_source_revision", f"{path}: {revision} is not a commit in {self.git.root}")
+                continue
+            blob = self.git.blob(revision, path)
+            if blob is None:
+                self.refuse("spec_source_missing", f"{path}: no blob {revision}:{path}")
+            elif sha256_hex(blob) != pinned:
+                self.refuse("spec_source_sha256",
+                            f"{path}: the blob at {revision} is {sha256_hex(blob)}, the pin is {pinned}")
         base = self.field("original_failing_base", str)
         if base is not None and not (_HEX40.match(base) and self.git.is_commit(base)):
             self.refuse("commit_unknown", f"original_failing_base {base} is not a commit in {self.git.root}")
@@ -413,11 +360,6 @@ class Check:
         return False
 
     # 5
-    def size(self):
-        if self.raw is not None and len(self.raw) > BYTE_BOUND:
-            self.refuse("oversize", f"{len(self.raw)} bytes, the bound is {BYTE_BOUND}")
-
-    # 6
     def test_availability(self):
         kind = self.front.get("kind")
         if kind == "feature":
@@ -430,13 +372,10 @@ class Check:
                                                                                                     "path")):
                     self.refuse("test_unavailable", f"malformed test_commits entry: {json.dumps(entry)}")
                     continue
-                commit, digest, path = entry["sha"], entry["digest"], entry["path"]
+                commit, path = entry["sha"], entry["path"]
                 blob = self.git.blob(commit, path) if _HEX40.match(commit) else None
                 if blob is None:
                     self.refuse("test_unavailable", f"{path}: no blob {commit}:{path}")
-                elif sha256_hex(blob) != digest:
-                    self.refuse("test_unavailable",
-                                f"{path}: the blob at {commit} is {sha256_hex(blob)}, the digest is {digest}")
         elif kind == "bootstrap":
             acceptance = self.field("acceptance", dict) or {}
             command = acceptance.get("command")
@@ -451,53 +390,16 @@ class Check:
             if not any(word.split("::", 1)[0] in owned for word in words):
                 self.refuse("test_unavailable", "acceptance.command names no path listed in d1_paths")
 
-    # 7
-    def excerpts(self):
-        found = 0
-        opened = None        # (info string, 1-based line of the opening fence) while inside a fenced block
-        content: list = []
-        for number, line in enumerate(self.lines[self.body_at:], start=self.body_at + 1):
-            if opened is None:
-                if line.startswith(FENCE):
-                    opened, content = (line[len(FENCE):], number), []
-                continue
-            if line != FENCE:
-                content.append(line)
-                continue
-            info, at = opened
-            opened = None
-            if info.startswith(EXCERPT_INFO):
-                found += 1
-                self.excerpt(info, at, "\n".join(content).encode("utf-8"))
-        if opened is not None and opened[0].startswith(EXCERPT_INFO):
-            found += 1
-            self.refuse("excerpt_not_in_source", f"line {opened[1]} ({opened[0]}): the block is never closed")
-        if not found:
-            self.refuse("no_excerpt", "no fenced block whose info string starts with 'excerpt'")
-
-    def excerpt(self, info: str, at: int, content: bytes):
-        if not content.strip():
-            self.refuse("excerpt_not_in_source", f"line {at} ({info}): the block is empty")
-        elif not any(content in data for data in self.sources.values()):
-            self.refuse("excerpt_not_in_source",
-                        f"line {at} ({info}): not byte for byte in any spec_sources file whose pin held")
-
-    # 8
-    def reconciliation(self):
-        paths = {s.get("path") for s in self.field("spec_sources", list) or [] if isinstance(s, dict)}
-        for number, line in enumerate(self.lines, start=1):
-            if line.startswith(RECONCILIATION) and not paths.intersection(_BACKTICKS.findall(line)):
-                self.refuse("reconciliation_unpinned", f"line {number} names no spec_sources path in backticks")
-
-    # 9
-    def ku_bindings(self):
+    # labels (reported, not bound)
+    def labelled(self):
         owned = [p for p in self.field("d1_paths", list) or [] if isinstance(p, str)]
         self.labels = sorted(label for label, path in REGISTRY.items()
                              if any(p.startswith(path) if path.endswith("/") else p == path for p in owned))
-        for ku in sorted(self.bindings):
-            text, required_in = self.bindings[ku]
-            if set(required_in).intersection(self.labels) and text not in self.raw:
-                self.refuse("ku_clause_missing", ku)
+
+    # size (a warning since A8)
+    def size(self):
+        if self.raw is not None and len(self.raw) > BYTE_BOUND:
+            self.warn("oversize", f"{len(self.raw)} bytes, the calibrated bound is {BYTE_BOUND}")
 
 
 # --------------------------------------------------------------------------------------------------------------
@@ -527,7 +429,7 @@ def main(argv=None) -> int:
     packet, repo = parsed
     try:
         kyschema = _load_kyschema(HERE)
-        check = Check(packet, Git(repo), kyschema, _load_schema(kyschema, HERE), _load_bindings(kyschema, HERE))
+        check = Check(packet, Git(repo), kyschema, _load_schema(kyschema, HERE))
         report = check.run()
     except OwnInputError as bad:
         print(f"kypacket: {_one_line(bad)}", file=sys.stderr)
@@ -538,6 +440,8 @@ def main(argv=None) -> int:
     print(json.dumps(report, ensure_ascii=False))
     for reason in report["reasons"]:
         print(f"refused: {reason['code']}: {reason['detail']}", file=sys.stderr)
+    for warning in report["warnings"]:
+        print(f"warning: {warning['code']}: {warning['detail']}", file=sys.stderr)
     return EXIT_ADMITTED if report["admitted"] else EXIT_REFUSED
 
 

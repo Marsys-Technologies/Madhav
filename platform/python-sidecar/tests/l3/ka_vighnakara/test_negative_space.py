@@ -336,7 +336,8 @@ def test_no_downstream_reads_or_multiplier_in_new_path():
                 assert not prohibited.search(name) and name not in weights, (path,node.lineno)
             if isinstance(node,ast.keyword) and node.arg in weights:
                 # Only the exact, inert legacy INSERT slots are exempt.
-                assert (path == ROOT/'services/ka_vighnakara/storage.py'
+                assert (path in {ROOT/'services/ka_vighnakara/storage.py',
+                                         ROOT/'services/ka_vighnakara/sealed_storage.py'}
                         and node.arg in {'severity_score','override_score'}
                         and isinstance(node.value,ast.Constant) and node.value.value == 0), (path,node.lineno)
 

@@ -1,6 +1,6 @@
 """Executor operation-adapter acceptance harness. Real validate/run_one/execute/receipt,
 with in-process fake Git, child and remote boundaries; no dispatcher, daemon, Git writes,
-credentials, cloud or production connections. Only copied fixture entries are enabled.
+credentials, cloud or production connections. P01 enables six reviewed small-test bindings; rebuild entries are enabled only in copies.
 SQLite exercises DB-API rollback mechanics; it does not qualify a production DB operation.
 """
 import argparse
@@ -30,7 +30,9 @@ PREFLIGHT_TS = REPO / "platform" / "scripts" / "data-plane-secret-isolation-pref
 OPS_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json"
 COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 PROTECTED = [EXECUTOR_PY, OPS_FILE, DISPATCH_PY, PREFLIGHT_TS]
-ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"}
+P01_KINDS = {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch_dryrun",
+             "smalltest_dispatch", "smalltest_teardown_dryrun", "smalltest_teardown"}
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 ITEM = "K9-FIXTURE"
 LEASE = "LEASE-KY-FIXTURE"
@@ -147,7 +149,8 @@ class FakeRemote:
 
     def execute(self, argv, env):
         self.submissions.append({"argv": list(argv), "env": dict(env)})
-        self.state[argv[-1].rsplit(",", 1)[-1]] = "RUNNING"
+        run_arg, = [arg for arg in argv if arg.startswith("--args=--run-id,")]
+        self.state[run_arg.removeprefix("--args=--run-id,")] = "RUNNING"
         return 0, "execution started\n"
 
     def fingerprint(self):
@@ -191,6 +194,8 @@ class Bench:
         self.launched, self.event_log = [], {}
         self.wrapper = fixture_wrapper
         X.git, X.capabilities, X.run_group = self.git, lambda _: dict(ALL_CAPS), self.process
+        # The writer-digest overlay (J-2a M12) has its own oracles in test_executor_overlay.py; here `process` is the one wrapper.
+        X.apply_generated_overlay = lambda root, commit, env, timeout=600: ({"schema": "ky.generated_overlay/1", "source_sha": commit, "files": {}}, "")
         self.run = X.RUN
 
     def process(self, argv, cwd, env, timeout):
@@ -225,8 +230,10 @@ class Bench:
             "result": "ACCEPTED", "actor": "stream-V:v2"})
 
     def observation(self, prepared, **fields):
+        state = self.remote.state.get(prepared["request"]["args"]["run-id"])
         return dict({"schema": A.OBSERVATION_SCHEMA, "operation_id": prepared["operation_id"],
-            "request_sha256": prepared["request_sha256"], "terminal": True, "outcome": "succeeded",
+            "request_sha256": prepared["request_sha256"], "terminal": state in {"SUCCEEDED", "FAILED"},
+            "outcome": {"SUCCEEDED": "succeeded", "FAILED": "failed"}.get(state),
             "receipt_sha256": sha_file(self.X.REC / (prepared["operation_id"] + ".json")), "source": "fake remote"}, **fields)
 
 def accepted_request(bench, steps=None):
@@ -300,7 +307,7 @@ def test_a_disabled_or_placeholder_entry_an_unauthorised_requester_or_disallowed
     req = dict({k: base[k] for k in ("kind", "operation_id", "kyd", "args", "lease_id", "reviewed_commit", "expires_at")},
                item_id=ITEM, idempotency_key="OP-FIX-s2", requested_by="adhikarin", chart_id=CANONICAL_CHART)
     for kind, entry in real.items():
-        if entry["production"]:
+        if entry["production"] and not entry["enabled"]:
             assert X.validate(dict(req, kind=kind, args={}), real, ALL_CAPS).startswith("kind %s is not enabled" % kind)
     placeholder = dict(real, publish_head=dict(real["publish_head"], enabled=True))
     assert X.validate(dict(req, kind="publish_head", args={}), placeholder, ALL_CAPS) == "operation script not yet reviewed/landed"
@@ -566,6 +573,28 @@ def test_a_database_rehearsal_runs_the_statements_rolls_back_and_compares(lane):
     same_count = [("UPDATE runs SET state = ? WHERE id = ?", ("failed", "r1"))]
     assert A.rehearse(lane, same_count, PROBES, HEAD, target=LANE, identity=IDENTITY)["rolled_back"] is True
 
+@pytest.mark.parametrize("failed_probe", ["rows", "head"])
+def test_rehearsal_rolls_back_when_a_during_probe_fails(lane, failed_probe):
+    """OPS-NB-02: a real SELECT failure after mutations must leave no transaction or changes."""
+    def fail_during(value):
+        if lane.in_transaction:
+            raise RuntimeError("during probe unavailable")
+        return value
+
+    lane.create_function("fail_during", 1, fail_during)
+    probes = dict(PROBES)
+    head = HEAD
+    if failed_probe == "rows":
+        probes["rows"] = "SELECT id, fail_during(state) FROM runs ORDER BY id"
+    else:
+        head = "SELECT fail_during(generation) FROM head"
+    try:
+        with pytest.raises(sqlite3.OperationalError, match="user-defined function raised exception"):
+            A.rehearse(lane, STATEMENTS, probes, head, target=LANE, identity=IDENTITY)
+        assert (lane.in_transaction, lane_state(lane)) == (False, ([("r1", "done")], [(7,)]))
+    finally:
+        lane.rollback()
+
 class Committing:
     """A connection whose rollback keeps the work (what an autocommitting or mis-wired handle does)."""
 
@@ -656,20 +685,52 @@ def test_staging_or_a_local_exit_0_without_a_terminal_semantic_readback_cannot_c
     bench.verdict(prepared)
     assert A.completion(bench.run, prepared, events(), None)[0] == "unknown"
     assert A.completion(bench.run, prepared, events(), staged)[0] == "incomplete"
+    # Synthetic observations below probe the completion contract's malformed/unbound evidence cases.
+    observed = bench.observation(prepared, terminal=True, outcome="succeeded")
     for loose in (dict(terminal="true"), dict(terminal=1), dict(outcome="SUCCEEDED"), dict(outcome=True), dict(schema="other/1")):
-        assert A.completion(bench.run, prepared, events(), bench.observation(prepared, **loose))[0] != "complete", loose
-    assert A.completion(bench.run, prepared, events(), bench.observation(prepared, outcome="failed"))[0] == "failed"
+        assert A.completion(bench.run, prepared, events(), dict(observed, **loose))[0] != "complete", loose
+    assert A.completion(bench.run, prepared, events(), dict(observed, outcome="failed"))[0] == "failed"
     for unbound in (dict(operation_id="OP-FIX-s1"), dict(request_sha256="0" * 64), dict(receipt_sha256="0" * 64)):
-        assert A.completion(bench.run, prepared, events(), bench.observation(prepared, **unbound))[0] == "refused", unbound
-    assert A.completion(bench.run, prepared, None, bench.observation(prepared))[0] == "unknown"       # events unreadable
-    assert A.completion(bench.run, prepared, [{"kind": "mystery"}], bench.observation(prepared))[0] == "unknown"
-    assert A.completion(bench.run, prepared, events(), bench.observation(prepared)) == ("complete", None)
+        assert A.completion(bench.run, prepared, events(), dict(observed, **unbound))[0] == "refused", unbound
+    assert A.completion(bench.run, prepared, None, observed)[0] == "unknown"       # events unreadable
+    assert A.completion(bench.run, prepared, [{"kind": "mystery"}], observed)[0] == "unknown"
+    assert A.completion(bench.run, prepared, events(), observed) == ("complete", None)
 
 def completed(bench):
     prepared, path, req = accepted_request(bench)
     assert bench.execute(path, req) is None
+    bench.remote.state[req["args"]["run-id"]] = "SUCCEEDED"
     rpath, receipt = bench.receipt("OP-FIX-s2")
     return prepared, rpath, receipt
+
+
+def test_fake_remote_tracks_the_requested_run():
+    remote = FakeRemote()
+    other_run = "1d1f8a52-6f0e-4c7e-9a3b-5a2a2f6f9c11"
+    for run_id in (RUN_ID, other_run):
+        A.remote_launch("execute", run_id, remote, environ={})
+    assert remote.state == {RUN_ID: "RUNNING", other_run: "RUNNING"}
+
+
+@pytest.mark.parametrize("remote_state,terminal,outcome,completion", [
+    (None, False, None, "incomplete"),
+    ("RUNNING", False, None, "incomplete"),
+    ("FAILED", True, "failed", "failed"),
+    ("SUCCEEDED", True, "succeeded", "complete"),
+])
+def test_observation_is_derived_from_remote_state(bench, remote_state, terminal, outcome, completion):
+    other_run = "1d1f8a52-6f0e-4c7e-9a3b-5a2a2f6f9c11"
+    prepared, path, req = accepted_request(bench, [RUN(args={"assets": "ka_fixture", "run-id": other_run})])
+    assert bench.execute(path, req) is None
+    bench.remote.state[RUN_ID] = "FAILED" if remote_state == "SUCCEEDED" else "SUCCEEDED"
+    if remote_state is None:
+        bench.remote.state.pop(other_run, None)
+    else:
+        bench.remote.state[other_run] = remote_state
+    bench.verdict(prepared)
+    observed = bench.observation(prepared)
+    assert (observed["terminal"], observed["outcome"]) == (terminal, outcome)
+    assert A.completion(bench.run, prepared, bench.events(ITEM), observed)[0] == completion
 
 @pytest.mark.parametrize("damage", ["missing_output", "empty_output", "changed_output", "other_request", "other_item", "other_operation",
                                     "no_output_digest", "nonzero_exit", "true_exit"])
@@ -732,9 +793,11 @@ def test_dry_run_and_execution_share_the_plan_and_only_terminal_readback_complet
     assert record["submitted"] is True and dry_record["submitted"] is False
     assert "DATABASE_URL" not in bench.remote.submissions[0]["env"]
     assert A.completion(bench.run, prepared, [], None)[0] == "unknown"
-    assert A.completion(bench.run, prepared, [], bench.observation(prepared, terminal=False, outcome=None))[0] == "incomplete"
-    bench.remote.state[RUN_ID] = "SUCCEEDED"
     bench.verdict(prepared)
+    assert A.completion(bench.run, prepared, bench.events(ITEM), bench.observation(prepared))[0] == "incomplete"
+    bench.remote.state[RUN_ID] = "FAILED"
+    assert A.completion(bench.run, prepared, bench.events(ITEM), bench.observation(prepared))[0] == "failed"
+    bench.remote.state[RUN_ID] = "SUCCEEDED"
     assert A.completion(bench.run, prepared, bench.events(ITEM), bench.observation(prepared)) == ("complete", None)
     assert bench.X.FENCE.exists() and not bench.X.fence_quiescent()
     proof = {"operation_id": prepared["operation_id"], "request_sha256": prepared["request_sha256"],
@@ -769,10 +832,10 @@ def test_remote_plan_matches_the_current_wave4_launcher(monkeypatch):
     assert A.remote_execute_argv(A.BUILD_JOB, RUN_ID) == seen[0]
 
 
-def test_production_kinds_stay_disabled_and_wave4_launch_stays_bound(bench):
+def test_only_p01_production_kinds_are_enabled_and_wave4_launch_stays_bound(bench):
     table = real_table()
     assert {k for k, v in table.items() if v["enabled"]} == ENABLED_KINDS
-    assert all(not v["enabled"] for v in table.values() if v["production"])
+    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == P01_KINDS
     entry = table["smalltest_dispatch"]
     assert entry["script"].endswith("/smalltest_launch.py") and entry["also_needs"] == ["gcloud"]
     for kind in ("smalltest_dispatch",):

@@ -16,18 +16,10 @@ a contract change, STOP and raise with the native (§N.2 — the freeze is
 deliberate).
 
 ── W0 PRESERVATION + IDEMPOTENCY (§N.3) ────────────────────────────────
-This schema has no immutable candidate/publication generation boundary. During
-DP-SD-017 W0, `prepare:replace` therefore takes a transaction-scoped chart lock
-and FAILS CLOSED before DELETE when any writer-owned output already exists. A
-populated chart remains held until W7 supplies immutable candidate/publication;
-this writer does not invent a backup and does not claim atomic replacement.
-Only an output-empty chart may enter the existing per-chart delete-then-insert
-path. Planning, dry-run and matching-resume validation remain read-only, and
-cleanup is NEVER performed by a computational substep. The lesson is written in
-blood in
-`ka_gochara_sweep`'s docstring: substep dispatch order is not something a writer
-may assume, and a per-substep delete can fire AFTER sibling substeps have
-committed rows in the SAME build, silently wiping them.
+SR-A4-01 keeps ordinary dispatch inactive. The explicit G1 candidate path uses
+additive sibling tables (migration 1385) and a generation-scoped SQL adapter.
+Preparation deletes only the current mutable candidate, never legacy/published
+rows. The orchestrator retains ownership of its connection and transaction.
 
 ── STAGE SEQUENCING, HONESTLY ─────────────────────────────────────────────
 §8.1 notes that a plan's substeps may be dispatched in any order and prescribes,
@@ -117,6 +109,7 @@ from services.ka_kshetra import (
     submodular as SM,
 )
 from services.ka_kshetra.contracts import ProvenanceEdge, RobustnessVector, Segment
+from services.ka_kshetra.g1_provenance import CONSTANT_PROVENANCE, numeric_constant_inventory
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +121,11 @@ def _engine_version() -> str:
     """Return the current ENGINE_VERSION from engine_config."""
     from services.ka_kshetra.engine_config import ENGINE_VERSION
     return ENGINE_VERSION
+
+
+def _candidate_engine() -> str:
+    """G1 keeps the full reference until PLAN §6.2's compact/null proof exists."""
+    return 'sampled'
 
 
 def _dhara_sweep_semantic_version() -> str:
@@ -181,11 +179,8 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #:       content-bound; v8 checkpoints cannot resume into the corrected field.
 #: v10 — DP-SD-017 W0 preservation: populated slices fail before replacement;
 #:       v9 checkpoints must re-enter the preservation preflight.
-_RESUME_VERSION = 10
+_RESUME_VERSION = 11
 
-
-class KshetraReplacementHeld(RuntimeError):
-    """A populated W0 slice cannot be replaced without immutable generations."""
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a
@@ -266,6 +261,11 @@ class _ClassContext:
     baseline_is_synthetic: bool = False
 
 
+def candidate_null_shifts():
+    from services.kala_core.measure import DEFAULT_NON_IDENTITY_SHIFTS
+    return DEFAULT_NON_IDENTITY_SHIFTS
+
+
 @register(ASSET_ID)
 @records_swiss_backend
 class KaKshetraWriter(WriterBase):
@@ -277,7 +277,22 @@ class KaKshetraWriter(WriterBase):
     # ── plan ─────────────────────────────────────────────────────────────────
 
     def plan_substeps(self, ctx) -> list[SubStep]:
-        conn = ctx.db_conn
+        # SR-A4-01 code only: ordinary dispatch completes without activation.
+        self._prebuild_inactive = not bool(ctx.config.get('kshetra_g1_candidate'))
+        if self._prebuild_inactive:
+            return [SubStep(key='prebuild:inactive', label='G1 pre-build; activation gated')]
+        from .candidate import bind_candidate, stage_context
+        from .g1_inputs import birth_instant, pinned_as_of, load_suppression
+        conn, candidate = bind_candidate(ctx)
+        self._generation = conn.generation
+        self._build_id = str(ctx.build_id)
+        self._g1_birth = birth_instant(ctx.config)
+        self._as_of = pinned_as_of(ctx.config)
+        self._suppression_primitives, self._suppression_gaps = load_suppression(
+            conn, str(ctx.config['chart_id']), self._generation, self._g1_birth)
+        self._suppression_pin = hashlib.sha256(S4.canonical_json([
+            [vars(p) for p in self._suppression_primitives], self._suppression_gaps]).encode()).hexdigest()
+        ctx = stage_context(ctx, conn)
         self._chart_id = ctx.config['chart_id']
         self._dry_run = bool(getattr(ctx, 'dry_run', False))
         self._class_cache: dict[str, _ClassContext] = {}
@@ -302,7 +317,7 @@ class KaKshetraWriter(WriterBase):
         # doubling a full-table read of `kala_field_provenance` (~1.8M rows for
         # the native chart). Same lazy-init pattern as `_shared_envelopes`.
         self._window_provenance_cache: dict[str, list[dict]] | None = None
-        self._birth_date, self._birth_time = self._load_birth_instant(conn, self._chart_id)
+        self._birth_date, self._birth_time = self._g1_birth.date(), self._g1_birth.time()
 
         # §7.5 sub-rule 5: resolve the weights version EXACTLY ONCE, here, and
         # carry it in the plan. Re-querying per substep would let a long build
@@ -310,12 +325,16 @@ class KaKshetraWriter(WriterBase):
         # different weights versions in one snapshot — a non-deterministic field
         # hash and a silently mixed model.
         self._weights_version, self._weights = S4.resolve_weights_pin(conn)
-        self._segment_engine = _engine_version()
+        self._segment_engine = _candidate_engine()
         self._dhara_sweep_version = (
             _dhara_sweep_semantic_version()
             if self._segment_engine == 'analytic'
             else None
         )
+        null_config = S5.null_configuration(
+            HORIZON_DAYS, _dn_module().DEFAULT_REPLICATES
+            if self._segment_engine == 'analytic' else (candidate_null_shifts() + 1
+            if hasattr(self, '_generation') else S5.DEFAULT_REPLICATES))
 
         self._pins = S4.FieldPins(
             chart_id=str(self._chart_id),
@@ -325,6 +344,25 @@ class KaKshetraWriter(WriterBase):
             cohort_version=None,   # Lane D owns the cohort fingerprint (§6.3 rule 5)
             config_pin={
                 'horizon_days': HORIZON_DAYS,
+                'generation': self._generation,
+                'as_of': self._as_of.isoformat(),
+                'birth_utc': self._g1_birth.isoformat(),
+                'axis': 'days_since_birth_UT; ephemeris_daily_noon_UT',
+                'rarity_convention': self.rarity_convention(),
+                'suppression_input_digest': self._suppression_pin,
+                'suppression_disclosures': self._suppression_gaps,
+                'kinematics_role': 'evaluation_only',
+                'comparable_with': 'different_convention',
+                'constant_provenance': {
+                    **CONSTANT_PROVENANCE,
+                    'null': (
+                        f"{self._segment_engine}; {null_config['shift_count']} non-identity shifts + observation; "
+                        f"denominator={null_config['denominator']}; resolution={null_config['resolution']}; "
+                        f"{null_config['schedule']}; W2 5.5/ALGO 3.20; surrogate, not assumed exchangeable"
+                    ),
+                },
+                'numeric_constant_inventory': numeric_constant_inventory(),
+                'weights_digest': hashlib.sha256(S4.canonical_json(self._weights).encode()).hexdigest(),
                 'p_floor': hazard.P_FLOOR,
                 'rho_max': hazard.RHO_MAX,
                 'tau_nats': integrator.DEFAULT_TAU,
@@ -332,9 +370,15 @@ class KaKshetraWriter(WriterBase):
                 'null_replicates': (
                     _dn_module().DEFAULT_REPLICATES
                     if self._segment_engine == 'analytic'
-                    else S5.DEFAULT_REPLICATES
+                    else (candidate_null_shifts() if hasattr(self, '_generation')
+                          else S5.DEFAULT_REPLICATES)
                 ),
+                'null_configuration': null_config,
                 'null_quantile': S5.Q_QUANTILE,
+                'null_experiment': 'class_specific_field_maximum',
+                'null_surrogate_diagnostic': True,
+                'null_denominator': candidate_null_shifts() + 1,
+                'disabled_insight_types': S65.DISABLED_INSIGHT_TYPES,
                 'duration_buckets': list(S5.DURATION_BUCKETS),
                 'precision_regime': 'day_grade',
                 'segment_engine': self._segment_engine,
@@ -350,7 +394,7 @@ class KaKshetraWriter(WriterBase):
                 'ka_kshetra: no bodha_pratijna event classes for chart %s — honest '
                 'empty computation. The prepare-only plan will preflight the existing '
                 'writer-owned slice under the orchestrator savepoint; any populated '
-                'slice remains unchanged and held until W7.', self._chart_id,
+                'slice remains unchanged; computation is candidate-only.', self._chart_id,
             )
             steps = [SubStep(key='prepare:replace',
                              label='replace prior Kshetra generation')]
@@ -372,8 +416,8 @@ class KaKshetraWriter(WriterBase):
             for d in range(DECADES):
                 work_steps.append(SubStep(key=f'stage4:{ec}:{d}',
                                           label=f'field {ec} decade {d}'))
-        _ev5 = _engine_version()
-        n_blocks = math.ceil(S5.DEFAULT_REPLICATES / S5.DEFAULT_BLOCK_SIZE)
+        _ev5 = self._segment_engine
+        n_blocks = math.ceil((candidate_null_shifts() if hasattr(self, '_generation') else S5.DEFAULT_REPLICATES - 1) / S5.DEFAULT_BLOCK_SIZE)
         for ec in self._event_classes:
             if _ev5 == 'analytic':
                 # F2 (SM-R-11): two substeps so each commits within the 15-min
@@ -394,7 +438,7 @@ class KaKshetraWriter(WriterBase):
         # stage5finalize: salience reads committed windows, insights read
         # committed salience, and the timeline spec reads both.
         work_steps.append(SubStep(key='stage6', label='salience vector + submodular selection'))
-        work_steps.append(SubStep(key='stage65', label='insight synthesis (7 non-LEL types)'))
+        work_steps.append(SubStep(key='stage65', label='insight synthesis (6 enabled non-LEL types)'))
         for view in TIMELINE_VIEWS:
             work_steps.append(SubStep(key=f'stage8:{view}', label=f'timeline spec ({view})'))
         work_steps.append(SubStep(key='snapshot', label='field snapshot + content hash'))
@@ -489,6 +533,18 @@ class KaKshetraWriter(WriterBase):
     # ── dispatch ─────────────────────────────────────────────────────────────
 
     def run_substep(self, ctx, step: SubStep) -> WriterResult:
+        if getattr(self, '_prebuild_inactive', False):
+            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
+                notes='pre-build SR-A4-01: candidate path inactive; no output changed')
+        if hasattr(self, '_generation'):
+            from .candidate import bind_candidate, stage_context
+            from .g1_inputs import load_suppression
+            conn, candidate = bind_candidate(ctx, lock=not ctx.dry_run)
+            prims,gaps = load_suppression(conn, str(ctx.config['chart_id']), self._generation, self._g1_birth)
+            pin = hashlib.sha256(S4.canonical_json([[vars(p) for p in prims],gaps]).encode()).hexdigest()
+            if pin != self._suppression_pin:
+                raise ValueError('G1 suppression inputs changed; replan a new candidate')
+            ctx = stage_context(ctx, conn)
         conn = ctx.db_conn
         kind = step.key.split(':', 1)[0]
         if kind == 'prepare':
@@ -542,14 +598,10 @@ class KaKshetraWriter(WriterBase):
                 notes='dry-run: replacement preparation not executed',
             )
 
-        populated_table = self._populated_owned_table(conn, self._chart_id)
-        if populated_table is not None:
-            raise KshetraReplacementHeld(
-                'ka_kshetra replacement held: writer-owned output already exists '
-                f'in {populated_table} for chart {self._chart_id}. DP-SD-017 W0 '
-                'has no immutable generation schema; replacement remains held '
-                'until W7 immutable candidate/publication.'
-            )
+        # CandidateConnection confines deletion to a mutable new generation.
+        # Legacy/publication rows never enter this SQL path.
+        if not hasattr(self, '_generation'):
+            raise RuntimeError('candidate generation must be bound before preparation')
 
         # A chart with no discovered event classes and no existing output has
         # nothing to replace or build. Keep the prepare step executable so the
@@ -567,38 +619,8 @@ class KaKshetraWriter(WriterBase):
         return WriterResult(
             asset_id=ASSET_ID,
             rows_inserted=0,
-            notes='empty writer-owned slice prepared; no prior output replaced',
+            notes='candidate partition prepared; legacy/published output unchanged',
         )
-
-    @staticmethod
-    def _populated_owned_table(conn, chart_id) -> Optional[str]:
-        """Lock and return the first populated writer-owned table, if any.
-
-        `kala_insights` is shared: only `lel_derived = FALSE` rows are owned by
-        this writer and can block its replacement. Every lookup is loud-failing;
-        an unavailable table or malformed result is a failed preflight, never an
-        inferred empty slice.
-        """
-        with conn.cursor() as cur:
-            cur.execute(
-                'SELECT pg_advisory_xact_lock(hashtext(%s), hashtext(%s)) AS locked',
-                (ASSET_ID, str(chart_id)),
-            )
-            for table, predicate in _OWNED_TABLES:
-                cur.execute(
-                    f'SELECT EXISTS (SELECT 1 FROM {table} WHERE chart_id = %s'
-                    + (f' AND {predicate}' if predicate else '')
-                    + ' LIMIT 1) AS has_rows',
-                    (chart_id,),
-                )
-                rows = S4._rows(cur)
-                if len(rows) != 1 or 'has_rows' not in rows[0]:
-                    raise RuntimeError(
-                        f'ka_kshetra replacement preflight returned no verdict for {table}'
-                    )
-                if bool(rows[0]['has_rows']):
-                    return table
-        return None
 
     def _run_plugin_substep(self, ctx, step: SubStep) -> WriterResult:
         """Route a substep contributed by another lane back to that lane.
@@ -656,8 +678,7 @@ class KaKshetraWriter(WriterBase):
         d0 = decade * HORIZON_DAYS / DECADES
         d1 = (decade + 1) * HORIZON_DAYS / DECADES
         ev = cctx.evaluator
-        from services.ka_kshetra.engine_config import ENGINE_VERSION
-        if ENGINE_VERSION == 'analytic':
+        if getattr(self, '_segment_engine', _engine_version()) == 'analytic':
             # Full-horizon segments built once in _class_context(); filter to
             # this decade's window [d0, d1] to match the per-decade substep model.
             segments = [s for s in cctx.dhara_segments
@@ -719,9 +740,13 @@ class KaKshetraWriter(WriterBase):
 
         size = S5.DEFAULT_BLOCK_SIZE
         lo = (block - 1) * size
-        hi = min(block * size, S5.DEFAULT_REPLICATES)
-        S5.run_null(cctx.evaluator, HORIZON_DAYS, S5.DEFAULT_REPLICATES,
-                    block=(lo, hi), accumulator=cctx.null_accumulator)
+        if hasattr(self, '_generation'):
+            hi = min(block * size, candidate_null_shifts())
+            S5.run_field_block(cctx.evaluator, cctx.null_accumulator, start=lo, end=hi)
+        else:
+            hi = min(block * size, S5.DEFAULT_REPLICATES - 1)
+            S5.run_null(cctx.evaluator, HORIZON_DAYS, S5.DEFAULT_REPLICATES,
+                        block=(lo, hi), accumulator=cctx.null_accumulator)
         if not self._dry_run:
             self._record_substep(conn, step.key, 0)
         # The null writes no rows of its own until finalize: partial statistics
@@ -739,10 +764,11 @@ class KaKshetraWriter(WriterBase):
                                 notes=f'{event_class} skipped: {skip.reason}')
 
         acc = cctx.null_accumulator
-        if acc.completed < S5.DEFAULT_REPLICATES:
+        required = candidate_null_shifts() if hasattr(self, '_generation') else S5.DEFAULT_REPLICATES - 1
+        if acc.completed < required:
             raise S4.UpstreamStageIncomplete(
                 f'upstream_stage_incomplete: {event_class} has {acc.completed}/'
-                f'{S5.DEFAULT_REPLICATES} null replicates. q_e is a quantile over ALL '
+                f'{required} null shifts. q_e is a quantile over ALL '
                 'replicates; computing it from a subset would silently change the '
                 'statistic every window boundary depends on.'
             )
@@ -1307,13 +1333,8 @@ class KaKshetraWriter(WriterBase):
             return WriterResult(asset_id=ASSET_ID, rows_inserted=0)
 
         windows = self._load_committed_windows(conn)
-        if not windows:
-            self._record_substep(conn, step.key, 0)
-            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
-                                notes='honest_empty:no_committed_windows')
-
         salience = self._load_salience(conn)
-        if not salience:
+        if windows and any(w['window_id'] not in salience for w in windows):
             raise S4.UpstreamStageIncomplete(
                 'upstream_stage_incomplete: stage 6.5 found no kala_field_salience '
                 'rows for this snapshot. Every insight_score is '
@@ -1354,16 +1375,20 @@ class KaKshetraWriter(WriterBase):
         # field to be absent from, and claiming an absence for it would be a
         # finding manufactured out of a build gap.
         absence: list[tuple[str, float, float, float]] = []
+        absence_facts = {}
         for ec in self._event_classes:
             if ec in {s['event_class'] for s in self._skipped}:
                 continue
             try:
-                p_e = S4.load_promise_prior(conn, self._chart_id, ec).p
+                self._require_stage4_committed(conn, ec)
+                prior = S4.load_promise_prior(conn, self._chart_id, ec)
+                p_e = prior.p
             except Exception as exc:            # pragma: no cover - lane-dependent
                 logger.warning('ka_kshetra stage65: promise prior unavailable for %s '
                                '(%s) — absence_of_expected not evaluated for it', ec, exc)
                 continue
             absence.append((ec, float(p_e), 0.0, float(HORIZON_DAYS)))
+            absence_facts[ec] = prior.fact_ids
 
         scarcity_pairs = [(iw, by_class[iw.event_class]) for iw in insight_windows]
         reversal_inputs = self._reversal_inputs(conn, by_class)
@@ -1376,6 +1401,8 @@ class KaKshetraWriter(WriterBase):
             absence_candidates=absence,
             scarcity_pairs=scarcity_pairs,
             reversal_inputs=reversal_inputs,
+            horizon_end=float(HORIZON_DAYS),
+            absence_fact_ids=absence_facts,
             # Type 8 `contrast` needs a BASELINE field to diff against
             # (last_month / last_year / a pinned prior field_snapshot_id). A
             # rebuild deletes this chart's prior snapshot rows before any substep
@@ -1459,7 +1486,7 @@ class KaKshetraWriter(WriterBase):
 
         spec = S8.build_timeline_spec(
             chart_id=str(self._chart_id), generated_for=view, t_zero=t_zero,
-            now_marker=self._now_marker(t_zero),
+            now_marker=(self._as_of.date().isoformat() if hasattr(self, '_as_of') else self._now_marker(t_zero)),
             field_snapshot_id=self._snapshot_id,
             weights_version=self._weights_version,
             tracks=tracks, windows=window_rows, boundaries=boundary_rows,
@@ -1783,6 +1810,13 @@ class KaKshetraWriter(WriterBase):
         cache[key] = rate
         return rate
 
+    @staticmethod
+    def rarity_convention() -> dict:
+        from .g1_inputs import CANONICAL_AYANAMSHA
+        return {'ayanamsha_id': CANONICAL_AYANAMSHA,
+                'feature': COHORT_FEATURE_KEY, 'basis': 'L1 longitude_sidereal',
+                'mapping': 'floor(longitude_mod_360 / 30) + 1'}
+
     def _natal_lagna_sign(self, conn) -> Optional[int]:
         """The native's natal Lagna `sign_id` (1..12), for the cohort feature.
 
@@ -1810,20 +1844,16 @@ class KaKshetraWriter(WriterBase):
                 # alone, so even with the right category it would have matched any body's
                 # longitude and bucketed THAT into a lagna sign.
                 #
-                # The `ORDER BY ayanamsha_id LIMIT 1` is deliberately KEPT AS IT WAS rather than
-                # repointed at a canonical ayanamsha. It resolves to `krishnamurti` (12.5280°).
-                # All five ayanamshas fall in sign 1 for this chart (12.43–15.39°), so the choice
-                # does not change today's answer — but it is a real convention question about
-                # which population the rarity axis compares against, and picking one inside a
-                # bug-fix would be an undisclosed change of meaning. Flagged, not silently altered.
+                # G1(e): compare with the canonical cohort convention, explicitly.
                 cur.execute(
                     """SELECT fact_value_num FROM chart_facts
                         WHERE chart_id = %s AND fact_category = 'graha_position'
                           AND fact_subject = 'LAGNA'
                           AND fact_key = 'longitude_sidereal'
-                        ORDER BY ayanamsha_id, fact_id
+                          AND ayanamsha_id = %s
+                        ORDER BY fact_id
                         LIMIT 1""",
-                    (self._chart_id,))
+                    (self._chart_id, self.rarity_convention()['ayanamsha_id']))
                 rows = S4._rows(cur)
             if rows and rows[0].get('fact_value_num') is not None:
                 sign = int(float(rows[0]['fact_value_num']) % 360.0 / 30.0) + 1
@@ -1931,7 +1961,7 @@ class KaKshetraWriter(WriterBase):
     def _t_zero(self) -> Optional[datetime]:
         if self._birth_date is None:
             return None
-        return datetime.combine(self._birth_date, self._birth_time or time(0, 0))
+        return getattr(self, '_g1_birth', datetime.combine(self._birth_date, self._birth_time or time(0, 0)))
 
     @staticmethod
     def _now_marker(t_zero: datetime) -> str:
@@ -2006,6 +2036,17 @@ class KaKshetraWriter(WriterBase):
                  json.dumps({}), list(_HASHED_TABLES),
                  list(self._event_classes), json.dumps(self._skipped), HORIZON_DAYS),
             )
+        if hasattr(self, '_generation'):
+            from .g1_manifest import attest_snapshot
+            attest_snapshot(conn, chart_id=str(self._chart_id), generation=self._generation,
+                build_id=self._build_id, snapshot_id=self._snapshot_id,
+                content_digest=content_hash, pins={
+                    'corpus_pin': self._pins.corpus_pin,
+                    'weights_version': self._weights_version,
+                    'config_pin': dict(self._pins.config_pin),
+                    'cohort_version': self._pins.cohort_version,
+                    'x_schema_version': self._pins.x_schema_version,
+                })
         self._record_substep(conn, step.key, 1)
         return WriterResult(asset_id=ASSET_ID, rows_inserted=1,
                             notes=f'content_hash={content_hash}')
@@ -2039,6 +2080,13 @@ class KaKshetraWriter(WriterBase):
                                      self._iter_content_hash_rows(conn))
 
     # ── helpers ──────────────────────────────────────────────────────────────
+
+    def _new_null_accumulator(self, event_class):
+        if hasattr(self, '_generation'):
+            from services.kala_core.measure.field import prepare_field, FieldAccumulator
+            return FieldAccumulator(prepare_field(event_class, HORIZON_DAYS,
+                non_identity_shifts=candidate_null_shifts()))
+        return S5.NullAccumulator(replicates=S5.DEFAULT_REPLICATES, horizon_days=HORIZON_DAYS)
 
     def _class_context(self, conn, event_class: str) -> _ClassContext:
         cached = self._class_cache.get(event_class)
@@ -2096,16 +2144,14 @@ class KaKshetraWriter(WriterBase):
                     'performance degradation, not a correctness failure.',
                     _l0_exc,
                 )
-        from services.ka_kshetra.engine_config import ENGINE_VERSION as _EV
         dhara_segs = None
-        if _EV == 'analytic':
+        if getattr(self, '_segment_engine', _engine_version()) == 'analytic':
             from services.ka_kshetra.dhara_sweep import dhara_build_segments
             dhara_segs = dhara_build_segments(evaluator)
         ctx = _ClassContext(
             event_class=event_class,
             evaluator=evaluator,
-            null_accumulator=S5.NullAccumulator(replicates=S5.DEFAULT_REPLICATES,
-                                                horizon_days=HORIZON_DAYS),
+            null_accumulator=self._new_null_accumulator(event_class),
             temporal_shape=shape,
             dhara_segments=dhara_segs,
             baseline_is_synthetic=shape_only_from_tier,
@@ -2462,6 +2508,8 @@ class KaKshetraWriter(WriterBase):
         if not rows:
             return None
         if {r['build_fingerprint'] for r in rows} != {fingerprint}:
+            if hasattr(self, '_generation'):
+                raise ValueError('G1 candidate inputs changed; open a new candidate')
             return None
         return {r['substep_key'] for r in rows}
 

@@ -13,8 +13,9 @@ SURFACES = {
     "measuring_dispatch": {
         "args": {"run": "all_classes_full", "classes": "all"}, "caps": ["builder", "gcloud"],
         "runtime_principal": "data_plane_builder", "phase": "J-3a / J-3c",
-        "source": "platform/scripts/dispatch_v5_small_test_job.py",
-        "blockers": ["allocate separate dry-run kind through a real child", "qualify same-transaction staging rollback and measuring launch",
+        "source": "platform/scripts/dispatch_v5_measuring_job.py",
+        "blockers": ["independent source review, campaign gate and phase enablement for the disabled measuring kinds",
+                     "approved canonical offline input and deployment-faithful builder-role rehearsal",
                      "accepted density/cap projection and Cloud Run timeout readback"]},
     "century_dispatch": {
         "args": {"classes": "all"}, "caps": ["gcloud"], "runtime_principal": "data_plane_builder", "phase": "J-4d / J-4e",

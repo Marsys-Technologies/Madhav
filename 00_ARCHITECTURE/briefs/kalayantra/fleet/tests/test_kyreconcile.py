@@ -257,8 +257,13 @@ def test_triage_preserves_earned_completions(base, final, decl, staged, capture,
     lost = {iid for iid in earned_ids if any(
         mutant_states[iid].get(field) != live_states[iid].get(field)
         for field in ("status", "source", "evidence"))}
-    assert len(lost) == 39
-    assert all(live_states[iid]["source"] == "guarded:event" and live_states[iid]["evidence"] for iid in lost)
+    # Re-derived at the origin/main merge: the 39 guarded:event proofs are still the ones lost directly. Main's decision-item
+    # status now also follows its dependencies' completion, so exactly six recorded decisions degrade as a consequence.
+    lost_guarded = {iid for iid in lost if live_states[iid]["source"] == "guarded:event"}
+    lost_decisions = lost - lost_guarded
+    assert len(lost_guarded) == 39 and all(live_states[iid]["evidence"] for iid in lost_guarded)
+    assert lost_decisions == {"D-KR", "D-R11", "D-R5", "D-R6", "D-R8", "D-R9"}
+    assert all(live_states[iid]["source"] == f"decision:{iid}" for iid in lost_decisions)
     assert live_states["B-4"]["evidence"] and not mutant_states["B-4"]["evidence"]
     with pytest.raises(AssertionError, match="guarded_completion"):
         assert_live_preserves_earned_reconciliation(mutant, final, capture)
