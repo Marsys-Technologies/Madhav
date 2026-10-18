@@ -82,3 +82,17 @@ def test_rollback_never_invents_the_retained_generation():
     assert result["generation"] is None
     with pytest.raises(ValueError):
         load().prepare("rollback_head", {"generation": "5.0"})
+
+
+def test_j5s_preparation_points_to_disabled_strict_definition_planner():
+    result = load().prepare('verification_job', {'generation': '5.0'})
+    assert result['prepared_launcher'] == {
+        'script': 'platform/scripts/prepare_gochara_verifier_launch.py',
+        'enabled': False, 'production_allocation': None,
+        'input': 'supplied immutable verifier job definition readbacks',
+        'output': 'ky.j5s_verifier_launch_preparation/1',
+    }
+    # J-4b enabled the executor kind on its own launcher; the prepared planner above stays disabled review metadata.
+    op = json.loads((FLEET / 'executor_ops.json').read_text())['ops']['verification_job']
+    assert op['enabled'] is True and op['enabled_by'] == 'J-4b'
+    assert op['script'] == '00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py'

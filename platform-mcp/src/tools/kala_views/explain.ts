@@ -33,7 +33,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
-import { kalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias, publishedRequestSchema } from './registry_alias.js'
 
 // ── Item 34: Contrastive field-diff (serving layer) ──────────────────────────
 
@@ -632,6 +632,7 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
     'or `bhava` exactly as judgment_query/pact_query accept — one is required. ' +
     '[ṢAḌ-DARŚANA W0.4]',
     {
+      published_request: publishedRequestSchema,
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')."),
       domain: z.string().optional().describe(
