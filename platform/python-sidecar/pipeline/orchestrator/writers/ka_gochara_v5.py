@@ -90,7 +90,7 @@ from services.gochara_kernel.window_verifier import verify_window_semantics
 from services.gochara_kernel.window_store import WindowStore
 from services.gochara_kernel import inventory_verifier as gk_verifier
 from services.gochara_kernel import ledger as gk_ledger
-from services.gochara_kernel.dasha_read import load_pinned_vimshottari
+from services.gochara_kernel.dasha_read import LEVEL_N, load_pinned_vimshottari
 from services.gochara_kernel.inventory_store import InventoryStore
 from services.gochara_kernel import rule_registry as gk_rule_registry
 from services.gochara_kernel.rule_registry import BOUND_PATHS, RuleRegistryStore
@@ -948,6 +948,20 @@ def p1_minting_closed_reason(conn) -> str | None:
     return None
 
 
+def _p1_consulted_dasha_keys(chart: dict, classes) -> set[tuple[str, int | None]]:
+    """The (lord, level_n) pairs the record grain reads daśā rows for: for every P1 TRANSIT edge of the classes, its ANCHOR
+    lord (`period_anchor_lord`, else the agent) at its anchor level (`None` = every level, the legacy union) — the same
+    key `materialise_record_grain._p1_running_support` hands to `make_period_rows_for` (AM-21 part 2)."""
+    keys: set[tuple[str, int | None]] = set()
+    for event_class in classes:
+        for edge in gk_evaluator.enumerate_edges(
+                event_class, "P1", chart, rule_version=gk_rule_registry.selected_path_version(event_class, "P1")):
+            if edge.transit:
+                keys.add(((edge.period_anchor_lord or edge.agent).lower(),
+                          LEVEL_N[edge.period_anchor_level] if edge.period_anchor_level else None))
+    return keys
+
+
 def _class_of_grain(key: str) -> str | None:
     """The event class a per-class substep key names, or None for a class-less substep."""
     if key.startswith((INVENTORY_SUBSTEP_PREFIX, COVERAGE_SUBSTEP_PREFIX, VERIFY_SUBSTEP_PREFIX)):
@@ -1210,6 +1224,20 @@ class GocharaV5Writer(WriterBase):
             dasha_ids = [str(r["dasha_row_id"]) for r in rows
                          if int(r["level_n"]) in (1, 2, 3)
                          and r["start_iso"] < hi and r["end_iso"] > lo]
+            # J-2a-P1L (B.3): a P1 record's period_running_at is judged from EVERY pinned row of its anchor (lord, level),
+            # wherever it lies — a 'false' is a measured negative from rows wholly outside the horizon. Those consulted
+            # rows are consumed inputs, so the ledger lists them too (only while P1 minting is open: otherwise nothing
+            # consults a row). An anchor with no pinned row at all has nothing to list and stays 'unknown' (N.7.6).
+            if p1_minting_closed_reason(ctx.db_conn) is None:
+                consulted = _p1_consulted_dasha_keys(
+                    {"lagna_deg": context["lagna_deg"], "natal": context["natal"]},
+                    slice_.classes if slice_ is not None else SCORED_CLASSES)
+                have = set(dasha_ids)
+                dasha_ids += [str(r["dasha_row_id"]) for r in rows
+                              if int(r["level_n"]) in (1, 2, 3) and str(r["dasha_row_id"]) not in have
+                              and any(str(r.get("lord_graha", "")).lower() == lord
+                                      and (level is None or int(r["level_n"]) == level)
+                                      for lord, level in consulted)]
             # A5.5f (G7): a rebuild REPLACES the whole unsealed CANDIDATE chart x generation output chain, never
             # accretes. THE CONTRACT: every dispatch of this asset is a WHOLE-BUILD REPLAY. The orchestrator drives the
             # full plan on every dispatch (asset_runner calls _drive_substeps without completed_keys), so this

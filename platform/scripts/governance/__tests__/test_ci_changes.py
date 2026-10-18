@@ -817,3 +817,9 @@ def test_j5s_skip_is_accepted_only_when_the_light_gate_did_not_expect_it(jobs, e
                                  'READBACK_EXPECTED': 'true', 'J5S_EXPECTED': expected_flag,
                                  'J5S_RESULT': j5s, 'DOCS_ONLY': 'false'})
     assert result.returncode == code, result.stdout
+
+
+def test_j5s_job_follows_the_light_pr_gate_and_is_a_full_suite_member(jobs):
+    job = jobs['gochara-j5s-full-class-seal']
+    assert "contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-j5s-full-class-seal')" in job['if']
+    assert 'gochara-j5s-full-class-seal' in jobs['full-suite']['needs']

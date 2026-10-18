@@ -376,3 +376,118 @@ def test_the_stored_prerequisite_result_is_checked_against_the_support_it_implie
                 ("r4", "{[a,b)}", "{[a,b)}", True, False, None, True)):            # an unevaluated NULL result
         with pytest.raises(RuntimeError, match="period_running_at stored"):
             verify_p1_support(_RowsConn([bad]), chart_id=CHART_ID, generation=GEN, event_class="marriage")
+
+
+# ── J-2a-P1L (SR-J2A-P1L-NOW): the SNAPSHOT ledgers every row the P1 builder consulted ─────────────────────────────
+# CLAUDE.md §I B.3: an L2+ claim lists the L1 fact ids it consumes. A stored period_running_at = 'false' is a measured
+# negative from the pinned rows of its anchor (lord, level) — all of which lie outside the horizon — so those rows are
+# consumed and must be in `consumed_dasha_row_ids`, not only the rows overlapping the horizon. The detector below is
+# real SQL on the stored chain (§N.8): it reads false exactly when a consulted row is missing from the snapshot.
+
+_UNLEDGERED_FALSE_ANCHOR_ROWS = """
+SELECT r.record_id::text, d.dasha_row_id::text
+FROM public.ka_gochara_relationship_record r
+JOIN public.ka_gochara_record_prerequisite p
+  ON p.record_id = r.record_id AND p.predicate_id = 'period_running_at' AND p.result = 'false'
+JOIN public.chart_dashas d
+  ON d.chart_id = r.chart_id AND lower(d.lord_graha) = lower(r.period_anchor_lord)
+ AND d.level_n = CASE r.period_anchor_level WHEN 'md' THEN 1 WHEN 'ad' THEN 2 WHEN 'pd' THEN 3 END
+ AND d.ayanamsha_id = 'lahiri_chitrapaksha' AND d.system_id = 'vimshottari'
+ AND d.verification_pass_status = 'two_pass_verified' AND d.level_n IN (1, 2, 3) AND d.build_id = %s::uuid
+WHERE r.chart_id = %s AND r.generation = %s AND r.path_id = 'P1'
+  AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_search_input_snapshot s
+                  WHERE s.chart_id = r.chart_id AND s.generation = r.generation
+                    AND d.dasha_row_id = ANY (s.consumed_dasha_row_ids))
+"""
+
+
+def _false_p1_records(conn):
+    return conn.execute(
+        "SELECT count(*) FROM public.ka_gochara_relationship_record r JOIN public.ka_gochara_record_prerequisite p"
+        " ON p.record_id = r.record_id AND p.predicate_id = 'period_running_at' AND p.result = 'false'"
+        " WHERE r.path_id = 'P1'").fetchone()[0]
+
+
+def _snapshot_ids(conn):
+    return {str(x) for x in conn.execute(
+        "SELECT consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+        (CHART_ID, GEN)).fetchone()[0]}
+
+
+def test_a_false_period_running_at_has_its_consulted_anchor_rows_in_the_snapshot_ledger(world):
+    """The completion detector (item J-2a-P1L): an anchor (lord, level) held in the pinned build, every row outside the
+    horizon, is stored 'false' — and each of those rows is listed in consumed_dasha_row_ids (B.3)."""
+    w = world
+    w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC)),       # Venus AD, wholly before
+                   (2, datetime(2027, 3, 1, tzinfo=UTC), datetime(2027, 6, 1, tzinfo=UTC))])      # Venus AD, wholly after
+    w.boot()
+    w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+    w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+    assert _false_p1_records(w.conn) == 1                         # not vacuous: the case under test exists
+    assert w.conn.execute(_UNLEDGERED_FALSE_ANCHOR_ROWS, (base_build(), CHART_ID, GEN)).fetchall() == []
+    assert {str(uuid.UUID(int=900)), str(uuid.UUID(int=901))} <= _snapshot_ids(w.conn)
+
+
+def test_an_anchor_with_no_row_in_the_pinned_build_stays_unknown_and_unrestricted(world):
+    """N.7.6 unchanged: no (lord, level) row ANYWHERE in the pinned build (here Venus holds no AD row, only a Mars one) ⇒
+    the support is the unrestricted contact span and the prerequisite an explicit 'unknown', never 'false'; there is
+    no row to ledger, so the completion detector has nothing to find."""
+    w = world
+    w.set_lord_periods([("mars", 2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])
+    w.boot()
+    w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+    w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+    assert _supports(w.conn) == [[(_t(1, 10), _t(1, 25))]] and _results(w.conn) == ["unknown"]
+    assert _false_p1_records(w.conn) == 0
+    assert verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage") == {
+        "records": 1, "restricted": 0}
+
+
+def test_the_snapshot_binds_no_anchor_rows_while_p1_minting_is_closed(world, monkeypatch):
+    """Rows are ledgered because the builder CONSULTS them; with P1 minting closed (named gate) nothing consults a row,
+    so the snapshot is the horizon-overlapping set only, as before."""
+    w = world
+    w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])
+    monkeypatch.setattr(writer_mod, "p1_minting_closed_reason", lambda conn: writer_mod.P1_MINTING_GATE)
+    w.boot()
+    assert str(uuid.UUID(int=900)) not in _snapshot_ids(w.conn)
+
+
+def _pop_row(i, lord, level, a, b):
+    return {"dasha_row_id": f"00000000-0000-4000-8000-{i:012d}", "level_n": level, "parent_row_id": None,
+            "lord_graha": lord, "start_iso": datetime(2025, a, 1, tzinfo=UTC), "end_iso": datetime(2025, b, 1, tzinfo=UTC),
+            "build_id": "7377833e-5d3b-4e70-8bef-1318904f470e", "system_id": "vimshottari",
+            "ayanamsha_id": "lahiri_chitrapaksha", "verification_pass_status": "two_pass_verified"}
+
+
+def _population_problems(consumed, pinned):
+    from services.gochara_kernel import inventory_verifier as inv
+    return inv.check_dasha_population(consumed, pinned, chart_id=CHART_ID, horizon=(_t(4, 1), _t(8, 1)),
+                                      consumed_ids=[r["dasha_row_id"] for r in consumed])
+
+
+def test_the_population_check_accepts_out_of_horizon_rows_of_a_wholly_consumed_anchor_group():
+    """The verifier's side of the ledger: a (lord, level) group consumed WHOLE (the builder read it whole) is no 'extra'."""
+    inside = _pop_row(1, "Venus", 2, 3, 5)                         # overlaps the horizon [04-01, 08-01)
+    before, after = _pop_row(2, "Venus", 2, 1, 2), _pop_row(3, "Venus", 2, 10, 11)
+    other = _pop_row(4, "Mars", 2, 5, 6)                           # in-horizon row of another lord
+    pinned = [inside, before, after, other]
+    assert _population_problems(pinned, pinned) == []
+
+
+def test_the_population_check_still_refuses_an_out_of_horizon_row_whose_group_is_not_wholly_consumed():
+    """A stray row outside the horizon (its (lord, level) group only partly consumed) is still an extra row."""
+    inside, before, after = _pop_row(1, "Venus", 2, 3, 5), _pop_row(2, "Venus", 2, 1, 2), _pop_row(3, "Venus", 2, 10, 11)
+    problems = _population_problems([inside, before], [inside, before, after])
+    assert any("lies wholly outside the horizon (an extra row)" in p and before["dasha_row_id"] in p for p in problems)
+
+
+def test_the_seal_time_population_check_accepts_the_ledgered_snapshot(world):
+    """The ledger must not block sealing: the verifier's own query-based population check (verification job) accepts a
+    snapshot that holds the out-of-horizon rows of a consulted anchor group."""
+    from services.gochara_kernel import inventory_verifier as inv
+    w = world
+    w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])
+    w.boot()
+    assert str(uuid.UUID(int=900)) in _snapshot_ids(w.conn)
+    assert inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)["consumed"] > 0
