@@ -2780,11 +2780,13 @@ jobs:
           READBACK_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'governance-readback-tests')) }}
           SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
           READBACK_RESULT: ${{ needs.governance-readback-tests.result }}
+          KALA_DB_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'kala-db-tests')) }}
           KALA_DB_RESULT: ${{ needs.kala-db-tests.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
         run: |
-          if [ "$KALA_DB_RESULT" != "success" ] && ! { [ "$KALA_DB_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ]; }; then
-            echo "::error::Kāla DB Tests must pass for code changes (got '$KALA_DB_RESULT')"; exit 1
+          # kala-db-tests runs only when the change selector picks it (see its own `if`), so a skip is green when it was not expected.
+          if [ "$KALA_DB_RESULT" != "success" ] && ! { [ "$KALA_DB_RESULT" = "skipped" ] && { [ "$DOCS_ONLY" = "true" ] || [ "$KALA_DB_EXPECTED" = "false" ]; }; }; then
+            echo "::error::Kāla DB Tests must pass when expected (got '$KALA_DB_RESULT', expected='$KALA_DB_EXPECTED')"; exit 1
           fi
           if [ "$READBACK_RESULT" = "skipped" ] && [ "$READBACK_EXPECTED" = "false" ]; then
             if [ "$SHARDS_RESULT" = "success" ] || { [ "$SHARDS_RESULT" = "skipped" ] && [ "$DOCS_ONLY" = "true" ] && [ "$EVENT_NAME" = "pull_request" ]; }; then

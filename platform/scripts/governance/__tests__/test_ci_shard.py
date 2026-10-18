@@ -126,6 +126,7 @@ def test_the_aggregate_job_keeps_the_original_required_name_and_fails_on_any_non
     assert step["env"]["SHARDS_RESULT"] == "${{ needs.governance-tool-tests-shard.result }}"
     assert step["env"]["READBACK_RESULT"] == "${{ needs.governance-readback-tests.result }}"
     assert step["env"]["KALA_DB_RESULT"] == "${{ needs.kala-db-tests.result }}"
+    assert "'kala-db-tests'" in step["env"]["KALA_DB_EXPECTED"]
     assert step["env"]["DOCS_ONLY"] == "${{ needs.changes.outputs.docs_only }}"
     assert "exit 1" in step["run"]
 
@@ -147,7 +148,7 @@ def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate_unless_docs_
     """N-98 A + the fast path: run the aggregate job's own script with each shard, readback and Kāla DB result and docs_only: only success, or skipped
     together with docs_only=true, may pass."""
     script = jobs["governance-tool-tests"]["steps"][0]["run"]
-    p = subprocess.run(["bash", "-c", script], env={**os.environ, "SHARDS_RESULT": result, "READBACK_RESULT": readback, "KALA_DB_RESULT": kala_db, "DOCS_ONLY": docs_only, "EVENT_NAME": "pull_request", "READBACK_EXPECTED": "false"}, capture_output=True, text=True)
+    p = subprocess.run(["bash", "-c", script], env={**os.environ, "SHARDS_RESULT": result, "READBACK_RESULT": readback, "KALA_DB_RESULT": kala_db, "DOCS_ONLY": docs_only, "EVENT_NAME": "pull_request", "READBACK_EXPECTED": "false", "KALA_DB_EXPECTED": "true"}, capture_output=True, text=True)
     ok = ok and (readback in ("success", "skipped") if result == "success" else readback == "skipped")
     ok = ok and (kala_db == "success" or (kala_db == "skipped" and docs_only == "true"))
     assert (p.returncode == 0) is ok, (result, readback, kala_db, docs_only, p.stdout, p.stderr)
