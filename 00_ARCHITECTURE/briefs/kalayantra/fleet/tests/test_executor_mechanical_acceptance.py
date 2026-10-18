@@ -432,6 +432,8 @@ MARKER_ROUTE = {
     "backup_restore_verify": "client_env",
     "smalltest_dispatch": "in_process",
 }
+# A8 §3 fences only remote_async kinds; the *_dryrun kinds are production:false in executor_ops.json, so they are not eligible and carry no row.
+# Teardowns (smalltest_teardown, measuring_teardown) stay excluded by TEARDOWN_KINDS: executor.py `target_is_not_a_teardown` still refuses them.
 BACKUP_CARRY = "        env['PGAPPNAME'] = os.environ['PGAPPNAME']"
 SUBPROCESS_CALLS = {"run", "Popen", "call", "check_call", "check_output"}
 
