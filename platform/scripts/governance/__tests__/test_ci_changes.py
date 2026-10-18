@@ -233,7 +233,7 @@ def test_cli_fails_closed(tmp_path):
 
 # ---------------------------------------------------------------- the workflow wiring -----------------------------------------------------
 
-HEAVY = ("typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
+HEAVY = ("replace-chain-substrate", "typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
          "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build", "gochara-j5s-full-class-seal")
 NEVER_SKIPPED = ("generated-artifacts", "changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
@@ -285,7 +285,9 @@ def test_the_trigger_set_is_unchanged_so_push_and_merge_group_still_run_everythi
 
 
 def test_every_job_in_ci_yml_is_classified_here_so_a_new_heavy_job_is_a_conscious_choice(jobs):
-    unknown = set(jobs) - set(HEAVY) - set(NEVER_SKIPPED) - {"census-battery", "unit-db-tests", "full-suite", "governance-gates-py-sidecar-shard", "replace-chain-substrate"} - {name for name in jobs if name.startswith("required-")}
+    from ci_db_shard import JOB_SHARDS
+    umbrellas = {"required-"+name for name in JOB_SHARDS}
+    unknown = set(jobs) - umbrellas - set(HEAVY) - set(NEVER_SKIPPED) - {"census-battery", "unit-db-tests", "full-suite", "governance-gates-py-sidecar-shard"}
     assert not unknown, f"classify these jobs as HEAVY (skipped on docs-only) or NEVER_SKIPPED: {sorted(unknown)}"
 
 

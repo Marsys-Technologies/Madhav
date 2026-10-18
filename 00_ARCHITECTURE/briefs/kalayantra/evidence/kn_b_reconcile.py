@@ -9,10 +9,19 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from glob import iglob
 import hashlib
+import importlib.util
+from itertools import combinations
 import json
 from pathlib import Path
 import re
+
+ROOT = Path(__file__).resolve().parents[4]
+_route_spec = importlib.util.spec_from_file_location(
+    'kn_b_kyroute', Path(__file__).resolve().parents[1] / 'fleet/kyroute.py')
+route = importlib.util.module_from_spec(_route_spec)
+_route_spec.loader.exec_module(route)
 
 ROLES = ('moorti_nirnaya', 'kota_chakra', 'tithi_pravesha',
          'sudarshana_varsha', 'judge_vedha_wiring')
@@ -82,6 +91,41 @@ def _receipt_gaps(child, model_item):
         readback = receipt.get('readback')
         if not isinstance(readback, dict) or readback.get('head') != merge or readback.get('verdict') != 'ACCEPTED':
             errors.append(f'{label}: required merge-head readback missing or unaccepted')
+    return errors
+
+
+def _ownership_gaps(path_owners):
+    """Compare real file sets and symbolic intersections using fleet glob semantics.
+
+    Symbolic intersection includes subsumption and crossing globs, even when no
+    matching file exists yet. Expanding braces and directory ownership agrees
+    with kyroute.entry_patterns; a single * never crosses a path segment.
+    """
+    errors, declarations = [], []
+    for path, owners in sorted(path_owners.items()):
+        text, prose = route.normalise(path, str(ROOT))
+        patterns = None if prose else route.entry_patterns(text, str(ROOT))
+        if not patterns:
+            errors.append(f'invalid ownership path: {path}: {", ".join(sorted(owners))}')
+            continue
+        files = set()
+        # Match each glob against actual repository files as well as comparing
+        # its pattern below. A declared directory includes its descendants.
+        for expanded in route.expand(text.rstrip('/')):
+            if text.endswith('/') or (ROOT / expanded).is_dir():
+                expanded += '/**'
+            files.update(p for p in iglob(expanded, root_dir=ROOT, recursive=True,
+                                         include_hidden=True) if (ROOT / p).is_file())
+        declarations.extend((owner, path, patterns, files) for owner in sorted(owners))
+    for left, right in combinations(declarations, 2):
+        left_owner, left_path, left_patterns, left_files = left
+        right_owner, right_path, right_patterns, right_files = right
+        if left_owner == right_owner:
+            continue
+        if (left_files & right_files or any(route.overlaps(a, b)
+                for a in left_patterns for b in right_patterns)):
+            errors.append(f'ownership overlap: {left_owner} ({left_path}) <-> '
+                          f'{right_owner} ({right_path})')
     return errors
 
 
@@ -162,9 +206,7 @@ def reconcile(model, evidence):
             '/writers/ka_gochara_v5.py' in p or '/services/gochara_kernel/' in p for p in owns)):
             errors.append(f'{role}: independent wiring ownership absent or mixed with a family')
         errors.extend(_receipt_gaps(child, items.get(item, {})))
-    for path, owners in sorted(path_owners.items()):
-        if len(owners) > 1:
-            errors.append(f'ownership overlap: {path}: {", ".join(sorted(owners))}')
+    errors.extend(_ownership_gaps(path_owners))
     return errors
 
 

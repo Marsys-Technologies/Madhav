@@ -21,6 +21,29 @@ def test_k1_k6_authoritative_locator_resolves_to_the_preserved_source():
     assert hashlib.sha256((ROOT / CONCEPT).read_bytes()).hexdigest() == receipt['sha256']
 
 
+def test_no_plan_locator_sends_the_concept_note_to_an_external_checkout():
+    """The note is preserved in-tree, so no governed text may call it absent or point outside the repository."""
+    items = json.loads((ROOT / '00_ARCHITECTURE/control/kalayantra/plan_model.json').read_text())['items']
+
+    def strings(node):
+        if isinstance(node, str):
+            yield node
+        elif isinstance(node, dict):
+            for value in node.values():
+                yield from strings(value)
+        elif isinstance(node, list):
+            for value in node:
+                yield from strings(value)
+
+    stale = [(item['id'], text[:80]) for item in items for text in strings(item.get('brief', {}))
+        if 'KALA_PIPELINE_CONCEPT_NOTE' in text and ('not on main' in text or 'sangam-final' in text)]
+    assert stale == [], 'concept-note locators must resolve to the preserved in-tree copy'
+    k43 = next(item for item in items if item['id'] == 'K4-3')
+    contract = [text for text in strings(k43['brief']) if text.startswith('Contract (') and '§5.5' in text]
+    assert len(contract) == 1 and (CONCEPT + ' §5.5') in contract[0]
+    assert '§5.5 Attaching the reading' in (ROOT / CONCEPT).read_text().replace('### 5.5', '§5.5')
+
+
 def test_historical_scope_corrections_cover_every_accepted_excursion():
     assert CORRECTIONS.is_file(), 'read-only original results need a governed additive correction'
     records = json.loads(CORRECTIONS.read_text())['corrections']
