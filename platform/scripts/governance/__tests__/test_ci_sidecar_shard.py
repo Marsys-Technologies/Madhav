@@ -45,6 +45,7 @@ ORIGINAL_ARGS = (
 #: The steps of the original job other than the sidecar pytest step, in order: they now run in the static job.
 STATIC_STEPS = (
     "Checkout", "Restore source-bound generated files", "Setup Python", "Install Python dependencies",
+    "SR-A6-GCW — protected migration window scheduling",
     "drift_detector — repo scan", "schema_validator — repo scan",
     "msr_referential_integrity — self-test (§N.5 constituent guard)",
     "schema_pin_mimamsa_predictions — self-test (SAMĀPTI B-PB-SCHEMA-PIN)",

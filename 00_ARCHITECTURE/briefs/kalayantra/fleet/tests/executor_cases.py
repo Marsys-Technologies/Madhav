@@ -76,7 +76,7 @@ def case_fence_and_restart():
         setup(root, mod)
         req = {'operation_id': 'fixture-prod', 'kind': 'fixture_production', 'item_id': 'B-3b',
                'idempotency_key': 'fixture-key', 'requested_by': 'adhikarin', 'kyd': 'fixture'}
-        table = {'fixture_production': {'production': True}}
+        table = {'fixture_production': {'production': True, 'remote_async': True}}   # A8 §3.11: only a remote-asynchronous kind takes the fence
         (mod.REQ / 'fixture-prod.json').write_text(json.dumps(req))
         mod.sync = lambda: None
         mod.load_table = lambda: table
@@ -130,6 +130,8 @@ def case_refresh_preflight_refusals():
         assert 'in-flight operation' in mod.refresh_refusal_reason()
         (mod.INFLIGHT / 'remote.json').unlink()
         mod.FENCE.write_text(json.dumps({'operation_id': 'remote', 'request_sha256': 'a' * 64}))
+        # fence_quiescent (since #3507) also binds the fence to the executor's own commit receipt for that operation
+        (mod.REC / 'remote.json').write_text(json.dumps({'operation_id': 'remote', 'kind': 'fixture_dispatch', 'request_sha256': 'a' * 64}))
         assert 'quiescence evidence' in mod.refresh_refusal_reason()
         (mod.ACC / 'remote.quiescence.json').write_text(json.dumps({
             'operation_id': 'remote', 'request_sha256': 'b' * 64,
