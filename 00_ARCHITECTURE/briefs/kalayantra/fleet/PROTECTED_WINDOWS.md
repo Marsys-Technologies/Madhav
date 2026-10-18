@@ -1,9 +1,10 @@
 ---
 artifact: PROTECTED_WINDOWS
-version: "1.0"
+version: "1.1"
 status: CURRENT
 produced_on: 2026-10-16
 changelog:
+  - "1.1: FU-PW-N01 executable future-window fixture; distinguish catalog discovery from workflow reachability."
   - "1.0: SR-A6-GCW generalized watcher and prospective required merge admission."
 ---
 
@@ -13,7 +14,7 @@ The 1235 incident exposed two gaps: the old external watcher watched only Kāla 
 
 ## Sources and boundary
 
-The catalog reads the immutable `origin/main` commit's `.github/workflows/deploy.yml`: inputs at lines 49–78, their environment bindings at lines 1064–1069, and the actual selection blocks at lines 1073–1147. It derives all six schema windows, including Kāla's referenced list, without a second membership table. A future static schema window is discovered automatically; an unknown selection form, duplicate membership or missing SQL file fails closed. Historical filenames with a numeric suffix (for example `346a_…`) retain leading-number ordering.
+The catalog reads the immutable `origin/main` commit's `.github/workflows/deploy.yml`: inputs at lines 49–78, their environment bindings at lines 1064–1069, and the actual selection blocks at lines 1073–1147. It derives all six schema windows, including Kāla's referenced list, without a second membership table. A future static schema window is discovered automatically from its input, environment binding and recognized selection block; an unknown selection form, duplicate membership or missing SQL file fails closed. Catalog discovery alone does not establish workflow reachability: adding a window must also admit its input in the protected job condition and select its files before the empty-selection check and migration runner. The executable future-window fixture verifies these boundaries; the catalog and schedule guard do not validate arbitrary job conditions or shell execution order. Historical filenames with a numeric suffix (for example `346a_…`) retain leading-number ordering.
 
 (I) INTERPRETATION: “every protected set” here means every explicit `*_schema_migration` window. `data_plane_cutover` (deploy.yml line 44) authorizes a broader bootstrap/cutover operation, including ownership and data-plane effects; it remains under its existing executor authority. Alternative: treat that broad cutover as another automatic schema window. This watcher never sets it.
 
@@ -65,4 +66,4 @@ A sibling `flock` serializes foreground ticks. The watcher fsyncs a per-head int
 
 ## Verification
 
-The governance tests execute the real catalog and required CI command with fake read-only Git, fake gh and fake SQL readback. They cover all existing sets, future static sets, all-applied/red-head cases, numeric batch ordering, dry run, leases, head races, routine predecessors, API-response loss, restart recovery, false workflow success, prospective schedules, and queue base evidence. Job-local affected-tree copies retain the fail-on-revert evidence. No migration, generated output, frozen orchestrator code, deploy window body, production connection or real dispatch is part of this change.
+The governance tests execute the real catalog and required CI command with fake read-only Git, fake gh and fake SQL readback. For the future static fixture, tests evaluate the full protected job admission condition with only its input enabled, execute the selection shell against a recording migration-runner stub, and verify the exact `--only` filename; an unrequested window neither admits the job nor invokes the runner. They cover all existing sets, future static sets, all-applied/red-head cases, numeric batch ordering, dry run, leases, head races, routine predecessors, API-response loss, restart recovery, false workflow success, prospective schedules, and queue base evidence. Job-local affected-tree copies retain the fail-on-revert evidence. No migration, generated output, frozen orchestrator code, deploy window body, production connection or real dispatch is part of this change.

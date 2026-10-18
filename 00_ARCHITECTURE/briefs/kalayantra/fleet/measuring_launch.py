@@ -13,8 +13,17 @@ import sys
 
 import smalltest_launch as bridge
 
+# SR-J2D-TEARDOWN-EVIDENCE item 2: with Pub/Sub on, events.emit_event publishes asset.substep to the topic and
+# prints nothing, so the J-3 gate's Cloud Logging read (cloudrun_readback --logs) would see no sub-step lines.
+# PUBSUB_DISABLED makes every event print to stdout as "[event] <json>". Set for THIS execution only.
+MEASURING_EXECUTION_ENV = "PUBSUB_DISABLED=1"
 
-def run(argv=None, *, dispatcher=None, connect=None, launcher=bridge.cloud_launcher, claim_dir=None):
+
+def measuring_cloud_launcher(run_id, timeout_s):
+    return bridge.cloud_launcher(run_id, timeout_s, update_env_vars=MEASURING_EXECUTION_ENV)
+
+
+def run(argv=None, *, dispatcher=None, connect=None, launcher=measuring_cloud_launcher, claim_dir=None):
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument('--run', required=True, choices=('all_classes_full',))
     parser.add_argument('--classes', default='all', choices=('all',))

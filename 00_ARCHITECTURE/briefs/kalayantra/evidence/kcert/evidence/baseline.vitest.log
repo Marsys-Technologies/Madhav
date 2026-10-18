@@ -1,0 +1,57 @@
+
+ RUN  v2.1.9 /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/src/platform-mcp
+
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > derivePlateauDisclosure > is null for a point-shaped row (no continuity_state concept applies)
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > derivePlateauDisclosure > is null for an interval row with no continuity_state (nothing to disclose)
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > derivePlateauDisclosure > is null when neither edge is open (a genuinely closed, fully-resolved span)
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > derivePlateauDisclosure > flags window_start_open when left_active — the D-5 native-disposition finding-1 case
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > derivePlateauDisclosure > flags only the open edge when the other is genuinely closed
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > dominantGraha > returns null when no systems are active
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > dominantGraha > returns null when active systems carry no graha detail
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > dominantGraha > resolves a lord_graha from an active system detail
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > dominantGraha > ignores inactive systems even if they carry a graha
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaElectionAvoidance — MR-12 is_irreversibility_milestone serving > a chain-shaped adverse window serves is_irreversibility_milestone=true for its irreversibility milestone
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaElectionAvoidance — MR-12 is_irreversibility_milestone serving > a non-irreversibility chain milestone serves is_irreversibility_milestone=false (not just truthy-field-present)
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaCoverage — C3 coverage_quality field > 0 covered classes → tier thin, covered_class_count 0, covered_domain_count 0
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaCoverage — C3 coverage_quality field > 3 covered classes → tier thin
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaCoverage — C3 coverage_quality field > 4 covered classes → tier moderate
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaCoverage — C3 coverage_quality field > 9 covered classes → tier moderate
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaCoverage — C3 coverage_quality field > 10 covered classes → tier rich
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaCoverage — C3 coverage_quality field > covered_domain_count counts distinct domains across covered classes
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaCoverage — C3 coverage_quality field > reason string is non-empty and contains the tier name
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaCoverage — C3 coverage_quality field > reason string for rich tier contains "rich"
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaCoverage — R1 SEV-1 v3 substep asset_id + "::" key parse > v3-authority chart: substep rows under ka_gochara_v3_century_materialize with "::" keys → event_classes_covered non-empty
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildNestedHierarchy > returns empty roots and empty legacy_flat for an empty input
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildNestedHierarchy > places an era-tier window as a root with empty children
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildNestedHierarchy > nests a month window under its era parent
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildNestedHierarchy > nests a day window under its month parent
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildNestedHierarchy > handles multiple era roots each with their own month/day subtrees
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildNestedHierarchy > puts resolution=null windows into legacy_flat, not roots
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildNestedHierarchy > mixes era/month/day tree with legacy_flat correctly
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildNestedHierarchy > places a window with a parent_window_id pointing to a non-present parent into legacy_flat (defensive)
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildNestedHierarchy > coverage_note counts only nested windows, not legacy
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaForecast — nested_hierarchy in response > response includes nested_hierarchy with roots and legacy_flat
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaForecast — nested_hierarchy in response > response nested_hierarchy.legacy_flat contains windows with resolution=null
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > enrichWindowsWithVerseRefs — complete citation_verse_refs (C1) > includes unresolved entries from verseRefMap (status=unresolved preserved)
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > enrichWindowsWithVerseRefs — complete citation_verse_refs (C1) > includes both resolved and unresolved entries when both exist for different citations
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > enrichWindowsWithVerseRefs — complete citation_verse_refs (C1) > creates a corpus-gap unresolved entry for a citation with NO verseRefMap entry at all
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > enrichWindowsWithVerseRefs — complete citation_verse_refs (C1) > returns empty array for a row with no citation strings (unchanged behaviour)
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildTermBreakdownSummary (C1) > returns null for null input
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildTermBreakdownSummary (C1) > returns null for undefined input
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildTermBreakdownSummary (C1) > builds the human-readable summary string for a full term_breakdown object
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildTermBreakdownSummary (C1) > uses λ_v3=? when lambda_v3 is missing
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > buildTermBreakdownSummary (C1) > omits a factor from the product list when it is missing from the object
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaForecast — C1 term_breakdown_summary > served windows include term_breakdown_summary computed from term_breakdown
+ ✓ src/tools/retrieval/register_gochara_windows.test.ts > computeGocharaForecast — C1 term_breakdown_summary > term_breakdown_summary is null when term_breakdown is null
+ ✓ src/tools/retrieval/register_gochara_windows_dens_served.test.ts > DENS-SERVED: gochara_election_avoidance_get layers its paired remedy by confidence > the remedy SELECT names confidence and every adverse window serves the remedy row with its confidence
+ ✓ src/tools/retrieval/register_gochara_windows_dens_served.test.ts > DENS-SERVED: gochara_election_avoidance_get layers its paired remedy by confidence > declares its density_contract on every response: facets are the served facets keys, empty_reason is earned
+ ✓ src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts > Independent bounded K-CERT assessment > selects stored status and serves resolved, stored unresolved, and absent-row honest gap distinctly
+ ✓ src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts > Independent bounded K-CERT assessment > preserves the returned stored resolved status through query projection
+ ✓ src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts > Independent bounded K-CERT assessment > all-unresolved rows earn the honest gap note; no citations earn empty refs and null note
+ ✓ src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts > Independent bounded K-CERT assessment > null/missing returned status stays unresolved and a query failure exposes an honest gap
+
+ Test Files  3 passed (3)
+      Tests  48 passed | 3 skipped (51)
+   Start at  15:39:51
+   Duration  337ms (transform 91ms, setup 0ms, collect 167ms, tests 22ms, environment 0ms, prepare 40ms)
+

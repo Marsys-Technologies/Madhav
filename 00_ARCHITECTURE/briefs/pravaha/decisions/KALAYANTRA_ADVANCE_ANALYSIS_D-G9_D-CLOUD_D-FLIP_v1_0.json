@@ -1,0 +1,758 @@
+{
+ "schema": "ky.advance_analysis/1",
+ "item": "ADVANCE-ANALYSIS",
+ "version": "1.0",
+ "date": "2026-10-18",
+ "status": "DRAFT_TEMPLATE_NARRATIVE_CONTROL_ONLY",
+ "narrative": "00_ARCHITECTURE/briefs/pravaha/decisions/KALAYANTRA_ADVANCE_ANALYSIS_D-G9_D-CLOUD_D-FLIP_v1_0.md",
+ "rules": {
+  "empty_slot_reads": "NULL (never PASS); a row that cannot read FAIL is not a row",
+  "convention": "all shares are fractions on the IST-INC grid (10334 days) unless a row says UTC-HO; the two are never compared",
+  "no_personal_data": true
+ },
+ "conditions": {
+  "PRE-D-G9-v2": "APPROVED WHEN J-3d's accepted measuring-build readback is recorded AND OD-1, OD-2 and each applicable OD-4/5/6/7/10 is dispositioned from that readback with its evidence; otherwise insufficient_evidence with the missing binding named",
+  "PRE-D-CLOUD": "APPROVED WHEN J-4d is done (qualified final-rules candidate with P06b complete), D-G9 approved, and the operation request binds the exact source/image, rules, class set, horizon/cap and operation window: one canonical-chart, candidate-only Cloud Run build",
+  "PRE-D-FLIP": "APPROVED WHEN J-5q, J-5s and J-6r are done for the exact sealed and independently verified generation and manifest, the evaluation run is recorded (not gated, native 2026-10-07), no A5.7 engineering defect is open, and the serving path and rollback are verified; the flip binds that exact generation/manifest",
+  "source": "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl (external; lines 73, 37, 38)"
+ },
+ "readback_sources": {
+  "RB-SQL": {
+   "what": "J-3d readback_sql statement",
+   "file": "00_ARCHITECTURE/briefs/kalayantra/fleet/sql/mb3-capture-read.sql",
+   "sections": [
+    "binding",
+    "manifest",
+    "sealed",
+    "published",
+    "contact",
+    "record",
+    "window"
+   ],
+   "interpretation": "I-1"
+  },
+  "RB-GOLDEN": {
+   "what": "golden bundle MB-3.4",
+   "files": [
+    "horizon_basis.json",
+    "digests.json",
+    "stretch_sink.jsonl",
+    "records.jsonl",
+    "windows.jsonl",
+    "contacts.jsonl",
+    "MANIFEST.sha256"
+   ],
+   "cite": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:84"
+  },
+  "RB-REPORT": {
+   "what": "report JSON ky.measuring_report_draft/1, numbers 1-14",
+   "code": "platform/python-sidecar/services/gochara_kernel/measuring_delivery.py:53-104",
+   "cite": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:110-130"
+  },
+  "RB-VIEW": {
+   "what": "MeasuringBuildView acceptance and refusals",
+   "code": "platform/python-sidecar/services/gochara_kernel/measuring_report.py:230-249,439-449,709-740",
+   "cite": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:105-108"
+  }
+ },
+ "vocabulary": [
+  "DEFAULT_RETAINED",
+  "NOT_APPLICABLE",
+  "BOUND_TO_D-FLIP",
+  "READBACK_INCONSISTENT",
+  "OUT_OF_TEMPLATE"
+ ],
+ "d_g9": {
+  "decision_item": "00_ARCHITECTURE/control/kalayantra/plan_model.json:19016",
+  "gate_G9_0": [
+   {
+    "id": "G9-0.1",
+    "evidence": "five J-3d step receipts + item detector",
+    "producer": "J-3d steps readback_accepted, golden_capture, report_written, teardown, absence_proof_accepted",
+    "pass_rule": "all five /Users/Dev/kalayantra/run/reviews/steps/J-3d.<step>.json canonical with verdict MET; ops/receipts/J-3d.absence.json >= 200 bytes",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:18922",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "G9-0.2",
+    "evidence": "RB-REPORT.refusals",
+    "producer": "step report_written",
+    "pass_rule": "refusals == []",
+    "cite": "platform/python-sidecar/services/gochara_kernel/measuring_delivery.py:102,106",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "G9-0.3",
+    "evidence": "RB-VIEW refusal list and sink_counts",
+    "producer": "independent acceptance",
+    "pass_rule": "list empty; sink_counts.omission==0 and invented==0 and anomaly==0; unresolved and near_miss reported only",
+    "cite": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:106-107",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "G9-0.4",
+    "evidence": "RB-REPORT.numbers[2].data",
+    "producer": "step readback_accepted",
+    "pass_rule": "run_state=completed, asset_state=complete, disposition=build, throughput_state=lit, inventory_classes=26, completed_classes=26, last_substep_index==planned_substeps==298",
+    "cite": "platform/python-sidecar/services/gochara_kernel/measuring_report.py:304-321",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "G9-0.5",
+    "evidence": "RB-SQL binding/sealed/published/manifest.status",
+    "producer": "step readback_accepted",
+    "pass_rule": "binding = canonical chart + generation 5.0; sealed.n==0; published.n==0; manifest.status=='candidate'",
+    "cite": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:106",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "G9-0.6",
+    "evidence": "RB-REPORT.numbers[13].data.cannot_establish",
+    "producer": "step report_written",
+    "pass_rule": "equals CANNOT_ESTABLISH",
+    "cite": "platform/python-sidecar/services/gochara_kernel/measuring_delivery.py:20-24",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "G9-0.7",
+    "evidence": "RB-REPORT.numbers[11].data.golden_commit",
+    "producer": "golden commit in sitting log",
+    "pass_rule": "40-hex commit recorded",
+    "cite": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:84",
+    "measured": null,
+    "status": "NULL"
+   }
+  ],
+  "core_question_Q_G9_0": {
+   "question": "what '5.0' answers after 2026-04-17",
+   "default": "the derived horizon per MEASURING_BUILD_CONTRACT_v1_0 (00_ARCHITECTURE/control/kalayantra/plan_model.json:29328)",
+   "rows": [
+    {
+     "id": "Q0.1",
+     "evidence": "RB-GOLDEN horizon_basis.json: schema, rule, basis, horizon, consumed_rows_digest, rows_total",
+     "producer": "golden_capture",
+     "pass_rule": "schema=='horizon_basis/1'; rule in {ruling7+ruling13, ruled_scope+birth_centenary}; basis in {first_dated_event, build_date, ruled_horizon}; digest = sha256 of canonical consumed_rows",
+     "cite": "platform/python-sidecar/services/gochara_kernel/horizon.py:15-19,167; platform/python-sidecar/services/gochara_kernel/measuring_report.py:337,357-359",
+     "measured": null,
+     "status": "NULL"
+    },
+    {
+     "id": "Q0.2",
+     "evidence": "RB-VIEW re-derivation",
+     "producer": "independent acceptance",
+     "pass_rule": "no horizon_mismatch / horizon_basis_invalid:* / horizon_basis_digest_mismatch / horizon_start_in_future; ruled_horizon basis carries zero rows",
+     "cite": "platform/python-sidecar/services/gochara_kernel/measuring_report.py:322-375",
+     "measured": null,
+     "status": "NULL"
+    },
+    {
+     "id": "Q0.3",
+     "evidence": "RB-SQL.manifest.lo/hi vs horizon_basis.horizon vs marker horizon vs MB-1.1 pair",
+     "producer": "readback_accepted",
+     "pass_rule": "all four equal",
+     "cite": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:30,106",
+     "measured": null,
+     "status": "NULL"
+    },
+    {
+     "id": "Q0.4",
+     "evidence": "RB-REPORT.numbers[5].data convention/horizon/horizon_days",
+     "producer": "report_written",
+     "pass_rule": "ist_inclusive; [1998-01-01, 2026-04-17]; 10334",
+     "cite": "platform/python-sidecar/services/gochara_kernel/measuring_delivery.py report_refusals",
+     "measured": null,
+     "status": "NULL"
+    },
+    {
+     "id": "Q0.5",
+     "evidence": "RB-SQL.manifest.input_generation_vector.scored_until",
+     "producer": "readback_accepted",
+     "pass_rule": "NOT a pass condition: record instant or null (scored_until_not_pinned)",
+     "cite": "platform/python-sidecar/services/gochara_kernel/serving_reader.py:59,62,220-232",
+     "measured": null,
+     "status": "NULL",
+     "pass_condition": false
+    },
+    {
+     "id": "Q0.6",
+     "evidence": "lel_drift lines (RB-REPORT.numbers[10].data.observed)",
+     "producer": "report_written",
+     "pass_rule": "recorded, never a gate for a test slice",
+     "cite": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:46",
+     "measured": null,
+     "status": "NULL",
+     "pass_condition": false
+    }
+   ],
+   "disposition_rule": [
+    {
+     "when": "G9-0 all PASS and Q0.1-Q0.4 all PASS",
+     "then": "ANSWER_DERIVED_HORIZON (value copied from Q0.3; windows labelled scored / served-not-scored / straddles the scored edge)"
+    },
+    {
+     "when": "any of those FAIL or NULL",
+     "then": "insufficient_evidence, binding = first failing row id"
+    }
+   ]
+  },
+  "od": {
+   "OD-1": {
+    "question": "final build result policy: all_null_candidate/1 or window_qualification/1",
+    "fbs": "FBS:242, FB-53",
+    "contract": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:156",
+    "fields": [
+     "RB-SQL.manifest.input_generation_vector.result_policy",
+     "RB-REPORT.numbers[13].data.cannot_establish"
+    ],
+    "rule": [
+     {
+      "when": "result_policy != 'all_null_candidate/1'",
+      "then": "READBACK_INCONSISTENT"
+     },
+     {
+      "when": "result_policy == 'all_null_candidate/1' and cannot_establish == CANNOT_ESTABLISH",
+      "then": "DEFAULT_RETAINED (all_null_candidate/1; endpoints reported vacuous under policy, never green)"
+     },
+     {
+      "when": "a switch to window_qualification/1 is proposed",
+      "then": "OUT_OF_TEMPLATE; missing bindings = FB-53 alternative-2 gate list"
+     }
+    ],
+    "measured": {
+     "result_policy": null,
+     "cannot_establish": null
+    },
+    "disposition": null
+   },
+   "OD-2": {
+    "question": "serving path and switch: reader/projection, 1236 relaxation, rollback, pre-start question, near-miss and served-not-scored display",
+    "fbs": "FBS:243, FB-54; FBS:205",
+    "fields": [
+     "RB-SQL.manifest.lo",
+     "RB-SQL.window[*].lo",
+     "RB-SQL.manifest.input_generation_vector.scored_until",
+     "RB-SQL.sealed.n",
+     "RB-SQL.published.n"
+    ],
+    "rule": [
+     {
+      "sub": "2.1",
+      "when": "min(window.lo) < manifest.lo",
+      "then": "READBACK_INCONSISTENT"
+     },
+     {
+      "sub": "2.1",
+      "when": "otherwise",
+      "then": "DEFAULT_RETAINED (named refusal for questions dated before the horizon start; never a silent empty)"
+     },
+     {
+      "sub": "2.2",
+      "when": "scored_until is null",
+      "then": "NOT_APPLICABLE (reason scored_until_not_pinned carried to J-4d)"
+     },
+     {
+      "sub": "2.2",
+      "when": "scored_until non-null",
+      "then": "DEFAULT_RETAINED with counts scored / served-not-scored / straddles"
+     },
+     {
+      "sub": "2.3",
+      "when": "always",
+      "then": "BOUND_TO_D-FLIP (rows F-6, F-7, F-8, F-10)"
+     }
+    ],
+    "measured": {
+     "min_window_lo": null,
+     "manifest_lo": null,
+     "scored_until": null,
+     "counts": null
+    },
+    "disposition": {
+     "2.1": null,
+     "2.2": null,
+     "2.3": null
+    }
+   },
+   "OD-4": {
+    "question": "density decisions on the measuring build, or run the final-rules candidate first",
+    "fbs": "FBS:245, FB-41, FB-48, FB-66",
+    "fields": [
+     "RB-REPORT.numbers[9].data[eight][P1|P3|P4]",
+     "RB-REPORT.numbers[5].data.classes[c].admitted_days.P4_with_dvi / P4_without_dvi",
+     "RB-REPORT.numbers[13].data.cannot_establish",
+     "RB-REPORT.numbers[5].data.classes[c].admitted_share.{P3_fast,P3_slow,P3_union,class_union}"
+    ],
+    "rule": [
+     {
+      "when": "any eight-class P1/P3/P4 count != 0, or any class P4_with_dvi != P4_without_dvi",
+      "then": "READBACK_INCONSISTENT"
+     },
+     {
+      "when": "otherwise and no skip proposal",
+      "then": "DEFAULT_RETAINED (run the final-rules candidate; DVI guard and eight-class density decided there)"
+     },
+     {
+      "when": "a skip of the candidate is proposed",
+      "then": "OUT_OF_TEMPLATE"
+     }
+    ],
+    "informational": "18-class P3/class_union shares stored per class as inside|below|above the 0.5%-40% band; informs FB-48, does not decide",
+    "measured": {
+     "eight_class_census": null,
+     "dvi_equality": null,
+     "skip_proposed": null,
+     "band_flags": null
+    },
+    "disposition": null
+   },
+   "OD-5": {
+    "question": "disposition of UNRESOLVED stretches when the count is non-zero",
+    "fbs": "FBS:246, FB-56",
+    "contract": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:157",
+    "fields": [
+     "RB-VIEW.sink_counts.unresolved",
+     "RB-GOLDEN stretch_sink.jsonl kind=='unresolved' by reason",
+     "RB-VIEW.sink_counts.{omission,invented,anomaly}",
+     "RB-REPORT.numbers[8].data.limit"
+    ],
+    "rule": [
+     {
+      "when": "unresolved == 0",
+      "then": "NOT_APPLICABLE"
+     },
+     {
+      "when": "unresolved > 0 and sum(by_reason) == unresolved",
+      "then": "DEFAULT_RETAINED (final seal refuses; per-reason counts attached)"
+     },
+     {
+      "when": "unresolved > 0 and sum(by_reason) != unresolved",
+      "then": "READBACK_INCONSISTENT"
+     },
+     {
+      "when": "refine accuracy (FB-67) or a disclosed residual is chosen",
+      "then": "OUT_OF_TEMPLATE"
+     }
+    ],
+    "measured": {
+     "unresolved": null,
+     "by_reason": null
+    },
+    "disposition": null
+   },
+   "OD-6": {
+    "question": "karakatva breadth: the eight classes, or every class with a karaka",
+    "fbs": "FBS:247, FB-46",
+    "contract": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:158",
+    "fields": [
+     "RB-REPORT.numbers[5].data.classes[c].admitted_days.P1_with_karakatva / P1_base (26 classes)",
+     "RB-REPORT.numbers[9].data[eight].P1"
+    ],
+    "rule": [
+     {
+      "when": "any class P1_with_karakatva != P1_base, or any eight-class P1 != 0",
+      "then": "READBACK_INCONSISTENT"
+     },
+     {
+      "when": "otherwise",
+      "then": "NOT_APPLICABLE to this readback; default eight-only DEFAULT_RETAINED for the candidate"
+     },
+     {
+      "when": "a widening is proposed",
+      "then": "OUT_OF_TEMPLATE"
+     }
+    ],
+    "measured": {
+     "equality_all_26": null,
+     "eight_class_P1": null,
+     "widening_proposed": null
+    },
+    "disposition": null
+   },
+   "OD-7": {
+    "question": "K-B (natal-Sun target) on bereavement, a structurally saturated class",
+    "fbs": "FBS:248, FB-45",
+    "fields": [
+     "RB-REPORT.numbers[14].data.{scored_share,budget_share,label}",
+     "RB-REPORT.numbers[5].data.classes.bereavement.admitted_days.kb_only",
+     "RB-REPORT.numbers[5].data.classes.bereavement.admitted_share.{P3_fast,P3_slow,P3_union,P4_without_dvi}"
+    ],
+    "rule": [
+     {
+      "when": "kb_only != 0",
+      "then": "READBACK_INCONSISTENT"
+     },
+     {
+      "when": "otherwise",
+      "then": "DEFAULT_RETAINED (K-B as ruled); record saturation_confirmed = scored_share > 270/10334 and over_n2_budget = scored_share > 540/10334; K-B added density carried to the final-rules candidate"
+     },
+     {
+      "when": "withdrawal or change of K-B is proposed",
+      "then": "OUT_OF_TEMPLATE"
+     }
+    ],
+    "measured": {
+     "scored_share": null,
+     "kb_only": null,
+     "saturation_confirmed": null,
+     "over_n2_budget": null
+    },
+    "disposition": null
+   },
+   "OD-10": {
+    "question": "40% gain band applied to the adverse class financial_deception; guard denominator",
+    "fbs": "FBS:251, FB-41, FB-50",
+    "contract": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:159",
+    "fields": [
+     "RB-REPORT.numbers[5].data.classes.financial_deception.admitted_share.{P4_without_dvi,class_union}",
+     "RB-REPORT.numbers[5].data.{horizon_days,convention}",
+     "RB-REPORT.numbers[4]...P4_without_dvi (UTC-HO, information only)"
+    ],
+    "rule": [
+     {
+      "when": "horizon_days != 10334 or convention != 'ist_inclusive'",
+      "then": "READBACK_INCONSISTENT"
+     },
+     {
+      "when": "otherwise",
+      "then": "DEFAULT_RETAINED (literal reading, scored-horizon denominator); evidence_bites = (P4_without_dvi > 0.40) -> DECISIVE, else NOT_DECISIVE_ON_THIS_BUILD"
+     },
+     {
+      "when": "not applying the band to adverse classes, or another denominator, is proposed",
+      "then": "OUT_OF_TEMPLATE"
+     }
+    ],
+    "measured": {
+     "P4_without_dvi": null,
+     "class_union": null,
+     "denominator_check": null,
+     "evidence_bites": null
+    },
+    "disposition": null
+   }
+  },
+  "retained_open": [
+   "OD-3",
+   "OD-8",
+   "OD-9",
+   "OD-11"
+  ],
+  "rollup": [
+   {
+    "when": "G9-0 all PASS; Q0.1-Q0.4 PASS; every OD row in {DEFAULT_RETAINED, NOT_APPLICABLE, BOUND_TO_D-FLIP}",
+    "then": "approved (derived horizon exactly as Q0.3 reads + disposition table)"
+   },
+   {
+    "when": "any G9-0/Q0 row FAIL or NULL, any UNFILLED, any READBACK_INCONSISTENT",
+    "then": "insufficient_evidence, binding = first such row id"
+   },
+   {
+    "when": "any OUT_OF_TEMPLATE",
+    "then": "insufficient_evidence, binding = 'ruling for OD-n'"
+   }
+  ],
+  "never_emitted": [
+   "refused",
+   "deferred"
+  ]
+ },
+ "d_cloud": {
+  "decision_item": "00_ARCHITECTURE/control/kalayantra/plan_model.json:19541",
+  "consumer": "J-4e (00_ARCHITECTURE/control/kalayantra/plan_model.json:19564)",
+  "rule": {
+   "all_pass": "approved",
+   "otherwise": "insufficient_evidence or reasoned deferred, naming the first non-PASS id"
+  },
+  "rows": [
+   {
+    "id": "C-1",
+    "evidence": "accepted measuring readback",
+    "producer": "J-3d",
+    "pass_rule": "every G9-0 row PASS",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:18922",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-2",
+    "evidence": "D-G9 effective",
+    "producer": "ky decide D-G9 approved; /Users/Dev/kalayantra/run/awaiting/D-G9.json",
+    "pass_rule": "approved event recorded via decision controller",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:27099",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-3",
+    "evidence": "phase 6 final-build decisions and upstream release",
+    "producer": "J-4a step settled_build_reconciliation; /Users/Dev/kalayantra/run/J4A_PREREQUISITE.json",
+    "pass_rule": "receipt MET and file >= 200 bytes",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:19039",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-4",
+    "evidence": "phase 7 protected window; verification job configured disabled",
+    "producer": "J-4b steps packet_oracles_verified, configured_disabled_readback",
+    "pass_rule": "both receipts MET; grants/principals read back; builder-role verification-row write refused",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json item J-4b",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-5",
+    "evidence": "phase 8 builder/verifier proofs",
+    "producer": "J-4c step p06b_ready; /Users/Dev/kalayantra/run/J4C_PROOFS.json",
+    "pass_rule": "receipt MET; unchanged classes byte-identical to the measuring golden; measuring-rule outputs unchanged",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json item J-4c",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-6",
+    "evidence": "phase 9 final-rules candidate qualified",
+    "producer": "J-4d steps p06b_before_final_candidate, packet_oracles_verified, final_candidate_density_and_cap",
+    "pass_rule": "three receipts MET; P06b complete; PR 3512 merged",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:19443",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-7",
+    "evidence": "density and residual dispositions on the candidate",
+    "producer": "J-4d final_candidate_density_and_cap",
+    "pass_rule": "section records FB-41 reversion by scorer, FB-48 decision, unresolved count, near-miss counts",
+    "cite": "FBS FB-41, FB-48, FB-56, FB-66",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-8",
+    "evidence": "cap qualification as measured",
+    "producer": "J-4d final_candidate_density_and_cap",
+    "pass_rule": "projected length <= 0.8 x writer cap; task timeout strictly above cap; cap set in writing from the candidate's time",
+    "cite": "FBS FB-58; 00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:88",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-9",
+    "evidence": "N-G9 bound",
+    "producer": "J-4d-n-g9",
+    "pass_rule": "consumes effective D-G9 and all original dependencies",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:27099",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-10",
+    "evidence": "request binds source and image",
+    "producer": "typed request under /Users/Dev/kalayantra/run/ops/requests/ (century_dispatch args classes=all)",
+    "pass_rule": "exact source commit and image digest of C-6; same image later runs verification",
+    "cite": "00_ARCHITECTURE/briefs/pravaha/decisions/MEASURING_BUILD_CONTRACT_v1_0.md:22",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-11",
+    "evidence": "request binds rules and class set",
+    "producer": "same request",
+    "pass_rule": "equal the candidate's selection",
+    "cite": "PRE-D-CLOUD",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-12",
+    "evidence": "request binds horizon and cap",
+    "producer": "same request",
+    "pass_rule": "horizon == Q0.3 value ruled in D-G9; cap and task timeout == C-8",
+    "cite": "PRE-D-CLOUD",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-13",
+    "evidence": "request binds operation window",
+    "producer": "same request",
+    "pass_rule": "explicit window inside the protected window",
+    "cite": "PRE-D-CLOUD",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-14",
+    "evidence": "one canonical chart, candidate-only",
+    "producer": "same request; publication readback; J-3d absence proof",
+    "pass_rule": "one chart; no publication row for target generation or status candidate; measuring rows absent",
+    "cite": "PRE-D-CLOUD",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "C-15",
+    "evidence": "no implicit capacity or credential expansion",
+    "producer": "request text",
+    "pass_rule": "none named",
+    "cite": "/Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:371 (external)",
+    "measured": null,
+    "status": "NULL"
+   }
+  ],
+  "carried_to_J_4e_not_conditions": [
+   "lease_held",
+   "backup_restore_verified",
+   "dry_run",
+   "pre_acceptance",
+   "one build slot",
+   "/Users/Dev/kalayantra/run/ops/receipts/J-4e.dispatch.json >= 200 bytes"
+  ]
+ },
+ "d_flip": {
+  "decision_item": "00_ARCHITECTURE/control/kalayantra/plan_model.json:20020",
+  "consumer": "J-6 (00_ARCHITECTURE/control/kalayantra/plan_model.json:20046)",
+  "depends_on": [
+   "J-5q",
+   "J-5s",
+   "J-6r",
+   "J-2a-P1L"
+  ],
+  "rule": {
+   "all_pass": "approved",
+   "otherwise": "blocked on J-6 with the row named; engineering defect -> deferred with remediation items named",
+   "recorded_not_gated": [
+    "F-3"
+   ]
+  },
+  "rows": [
+   {
+    "id": "F-1",
+    "evidence": "exact generation sealed by the separately dispatched verification job",
+    "producer": "J-5s steps p06b_before_enablement, pre_acceptance, dispatched, sealed_observed, manifest_and_job_bound",
+    "pass_rule": "five receipts MET; ka_gochara_generation_is_sealed(chart,'5.0') non-empty; verdict binds expected manifest id and job run id",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:19754",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-2",
+    "evidence": "every included grain verified",
+    "producer": "verification job output bound in F-1",
+    "pass_rule": "no manifest grain lacks a verification row",
+    "cite": "SUR:46",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-3",
+    "evidence": "evaluation run and recorded as it reads",
+    "producer": "J-5q; /Users/Dev/kalayantra/run/J5Q_RESULT.json >= 500 bytes; EVALUATION_RESULT_5_0_v1_0.md",
+    "pass_rule": "exists, independently accepted by digest; each endpoint/gate carries pass|fail|insufficient_evidence|not_evaluable with its value, none relabelled; author did not score held-out items; a weak score does not fail the row",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:19711",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-4",
+    "evidence": "no open A5.7 engineering defect",
+    "producer": "J-5q-a57 step measured_gate_results; /Users/Dev/kalayantra/run/residuals/J-5q-a57.json",
+    "pass_rule": "no gate classified wrong, missing or unverifiable; open A5.7 remediation items == 0",
+    "cite": "SUR:46",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-5",
+    "evidence": "retrodiction / candidate gate accepted",
+    "producer": "J-5q-b54, J-5s-j2",
+    "pass_rule": "receipts MET; no baseline substituted",
+    "cite": "00_ARCHITECTURE/briefs/pravaha/measurement/J3_MEASURING_PREBUILD_v1_0.md:35-41",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-6",
+    "evidence": "serving reader live, sealed-only, refuses test slices, answers out-of-range and rollback probes",
+    "producer": "J-6a step packet_oracles_verified",
+    "pass_rule": "receipt MET; test slice refused; probes answered; PR 3513 commit in origin/main and deployed",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:19855",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-7",
+    "evidence": "authority CHECK replacement deployed and verified",
+    "producer": "J-6m steps packet_oracles_verified, authority_constraint_applied_readback",
+    "pass_rule": "receipts MET; admits '5.0' only for a sealed generation; migration_readback applied; pg_constraint definition read back; publish_head enabled",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:19914",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-8",
+    "evidence": "rollback rehearsal passed, previous head retained",
+    "producer": "J-6r; /Users/Dev/kalayantra/run/J6R_REHEARSAL.json",
+    "pass_rule": "independent digest acceptance; flip -> served from 5.0 -> rollback -> byte-identical to before; previous head retained; rollback_head enabled",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:19982",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-9",
+    "evidence": "P1 derivation ledger merged",
+    "producer": "J-2a-P1L",
+    "pass_rule": "branch merged; every period_running_at='false' P1 record lists consulted dasha rows; writer re-reviewed for N.2",
+    "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json:19191",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-10",
+    "evidence": "pre-start refusal and served-not-scored marking demonstrated",
+    "producer": "J-6a/J-6m/J-6r evidence",
+    "pass_rule": "named refusal for questions before horizon start; marking shown on the lane reader",
+    "cite": "FBS FB-54(d),(e)",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-11",
+    "evidence": "lease live",
+    "producer": "campaign-coordination lease",
+    "pass_rule": "held at decision time and carried by J-6 steps",
+    "cite": "SUR:46",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-12",
+    "evidence": "deployed image and migration set identified",
+    "producer": "decision receipt / J-6 request",
+    "pass_rule": "listed and equal the deployed ones",
+    "cite": "SUR:46",
+    "measured": null,
+    "status": "NULL"
+   },
+   {
+    "id": "F-13",
+    "evidence": "flip binds exact generation and manifest",
+    "producer": "decision --detail and J-6 request",
+    "pass_rule": "generation, manifest_id, input-vector digest equal F-1 readback",
+    "cite": "PRE-D-FLIP",
+    "measured": null,
+    "status": "NULL"
+   }
+  ],
+  "after_flip_not_conditions": [
+   "J-6 steps lease_held, backup_restore_verified, pre_acceptance, flip_dispatched, authority_observed",
+   "J-6l live_response_captured, soak_recorded (/Users/Dev/kalayantra/run/J6L_LIVE.json)",
+   "V-J6"
+  ]
+ }
+}

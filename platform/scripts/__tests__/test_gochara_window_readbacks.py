@@ -53,15 +53,9 @@ SHA_1243 = "88be3ed59aaa0685d65e9b8b6607f3787c3ae65a5e8fb96d51f09ebe63798321"
 SHA_1302 = "35af45d0d545f7705f9bd8fd91635f715a2f27c288c83e999a5cd98c7983cb9e"
 
 sys.path.insert(0, str(REPO / "platform/scripts/governance/__tests__"))
-try:
-    from _disposable_pg import disposable_pg, point_psql_at  # noqa: F401  (fixture import)
-except Exception:  # pragma: no cover - helper missing: the real-cluster tests skip
-    @pytest.fixture(scope="session")
-    def disposable_pg():
-        pytest.skip("the _disposable_pg helper is unavailable")
+from _disposable_pg import point_psql_at
+from _gochara_readback_pg import disposable_pg  # noqa: F401
 
-    def point_psql_at(cl, monkeypatch):  # noqa: ARG001
-        pytest.skip("the _disposable_pg helper is unavailable")
 
 @pytest.fixture(scope="session", autouse=True)
 def _c_locale():
@@ -116,9 +110,10 @@ WINDOW_FILES = [
     "1206_gochara_search_inventory_completeness.sql",
     "1232_gochara_search_moon_scope_domain.sql",
     "1233_gochara_p1_period_anchor.sql",
+    "1235_ka_gochara_staged_candidate_evidence_function.sql",
     "1240_gochara_window_verification_gate.sql",
 ]
-WINDOW_SHAS = ["ab" * 32, "cd" * 32, "ef" * 32, "01" * 32, "23" * 32]
+WINDOW_SHAS = ["ab" * 32, "cd" * 32, "ef" * 32, "01" * 32, "45" * 32, "23" * 32]
 EXPECTED_SHA_TXT = "".join(f"{s}  {n}\n" for n, s in zip(WINDOW_FILES, WINDOW_SHAS))
 B3A_ANSWER = "\n".join(sorted(f"{n}\t{s}" for n, s in zip(WINDOW_FILES, WINDOW_SHAS)))
 
@@ -136,6 +131,7 @@ MIGRATION_FIXTURES = [
     "1153_a.sql",
     "1206_gochara_search_inventory_completeness.sql",   # a window file: B2 must EXCLUDE it
     "1230_b.sql",
+    "1235_ka_gochara_staged_candidate_evidence_function.sql",  # protected, not a routine predecessor
     "1242_c.sql",                                        # > 1240: B2 must ignore it
     "1300_future.sql",                                   # > 1240: B2 must ignore it
 ]
@@ -175,7 +171,7 @@ def default_answers(ledger: list[str]) -> list[tuple[str, str]]:
         ("has_schema_privilege('amjis_app'", "f"),
         ("1204_gochara_av_qualifier_object_role", B3A_ANSWER),
         ("pg_get_userbyid", ""),
-        ("has_function_privilege('PUBLIC'", ""),
+        ("aclexplode(COALESCE(p.proacl", ""),
         ("ka_gochara_boundary_guard_inventory", GUARD_ROWS),
         ("C34 test registry readback", ""),
         ("C34 test privilege readback", ""),
@@ -339,7 +335,7 @@ def test_pre_dispatch_all_pass(tmp_path: Path) -> None:
         "PASS R3-revoke-1302",
     ):
         assert check in r.stdout, f"{check} missing\n{r.stdout}\n{r.stderr}"
-    assert "5 new" in r.stdout   # only the five window files are new vs the row-2 snapshot
+    assert "6 new" in r.stdout   # only the six window files are new vs the row-2 snapshot
 
 
 def test_post_window_all_pass(tmp_path: Path) -> None:
@@ -559,7 +555,7 @@ STOP_CASES = [
     ("post-window", {"1204_gochara_av_qualifier_object_role":
                      B3A_ANSWER.replace("ab" * 32, "ff" * 32)}, "P9-window-files-ledger"),
     ("post-window", {"pg_get_userbyid": "relation\tka_gochara_x\tpostgres"}, "P9-ka-gochara-ownership"),
-    ("post-window", {"has_function_privilege('PUBLIC'": "ka_gochara_evil"}, "P9-public-execute"),
+    ("post-window", {"aclexplode(COALESCE(p.proacl": "ka_gochara_evil"}, "P9-public-execute"),
     ("post-window", {"SELECT filename FROM public._migrations_applied":
                      "\n".join(sorted(POST_LEDGER + ["1378_evil.sql"]))}, "P9-ledger-diff"),
     ("post-window", {"C34 test trigger manifest": "TRG\tkala_gochara_coverage\ttg_a"}, "W5-manifest"),
@@ -675,7 +671,8 @@ LEGACY_TABLES = ('kala_gochara_publication', 'kala_gochara_coverage',
 
 
 @pytest.mark.parametrize('relation', LEGACY_TABLES)
-def test_real_w1_detects_other_chart_governed_rows(disposable_pg, monkeypatch, tmp_path, relation):
+@pytest.mark.parametrize('generation', ['5.4', '6.0', '10.0'])
+def test_real_w1_detects_other_chart_governed_rows(disposable_pg, monkeypatch, tmp_path, relation, generation):
     cl = disposable_pg
     for table in LEGACY_TABLES:
         cl.psql(f'DROP TABLE IF EXISTS {table} CASCADE; CREATE TABLE {table} (chart_id uuid, generation text)')
@@ -687,14 +684,14 @@ def test_real_w1_detects_other_chart_governed_rows(disposable_pg, monkeypatch, t
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert 'PASS W1-governed-rows ' in proc.stdout
     # Exactly one foreign governed row in each of the four possible relations must STOP.
-    cl.psql(f"INSERT INTO {relation} VALUES ('{OTHER}', '5.4')")
+    cl.psql(f"INSERT INTO {relation} VALUES ('{OTHER}', '{generation}')")
     dirty = tmp_path / 'dirty'
     dirty.mkdir()
     proc = _real_window_check(cl, monkeypatch, dirty, 'check_w1')
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert 'STOP W1-governed-rows ' in proc.stderr
     assert f'{relation}:1row(s)' in proc.stderr
-    assert (dirty / 'out' / f'W1-{relation}.out').read_text() == f'{OTHER}\t5.4\n'
+    assert (dirty / 'out' / f'W1-{relation}.out').read_text() == f'{OTHER}\t{generation}\n'
 
 
 def test_real_registry_writer_count_and_committed_pin(disposable_pg, monkeypatch, tmp_path):
@@ -720,6 +717,44 @@ def test_real_registry_writer_count_and_committed_pin(disposable_pg, monkeypatch
     assert (tmp_path / 'out/R2-1243-writers.out').read_text() == '3\n'
     assert (tmp_path / 'out/R2-1243-rowcount.out').read_text() == '4\n'
     assert (tmp_path / 'out/R2-1243-fingerprints.out').read_text() == '2\n'
+
+
+@pytest.mark.parametrize('candidate', ['ka_gochara_v4_41_candidate', 'ka_gochara_v5'])
+@pytest.mark.parametrize('contamination', ['dependent', 'asset_provenance_receipts',
+                                        'build_run_assets', 'asset_throughput'])
+def test_real_registry_refuses_dependents_and_each_runtime_evidence_source(
+        disposable_pg, monkeypatch, tmp_path, candidate, contamination):
+    cl = disposable_pg
+    clean = tmp_path / 'clean'
+    clean.mkdir()
+    # The same catalog fixture and original pinned SQL must PASS before adding
+    # exactly one contaminant, so an unrelated gate failure cannot earn this proof.
+    test_real_registry_writer_count_and_committed_pin(cl, monkeypatch, clean)
+    if contamination == 'dependent':
+        # This fixture row has no fingerprint contract. Update only its dependency;
+        # the fixture's receipt-invalidation trap is unrelated to this readback.
+        cl.psql('DROP TRIGGER nirmana_registry_receipt_invalidation ON asset_registry')
+        cl.psql(f"UPDATE asset_registry SET depends_on=ARRAY['{candidate}'] WHERE asset_id='fixture_writer'")
+        expected = '1\n'
+        capture = 'R2-1243-dependents.out'
+        diagnostic = 'dependents=1/0;'
+    else:
+        cl.psql(f"INSERT INTO {contamination} (asset_id) VALUES ('{candidate}')")
+        expected = {'asset_provenance_receipts': '1\t0\t0\n',
+                    'build_run_assets': '0\t1\t0\n',
+                    'asset_throughput': '0\t0\t1\n'}[contamination]
+        capture = 'R2-1243-evidence.out'
+        diagnostic = f"evidence='{expected.strip()}'"
+    dirty = tmp_path / 'dirty'
+    dirty.mkdir()
+    proc = _real_window_check(cl, monkeypatch, dirty, 'check_registry_1243',
+                             ('--sql-dir', str(Path(__file__).parent / 'fixtures'),
+                              '--expect-registry-rows', '4', '--expect-writers', '3'))
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert 'STOP R2-registry-1243 ' in proc.stderr
+    assert diagnostic in proc.stderr
+    assert 'PASS R2-registry-1243 ' not in proc.stdout
+    assert (dirty / 'out' / capture).read_text() == expected
 
 
 def _assert_capture_evidence(out, capture, rows):
@@ -773,3 +808,212 @@ def test_real_sorted_capture_evidence_is_c_ordered_and_unique(disposable_pg, mon
     assert proc.returncode == 0, proc.stdout + proc.stderr
     _assert_capture_evidence(tmp_path / 'out', 'capture.out', ['A', 'z', 'ä'])
     assert _manifest_verifies(tmp_path / 'out')
+
+
+@pytest.mark.parametrize("explicit_acl", [False, True])
+def test_public_execute_query_checks_the_public_acl_without_a_public_role(disposable_pg, explicit_acl):
+    """Removing PUBLIC ACL inspection misses default and explicit PUBLIC grants."""
+    text = SCRIPT.read_text()
+    sql = re.search(r'run_sql P9-public-execute "([^"\n]+)"', text).group(1)
+    name = "ka_gochara_j4b_public_probe"
+    disposable_pg.psql(f"DROP FUNCTION IF EXISTS public.{name}(); "
+                       f"CREATE FUNCTION public.{name}() RETURNS int LANGUAGE sql AS 'SELECT 1'")
+    try:
+        if explicit_acl:
+            disposable_pg.psql(f"GRANT EXECUTE ON FUNCTION public.{name}() TO PUBLIC")
+        assert name in disposable_pg.psql(sql)
+        disposable_pg.psql(f"REVOKE EXECUTE ON FUNCTION public.{name}() FROM PUBLIC")
+        assert name not in disposable_pg.psql(sql)
+    finally:
+        disposable_pg.psql(f"DROP FUNCTION public.{name}()")
+
+
+# J4B post-provisioning audit: real catalog privileges, no attempted writes.
+@pytest.fixture(scope="module")
+def provisioning_world(disposable_pg):
+    import json
+    import psycopg
+    import uuid
+    from psycopg import sql
+
+    migration = (REPO / "platform/migrations/1378_gochara_verifier_sealer_inventory_grants.sql").read_text()
+    spec = json.loads(re.search(r'\$spec\$(.*?)\$spec\$', migration, re.S).group(1))
+    prefix = 'j4b_' + uuid.uuid4().hex[:12]
+    mapping = {name: prefix + '_' + suffix for name, suffix in (
+        ('gochara_verifier', 'v'), ('gochara_sealer', 's'), ('data_plane_builder', 'b'), ('amjis_app', 'a'))}
+    env = disposable_pg.env()
+    conn = psycopg.connect(host=env['PGHOST'], port=env['PGPORT'], dbname=env['PGDATABASE'], user=env['PGUSER'], autocommit=True)
+    created = []
+    try:
+        for role, mapped in mapping.items():
+            limit = 4 if role == 'gochara_verifier' else 2
+            conn.execute(sql.SQL('CREATE ROLE {} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS CONNECTION LIMIT {}').format(sql.Identifier(mapped), sql.Literal(limit)))
+            created.append(mapped)
+        tables = {'chart_facts': {'id'}, 'chart_dashas': {'id'}, '_migrations_applied': {'filename', 'sha256', 'applied_at'}}
+        functions = set(spec['builder_backfill']['functions'])
+        for body in spec['roles'].values():
+            for name, _, cols, _ in body['tables']:
+                tables.setdefault(name, {'id'}).update(cols or [])
+            functions.update(entry[0] for entry in body['functions'])
+        for name, columns in tables.items():
+            # Main's populated readback tests share this suite-owned database.
+            # Replace their fixture relations before installing the audit world.
+            conn.execute(sql.SQL('DROP TABLE IF EXISTS public.{} CASCADE').format(sql.Identifier(name)))
+            cols = sql.SQL(',').join(sql.SQL('{} text').format(sql.Identifier(col)) for col in sorted(columns))
+            conn.execute(sql.SQL('CREATE TABLE public.{} ({})').format(sql.Identifier(name), cols))
+        for sig in sorted(functions):
+            conn.execute(f"CREATE FUNCTION public.{sig} RETURNS int LANGUAGE sql AS 'SELECT 1'")
+            conn.execute(f'REVOKE ALL ON FUNCTION public.{sig} FROM PUBLIC')
+        grants = []
+        for role, body in spec['roles'].items():
+            for name, priv, cols, _ in body['tables']:
+                columns = '(' + ','.join(cols) + ')' if cols else ''
+                grants.append(f'{priv}{columns} ON public.{name} TO {mapping[role]}')
+            for sig, _ in body['functions']:
+                grants.append(f'EXECUTE ON FUNCTION public.{sig} TO {mapping[role]}')
+            for name in ('chart_facts', 'chart_dashas'):
+                grants.append(f'SELECT ON public.{name} TO {mapping[role]}')
+        for sig in spec['builder_backfill']['functions']:
+            grants.append(f'EXECUTE ON FUNCTION public.{sig} TO {mapping["data_plane_builder"]}')
+        for grant in grants:
+            conn.execute('GRANT ' + grant)
+        for filename in ('1204_gochara_av_qualifier_object_role.sql', '1206_gochara_search_inventory_completeness.sql',
+                         '1232_gochara_search_moon_scope_domain.sql', '1233_gochara_p1_period_anchor.sql',
+                         '1240_gochara_window_verification_gate.sql', '1378_gochara_verifier_sealer_inventory_grants.sql'):
+            digest = hashlib.sha256((REPO / 'platform/migrations' / filename).read_bytes()).hexdigest()
+            conn.execute('INSERT INTO public._migrations_applied (filename,sha256) VALUES (%s,%s)', (filename,digest))
+        yield conn, mapping, grants
+    finally:
+        for role in reversed(created):
+            conn.execute(sql.SQL('DROP OWNED BY {}').format(sql.Identifier(role)))
+            conn.execute(sql.SQL('DROP ROLE {}').format(sql.Identifier(role)))
+        for name in locals().get('tables', {}):
+            conn.execute(sql.SQL('DROP TABLE IF EXISTS public.{} CASCADE').format(sql.Identifier(name)))
+        for sig in locals().get('functions', ()):
+            conn.execute(f'DROP FUNCTION IF EXISTS public.{sig} CASCADE')
+        conn.close()
+
+
+def provisioning_readback(world):
+    conn, mapping, _ = world
+    text = (REPO / 'platform/scripts/readbacks/gochara_provisioning_readback.sql').read_text()
+    for original, mapped in mapping.items():
+        text = text.replace("'" + original + "'", "'" + mapped + "'").replace('"' + original + '"', '"' + mapped + '"')
+    # The SAME one-statement, read-only protocol as executor readback_sql.
+    idle = conn.info.transaction_status.name == 'IDLE'
+    with conn.transaction():
+        if idle:
+            conn.execute('SET TRANSACTION READ ONLY')
+        cur = conn.execute(text, prepare=True)
+        rows = [dict(zip([col.name for col in cur.description], row)) for row in cur.fetchall()]
+        assert all(row['database'] == conn.info.dbname and row['server_address'] == '127.0.0.1' for row in rows)
+        return rows
+
+
+def test_provisioning_readback_enumerates_every_principal_and_grant(provisioning_world):
+    rows = provisioning_readback(provisioning_world)
+    assert len(rows) > 1000
+    assert all(row['ok'] is True for row in rows), [r for r in rows if not r['ok']][:10]
+    assert {r['principal'] for r in rows} == set(provisioning_world[1].values())
+    assert any(r['kind'] == 'builder-write' and r['privilege'] == 'INSERT' for r in rows)
+    assert len({(r['kind'], r['principal'], r['object'], r['privilege']) for r in rows}) == len(rows)
+
+
+def test_provisioning_readback_detects_each_individually_missing_grant(provisioning_world):
+    conn, _, grants = provisioning_world
+    for grant in grants:
+        with conn.transaction(force_rollback=True):
+            conn.execute('REVOKE ' + grant.replace(' TO ', ' FROM '))
+            rows = provisioning_readback(provisioning_world)
+            assert any(not r['ok'] for r in rows), grant
+
+
+@pytest.mark.parametrize('change', [
+    'GRANT INSERT ON public.ka_gochara_search_inventory_verification TO {builder}',
+    'GRANT INSERT(id) ON public.ka_gochara_eval_window_verification TO {builder}',
+    'GRANT UPDATE ON public.kala_gochara_publication TO {sealer}',
+    'GRANT SELECT(id) ON public.kala_gochara_windows TO {sealer}',
+    'GRANT SELECT ON public.ka_gochara_seal_brief TO {verifier} WITH GRANT OPTION',
+    'GRANT EXECUTE ON FUNCTION public.ka_gochara_seal_generation(uuid,text) TO {verifier}',
+    'GRANT {verifier} TO {builder}',
+    'ALTER ROLE {verifier} CREATEDB',
+    'ALTER ROLE {sealer} INHERIT',
+    'ALTER ROLE {sealer} NOLOGIN',
+    'GRANT CREATE ON SCHEMA public TO {app}',
+    "UPDATE public._migrations_applied SET sha256 = 'wrong' WHERE filename LIKE '1378%'",
+    "DELETE FROM public._migrations_applied WHERE filename LIKE '1204%'",
+    'DROP TABLE public.chart_dashas',
+    'CREATE TABLE public.ka_gochara_unexpected (id int); GRANT SELECT ON public.ka_gochara_unexpected TO {verifier}',
+])
+def test_provisioning_readback_refuses_privilege_or_principal_drift(provisioning_world, change):
+    conn, names, _ = provisioning_world
+    with conn.transaction(force_rollback=True):
+        conn.execute(change.format(builder=names['data_plane_builder'], verifier=names['gochara_verifier'],
+                                   sealer=names['gochara_sealer'], app=names['amjis_app']))
+        rows = provisioning_readback(provisioning_world)
+        assert any(not r['ok'] for r in rows), change
+
+
+def test_provisioning_sql_runs_through_the_real_executor_readback_sql(provisioning_world, tmp_path):
+    """The prepared audit must survive the executor's actual file/protocol guard."""
+    import csv
+    import io
+    conn, mapping, _ = provisioning_world
+    sql = (REPO / 'platform/scripts/readbacks/gochara_provisioning_readback.sql').read_text()
+    for original, mapped in mapping.items():
+        sql = sql.replace("'" + original + "'", "'" + mapped + "'").replace('"' + original + '"', '"' + mapped + '"')
+    sql_dir = tmp_path / 'run/ops/sql'
+    sql_dir.mkdir(parents=True)
+    sql_file = sql_dir / 'j4b.sql'
+    sql_file.write_text(sql)
+    python = tmp_path / 'venv/bin/python'
+    python.parent.mkdir(parents=True)
+    python.symlink_to(sys.executable)
+    pgenv = tmp_path / 'pgenv.sh'
+    pgenv.write_text(f'export PGHOST=127.0.0.1 PGPORT={conn.info.port} PGDATABASE={conn.info.dbname} PGUSER={conn.info.user}\n')
+    env = {k: v for k, v in os.environ.items() if not k.startswith('PG')}
+    env.update(KY_ROOT=str(tmp_path), KY_READBACK_PGENV=str(pgenv))
+    result = subprocess.run(['bash', str(REPO / '00_ARCHITECTURE/briefs/kalayantra/fleet/readback_sql.sh'),
+                             '--sql-file', str(sql_file)], env=env, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    rows = list(csv.reader(io.StringIO(result.stdout), delimiter='\t'))
+    observed = [dict(zip(rows[0], row)) for row in rows[1:]]
+    assert len(observed) > 1000
+    assert all(row['database'] == conn.info.dbname and row['ok'] == 'True' for row in observed)
+
+
+@pytest.mark.parametrize('principal', ['gochara_verifier', 'gochara_sealer', 'data_plane_builder', 'amjis_app'])
+def test_provisioning_readback_requires_effective_schema_usage(provisioning_world, principal):
+    """Object grants cannot compensate for missing namespace access (J4B-R01)."""
+    import psycopg
+    from psycopg import sql
+    conn, mapping, _ = provisioning_world
+    role = mapping[principal]
+    with conn.transaction(force_rollback=True):
+        conn.execute('REVOKE USAGE ON SCHEMA public FROM PUBLIC')
+        for mapped in mapping.values():
+            conn.execute(sql.SQL('GRANT USAGE ON SCHEMA public TO {}').format(sql.Identifier(mapped)))
+        conn.execute(sql.SQL('REVOKE USAGE ON SCHEMA public FROM {}').format(sql.Identifier(role)))
+        if principal in ('gochara_verifier', 'gochara_sealer'):
+            assert conn.execute("SELECT has_table_privilege(%s, 'public.chart_facts', 'SELECT')", (role,)).fetchone()[0]
+            with pytest.raises(psycopg.errors.InsufficientPrivilege, match='schema public'):
+                with conn.transaction():
+                    conn.execute(sql.SQL('SET LOCAL ROLE {}').format(sql.Identifier(role)))
+                    conn.execute('SELECT id FROM public.chart_facts')
+        rows = provisioning_readback(provisioning_world)
+        assert any(r['principal'] == role and r['privilege'] == 'schema-usage' and not r['ok'] for r in rows)
+        # PUBLIC is an ACL pseudo-role, not a row in pg_roles. Its USAGE must count.
+        conn.execute('GRANT USAGE ON SCHEMA public TO PUBLIC')
+        assert all(r['ok'] for r in provisioning_readback(provisioning_world))
+
+
+def test_provisioning_readback_counts_public_table_privileges(provisioning_world):
+    conn, mapping, _ = provisioning_world
+    with conn.transaction(force_rollback=True):
+        conn.execute('REVOKE SELECT ON public.chart_facts FROM ' + mapping['gochara_verifier'])
+        assert any(not r['ok'] for r in provisioning_readback(provisioning_world))
+        conn.execute('GRANT SELECT ON public.chart_facts TO PUBLIC')
+        assert all(r['ok'] for r in provisioning_readback(provisioning_world))
+        conn.execute('GRANT INSERT ON public.ka_gochara_eval_window_verification TO PUBLIC')
+        rows = provisioning_readback(provisioning_world)
+        assert any(r['kind'] == 'builder-write' and r['privilege'] == 'INSERT' and not r['ok'] for r in rows)

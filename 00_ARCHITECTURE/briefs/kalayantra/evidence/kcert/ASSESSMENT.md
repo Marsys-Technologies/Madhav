@@ -1,0 +1,50 @@
+# Independent K-CERT / KV3-SCHEMA-1 assessment
+
+Assessment completed against cached `origin/main` **4ed06a493faef9659ce1005280cf6130982bd0a6**, extracted with `GIT_OPTIONAL_LOCKS=0 git archive origin/main | tar -x -C "$JOB_SCRATCH/src"`. No fetch, repository changes, Git writes, tracker calls, production access or sub-agents. Scope: write this job folder only. Integration #3435 (`829d8db1df1005e414623cf21b7e0999a6f9bf31`) is an ancestor of the assessed commit (`git-verification.json`). The result concerns checked-in behavior and isolated fixtures, not a new production certification.
+
+Latest cached main observed before publication is **5673de0bfdd09966c5f13c0c8bc6c49e9e2e80ee**. `current-main-equivalence.json` records `git diff --exit-code` 0 for all assessed code, migrations, tests and governing inputs against the tested archive; the complete intervening diff changes only dashboard/fleet-loop files. Tests were not represented as having run on a different checkout.
+
+## Measured decision
+
+**K-CERT: MET — bounded structural Dens.served.** The stored `status` column is selected, projected and disclosed; the actual density scanner earns PASS and loses it under the selection mutation. This is an already-satisfied assessment, as allowed by `00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md:544–551`, not a fabricated historical failing base or a no-op implementation PR.
+
+**KV3-SCHEMA-1: required under the governing record pending explicit disposition.** It is **technically unnecessary for the measured K-CERT condition**: PASS is earned from existing `status`, without `verification_pass_status`. However owner-decisions Q2 expressly says “K-CERT stays blocked until the column lands” (`.../KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md:61–67`), repeated in plan v2.7:760–763. The model still has a code/branch detector and schema dependency (`00_ARCHITECTURE/control/kalayantra/plan_model.json:20684–20724,20863–20902`). The packet proposes a nullable, no-backfill column, not an already-landed change (`.../packets/PACKET_KV3-SCHEMA-1_v1.md:1,20–31`). An assessor cannot silently retire that higher-priority prerequisite. Recommended cockpit action: explicitly supersede the obsolete prerequisite for this structural criterion and adopt the artifact route; build the column only if a separate verification-authority obligation is deliberately retained.
+
+**(I) INTERPRETATION I1:** “MET” is structural source satisfaction, not guarded tracker completion, full §N.6 behavioral certification, or a deployment claim. **(I) INTERPRETATION I2:** conservative authority order retains Q2 until recorded reconciliation; technical redundancy alone is not a waiver.
+
+## Source and executed evidence
+
+- Schema: `platform/supabase/migrations/565_bg_gochara_citation_resolution.sql:65–78` defines nine columns, including `status` constrained to resolved/unresolved. `schema-source-audit.json` inventories every checked-in SQL migration naming this table; none supplies the proposed verification column. This proves checked-in scope, not actual production schema. `db-catalog-scanner.json` independently records the actual catalog of the exact-DDL local fixture.
+- Custodian declaration: `platform/scripts/governance/asset_declarations.json:2783–2789` names `density_tier_columns: [status]`. It landed in #3435. `source-pin.json` binds current declaration/scanner/module hashes. This declaration distinguishes citation resolution; its broad “verification tier” wording does not establish computed-value or prose verification.
+- Stored selection: `platform-mcp/src/tools/retrieval/register_gochara_windows.ts:798–815` selects `status`, preserves the returned value and uses unresolved for a null/missing returned field. No resolved-only WHERE hides unresolved rows.
+- Returned gaps: the same module:838–896 returns explicit unresolved rows, synthesizes an unresolved `CORPUS_GAP:` stub for a missing citation, preserves mixed statuses, and earns a gap note when none resolve. Calls at :1843–1844 and :2169–2170 connect lookup/enrichment to actual serving functions. Existing tests :668–737 check unresolved/mixed/missing citation outputs. The new scratch-only test uses a projection-aware mock, so dropping a selected column also changes its returned fixture row.
+- Actual scanner: `platform/scripts/governance/asset_census.py:17935–17965,18237–18278,23524–23552` defines source-only structural scanning, validates the asset declaration against columns, scans **all three canonical serving roots plus both wider source roots**, then grades the result. `scanner_assert.py` calls those real functions, with no reimplementation of PASS. `baseline.scanner.json` records PASS through `register_gochara_windows.ts`; withholding the declaration produces PARTIAL. The local PostgreSQL assessment calls the real `catalog()` SQL through the guarded fixture connection before running the same scanner.
+- Root boundaries: `CLAUDE.md:130–141` requires a real detector for verification, separate prose tests, and a signal scoped to what it measures. Neither `resolved` nor this structural PASS is evidence of value/prose verification.
+
+| Execution | Observed exit / result | Evidence |
+|---|---|---|
+| Existing serving/C1 tests, sibling DENS-SERVED claims test, four scratch assessment tests; Vitest `--no-cache` | 0; **48 passed, 3 skipped** | `baseline.vitest.log`, `test-runs.json` |
+| Actual baseline scanner, same source/declaration | 0; **PASS**; no-declaration control PARTIAL | `baseline.scanner.log`, `baseline.scanner.json` |
+| Copy with only `status` removed from SELECT; identical assessment tests | **1**, two assertions fail: SQL selection and returned resolved status | `negative-selection.vitest.log`, `negative-selection.patch` |
+| Same mutated tree, real scanner, unchanged declaration | **1**; grade **PARTIAL**, “no tier column in its served select”; PASS assertion fails | `negative-selection.scanner.log`, `negative-selection.scanner.json` |
+| Census tier guard + second-review scanner tests, `-k 'not REAL_SQL'`, pytest cache disabled | 0; **259 passed, 14 deselected** | `governance.pytest.log`, `test-runs.json` |
+| Existing K-CERT-2 citation writer tests plus real-catalog/scanner assessment, own guarded loopback fixture | 0; **12 passed**, no skips | `db.pytest.log`, `db.test-run.json`, `db-catalog-scanner.json` |
+| Read-only absence check after fixture finalization | absent | `db-cleanup.json` |
+
+The three skipped serving tests require a live HTTP platform proxy (`register_gochara_windows.test.ts:6–11`), not a raw PostgreSQL DSN; none is represented as passing. The 14 deselected governance REAL_SQL cases use a fixture that starts a separate cluster and detached watchdog, contrary to this job's box; that fixture was never run. The executed local catalog/scanner proof and K-CERT-2 suite use the existing guarded fixture at 127.0.0.1:55433. No DB work was deferred as unreachable. The fixture created/dropped its own isolated database; the cluster was neither stopped nor reconfigured. Ephemeris path was set to the pinned local corpus; this bounded assessment performs no ephemeris calculation.
+
+The first negative scanner attempt lacked the DDL evidence file in the partial copy and failed declaration validation. After copying that unchanged evidence file, both roots validate the same declaration, and the retained final negative log shows failure specifically because the SELECT lacks status. That preliminary harness failure is not counted as a negative-control proof.
+
+## K-CERT-2 and the named rulings
+
+`/Users/Dev/kalayantra/run/EVENTS.jsonl:12242` records **K-CERT-2**, not K-CERT, as SUPERSEDED-AS-COMPLETE through #3435 under N-444/N-472/N-534; the committed tracker fixture repeats it at `00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/post_install_tracker.json:701`. Exact record retained in `rulings-references.json`. Primary texts of those three rulings were not present in the inspected local decision files; no broader waiver is inferred. **(I) INTERPRETATION I3:** treat this as the recorded K-CERT-2 integration linkage only.
+
+`platform/migrations/1362_gochara_citation_resolution_dispatchable.sql:1–21` updates registry dispatchability/count_sql; it does not add a tier column. The 11 existing K-CERT-2 tests passed locally, including sealed-digest tampering controls and idempotent registry migration. This supports the code distinction, not a fresh production application claim. `KYD-150.json` preserves `/Users/Dev/kalayantra/run/DECISIONS.jsonl:146`: no invented column, no tier synthesized from resolved status, admitted mapping or an evidence-backed prerequisite required. The real scanner now accepts the custodian mapping; that resolves the structural question without rewriting historical KYD-150 or Q2.
+
+## Cockpit bookkeeping
+
+`BOOKKEEPING.md` contains exact CLI syntax and evidence paths. None was executed. First record the measured MET result and Q2 conflict. Keep KV3-SCHEMA-1 required/unclosed unless a recorded decision explicitly supersedes it. The recommended resolution is to retire it **as this structural prerequisite**, while preserving the fact that no migration was delivered. Reconcile the model's old branch detector and completion kind before using `--artifact-path`; no existing guard is bypassed. The decision ID shown there is explicitly proposed, not claimed registered. Independent artifact acceptance must precede `ky done`.
+
+Open cockpit question: retain an independent verification-tier requirement, or explicitly supersede Q2 and adopt artifact completion? No implementation change is demonstrated necessary for the currently measured criterion.
+
+Temporary archived trees and test caches are removed at job completion. Selected immutable source evidence, the exact one-line mutant/patch, tests, logs and reports remain here for cockpit collection. The original working copy is unchanged (`git-verification.json`). This is a fleet child-job assessment; it does not claim a project SESSION_CLOSE, tracker disposition or production closure.

@@ -1,6 +1,7 @@
 """kyverdicts.py — controller-owned verdict publication and the shared reviewed-patch inheritance predicate
 (relaunch plan v2.7 §6 "Verdict publication" and "Inheritance predicate", §4a.1 "Action records"; KU-01's
-"invalid inheritance fails" fixture; packet KV3-B-KYVERDICTS).
+"invalid inheritance fails" fixture; packet KV3-B-KYVERDICTS; Amendment A8: verdicts bind to the diff — the
+predicate compares `git patch-id --stable` and probes the merge onto main, publication observes six things).
 
 Everything runs against throwaway Git repositories and a fake `ky` written under pytest's temporary directory.
 The real `ky`, the real tracker and /Users/Dev/kalayantra are never touched: an autouse fixture points KY_ROOT,
@@ -166,6 +167,12 @@ def refused(result, reason):
     assert result["reason"] == reason, result
 
 
+def patch_id(repo, base, head):
+    """What the predicate binds a verdict to (A8): `git patch-id --stable` of the reviewed diff, computed here."""
+    diff = git(repo, "diff", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames", base, head)
+    return git(repo, "patch-id", "--stable", stdin=diff + "\n").split()[0]
+
+
 def read_events(path):
     return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
 
@@ -236,10 +243,10 @@ class World:
         self.boundary.write_text(json.dumps(doc), encoding="utf-8")
 
     def publish_argv(self, **over):
+        """A8: the controller passes neither --snapshot nor --boundary; a legacy caller may (see the A8 tests)."""
         a = {"--job-id": JOB, "--item": ITEM, "--phase": "pre_merge", "--head": self.head, "--vslot": VSLOT,
              "--author-id": "builder-opus-b2", "--reviewer-id": "verifier-opus-v1", "--worktree": str(self.wt),
-             "--snapshot": str(self.snap), "--job-exit": "0", "--result": str(self.result),
-             "--boundary": str(self.boundary), "--as": CID}
+             "--job-exit": "0", "--result": str(self.result), "--as": CID}
         a.update(over)
         argv = ["publish"]
         for flag, value in a.items():
@@ -316,7 +323,9 @@ def test_predicate_true_for_a_conflict_free_merge_of_main(scenario):
     new = scenario.merge_main()
     result = scenario.check(new)
     assert result == {"inherits": True, "reason": "identical_patch", "old_head": scenario.old, "new_head": new,
-                      "old_base": scenario.b1, "new_base": scenario.m2}
+                      "old_base": scenario.b1, "new_base": scenario.m2,
+                      "patch_id": patch_id(scenario.repo, scenario.b1, scenario.old)}
+    assert result["patch_id"] == patch_id(scenario.repo, scenario.m2, new)
     assert K.inherits(str(scenario.repo), scenario.old, new) is True
 
 
@@ -464,27 +473,6 @@ def stanzas(enabled=()):
     return "\n".join(rows) + "\n"
 
 
-def test_predicate_false_when_an_added_commit_moves_the_change_to_identical_context(tmp_path):
-    """Review B-02: three stanzas whose lines around the flag are identical. OLD turns stanza 1 on; one added
-    commit turns stanza 1 back off and stanza 3 on. With the @@ headers dropped both patches read alike — the
-    change is bound to WHERE it applies by the three-way check, and refused."""
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    git(repo, "init", "-q", "-b", "main")
-    base = commit(repo, "base", {"conf.ini": stanzas()})
-    git(repo, "checkout", "-q", "-b", "feat")
-    old = commit(repo, "turn stanza 1 on", {"conf.ini": stanzas(enabled=(1,))})
-    new = commit(repo, "move it to stanza 3", {"conf.ini": stanzas(enabled=(3,))})
-    flags = ["diff", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames"]
-    strip = lambda text: [x for x in text.splitlines() if not x.startswith(("index ", "@@"))]  # noqa: E731
-    assert strip(git(repo, *flags, base, old)) == strip(git(repo, *flags, base, new)), \
-        "the fixture's stripped patches are identical"
-    result = K.inheritance(str(repo), old, new)
-    refused(result, "patch_differs")
-    assert result["old_base"] == base and result["new_base"] == base
-    assert K.inherits(str(repo), old, new) is False
-
-
 def test_predicate_true_when_main_shifts_a_change_among_identical_stanzas(tmp_path):
     """Binding the position must still tolerate the line shift main causes: main inserts a stanza above."""
     repo = tmp_path / "repo"
@@ -502,23 +490,49 @@ def test_predicate_true_when_main_shifts_a_change_among_identical_stanzas(tmp_pa
     assert result["inherits"] is True and result["reason"] == "identical_patch", result
 
 
-def test_predicate_false_for_an_indentation_only_change(scenario):
-    merged = scenario.merge_main()
-    new = commit(scenario.repo, "indent", {"a.txt": lines("a", {10: "    a10 feature"})})
-    assert git(scenario.repo, "diff", "-w", merged, new) == "", "the fixture differs in white space only"
-    assert git(scenario.repo, "diff", "--stat", merged, new) != ""
-    refused(scenario.check(new), "patch_differs")
-
-
-def test_predicate_false_for_a_rebased_identical_patch(scenario):
+def test_predicate_true_for_an_identical_patch_rebased_onto_a_moved_main(scenario):
+    """A8: the verdict binds to the diff. The reviewed commit cherry-picked onto the moved main is not a descendant
+    of the reviewed head; it carries the identical patch (same patch-id) and merges onto main: it inherits."""
     git(scenario.repo, "checkout", "-q", "-b", "rebased", scenario.m2)
     git(scenario.repo, "cherry-pick", scenario.old)
     new = git(scenario.repo, "rev-parse", "HEAD")
-    flags = ["diff", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames"]
-    strip = lambda text: [x for x in text.splitlines() if not x.startswith(("index ", "@@"))]  # noqa: E731
-    assert strip(git(scenario.repo, *flags, scenario.b1, scenario.old)) == \
-        strip(git(scenario.repo, *flags, scenario.m2, new)), "the fixture's patch is identical"
-    refused(scenario.check(new), "not_descendant")   # the equal patch does not replace descent
+    assert git(scenario.repo, "merge-base", "--is-ancestor", scenario.old, new, check=False).returncode == 1, \
+        "the fixture is a rebase: the old head is not an ancestor of the new one"
+    assert patch_id(scenario.repo, scenario.b1, scenario.old) == patch_id(scenario.repo, scenario.m2, new)
+    result = scenario.check(new)
+    assert result == {"inherits": True, "reason": "identical_patch", "old_head": scenario.old, "new_head": new,
+                      "old_base": scenario.b1, "new_base": scenario.m2,
+                      "patch_id": patch_id(scenario.repo, scenario.b1, scenario.old)}
+    assert K.inherits(str(scenario.repo), scenario.old, new) is True
+    assert "not_descendant" not in K.REFUSALS
+
+
+def test_predicate_false_for_a_rebased_patch_that_changed(scenario):
+    """A8's negative: the same rebase, with the reviewed line edited on the way — another patch-id, no inheritance."""
+    git(scenario.repo, "checkout", "-q", "-b", "rebased", scenario.m2)
+    new = commit(scenario.repo, "feature, rebased and edited", {"a.txt": lines("a", {10: "a10 feature, edited"})})
+    assert patch_id(scenario.repo, scenario.b1, scenario.old) != patch_id(scenario.repo, scenario.m2, new)
+    refused(scenario.check(new), "patch_differs")
+    assert K.inherits(str(scenario.repo), scenario.old, new) is False
+    # one more line in the rebased commit is another patch too
+    git(scenario.repo, "checkout", "-q", "-B", "rebased2", scenario.m2)
+    new = commit(scenario.repo, "feature plus one", {"a.txt": lines("a", {10: "a10 feature", 11: "a11 too"})})
+    refused(scenario.check(new), "patch_differs")
+
+
+def test_predicate_false_when_the_rebased_patch_conflicts_with_main(scenario):
+    """A8's second condition: the identical patch must still merge onto main. Main has since changed the very
+    line the review changed: the patch-ids agree, `git merge-tree` reports a conflict, nothing inherits."""
+    git(scenario.repo, "checkout", "-q", "-b", "rebased", scenario.m2)
+    git(scenario.repo, "cherry-pick", scenario.old)
+    new = git(scenario.repo, "rev-parse", "HEAD")
+    git(scenario.repo, "checkout", "-q", "main")
+    commit(scenario.repo, "main takes the reviewed line another way", {"a.txt": lines("a", {10: "a10 main"})})
+    assert patch_id(scenario.repo, scenario.b1, scenario.old) == patch_id(scenario.repo, scenario.m2, new)
+    result = scenario.check(new)
+    refused(result, "conflicts_with_main")
+    assert result["patch_id"] == patch_id(scenario.repo, scenario.b1, scenario.old)
+    assert K.inherits(str(scenario.repo), scenario.old, new) is False
 
 
 @pytest.mark.parametrize("which", ["old", "new"])
@@ -545,9 +559,12 @@ def test_predicate_false_without_a_main_ref(tmp_path):
     new = s.merge_main()
     refused(s.check(new), "unproven_base")
     assert s.check(new)["old_base"] is None and s.check(new)["new_base"] is None
-    # the very same commits inherit once their exact bases are bound: it was the base that was unproven
-    assert s.check(new, old_base=s.b1, new_base=s.m2)["inherits"] is True
+    # exact bases do not rescue it: without main there is nothing to probe the merge against (A8)
+    refused(s.check(new, old_base=s.b1, new_base=s.m2), "unproven_base")
     refused(s.check(new, old_base=s.b1), "unproven_base")
+    # the very same commits inherit once origin/main names the trunk: it was main that was missing
+    git(s.repo, "update-ref", "refs/remotes/origin/main", s.m2)
+    assert s.check(new)["inherits"] is True and s.check(new, old_base=s.b1, new_base=s.m2)["inherits"] is True
 
 
 def test_predicate_false_when_the_base_is_ambiguous(scenario):
@@ -633,9 +650,9 @@ def test_predicate_false_outside_a_repository_and_for_a_bad_timeout(scenario, tm
 
 
 def test_forcing_the_comparison_equal_fails_a_test(tmp_path, monkeypatch):
-    """The mutation check the packet asks for: with the byte comparison forced equal, a negative case above no
+    """The mutation check the packet asks for: with the patch-id comparison forced equal, a negative case above no
     longer holds — so it is that comparison that refuses a changed patch. (Main changing the context of the
-    reviewed hunk merges cleanly, so the three-way check beside it does not see it.)"""
+    reviewed hunk merges cleanly, so the conflict probe beside it does not see it.)"""
     s = Scenario(tmp_path, main_change={"a.txt": lines("a", {13: "a13 main"})})
     new = s.merge_main()
     refused(s.check(new), "patch_differs")
@@ -645,19 +662,16 @@ def test_forcing_the_comparison_equal_fails_a_test(tmp_path, monkeypatch):
     assert s.check(new)["inherits"] is True          # the mutant inherits: the detector is the comparison
 
 
-def test_forcing_the_position_check_equal_fails_a_test(tmp_path, monkeypatch):
-    """The same mutation check for the three-way position check (review B-02): forced equal, the relocation
-    fixture inherits."""
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    git(repo, "init", "-q", "-b", "main")
-    commit(repo, "base", {"conf.ini": stanzas()})
-    git(repo, "checkout", "-q", "-b", "feat")
-    old = commit(repo, "turn stanza 1 on", {"conf.ini": stanzas(enabled=(1,))})
-    new = commit(repo, "move it to stanza 3", {"conf.ini": stanzas(enabled=(3,))})
-    refused(K.inheritance(str(repo), old, new), "patch_differs")
-    monkeypatch.setattr(K, "_same_tree", lambda reviewed, observed: True)
-    assert K.inheritance(str(repo), old, new)["inherits"] is True
+def test_forcing_the_conflict_probe_clean_fails_a_test(scenario, monkeypatch):
+    """The same mutation check for A8's conflict probe: forced clean, the conflicting rebase inherits."""
+    git(scenario.repo, "checkout", "-q", "-b", "rebased", scenario.m2)
+    git(scenario.repo, "cherry-pick", scenario.old)
+    new = git(scenario.repo, "rev-parse", "HEAD")
+    git(scenario.repo, "checkout", "-q", "main")
+    commit(scenario.repo, "main takes the reviewed line another way", {"a.txt": lines("a", {10: "a10 main"})})
+    refused(scenario.check(new), "conflicts_with_main")
+    monkeypatch.setattr(K, "_clean_merge", lambda git, main, head: True)
+    assert scenario.check(new)["inherits"] is True
 
 
 def test_inherits_is_fail_closed_on_any_internal_error(scenario, monkeypatch):
@@ -914,7 +928,7 @@ def _author_reviews_other_case(w):
     return {"--author-id": "Opus-V1 ", "--reviewer-id": "opus-v1"}
 
 
-def _head_moved(w):
+def _head_moved_after_the_review(w):
     git(w.wt, "commit", "-q", "--allow-empty", "-m", "the job committed")
 
 
@@ -931,66 +945,13 @@ def _untracked_file_hidden_by_config(w):
     git(w.wt, "config", "status.showUntrackedFiles", "no")
 
 
-def _assume_unchanged(w):
-    git(w.wt, "update-index", "--assume-unchanged", "code.py")
-    (w.wt / "code.py").write_text("print('edited behind the index')\n", encoding="utf-8")
-    assert git(w.wt, "status", "--porcelain") == "", "the fixture hides the edit from git status"
+def _modified_tracked_file(w):
+    (w.wt / "code.py").write_text("print('edited')\n", encoding="utf-8")
 
 
-def _skip_worktree(w):
-    git(w.wt, "update-index", "--skip-worktree", "doc.md")
-    (w.wt / "doc.md").write_text("edited behind the index\n", encoding="utf-8")
-    assert git(w.wt, "status", "--porcelain") == ""
-
-
-def _snapshot_missing(w):
-    w.snap.unlink()
-
-
-def _snapshot_of_another_tree(w):
-    doc = json.loads(w.snap.read_text(encoding="utf-8"))
-    doc["worktree"] = str(w.root / "elsewhere")
-    w.snap.write_text(json.dumps(doc), encoding="utf-8")
-
-
-def _snapshot_truncated(w):
-    w.snap.write_text('{"head": "', encoding="utf-8")
-
-
-def _boundary_missing(w):
-    w.boundary.unlink()
-
-
-def _boundary_violated(w):
-    w.write_boundary(result="violated", tracked_hashes_unchanged=False)
-
-
-def _boundary_unknown(w):
-    w.write_boundary(result="unknown")
-
-
-def _boundary_flag_false(w):
-    w.write_boundary(mechanism_intact=False)
-
-
-def _boundary_nested_flag_false(w):
-    w.write_boundary(worktree={"head_unchanged": True, "status_clean": False})
-
-
-def _boundary_no_result(w):
-    w.boundary.write_text(json.dumps({"job_id": JOB}), encoding="utf-8")
-
-
-def _boundary_other_job(w):
-    w.write_boundary(job_id="J-20261012T090155Z-v2")
-
-
-def _boundary_not_json(w):
-    w.boundary.write_text("intact\n", encoding="utf-8")
-
-
-def _boundary_empty(w):
-    w.boundary.write_text("", encoding="utf-8")
+def _staged_change(w):
+    (w.wt / "doc.md").write_text("staged\n", encoding="utf-8")
+    git(w.wt, "add", "doc.md")
 
 
 REFUSALS = [
@@ -1003,16 +964,9 @@ REFUSALS = [
     (_proposal_not_a_verdict, "verdict_not_proposed"), (_proposal_lower_case, "verdict_not_proposed"),
     (_proposal_other_head, "verdict_head_mismatch"), (_proposal_other_phase, "verdict_phase_mismatch"),
     (_author_reviews, "author_is_reviewer"), (_author_reviews_other_case, "author_is_reviewer"),
-    (_head_moved, "head_moved"), (_head_is_not_the_reviewed_one, "head_not_reviewed"),
+    (_head_moved_after_the_review, "head_not_reviewed"), (_head_is_not_the_reviewed_one, "head_not_reviewed"),
     (_untracked_file, "tree_dirty"), (_untracked_file_hidden_by_config, "tree_dirty"),
-    (_assume_unchanged, "tracked_changed"), (_skip_worktree, "tracked_changed"),
-    (_snapshot_missing, "snapshot_missing"), (_snapshot_of_another_tree, "snapshot_invalid"),
-    (_snapshot_truncated, "snapshot_invalid"),
-    (_boundary_missing, "boundary_missing"), (_boundary_violated, "boundary_not_intact"),
-    (_boundary_unknown, "boundary_not_intact"), (_boundary_flag_false, "boundary_not_intact"),
-    (_boundary_nested_flag_false, "boundary_not_intact"), (_boundary_no_result, "boundary_not_intact"),
-    (_boundary_other_job, "boundary_job_mismatch"), (_boundary_not_json, "boundary_invalid"),
-    (_boundary_empty, "boundary_invalid"),
+    (_modified_tracked_file, "tree_dirty"), (_staged_change, "tree_dirty"),
 ]
 
 
@@ -1031,10 +985,66 @@ def test_publish_each_requirement_failing_alone_refuses_without_ky(world, breaka
     # the control — the same fixture with nothing broken publishes — is the first publish test above
 
 
-def test_publish_modified_tracked_file_is_dirty_and_changed(world):
+def test_publish_a8_clean_tree_at_the_reviewed_head_publishes_without_snapshot_or_boundary(tmp_path):
+    """A8: the six observations suffice. No snapshot was ever taken, no boundary evidence exists, neither flag is
+    passed — the clean tree at the reviewed head publishes. (Before A8 this was exit 64, then snapshot_missing.)"""
+    w = World(tmp_path, snapshot=False)
+    w.boundary.unlink()
+    assert not w.snap.exists() and not w.boundary.exists()
+    argv = w.publish_argv()
+    assert "--snapshot" not in argv and "--boundary" not in argv
+    code, out = w.call(argv)
+    assert code == 0, out
+    assert out == {"published": True, "result": "ACCEPTED", "reasons": [], "action_id": "VERDICT-" + JOB}
+    assert len(w.calls()) == 1 and len(w.verdicts()) == 1 and w.verdicts()[0]["head"] == w.head
+    assert w.record()["result"]["result"] == "ACCEPTED"
+    assert "tracked_sha256" not in w.record()["inputs"]["evidence"]
+
+
+def test_publish_a8_dirty_tree_publishes_nothing(tmp_path):
+    """A8's negative: the same world with one untracked file left behind — tree_dirty, no ky, no record."""
+    w = World(tmp_path, snapshot=False)
+    w.boundary.unlink()
+    (w.wt / "left_behind.txt").write_text("x\n", encoding="utf-8")
+    code, out = w.call(w.publish_argv())
+    assert code == 1 and out["published"] is False and out["result"] is None and tokens(out) == ["tree_dirty"]
+    w.nothing_published()
+    assert w.record() is None
+    (w.wt / "left_behind.txt").unlink()                   # cleaned up: it publishes
+    assert w.call(w.publish_argv())[0] == 0 and len(w.verdicts()) == 1
+
+
+def test_publish_a8_legacy_snapshot_and_boundary_flags_are_accepted_but_not_read(world):
+    """The callers of v2.7 still pass --snapshot and --boundary. A snapshot of another tree and a boundary that says
+    `violated` refused the publication before A8; now neither is evidence, and the clean tree publishes."""
+    doc = json.loads(world.snap.read_text(encoding="utf-8"))
+    doc["worktree"], doc["head"] = str(world.root / "elsewhere"), "d" * 40
+    world.snap.write_text(json.dumps(doc), encoding="utf-8")
+    world.write_boundary(result="violated", tracked_hashes_unchanged=False, mechanism_intact=False)
+    code, out = world.publish(**{"--snapshot": str(world.snap), "--boundary": str(world.boundary)})
+    assert code == 0 and out["published"] is True and out["result"] == "ACCEPTED", out
+    assert len(world.verdicts()) == 1
+    # missing files behind those flags are not evidence either
+    world.snap.unlink()
+    world.boundary.unlink()
+    code, out = world.publish(**{"--snapshot": str(world.snap), "--boundary": str(world.boundary)})
+    assert code == 0 and tokens(out) == ["already_published"]
+    assert len(world.calls()) == 1
+
+
+def test_publish_a8_an_edit_hidden_from_git_status_is_not_observed(world):
+    """What A8 gave up, stated: without the tracked-file hash set, an edit behind --assume-unchanged does not show
+    in `git status --porcelain` and is not a publication refusal. This test documents the boundary of the check."""
+    git(world.wt, "update-index", "--assume-unchanged", "code.py")
+    (world.wt / "code.py").write_text("print('edited behind the index')\n", encoding="utf-8")
+    assert git(world.wt, "status", "--porcelain") == "", "the fixture hides the edit from git status"
+    assert world.publish()[0] == 0
+
+
+def test_publish_modified_tracked_file_is_dirty(world):
     (world.wt / "code.py").write_text("print('edited')\n", encoding="utf-8")
     code, out = world.publish()
-    assert code == 1 and tokens(out) == ["tree_dirty", "tracked_changed"]
+    assert code == 1 and tokens(out) == ["tree_dirty"]
     world.nothing_published()
 
 
@@ -1202,7 +1212,7 @@ def test_publish_unfinished_and_no_longer_publishable_fails_the_record(world, mo
     monkeypatch.undo()
     git(world.wt, "commit", "-q", "--allow-empty", "-m", "moved while the controller was down")
     code, out = world.publish()
-    assert code == 1 and out["published"] is False and tokens(out) == ["head_moved"]
+    assert code == 1 and out["published"] is False and tokens(out) == ["head_not_reviewed"]
     world.nothing_published()
     assert world.record()["state"] == "FAILED"
 
@@ -1320,11 +1330,11 @@ def test_cli_prints_one_json_object_and_nothing_by_default(world):
     assert r.returncode == 64
     assert json.loads(r.stdout) == {"published": False, "result": None, "reasons": json.loads(r.stdout)["reasons"],
                                     "action_id": None}
-    world.write_boundary(result="violated")
+    (world.wt / "left_behind.txt").write_text("x\n", encoding="utf-8")
     r = subprocess.run([PY, "-B", str(FLEET / "kyverdicts.py"), *world.publish_argv()], capture_output=True,
                        text=True, env=world.env)
     assert r.returncode == 1
-    assert json.loads(r.stdout) == {"published": False, "result": None, "reasons": ["boundary_not_intact"],
+    assert json.loads(r.stdout) == {"published": False, "result": None, "reasons": ["tree_dirty"],
                                     "action_id": "VERDICT-" + JOB}
     world.nothing_published()
 
@@ -1590,7 +1600,8 @@ def test_inherit_cli_prints_the_result_and_publishes_nothing(scenario, world):
                   environ=env, stdout=buffer)
     assert code == 0
     assert json.loads(buffer.getvalue()) == {"inherits": True, "reason": "identical_patch", "old_head": scenario.old,
-                                             "new_head": new, "old_base": scenario.b1, "new_base": scenario.m2}
+                                             "new_head": new, "old_base": scenario.b1, "new_base": scenario.m2,
+                                             "patch_id": patch_id(scenario.repo, scenario.b1, scenario.old)}
     newer = commit(scenario.repo, "one more", {"c.txt": "x\n"})
     r = subprocess.run([PY, "-B", str(FLEET / "kyverdicts.py"), "inherit", "--repo", str(scenario.repo),
                         "--old-head", scenario.old, "--new-head", newer], capture_output=True, text=True, env=env)
@@ -1608,6 +1619,9 @@ def test_inherit_cli_is_negative_for_everything_it_cannot_prove(scenario, world)
     new = scenario.merge_main()
     for argv in (["--repo", str(scenario.repo / "absent"), "--old-head", scenario.old, "--new-head", new],
                  ["--repo", str(scenario.repo), "--old-head", "f" * 40, "--new-head", new],
-                 ["--repo", str(scenario.repo), "--old-head", new, "--new-head", scenario.old]):
+                 ["--repo", str(scenario.repo), "--old-head", scenario.old, "--new-head", scenario.b1]):
         code, out = world.call(["inherit", *argv])
         assert code == 1 and out["inherits"] is False and out["reason"] in K.REFUSALS, out
+    # A8: the identical patch inherits in either direction — the reviewed diff, not descent, is what is compared
+    code, out = world.call(["inherit", "--repo", str(scenario.repo), "--old-head", new, "--new-head", scenario.old])
+    assert code == 0 and out["inherits"] is True and out["reason"] == "identical_patch"

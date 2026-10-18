@@ -458,7 +458,10 @@ def operation_request():
         req = json.loads(os.environ['KY_OPERATION_REQUEST'])
     except (KeyError, TypeError, ValueError):
         raise Refused('executor-bound small-test request required') from None
-    acceptance(req, evidence_root())
+    if not isinstance(req, dict):
+        raise Refused('executor-bound small-test request required')
+    if not str(req.get('kind', '')).endswith('_dryrun'):    # A8 §3.8: a dry run is read-only with a credential; no V acceptance exists
+        acceptance(req, evidence_root())                    # A8 §3.9: a writing kind carries exactly one V acceptance, bound to the request
     return req
 
 
@@ -471,7 +474,8 @@ def evidence_root():
 
 
 def request_hash(req):
-    return evidence_digest({k: v for k, v in req.items() if k != 'acceptance_receipt'})
+    """executor.request_digest, byte for byte (A8 §3.9): without `acceptance_receipt`, `expires_at` and any `*_expires_at` field."""
+    return evidence_digest({k: v for k, v in req.items() if k not in ('acceptance_receipt', 'expires_at') and not k.endswith('_expires_at')})
 
 
 def read_evidence(root, folder, ref):
@@ -526,6 +530,17 @@ def accepted_receipt(root, receipt_ref, acceptance_ref, kind):
     return r, a
 
 
+def completed_receipt(root, receipt_ref, kind):
+    """The executor receipt of a `*_dryrun` kind (A8 §3.8): COMPLETED, exit 0, bound to a request and a reviewed commit.
+
+    A dry run is read-only with a credential, so no V lane accepts it; its receipt is the whole evidence."""
+    r = read_evidence(root, 'receipts', receipt_ref)
+    if (r.get('kind') != kind or r.get('status') != 'COMPLETED' or r.get('exit_code') != 0
+            or not r.get('request_sha256') or not r.get('reviewed_commit')):
+        raise Refused('dry-run operation receipt is not a completed receipt for this kind')
+    return r
+
+
 def staged_scope(req, root):
     import re
     import uuid
@@ -564,8 +579,7 @@ def staged_scope(req, root):
 
 def dryrun_evidence(req, root, scope, rowset_sha256=None):
     measuring = req.get('kind') == 'measuring_teardown'
-    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'),
-                            'measuring_teardown_dryrun' if measuring else 'smalltest_teardown_dryrun')
+    r = completed_receipt(root, req.get('dryrun_receipt'), 'measuring_teardown_dryrun' if measuring else 'smalltest_teardown_dryrun')
     p = r.get('teardown') or {}
     if (r.get('reviewed_commit') != req.get('reviewed_commit') or r.get('status') != 'COMPLETED' or p.get('schema') != ('ky.measuring_teardown/1' if measuring else 'ky.smalltest_teardown/1')
             or p.get('status') != 'ROLLED_BACK' or p.get('rollback_confirmed') is not True
@@ -857,8 +871,8 @@ def measuring_request_problem(req, root):
 
 
 def measuring_dryrun_evidence(req, root, manifest_digest=None):
-    """A real accepted staging rollback, same source/args/manifest, before launch."""
-    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'), 'measuring_dispatch_dryrun')
+    """A real completed staging rollback, same source/args/manifest, before launch (no V acceptance of a dry run, A8 §3.8)."""
+    r = completed_receipt(root, req.get('dryrun_receipt'), 'measuring_dispatch_dryrun')
     p = r.get('staging') or {}
     if (r.get('status') != 'COMPLETED' or r.get('item_id') != 'J-3c' or r.get('reviewed_commit') != req.get('reviewed_commit')
             or p.get('schema') != 'ky.measuring_staging/1' or p.get('status') != 'ROLLED_BACK'

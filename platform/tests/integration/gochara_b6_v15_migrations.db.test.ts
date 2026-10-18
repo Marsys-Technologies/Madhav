@@ -52,11 +52,12 @@ import { TRACKER_DDL, TRACKER_IDENTITY_DDL, runMigrations } from '../../scripts/
 import { resolveDisposableA51Config } from './gochara_a5_1_disposable_url'
 
 const TEST_DB_URL = process.env.GOCHARA_A51_TEST_DATABASE_URL
-const REQUIRE_DB = process.env.GOCHARA_REQUIRE_DB === '1'
+const LOCAL_ADMIN_DSN = process.env.KALA_ADMIN_DSN
+const REQUIRE_DB = process.env.GOCHARA_REQUIRE_DB === '1' || process.env.KALA_REQUIRE_DB === '1'
 
 describe('AM-7 CI database prerequisite', () => {
   it.skipIf(!REQUIRE_DB)('requires the disposable DB URL when GOCHARA_REQUIRE_DB=1', () => {
-    expect(TEST_DB_URL, 'GOCHARA_REQUIRE_DB=1 but GOCHARA_A51_TEST_DATABASE_URL is unset').toBeTruthy()
+    expect(TEST_DB_URL || LOCAL_ADMIN_DSN, 'required AM-7 database URL / local fixture admin DSN is unset').toBeTruthy()
   })
 })
 
@@ -307,9 +308,29 @@ async function insertRecord(c: Q, o: {
   return id
 }
 
-describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposable DB)', () => {
+// Local campaign jobs own the database, while CI supplies its existing fixture.
+// CREATE DATABASE refuses an existing name: cleanup only drops one we created.
+let localAdmin: Pool | undefined
+let localDatabaseCreated = false
+
+describe.skipIf(!TEST_DB_URL && !LOCAL_ADMIN_DSN)('B6.0 v1.5 contract migration 1204 (live disposable DB)', () => {
   beforeAll(async () => {
-    const config = resolveDisposableA51Config(TEST_DB_URL)
+    let config: ReturnType<typeof resolveDisposableA51Config>
+    if (LOCAL_ADMIN_DSN) {
+      const adminUrl = new URL(LOCAL_ADMIN_DSN)
+      if (adminUrl.pathname !== '/postgres' || adminUrl.hostname !== '127.0.0.1' || adminUrl.port !== '55433') {
+        throw new Error('AM-7 local fixture requires 127.0.0.1:55433/postgres')
+      }
+      adminUrl.pathname = '/gochara_a51_test'
+      config = resolveDisposableA51Config(adminUrl.toString())
+      localAdmin = new Pool({ ...config, database: 'postgres', max: 1 })
+      const identity = await localAdmin.query("SELECT current_database() = 'postgres' AND host(inet_server_addr()) = '127.0.0.1' AND inet_server_port() = 55433 AS safe")
+      if (identity.rows[0]?.safe !== true) throw new Error('AM-7 local server identity refused')
+      await localAdmin.query('CREATE DATABASE gochara_a51_test')
+      localDatabaseCreated = true
+    } else {
+      config = resolveDisposableA51Config(TEST_DB_URL)
+    }
     pool = new Pool({ ...config, max: 4 })
     await resetSchema()
     // The protected-window route: runMigrations --only over the on-disk files, in order.
@@ -348,9 +369,17 @@ describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposabl
   }, 120_000)
 
   afterAll(async () => {
-    if (!pool) return
-    await resetSchema()
-    await pool.end()
+    try {
+      if (pool) {
+        try { if (!localDatabaseCreated) await resetSchema() }
+        finally { await pool.end() }
+      }
+    } finally {
+      if (localAdmin) {
+        try { if (localDatabaseCreated) await localAdmin.query('DROP DATABASE gochara_a51_test WITH (FORCE)') }
+        finally { await localAdmin.end() }
+      }
+    }
   })
 
   it("AM-7: the widened CHECK ACCEPTS 'av_qualifier' on a REAL house-span residence — a full writer-path record COMMITs", async () => {
@@ -435,6 +464,17 @@ describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposabl
     expect(JSON.stringify(p.rows[0]?.object_selector)).toContain('av_qualifier')
   })
 
+  it.each([
+    ['empty selector', []],
+    ['extra key', [{ agent: 'mars', relation: 'conjunction', object_role: 'karaka', extra: true }]],
+    ['unknown agent', [{ agent: 'pluto', relation: 'conjunction', object_role: 'karaka' }]],
+    ['unknown relation', [{ agent: 'mars', relation: 'unknown', object_role: 'karaka' }]],
+  ])('AM-7 selector preserves the v1.0 refusal of %s', async (_label, selector) => {
+    const result = await pool.query('SELECT public.ka_gochara_object_selector_ok($1::jsonb) AS ok',
+      [JSON.stringify(selector)])
+    expect(result.rows[0].ok).toBe(false)
+  })
+
   it("AM-8 SPLIT: ka_gochara_frame_ok keeps exactly its v1.0 arms; frame_kind='inherited' is REFUSED", async () => {
     const r = await pool.query(`
       SELECT public.ka_gochara_frame_ok('inherited', NULL) AS inh_null,
@@ -512,5 +552,71 @@ describe.skipIf(!TEST_DB_URL)('B6.0 v1.5 contract migration 1204 (live disposabl
     })
     // A bare re-run of 1204's own file (out of band — e.g. psql) hits its gate
     await expect(pool.query(mig(M1204))).rejects.toThrow(/preflight 1204 BLOCKED/)
+  })
+
+  describe.each(['embedded', 'standalone'] as const)('%s 1204 preflight environment refusals', (source) => {
+    function preflight(): string {
+      return source === 'embedded' ? mig(M1204) : readFileSync(path.resolve(process.cwd(),
+        'python-sidecar/scripts/kala_gochara_cutover/preflight_1204_av_qualifier_object_role.sql'), 'utf8')
+    }
+
+    it.each(['USAGE', 'CREATE'] as const)('reports missing schema %s using the actual role privileges', async (privilege) => {
+      const c = await pool.connect()
+      // Roles and their grants are transaction-local fixtures; ROLLBACK removes them.
+      await c.query('BEGIN')
+      try {
+        const role = `am7_gate_${process.pid}`
+        await c.query(`CREATE ROLE ${role} NOLOGIN`)
+        await c.query('REVOKE ALL ON SCHEMA public FROM PUBLIC')
+        await c.query(`GRANT ${privilege === 'USAGE' ? 'CREATE' : 'USAGE'} ON SCHEMA public TO ${role}`)
+        await c.query(`SET LOCAL ROLE ${role}`)
+        const state = await c.query("SELECT has_schema_privilege('public', $1) AS allowed", [privilege])
+        expect(state.rows[0].allowed).toBe(false)
+        // PostgreSQL resolves the full gate's ::regclass constants before its
+        // CTE runs and itself refuses missing USAGE. Execute the shipped finding
+        // arm independently so that implicit refusal cannot conceal a disabled
+        // explicit privilege detector in either copy of the gate.
+        const failure = `no_${privilege.toLowerCase()}_privilege_on_public`
+        const arm = preflight().match(new RegExp(`SELECT '${failure}', current_user\\s+WHERE [\\s\\S]*?(?=\\s+UNION ALL)`))
+        expect(arm, `executable ${failure} finding arm`).not.toBeNull()
+        const findings = await c.query(arm![0])
+        expect(findings.rows).toHaveLength(1)
+        expect(Object.values(findings.rows[0])).toEqual([failure, role])
+      } finally {
+        await c.query('ROLLBACK')
+        c.release()
+      }
+    })
+
+    it.each(['CREATE', 'function'] as const)('the full gate refuses missing %s before any DDL', async (missing) => {
+      await resetSchema()
+      await withTempDir(CONTRACT_FILES, async dir => {
+        const c = await pool.connect()
+        try {
+          await runMigrations(c, [dir], { only: new Set(CONTRACT_FILES), disclosures: new Map(), renumberDisclosures: new Map() })
+        } finally { c.release() }
+      })
+      const c = await pool.connect()
+      await c.query('BEGIN')
+      try {
+        const role = `am7_gate_${process.pid}`
+        await c.query(`CREATE ROLE ${role} NOLOGIN`)
+        await c.query('REVOKE ALL ON SCHEMA public FROM PUBLIC')
+        await c.query(`GRANT USAGE ON SCHEMA public TO ${role}`)
+        await c.query(`GRANT SELECT ON _migrations_applied TO ${role}`)
+        await c.query(`ALTER TABLE ka_gochara_relationship_record OWNER TO ${role}`)
+        if (missing === 'function') {
+          await c.query(`GRANT CREATE ON SCHEMA public TO ${role}`)
+          await c.query('DROP FUNCTION ka_gochara_object_selector_ok(jsonb) CASCADE')
+        }
+        await c.query(`SET LOCAL ROLE ${role}`)
+        await expect(c.query(preflight())).rejects.toThrow(missing === 'CREATE'
+          ? /preflight 1204 BLOCKED[\s\S]*no_create_privilege_on_public/
+          : /preflight 1204 BLOCKED[\s\S]*function_missing/)
+      } finally {
+        await c.query('ROLLBACK')
+        c.release()
+      }
+    })
   })
 })

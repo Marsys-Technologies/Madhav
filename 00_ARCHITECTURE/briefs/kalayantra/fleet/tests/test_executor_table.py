@@ -58,44 +58,71 @@ P01_BINDINGS = {
                           "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": []},
 }
 W4_KINDS = set(P01_BINDINGS)
-# #3607 (f847ba24d): exact disabled bindings, not permission to enable measuring.
+# #3607 (f847ba24d) bound the four measuring kinds exactly, disabled; J-3a enables them with those same bindings, in their A8 form
+# (§3.8 dry runs are production:false, §3.11 the remote launch carries remote_async, §5 required_rows retired).
 MEASURING_BINDINGS = {
     "measuring_dispatch": {
-        "enabled": False, "needs": "builder", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_launch.py",
-        "fixed_args": [], "allowed_args": ["run", "classes"], "production": True, "enabled_by": "J-3c",
-        "required_rows": ["2", "3", "7", "9", "11"], "also_needs": ["gcloud"],
+        "enabled": True, "needs": "builder", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_launch.py",
+        "fixed_args": [], "allowed_args": ["run", "classes"], "production": True, "remote_async": True, "enabled_by": "J-3c",
+        "also_needs": ["gcloud"],
     },
     "measuring_dispatch_dryrun": {
-        "enabled": False, "needs": "builder", "script": "platform/scripts/dispatch_v5_measuring_job.py",
+        "enabled": True, "needs": "builder", "script": "platform/scripts/dispatch_v5_measuring_job.py",
         "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run"], "allowed_args": ["run", "classes"],
-        "production": True, "enabled_by": "J-3c", "required_rows": ["2", "3", "7", "9", "11"],
+        "production": False, "enabled_by": "J-3c",
     },
     "measuring_teardown_dryrun": {
-        "enabled": False, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
-        "fixed_args": ["--dry-run"], "allowed_args": [], "production": True, "enabled_by": "J-3d",
-        "required_rows": ["2", "3", "7", "9", "11"],
+        "enabled": True, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
+        "fixed_args": ["--dry-run"], "allowed_args": [], "production": False, "enabled_by": "J-3d",
     },
     "measuring_teardown": {
-        "enabled": False, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
+        "enabled": True, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
         "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": [], "production": True, "enabled_by": "J-3d",
-        "required_rows": ["2", "3", "7", "9", "11"],
     },
 }
+# A8 §3.11: the kinds whose work continues remotely after the child returns — the only ones that take the production fence.
+REMOTE_ASYNC_KINDS = {"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"}
 # J-2a M6/M7: the one added read-only kind (fleet/CLOUDRUN_READBACK_v1_0.md). Exact binding, not permission for any other op.
 CLOUDRUN_READBACK = {
     "enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py",
-    "fixed_args": [], "allowed_args": ["execution"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
+    "fixed_args": [], "allowed_args": ["execution", "logs"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
     "timeout_s": 600, "enabled_by": "J-2a",
 }
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "local_schema_seed", "finalize"} | set(P01_BINDINGS)
+# A7 D-44: `read_only` marks the kinds the executor accepts mechanically; `quiescence_check` is the one added read-only kind (session readback).
+READ_ONLY_KINDS = ("readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check")
+QUIESCENCE_CHECK = {
+    "enabled": True, "needs": "pgenv", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/quiescence_sessions.sh",
+    "fixed_args": [], "allowed_args": ["operation", "execution_readback"], "requesters": ["adhikarin", "v1", "v2", "sutradhara"],
+    "production": False, "read_only": True, "timeout_s": 300, "enabled_by": "B-1",
+}
+# SR-J3-REAPER-PAUSE (enabled_by J-3c): the five governed Cloud Scheduler kinds plus SR-J3-CANCEL-NULL's measuring_cancel, appended after every earlier kind. Exact bindings; the flag is the only
+# enablement edit (flip `enabled` here and in the table together to hold them back).
+SCHEDULER_SCRIPT = "00_ARCHITECTURE/briefs/kalayantra/fleet/scheduler_reaper.py"
+SCHEDULER_BINDINGS = {
+    "scheduler_readback": {"enabled": True, "needs": "gcloud", "script": SCHEDULER_SCRIPT, "fixed_args": ["--action", "readback"], "allowed_args": ["job"],
+                           "requesters": ["adhikarin", "v1", "v2"], "production": False, "read_only": True, "timeout_s": 600, "enabled_by": "J-3c"},
+    "scheduler_pause_dryrun": {"enabled": True, "needs": "gcloud", "script": SCHEDULER_SCRIPT, "fixed_args": ["--action", "pause", "--dry-run"],
+                               "allowed_args": ["job", "resume-by"], "production": False, "timeout_s": 300, "enabled_by": "J-3c"},
+    "scheduler_pause": {"enabled": True, "needs": "gcloud", "script": SCHEDULER_SCRIPT, "fixed_args": ["--action", "pause"],
+                        "allowed_args": ["job", "resume-by"], "production": True, "timeout_s": 600, "enabled_by": "J-3c"},
+    "scheduler_resume_dryrun": {"enabled": True, "needs": "gcloud", "script": SCHEDULER_SCRIPT, "fixed_args": ["--action", "resume", "--dry-run"],
+                                "allowed_args": ["job"], "production": False, "timeout_s": 300, "enabled_by": "J-3c"},
+    "scheduler_resume": {"enabled": True, "needs": "gcloud", "script": SCHEDULER_SCRIPT, "fixed_args": ["--action", "resume"],
+                         "allowed_args": ["job"], "production": True, "timeout_s": 600, "enabled_by": "J-3c"},
+    "measuring_cancel_dryrun": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_cancel.py", "fixed_args": ["--dry-run"],
+                               "allowed_args": ["execution"], "production": False, "timeout_s": 300, "enabled_by": "J-3c"},
+    "measuring_cancel": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_cancel.py", "fixed_args": [],   # SR-J3-CANCEL-NULL
+                         "allowed_args": ["execution"], "production": True, "timeout_s": 900, "enabled_by": "J-3c"},
+}
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
 BOUNDARY_FUNCTIONS = ["validate", "execute", "run_one", "main", "lease_live", "request_digest", "fence_quiescent",
                       "refresh_refusal_reason", "handover_from_main", "refresh_from_main_or_fail_closed",
                       "capabilities", "run_group"]
-BOUNDARY_CONSTANTS = ["CHILD_ENV_ALLOW", "SAFE_ID", "SAFE_ARG", "SHA", "APPROVAL_MAX_AGE_S", "MAX_TIMEOUT",
-                      "CANONICAL_CHART"]
+BOUNDARY_CONSTANTS = ["CHILD_ENV_ALLOW", "SAFE_ID", "SAFE_ARG", "SHA", "MAX_TIMEOUT", "CANONICAL_CHART"]
+A8_REMOVED_CONSTANTS = ["APPROVAL_MAX_AGE_S"]   # A8 §4: the 3-hour acceptance age cap is gone; normalize_wave4 restores the pin's line so the rest compares
 
 
 def git_show(rev_path):
@@ -172,6 +199,8 @@ def assert_table_matches_pin(now):
     pos = expected_order.index("measuring_dispatch") + 1
     expected_order[pos:pos] = ["measuring_dispatch_dryrun", "measuring_teardown_dryrun", "measuring_teardown"]
     expected_order.insert(expected_order.index("migration_readback") + 1, "cloudrun_job_readback")
+    expected_order.insert(expected_order.index("cloudrun_job_readback") + 1, "quiescence_check")
+    expected_order += list(SCHEDULER_BINDINGS)                      # SR-J3-REAPER-PAUSE: appended last
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
@@ -186,6 +215,10 @@ def assert_table_matches_pin(now):
     expected["verification_job"]["needs"] = "gcloud"
     expected.update(json.loads(json.dumps(MEASURING_BINDINGS)))
     expected["cloudrun_job_readback"] = json.loads(json.dumps(CLOUDRUN_READBACK))
+    expected["quiescence_check"] = json.loads(json.dumps(QUIESCENCE_CHECK))
+    expected.update(json.loads(json.dumps(SCHEDULER_BINDINGS)))
+    for kind in READ_ONLY_KINDS[:3]:
+        expected[kind]["read_only"] = True
     for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
                         ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
         expected[kind]["prepared_dry_run"] = {
@@ -197,6 +230,10 @@ def assert_table_matches_pin(now):
     for kind in W4_KINDS | {"readback_sql"}:
         key = "lane_readback" if kind == "readback_sql" else "lane_dry_run"
         expected[kind][key] = {"script": "00_ARCHITECTURE/briefs/kalayantra/fleet/lane_smalltest.py", "needs": "none"}
+    for kind, entry in expected.items():          # A8 (§3.8, §3.11, §5): required_rows retired; dry runs production:false; remote kinds flagged
+        entry.pop("required_rows", None)
+        if kind.endswith("_dryrun"): entry["production"] = False
+        if kind in REMOTE_ASYNC_KINDS: entry["remote_async"] = True
     for kind, entry in now["ops"].items():
         assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
         assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
@@ -216,7 +253,7 @@ def test_table_pin_refuses_an_extra_kind():
 
 @pytest.mark.parametrize("kind", MEASURING_BINDINGS)
 @pytest.mark.parametrize("field,value", [
-    ("enabled", True), ("script", "platform/scripts/unreviewed.py"),
+    ("enabled", False), ("script", "platform/scripts/unreviewed.py"),
     ("fixed_args", ["--execute"]), ("allowed_args", ["unreviewed"]),
 ])
 def test_table_pin_refuses_unreviewed_measuring_changes(kind, field, value):
@@ -298,11 +335,22 @@ def _segments(src):
     return out
 
 
+# A7 D-44 (mechanical acceptance): fence_quiescent / execute / run_one edits and the session_marker, write_new_json, measured_identity,
+# mechanical_* and accepted_cloudrun_execution additions are pinned the same way.
 # Exact Wave 4 safety-fix, #3607 (f847ba24d) measuring and J-1a lane additions, including the
 # local_schema_seed scratch lifecycle (#3627) and the D-33 generated-overlay hand-off (#3672, d62eb02d4:
-# overlay_proofs, apply_generated_overlay and their call sites in receipt/execute/execute_lane). Each hash is of the merged executor.py function; every
-# other mutation, including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'fence_quiescent': 'd66b9b39b33b7718e19186bc7dec95f6f87a6ab55daa748a71149247f3e2d5a1', 'receipt': 'fe01726e959f02fe1d6d7bba32f72e573f06bb23f901de62334e9f6e1e28aff1', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'validate': 'd07de5f9602ed84043d87f36ed89ceb0c5b535e372150919d2c0250132dea5d1', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': 'b1b3c09684a5b2833004e7f99d59aa5500962245b48cc8f42c2bea030afbb8d3', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': 'd445545193c558f4d1acc522b7f616382a74998b04f4c941b0628e12a190642c', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': '5ed6d1cafe35bff8e83710ee563abad95a433be437ef7970655c7f2a1e7af779', 'main': '8bcabbe56032a38b747ab5a3e117cd3d68c130ee1a4153604a02fb84af6ee510', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3'}
+# overlay_proofs, apply_generated_overlay and their call sites in receipt/execute/execute_lane) and the Amendment A8 executor changes
+# (validate, validate_lane, execute_lane, execute, main, request_digest, refresh_from_main_or_fail_closed, remote_async and the two
+# module constants UNBOUND_REQUEST_FIELDS / REMOTE_ASYNC_KINDS). Each hash is of the merged executor.py segment; every other mutation,
+# including weakening these functions, fails the boundary pin.
+W4_FUNCTION_HASHES = {'fence_quiescent': '4e5ee3a3318f4d556f2f54061bad3227ec25c8fd1a19a09defc7de5afd96b416', 'receipt': 'fe01726e959f02fe1d6d7bba32f72e573f06bb23f901de62334e9f6e1e28aff1', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'validate': '88fcd396dc4bd57d4d0eac32b552d20c1baa4348bd66260074e757bc5e2b413e', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': '88bf9fe8db575678fc093c7ca3f65238a650a085d0c530334553f6a3cf86058c', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': 'a55ce4f528862e280c618dc45d0461b46fc1611670bd9481aeb1c3d452a3e89e', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': '08b6180cb55225b95c3571c8045e86d36ca92d977a5ab5f53d0926cf512ee0db', 'main': 'f8298c2d910211eb27ba8ec419d542ef13566a2f816a56c60a2f9c549381f4c5', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3', 'run_one': 'a62b5abc05bec274890212d0cefee4c6c904e79923ee080a9cfd58185738c526', 'session_marker': '21216adbf560807fffed590211a11235484167a5dbd762a18aed9c59cdd5ab09', 'write_new_json': 'b69919f6644041481108595fa11fe896bf8ede6de391adca233a28ea8a6c3e26', 'measured_identity': 'f47bc85d6d3516158ea1ef399d8e28a74674318d4842f9596da43c26a5f49222', 'mechanical_post_acceptance': '383b0a42ec72e3ed3d840f9693ecb288d4e7a431f285553601a244fffd55ed0e', 'accepted_cloudrun_execution': '5a87517fae4a7febf1eb0479e56b70bf90673e4569a00f74897ba2e298f5ae7d', 'mechanical_quiescence': 'c893b95cb448bebbb2899238059139e431d842dca307c4dc71bdc5e8526e260c', 'mechanical_acceptance': 'c9e263a19704a100a4583ad84cf6126d4bdff10c312aad7cd964606fae12a806', 'request_digest': '972ee7e7f9d665377108a9ab233c45db04b3e8a9a31825dc7560ce05b08406b6', 'refresh_from_main_or_fail_closed': 'c177789a8289a212e5690d1a70b87a34e36c34df052c1687e5cd3965f78eb18c', 'remote_async': '053f72a12ac1629af29731e3f5ab77bcecfde2c1fb01e56c256640a886755b98', 'UNBOUND_REQUEST_FIELDS': 'e3c09d66976b1be9186502bceb7b318a1416f93cd640bdbc4ad852e437b17a12', 'REMOTE_ASYNC_KINDS': '3896625f1c5786170001c8b85ac4e5b0dde89fe249de020d76920b0ad5ef1155', 'SCHEDULER_JOB': 'eb099f996955c70fd6bd1aa6a50fc7dfc195b7c3e78594751dd226d9b862faf4', 'SCHEDULER_PROJECT': 'e63bc56c1f7ff7c1cabcbbfe7af3a48b3aaeec1aa4c7e090144cd0167d62afa5', 'SCHEDULER_REGION': 'c0267426fb76794ab995158ddec9e3fc8127772b137618e9019892344acb0b80', 'SCHEDULER_SCRIPT': 'f479c65ab5597d6fca611a5804d02dcaa87d5c3e099dffa466f948cab610f083', 'SCHEDULER_ACTION': 'bcce7bd9f31fbe10c8fa722a2bd609416107b280bf4e26550633dc8cf0561a00', 'SCHEDULER_STATES': 'b57629e1c41abd330b2da37f27865473060e2a104d0d28b287d74b97b36a731d', 'SCHEDULER_UTC': 'd463e745920163c76c1dea9659a8eeef2aed71da4bd059a8588f1fddb69596b4', 'SCHEDULER_BACKSTOP': '5336986b52b9342f36bebb292599e0faffefdfba49d95329afda5452904df188', 'lease_expiry': '23f2b14757ee303848c7f77c3d39e066dcf872a6122855707ac7d9401a1aa0c4', 'scheduler_policy_problem': '12630309cd268eeb090355a5844ae4d462f472b11e9da75f02495d896fe0a94f', 'scheduler_proof': '8ef650eaa9c0e78ee080de1862aecf52c378ca5f6e72012600064c4f28d41428', 'scheduler_write': '53a2d469ef44b3a9805794d9c889e4b14fbf6c97e07f94800d172d499888389b', 'scheduler_backstop_records': 'db053014456aaa26df639582cdbb728c9d213545f0221fd1c6a9b917fae5e552', 'arm_scheduler_backstop': '0e7a39078a9870914c142643be9be49bf1081ebc7be2c8ee2415c3de95b7bd29', 'scheduler_backstop_satisfy': '201c57f603bb483f38add84b058d28ae28340aae3a2d46fe4f721b9918d74081', 'scheduler_backstop_fire': '1339f4d0fcf724bdfb90cf116a5c685e7b5a33d49ef23c142e0845405d67a2e7', 'scheduler_backstop_tick': 'c6fcad69671e482c5460eda18f0d07f53699c39195802f9c0cd431b1a11fe4b8', 'measuring_cancel_problem': '635e5e5b1fc83e143a793eb4c2b54e5fc200593b8f275b653cf577f231c8df42', 'measuring_cancel_proof': '19b48179419b7864b6640bedbc19cfbee601b2bd263030d26d18b69ff6930765'}
+
+
+def _module_docstring(src):
+    node = ast.parse(src).body[0]
+    if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+        return ast.get_source_segment(src, node)
+    return None
 
 
 def normalize_wave4(base_src, work_src):
@@ -312,8 +360,17 @@ def normalize_wave4(base_src, work_src):
         if hashlib.sha256(segment.encode()).hexdigest() == digest:
             if name in base_seg:
                 work_src = work_src.replace(segment, base_seg[name], 1)
-            else:
+            elif segment.startswith("def "):
                 work_src = work_src.replace(segment + "\n\n\n", "", 1)
+            else:                                        # an added module constant: its whole line goes, trailing comment included
+                work_src = re.sub(r"^" + re.escape(name) + r" = [^\n]*\n", "", work_src, count=1, flags=re.M)
+    for name in A8_REMOVED_CONSTANTS:                    # a removed constant: the pin's exact line returns in front of the line that followed it
+        following = re.search(r"^" + re.escape(name) + r" = [^\n]*\n([^\n]*\n)", base_src, re.M)
+        if following and not re.search(r"^" + re.escape(name) + r" = ", work_src, re.M):
+            work_src = work_src.replace(following.group(1), following.group(0), 1)
+    base_doc, work_doc = _module_docstring(base_src), _module_docstring(work_src)
+    if base_doc and work_doc and work_doc != base_doc:   # prose only: the AST comparison strips it, the line diff must not trip on it
+        work_src = work_src.replace(work_doc, base_doc, 1)
     return work_src
 
 
@@ -362,7 +419,10 @@ def test_executor_py_remaining_line_diff_is_the_git_line_only():
 
 @pytest.mark.parametrize("old,new", [
     ("MAX_TIMEOUT = 6 * 3600", "MAX_TIMEOUT = 7 * 3600"),
-    ('APPROVAL_MAX_AGE_S = 3 * 3600', 'APPROVAL_MAX_AGE_S = 30 * 3600'),
+    ('if not issued <= current < expires: return "approval expired or not yet valid"', 'if not issued <= current: return "approval expired or not yet valid"'),
+    ('return op.get("remote_async") is True or kind in REMOTE_ASYNC_KINDS', 'return op.get("remote_async") is True'),
+    ('if kind.endswith("_teardown"): required.append("backup_taken")', 'pass'),
+    ('if k not in UNBOUND_REQUEST_FIELDS and not k.endswith("_expires_at")', 'if k not in UNBOUND_REQUEST_FIELDS'),
     ('"HOME", "PATH", "LANG"', '"HOME", "PATH", "LANG", "KY_BUILDER_DATABASE_URL"'),
     ('return f"kind {req[\'kind\']} is not enabled', 'return f"kind {req[\'kind\']} is disabled'),
     ('if not caps.get(op["needs"], False): return f"capability_missing: {op[\'needs\']}"', 'pass'),
@@ -378,7 +438,7 @@ def test_boundary_test_fails_when_another_code_line_changes(old, new):
     assert problems, "the boundary test accepted a changed code line"
 
 
-@pytest.mark.parametrize("name", ["smalltest_policy", "smalltest_policy_problem"])
+@pytest.mark.parametrize("name", ["smalltest_policy", "smalltest_policy_problem", "remote_async"])
 def test_boundary_refuses_removal_of_a_new_safety_helper(name):
     work = EXECUTOR_PY.read_text()
     segment = _segments(work)[name]
@@ -592,8 +652,7 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head",
-                                  "measuring_dispatch", *K9_KINDS])
+@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head", *K9_KINDS])
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)
@@ -680,7 +739,11 @@ def test_production_acceptance_by_each_verifier_lane_is_admitted(tmp_path, monke
 def test_production_acceptance_other_refusals(tmp_path, monkeypatch):
     w, table = _production_world(tmp_path, monkeypatch)
     old = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=4)).isoformat(timespec="seconds")
-    assert w.mod.validate(w.accept(w.production_request("backup_snapshot"), ts=old), table, ALL_CAPS) == "approval expired or not yet valid"
+    assert w.mod.validate(w.accept(w.production_request("backup_snapshot"), ts=old), table, ALL_CAPS) is None   # A8 §4: no age cap
+    future = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=5)).isoformat(timespec="seconds")
+    assert w.mod.validate(w.accept(w.production_request("backup_snapshot"), ts=future), table, ALL_CAPS) == "approval expired or not yet valid"
+    lapsed = w.production_request("backup_snapshot", expires_at=(dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=5)).isoformat(timespec="seconds"))
+    assert w.mod.validate(w.accept(lapsed), table, ALL_CAPS) == "approval expired or not yet valid"
     assert "different reviewed_commit" in w.mod.validate(w.accept(w.production_request("backup_snapshot"), reviewed_commit="a" * 40), table, ALL_CAPS)
     other = w.production_request("backup_snapshot", chart_id="362f9f17-0000-0000-0000-000000000000")
     assert w.mod.validate(w.accept(other), table, ALL_CAPS) == "chart_id is not the canonical chart"
