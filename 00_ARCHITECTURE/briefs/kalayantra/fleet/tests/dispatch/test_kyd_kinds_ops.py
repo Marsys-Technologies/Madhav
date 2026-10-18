@@ -55,6 +55,16 @@ def load_module(name="kyd_kinds_ops_under_test"):
     return mod
 
 
+_DIGEST = []
+
+
+def _request_digest():
+    """kyd_kinds_ops.request_digest, loaded once for the fixture resolver; test_request_digest_is_the_executors pins it to executor.request_digest."""
+    if not _DIGEST:
+        _DIGEST.append(load_module("kyd_kinds_ops_request_digest").request_digest)
+    return _DIGEST[0]
+
+
 DOC = json.loads(CASES_PATH.read_text(encoding="utf-8"))
 CASES = DOC["cases"]
 # the cases that lay down a shape the tracker does NOT emit, on purpose (each says so in its steps): everything else is
@@ -247,6 +257,7 @@ class Resolver:
 
     def text(self, s):
         s = re.sub(r"\{\{first12:(\w+)\}\}", lambda m: str(self(self.defs[m.group(1)]))[:12], s)
+        s = re.sub(r"\{\{sha:(\w+)\}\}", lambda m: str(self(self.defs[m.group(1)])), s)      # a def's digest inside prose, never a literal hash
         return (s.replace("$JOB_SCRATCH", str(self.d.scratch / "jobs" / "J-test-1")).replace("$SCRATCH", str(self.d.scratch))
                 .replace("$RUN", str(self.d.run)).replace("$FLEET", str(self.d.fleet)).replace("$REPO", str(self.d.repo))
                 .replace("$WT", str(self.d.base / "wt")))
@@ -263,6 +274,8 @@ class Resolver:
                     return self(copy.deepcopy(self.defs[v]))
                 if k == "$canon_sha":
                     return sha_text(canon(self(v)))
+                if k == "$request_sha":                           # the digest an acceptance binds: executor.request_digest, which A8 §3.9 keeps
+                    return _request_digest()(self(v))              # clear of acceptance_receipt, expires_at and any *_expires_at field
                 if k == "$sha_text":
                     return sha_text(self(v))
                 if k == "$sha256_file":
@@ -675,6 +688,10 @@ def test_request_digest_is_the_executors():
     assert mod.SAFE_ID.pattern == ex.SAFE_ID.pattern and mod.SAFE_ARG.pattern == ex.SAFE_ARG.pattern
     assert mod.CANONICAL_CHART == ex.CANONICAL_CHART
     assert mod.request_digest(dict(base, acceptance_receipt="/x")) == ex.request_digest(base) == mod.request_digest(base)
+    timed = dict(base, expires_at="2026-10-18T00:00:00+00:00", lease_expires_at="2026-10-18T06:00:00+00:00")   # A8 §3.9: clocks are outside the digest, in both
+    assert mod.request_digest(timed) == ex.request_digest(timed) == ex.request_digest(base)
+    changed = dict(base, args={"sql_file": "/a/c.sql"})
+    assert mod.request_digest(changed) == ex.request_digest(changed) != ex.request_digest(base)
     variants = [base,
                 dict(base, kind="layer_verify"),                                  # disabled
                 dict(base, kind="nothing_like_it"),                               # unknown
