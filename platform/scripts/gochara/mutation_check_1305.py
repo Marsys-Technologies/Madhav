@@ -17,7 +17,7 @@ The list follows the round-6 structure of the migration: the capture trigger (wh
 NOT in the list, on purpose:
   * "the writer submits no keys": the fixtures themselves build through the writer, so the mutant breaks setup and nothing is left to assert.
   * skipping the writer's capture-time Python call (`validate_consumed_dasha_population(against_live=True)` in the snapshot substep) SURVIVES in this suite: the
-    same defects are refused earlier and independently by the daśā read (`dasha_builds_mixed`, `dasha_build_not_pinned`) and by the database trigger. The
+    same defects are refused earlier and independently by the daśā read (`settled_build_ambiguous`, `dasha_build_not_pinned`) and by the database trigger. The
     FUNCTION is covered (its mutants are in the list); the CALL is a third, independent derivation (defence in depth) and no claim is made that a test
     isolates it.
   * the 1206 legacy branch of the completeness function (unchanged text; mutation_check_1206.py covers it).
