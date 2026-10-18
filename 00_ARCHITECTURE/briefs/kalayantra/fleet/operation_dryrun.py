@@ -69,12 +69,20 @@ def prepare(kind, args):
     if args != entry["args"]:
         raise ValueError("request must match the bounded arguments exactly; no extra arguments")
     proposal = kind in ("protected_apply", "provision", "seal")
-    return dict(schema="ky.operation_preparation/1", kind=kind, status="PREPARATION_ONLY", enabled=False,
+    result = dict(schema="ky.operation_preparation/1", kind=kind, status="PREPARATION_ONLY", enabled=False,
                 binding_status="PROPOSAL_REQUIRES_CHILD" if proposal else "DISABLED_PENDING_PHASE",
                 chart_id="482012f1-710e-4a25-994a-93821f5871aa", generation=None if kind == "rollback_head" else "5.0", args=dict(args),
                 executor_capabilities=list(entry["caps"]), runtime_principal=entry["runtime_principal"],
                 enable_at=entry["phase"], source=entry["source"], blockers=list(entry["blockers"]),
                 external_human_approval_required=proposal, dry_run_passed=False)
+    if kind == "verification_job":
+        result["prepared_launcher"] = {
+            "script": "platform/scripts/prepare_gochara_verifier_launch.py",
+            "enabled": False, "production_allocation": None,
+            "input": "supplied immutable verifier job definition readbacks",
+            "output": "ky.j5s_verifier_launch_preparation/1",
+        }
+    return result
 
 
 def main(argv=None):

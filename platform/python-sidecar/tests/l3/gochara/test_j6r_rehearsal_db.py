@@ -22,50 +22,56 @@ from .test_j6m_authority_admission_db import ROOT, MIGRATIONS
 OTHER_CHART = str(uuid.UUID(int=900))
 
 
+def seed_rehearsal_lane(conn):
+    """Install the real 527/1236/1379/1382 chain over synthetic admission metadata; returns {generation: manifest_id}."""
+    conn.execute('CREATE TABLE public.kala_gochara_windows (chart_id uuid)')
+    conn.execute((ROOT / 'platform/supabase/migrations/527_kala_gochara_generation_authority.sql').read_text())
+    conn.execute((MIGRATIONS / '1236_gochara_authority_refuses_governed_generation.sql').read_text())
+    conn.execute("INSERT INTO public.kala_gochara_convention"
+                 " (convention_id,zodiac,ayanamsha,sidereal_method,node_model,node_source,epoch_convention,"
+                 " time_scale,house_system,ephemeris_mode,method_version)"
+                 " VALUES ('j6r-metadata-only','fixture','fixture','fixture','fixture','fixture','fixture',"
+                 " 'fixture','fixture','fixture','fixture')")
+    manifests = {}
+    with conn.transaction():
+        conn.execute('ALTER TABLE public.ka_gochara_generation_seal DISABLE TRIGGER USER')
+        for gen, status, vector, sealed in [
+            ('3.0', 'published', {}, False),
+            ('5.0', 'published', {'stored_scope': 'stored_non_moon', 'result_policy': 'all_null_candidate/1'}, True),
+            ('5.1', 'candidate', {}, False),
+            ('5.2', 'published', {}, False),
+            ('5.3', 'published', {'stored_scope': 'test_slice'}, True),
+        ]:
+            mid = str(uuid.uuid4())
+            manifests[gen] = mid
+            conn.execute("INSERT INTO public.kala_gochara_publication"
+                         " (manifest_id,chart_id,generation,writer_asset_id,convention_id,input_generation_vector,"
+                         " ephemeris_backend,horizon,row_counts,content_digest,status)"
+                         " VALUES (%s,%s,%s,'ka_gochara_v5','j6r-metadata-only',%s,'{}',"
+                         " tstzrange('2025-01-01 UTC','2025-02-01 UTC','[)'),'{}','metadata-only',%s)",
+                         (mid, CHART_ID, gen, Jsonb(vector), status))
+            if sealed:
+                conn.execute('INSERT INTO public.ka_gochara_generation_seal(chart_id,generation,manifest_id)'
+                             ' VALUES (%s,%s,%s)', (CHART_ID, gen, mid))
+        conn.execute('ALTER TABLE public.ka_gochara_generation_seal ENABLE TRIGGER USER')
+    conn.execute("INSERT INTO public.kala_gochara_authority"
+                 " (chart_id,authoritative_generation,flipped_at,flipped_by,evidence_ref)"
+                 " VALUES (%s,'3.0','2025-01-01 UTC','fixture','retained-head')", (CHART_ID,))
+    conn.execute("INSERT INTO public.kala_gochara_windows(chart_id,generation) VALUES (%s,'3.0'),(%s,'v1')",
+                 (CHART_ID, OTHER_CHART))
+    with conn.transaction():
+        conn.execute((MIGRATIONS / '1379_gochara_sealed_authority.sql').read_text())
+        conn.execute((MIGRATIONS / '1382_gochara_authority_no_truncate.sql').read_text())
+    return manifests
+
+
 @pytest.fixture(scope='module')
 def rehearsal_database():
     admin, name, dsn = create_am5_database('j6r')
     conn = None
     try:
         conn = psycopg.connect(dsn, autocommit=True)
-        conn.execute('CREATE TABLE public.kala_gochara_windows (chart_id uuid)')
-        conn.execute((ROOT / 'platform/supabase/migrations/527_kala_gochara_generation_authority.sql').read_text())
-        conn.execute((MIGRATIONS / '1236_gochara_authority_refuses_governed_generation.sql').read_text())
-        conn.execute("INSERT INTO public.kala_gochara_convention"
-                     " (convention_id,zodiac,ayanamsha,sidereal_method,node_model,node_source,epoch_convention,"
-                     " time_scale,house_system,ephemeris_mode,method_version)"
-                     " VALUES ('j6r-metadata-only','fixture','fixture','fixture','fixture','fixture','fixture',"
-                     " 'fixture','fixture','fixture','fixture')")
-        manifests = {}
-        with conn.transaction():
-            conn.execute('ALTER TABLE public.ka_gochara_generation_seal DISABLE TRIGGER USER')
-            for gen, status, vector, sealed in [
-                ('3.0', 'published', {}, False),
-                ('5.0', 'published', {'stored_scope': 'stored_non_moon', 'result_policy': 'all_null_candidate/1'}, True),
-                ('5.1', 'candidate', {}, False),
-                ('5.2', 'published', {}, False),
-                ('5.3', 'published', {'stored_scope': 'test_slice'}, True),
-            ]:
-                mid = str(uuid.uuid4())
-                manifests[gen] = mid
-                conn.execute("INSERT INTO public.kala_gochara_publication"
-                             " (manifest_id,chart_id,generation,writer_asset_id,convention_id,input_generation_vector,"
-                             " ephemeris_backend,horizon,row_counts,content_digest,status)"
-                             " VALUES (%s,%s,%s,'ka_gochara_v5','j6r-metadata-only',%s,'{}',"
-                             " tstzrange('2025-01-01 UTC','2025-02-01 UTC','[)'),'{}','metadata-only',%s)",
-                             (mid, CHART_ID, gen, Jsonb(vector), status))
-                if sealed:
-                    conn.execute('INSERT INTO public.ka_gochara_generation_seal(chart_id,generation,manifest_id)'
-                                 ' VALUES (%s,%s,%s)', (CHART_ID, gen, mid))
-            conn.execute('ALTER TABLE public.ka_gochara_generation_seal ENABLE TRIGGER USER')
-        conn.execute("INSERT INTO public.kala_gochara_authority"
-                     " (chart_id,authoritative_generation,flipped_at,flipped_by,evidence_ref)"
-                     " VALUES (%s,'3.0','2025-01-01 UTC','fixture','retained-head')", (CHART_ID,))
-        conn.execute("INSERT INTO public.kala_gochara_windows(chart_id,generation) VALUES (%s,'3.0'),(%s,'v1')",
-                     (CHART_ID, OTHER_CHART))
-        with conn.transaction():
-            conn.execute((MIGRATIONS / '1379_gochara_sealed_authority.sql').read_text())
-            conn.execute((MIGRATIONS / '1382_gochara_authority_no_truncate.sql').read_text())
+        manifests = seed_rehearsal_lane(conn)
         yield conn, manifests
     finally:
         if conn is not None:

@@ -28,7 +28,8 @@ BASELINE_GENERATION="3.0"
 HORIZON_START="1998-01-01T00:00:00+00:00"
 HORIZON_END="2026-04-18T00:00:00+00:00"
 
-EPHE_PATH="${SWE_EPHE_PATH:-/app/ephe}"
+EPHE_PATH="${SE_EPHE_PATH:-${SWE_EPHE_PATH:-/app/ephe}}"
+export SE_EPHE_PATH="$EPHE_PATH"
 WORK="/tmp/century_4_1"
 mkdir -p "$WORK"
 
@@ -51,6 +52,8 @@ import os
 import sys
 
 EPHE = os.environ["EPHE_PATH_ENV"]
+# Bind the C library's environment search to the directory whose bytes we hash.
+os.environ["SE_EPHE_PATH"] = EPHE
 
 # sha256 pins from Dockerfile.pipeline (the image build verifies the same pins;
 # re-verified here so a tampered or fallback layer fails closed before any solve).
@@ -59,8 +62,10 @@ PINS = {
     "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
     "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2",
 }
-# Size-verified only at image build (no upstream pin); presence + floor here.
-SIZE_FLOORS = {"sefstars.txt": 1024, "seleapsec.txt": 1024}
+# J4OPS (I) INTERPRETATION: this planetary julday/calc_ut path does not call
+# fixstar* or utc_to_jd, so fixed-star/leap-second auxiliary files are not inputs.
+# Keep every .se1 content pin and verify the returned backend, including TRUE_NODE
+# (the Moon's retflag can conceal a missing lunar file). See the KĀLA-YANTRA J4OPS_PREBUILD_v1_0.md handoff.
 
 for name, want in PINS.items():
     path = os.path.join(EPHE, name)
@@ -71,25 +76,21 @@ for name, want in PINS.items():
     if got != want:
         print(f"[ephe] REFUSED: {name} sha256 {got} != pinned {want}", file=sys.stderr)
         sys.exit(1)
-for name, floor in SIZE_FLOORS.items():
-    path = os.path.join(EPHE, name)
-    if not os.path.exists(path) or os.path.getsize(path) < floor:
-        print(f"[ephe] REFUSED: {name} missing or below size floor", file=sys.stderr)
-        sys.exit(1)
 
 import swisseph as swe
 
 swe.set_ephe_path(EPHE)
-# Fixed instant (J2000) — the backend bit in the returned retflag is what is
-# asserted (F-14 convention: never trust the requested flag).
-_jd = swe.julday(2000, 1, 1, 12.0)
-for body, label in ((swe.SUN, "Sun"), (swe.MOON, "Moon"), (swe.SATURN, "Saturn")):
-    _xx, retflag = swe.calc_ut(_jd, body, swe.FLG_SWIEPH | swe.FLG_SPEED)
-    if not (retflag & swe.FLG_SWIEPH) or (retflag & swe.FLG_MOSEPH):
-        print(f"[ephe] REFUSED: {label} computed via fallback backend "
-              f"(retflag={retflag}) — not the pinned .se1 set", file=sys.stderr)
-        sys.exit(1)
-print("[ephe] OK: 3 .se1 sha256 pins match, aux files present, SWIEPH backend confirmed")
+# Probe the scored horizon's endpoints and J2000; the full daily real-kernel
+# availability probe is separate evidence, never a class-completeness claim.
+for jd in (swe.julday(1998, 1, 1, 0.0), swe.julday(2000, 1, 1, 12.0),
+           swe.julday(2026, 4, 18, 0.0)):
+    for body, label in ((swe.SUN, "Sun"), (swe.TRUE_NODE, "True node"), (swe.SATURN, "Saturn")):
+        _xx, retflag = swe.calc_ut(jd, body, swe.FLG_SWIEPH | swe.FLG_SPEED)
+        if not (retflag & swe.FLG_SWIEPH) or (retflag & swe.FLG_MOSEPH):
+            print(f"[ephe] REFUSED: {label} computed via fallback backend "
+                  f"(retflag={retflag}) — not the pinned .se1 set", file=sys.stderr)
+            sys.exit(1)
+print("[ephe] OK: 3 .se1 sha256 pins match; SWIEPH backend confirmed at horizon endpoints and J2000")
 PYEOF
 
 echo "[century-4.1] step 1/3: enumerate episodes (all PERSISTED_BODIES)"

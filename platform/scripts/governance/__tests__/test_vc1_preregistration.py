@@ -229,7 +229,7 @@ def test_suite_is_in_existing_mandatory_ci_without_dropping_any_paths():
     assert ci_shard.verify(ci_shard.test_files(), shards) == []
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     assert 'python -m pytest "${FILES[@]}"' in ci
-    assert "needs: [changes, governance-tool-tests-shard, governance-readback-tests]" in ci
+    assert "needs: [changes, governance-tool-tests-shard, governance-readback-tests, gochara-j5s-full-class-seal]" in ci
 
 
 def test_seal_generator_is_deterministic_and_check_rejects_tampering(tmp_path):
