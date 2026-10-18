@@ -1228,7 +1228,10 @@ class GocharaV5Writer(WriterBase):
             # wherever it lies — a 'false' is a measured negative from rows wholly outside the horizon. Those consulted
             # rows are consumed inputs, so the ledger lists them too (only while P1 minting is open: otherwise nothing
             # consults a row). An anchor with no pinned row at all has nothing to list and stays 'unknown' (N.7.6).
-            if p1_minting_closed_reason(ctx.db_conn) is None:
+            # (I) INTERPRETATION (merge of main's J-2a-P1L with this PR's G12 copy): this ledger is for a LEGACY snapshot (ids, no copy). A snapshot WITH a
+            # copy (1305) stores only the rows OVERLAPPING the horizon — the database refuses a copy row outside it (period_outside_horizon) — and its
+            # builder and verifier both read `held` from that copy, so an anchor wholly outside the horizon is the honest 'unknown' there, never a stored 'false'.
+            if p1_minting_closed_reason(ctx.db_conn) is None and not inv_store.snapshot_copy_available():
                 consulted = _p1_consulted_dasha_keys(
                     {"lagna_deg": context["lagna_deg"], "natal": context["natal"]},
                     slice_.classes if slice_ is not None else SCORED_CLASSES)

@@ -96,6 +96,12 @@ GUARD_SELECT = "SELECT state FROM public.asset_throughput WHERE chart_id = %s AN
 # the statement summary before it is compared with the golden.
 P1_GATE_SELECT = ("SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_relationship_record'::regclass"
                   " AND attname = ANY(%s) AND NOT attisdropped AND attnum > 0")
+# #3516 CI repair: the snapshot substep asks the applied schema whether a G12 copy exists (InventoryStore.snapshot_copy_available) one extra time — before the
+# P1L ledger decision, because a copy holds horizon-overlapping rows only. Like P1_GATE_SELECT it is checked separately (exact text, no parameter, exactly
+# three times in the snapshot substep: the golden already carries two, inside the insert and after it) and one occurrence is excluded from the summary
+# before the comparison.
+COPY_PROBE_SELECT = ("SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ka_gochara_search_input_snapshot'"
+                     " AND column_name IN ('consumed_fact_rows', 'consumed_dasha_rows', 'l1_facts_metadata_digest', 'dasha_metadata_digest')")
 PERIOD_GUARD_SELECT = " ".join("""
     WITH governed_chart_dashas AS (
         SELECT * FROM public.chart_dashas
@@ -307,6 +313,8 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
         if key == writer_mod.SNAPSHOT_SUBSTEP:       # every other substep keeps its own P1 gate reads, compared with the golden unchanged
             assert rest.count([P1_GATE_SELECT, 1]) == 1, f"{key}: expected the new P1-minting schema read exactly once"
             rest.remove([P1_GATE_SELECT, 1])
+            assert rest.count([COPY_PROBE_SELECT, 0]) == 3, f"{key}: expected the G12 copy probe exactly three times (before the ledger decision, inside the insert, and after it)"
+            rest.remove([COPY_PROBE_SELECT, 0])
         assert len(guard) == (0 if "[dry_run]" in key else 1), f"{key}: expected exactly one state-guard SELECT per non-dry-run substep, saw {len(guard)}"
         if key == "inventory:marriage":
             old_shapes = m["statements"]["shapes"]
@@ -344,6 +352,8 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # source changes on top of the accepted P06 capture. The three digests below are re-derived from this merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the function the manifest vector itself is built by); the golden
     # fixture is not re-captured and every other component, outcome, row count and SQL shape is still compared to it unchanged.
-    assert got["implementation"]["evaluation"] == "d8bed20e006ef87f114cfd5a4cfe812c024c0955f9791f545ed48a1451424012"
+    # Evaluation re-pinned again for the snapshot-substep fix (#3516 CI repair): the J-2a-P1L out-of-horizon anchor ledger is kept for a LEGACY snapshot
+    # only, because a G12 copy (1305) holds horizon-overlapping rows alone. Re-derived the same way; no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "6c86c3fbebf5b5202718062b3f8138a8f344cd85c77878ee3ce95e34d24c25a2"
     assert got["implementation"]["geometry"] == "06825a43711d85cd82d6648f40b1d6ec99ef7f034b9dc53aed89b05cc33fa17a"
     assert got["implementation"]["window"] == "78b4d0a1cc63047045710a873f76b87f90de4493c4960bb08fd97ef1ad13aea3"
