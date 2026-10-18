@@ -2,7 +2,7 @@
 
 What this proves, and what it deliberately does not touch:
   · the table: every `enabled_by` is a plan-model item; four bootstrap and six J-1a kinds are enabled; every field equals the table at the
-    plan pin except the enumerated K9-23 / Wave 4 preparation edits and `_doc`; P10 entries are present, with only J-1a enabled; `enabled` is the first
+    plan pin except the enumerated K9-23 / Wave 4 / #3607 measuring preparation edits and `_doc`; P10 entries are present, with only J-1a enabled; `enabled` is the first
     key of each entry; the five model completion detectors retain main's reviewed definitions rather than treating table enablement as acceptance;
   · the authority boundary: executor.py differs from the plan-pin revision in `GIT` and exact approved receipt/capability and evidence-bound safety additions only, and the listed
     functions and constants are byte-identical;
@@ -17,6 +17,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import datetime as dt
 from pathlib import Path
 
@@ -44,9 +45,9 @@ CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 
 P01_BINDINGS = {
     "backup_snapshot": {"needs": "owner", "script": "platform/scripts/backup_v5_small_test_job.py",
-                        "fixed_args": ["--operation", "snapshot", "--execute"], "allowed_args": ["label"]},
+                        "fixed_args": ["--operation", "snapshot", "--execute"], "allowed_args": ["label", "scope"]},
     "backup_restore_verify": {"needs": "owner", "script": "platform/scripts/backup_v5_small_test_job.py",
-                              "fixed_args": ["--operation", "restore-verify", "--execute"], "allowed_args": ["label"]},
+                              "fixed_args": ["--operation", "restore-verify", "--execute"], "allowed_args": ["label", "scope"]},
     "smalltest_dispatch_dryrun": {"script": "platform/scripts/dispatch_v5_small_test_job.py",
                                  "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run"]},
     "smalltest_dispatch": {"script": "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py",
@@ -57,7 +58,43 @@ P01_BINDINGS = {
                           "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": []},
 }
 W4_KINDS = set(P01_BINDINGS)
-ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"} | set(P01_BINDINGS)
+# #3607 (f847ba24d): exact disabled bindings, not permission to enable measuring.
+MEASURING_BINDINGS = {
+    "measuring_dispatch": {
+        "enabled": False, "needs": "builder", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_launch.py",
+        "fixed_args": [], "allowed_args": ["run", "classes"], "production": True, "enabled_by": "J-3c",
+        "required_rows": ["2", "3", "7", "9", "11"], "also_needs": ["gcloud"],
+    },
+    "measuring_dispatch_dryrun": {
+        "enabled": False, "needs": "builder", "script": "platform/scripts/dispatch_v5_measuring_job.py",
+        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run"], "allowed_args": ["run", "classes"],
+        "production": True, "enabled_by": "J-3c", "required_rows": ["2", "3", "7", "9", "11"],
+    },
+    "measuring_teardown_dryrun": {
+        "enabled": False, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
+        "fixed_args": ["--dry-run"], "allowed_args": [], "production": True, "enabled_by": "J-3d",
+        "required_rows": ["2", "3", "7", "9", "11"],
+    },
+    "measuring_teardown": {
+        "enabled": False, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
+        "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": [], "production": True, "enabled_by": "J-3d",
+        "required_rows": ["2", "3", "7", "9", "11"],
+    },
+}
+# J-2a M6/M7: the one added read-only kind (fleet/CLOUDRUN_READBACK_v1_0.md). Exact binding, not permission for any other op.
+CLOUDRUN_READBACK = {
+    "enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py",
+    "fixed_args": [], "allowed_args": ["execution", "logs"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
+    "timeout_s": 600, "enabled_by": "J-2a",
+}
+# A7 D-44: `read_only` marks the kinds the executor accepts mechanically; `quiescence_check` is the one added read-only kind (session readback).
+READ_ONLY_KINDS = ("readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check")
+QUIESCENCE_CHECK = {
+    "enabled": True, "needs": "pgenv", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/quiescence_sessions.sh",
+    "fixed_args": [], "allowed_args": ["operation", "execution_readback"], "requesters": ["adhikarin", "v1", "v2", "sutradhara"],
+    "production": False, "read_only": True, "timeout_s": 300, "enabled_by": "B-1",
+}
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS)
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
@@ -113,7 +150,7 @@ def test_every_enabled_by_is_a_model_item():
     assert not bad, f"enabled_by names an id that is not in the plan model: {bad}"
 
 
-def test_enabled_set_is_exactly_bootstrap_and_six_p01_kinds():
+def test_enabled_set_is_exactly_bootstrap_cloudrun_readback_and_six_p01_kinds():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     assert {k for k, e in ops.items() if enabled_state(k, e)} == ENABLED_KINDS
 
@@ -133,10 +170,18 @@ def test_p10_entries_present_with_only_j1a_enabled():
 
 
 def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
+    assert_table_matches_pin(load_ops(OPS_FILE.read_text()))
+
+
+def assert_table_matches_pin(now):
     base = load_ops(base_text(OPS_REL))
-    now = load_ops(OPS_FILE.read_text())
-    assert set(now) == set(base) and set(now["ops"]) == set(base["ops"]), "the set of kinds or top-level keys changed"
-    assert list(now["ops"]) == list(base["ops"]), "the order of kinds changed"
+    expected_order = list(base["ops"])
+    pos = expected_order.index("measuring_dispatch") + 1
+    expected_order[pos:pos] = ["measuring_dispatch_dryrun", "measuring_teardown_dryrun", "measuring_teardown"]
+    expected_order.insert(expected_order.index("migration_readback") + 1, "cloudrun_job_readback")
+    expected_order.insert(expected_order.index("cloudrun_job_readback") + 1, "quiescence_check")
+    assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
+    assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
     for kind in K9_KINDS:
         assert expected[kind]["enabled_by"] == "K9-3", f"{kind}: the pin no longer says K9-3 — test premise broken"
@@ -146,12 +191,12 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
     expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
     expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
     expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
-    expected["measuring_dispatch"]["also_needs"] = ["gcloud"]
     expected["verification_job"]["needs"] = "gcloud"
-    expected["measuring_dispatch"]["staging_dry_run"] = {
-        "enabled": False, "needs": "builder", "script": "platform/scripts/dispatch_v5_small_test_job.py",
-        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run", "--run", "all_classes_full", "--classes", "all"],
-        "allowed_args": [], "scope": "staging rollback only; no remote launch attestation; child allocation and phase enablement required"}
+    expected.update(json.loads(json.dumps(MEASURING_BINDINGS)))
+    expected["cloudrun_job_readback"] = json.loads(json.dumps(CLOUDRUN_READBACK))
+    expected["quiescence_check"] = json.loads(json.dumps(QUIESCENCE_CHECK))
+    for kind in READ_ONLY_KINDS[:3]:
+        expected[kind]["read_only"] = True
     for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
                         ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
         expected[kind]["prepared_dry_run"] = {
@@ -160,6 +205,9 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
             "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
     for kind, binding in P01_BINDINGS.items():
         expected[kind].update(enabled=True, **binding)
+    for kind in W4_KINDS | {"readback_sql"}:
+        key = "lane_readback" if kind == "readback_sql" else "lane_dry_run"
+        expected[kind][key] = {"script": "00_ARCHITECTURE/briefs/kalayantra/fleet/lane_smalltest.py", "needs": "none"}
     for kind, entry in now["ops"].items():
         assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
         assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
@@ -167,6 +215,27 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
             assert entry[key] == expected[kind][key], f"{kind}.{key}: {entry[key]!r} != {expected[kind][key]!r}"
     # the only top-level difference allowed is `_doc`
     assert {k: v for k, v in now.items() if k != "_doc"} == {k: v for k, v in base.items() if k != "_doc"} | {"ops": now["ops"]}
+
+
+def test_table_pin_refuses_an_extra_kind():
+    now = load_ops(OPS_FILE.read_text())
+    assert_table_matches_pin(now)
+    now["ops"]["measuring_unreviewed"] = dict(MEASURING_BINDINGS["measuring_dispatch_dryrun"])
+    with pytest.raises(AssertionError, match="set of kinds"):
+        assert_table_matches_pin(now)
+
+
+@pytest.mark.parametrize("kind", MEASURING_BINDINGS)
+@pytest.mark.parametrize("field,value", [
+    ("enabled", True), ("script", "platform/scripts/unreviewed.py"),
+    ("fixed_args", ["--execute"]), ("allowed_args", ["unreviewed"]),
+])
+def test_table_pin_refuses_unreviewed_measuring_changes(kind, field, value):
+    now = load_ops(OPS_FILE.read_text())
+    assert_table_matches_pin(now)
+    now["ops"][kind][field] = value
+    with pytest.raises(AssertionError, match=re.escape(f"{kind}.{field}")):
+        assert_table_matches_pin(now)
 
 
 def test_k9_placeholders_name_k9_23_and_none_is_filled():
@@ -240,13 +309,13 @@ def _segments(src):
     return out
 
 
-# Exact Wave 4 safety-fix candidate additions, for independent review. Every
+# A7 D-44 (mechanical acceptance): fence_quiescent / execute / run_one edits and the session_marker, write_new_json, measured_identity,
+# mechanical_* and accepted_cloudrun_execution additions are pinned the same way.
+# Exact Wave 4 safety-fix, #3607 (f847ba24d) measuring and J-1a lane additions, including the
+# local_schema_seed scratch lifecycle (#3627) and the D-33 generated-overlay hand-off (#3672, d62eb02d4:
+# overlay_proofs, apply_generated_overlay and their call sites in receipt/execute/execute_lane). Each hash is of the merged executor.py function; every
 # other mutation, including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'receipt': '480f8793d5b6c4317ab4ec3eaaf0ad14de6f2b1ba4a6f02e2373fdd2c393b91d', 'validate': '8a3fac3be06069fccc01c7d34b20a30fb0f3e8f1a12d0c143a86427f826614cf', 'fence_quiescent': 'f3388af221f3d1fe0ee74684c0be9c1ac3200df733d339a4934c37ce3239f41e', 'execute': '8560e21fc11391f5f4c29efeef086a157a6fa7474fd31c9652fbac89eaeaf74d', 'main': '54742775aa3f7ad88df0e42bd6d3a99d723cfc5b3afde8188fc1cda38b2a1f04', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'c84beec4ea3dcff5b239dcd8d29b37d64e1da23b409f7290997075141d680967'}
-
-
-# Exact local_schema_seed scratch lifecycle addition; other Wave 4 pins stay unchanged.
-W4_FUNCTION_HASHES["execute"] = 'bef35ad97d5b019df84c7556f5defda7313875d3eb2313f4819e65ab6004f618'
+W4_FUNCTION_HASHES = {'fence_quiescent': '4e5ee3a3318f4d556f2f54061bad3227ec25c8fd1a19a09defc7de5afd96b416', 'receipt': 'fe01726e959f02fe1d6d7bba32f72e573f06bb23f901de62334e9f6e1e28aff1', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'validate': 'd07de5f9602ed84043d87f36ed89ceb0c5b535e372150919d2c0250132dea5d1', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': 'b1b3c09684a5b2833004e7f99d59aa5500962245b48cc8f42c2bea030afbb8d3', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': 'd445545193c558f4d1acc522b7f616382a74998b04f4c941b0628e12a190642c', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': '8b0b10fcb8e55821dc3307985c344f0dfe39fc83d54fd05cc399cf38f4e9e9e7', 'main': '8bcabbe56032a38b747ab5a3e117cd3d68c130ee1a4153604a02fb84af6ee510', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3', 'run_one': '70e454f9dd68c90d9052263d808a6b316f724c9682b9d37a02e5fc9dff885a1e', 'session_marker': '21216adbf560807fffed590211a11235484167a5dbd762a18aed9c59cdd5ab09', 'write_new_json': 'b69919f6644041481108595fa11fe896bf8ede6de391adca233a28ea8a6c3e26', 'measured_identity': 'f47bc85d6d3516158ea1ef399d8e28a74674318d4842f9596da43c26a5f49222', 'mechanical_post_acceptance': '383b0a42ec72e3ed3d840f9693ecb288d4e7a431f285553601a244fffd55ed0e', 'accepted_cloudrun_execution': '5a87517fae4a7febf1eb0479e56b70bf90673e4569a00f74897ba2e298f5ae7d', 'mechanical_quiescence': 'c893b95cb448bebbb2899238059139e431d842dca307c4dc71bdc5e8526e260c', 'mechanical_acceptance': 'c9e263a19704a100a4583ad84cf6126d4bdff10c312aad7cd964606fae12a806'}
 
 
 def normalize_wave4(base_src, work_src):
@@ -329,6 +398,20 @@ def test_boundary_refuses_removal_of_a_new_safety_helper(name):
     assert boundary_violations(base_text(PY_REL), work.replace(segment, "", 1))
 
 
+@pytest.mark.parametrize("name,old,new", [
+    ("receipt", 'proof.get("rollback_confirmed") is True', 'proof.get("rollback_confirmed") is False'),
+    ("fence_quiescent", '"ky.measuring_completion/1"', '"ky.smalltest_completion/1"'),
+    ("smalltest_policy_problem", '"measuring_request_problem"', '"smalltest_request_problem"'),
+])
+def test_boundary_refuses_changes_to_reviewed_measuring_functions(name, old, new):
+    work = EXECUTOR_PY.read_text()
+    base = base_text(PY_REL)
+    assert boundary_violations(base, work) == []
+    segment = _segments(work)[name]
+    assert segment.count(old) == 1
+    assert boundary_violations(base, work.replace(segment, segment.replace(old, new), 1))
+
+
 def test_boundary_test_fails_when_a_second_statement_hides_on_the_git_line():
     work = EXECUTOR_PY.read_text()
     m = re.search(r"^GIT = .*$", work, re.M)
@@ -380,10 +463,17 @@ GIT_ENV = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TER
            "GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
            "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}
 ALL_CAPS = {"builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
+# 2026-10-17 incident: an inherited GIT_DIR beats `-C`, so `git init --bare` re-initialised the SHARED repository. A fixture's git must only see what it made.
+REPO_LOCATING_VARS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE",
+                      "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE")
+
+
+def _git_env():
+    return {**{k: v for k, v in os.environ.items() if k not in REPO_LOCATING_VARS}, **GIT_ENV}
 
 
 def _git(cwd, *args):
-    p = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, env={**os.environ, **GIT_ENV})
+    p = subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, env=_git_env())
     assert p.returncode == 0, f"git {args}: {p.stderr[-300:]}"
     return p.stdout.strip()
 
@@ -401,6 +491,8 @@ class World:
     def __init__(self, tmp_path, monkeypatch, table_text, lease_id="lease-1"):
         for k, v in GIT_ENV.items():
             monkeypatch.setenv(k, v)
+        for k in REPO_LOCATING_VARS:  # the executor under test runs git from this environment too
+            monkeypatch.delenv(k, raising=False)
         self.root = tmp_path / "ky"
         self.origin = tmp_path / "origin.git"
         self.repo = tmp_path / "source-repo"
@@ -460,6 +552,47 @@ def copy_with(text, kind, **fields):
     ops["ops"][kind]["enabled"] = True
     ops["ops"][kind].update(fields)
     return json.dumps(ops)
+
+
+def _linked_worktree_victim(tmp_path):
+    """A throwaway repository with one linked worktree: (repository, the linked worktree's gitdir), as in the 2026-10-17 incident."""
+    victim = tmp_path / "victim"
+    _git(tmp_path, "init", "-q", "-b", "main", str(victim))
+    _git(victim, "commit", "-q", "--allow-empty", "-m", "x")
+    _git(victim, "worktree", "add", "-q", str(tmp_path / "linked"), "-b", "linked")
+    assert _git(victim, "config", "--bool", "core.bare") == "false"
+    return victim, next((victim / ".git" / "worktrees").iterdir())
+
+
+def _core_bare(victim):
+    return subprocess.run(["git", "--git-dir", str(victim / ".git"), "config", "--bool", "core.bare"], capture_output=True, text=True, env=_git_env()).stdout.strip()
+
+
+def test_world_fixture_leaves_a_repository_named_by_an_inherited_git_dir_untouched(tmp_path, monkeypatch):
+    """The 2026-10-17 incident, on a throwaway repository: GIT_DIR names a LINKED WORKTREE's gitdir and the fixture's plain `git init` re-initialised the whole repository as bare
+    (core.bare=true in the common config). The fixture must leave that repository's core.bare alone."""
+    victim, linked_gitdir = _linked_worktree_victim(tmp_path)
+    scratch = tmp_path / "w"
+    scratch.mkdir()
+    monkeypatch.setenv("GIT_DIR", str(linked_gitdir))
+    try:
+        w = World(scratch, monkeypatch, OPS_FILE.read_text())
+    finally:  # judged first even when building the fixture failed half-way: that is what a re-initialised victim looks like
+        assert _core_bare(victim) == "false", "the fixture's git re-initialised the repository named by the inherited GIT_DIR (core.bare=%s)" % _core_bare(victim)
+    assert w.reviewed and (w.origin / "HEAD").is_file()  # the fixture still built its own repositories
+
+
+def test_fleet_conftest_drops_git_dir_before_any_fixture_inherits_it(tmp_path):
+    """A pytest process started with GIT_DIR exported: the fleet conftest must keep a fixture's plain `git init` off that repository (throwaway repository only)."""
+    victim, linked_gitdir = _linked_worktree_victim(tmp_path)
+    run = tmp_path / "run"
+    run.mkdir()
+    (run / "conftest.py").write_text((FLEET / "tests" / "conftest.py").read_text())
+    (run / "test_x.py").write_text('import subprocess\n\ndef test_init(tmp_path):\n    subprocess.run(["git", "init", "-q", str(tmp_path / "repo")], check=True, capture_output=True)\n')
+    env = {**_git_env(), "GIT_DIR": str(linked_gitdir)}
+    r = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", str(run / "test_x.py")], capture_output=True, text=True, env=env, cwd=run)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert _core_bare(victim) == "false"
 
 
 def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path, monkeypatch):

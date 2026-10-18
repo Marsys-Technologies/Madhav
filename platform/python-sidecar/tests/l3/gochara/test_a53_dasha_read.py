@@ -15,7 +15,7 @@ from services.gochara_rules.permission import DASHA_READ_CONTRACT
 
 CANON = DASHA_READ_CONTRACT["chart_id"]
 LEGACY_BUILD = "75524b3e-102a-43ec-8cee-3f57fee752c3"
-SETTLED_BUILD = "ca17639b-f3cf-42c7-9866-0a61f3855802"
+SETTLED_BUILD = "7377833e-5d3b-4e70-8bef-1318904f470e"
 FUTURE_BUILD = "22222222-2222-4222-8222-222222222222"  # synthetic successor, not an L1 assertion
 T = lambda d: datetime(2026, 1, d, tzinfo=timezone.utc)  # noqa: E731
 
@@ -166,7 +166,7 @@ def test_all_tier_guard_refuses_mixed_and_null_builds_by_name(builds, code):
 
 
 @pytest.mark.parametrize("build", [
-    "ca17639b-f3cf-42c7-9866-0a61f3855802",
+    "7377833e-5d3b-4e70-8bef-1318904f470e",
 ])
 def test_reader_and_independent_verifier_accept_the_same_single_build(build):
     from services.gochara_kernel import inventory_verifier as inv

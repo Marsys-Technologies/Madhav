@@ -53,12 +53,12 @@ from typing import Optional
 import numpy as np
 
 from services.ka_kshetra.contracts import NullResult
+from services.ka_kshetra.dhara_null_vec import _vec_sliding_window_max
 from services.ka_kshetra.stage4_field import EnvelopeIndex, FieldEvaluator
 from services.ka_kshetra.stage5_null import (
     DURATION_BUCKETS,
     QuantilePool,
     Q_QUANTILE,
-    sliding_window_max,
 )
 
 # ── public constants ──────────────────────────────────────────────────────────
@@ -194,7 +194,7 @@ def dhara_compute_null(
         # ── sliding-window max for each duration bucket ───────────────────────
         replicate_idx = r - 1  # 0-indexed
         for b in DURATION_BUCKETS:
-            all_stats[int(b)][replicate_idx] = sliding_window_max(cum, int(b))
+            all_stats[int(b)][replicate_idx] = _vec_sliding_window_max(cum, int(b))
 
         # ── pool lambda values for q_e quantile ──────────────────────────────
         pool.add(lam)  # lam ≡ np.diff(cum); avoids recomputing the differences
