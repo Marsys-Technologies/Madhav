@@ -107,8 +107,11 @@
         "tests/l3/gochara/test_mb_horizon*.py",
         "tests/l3/gochara/test_mb_stretch*.py",
         "tests/l3/gochara/test_j6r*.py",
-        "tests/l3/gochara/test_j6_bindings*.py",
-        "tests/l3/gochara/test_n18*.py"
+        "tests/l3/gochara/test_n18*.py",
+        "tests/l3/gochara/test_nd_h*.py",
+        "tests/l3/gochara/test_near_miss*.py",
+        "tests/l3/gochara/test_p06*.py",
+        "tests/l3/gochara/test_j6_bindings*.py"
       ],
       "discover_db": true
     },
@@ -396,7 +399,9 @@
       "cwd": "platform",
       "engine": "pytest",
       "include": [
-        "scripts/__tests__/test_dispatch_v5*.py"
+        "scripts/__tests__/test_dispatch_v5*.py",
+        "scripts/__tests__/test_gochara_pipeline_ephe_probe*.py",
+        "scripts/__tests__/test_gochara_sitting_evidence_pack*.py"
       ]
     },
     "db-integration-tests-83-0": {
@@ -841,6 +846,13 @@
       "include": [
         "src/tools/retrieval/register_gochara_contact_ledger*.test.ts",
         "src/tools/retrieval/register_gochara_windows_governed_gate*.test.ts"
+      ]
+    },
+    "unit-tests-protected-window": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "scripts/__tests__/protected_window*.db.test.ts"
       ]
     },
     "governance-tool-tests-j6-bindings": {

@@ -410,9 +410,10 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
         # population is exactly the case the expected-contact derivation exists to catch (the conditional skip,
         # keyed on whether any anchored record SURVIVED, is gone)
         if rv._anchor_columns(conn):
-            out["p1"]["anchors"] = stage("p1_anchors", lambda: rv.verify_p1_anchors(
-                conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at))
             p1_version = next(v for p, v in pins if p == "P1")
+            out["p1"]["anchors"] = stage("p1_anchors", lambda: rv.verify_p1_anchors(
+                conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at,
+                **({"rule_version": p1_version} if p1_version != "1.0.0" else {})))
             out["p1"]["results"] = stage("p1_results", lambda: rd.verify_p1_results(
                 conn, chart_id=chart_id, generation=generation, event_class=event_class, rule_version=p1_version,
                 chart=chart, policy=policy))
@@ -423,6 +424,9 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     for path_id, version in pins:
         grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
                      rule_version=version)
+        if version == "1.2.0":
+            out.setdefault("final_rules", {})[path_id] = stage(
+                f"final_rules {path_id}", lambda g=grain: rd.verify_final_rule_records(conn, chart=chart, **g))
         derived = None
         if path_id != "P1":
             # R10-1: every record the path MUST hold, derived from the obligations × the certified contacts × the bound
