@@ -17,7 +17,11 @@ record — status REFUSED, exit 1 — so a partial record can never be mistaken 
              cancelled counts, task count, image and args the execution carried, log URI (the URI only);
   · logs     (only when `--logs true` is given WITH `--execution`; SR-J3-READ-KINDS) ONE more fixed call, `gcloud logging read`, whose filter
              is built from constants plus the regex-validated execution name: Cloud Run job `brahma-build-pipeline-job`, location
-             `asia-south1`, label run.googleapis.com/execution_name, newest LOG_PAGE_SIZE entries. Parsed: `STRETCH_SINK/1` records (counted
+             `asia-south1`, label run.googleapis.com/execution_name. It is read PAGE BY PAGE (newest first, LOG_PAGE_SIZE entries per call, at most
+             LOG_MAX_PAGES calls and LOG_BUDGET_S seconds): each next call adds only `timestamp<="<oldest entry time seen>"` (a time that
+             matched a strict RFC 3339 shape, never raw gcloud text) to the same filter, and entries are de-duplicated by insertId. If the
+             cap, the time budget, an unpageable time or a stuck cursor stops the reading before the oldest entry, `truncated` is true and
+             every count reads NULL (lower bounds are still given); a short page is the proof the read is complete. Parsed: `STRETCH_SINK/1` records (counted
              by kind/reason, de-duplicated by record_id), `STRETCH_SINK_SUMMARY/1` lines (reconciled against the records), and `asset.substep`
              events (log-entry times between consecutive sub-steps, last index/total). A line that cannot be read as the thing it claims to
              be (truncated, wrong shape) reads NULL in every field that depended on it and is counted in `unreadable_lines`; it is never
@@ -37,6 +41,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 
 SCHEMA = "ky.cloudrun_readback/1"
 PROJECT = "madhav-astrology"
@@ -50,7 +55,10 @@ ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
 # Plain values that may be shown. Everything else is a name only; a new key needs a reviewed edit here.
 ENV_VALUE_ALLOWLIST = frozenset({"GCP_PROJECT", "PUBSUB_TOPIC", "KA_KSHETRA_HASH_SPILL_DIR", "SE_EPHE_PATH", "SWE_EPHE_PATH", "PYTHONPATH"})
 GCLOUD_TIMEOUT_S = 120
-LOG_PAGE_SIZE = 1000                                                     # the one page `logs` reads; a full page is reported, never assumed complete
+LOG_PAGE_SIZE = 1000                                                     # entries per `gcloud logging read` call; a short page proves the read reached the oldest entry
+LOG_MAX_PAGES = 60                                                       # hard cap: 60,000 entries, far above a 26-class measuring build; beyond it `truncated` is true and counts read null
+LOG_BUDGET_S = 420                                                       # wall-clock budget for all pages, under the executor's timeout_s (600) for this kind
+CURSOR_TIME = re.compile(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,9}))?Z")      # the only time text that is ever put back into a filter
 SINK_MARK, SINK_SUMMARY_MARK = "STRETCH_SINK/1", "STRETCH_SINK_SUMMARY/1"   # stretch_sink.LOG_PREFIX / SUMMARY_PREFIX without the trailing space
 SINK_SCHEMA, SINK_SUMMARY_SCHEMA = "stretch_sink/1", "stretch_sink_summary/1"
 SUBSTEP_MARK = '"asset.substep"'                                         # asset_runner.run_substeps emits {"type": "asset.substep", ...}
@@ -74,10 +82,20 @@ def execution_describe_argv(name: str) -> list[str]:
     return ["gcloud", "run", "jobs", "executions", "describe", name, f"--project={PROJECT}", f"--region={REGION}", "--format=json"]
 
 
-def logs_read_argv(name: str) -> list[str]:
+def logs_filter(name: str, not_after: str | None = None) -> str:
+    """The one fixed filter; `not_after` (page 2 onward) is a CURSOR_TIME-validated entry time, the only thing that ever varies."""
     flt = (f'resource.type="cloud_run_job" AND resource.labels.job_name="{JOB}" AND resource.labels.location="{REGION}" '
            f'AND labels."run.googleapis.com/execution_name"="{name}" '
            f'AND (textPayload:"STRETCH_SINK" OR textPayload:"asset.substep")')
+    if not_after is not None:
+        if not CURSOR_TIME.fullmatch(not_after):
+            raise Refused("logs: a paging cursor is not a strict RFC 3339 UTC time")
+        flt += f' AND timestamp<="{not_after}"'
+    return flt
+
+
+def logs_read_argv(name: str, not_after: str | None = None) -> list[str]:
+    flt = logs_filter(name, not_after)
     return ["gcloud", "logging", "read", flt, f"--project={PROJECT}", f"--limit={LOG_PAGE_SIZE}", "--order=desc", "--format=json"]
 
 
@@ -392,16 +410,16 @@ def _substep_report(rows):
     return assets, newest
 
 
-def _sink_report(records, summaries, unreadable, duplicates, page_full, entries_returned):
+def _sink_report(records, summaries, unreadable, duplicates, truncated, entries_returned):
     by_kind: dict[str, int] = {}
     by_class: dict[str, list] = {}
     for record in records.values():
         key = f"{record['kind']}/{record['reason']}"
         by_kind[key] = by_kind.get(key, 0) + 1
         by_class.setdefault(record["event_class"], []).append(record["record_id"])
-    # A total is a COUNT only when nothing could have been missed or misread: a full page, an unreadable line or an empty page makes
-    # it a lower bound, and the count itself reads null (N.8: never the readable-part total standing in for the whole).
-    exact = not page_full and not unreadable and entries_returned > 0
+    # A total is a COUNT only when nothing could have been missed or misread: a truncated read, an unreadable line or an empty read
+    # makes it a lower bound, and the count itself reads null (N.8: never the readable-part total standing in for the whole).
+    exact = not truncated and not unreadable and entries_returned > 0
     shown = []
     for summary in summaries:
         ids = by_class.get(summary["event_class"], [])
@@ -416,10 +434,55 @@ def _sink_report(records, summaries, unreadable, duplicates, page_full, entries_
             "duplicate_record_lines": duplicates, "summaries": shown}
 
 
-def measure_logs(name: str, runner) -> dict:
-    entries = gcloud_json(logs_read_argv(name), runner, "logs", shape=list)
-    if any(not isinstance(entry, dict) for entry in entries):
-        raise Refused("logs: an entry is not a JSON object")
+def _cursor_key(text):
+    """(seconds text, 9-digit fraction) of a strict UTC entry time, orderable as text; None when it is not that shape."""
+    match = CURSOR_TIME.fullmatch(text) if isinstance(text, str) else None
+    return None if match is None else (match.group(1), (match.group(2) or "").ljust(9, "0"))
+
+
+def _entry_key(entry):
+    """Identity for de-duplicating overlapping pages: insertId, else the whole entry as canonical JSON (never a guess)."""
+    insert = entry.get("insertId")
+    return insert if isinstance(insert, str) and insert else json.dumps(entry, sort_keys=True, separators=(",", ":"))
+
+
+def _read_all_pages(name: str, runner, monotonic) -> tuple[list, int, str | None]:
+    """Newest-first pages until a short page (complete) or a stop condition. Returns (entries, pages_read, truncation_reason|None)."""
+    seen: dict[str, dict] = {}
+    cursor = None
+    started = monotonic()
+    pages = 0
+    while True:
+        if pages >= LOG_MAX_PAGES:
+            return list(seen.values()), pages, "page_cap"
+        if pages and monotonic() - started > LOG_BUDGET_S:
+            return list(seen.values()), pages, "time_budget"
+        page = gcloud_json(logs_read_argv(name, cursor), runner, "logs", shape=list)
+        if any(not isinstance(entry, dict) for entry in page):
+            raise Refused("logs: an entry is not a JSON object")
+        pages += 1
+        fresh = 0
+        for entry in page:
+            key = _entry_key(entry)
+            if key not in seen:
+                seen[key] = entry
+                fresh += 1
+        if len(page) < LOG_PAGE_SIZE:                                   # the server had nothing older than this page's oldest entry
+            return list(seen.values()), pages, None
+        keys = [_cursor_key(entry.get("timestamp")) for entry in page]
+        if any(key is None for key in keys):
+            return list(seen.values()), pages, "unpageable_time"        # a full page whose oldest time cannot be told: do not guess a cursor
+        oldest = min(keys)
+        if not fresh or (cursor is not None and _cursor_key(cursor) <= oldest):
+            return list(seen.values()), pages, "stuck_cursor"           # a full page of one instant (or no progress): paging cannot move on
+        cursor = f"{oldest[0]}.{oldest[1]}Z"
+
+
+def measure_logs(name: str, runner, monotonic=time.monotonic) -> dict:
+    entries, pages, reason = _read_all_pages(name, runner, monotonic)
+    # a total order, so equal inputs give equal output whatever order gcloud broke time ties in: newest first, then insertId/JSON
+    floor = dt.datetime.min.replace(tzinfo=dt.timezone.utc)
+    entries.sort(key=lambda e: (_log_time(e.get("timestamp")) or floor, _entry_key(e)), reverse=True)
     records: dict[str, dict] = {}
     summaries, rows = [], []
     unreadable = duplicates = 0
@@ -447,17 +510,20 @@ def measure_logs(name: str, runner) -> dict:
                     unreadable += 1
                 else:
                     rows.append((when, when_text, step))
-    page_full = len(entries) >= LOG_PAGE_SIZE
+    truncated = reason is not None
     assets, newest = _substep_report(rows)
     return {
         "execution": name,
-        "filter": logs_read_argv(name)[3],
+        "filter": logs_filter(name),
         "page_size": LOG_PAGE_SIZE,
-        "entries_returned": len(entries),
-        "page_full": page_full,                                         # True: older lines may exist beyond this page
+        "max_pages": LOG_MAX_PAGES,
+        "pages_read": pages,
+        "entries_returned": len(entries),                               # distinct entries over all pages
+        "truncated": truncated,                                         # True: older entries exist that were not read; every count below reads null
+        "truncation_reason": reason,
         "unreadable_lines": unreadable,
-        "sink": _sink_report(records, summaries, unreadable, duplicates, page_full, len(entries)),
-        "substeps": {"last_substep": newest, "assets": assets},
+        "sink": _sink_report(records, summaries, unreadable, duplicates, truncated, len(entries)),
+        "substeps": {"last_substep": newest, "assets": assets},      # newest-first reading: the last sub-step is known even when older pages were not read
     }
 
 
