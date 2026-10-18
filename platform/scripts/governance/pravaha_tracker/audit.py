@@ -200,7 +200,7 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
                     fail("unbound_production_operation", path.stem, "invalid operation id")
                     continue
                 acceptance = _read_json(root / "ops" / "acceptance" / f"{operation_id}.json")
-                bound = {key: value for key, value in req.items() if key != "acceptance_receipt"}
+                bound = {key: value for key, value in req.items() if key not in ("acceptance_receipt", "expires_at") and not key.endswith("_expires_at")}   # executor.request_digest, A8 §3.9
                 digest = hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
                 if not acceptance or acceptance.get("result") != "ACCEPTED" or \
                         acceptance.get("operation_id") != operation_id or \

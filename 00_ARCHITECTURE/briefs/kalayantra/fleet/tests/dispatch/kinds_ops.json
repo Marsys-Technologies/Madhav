@@ -3932,8 +3932,8 @@
         },
         "checks": {
          "backup_taken": true,
-         "restore_verified": false,
-         "dry_run_passed": true
+         "restore_verified": true,
+         "dry_run_passed": false
         }
        }
       }
@@ -3995,12 +3995,12 @@
          "$ref": "sha_pub"
         },
         "rows": {
-         "2": false
+         "2": true
         },
         "checks": {
          "backup_taken": true,
          "restore_verified": true,
-         "dry_run_passed": true
+         "dry_run_passed": "true"
         }
        }
       }
@@ -4207,12 +4207,8 @@
         "request_sha256": {
          "$ref": "sha_pub"
         },
-        "rows": {
-         "2": true
-        },
+        "rows": {},
         "checks": {
-         "backup_taken": true,
-         "restore_verified": true,
          "dry_run_passed": true
         }
        },
@@ -4262,12 +4258,8 @@
        "request_sha256": {
         "$ref": "sha_pub"
        },
-       "rows": {
-        "2": true
-       },
+       "rows": {},
        "checks": {
-        "backup_taken": true,
-        "restore_verified": true,
         "dry_run_passed": true
        }
       }

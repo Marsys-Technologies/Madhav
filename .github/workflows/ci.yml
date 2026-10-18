@@ -619,6 +619,9 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest db-integration-tests-9-12 -- -q --tb=short -rs -p no:cacheprovider --deselect tests/l3/gochara/test_a25_v41_candidate_writer.py::test_cli_published_refusal_exit6_baseline_vs_refactored
+          cd ..
+          mutation_scratch="$(mktemp -d "$RUNNER_TEMP/ky-j4cb-XXXXXX")"
+          python scripts/gochara/mutation_check_verifier_side.py --scratch "$mutation_scratch"
           # ^ that one test needs the pre-refactor baseline commit, unreachable from this job's shallow checkout;
           # it still runs in Governance Gates.
 
@@ -3554,6 +3557,14 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+      - name: Protected window — DDL and ledger atomicity and PUBLIC ACL readback (required)
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'unit-tests-protected-window'))) }}
+        env:
+          KALA_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          KALA_REQUIRE_DB: '1'
+        # Own random disposable DB; no cluster-role changes. Real 1376 rollback
+        # injection covers both routine and --only; real psql runs the P9 query.
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-protected-window -- --no-cache
       - name: Pre-pull test images from mirror.gcr.io (Docker Hub anonymous pull rate limit)
         # Tests that `docker run postgres:16` themselves would otherwise pull from Docker Hub and
         # hit 'toomanyrequests'; the same library image is pulled from Google's mirror and tagged

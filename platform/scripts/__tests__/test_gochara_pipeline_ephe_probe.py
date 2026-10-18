@@ -52,7 +52,7 @@ def pinned_digests() -> dict[str, str]:
 
 def run_probe(tmp_path: Path, *, digests: str | None, gcloud_fail: bool = False,
               inspect_env: str = "SE_EPHE_PATH=/app/ephe\nSWE_EPHE_PATH=/app/ephe\n",
-              drop_tool: str | None = None, mode: str = "--run", script: Path | None = None) -> subprocess.CompletedProcess[str]:
+              drop_tool: str | None = None, mode: str = "--run", script: Path | None = None, project: str | None = None) -> subprocess.CompletedProcess[str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
     # Even /usr/bin can contain docker on CI runners. Expose only the exact
@@ -85,7 +85,8 @@ def run_probe(tmp_path: Path, *, digests: str | None, gcloud_fail: bool = False,
     env.pop("GCLOUD_FAIL", None)
     if gcloud_fail:
         env["GCLOUD_FAIL"] = "1"
-    r = subprocess.run([str(bin_dir / "bash"), str(script or SCRIPT), "brahma-build-pipeline-job", "asia-south1", mode],
+    r = subprocess.run([str(bin_dir / "bash"), str(script or SCRIPT), "brahma-build-pipeline-job", "asia-south1", mode,
+                        *(["--project", project] if project else [])],
                        env=env, capture_output=True, text=True, timeout=60)
     log = Path(env["STUB_LOG"])
     r.stub_log = log.read_text(encoding="utf-8") if log.exists() else ""  # type: ignore[attr-defined]
@@ -234,3 +235,19 @@ def test_unreadable_or_incomplete_pins_never_produce_a_false_pass(tmp_path: Path
     assert "REFUSAL: invalid ephemeris pins" in r.stderr
     assert "RESULT:" not in r.stdout
     assert r.stub_log == ""
+
+
+def test_probe_resolves_the_requested_job_location_and_hashes_that_current_image(tmp_path: Path) -> None:
+    # These stubs record real shell arguments. A plausible digest from any
+    # other image/project/region must not pass as this job's corpus evidence.
+    import shlex
+    r = run_probe(tmp_path, digests=good_digests(), project="oracle-project")
+    assert r.returncode == 0, r.stderr
+    calls = [shlex.split(line) for line in r.stub_log.splitlines()]
+    describes = [c for c in calls if c[:5] == ["gcloud", "run", "jobs", "describe", "brahma-build-pipeline-job"]]
+    assert len(describes) == 1
+    assert "--project=oracle-project" in describes[0]
+    assert "--region=asia-south1" in describes[0]
+    hashes = [c for c in calls if c[:2] == ["docker", "run"]]
+    assert len(hashes) == 1
+    assert hashes[0][hashes[0].index("sha256sum") + 1:][:2] == [IMAGE, "--"]

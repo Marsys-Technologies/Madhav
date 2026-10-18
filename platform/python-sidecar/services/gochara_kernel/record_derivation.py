@@ -125,6 +125,9 @@ def derive_path_records(conn, *, chart_id: str, generation: str, event_class: st
     path = path_id.lower()
     declared = declared_predicates(conn, path_id, rule_version)
     sealed = sealed_path_provenance(conn, path_id, rule_version)
+    from . import nd_h_tables as final_rules
+    if rule_version == "1.2.0" and event_class not in final_rules.EIGHT:
+        sealed = sealed_path_provenance(conn, path_id, "1.0.0")
     polarity = _POLARITY.get(event_class, "")
     by_obj: dict[tuple, list[dict]] = {}
     for c in contacts:
@@ -152,6 +155,9 @@ def derive_path_records(conn, *, chart_id: str, generation: str, event_class: st
     for rec in expected:
         op_role, prov, ruling = _iv_role(path, rec["agent"], rec["relation"], rec["role"], rec["house"], polarity,
                                              sealed)
+        stamp = final_rules.record_stamp(event_class, path_id, rule_version, rec["role"])
+        if stamp is not None:
+            op_role, prov, ruling = stamp
         rec.update(operator_role=op_role, provenance=prov, ruling=ruling, results={})
     if path == "p4":
         by_agent: dict[str, list[tuple]] = {}
@@ -291,6 +297,94 @@ def verify_path_records(conn, *, chart_id: str, generation: str, event_class: st
     return {"records": len(stored), "derived_windows": derived_windows(expected, path_id)}
 
 
+
+def final_rule_record_problems(event_class, path_id, chart, records, contacts, contexts):
+    """FB-38b: independently rederive every K-A value, tier, K-B edge and absorption key."""
+    from . import nd_h_tables as nd
+    from .inventory_verifier import final_rule_edge_tiers, derive_final_rule_context, _point, _frame_person
+    from collections import Counter
+    problems = []
+    context = derive_final_rule_context(event_class, path_id, chart, '1.2.0')
+    if context is not None and (not contexts or any(c != context for c in contexts)):
+        problems.append(f'dvi_absorption_context_mismatch: {event_class}/{path_id}: stored {contexts!r}, derived {context!r}')
+    tiers, _ = final_rule_edge_tiers(event_class, path_id, chart)
+    luminary = nd.KARAKA_B_LUMINARY.get(event_class)
+    target = _point(chart['natal'][luminary]) if luminary else None
+    _, person = _frame_person(event_class, '1.2.0')
+    def kb_key(r):
+        return (r['agent'], r['relation'], r['target'], r['contact'], r['person'])
+    expected_kb = Counter()
+    if luminary and path_id in ('P3', 'P4'):
+        for c in contacts:
+            if c['target'] == target and (path_id, c['body'], c['relation']) in nd.kb_edge_set(event_class):
+                expected_kb[(c['body'], c['relation'], c['target'], c['id'], person)] += 1
+    stored_kb = Counter(kb_key(r) for r in records if r['role'] == 'karaka')
+    for key, count in (expected_kb - stored_kb).items():
+        problems.append(f'kb_edge_missing: {event_class}/{path_id}: {key!r} ({count})')
+    for key, count in (stored_kb - expected_kb).items():
+        problems.append(f'kb_edge_unlicensed: {event_class}/{path_id}: {key!r} ({count})')
+    for r in records:
+        metadata = r.get('final_rules') or {}
+        if context is not None and r.get('class_context') != context:
+            problems.append(f"dvi_absorption_record_context_mismatch: record {r['id']}: class context differs from independent derivation")
+        want_category = nd.karaka_agent_value(event_class, r['agent']) if r['contact'] is not None else None
+        if 'karaka_agent' not in metadata or metadata.get('karaka_agent') != want_category:
+            problems.append(f"karaka_agent_mismatch: record {r['id']}: stored {metadata.get('karaka_agent')!r}, derived {want_category!r}")
+        key = '|'.join((r['agent'], r['relation'], r['target'], r['role']))
+        want_tier = (('core' if path_id == 'P1' or r['role'] == 'karaka' else tiers.get(key))
+                     if event_class in nd.EIGHT else None)
+        if 'tier' not in metadata or metadata.get('tier') != want_tier:
+            name = 'dvi_core_subsumption_refused' if metadata.get('tier') == 'dvi' and want_tier == 'core' else 'record_tier_mismatch'
+            problems.append(f"{name}: record {r['id']} ({key}): stored {metadata.get('tier')!r}, derived {want_tier!r}")
+    return problems
+
+
+def verify_final_rule_records(conn, *, chart_id, generation, event_class, path_id, rule_version, chart):
+    """Mandatory FB-38b verification-job stage; legacy versions are untouched.
+
+    Existing JSON fields carry these annotations (ruling 18 requires no table change).
+    K-B's one-degree geometry is separately certified by contact_certify, from its own orb table.
+    """
+    if rule_version != '1.2.0':
+        return {'records': 0, 'state': 'not_applicable'}
+    from .inventory_verifier import Unverifiable
+    if chart is None:
+        raise Unverifiable('final_rules_chart_missing: FB-38b needs snapshot-bound natal operands')
+    # The stored category is normalized by the edge key in the inventory detail.
+    # It applies to every occurrence record of that edge, including P1 aliases.
+    contexts, annotations = [], {}
+    for (detail,) in _rows(conn.execute(
+        "SELECT i.detail FROM public.ka_gochara_search_interval i"
+        " JOIN public.ka_gochara_search_obligation o ON (o.chart_id, o.generation, o.event_class, o.ob_id)"
+        " = (i.chart_id, i.generation, i.event_class, i.ob_id)"
+        " WHERE o.chart_id = %s AND o.generation = %s AND o.event_class = %s"
+        " AND o.path_id = %s AND o.rule_version = %s ORDER BY o.ob_id, lower(i.search_range)",
+        (chart_id, generation, event_class, path_id, rule_version))):
+        detail = detail or {}
+        contexts.append(detail.get('final_rule_context'))
+        for key, value in detail.get('record_factors', {}).items():
+            if key in annotations and annotations[key] != value:
+                raise RuntimeError(f'record_factor_conflict: {key}')
+            annotations[key] = value
+    records = []
+    for rid, agent, relation, role, target, contact, person in _rows(conn.execute(
+            "SELECT r.record_id::text, r.agent, r.relation, r.object_role, o.canonical_target,"
+            " r.contact_id::text, r.affected_person"
+            " FROM public.ka_gochara_relationship_record r JOIN public.ka_gochara_physical_object o"
+            " ON o.physical_object_id = r.object_id WHERE r.chart_id = %s AND r.generation = %s"
+            " AND r.event_class = %s AND r.path_id = %s AND r.rule_version = %s ORDER BY r.record_id",
+            (chart_id, generation, event_class, path_id, rule_version))):
+        key = '|'.join((agent, relation, target, role))
+        records.append(dict(id=rid, agent=agent, relation=relation, role=role, target=target,
+                            contact=contact, person=person, final_rules=annotations.get(key),
+                            class_context=contexts[0] if contexts else None))
+    contacts = stored_contacts(conn, chart_id, generation)
+    problems = final_rule_record_problems(event_class, path_id, chart, records, contacts, contexts)
+    if problems:
+        raise RuntimeError('FB-38b final-rule verification failed: ' + '; '.join(problems))
+    return {'records': len(records), 'state': 'verified'}
+
+
 # ── P1 ───────────────────────────────────────────────────────────────────────────────────────────────
 
 def verify_p1_results(conn, *, chart_id: str, generation: str, event_class: str, rule_version: str, chart: Mapping[str, Any],
@@ -313,7 +407,7 @@ def verify_p1_results(conn, *, chart_id: str, generation: str, event_class: str,
         " AND r.path_id = 'P1' AND r.rule_version = %s", (chart_id, generation, event_class, rule_version)))}
     problems = result_policy_problems(stored, policy)
     contacts = {c["id"]: c for c in stored_contacts(conn, chart_id, generation)}
-    frame, person = _frame_person(event_class)
+    frame, person = _frame_person(event_class, rule_version)
     for r in stored:
         lord, level, kind, n_prereq = meta.get(r["id"], (None, None, None, 0))
         c = contacts.get(r["contact"])
@@ -330,7 +424,8 @@ def verify_p1_results(conn, *, chart_id: str, generation: str, event_class: str,
                 problems.append(f"record {r['id']}: {field} {got!r}, derived {want!r}")
         if lord is None or level not in ("md", "ad", "pd"):
             problems.append(f"record {r['id']}: anchor ({lord!r}, {level!r}) is not an anchor")
-        rel = period_lord_relation(str(lord), event_class, chart)
+        rel = period_lord_relation(str(lord), event_class, chart, rule_version=rule_version,
+                                   level=level, affected_person=person)
         want = {"natal_bhava_relationship": ("unknown" if rel["relation"] == "unknown"
                                              else ("true" if rel["licence"] in ("scored", "testimony") else "false")),
                 "transit_relation": "true" if c is not None else "false"}
@@ -350,6 +445,8 @@ def verify_p1_results(conn, *, chart_id: str, generation: str, event_class: str,
             problems.append(f"record {r['id']}: admission {r['admission']!r}, the results imply {admission_of(results)!r}")
         pd = level == "pd"
         want_role = ("testimony", "uncited_extension", RULING_P1_PD) if pd else ("scored", "verse_cited", None)
+        from .nd_h_tables import record_stamp
+        want_role = record_stamp(event_class, "P1", rule_version, "period_lord", level) or want_role
         if (r["operator_role"], r["provenance"], r["ruling"]) != want_role:
             problems.append(f"record {r['id']}: role/provenance/ruling {(r['operator_role'], r['provenance'], r['ruling'])}"
                             f" != derived {want_role} (anchor level {level})")
