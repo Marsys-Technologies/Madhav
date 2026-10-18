@@ -2907,7 +2907,7 @@ jobs:
           SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
           READBACK_RESULT: ${{ needs.governance-readback-tests.result }}
           KALA_DB_RESULT: ${{ needs.kala-db-tests.result }}
-          KALA_DB_EXPECTED: ${{ github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || (github.event_name == 'pull_request' && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'kala-db-tests')) }}
+          KALA_DB_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'kala-db-tests')) }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           RUN_COMBINATION: ${{ needs.changes.outputs.run_combination_suites }}
           CHANGES_RESULT: ${{ needs.changes.result }}
