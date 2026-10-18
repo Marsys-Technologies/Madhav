@@ -2073,7 +2073,8 @@ jobs:
           cd python-sidecar
           export GOCHARA_A25_DISPOSABLE_CLUSTER_ID="$(python -c 'import os; from tests.l3.gochara._disposable_db_guard import guarded_admin_connect; c=guarded_admin_connect(os.environ["GOCHARA_A25_ADMIN_DSN"], autocommit=True); print(c.execute("SELECT system_identifier FROM pg_control_system()").fetchone()[0]); c.close()')"
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-final-rules-p06 -- -q --tb=short -rs -p no:cacheprovider
-          python ../scripts/gochara/mutation_check_verifier_side.py
+          mutation_scratch="$(mktemp -d "$RUNNER_TEMP/ky-p06-XXXXXX")"
+          python ../scripts/gochara/mutation_check_verifier_side.py --scratch "$mutation_scratch"
 
   gochara-a55-p06-legacy:
     # P06 inherited WP6 ports on a dedicated guarded disposable database.
