@@ -61,6 +61,27 @@ class Refused(Exception):
     pass
 
 
+def _inventory_attests_class(payload: dict, cls: dict) -> bool:
+    """An empty window-grain set still requires the matching independent inventory.
+
+    The combined candidate gate checks that every INCLUDED grain is verified;
+    excluded/computed-empty paths require no invented window attestation.
+    """
+    digest = cls.get("inventory_digest")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        return False
+    try:
+        rows = [json.loads(raw) for raw in
+                (payload.get("attestations") or {}).get("ka_gochara_search_inventory_verification", [])]
+    except (ValueError, TypeError):
+        return False
+    mine = [row for row in rows if isinstance(row, dict) and
+            (row.get("chart_id"), row.get("generation"), row.get("event_class")) ==
+            (payload.get("chart_id"), payload.get("generation"), cls.get("event_class"))]
+    return bool(mine) and all(row.get("rederived_inventory_digest") == digest for row in mine)
+
+
+
 def check(raw: bytes, compact: dict, *, chart_id: str, generation: str, sealing_commit: str) -> str:
     # P08 is the first full candidate's approval path. A caller's expectation
     # cannot authorize a test slice, another chart, or comma-separated overrides.
@@ -123,7 +144,7 @@ def check(raw: bytes, compact: dict, *, chart_id: str, generation: str, sealing_
     if code_commit != sealing_commit:
         raise Refused(f"the brief was produced for sealing revision {code_commit!r}, not this workflow's reviewed revision {sealing_commit}")
     for c in p.get("classes") or []:
-        if not c.get("grains"):
+        if not c.get("grains") and not _inventory_attests_class(p, c):
             raise Refused(f"class {c.get('event_class')!r} has no persisted verification")
         for g in c["grains"]:
             if g.get("status") != "VERIFIED":

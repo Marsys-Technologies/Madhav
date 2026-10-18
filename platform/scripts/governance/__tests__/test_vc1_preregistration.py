@@ -230,10 +230,10 @@ def test_suite_is_in_existing_mandatory_ci_without_dropping_any_paths():
     assert ci_shard.verify(ci_shard.test_files(), shards) == []
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     assert 'python -m pytest "${FILES[@]}"' in ci
-    # K9-23 adds the required Kāla DB gate; preserve VC-1's dependencies while
-    # allowing the aggregate to require additional proof.
+    # K9-23 adds the required Kāla DB gate; preserve VC-1's dependencies (including main's J5S rehearsal)
+    # while allowing the aggregate to require additional proof.
     needs = yaml.safe_load(ci)["jobs"]["governance-tool-tests"]["needs"]
-    assert {"changes", "governance-tool-tests-shard", "governance-readback-tests"} <= set(needs)
+    assert {"changes", "governance-tool-tests-shard", "governance-readback-tests", "gochara-j5s-full-class-seal"} <= set(needs)
 
 
 def test_seal_generator_is_deterministic_and_check_rejects_tampering(tmp_path):

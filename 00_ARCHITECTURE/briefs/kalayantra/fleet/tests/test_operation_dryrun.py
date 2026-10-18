@@ -82,3 +82,16 @@ def test_rollback_never_invents_the_retained_generation():
     assert result["generation"] is None
     with pytest.raises(ValueError):
         load().prepare("rollback_head", {"generation": "5.0"})
+
+
+def test_j5s_preparation_points_to_disabled_strict_definition_planner():
+    result = load().prepare('verification_job', {'generation': '5.0'})
+    assert result['prepared_launcher'] == {
+        'script': 'platform/scripts/prepare_gochara_verifier_launch.py',
+        'enabled': False, 'production_allocation': None,
+        'input': 'supplied immutable verifier job definition readbacks',
+        'output': 'ky.j5s_verifier_launch_preparation/1',
+    }
+    # The executor kind and canonical future receipt stay unactivated.
+    op = json.loads((FLEET / 'executor_ops.json').read_text())['ops']['verification_job']
+    assert op['enabled'] is False and op['script'].startswith('TO_BE_SET_BY_J-4b')

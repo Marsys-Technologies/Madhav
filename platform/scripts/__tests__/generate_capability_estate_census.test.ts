@@ -161,7 +161,7 @@ describe('capability estate census', () => {
     expect(census.details.descriptor_route_contracts).toHaveLength(199)
     expect(census.denominators.descriptor_route_contracts).toMatchObject({
       denominator: 199,
-      non_exhaustible_paginated: 107,
+      non_exhaustible_paginated: 109,
       exhaustible_paginated: 5,
       descriptor_content_untyped: 194,
       full_profile_allowlist_enforced: true,
