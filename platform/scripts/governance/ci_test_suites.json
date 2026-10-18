@@ -412,6 +412,11 @@
         "scripts/__tests__/test_p01*.py",
         "scripts/__tests__/test_backup*.py",
         "scripts/__tests__/test_w4*.py"
+      ],
+      "path_triggers": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
+        "**/kyd_kinds_*.py"
       ]
     },
     "db-integration-tests-85-0": {
