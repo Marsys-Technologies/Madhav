@@ -1808,6 +1808,22 @@ export async function computeGocharaActivation(
     density_contract: ACTIVATION_DENSITY_CONTRACT,
   }
 
+  // A withheld governed generation is refused before any window query, even without a domain filter.
+  if (coverage.withheld_reason) {
+    return {
+      windows: [],
+      coverage,
+      drill_pointers: [],
+      provenance_envelope: {
+        ...baseEnvelope,
+        source_citation: unpublishedCitation(coverage),
+        window_count: 0,
+        backing_data_reachable: coverageOk,
+        empty_reason: coverage.withheld_reason,
+      },
+    }
+  }
+
   if (invalidDomain) {
     return {
       windows: [],
@@ -2109,6 +2125,23 @@ export async function computeGocharaForecast(
     resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     density_contract: FORECAST_DENSITY_CONTRACT,
+  }
+
+  // A withheld governed generation is refused before any window query, even without a domain filter.
+  if (coverage.withheld_reason) {
+    return {
+      windows: [],
+      coverage,
+      drill_pointers: [],
+      provenance_envelope: {
+        ...baseEnvelope,
+        source_citation: unpublishedCitation(coverage),
+        window_count: 0,
+        shape_breakdown: {},
+        backing_data_reachable: coverageOk,
+        empty_reason: coverage.withheld_reason,
+      },
+    }
   }
 
   if (invalidDomain) {
@@ -2419,6 +2452,22 @@ export async function computeGocharaElectionAvoidance(
     computed_at: new Date().toISOString(),
     dr16_properties: ['honest_clarity', 'probabilistic_never_fatalistic', 'falsifier_bearing', 'mitigation_paired', 'confidence_honest'],
     density_contract: ELECTION_AVOIDANCE_DENSITY_CONTRACT,
+  }
+
+  // A withheld governed generation is refused before any window query, even without a domain filter.
+  if (coverage.withheld_reason) {
+    return {
+      windows: [],
+      coverage,
+      drill_pointers: [],
+      provenance_envelope: {
+        ...baseEnvelope,
+        source_citation: unpublishedCitation(coverage),
+        window_count: 0,
+        backing_data_reachable: coverageOk,
+        empty_reason: coverage.withheld_reason,
+      },
+    }
   }
 
   if (invalidDomain) {
