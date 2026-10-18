@@ -40,6 +40,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '../../../address_resolver'
 
 const OPTION_A_CITATION =
@@ -108,7 +109,7 @@ export const getGrahaYuddhaCapability: CapabilityDescriptor = {
   ].join(' '),
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all ayanamshas present.' },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
   },
   required_inputs: ['chart_id'],
   archetype: 'flat_fact',
@@ -133,14 +134,12 @@ export const getGrahaYuddhaCapability: CapabilityDescriptor = {
     try {
       const chart_id = args.chart_id as string
       if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
-      const ayanamsha_id = args.ayanamsha_id as string | undefined
+      const aya = resolveHandlerAyanamsha(args)
+      const ayanamsha_id = aya.id ?? undefined
 
       const params: unknown[] = [chart_id]
       let where = `chart_id = $1 AND fact_category = 'graha_yuddha'`
-      if (ayanamsha_id) {
-        params.push(ayanamsha_id)
-        where += ` AND ayanamsha_id = $${params.length}`
-      }
+      where += pushAyanamshaFilter(aya, params)
 
       const [factRows, chartRows] = await Promise.all([
         query<{
@@ -149,7 +148,7 @@ export const getGrahaYuddhaCapability: CapabilityDescriptor = {
         }>(
           `SELECT fact_id, fact_subject, fact_key, ayanamsha_id, fact_value_jsonb
            FROM chart_facts WHERE ${where}
-           ORDER BY ayanamsha_id, fact_subject, fact_key`,
+           ORDER BY ${ayanamshaServeOrderBy()}, fact_subject, fact_key`,
           params,
         ),
         query<{ birth_date: string }>(
@@ -272,6 +271,7 @@ export const getGrahaYuddhaCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           birth_date: birthDate,
           pairs,
           total: pairs.length,

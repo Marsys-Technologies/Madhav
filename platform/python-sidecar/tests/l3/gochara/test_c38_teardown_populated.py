@@ -15,6 +15,8 @@ from pathlib import Path
 
 import pytest
 
+from ._smalltest_executor_evidence import executor_bound_smalltest  # noqa: F401
+
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 
 from .test_a53_inventory import CHART_ID, H0, H1
@@ -65,6 +67,8 @@ def _stamp_consistently(w):
                    (json.dumps(manifest), writer_mod._manifest_digest(manifest), td.TRIGGERED_BY))
     with w.conn.transaction():                                   # behind the guards: a fixture rewrite, not a build step
         w.conn.execute("SET LOCAL session_replication_role = replica")
+        w.conn.execute("UPDATE public.kala_gochara_coverage SET build_id = (SELECT id::text FROM public.build_runs WHERE triggered_by = %s LIMIT 1) WHERE chart_id = %s AND generation = %s AND partition_kind = 'event_class'",
+                       (td.TRIGGERED_BY, td.CHART_ID, GEN))
         for table in ("kala_gochara_publication", "ka_gochara_search_input_snapshot"):
             w.conn.execute(f"UPDATE public.{table} SET input_generation_vector = input_generation_vector || %s::jsonb WHERE generation = %s",
                            (json.dumps(stamp), GEN))

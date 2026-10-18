@@ -27,6 +27,14 @@ REFUSALS (exit 4, JSON `refusals`, one entry per id where it concerns an id; fai
   SERVICE_ASSET, SCOPE_NOT_ALLOWED, DOMAIN_SCOPE_MISMATCH, LAYER_NOT_ALLOWED, FAMILY_ASSET, SPLITS_FAMILY, PROTECTED_ASSET (build_protected_assets
   for the anchor chart), FORCE_BYPASSED_BY_PROBE (rebuild_on_probe_fail=true: a green probe skips the writer even under force),
   ACCEPT_EXCLUDED_NOT_NEEDED (an id that passes every check cannot be waved away), ACCEPT_EXCLUDED_NOT_REQUESTED.
+  FAMILY OVERRIDE (--allow-family-assets <ids>, SS N-443 D3; OUR tool only, the frozen orchestrator and FAMILY_ASSETS.json are untouched): waives
+  EXACTLY FAMILY_ASSET and SPLITS_FAMILY, ONLY for the ids named, each of which must be in the request and be a family member (name pattern or
+  FAMILY_ASSETS.json family_set). Everything else still refuses for a named id (NOT_ACTIVE, NO_WRITER, SERVICE_ASSET, PROTECTED_ASSET,
+  FORCE_BYPASSED_BY_PROBE, LAYER_NOT_ALLOWED, ...): the layer allow-list stays --allowed-layers. A named id that is not requested
+  (ACCEPT_FAMILY_NOT_REQUESTED), not a family member (ACCEPT_FAMILY_NOT_FAMILY) or also in --accept-excluded (ACCEPT_FAMILY_ALSO_EXCLUDED) refuses.
+  The sorted list is bound into the confirm token, written to the receipt (`family_override`, `inputs.allow_family`), put in the run_committed /
+  run_dispatched events and the plan summary, and logged as `family-override: <ids>`. --dispatch-existing takes it from the receipt. With the flag
+  absent the token, the summary, the receipt and the events are byte-for-byte what they were before the flag existed.
   An id that fails is NEVER dropped silently: the run is refused unless the id is named in --accept-excluded (then it is dropped, listed in the
   plan, and bound into the confirm token).
   cross-chart impact (the 33 global assets): CROSS_CHART_IMPACT_NOT_ACCEPTED / CROSS_CHART_COUNT_MISMATCH / ACCEPT_CROSS_CHART_UNMATCHED -- every OTHER
@@ -93,6 +101,7 @@ WORKER_LIMIT_MIN, WORKER_LIMIT_MAX = 1, 6
 MIN_HEADROOM_CONNECTIONS = 10                           # refuse a run that would leave fewer than this many connections free
 RUNNER_DEFAULT_WORKER_LIMIT = 4                         # runner.py `_WORKER_LIMIT` default when the job env does not set it
 
+FAMILY_WAIVED_CODES = ("FAMILY_ASSET", "SPLITS_FAMILY")   # the ONLY refusals --allow-family-assets can waive
 DEFAULT_ALLOWED_LAYERS = ("brahmagyan", "ganita", "bodha")
 ALLOWED_SCOPES = ("per_chart", "global")
 # runner._WRITER_SUBASSET_IDS: registered writers with no own registry writer row; built as a side effect of the parent.
@@ -220,9 +229,12 @@ def validate_worker_limit(value: int | None) -> int | None:
 # ───────────────────────── per-id validation ─────────────────────────
 
 def classify_assets(ids: Sequence[str], rows: Sequence[Mapping[str, Any]], family: Mapping[str, Any], *,
-                    allowed_layers: Sequence[str] = DEFAULT_ALLOWED_LAYERS, protected: Sequence[str] = ()) -> list[dict]:
+                    allowed_layers: Sequence[str] = DEFAULT_ALLOWED_LAYERS, protected: Sequence[str] = (),
+                    allow_family: Sequence[str] = ()) -> list[dict]:
     """Every problem of every requested id, as {asset, code, detail}, all reported together (sorted by id, then code). Empty = every
-    id is a plannable asset. Pure."""
+    id is a plannable asset. Pure. `allow_family` (the token-bound --allow-family-assets list) waives FAMILY_ASSET and SPLITS_FAMILY for
+    exactly those ids and nothing else; its names are checked by validate_allow_family, not here."""
+    waived = frozenset(allow_family)
     by_id: dict[str, dict] = {}
     findings: list[dict] = []
     for r in rows:
@@ -266,11 +278,36 @@ def classify_assets(ids: Sequence[str], rows: Sequence[Mapping[str, Any]], famil
             findings.append({"asset": a, "code": "LAYER_NOT_ALLOWED", "detail": f"{a} is layer {r.get('layer')!r}; allowed {list(allowed_layers)}"})
     for f in slw.family_refusals(list(ids), family, committing=False):
         if f["code"] == "FAMILY_ASSET":
-            findings.append({"asset": f["asset"], "code": "FAMILY_ASSET", "detail": f["detail"]})
+            if f["asset"] not in waived:
+                findings.append({"asset": f["asset"], "code": "FAMILY_ASSET", "detail": f["detail"]})
         elif f["code"] == "SPLITS_FAMILY":
             for a in f["requested"]:
-                findings.append({"asset": a, "code": "SPLITS_FAMILY", "detail": f["detail"]})
+                if a not in waived:
+                    findings.append({"asset": a, "code": "SPLITS_FAMILY", "detail": f["detail"]})
     return sorted(findings, key=lambda x: (x["asset"], x["code"]))
+
+
+def validate_allow_family(ids: Sequence[str], allow_family: Sequence[str], family: Mapping[str, Any],
+                          accept_excluded: Sequence[str] = ()) -> None:
+    """The --allow-family-assets names themselves: every one must be requested and be a family member (the same test that raises
+    FAMILY_ASSET: name pattern, or FAMILY_ASSETS.json family_set), and none may also be dropped by --accept-excluded. Raises
+    LevelWaveRefusal with every problem; returns None when the list is exact. Pure."""
+    req = set(ids)
+    members = {f["asset"] for f in slw.family_refusals(list(ids), family, committing=False) if f["code"] == "FAMILY_ASSET"}
+    bad: list[dict] = []
+    for a in sorted(allow_family):
+        if a not in req:
+            bad.append({"asset": a, "code": "ACCEPT_FAMILY_NOT_REQUESTED",
+                        "detail": f"--allow-family-assets names {a}, which is not in the requested list"})
+        elif a not in members:
+            bad.append({"asset": a, "code": "ACCEPT_FAMILY_NOT_FAMILY",
+                        "detail": f"--allow-family-assets names {a}, which is not a family member (name pattern or FAMILY_ASSETS.json family_set): "
+                                  "there is nothing to waive for it"})
+        elif a in set(accept_excluded):
+            bad.append({"asset": a, "code": "ACCEPT_FAMILY_ALSO_EXCLUDED",
+                        "detail": f"{a} is named in --allow-family-assets (build it) and in --accept-excluded (drop it): choose one"})
+    if bad:
+        raise slw.LevelWaveRefusal(bad)
 
 
 def apply_exclusions(ids: Sequence[str], findings: Sequence[Mapping[str, Any]], accept_excluded: Sequence[str]) -> tuple[list[str], list[dict]]:
@@ -450,16 +487,20 @@ def check_cross_chart_acceptance(impact: Mapping[str, Any], accepted: Mapping[st
 def build_confirm_token(*, manifest_digest: str, ids: Sequence[str], anchor: str, image_sha: str, worker_limit: int | None,
                         accepted_excluded: Sequence[str], allow_redispatch: Sequence[str], accepted_cross_chart: Mapping[str, int] = {},
                         impact_sha256: str | None = None, job: str = "", project: str = "", region: str = "",
-                        job_worker_limit: int | None = None) -> str:
+                        job_worker_limit: int | None = None, allow_family: Sequence[str] = ()) -> str:
     """`ASSETSET<N>_<12 hex>_FORCE_ASSET_SET_REBUILD`: a hash over the manifest digest (which carries the ids, waves, scopes, writer
     digests), the id set, the anchor chart, the deployed image sha, force=1, the worker-limit override (or its absence), the operator
     overrides (exclusions, redispatch), the cross-chart impact (its sha256 and the accepted per-chart counts) and WHERE it executes
-    (--job / --project / --region) and the job's declared worker limit the connection math used. Never equal to a wave or global token."""
+    (--job / --project / --region) and the job's declared worker limit the connection math used, and the family override list
+    (`allow_family`, sorted; the key is present ONLY when the list is non-empty, so a run without the flag keeps its token byte-for-byte).
+    Never equal to a wave or global token."""
     body = {"schema": TOKEN_SCHEMA, "manifest_digest": manifest_digest, "assets": sorted(ids), "anchor_chart": anchor,
             "image_sha": image_sha, "force_execute": True, "worker_limit": worker_limit,
             "accepted_excluded": sorted(accepted_excluded), "allow_redispatch": sorted(allow_redispatch),
             "accepted_cross_chart": dict(sorted(accepted_cross_chart.items())), "impact_sha256": impact_sha256,
             "job": job, "project": project, "region": region, "job_worker_limit": job_worker_limit}
+    if allow_family:
+        body["allow_family"] = sorted(allow_family)
     h = hashlib.sha256(slw.canonical_json(body).encode("utf-8")).hexdigest()
     return f"ASSETSET{len(ids)}_{h[:12].upper()}_FORCE_ASSET_SET_REBUILD"
 
@@ -681,6 +722,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--assets-file", metavar="FILE", help="file of asset ids (commas / spaces / newlines; # comments); <= 64 KiB")
     p.add_argument("--accept-excluded", action="append", metavar="LIST",
                    help="ids that FAIL validation and are dropped on purpose; any other failing id refuses the run")
+    p.add_argument("--allow-family-assets", action="append", metavar="LIST",
+                   help="ids of Pravaha-family assets (name pattern or FAMILY_ASSETS.json family_set) that are BUILT in this run: waives FAMILY_ASSET and "
+                        "SPLITS_FAMILY for exactly these ids and nothing else (NOT_ACTIVE, NO_WRITER, SERVICE_ASSET, PROTECTED_ASSET, layer ... still "
+                        "refuse); every name must be in the request; bound into the confirm token, the receipt and the log (`family-override: <ids>`)")
     p.add_argument("--accept-cross-chart-impact", action="append", metavar="CHART=N",
                    help="accept that the lit rows of dependents on OTHER charts (<chart uuid|global>=<count the plan printed>) are left as they are "
                         "after the global assets are rebuilt; one per chart; required when the plan has global assets with such rows; bound into the token")
@@ -887,9 +932,9 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
     if args.dispatch_existing:
         if not commit:
             raise slw.LevelWaveError("--dispatch-existing executes a run: it needs --commit --confirm <the receipt's token>")
-        if args.assets or args.assets_file or args.accept_excluded or args.accept_cross_chart_impact:
+        if args.assets or args.assets_file or args.accept_excluded or args.accept_cross_chart_impact or args.allow_family_assets:
             raise slw.LevelWaveError("--dispatch-existing takes the ids and acceptances from the receipt: do not pass --assets / --assets-file / "
-                                     "--accept-excluded / --accept-cross-chart-impact (--allow-redispatch <RUN_ID> here means: the executions "
+                                     "--accept-excluded / --accept-cross-chart-impact / --allow-family-assets (--allow-redispatch <RUN_ID> here means: the executions "
                                      "list was checked and no execution of this run exists)")
         run_uuid = _parse_run_id(args.dispatch_existing, "--dispatch-existing")
         gad.parse_redispatch(args.allow_redispatch)          # validated up front (it is the "I checked the executions list" override)
@@ -903,11 +948,13 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
         accept_excluded = list(inputs["accept_excluded"])
         accepted_cross = {k: int(v) for k, v in inputs["accept_cross_chart"].items()}
         allow_redispatch = list(inputs["allow_redispatch"])
+        allow_family = sorted(inputs.get("allow_family") or [])        # absent in receipts without the override
     else:
         allow_redispatch = gad.parse_redispatch(args.allow_redispatch)
         ids = parse_asset_ids(args.assets, args.assets_file)
         accept_excluded = parse_id_list(args.accept_excluded, "--accept-excluded")
         accepted_cross = parse_cross_chart_accepts(args.accept_cross_chart_impact)
+        allow_family = parse_id_list(args.allow_family_assets, "--allow-family-assets")
     allowed_layers = tuple(x for x in args.allowed_layers.split(",") if x)
 
     # 1. the wave's gates: family ref, job sha binding, force support, re-read of the job sha
@@ -929,7 +976,13 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
     # 2. anchor chart, registry rows, per-id validation (nothing is dropped unless named in --accept-excluded)
     gad.check_anchor_exists(connect, anchor)
     rows = _read_rows(connect, ids)
-    findings = classify_assets(ids, rows, family, allowed_layers=allowed_layers, protected=_read_protected(connect, anchor, ids))
+    validate_allow_family(ids, allow_family, family, accept_excluded)
+    findings = classify_assets(ids, rows, family, allowed_layers=allowed_layers, protected=_read_protected(connect, anchor, ids),
+                               allow_family=allow_family)
+    if allow_family:
+        override_line = "family-override: " + ",".join(allow_family)
+        emit("family_override", ids=allow_family, waives=list(FAMILY_WAIVED_CODES), line=override_line)
+        print(override_line, file=sys.stderr)
     plan_ids, excluded = apply_exclusions(ids, findings, accept_excluded)
     rows_by_id = {r["asset_id"]: dict(r) for r in rows if r["asset_id"] in set(plan_ids)}
     plan_rows = [rows_by_id[a] for a in plan_ids]
@@ -958,14 +1011,18 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
     token = build_confirm_token(manifest_digest=plan["manifest_digest"], ids=plan["plan"], anchor=anchor, image_sha=pinned,
                                 worker_limit=worker_limit, accepted_excluded=[e["asset"] for e in excluded], allow_redispatch=allow_redispatch,
                                 accepted_cross_chart=accepted_cross, impact_sha256=impact_sha, job=args.job, project=args.project,
-                                region=args.region, job_worker_limit=args.job_worker_limit)
+                                region=args.region, job_worker_limit=args.job_worker_limit, allow_family=allow_family)
     triggered_by = build_triggered_by(anchor, plan["manifest_digest"])
     estimate = slw.estimate_runtime(plan["waves"], {a: rows_by_id[a] for a in plan["plan"]})
     deps_all = {**plan["outside"], **{a: rows_by_id[a].get("depends_on") or [] for a in plan["plan"]}}
     meta = {"deployed_job_sha": pinned, "inventory_sha": binding["inventory_sha"], "force_execute": True, "worker_limit": worker_limit}
+    if allow_family:
+        meta["family_override"] = list(allow_family)
     cmd_preview = dispatch_command(run_id="<run_id>", project=args.project, region=args.region, job=args.job, worker_limit=worker_limit)
     inputs = {"requested": list(ids), "accept_excluded": list(accept_excluded), "accept_cross_chart": dict(accepted_cross),
               "allow_redispatch": list(allow_redispatch)}
+    if allow_family:
+        inputs["allow_family"] = list(allow_family)
     summary = {
         "anchor_chart": anchor, "anchor_is_canonical": anchor == gad.CANONICAL_CHART_ID, "assets": plan["plan"],
         "asset_count": len(plan["plan"]), "layer_counts": _layer_counts(plan["plan"], rows_by_id), "global_assets": global_assets,
@@ -989,6 +1046,9 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
         "runbook_gates_not_in_tool": ["no deploy workflow open", "watchdog-reaper paused", "backup / PITR point recorded before the run",
                                       "live job image sha: READ by the tool (gcloud run jobs describe) at plan, before the INSERT and before the execute; nothing is asserted by hand"],
     }
+    if allow_family:
+        summary["family_override"] = {"ids": list(allow_family), "waives": list(FAMILY_WAIVED_CODES), "line": override_line,
+                                      "note": "bound into the confirm token and the receipt; every other refusal still applies to these ids"}
     if commit and args.confirm != token:
         raise _refuse("CONFIRM_TOKEN_MISMATCH", f"--commit requires --confirm {token}", expected=token)
 
@@ -1001,7 +1061,8 @@ def _run_cli(args, *, connect, git, out, sleep, monotonic, dispatch, now, commit
                           confirm_token=token, triggered_by=triggered_by, worker_limit=worker_limit, image_sha=pinned,
                           inventory_sha=binding["inventory_sha"], excluded_accepted=excluded, connection_budget=budget,
                           cross_chart_impact=impact, impact_sha256=impact_sha, inputs=inputs,
-                          target={"job": args.job, "project": args.project, "region": args.region}, planned_at=_utc_iso(now))
+                          target={"job": args.job, "project": args.project, "region": args.region}, planned_at=_utc_iso(now),
+                          **({"family_override": list(allow_family)} if allow_family else {}))
     check_receipt_overwrite(receipt_path, receipt)
     holder.update(receipt=receipt, receipt_path=receipt_path)
     if commit:

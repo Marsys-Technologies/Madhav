@@ -7,6 +7,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho } from '../../handler_ayanamsha'
 
 const TAJIK_CF_CATEGORIES = ['tajik_hadda_lord', 'tajik_triraashipathi', 'tajik_vargottama_specific']
 
@@ -49,7 +50,8 @@ export const getTajikCapability: CapabilityDescriptor = {
     'Covers 3 fact_categories + l1_tajik_varsha_year_lords table.',
   input_schema: {
     chart_id:       { type: 'string', description: 'Chart UUID', required: true },
-    ayanamsha_id:   { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
+    // Plain literal on purpose: platform-mcp codegen PILOT descriptor (registry_manifest.ts); equality with PRIMARY_AYANAMSHA_ID_INPUT_TEXT is pinned by __tests__/kp_descriptor_text.test.ts.
+    ayanamsha_id:   { type: 'string', description: 'Ayanamsha to read: a stored id or short alias, any case. Omitted = lahiri_chitrapaksha (the Lahiri primary reading); "all" = the explicit raw multi-ayanamsha rows.' },
     include_varsha: {
       type: 'boolean',
       description: 'Include l1_tajik_varsha_year_lords rows (default true)',
@@ -125,14 +127,12 @@ export const getTajikCapability: CapabilityDescriptor = {
       // current-year varsha row. `total` is still always reported so a caller can tell "exists,
       // not fetched" apart from "genuinely zero".
       const includeHadda  = (args.include_hadda as boolean) ?? false
+      const aya = resolveHandlerAyanamsha(args)
 
       // ── Source 1: EAV hadda-lord / triraashipathi / vargottama facts ────────────
       const cfCountParams: unknown[] = [chartId, TAJIK_CF_CATEGORIES]
       let cfCountSql = `SELECT COUNT(*)::int AS n FROM chart_facts WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
-      if (args.ayanamsha_id) {
-        cfCountSql += ` AND ayanamsha_id = $${cfCountParams.length + 1}`
-        cfCountParams.push(args.ayanamsha_id as string)
-      }
+      cfCountSql += pushAyanamshaFilter(aya, cfCountParams)
       const cfCountResult = await query<{ n: number }>(cfCountSql, cfCountParams)
       const haddaTotal = cfCountResult.rows[0]?.n ?? 0
 
@@ -145,11 +145,8 @@ export const getTajikCapability: CapabilityDescriptor = {
           FROM chart_facts
           WHERE chart_id = $1 AND fact_category = ANY($2::text[])
         `
-        if (args.ayanamsha_id) {
-          sql += ` AND ayanamsha_id = $${params.length + 1}`
-          params.push(args.ayanamsha_id as string)
-        }
-        sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
+        sql += pushAyanamshaFilter(aya, params)
+        sql += ` ORDER BY fact_category, ${ayanamshaServeOrderBy()}, fact_key LIMIT $${params.length + 1} OFFSET $${params.length + 2}`
         params.push(limit, offset)
 
         const cfResult = await query<Record<string, unknown>>(sql, params)
@@ -207,7 +204,7 @@ export const getTajikCapability: CapabilityDescriptor = {
         if (effectiveVarshaYear != null) { vCountSql += ` AND varsha_year = $${vCountParams.length + 1}`; vCountParams.push(effectiveVarshaYear) }
         if (args.year_min != null) { vCountSql += ` AND varsha_year >= $${vCountParams.length + 1}`; vCountParams.push(args.year_min as number) }
         if (args.year_max != null) { vCountSql += ` AND varsha_year <= $${vCountParams.length + 1}`; vCountParams.push(args.year_max as number) }
-        if (args.ayanamsha_id) { vCountSql += ` AND ayanamsha_id = $${vCountParams.length + 1}`; vCountParams.push(args.ayanamsha_id as string) }
+        vCountSql += pushAyanamshaFilter(aya, vCountParams)
         const vCountResult = await query<{ n: number }>(vCountSql, vCountParams)
         varshaTotal = vCountResult.rows[0]?.n ?? 0
 
@@ -216,12 +213,12 @@ export const getTajikCapability: CapabilityDescriptor = {
         if (effectiveVarshaYear != null) { vSql += ` AND varsha_year = $${vParams.length + 1}`; vParams.push(effectiveVarshaYear) }
         if (args.year_min != null) { vSql += ` AND varsha_year >= $${vParams.length + 1}`; vParams.push(args.year_min as number) }
         if (args.year_max != null) { vSql += ` AND varsha_year <= $${vParams.length + 1}`; vParams.push(args.year_max as number) }
-        if (args.ayanamsha_id) { vSql += ` AND ayanamsha_id = $${vParams.length + 1}`; vParams.push(args.ayanamsha_id as string) }
+        vSql += pushAyanamshaFilter(aya, vParams)
         if (currentVarshaYear != null) {
-          vSql += ` ORDER BY ABS(varsha_year - $${vParams.length + 1}), varsha_year, ayanamsha_id`
+          vSql += ` ORDER BY ABS(varsha_year - $${vParams.length + 1}), varsha_year, ${ayanamshaServeOrderBy()}`
           vParams.push(currentVarshaYear)
         } else {
-          vSql += ` ORDER BY varsha_year, ayanamsha_id`
+          vSql += ` ORDER BY varsha_year, ${ayanamshaServeOrderBy()}`
         }
         vSql += ` LIMIT $${vParams.length + 1} OFFSET $${vParams.length + 2}`
         vParams.push(limit, offset)
@@ -231,6 +228,7 @@ export const getTajikCapability: CapabilityDescriptor = {
 
       const content: Record<string, unknown> = {
         chart_id: chartId,
+        ...ayanamshaScopeEcho(aya),
         chart_facts_categories: TAJIK_CF_CATEGORIES,
         hadda_lord_facts: includeHadda
           ? {
@@ -274,7 +272,7 @@ export const getTajikCapability: CapabilityDescriptor = {
       if (haddaTotal === 0 && varshaTotal === 0) {
         content['empty_reason'] = `No chart_facts rows under fact_category IN (${TAJIK_CF_CATEGORIES.map(c => `"${c}"`).join(', ')}) ` +
           `and no l1_tajik_varsha_year_lords rows, for chart_id=${chartId}` +
-          (args.ayanamsha_id ? `, ayanamsha_id=${String(args.ayanamsha_id)}` : '') +
+          (aya.id ? `, ayanamsha_id=${aya.id}` : '') +
           (args.varsha_year != null ? `, varsha_year=${String(args.varsha_year)}` : '') +
           `. Searched the whole matching set (true totals, not just this page) — Tajika/Varshaphal ` +
           `has genuinely not been computed/stored for this chart+filter combination.`

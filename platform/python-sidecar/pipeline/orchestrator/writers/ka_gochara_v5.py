@@ -47,7 +47,7 @@ import hashlib
 import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from pipeline.orchestrator.writers import (
@@ -58,6 +58,12 @@ from pipeline.orchestrator.writers import (
     register,
 )
 from services.gochara_kernel import evaluator as gk_evaluator
+from services.gochara_kernel import horizon as gk_horizon
+
+
+from services.gochara_kernel import stretch_sink as gk_stretch_sink
+
+
 from services.gochara_kernel import ephemeris_pins as gk_ephemeris_pins
 from services.gochara_kernel.native_conn import native_connection
 from services.gochara_kernel import arcs as gk_arcs
@@ -168,9 +174,15 @@ DEFAULT_HORIZON = (datetime(1998, 1, 1, tzinfo=timezone.utc),
 # marker digest — a scope no verifier vocabulary knows, so the verification job
 # refuses it by name and the candidate is unsealable by construction. The writer
 # never publishes either way.
+MEASURING_HORIZON = gk_horizon.RULED_HORIZON
+
+
+MEASURING_RUN = "all_classes_full"
+
+
 TEST_SLICE_KEY = "gochara_v5_test_slice"
 TEST_SLICE_SCHEMA = "gochara_v5_test_slice/1"
-TEST_SLICE_RUNS = ("all_classes_1y", "one_class_full")
+TEST_SLICE_RUNS = ("all_classes_1y", "one_class_full", "all_classes_full")      # all_classes_full: the measuring build (every scored class, the whole derived horizon)
 TEST_SLICE_SCOPE = "test_slice"
 _ONE_YEAR = timedelta(days=366)
 _TEST_SLICE_FIELDS = frozenset({"schema", "run", "horizon", "classes"})
@@ -291,7 +303,8 @@ def _in_savepoint(conn, read):
         return read()
 
 
-def _parse_slice_horizon(raw) -> tuple:
+def _parse_slice_horizon(raw, outer=None) -> tuple:
+    outer = DEFAULT_HORIZON if outer is None else outer          # callers pass the shape's own bound (`_outer_for_run`)
     def refuse(msg):
         raise TestSliceRefusal(f"{ASSET_ID}: {TEST_SLICE_KEY}: {msg}")
     if (not isinstance(raw, (list, tuple)) or len(raw) != 2
@@ -309,15 +322,25 @@ def _parse_slice_horizon(raw) -> tuple:
         refuse(f"horizon {raw!r} cannot be converted to UTC ({type(exc).__name__}: {exc})")
     if not start < end:
         refuse(f"horizon {raw!r} is empty or inverted")
-    if start < DEFAULT_HORIZON[0] or end > DEFAULT_HORIZON[1]:
-        refuse(f"horizon [{start.isoformat()}, {end.isoformat()}) reaches outside DEFAULT_HORIZON "
-               f"[{DEFAULT_HORIZON[0].isoformat()}, {DEFAULT_HORIZON[1].isoformat()}) — refused, never clipped")
+    if start < outer[0] or end > outer[1]:
+        refuse(f"horizon [{start.isoformat()}, {end.isoformat()}) reaches outside "
+               f"{'DEFAULT_HORIZON' if tuple(outer) == tuple(DEFAULT_HORIZON) else 'the chart horizon'} "
+               f"[{outer[0].isoformat()}, {outer[1].isoformat()}) — refused, never clipped")
     return (start, end)
 
 
-def _validate_test_slice(marker) -> TestSlice:
+def _outer_for_run(run, outer=None) -> tuple:
+    """The outer horizon a marker of this run is validated against. `all_classes_full` (the measuring build): the scope validated from chart/run inputs
+    when the caller has them, else the owner-approved MEASURING_HORIZON (staging and teardown stamp checks have no run inputs). Every other shape: DEFAULT_HORIZON, exactly as on main — an `outer` argument is only ever used for all_classes_full."""
+    if run == MEASURING_RUN:
+        return MEASURING_HORIZON if outer is None else outer
+    return DEFAULT_HORIZON
+
+
+def _validate_test_slice(marker, outer=None) -> TestSlice:
     """The marker, strictly. Every deviation is a named TestSliceRefusal — the writer never
-    guesses a scope it was not explicitly given."""
+    guesses a scope it was not explicitly given. `outer` is the chart's DERIVED horizon (FB-4) and applies to `all_classes_full` ONLY: the run-time call
+    passes it, the dispatch's staging call and the teardown's stamp proof pass nothing (MEASURING_HORIZON). The two older shapes keep DEFAULT_HORIZON."""
     def refuse(msg):
         raise TestSliceRefusal(f"{ASSET_ID}: {TEST_SLICE_KEY}: {msg}")
     if not isinstance(marker, dict):
@@ -333,7 +356,8 @@ def _validate_test_slice(marker) -> TestSlice:
     run = marker["run"]
     if run not in TEST_SLICE_RUNS:
         refuse(f"unknown run {run!r} (known: {list(TEST_SLICE_RUNS)})")
-    horizon = _parse_slice_horizon(marker["horizon"])
+    outer = _outer_for_run(run, outer)
+    horizon = _parse_slice_horizon(marker["horizon"], outer)
     classes = marker["classes"]
     if (not isinstance(classes, list) or not classes
             or any(not isinstance(c, str) for c in classes)):
@@ -349,6 +373,13 @@ def _validate_test_slice(marker) -> TestSlice:
                    f"not {sorted(classes)}")
         if horizon[1] - horizon[0] > _ONE_YEAR:
             refuse(f"run 'all_classes_1y' is a 1-year horizon, not {horizon[1] - horizon[0]}")
+    elif run == "all_classes_full":
+        if set(classes) != set(SCORED_CLASSES):
+            refuse(f"run 'all_classes_full' is all {len(SCORED_CLASSES)} scored classes, not {sorted(classes)}")
+        if tuple(horizon) != tuple(outer):
+            refuse("run 'all_classes_full' is the chart's whole derived horizon "
+                   f"[{outer[0].isoformat()}, {outer[1].isoformat()}), not "
+                   f"[{horizon[0].isoformat()}, {horizon[1].isoformat()})")
     else:  # one_class_full
         if len(classes) != 1:
             refuse(f"run 'one_class_full' is exactly one class, not {sorted(classes)}")
@@ -381,7 +412,16 @@ def _test_slice(ctx: ContextSpec) -> TestSlice | None:
     manifest = _plan_manifest(ctx)
     if manifest is None or TEST_SLICE_KEY not in manifest:
         return None
-    return _validate_test_slice(manifest[TEST_SLICE_KEY])
+    if ctx.config.get("gochara_v5_final_rules") is True:
+        raise TestSliceRefusal("final_rules_require_candidate: a test slice always uses the measuring rules")
+    marker = manifest[TEST_SLICE_KEY]
+    # FB-4, `all_classes_full` ONLY (steward MB-CODEX-1 ruling 1): the marker's outer bound is the chart's DERIVED horizon whenever the run carries the chart's birth
+    # parameters (the orchestrator always passes them), so a marker staged for a different horizon than the chart inputs now derive is refused by name. The two older
+    # shapes (and a marker that is not an object, refused below by name) consume only the declared scope: they are validated against DEFAULT_HORIZON as on main.
+    outer = None
+    if isinstance(marker, dict) and marker.get("run") == MEASURING_RUN and ctx.config.get("birth_params") and ctx.db_conn is not None:
+        outer = _derived_outer_bound(ctx)
+    return _validate_test_slice(marker, outer)
 
 
 def _slice_component(slice_: TestSlice) -> dict:
@@ -430,11 +470,201 @@ def _scope_normalised(vector: dict, slice_: TestSlice | None) -> dict:
     return v
 
 
+_STATION_JD_CACHE: dict = {}
+
+
+_STATION_REFINED_CACHE: dict = {}
+
+
+def _station_instants_in(body: str, t0: datetime, t1: datetime, ephe_path: str | None) -> list[str]:
+    """The STORED-PATH station instants (ISO, UTC) of `body` (DB lowercase) inside [t0, t1): the SEAM test and `station_at` of the sink (MB-2.3: the station row's
+    `t_exact` is `station_at`). These are the instants the substrate STORES (`SkyEventStore.build_boundary_substrate`; `substrate.stored_station_instant` is that
+    expression) for each station of the production arc index, NOT the arc index's own spline extrema, which differ from them by up to the measured spline bound
+    (13 s for Mercury, February 2026). The arc index is `substrate.production_arc_index` (the one production function), cached per process; only the stations whose
+    spline instant lies within the body's spline error bound of the window are refined, each once. A body with no stations has none."""
+    from datetime import timedelta
+    from services.gochara_kernel.knots import SPLINE_STATION_ERROR_BOUND_SECONDS
+    from services.gochara_kernel.substrate import jd_to_utc, production_arc_index, stored_station_instant
+    title = body.title()
+    key = (body, ephe_path)
+    if key not in _STATION_JD_CACHE:
+        _STATION_JD_CACHE[key] = tuple(production_arc_index(title, ephe_path).stations)
+    margin = timedelta(seconds=SPLINE_STATION_ERROR_BOUND_SECONDS.get(title, 0.0) + 5.0)
+    out = []
+    for jd in _STATION_JD_CACHE[key]:
+        spline = jd_to_utc(jd)
+        if not (t0 - margin <= spline < t1 + margin):
+            continue
+        if (title, jd, ephe_path) not in _STATION_REFINED_CACHE:
+            _STATION_REFINED_CACHE[(title, jd, ephe_path)] = stored_station_instant(title, jd, ephe_path)
+        refined = _STATION_REFINED_CACHE[(title, jd, ephe_path)]
+        if t0 <= refined < t1:
+            out.append(refined.isoformat())
+    return out
+
+
+def _stretch_sink_records(event_class: str, horizon, stretch_sink: list, position_at, ephe_path: str | None) -> list[dict]:
+    """The class's STRETCH_SINK/1 records (MEASURING_BUILD_CONTRACT MB-2) from the certifier's per-stretch results; seams, wraps and horizon clipping are added
+    here from the arc index, the ray levels and the ephemeris."""
+    from datetime import timedelta
+    from services.gochara_kernel.window_verifier import _ASPECT_ANGLES, _POINT_ORB_DEG
+
+    def wrapped_inside(body: str, t0: datetime, t1: datetime) -> bool:
+        n = max(2, min(200, int((t1 - t0).total_seconds() // 21600) + 2))                  # at most every six hours, never more than 200 samples
+        lons = [float(position_at(body, t0 + (t1 - t0) * k / (n - 1))) for k in range(n)]
+        return any(abs(b - a) > 180.0 for a, b in zip(lons, lons[1:]))
+    return gk_stretch_sink.build_records(
+        event_class=event_class, horizon=(horizon[0], horizon[1]), stretches=stretch_sink,
+        stations_in=lambda body, t0, t1: _station_instants_in(body, t0, t1, ephe_path),
+        levels_for=lambda body, relation, target: gk_stretch_sink.levels_of(relation, target, _ASPECT_ANGLES.get(body, ())),
+        orb_for=lambda relation: _POINT_ORB_DEG.get(relation), body_wrapped_inside=wrapped_inside)
+
+
+def _emit_stretch_sink(event_class: str, horizon, stretch_sink: list, position_at, ephe_path: str | None) -> dict:
+    """Log the records (WARNING for a certification finding, INFO for the rest) and the per-class summary; return the summary."""
+    records = _stretch_sink_records(event_class, horizon, stretch_sink, position_at, ephe_path)
+    for r in records:
+        logger.log(logging.WARNING if r["kind"] in gk_stretch_sink.WARNING_KINDS else logging.INFO, "%s", gk_stretch_sink.log_line(r))
+    summary = gk_stretch_sink.summary(event_class, GENERATION, (horizon[0], horizon[1]), records, stretch_sink)
+    logger.warning("%s", gk_stretch_sink.summary_line(summary))
+    return summary
+
+
+class AssetNotBuilding(RuntimeError):
+    """The state guard: this asset's `asset_throughput` row for the chart exists and is not `building` — the orchestrator has given up on the asset
+    (a fired `writer_timeout_seconds` marks it `error` and does NOT stop the writer thread), so a further substep must not write."""
+
+
+def _require_building(ctx: ContextSpec, chart_id: str) -> None:
+    """Steward TIMEOUT-RULING 2 / GUARD-PRECHECK-ACK: at the top of every substep ONE read of `asset_throughput.state` for (chart, asset) on ctx.db_conn,
+    refused BY NAME when it is not `building`. NO write (reading is inside the frozen contract: section 5 forbids the writer WRITING asset_throughput;
+    the orchestrator is the sole build-state writer). `run_asset` upserts and commits `building` before the first substep, the per-substep heartbeat
+    never changes `state`, and an eviction by the watchdog commits `error` on another connection, which this READ COMMITTED read sees at the next
+    substep: the post-timeout window is bounded to the substep already in flight.
+
+    Skip-on-absent: with NO row (the writer driven directly by a harness or a unit test, or a schema without the table) there is nothing to read and
+    the guard does not refuse; the real runner always has the row. Skipped for a dry run (nothing is written, and a dry run may have no `building` row)."""
+    if ctx.dry_run or ctx.db_conn is None:
+        return
+
+    def read():
+        return ctx.db_conn.execute(
+            "SELECT state FROM public.asset_throughput WHERE chart_id = %s AND asset_id = %s", (chart_id, ASSET_ID)).fetchone()
+    try:
+        row = _in_savepoint(ctx.db_conn, read)
+    except Exception as exc:  # noqa: BLE001 - the driver module is never named here (writer purity)
+        if type(exc).__name__ != "UndefinedTable":
+            raise
+        return
+    if row is None:
+        return
+    state = row["state"] if isinstance(row, dict) else row[0]
+    if state != "building":
+        raise AssetNotBuilding(
+            f"asset_not_building: {ASSET_ID}: asset_throughput.state for chart {chart_id} is {state!r}, not 'building' — the orchestrator has given up on this asset "
+            "(a writer timeout or an operator stop marks it error and does not stop this thread): no further substep is written")
+
+
+class HorizonUnderivable(RuntimeError):
+    """FB-2: no horizon was configured and one cannot be derived (no birth date, or no database): refused by name — a build never falls back to a
+    constant horizon."""
+
+
+def _as_date(value) -> date:
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        try:
+            return date.fromisoformat(value[:10])
+        except ValueError:
+            pass
+    raise HorizonUnderivable(f"{ASSET_ID}: birth date {value!r} is not a date — the horizon cannot be derived (refused, never guessed)")
+
+
+def _row_values(row) -> tuple:
+    return tuple(row.values()) if isinstance(row, dict) else tuple(row)
+
+
+def _derive_horizon(ctx: ContextSpec, *, ruling: bool = True) -> "gk_horizon.ChartHorizon":
+    """Validate the ruled measuring scope from chart/run inputs only.
+
+    (I) INTERPRETATION: the standing circularity rail takes precedence over
+    outcome-based scope selection. The measurement detector remains separate;
+    the field records the ruled scope and consumes no outcome rows.
+    """
+    birth_params = ctx.config.get("birth_params")
+    if not birth_params or birth_params.get("datetime_iso") in (None, ""):
+        raise HorizonUnderivable(f"{ASSET_ID}: no birth date in ctx.config['birth_params']['datetime_iso'] — refused by name")
+    if ctx.db_conn is None:
+        raise HorizonUnderivable(f"{ASSET_ID}: no connection to read this build's date — refused by name")
+    birth = _as_date(str(birth_params["datetime_iso"])[:10])
+    chart_id = str(ctx.config["chart_id"])
+    row = ctx.db_conn.execute("SELECT created_at FROM public.build_runs WHERE id = %s", (str(ctx.build_id),)).fetchone()
+    if row is None:
+        raise HorizonUnderivable(f"{ASSET_ID}: build run {ctx.build_id!r} has no created_at — refused by name")
+    created = _row_values(row)[0]
+    build_date = created.astimezone(timezone.utc).date() if isinstance(created, datetime) else _as_date(created)
+    end_date = gk_horizon.add_years(birth, gk_horizon.HORIZON_YEARS)
+    end = datetime(end_date.year, end_date.month, end_date.day, tzinfo=timezone.utc)
+    start = MEASURING_HORIZON[0]
+    if "horizon" in ctx.config:
+        configured = ctx.config["horizon"]
+        if isinstance(configured, (tuple, list)) and len(configured) == 2 and all(isinstance(day, datetime) for day in configured):
+            configured = [day.isoformat() for day in configured]
+        start, configured_end = _parse_slice_horizon(configured, (start, end))
+        if configured_end != end:
+            raise gk_horizon.HorizonDerivationDisagreesWithRuling("configured end is not the birth centenary")
+    if start >= end:
+        raise gk_horizon.HorizonEmpty(f"empty interval [{start}, {end})")
+    if start.date() < birth:
+        raise gk_horizon.HorizonStartBeforeBirth(f"the start {start} precedes birth {birth}")
+    if start.date() > build_date:
+        raise gk_horizon.HorizonStartInTheFuture(f"the start {start} follows build {build_date}")
+    gk_horizon.require_inside_substrate_domain((start, end))
+    if ruling and (start, end) != MEASURING_HORIZON:
+        raise gk_horizon.HorizonDerivationDisagreesWithRuling(
+            f"derived {[start.isoformat(), end.isoformat()]}, ruled {[day.isoformat() for day in MEASURING_HORIZON]}")
+    return gk_horizon.ChartHorizon(start, end, gk_horizon.BASIS_RULED_HORIZON, chart_id=chart_id, build_date=build_date, birth_date=birth)
+
+
+def _pinned_horizon_basis(ctx: ContextSpec) -> dict | None:
+    """The `horizon_basis/1` record the candidate manifest pinned (its input vector), or None when no manifest vector exists yet (plan time, the manifest substep)
+    or the vector carries no basis."""
+    stored = InventoryStore(ctx.db_conn).manifest_vector(str(ctx.config["chart_id"]), GENERATION)
+    return None if not isinstance(stored, dict) else stored.get("horizon_basis")
+
+
+def _derived_outer_bound(ctx: ContextSpec) -> tuple:
+    """The all_classes_full scope validated from chart/run inputs: the PINNED basis comes FIRST. Once the manifest has pinned a
+    basis, current chart inputs are compared with it and a config edit that changed the derived horizon refuses
+    `horizon_basis_horizon_changed`, not the ruling guard's token; the ruling guard (`horizon_derivation_disagrees_with_ruling`) applies at PLAN time and at the
+    manifest substep, i.e. while nothing is pinned yet."""
+    pinned = _pinned_horizon_basis(ctx)
+    if pinned is None:
+        return _derive_horizon(ctx).bounds
+    live = _derive_horizon(ctx, ruling=False)
+    _raise_if_horizon_changed(live.basis_record(), pinned)
+    return live.bounds
+
+
+def _horizon_basis(ctx: ContextSpec, slice_: "TestSlice | None") -> dict | None:
+    """The record pinned in the manifest vector beside the horizon (MB-ADDITIONS 3): the basis of the derivation an `all_classes_full` marker was validated
+    against, and NOTHING otherwise — an ordinary build and the two older slice shapes get no basis component, so their vectors are byte-identical to main's
+    (steward MB-CODEX-1 ruling 1). None also for a context without birth parameters or without a connection (a harness, a unit test)."""
+    if slice_ is None or slice_.run != MEASURING_RUN:
+        return None
+    if not ctx.config.get("birth_params") or ctx.db_conn is None:
+        return None
+    return _derive_horizon(ctx, ruling=_pinned_horizon_basis(ctx) is None).basis_record()
+
+
 def _effective_horizon(ctx: ContextSpec, slice_: TestSlice | None):
-    """The marker's horizon under a slice; else EXACTLY what main used: `ctx.config.get("horizon", DEFAULT_HORIZON)` —
-    an absent key is DEFAULT_HORIZON, an explicit null stays None (and fails downstream as it always did; Codex P2-4: it
-    must not be quietly turned into the default). Under a marker a config horizon that is present and null, or that
-    CONTRADICTS the marker, is ambiguous — refused, never guessed."""
+    """The marker's horizon under a slice; else EXACTLY what main used: `ctx.config.get("horizon", DEFAULT_HORIZON)` — an absent key is DEFAULT_HORIZON, an
+    explicit null stays None (and fails downstream as it always did; Codex P2-4: it must not be quietly turned into the default). Ordinary builds retain their
+    existing scope (steward MB-CODEX-1 ruling 1). Under a marker a config horizon that is present and null, or that CONTRADICTS the marker, is ambiguous —
+    refused, never guessed."""
     if slice_ is None:
         return ctx.config.get("horizon", DEFAULT_HORIZON)
     if "horizon" in ctx.config:
@@ -579,6 +809,33 @@ def _require_manifest_horizon(ctx: ContextSpec, chart_id: str, slice_: "TestSlic
             "written; a different horizon is a new build through the manifest substep, never a continuation")
 
 
+class HorizonBasisHorizonChanged(RuntimeError):
+    """`horizon_basis_horizon_changed`: a log edit changed the derived horizon after the manifest pinned it (MEASURING_BUILD_CONTRACT v1.0 MB-1.5)."""
+
+
+def _raise_if_horizon_changed(live: dict, pinned: dict) -> None:
+    """`horizon_basis_horizon_changed` when the live derivation's horizon or basis differs from the pinned one (MB-1.5)."""
+    if live.get("horizon") != pinned.get("horizon") or live.get("basis") != pinned.get("basis"):
+        raise HorizonBasisHorizonChanged(
+            f"horizon_basis_horizon_changed: the derived horizon is now {live.get('horizon')} (basis {live.get('basis')}), the manifest pinned {pinned.get('horizon')} "
+            f"(basis {pinned.get('basis')}); changed inputs: {gk_input_vector.diff_vectors({'horizon_basis': pinned}, {'horizon_basis': live})}")
+
+
+def _live_basis_for_check(ctx: ContextSpec, slice_: "TestSlice | None", stored: dict):
+    """Compare current chart/run inputs with the pinned scope before writing.
+
+    Scope/basis changes refuse by name; other input changes are reported and
+    retain the pinned basis. No outcome rows participate in this comparison.
+    """
+    live = _horizon_basis(ctx, slice_)
+    pinned = stored.get("horizon_basis")
+    if live is None or pinned is None or live == pinned:
+        return live
+    _raise_if_horizon_changed(live, pinned)
+    logger.warning("horizon_basis_inputs_changed: %s", json.dumps(gk_input_vector.diff_vectors({"horizon_basis": pinned}, {"horizon_basis": live})))
+    return pinned
+
+
 def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     """R6: a substep must consume the inputs its manifest was bound to. The vector is recomputed from
     what is consumed NOW (registry rows, ephemeris files, orb policy, rulings, implementation) and
@@ -598,7 +855,8 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
         ephe_path=_ephe_path(ctx), path_refs=gk_rule_registry.bound_path_refs(),
         rulings=_applicable_rulings(),
         stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
-        test_slice=_slice_component(slice_) if slice_ is not None else None)
+        test_slice=_slice_component(slice_) if slice_ is not None else None,
+        horizon_basis=_live_basis_for_check(ctx, slice_, stored))
     # ... and every component that can be derived WITHOUT the builder's code is (registry + L0 + sky in
     # Postgres, ephemeris files + runtime library + implementation by direct hashing). Under a slice the
     # check runs on the SCOPE-NORMALISED copy: the stored vector's unknown scope is the unsealability
@@ -696,6 +954,18 @@ def _class_of_grain(key: str) -> str | None:
     return None
 
 
+def _with_rule_profile(method):
+    """Pre-build isolation: final rules require explicit candidate configuration."""
+    from functools import wraps
+
+    @wraps(method)
+    def profiled(self, ctx, *args, **kwargs):
+        final = ctx.config.get("gochara_v5_final_rules", False)
+        with gk_rule_registry.rule_profile(final_rules=final):
+            return method(self, ctx, *args, **kwargs)
+    return profiled
+
+
 @register(ASSET_ID)
 class GocharaV5Writer(WriterBase):
     """Pravāha A5.3: the '5.0' writer — phase-1 geometry store landed.
@@ -711,6 +981,7 @@ class GocharaV5Writer(WriterBase):
     # No delegated modules yet (the template's source_paths surface is unused
     # here — nothing to delegate to until pins 3-7).
 
+    @_with_rule_profile
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
         """Plan (pin 5): 'rules' → 'convention' → 'body:<Body>' ×8.
 
@@ -772,6 +1043,7 @@ class GocharaV5Writer(WriterBase):
                 label=f"independent inventory verification: {event_class}"))
         return steps
 
+    @_with_rule_profile
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
         """One substep per the pin-5 grain ('rules' | 'convention' | per-body).
 
@@ -798,7 +1070,12 @@ class GocharaV5Writer(WriterBase):
         if ctx.dry_run:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"dry_run: {step.key} not solved, nothing written")
-        _ephe_path(ctx)         # every substep resolves it, so the FIRST ('rules') refuses a mis-provisioned job in seconds
+        _ephe_path(ctx)         # every substep resolves it, so the FIRST ('rules') refuses a mis-provisioned job in seconds (no database use)
+        # DELIBERATE CHANGE TO EVERY v5 BUILD (steward MB-CODEX-2 ruling 2), not only the measuring shape: the state guard. The frozen runner's watchdog marks an asset
+        # `error` on a fired `writer_timeout_seconds` and does NOT stop the writer thread, so an evicted thread could keep committing substeps; the final build needs this
+        # protection too. A healthy build (state `building`) behaves exactly as before apart from this one read-only SELECT per substep; a dry run and an absent row skip it;
+        # any other state refuses `asset_not_building` BEFORE any write.
+        _require_building(ctx, chart_id)
         if step.key == RULES_SUBSTEP:
             # rule_binding: registry writes ride the Gochara-5 GLOBAL family
             # key (taken by the tables' write-guard triggers). The chart
@@ -873,6 +1150,8 @@ class GocharaV5Writer(WriterBase):
         rstore = RecordStore(ctx.db_conn)
 
         if step.key == MANIFEST_SUBSTEP:
+            if slice_ is not None and slice_.run == MEASURING_RUN:
+                gk_horizon.require_inside_substrate_domain((horizon[0], horizon[1]))        # FB-3 for the measuring build's derived horizon (refused by name, never clipped)
             sky_cid = SkyEventStore(ctx.db_conn).register_convention()
             kala_cid = rstore.ensure_kala_convention()
             rstore.ensure_bridge(kala_cid, sky_cid)
@@ -886,7 +1165,8 @@ class GocharaV5Writer(WriterBase):
                 # C46: a sliced build is unsealable by construction — stored_scope no verifier
                 # vocabulary knows, plus the marker digest; absent marker = the default, unchanged
                 stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
-                test_slice=_slice_component(slice_) if slice_ is not None else None)
+                test_slice=_slice_component(slice_) if slice_ is not None else None,
+                horizon_basis=_horizon_basis(ctx, slice_))
             # every component that can be derived without the builder's code is derived a SECOND way and the two
             # must agree before the identity is bound. Under a test slice the check runs on the SCOPE-NORMALISED
             # copy (Stream A C46 review R1): the stored vector's scope is REFUSED BY NAME only at the verification
@@ -1047,9 +1327,20 @@ class GocharaV5Writer(WriterBase):
         # point contact only around an exact root) are REPORTED in the notes below, not raised; every other certification failure still raises. Without a
         # slice marker (any full build) nothing changes, so a full build keeps failing on a graze until the owner's decision on grazes is implemented.
         graze_sink: list | None = [] if slice_ is not None else None
-        geometry = gk_contact_certify.certify_contact_geometry(
-            ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class, position_at=position_at,
-            graze_sink=graze_sink)
+        # MEASURING_BUILD_CONTRACT MB-2: under a slice every reconstructed stretch is ALSO handed to the structured STRETCH_SINK/1 (one log line per record and one
+        # summary line per class, emitted even when the certification then raises: the finally). POLICY: the MEASURING build (all_classes_full) exists to COUNT
+        # defects in one run, so there near-misses, unresolved stretches and omissions are sunk with their reason and the class CONTINUES (steward ruling 4(f) /
+        # OS-6; the acceptance then fails by name on omissions); every other shape, and any non-slice build, keeps the old behaviour.
+        stretch_sink: list | None = [] if slice_ is not None else None
+        policy = (gk_contact_certify.POLICY_SINK_ALL if slice_ is not None and slice_.run == "all_classes_full" else gk_contact_certify.POLICY_RAISE)
+        sink_summary = None
+        try:
+            geometry = gk_contact_certify.certify_contact_geometry(
+                ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class, position_at=position_at,
+                graze_sink=graze_sink, stretch_sink=stretch_sink, sink_policy=policy)
+        finally:
+            if stretch_sink is not None:
+                sink_summary = _emit_stretch_sink(event_class, horizon, stretch_sink, position_at, ephe_path)
         graze_note = ""
         if graze_sink:
             graze_note = (f"; GRAZES REPORTED, NOT RAISED (validated test slice; {len(graze_sink)}): " + " | ".join(
@@ -1065,6 +1356,10 @@ class GocharaV5Writer(WriterBase):
         # R8-4: the candidate gate's window half — every included P1–P4 grain of this class must carry a
         # VERIFIED, current, input-bound verification result. The build refuses a class that cannot pass it
         # rather than leave a candidate no sealer could accept (UNVERIFIED_DYNAMIC / missing both fail).
+        sink_note = ("" if sink_summary is None else
+                     f"; {gk_stretch_sink.SCHEMA}: {sink_summary['stretches']} stretches, {sink_summary['records']} records, "
+                     f"certifier_omissions_present={sum(n for k, n in sink_summary['counts_by_kind_reason'].items() if k.startswith('omission/'))}, "
+                     f"digest {sink_summary['record_ids_digest'][:12]}")
         gate_note = ("; verification NOT persisted by the builder — verification_pending_verifier_principal: the separate "
                      "verification job persists the 1206 and 1240 rows; the candidate gate stays CLOSED until it has run")
         return WriterResult(asset_id=self.asset_id, rows_inserted=1,
@@ -1072,7 +1367,7 @@ class GocharaV5Writer(WriterBase):
                                   "independently reproduced (report only); "
                                   f"contact geometry (aspect-to-span included) certified complete for "
                                   f"{geometry['obligations_certified']} concrete obligation(s) "
-                                  f"({geometry['contacts_expected']} contacts; {geometry['named_limit']}){graze_note}{gate_note}")
+                                  f"({geometry['contacts_expected']} contacts; {geometry['named_limit']}){graze_note}{sink_note}{gate_note}")
 
     def _run_record_phase(self, ctx: ContextSpec, step: SubStep,
                           chart_id: str, slice_: TestSlice | None = None) -> WriterResult:

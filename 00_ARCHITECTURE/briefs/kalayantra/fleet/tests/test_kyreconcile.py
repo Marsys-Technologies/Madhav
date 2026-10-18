@@ -69,7 +69,8 @@ def staged():
 
 @pytest.fixture(scope="module")
 def final():
-    return R.load(CONTROL / "plan_model.json")
+    # The accepted v2.2 reconciliation is immutable. Live models may append later campaign items.
+    return R.load(FIX / "plan_model.reviewed.json.gz")
 
 
 @pytest.fixture(scope="module")
@@ -152,8 +153,15 @@ def test_path_only_comparison_has_teeth(base, migrated, capture, events):
 
 def test_triage_model_is_the_reproducible_build(base, decl, roots):
     built = R.render(R.build(base, decl, roots))
-    assert built == (CONTROL / "plan_model.json").read_bytes()
+    assert built == gzip.decompress((FIX / "plan_model.reviewed.json.gz").read_bytes())
     assert built == R.render(R.build(base, decl, roots))
+
+
+def test_live_model_preserves_the_reviewed_reconciliation(final):
+    live = R.load(CONTROL / "plan_model.json")
+    by_id = {item["id"]: item for item in live["items"]}
+    assert all(by_id.get(item["id"]) == item for item in final["items"])
+    assert {k: v for k, v in live.items() if k != "items"} == {k: v for k, v in final.items() if k != "items"}
 
 
 def test_triage_delta_equals_the_reviewed_expected_delta(base, final, decl, staged, capture, events):
@@ -174,7 +182,9 @@ def test_triage_expected_delta_was_independently_accepted():
                       ("closure", CONTROL / "CLOSURE_v2_1.json"), ("kyclosure", FLEET / "kyclosure.py"),
                       ("declarations", CONTROL / "TRIAGE_DECLARATIONS_v2_2.json"),
                       ("staged_actions", CONTROL / "STAGED_MODEL_ACTIONS_v2_2.json")):
-        assert record["inputs"][name] == sha(rel), f"{name} changed after the review"
+        actual = hashlib.sha256(gzip.decompress((FIX / "plan_model.reviewed.json.gz").read_bytes())).hexdigest() \
+            if name == "model" else sha(rel)
+        assert record["inputs"][name] == actual, f"{name} changed after the review"
 
 
 def test_triage_preserves_earned_completions(base, final, decl, staged, capture, events):
@@ -238,15 +248,41 @@ def test_triage_declaration_fields(final):
 
 # ---------------------------------------------------------------- staged, not published
 
-def test_staged_actions_are_not_published(final, staged, capture, events):
+def installation_events(staged, capture):
+    events = R.staged_events(staged, capture["clock"])
+    declarations = {row.get("decision") or row["item"]: row
+                    for key in ("decisions", "parks", "blocks") for row in staged.get(key, [])}
+    for event in events:
+        event["detail"] = declarations[event.get("decision") or event["item"]]["detail"]
+    return events
+
+
+def staged_publication_state(log, staged, capture):
+    """Count and verify each staged action; duplicates and partial publication fail."""
+    counts = []
+    for expected in installation_events(staged, capture):
+        identity = "decision" if expected["kind"] == "decision" else "item"
+        found = [e for e in log if e.get("kind") == expected["kind"]
+                 and e.get(identity) == expected[identity]
+                 and e.get("actor") == expected["actor"] and e.get("detail") == expected["detail"]
+                 and (identity == "decision" or e.get("state") == expected["state"])]
+        assert len(found) <= 1, "staged action published more than once: " + expected[identity]
+        if found:
+            keys = ("state", "actor", "outcome") if identity == "decision" else ("state", "actor")
+            assert all(found[0].get(k) == expected[k] for k in keys), "incorrect staged effect: " + expected[identity]
+        counts.append(len(found))
+    assert set(counts) in ({0}, {1}), "partial staged publication"
+    return "published" if all(counts) else "unpublished"
+
+
+def test_staged_actions_are_not_published(final, staged, capture):
+    events = [json.loads(line) for line in (FIX / "staged_preinstall.jsonl").read_text().splitlines() if line.strip()]
     assert staged["status"].startswith("STAGED — NOT PUBLISHED")
     staged_decisions = {d["decision"] for d in staged["decisions"]}
     assert staged_decisions == {"D-RETIRE-B-K-INBOX", "D-RETIRE-B-CLAIM-RECOVERY"}
     assert all(d["outcome"] == "refused" for d in staged["decisions"])
-    with open(EVENTS, encoding="utf-8") as f:  # the whole live log, read-only
-        live = [json.loads(line) for line in f if line.strip()]
-    assert not [e for e in live if e.get("decision") in staged_decisions]
-    assert not [e for e in live if e.get("item") in staged_decisions | {"KV3-SCHEMA-1"}]
+    assert not [e for e in events if e.get("decision") in staged_decisions]
+    assert not [e for e in events if e.get("item") in staged_decisions | {"KV3-SCHEMA-1"}]
     now = R.states(final, events, capture)
     assert now["B-K-INBOX"]["status"] != "not_applicable" and now["B-CLAIM-RECOVERY"]["status"] != "not_applicable"
     sim = R.states(final, events + R.staged_events(staged, capture["clock"]), capture)
@@ -254,6 +290,35 @@ def test_staged_actions_are_not_published(final, staged, capture, events):
         assert sim[d["retires"]]["status"] == "not_applicable" and sim[d["retires"]]["skip_origin"] == [d["decision"]]
     assert sim["KV3-SCHEMA-1"]["status"] == "blocked"
     assert {p["item"] for p in staged["parks"]} == {i["id"] for i in final["items"] if i["triage"]["class"] == "b"}
+
+
+@pytest.mark.parametrize("installed", [False, True])
+def test_staged_publication_census_accepts_pre_and_post_install(staged, capture, installed):
+    before = [json.loads(line) for line in (FIX / "staged_preinstall.jsonl").read_text().splitlines() if line.strip()]
+    published = installation_events(staged, capture)
+    assert staged_publication_state(before + (published if installed else []), staged, capture) == (
+        "published" if installed else "unpublished")
+
+
+@pytest.mark.parametrize("bad", ["duplicate", "wrong_outcome", "partial"])
+def test_staged_publication_census_refuses_invalid_publication(staged, capture, bad):
+    published = installation_events(staged, capture)
+    if bad == "duplicate":
+        published.append(copy.deepcopy(published[0]))
+    elif bad == "wrong_outcome":
+        published[0]["outcome"] = "approved"
+    else:
+        published.pop()
+    with pytest.raises(AssertionError):
+        staged_publication_state(published, staged, capture)
+
+
+def test_live_staged_actions_are_unpublished_or_published_exactly_once(staged, capture):
+    if not EVENTS.exists():
+        pytest.skip(f"event log {EVENTS} is not on this host; live publication state unobserved")
+    with EVENTS.open(encoding="utf-8") as log:
+        live = [json.loads(line) for line in log if line.strip()]
+    assert staged_publication_state(live, staged, capture) in ("unpublished", "published")
 
 
 # ---------------------------------------------------------------- the build refuses inconsistent declarations

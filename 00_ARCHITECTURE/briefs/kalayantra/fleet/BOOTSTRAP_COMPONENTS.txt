@@ -14,6 +14,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/surrogate_decision.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/job_result.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/bootstrap_launch_input.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/bootstrap_launch_input_codex.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/BOOTSTRAP_LAUNCH_INPUT.template.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/BOOTSTRAP_LAUNCH_INPUT.README.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyboot.py
@@ -49,14 +50,60 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/qualification.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.json
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyprobe.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py
 
+# area: engines — the second agent engine (OpenAI Codex CLI): its launch configurations, schemas and tests
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/launch_config_codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/qualification_codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/codex_reviewer_output.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/job_result_launcher_commit.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-builder.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.bootstrap-reviewer.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_job_engine_roles.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_codex_kind_templates.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.area-reviewer.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify_codex.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/fake_codex_ok.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/launch_input_codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/codex_reviewer_output.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/job_result_launcher_commit.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/REAL_CODEX_EVIDENCE.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/fake_codex_qualify.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-area-reviewer-outside-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-area-reviewer-private-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-area-reviewer-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-base-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-base-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-bootstrap-reviewer-outside-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-bootstrap-reviewer-private-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-bootstrap-reviewer-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-empty-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-empty-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-commit-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-commit-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-dir-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-git-dir-write-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-network-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-network-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-outside-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-outside-write-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-private-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-private-tmp-write-stdout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-reviewer-evidence.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-skills-message.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-tmp-write-rollout.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/b0c_engines/real-tmp-write-stdout.jsonl
+
 # area: cards — role cards, coverage table, Astra KU-01…KU-03 replacements
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/BOOTSTRAP_REVIEWER.md
-00_ARCHITECTURE/briefs/kalayantra/fleet/cards/COVERAGE_BOOTSTRAP.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_BUILDER.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/FIXTURE_VERIFIER.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/TOKEN_MEASUREMENT.json
@@ -66,9 +113,6 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kycardtokens.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cards.py
 
-# tranche: deferred — second part of step 3 (owner decision 2026-10-12): listed and pinned, reviewed separately,
-#   not bound by the first bootstrap manifest and not used by step 4 (the launcher does not import them).
-# tranche: deferred
 
 # area: loops — headless loop controller, control script, notifier, launchd jobs, loop prompts
 00_ARCHITECTURE/briefs/kalayantra/fleet/kyloop.py
@@ -104,3 +148,185 @@
 # area: surrogate — owner-surrogate charter card and its launch configuration (review round 2: card vs job environment)
 00_ARCHITECTURE/briefs/kalayantra/fleet/cards/OWNER_SURROGATE.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.surrogate.json
+
+
+# area: B-4 — campaign cards, coverage and offline packet acceptance with its tests/fixtures
+00_ARCHITECTURE/briefs/kalayantra/fleet/accept/README.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/accept/j0_disposition.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/cards/ADHIKARIN.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/cards/KARAKA.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/cards/PARIKSAKA.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/accept_j0c/disposition.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/accept_j0c/evidence.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/accept_j0c/prs.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/accept_j0c/state.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_accept_j0_disposition.py
+
+# area: wave-b — assembled control-plane implementations, dependencies and their tests/fixtures
+00_ARCHITECTURE/briefs/kalayantra/fleet/FROZEN_PATHS.txt
+00_ARCHITECTURE/briefs/kalayantra/fleet/README.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/COMMON_HEADER_v3.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/bin/ky
+00_ARCHITECTURE/briefs/kalayantra/fleet/bin/kybrief
+00_ARCHITECTURE/briefs/kalayantra/fleet/claude_cycle.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/executor.env.example.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/finalize.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/fleet.env.example.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/install.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/install_tracker.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/kalayantra_fleet.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyalloc.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyboundary.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyclosure.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_admit.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_jobs.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_kinds_build.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_kinds_land.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyd_kinds_ops.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kydispatch.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kygate.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyjob.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/kylock.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/kypacket.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyreconcile.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyregen.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyreport.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyroute.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyverdicts.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyversion.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/make_codex_profile.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/precheck_bg.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/preflight.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/readback_sql.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/regroup_model_v2.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/admit.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/engine.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/jobs.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_build.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_land.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/kinds_ops.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_finish_fix.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_admit.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_jobs.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_kinds_build.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_kinds_land.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kyd_kinds_ops.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_kydispatch.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/executor_cases.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/finalizer_cases.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/kyroute/items.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/capture.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/plan_model.base.json.gz
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_bootstrap_safety.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_a8.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_finalize_v3.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_install.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyalloc.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyboundary.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyclosure.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kygate.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kygate_waiver.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyjob.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kylock.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kypacket.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyreconcile.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyregen.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyreport.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyroute.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyverdicts.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyversion.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kywrappers.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_local_db.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_precheck.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_preflight.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/verify_specs.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyjob_engines.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyjob_engines.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/post_install_tracker.json
+
+# area: tracker — the tracker package the installation deploys (non-test files)
+platform/scripts/governance/pravaha_tracker/CONTROL_PLANE.md
+platform/scripts/governance/pravaha_tracker/__init__.py
+platform/scripts/governance/pravaha_tracker/audit.py
+platform/scripts/governance/pravaha_tracker/claims.py
+platform/scripts/governance/pravaha_tracker/cli.py
+platform/scripts/governance/pravaha_tracker/com.madhav.pravaha.runner.A.plist
+platform/scripts/governance/pravaha_tracker/com.madhav.pravaha.runner.B.plist
+platform/scripts/governance/pravaha_tracker/com.madhav.pravaha.runner.C.plist
+platform/scripts/governance/pravaha_tracker/com.madhav.pravaha.tracker.plist
+platform/scripts/governance/pravaha_tracker/completion.py
+platform/scripts/governance/pravaha_tracker/detectors.py
+platform/scripts/governance/pravaha_tracker/events.py
+platform/scripts/governance/pravaha_tracker/install_launchd.sh
+platform/scripts/governance/pravaha_tracker/install_runners.sh
+platform/scripts/governance/pravaha_tracker/kimi_review.py
+platform/scripts/governance/pravaha_tracker/runner.py
+platform/scripts/governance/pravaha_tracker/server.py
+platform/scripts/governance/pravaha_tracker/state.py
+platform/scripts/governance/pravaha_tracker/static/app.css
+platform/scripts/governance/pravaha_tracker/static/app.js
+platform/scripts/governance/pravaha_tracker/static/index.html
+platform/scripts/governance/pravaha_tracker/steward_watch.py
+platform/scripts/governance/pravaha_tracker/verdicts.py
+
+# area: wave-0 — fixture-bound reconciliation and scanner placeholder regressions
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_wave0_secret_placeholders.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/staged_preinstall.jsonl
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/fixtures/reconcile/plan_model.reviewed.json.gz
+
+
+# area: assembly — runtime/test census and newly qualifiable job templates
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/test_open_fixes.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.tests.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.tests.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.post-readback.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.ruling.json
+
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.tests.codex.json
+
+# area: executor-operations — shared adapter contract and current Wave 4 preparation
+00_ARCHITECTURE/briefs/kalayantra/fleet/OPS_CONTRACT.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/W4_EXECUTOR_BINDINGS.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/operation_adapters.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/CLOUDRUN_READBACK_v1_0.md
+00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_dryrun.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cloudrun_readback.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_launch.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/conftest.py
+
+# tranche: deferred
+# Listed and hash-pinned, but not installed or launch-authorising.
+# Final receipt tools retain their existing deferred status.
+# Chart variants: missing reviewed MCP definition; harness requires mcp_none.
+# Codex artifact/request-prep/model/plan: completion adapters refuse.
+# Codex pre-accept/ruling: constructors lack packet_path; post-readback operation variant likewise.
+00_ARCHITECTURE/briefs/kalayantra/fleet/kybackfill.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/kyfinal.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/schemas/rehearsal_results.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.artifact.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.chart.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.build.chart.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.model.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.plan.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.post-readback.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.pre-accept.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.request-prep.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.chart.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.rework.chart.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.ruling.codex.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.chart.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/templates/LAUNCH_CONFIG.verify.chart.tests.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyfinal.py

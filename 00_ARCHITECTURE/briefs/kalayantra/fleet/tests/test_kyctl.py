@@ -1,6 +1,6 @@
 """B-0c loop control: kynotify.sh, kyloop.py (deterministic controller), kyctl.sh, launchd
 templates and the two loop prompts (relaunch plan v2.7 §4a.1-3, §4a.6, §7, §10, §11, §13; B-0c rework rulings
-R1–R3, R5, R6, R8–R10 and the loops review's findings L-01…L-03, N-01…N-10).
+R1–R3, R5, R6, R8–R10 and the loops review's findings L-01…L-03, N-01…N-10; part 2: L2-a…L2-d, last section).
 
 Nothing here touches the real launchctl, ~/Library/LaunchAgents, the real `claude` or
 /Users/Dev/kalayantra: every test runs in its own tree under pytest's basetemp with test
@@ -15,6 +15,7 @@ role, the owner command queue, action-record reconciliation, the activation chai
 qualification context, lock-takeover strictness and quota detection. Every rule is shown
 passing and failing, and a refusal is asserted by its named reason.
 """
+import contextlib
 import copy
 import hashlib
 import json
@@ -403,13 +404,81 @@ def test_global_hold_waits_without_running_then_proceeds(w):
     assert w.calls() == [1] and (w.root / "HOLD").exists() is False
 
 
+WAVE_B_STEPS = ("B-3", "B-4", "B-5")
+
+
+def wave_b_complete(w, accepted=WAVE_B_STEPS, evidence=None):
+    """A finished Wave B as the controller itself would have left it: the steps accepted in the role state, the
+    final receipt, VERSIONS.json — and the marker derive_completion() writes from them."""
+    w.write_state({"active": {}, "completed_steps": [
+        {"id": s, "evidence_sha256": hashlib.sha256(s.encode()).hexdigest(), "note": "accepted"} for s in accepted]})
+    w.receipt("final")
+    (w.run / "VERSIONS.json").write_text('{"components": []}')
+    marker = {"schema": "ky.wave_b_done/1", "derived_at": "2026-10-12T00:00:00Z", "derived_by": "CTL-PLANNER-earlier",
+              "steps": list(WAVE_B_STEPS),
+              "step_evidence": dict({s: hashlib.sha256(s.encode()).hexdigest() for s in WAVE_B_STEPS}, **(evidence or {})),
+              "final_receipt_sha256": sha(w.run / "INSTALL_RECEIPT.json"),
+              "versions_sha256": sha(w.run / "VERSIONS.json")}
+    (w.run / "WAVE_B_DONE").write_text(json.dumps(marker))
+    return marker
+
+
 def test_wave_b_done_verified_exits_cleanly(w):
     w.ready()
-    w.receipt("final")
-    (w.run / "WAVE_B_DONE").write_text(json.dumps({"final_receipt_sha256": sha(w.run / "INSTALL_RECEIPT.json")}))
+    wave_b_complete(w)
     r = w.kyloop("planner")
     assert r.returncode == 0 and w.calls() == [] and w.awaiting() == []
-    assert w.loop_state()["enabled"] is False and "WAVE_B_DONE" in w.loop_state()["reason"]
+    assert w.loop_state()["enabled"] is False and "WAVE_B_DONE verified" in w.loop_state()["reason"]
+    assert (w.fleet / "kyversion.sh.calls").read_text().splitlines() == [""]      # the normal mode, re-run now
+
+
+WAVE_B_UNVERIFIED = [
+    # what is wrong with an otherwise complete world, and what the refusal names
+    ("no-accepted-steps", "B-3 is not accepted"),
+    ("one-step-missing", "B-5 is not accepted"),
+    ("step-evidence-differs", "evidence for B-4 differs"),
+    ("marker-records-no-evidence", "does not record the evidence"),
+    ("marker-names-fewer-steps", "does not record the evidence"),
+    ("kyversion-fails", "kyversion.sh did not pass (rc=3)"),
+    ("kyversion-missing", "kyversion.sh did not pass (rc=None)"),
+    ("versions-changed-since", "does not bind the current VERSIONS.json"),
+    ("versions-missing", "does not bind the current VERSIONS.json"),
+    ("receipt-changed-since", "does not bind the current INSTALL_RECEIPT.json"),
+    ("role-state-unreadable", "role state cannot be read"),
+]
+
+
+@pytest.mark.parametrize("case,why", WAVE_B_UNVERIFIED, ids=[c[0] for c in WAVE_B_UNVERIFIED])
+def test_a_wave_b_done_marker_is_re_derived_from_the_accepted_evidence_and_kyversion(w, case, why):
+    """L3-02: the marker is believed only when completion can be derived again NOW — the receipt hash it repeats is
+    a value any writer can compute. Each case breaks ONE thing in the world the test above verifies."""
+    w.ready()
+    marker = wave_b_complete(w, accepted={"no-accepted-steps": (), "one-step-missing": ("B-3", "B-4")}.get(case, WAVE_B_STEPS),
+                             evidence={"B-4": "e" * 64} if case == "step-evidence-differs" else None)
+    if case == "marker-records-no-evidence":
+        del marker["step_evidence"]
+    elif case == "marker-names-fewer-steps":
+        marker["steps"] = ["B-3", "B-4"]
+    if case.startswith("marker-"):
+        (w.run / "WAVE_B_DONE").write_text(json.dumps(marker))
+    elif case == "kyversion-fails":
+        (w.fleet / "kyversion.sh.rc").write_text("3")
+    elif case == "kyversion-missing":
+        (w.fleet / "kyversion.sh").unlink()
+    elif case == "versions-changed-since":
+        (w.run / "VERSIONS.json").write_text('{"components": ["changed"]}')
+    elif case == "versions-missing":
+        (w.run / "VERSIONS.json").unlink()
+    elif case == "receipt-changed-since":
+        (w.run / "INSTALL_RECEIPT.json").write_text(json.dumps({"mode": "final", "installed": "again"}))
+    elif case == "role-state-unreadable":
+        (w.run / "PLANNER_STATE.json").write_text("{not json")
+    r = w.kyloop("planner")
+    assert r.returncode == 0
+    a = json.dumps(refused(w))
+    assert "wave_b_done_unverified" in a and why in a, a
+    assert "verified" not in (w.loop_state()["reason"] or "").replace("unverified", "")    # not disabled as complete
+    assert "Wave B complete" not in r.stderr
 
 
 @pytest.mark.parametrize("case", ["bootstrap-receipt", "binds-a-bootstrap-receipt", "stale-binding"])
@@ -427,12 +496,42 @@ def test_wave_b_done_marker_alone_is_not_believed(w, case):
     assert "wave_b_done_unverified" in json.dumps(refused(w))
 
 
+ENVNAMES_OSASCRIPT = """#!/bin/bash
+# An osascript double that shows nothing and records the NAMES (never a value) of the environment it was given.
+/usr/bin/env | /usr/bin/cut -d= -f1 | /usr/bin/sort -u > "${FAKE_OSASCRIPT_LOG:?}"
+exit 0
+"""
+
+
 @pytest.mark.parametrize("name", CREDENTIAL_NAMES)
-def test_credential_variable_names_refuse_with_78_and_no_value(w, name):
+def test_a_credential_variable_name_is_one_item_and_a_stop_and_never_its_value(w, name):
+    """N4-01 (this test asserted exit 78 before: launchd respawned the controller every ten seconds, with no item
+    and no notification). A refused environment takes the one shape of every other refusal — one awaiting item
+    naming the variable, STOP, disabled, exit 0 — and the value reaches nothing: not a log, not a file, not a
+    helper this controller starts."""
     w.ready()
-    r = w.kyloop("planner", **{name: "s3cr3t-value-never-printed"})
-    assert r.returncode == 78 and name in r.stderr
-    assert "s3cr3t" not in r.stderr + r.stdout and w.calls() == []
+    w.default_mode("substep")
+    spy = w.tmp / "osascript-envnames"
+    spy.write_text(ENVNAMES_OSASCRIPT)
+    spy.chmod(0o755)
+    extra = {name: "s3cr3t-value-never-printed", "KY_NOTIFY_DRY": "0", "KY_OSASCRIPT": str(spy),
+             "FAKE_OSASCRIPT_LOG": str(w.tmp / "notifier.envnames")}
+    r = w.kyloop("planner", **extra)
+    assert r.returncode == 0 and name in r.stderr and "Traceback" not in r.stderr
+    item = refused(w)                                       # one awaiting item, STOP, disabled, no model run
+    assert ("credential_variable_present: %s" % name) in json.dumps(item)
+    assert w.cockpit_journal().count("[decision]") == 1 and item["id"] in w.cockpit_journal()
+    assert not (w.run / "locks" / "planner").exists()
+    w.rearm()                                               # started again with the variable still there: nothing new
+    r2 = w.kyloop("planner", **extra)
+    assert r2.returncode == 0 and refused(w) == item and w.cockpit_journal().count("[decision]") == 1
+    assert "s3cr3t" not in r.stderr + r.stdout + r2.stderr + r2.stdout
+    for path in list(w.run.rglob("*")) + list(w.scratch.rglob("*")) + list(w.fleet.glob("*.calls")):
+        if path.is_file():
+            assert b"s3cr3t" not in path.read_bytes(), path
+    # the helpers the refusing controller ran (here: the notifier) were not given the variable either
+    seen = (w.tmp / "notifier.envnames").read_text().split()
+    assert "KY_RUN" in seen and name not in seen
 
 
 def test_missing_install_receipt_raises_once_and_does_not_spin(w):
@@ -573,11 +672,12 @@ def test_kylock_helper_is_used_when_installed(w):
     calls = (w.fleet / "kylock.sh.calls").read_text().splitlines()
     assert re.fullmatch(r"acquire planner CTL-PLANNER-\d{8}T\d{6}Z-\d+", calls[0])
     assert calls[-1] == calls[0].replace("acquire", "release") and not (w.run / "locks" / "planner").exists()
-    (w.fleet / "kylock.sh.rc").write_text("1")              # held elsewhere → this instance exits, runs nothing
+    (w.fleet / "kylock.sh.rc").write_text("75")             # held by a live holder → this instance exits, runs nothing
     w.rearm()
     w.modes("stop")
     r = w.kyloop("planner")
     assert r.returncode == 0 and w.calls() == [1] and "lock held" in r.stderr
+    assert w.awaiting() == [] and not w.stop_file().exists()        # a duplicate start raises and stops nothing
 
 
 def test_unknown_role_is_a_usage_error(w):
@@ -875,6 +975,9 @@ def test_planner_completion_is_derived_by_the_controller(w):
     assert marker["final_receipt_sha256"] == sha(w.run / "INSTALL_RECEIPT.json")
     assert marker["steps"] == ["B-3", "B-4", "B-5"]
     assert w.loop_state()["enabled"] is False and not w.stop_file().exists()
+    # the marker the controller wrote is the one its own re-derivation accepts (L3-02): disabled as complete
+    assert "WAVE_B_DONE verified" in w.loop_state()["reason"] and w.awaiting() == []
+    assert marker["step_evidence"] == {e["id"]: e["evidence_sha256"] for e in w.role_state()["completed_steps"]}
     assert (w.fleet / "kyversion.sh.calls").read_text().splitlines()[-1] == ""       # normal mode, no arguments
 
 
@@ -941,6 +1044,119 @@ def test_a_dependency_changed_by_someone_else_during_a_run_is_progress(w):
     (rec,) = w.records()
     assert rec["accepted"] == [] and rec["dependency_changed"] is True and rec["progressed"] is True
     assert w.loop_state()["no_progress_count"] == 0
+
+
+IDLE_CLAUDE = """#!/bin/bash
+# An idle job: run <n> announces itself (waiting.<n>), waits until the test releases it (release.<n>), asks for
+# nothing and exits 0 by itself.
+D="$(cd "$(dirname "$0")" && pwd)/claude.d"
+mkdir -p "$D"
+if [ "${1:-}" = "--version" ]; then echo "2.1.296 (Claude Code)"; exit 0; fi
+cat > /dev/null
+n=1
+while [ -e "$D/waiting.$n" ]; do n=$((n + 1)); done
+: > "$D/waiting.$n"
+i=0
+while [ ! -e "$D/release.$n" ] && [ "$i" -lt 600 ]; do /bin/sleep 0.05; i=$((i + 1)); done
+exit 0
+"""
+
+
+def owner_wait(w, slug, item, role, job_id="J-1", blocks="item"):
+    (w.run / "awaiting").mkdir(exist_ok=True)
+    path = w.run / "awaiting" / ("AW-20261011T000000Z-%s.json" % slug)
+    path.write_text(json.dumps({"schema": "ky.awaiting/1", "id": path.stem, "item": item, "blocks": blocks,
+                                "raised_by": {"role": role, "session_id": "session-of-%s" % role, "job_id": job_id}}))
+    return path
+
+
+@pytest.mark.parametrize("change", ["appears", "disappears", "both"])
+def test_another_roles_owner_wait_for_another_item_is_not_this_loops_progress(w, change):
+    """L3-01: the negative of the control above. During an idle planner run a builder's owner-wait for K9-23
+    appears and/or one for K9-24 disappears — routine in a live campaign, and nothing the planner waits on. The run
+    stays a no-progress run: counted towards the breaker, the quota level not reset."""
+    w.claude.write_text(IDLE_CLAUDE)
+    w.ready()
+    old = owner_wait(w, "k9-24-from-a-builder", "K9-24", "builder")
+    ls_path = w.run / "loops" / "planner.json"
+    ls_path.write_text(json.dumps(dict(json.loads(ls_path.read_text()), no_progress_count=1,
+                                       quota={"level": 2, "notified_level": 2, "not_before": None})))
+    d = w.root / "bin" / "claude.d"
+    p = w.popen("planner")
+    try:
+        assert wait_for((d / "waiting.1").exists)
+        if change in ("appears", "both"):
+            owner_wait(w, "k9-23-from-a-builder", "K9-23", "builder")
+        if change in ("disappears", "both"):
+            old.unlink()
+        (d / "release.1").write_text("")
+        assert wait_for((d / "waiting.2").exists)           # the first run is recorded; the loop went on by itself
+        ls = w.loop_state()
+        w.stop_file().write_text("x")                       # ends the second run, which proves nothing either way
+        assert p.wait(timeout=20) == 0
+    finally:
+        p.kill()
+    rec = w.records()[0]
+    assert rec["ended_reason"] == "exited" and rec["accepted"] == []
+    assert rec["dependency_changed"] is False and rec["progressed"] is False
+    assert rec["progress_before"]["item_keys"] == rec["progress_after"]["item_keys"] == ["B-3", "B-4", "B-5"]
+    for basis in ("dependency_fingerprint", "external_fingerprint"):
+        assert rec["progress_before"][basis] == rec["progress_after"][basis]
+    assert ls["no_progress_count"] == 2 and ls["quota"]["level"] == 2      # counted; the quota level not reset
+
+
+FINGERPRINT_WAITS = [
+    # role, the inbox it last saw, (slug, item, raised by, blocks), does it change this role's fingerprint?
+    ("planner", (), ("x", "K9-23", "builder", "item"), False),
+    ("planner", (), ("x", "msg.M1", "conductor", "item"), False),
+    ("planner", (), ("x", "B-44", "builder", "item"), False),             # not B-4, nor a part of it
+    ("planner", (), ("x", "loop.conductor", "conductor", "loop"), False),
+    ("planner", (), ("x", "B-4", "cockpit", "item"), True),
+    ("planner", (), ("x", "step.B-4", "builder", "item"), True),
+    ("planner", (), ("x", "B-4.review", "builder", "item"), True),        # what is_blocked() takes for B-4
+    ("planner", (), ("x", "loop.planner", "cockpit", "loop"), True),
+    ("conductor", ("M1",), ("x", "K9-23", "builder", "item"), False),
+    ("conductor", ("M1",), ("x", "msg.M2", "steward", "item"), False),    # no such message is this role's to handle
+    ("conductor", ("M1",), ("x", "B-4", "planner", "item"), False),
+    ("conductor", ("M1",), ("x", "loop.planner", "planner", "loop"), False),
+    ("conductor", ("M1",), ("x", "msg.M1", "steward", "item"), True),
+    ("conductor", ("M1",), ("x", "loop.conductor", "cockpit", "loop"), True),
+]
+
+
+@pytest.mark.parametrize("role,inbox,wait,counts", FINGERPRINT_WAITS,
+                         ids=["%s-%s-%s" % (f[0], f[2][1], f[3]) for f in FINGERPRINT_WAITS])
+def test_only_an_owner_wait_this_role_waits_on_is_a_changed_dependency(w, monkeypatch, role, inbox, wait, counts):
+    """L3-01, the rule itself: a wait enters the role's fingerprints exactly when it blocks this loop or an item
+    is_blocked() would be asked about — and leaves them again when it is answered away."""
+    c = controller_in_process(w, monkeypatch, role)
+    c.inbox_keys = set(inbox)
+    before = c.accepted_summary()
+    assert before["item_keys"] == (["B-3", "B-4", "B-5"] if role == "planner" else list(inbox))
+    path = owner_wait(w, *wait[:3], job_id="J-1" if wait[2] != "cockpit" else None, blocks=wait[3])
+    during = c.accepted_summary()
+    for basis in ("dependency_fingerprint", "external_fingerprint"):
+        assert (during[basis] != before[basis]) is counts, basis
+    path.unlink()
+    assert c.accepted_summary() == before
+    # … while it still BLOCKS whatever it names: scoping the progress signal does not unblock anything
+    path = owner_wait(w, *wait[:3], blocks=wait[3])
+    loop_blocked, blocked, _ = c.awaiting_blocks()
+    assert loop_blocked is (wait[3] == "loop" and wait[1] == "loop.%s" % role)
+    assert (wait[3] == "item") == bool(blocked)
+
+
+def test_a_run_is_compared_over_the_items_its_before_was_taken_over(w, monkeypatch):
+    """L3-01: `after` uses the keys recorded in `before` — a conductor that sees another inbox when the run ends
+    (or one that inherited the run) does not take the difference in keys for a changed dependency."""
+    w.resume(dispatcher=False)
+    c = controller_in_process(w, monkeypatch, "conductor")
+    c.inbox_keys = {"M1"}
+    before = c.accepted_summary(c.item_keys([{"id": "msg.M1", "key": "M1"}]))
+    owner_wait(w, "m2-held", "msg.M2", "steward")
+    c.inbox_keys = {"M1", "M2"}                             # M2 arrived, already blocked, while the run was idle
+    assert c.accepted_summary(before["item_keys"]) == before
+    assert c.accepted_summary()["external_fingerprint"] != before["external_fingerprint"]   # a later run's own "before"
 
 
 # ───────────────────────────── kyloop.py: conductor ─────────────────────────────
@@ -1074,7 +1290,7 @@ def test_install_renders_valid_plists_idempotently_and_starts_nothing(w):
 
 
 def test_templates_carry_no_credential_and_only_known_placeholders():
-    allowed = {"@KY_ROOT@", "@KY_RUN@", "@KY_FLEET@", "@KY_SCRATCH@", "@HOME@", "@USER@", "@CLAUDE_BIN@"}
+    allowed = {"@KY_ROOT@", "@KY_RUN@", "@KY_FLEET@", "@KY_SCRATCH@", "@HOME@", "@USER@", "@CLAUDE_BIN@", "@SYSTEM_PATH@"}
     for loop, label in LABELS.items():
         text = (FLEET / "launchd" / (label + ".plist")).read_text()
         found = set(re.findall(r"@[A-Z_]+@", text))
@@ -1431,7 +1647,12 @@ def test_kyctl_refuses_root_and_bad_usage(w):
     r = w.kyctl("status", KY_TEST_ASSUME_ROOT="1")
     assert r.returncode != 0 and "root" in r.stderr
     r = w.kyctl("start", "builder")
-    assert r.returncode == 64 and "veto" in r.stderr and "stopped and observed here only" in r.stderr
+    assert r.returncode == 64 and "veto" in r.stderr and "takes no queued command" not in r.stderr
+    # N3-06: the usage text says what the veto controller applies — each command of its own list, and whose `veto` is
+    veto_line = next(x for x in r.stderr.splitlines() if "the veto loop" in x)
+    assert kyloop.VetoController.COMMANDS == ("status", "loops", "decide")
+    for said in ("`status`", "`loops stop|status veto`", "`decide`", "`veto <decision-id>` is settled by the veto handler"):
+        assert said in veto_line, said
     assert w.kyctl("frobnicate").returncode == 64
     assert w.kyctl("start").returncode == 64
 
@@ -1444,7 +1665,7 @@ def test_loop_prompts_contract(name):
     assert len(text) <= 6000, len(text)
     head = text.split("---")[1]
     for key in ("artifact: " + name, "version:", "paired_plan:", "status: DRAFT — pending the B-0c independent review",
-                "never_pasted: true"):
+                "never_pasted: true", "changelog: v2.4 (2026-10-12) "):
         assert key in head, key
     for frag in ("CLAUDE.md → owner decisions → plan → cards → packets", "**Never:**",
                  "honest unknown beats an invented status", "never from memory", "job.json", "checkpoint"):
@@ -1628,7 +1849,10 @@ def propose(w, n=1, expires_in=2, tracker=True, seen=True, notified=True, **over
         stamp.parent.mkdir(exist_ok=True)
         stamp.write_text(json.dumps({"first_seen_at": iso(deadline - 1800),
                                      "proposal_line_sha256": kyveto.proposal_sha(line)}))
-    (w.run / "awaiting" / (aw + ".json")).write_text(json.dumps({"id": aw}))
+    item = {"id": aw}
+    if isinstance(target.get("tracker_decision"), dict):   # the item names the tracker decision that would be published
+        item["tracker_decision"] = target["tracker_decision"]["id"]
+    (w.run / "awaiting" / (aw + ".json")).write_text(json.dumps(item))
     return sid, deadline
 
 
@@ -1837,8 +2061,8 @@ def test_a_decision_that_fails_after_its_publication_is_raised_once_and_the_loop
     p = w.popen("veto")
     try:
         assert wait_for(lambda: states(w, sid)[-1] == "FAILED")
-        ticks = veto_summary(w)["ticks"]
-        assert wait_for(lambda: veto_summary(w)["ticks"] >= ticks + 3)
+        ticks = veto_summary(w).get("ticks", 0)             # the FAILED line is in the log before the tick that
+        assert wait_for(lambda: veto_summary(w).get("ticks", 0) >= ticks + 3)   # wrote it is recorded as a tick
         ls = w.loop_state("veto")
         assert p.poll() is None and ls["enabled"] is True and ls["breaker"]["open"] is False
         raised = [a for a in w.awaiting() if "-veto-attention-sd-" in a["id"]]
@@ -2064,6 +2288,7 @@ def test_a_decision_bound_to_a_superseded_source_is_judged_against_the_chains_te
     p = w.popen("veto")
     try:
         assert wait_for(lambda: states(w, stale)[-1] == "FAILED" and states(w, current)[-1] == "EXECUTED")
+        assert wait_for(lambda: "veto" in (w.loop_state("veto") or {}))        # the tick's summary follows its lines
         assert w.loop_state("veto")["veto"]["authority"]["source"].startswith("activation_chain: ACTIVATION_RECORD.2.json")
         stop_and_wait(w, p, "veto")
     finally:
@@ -2389,12 +2614,16 @@ def test_other_queued_commands_do_not_end_a_running_child(w, queued):
 
 
 def test_owner_decide_is_written_beside_the_item_and_is_changed_evidence_for_the_breaker(w):
+    """(Changed for R15 / L4-01: this test asserted that the answered item STAYS in run/awaiting — "closing it is
+    its consumer's act" — which is the defect: nothing ever closed it. The controller that applies the answer now
+    closes the item, by moving it to awaiting/done/.)"""
     w.ready()
     w.default_mode("noprogress")
     assert w.kyloop("planner").returncode == 0 and w.calls() == [1, 2, 3]
     (aw,) = [a for a in w.awaiting() if a["id"].endswith("-loop-planner-no-progress")]
     item = w.run / "awaiting" / (aw["id"] + ".json")
     answer = w.run / "awaiting" / (aw["id"] + ".owner_decision.json")
+    closed, asked = w.run / "awaiting" / "done" / item.name, item.read_bytes()
     cid = submit(w, "planner", "decide", {"awaiting_id": aw["id"], "answer": "change-and-restart: prompt fixed"})
     w.rearm()
     w.modes("stop")
@@ -2402,9 +2631,10 @@ def test_owner_decide_is_written_beside_the_item_and_is_changed_evidence_for_the
     assert w.calls() == [1, 2, 3, 4]                        # reopened: nothing else changed but the owner's answer
     od = json.loads(answer.read_text())
     assert (od["answer"], od["command_id"], od["awaiting_id"]) == ("change-and-restart: prompt fixed", cid, aw["id"])
-    assert od["applied_by"]["role"] == "planner" and od["awaiting_sha256"] == sha(item)
+    assert od["applied_by"]["role"] == "planner" and od["awaiting_sha256"] == sha(closed)
     assert {k: od["from"].get(k) for k in COCKPIT} == COCKPIT              # who asked, as the queue recorded it
-    assert command(w, cid)["state"] == "APPLIED" and item.exists()          # the item is not removed by the answer
+    assert command(w, cid)["state"] == "APPLIED"
+    assert not item.exists() and closed.read_bytes() == asked               # closed by the answer: moved, not deleted
     br = w.loop_state()["breaker"]
     assert br["open"] is False and len(br["history"]) == 1
     assert not list((w.run / "locks").glob("awaiting.*"))
@@ -3260,7 +3490,11 @@ CONTEXTS = [
     (None, None, None, "qualification_context_missing"),
     ("", None, None, "qualification_context_missing"),
     ("launchd", None, None, "qualification_context_mismatch"),
-    ("launchd", "launchd", None, None),
+    ("launchd", "launchd", None, "qualification_context_mismatch"),    # N3-04: told "launchd" is not launchd …
+    ("test-hook:launchd", "launchd", None, None),                        # … it is a context of its own
+    ("test-hook:shell", "shell", None, None),
+    ("shell", "shell", None, "qualification_context_mismatch"),
+    ("test-hook:launchd", None, None, "qualification_context_mismatch"),  # … which no real controller runs in
     ("shell", "launchd", None, "qualification_context_mismatch"),
     ("launchd", "launchd", "1", "qualification_context_mismatch"),      # the injection is ignored at scale 1
     ("elsewhere", "elsewhere", None, "qualification_context_mismatch"),  # … and is never anything but the two
@@ -3293,7 +3527,7 @@ def test_expected_qualification_prints_the_context_it_will_require(w):
 
     exp = expected()
     assert set(exp) == {"role", "model", "receipt_path", "binds", "context"} and exp["context"] == "shell"
-    assert expected(KY_LOOP_TEST_CONTEXT="launchd")["context"] == "launchd"
+    assert expected(KY_LOOP_TEST_CONTEXT="launchd")["context"] == "test-hook:launchd"   # never reported as proven
     assert expected(KY_LOOP_TEST_CONTEXT="launchd", KY_LOOP_SLEEP_SCALE="1")["context"] == "shell"
     assert expected(KY_LOOP_TEST_CONTEXT="launchd")["binds"] == exp["binds"]        # the binds do not depend on it
 
@@ -4176,10 +4410,11 @@ def test_a_run_under_a_test_hook_says_so_in_its_run_record_and_in_the_loop_state
     assert rec["test_hooks"] == ls["test_hooks"] == {"sleep_scale": 0.001, "context_injected": None,
                                                     "context_injection_honoured": False}
     assert "test_hooks=active" in status_line(w, "planner")[0]
-    w.qualify(context="launchd")
+    w.qualify(context="test-hook:launchd")
     w.rearm()
     w.modes("stop")
     assert w.kyloop("planner", KY_LOOP_TEST_CONTEXT="launchd").returncode == 0
+    assert w.calls() == [1, 2] and w.loop_state()["qualification_check"]["context"] == "test-hook:launchd"
     assert w.records()[1]["test_hooks"] == {"sleep_scale": 0.001, "context_injected": "launchd",
                                             "context_injection_honoured": True}
 
@@ -4213,6 +4448,39 @@ def test_a_controller_that_really_runs_under_launchd_refuses_every_test_hook(w, 
         c.verify_veto() if role == "veto" else c.verify_launch()
     except kyloop.Refusal as r:
         assert "test_hooks_in_launchd_context" not in str(r)
+
+
+@pytest.mark.parametrize("injected", ["launchd", "shell"])
+def test_an_injected_context_is_reported_as_a_hook_context_never_as_a_proven_one(w, monkeypatch, injected):
+    """N3-04: a controller started from a shell with both test hooks set does not report `launchd` (or `shell`):
+    a receipt earned in the real context does not qualify it."""
+    c = controller_in_process(w, monkeypatch, "planner", KY_LOOP_TEST_CONTEXT=injected)
+    assert c.scale < 1 and c.real_context() == "shell"
+    assert c.context() == "test-hook:" + injected and c.context() not in ("launchd", "shell")
+    w.qualify(context=injected)                             # a receipt that says the real context
+    cfg, errs = c.load_config()
+    assert not errs
+    assert "qualification_context_mismatch" in json.dumps(c.check_qualification(cfg))
+    w.qualify(context="test-hook:" + injected)              # the control: the same check passes for the hook context
+    assert c.check_qualification(cfg) == []
+
+
+def test_under_launchd_a_missing_harness_refuses_the_launch(w, monkeypatch):
+    """N3-05: where the installed loops run, the receipt is judged by kyqualify.check_receipt or not at all."""
+    c = controller_in_process(w, monkeypatch, "planner", KY_LOOP_SLEEP_SCALE="1")      # no harness beside it
+    monkeypatch.setattr(kyloop.Controller, "real_context", lambda self: "launchd")
+    w.qualify(context="launchd")
+    cfg, errs = c.load_config()
+    assert not errs
+    reasons = c.check_qualification(cfg)
+    assert len(reasons) == 1 and reasons[0].startswith("qualification_harness_missing") and c.qualification_check is None
+    # the control: the same receipt and controller with a harness that accepts it
+    calls = []
+    harness = type("Harness", (), {"CONFIG_KEYS": (), "check_receipt": staticmethod(
+        lambda doc, cfg, require_context=None: calls.append(require_context) or [])})
+    monkeypatch.setattr(kyloop.Controller, "load_harness", lambda self: harness)
+    assert c.check_qualification(cfg) == [] and calls == ["launchd"]
+    assert c.qualification_check["mode"] == "kyqualify.check_receipt"
 
 
 # ───────────────────────────── the dispatcher start (N-04) ─────────────────────────────
@@ -4487,3 +4755,1357 @@ def test_a_refusal_backs_off_by_the_step_when_the_reset_is_later_or_already_past
     assert first["quota_refusal"] is True and q["backoff_basis"] == "backoff_step" and q["resets_at"] == resets
     assert q["backoff_until"] == q["backoff_step_until"]
     assert second["quota_refusal"] is False
+
+
+# ───────────────────────────── B-0c part 2: L2-a … L2-d ─────────────────────────────
+
+# L2-a — a message another actor holds locked is waited for in the controller; it is never a second look at once
+
+def conductor_with_inbox(w, *ids):
+    w.resume()
+    w.ready("conductor")
+    w.default_mode("ack")
+    (w.root / "fake_ky" / "inbox.S.json").write_text(json.dumps([{"msg_id": m, "detail": "do " + m} for m in ids]))
+
+
+def lock_waits(w):
+    return ((w.loop_state("conductor") or {}).get("counters") or {}).get("item_lock_waits", 0)
+
+
+def test_a_message_locked_by_another_live_actor_is_waited_for_in_the_controller_and_never_relaunched(w):
+    conductor_with_inbox(w, "M1")
+    other = kyaction.acquire_lock(w.run, "msg.M1", "another-actor")        # this test process: alive, and not us
+    assert other is not None
+    p = w.popen("conductor")
+    try:
+        assert wait_for(lambda: (w.loop_state("conductor") or {}).get("waiting") == "items_locked")
+        assert wait_for(lambda: lock_waits(w) >= 3)         # pass after pass it WAITS: a counted waiting state
+        ls = w.loop_state("conductor")
+        assert p.poll() is None and ls["enabled"] is True and ls["breaker"]["open"] is False
+        assert ls["item_lock_wait"]["items"] == ["msg.M1"] and ls["no_progress_count"] == 0
+        assert ls["counters"].get("launches", 0) == 0 and ls["expected_child"] is None
+        assert w.calls() == [] and w.records("conductor") == [] and w.awaiting() == []     # nothing was launched
+        assert not list((w.run / "actions").glob("LAUNCH-*")) if (w.run / "actions").is_dir() else True
+        assert json.loads((w.run / "locks" / "msg.M1" / "owner.json").read_text())["session_or_run_id"] == "another-actor"
+        assert kyaction.release_lock(other)                 # the other actor is done and did not handle it
+        assert wait_for(lambda: w.calls() == [1])           # … and only now is ONE job launched for it
+        assert wait_for(lambda: (w.loop_state("conductor") or {}).get("waiting") == "no_eligible_work")
+        stop_and_wait(w, p, "conductor")
+    finally:
+        p.kill()
+    (rec,) = w.records("conductor")
+    assert [i["id"] for i in rec["work_items"]] == ["msg.M1"] and w.calls() == [1]
+
+
+def test_a_message_lock_nobody_can_judge_is_waited_for_with_one_attention_item_and_never_taken_over(w):
+    conductor_with_inbox(w, "M1")
+    (w.run / "locks" / "msg.M1").mkdir(parents=True)       # a bare lock: no owner record at all
+    p = w.popen("conductor")
+    try:
+        assert wait_for(lambda: lock_waits(w) >= 3)
+        assert w.loop_state("conductor")["waiting"] == "items_locked" and p.poll() is None
+        stop_and_wait(w, p, "conductor")
+    finally:
+        p.kill()
+    assert w.calls() == [] and w.records("conductor") == []
+    (item,) = w.awaiting()                                  # ONE item, however many passes waited
+    assert item["id"].endswith("-lock-owner-unknown-msg-m1") and item["blocks"] == "none"
+    assert (w.run / "locks" / "msg.M1").is_dir() and not (w.run / "locks" / "msg.M1" / "owner.json").exists()
+
+
+def test_an_unlocked_message_is_launched_without_waiting_for_the_locked_one(w):
+    """The negative of the wait: `items_locked` is the state of a pass that could launch NOTHING — not of a pass
+    in which one message of several is held by somebody else."""
+    conductor_with_inbox(w, "M1", "M2")
+    other = kyaction.acquire_lock(w.run, "msg.M1", "another-actor")
+    p = w.popen("conductor")
+    try:
+        assert wait_for(lambda: w.calls() == [1] and len(w.records("conductor")) == 1
+                        and w.records("conductor")[0]["ended_at"] is not None)
+        assert [i["id"] for i in w.records("conductor")[0]["work_items"]] == ["msg.M2"]
+        assert wait_for(lambda: lock_waits(w) >= 1)         # M2 is handled; M1 is still somebody else's: now it waits
+        stop_and_wait(w, p, "conductor")
+    finally:
+        p.kill()
+        kyaction.release_lock(other)
+    assert w.calls() == [1]
+
+
+def test_run_job_says_items_locked_only_when_a_lock_kept_everything_back(w, monkeypatch):
+    conductor_with_inbox(w, "M1")
+    c = controller_in_process(w, monkeypatch, "conductor")
+    c.load_siblings()
+    c.cfg = {}
+    item = {"id": "msg.M1", "kind": "message", "key": "M1", "stream": "S", "message": {"msg_id": "M1"}}
+    other = kyaction.acquire_lock(w.run, "msg.M1", "another-actor")
+    assert c.run_job([item]) == "items_locked" and c.items_waiting == ["msg.M1"]
+    kyaction.release_lock(other)
+    (w.run / "handled").mkdir()
+    (w.run / "handled" / "msg.M1.json").write_text("{}")   # handled meanwhile: nothing to wait for, nothing launched
+    assert c.run_job([item]) is None and c.items_waiting == [] and w.calls() == []
+    assert not (w.run / "locks" / "msg.M1").exists()
+
+
+# L2-b — the veto controller applies its own role's commands; `veto <decision-id>` stays the handler's
+
+def test_the_veto_controller_applies_its_own_roles_queued_commands_and_a_queued_stop_ends_the_loop(w):
+    veto_world(w)
+    w.enable("veto")
+    status = submit(w, "veto", "status")
+    other = submit(w, "veto", "priority", {"item": "B-4"})             # not a thing the veto role can carry out
+    foreign = submit(w, "veto", "loops", {"op": "stop", "loop": "planner"})
+    stop = submit(w, "veto", "loops", {"op": "stop", "loop": "veto"})
+    r = w.kyloop("veto")
+    assert r.returncode == 0, r.stderr                      # the owner's queued stop ended the loop
+    docs = {c: command(w, c) for c in (status, other, foreign, stop)}
+    assert [docs[c]["state"] for c in (status, other, foreign, stop)] == ["APPLIED", "REJECTED", "REJECTED", "APPLIED"]
+    for d in docs.values():
+        assert d["applied_by"]["role"] == "veto" and d["applied_by"]["holder_kind"] == "controller"
+        assert re.fullmatch(r"CTL-VETO-\d{8}T\d{6}Z-\d+", d["applied_by"]["controller_id"])
+        assert_schema("command", d)
+    assert docs[status]["result"]["line"].startswith("veto state=") and docs[status]["result"]["facts"]["enabled"] == "true"
+    assert docs[other]["result"]["reason"].startswith("unsupported_by_veto_role: priority")
+    assert docs[foreign]["result"]["reason"].startswith("not_this_roles_loop")
+    assert "unsupported_by_veto_handler" not in json.dumps(list(docs.values()))
+    ls = w.loop_state("veto")
+    assert ls["enabled"] is False and ls["disabled_by_command"] == stop and stop in ls["reason"]
+    assert ls["commands"]["applied"] == 2 and ls["commands"]["rejected"] == 2
+    assert "veto" not in ls                                 # stopped before a single tick
+    assert not w.stop_file("veto").exists() and w.awaiting() == [] and not (w.run / "locks" / "veto").exists()
+    assert kyaction.load(w.run, "CMD-" + stop)["state"] == "DONE"
+    before = {c: kycommands.find(w.run, c)["path"].read_bytes() for c in docs}
+    w.enable("veto")                                        # a restart applies nothing a second time
+    p = w.popen("veto")
+    try:
+        assert wait_for(lambda: veto_summary(w).get("ticks", 0) >= 2)
+        stop_and_wait(w, p, "veto")
+    finally:
+        p.kill()
+    assert before == {c: kycommands.find(w.run, c)["path"].read_bytes() for c in docs}
+
+
+def test_a_veto_command_is_never_applied_by_the_controller_itself(w, monkeypatch):
+    """The negative: of the veto role's queue the controller leaves `veto <decision-id>` exactly as it found it —
+    that one is consumed by the handler's tick, under the decision's lock."""
+    veto_world(w)
+    w.enable("veto")
+    sid, _ = propose(w, expires_in=3600, tracker=False)
+    veto = submit(w, "veto", "veto", {"decision_id": sid})
+    status = submit(w, "veto", "status")
+    c = controller_in_process(w, monkeypatch, "veto")
+    assert c.acquire()
+    try:
+        c.prepare()
+        before = kycommands.find(w.run, veto)["path"].read_bytes()
+        assert c.apply_commands() is True                   # the status behind it was settled, out of order
+        assert command(w, status)["state"] == "APPLIED" and command(w, veto)["state"] == "QUEUED"
+        assert kycommands.find(w.run, veto)["path"].read_bytes() == before
+        assert not (w.run / "actions" / ("CMD-%s.json" % veto)).exists() and states(w, sid) == ["PENDING_VETO"]
+        assert (w.run / "actions" / ("CMD-%s.json" % status)).exists()
+        assert c.apply_commands() is False                  # nothing of its own is left: the tick may run
+        assert [d["id"] for d in kycommands.pending(w.run, "veto")] == [veto]
+    finally:
+        c.release_lock()
+
+
+def test_a_stop_queued_while_the_veto_loop_waits_is_applied_before_the_next_tick(w, monkeypatch):
+    veto_world(w)
+    w.enable("veto")
+    queued, ticks = [], []
+    with Signals():
+        c = controller_in_process(w, monkeypatch, "veto")
+
+        def tick():
+            ticks.append(c.ls().get("enabled"))
+            return {"decisions": [], "problems": [], "commands": [], "holds": [], "attention": False}
+
+        def wait_for_event(deadline, seen):                 # the owner queues the stop while the controller waits
+            queued.append(submit(w, "veto", "loops", {"op": "stop", "loop": "veto"}))
+
+        monkeypatch.setattr(c, "tick", tick)
+        monkeypatch.setattr(c, "wait_for_event", wait_for_event)
+        assert c.main() == 0
+    assert ticks == [True] and len(queued) == 1             # ONE tick; the stop was honoured before a second one
+    assert command(w, queued[0])["state"] == "APPLIED"
+    ls = w.loop_state("veto")
+    assert ls["enabled"] is False and ls["disabled_by_command"] == queued[0] and ls["controller"] is None
+    assert w.awaiting() == [] and not w.stop_file("veto").exists() and not (w.run / "locks" / "veto").exists()
+
+
+# L2-c — kylock.sh: one function runs it, its exit codes are read one by one, and the child is given to it
+
+FAKE_KYLOCK = """#!/bin/bash
+# Test double for kylock.sh (packet KV3-B-KYLOCK call forms): records its argv in <script>.calls and exits with
+# the integer in <script>.rc.<verb>, else <script>.rc, else 0; sleeps <script>.sleep seconds first when present.
+set -u
+printf '%s\\n' "$*" >> "$0.calls"
+if [ -f "$0.sleep" ]; then sleep "$(cat "$0.sleep")"; fi
+if [ -s "$0.seq.$1" ]; then                      # one exit code per call, first line first; then the files below
+  rc="$(head -n 1 "$0.seq.$1")"; tail -n +2 "$0.seq.$1" > "$0.seq.tmp"; mv "$0.seq.tmp" "$0.seq.$1"; exit "$rc"
+fi
+if [ -f "$0.rc.$1" ]; then exit "$(cat "$0.rc.$1")"; fi
+if [ -f "$0.rc" ]; then exit "$(cat "$0.rc")"; fi
+echo "kylock: $1 role=$2 state=ok holder=$3 pid=0"
+exit 0
+"""
+
+
+def fake_kylock(w, **rcs):
+    path = w.fleet / "kylock.sh"
+    path.write_text(FAKE_KYLOCK)
+    path.chmod(0o755)
+    for verb, rc in rcs.items():
+        (w.fleet / ("kylock.sh.rc." + verb)).write_text(str(rc))
+    return path
+
+
+def kylock_calls(w):
+    p = w.fleet / "kylock.sh.calls"
+    return p.read_text().splitlines() if p.exists() else []
+
+
+def test_kylock_is_one_function_that_answers_none_while_kylock_is_not_installed(w, monkeypatch):
+    c = controller_in_process(w, monkeypatch)
+    assert c.kylock("acquire") is None                      # not installed: the built-in lock is what holds the role
+    (w.fleet / "kylock.sh").write_text(FAKE_KYLOCK)
+    (w.fleet / "kylock.sh").chmod(0o644)
+    assert c.kylock("acquire") is None and kylock_calls(w) == []       # present but not executable: not installed
+    assert c.acquire_lock() and c.lock_mode == "builtin" and (w.run / "locks" / "planner" / "owner.json").exists()
+    c.release_lock()
+    assert not (w.run / "locks" / "planner").exists() and kylock_calls(w) == []
+    fake_kylock(w)
+    assert c.kylock("acquire")[:2] == ("ok", 0)
+    assert c.kylock("child", "pending")[:2] == ("ok", 0)
+    assert kylock_calls(w) == ["acquire planner " + c.controller_id, "child planner %s pending" % c.controller_id]
+    for rc, outcome in ((75, "live"), (76, "cockpit"), (77, "unknown"), (74, "release_unproven"), (73, "not_owner"),
+                        (70, "bad_identity"), (64, "usage"), (1, "error"), (2, "error"), (127, "error")):
+        (w.fleet / "kylock.sh.rc").write_text(str(rc))
+        assert c.kylock("acquire")[:2] == (outcome, rc)     # every non-zero code is its own answer, none a success
+    (w.fleet / "kylock.sh.rc").unlink()
+    (w.fleet / "kylock.sh.sleep").write_text("5")
+    t0 = time.time()
+    assert c.kylock("acquire", timeout=0.3)[:2] == ("error", None) and time.time() - t0 < 4       # no answer: no lock
+
+
+KYLOCK_REFUSALS = [
+    (75, None, None, "live"),                               # a live holder: a duplicate start, nothing recorded
+    (76, "role_held_by_cockpit", None, "cockpit"),
+    (77, "role_lock_owner_unknown", "-loop-planner-lock-owner-unknown", "unknown"),
+    (70, "role_lock_identity_refused", "-loop-planner-lock-helper-refused", "identity_refused"),
+    (74, "role_lock_helper_failed", "-loop-planner-lock-helper-refused", "kylock_error"),   # not an acquire answer
+    (1, "role_lock_helper_failed", "-loop-planner-lock-helper-refused", "kylock_error"),
+]
+
+
+@pytest.mark.parametrize("rc,waiting,slug,state", KYLOCK_REFUSALS, ids=["rc%d" % x[0] for x in KYLOCK_REFUSALS])
+def test_kylocks_acquire_exit_codes_are_told_apart(w, rc, waiting, slug, state):
+    w.ready()
+    w.default_mode("stop")
+    fake_kylock(w, acquire=rc)
+    r = w.kyloop("planner")
+    assert r.returncode == 0 and w.calls() == [] and "rc=%d" % rc in r.stderr
+    assert len(kylock_calls(w)) == 1 and kylock_calls(w)[0].startswith("acquire planner CTL-PLANNER-")
+    assert not w.stop_file().exists() and w.loop_state()["enabled"] is True    # it never stops what it does not hold
+    ls = w.loop_state()
+    assert ls.get("waiting") == waiting
+    if waiting is None:
+        assert "lock_wait" not in ls and w.awaiting() == []
+    else:
+        assert ls["lock_wait"]["state"] == state and ls["lock_wait"]["kylock_rc"] == rc
+        assert [a["id"][len("AW-20261011T000000Z"):] for a in w.awaiting()] == ([slug] if slug else [])
+    assert w.kyloop("planner").returncode == 0              # a second refused start raises nothing new
+    assert len(w.awaiting()) == (1 if slug else 0) and w.calls() == []
+
+
+def test_the_veto_controller_waits_for_a_live_kylock_holder_and_for_no_other_answer(w, monkeypatch):
+    """75 (a live holder: another handler's tick) is waited for, bounded; a cockpit (76) and an unknown owner (77)
+    are not: no other answer of kylock.sh is a reason to try again."""
+    veto_world(w)
+    monkeypatch.setattr(kyloop, "VETO_LOCK_WAIT_S", 60000.0)           # 60 s at the test scale: never the limit here
+    fake_kylock(w)
+    c = controller_in_process(w, monkeypatch, "veto")
+    (w.fleet / "kylock.sh.seq.acquire").write_text("75\n75\n75\n")
+    assert c.acquire() is True and c.lock_mode == "kylock"
+    assert [x.split()[0] for x in kylock_calls(w)] == ["acquire"] * 4      # three refusals waited for, then acquired
+    c.release_lock()
+    for rc, state in ((76, "cockpit"), (77, "unknown"), (70, "identity_refused"), (1, "kylock_error")):
+        (w.fleet / "kylock.sh.calls").unlink()
+        (w.fleet / "kylock.sh.seq.acquire").write_text("%d\n" % rc)       # a second try would be given the lock
+        c = controller_in_process(w, monkeypatch, "veto")
+        assert c.acquire() is False and c.lock_refusal["state"] == state and len(kylock_calls(w)) == 1
+
+
+def test_the_child_is_given_to_kylock_before_and_after_it_is_started(w):
+    w.ready()
+    w.modes("stop")
+    fake_kylock(w)
+    assert w.kyloop("planner").returncode == 0 and w.calls() == [1]
+    (rec,) = w.records()
+    ctl = rec["controller_id"]
+    calls = kylock_calls(w)
+    assert calls[0] == "acquire planner " + ctl and calls[1] == "child planner %s pending" % ctl
+    assert calls[3:] == ["child planner %s none" % ctl, "release planner " + ctl]
+    prefix = "child planner %s " % ctl
+    assert calls[2].startswith(prefix)
+    child = json.loads(calls[2][len(prefix):])              # exactly the packet's keys, and the run's own identity
+    assert child == {"run_id": rec["run_id"], "pid": rec["pid"], "pgid": rec["pgid"],
+                     "process_start": rec["process_start"]}
+    assert "lock_release" not in w.loop_state() and len(w.awaiting()) == 0
+
+
+@pytest.mark.parametrize("rc", [73, 77, 1])
+def test_nothing_is_launched_when_kylock_will_not_record_the_pending_child(w, rc):
+    w.ready()
+    w.default_mode("substep")
+    fake_kylock(w, child=rc)
+    r = w.kyloop("planner")
+    assert r.returncode == 0 and "Traceback" not in r.stderr
+    assert "role_lock_child_not_recorded: kylock.sh child pending" in json.dumps(refused(w))     # … and no model run
+    (rec,) = w.records()
+    assert rec["pid"] is None and rec["ended_reason"] == "launch_failed"
+    assert kyaction.load(w.run, "LAUNCH-" + rec["run_id"])["state"] != "INTENDED"     # not left as a launch in doubt
+    assert w.loop_state()["expected_child"] is None
+    assert [c.split()[0] for c in kylock_calls(w)].count("release") == 1
+
+
+RELEASES = [(74, "kept", True), (1, "unknown", True), (73, "not_owner", False)]
+
+
+@pytest.mark.parametrize("rc,state,raised", RELEASES, ids=["rc%d" % x[0] for x in RELEASES])
+def test_a_release_kylock_did_not_confirm_is_never_reported_as_released(w, rc, state, raised):
+    w.ready()
+    w.modes("stop")
+    fake_kylock(w, release=rc)
+    r = w.kyloop("planner")
+    assert r.returncode == 0 and w.calls() == [1] and "NOT released by kylock.sh" in r.stderr
+    note = w.loop_state()["lock_release"]
+    assert (note["state"], note["kylock_rc"]) == (state, rc) and note["controller_id"] == w.records()[0]["controller_id"]
+    items = [a for a in w.awaiting() if a["id"].endswith("-loop-planner-lock-release-unproven")]
+    assert len(items) == (1 if raised else 0)
+    if rc == 74:                                            # KU-02: the lock is kept, the databases are named
+        assert "KEPT the role lock" in items[0]["question"] and note["controller_id"] in json.dumps(items[0])
+        assert_awaiting_schema(items[0])
+    (w.fleet / "kylock.sh.rc.release").unlink()             # the next controller's own start and clean release
+    w.rearm()
+    w.modes("stop")
+    assert w.kyloop("planner").returncode == 0 and w.calls() == [1, 2]
+    assert "lock_release" not in w.loop_state()             # … withdraw the observation; the item stays the owner's
+    assert len([a for a in w.awaiting() if a["id"].endswith("-lock-release-unproven")]) == (1 if raised else 0)
+
+
+# L2-d — the authority is part of what must change before a veto loop stopped for attention ticks again
+
+def test_the_attention_fingerprint_changes_with_the_authority_and_with_nothing_else_unrecorded(w, monkeypatch):
+    veto_world(w, authorised=False)
+    c = controller_in_process(w, monkeypatch, "veto")
+    unknown = c.attention_fingerprint()
+    assert c.attention_fingerprint() == unknown             # nothing changed: the same fingerprint
+    (w.run / "KY_WORKERS").write_text("9\n")                # not evidence of this stop
+    assert c.attention_fingerprint() == unknown
+    veto_world(w)                                           # the authorised source is recorded
+    known = c.attention_fingerprint()
+    assert known != unknown and c.attention_fingerprint() == known
+    w.write_state({"active": {}, "completed_steps": [], "authorised_source": {"source_commit": C2, "entrypoints_digest": E1}})
+    assert c.attention_fingerprint() not in (known, unknown)        # another bundle is another authority
+    veto_world(w, authorised=False)
+    assert c.attention_fingerprint() == unknown             # … and it is a function of what is recorded, only
+
+
+def test_a_veto_stop_taken_without_an_authority_lifts_when_the_authority_returns(w, monkeypatch):
+    veto_world(w, authorised=False)
+    w.enable("veto")
+    c = controller_in_process(w, monkeypatch, "veto")
+    c.load_siblings()
+    c.open_attention(["SD-20261011T220000Z-1: blocked (error: the bundle could not be read)"])
+    ls = w.loop_state("veto")
+    assert ls["breaker"]["open"] is True and ls["enabled"] is False and len(w.awaiting()) == 1
+    assert c.attention_gate(c.ls()) is True                 # nothing changed: the restart is refused
+    assert c.attention_gate(c.ls()) is True and w.loop_state("veto")["breaker"]["open"] is True
+    veto_world(w)                                           # the authority returns — and nothing else changed
+    assert c.attention_gate(c.ls()) is False
+    ls = w.loop_state("veto")
+    assert ls["breaker"]["open"] is False and ls["breaker"]["history"][-1]["from"] != ls["breaker"]["history"][-1]["to"]
+
+
+# ═════════════════════════ an answered owner-wait has an end, on both sides (R15, L4-01) ═════════════════════════
+#
+# (1) an owner-wait with the OWNER's decision beside it no longer blocks its item or its loop; (2) the controller
+# that applies the `decide` writes the decision first and then closes the item (run/awaiting/done/), and for its
+# own job-action item carries the chosen option out; (3) the answer is a changed dependency; (4) nothing but an
+# owner `decide` is an answer — a record no such command stands behind (a surrogate's, a job's) releases nothing.
+
+def job_wait(w, slug, item, role="planner", blocks="item", class_hint="routine", job_id="PLANNER-20261011T000000Z"):
+    """An owner-wait exactly as a job of `role` writes it (prompt item 6). → its id."""
+    (w.run / "awaiting").mkdir(exist_ok=True)
+    aid = "AW-20261011T000000Z-" + slug
+    doc = {"schema": "ky.awaiting/1", "id": aid, "created_at": "2026-10-11T00:00:00Z",
+           "raised_by": {"role": role, "session_id": "session-of-%s" % role, "job_id": job_id}, "item": item,
+           "question": "May %s go on?" % item, "options": [{"id": "yes", "text": "Go on."}, {"id": "no", "text": "Stop."}],
+           "recommendation": "yes", "evidence": [], "deadline": None, "class_hint": class_hint, "blocks": blocks}
+    assert_awaiting_schema(doc)
+    (w.run / "awaiting" / (aid + ".json")).write_text(json.dumps(doc))
+    return aid
+
+
+def wait_paths(w, aid):
+    """(the open item, the owner's decision beside it, the item once it is closed)."""
+    d = w.run / "awaiting"
+    return d / (aid + ".json"), d / (aid + ".owner_decision.json"), d / "done" / (aid + ".json")
+
+
+@contextlib.contextmanager
+def lock_holder(w, monkeypatch, role="planner"):
+    """A controller of the test world in this process that HOLDS its role lock — the fenced owner kycommands.apply
+    asks for — without running its loop."""
+    c = controller_in_process(w, monkeypatch, role)
+    c.load_siblings()
+    assert c.acquire_lock()
+    c.state_sha = kyloop.sha_file(c.state_path)
+    try:
+        yield c
+    finally:
+        c.release_lock()
+
+
+def eligible(c):
+    return [i["id"] for i in c.eligible_items()]
+
+
+def work_items(rec):
+    return [i["id"] for i in json.loads((Path(rec["prompt_path"]).parent / "job.json").read_text())["work_items"]]
+
+
+def decision_record(aid, cid, answer="yes", **over):
+    """What record_owner_decision writes beside an item, as far as its readers look."""
+    rec = {"schema": "ky.owner_decision/1", "awaiting_id": aid, "answer": answer, "command_id": cid,
+           "from": dict(COCKPIT, pid=1, process_start=None), "command_created_at": "2026-10-11T00:00:00Z",
+           "applied_at": "2026-10-11T00:00:01Z", "applied_by": {"role": "planner", "controller_id": OLD_CTL},
+           "awaiting_sha256": "0" * 64}
+    rec.update(over)
+    return rec
+
+
+def test_an_item_level_wait_the_owner_answered_no_longer_blocks_its_item(w, monkeypatch):
+    """L4-01, item level: the planner-job wait on B-3 of the reviewer's probe. Unanswered it blocks B-3 (and B-3
+    only); a `decide` that is merely queued is not an answer yet; once the controller has applied it the decision
+    lies beside where the item was, the item itself is closed, and B-3 is work again."""
+    w.ready()
+    aid = job_wait(w, "b-3-question", "B-3")
+    item, answer, closed = wait_paths(w, aid)
+    asked = item.read_bytes()
+    with lock_holder(w, monkeypatch) as c:
+        assert eligible(c) == ["step.B-4"] and c.awaiting_blocks() == (False, {"B-3"}, [aid])
+        cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "yes: go on"})
+        assert eligible(c) == ["step.B-4"]                  # queued, not applied: nothing is recorded as answered
+        assert c.apply_commands() is True
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+    doc = command(w, cid)
+    assert doc["state"] == "APPLIED" and kyaction.load(w.run, "CMD-" + cid)["state"] == "DONE"
+    od = json.loads(answer.read_text())
+    assert od["schema"] == "ky.owner_decision/1"
+    assert (od["awaiting_id"], od["answer"], od["command_id"]) == (aid, "yes: go on", cid)
+    assert od["applied_by"]["role"] == "planner" and {k: od["from"].get(k) for k in COCKPIT} == COCKPIT
+    # the item is closed by the controller that applied the answer — moved, byte for byte, never deleted
+    assert not item.exists() and closed.read_bytes() == asked and od["awaiting_sha256"] == sha(closed)
+    assert doc["result"]["closed"] == str(closed) and doc["result"]["owner_decision"] == str(answer)
+    # … and the record says what was asked, for the job that reads `<awaiting_dir>/<id>.owner_decision.json`
+    assert od["wait"]["item"] == "B-3" and od["wait"]["blocks"] == "item" and od["wait"]["class_hint"] == "routine"
+    assert od["wait"]["question"] == "May B-3 go on?" and [o["id"] for o in od["wait"]["options"]] == ["yes", "no"]
+    assert w.awaiting() == [] and not list((w.run / "locks").glob("awaiting.*"))
+
+
+def test_a_loop_level_wait_the_owner_answered_no_longer_blocks_the_loop(w, monkeypatch):
+    """L4-01, loop level: the answered `blocks: loop` wait of the reviewer's probe left nothing eligible."""
+    w.ready()
+    aid = job_wait(w, "planner-loop-question", "B-3", blocks="loop")
+    with lock_holder(w, monkeypatch) as c:
+        assert eligible(c) == [] and c.awaiting_blocks() == (True, set(), [aid])
+        cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "yes"})
+        assert c.apply_commands() is True
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+    assert command(w, cid)["state"] == "APPLIED" and wait_paths(w, aid)[2].exists() and w.awaiting() == []
+
+
+def test_a_running_loop_leaves_no_eligible_work_when_the_owner_answers_its_loop_level_wait(w):
+    """The whole path in the real controller: it waits (no model, `no_eligible_work`) while the wait is open, and
+    the owner's queued `decide` — applied at the top of its next look — is what ends that wait."""
+    w.ready()
+    w.default_mode("stop")
+    aid = job_wait(w, "planner-loop-question", "B-3", blocks="loop")
+    p = w.popen("planner")
+    try:
+        assert wait_for(lambda: (w.loop_state() or {}).get("waiting") == "no_eligible_work")
+        time.sleep(0.3)
+        assert w.calls() == [] and p.poll() is None         # an unanswered wait still blocks, in the controller
+        cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "yes"})
+        assert p.wait(timeout=15) == 0
+    finally:
+        p.kill()
+    assert command(w, cid)["state"] == "APPLIED" and w.calls() == [1]
+    assert work_items(w.records()[0]) == ["step.B-3", "step.B-4"]
+    assert w.awaiting() == [] and wait_paths(w, aid)[2].exists()
+
+
+def test_the_owners_answer_to_a_wait_a_job_raised_puts_that_item_back_to_work(w):
+    """End to end with the wait a JOB wrote: run 1 raises it for B-3, run 2 goes on with B-4 only; after the
+    owner's `decide` the next job is given B-3 again — the step, and B-5 behind it, can run."""
+    w.ready()
+    w.modes("await", "stop")
+    assert w.kyloop("planner").returncode == 0
+    (aw,) = w.awaiting()
+    assert aw["item"] == "B-3" and work_items(w.records()[1]) == ["step.B-4"]
+    cid = submit(w, "planner", "decide", {"awaiting_id": aw["id"], "answer": "a"})
+    w.rearm()
+    w.modes("stop")
+    assert w.kyloop("planner").returncode == 0
+    assert command(w, cid)["state"] == "APPLIED" and len(w.records()) == 3
+    assert work_items(w.records()[2]) == ["step.B-3", "step.B-4"]
+    assert w.awaiting() == [] and wait_paths(w, aw["id"])[2].exists()
+    assert json.loads(wait_paths(w, aw["id"])[1].read_text())["wait"]["question"] == aw["question"]
+
+
+NOT_AN_ANSWER = ["wrong-awaiting-id", "wrong-schema", "not-an-object", "torn", "no-such-command", "not-a-decide",
+                 "decide-for-another-item", "another-answer", "rejected-decide"]
+
+
+@pytest.mark.parametrize("blocks", ["item", "loop"])
+@pytest.mark.parametrize("case", NOT_AN_ANSWER)
+def test_a_record_that_is_not_the_owners_answer_to_that_wait_releases_nothing(w, monkeypatch, case, blocks):
+    """R15 (1), the negatives: a file named like an answer is one only when it is a ky.owner_decision/1 naming THAT
+    awaiting id and the queue holds the owner's `decide` it names — for that id, with that answer, not rejected.
+    Anything else still blocks. And it is no dead end: the owner's real `decide` is applied over it (the stray
+    record is kept, set aside) and releases the wait."""
+    w.ready()
+    aid = job_wait(w, "b-3-question", "B-3", blocks=blocks)
+    other = job_wait(w, "k9-23-question", "K9-23")
+    item, answer, closed = wait_paths(w, aid)
+    blocked = ([], (True, {"K9-23"}, sorted([aid, other]))) if blocks == "loop" else \
+        (["step.B-4"], (False, {"B-3", "K9-23"}, sorted([aid, other])))
+    queued = None
+    if case in ("wrong-awaiting-id", "wrong-schema", "another-answer"):
+        queued = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "yes"})
+        rec = decision_record(aid, queued, **{"wrong-awaiting-id": {"awaiting_id": other},
+                                             "wrong-schema": {"schema": "ky.owner_decision/2"},
+                                             "another-answer": {"answer": "no"}}[case])
+    elif case == "no-such-command":
+        rec = decision_record(aid, "000001-decide-ffffff")
+    elif case == "not-a-decide":
+        rec = decision_record(aid, submit(w, "campaign", "resume"))
+    elif case == "decide-for-another-item":
+        rec = decision_record(aid, submit(w, "conductor", "decide", {"awaiting_id": other, "answer": "yes"}))
+    elif case == "rejected-decide":
+        cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "yes"})
+        path = kycommands.find(w.run, cid)["path"]
+        path.write_text(json.dumps(dict(json.loads(path.read_text()), state="REJECTED",
+                                        result={"reason": "not_this_roles_item"})))
+        rec = decision_record(aid, cid)
+    else:
+        rec = [1, 2] if case == "not-an-object" else None
+    answer.write_text("{torn" if case == "torn" else json.dumps(rec))
+    stray = answer.read_bytes()
+    with lock_holder(w, monkeypatch) as c:
+        assert (eligible(c), c.awaiting_blocks()) == blocked            # it still blocks, and still counts as open
+        cid = queued or submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "yes"})
+        assert c.apply_commands() is True
+        assert command(w, cid)["state"] == "APPLIED", command(w, cid)
+        assert eligible(c) == ["step.B-3", "step.B-4"]
+    od = json.loads(answer.read_text())
+    assert (od["schema"], od["awaiting_id"], od["answer"], od["command_id"]) == ("ky.owner_decision/1", aid, "yes", cid)
+    (aside,) = (w.run / "awaiting" / "done").glob(aid + ".owner_decision.set_aside.*")
+    assert aside.read_bytes() == stray and command(w, cid)["result"]["set_aside"] == str(aside)
+    assert not item.exists() and closed.exists()
+
+
+SURROGATE = {"kind": "surrogate", "session_id": "kalayantra-owner-surrogate-1"}
+
+
+def test_only_an_owner_decide_releases_a_hard_stop_wait(w, monkeypatch):
+    """R15 (4). A hard stop is the owner's alone: what the surrogate records about it, a decision the surrogate
+    writes beside it and a `decide` it queues under its own name all leave it blocking; the owner's `decide`
+    releases it."""
+    w.ready()
+    aid = job_wait(w, "frozen-contract-change", "B-3", class_hint="hard_stop")
+    item, answer, closed = wait_paths(w, aid)
+    held = (["step.B-4"], (False, {"B-3"}, [aid]))
+    with lock_holder(w, monkeypatch) as c:
+        assert (eligible(c), c.awaiting_blocks()) == held
+        # the surrogate's own record of it (OS-04, OS-09) — or one that calls it routine and executed
+        for n, (cls, state) in enumerate([("hard_stop", "PROPOSED"), ("routine", "EXECUTED")], 1):
+            with open(w.run / "DECISIONS_SURROGATE.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"id": "SD-20261011T220000Z-%d" % n, "awaiting": aid, "class": cls, "state": state,
+                                    "decision": "yes", "by": "kalayantra-owner-surrogate"}) + "\n")
+            assert (eligible(c), c.awaiting_blocks()) == held
+        # a decision the surrogate writes beside the item: under its own name, or dressed as the cockpit's
+        for forged in (decision_record(aid, "SD-20261011T220000Z-2", **{"from": SURROGATE}),
+                       decision_record(aid, "000001-decide-abc123"),
+                       dict(decision_record(aid, None), decided_by="kalayantra-owner-surrogate")):
+            answer.write_text(json.dumps(forged))
+            assert (eligible(c), c.awaiting_blocks()) == held, forged
+            answer.unlink()
+        # a `decide` the surrogate queues itself: the queue takes commands from the cockpit only
+        (w.run / "commands").mkdir(exist_ok=True)
+        forged = {"schema": "ky.command/1", "id": "000001-decide-abc123", "created_at": "2026-10-11T00:00:00Z",
+                  "from": SURROGATE, "role": "planner", "command": "decide", "args": {"awaiting_id": aid, "answer": "yes"},
+                  "state": "QUEUED", "applied_by": None, "applied_at": None, "result": None}
+        (w.run / "commands" / "20261011T000000Z-000001-decide-abc123.json").write_text(json.dumps(forged))
+        answer.write_text(json.dumps(decision_record(aid, "000001-decide-abc123", **{"from": SURROGATE})))
+        assert (eligible(c), c.awaiting_blocks()) == held   # … whether it is still queued,
+        answer.unlink()
+        assert c.apply_commands() is True                   # … or settled: REJECTED, nothing written, nothing moved
+        assert command(w, "000001-decide-abc123")["state"] == "REJECTED"
+        assert command(w, "000001-decide-abc123")["result"]["reason"].startswith("invalid_command")
+        assert not answer.exists() and item.exists() and (eligible(c), c.awaiting_blocks()) == held
+        # the owner's own decide releases it
+        cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "no: the contract stays frozen"})
+        assert c.apply_commands() is True
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+    od = json.loads(answer.read_text())
+    assert command(w, cid)["state"] == "APPLIED" and od["command_id"] == cid and od["wait"]["class_hint"] == "hard_stop"
+    assert not item.exists() and closed.exists()
+
+
+def interrupted_decide(w, aid, moved=False):
+    """A `decide` whose controller died inside its handler: the command is still QUEUED, its action record
+    INTENDED by a process that is gone, the decision record written — and the item moved, or not yet."""
+    item, answer, closed = wait_paths(w, aid)
+    cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "yes"})
+    entry = kycommands.find(w.run, cid)
+    kyaction.begin(w.run, "CMD-" + cid, "command:decide",
+                   {"role": "planner", "holder_kind": "controller", "controller_id": OLD_CTL},
+                   {"role": "planner", "command": "decide", "args": {"awaiting_id": aid, "answer": "yes"}},
+                   {"command_id": cid, "file": entry["path"].name}, "command %s: QUEUED → APPLIED" % cid)
+    left_by_a_dead_process(w, "CMD-" + cid)
+    answer.write_text(json.dumps(decision_record(aid, cid, awaiting_sha256=sha(item))))
+    os.chmod(answer, 0o444)
+    if moved:
+        closed.parent.mkdir()
+        item.rename(closed)
+    return cid
+
+
+@pytest.mark.parametrize("moved", [False, True], ids=["before-the-move", "after-the-move"])
+def test_a_decide_interrupted_after_its_record_is_completed_on_the_next_tick_without_a_second_record(w, moved):
+    """R15 (2), the crash window: decision written, item not yet moved. The next controller completes it under the
+    same action record — the handler runs again and finds its own record — and writes no second decision; when the
+    move had happened too, it is observed and nothing runs again."""
+    w.ready()
+    w.modes("stop")
+    aid = job_wait(w, "b-3-question", "B-3")
+    item, answer, closed = wait_paths(w, aid)
+    asked = item.read_bytes()
+    cid = interrupted_decide(w, aid, moved)
+    first = answer.read_bytes()
+    r = w.kyloop("planner")
+    assert r.returncode == 0, r.stderr
+    assert command(w, cid)["state"] == "APPLIED" and work_items(w.records()[0]) == ["step.B-3", "step.B-4"]
+    assert not item.exists() and closed.read_bytes() == asked
+    assert answer.read_bytes() == first                     # the one decision record, untouched
+    assert [p.name for p in (w.run / "awaiting").glob("*.owner_decision.json")] == [answer.name]
+    assert not list((w.run / "awaiting" / "done").glob("*set_aside*"))
+    act = kyaction.load(w.run, "CMD-" + cid)
+    assert act["state"] == "DONE" and [x["outcome"] for x in act["reconciliations"]] == ["done" if moved else "not_done"]
+    assert w.awaiting() == [] and not list((w.run / "locks").glob("awaiting.*"))
+
+
+def test_an_answer_whose_item_could_not_be_moved_stands_and_the_move_is_made_on_a_later_tick(w, monkeypatch):
+    """The other way a decision can lie beside an open item: the move failed. The command is APPLIED all the same
+    (the owner's answer is recorded, and says that the item is not closed), the wait no longer blocks — rule (1)
+    — and the controller closes it at a later look."""
+    w.ready()
+    aid = job_wait(w, "b-3-question", "B-3")
+    item, answer, closed = wait_paths(w, aid)
+    with lock_holder(w, monkeypatch) as c:
+        closed.parent.write_text("a file where the directory should be")
+        cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "yes"})
+        assert c.apply_commands() is True
+        doc = command(w, cid)
+        assert doc["state"] == "APPLIED" and doc["result"]["closed"] is None and doc["result"]["close_error"]
+        assert item.exists() and json.loads(answer.read_text())["command_id"] == cid
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+        assert c.apply_commands() is False and item.exists()          # still not possible: tried, nothing lost
+        # … and somebody is told, once: the item lies in run/awaiting as if it were open
+        (note,) = [a for a in w.awaiting() if a["id"].endswith("-loop-planner-answered-wait-not-closed")]
+        assert note["blocks"] == "none" and aid in json.dumps(note) and "FileExistsError" in json.dumps(note)
+        assert_awaiting_schema(note)
+        assert w.cockpit_journal().count("\n") == 1 and note["id"] in w.cockpit_journal()
+        closed.parent.unlink()
+        assert c.apply_commands() is False                  # nothing is queued — and what was left is finished
+        assert not item.exists() and closed.exists() and eligible(c) == ["step.B-3", "step.B-4"]
+    assert [p.name for p in (w.run / "awaiting").glob("*.owner_decision.json")] == [answer.name]
+
+
+def test_an_answered_wait_is_a_changed_dependency_also_when_a_job_of_this_role_raised_it(w, monkeypatch):
+    """R15 (3). The wait a job of this role raised is in no external fingerprint while it is open (N-02: raising it
+    is not progress) — the OWNER's answer to it is: nothing the run authored. It resets the no-progress count and
+    is recorded evidence for the sub-step window; an answered wait about an item this role does not work on is
+    not (L3-01)."""
+    w.ready()
+    aid = job_wait(w, "b-3-question", "B-3")
+    with lock_holder(w, monkeypatch) as c:
+        kyloop.update_loop_state(w.run, "planner", lambda d: dict(d, no_progress_count=2))
+        before, window = c.accepted_summary(), c.substep_evidence()
+        cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "yes"})
+        assert c.accepted_summary() == before               # queued is not answered
+        assert c.apply_commands() is True
+        after = c.accepted_summary()
+        for basis in ("dependency_fingerprint", "external_fingerprint"):
+            assert after[basis] != before[basis], basis
+        assert c.substep_evidence() != window
+        ls = w.loop_state()
+        assert ls["no_progress_count"] == 0 and ls["evidence_changed"] == dict(ls["evidence_changed"], awaiting_id=aid,
+                                                                             by="command:" + cid)
+        # the conductor's answered wait for K9-23 — its own controller applied it — is no dependency of the planner
+        other = job_wait(w, "k9-23-question", "K9-23", role="conductor")
+        theirs = submit(w, "conductor", "decide", {"awaiting_id": other, "answer": "yes"})
+        wait_paths(w, other)[1].write_text(json.dumps(decision_record(
+            other, theirs, applied_by={"role": "conductor", "controller_id": "CTL-CONDUCTOR-20260101T000000Z-1"},
+            wait={"item": "K9-23", "blocks": "item"})))
+        assert sorted(c.owner_answers()) == sorted([aid, other])        # both are the owner's answers …
+        assert c.accepted_summary() == after                            # … one of them is this role's dependency
+        assert c.apply_commands() is False and wait_paths(w, other)[0].exists()     # nor is it this role's to close
+
+
+@pytest.mark.parametrize("answer,state", [("happened", "DONE"), ("did-not-happen: the PR was never opened", "FAILED")])
+def test_the_owners_answer_to_an_unobservable_job_action_is_carried_out_and_frees_the_item(w, answer, state):
+    """R15 (2), the controller's own item. A job left a side effect begun and unobserved; the controller raised one
+    item-level wait for it. The owner's `decide` names one of its two options, and the controller carries it
+    out: the job's record is settled (DONE / FAILED, on the owner's word, said so in its result), the item is
+    closed, and the step is work again."""
+    w.ready()
+    w.modes("job-unknown", "stop")
+    assert w.kyloop("planner").returncode == 0
+    first = w.records()[0]
+    aid = "JOB-%s-open-pr" % first["run_id"]
+    (item,) = job_action_items(w)
+    assert item["blocks"] == "item" and work_items(w.records()[1]) == ["step.B-4"]
+    assert [o["id"] for o in item["options"]] == ["happened", "did-not-happen"]
+    cid = submit(w, "planner", "decide", {"awaiting_id": item["id"], "answer": answer})
+    w.rearm()
+    w.modes("stop")
+    assert w.kyloop("planner").returncode == 0
+    doc = command(w, cid)
+    assert doc["state"] == "APPLIED", doc
+    act = kyaction.load(w.run, aid)
+    option = answer.split(":")[0]
+    assert act["state"] == state and act["result"] == dict(act["result"], settled_by="owner_decision", answer=option,
+                                                           command_id=cid, awaiting_id=item["id"], observed=False)
+    assert doc["result"]["job_action"] == {"action_id": aid, "state": state, "settled": option}
+    assert job_action_items(w) == [] and wait_paths(w, item["id"])[2].exists()
+    assert work_items(w.records()[2]) == ["step.B-3", "step.B-4"]
+    w.rearm()                                               # a restart finds nothing left to reconcile, or to raise
+    w.modes("stop")
+    assert w.kyloop("planner").returncode == 0
+    assert job_action_items(w) == [] and kyaction.load(w.run, aid) == act and len(w.records()) == 4
+
+
+def test_an_answer_that_names_no_option_of_a_job_action_item_is_rejected_and_nothing_changes(w):
+    """The controller can only carry out an option it offered. Anything else is REJECTED with the options named —
+    nothing recorded, the record untouched, the item open and still blocking — so the owner can answer again."""
+    w.ready()
+    w.modes("job-unknown", "stop")
+    assert w.kyloop("planner").returncode == 0
+    aid = "JOB-%s-open-pr" % w.records()[0]["run_id"]
+    (item,) = job_action_items(w)
+    cid = submit(w, "planner", "decide", {"awaiting_id": item["id"], "answer": "perhaps"})
+    w.rearm()
+    w.modes("stop")
+    assert w.kyloop("planner").returncode == 0
+    doc = command(w, cid)
+    assert doc["state"] == "REJECTED" and doc["result"]["reason"].startswith("answer_not_an_option")
+    assert "happened" in doc["result"]["reason"] and "did-not-happen" in doc["result"]["reason"]
+    assert kyaction.load(w.run, aid)["state"] == "INTENDED" and len(job_action_items(w)) == 1
+    assert not wait_paths(w, item["id"])[1].exists() and work_items(w.records()[2]) == ["step.B-4"]
+    again = submit(w, "planner", "decide", {"awaiting_id": item["id"], "answer": "happened"})
+    w.rearm()
+    w.modes("stop")
+    assert w.kyloop("planner").returncode == 0
+    assert command(w, again)["state"] == "APPLIED" and kyaction.load(w.run, aid)["state"] == "DONE"
+
+
+def test_closing_an_answered_wait_is_idempotent_and_never_replaces_or_loses_a_file(w, monkeypatch):
+    """What the next look relies on: every step of closing can be made again. A closed item is never replaced —
+    an open one of the same id lies beside it under another name, unless it is the same bytes (then it is the
+    duplicate) — and a job record that is settled, or gone, is left as it is."""
+    w.ready()
+    aid = job_wait(w, "b-3-question", "B-3")
+    item, _, closed = wait_paths(w, aid)
+    asked = item.read_bytes()
+    with lock_holder(w, monkeypatch) as c:
+        assert c.move_to_done(aid) == str(closed) and closed.read_bytes() == asked and not item.exists()
+        assert c.move_to_done(aid) == str(closed)           # nothing left to move: where it lies
+        assert c.move_to_done("AW-20261011T000000Z-never-raised") is None
+        item.write_bytes(asked)                             # the same item again (a breaker item written back)
+        assert c.move_to_done(aid) == str(closed) and not item.exists()
+        assert [p.name for p in closed.parent.iterdir()] == [closed.name]
+        item.write_text(json.dumps({"schema": "ky.awaiting/1", "id": aid, "question": "another question"}))
+        other = Path(c.move_to_done(aid))                   # another item under that id: beside it, neither lost
+        assert other != closed and other.parent == closed.parent and closed.read_bytes() == asked
+        assert json.loads(other.read_text())["question"] == "another question" and not item.exists()
+        # the job-action option: settled once, on the owner's word
+        actor = {"role": "planner", "holder_kind": "job", "controller_id": OLD_CTL, "run_id": OLD_RUN}
+        act = "JOB-%s-open-pr" % OLD_RUN
+        kyaction.begin(w.run, act, "pr_create", actor, {"title": "x"}, {"item": "step.B-3"}, "open a PR")
+        answer = decision_record("AW-20261011T000000Z-" + c.job_action_slug(act), "000001-decide-abc123", "did-not-happen")
+        first = c.settle_job_action(act, answer["awaiting_id"], answer)
+        assert first == {"action_id": act, "state": "FAILED", "settled": "did-not-happen"}
+        settled = kyaction.load(w.run, act)
+        again = c.settle_job_action(act, answer["awaiting_id"], dict(answer, answer="happened"))
+        assert again == {"action_id": act, "state": "FAILED", "settled": "already_settled"}
+        assert kyaction.load(w.run, act) == settled         # its observed result is set once
+        assert c.settle_job_action("JOB-%s-gone" % OLD_RUN, answer["awaiting_id"], answer)["settled"] == "no_record"
+        kyaction.begin(w.run, "ACT-not-a-jobs", "push", {"role": "planner", "holder_kind": "cockpit",
+                                                         "session_id": "cockpit-session-1"}, {}, {}, "x")
+        assert c.settle_job_action("ACT-not-a-jobs", answer["awaiting_id"], answer)["settled"] == "not_a_job_record_of_this_role"
+        assert kyaction.load(w.run, "ACT-not-a-jobs")["state"] == "INTENDED"
+        # … and an item is a job-action item only when a controller of this role raised it for exactly that record
+        doc = {"raised_by": {"role": "planner", "session_id": OLD_CTL, "job_id": None}, "evidence": ["action: " + act]}
+        assert c.job_action_of(answer["awaiting_id"], doc) == act
+        assert c.job_action_of("AW-20261011T000000Z-job-action-something-else", doc) is None
+        assert c.job_action_of(answer["awaiting_id"], dict(doc, raised_by={"role": "planner", "session_id": "x",
+                                                                           "job_id": OLD_RUN})) is None
+        assert c.job_action_of(answer["awaiting_id"], dict(doc, evidence=["action: JOB-CONDUCTOR-1-open-pr"])) is None
+        assert [c.chosen_option(a) for a in ("happened", " Happened : seen", "did-not-happen", "no", "", None, 7)] == \
+            ["happened", "happened", "did-not-happen", None, None, None, None]
+
+
+def test_a_wait_another_actor_raised_about_this_roles_item_is_answered_through_this_role(w, monkeypatch):
+    """R16: a hard stop the STEWARD raised about B-3 blocks the planner — and no controller answers for a role
+    that has none. The role whose work it blocks applies the owner's `decide`; a wait that is neither this role's
+    nor about its work is still not this role's to answer."""
+    w.ready()
+    aid = job_wait(w, "b-3-from-the-steward", "step.B-3", role="steward", class_hint="hard_stop", job_id=None)
+    foreign = job_wait(w, "k9-23-from-a-builder", "K9-23", role="builder")
+    with lock_holder(w, monkeypatch) as c:
+        assert eligible(c) == ["step.B-4"]
+        cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "yes"})
+        no = submit(w, "planner", "decide", {"awaiting_id": foreign, "answer": "yes"})
+        assert c.apply_commands() is True
+        assert command(w, cid)["state"] == "APPLIED", command(w, cid)
+        assert eligible(c) == ["step.B-3", "step.B-4"]
+    assert command(w, no)["state"] == "REJECTED" and command(w, no)["result"]["reason"].startswith("not_this_roles_item")
+    assert wait_paths(w, foreign)[0].exists() and not wait_paths(w, foreign)[1].exists()
+
+
+def test_the_veto_controller_closes_the_item_of_its_own_that_the_owner_answered(w, monkeypatch):
+    """The same handler serves the veto role: an attention item it raised is answered and closed by a `decide`."""
+    veto_world(w)
+    w.enable("veto")
+    c = controller_in_process(w, monkeypatch, "veto")
+    c.load_siblings()
+    assert c.acquire()
+    try:
+        c.raise_final("SD-20261011T220000Z-1", "failed (target_changed)")
+        (item,) = w.awaiting()
+        cid = submit(w, "veto", "decide", {"awaiting_id": item["id"], "answer": "acknowledge"})
+        assert c.apply_commands() is True
+    finally:
+        c.release_lock()
+    assert command(w, cid)["state"] == "APPLIED" and w.awaiting() == []
+    assert wait_paths(w, item["id"])[2].exists()
+    assert json.loads(wait_paths(w, item["id"])[1].read_text())["applied_by"]["role"] == "veto"
+
+
+# ───────────────────────────── a refused environment is one item and a stop, never a respawn (N4-01) ─────────────────────────────
+
+def test_a_refused_environment_of_a_loop_that_was_never_started_raises_nothing(w):
+    """The other half of the one shape: a loop that is not admitted raises nothing, whatever is wrong around it."""
+    r = w.kyloop("planner", PGPASSWORD="fake-not-printed")
+    assert r.returncode == 0 and "fake-not-printed" not in r.stderr + r.stdout
+    assert w.awaiting() == [] and not w.stop_file().exists() and w.calls() == []
+
+
+def test_a_bad_sleep_scale_is_one_item_and_a_stop_not_a_respawn(w):
+    w.ready()
+    w.default_mode("substep")
+    for again in (False, True):
+        if again:
+            w.rearm()
+        r = w.kyloop("planner", KY_LOOP_SLEEP_SCALE="7")
+        assert r.returncode == 0 and "Traceback" not in r.stderr
+        assert "bad_sleep_scale" in json.dumps(refused(w))
+    assert w.cockpit_journal().count("[decision]") == 1
+    # the admin commands are a person's own, one-shot call: there the same refusal is an exit status
+    r = w.kyloop("admin", "expected-qualification", "planner", KY_LOOP_SLEEP_SCALE="7")
+    assert r.returncode == 78 and "KY_LOOP_SLEEP_SCALE" in r.stderr
+
+
+def test_without_a_run_directory_the_controller_notifies_once_and_stops_without_creating_one(w):
+    """Nothing can be recorded where there is no run directory: no item, no STOP, no switch. What is left of the one
+    shape is ONE notification attempt and exit 0 — launchd does not respawn it every ten seconds — and nothing is
+    created in its place."""
+    gone, log = w.tmp / "no-such-run", w.tmp / "osascript.argv"
+    r = w.kyloop("planner", KY_RUN=str(gone), KY_NOTIFY_DRY="0", KY_OSASCRIPT=str(FIX / "fake_osascript"),
+                 FAKE_OSASCRIPT_LOG=str(log))
+    assert r.returncode == 0 and "is not a directory" in r.stderr and "notify=submitted" in r.stderr
+    assert "planner loop did not start" in log.read_text() and str(gone) in log.read_text()
+    assert not gone.exists() and w.calls() == [] and w.awaiting() == []
+
+
+# ───────────────────────────── R16: a wait that needs a person says so ─────────────────────────────
+
+def queue_items(w, role="planner"):
+    return [a for a in w.awaiting() if a["id"].endswith("-loop-%s-command-queue-unreadable" % role)]
+
+
+def test_a_pause_that_only_a_repaired_queue_can_end_raises_one_attention_item(w):
+    """A command queue that cannot be read is honoured as a pause (see above) — but that pause does not end by an
+    owner's resume: somebody has to repair the queue. The loop says so once, and goes on waiting."""
+    w.ready()
+    w.default_mode("stop")
+    (w.run / "commands").mkdir()
+    torn = w.run / "commands" / "20261011T000000Z-000001-pause-abc123.json"
+    torn.write_text("{torn")
+    p = w.popen("planner")
+    try:
+        assert wait_for(lambda: len(queue_items(w)) == 1)
+        time.sleep(0.4)                                     # dozens of looks: still one item, one notification
+        (item,) = queue_items(w)
+        assert item["blocks"] == "none" and torn.name in json.dumps(item) and len(w.awaiting()) == 1
+        assert_awaiting_schema(item)
+        assert w.cockpit_journal().count("\n") == 1 and item["id"] in w.cockpit_journal()
+        assert w.calls() == [] and p.poll() is None and w.loop_state()["waiting"] == "owner_paused"
+        assert not w.stop_file().exists() and w.loop_state()["enabled"] is True
+        torn.unlink()
+        assert p.wait(timeout=20) == 0
+    finally:
+        p.kill()
+    assert w.calls() == [1]
+
+
+def overdue_items(w, role="planner"):
+    return [a for a in w.awaiting() if a["id"].endswith("-loop-%s-commands-not-settled" % role)]
+
+
+def test_a_queued_command_that_stays_unsettled_is_raised_once_and_the_wait_goes_on(w):
+    """A command that cannot be settled yet keeps its place and nothing is launched (see above): a wait that ends
+    when another actor lets go. While it is short it is nobody's business — and when it has lasted half an hour
+    (1.8 s at the test scale) the loop says so, once: it would otherwise rest in `commands_pending` for good behind
+    a holder that never lets go. Nothing is taken over, nothing is stopped."""
+    w.ready()
+    w.default_mode("stop")
+    aid = job_wait(w, "planner-question", "N-1", blocks="none")
+    busy = kyaction.acquire_lock(w.run, "awaiting." + aid, "surrogate-job-1")     # a live actor that never lets go
+    cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "yes"})
+    p = w.popen("planner")
+    try:
+        assert wait_for(lambda: (w.loop_state() or {}).get("waiting") == "commands_pending")
+        time.sleep(0.3)
+        assert overdue_items(w) == [] and w.cockpit_journal() == ""       # short: nothing is raised
+        assert wait_for(lambda: len(overdue_items(w)) == 1, timeout=20)
+        time.sleep(0.5)                                     # hundreds of looks later: still one item, one notification
+        (item,) = overdue_items(w)
+        assert item["blocks"] == "none" and ("awaiting_item_locked: %s" % aid) in json.dumps(item)
+        assert_awaiting_schema(item)
+        assert w.cockpit_journal().count("\n") == 1 and item["id"] in w.cockpit_journal()
+        assert w.calls() == [] and p.poll() is None and command(w, cid)["state"] == "QUEUED"
+        assert w.loop_state()["waiting"] == "commands_pending" and w.loop_state()["enabled"] is True
+        assert not w.stop_file().exists() and kyaction.lock_owner(w.run, "awaiting." + aid)[0]["pid"] == os.getpid()
+        assert kyaction.release_lock(busy)
+        assert p.wait(timeout=20) == 0
+        said = p.stderr.read()
+    finally:
+        p.kill()
+    assert command(w, cid)["state"] == "APPLIED" and w.calls() == [1]
+    # a wait that is looked at every second says what it waits for when that changes, not two lines a second
+    assert said.count("cannot be settled yet") == 1 and said.count("is locked by another actor") == 1
+
+
+def test_a_second_refusal_for_another_reason_is_raised_although_the_first_item_is_still_open(w):
+    """R16. The item of a refused precondition tells the owner to correct the cause and start the loop again —
+    nothing asks them to answer or close the item, and in Wave B no surrogate does. A LATER refusal for another
+    reason must not hide behind it (STOP, disabled, and nobody told): it is a new item and a new notification. The
+    same refusal again is not."""
+    w.ready()
+    w.default_mode("stop")
+    (w.run / "INSTALL_RECEIPT.json").unlink()
+    assert w.kyloop("planner").returncode == 0
+    first = refused(w)
+    assert "install_receipt_missing" in json.dumps(first) and w.cockpit_journal().count("[decision]") == 1
+    w.receipt("bootstrap")                                  # corrected, started again as the item says: it runs
+    w.rearm()
+    assert w.kyloop("planner").returncode == 0 and w.calls() == [1]
+    assert w.awaiting() == [first]                          # … and the item is still there: nobody had to close it
+    (w.fleet / "kyversion.sh.rc").write_text("3")           # later, something else breaks
+    w.rearm()
+    assert w.kyloop("planner").returncode == 0 and w.calls() == [1]
+    items = [a for a in w.awaiting() if a["id"].endswith("-loop-planner-precondition")]
+    assert len(items) == 2 and items[0] == first and items[0]["id"] != items[1]["id"]
+    assert "kyversion_failed: rc=3" in json.dumps(items[1]) and "install_receipt_missing" not in json.dumps(items[1])
+    assert_awaiting_schema(items[1])
+    assert w.cockpit_journal().count("[decision]") == 2 and items[1]["id"] in w.cockpit_journal()
+    assert w.stop_file().exists() and w.loop_state()["enabled"] is False
+    w.rearm()                                               # the same refusal again: nothing new
+    assert w.kyloop("planner").returncode == 0
+    assert [a for a in w.awaiting() if a["id"].endswith("-loop-planner-precondition")] == items
+    assert w.cockpit_journal().count("[decision]") == 2
+
+
+def test_a_second_veto_stop_for_another_reason_is_raised_although_the_first_item_is_still_open(w, monkeypatch):
+    """R16, the veto loop's own stop: its item says "reconcile, then `kyctl.sh start veto`" — nobody has to close
+    it. A later stop for something else is a new item and a new notification; the same stop again is not."""
+    veto_world(w)
+    w.enable("veto")
+    c = controller_in_process(w, monkeypatch, "veto")
+    c.load_siblings()
+
+    def stops():
+        return [a for a in w.awaiting() if a["id"].endswith("-loop-veto-attention")]
+
+    first_problem = ["SD-20261011T220000Z-1: blocked (publication_unknown)"]
+    c.open_attention(first_problem)
+    (first,) = stops()
+    assert w.cockpit_journal().count("veto loop stopped") == 1 and w.loop_state("veto")["enabled"] is False
+    w.enable("veto")                                        # reconciled and started again; the item stays open
+    (w.run / "DECISIONS_SURROGATE.jsonl").write_text("")    # (recorded evidence changed)
+    c.open_attention(first_problem)                         # the same stop once more: nothing new
+    assert stops() == [first] and w.cockpit_journal().count("veto loop stopped") == 1
+    assert w.loop_state("veto")["breaker"]["awaiting"]["id"] == first["id"]
+    w.enable("veto")
+    c.open_attention(["problem: the command queue cannot be read"])     # later, something else
+    assert len(stops()) == 2 and stops()[0] == first
+    second = stops()[1]
+    assert "the command queue cannot be read" in json.dumps(second) and "publication_unknown" not in json.dumps(second)
+    assert w.cockpit_journal().count("veto loop stopped") == 2 and second["id"] in w.cockpit_journal()
+    ls = w.loop_state("veto")
+    assert ls["enabled"] is False and ls["breaker"]["open"] is True and ls["breaker"]["awaiting"]["id"] == second["id"]
+    assert_awaiting_schema(second)
+
+
+def test_an_awaiting_id_is_never_used_twice(w, monkeypatch):
+    """The id of a new item is one no item ever had — open, answered or closed: a second item of a slug within the
+    same second neither replaces the first nor is born answered by the decision that lies beside the old id."""
+    w.ready()
+    c = controller_in_process(w, monkeypatch)
+    real, d = kyloop.utc, w.run / "awaiting"
+    monkeypatch.setattr(kyloop, "utc", lambda fmt="%Y-%m-%dT%H:%M:%SZ", t=None: real(fmt, 1791800000 if t is None else t))
+
+    def raise_one():                                        # every item is made in the same second
+        return c.write_awaiting("same-slug", "?", [{"id": "a", "text": "a"}], None, [], blocks="none")["id"]
+
+    first, second = raise_one(), raise_one()
+    assert first != second and {a["id"] for a in w.awaiting()} == {first, second}       # the first was not replaced
+    (d / "done").mkdir()
+    (d / (first + ".json")).rename(d / "done" / (first + ".json"))                      # closed
+    (d / (second + ".json")).rename(d / "done" / (second + ".2.json"))                  # answered, and closed elsewhere
+    (d / (second + ".owner_decision.json")).write_text("{}")
+    third = raise_one()
+    assert third not in (first, second) and [a["id"] for a in w.awaiting()] == [third]
+    assert c.open_awaiting("same-slug") == [d / (third + ".json")]                      # … and it is open, not born answered
+    for aid in (first, second, third):
+        assert re.fullmatch(r"AW-\d{8}T\d{6}Z-same-slug", aid)
+    assert_awaiting_schema(w.awaiting()[0])
+
+
+def test_an_owner_pause_itself_raises_nothing(w):
+    """The negative: a pause the owner asked for — queued or applied — ends by the owner's resume; no item."""
+    w.ready()
+    w.default_mode("stop")
+    submit(w, "campaign", "pause")
+    p = w.popen("planner")
+    try:
+        assert wait_for(lambda: (w.loop_state() or {}).get("waiting") == "owner_paused")
+        time.sleep(0.3)
+        assert w.awaiting() == [] and w.cockpit_journal() == "" and p.poll() is None
+        submit(w, "campaign", "resume")
+        assert p.wait(timeout=20) == 0
+    finally:
+        p.kill()
+    assert w.awaiting() == [] and w.calls() == [1]
+
+
+# ═════════════════ an executed veto-class owner-wait has an end, on the controller's side (R18, L5-01) ═════════════════
+#
+# The surrogate leaves a veto-class item in run/awaiting and kyveto.py never moves one. The wait is answered when the
+# veto HANDLER itself completed the decision for that awaiting id: its own `<SD id>.execute` action record is DONE
+# and the decision reads EXECUTED by the handler's own rule. The controller of the role the wait holds up then
+# closes the item under an action record of its own (AWCLOSE-<awaiting id>). A log line alone, and every other
+# state, still blocks; a hard stop is the owner's alone.
+
+VETO_CTL = "CTL-VETO-20260101T000000Z-1"
+VETO_ACTOR = {"role": "veto", "holder_kind": "controller", "controller_id": VETO_CTL}
+VETO_TARGET = {"kind": "capacity", "fingerprint": "f" * 64}
+
+
+def surrogate_lines(w, aid, *states, n=1, cls="veto"):
+    """Lines of ONE decision about that awaiting id in DECISIONS_SURROGATE.jsonl, as they stand there. → its id."""
+    sid = "SD-20261011T220000Z-%d" % n
+    with open(w.run / "DECISIONS_SURROGATE.jsonl", "a", encoding="utf-8") as f:
+        for state in states:
+            f.write(json.dumps({"id": sid, "awaiting": aid, "class": cls, "state": state, "decision": "yes",
+                                "target": VETO_TARGET, "by": "kyveto" if state in ("EFFECTIVE", "EXECUTED")
+                                else "kalayantra-owner-surrogate"}) + "\n")
+    return sid
+
+
+def handler_execute(w, sid, state="DONE", actor=VETO_ACTOR, kind="veto_decision_execute:capacity", decision=None):
+    """The class executor's action record exactly as kyveto.Handler.execute names and settles it."""
+    kyaction.begin(w.run, sid + ".execute", kind, actor, {"decision_id": decision or sid, "class": "veto",
+                                                         "authority": {"source_commit": C1, "entrypoints_digest": E1}},
+                   VETO_TARGET, "capacity: builders 4 → 6")
+    if state == "DONE":
+        kyaction.complete(w.run, sid + ".execute", {"written": True})
+    elif state == "FAILED":
+        kyaction.fail(w.run, sid + ".execute", {"reason": "target_changed"})
+    else:
+        left_by_a_dead_process(w, sid + ".execute")
+    return w.run / "actions" / (sid + ".execute.json")
+
+
+def close_record(w, aid):
+    return kyaction.load(w.run, "AWCLOSE-" + aid)
+
+
+def test_an_executed_veto_class_wait_at_item_level_puts_its_item_back_to_work(w, monkeypatch):
+    """L5-01, item level — the reviewer's probe: a planner-job wait on B-3 (class_hint veto, blocks item). It blocks
+    B-3 through the whole veto window and while EXECUTED is only a line; once the handler's own execute record is
+    DONE it blocks nothing, and the planner controller closes the item under one action record — once."""
+    w.ready()
+    aid = job_wait(w, "b-3-capacity", "B-3", class_hint="veto")
+    item, answer, closed = wait_paths(w, aid)
+    asked, held = item.read_bytes(), (["step.B-4"], (False, {"B-3"}, [aid]))
+    with lock_holder(w, monkeypatch) as c:
+        assert (eligible(c), c.awaiting_blocks()) == held
+        for state in ("PROPOSED", "PENDING_VETO", "EFFECTIVE", "EXECUTED"):
+            sid = surrogate_lines(w, aid, state)
+            assert (eligible(c), c.awaiting_blocks()) == held, state        # a line is never the handler's record
+            assert c.apply_commands() is False and item.exists()
+        record = handler_execute(w, sid)
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+        assert item.exists()                                # answered already; closed at the controller's next look
+        assert c.apply_commands() is False
+        assert not item.exists() and closed.read_bytes() == asked and not answer.exists()
+        act = close_record(w, aid)
+        assert act["state"] == "DONE" and act["kind"] == "awaiting_close:veto_executed"
+        assert act["actor"] == dict(act["actor"], role="planner", holder_kind="controller")
+        assert act["inputs"] == {"awaiting_id": aid, "decision_id": sid}
+        assert act["result"] == dict(act["result"], closed=str(closed), execute_record_sha256=sha(record))
+        first = (w.run / "actions" / ("AWCLOSE-%s.json" % aid)).read_bytes()
+        assert c.apply_commands() is False                  # idempotent: nothing moved, nothing written again
+        assert (w.run / "actions" / ("AWCLOSE-%s.json" % aid)).read_bytes() == first
+        assert sorted(p.name for p in closed.parent.iterdir()) == [closed.name]
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+    assert w.awaiting() == [] and not list((w.run / "locks").glob("awaiting.*"))
+
+
+def test_an_executed_veto_class_wait_at_loop_level_puts_the_loop_back_to_work(w, monkeypatch):
+    """L5-01, loop level: with `blocks: loop` the whole loop rested in no_eligible_work."""
+    w.ready()
+    aid = job_wait(w, "planner-loop-capacity", "B-3", blocks="loop", class_hint="veto")
+    with lock_holder(w, monkeypatch) as c:
+        sid = surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED")
+        assert eligible(c) == [] and c.awaiting_blocks() == (True, set(), [aid])
+        handler_execute(w, sid)
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+        assert c.apply_commands() is False
+    assert w.awaiting() == [] and wait_paths(w, aid)[2].exists() and close_record(w, aid)["state"] == "DONE"
+
+
+def test_a_running_loop_goes_on_when_the_handler_executed_its_loop_level_veto_wait(w):
+    """The whole path in the real controller: it waits, no model, while the decision is pending; the handler's DONE
+    record — no command of anybody — ends the wait, and the job is given the work."""
+    w.ready()
+    w.default_mode("stop")
+    aid = job_wait(w, "planner-loop-capacity", "B-3", blocks="loop", class_hint="veto")
+    sid = surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED")
+    p = w.popen("planner")
+    try:
+        assert wait_for(lambda: (w.loop_state() or {}).get("waiting") == "no_eligible_work")
+        time.sleep(0.3)
+        assert w.calls() == [] and p.poll() is None         # EXECUTED as a line only: still waiting
+        handler_execute(w, sid)
+        assert p.wait(timeout=15) == 0
+    finally:
+        p.kill()
+    assert w.calls() == [1] and work_items(w.records()[0]) == ["step.B-3", "step.B-4"]
+    assert w.awaiting() == [] and wait_paths(w, aid)[2].exists() and close_record(w, aid)["state"] == "DONE"
+
+
+STILL_BLOCKS = ["pending-veto", "effective", "vetoed", "failed", "failed-with-failed-record", "bare-executed-line",
+                "executed-line-record-intended", "executed-line-record-failed", "done-record-no-executed-line",
+                "done-record-not-the-handlers", "done-record-of-a-cockpit", "done-record-of-another-kind",
+                "done-record-for-another-decision", "decision-about-another-wait", "decision-not-of-veto-class",
+                "log-with-a-line-nobody-can-read"]
+
+
+@pytest.mark.parametrize("blocks", ["item", "loop"])
+@pytest.mark.parametrize("case", STILL_BLOCKS)
+def test_a_veto_class_wait_the_handler_did_not_complete_still_blocks(w, monkeypatch, case, blocks):
+    """R18, the negatives. Everything short of "the handler's own execute record for THIS decision about THIS wait
+    is DONE and the decision reads EXECUTED" leaves the wait blocking and the item where it is — and none of it is
+    a dead end: when the handler's record is there, the same wait is released."""
+    w.ready()
+    aid = job_wait(w, "b-3-capacity", "B-3", blocks=blocks, class_hint="veto")
+    other = job_wait(w, "b-4-capacity", "B-4", class_hint="veto")
+    item = wait_paths(w, aid)[0]
+    held = ([], (True, {"B-4"}, sorted([aid, other]))) if blocks == "loop" else \
+        ([], (False, {"B-3", "B-4"}, sorted([aid, other])))
+    lines = {"pending-veto": ["PENDING_VETO"], "effective": ["PENDING_VETO", "EFFECTIVE"],
+             "vetoed": ["PENDING_VETO", "VETOED"], "failed": ["PENDING_VETO", "FAILED"],
+             "failed-with-failed-record": ["PENDING_VETO", "EFFECTIVE", "FAILED"],
+             "done-record-no-executed-line": ["PENDING_VETO", "EFFECTIVE"]}.get(
+                 case, ["PENDING_VETO", "EFFECTIVE", "EXECUTED"])
+    about = other if case == "decision-about-another-wait" else aid
+    sid = surrogate_lines(w, about, *lines, cls="routine" if case == "decision-not-of-veto-class" else "veto")
+    if case in ("failed-with-failed-record", "executed-line-record-failed"):
+        handler_execute(w, sid, "FAILED")
+    elif case == "executed-line-record-intended":
+        handler_execute(w, sid, "INTENDED")
+    elif case == "done-record-not-the-handlers":
+        handler_execute(w, sid, actor={"role": "planner", "holder_kind": "controller", "controller_id": OLD_CTL})
+    elif case == "done-record-of-a-cockpit":
+        handler_execute(w, sid, actor={"role": "veto", "holder_kind": "cockpit", "session_id": "surrogate-1"})
+    elif case == "done-record-of-another-kind":
+        handler_execute(w, sid, kind="notification")
+    elif case == "done-record-for-another-decision":
+        handler_execute(w, sid, decision="SD-20261011T220000Z-7")
+    elif case in ("done-record-no-executed-line", "decision-not-of-veto-class", "log-with-a-line-nobody-can-read"):
+        handler_execute(w, sid)
+    if case == "log-with-a-line-nobody-can-read":
+        with open(w.run / "DECISIONS_SURROGATE.jsonl", "a", encoding="utf-8") as f:
+            f.write("{torn\n")
+    if case == "decision-about-another-wait":               # … which IS released: the other one, and only that
+        handler_execute(w, sid)
+        held = ([], (True, set(), [aid])) if blocks == "loop" else (["step.B-4"], (False, {"B-3"}, [aid]))
+    with lock_holder(w, monkeypatch) as c:
+        before = c.accepted_summary()
+        assert (eligible(c), c.awaiting_blocks()) == held
+        assert c.apply_commands() is False
+        assert item.exists() and not (w.run / "actions" / ("AWCLOSE-%s.json" % aid)).exists()
+        assert (eligible(c), c.awaiting_blocks()) == held
+        if case != "decision-about-another-wait":
+            assert c.accepted_summary() == before           # and it is no changed dependency
+        # no dead end: the handler's own completed decision about this wait releases it
+        if case == "log-with-a-line-nobody-can-read":
+            log = w.run / "DECISIONS_SURROGATE.jsonl"
+            log.write_text(log.read_text().replace("{torn\n", ""))
+        else:
+            handler_execute(w, surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED", n=2))
+        assert aid not in c.awaiting_blocks()[2] and c.awaiting_blocks()[0] is False
+        assert c.apply_commands() is False and not item.exists() and close_record(w, aid)["state"] == "DONE"
+
+
+@pytest.mark.parametrize("how", ["class-hint", "surrogate-record"])
+def test_a_hard_stop_wait_is_not_released_by_an_executed_decision_only_by_an_owner_decide(w, monkeypatch, how):
+    """R18: a hard stop is still the owner's alone. Not even an EXECUTED line with a DONE execute record of the
+    handler's about that awaiting id releases it — whether the raiser called it a hard stop or the surrogate
+    recorded it as one — and the controller does not move it. The owner's `decide` does."""
+    w.ready()
+    aid = job_wait(w, "frozen-contract-change", "B-3", class_hint="hard_stop" if how == "class-hint" else "veto")
+    item, answer, closed = wait_paths(w, aid)
+    held = (["step.B-4"], (False, {"B-3"}, [aid]))
+    if how == "surrogate-record":
+        with open(w.run / "DECISIONS_SURROGATE.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"id": "SD-20261011T220000Z-9", "awaiting": aid, "class": "hard_stop",
+                                "decision": "owner only", "by": "kalayantra-owner-surrogate"}) + "\n")
+    handler_execute(w, surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED"))
+    with lock_holder(w, monkeypatch) as c:
+        before = c.accepted_summary()
+        assert (eligible(c), c.awaiting_blocks()) == held
+        assert c.apply_commands() is False
+        assert item.exists() and not closed.exists() and (eligible(c), c.awaiting_blocks()) == held
+        assert not (w.run / "actions" / ("AWCLOSE-%s.json" % aid)).exists() and c.accepted_summary() == before
+        cid = submit(w, "planner", "decide", {"awaiting_id": aid, "answer": "no: the contract stays frozen"})
+        assert c.apply_commands() is True
+        assert eligible(c) == ["step.B-3", "step.B-4"] and c.awaiting_blocks() == (False, set(), [])
+    assert command(w, cid)["state"] == "APPLIED" and json.loads(answer.read_text())["command_id"] == cid
+    assert not item.exists() and closed.exists()
+
+
+def test_the_release_of_an_executed_veto_class_wait_is_a_changed_dependency(w, monkeypatch):
+    """R18: the release is a changed dependency no run authored — also for the wait a job of this role raised (in no
+    external fingerprint while open, N-02). It restarts the no-progress count, once, and is evidence for the
+    sub-step window; closing the item afterwards changes nothing further. Another role's executed wait about an
+    item this role does not work on is neither this role's dependency nor its to close (L3-01)."""
+    w.ready()
+    aid = job_wait(w, "b-3-capacity", "B-3", class_hint="veto")
+    with lock_holder(w, monkeypatch) as c:
+        kyloop.update_loop_state(w.run, "planner", lambda d: dict(d, no_progress_count=2))
+        sid = surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED")
+        before, window = c.accepted_summary(), c.substep_evidence()
+        handler_execute(w, sid)
+        after = c.accepted_summary()
+        for basis in ("dependency_fingerprint", "external_fingerprint"):
+            assert after[basis] != before[basis], basis
+        assert c.substep_evidence() != window and w.loop_state()["no_progress_count"] == 2
+        assert c.apply_commands() is False                  # the controller closes it: the same evidence, no more
+        assert not wait_paths(w, aid)[0].exists() and c.accepted_summary() == after
+        ls = w.loop_state()
+        assert ls["no_progress_count"] == 0
+        assert ls["evidence_changed"] == dict(ls["evidence_changed"], awaiting_id=aid, by="veto:" + sid)
+        kyloop.update_loop_state(w.run, "planner", lambda d: dict(d, no_progress_count=2))
+        assert c.apply_commands() is False and w.loop_state()["no_progress_count"] == 2     # once
+        other = job_wait(w, "k9-23-capacity", "K9-23", role="conductor", class_hint="veto")
+        handler_execute(w, surrogate_lines(w, other, "PENDING_VETO", "EFFECTIVE", "EXECUTED", n=2))
+        assert c.accepted_summary() == after
+        assert c.apply_commands() is False and wait_paths(w, other)[0].exists()
+        assert not (w.run / "actions" / ("AWCLOSE-%s.json" % other)).exists()
+
+
+@pytest.mark.parametrize("moved", [False, True], ids=["before-the-move", "after-the-move"])
+def test_a_close_interrupted_before_or_after_the_move_is_completed_on_the_next_look(w, moved):
+    """R18, the crash window (as R15's): the controller died with its close record begun — the item not yet moved,
+    or moved and the record not yet completed. The next controller is not refused over that record: it completes
+    the close under the SAME record, and the job is given B-3."""
+    w.ready()
+    w.modes("stop")
+    aid = job_wait(w, "b-3-capacity", "B-3", class_hint="veto")
+    item, _, closed = wait_paths(w, aid)
+    asked = item.read_bytes()
+    sid = surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED")
+    handler_execute(w, sid)
+    kyaction.begin(w.run, "AWCLOSE-" + aid, "awaiting_close:veto_executed",
+                   {"role": "planner", "holder_kind": "controller", "controller_id": OLD_CTL},
+                   {"awaiting_id": aid, "decision_id": sid}, {"awaiting": aid + ".json"},
+                   "close owner-wait %s: awaiting/ → awaiting/done/" % aid)
+    left_by_a_dead_process(w, "AWCLOSE-" + aid)
+    if moved:
+        closed.parent.mkdir()
+        item.rename(closed)
+    r = w.kyloop("planner")
+    assert r.returncode == 0, r.stderr
+    assert work_items(w.records()[0]) == ["step.B-3", "step.B-4"]
+    assert not item.exists() and closed.read_bytes() == asked
+    act = close_record(w, aid)
+    assert act["state"] == "DONE" and act["actor"]["controller_id"] == OLD_CTL
+    assert w.awaiting() == [] and not list((w.run / "locks").glob("awaiting.*"))
+
+
+def test_an_executed_veto_wait_that_cannot_be_moved_blocks_nothing_and_is_closed_at_a_later_look(w, monkeypatch):
+    """The move failed: the wait is answered all the same, somebody is told once, and a later look closes it."""
+    w.ready()
+    aid = job_wait(w, "b-3-capacity", "B-3", class_hint="veto")
+    item, _, closed = wait_paths(w, aid)
+    handler_execute(w, surrogate_lines(w, aid, "PENDING_VETO", "EFFECTIVE", "EXECUTED"))
+    with lock_holder(w, monkeypatch) as c:
+        closed.parent.write_text("a file where the directory should be")
+        for _ in range(2):
+            assert c.apply_commands() is False and item.exists()
+            assert eligible(c) == ["step.B-3", "step.B-4"]
+        assert close_record(w, aid)["state"] == "INTENDED"
+        (note,) = [a for a in w.awaiting() if a["id"].endswith("-loop-planner-answered-wait-not-closed")]
+        assert note["blocks"] == "none" and aid in json.dumps(note)
+        assert note["question"].startswith("The veto handler executed SD-20261011T220000Z-1 for %s, but" % aid)
+        assert_awaiting_schema(note)
+        closed.parent.unlink()
+        assert c.apply_commands() is False
+        assert not item.exists() and closed.exists() and close_record(w, aid)["state"] == "DONE"
+
+
+def test_loop_controller_path_matches_installer_system_path(w, monkeypatch):
+    """A successful installer proof must use the system PATH the controllers inherit."""
+    program = (FLEET / "install.sh").read_text().split("\n: <<'KYINSTALL_PY'\n", 1)[1].rsplit("\nKYINSTALL_PY\n", 1)[0]
+    program = program.rsplit("\nsys.exit(main(sys.argv[1:]))", 1)[0]
+    namespace = {"__file__": str(FLEET / "install.sh")}
+    exec(compile(program, str(FLEET / "install.sh"), "exec"), namespace)
+    system = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
+    assert namespace["BASE_PATH"].split(":") == system
+    install(w)
+    for loop in LABELS:
+        path = plistlib.loads(plist(w, loop).read_bytes())["EnvironmentVariables"]["PATH"]
+        assert path.split(":") == [str(w.root / "bin")] + system
+    # Qualification binds describe the model child, whose narrower PATH must remain intact.
+    for role in ("planner", "conductor"):
+        for key, value in w.env().items():
+            monkeypatch.setenv(key, value)
+        controller = kyloop.Controller(role)
+        assert controller.child_path() == str(w.root / "bin") + ":/opt/homebrew/bin:/usr/bin:/bin"

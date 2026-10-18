@@ -1,0 +1,89 @@
+#!/opt/homebrew/bin/python3 -IB
+# kybrief <ID> — print one plan-model item, its brief included (the item's whole specification)
+# Static file: installation is a byte copy into <root>/bin/, mode 0755. The plan model is the live default or a
+# fixture job's validated PRAVAHA_PLAN_MODEL, by the same decision and the same refusal (exit 78) as ky.
+import json
+import os
+import re
+import sys
+
+PROG = "kybrief"
+
+# --- mode decision: begin (the same text in ky and kybrief; test_kywrappers.py compares the two copies) ---
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))    # the real directory above this file's bin/
+CAMPAIGN = "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign"
+LIVE_PORT = "8767"
+DEFAULTS = {
+    "PRAVAHA_HOME": ROOT,
+    "PRAVAHA_EVENTS": ROOT + "/run/EVENTS.jsonl",
+    "PRAVAHA_PLAN_MODEL": CAMPAIGN + "/00_ARCHITECTURE/control/kalayantra/plan_model.json",
+    "PRAVAHA_REPO": CAMPAIGN,
+    "PRAVAHA_HOLD": ROOT + "/HOLD",
+    "PRAVAHA_TRACKER_PORT": LIVE_PORT,
+    "PRAVAHA_URL": "http://127.0.0.1:" + LIVE_PORT,
+}
+PATH_NAMES = ("PRAVAHA_HOME", "PRAVAHA_EVENTS", "PRAVAHA_PLAN_MODEL", "PRAVAHA_REPO", "PRAVAHA_HOLD")
+
+
+def refuse(name, reason):
+    """One line, a name and a reason, never a value; nothing has been started or written."""
+    sys.stderr.write(PROG + ": REFUSED override: " + name + ": " + reason + "\n")
+    sys.exit(78)
+
+
+def decide(env):
+    """('live' | 'fixture', the seven values). LIVE: none of the seven set, or all seven equal to the defaults.
+    FIXTURE: all seven set and valid (cards FB-02 / FV-02), passed on unchanged. Anything else is refused: a partial
+    or mixed set is never completed from the defaults."""
+    given = {n: env[n] for n in DEFAULTS if n in env}
+    if not given:
+        return "live", dict(DEFAULTS)
+    if given == DEFAULTS:
+        return "live", given
+    for n in DEFAULTS:
+        if n not in given:
+            refuse(n, "not set")
+        if given[n] == "":
+            refuse(n, "empty")
+    scratch = env.get("KY_SCRATCH", "")
+    if scratch == "":
+        refuse("KY_SCRATCH", "not set")
+    if not scratch.startswith("/"):
+        refuse("KY_SCRATCH", "not an absolute path")
+    port = given["PRAVAHA_TRACKER_PORT"]
+    if not re.fullmatch(r"[1-9][0-9]{0,8}", port):
+        refuse("PRAVAHA_TRACKER_PORT", "not an integer")
+    if port == LIVE_PORT:
+        refuse("PRAVAHA_TRACKER_PORT", "the live tracker port")
+    if not 1024 <= int(port) <= 65535:
+        refuse("PRAVAHA_TRACKER_PORT", "outside 1024-65535")
+    if given["PRAVAHA_URL"] != "http://127.0.0.1:" + port:
+        refuse("PRAVAHA_URL", "not the loopback URL on PRAVAHA_TRACKER_PORT")
+    fixture = os.path.join(os.path.realpath(scratch), "fixture") + "/"
+    for n in PATH_NAMES:
+        if not given[n].startswith("/"):
+            refuse(n, "not an absolute path")
+        if not (os.path.realpath(given[n]) + "/").startswith(fixture):
+            refuse(n, "outside the fixture directory of KY_SCRATCH")
+    return "fixture", given
+# --- mode decision: end ---
+
+mode, values = decide(os.environ)
+if len(sys.argv) != 2 or not sys.argv[1]:
+    sys.stderr.write("usage: kybrief <ITEM-ID>\n")
+    sys.exit(64)
+# The live path is this file's own constant; a fixture path is an environment value and is named, not printed.
+shown = values["PRAVAHA_PLAN_MODEL"] if mode == "live" else "PRAVAHA_PLAN_MODEL"
+try:
+    with open(values["PRAVAHA_PLAN_MODEL"], encoding="utf-8") as f:
+        text = f.read()
+except (OSError, UnicodeDecodeError):
+    sys.stderr.write("kybrief: cannot read plan model: " + shown + "\n")
+    sys.exit(66)
+try:
+    i = [x for x in json.loads(text)["items"] if x["id"] == sys.argv[1]]
+except (ValueError, KeyError, TypeError):
+    sys.stderr.write("kybrief: plan model is not JSON with an items list: " + shown + "\n")
+    sys.exit(65)
+print(json.dumps(i[0], ensure_ascii=False, indent=1) if i else "no such item: " + sys.argv[1])
+sys.exit(0 if i else 1)

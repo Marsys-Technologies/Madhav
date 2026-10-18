@@ -1,0 +1,322 @@
+{
+ "assets": 82,
+ "bar": "strict",
+ "bar_label": "bar: strict (every criterion PASS or a ruled N/A)",
+ "build_completion_counts_only": {
+  "assets": [],
+  "assets_of": 82,
+  "count": 0,
+  "limitation": "Build.completion: counts only (no integrity statement)"
+ },
+ "carr_d2": {
+  "assets": 82,
+  "na_no_per_witness": 76,
+  "other": {
+   "ruled N/A under another rule": 6
+  }
+ },
+ "census_target": "evaluation_copy",
+ "certified": [
+  {
+   "asset": "bg_class_priors",
+   "ceilings": [
+    "Ldgr: unsourced (declared)",
+    "Ratified judgment (N-235)"
+   ],
+   "census": "census_L0.json#f077ff17b869",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 13,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 12,
+   "ruled_residuals": [
+    "D1: ratified judgment (N-235)",
+    "D2: ratified judgment (N-235)",
+    "D3: ratified judgment (N-235)",
+    "Ldgr: unsourced (declared)"
+   ]
+  },
+  {
+   "asset": "bg_gochara_arcs",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L0.json#f077ff17b869",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bg_gochara_citation_resolution",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#f077ff17b869",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "It has no writer: its 14 rows were seeded by migrations 565, 630 and 631, so a build cannot regenerate them.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_kota_chakra_rings",
+   "ceilings": [
+    "D1: unverified transcription",
+    "Ldgr: unsourced (declared)"
+   ],
+   "census": "census_L0.json#f077ff17b869",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "The ring partition is a secondary-source transcription not traced to a primary text, the source is not held in the corpus (owner deferral N-102), and dvara_assignment is never filled.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 11,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 14,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values",
+    "Ldgr: unsourced (declared)"
+   ]
+  },
+  {
+   "asset": "bg_kp_sublord_division",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L0.json#f077ff17b869",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bg_nakshatra_medical",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#f077ff17b869",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_phaladeepika_latta",
+   "ceilings": [],
+   "census": "census_L0.json#f077ff17b869",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "The per-row source citation names page PG339 only on all 8 rows although the passage spans PG338 and PG339, and the text is OCR English that has not been checked against the printed book.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 16,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 9,
+   "ruled_residuals": [
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_sign_medical",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#f077ff17b869",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_transit_engine",
+   "ceilings": [
+    "D1: unverified transcription"
+   ],
+   "census": "census_L0.json#f077ff17b869",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 14,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 11,
+   "ruled_residuals": [
+    "D1: unverified transcription",
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bg_vedha_malefic_scale",
+   "ceilings": [],
+   "census": "census_L0.json#f077ff17b869",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "All five rows carry an editorial note (page PG349 disambiguation) added to the effect description that is not in the book text, and the source chunk for page PG353 has not been exported for checking.",
+   "layer": "L0",
+   "limitations": [],
+   "measured_pass": 18,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 7,
+   "ruled_residuals": [
+    "D2: no per-witness values"
+   ]
+  },
+  {
+   "asset": "bo_cgm_paths",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#4d95dfb3f20b",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 6,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_pramana_mapa",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#4d95dfb3f20b",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 6,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  },
+  {
+   "asset": "bo_sangati",
+   "ceilings": [
+    "Carr: single-derivation"
+   ],
+   "census": "census_L2.json#4d95dfb3f20b",
+   "date": "2026-10-12",
+   "empty_by_design": [],
+   "findings": "A count of one reads 1 shared signals and 1 signals because the plural is fixed.",
+   "layer": "L2",
+   "limitations": [],
+   "measured_pass": 19,
+   "named": [],
+   "revision": 29,
+   "ruled_na": 6,
+   "ruled_residuals": [
+    "D2: no per-witness values",
+    "D3: single derivation (no second method)"
+   ]
+  }
+ ],
+ "certified_at_a_ceiling": 11,
+ "date": "2026-10-12",
+ "db_identity": {
+  "database": "amjis",
+  "system_id_sha256": "dc44e6454be49742e4317b414a460f2f760c8470e6c05a7586e2eea8d23c1731"
+ },
+ "evaluation_copy": {
+  "backup_id": "1791769727082",
+  "backup_time": "2026-10-12T01:50:08.186Z",
+  "instance": "amjis-ri02-validation-c720f1832",
+  "source_instance": "amjis-postgres"
+ },
+ "layers": [
+  "L0",
+  "L1",
+  "L2"
+ ],
+ "overlays": [],
+ "registry_fingerprint": "834aff17dbef83ddc90ba743e23b83831187c860d2c6cad0f3369cff3120fb79",
+ "registry_revision": 29,
+ "tool": [
+  {
+   "tool_commit": "fbecd93873292c6e3a1a2954f1192bb27a3b0c75",
+   "tool_dirty": false
+  }
+ ],
+ "totals_by_layer_and_class": {
+  "L0": {
+   "(a) detector": 5,
+   "(e) defect in data or code": 31
+  },
+  "L1": {
+   "(a) detector": 5,
+   "(c) ruling or declaration": 1,
+   "(e) defect in data or code": 32
+  },
+  "L2": {
+   "(?) unclassified": 1,
+   "(a) detector": 3,
+   "(e) defect in data or code": 45
+  }
+ }
+}

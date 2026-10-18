@@ -20,6 +20,14 @@ const migration706Path = path.resolve(
   'migrations/706_bg_vidhi_primitives_from_moon_view_content_repin.sql',
 )
 const migration706 = fs.existsSync(migration706Path) ? fs.readFileSync(migration706Path, 'utf8') : ''
+// Migration 1365 re-pins the same check again after the Lahiri-primary change moved
+// cross_ayanamsha_variation.ayanamsha_axis to the serve order (the Python seed writer, which this
+// fixture dumps, now carries that order, so 706's hash no longer matches the writer's content).
+const migration1365Path = path.resolve(
+  process.cwd(),
+  'migrations/1365_bg_vidhi_primitives_cross_ayanamsha_serve_order_repin.sql',
+)
+const migration1365 = fs.existsSync(migration1365Path) ? fs.readFileSync(migration1365Path, 'utf8') : ''
 const migration530Path = path.resolve(
   process.cwd(),
   'supabase/migrations/530_bg_muhurta_lattice_panchangika_families.sql',
@@ -106,6 +114,15 @@ describe('migration 628 — remaining L0 wave-0 integrity contracts', () => {
       expect(migration).toContain(contract.partition)
       expect(migration).toContain(contract.outputSpec)
     }
+  })
+
+  it('migration 1365 is runner-owned and carries the serve-order axis and the re-pinned hash', () => {
+    expect(migration1365).not.toBe('')
+    expect(migration1365).not.toMatch(/^BEGIN;/m)
+    expect(migration1365).not.toMatch(/^COMMIT;/m)
+    expect(migration1365).toContain('cc57ac4d59218bcb818dda0288151f2d72107afa0c0ef664df7520cffea90320')
+    expect(migration1365).toContain('456086e9277cc25edf068a1e083340c1d0a2dc165e1df5b377a29ce4b43c4cdc')
+    expect(migration1365).toContain('["lahiri_chitrapaksha","true_chitra","krishnamurti","raman","surya_siddhanta_classical"]')
   })
 
   it('pins the exact 60-row Vidhi semantic digest and all rolling-family invariants', () => {
@@ -333,6 +350,12 @@ describe.skipIf(!TEST_DATABASE_URL)('migration 628 — real PostgreSQL behavior'
       // stale content. None of the three stored integrity_check_sql values (sky/vidhi/muhurta)
       // reference asset_output_digest_specs, so the mutation above does not affect this loop.
       await client.query(migration706)
+      // Migration 706's pin is the production state before the serve-order change: the fixture
+      // (dumped from the current writer) must NOT satisfy it, and 1365 must move it to a
+      // state the stored check accepts.
+      await expect(executeStoredIntegritySql(client, 'bg_vidhi_primitives')).resolves.toBe(false)
+      await client.query(migration1365)
+      await client.query(migration1365) // converged replay is a no-op
       for (const assetId of CONTRACTS.map(contract => contract.assetId)) {
         await expect(executeStoredIntegritySql(client, assetId)).resolves.toBe(true)
       }

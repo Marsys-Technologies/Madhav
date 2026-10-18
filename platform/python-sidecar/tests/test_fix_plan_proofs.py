@@ -244,14 +244,20 @@ def test_fix5_mode_calls_pass_enrichment_context():
     )
 
 
-def test_fix5_plan_substeps_builds_enrichment_ctx():
-    """plan_substeps must assign self._enrichment_ctx."""
-    from pipeline.orchestrator.writers.ka_sangam import KaSangamWriter
+def test_fix5_plan_substeps_builds_enrichment_ctx(monkeypatch):
+    """The default legacy plan must still build and attach enrichment."""
+    from types import SimpleNamespace
+    from pipeline.orchestrator.writers.ka_sangam import KaSangamWriter, _LegacyKaSangamWriter
 
-    src = inspect.getsource(KaSangamWriter.plan_substeps)
+    src = inspect.getsource(_LegacyKaSangamWriter.plan_substeps)
     assert '_enrichment_ctx' in src, (
         "plan_substeps does not build self._enrichment_ctx — context built but never attached"
     )
+    # The registered writer now dispatches fixture candidates separately;
+    # checking the retained method alone would miss a broken legacy dispatch.
+    planned = object()
+    monkeypatch.setattr(_LegacyKaSangamWriter, 'plan_substeps', lambda self, ctx: planned)
+    assert KaSangamWriter().plan_substeps(SimpleNamespace(config={})) is planned
 
 
 # ---------------------------------------------------------------------------

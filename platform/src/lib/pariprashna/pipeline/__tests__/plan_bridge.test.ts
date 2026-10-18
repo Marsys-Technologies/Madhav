@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 // compiled_floor_adapter.test.ts uses.
 import '@/lib/retrieval/registry/catalog'
 import { VIDHI_PRIMITIVES } from '@/lib/vidhi/registry_data'
-import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
+import { getToolByName, resolveToolUri } from '@/lib/retrieval/registry/tool_name_bridge'
 import {
   buildUnifiedPlan,
   computePrimitiveToolBindings,
@@ -179,7 +179,7 @@ describe('getPlanBridgeCoverage — live, honest measurement', () => {
 // has no failure mode of its own; comparing its output to itself (the defect
 // an independent adversarial review found in a prior version of this file's
 // module comment) can never go red. The REAL detector is here: an explicit,
-// literal enumeration of the 20 `live_tool` names known uncovered as of this
+// literal enumeration of the 13 `live_tool` names known uncovered as of this
 // writing, asserted with `toEqual` (order- and count-sensitive) against the
 // live computation. `toEqual` on two arrays fails if EITHER side has an entry
 // the other lacks, so this catches a name silently:
@@ -223,20 +223,19 @@ const KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE: readonly string[] = [
   'gochara_activation_get',
   'gochara_election_avoidance_get',
   'gochara_forecast_get',
-  'kala_ahead_get',
   'kala_bundle_get',
-  'kala_elect_get',
-  'kala_explain_get',
-  'kala_now_get',
-  'kala_priority_get',
-  'kala_ritual_get',
-  'kala_story_get',
   'kala_upaya_get',
   'synth_tail_divergence_get',
 ]
 
 describe('getPlanBridgeCoverage — pinned-baseline detector (§N.8: a real code path that can fail)', () => {
-  it('uncovered_live_tools matches the pinned 20-name baseline exactly — fails loudly if a name is added OR removed', () => {
+  it.each(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'])(
+    'K7 %s resolves its exact public descriptor, with no hand-mapped stage substitute', name => {
+      expect(resolveToolUri(`kala_${name}_get`)).toBe(`marsys://tool/L3/kala_${name}_get`)
+    },
+  )
+
+  it('uncovered_live_tools matches the pinned 13-name baseline exactly — fails loudly if a name is added OR removed', () => {
     const c = getPlanBridgeCoverage()
     // Sanity: the baseline itself must be sorted/deduped the same way the live
     // value is, or this assertion would be comparing apples to a typo.
@@ -245,7 +244,7 @@ describe('getPlanBridgeCoverage — pinned-baseline detector (§N.8: a real code
     expect(c.uncovered_live_tools).toEqual(KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE)
   })
 
-  it('covered_live_tools count matches the baseline-implied count (22 of 42)', () => {
+  it('covered_live_tools count matches the baseline-implied count (29 of 42)', () => {
     const c = getPlanBridgeCoverage()
     expect(c.total_distinct_live_tools - KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE.length).toBe(c.covered_live_tools)
     // NIRMANA L1 W3 F-E10 (2026-09-05): the registry legitimately grew a new distinct
@@ -259,7 +258,10 @@ describe('getPlanBridgeCoverage — pinned-baseline detector (§N.8: a real code
     // that is NOT yet resolvable in the plan bridge (uncovered baseline above: 19->20 names).
     // Both total_distinct_live_tools and uncovered_live_tools grew by 1, so they cancel:
     // covered_live_tools stays 22. 41->42 total.
-    expect(c.covered_live_tools).toBe(22)
+    // K7-1a / KYD-123: seven exact public-name compatibility descriptors now
+    // resolve through the unchanged bridge. This measures name binding only;
+    // absent authenticated web adapters still refuse honestly in the L3 tests.
+    expect(c.covered_live_tools).toBe(29)
     expect(c.total_distinct_live_tools).toBe(42)
   })
 })

@@ -12,6 +12,14 @@ const { mockQuery } = vi.hoisted(() => ({ mockQuery: vi.fn() }))
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 
 import { getDivisionalsCapability } from '../get_divisionals'
+
+// These tests exercise PAGINATION mechanics (param positions, ORDER BY, probe row). They run in
+// the explicit pooled mode (ayanamsha_scope:'all', the pre-PR-2 default) so the param positions
+// stay about paging; the Lahiri default and the INVARIANT sentinel have their own tests in
+// lahiri_primary_handlers.test.ts.
+const pooledHandler = (args: Record<string, unknown>, ctx?: unknown) =>
+  getDivisionalsCapability.handler({ ayanamsha_scope: 'all', ...args }, ctx as never)
+const SERVE_ORDER_RE = String.raw`array_position\(ARRAY\[[^\]]*\]::text\[\], ayanamsha_id::text\), ayanamsha_id`
 import { getCatalog } from '../../../catalog'
 import { compileCapabilityKnowledge } from '../../../knowledge/compiler'
 import { deriveInquiryPaginationReceipt } from '@/lib/vidhi/inquiry/pagination'
@@ -43,7 +51,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
   it('marks an initial full page as partial from a server-observed extra row', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [row('first'), row('second'), row('third')] })
 
-    const result = await getDivisionalsCapability.handler({ chart_id: CHART_ID, limit: 2 }, undefined)
+    const result = await pooledHandler({ chart_id: CHART_ID, limit: 2 }, undefined)
     const content = contentOf(result)
 
     expect(result.is_error).toBe(false)
@@ -52,7 +60,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     expect(content).not.toHaveProperty('total')
     expect(mockQuery).toHaveBeenCalledTimes(1)
     expect(mockQuery.mock.calls[0]).toEqual(expect.arrayContaining([
-      expect.stringMatching(/ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key, fact_subject LIMIT/),
+      expect.stringMatching(new RegExp(`ORDER BY varga, ${SERVE_ORDER_RE}, graha, fact_category, fact_key, fact_subject LIMIT`)),
       [CHART_ID, 3, 0],
     ]))
   })
@@ -61,7 +69,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     const many = Array.from({ length: 301 }, (_, i) => row(`r${i}`))
     mockQuery.mockResolvedValueOnce({ rows: many })
 
-    const result = await getDivisionalsCapability.handler({ chart_id: CHART_ID }, undefined)
+    const result = await pooledHandler({ chart_id: CHART_ID }, undefined)
     const content = contentOf(result)
 
     expect((content['rows'] as unknown[]).length).toBe(300)
@@ -72,9 +80,9 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
 
   it('pages are ordered by the full seven-column key so subject-only ties cannot duplicate or skip rows', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [row('a')] })
-    await getDivisionalsCapability.handler({ chart_id: CHART_ID, limit: 5, offset: 10 }, undefined)
+    await pooledHandler({ chart_id: CHART_ID, limit: 5, offset: 10 }, undefined)
     const sql = String(mockQuery.mock.calls[0]![0])
-    expect(sql).toMatch(/ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key, fact_subject LIMIT \$2 OFFSET \$3/)
+    expect(sql).toMatch(new RegExp(`ORDER BY varga, ${SERVE_ORDER_RE}, graha, fact_category, fact_key, fact_subject LIMIT \\$2 OFFSET \\$3`))
   })
 
   it('fences both page and varga-lagna reads to the supplied text+UUID build identity', async () => {
@@ -82,7 +90,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
       .mockResolvedValueOnce({ rows: [{ ...row('active'), sign: 'Aries' }] })
       .mockResolvedValueOnce({ rows: [{ varga: 'D9', ayanamsha_id: 'lahiri', sign: 'Aries' }] })
 
-    const result = await getDivisionalsCapability.handler(
+    const result = await pooledHandler(
       { chart_id: CHART_ID, build_id: BUILD_ID, limit: 2 },
       undefined,
     )
@@ -100,7 +108,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
   it('marks a final short page as exhausted without inventing a total', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [row('last')] })
 
-    const result = await getDivisionalsCapability.handler({ chart_id: CHART_ID, limit: 2 }, undefined)
+    const result = await pooledHandler({ chart_id: CHART_ID, limit: 2 }, undefined)
     const content = contentOf(result)
 
     expect(result.is_error).toBe(false)
@@ -113,7 +121,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
   it('reports an empty filtered page as exhausted using the same parameterized query', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] })
 
-    const result = await getDivisionalsCapability.handler(
+    const result = await pooledHandler(
       { chart_id: CHART_ID, varga: 'D60', graha: 'Moon', limit: 2 },
       undefined,
     )
@@ -131,7 +139,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
   it('keeps the requested offset while probing one row beyond the page', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [row('fifth'), row('sixth'), row('seventh')] })
 
-    const result = await getDivisionalsCapability.handler(
+    const result = await pooledHandler(
       { chart_id: CHART_ID, offset: 4, limit: 2 },
       undefined,
     )
@@ -147,7 +155,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     mockQuery.mockResolvedValueOnce({ rows: Array.from({ length: 301 }, (_, index) => row(`default-${index}`)) })
 
     const args = { chart_id: CHART_ID }
-    const result = await getDivisionalsCapability.handler(args, undefined)
+    const result = await pooledHandler(args, undefined)
 
     expect(contentOf(result)['next_offset']).toBe(300)
     expect(deriveInquiryPaginationReceipt(divisionalBinding(), result, args))
@@ -158,7 +166,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     mockQuery.mockResolvedValueOnce({ rows: Array.from({ length: 2001 }, (_, index) => row(`clamped-${index}`)) })
 
     const args = { chart_id: CHART_ID, offset: 100, limit: 5000 }
-    const result = await getDivisionalsCapability.handler(args, undefined)
+    const result = await pooledHandler(args, undefined)
 
     expect(contentOf(result)['next_offset']).toBe(2100)
     expect(deriveInquiryPaginationReceipt(divisionalBinding(), result, args))
@@ -169,7 +177,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     mockQuery.mockResolvedValueOnce({ rows: [row('zero-first'), row('zero-second')] })
 
     const args = { chart_id: CHART_ID, limit: 0 }
-    const result = await getDivisionalsCapability.handler(args, undefined)
+    const result = await pooledHandler(args, undefined)
 
     expect(mockQuery.mock.calls[0][1]).toEqual([CHART_ID, 2, 0])
     expect(contentOf(result)['rows']).toEqual([row('zero-first')])
@@ -182,7 +190,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     mockQuery.mockResolvedValueOnce({ rows: [row('negative-first'), row('negative-second')] })
 
     const args = { chart_id: CHART_ID, offset: 4, limit: -10 }
-    const result = await getDivisionalsCapability.handler(args, undefined)
+    const result = await pooledHandler(args, undefined)
 
     expect(mockQuery.mock.calls[0][1]).toEqual([CHART_ID, 2, 4])
     expect(contentOf(result)['rows']).toEqual([row('negative-first')])
@@ -198,7 +206,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     mockQuery.mockResolvedValueOnce({ rows: Array.from({ length: 301 }, (_, index) => row(`non-finite-${index}`)) })
 
     const args = { chart_id: CHART_ID, limit }
-    const result = await getDivisionalsCapability.handler(args, undefined)
+    const result = await pooledHandler(args, undefined)
 
     expect(mockQuery.mock.calls[0][1]).toEqual([CHART_ID, 301, 0])
     expect(contentOf(result)['rows']).toHaveLength(300)
@@ -209,7 +217,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
 
   it('refuses (never reads unfenced, never matches zero rows) on an explicit-empty build fence', async () => {
     mockQuery.mockReset()
-    const result = await getDivisionalsCapability.handler({ chart_id: CHART_ID, build_id: [] }, undefined)
+    const result = await pooledHandler({ chart_id: CHART_ID, build_id: [] }, undefined)
     expect(result.is_error).toBe(true)
     expect((result.content as Record<string, unknown>)['code']).toBe('explicit_empty_build_fence')
     expect(mockQuery).not.toHaveBeenCalled()

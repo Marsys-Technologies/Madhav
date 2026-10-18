@@ -26,6 +26,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { resolveHandlerAyanamsha, pushAyanamshaFilter, ayanamshaServeOrderBy, ayanamshaScopeEcho, describeAyanamshaScope, PRIMARY_AYANAMSHA, type HandlerAyanamsha, PRIMARY_AYANAMSHA_ID_INPUT_TEXT } from '../../handler_ayanamsha'
 import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 
 const MAX_LIMIT = 50
@@ -66,11 +67,12 @@ const TIER_COLUMNS: Record<CdlmTier, string> = {
              verification_pass_status, citation_ref, citation_human`,
 }
 
+// SS N-339/N-342: ayanamsha_id sort keys use serve order (Lahiri first), never alphabetical.
 const TIER_ORDER_BY: Record<CdlmTier, string> = {
-  chart_summary:        'ayanamsha_id',
-  domain_rollups:        'ayanamsha_id, domain',
-  pattern_clusters:      'cluster_strength_total DESC NULLS LAST',
-  evolution_gradients:   'ayanamsha_id, domain_row, domain_col',
+  chart_summary:        ayanamshaServeOrderBy(),
+  domain_rollups:        `${ayanamshaServeOrderBy()}, domain`,
+  pattern_clusters:      `cluster_strength_total DESC NULLS LAST, ${ayanamshaServeOrderBy()}`,
+  evolution_gradients:   `${ayanamshaServeOrderBy()}, domain_row, domain_col`,
 }
 
 export const queryCdlmSummaryCapability: CapabilityDescriptor = {
@@ -82,7 +84,7 @@ export const queryCdlmSummaryCapability: CapabilityDescriptor = {
   description: [
     'Retrieve the Cross-Domain Linkage Matrix (CDLM) for a chart, across four depth tiers',
     '(the `tier` facet — default chart_summary, fully backward compatible):',
-    "'chart_summary' (default) — bodha_cdlm_chart_summary, one row per ayanamsha:",
+    "'chart_summary' (default) — bodha_cdlm_chart_summary, one row stored per ayanamsha (a default call serves the Lahiri primary's row):",
     'chart_typology_class, total_chart_linkage, contradiction_density, dominant_3_domains,',
     'weakest_3_domains, bridge_link_count, asymmetric_link_count, house_to_domain_strength,',
     'karaka_to_domain_strength.',
@@ -100,7 +102,7 @@ export const queryCdlmSummaryCapability: CapabilityDescriptor = {
 
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID. Required.', required: true },
-    ayanamsha_id: { type: 'string', description: "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all." },
+    ayanamsha_id: { type: 'string', description: PRIMARY_AYANAMSHA_ID_INPUT_TEXT },
     tier: {
       type: 'string',
       description: [
@@ -158,19 +160,26 @@ export const queryCdlmSummaryCapability: CapabilityDescriptor = {
     const tier = rawTier as CdlmTier
     const table = TIER_TABLE[tier]
 
-    const ayanamsha_id = args['ayanamsha_id'] ? String(args['ayanamsha_id']) : null
+    // SS N-339/N-342 (PR-2): Lahiri-primary at handler level; ayanamsha_id:'all' / ayanamsha_scope:'all' opts out.
+    let aya: HandlerAyanamsha
+    try {
+      aya = resolveHandlerAyanamsha(args)
+    } catch (err) {
+      return { content: { error: String(err), chart_id }, is_error: true }
+    }
+    const ayanamsha_id = aya.id
     const domain = args['domain'] ? String(args['domain']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
-    let p = 2
-    if (ayanamsha_id) { filters.push(`ayanamsha_id = $${p++}`); params.push(ayanamsha_id) }
+    const ayaSql = pushAyanamshaFilter(aya, params)
+    let p = params.length + 1
     // domain filter only applies to domain_rollups (that table has a `domain` column;
     // the other three tiers don't — silently ignored for any other tier, not an error,
     // since a caller might reasonably leave it set while switching tiers).
     if (domain && tier === 'domain_rollups') { filters.push(`domain = $${p++}`); params.push(domain) }
-    const where = filters.join(' AND ')
+    const where = filters.join(' AND ') + ayaSql
 
     const columns = TIER_COLUMNS[tier]
     const orderBy = TIER_ORDER_BY[tier]
@@ -191,10 +200,11 @@ export const queryCdlmSummaryCapability: CapabilityDescriptor = {
       // D-SALIENCE tail clause: "every umbrella envelope reserves a hard-floored
       // tail_watch section". Best-effort — buildTailWatch returns an explained empty
       // rather than throwing, so the tail can never fail the read the caller asked for.
-      const tail = await buildTailWatch(chart_id, ayanamsha_id ?? 'lahiri_chitrapaksha')
+      const tail = await buildTailWatch(chart_id, aya.id ?? PRIMARY_AYANAMSHA)
       return {
         content: {
           chart_id,
+          ...ayanamshaScopeEcho(aya),
           tier,
           rows: rowsRes.rows,
           count: rowsRes.rows.length,
@@ -203,9 +213,11 @@ export const queryCdlmSummaryCapability: CapabilityDescriptor = {
           tail_watch: tail.tail_watch,
           tail_watch_empty_reason: tail.tail_watch_empty_reason,
           tail_watch_components: tail.tail_watch_components,
+          // Under the explicit 'all' opt-out the rows are pooled but the tail is a separate section pinned to the primary ayanamsha — label it.
+          ...(aya.id === null ? { tail_watch_ayanamsha_id: PRIMARY_AYANAMSHA } : {}),
           empty_reason: rowsRes.rows.length > 0 ? null
             : `no ${tier} rows for chart ${chart_id}` +
-              (ayanamsha_id ? ` at ayanamsha ${ayanamsha_id}` : '') +
+              ` at ${describeAyanamshaScope(aya)}` +
               (tier === 'domain_rollups' && domain ? ` and domain ${domain}` : '') +
               `. Served from ${table}; an absent row means the CDLM tier has not been built ` +
               'for this chart, not that the tier is inapplicable.',

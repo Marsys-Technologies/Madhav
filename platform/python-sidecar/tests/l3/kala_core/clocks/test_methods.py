@@ -41,11 +41,10 @@ class L1:
 
     def execute(self, sql, params):
         assert sql.lstrip().startswith("SELECT")
-        assert "build_id = %s" in sql and "verification_pass_status = %s" in sql
-        chart, system, build, ay, tier = params
+        assert "build_id = %s" not in sql and "verification_pass_status = %s" not in sql
+        chart, system, ay = params
         return Rows([r for r in self.rows if
-                     (r["chart_id"], r["system_id"], r["build_id"], r["ayanamsha_id"], r["verification_pass_status"])
-                     == (chart, system, build, ay, tier)])
+                     (r["chart_id"], r["system_id"], r["ayanamsha_id"]) == (chart, system, ay)])
 
 
 def budget(**kwargs):
@@ -72,14 +71,14 @@ def test_two_adjacent_boundaries_share_one_shift():
     u = budget()
     delta = api("boundary_shift")(u, birth_shift_days=.001, ayanamsha_shift_deg=.1)
     assert delta.total_seconds() / 86400 == pytest.approx(8.701)
-    base = clocks.boundaries(L1(), CHART, "vimshottari", uncertainty=u, **PIN)
-    shifted = clocks.boundaries(L1(build="shift", shift=delta), CHART, "vimshottari", uncertainty=u, **(PIN | {"build_id": "shift"}))
-    assert [b.instant - a.instant for a, b in zip(base, shifted)] == [timedelta(days=8.701)] * 2
+    base = clocks.boundaries(L1(), CHART, "vimshottari", as_of=T0, uncertainty=u, **PIN)
+    shifted = clocks.boundaries(L1(build="shift", shift=delta), CHART, "vimshottari", as_of=T0, uncertainty=u, **(PIN | {"build_id": "shift"}))
+    assert [b.instant - a.instant for a, b in zip(base, shifted)] == [timedelta(days=8.701)] * 4
 
 
 def test_zero_budget_preserves_l1_instants_and_row_ids():
-    result = clocks.boundaries(L1(), CHART, "vimshottari", uncertainty=budget(sigma_birth_days=0, sigma_ayanamsha_deg=0), **PIN)
-    assert [(r.instant, r.source_row_id, r.sigma) for r in result] == [(T0, "base-0", timedelta(0)), (T0 + timedelta(days=100), "base-1", timedelta(0))]
+    result = clocks.boundaries(L1(), CHART, "vimshottari", as_of=T0, uncertainty=budget(sigma_birth_days=0, sigma_ayanamsha_deg=0), **PIN)
+    assert [(r.instant, r.source_row_id, r.sigma) for r in result] == [(T0 + timedelta(days=i*100), f"base-{row}", timedelta(0)) for row, i in [(0, 0), (0, 1), (1, 1), (1, 2)]]
 
 
 def test_no_admitted_uncertainty_is_a_null_not_zero_precision():
@@ -133,7 +132,7 @@ def test_fact_value_without_a_reference_cannot_qualify_applicability():
 def test_mula_is_distinct_from_cara_and_cannot_read_its_rows():
     assert (api("dasha_method")("mula").sources, api("dasha_method")("mula").l1_producer) == (("Saravali PG155",), None)
     with pytest.raises(clocks.ClockUnavailable, match="method_not_built"):
-        clocks.boundaries(L1(system="chara_karaka", lords=("Aries", "Taurus")), CHART, "mula", **PIN)
+        clocks.boundaries(L1(system="chara_karaka", lords=("Aries", "Taurus")), CHART, "mula", as_of=T0, **PIN)
 
 
 def test_kendradi_cannot_be_an_alias_of_cara():
@@ -156,9 +155,9 @@ def test_nakshatra_crossing_reads_coupled_l1_ladders_without_changing_cara():
     observed = []
     for system, before, after in [("vimshottari", ("Sun", "Moon"), ("Moon", "Mars")), ("yogini", ("Mangala", "Pingala"), ("Pingala", "Dhanya")), ("chara_karaka", ("Aries", "Taurus"), ("Aries", "Taurus"))]:
         conn = L1(system=system, lords=before)
-        conn.rows += L1(system=system, build="crossed", lords=after).rows
+        variant_conn = L1(system=system, build="crossed", lords=after)
         base = clocks.period_context(conn, CHART, T0, system, **PIN)
-        variant = api("scenario_set")(conn, CHART, T0, system, scenarios=(scenario,))[0]
+        variant = api("scenario_set")(variant_conn, CHART, T0, system, scenarios=(scenario,))[0]
         observed.append((base.lords["MD"], variant.context.lords["MD"]))
         assert variant.boundaries[0].source_row_id == "crossed-0"
     assert observed == [("Sun", "Moon"), ("Mangala", "Pingala"), ("Aries", "Aries")]
@@ -179,11 +178,12 @@ def test_nakshatra_crossing_with_real_l1_producer_rows(monkeypatch):
         before = compute(360 / 27 - .01, 2460310.5, AY, chart, "base")
         after = compute(360 / 27 + .01, 2460310.501, AY, chart, "crossed")
         conn = L1()
-        conn.rows = before + after
+        conn.rows = before
+        variant_conn = L1(); variant_conn.rows = after
         as_of = T0 + timedelta(days=.002)  # after both birth instants
         base = clocks.period_context(conn, chart, as_of, system, **PIN)
         variant = api("ClockScenario")("crossing", "crossed", AY, "single", "moon_star", "L1-birth-shift", ("moon-before", "moon-after"))
-        shifted = api("scenario_set")(conn, chart, as_of, system, scenarios=(variant,))[0]
+        shifted = api("scenario_set")(variant_conn, chart, as_of, system, scenarios=(variant,))[0]
         observed.append((base.lords["MD"], shifted.context.lords["MD"]))
     assert observed == [("Ketu", "Venus"), ("Mangala", "Pingala")]
 
@@ -221,3 +221,23 @@ def test_facade_reads_core_clock_without_legacy_scoring():
 
 def test_legacy_query_remains_an_explicit_compatibility_shim():
     assert callable(getattr(KaDashaKalaService(L1()), "legacy_query", None))
+
+
+@pytest.mark.parametrize('evidence', [None, ashtottari(lord_house=6)])
+def test_boundary_facade_refuses_unknown_or_inapplicable_method_evidence(evidence):
+    with pytest.raises(clocks.ClockUnavailable, match='applicability_unknown_or_inapplicable'):
+        KaDashaKalaService(L1(system='ashtottari')).boundaries(
+            CHART, 'ashtottari', as_of=T0, method_facts=evidence, **PIN)
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; real refusal coverage is J4P's."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.kala_core.clocks'),
+                        "execute_governed_dasha_query", emulated_projection)
+    monkeypatch.setattr(importlib.import_module('services.ka_dasha_kala.tree_walk'),
+                        "execute_governed_dasha_query", emulated_projection)
+    monkeypatch.setattr(importlib.import_module('services.ka_dasha_kala.service'),
+                        "execute_governed_dasha_query", emulated_projection)

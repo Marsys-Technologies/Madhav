@@ -4,6 +4,7 @@ version: 2.4
 paired_plan: KALAYANTRA_RELAUNCH_PLAN_v2_7.md (which names this file fleet/prompts/CONDUCTOR_LOOP_v2_4.md)
 status: DRAFT — pending the B-0c independent review
 never_pasted: true
+changelog: v2.4 (2026-10-12) B-0c rework R1-R10
 launched_by: fleet/kyloop.py conductor
 ---
 

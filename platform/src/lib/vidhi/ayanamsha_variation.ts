@@ -51,19 +51,18 @@
  * A collapse that would erase disagreement is a bug, never an optimization.
  */
 
+import { AYANAMSHA_SERVE_ORDER, PRIMARY_AYANAMSHA } from '../retrieval/registry/constants';
+
 /**
  * The five REAL ayanamshas (long-form L1 ids as stored in `chart_facts.ayanamsha_id` and
  * accepted by `ganita_chart_facts_get`). ORDER IS STABLE (determinism: the agreement engine and
- * the family key must produce byte-identical output across runs). The `INVARIANT` sentinel is
- * DELIBERATELY EXCLUDED — see the file header ("WHY n/5 AND NOT n/6").
+ * the family key must produce byte-identical output across runs) and is the SERVE ORDER (SS
+ * N-342): the primary `lahiri_chitrapaksha` first, then true_chitra, krishnamurti, raman,
+ * surya_siddhanta_classical. Single source: `AYANAMSHA_SERVE_ORDER` in
+ * `retrieval/registry/constants.ts`. The `INVARIANT` sentinel is DELIBERATELY EXCLUDED — see the
+ * file header ("WHY n/5 AND NOT n/6").
  */
-export const REAL_AYANAMSHAS = [
-  'krishnamurti',
-  'lahiri_chitrapaksha',
-  'raman',
-  'surya_siddhanta_classical',
-  'true_chitra',
-] as const;
+export const REAL_AYANAMSHAS = AYANAMSHA_SERVE_ORDER;
 
 export type RealAyanamsha = (typeof REAL_AYANAMSHAS)[number];
 
@@ -97,7 +96,7 @@ export interface AyanamshaRead {
  */
 export interface CrossAyanamshaVariation {
   readonly point: string;
-  /** "n/5" — how many of the 5 real ayanamshas AGREE on the modal (most-common) reading. */
+  /** "n/5" — how many of the 5 real ayanamshas AGREE with the anchor (Lahiri) reading, the anchor included. */
   readonly ayanamsha_agreement: string;
   /** The numerator of `ayanamsha_agreement` (1..5). */
   readonly agreement_count: number;
@@ -111,8 +110,17 @@ export interface CrossAyanamshaVariation {
   readonly house_shift: readonly number[];
   /** True iff vargottama status is NOT unanimous across ayanamshas. */
   readonly vargottama_delta: boolean;
-  /** Ayanamshas whose read diverged from the modal reading — the rarity signal (EL-56). */
+  /**
+   * Ayanamshas whose read diverged from the ANCHOR reading (Lahiri-primary PR-3, SS N-342): the
+   * primary `lahiri_chitrapaksha` unless the caller anchors elsewhere, in SERVE ORDER. The anchor
+   * is never listed as divergent from itself. Only when the anchor has no read does this fall back
+   * to the modal reading (see `anchor_basis`).
+   */
   readonly divergent_ayanamshas: readonly RealAyanamsha[];
+  /** The ayanamsha the divergence is measured against, or null on the modal fallback. */
+  readonly anchor_ayanamsha: RealAyanamsha | null;
+  /** 'anchor_read' (normal) | 'modal_no_anchor_read' (the anchor ayanamsha supplied no read). */
+  readonly anchor_basis: 'anchor_read' | 'modal_no_anchor_read';
   /** Real ayanamshas with no read supplied (denominator shrinks; never back-filled). */
   readonly missing_ayanamshas: readonly RealAyanamsha[];
   /**
@@ -165,9 +173,14 @@ export function ayanamshaFamilyKey(point: string, signalType: string, agreement:
  */
 export function computeAyanamshaAgreement(
   point: string,
-  reads: readonly AyanamshaRead[],
+  readsIn: readonly AyanamshaRead[],
   signalType = 'dignity',
+  anchor: RealAyanamsha = PRIMARY_AYANAMSHA,
 ): CrossAyanamshaVariation {
+  // Deterministic order: SERVE ORDER (Lahiri first), never input or alphabetical order.
+  const reads = [...readsIn].sort(
+    (a, b) => REAL_AYANAMSHAS.indexOf(a.ayanamsha) - REAL_AYANAMSHAS.indexOf(b.ayanamsha),
+  );
   const seen = new Set(reads.map((r) => r.ayanamsha));
   const missing = REAL_AYANAMSHAS.filter((a) => !seen.has(a));
 
@@ -175,10 +188,26 @@ export function computeAyanamshaAgreement(
   const fingerprint = (r: AyanamshaRead): string =>
     `${r.dignity_state ?? '∅'}|${r.house ?? '∅'}|${r.sign ?? '∅'}|${r.vargottama ?? '∅'}`;
 
+  // Lahiri-primary PR-3: measure against the ANCHOR (the primary reading), not the modal reading —
+  // with a 2-2-1 split the modal reading could name Lahiri itself as "divergent". Fall back to the
+  // modal reading (ties broken by serve order) only when the anchor supplied no read, and say so.
+  const anchorRead = reads.find((r) => r.ayanamsha === anchor);
   const fingerprints = reads.map(fingerprint);
-  const { value: modalFp, count: agreementCount } = modal(fingerprints);
+  let referenceFp: string | null;
+  let agreementCount: number;
+  let basis: 'anchor_read' | 'modal_no_anchor_read';
+  if (anchorRead) {
+    referenceFp = fingerprint(anchorRead);
+    agreementCount = fingerprints.filter((f) => f === referenceFp).length;
+    basis = 'anchor_read';
+  } else {
+    const m = modal(fingerprints);
+    referenceFp = m.value;
+    agreementCount = m.count;
+    basis = 'modal_no_anchor_read';
+  }
 
-  const divergent = reads.filter((r) => fingerprint(r) !== modalFp).map((r) => r.ayanamsha);
+  const divergent = reads.filter((r) => fingerprint(r) !== referenceFp).map((r) => r.ayanamsha);
 
   const dignityValues = [...new Set(reads.map((r) => r.dignity_state).filter((d): d is string => d !== null))];
   const houseValues = [...new Set(reads.map((r) => r.house).filter((h): h is number => h !== null))].sort(
@@ -198,6 +227,8 @@ export function computeAyanamshaAgreement(
     house_shift: houseValues.length > 1 ? houseValues : [],
     vargottama_delta: vargottamaValues.size > 1,
     divergent_ayanamshas: divergent,
+    anchor_ayanamsha: basis === 'anchor_read' ? anchor : null,
+    anchor_basis: basis,
     missing_ayanamshas: missing,
     family_key: ayanamshaFamilyKey(point, signalType, agreement),
   };

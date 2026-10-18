@@ -6,11 +6,17 @@ instead requires a guarded done event; a matching detector is evidence only:
 1. An item with a **detector**: the detector decides `done`. An event may set it running, in review,
    blocked or parked, but an event claiming `done` while the detector disagrees is a *conflict*,
    never done. A detector that cannot measure shows `unknown`, never done.
-2. An item **done by decision**: done when the native's decision is recorded (decided/delegated).
+2. An item **done by decision**: done when the native's final decision is recorded
+   (decided/delegated) and every declared dependency is complete.
 3. An item **done by join**: done when every dependency is done — a join is a fact about the plan,
    so no event can claim it.
 4. An item **done by event**: done only by an event carrying evidence (enforced at write time).
 5. Anything not started whose dependencies are all done is `ready`; otherwise `waiting`.
+
+A7 D-46 (guarded models): a code/artifact item may complete while its dependencies are still open (see
+completion.D46_KINDS). Such a `done` row is *implemented*; it carries `activation_pending` (its open gates) and is
+*activated* only once that list is empty. `overall` reports implemented/total and activated/total; `close_ready`
+needs every applicable item both implemented and activated.
 
 Stream liveness (Pravāha addition): each stream's last heartbeat, last event and last commit are
 shown side by side. A stream with work `running` and no heartbeat for `stale_after_s` is *stale*
@@ -21,10 +27,59 @@ from __future__ import annotations
 
 import collections
 import datetime as dt
+import json
+import os
+from pathlib import Path
 
 from .events import actor_stream
 
+# A live install runs a copy of this file outside the repository; PRAVAHA_REPO names the repository it reads
+# (the same variable cli.py and server.py already honour). A9-NB-01.
+REPO_ROOT = Path(os.environ.get("PRAVAHA_REPO") or Path(__file__).resolve().parents[4])
+
+DECLARATION_KEYS = ("completion_kind", "producer", "reviewer_rule", "step_evidence")
 STATUS_ORDER = ["done", "not_applicable", "running", "review", "ready", "waiting", "blocked", "parked", "failed", "unknown", "conflict"]
+
+
+# A7 D-46: only code/artifact items may complete (be *implemented*) while a gate is open.
+D46_KINDS = ("code", "artifact")
+
+
+def _terminal(item: dict) -> set[str]:
+    return ({"done", "not_applicable"}
+            if item.get("accepts_not_applicable_dependencies") is True else {"done"})
+
+
+def open_dependencies(item: dict, rows: dict[str, dict], *, relaxed: bool = False) -> list[str]:
+    """Ordered completion gates; merge/acceptance evidence never closes a dependency.
+
+    A dependency that is implemented but not yet activated (it carries `activation_pending`) satisfies only a
+    `relaxed` (D-46 code/artifact) dependant; operation, packet, decision and join items keep strict ordered
+    completion (SR-A4-01) and still wait for the upstream to be activated.
+    """
+    terminal = _terminal(item)
+    return [dep for dep in item.get("depends_on", [])
+            if rows.get(dep, {}).get("status") not in terminal
+            or (not relaxed and rows[dep].get("activation_pending"))]
+
+
+def pending_gates(item: dict, rows: dict[str, dict]) -> list[str]:
+    """Transitive D-46 activation gates of `item`: its non-terminal dependencies plus the gates its implemented
+    dependencies are themselves still waiting on. Empty exactly when everything upstream is activated."""
+    terminal, gates = _terminal(item), []
+    for dep in item.get("depends_on", []):
+        row = rows.get(dep, {})
+        for gate in ([dep] if row.get("status") not in terminal else row.get("activation_pending") or []):
+            if gate not in gates:
+                gates.append(gate)
+    return gates
+
+
+def is_relaxed(model: dict, item: dict, row: dict) -> bool:
+    """D-46 applies to `item` (declared code/artifact; an undeclared model: its recorded completion's type)."""
+    if isinstance(model.get("control_plane", {}).get("declarations"), dict):
+        return item.get("completion_kind") in D46_KINDS
+    return row.get("completion_type") in D46_KINDS
 
 
 def _age_s(ts: str | None, now: dt.datetime) -> float | None:
@@ -99,6 +154,7 @@ def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool 
         if completed:
             out.update(status="done", source="guarded:event", evidence=completed.get("evidence"),
                        detail=completed.get("detail", ""), updated_at=completed["ts"])
+            out["completion_type"] = (completed.get("completion") or {}).get("type")
             if det_result is not None:
                 out["checked_at"] = det_result["checked_at"]
                 if det_result["status"] != "done":
@@ -165,6 +221,7 @@ def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool 
     if completed:
         out.update(status="done", source="guarded:event", evidence=completed.get("evidence"),
                    detail=completed.get("detail", ""), updated_at=completed["ts"])
+        out["completion_type"] = (completed.get("completion") or {}).get("type")
         return out
     if last:
         out["status"] = ("conflict" if guarded and last["state"] == "done" and
@@ -211,10 +268,166 @@ def _stream_view(stream: dict, flat: list[dict], ix: dict, activity: dict, now: 
             "done": done, "total": len(mine), "progress": (done + sum((t["progress"] or 0) for t in mine if t["status"] != "done")) / len(mine) if mine else 0.0}
 
 
+def load_closure(model: dict, root: Path | None = None) -> dict | None:
+    """The committed acceptance closure the model names (control_plane.triage.closure), or None.
+
+    Amendment A9 D-51: the headline counts over this closure. A model that names no closure, or a file that is
+    absent or unreadable, gives None, so the headline stays plan-wide rather than claiming a scope it cannot read.
+    """
+    ref = ((model.get("control_plane") or {}).get("triage") or {}).get("closure")
+    if not ref:
+        return None
+    try:
+        data = json.loads((Path(root or REPO_ROOT) / ref).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data.get("closure"), list) else None
+
+
+REMAINING_KEYS = ("built_awaiting_review_or_merge", "in_progress", "ready_to_start", "waiting_on_dependencies",
+                  "decision_pending", "needs_attention")
+WORK_CLASSES = ("a", "a_close")
+
+
+def _remaining_bucket(row: dict, item: dict) -> str:
+    """Where one not-yet-done item sits. Total: every status lands in exactly one bucket."""
+    st = row["status"]
+    if item.get("done_by") == "decision" and st != "waiting":
+        return "decision_pending"          # a decision not yet due (its inputs missing) is waiting, as the queue shows it
+    if row.get("built_waiting_on_gate") or st == "review":
+        return "built_awaiting_review_or_merge"
+    if st == "running":
+        return "in_progress"
+    if st == "ready":
+        return "ready_to_start"
+    if st == "waiting":
+        return "waiting_on_dependencies"
+    return "needs_attention"               # blocked, failed, parked, conflict, unknown
+
+
+def _tally(rows: list[tuple[dict, dict]]) -> dict:
+    out = {"total": len(rows), "done": 0, "not_applicable": 0, "remaining": 0, **{k: 0 for k in REMAINING_KEYS}}
+    for row, item in rows:
+        if row["status"] == "done":
+            out["done"] += 1
+        elif row["status"] == "not_applicable":
+            out["not_applicable"] += 1
+        else:
+            out["remaining"] += 1
+            out[_remaining_bucket(row, item)] += 1
+    return out
+
+
+def reconciliation(flat: list[dict], items: dict, members: set) -> dict:
+    """Account for EVERY plan item exactly once (owner request 2026-10-18); computed, never typed.
+
+    First matching rule wins: closure member → finish path; triage retire_decision → bookkeeping decision;
+    done_outside → done outside the plan path; status not_applicable or class retired → cancelled; class b → deferred;
+    class a / a_close → side work; anything else → unclassified (reported, never folded into a neighbour).
+    `sum_of_parts` must equal `plan_items`; test_tracker_reconciliation asserts it.
+    """
+    finish, side, deferred, cancelled, bookkeeping, outside, unclassified = [], [], [], [], [], [], []
+    for row in flat:
+        item = items[row["id"]]
+        cls = (item.get("triage") or {}).get("class")
+        pair = (row, item)
+        if row["id"] in members:
+            finish.append(pair)
+        elif cls == "retire_decision":
+            bookkeeping.append(pair)
+        elif cls == "done_outside":
+            outside.append(pair)
+        elif row["status"] == "not_applicable" or cls == "retired":
+            cancelled.append(pair)
+        elif cls == "b":
+            deferred.append(pair)
+        elif cls in WORK_CLASSES:
+            side.append(pair)
+        else:
+            unclassified.append(pair)
+    parked = sum(1 for row, _ in deferred if row["status"] == "parked")
+    rec = {
+        "plan_items": len(flat),
+        "finish_path": _tally(finish),
+        "side_work": _tally(side),
+        "deferred": {"total": len(deferred), "parked": parked, "other": len(deferred) - parked},
+        "cancelled": {"total": len(cancelled)},
+        "bookkeeping_decisions": {"total": len(bookkeeping)},
+        "done_outside_plan": {"total": len(outside)},
+        "unclassified": {"total": len(unclassified)},
+    }
+    rec["sum_of_parts"] = sum(rec[k]["total"] for k in ("finish_path", "side_work", "deferred", "cancelled",
+                                                        "bookkeeping_decisions", "done_outside_plan", "unclassified"))
+    return rec
+
+
+def reconciliation_line(rec: dict) -> str:
+    """The one-line plain-text form of `reconciliation` shown by `ky status`."""
+    def part(label, t):
+        left = {"built_awaiting_review_or_merge": "built and awaiting review or merge", "in_progress": "in progress",
+                "ready_to_start": "ready to start", "waiting_on_dependencies": "waiting on dependencies",
+                "decision_pending": "decision pending", "needs_attention": "needs attention"}
+        detail = ", ".join(f"{t[k]} {left[k]}" for k in REMAINING_KEYS if t[k])
+        na = f" · {t['not_applicable']} not applicable" if t["not_applicable"] else ""
+        return f"{label} {t['done']}/{t['total']} done" + (f" ({t['remaining']} left: {detail})" if t["remaining"] else "") + na
+    d = rec["deferred"]
+    tail = f" · unclassified {rec['unclassified']['total']}" if rec["unclassified"]["total"] else ""
+    return (f"All {rec['plan_items']} plan items: {part('finish path', rec['finish_path'])} · "
+            f"{part('side work', rec['side_work'])} · deferred {d['total']} ({d['parked']} parked) · "
+            f"cancelled {rec['cancelled']['total']} · decisions recorded {rec['bookkeeping_decisions']['total']} · "
+            f"done outside plan {rec['done_outside_plan']['total']}{tail}")
+
+
+def d46_headline(rows: list[dict]) -> dict:
+    """A7 D-46 headline: implemented/total with activated/total beside it; close needs both."""
+    return {"implemented": sum(1 for t in rows if t["status"] == "done"),
+            "activated": sum(1 for t in rows if t["status"] == "done" and not t["activation_pending"]),
+            "activation_pending": sum(1 for t in rows if t["activation_pending"]),
+            "close_ready": bool(rows) and all(
+                t["status"] == "not_applicable" or (t["status"] == "done" and not t["activation_pending"])
+                for t in rows)}
+
+
+def closure_headline(overall: dict, flat: list[dict], items: dict, closure: dict) -> dict:
+    """Re-scope the headline to the closure's items; deferred items are a separate list (A9 D-51.3).
+
+    The counts are per status, so a later change of what counts as done (implemented/activated) composes by
+    changing the status mapping, not the scoping. A closure member the model does not contain is reported in
+    `missing`, never silently dropped.
+    """
+    members = set(closure["closure"])
+    rows = {t["id"]: t for t in flat}
+    inside = [rows[i] for i in sorted(members) if i in rows]
+    counts = collections.Counter(t["status"] for t in inside)
+    total = len(inside)
+    done = counts.get("done", 0)
+    deferred = [{"id": iid, "status": rows[iid]["status"],
+                 "re_entry": (items[iid].get("triage") or {}).get("re_entry")}
+                for iid in sorted(rows) if iid not in members and (items[iid].get("triage") or {}).get("class") == "b"]
+    return {
+        **overall,
+        "scope": "closure", "closure_sha256": closure.get("closure_sha256"),
+        "total": total, "done": done, "not_applicable": counts.get("not_applicable", 0),
+        "running": counts.get("running", 0) + counts.get("review", 0),
+        "ready": counts.get("ready", 0), "waiting": counts.get("waiting", 0),
+        "blocked": counts.get("blocked", 0) + counts.get("failed", 0) + counts.get("parked", 0),
+        "unknown": counts.get("unknown", 0) + counts.get("conflict", 0),
+        "built_waiting_on_gate": sum(1 for t in inside if t["built_waiting_on_gate"]),
+        **d46_headline(inside),
+        "pct": round(100 * done / total, 1) if total else 0.0,
+        "by_status": dict(sorted(counts.items())),
+        "missing": sorted(members - set(rows)),
+        "plan_wide": {k: overall[k] for k in ("total", "done", "not_applicable", "pct")},
+        "deferred": deferred,
+        "reconciliation": reconciliation(flat, items, members),
+    }
+
+
 def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: dict,
-                   health: dict, activity: dict | None = None, now: dt.datetime | None = None) -> dict:
+                   health: dict, activity: dict | None = None, now: dt.datetime | None = None,
+                   closure: dict | None = None) -> dict:
     """Pure function: everything the dashboard shows. det_results maps item id → detector result dict;
-    activity maps stream id → git activity dict."""
+    activity maps stream id → git activity dict; closure (load_closure) scopes the headline (A9 D-51)."""
     now = now or dt.datetime.now(dt.timezone.utc)
     activity = activity or {}
     ix = index_events(events)
@@ -224,9 +437,17 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded,
                                decision_outcomes=decision_outcomes) for iid, it in items.items()}
 
-    # Owner direction 2026-10-08: a dependency that is MERGED with an independent ACCEPTED pre-merge verdict lets its
-    # dependants START (readiness), while completion and joins still require it to be DONE (deployed, post-deploy
-    # accepted). `deps_open` is the readiness list; `deps_open_strict` is what completion and joins use.
+    # A final ruling is recorded independently of each consuming item's completion.
+    # Seed decision items as waiting so joins/other decisions cannot consume a
+    # provisional done state before its original gates have been resolved.
+    recorded_decisions = {iid for iid, it in items.items()
+                          if it.get("done_by") == "decision" and status[iid]["status"] == "done"}
+    for iid in recorded_decisions:
+        status[iid]["status"] = "waiting"
+
+    # Start-at-merge/acceptance remains a scheduling policy only. D-39: deps_open
+    # always names strict completion gates, even when work may already start.
+    # deps_open_strict is a compatibility alias with exactly the same meaning.
     merged_accepted = set()
     if model.get("control_plane", {}).get("ready_at_merge") is True:
         accepted = {e.get("item") for e in events if e.get("kind") == "verdict" and e.get("result") == "ACCEPTED"
@@ -241,19 +462,20 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                 if e.get("kind") == "verdict" and e.get("phase", "pre_merge") == "pre_merge" and e.get("item") in items:
                     latest[e["item"]] = e.get("result")
             merged_accepted |= {iid for iid, res in latest.items() if res == "ACCEPTED"}
-    # dependencies → readiness; joins resolve here (repeat until stable: joins may depend on joins)
-    for _ in range(len(items) + 1):
+    for s_ in status.values():
+        s_["activation_pending"] = []
+    # Resolve joins, recorded decisions and D-46 activation together until their strict gates stabilise.
+    for _ in range(2 * len(items) + 2):
         changed = False
         for iid, it in items.items():
             s = status[iid]
             deps = it.get("depends_on", [])
             accepts_skips = it.get("accepts_not_applicable_dependencies") is True
-            terminal = {"done", "not_applicable"} if accepts_skips else {"done"}
-            strict_open = [d for d in deps if status.get(d, {}).get("status") not in terminal]
-            open_deps = [d for d in strict_open if d not in merged_accepted]
-            s["deps_open"] = open_deps
+            strict_open = open_dependencies(it, status, relaxed=is_relaxed(model, it, s))
+            start_blockers = [d for d in strict_open if d not in merged_accepted]
+            s["deps_open"] = strict_open
             s["deps_open_strict"] = strict_open
-            if strict_open != open_deps:
+            if strict_open != start_blockers:
                 s["deps_merged_pending_deploy"] = [d for d in strict_open if d in merged_accepted]
             if decision_outcomes and s["status"] not in ("done", "not_applicable"):
                 origins = []
@@ -271,6 +493,11 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                              skip_origin=sorted(set(origins)), detail="required outcome or input unavailable")
                     changed = True
                     continue
+            if iid in recorded_decisions and s["status"] != "not_applicable":
+                new = "waiting" if strict_open else "done"
+                if s["status"] != new:
+                    s["status"] = new
+                    changed = True
             if it.get("done_by") == "join":
                 new = "done" if not strict_open else "waiting"
                 if s["status"] != new:
@@ -280,20 +507,48 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                 if new == "done" and accepts_skips:
                     s["gaps"] = sorted({origin for dep in deps for origin in
                                         status[dep].get("skip_origin", status[dep].get("gaps", []))})
+            # A7 D-46: an implemented (done) item is activated only when every gate upstream, transitively, is.
+            # Recomputed every pass, so it empties by itself when the last gate closes.
+            pending = pending_gates(it, status) if guarded and s["status"] == "done" else []
+            if s["activation_pending"] != pending:
+                s["activation_pending"] = pending
+                changed = True
         if not changed:
             break
     for iid, it in items.items():
         s = status[iid]
-        if s.pop("soft", False) and s["deps_open"]:
+        start_blockers = [d for d in s["deps_open"] if d not in merged_accepted]
+        if s.pop("soft", False) and start_blockers:
             s["status"] = "waiting"
         # An unmeasured detector on an item that cannot start yet is not an alarm: show it as waiting,
         # keep "unmeasured" in the detail, and raise it only once the item becomes startable.
-        if s["status"] == "unknown" and s["deps_open"] and not ix["items"].get(iid):
+        if s["status"] == "unknown" and start_blockers and not ix["items"].get(iid):
             s["status"] = "waiting"
             s["detail"] = f"unmeasured until startable — {s.get('detail', '')}"
         if s["status"] == "not_started":
-            s["status"] = "ready" if not s["deps_open"] else "waiting"
+            s["status"] = "ready" if not start_blockers else "waiting"
 
+        # A5 D-39: display-only merge evidence, never a new completion state.
+        # Use strict dependencies: readiness can relax a merged/accepted input
+        # that is still an actual gate on completion. Non-merge detectors (e.g.
+        # pr_ready or file_exists) cannot establish that code is on main.
+        outcomes_met = all(
+            (decision_status(ix["decisions"].get(decision, []))[1] or {}).get("outcome") == needed
+            for decision, needed in it.get("requires_outcome", {}).items()
+        )
+        s["built_waiting_on_gate"] = bool(
+            (it.get("detector") or {}).get("type") in ("branch_merged", "pr_merged")
+            and (det_results.get(iid) or {}).get("status") == "done"
+            and s["status"] in ("ready", "waiting", "running", "review")
+            and all(step["done"] for step in s.get("steps", []))
+            and outcomes_met
+            and s["deps_open"]
+            and all(dep in items for dep in s["deps_open"])
+        )
+        s["gate_blockers"] = list(s["deps_open"]) if s["built_waiting_on_gate"] else []
+
+    # a model that declares its items (relaunch plan v2.7 §6) shows each row's declaration; other models as before
+    declared = isinstance(model.get("control_plane", {}).get("declarations"), dict)
     tracks = []
     for tr in model["tracks"]:
         tis = []
@@ -305,6 +560,8 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                         "owner": it.get("owner"), "depends_on": it.get("depends_on", []),
                         "cross_stream": it.get("cross_stream", False), **s,
                         "elapsed_s": _age_s(s["started_at"], now) if s["status"] in ("running", "review") else None})
+            if declared:
+                tis[-1].update({key: it.get(key) for key in DECLARATION_KEYS})
         n = len(tis)
         done = sum(1 for t in tis if t["status"] == "done")
         partial = sum((t["progress"] or 0) for t in tis if t["status"] != "done")
@@ -325,10 +582,17 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                 needed_by[dec_item[dep]].append(it["id"])
         for d in it.get("needs_decisions", []):
             needed_by[d].append(it["id"])
+    # a retirement decision is owner-authorised already: its refusal is STAGED for the installation action (B-2)
+    # to publish, so until a final outcome is recorded it is marked and is not a question for the native
+    retirements = {it["decision"] for it in model["items"] if declared and it.get("done_by") == "decision"
+                   and it.get("decision") and (it.get("triage") or {}).get("class") == "retire_decision"}
+    final_outcomes = (decision_outcomes or {}).get("final", ["approved", "refused"])
     for d in model["decisions"]:
         st, dev = decision_status(ix["decisions"].get(d["id"], []))
         decisions.append({**d, "status": st, "detail": (dev or {}).get("detail", ""),
                           "updated_at": (dev or {}).get("ts"), "needed_by": needed_by.get(d["id"], [])})
+        if d["id"] in retirements and not (st in ("decided", "delegated") and (dev or {}).get("outcome") in final_outcomes):
+            decisions[-1]["staged"] = True
 
     streams = [_stream_view(s, flat, ix, activity, now) for s in model.get("streams", [])]
     phases = []
@@ -350,19 +614,26 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                        if it.get("done_by") == "decision" and it.get("decision")}
     for d in decisions:
         d["due"] = d["status"] == "requested" or dec_item_status.get(d["id"]) not in ("waiting",)
-    pending_native = sorted([d for d in decisions if d["status"] in ("requested", "pending") and d["due"]],
+    pending_native = sorted([d for d in decisions if d["status"] in ("requested", "pending") and d["due"]
+                             and not d.get("staged")],
                             key=lambda d: (rank[d["status"]], -sum(1 for x in d["needed_by"] if status.get(x, {}).get("status") in ("ready", "waiting"))))
+
+    overall = {"total": total, "done": counts.get("done", 0),
+               **d46_headline(flat),
+               "built_waiting_on_gate": sum(1 for t in flat if t["built_waiting_on_gate"]),
+               "not_applicable": counts.get("not_applicable", 0),
+               "running": counts.get("running", 0) + counts.get("review", 0),
+               "ready": counts.get("ready", 0), "waiting": counts.get("waiting", 0),
+               "blocked": counts.get("blocked", 0) + counts.get("failed", 0) + counts.get("parked", 0),
+               "unknown": counts.get("unknown", 0) + counts.get("conflict", 0),
+               "pct": round(100 * done_w / total, 1) if total else 0.0}
+    if closure:
+        overall = closure_headline(overall, flat, items, closure)
 
     return {
         "generated_at": now.isoformat(timespec="seconds"),
         "campaign": model.get("campaign"), "subtitle": model.get("subtitle"), "plan_ref": model.get("plan_ref"),
-        "overall": {"total": total, "done": counts.get("done", 0),
-                    "not_applicable": counts.get("not_applicable", 0),
-                    "running": counts.get("running", 0) + counts.get("review", 0),
-                    "ready": counts.get("ready", 0), "waiting": counts.get("waiting", 0),
-                    "blocked": counts.get("blocked", 0) + counts.get("failed", 0) + counts.get("parked", 0),
-                    "unknown": counts.get("unknown", 0) + counts.get("conflict", 0),
-                    "pct": round(100 * done_w / total, 1) if total else 0.0},
+        "overall": overall,
         "streams": streams,
         "phases": phases,
         "tracks": tracks,

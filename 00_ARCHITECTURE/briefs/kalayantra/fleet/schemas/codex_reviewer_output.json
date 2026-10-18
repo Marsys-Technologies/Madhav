@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ky.codex_reviewer_output/1",
+  "title": "KĀLA-YANTRA v3 final message of a Codex reviewer job (codex exec --output-schema)",
+  "description": "The shape a read-only Codex reviewer's final message is held to by the program itself: a ky.job_result/1 document (schemas/job_result.json) with a typed proposed_verdict. A read-only job cannot write $JOB_SCRATCH/result.json, so kyboot.py judges this message (final_message.txt) by exactly the rules of result.json. Written in the subset OpenAI structured outputs accept in strict mode — every object closed, every property required, nullable fields typed with null — and in kyschema.py's subset. Every document valid here is meant to be valid against job_result.json too (tests/test_kyqualify_codex.py checks examples); job_result.json stays the authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "job_id",
+    "item",
+    "status",
+    "branch",
+    "head_sha",
+    "pr_number",
+    "tests",
+    "blocked_reason",
+    "notes",
+    "proposed_verdict"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "enum": [
+        "ky.job_result/1"
+      ]
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "item": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "done",
+        "blocked",
+        "failed"
+      ]
+    },
+    "branch": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "head_sha": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pr_number": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cmd",
+          "exit",
+          "summary"
+        ],
+        "properties": {
+          "cmd": {
+            "type": "string"
+          },
+          "exit": {
+            "type": "integer"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "blocked_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notes": {
+      "type": "string"
+    },
+    "proposed_verdict": {
+      "description": "The verdict the reviewer proposes (null verdict when blocked or failed); only the controller publishes one.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verdict",
+        "head",
+        "findings"
+      ],
+      "properties": {
+        "verdict": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "ACCEPTED",
+            "REJECTED",
+            null
+          ]
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "blocking",
+              "file",
+              "line",
+              "defect",
+              "required_change"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "blocking": {
+                "type": "boolean"
+              },
+              "file": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "line": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "defect": {
+                "type": "string"
+              },
+              "required_change": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

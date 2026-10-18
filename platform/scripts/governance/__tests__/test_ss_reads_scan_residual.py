@@ -44,8 +44,13 @@ def test_the_real_prose_that_read_as_tables_no_longer_does(aid, words):
     assert not (words & set(s["reads"])), s["reads"]
 
 
-def test_a_genuinely_dynamic_writer_stays_incomplete():
-    assert ac.reads_scan("bo_pramana_mapa", ac.registered_ids("bo_")["bo_pramana_mapa"])["incomplete"]      # f-string table / column names built at run time
+def test_a_genuinely_dynamic_writer_stays_incomplete(monkeypatch, tmp_path):
+    # bo_pramana_mapa was the real example until its table / column names stopped being built at run time (its SQL is now literal module constants); the premise is kept on a synthetic
+    # writer whose table name IS an f-string interpolation, so the detector is still proven to flag a dynamic writer, and the literal twin proves it is not flagging everything.
+    s = _side(monkeypatch, tmp_path, 'def _read(conn, table):\n    return conn.execute(f"SELECT x FROM {table} WHERE chart_id = %s", (1,))\n' + _CLS + '        _read(ctx.db_conn, ctx.table)\n')
+    assert s["incomplete"], s
+    s = _side(monkeypatch, tmp_path, 'READ_SQL = "SELECT x FROM bg_up WHERE chart_id = %s"\n' + _CLS + '        ctx.db_conn.execute(READ_SQL, (1,))\n')
+    assert s["incomplete"] == [] and list(s["reads"]) == ["bg_up"], s
 
 
 # ───────────── D5: closure SQL names ─────────────

@@ -33,6 +33,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
+import { kalaViewAlias } from './registry_alias.js'
 
 // ── Item 34: Contrastive field-diff (serving layer) ──────────────────────────
 
@@ -177,6 +178,7 @@ import {
 } from '../../lib/engine_testimony.js'
 import { callKalaRegistryCap, unwrapKalaPayload, kalaBudgetedDualOutput, kalaErrorOutput } from './shared.js'
 import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
+import { KP_FRAME_AYANAMSHA } from '../../lib/kp_frame.js'
 // F-73: marsys://tool/L4/gochara_forecast_get was never backed by a registered
 // capability (no layers/*/index.ts entry exists for it) — every call 404'd silently,
 // forcing A5's gochara agreement to 'insufficient_data' unconditionally. The real logic
@@ -210,7 +212,7 @@ const O10_FACTOR_FAMILY = 'O-10'
  *  `get_kp_cusps.ts` already defaults to (school_conventions.ts §3). The PACT chain is read
  *  in the caller's ayanāṃśa. Both are reported on the voice; neither overwrites the other
  *  (brief §W3K: the divergence is served as data, never silently reconciled). */
-const KP_AYANAMSHA_ID = 'krishnamurti'
+const KP_AYANAMSHA_ID = KP_FRAME_AYANAMSHA
 const KP_HOUSE_SIGNIFICATORS_CATEGORY = 'kp_house_significators'
 const KP_DASHA_SYSTEM_ID = 'vimshottari_kp'
 
@@ -358,7 +360,10 @@ export async function fetchKpSchoolVoice(params: {
       }, principal),
       callKalaRegistryCap(DASHAS_URI, {
         chart_id: chartId,
-        ayanamsha_id: chainAyanamshaId,
+        // KP is Krishnamurti BY DOCTRINE (SS N-342 / N-362a): the vimshottari_kp running stack is read at the
+        // KP frame, never at the chain ayanamsha (at Lahiri the level-3 lord of chart 482012f1 is Mars, at
+        // krishnamurti it is Rahu: reading the chain id judged the wrong running lords under a KP label).
+        ayanamsha_id: KP_AYANAMSHA_ID,
         system_id: KP_DASHA_SYSTEM_ID,
         all_levels: true,
         fields: 'all',
@@ -640,7 +645,7 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
         'Forwarded to the PROMISE stage (judgment_query). Default 15, max 50.'),
       question_frame: QuestionFrameSchema,
     },
-    async (params) => {
+    kalaViewAlias(principal, 'explain', async (params) => {
       const {
         chart_id, ayanamsha_id, domain, bhava, as_of_date, max_signals, question_frame,
       } = params as Record<string, unknown>
@@ -824,6 +829,6 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
       } catch (err) {
         return kalaErrorOutput(TOOL_NAME, err instanceof Error ? err.message : String(err), { chart_id })
       }
-    },
+    }),
   )
 }

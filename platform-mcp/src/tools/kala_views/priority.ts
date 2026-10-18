@@ -49,7 +49,7 @@ import {
 import { composeArgument } from '../../lib/argument_composer.js'
 import { callKalaRegistryCap, unwrapKalaPayload, kalaBudgetedDualOutput, kalaErrorOutput, round3 } from './shared.js'
 import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
-
+import { kalaViewAlias } from './registry_alias.js'
 // ── W2.7: kala_field_salience DB read (item 25) ──────────────────────────────
 // Reads the NEWEST field_snapshot's salience rows for a chart via the whitelisted
 // read-only DB proxy (platform/src/app/api/mcp/db/query/route.ts — kala_field_salience
@@ -353,9 +353,10 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
         '"spirituality", "character"), case-insensitive. Takes precedence over `domains`.'),
       domains: z.array(z.string()).optional().describe(
         'Filter to ANY of these life domains (OR/overlap match), case-insensitive. Ignored if `domain` is also given.'),
+      preference: z.array(z.enum(['nearest','strongest','most_robust','best_suited'])).optional().describe('Unique active axes; declared presentation order, evidence unchanged.'),
       question_frame: QuestionFrameSchema,
     },
-    async (params) => {
+    kalaViewAlias(principal, 'priority', async (params) => {
       const {
         chart_id, ayanamsha_id, date_from, date_to, top_k, domain, domains, question_frame,
       } = params as Record<string, unknown>
@@ -379,11 +380,29 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
               ...(top_k != null ? { top_k } : {}),
               ...(domain ? { domain } : {}),
               ...(domains ? { domains } : {}),
+              ...(question_frame ? { question_frame } : {}),
+              ...(params.preference ? { preference: params.preference } : {}),
             },
             principal,
           ),
           fetchSalienceVector(chart_id, principal),
         ])
+        // HTTP success only means dispatch succeeded; the ToolResult can still refuse.
+        // Preserve that state before unwrapping, so unavailable comparison is never EMPTY.
+        const registryResult = raw as { is_error?: boolean; content?: { error?: unknown } } | null
+        if (registryResult?.is_error === true) {
+          // (I) INTERPRETATION I6: a reasonless refusal reports the missing reason;
+          // it never infers a comparator failure cause.
+          const reason = typeof registryResult.content?.error === 'string'
+            ? registryResult.content.error
+            : 'Priority ranking unavailable: registry refused without a reason'
+          return kalaErrorOutput(TOOL_NAME, reason, {
+            chart_id,
+            judgment_flags: [reason],
+            empty_reason: reason,
+            density_contract: { paginated: true, facets: ['domain', 'domains'], empty_reason: true },
+          })
+        }
         const payload = unwrapKalaPayload(raw)
         const rows = Array.isArray(payload['ranked_signals']) ? (payload['ranked_signals'] as RankedSignalRow[]) : []
         const resolvedDateFrom = (payload['date_from'] as string | undefined) ?? (date_from as string | undefined) ?? 'today'
@@ -391,6 +410,20 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
         const domainFilter = Array.isArray(payload['domain_filter']) ? (payload['domain_filter'] as string[]) : null
 
         const reading = buildReading({ rows, dateFrom: resolvedDateFrom, dateTo: resolvedDateTo, domainFilter })
+        const comparison = payload['comparison'] as Record<string, unknown> | undefined
+        if (comparison) {
+          const ordered = Array.isArray(comparison.ordered) ? comparison.ordered as string[] : []
+          const pairs = Array.isArray(comparison.comparisons) ? comparison.comparisons as Array<Record<string, unknown>> : []
+          const incomparable = pairs.some(pair => pair.relation === 'incomparable')
+          const cyclic = Array.isArray(comparison.dominance_cycles) && comparison.dominance_cycles.length > 0
+          reading.thesis = ordered.length
+            ? `Tulana presents window ${ordered[0]} first by declared order ${(comparison.order_policy as string[]).join(', ')}; ` +
+              (cyclic ? 'a tolerance cycle prevents a winner claim; all cycle members remain on the front; see dominance_cycles and the pairwise evidence.'
+                : incomparable ? 'incomparable alternatives remain on the Pareto front; this is no winner claim.' : 'see the dominance table for ties and dominance.')
+            : 'No candidate forecaster windows; see the declared comparison gap.'
+          reading.verdict.statement = reading.thesis
+          // Existing signal references and disclosures remain legacy context.
+        }
 
         const triPlane: TriPlanePointers = {
           // F-123 (CL-11 dead pointer): kala_explain_get hard-errors without domain/bhava.
@@ -485,6 +518,9 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
           density_contract: densityContract,
           window: { date_from: resolvedDateFrom, date_to: resolvedDateTo },
           domain_filter: domainFilter,
+          ...(comparison ? { comparison, ordered_windows: payload['ordered_windows'],
+            front_members_omitted: payload['front_members_omitted'], empty_reason: payload['empty_reason'] } : {}),
+          legacy_scalar: true,
           ranked_signals: rows,
           signal_count: (payload['signal_count'] as number | undefined) ?? rows.length,
           neutral_dignity_downranked_count: payload['neutral_dignity_downranked_count'] ?? 0,
@@ -520,6 +556,6 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
       } catch (err) {
         return kalaErrorOutput(TOOL_NAME, err instanceof Error ? err.message : String(err), { chart_id })
       }
-    },
+    }),
   )
 }

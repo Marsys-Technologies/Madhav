@@ -687,27 +687,27 @@ PRANIC_BASE_SCORES: dict[str, float] = {
     "Rahu": 0.50, "Ketu": 0.50,
 }
 
-# 27-nakshatra list (1-based order: Ashwini = index 0)
-NAKSHATRA_NAMES_27: list[str] = [
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
-    "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
-    "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha",
-    "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishtha",
-    "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
-]
+# 27-nakshatra list (Ashwini = index 0): the L0 lexicon's names (`bg_nakshatra` name_en), derived and never
+# re-spelled here -- the L1 facts this writer reads (`graha_position.nakshatra`) carry the same spelling.
+from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES, nakshatra_number as _nakshatra_number, canonical_nakshatra as _canonical_nakshatra  # noqa: E402  (late import: keeps pinned line numbers stable)
+NAKSHATRA_NAMES_27: list[str] = list(CANONICAL_NAKSHATRA_NAMES)
 
-# Nakshatra lords (Vimshottari sequence)
-NAKSHATRA_LORDS: dict[str, str] = {
-    "Ashwini": "Ketu", "Bharani": "Venus", "Krittika": "Sun",
-    "Rohini": "Moon", "Mrigashira": "Mars", "Ardra": "Rahu",
-    "Punarvasu": "Jupiter", "Pushya": "Saturn", "Ashlesha": "Mercury",
-    "Magha": "Ketu", "Purva Phalguni": "Venus", "Uttara Phalguni": "Sun",
-    "Hasta": "Moon", "Chitra": "Mars", "Swati": "Rahu",
-    "Vishakha": "Jupiter", "Anuradha": "Saturn", "Jyeshtha": "Mercury",
-    "Mula": "Ketu", "Purva Ashadha": "Venus", "Uttara Ashadha": "Sun",
-    "Shravana": "Moon", "Dhanishtha": "Mars", "Shatabhisha": "Rahu",
-    "Purva Bhadrapada": "Jupiter", "Uttara Bhadrapada": "Saturn", "Revati": "Mercury",
-}
+# Nakshatra lords (Vimshottari sequence, repeating 3x over the 27): derived from the same table by position.
+_VIMSHOTTARI_LORD_CYCLE = ("Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury")
+NAKSHATRA_LORDS: dict[str, str] = {n: _VIMSHOTTARI_LORD_CYCLE[i % 9] for i, n in enumerate(NAKSHATRA_NAMES_27)}
+#
+# Why derived (CLAUDE.md §N.5 / §N.7 item 3): the L1 name table (`pyjhora_adapter._names`) now writes the L0
+# lexicon's spellings -- no. 5 "Mrigasira", no. 19 "Moola", no. 23 "Dhanishtha" -- and this writer used to keep
+# its own 27-string literal (with "Mrigashira" / "Mula"), and looked the Moon's nakshatra up with `.index()`:
+# the two tables disagreed, so a Moon in nakshatra 23 (L1 wrote "Dhanishta") silently produced no tara rows.
+# Lookups below go through `brahmagyan.nakshatra_vocabulary.nakshatra_number`, which resolves the canonical
+# spelling and, until the rebuild rewrites stored facts, the legacy L1 spelling; a name that is none of the 27
+# is -1 (an honest miss, never a guess). The emitted `nakshatra` value stays exactly the L1 fact's own text
+# (the writer forwards it, it does not re-spell it); the lord falls back to this table only when the L1
+# `graha_nakshatra_join` fact is absent. The ga_medical lookup folds spellings to its own L0 seed separately.
+# (This is the only 27-name literal-free table in the L1 writers: ga_sensitive*, ga_panchanga use the same source.)
+# Pinned by tests/test_nakshatra_canonical_spelling.py (27-name parity with bg_nakshatra, Moon in 5 / 19 / 23).
+#
 
 # ── Natural planetary friendship table (Parashari BPHS Ch.3) ─────────────────
 
@@ -7894,7 +7894,7 @@ def _build_nakshatra_relationship_rows(
 
     moon_subj = PLANET_TO_SUBJECT.get("Moon", "MOON")
     moon_nak = graha_nak_name.get(moon_subj, "")
-    moon_nak_idx = NAKSHATRA_NAMES_27.index(moon_nak) if moon_nak in NAKSHATRA_NAMES_27 else -1
+    moon_nak_idx = (_nakshatra_number(moon_nak) or 0) - 1  # -1 = not one of the 27; folds legacy L1 spellings (a Moon in 5/19/23 no longer misses)
     moon_nak_fid = graha_nak_fid.get(moon_subj, "")
     TARA_NAMES = ["janma", "sampat", "vipat", "kshema", "pratyak", "sadhaka", "naidhana", "mitra", "atimitra"]
 
@@ -7923,10 +7923,10 @@ def _build_nakshatra_relationship_rows(
                     ))
 
     for graha_subj, nak in graha_nak_name.items():
-        nak_idx = NAKSHATRA_NAMES_27.index(nak) if nak in NAKSHATRA_NAMES_27 else -1
+        nak_idx = (_nakshatra_number(nak) or 0) - 1  # -1 = not one of the 27; the former .index() missed any spelling not in this file's own table
         # canonical Title-case graha name (idempotent on an already-Title L1 value; normalises a legacy
         # lowercase id read from graha_nakshatra_join so the value never differs in case from its peers)
-        nak_lord = _graha_to_title(graha_lord_name.get(graha_subj, NAKSHATRA_LORDS.get(nak, "")))
+        nak_lord = _graha_to_title(graha_lord_name.get(graha_subj, NAKSHATRA_LORDS.get(_canonical_nakshatra(nak) or "", "")))
         graha_nak_fact_id = graha_nak_fid.get(graha_subj, "")
         lord_fact_id = graha_lord_fid.get(graha_subj, "")
 

@@ -64,17 +64,19 @@ EXECUTE WITHIN 10 MINUTES of a real dispatch: the cockpit watchdog fails a plann
 
 THE SLICE MARKER is the writer's contract, not a copy of it: plan_manifest[
 "gochara_v5_test_slice"] = {"schema": "gochara_v5_test_slice/1", "run":
-"all_classes_1y" | "one_class_full", "horizon": [<start>, <end>], "classes":
+"all_classes_1y" | "one_class_full" | "all_classes_full", "horizon": [<start>, <end>], "classes":
 [...]} — exactly those four fields. Before ANY database connection the built
 marker is passed through the WRITER's own validator
 (ka_gochara_v5._validate_test_slice, imported from the sidecar), so a marker the
 writer would refuse never reaches a staged run:
   * horizons are tz-aware ISO timestamps (a naive timestamp is refused; they are
-    stored normalised to UTC). one_class_full defaults to the writer's full
-    DEFAULT_HORIZON; all_classes_1y needs --horizon-start/--horizon-end (≤ 366 days,
-    inside DEFAULT_HORIZON);
+    stored normalised to UTC). one_class_full defaults to the writer's full DEFAULT_HORIZON;
+    all_classes_full (the MEASURING BUILD: all 26 scored classes over the whole derived horizon, owner
+    ruling 13) defaults to the writer's MEASURING_HORIZON, the owner-approved pair
+    [1998-01-01, 2084-02-05), which the writer re-checks against the database derivation at run time;
+    all_classes_1y needs --horizon-start/--horizon-end (≤ 366 days, inside DEFAULT_HORIZON);
   * classes come from the writer's SCORED_CLASSES (26): --classes all (the default
-    for all_classes_1y) or a comma list; one_class_full takes exactly one class.
+    for all_classes_1y and all_classes_full) or a comma list; one_class_full takes exactly one class.
 
 The chart is the pinned canonical chart 482012f1-710e-4a25-994a-93821f5871aa
 ONLY — there is no chart argument; any other chart is refused by construction.
@@ -111,6 +113,8 @@ Usage:
       --horizon-end 2026-04-01T00:00:00+00:00 [--classes all] [--execute]
   python3 scripts/dispatch_v5_small_test_job.py --i-am-steward --after-settled-1 \
       --run one_class_full --classes <one scored class> [--execute]
+  python3 platform/scripts/dispatch_v5_small_test_job.py --i-am-steward --after-settled-1 \
+      --run all_classes_full [--execute]       # the measuring build: every scored class, the whole derived horizon
   python3 scripts/dispatch_v5_small_test_job.py --help
 """
 from __future__ import annotations
@@ -221,8 +225,11 @@ def _validate_registry_row(cur) -> None:
                 f"{REGISTRY_READBACK} shows the production row)")
 
 
+SLICE_MARKER_KEY = "gochara_v5_test_slice"
+
+
 SLICE_MARKER_SCHEMA = "gochara_v5_test_slice/1"
-SLICE_RUNS = ("all_classes_1y", "one_class_full")
+SLICE_RUNS = ("all_classes_1y", "one_class_full", "all_classes_full")
 
 
 def _writer():
@@ -255,8 +262,10 @@ def build_slice_marker(*, run: str, classes: str | None = None,
                        horizon_start: str | None = None, horizon_end: str | None = None) -> dict:
     """The slice marker merged into plan_manifest under 'gochara_v5_test_slice', validated by the
     WRITER's own _validate_test_slice before it is returned (a TestSliceRefusal propagates by
-    name). classes: None / 'all' = every scored class (all_classes_1y), else a comma list. Horizons
-    are tz-aware ISO timestamps, stored in UTC; one_class_full defaults to the full DEFAULT_HORIZON."""
+    name). classes: None / 'all' = every scored class (all_classes_1y, all_classes_full), else a comma list. Horizons
+    are tz-aware ISO timestamps, stored in UTC; one_class_full defaults to the full DEFAULT_HORIZON, all_classes_full to the writer's MEASURING_HORIZON."""
+    if run == "all_classes_full":
+        raise RuntimeError("measuring phase is disabled for the small-test dispatch")
     writer = _writer()
     if run not in SLICE_RUNS or tuple(writer.TEST_SLICE_RUNS) != SLICE_RUNS:
         raise RuntimeError(f"--run must be one of {SLICE_RUNS} (writer: {tuple(writer.TEST_SLICE_RUNS)}), got {run!r}")
@@ -270,11 +279,12 @@ def build_slice_marker(*, run: str, classes: str | None = None,
         names = [c.strip() for c in classes.split(",") if c.strip()]
         if not names:
             raise RuntimeError("--classes must be 'all' or a non-empty comma-separated list")
-    if horizon_start is None and horizon_end is None and run == "one_class_full":
-        start, end = (x.astimezone(datetime.timezone.utc).isoformat() for x in writer.DEFAULT_HORIZON)
+    if horizon_start is None and horizon_end is None and run in ("one_class_full", "all_classes_full"):
+        default = writer.MEASURING_HORIZON if run == "all_classes_full" else writer.DEFAULT_HORIZON
+        start, end = (x.astimezone(datetime.timezone.utc).isoformat() for x in default)
     elif horizon_start is None or horizon_end is None:
         raise RuntimeError("--horizon-start and --horizon-end are both required "
-                           "(only one_class_full may omit both, meaning the full DEFAULT_HORIZON)")
+                           "(only one_class_full and all_classes_full may omit both, meaning DEFAULT_HORIZON and MEASURING_HORIZON respectively)")
     else:
         start, end = _utc_iso("horizon_start", horizon_start), _utc_iso("horizon_end", horizon_end)
     marker = {"schema": SLICE_MARKER_SCHEMA, "run": run, "horizon": [start, end], "classes": names}
@@ -302,16 +312,38 @@ def build_small_test_manifest(*, candidate, slice_marker: dict) -> tuple[dict, s
     return manifest, digest
 
 
+def _machine_owned_outputs() -> frozenset[str]:
+    """The repository-root-relative paths of the machine-owned generated outputs (A5 D-33: `OUTPUTS` in governance/ci_generated.py, the one
+    list CI itself uses). Empty when the list cannot be read, so an unreadable list ignores nothing."""
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "governance", "ci_generated.py")
+    try:
+        spec = importlib.util.spec_from_file_location("_ky_ci_generated_outputs", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return frozenset(module.OUTPUTS)
+    except Exception:
+        return frozenset()
+
+
+def _has_unmanaged_changes(porcelain: str) -> bool:
+    """True when a `git status --porcelain` listing names a path that is NOT a machine-owned output. The executor's D-33 overlay regenerates
+    the writer-digest file in the tree it dispatches from; that change is the overlay itself (the digest the manifest pins is the one built
+    from it), not a source edit, so it must not read as 'uncommitted'. Porcelain paths are repository-root-relative."""
+    owned = _machine_owned_outputs()
+    return any(path not in owned for line in porcelain.splitlines() if line.strip() for path in line[3:].split(" -> "))
+
+
 def checkout_commit() -> tuple[str, bool]:
-    """(HEAD commit of the checkout this script runs from, whether the sidecar or the writer-digest file has UNCOMMITTED changes). Best
-    effort: ('unknown', False) when git is unavailable. No shell, fixed arguments."""
+    """(HEAD commit of the checkout this script runs from, whether the sidecar or the writer-digest file has UNCOMMITTED changes other than
+    the machine-owned generated outputs). Best effort: ('unknown', False) when git is unavailable. No shell, fixed arguments."""
     import subprocess
     here = os.path.dirname(os.path.abspath(__file__))
     try:
         head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=here, capture_output=True, text=True, timeout=20, check=True).stdout.strip()
         dirty = subprocess.run(["git", "status", "--porcelain", "--", "python-sidecar", "src/generated/nirmana-writer-digests.json"],
-                               cwd=os.path.join(here, ".."), capture_output=True, text=True, timeout=20, check=True).stdout.strip()
-        return head, bool(dirty)
+                               cwd=os.path.join(here, ".."), capture_output=True, text=True, timeout=20, check=True).stdout
+        return head, _has_unmanaged_changes(dirty)
     except Exception:
         return "unknown", False
 
@@ -336,6 +368,7 @@ def image_skew_notice(manifest: dict) -> list[str]:
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(
+        allow_abbrev=False,
         prog="dispatch_v5_small_test_job.py",
         description="Stage a SMALL TEST build_run of ka_gochara_v5 (steward only).")
     p.add_argument("--i-am-steward", action="store_true",
@@ -343,13 +376,13 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--after-settled-1", action="store_true",
                    help="required: the protected window's settled-1 precondition has passed")
     p.add_argument("--run", choices=SLICE_RUNS,
-                   help="the small-test run identity: all_classes_1y or one_class_full (required unless --list-runs / --lookup)")
+                   help="the small-test run identity: all_classes_1y, one_class_full or all_classes_full (the measuring build; required unless --list-runs / --lookup)")
     p.add_argument("--classes", default=None,
-                   help="'all' (default for all_classes_1y) or a comma-separated list of scored "
+                   help="'all' (default for all_classes_1y and all_classes_full) or a comma-separated list of scored "
                         "classes; one_class_full takes exactly one")
     p.add_argument("--horizon-start", default=None,
                    help="tz-aware ISO timestamp, e.g. 2025-04-01T00:00:00+00:00 "
-                        "(required for all_classes_1y; one_class_full defaults to the full horizon)")
+                        "(required for all_classes_1y; one_class_full and all_classes_full default to their full horizons)")
     p.add_argument("--horizon-end", default=None, help="tz-aware ISO timestamp (see --horizon-start)")
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true",
@@ -475,6 +508,17 @@ def _admit(cur) -> tuple[list[dict], list[str]]:
 
 
 def main(argv: list[str] | None = None) -> None:
+    return _main(argv)
+
+
+def _main(argv=None, *, marker_builder=build_slice_marker,
+          operation_kind="smalltest_dispatch", request_policy=shared.smalltest_request_problem,
+          manifest_check=None):
+    """Shared staging transaction; explicit measuring entry point supplies its policy.
+
+    This is not a CLI override. The small-test entry point retains its full-shape
+    refusal; no environment flag or request argument can switch its authority.
+    """
     args = _parse_args(sys.argv[1:] if argv is None else argv)
     if args.list_runs or args.lookup:
         run_id = None
@@ -498,13 +542,25 @@ def main(argv: list[str] | None = None) -> None:
               "pass BOTH --i-am-steward and --after-settled-1", file=sys.stderr)
         sys.exit(2)
     try:
-        slice_marker = build_slice_marker(
+        slice_marker = marker_builder(
             run=args.run, classes=args.classes,
             horizon_start=args.horizon_start, horizon_end=args.horizon_end)
     except Exception as exc:  # RuntimeError or the writer's TestSliceRefusal: nothing touched yet
         print(f"REFUSAL: {exc}", file=sys.stderr)
         sys.exit(2)
 
+    if args.execute:
+        req = shared.operation_request()
+        if req.get("kind") != operation_kind:
+            raise shared.Refused("executor operation kind does not authorize small-test staging")
+        problem = request_policy(req, shared.evidence_root())
+        if problem:
+            raise shared.Refused(problem)
+        bound_args = req.get("args") or {}
+        bound_marker = marker_builder(run=bound_args.get("run"), classes=bound_args.get("classes"),
+            horizon_start=bound_args.get("horizon-start"), horizon_end=bound_args.get("horizon-end"))
+        if bound_marker != slice_marker:
+            raise shared.Refused("staging arguments differ from the accepted small-test request")
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         print("REFUSAL: DATABASE_URL is not set in the process environment (this script reads no file and takes no URL "
@@ -531,6 +587,8 @@ def main(argv: list[str] | None = None) -> None:
         candidate = _load_inactive_candidate(cur)    # the row is read inactive; NO UPDATE of asset_registry is ever issued
         manifest, manifest_digest = build_small_test_manifest(
             candidate=candidate, slice_marker=slice_marker)
+        if manifest_check is not None:
+            manifest_check(manifest, manifest_digest)
 
         # Force dormant (per_chart scope) so the orchestrator treats this as a
         # genuine build, not a no-op over an already-lit asset.
@@ -612,13 +670,17 @@ def _prepare_report(*, dry_run: bool, run_id: str, manifest: dict, manifest_dige
         "admission_notes": notes,
     }
     skew = image_skew_notice(manifest)
+    marker = manifest.get(SLICE_MARKER_KEY) if isinstance(manifest, dict) else None
+    horizon_sentence = ([] if not isinstance(marker, dict) or "horizon" not in marker else
+                        [f"[dry-run] HORIZON: the horizon shown ({marker['horizon'][0]} to {marker['horizon'][1]}, half-open) is the one the marker carries; "
+                         "the writer checks it against the database derivation at run time"])
     if dry_run:
         return {"stderr": [
             f"[dry-run] staged plan for a SMALL TEST build of {ASSET_ID} on chart "
             f"{CHART_ID} — ROLLED BACK, nothing written. Existing small-test runs of this chart: "
             f"{[(r['id'], r['state'], r['created_at']) for r in existing] or 'none'} (an attempted run after an unknown commit outcome "
             f"is looked up with --lookup <run id> or --list-runs, not with this dry run). A real dispatch prints a teardown deadline {RETENTION_DAYS} days out "
-            f"(cockpit retention; {RUNBOOK}) and must be executed within {EXECUTE_WITHIN_MINUTES} minutes", *skew],
+            f"(cockpit retention; {RUNBOOK}) and must be executed within {EXECUTE_WITHIN_MINUTES} minutes", *horizon_sentence, *skew],
             "stdout": [json.dumps(plan, indent=2, sort_keys=True)]}
     if created_at is None:                           # cannot happen on a real insert; never fall back to the client clock
         raise RuntimeError("the INSERT returned no created_at, so no deadline can be derived from the database")

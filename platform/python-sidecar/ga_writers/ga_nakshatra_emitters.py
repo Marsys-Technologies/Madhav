@@ -12,7 +12,7 @@ with provenance so the chain is auditable.
 from __future__ import annotations
 import json
 from typing import Any
-
+from brahmagyan.nakshatra_vocabulary import normalize_nakshatra  # SS N-568 (on the former blank line: keeps the pinned line numbers)
 from brahmagyan.graha_vocabulary import norm_graha
 from ga_writers._graha_text import canonical_graha_title
 from brahmagyan.gandanta import GANDANTA_STRICT_FORMULA_ID
@@ -329,7 +329,7 @@ def emit_dispositor_graph(
         bname = gd.get("name", "")
         if bname not in PLANET_TO_SUBJECT:
             continue
-        nak = gd.get("nakshatra") or ""
+        nak = normalize_nakshatra(gd["nakshatra"]) if gd.get("nakshatra") else ""  # SS N-568: the conjunction subject is the lexicon's spelling, not the adapter's
         if nak:
             body_nak_map.setdefault(nak, []).append(bname)
 

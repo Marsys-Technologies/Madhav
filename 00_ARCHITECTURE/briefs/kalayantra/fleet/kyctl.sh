@@ -35,9 +35,10 @@
 #           The veto line also carries what its controller recorded at its last tick (veto_pending,
 #           veto_next_deadline, veto_last_tick).
 #
-# The veto loop is stopped and observed HERE only (`kyctl.sh stop veto`, `kyctl.sh status`): of the owner's queued
-# commands the veto role takes `veto <decision-id>` alone — a queued `status` or `loops stop` addressed to it is
-# REJECTED by the veto handler.
+# The veto loop is stopped and observed here (`kyctl.sh stop veto`, `kyctl.sh status`) or through the owner's
+# command queue: its running controller (kyloop.py veto) applies a queued `status`, `loops stop veto`, `loops
+# status veto` and `decide` addressed to the veto role itself, before each tick; `veto <decision-id>` is settled
+# by the veto handler. A veto loop that is not running applies nothing — then only this script stops it.
 #
 # Never removes $KY_ROOT/HOLD or $KY_RUN/HOLD_MERGES. Every launchctl call goes through ${KY_LAUNCHCTL}.
 # Exit: 0 ok · 1 action failed or unconfirmed · 2 refused · 64 usage · 77 run as root.
@@ -46,7 +47,7 @@ set -euo pipefail
 usage() {
   echo "usage: kyctl.sh status | install | uninstall | start <loop> [--clear-stop] | stop <loop> | restart <loop> [--clear-stop]" >&2
   echo "       <loop> = dispatcher | planner | conductor | veto | all" >&2
-  echo "       the veto loop is stopped and observed here only: its role takes no queued command but \`veto <decision-id>\`" >&2
+  echo "       the veto loop: stopped here, or by a queued command its running controller applies (\`status\`, \`loops stop|status veto\`, \`decide\`); \`veto <decision-id>\` is settled by the veto handler" >&2
   exit 64
 }
 
@@ -207,6 +208,10 @@ import re, sys
 from xml.sax.saxutils import escape
 src, dst = sys.argv[1:3]
 values = dict(a.split("=", 1) for a in sys.argv[3:])
+sys.dont_write_bytecode = True
+sys.path.insert(0, values["KY_FLEET"])
+from kyloop import SYSTEM_PATH
+values["SYSTEM_PATH"] = SYSTEM_PATH
 def sub(m):
     if m.group(1) not in values:
         raise SystemExit("unknown placeholder @%s@" % m.group(1))

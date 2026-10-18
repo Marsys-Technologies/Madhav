@@ -75,6 +75,9 @@ and `ph_nimitta` before it.
 """
 from __future__ import annotations
 
+from services.gochara_kernel.dasha_read import (
+    dasha_query, execute_governed_dasha_query)
+
 import logging
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -108,18 +111,18 @@ from brahmagyan.l0_upapada_maitri_rules import (  # noqa: E402
 # standalone classical constant rather than imported).
 DUSTHANA_HOUSES: frozenset[int] = frozenset({6, 8, 12})
 
-# ── Verbatim copy of ga_structural_writer.py's NAKSHATRA_NAMES_27 (that file
-# is explicitly must-not-touch/read-only-reuse-only for T-4; this 27-name
-# ordered list is a fixed classical constant, copied rather than imported to
-# avoid pulling in ga_structural_writer.py's full (heavy, pyjhora-adapter-
-# dependent) import graph for one list literal). ────────────────────────────
-NAKSHATRA_NAMES_27: list[str] = [
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
-    "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
-    "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha",
-    "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishtha",
-    "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati",
-]
+# ── The 27 nakshatra names (Ashwini = 1 ... Revati = 27), derived from the L0 lexicon
+# (canonical_name_en, via brahmagyan.nakshatra_vocabulary) and never retyped here
+# (CLAUDE.md §N.7 item 3: no wrapper-local constant shadows a canonical value). The
+# lexicon spells nakshatras 5/19/23 Mrigasira/Moola/Dhanishtha; the L1 name table used
+# to write Mrigashira/Mula/Dhanishta. A stored natal nakshatra is therefore resolved
+# through the TOLERANT nakshatra_number() reader (canonical + legacy-L1 spellings, None
+# for anything else), not by `in` / .index() on this list -- an exact-match lookup would
+# flag a lord in Mrigasira/Moola/Dhanishtha as a false tara_unresolved (the native's
+# Jupiter is in Moola). This module imports only the pure-data L0 seed (no database).
+# Order is pinned by tests/l3/test_kala_permission.py and tests/l3/test_nakshatra_kala_lists.py.
+from brahmagyan.nakshatra_vocabulary import CANONICAL_NAKSHATRA_NAMES, nakshatra_number  # noqa: E402
+NAKSHATRA_NAMES_27: list[str] = list(CANONICAL_NAKSHATRA_NAMES)
 
 # ── graha -> chart_facts/chart_vichara subject-code map. Previously an
 # independent copy of ga_writers/ga_positions_writer.py's PLANET_TO_SUBJECT
@@ -199,22 +202,10 @@ def _fetch_vimshottari_spine(
     already used by pipeline/orchestrator/writers/bo_upaya.py's dasha-timing
     lookup and services/ka_dasha_kala/tree_walk.py's level-1 fetch (same
     table, same query shape — not a new query pattern)."""
-    sql = """
-        SELECT md.dasha_row_id, md.start_date, md.end_date,
-               ad.dasha_row_id, ad.start_date, ad.end_date
-        FROM chart_dashas md
-        JOIN chart_dashas ad ON ad.parent_row_id = md.dasha_row_id
-        WHERE md.chart_id = %s AND md.ayanamsha_id = %s
-          AND md.system_id = 'vimshottari' AND md.level_n = 1
-          AND md.lord_graha = %s
-          AND ad.level_n = 2 AND ad.lord_graha = %s
-          AND md.start_date <= %s AND md.end_date > %s
-          AND ad.start_date <= %s AND ad.end_date > %s
-        LIMIT 1
-    """
-    row = conn.execute(
-        sql, [chart_id, ayanamsha_id, md_lord, ad_lord, as_of, as_of, as_of, as_of],
-    ).fetchone()
+    sql = dasha_query('permission_spine')
+    row = execute_governed_dasha_query(
+        conn, chart_id, sql, [chart_id, ayanamsha_id, md_lord, ad_lord, as_of, as_of, as_of, as_of],
+     ayanamsha_id=ayanamsha_id).fetchone()
 
     if row is None:
         logger.info(
@@ -374,9 +365,9 @@ def period_lord_relation(
     tara_quality: Optional[str] = None
     tara_score: Optional[float] = None
     tara_favorable: Optional[bool] = None
-    if md_pos["nakshatra"] in NAKSHATRA_NAMES_27 and ad_pos["nakshatra"] in NAKSHATRA_NAMES_27:
-        md_nak_id = NAKSHATRA_NAMES_27.index(md_pos["nakshatra"]) + 1  # 1-indexed
-        ad_nak_id = NAKSHATRA_NAMES_27.index(ad_pos["nakshatra"]) + 1
+    md_nak_id = nakshatra_number(md_pos["nakshatra"])  # 1-indexed; tolerant of canonical + legacy-L1 spellings
+    ad_nak_id = nakshatra_number(ad_pos["nakshatra"])  # None for a name that is not one of the 27 -> tara_unresolved
+    if md_nak_id is not None and ad_nak_id is not None:
         tara_pos = compute_tara_position(md_nak_id, ad_nak_id)
         detail = get_tara_detail(tara_pos)
         tara_name = detail["name"]

@@ -25,6 +25,9 @@ class FactState(StrEnum):
 
 
 class EffectiveState(StrEnum):
+    # Owner-surrogate ruling 16 (K12-10): F1 computes only unresolved,
+    # in_force and defeated. partly_defeated / contested are reserved,
+    # not computed until source-backed detectors earn them (F1-CONTEST).
     IN_FORCE = "in_force"
     DEFEATED = "defeated"
     PARTLY_DEFEATED = "partly_defeated"
@@ -35,6 +38,12 @@ class EffectiveState(StrEnum):
 class EdgePolarity(StrEnum):
     SUPPORTS = "supports"
     OPPOSES = "opposes"
+
+
+class EventRelation(StrEnum):
+    SUPPORTS = "supports"
+    OPPOSES = "opposes"
+    CONDITIONS = "conditions"
 
 
 class AttachmentSource(StrEnum):
@@ -72,6 +81,9 @@ class Conclusion:
     mechanism_id: str
     candidate_state: FactState
     fact_ids: tuple[str, ...]
+    target_id: str | None = None
+    valence: EdgePolarity | None = None
+    event_relation: EventRelation | None = None
 
 
 @dataclass(frozen=True)
@@ -80,10 +92,31 @@ class Defeat:
     fact_ids: tuple[str, ...]
     rule_id: str
     kind: str = "defeats"
+    defeat_id: str | None = None
+    evidence_reason: UnassessedReason | None = None
 
     def __post_init__(self) -> None:
         if self.kind not in {"defeats", "excepts"}:
             raise ValueError("defeat kind must be defeats or excepts")
+
+
+class UnassessedReason(StrEnum):
+    PARTIAL_DEFEAT = "partial_defeat_unassessed"
+    CONTESTATION = "contestation_unassessed"
+    MISSING_DEFEAT_FACTS = "missing_defeat_facts"
+    CONDITIONS = "conditions_unassessed"
+    DEFEAT_EVIDENCE_MISSING = "defeat_evidence_missing"
+    DEFEAT_EVIDENCE_AMBIGUOUS = "defeat_evidence_ambiguous"
+
+
+@dataclass(frozen=True)
+class EffectiveResult:
+    state: EffectiveState
+    null_reason: UnassessedReason | None = None
+    conclusion_ids: tuple[str, ...] = ()
+    defeat_ids: tuple[str, ...] = ()
+    missing_fact_ids: tuple[str, ...] = ()
+    evidence_fact_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -93,6 +126,7 @@ class Attachment:
     source: AttachmentSource
     fact_ids: tuple[str, ...]
     state: FactState = FactState.PRESENT
+    null_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -126,12 +160,14 @@ def load_l2_attachments(
     for item in inputs:
         state = (
             FactState.MISSING_FACT
-            if not set(item.fact_ids) <= available
+            if (not item.fact_ids and not item.evaluated_empty) or not set(item.fact_ids) <= available
             else FactState.EVALUATED_EMPTY
             if item.evaluated_empty
             else FactState.PRESENT
         )
-        attachments.append(Attachment(item.attachment_id, mechanism_id, item.source, item.fact_ids, state))
+        reason = ('no_fact_root_identity_in_l2_source' if not item.fact_ids else
+                  'fact_roots_not_in_pinned_natal_source') if state is FactState.MISSING_FACT else None
+        attachments.append(Attachment(item.attachment_id, mechanism_id, item.source, item.fact_ids, state, reason))
     return tuple(attachments)
 
 
@@ -216,17 +252,69 @@ class PromiseGraph:
         self.attachments.append(attachment)
 
     def effective_state(self, conclusion_id: str, available_fact_ids: Iterable[str]) -> EffectiveState:
+        return self.effective_result(conclusion_id, available_fact_ids).state
+
+    def effective_result(self, conclusion_id: str, available_fact_ids: Iterable[str]) -> EffectiveResult:
+        """Ruling 16: retain unassessed evidence without earning a decided state."""
         conclusion = self.conclusions[conclusion_id]
         facts = set(available_fact_ids)
-        if not set(conclusion.fact_ids) <= facts:
-            return EffectiveState.UNRESOLVED
+
+        def grounded(candidate: Conclusion) -> bool:
+            return (candidate.candidate_state is FactState.PRESENT
+                    and bool(candidate.fact_ids) and set(candidate.fact_ids) <= facts)
+
+        if not grounded(conclusion):
+            return EffectiveResult(EffectiveState.UNRESOLVED)
         defeats = [d for d in self.defeats if d.conclusion_id == conclusion_id]
+        unavailable = {d.evidence_reason for d in defeats if d.evidence_reason is not None}
+        if unavailable:
+            # (I) INTERPRETATION: missing/ambiguous named evaluations cannot be
+            # combined into a grounded defeat. Ambiguity names any duplicate
+            # group; all involved evidence identities remain in the result.
+            reason = (UnassessedReason.DEFEAT_EVIDENCE_AMBIGUOUS
+                      if UnassessedReason.DEFEAT_EVIDENCE_AMBIGUOUS in unavailable
+                      else UnassessedReason.DEFEAT_EVIDENCE_MISSING)
+            return EffectiveResult(EffectiveState.UNRESOLVED, reason,
+                (conclusion_id,), tuple(sorted({d.defeat_id or d.rule_id for d in defeats})),
+                evidence_fact_ids=tuple(sorted({fact_id for d in defeats for fact_id in d.fact_ids})))
+        if conclusion.event_relation is EventRelation.CONDITIONS:
+            # (I) INTERPRETATION: a sourced conditions relation identifies no
+            # satisfied precondition. Retain it without assigning a valence.
+            return EffectiveResult(EffectiveState.UNRESOLVED, UnassessedReason.CONDITIONS,
+                (conclusion_id,), tuple(sorted({d.defeat_id or d.rule_id for d in defeats})))
+        active = [d for d in defeats if d.fact_ids and set(d.fact_ids) <= facts]
+        # (I) INTERPRETATION: coverage is the intersection with the conclusion's
+        # cited roots, even if a defeat also cites other evidence roots. A strict
+        # nonempty subset is unassessed; no partial extent is inferred.
+        roots = set(conclusion.fact_ids)
+        partial = any(set(d.fact_ids) & roots and set(d.fact_ids) & roots < roots for d in active)
+        event_class = self.mechanisms[conclusion.mechanism_id].event_class_id
+        peers = [c for c in self.conclusions.values() if grounded(c)
+                 and c.event_relation is not EventRelation.CONDITIONS
+                 and conclusion.target_id is not None and c.target_id == conclusion.target_id
+                 and self.mechanisms[c.mechanism_id].event_class_id == event_class
+                 and c.valence in {EdgePolarity.SUPPORTS, EdgePolarity.OPPOSES}]
+        contested = (conclusion.valence in {EdgePolarity.SUPPORTS, EdgePolarity.OPPOSES}
+                     and any(c.valence != conclusion.valence for c in peers))
+        if partial or contested:
+            # (I) INTERPRETATION: simultaneous patterns use contestation as the
+            # group-wide unavailable reason, not a precedence between conclusions.
+            involved = peers if contested else [conclusion]
+            ids = tuple(sorted(c.conclusion_id for c in involved))
+            evidence = [d for d in self.defeats if d.conclusion_id in ids]
+            # (I) INTERPRETATION: legacy Defeat has only a rule_id; preserve that
+            # identity when no producer-supplied defeat_id is available.
+            return EffectiveResult(EffectiveState.UNRESOLVED,
+                UnassessedReason.CONTESTATION if contested else UnassessedReason.PARTIAL_DEFEAT,
+                ids, tuple(sorted({d.defeat_id or d.rule_id for d in evidence})))
         if not defeats:
-            return EffectiveState.IN_FORCE
-        active = [d for d in defeats if set(d.fact_ids) <= facts]
-        if not active:
-            return EffectiveState.IN_FORCE
-        return EffectiveState.DEFEATED if len(active) == len(defeats) else EffectiveState.PARTLY_DEFEATED
+            return EffectiveResult(EffectiveState.IN_FORCE)
+        # Unknown additional evidence cannot weaken a grounded full defeat.
+        if active:
+            return EffectiveResult(EffectiveState.DEFEATED)
+        return EffectiveResult(EffectiveState.UNRESOLVED, UnassessedReason.MISSING_DEFEAT_FACTS,
+            (conclusion_id,), tuple(sorted({d.defeat_id or d.rule_id for d in defeats})),
+            tuple(sorted({fact_id for d in defeats for fact_id in d.fact_ids if fact_id not in facts})))
 
     def fact_state(self, mechanism_id: str, available_fact_ids: Iterable[str]) -> FactState:
         mechanism = self.mechanisms[mechanism_id]
@@ -237,7 +325,8 @@ class PromiseGraph:
 
 
 __all__ = [
-    "Attachment", "AttachmentInput", "AttachmentSource", "Conclusion", "Defeat", "EdgePolarity",
-    "EffectiveState", "FactState", "Mechanism", "MechanismRoute", "PromiseEdge", "PromiseGraph",
+    "Attachment", "AttachmentInput", "AttachmentSource", "Conclusion", "Defeat", "EdgePolarity", "EventRelation",
+    "EffectiveResult", "EffectiveState", "FactState", "Mechanism", "MechanismRoute", "PromiseEdge", "PromiseGraph",
     "PromiseNode", "attachment_input_from_mapping", "load_l2_attachments",
+    "UnassessedReason",
 ]

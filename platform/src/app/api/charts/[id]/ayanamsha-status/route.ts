@@ -17,12 +17,18 @@
  *      engine_versions is empty).
  *   7. Cache-Control: max-age=10 (short CDN cache — build status changes slowly).
  *
+ * Lahiri-primary (N-339): every item also carries `stored_ayanamsha_id` (the long
+ * id the data tables use), `role` ('primary' for Lahiri, 'cross_check' for the other
+ * four) and `is_primary`. The response stays a 5-item array in the same order with
+ * the same keys (additive fields only), so existing consumers are unaffected.
+ *
  * [BUILD-ORCH-D-08] /api/charts/[id]/ayanamsha-status per-ayanamsha build state.
  */
 
 import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { resolveAyanamshaArg, PRIMARY_AYANAMSHA } from '@/lib/retrieval/chart_facts_helpers'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,6 +52,20 @@ const DISPLAY_NAMES: Record<AyanamshaId, string> = {
   surya_siddhanta: 'Surya Siddhanta',
 }
 
+/** Role fields for one short id; the stored id comes from the shared PR-1 normaliser. */
+function roleFields(
+  id: AyanamshaId,
+): Pick<AyanamshaStatusItem, 'stored_ayanamsha_id' | 'role' | 'is_primary'> {
+  const r = resolveAyanamshaArg(id)
+  const stored = r.ok && r.ayanamsha_id ? r.ayanamsha_id : id
+  const isPrimary = stored === PRIMARY_AYANAMSHA
+  return {
+    stored_ayanamsha_id: stored,
+    role: isPrimary ? 'primary' : 'cross_check',
+    is_primary: isPrimary,
+  }
+}
+
 // ─── Build status type ────────────────────────────────────────────────────────
 
 type BuildStatus =
@@ -60,6 +80,11 @@ type BuildStatus =
 
 interface AyanamshaStatusItem {
   ayanamsha_id: AyanamshaId
+  /** Stored long id (chart_facts.ayanamsha_id), via the PR-1 normaliser. */
+  stored_ayanamsha_id: string
+  /** Lahiri is the primary reading for every chart; the other four are the cross-check set. */
+  role: 'primary' | 'cross_check'
+  is_primary: boolean
   display_name: string
   latest_build_id: string | null
   status: BuildStatus
@@ -161,6 +186,7 @@ export async function GET(
       // No build has ever included this ayanamsha
       ayanamshaItems.push({
         ayanamsha_id: ayanamshaId,
+        ...roleFields(ayanamshaId),
         display_name: DISPLAY_NAMES[ayanamshaId],
         latest_build_id: null,
         status: 'not_built',
@@ -194,6 +220,7 @@ export async function GET(
 
     ayanamshaItems.push({
       ayanamsha_id: ayanamshaId,
+      ...roleFields(ayanamshaId),
       display_name: DISPLAY_NAMES[ayanamshaId],
       latest_build_id: row.build_id,
       status,

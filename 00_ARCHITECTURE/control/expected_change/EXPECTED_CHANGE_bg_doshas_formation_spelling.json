@@ -1,0 +1,7 @@
+{
+  "asset": "bg_doshas",
+  "expected_post_row_count": 860,
+  "why": "bg_doshas formation_rule_jsonb leaves move to one spelling family (migration 1361): graha ids to display names (mars to Mars), nakshatra leaves to bg_ontology canonical names. 25 of 66 catalog rows change content; no row is added or removed. Unit = reference_doshas 66 + catalog 66 + brahma_ontology 728. Accept bg_yogas, bg_dasha_systems, bg_ontology stale, then rebuild bg_ontology AFTER bg_doshas.",
+  "decision": "N-430",
+  "evidence": "Same unit and count as EXPECTED_CHANGE_bg_doshas_citation_pass2.json; migration 1361 re-seals the catalog pin. Assumes live brahma_ontology holds 728 rows: read the pre-count first."
+}

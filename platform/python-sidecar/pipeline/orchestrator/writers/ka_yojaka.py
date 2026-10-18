@@ -44,6 +44,7 @@ from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
 from services.ka_yojaka.promise_adapter import build_bundle
 from services.kala_core.ontology import CLASS_ROSTER
+from services.kala_core.promise.candidate import building_candidate, natal_pin, pin_input_vector
 from pipeline.orchestrator.writers import SubStep
 import psycopg.rows
 from services.ka_temporal import (
@@ -94,31 +95,52 @@ class KaYojakaWriter(WriterBase):
         # being overwritten. A prefix alone cannot establish publication state.
         conn = ctx.db_conn
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute('SELECT generation FROM kala_layer_head WHERE chart_id = %s FOR SHARE', (chart_id,))
-            if any(r['generation'] == generation for r in cur.fetchall()):
-                raise ValueError('promise writer must not replace a published generation')
-            cur.execute('SELECT generation, state FROM kala_layer_candidate WHERE chart_id = %s AND generation = %s FOR SHARE', (chart_id, generation))
-            if any(r['state'] != 'building' for r in cur.fetchall()):
-                raise ValueError('promise writer must not replace a retained published generation')
+            pin = natal_pin(building_candidate(cur, chart_id, generation, ctx.build_id))
+            source_params = (chart_id, pin['build_id'], pin['ayanamsha_id'])
             cur.execute('''SELECT fact_id, ayanamsha_id, fact_category, fact_subject,
-                          fact_key, fact_value_num, unit FROM chart_facts WHERE chart_id = %s''', (chart_id,))
+                          fact_key, fact_value_num, fact_value_text, fact_value_jsonb,
+                          citation_ref, verification_pass_status, unit FROM chart_facts
+                          WHERE chart_id = %s AND build_id = %s AND ayanamsha_id = %s''', source_params)
             facts = cur.fetchall()
+            # Exact locator resolution, never citation text or engine-ref syntax.
+            refs = sorted({f['citation_ref'] for f in facts if f.get('citation_ref')})
+            served_locators = []
+            if refs:
+                cur.execute('''SELECT DISTINCT text_id || ':' || verse_ref AS locator
+                    FROM classical_text_chunks WHERE text_id || ':' || verse_ref = ANY(%s)''', (refs,))
+                served_locators = [r['locator'] for r in cur.fetchall()]
             cur.execute('''SELECT f.id, f.ayanamsha_id, f.yoga_canonical_id, f.fired,
+                          to_jsonb(f)->>'verification_pass_status' AS verification_pass_status,
                           f.constituent_fact_ids, f.constituent_planets, f.bhanga_active,
                           f.bhanga_rule_fired, f.grounds_jsonb, c.formation_rule_jsonb,
                           c.classical_citations, c.bhanga_rules_jsonb
                           FROM ga_yoga_firings f LEFT JOIN brahma_yoga_catalog c
-                          ON c.canonical_id = f.yoga_canonical_id WHERE f.chart_id = %s''', (chart_id,))
+                          ON c.canonical_id = f.yoga_canonical_id WHERE f.chart_id = %s
+                          AND f.build_id = %s AND f.ayanamsha_id = %s''', source_params)
             firings = cur.fetchall()
             cur.execute('''SELECT signal_id, ayanamsha_id, constituent_facts_array,
-                          configuration_jsonb FROM bodha_msr_signals WHERE chart_id = %s''', (chart_id,))
+                          configuration_jsonb FROM bodha_msr_signals WHERE chart_id = %s
+                          AND build_id = %s AND ayanamsha_id = %s''', source_params)
             signals = cur.fetchall()
+            cur.execute('''SELECT edge_id, ayanamsha_id, edge_properties_jsonb FROM bodha_cgm_edges
+                          WHERE chart_id = %s AND build_id = %s AND ayanamsha_id = %s''', source_params)
+            cgm = cur.fetchall()
+            cur.execute('''SELECT pratijna_id, ayanamsha_id, event_class_id, derivation FROM bodha_pratijna
+                          WHERE chart_id = %s AND build_id = %s AND ayanamsha_id = %s''', source_params)
+            pratijna = cur.fetchall()
+            input_vector = pin_input_vector(cur, chart_id, generation, 'ka_yojaka:inputs', pin,
+                chart_facts=facts, ga_yoga_firings=firings, bodha_msr_signals=signals,
+                bodha_cgm_edges=cgm, bodha_pratijna=pratijna, served_locators=served_locators)
         event_class = step.key.removeprefix('class:')
         if event_class == 'unqualified':
             event_class = None
-        bundle = [r for r in build_bundle(facts, firings, signals) if r['event_class_id'] == event_class]
+        bundle = [r for r in build_bundle(facts, firings, signals, cgm=cgm, pratijna=pratijna,
+                                        served_locators=served_locators)
+                  if r['event_class_id'] == event_class]
         rows = []
         for row in bundle:
+            row['input_vector'] = input_vector
+            row['source_natal_pin'] = pin
             target = row['target']
             trigger = ({'target_identity': target['identity'], 'target_fact_id': target['fact_id'],
                         'target_longitude_deg': target['longitude_deg']} if target else
@@ -130,7 +152,9 @@ class KaYojakaWriter(WriterBase):
             rows.append((chart_id, row['ayanamsha_id'], None, 'YOGA' if row['canonical_id'] else 'CLASSIFY_RESIDUAL',
                          json.dumps(dasha), json.dumps(trigger), '{}', json.dumps(row), generation,
                          row['route'], json.dumps({k: row[k] for k in ('conclusion_id', 'formation_state',
-                         'fact_state', 'effective_state', 'defeats', 'excepts', 'qualification', 'scored')}),
+                         'fact_state', 'effective_state', 'defeats', 'excepts', 'qualification', 'scored')}
+                         | ({'null_reason': row['null_reason'], 'effective_reason': row['effective_reason']}
+                            if row.get('effective_reason') else {})),
                          row['mechanism_id'], event_class))
         with conn.cursor() as cur:
             cur.execute('''DELETE FROM kala_activation_predicates WHERE chart_id = %s

@@ -970,13 +970,13 @@ def test_ckshetra_an_open_idem_gap_does_not_close_on_a_refused_rebuild(monkeypat
     assert ac.emit_gaps(c)[2] == 0
 
 
-def test_ckshetra_the_real_ka_kshetra_does_not_pass_and_a_real_replacing_writer_does():
-    """Real source (no database; targets are the registry's, verified live 2026-09-27): ka_kshetra's
-    writer raises KshetraReplacementHeld on any populated chart (services/ka_kshetra/writer.py
-    _run_prepare_replace) — FAIL naming that file; ka_kota_chakra deletes kala_kota_chakra per chart
-    before insert — PASS. Fails without the fix: ka_kshetra read PASS."""
+def test_ckshetra_the_real_candidate_and_kota_writers_replace_their_owned_rows():
+    """K5-G1a (PR #3542) confines replacement to a mutable candidate generation, so the
+    real Kshetra source now PASSes the delete-then-insert scan, as Kota already did.
+    This static verdict does not prove candidate isolation; the G1a PostgreSQL tests do.
+    The guarded-writer fixtures above still require FAIL for populated-target holds."""
     ks = ac.registered_ids("ka_")
     v, notes = ac.idem_scan("ka_kshetra", ks["ka_kshetra"], "delete_then_insert", ["kala_field"])
-    assert v == ac.FAIL and "rebuild refused when target is populated: services/ka_kshetra/writer.py:" in notes[0], notes
+    assert v == ac.PASS and "kala_field (services/ka_kshetra/writer.py:" in notes[0], notes
     v2, notes2 = ac.idem_scan("ka_kota_chakra", ks["ka_kota_chakra"], "delete_then_insert", ["kala_kota_chakra"])
     assert v2 == ac.PASS and "kala_kota_chakra" in notes2[0], notes2

@@ -1,0 +1,9 @@
+asset_census: statement cap ACTIVE: every census psql session runs under statement_timeout 600 s and lock_timeout 5 s (the integrity runner is exempt); a cancelled read reads NO_DETECTOR
+L1 Ganita (contribution): 20 assets · 20 registered ids vs 20 has_writer=true
+  chart scope: 20 chart-scoped count_sql bound to chart 482012f1-710e-4a25-994a-93821f5871aa
+  build scope: 8 global run(s), of which 114 touched this layer
+  FAIL 1 · PARTIAL/NO_DETECTOR 45 · ERRORED 0 · assets measured 20
+    FAIL Build.dag: 1 — ga_vichara
+census written: ../../../../suvarna-evidence/census_eval/7e63cc872-1791868791537-rev30b/census_L1.json
+exit=2
+wall_seconds=6420

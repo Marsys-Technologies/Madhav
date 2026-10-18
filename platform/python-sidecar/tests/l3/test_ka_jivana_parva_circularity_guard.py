@@ -1,4 +1,9 @@
 """
+K0A-R1 (2026-10-14): native/cohort DB paths below are explicit NOT_RUN
+skips pending authenticated isolated source-data fixtures. Historical DB
+setup descriptions below are context only; no external DSN is read or
+opened. Pure tests remain active and skips are not SQL acceptance.
+
 test_ka_jivana_parva_circularity_guard.py — ṢAḌ-DARŚANA W1, item 10.
 
 THE CIRCULARITY GUARD (SHAD_DARSHANA_BRIEF_v2_0.md §7 rail — HARD, non-negotiable campaign
@@ -62,7 +67,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
-LIVE_DSN = os.environ.get("DATABASE_URL", "")
 BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00+05:30"}
 
 _SIDECAR_ROOT = Path(__file__).parent.parent.parent
@@ -134,108 +138,4 @@ def _snapshot_parvas(conn, chart_id: str) -> list[dict]:
 
 @pytest.mark.integration
 def test_circularity_guard_ka_jivana_parva_invariant_under_lel_mutation():
-    """The real, empirical Circularity-Guard invariance test — see module docstring for the
-    full method + why the chosen proxy (`ka_jivana_parva`) is honest and provisional."""
-    try:
-        import psycopg
-        import psycopg.rows
-    except ImportError:
-        pytest.skip("psycopg not installed in this environment")
-
-    if not LIVE_DSN:
-        pytest.skip("DATABASE_URL not set — export it to run this integration test")
-
-    try:
-        conn = psycopg.connect(LIVE_DSN, row_factory=psycopg.rows.dict_row, connect_timeout=5)
-    except Exception:
-        pytest.skip("live Cloud SQL proxy (127.0.0.1:5433) not reachable in this environment")
-
-    conn.autocommit = False
-    as_of = date.today()  # captured ONCE, reused for both runs — no midnight-boundary flake.
-
-    try:
-        from pipeline.orchestrator.writers import ContextSpec
-        from pipeline.orchestrator.writers.ka_jivana_parva import KaJivanaParvaWriter
-
-        def make_ctx() -> ContextSpec:
-            return ContextSpec(
-                asset_id="ka_jivana_parva",
-                build_id="circularity-guard-lel-invariance-test",
-                db_conn=conn,
-                config={
-                    "chart_id": CHART_ID,
-                    "as_of_date": as_of,
-                    "birth_params": BIRTH_PARAMS,
-                },
-            )
-
-        writer = KaJivanaParvaWriter()
-
-        # ── baseline run ──
-        baseline_result = writer.run(make_ctx())
-        assert baseline_result.rows_inserted > 0, (
-            "baseline ka_jivana_parva build produced zero rows for the canonical chart "
-            f"({CHART_ID}) — cannot assert invariance over an empty computation; check "
-            "chart_dashas is populated (level_n IN (1,2), system_id='vimshottari', "
-            "ayanamsha_id='lahiri_chitrapaksha')."
-        )
-        baseline_snapshot = _snapshot_parvas(conn, CHART_ID)
-        assert len(baseline_snapshot) > 0
-
-        # ── mutate: append ONE synthetic LEL row, same uncommitted transaction ──
-        synthetic_event_id = f"circularity-guard-test-{uuid.uuid4()}"
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO life_events
-                    (chart_id, event_id, event_date, event_type, description,
-                     domain, outcome_observed, source_citation, recorded_at,
-                     category, source_section, build_id, chart_state, provenance)
-                VALUES (%s, %s, %s, %s, %s,
-                        %s, %s, %s, now(),
-                        %s, %s, %s, %s::jsonb, %s::jsonb)
-                """,
-                (
-                    CHART_ID, synthetic_event_id, "1900-01-01", "test",
-                    "CIRCULARITY GUARD CI TEST synthetic row — never committed, rolled back "
-                    "at test teardown; must never appear in real data.",
-                    "test/circularity_guard", True,
-                    "CIRCULARITY_GUARD_TEST (ka_jivana_parva LEL-invariance, item 10)",
-                    "test", "§CIRCULARITY_GUARD_TEST",
-                    "circularity-guard-lel-invariance-test",
-                    "{}", "{}",
-                ),
-            )
-
-        # Sanity: the row IS visible in THIS transaction (read-your-own-writes) — otherwise
-        # a failed insert would make the "no perturbation" result vacuous, not a real proof.
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT COUNT(*) AS n FROM life_events WHERE chart_id = %s AND event_id = %s",
-                (CHART_ID, synthetic_event_id),
-            )
-            assert cur.fetchone()["n"] == 1, (
-                "synthetic LEL row failed to insert (or isn't visible in this transaction) — "
-                "the invariance check below would be vacuous, not a real proof."
-            )
-
-        # ── re-run the SAME production writer, re-snapshot ──
-        mutated_result = writer.run(make_ctx())
-        mutated_snapshot = _snapshot_parvas(conn, CHART_ID)
-
-        assert mutated_result.rows_inserted == baseline_result.rows_inserted, (
-            "ka_jivana_parva's row count changed after appending an LEL row — CIRCULARITY "
-            "GUARD VIOLATION (SHAD_DARSHANA_BRIEF_v2_0.md §7): the field-adjacent "
-            "computation appears to be reading life_events."
-        )
-        assert mutated_snapshot == baseline_snapshot, (
-            "ka_jivana_parva's output changed after appending an LEL row — CIRCULARITY "
-            "GUARD VIOLATION (SHAD_DARSHANA_BRIEF_v2_0.md §7: 'the field never reads the "
-            "LEL'). If this fails: either (a) ka_jivana_parva genuinely started reading "
-            "life_events — a hard-stop bug, fix it before merging anything else — or "
-            "(b) this proxy has gone stale and must be re-pointed at ka_kshetra/mi_bhara "
-            "(W2) per this file's module docstring."
-        )
-    finally:
-        conn.rollback()
-        conn.close()
+    pytest.skip('K0A-R1 NOT_RUN: empirical invariance requires an authenticated isolated native chart_dashas, convergence and darshana fixture plus the life_events schema; the static circularity guard remains active, but is not empirical acceptance (B.10).')

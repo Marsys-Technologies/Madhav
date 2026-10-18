@@ -23,7 +23,15 @@
  *     source: 'explicit' | 'default'
  *     chart_id: string | null
  *     chart_build_ayanamshas: string[] | null
+ *     primary: 'lahiri_chitrapaksha'           // Lahiri-primary (N-339), always, whatever the list
+ *     cross_check_ayanamshas: string[]         // the active ids other than Lahiri, as stored ids
  *   }
+ *
+ * Lahiri is the PRIMARY reading for every chart; the active list only selects
+ * which of the other four are shown as the labelled cross-check. `primary` and
+ * `cross_check_ayanamshas` are additive fields: the original keys are unchanged.
+ * The default list is the five STORED ids (it used to carry `yukteshwar`, which
+ * is not a stored ayanamsha).
  *
  * [BUILD-ORCH-D-07] /api/conversations/[id]/active-ayanamshas
  */
@@ -32,18 +40,19 @@ import { NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors'
+import {
+  AYANAMSHA_SERVE_ORDER,
+  PRIMARY_AYANAMSHA,
+  resolveAyanamshaArg,
+} from '@/lib/retrieval/chart_facts_helpers'
 
 export const dynamic = 'force-dynamic'
 
 // ─── Canonical ayanamsha defaults ─────────────────────────────────────────────
 
-const CANONICAL_AYANAMSHAS = [
-  'lahiri',
-  'raman',
-  'krishnamurti',
-  'yukteshwar',
-  'true_chitra',
-] as const
+// The five STORED ids in serve order (Lahiri first). Not a local alias map: the list
+// is the PR-1 constant, and ids in an explicit list are normalised by the PR-1 helper.
+const CANONICAL_AYANAMSHAS: readonly string[] = AYANAMSHA_SERVE_ORDER
 
 type AyanamshaSource = 'explicit' | 'default'
 
@@ -55,6 +64,18 @@ interface ActiveAyanamshasResponse {
   source: AyanamshaSource
   chart_id: string | null
   chart_build_ayanamshas: string[] | null
+  primary: string
+  cross_check_ayanamshas: string[]
+}
+
+/** Stored ids of the active list other than the primary (unknown / "all" entries are skipped). */
+function crossCheckSet(active: readonly string[]): string[] {
+  const wanted = new Set<string>()
+  for (const raw of active) {
+    const r = resolveAyanamshaArg(raw)
+    if (r.ok && r.ayanamsha_id && r.ayanamsha_id !== PRIMARY_AYANAMSHA) wanted.add(r.ayanamsha_id)
+  }
+  return AYANAMSHA_SERVE_ORDER.filter((id) => wanted.has(id))
 }
 
 // ─── DB row types ─────────────────────────────────────────────────────────────
@@ -170,6 +191,8 @@ export async function GET(
       source,
       chart_id: conv.chart_id ?? null,
       chart_build_ayanamshas: chartBuildAyanamshas,
+      primary: PRIMARY_AYANAMSHA,
+      cross_check_ayanamshas: crossCheckSet(activeAyanamshas),
     }
 
     return NextResponse.json(body, {

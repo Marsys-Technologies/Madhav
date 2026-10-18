@@ -6159,6 +6159,13 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> **KĀLA-YANTRA v3 — BOOTSTRAP INSTALLED; GATE WAIT (2026-10-13).**
+> Bundle `4fca17c70` installed at `2026-10-13T08:30:26Z` (`/Users/Dev/kalayantra/run/INSTALL_RECEIPT.json:1239,6975,7751`; mode `bootstrap`). The v2 fleet was stopped and archived (`/Users/Dev/kalayantra/run/JOURNAL_PLANNER.md:268-269`).
+> Rehearsal legs 1–2 passed per surrogate answer 09:9,40; the recorded leg-1 suite still has one obsolete-premise test failure (journal:291), so this is not a claim of an all-green final-bundle suite. Leg 2 passed with live EVENTS unchanged (journal:298).
+> Leg 3 was not run: replaced by the live first item `KV3-B-OPS-CONTRACT`, PR #3485; VERIFY pending at the recorded checkpoint, merges held (journal:299-303,320-322). No fixture-model-job PASS or final Wave B acceptance is claimed.
+> Remaining: live-item verification, release receipt/pin checks and inbox dispositions; reviewed fixes/Codex role qualification, reinstall and measured final-bundle rehearsal results; final manifest/installation receipt binding B-3/B-4 and this validated backfill; `READY_TO_START` then owner/effective D-7 resume (surrogate answer 12 §2; plan v2.7 §14 B-5).
+> Campaign Codex→Claude handoff: `SESSION_LOG.md#KALAYANTRA_CAMPAIGN_OPEN_20261007`. **(I) INTERPRETATION:** B-5 backfills the recorded campaign handshake and closes only this governance handoff; the campaign remains open under WAIT.
+
 > **OWNER-PATH chart_facts divergence DROP DEFAULT, N-349 (2026-10-10) — PREPARED, NOT RUN.** Not a migration number: `chart_facts` is owned by `data_plane_l1_owner` (catalog read as suvarna_reader, N-347), so the change is an owner-path package (D6 in-process pattern), outside `platform/migrations`.
 > One statement under `lock_timeout = '5s'`: `ALTER TABLE public.chart_facts ALTER COLUMN cross_ayanamsha_divergence_arcsec DROP DEFAULT` (column nullable, default `0.0`; metadata only, no backfill). Guards: nullable, owner, default exactly `0.0`; already dropped = idempotent no-op; exact before/after diff.
 > Exec executes it in the protected window with the owner's approval at run time (`--dry-run`, then `--apply --expect-plan H`). Package: `briefs/suvarna/exec/divergence_default/divergence_default_drop.py`; test `test_n349_divergence_default_owner_path.py` (disposable PostgreSQL).
@@ -9773,7 +9780,7 @@ current_state:
   # updated but this dedicated pointer field was missed, which schema_validator.py's
   # current_state_last_session_id_disagreement check caught at this session's open. Fixed
   # here rather than carried forward as a second miss.)
-  last_session_id: "MADHAV_JOURNEY6_DELIVERY_20261006"
+  last_session_id: "KALAYANTRA_CAMPAIGN_OPEN_20261007"
   last_session_closed_at: "2026-10-06T15:59:33.097398+00:00"
   last_session_agent: Codex
   last_session_cowork_thread_name: "Madhav — Journey 6 delivery"

@@ -28,8 +28,17 @@ doctrine, nothing here (or in SQL) can detect it.
 from __future__ import annotations
 
 import hashlib
+import json
+import re
+from datetime import datetime
+from pathlib import Path
+from uuid import UUID
 from decimal import Decimal
 from typing import Any, Mapping, Sequence
+
+from .nd_h_tables import (
+    AFFECTED_PERSON as _ndh_AFFECTED_PERSON, EIGHT as _ndh_EIGHT, KARAKATVA as _ndh_KARAKATVA, KARAKA_B_LUMINARY as _ndh_KARAKA_B_LUMINARY, KB_RELATIONS as _ndh_KB_RELATIONS, TIERS as _ndh_TIERS, path_houses as _ndh_path_houses
+)
 
 from brahmagyan.verification_vocab import TWO_PASS_VERIFIED as _TWO_PASS_VERIFIED   # the sanctioned vocabulary (TAP-6)
 
@@ -207,8 +216,11 @@ def _house_sign(house: int, anchor_sign: int) -> int:
 
 # ── derivation of P3 / P4 (spec §2.2, S-03, R3-S02) ──────────────────────────
 
-def _h_and_lords(event_class: str, chart: Mapping[str, Any]):
-    houses, anchor, _maraka = _CLASS[event_class]
+def _h_and_lords(event_class: str, chart: Mapping[str, Any], rule_version="1.0.0", path="p3"):
+    houses, anchor, _maraka = _CLASS.get(event_class, (None, None, set()))
+    if rule_version == "1.2.0" and event_class in _ndh_EIGHT:
+        houses = _ndh_path_houses(event_class, path.upper())
+        anchor = None  # verifier table already resolves the father frame to lagna houses
     lagna_sign = _sign_index(chart["lagna"])
     anchor_sign = lagna_sign if anchor is None else _house_sign(anchor, lagna_sign)
     h_signs = sorted({_house_sign(h, anchor_sign) for h in houses})
@@ -216,8 +228,9 @@ def _h_and_lords(event_class: str, chart: Mapping[str, Any]):
     return h_signs, lords, lagna_sign, anchor_sign
 
 
-def _frame_person(event_class: str) -> tuple[str, str]:
-    return ("bhavat_bhavam:9", "father") if event_class == "bereavement" else ("lagna", "native")
+def _frame_person(event_class: str, rule_version="1.0.0") -> tuple[str, str]:
+    father = event_class == "bereavement" or (rule_version == "1.2.0" and event_class == "parental_event")
+    return ("bhavat_bhavam:9", "father") if father else ("lagna", "native")
 
 
 def _p1_obligation_bytes(event_class: str, rule_version: str) -> list[str]:
@@ -230,7 +243,7 @@ def _p1_obligation_bytes(event_class: str, rule_version: str) -> list[str]:
         signs.add(_EXALT[g])
         signs.add(_DEBIL[g])
     signs.update(_EXALT.values())          # Sun and Jupiter: every graha's exaltation sign
-    _frame, person = _frame_person(event_class)
+    _frame, person = _frame_person(event_class, rule_version)
     role_token = {"|".join((event_class, "p1", rule_version.lower(), f"period_lord:{role}", "residence",
                             "period_lord", f"span:{_SIGNS.index(sg) + 1}", "dasha_lord",
                             person)) for role in _ROLE_LEVEL for sg in signs}
@@ -270,8 +283,8 @@ def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
                          path: str, rule_version: str, *, excluded_agents: Sequence[str]) -> list[str]:
     """Every (agent, relation, role, target) the spec's P3 predicate names, for `path`
     ('p3' or 'p4'; P4 = P3's Jupiter/Saturn scored obligations as P4's own)."""
-    h_signs, lords, lagna_sign, anchor_sign = _h_and_lords(event_class, chart)
-    frame, person = _frame_person(event_class)
+    h_signs, lords, lagna_sign, anchor_sign = _h_and_lords(event_class, chart, rule_version, path)
+    frame, person = _frame_person(event_class, rule_version)
     agents = (tuple(g for g in _GRAHAS if g not in excluded_agents)
               if path == "p3" else ("jupiter", "saturn"))
     out = []
@@ -289,17 +302,58 @@ def _p3_obligation_bytes(event_class: str, chart: Mapping[str, Any],
             ob(agent, "conjunction", "lord", _point(chart["natal"][lord]))
             if agent not in _NODES:
                 ob(agent, "aspect", "lord", _point(chart["natal"][lord]))
+    if rule_version == "1.2.0" and event_class in _ndh_KARAKA_B_LUMINARY:
+        luminary = _ndh_KARAKA_B_LUMINARY[event_class]
+        for agent in agents:
+            for relation in _ndh_KB_RELATIONS.get(agent, ()):
+                ob(agent, relation, "karaka", _point(chart["natal"][luminary]))
     if path == "p3":
-        _h, _a, maraka_houses = _CLASS[event_class]
+        _h, _a, maraka_houses = _CLASS.get(event_class, (None, None, set()))
         m_signs = sorted({_house_sign(h, anchor_sign) for h in maraka_houses})
         for s in m_signs:
             ob(_SIGN_LORD[_SIGNS[s]], "ownership", "maraka_of_house", f"span:{s + 1}")
     return sorted(set(out))
 
 
+
+def final_rule_edge_tiers(event_class, path_id, chart):
+    """FB-34/35: independent identity -> tier map (CORE subsumes DVI)."""
+    if event_class not in _ndh_EIGHT or path_id not in ('P3', 'P4'):
+        return {}, []
+    tier = _ndh_TIERS[event_class]
+    lagna = _sign_index(chart['lagna'])
+    agents = _GRAHAS if path_id == 'P3' else ('jupiter', 'saturn')
+    tables = {}
+    for name, houses in [('core', tier.core), ('dvi', tier.dvi if path_id == 'P4' else ())]:
+        keys = set()
+        signs = {_house_sign(h, lagna) for h in houses}
+        lords = {_SIGN_LORD[_SIGNS[s]] for s in signs}
+        for agent in agents:
+            for sign in signs:
+                for rel in ('residence', 'aspect') if agent not in _NODES else ('residence',):
+                    keys.add('|'.join((agent, rel, f'span:{sign + 1}', 'signature_house')))
+            for lord in lords:
+                if lord not in chart['natal']:
+                    raise Unverifiable(f'final_rule_natal_lord_missing: {lord}')
+                for rel in ('conjunction', 'aspect') if agent not in _NODES else ('conjunction',):
+                    keys.add('|'.join((agent, rel, _point(chart['natal'][lord]), 'lord')))
+        tables[name] = keys
+    absorbed = sorted(tables['core'] & tables['dvi'])
+    return {**dict.fromkeys(tables['dvi'], 'dvi'), **dict.fromkeys(tables['core'], 'core')}, absorbed
+
+
+def derive_final_rule_context(event_class, path_id, chart, rule_version):
+    """Ruling 18 §§1–2, verifier-owned data, independent of the enumerator."""
+    if rule_version != '1.2.0' or event_class not in _ndh_EIGHT:
+        return None
+    _, absorbed = final_rule_edge_tiers(event_class, path_id, chart)
+    return {'dvi_absorbed_by_core': absorbed, 'ruling_ref': 'SURROGATE_ANSWER_18',
+            'support': {'state': 'annotation_unstored', 'ruling_ref': 'SURROGATE_ANSWER_18'}}
+
 # ── P1 prerequisite (2): the verifier's OWN period-lord relation (R11-2) ───────────────────────────────────
 
-def period_lord_relation(lord: str, event_class: str, chart: Mapping[str, Any]) -> dict[str, str]:
+def period_lord_relation(lord: str, event_class: str, chart: Mapping[str, Any], *,
+                         rule_version="1.0.0", level=None, affected_person=None) -> dict[str, str]:
     """The natal bhāva relationship of a period lord to the event class (spec §2.2 relation-kind table; Phaladīpikā
     XX.34–38), derived HERE from this verifier's own class table and sign lordships — it shares NO code with the builder's
     `gochara_rules.permission.period_lord_relation` (a defect there must not make builder and verifier agree; an import test
@@ -309,15 +363,19 @@ def period_lord_relation(lord: str, event_class: str, chart: Mapping[str, Any]) 
       * the lord OCCUPIES a signature house, or (a non-node) OWNS one ⇒ scored;
       * its DISPOSITOR (the lord of its natal sign) occupies a signature house, or (a non-node dispositor) owns one ⇒
         testimony (annotates, never licenses); otherwise `none`."""
-    if event_class in _UNKNOWN_H or event_class not in _CLASS:
+    if (event_class in _UNKNOWN_H or event_class not in _CLASS) and not (rule_version == "1.2.0" and event_class in _ndh_EIGHT):
         return {"relation": "unknown", "licence": "none"}
-    h_signs = set(_h_and_lords(event_class, chart)[0])
+    h_signs = set(_h_and_lords(event_class, chart, rule_version, "p1")[0])
     natal = chart["natal"]
     if lord in natal and _sign_index(natal[lord]) in h_signs:
         return {"relation": "occupancy", "licence": "scored"}
     owned = {_SIGN_LORD[_SIGNS[i]] for i in h_signs}
     if lord not in _NODES and lord in owned:
         return {"relation": "ownership", "licence": "scored"}
+    if rule_version == "1.2.0" and lord in natal and level in (None, "md", "ad"):
+        person = _ndh_AFFECTED_PERSON.get(event_class, "native") if affected_person is None else affected_person
+        if lord in _ndh_KARAKATVA.get((event_class, person), ()):
+            return {"relation": "karakatva", "licence": "scored"}
     disp = _SIGN_LORD[_SIGNS[_sign_index(natal[lord])]]
     if (disp in natal and _sign_index(natal[disp]) in h_signs) or (disp not in _NODES and disp in owned):
         return {"relation": "dispositorship", "licence": "testimony"}
@@ -329,7 +387,8 @@ def period_lord_relation(lord: str, event_class: str, chart: Mapping[str, Any]) 
 def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
                     rule_version: str, *, excluded_agents: Sequence[str],
                     path_exclusions: Mapping[str, Mapping[str, str | None]],
-                    h_unknown_exclusion: Mapping[str, str | None] | None) -> dict[str, Any]:
+                    h_unknown_exclusion: Mapping[str, str | None] | None,
+                    selected_versions: Mapping[str, str] | None = None) -> dict[str, Any]:
     """One pin as the verifier derives it. `path_exclusions` / `h_unknown_exclusion`
     are the verifier's OWN rulings ({reason, basis, ruling_ref}) — never read back from
     the stored pin under test."""
@@ -339,7 +398,11 @@ def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
         return {"path": p, "version": rule_version.lower(), "disposition": "excluded",
                 "reason": e["reason"], "ruling": e.get("ruling_ref") or "",
                 "basis": e["basis"], "obligations": []}
-    if p in _H_DEPENDENT and event_class in _UNKNOWN_H:
+    if (rule_version == "1.2.0" and p in _H_DEPENDENT and event_class not in _ndh_EIGHT
+            and selected_versions is not None and selected_versions.get(p) != rule_version):
+        return {"path": p, "version": rule_version, "disposition": "excluded",
+                "reason": "not_applicable_to_class", "ruling": "", "basis": "ruling:ND-H-20261005", "obligations": []}
+    if p in _H_DEPENDENT and event_class in _UNKNOWN_H and not (rule_version == "1.2.0" and event_class in _ndh_EIGHT):
         if h_unknown_exclusion is None:
             raise Unverifiable(f"{event_class}/{p}: H is unknown and the verifier was given no "
                                "ruling for the degrading exclusion it would have to verify")
@@ -350,6 +413,11 @@ def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
     if p not in ("p1", "p2", "p3", "p4"):
         raise Unverifiable(f"{event_class}/{p}: no independent derivation of this path's "
                            "obligations exists in the verifier yet — refusing to vouch")
+    final_parent = (event_class == "parental_event" and p == "p2"
+                    and (selected_versions or {}).get("p3") == "1.2.0")
+    if final_parent:
+        return {"path": p, "version": rule_version.lower(), "disposition": "excluded",
+                "reason": "not_applicable_to_class", "ruling": "", "basis": "ruling:ND-H-20261005", "obligations": []}
     obs = (_p1_obligation_bytes(event_class, rule_version) if p == "p1"
            else _p2_obligation_bytes(event_class, chart, rule_version, excluded_agents=excluded_agents) if p == "p2"
            else _p3_obligation_bytes(event_class, chart, p, rule_version, excluded_agents=excluded_agents))
@@ -387,7 +455,9 @@ _SUPERSEDED = {("p2", "1.0.0"): "1.1.0", ("p3", "1.0.0"): "1.1.0",
                ("p4", "1.0.0"): "1.1.0", ("p5", "1.0.0"): "1.1.0"}
 
 
-def _supersession_basis(path: str, old: str, new: str) -> str:
+def _supersession_basis(path: str, old: str, new: str, event_class=None) -> str:
+    if new == "1.2.0":
+        return "ruling:ND-P2-20261005" if event_class == "bereavement" else "ruling:ND-H-20261005"
     anchor = "AM-18" if path == "p2" else "AM-13"
     return f"spec:GOCHARA_SPECS_V1_5_AMENDMENTS@1.5#{anchor}-{path}-{old}-superseded-by-{new}"
 
@@ -415,7 +485,7 @@ def derive_class_pins(event_class: str, chart: Mapping[str, Any], sealed_paths: 
         versions = sorted(by_path[path])
         pins = {v: derive_path_pin(event_class, chart, path, v, excluded_agents=excluded_agents,
                                    path_exclusions=path_exclusions,
-                                   h_unknown_exclusion=h_unknown_exclusion) for v in versions}
+                                   h_unknown_exclusion=h_unknown_exclusion, selected_versions=selected) for v in versions}
         if path in selected:
             if selected[path] not in versions:
                 raise Unverifiable(f"{event_class}/{path}: selected {selected[path]!r} is not sealed")
@@ -430,11 +500,19 @@ def derive_class_pins(event_class: str, chart: Mapping[str, Any], sealed_paths: 
             chosen = included[0] if included else versions[-1]
         for v in versions:
             pin = pins[v]
+            final_supersession = (v == "1.0.0" and chosen == "1.2.0" and path in ("p1", "p3", "p4")
+                                  and (event_class in _ndh_EIGHT or (event_class == "bereavement" and path in ("p3", "p4"))))
+            if final_supersession and pins[chosen]["disposition"] == "included":
+                pin = {"path": path, "version": v, "disposition": "excluded",
+                       "reason": "superseded_by_version", "ruling": "",
+                       "basis": _supersession_basis(path, v, chosen, event_class), "obligations": []}
             if v != chosen and pin["disposition"] == "included":
-                if pins[chosen]["disposition"] == "included" and _SUPERSEDED.get((path, v)) == chosen:
+                if pins[chosen]["disposition"] == "included" and (
+                        _SUPERSEDED.get((path, v)) == chosen or
+                        (chosen == "1.2.0" and v == "1.0.0" and path in ("p1", "p3", "p4"))):
                     pin = {"path": path, "version": v, "disposition": "excluded",
                            "reason": "superseded_by_version", "ruling": "",
-                           "basis": _supersession_basis(path, v, chosen), "obligations": []}
+                           "basis": _supersession_basis(path, v, chosen, event_class), "obligations": []}
                 else:
                     raise Unverifiable(f"{event_class}/{path}@{v}: neither selected ({chosen}), superseded by "
                                        "an included approved successor, nor excluded by a composite ruling")
@@ -661,15 +739,81 @@ def rederive_aspect_span_runs(
 # consumed, would be "accounted" by every derivation that reads the supplied ids. So the verifier checks
 # the CONSUMED set itself against the contract it is TOLD (its own constants, not the builder's):
 #   * every consumed row is of this chart, ayanāṃśa, system and tier, levels 1–3, and — for the canonical
-#     chart — the FROZEN pinned build (any other chart: one build, shared by every consumed row);
+#     chart — the single settled build selected by this verifier's own all-tier query;
 #   * no consumed row lies wholly outside the horizon (an EXTRA), and no pinned-build row overlapping the
 #     horizon is missing (an OMITTED);
 #   * no two pinned rows conflict on the same (level, parent, start) with different contract fields.
 
 _C_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
-_C_BUILD = "75524b3e-102a-43ec-8cee-3f57fee752c3"
 _C_AYANAMSHA, _C_SYSTEM, _C_TIER = "lahiri_chitrapaksha", "vimshottari", _TWO_PASS_VERIFIED
 _C_LEVELS = (1, 2, 3)
+
+
+_SETTLEMENT_PATH = Path(__file__).with_name("dasha_settlement.json")
+
+
+class SettlementRefused(Unverifiable):
+    """Typed independent settlement refusal; no verification is earned."""
+
+    def __init__(self, code: str, detail: str):
+        self.code = code
+        super().__init__(f"{code}: {detail}")
+
+
+def _load_dasha_settlement(chart_id: str) -> dict:
+    """Verifier's own parser of the reviewed authority, with no reader imports."""
+    try:
+        source = _SETTLEMENT_PATH.read_text(encoding="utf-8")
+    except UnicodeError as exc:
+        raise SettlementRefused("settlement_malformed", "governed settlement is not UTF-8") from exc
+    except OSError as exc:
+        raise SettlementRefused("settlement_missing", "cannot read governed settlement") from exc
+    try:
+        doc = json.loads(source)
+        if not isinstance(doc, dict) or doc["schema"] != "gochara_dasha_settlement/1":
+            raise ValueError("settlement schema")
+        if not isinstance(doc["header_comment"], str) or "reviewed PR" not in doc["header_comment"]:
+            raise ValueError("review policy")
+        tokens = doc["line"].split(" ")
+        names = ["utc", "pos_build", "dash_build", "natal_fp", "vim13_fp", "vim13_rows", "dash_all_fp"]
+        if tokens[:2] != ["L1_SETTLED", "v1"] or len(tokens) != 9:
+            raise ValueError("settlement line format")
+        fields = {}
+        for name, token in zip(names, tokens[2:]):
+            key, value = token.split("=")
+            if key != name:
+                raise ValueError("settlement line keys")
+            fields[key] = value
+        if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", fields["utc"]):
+            raise ValueError("settlement timestamp")
+        datetime.strptime(fields["utc"], "%Y-%m-%dT%H:%M:%SZ")
+        for name in ("pos_build", "dash_build", "natal_fp", "vim13_fp", "dash_all_fp"):
+            if not re.fullmatch(r"[0-9a-f]{8}", fields[name]):
+                raise ValueError("settlement hex field")
+        if not re.fullmatch(r"[0-9]+", fields["vim13_rows"]):
+            raise ValueError("settlement row count")
+        fields["vim13_rows"] = int(fields["vim13_rows"])
+        if type(doc["vim13_rows"]) is not int or doc["vim13_rows"] <= 0:
+            raise ValueError("settlement row count type")
+        if fields != {name: doc[name] for name in names}:
+            raise ValueError("line differs from stored settlement fields")
+        if any(str(UUID(doc[name])) != doc[name] for name in ("run_id", "chart_id")):
+            raise ValueError("settlement UUID")
+        if doc["run_id"].split("-")[0] != fields["dash_build"]:
+            raise ValueError("settlement run prefix")
+        origin = doc["provenance"]
+        if (not isinstance(origin, dict)
+                or origin["source"] != "origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
+                or not re.fullmatch(r"[0-9a-f]{40}", origin["commit"])
+                or origin["heading"] != "L1_SETTLED v1"
+                or not isinstance(origin["release_receipt"], str) or not origin["release_receipt"]
+                or origin["rebuild_run"] != doc["run_id"]):
+            raise ValueError("settlement provenance")
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise SettlementRefused("settlement_malformed", "invalid governed settlement shape or line") from exc
+    if doc["chart_id"] != str(chart_id):
+        raise SettlementRefused("chart_not_settled", f"chart {chart_id} has no settlement entry")
+    return doc
 
 
 def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequence[Mapping[str, Any]], *,
@@ -684,7 +828,26 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
     for rid in consumed_ids:
         if str(rid) not in found:
             out.append(f"consumed id {rid} resolves to no row of this chart")
-    builds = {str(r["build_id"]) for r in consumed}
+    # Validate both sides: supplied consumed rows cannot assert a different build
+    # from the population selected by our own guarded query.
+    population = list(consumed) + list(pinned)
+    # Validate admitted input before horizon clipping or PostgreSQL range
+    # aggregation can erase a zero-length/reversed period (J4P-B4). This is
+    # the verifier's own detector; do not import the reader's validation.
+    for r in population:
+        start, end = r.get("start_iso"), r.get("end_iso")
+        if (not isinstance(start, datetime) or not isinstance(end, datetime)
+                or start.tzinfo is None or end.tzinfo is None or end <= start):
+            out.append(f"row {r['dasha_row_id']}: invalid period (expected positive timezone-aware bounds)")
+    if out:
+        return out
+    builds = {str(r["build_id"]) for r in population if r["build_id"] is not None}
+    if any(r["build_id"] is None for r in population):
+        out.append("dasha_build_null: a daśā row carries a NULL build_id")
+    if len(builds) > 1:
+        out.append(f"several builds {sorted(builds)} consumed/selected — an unpinned read")
+    if str(chart_id) == _C_CHART and not pinned:
+        out.append("dasha_build_unsettled: no two_pass_verified Vimśottarī population")
     for r in consumed:
         rid = r["dasha_row_id"]
         if r["ayanamsha_id"] != _C_AYANAMSHA or r["system_id"] != _C_SYSTEM:
@@ -696,12 +859,6 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
             out.append(f"row {rid}: level {r['level_n']} is not MD/AD/PD")
         if not (r["start_iso"] < hi and r["end_iso"] > lo):
             out.append(f"row {rid}: lies wholly outside the horizon (an extra row)")
-    if str(chart_id) == _C_CHART:
-        wrong = sorted(b for b in builds if b != _C_BUILD)
-        if wrong:
-            out.append(f"canonical chart: consumed build(s) {wrong} are not the frozen {_C_BUILD}")
-    elif len(builds) > 1:
-        out.append(f"several builds {sorted(builds)} consumed — an unpinned read")
     want = {str(r["dasha_row_id"]) for r in pinned if r["start_iso"] < hi and r["end_iso"] > lo}
     for rid in sorted(want - found):
         out.append(f"pinned row {rid} overlaps the horizon but was NOT consumed (omitted)")
@@ -715,6 +872,7 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
 
 
 def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: str) -> dict:
+    settlement = _load_dasha_settlement(chart_id)
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot"
         " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
@@ -733,22 +891,29 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
         names = [c.strip() for c in cols.split(",")]
         return [dict(zip(names, r)) for r in conn.execute(sql, params).fetchall()]
     # G6 (verifier's OWN query, builder code not imported): every Vimśottarī / lahiri row of the chart — all tiers, all levels — is ONE build,
-    # and for the canonical chart the frozen one
+    # the governed settled-build rule is independent of the builder's contract code
     builds = sorted(str(r[0]) for r in conn.execute(
         "SELECT DISTINCT coalesce(build_id::text, 'NULL') FROM public.chart_dashas WHERE chart_id = %s AND system_id = %s AND ayanamsha_id = %s",
         (chart_id, _C_SYSTEM, _C_AYANAMSHA)).fetchall())
     if len(builds) > 1:
-        raise Unverifiable(f"dasha_builds_mixed: chart {chart_id} carries Vimśottarī rows of {len(builds)} builds {builds} (every tier) — "
-                           "a mixed L1 state is not verifiable")
-    if builds and str(chart_id) == _C_CHART and builds[0] != _C_BUILD:
-        raise Unverifiable(f"dasha_build_not_pinned: the canonical chart's only Vimśottarī build is {builds[0]}, the frozen contract pins {_C_BUILD}")
+        raise SettlementRefused("settled_build_ambiguous", f"chart {chart_id} carries several builds {builds} (every tier)")
+    if builds == ["NULL"]:
+        raise Unverifiable(f"dasha_build_null: chart {chart_id} carries a NULL Vimśottarī build_id — refusing")
+    eligible = sorted(str(r[0]) for r in conn.execute(
+        "SELECT DISTINCT build_id::text FROM public.chart_dashas WHERE chart_id = %s AND system_id = %s"
+        " AND ayanamsha_id = %s AND verification_pass_status = %s AND level_n = ANY(%s)",
+        (chart_id, _C_SYSTEM, _C_AYANAMSHA, _C_TIER, list(_C_LEVELS))).fetchall())
+    if len(eligible) > 1:
+        raise SettlementRefused("settled_build_ambiguous", f"several eligible builds {eligible}")
+    build = settlement["run_id"]
+    if eligible != [build]:
+        raise SettlementRefused("settled_build_absent", f"named build {build} is not eligible for chart {chart_id}")
     consumed = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s"
                     " AND dasha_row_id = ANY(%s::uuid[])", (chart_id, ids))
-    build = _C_BUILD if str(chart_id) == _C_CHART else None
     pinned = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s"
                   " AND system_id = %s AND verification_pass_status = %s AND level_n = ANY(%s)"
-                  " AND (%s::uuid IS NULL OR build_id = %s::uuid)",
-                  (chart_id, _C_AYANAMSHA, _C_SYSTEM, _C_TIER, list(_C_LEVELS), build, build))
+                  " AND build_id = %s::uuid",
+                  (chart_id, _C_AYANAMSHA, _C_SYSTEM, _C_TIER, list(_C_LEVELS), build))
     problems = check_dasha_population(consumed, pinned, chart_id=chart_id,
                                       horizon=(horizon[0], horizon[1]), consumed_ids=ids)
     if problems:
@@ -758,3 +923,54 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
 
 
 __all__ += ["check_dasha_population", "validate_consumed_dasha_population"]
+
+
+# Snapshot-bound record verification SQL; deliberately independent of the builder.
+#: the pins of the "held" probe below (the verifier's own §4.0 literals: ayanāṃśa, system, tier)
+RECORD_SUPPORT_PINS = {"ayan": _C_AYANAMSHA, "system": _C_SYSTEM, "tier": _C_TIER}
+# J-2a run 1: the SNAPSHOT binds only the daśā rows OVERLAPPING the horizon, so it fixes the running intervals `m` (a contact
+# is clipped to the horizon, so a row wholly outside it cannot change contact ∩ m) but it CANNOT say whether L1 holds a
+# row for an anchor (lord, level) at all. "No rows" (⇒ unrestricted + `unknown`, A5_3 brief v1.27) means no pinned row
+# for that (lord, level) ANYWHERE in the settled build — `held` probes exactly that; a lord that is held but not running
+# in the horizon has an empty running set (`false`), never `unknown` (§N.8: has_rows must measure its own claim).
+RECORD_SUPPORT_SQL = """
+WITH snap AS (
+  SELECT s.consumed_dasha_row_ids AS ids FROM public.ka_gochara_search_input_snapshot s
+  WHERE s.chart_id = %(chart)s AND s.generation = %(gen)s),
+runs AS (
+  SELECT lower(d.lord_graha) AS lord, d.level_n,
+         range_agg(tstzrange(d.start_iso, d.end_iso, '[)')) AS m
+  FROM public.chart_dashas d, snap
+  WHERE d.chart_id = %(chart)s AND d.dasha_row_id = ANY (snap.ids) AND d.level_n IN (1, 2, 3)
+  GROUP BY 1, 2),
+held AS (
+  SELECT DISTINCT lower(d.lord_graha) AS lord, d.level_n
+  FROM public.chart_dashas d
+  WHERE d.chart_id = %(chart)s AND d.ayanamsha_id = %(ayan)s AND d.system_id = %(system)s
+    AND d.verification_pass_status = %(tier)s AND d.level_n IN (1, 2, 3)
+    AND d.build_id IN (SELECT x.build_id FROM public.chart_dashas x, snap WHERE x.chart_id = %(chart)s
+                       AND x.dasha_row_id = ANY (snap.ids))),
+rec AS (
+  SELECT r.record_id, r.period_anchor_lord AS lord,
+         CASE r.period_anchor_level WHEN 'md' THEN 1 WHEN 'ad' THEN 2 WHEN 'pd' THEN 3 END AS level_n,
+         r.temporal_support_state AS state,
+         COALESCE((SELECT range_agg(x) FROM unnest(r.temporal_support_intervals) x), '{}'::tstzmultirange) AS stored,
+         tstzrange(c.t_in, COALESCE(c.t_out, upper(cov.completed_horizon)), '[)')::tstzmultirange AS contact,
+         (SELECT p.result FROM public.ka_gochara_record_prerequisite p
+           WHERE p.record_id = r.record_id AND p.predicate_id = 'period_running_at') AS result
+  FROM public.ka_gochara_relationship_record r
+  JOIN public.ka_gochara_contact c
+    ON (c.chart_id, c.generation, c.contact_id) = (r.chart_id, r.generation, r.contact_id)
+  JOIN public.kala_gochara_coverage cov
+    ON (cov.chart_id, cov.generation, cov.partition_kind, cov.partition_key)
+     = (r.chart_id, r.generation, r.coverage_partition_kind, r.coverage_partition_key)
+  WHERE r.chart_id = %(chart)s AND r.generation = %(gen)s AND r.event_class = %(cls)s
+    AND r.path_id = 'P1' AND r.contact_id IS NOT NULL)
+SELECT rec.record_id::text, rec.stored::text,
+       (CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END)::text AS expected_text,
+       rec.stored = (CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS equal,
+       isempty(CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS expected_empty,
+       rec.result, held.lord IS NOT NULL AS has_rows
+FROM rec LEFT JOIN held ON (held.lord, held.level_n) = (rec.lord, rec.level_n)
+         LEFT JOIN runs ON (runs.lord, runs.level_n) = (rec.lord, rec.level_n)
+"""

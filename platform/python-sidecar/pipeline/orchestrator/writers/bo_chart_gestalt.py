@@ -501,14 +501,18 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     # ayanamsha rows for this build are written, to compute the real,
     # cross-ayanamsha comparison and patch every row's headline_epistemic_jsonb
     # in place. See those functions below for the actual detector.
+    # `ayanamsha_count` was the constant len(CANONICAL_AYAS) (always 5) whatever
+    # this build actually wrote: a count that read as measured though nothing
+    # counted (SS N-347, §N.8). It is None here, like fragility_class, and the
+    # post-loop pass patches the number of ayanamsha rows this build really wrote.
     headline_epistemic = {
-        "ayanamsha_count": len(CANONICAL_AYAS),
+        "ayanamsha_count": None,
         "fragility_class": None,
         "note": (
-            "fragility_class is None here by construction — a single "
-            "ayanamsha's write cannot compare across ayanamshas. It is "
-            "patched to a real value once all ayanamsha rows for this build "
-            "exist; see run()'s post-loop _assess_fragility() pass."
+            "ayanamsha_count and fragility_class are None here by construction — a "
+            "single ayanamsha's write can neither count nor compare across "
+            "ayanamshas. They are patched to real values once all ayanamsha rows "
+            "for this build exist; see run()'s post-loop _assess_fragility() pass."
         ),
     }
 
@@ -562,7 +566,9 @@ def _assess_fragility(conn: Any, chart_id: str, build_id: str) -> dict:
     than 2 built rows, or zero domains comparable across >=2 rows, cannot
     establish either claim — None, not a default.
 
-    Returns {"fragility_class": str|None, "terms": {...}, "error": str|None}.
+    Returns {"fragility_class": str|None, "terms": {...}, "error": str|None,
+    "ayanamsha_count": int|None} (the count of ayanamsha rows this build wrote;
+    None when the read failed).
 
     Can-fail: seed two ayanamsha rows for the same chart_id/build_id whose
     domain_verdict_map_jsonb disagrees on a shared domain's dominant valence
@@ -579,13 +585,18 @@ def _assess_fragility(conn: Any, chart_id: str, build_id: str) -> dict:
         )
     except Exception as exc:  # unevaluable ⇒ unknown, NOT a pass
         logger.warning("[bo_chart_gestalt] fragility assessment unevaluable: %s", exc)
-        return {"fragility_class": None, "terms": {}, "error": str(exc)}
+        return {"fragility_class": None, "terms": {}, "error": str(exc), "ayanamsha_count": None}
+
+    # The number of distinct ayanamshas whose gestalt row this build really wrote
+    # (a count of rows read back, not the size of the canonical list).
+    ayanamsha_count = len({r["ayanamsha_id"] for r in rows})
 
     if len(rows) < 2:
         return {
             "fragility_class": None,
             "terms": {"ayanamsha_rows_compared": len(rows)},
             "error": None,
+            "ayanamsha_count": ayanamsha_count,
         }
 
     # domain -> {ayanamsha_id -> dominant_valence}
@@ -616,6 +627,7 @@ def _assess_fragility(conn: Any, chart_id: str, build_id: str) -> dict:
             "fragility_class": None,
             "terms": {"ayanamsha_rows_compared": len(rows), "domains_compared": 0},
             "error": None,
+            "ayanamsha_count": ayanamsha_count,
         }
 
     fragility_class = "ayanamsha_sensitive" if disagreeing_domains else "stable_across_ayanamsha"
@@ -627,6 +639,7 @@ def _assess_fragility(conn: Any, chart_id: str, build_id: str) -> dict:
             "domains_disagreeing": sorted(disagreeing_domains),
         },
         "error": None,
+        "ayanamsha_count": ayanamsha_count,
     }
 
 
@@ -683,6 +696,7 @@ def _patch_fragility(conn: Any, chart_id: str, build_id: str, fragility_result: 
         if isinstance(epistemic, str):
             epistemic = json.loads(epistemic)
         epistemic = dict(epistemic or {})
+        epistemic["ayanamsha_count"] = fragility_result.get("ayanamsha_count")
         epistemic["fragility_class"] = fragility_result["fragility_class"]
         epistemic["fragility_terms"] = fragility_result["terms"]
         epistemic["note"] = _fragility_note(fragility_result)

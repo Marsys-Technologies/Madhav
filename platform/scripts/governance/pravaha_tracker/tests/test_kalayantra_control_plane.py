@@ -2,22 +2,53 @@
 from __future__ import annotations
 
 import datetime as dt
+import contextlib
 import hashlib
+import io
 import json
+from pathlib import Path
 import os
 import subprocess
+import sys
 import tempfile
 import threading
+import types
 import unittest
+import urllib.error
+import urllib.request
 from unittest.mock import patch
 
-from pravaha_tracker import cli, server
+from pravaha_tracker import cli, server, verdicts
 from pravaha_tracker.audit import audit
 from pravaha_tracker.claims import ClaimError, claim_item, renew_claim
-from pravaha_tracker.completion import CompletionError, guarded_done_event
+from pravaha_tracker.completion import (CompletionError, evidence_requirements, guarded_done_event,
+                                        writes_data)
 from pravaha_tracker.events import EventError, append
 from pravaha_tracker.state import build_snapshot
 from pravaha_tracker.verdicts import accepted_verdict
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), *[".."] * 5))
+COMMITTED_MODEL = os.path.join(REPO_ROOT, "00_ARCHITECTURE", "control", "kalayantra", "plan_model.json")
+
+
+def predicate(answer=True, calls=None):
+    """A stub of the shared inheritance predicate (top-level module `kyverdicts`, KV3-B-KYVERDICTS)."""
+    module = types.ModuleType("kyverdicts")
+
+    def inherits(repo, old_head, new_head):
+        if calls is not None:
+            calls.append((repo, old_head, new_head))
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    module.inherits = inherits
+    return patch.dict(sys.modules, {"kyverdicts": module})
+
+
+def no_predicate():
+    """`import kyverdicts` raises ImportError, whatever is on sys.path."""
+    return patch.dict(sys.modules, {"kyverdicts": None})
 
 
 class ClaimCases(unittest.TestCase):
@@ -282,7 +313,9 @@ class GuardedCompletionCases(unittest.TestCase):
         }
         self.pr = {"number": 3210, "headRefOid": self.head, "mergeCommit": {"oid": self.merge},
                    "state": "MERGED"}
-        self.proof = {"type": "code", "reviewed_head": self.head, "pr": self.pr}
+        # A7 D-46: every code item, a data-writing one too, is also contained in a successful main deploy
+        self.deploy = {"deployed_sha": "d" * 40, "run_id": 7, "contains_merge": True}
+        self.proof = {"type": "code", "reviewed_head": self.head, "pr": self.pr, "deploy": self.deploy}
         self.step = {"kind": "item", "actor": "stream-K:k1", "item": "K-1", "state": "done",
                      "step": "tests", "evidence": "suite passed", "ts": self.now}
         self.verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "K-1",
@@ -303,12 +336,13 @@ class GuardedCompletionCases(unittest.TestCase):
             self.done([self.step, self.review, self.verdict, self.post, rejected])
 
     def test_done_requires_deps_steps_verdict_detector(self):
-        with self.assertRaisesRegex(CompletionError, "steps"):
-            self.done([self.review, self.verdict, self.post])
+        # A7 D-46: a code item needs no step receipt (its PR acceptance covers them); only the detector, verdict and
+        # post-deploy evidence remain, and an operation still waits for its dependencies (SR-A4-01).
+        self.assertTrue(self.done([self.review, self.verdict, self.post])["guarded"])
         with self.assertRaisesRegex(CompletionError, "detector"):
             self.done([self.step, self.review, self.verdict, self.post], detector="pending")
         with self.assertRaisesRegex(CompletionError, "dependencies"):
-            self.done([], item="K-2", proof={"type": "artifact", "artifact_digest": "f" * 64})
+            self.done([], item="K-2", proof={"type": "operation"})
         event = self.done([self.step, self.review, self.verdict, self.post])
         self.assertTrue(event["guarded"])
         self.assertIn(self.merge, event["evidence"])
@@ -456,7 +490,8 @@ class GuardedCompletionCases(unittest.TestCase):
             live = ({"item": "K-1", "detector": {"status": "done", "detail": "merged"}}, "live")
             gh = subprocess.CompletedProcess([], 0, stdout=json.dumps(self.pr), stderr="")
             with patch.object(cli, "EVENTS", path), patch.object(cli, "load_model", return_value=self.model), \
-                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh):
+                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh), \
+                    patch.object(cli, "observe_containment", return_value=self.deploy):
                 self.assertEqual(cli.main(["done", "K-1", "--stream", "K", "--pr", "3210",
                                            "--reviewed-head", self.head]), 0)
             with open(path, encoding="utf-8") as handle:
@@ -464,6 +499,20 @@ class GuardedCompletionCases(unittest.TestCase):
             self.assertEqual(events[-1]["state"], "done")
             self.assertTrue(events[-1]["guarded"])
             self.assertEqual(events[-1]["completion"]["pr"]["mergeCommit"]["oid"], self.merge)
+
+    def test_cli_refuses_failed_live_measurement_despite_ready_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "EVENTS.jsonl")
+            for event in (self.step, self.review, self.verdict, self.post):
+                append(path, event, self.model)
+            before = Path(path).read_bytes()
+            live = ({"item": "K-1", "detector": {"status": "error", "detail": "fetch failed"}}, "live")
+            gh = subprocess.CompletedProcess([], 0, stdout=json.dumps(self.pr), stderr="")
+            with patch.object(cli, "EVENTS", path), patch.object(cli, "load_model", return_value=self.model), \
+                    patch.object(cli, "get", return_value=live), patch.object(cli.subprocess, "run", return_value=gh):
+                self.assertEqual(cli.main(["done", "K-1", "--stream", "K", "--pr", "3210",
+                                           "--reviewed-head", self.head]), 2)
+            self.assertEqual(Path(path).read_bytes(), before)
 
 
 class StructuredDecisionCases(unittest.TestCase):
@@ -914,26 +963,36 @@ class VelocityAmendmentCases(unittest.TestCase):
         with self.assertRaisesRegex(CompletionError, "post-deploy"):
             guarded_done_event(model, [self.review, self.verdict], "K-C", "stream-K:k1", {"status": "done"}, proof)
 
-    def _git(self, cwd, *args):
-        env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x", "GIT_COMMITTER_NAME": "t",
-               "GIT_COMMITTER_EMAIL": "t@x"}
-        return subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, text=True, check=True).stdout.strip()
-
     def test_verdict_survives_merge_only_push_but_not_a_new_commit(self):
+        """Rewritten for the shared reviewed-patch predicate (plan §6): the tracker asks `kyverdicts.inherits`
+        and nothing else; ancestry alone, a missing predicate or any answer other than True inherits nothing."""
         with tempfile.TemporaryDirectory() as repo:
-            g = lambda *a: self._git(repo, *a)
-            g("init", "-q", "-b", "main"); pathlib_write(repo, "base.txt", "0"); g("add", "."); g("commit", "-qm", "base")
-            g("checkout", "-qb", "feature"); pathlib_write(repo, "f.txt", "1"); g("add", "."); g("commit", "-qm", "work")
-            h1 = g("rev-parse", "HEAD")
-            g("checkout", "-q", "main"); pathlib_write(repo, "m.txt", "2"); g("add", "."); g("commit", "-qm", "main moves")
-            g("checkout", "-q", "feature"); g("merge", "-q", "--no-edit", "main"); h2 = g("rev-parse", "HEAD")
+            # Inheritance is decided exclusively by the injected shared predicate.
+            # Real git commits add no coverage here and require write access to git.
+            h1, h2, h3 = "a" * 40, "d" * 40, "e" * 40
             verdict = {**self.verdict, "head": h1}
-            self.assertIsNotNone(accepted_verdict([verdict], "K-C", head=h2, repo=repo))
-            self.assertIsNone(accepted_verdict([verdict], "K-C", head=h2))              # no repo → never inherited
-            pathlib_write(repo, "f.txt", "3"); g("add", "."); g("commit", "-qm", "more work"); h3 = g("rev-parse", "HEAD")
-            self.assertIsNone(accepted_verdict([verdict], "K-C", head=h3, repo=repo))
-            rejected = {**verdict, "result": "REJECTED", "ts": self.now}
-            self.assertIsNone(accepted_verdict([verdict, rejected], "K-C", head=h2, repo=repo))
+            calls = []
+            with predicate(True, calls):
+                self.assertEqual(accepted_verdict([verdict], "K-C", head=h2, repo=repo), verdict)
+                self.assertEqual(calls, [(repo, h1, h2)])
+                self.assertIsNone(accepted_verdict([verdict], "K-C", head=h2))              # no repo → never inherited
+                self.assertIsNone(accepted_verdict([verdict], "K-C", head=h2, repo=repo, phase="post_deploy"))
+                rejected = {**verdict, "result": "REJECTED", "ts": self.now}
+                self.assertIsNone(accepted_verdict([verdict, rejected], "K-C", head=h2, repo=repo))
+                self.assertEqual(len(calls), 1)      # only the pre-merge verdict of an ACCEPTED head is ever asked about
+            with predicate(False, calls):
+                self.assertIsNone(accepted_verdict([verdict], "K-C", head=h3, repo=repo))   # a new commit
+                self.assertEqual(calls[-1], (repo, h1, h3))
+            # h2 only merged main in: the retired ancestry rule would have inherited here; the predicate decides alone
+            with no_predicate():
+                self.assertIsNone(accepted_verdict([verdict], "K-C", head=h2, repo=repo))
+            for answer in (None, 1, "True", {"inherits": True}, RuntimeError("git timed out")):
+                with self.subTest(answer=answer), predicate(answer):
+                    self.assertIsNone(accepted_verdict([verdict], "K-C", head=h2, repo=repo))
+            broken = types.ModuleType("kyverdicts")                                         # no `inherits` at all
+            with patch.dict(sys.modules, {"kyverdicts": broken}):
+                self.assertIsNone(accepted_verdict([verdict], "K-C", head=h2, repo=repo))
+            self.assertFalse(hasattr(verdicts, "merge_only_between"))
 
     def test_lane_may_hold_one_waiting_claim_beside_one_running_claim(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1008,3 +1067,814 @@ class ReadyAtAcceptedCases(ReadyAtMergeCases):
         snap = build_snapshot(model, [verdict, rejected], det, {}, {}, now=now)
         rows = {r["id"]: r for tr in snap["tracks"] for r in tr["items"]}
         self.assertEqual(rows["B"]["status"], "waiting")
+
+
+# ---------------------------------------------------------------- KV3-B-TRACKER (relaunch plan v2.7 §6, KU-01)
+
+RULES = ("v_exact_head_then_deploy_containment", "v_exact_head_then_post_deploy_at_merge_commit",
+         "v_artifact_digest_reviewer_not_author", "finalizer_independent_review_artifact_digest",
+         "v_pre_acceptance_then_receipt_readback_digest", "v_packet_verdict_bound_to_external_review")
+CONTAINMENT, POST_DEPLOY, ARTIFACT, FINALIZER, OPERATION, PACKET = RULES
+
+
+def declared_model() -> dict:
+    """A model that declares its items (control_plane.declarations), one item per reviewer rule."""
+    def item(item_id, owner, kind, rule, detector, **extra):
+        return {"id": item_id, "track": "K", "owner": owner, "producer": owner, "title": item_id, "depends_on": [],
+                "completion_kind": kind, "reviewer_rule": rule, "detector": detector, **extra}
+
+    return {
+        "campaign": "fixture",
+        "control_plane": {
+            "guarded_completion": True, "verdict_stream": "V",
+            "decision_outcomes": {"final": ["approved", "refused"], "open": ["deferred", "insufficient_evidence"]},
+            "declarations": {"completion_kind": {k: k for k in ("code", "artifact", "operation", "packet")},
+                             "reviewer_rule": {rule: rule for rule in RULES}}},
+        "streams": [{"id": "K"}, {"id": "N"}, {"id": "V"}, {"id": "S"}],
+        "decisions": [], "tracks": [{"id": "K", "title": "K"}],
+        "items": [
+            item("K-C", "K", "code", CONTAINMENT, {"type": "branch_merged", "ref": "origin/k-c"},
+                 brief={"owns": ["a.py"]}),
+            item("K-D", "K", "code", POST_DEPLOY, {"type": "branch_merged", "ref": "origin/k-d"},
+                 brief={"migration": "1401_fixture.sql"}),
+            item("N-A", "N", "artifact", ARTIFACT, {"type": "file_exists", "path": "/artifact"}),
+            item("N-F", "N", "artifact", FINALIZER, {"type": "file_exists", "path": "/receipt"},
+                 brief={"op": ["finalize"]}),
+            item("N-OP", "N", "operation", OPERATION, {"type": "file_exists", "path": "/op-receipt"},
+                 brief={"op": ["readback_sql"]}),
+            item("V-PKT", "V", "packet", PACKET, {"type": "file_contains", "path": "/run/reviews/PKT.VERDICT.json"}),
+        ],
+    }
+
+
+class DeclaredCase(unittest.TestCase):
+    """Runs one completion through BOTH the guard and the audit, on the same events (KU-01)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = self.tmp.name
+        self.model = declared_model()
+        self.head, self.merge, self.deployed, self.other = "a" * 40, "b" * 40, "c" * 40, "d" * 40
+        self.at = dt.datetime(2026, 10, 12, 2, tzinfo=dt.timezone.utc)
+        self.ts = self.at.isoformat()
+        self.deploy = {"deployed_sha": self.deployed, "run_id": 42, "contains_merge": True}
+
+    def pr(self, head=None):
+        return {"number": 7, "headRefOid": head or self.head, "mergeCommit": {"oid": self.merge}, "state": "MERGED"}
+
+    def review(self, item, head=None):
+        return {"kind": "item", "actor": "stream-K:k1", "item": item, "state": "review",
+                "detail": f"PR #7 @ {head or self.head}", "ts": self.ts}
+
+    def verdict(self, item, *, head=None, digest=None, phase="pre_merge", result="ACCEPTED", actor="stream-V:v1"):
+        return {"kind": "verdict", "actor": actor, "item": item, "head": head, "artifact_digest": digest,
+                "phase": phase, "result": result, "detail": "measured", "ts": self.ts}
+
+    def code_proof(self, **extra):
+        return {"type": "code", "reviewed_head": self.head, "pr": self.pr(), **extra}
+
+    def both(self, item, events, proof, *, actor=None, later=()):
+        """→ (the code the guard refused with, or None; the audit codes for the same completion)."""
+        owner = next(row["owner"] for row in self.model["items"] if row["id"] == item)
+        actor = actor or ("stream-K:k1" if owner == "K" else "stream-S:sutradhara")
+        refused = None
+        try:
+            guarded_done_event(self.model, list(events), item, actor, {"status": "done", "detail": "observed"}, proof)
+        except CompletionError as exc:
+            refused = exc.code
+            self.assertIsNotNone(refused, f"a refusal on typed evidence names its code: {exc}")
+        recorded = {"kind": "item", "actor": actor, "item": item, "state": "done", "guarded": True,
+                    "evidence": "fixture", "completion": {"type": proof.get("type"), **proof}, "ts": self.ts}
+        findings = audit(self.model, [*events, recorded, *later], self.root, since=self.at - dt.timedelta(minutes=50),
+                         now=self.at + dt.timedelta(minutes=10), repo=proof.get("repo"))
+        return refused, {finding["code"] for finding in findings if finding["ref"] == item}
+
+    def assert_passes(self, item, events, proof, **kw):
+        self.assertEqual(self.both(item, events, proof, **kw), (None, set()))
+
+    def assert_refused(self, code, item, events, proof, **kw):
+        """the guard refuses with `code` and the audit reports the same completion under the same code"""
+        refused, codes = self.both(item, events, proof, **kw)
+        self.assertEqual(refused, code)
+        self.assertIn(code, codes)
+        return codes
+
+
+class KU01Fixtures(DeclaredCase):
+    """The four acceptance fixtures of KU-01, each on the guard and on the audit."""
+
+    def test_code_only_completion_without_post_deploy_passes(self):
+        events = [self.review("K-C"), self.verdict("K-C", head=self.head)]
+        self.assert_passes("K-C", events, self.code_proof(deploy=self.deploy))
+        # no post_deploy obligation is invented for a code-only item
+        self.assertEqual(evidence_requirements(self.model, self.model["items"][0])["evidence"],
+                         ("reviewed_head_verdict", "deployment_containment"))
+
+    def test_missing_deployment_containment_fails(self):
+        events = [self.review("K-C"), self.verdict("K-C", head=self.head)]
+        for deploy in (None, {}, {**self.deploy, "contains_merge": False}, {**self.deploy, "contains_merge": "true"},
+                       {**self.deploy, "run_id": None}, {**self.deploy, "deployed_sha": "c" * 39},
+                       {**self.deploy, "deployed_sha": None}, "deployed"):
+            with self.subTest(deploy=deploy):
+                proof = self.code_proof() if deploy is None else self.code_proof(deploy=deploy)
+                codes = self.assert_refused("missing_deployment_containment", "K-C", events, proof)
+                self.assertNotIn("missing_post_deploy_verdict", codes)
+        # a post_deploy verdict is not a substitute for containment on a code-only item
+        post = self.verdict("K-C", head=self.merge, phase="post_deploy")
+        self.assert_refused("missing_deployment_containment", "K-C", [*events, post], self.code_proof())
+
+    def test_data_writing_completion_needs_post_deploy_at_the_merge_commit(self):
+        events = [self.review("K-D"), self.verdict("K-D", head=self.head)]
+        post = self.verdict("K-D", head=self.merge, phase="post_deploy")
+        self.assert_passes("K-D", [*events, post], self.code_proof(deploy=self.deploy))
+        self.assert_passes("K-D", [*events, post], self.code_proof(deploy=self.deploy))
+        wrong = (
+            [],                                                                       # missing
+            [self.verdict("K-D", head=self.other, phase="post_deploy")],              # another commit
+            [self.verdict("K-D", head=self.head, phase="post_deploy")],               # the reviewed head, not the merge
+            [self.verdict("K-D", head=self.merge, phase="pre_merge")],                # the merge commit, wrong phase
+            [self.verdict("K-C", head=self.merge, phase="post_deploy")],              # another item
+            [post, {**post, "result": "REJECTED"}],                                   # revoked
+            [{**post, "actor": "stream-K:k2"}],                                       # not the verdict stream
+        )
+        for extra in wrong:
+            with self.subTest(extra=extra):
+                # recorded containment never stands in for the post-deploy verdict
+                codes = self.assert_refused("missing_post_deploy_verdict", "K-D", [*events, *extra],
+                                            self.code_proof(deploy=self.deploy))
+                self.assertNotIn("missing_deployment_containment", codes)
+
+    def test_invalid_inheritance_fails(self):
+        old, repo = "e" * 40, "/fixture/repo"
+        events = [self.review("K-C"), self.verdict("K-C", head=old)]      # reviewed at `old`; the PR head moved on
+        proof = self.code_proof(deploy=self.deploy, repo=repo)
+        calls = []
+        with predicate(True, calls):
+            self.assert_passes("K-C", events, proof)
+            self.assertEqual(set(calls), {(repo, old, self.head)})
+            # without a repository nothing can be proven: no inheritance
+            self.assert_refused("rejected_or_stale_verdict", "K-C", events, self.code_proof(deploy=self.deploy))
+        for answer in (False, None, "yes", OSError("no git")):
+            with self.subTest(answer=answer), predicate(answer):
+                self.assert_refused("rejected_or_stale_verdict", "K-C", events, proof)
+        with no_predicate():
+            self.assert_refused("rejected_or_stale_verdict", "K-C", events, proof)
+        # the latest verdict at any head decides: a later rejection is never inherited past
+        rejected = self.verdict("K-C", head="f" * 40, result="REJECTED")
+        with predicate(True):
+            self.assert_refused("rejected_or_stale_verdict", "K-C", [*events, rejected], proof)
+
+    def test_audit_rechecks_typed_evidence_at_the_end_of_the_log(self):
+        events = [self.review("K-D"), self.verdict("K-D", head=self.head),
+                  self.verdict("K-D", head=self.merge, phase="post_deploy")]
+        self.assert_passes("K-D", events, self.code_proof(deploy=self.deploy))
+        for revoked, code in ((events[1], "rejected_or_stale_verdict"), (events[2], "missing_post_deploy_verdict")):
+            refused, codes = self.both("K-D", events, self.code_proof(deploy=self.deploy), later=[{**revoked, "result": "REJECTED"}])
+            self.assertIsNone(refused)                       # the guard saw the log before the revocation
+            self.assertEqual(codes, {code})
+
+
+class EvidenceTableCases(DeclaredCase):
+    """Contract rule 2: one table, keyed by reviewer_rule, read by the guard and by the audit."""
+
+    def test_table_covers_every_declared_rule_and_nothing_else(self):
+        want = {CONTAINMENT: ("code", ("reviewed_head_verdict", "deployment_containment")),
+                POST_DEPLOY: ("code", ("reviewed_head_verdict", "post_deploy_verdict")),
+                ARTIFACT: ("artifact", ("artifact_verdict",)),
+                FINALIZER: ("artifact", ("artifact_verdict",)),
+                OPERATION: ("operation", ("completed_receipt", "artifact_verdict")),
+                PACKET: ("packet", ("packet_verdict", "artifact_verdict"))}
+        for row in self.model["items"]:
+            req = evidence_requirements(self.model, row)
+            self.assertEqual((req["completion_kind"], req["evidence"]), want[row["reviewer_rule"]])
+            self.assertIsNone(req["conflict"])
+        legacy = {**self.model, "control_plane": {"guarded_completion": True, "verdict_stream": "V"}}
+        self.assertIsNone(evidence_requirements(legacy, self.model["items"][0]))     # others as today
+
+    def test_committed_model_declares_no_conflict(self):
+        with open(COMMITTED_MODEL, encoding="utf-8") as handle:
+            model = json.load(handle)
+        executable = [row for row in model["items"] if row.get("done_by") not in ("decision", "join")]
+        self.assertGreater(len(executable), 100)
+        for row in executable:
+            req = evidence_requirements(model, row)
+            self.assertIsNone(req["conflict"], row["id"])
+            self.assertEqual(req["completion_kind"], row["completion_kind"])
+            if row["completion_kind"] == "code":
+                self.assertEqual("post_deploy_verdict" in req["evidence"], writes_data(row), row["id"])
+
+    def test_writes_data_normalises_migration_metadata(self):
+        for brief, expected in (
+                (None, False), ({}, False), ("prose", False),
+                ({"migration": ""}, False), ({"migration": "  "}, False), ({"migration": "NONE"}, False),
+                ({"migration": " NONE "}, False), ({"migration": None}, False), ({"migration": True}, False),
+                ({"migration": 1401}, False), ({"migration": {"file": "1401_x.sql"}}, False),
+                ({"migration": []}, False), ({"migration": ["NONE", ""]}, False), ({"migration": [1401]}, False),
+                ({"op": "NONE"}, False), ({"op": []}, False), ({"migration": "NONE", "op": ["NONE"]}, False),
+                ({"migration": "1401_x.sql"}, True), ({"migration": "additive"}, True),
+                ({"migration": ["1401_x.sql"]}, True), ({"op": ["readback_sql"]}, True),
+                ({"op": "century_dispatch"}, True), ({"migration": "NONE", "op": ["readback_sql"]}, True)):
+            with self.subTest(brief=brief):
+                self.assertIs(writes_data({"brief": brief}), expected)
+        self.assertIs(writes_data({}), False)
+
+    def test_guard_and_audit_refuse_a_proof_of_another_kind(self):
+        digest = "f" * 64
+        events = [self.review("K-C"), self.verdict("K-C", head=self.head),
+                  self.verdict("K-C", digest=digest, phase="artifact"),
+                  self.verdict("N-A", head=self.head), self.verdict("N-A", digest=digest, phase="artifact")]
+        artifact = {"type": "artifact", "artifact_digest": digest}
+        self.assert_refused("completion_kind_mismatch", "K-C", events, artifact)
+        code = {"type": "code", "reviewed_head": self.head, "pr": self.pr(), "deploy": self.deploy}
+        self.assert_refused("completion_kind_mismatch", "N-A", [*events, {**self.review("N-A"), "actor": "stream-N:n1"}],
+                            code)
+        self.assert_refused("completion_kind_mismatch", "N-A", events,
+                            {"type": "operation", "operation_id": "op-1", "artifact_digest": digest,
+                             "receipt": {"operation_id": "op-1", "item_id": "N-A", "status": "COMPLETED"}})
+        self.assert_refused("completion_kind_mismatch", "N-A", events, {"artifact_digest": digest})
+        self.assert_passes("N-A", events, artifact)
+
+    def test_guard_and_audit_refuse_a_declaration_that_contradicts_the_item(self):
+        events = [self.review("K-C"), self.verdict("K-C", head=self.head),
+                  self.verdict("K-C", head=self.merge, phase="post_deploy")]
+        proof = self.code_proof(deploy=self.deploy)
+        self.assert_passes("K-C", events, proof)
+        row = self.model["items"][0]
+        for change in ({"brief": {"migration": "1402_x.sql"}},                       # data-writing under containment
+                       {"reviewer_rule": POST_DEPLOY},                               # post-deploy rule, writes nothing
+                       {"reviewer_rule": ARTIFACT}, {"completion_kind": "artifact"},  # rule and kind disagree
+                       {"reviewer_rule": "v_trust_me"}, {"reviewer_rule": None}, {"completion_kind": None}):
+            with self.subTest(change=change):
+                saved = dict(row)
+                row.update(change)
+                try:
+                    self.assertIsNotNone(evidence_requirements(self.model, row)["conflict"])
+                    self.assert_refused("declaration_conflict", "K-C", events, proof)
+                finally:
+                    row.clear()
+                    row.update(saved)
+        # a rule the table knows but the model's legend does not declare is a conflict too
+        del self.model["control_plane"]["declarations"]["reviewer_rule"][CONTAINMENT]
+        self.assert_refused("declaration_conflict", "K-C", events, proof)
+
+    def test_reviewed_head_must_be_the_merged_pr_head(self):
+        events = [self.review("K-C"), self.verdict("K-C", head=self.head)]
+        for pr in ({**self.pr(), "state": "OPEN"}, {**self.pr(), "headRefOid": self.other},
+                   {**self.pr(), "mergeCommit": None}, {**self.pr(), "number": "7"}, None):
+            with self.subTest(pr=pr):
+                self.assert_refused("rejected_or_stale_verdict", "K-C", events,
+                                    {"type": "code", "reviewed_head": self.head, "pr": pr, "deploy": self.deploy})
+        for verdict in (self.verdict("K-C", head=self.head, result="REJECTED"),
+                        self.verdict("K-C", head=self.head, actor="stream-K:k2")):
+            with self.subTest(verdict=verdict):
+                self.assert_refused("rejected_or_stale_verdict", "K-C", [self.review("K-C"), verdict],
+                                    self.code_proof(deploy=self.deploy))
+
+    def test_artifact_and_finalizer_rules_bind_the_digest(self):
+        digest = "f" * 64
+        for item in ("N-A", "N-F"):
+            with self.subTest(item=item):
+                accepted = self.verdict(item, digest=digest, phase="artifact")
+                self.assert_passes(item, [accepted], {"type": "artifact", "artifact_digest": digest})
+                for events, proof_digest in (([], digest), ([accepted], "e" * 64), ([accepted], "f" * 63), ([accepted], None),
+                                             ([accepted, {**accepted, "result": "REJECTED"}], digest),
+                                             ([{**accepted, "actor": "stream-N:n1"}], digest),
+                                             ([self.verdict(item, head=self.head)], digest)):
+                    self.assert_refused("missing_artifact_verdict", item, events,
+                                        {"type": "artifact", "artifact_digest": proof_digest})
+
+    def test_operation_rule_needs_the_completed_receipt_and_its_digest_verdict(self):
+        digest = "d" * 64
+        receipt = {"operation_id": "op-42", "item_id": "N-OP", "status": "COMPLETED"}
+        os.makedirs(os.path.join(self.root, "ops", "receipts"))
+        with open(os.path.join(self.root, "ops", "receipts", "op-42.json"), "w", encoding="utf-8") as handle:
+            json.dump(receipt, handle)
+        accepted = self.verdict("N-OP", digest=digest, phase="artifact")
+        proof = {"type": "operation", "operation_id": "op-42", "receipt": receipt, "artifact_digest": digest}
+        self.assert_passes("N-OP", [accepted], proof)
+        for bad in ({**receipt, "status": "FAILED"}, {**receipt, "item_id": "N-OTHER"},
+                    {**receipt, "operation_id": "op-43"}, None):
+            with self.subTest(receipt=bad):
+                self.assert_refused("unbound_operation", "N-OP", [accepted], {**proof, "receipt": bad})
+        self.assert_refused("unbound_operation", "N-OP", [accepted], {**proof, "operation_id": None})
+        # the pre-acceptance record and a script-head verdict are not the receipt verdict (plan §6 POST-READBACK)
+        for events in ([], [self.verdict("N-OP", digest="e" * 64, phase="artifact")],
+                       [self.verdict("N-OP", head=self.head)], [{**accepted, "result": "REJECTED"}]):
+            with self.subTest(events=events):
+                self.assert_refused("missing_artifact_verdict", "N-OP", events, proof)
+
+    def test_packet_rule_as_today_on_both_sides(self):
+        digest, review = "f" * 64, "e" * 64
+        packet = {"item": "V-PKT", "packet": "PKT", "result": "ACCEPTED", "blocking_open": 0, "review_sha256": review}
+        accepted = self.verdict("V-PKT", digest=digest, phase="artifact")
+        proof = {"type": "packet", "packet": packet, "artifact_digest": digest, "review_sha256": review}
+        self.assert_passes("V-PKT", [accepted], proof)
+        for bad in ({**packet, "blocking_open": 1}, {**packet, "result": "REJECTED"}, {**packet, "item": "V-PKt"},
+                    {**packet, "packet": "OTHER"}, {**packet, "review_sha256": "a" * 64}, {**packet, "blocking_open": False}):
+            with self.subTest(packet=bad):
+                self.assert_refused("missing_artifact_verdict", "V-PKT", [accepted], {**proof, "packet": bad})
+        self.assert_refused("missing_artifact_verdict", "V-PKT", [], proof)
+
+    def test_undeclared_model_completes_and_audits_as_today(self):
+        """Rules 2–3 apply only to a declaring model: the legacy audit still asks every code completion for a
+        post_deploy verdict and never for containment."""
+        legacy = {key: value for key, value in self.model.items() if key != "control_plane"}
+        legacy["control_plane"] = {"guarded_completion": True, "verdict_stream": "V"}
+        events = [self.review("K-C"), self.verdict("K-C", head=self.head)]
+        proof = self.code_proof(deploy=self.deploy)
+        event = guarded_done_event(legacy, events, "K-C", "stream-K:k1", {"status": "done"}, proof)
+        self.assertIn("contains the merge commit", event["evidence"])
+        recorded = {**event, "ts": self.ts}
+        codes = {f["code"] for f in audit(legacy, [*events, recorded], self.root,
+                                          since=self.at - dt.timedelta(minutes=50), now=self.at)}
+        self.assertEqual(codes, {"missing_post_deploy_verdict"})
+        with self.assertRaisesRegex(CompletionError, "unknown typed evidence"):
+            guarded_done_event(legacy, events, "K-C", "stream-K:k1", {"status": "done"}, {"type": "wish"})
+
+
+class DeclaredModelCheckCases(unittest.TestCase):
+    """Contract rule 1: server.check_model rejects an executable item that does not declare itself."""
+
+    def problems(self, change=None, item="K-C", drop=()):
+        model = declared_model()
+        row = next(entry for entry in model["items"] if entry["id"] == item)
+        row.update(change or {})
+        for key in drop:
+            row.pop(key)
+        return server.check_model(model)
+
+    def test_declared_fixture_and_committed_model_pass(self):
+        self.assertEqual(self.problems(), [])
+        with open(COMMITTED_MODEL, encoding="utf-8") as handle:
+            self.assertEqual(server.check_model(json.load(handle)), [])
+
+    def test_each_missing_or_wrong_declaration_is_rejected(self):
+        for label, kwargs in (
+                ("completion_kind", {"drop": ("completion_kind",)}),
+                ("completion_kind", {"change": {"completion_kind": "review"}}),
+                ("producer", {"drop": ("producer",)}),
+                ("producer", {"change": {"producer": "S"}}),
+                ("reviewer_rule", {"drop": ("reviewer_rule",)}),
+                ("reviewer_rule", {"change": {"reviewer_rule": "v_trust_me"}}),
+                ("detector", {"drop": ("detector",)}),
+                ("detector", {"change": {"detector": None}}),
+                ("step_evidence", {"change": {"steps": ["tests"],
+                                              "step_evidence": {"tests": {"detector": None}, "docs": {"detector": None}}}}),
+                ("step_evidence", {"change": {"step_evidence": {"tests": {"detector": None}}}}),
+                ("step_evidence", {"change": {"steps": ["tests"], "step_evidence": ["tests"]}}),
+                ("join", {"change": {"join": True}}),
+                ("join", {"change": {"done_by": "join"}}),
+                ("join", {"change": {"done_by": "join", "join": False}})):
+            with self.subTest(label=label, kwargs=kwargs):
+                problems = self.problems(**kwargs)
+                self.assertTrue([text for text in problems if text.startswith("K-C") and label in text], problems)
+
+    def test_decision_and_join_items_declare_nothing_and_steps_may_be_declared(self):
+        model = declared_model()
+        model["decisions"].append({"id": "D-1", "title": "decision"})
+        model["items"] += [
+            {"id": "D-1", "track": "K", "owner": "N", "title": "decision", "depends_on": [],
+             "done_by": "decision", "decision": "D-1"},
+            {"id": "J-1", "track": "K", "owner": "S", "title": "join", "depends_on": ["K-C"],
+             "done_by": "join", "join": True}]
+        model["items"][0].update(steps=["tests", "docs"], step_evidence={"tests": {"evidence": "pr_head_evidence",
+                                                                                   "detector": None}})
+        self.assertEqual(server.check_model(model), [])
+
+    def test_undeclared_model_is_checked_as_today(self):
+        model = declared_model()
+        del model["control_plane"]["declarations"]
+        for row in model["items"]:
+            for key in ("completion_kind", "producer", "reviewer_rule", "detector"):
+                row.pop(key)
+        model["items"][0]["join"] = True
+        self.assertEqual(server.check_model(model), [])
+
+
+class VerdictSlotCases(unittest.TestCase):
+    """Contract rule 5: a verdict comes from a slot, and never from a slot that registered the item's review."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.events = os.path.join(self.tmp.name, "EVENTS.jsonl")
+        self.model = declared_model()
+        self.verdict = {"kind": "verdict", "actor": "stream-V:v1", "item": "K-C", "head": "a" * 40,
+                        "phase": "pre_merge", "result": "ACCEPTED", "detail": "measured"}
+
+    def lines(self):
+        with open(self.events, encoding="utf-8") as handle:
+            return [json.loads(line) for line in handle]
+
+    def test_verdict_actor_needs_a_slot(self):
+        append(self.events, {"kind": "item", "actor": "stream-K:k1", "item": "K-C", "state": "review",
+                             "detail": "PR #7 @ " + "a" * 40}, self.model)
+        for actor in ("stream-V", "stream-V:", "stream-V: "):
+            with self.subTest(actor=actor), self.assertRaisesRegex(EventError, "slot"):
+                append(self.events, {**self.verdict, "actor": actor}, self.model)
+        self.assertEqual(len(self.lines()), 1)
+        append(self.events, self.verdict, self.model)
+        self.assertEqual(self.lines()[-1]["actor"], "stream-V:v1")
+
+    def test_verdict_slot_differs_from_every_slot_that_registered_a_review(self):
+        for actor in ("stream-K:k1", "stream-K:k2"):
+            append(self.events, {"kind": "item", "actor": actor, "item": "K-C", "state": "review",
+                                 "detail": "PR #7 @ " + "a" * 40}, self.model)
+        append(self.events, {"kind": "item", "actor": "stream-K:k3", "item": "K-C", "state": "running"}, self.model)
+        append(self.events, {"kind": "item", "actor": "stream-K:k4", "item": "K-D", "state": "review",
+                             "detail": "PR #8 @ " + "b" * 40}, self.model)
+        for slot in ("k1", "k2"):
+            with self.subTest(slot=slot), self.assertRaisesRegex(EventError, "slot"):
+                append(self.events, {**self.verdict, "actor": f"stream-V:{slot}"}, self.model)
+        self.assertEqual(len(self.lines()), 4)
+        for slot in ("k3", "k4", "v1"):       # k3 only ran the item; k4 registered another item's review
+            append(self.events, {**self.verdict, "actor": f"stream-V:{slot}"}, self.model)
+        self.assertEqual(len(self.lines()), 7)
+
+    def test_undeclared_model_keeps_todays_verdict_rule(self):
+        legacy = {"control_plane": {"verdict_stream": "V"}, "items": [{"id": "K-C", "owner": "K"}]}
+        append(self.events, {"kind": "item", "actor": "stream-K:k1", "item": "K-C", "state": "review",
+                             "detail": "PR #7 @ " + "a" * 40}, legacy)
+        append(self.events, {**self.verdict, "actor": "stream-V"}, legacy)
+        append(self.events, {**self.verdict, "actor": "stream-V:k1"}, legacy)
+        self.assertEqual(len(self.lines()), 3)
+
+
+class StepGuardCases(unittest.TestCase):
+    """Contract rule 6 (plan §6 STEP): a step is recorded only after its named detector passed, live."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.events = os.path.join(self.tmp.name, "EVENTS.jsonl")
+        self.evidence = os.path.join(self.tmp.name, "tests.log")
+        with open(self.evidence, "wb") as handle:
+            handle.write(b"12 passed\n")
+        self.spec = {"type": "file_exists", "path": os.path.join(self.tmp.name, "marker")}
+        self.model = declared_model()
+        self.model["items"][0].update(steps=["tests", "docs"], step_evidence={
+            "tests": {"evidence": "pr_head_evidence", "detector": self.spec},
+            "docs": {"evidence": "pr_head_evidence", "detector": None}})
+        self.asked = []
+
+    def live(self, status="done", via="live", **override):
+        def get(path, timeout=3.0):
+            self.asked.append(path)
+            body = {"item": "K-C", "step": "tests", "spec": self.spec,
+                    "detector": {"status": status, "detail": "fixture"}, **override}
+            return body, via
+        return get
+
+    def run_step(self, argv, get=None):
+        with patch.object(cli, "load_model", return_value=self.model), patch.object(cli, "EVENTS", self.events), \
+                patch.object(cli, "get", side_effect=get or self.live()), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            return cli.main(argv)
+
+    def written(self):
+        if not os.path.exists(self.events):
+            return []
+        with open(self.events, encoding="utf-8") as handle:
+            return [json.loads(line) for line in handle]
+
+    def test_step_is_recorded_with_absolute_path_and_digest_after_live_verification(self):
+        relative = os.path.relpath(self.evidence)
+        self.assertEqual(self.run_step(["step", "K-C", "tests", "--stream", "K", "--evidence", relative]), 0)
+        event = self.written()[-1]
+        self.assertEqual((event["item"], event["step"], event["state"]), ("K-C", "tests", "done"))
+        self.assertTrue(os.path.isabs(event["evidence"]))
+        self.assertEqual(os.path.realpath(event["evidence"]), os.path.realpath(self.evidence))
+        self.assertEqual(event["evidence_sha256"], hashlib.sha256(b"12 passed\n").hexdigest())
+        self.assertEqual(self.asked, ["/api/verify?id=K-C&step=tests"])
+
+    def test_step_is_refused_and_nothing_written(self):
+        ok = ["step", "K-C", "tests", "--stream", "K", "--evidence", self.evidence]
+        missing = os.path.join(self.tmp.name, "absent.log")
+        cases = (
+            ("undeclared step", ["step", "K-C", "lint", "--stream", "K", "--evidence", self.evidence], None),
+            ("null detector", ["step", "K-C", "docs", "--stream", "K", "--evidence", self.evidence], None),
+            ("item without steps", ["step", "K-D", "tests", "--stream", "K", "--evidence", self.evidence], None),
+            ("unknown item", ["step", "K-X", "tests", "--stream", "K", "--evidence", self.evidence], None),
+            ("no evidence", ["step", "K-C", "tests", "--stream", "K"], None),
+            ("evidence absent", ["step", "K-C", "tests", "--stream", "K", "--evidence", missing], None),
+            ("evidence is a directory", ["step", "K-C", "tests", "--stream", "K", "--evidence", self.tmp.name], None),
+            ("tracker not live", ok, self.live(via="stale-snapshot")),
+            ("tracker unavailable", ok, lambda path, timeout=3.0: (None, "unavailable")),
+            ("detector pending", ok, self.live(status="pending")),
+            ("detector error", ok, self.live(status="error")),
+            ("no detector result", ok, self.live(detector=None)),
+            ("another item verified", ok, self.live(item="K-D")),
+            ("another step verified", ok, self.live(step="docs")),
+            ("item-level verification", ok, self.live(step=None)),
+            ("another detector verified", ok, self.live(spec={"type": "file_exists", "path": "/elsewhere"})),
+            ("another stream", ["step", "K-C", "tests", "--stream", "N", "--evidence", self.evidence], None),
+        )
+        for label, argv, get in cases:
+            with self.subTest(label=label):
+                self.assertEqual(self.run_step(argv, get), 2)
+                self.assertEqual(self.written(), [])
+        # a step without a named detector never reaches the tracker at all
+        self.asked.clear()
+        self.run_step(["step", "K-C", "docs", "--stream", "K", "--evidence", self.evidence])
+        self.assertEqual(self.asked, [])
+
+    def test_undeclared_model_records_a_step_as_today(self):
+        del self.model["control_plane"]["declarations"]
+        self.assertEqual(self.run_step(["step", "K-C", "docs", "--stream", "K"]), 0)
+        self.assertEqual(self.written()[-1]["evidence"], "step docs reported by stream-K")
+        self.assertEqual(self.asked, [])
+
+
+class TrackerServiceCases(unittest.TestCase):
+    """Rule 6 (`/api/verify?...&step=`), rule 7 (`ky next --json` rows) and the read-only guarantee, against an
+    engine this test starts on a temporary home (never the installed tracker)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.home = self.tmp.name
+        os.makedirs(os.path.join(self.home, "run"))
+        self.marker = os.path.join(self.home, "marker")
+        self.model = declared_model()
+        self.model["items"][0].update(steps=["tests", "docs"], step_evidence={
+            "tests": {"evidence": "pr_head_evidence", "detector": {"type": "file_exists", "path": self.marker}},
+            "docs": {"evidence": "pr_head_evidence", "detector": None}})
+        self.model_path = os.path.join(self.home, "plan_model.json")
+        with open(self.model_path, "w", encoding="utf-8") as handle:
+            json.dump(self.model, handle)
+        self.events = os.path.join(self.home, "run", "EVENTS.jsonl")
+        self.cfg = {"home": self.home, "events": self.events,
+                    "snapshot": os.path.join(self.home, "run", "snapshot.json"),
+                    "backup_dir": os.path.join(self.home, "run", "backup"),
+                    "hold": os.path.join(self.home, "run", "HOLD"), "model": self.model_path, "repo": self.home,
+                    "pgenv": None, "db_port": 1, "detectors_enabled": False, "git_every_s": 3600, "backup_every_s": 0}
+
+    def serve(self):
+        engine = server.Engine(self.cfg)
+        engine.tick()
+        self.assertIsNone(engine.model_error)
+        httpd = server._QuietServer(("127.0.0.1", 0), server.make_handler(engine))
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+
+        def stop():
+            httpd.shutdown()
+            httpd.server_close()
+            thread.join(5)
+        self.addCleanup(stop)
+        return f"http://127.0.0.1:{httpd.server_address[1]}"
+
+    def fetch(self, url):
+        try:
+            with urllib.request.urlopen(url, timeout=5) as response:
+                return response.status, json.loads(response.read())
+        except urllib.error.HTTPError as exc:
+            return exc.code, json.loads(exc.read())
+
+    def test_verify_measures_the_named_step_detector(self):
+        base = self.serve()
+        status, body = self.fetch(base + "/api/verify?id=K-C&step=tests")
+        self.assertEqual((status, body["item"], body["step"]), (200, "K-C", "tests"))
+        self.assertEqual(body["detector"]["status"], "pending")
+        self.assertEqual(body["spec"], {"type": "file_exists", "path": self.marker})
+        with open(self.marker, "w", encoding="utf-8") as handle:
+            handle.write("ok")
+        self.assertEqual(self.fetch(base + "/api/verify?id=K-C&step=tests")[1]["detector"]["status"], "done")
+        for query in ("id=K-C&step=docs", "id=K-C&step=lint", "id=K-D&step=tests", "id=K-X&step=tests", "id=K-C&step="):
+            with self.subTest(query=query):
+                self.assertEqual(self.fetch(base + "/api/verify?" + query)[0], 404)
+        status, body = self.fetch(base + "/api/verify?id=N-A")           # the item-level check is unchanged
+        self.assertEqual((status, body["item"]), (200, "N-A"))
+        self.assertNotIn("step", body)
+
+    def test_next_rows_carry_the_declaration(self):
+        append(self.events, {"kind": "item", "actor": "stream-K:k1", "item": "K-C", "state": "running"}, self.model)
+        status, body = self.fetch(self.serve() + "/api/next?stream=K")
+        self.assertEqual(status, 200)
+        row = next(entry for entry in body["running"] if entry["id"] == "K-C")
+        self.assertEqual((row["completion_kind"], row["producer"], row["reviewer_rule"]), ("code", "K", CONTAINMENT))
+        self.assertEqual(row["step_evidence"], self.model["items"][0]["step_evidence"])
+        self.assertEqual([step["name"] for step in row["steps"]], ["tests", "docs"])
+
+    def test_model_load_tick_and_audit_leave_the_event_log_untouched(self):
+        ts = "2026-10-12T02:00:00+00:00"
+        lines = [{"kind": "item", "actor": "stream-K:k1", "item": "K-C", "state": "review",
+                  "detail": "PR #7 @ " + "a" * 40, "ts": ts},
+                 {"kind": "verdict", "actor": "stream-V:v1", "item": "K-C", "head": "a" * 40, "phase": "pre_merge",
+                  "result": "ACCEPTED", "detail": "measured", "ts": ts},
+                 {"kind": "item", "actor": "stream-K:k1", "item": "K-C", "state": "done", "guarded": True,
+                  "evidence": "PR #7", "ts": ts, "completion": {"type": "code", "reviewed_head": "a" * 40}}]
+        raw = "".join(json.dumps(line) + "\n" for line in lines).encode() + b"not json\n"
+        with open(self.events, "wb") as handle:
+            handle.write(raw)
+        before = (raw, os.stat(self.events).st_mtime_ns, os.stat(self.events).st_ino)
+        engine = server.Engine(self.cfg)
+        for _ in range(3):
+            engine.tick()
+        self.assertEqual(len(engine.log.events), 3)
+        self.assertTrue(os.path.exists(self.cfg["snapshot"]))
+        out = io.StringIO()
+        with patch.object(cli, "MODEL", self.model_path), patch.object(cli, "EVENTS", self.events), \
+                contextlib.redirect_stdout(out):
+            self.assertEqual(cli.main(["audit", "--since", "kickoff"]), 1)
+        self.assertIn("FAIL missing_deployment_containment K-C: ", out.getvalue())
+        with open(self.events, "rb") as handle:
+            after = (handle.read(), os.stat(self.events).st_mtime_ns, os.stat(self.events).st_ino)
+        self.assertEqual(after, before)
+
+
+class AuditCommandCases(DeclaredCase):
+    """Contract rule 3: `ky audit` passes the repository as `ky done` does; its lines and exit codes are unchanged."""
+
+    def run_audit(self, events, **patches):
+        path = os.path.join(self.root, "EVENTS.jsonl")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.writelines(json.dumps(event) + "\n" for event in events)
+        out = io.StringIO()
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(patch.object(cli, "EVENTS", path))
+            stack.enter_context(patch.object(cli, "load_model", return_value=self.model))
+            for name, value in patches.items():
+                stack.enter_context(patch.object(cli, name, value))
+            stack.enter_context(contextlib.redirect_stdout(out))
+            stack.enter_context(contextlib.redirect_stderr(io.StringIO()))
+            code = cli.main(["audit", "--since", "kickoff"])
+        return code, out.getvalue().splitlines()
+
+    def done(self, item, completion):
+        return {"kind": "item", "actor": "stream-K:k1", "item": item, "state": "done", "guarded": True,
+                "evidence": "fixture", "completion": completion, "ts": self.ts}
+
+    def test_audit_passes_the_repository_to_the_shared_predicate(self):
+        old = "e" * 40
+        events = [self.review("K-C"), self.verdict("K-C", head=old),
+                  self.done("K-C", {**self.code_proof(deploy=self.deploy), "repo": "/recorded/by/the/event"})]
+        calls = []
+        with predicate(True, calls), patch.dict(os.environ, {"PRAVAHA_REPO": "/fixture/repo"}):
+            self.assertEqual(self.run_audit(events), (0, ["AUDIT PASS: 0 findings"]))
+        self.assertEqual(set(calls), {("/fixture/repo", old, self.head)})     # never the path an event recorded
+        with predicate(True, calls), patch.dict(os.environ, clear=False) as env:
+            env.pop("PRAVAHA_REPO", None)
+            self.run_audit(events)
+        self.assertEqual(calls[-1][0], cli.REPO_ROOT)
+        with predicate(False):
+            code, lines = self.run_audit(events)
+        self.assertEqual(code, 1)
+        self.assertRegex(lines[0], r"^FAIL rejected_or_stale_verdict K-C: \S")
+        self.assertEqual(lines[-1], "AUDIT FAIL: 1 findings")
+
+    def test_every_finding_is_printed_and_counted(self):
+        events = [self.review("K-C"), self.verdict("K-C", head=self.head), self.done("K-C", self.code_proof()),
+                  self.done("K-D", self.code_proof(deploy=self.deploy)),
+                  self.done("N-A", {"type": "code", "reviewed_head": self.head}),
+                  self.done("N-OP", {"type": "operation"})]
+        code, lines = self.run_audit(events)
+        self.assertEqual(code, 1)
+        fails = [line for line in lines if line.startswith("FAIL ")]
+        self.assertEqual(lines[-1], f"AUDIT FAIL: {len(fails)} findings")
+        self.assertEqual(len(lines), len(fails) + 1)
+        for line in fails:
+            self.assertRegex(line, r"^FAIL [a-z_]+ [A-Za-z0-9-]+: \S")
+        found = {tuple(line.split(":")[0].split()[1:]) for line in fails}
+        self.assertLessEqual({("missing_deployment_containment", "K-C"), ("rejected_or_stale_verdict", "K-D"),
+                              ("missing_post_deploy_verdict", "K-D"), ("completion_kind_mismatch", "N-A"),
+                              ("unbound_operation", "N-OP"), ("missing_artifact_verdict", "N-OP")}, found)
+        self.assertNotIn(("missing_post_deploy_verdict", "K-C"), found)
+
+    def test_audit_unavailable_is_exit_2(self):
+        def broken():
+            raise OSError("no model")
+        code, lines = self.run_audit([], load_model=broken)
+        self.assertEqual((code, lines), (2, []))
+
+
+class DeclaredSnapshotCases(unittest.TestCase):
+    """Contract rule 7: rows carry the declaration; a staged retirement is not a question for the owner."""
+
+    def setUp(self):
+        self.now = dt.datetime(2026, 10, 12, tzinfo=dt.timezone.utc)
+        self.model = declared_model()
+        self.model["items"][0].update(steps=["tests"], step_evidence={"tests": {"evidence": "pr_head_evidence",
+                                                                                "detector": None}})
+        self.model["decisions"] = [{"id": "D-RETIRE-K-R", "title": "Retire K-R"}, {"id": "D-ASK", "title": "Ask"}]
+        self.model["items"] += [
+            {"id": "D-RETIRE-K-R", "track": "K", "owner": "N", "title": "retire", "depends_on": [],
+             "done_by": "decision", "decision": "D-RETIRE-K-R", "triage": {"class": "retire_decision", "retires": "K-R"}},
+            {"id": "D-ASK", "track": "K", "owner": "N", "title": "ask", "depends_on": [],
+             "done_by": "decision", "decision": "D-ASK", "triage": {"class": "a"}},
+            {"id": "K-R", "track": "K", "owner": "K", "producer": "K", "title": "retired work",
+             "depends_on": ["D-RETIRE-K-R"], "requires_outcome": {"D-RETIRE-K-R": "approved"},
+             "completion_kind": "code", "reviewer_rule": CONTAINMENT,
+             "detector": {"type": "branch_merged", "ref": "origin/k-r"}, "triage": {"class": "retired"}}]
+
+    def snapshot(self, events=(), model=None):
+        return build_snapshot(model or self.model, list(events), {}, {}, {}, now=self.now)
+
+    @staticmethod
+    def rows(snapshot):
+        return {row["id"]: row for track in snapshot["tracks"] for row in track["items"]}
+
+    def test_rows_carry_the_declaration_and_nothing_else_changes(self):
+        self.assertEqual(server.check_model(self.model), [])
+        declared = self.rows(self.snapshot())
+        by_id = {row["id"]: row for row in self.model["items"]}
+        added = ("completion_kind", "producer", "reviewer_rule", "step_evidence")
+        for item_id, row in declared.items():
+            for key in added:
+                self.assertEqual(row[key], by_id[item_id].get(key), (item_id, key))
+        self.assertEqual(declared["K-C"]["step_evidence"], {"tests": {"evidence": "pr_head_evidence", "detector": None}})
+        self.assertIsNone(declared["D-ASK"]["completion_kind"])
+        legacy_model = json.loads(json.dumps(self.model))
+        del legacy_model["control_plane"]["declarations"]
+        legacy = self.rows(self.snapshot(model=legacy_model))
+        for item_id, row in legacy.items():
+            self.assertFalse(set(added) & set(row))
+            self.assertEqual({key: value for key, value in declared[item_id].items() if key not in added}, row)
+
+    def test_staged_retirement_is_marked_and_kept_out_of_the_native_queue(self):
+        snapshot = self.snapshot()
+        decisions = {row["id"]: row for row in snapshot["decisions"]}
+        self.assertIs(decisions["D-RETIRE-K-R"]["staged"], True)
+        self.assertNotIn("staged", decisions["D-ASK"])
+        self.assertEqual([row["id"] for row in snapshot["native_queue"]], ["D-ASK"])
+        self.assertEqual(self.rows(snapshot)["K-R"]["status"], "waiting")       # staged is not published
+        # a request, or an open outcome, is still no final outcome
+        requested = {"kind": "decision", "actor": "stream-K:k1", "decision": "D-RETIRE-K-R", "state": "requested",
+                     "detail": "please", "ts": self.now.isoformat()}
+        deferred = {"kind": "decision", "actor": "steward", "decision": "D-RETIRE-K-R", "state": "decided",
+                    "outcome": "deferred", "detail": "later", "ts": self.now.isoformat()}
+        for events in ([requested], [requested, deferred]):
+            snapshot = self.snapshot(events)
+            self.assertIs({row["id"]: row for row in snapshot["decisions"]}["D-RETIRE-K-R"]["staged"], True)
+            self.assertEqual([row["id"] for row in snapshot["native_queue"]], ["D-ASK"])
+        # without the declaration block the same model reads as today
+        legacy_model = json.loads(json.dumps(self.model))
+        del legacy_model["control_plane"]["declarations"]
+        snapshot = self.snapshot(model=legacy_model)
+        self.assertEqual({row["id"] for row in snapshot["native_queue"]}, {"D-RETIRE-K-R", "D-ASK"})
+        self.assertFalse([row for row in snapshot["decisions"] if "staged" in row])
+
+    def test_snapshot_and_audit_never_publish_the_staged_decision(self):
+        events = []
+        self.snapshot(events)
+        audit(self.model, events, tempfile.gettempdir(), since=self.now, now=self.now)
+        self.assertEqual(events, [])
+
+    def test_published_refusal_makes_the_retired_item_not_applicable(self):
+        """B-2 publishes with `ky decide <D-id> --outcome refused --as steward --delegated --detail "<text>"`."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "EVENTS.jsonl")
+            with patch.object(cli, "EVENTS", path), patch.object(cli, "load_model", return_value=self.model), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(cli.main(["decide", "D-RETIRE-K-R", "--outcome", "refused", "--as", "steward",
+                                           "--delegated", "--detail", "retired by owner decision"]), 0)
+            with open(path, encoding="utf-8") as handle:
+                events = [json.loads(line) for line in handle]
+        self.assertEqual((events[0]["state"], events[0]["outcome"], events[0]["actor"]),
+                         ("delegated", "refused", "steward"))
+        snapshot = self.snapshot(events)
+        rows = self.rows(snapshot)
+        self.assertEqual(rows["K-R"]["status"], "not_applicable")
+        self.assertEqual(rows["K-R"]["skip_origin"], ["D-RETIRE-K-R"])
+        self.assertNotIn("staged", {row["id"]: row for row in snapshot["decisions"]}["D-RETIRE-K-R"])
+        self.assertEqual([row["id"] for row in snapshot["native_queue"]], ["D-ASK"])
+
+    def test_committed_model_stages_exactly_its_retirements(self):
+        # the two B-2 retirements, plus the six owner-authorised not_applicable decisions of Amendment A9
+        # (D-51, D-53, D-54): staged, so none is a question for the native
+        with open(COMMITTED_MODEL, encoding="utf-8") as handle:
+            model = json.load(handle)
+        snapshot = self.snapshot(model=model)
+        staged = {row["id"] for row in snapshot["decisions"] if row.get("staged")}
+        self.assertEqual(staged, {"D-RETIRE-B-K-INBOX", "D-RETIRE-B-CLAIM-RECOVERY", "D-A9-NA-JOIN-ALL",
+                                  "D-A9-NA-K-CERT-2", "D-A9-NA-W4-SAFETY", "D-A9-NA-PROCESS-NOTES",
+                                  "D-A9-NA-OPS-NB-03", "D-A9-NA-PACKET-EXITS"})
+        self.assertFalse(staged & {row["id"] for row in snapshot["native_queue"]})
+
+
+class InboxContractCases(unittest.TestCase):
+    """Contract rule 8, pinned for kyloop.py `poll_inboxes`: exit 0 with a JSON list carrying msg_id, 1 when empty."""
+
+    def test_inbox_json_exit_codes(self):
+        model = {"control_plane": {"message_policy": {"S": ["K"], "K": ["S"]}},
+                 "streams": [{"id": "S"}, {"id": "K"}], "items": []}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "EVENTS.jsonl")
+
+            def inbox(*args):
+                out = io.StringIO()
+                with patch.object(cli, "EVENTS", path), patch.object(cli, "load_model", return_value=model), \
+                        contextlib.redirect_stdout(out):
+                    return cli.main(["inbox", *args, "--json"]), json.loads(out.getvalue())
+
+            self.assertEqual(inbox("--stream", "S"), (1, []))
+            self.assertEqual(inbox("--steward"), (1, []))
+            append(path, {"kind": "message", "actor": "stream-K", "to": "S", "msg_id": "M1", "detail": "for S"}, model)
+            append(path, {"kind": "message", "actor": "stream-K", "to": "steward", "msg_id": "M2", "detail": "for steward"}, model)
+            code, messages = inbox("--stream", "S")
+            self.assertEqual((code, [message["msg_id"] for message in messages]), (0, ["M1"]))
+            code, messages = inbox("--steward")
+            self.assertEqual((code, [message["msg_id"] for message in messages]), (0, ["M2"]))
+            append(path, {"kind": "ack", "actor": "stream-S", "msg_id": "M1"}, model)
+            self.assertEqual(inbox("--stream", "S"), (1, []))

@@ -332,6 +332,21 @@ describe('E: bounded ayanamsha fan-out', () => {
     expect(r.ayanamsha_sensitive).toBe(false)
   })
 
+  it('PR-3: the neighbours are read in SERVE order (Lahiri-primary), not alphabetical, and the band is labelled a cross-check', async () => {
+    queryMock.mockResolvedValueOnce(fenceRows())
+    queryMock.mockResolvedValueOnce({ rows: [
+      { ayanamsha_id: 'krishnamurti' }, { ayanamsha_id: 'raman' }, { ayanamsha_id: 'surya_siddhanta_classical' }, { ayanamsha_id: 'true_chitra' },
+    ] })
+    fetchMock.mockImplementation(async (_u: string, init: RequestInit) =>
+      ok(response({}, {}, JSON.parse(String(init.body)).ayanamsha_id)))
+    const r = await fetchNotablyAbsentYogas(CHART, AYA, generation())
+    const called = fetchMock.mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)).ayanamsha_id as string)
+    // call 0 is the primary; the neighbours follow in serve order
+    expect(called.slice(1)).toEqual(['true_chitra', 'krishnamurti', 'raman', 'surya_siddhanta_classical'])
+    expect(r.ayanamsha_cross_check_label).toBe('Cross-check, not the reading')
+    expect(r.ayanamsha_sensitive).toBe(false) // the booleans are kept
+  })
+
   it('a non-canonical primary ayanamsha is unproven and never reaches the sidecar', async () => {
     const r = await fetchNotablyAbsentYogas(CHART, 'lahiri; DROP', generation())
     expect(r.state).toBe('source_unproven')

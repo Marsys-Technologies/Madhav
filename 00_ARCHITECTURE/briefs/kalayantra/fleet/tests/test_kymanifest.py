@@ -1,9 +1,13 @@
 """B-0c: the bootstrap manifest only records what it can re-observe; KU clauses stay verbatim."""
 import hashlib
+import fnmatch
 import json
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -280,9 +284,235 @@ def test_ku_clauses_are_verbatim_from_the_review():
 
 def test_every_file_in_a_covered_directory_is_listed():
     listed = set(km.read_components(str(REPO)))
+    # No fleet exclusions currently: tests, fixtures and runtime imports all ship.
+    excluded = ()
+    tracked = subprocess.run(["git", "-C", str(REPO), "ls-files", "-z", "--", km.FLEET + "/"],
+                             env=dict(os.environ, GIT_OPTIONAL_LOCKS="0"), capture_output=True,
+                             text=True, check=True, timeout=30).stdout.split("\0")
+    missing = [rel for rel in tracked if rel and rel not in listed
+               and not any(fnmatch.fnmatchcase(rel, pattern) for pattern in excluded)]
+    assert missing == [], "git-tracked fleet files missing from manifest:\n" + "\n".join(missing)
     for d in km.COVERED_DIRS:
         for p in (REPO / d).rglob("*"):
             if p.is_file() and not p.name.startswith(".") and "__pycache__" not in p.parts:
                 assert str(p.relative_to(REPO)) in listed, "unlisted: %s" % p.relative_to(REPO)
     for rel in listed:
         assert (REPO / rel).is_file(), "listed but missing: " + rel
+
+
+def test_fleet_census_detects_a_missing_runtime_import(monkeypatch):
+    listed = km.read_components(str(REPO))
+    missing = km.FLEET + "/kyjob_engines.py"
+    monkeypatch.setattr(km, "read_components", lambda repo: [rel for rel in listed if rel != missing])
+    with pytest.raises(AssertionError, match="kyjob_engines.py"):
+        test_every_file_in_a_covered_directory_is_listed()
+
+
+def test_a_codex_receipt_is_judged_against_the_roles_codex_configuration_never_the_claude_one(rig):
+    """the second engine: a receipt that says "engine": "codex" names LAUNCH_CONFIG.<role>.codex.json — a Claude
+    configuration of the same role is not its configuration, and the Codex one must be a bound component"""
+    codex = rig.run / "QUALIFICATIONS" / "bootstrap-builder-gpt-6.1-sol.json"
+    codex.write_text(json.dumps({"result": "PASS", "role": "bootstrap-builder", "model": "gpt-6.1-sol",
+                                 "context": "launchd", "engine": "codex"}))
+    r = rig.build()                         # only the Claude configuration of the role is in the source
+    assert r.returncode == 1 and "no launch configuration in the reviewed source" in r.stderr, r.stderr
+    cfg = km.LAUNCH_CONFIG_CODEX % "bootstrap-builder"
+    assert cfg == km.FLEET + "/templates/LAUNCH_CONFIG.bootstrap-builder.codex.json"
+    (rig.repo / cfg).write_text("codex component\n")
+    (rig.repo / km.COMPONENT_LIST).write_text("\n".join(rig.comps) + "\n# tranche: deferred\n" + cfg + "\n")
+    rig.commit("a deferred codex configuration")
+    rig.write_review()
+    assert "not a bound component" in rig.build().stderr
+    (rig.repo / km.COMPONENT_LIST).write_text("\n".join(rig.comps + [cfg]) + "\n")
+    rig.commit("bind the codex configuration")
+    comps = rig.comps + [cfg]
+    review = json.loads(rig.review.read_text())
+    review["inputs"] = {rel: sha(rig.repo / rel) for rel in comps}
+    rig.review.write_text(json.dumps(review))
+    rec = rig.run / "reviews" / "two.review.json"            # the second area review covers the new file too
+    area = json.loads(rec.read_text())
+    area["inputs"][cfg] = sha(rig.repo / cfg)
+    area["inputs"][km.COMPONENT_LIST] = sha(rig.repo / km.COMPONENT_LIST)
+    rec.write_text(json.dumps(area))
+    review["area_reviews"] = [dict(e, record_sha256=sha(e["record"])) for e in review["area_reviews"]]
+    rig.review.write_text(json.dumps(review))
+    for e in review["area_reviews"]:
+        one = json.loads(Path(e["record"]).read_text())
+        one["inputs"] = {k: sha(rig.repo / k) for k in one["inputs"]}
+        Path(e["record"]).write_text(json.dumps(one))
+    review["area_reviews"] = [dict(e, record_sha256=sha(e["record"])) for e in review["area_reviews"]]
+    rig.review.write_text(json.dumps(review))
+    r = rig.build()
+    assert r.returncode == 0, r.stderr
+    recorded = {q["model"]: q["config"] for q in json.loads((rig.run / "VERSIONS.bootstrap.json").read_text())["qualifications"]}
+    assert recorded == {"claude-opus-5-5": km.LAUNCH_CONFIG % "bootstrap-builder", "gpt-6.1-sol": cfg}
+    assert km.launch_config_of({"role": "bootstrap-builder"}) == km.LAUNCH_CONFIG % "bootstrap-builder"
+    assert km.launch_config_of({"role": "bootstrap-builder", "engine": "claude"}) == km.LAUNCH_CONFIG % "bootstrap-builder"
+    assert km.launch_config_of({"role": 7}) is None
+
+
+# Installation regressions: generated loop configs belong to the installer/controller.
+def test_nine_receipts_report_external_loops_without_binding_them_across_readers(rig):
+    for n in range(6):
+        (rig.run / "QUALIFICATIONS" / ("template-%d.json" % n)).write_text(rig.receipt.read_text())
+    assert rig.build().returncode == 0
+    digest = json.loads((rig.run / "VERSIONS.bootstrap.json").read_text())["manifest_sha256"]
+    names = []
+    for role in ("planner", "conductor"):
+        evidence = rig.run / (role + "-evidence")
+        evidence.mkdir()
+        (evidence / "launch_config.json").write_text(json.dumps({"role": role}))
+        name = role + "-claude-opus-5-5.json"
+        names.append(name)
+        (rig.run / "QUALIFICATIONS" / name).write_text(json.dumps({
+            "role": role, "result": "PASS", "evidence": {"dir": str(evidence)}}))
+    checked = rig.check()
+    assert checked.returncode == 0, checked.stderr
+    assert json.loads(checked.stdout)["loop_qualifications_outside_manifest"] == sorted(names)
+    built = rig.build()
+    assert built.returncode == 0, built.stderr
+    manifest = json.loads((rig.run / "VERSIONS.bootstrap.json").read_text())
+    assert len(manifest["qualifications"]) == 7
+    assert "loop_qualifications_outside_manifest" not in manifest
+    assert json.loads(built.stdout)["loop_qualifications_outside_manifest"] == sorted(names)
+    assert manifest["manifest_sha256"] == digest
+    checked = rig.check()
+    assert checked.returncode == 0, checked.stderr
+    assert json.loads(checked.stdout)["loop_qualifications_outside_manifest"] == sorted(names)
+
+    # Use the real readers' existing seams; never run an installation or launch.
+    install = FLEET / "install.sh"
+    program = install.read_text().split("\n: <<'KYINSTALL_PY'\n", 1)[1].rsplit("\nKYINSTALL_PY\n", 1)[0]
+    program = program.rsplit("\nsys.exit(main(sys.argv[1:]))", 1)[0]
+    installer = {"__file__": str(install)}  # the shell entrypoint supplies this to its embedded program
+    exec(compile(program, str(install), "exec"), installer)
+    ctx = SimpleNamespace(manifest_path=str(rig.run / "VERSIONS.bootstrap.json"))
+    assert installer["load_manifest"](ctx) == manifest
+
+    import kyboot
+    loaded, components, file_sha, findings = kyboot.load_manifest(ctx.manifest_path)
+    assert findings == [] and loaded == manifest
+    assert components == {c["path"]: c["sha256"] for c in manifest["components"]}
+    assert file_sha == sha(ctx.manifest_path)
+
+    version = FLEET / "kyversion.sh"
+    program = version.read_text().split("\n: <<'KYVERSION_PY'\n", 1)[1].rsplit("\nKYVERSION_PY\n", 1)[0]
+    program = program.rsplit("\ntry:\n    status = main(sys.argv[2:])", 1)[0]
+    reader = {}
+    exec(compile(program, str(version), "exec"), reader)
+    # This reader handles final manifests: only the bootstrap mode finding is expected.
+    assert reader["check_final_manifest"](manifest, None) == ["the manifest's mode is 'bootstrap', not 'final'"]
+    body = {k: v for k, v in manifest.items() if k != "manifest_sha256"}
+    for canonical in (installer["canonical"], kyboot.manifest_canonical, reader["canonical"]):
+        assert hashlib.sha256(canonical(body)).hexdigest() == manifest["manifest_sha256"]
+    # Even changed reported bytes are the installer's responsibility, not manifest-bound.
+    (rig.run / "QUALIFICATIONS" / names[0]).write_text(json.dumps({
+        "role": "planner", "result": "FAIL", "evidence": {"dir": str(rig.run / "planner-evidence")}}))
+    assert rig.check().returncode == 0
+
+
+def test_non_loop_external_configuration_still_refuses(rig):
+    (rig.run / "QUALIFICATIONS" / "unreviewed.json").write_text(json.dumps({
+        "role": "unreviewed", "result": "PASS", "evidence": {"dir": str(rig.run / "external")}}))
+    checked = rig.build()
+    assert checked.returncode == 1 and "no launch configuration" in checked.stderr
+
+
+def test_loop_configuration_inside_source_still_requires_bound_template(rig):
+    (rig.run / "QUALIFICATIONS" / "planner.json").write_text(json.dumps({
+        "role": "planner", "result": "PASS", "evidence": {"dir": str(rig.repo / "evidence")}}))
+    checked = rig.build()
+    assert checked.returncode == 1 and "no launch configuration" in checked.stderr
+
+
+def test_manifest_checks_identical_checkout_and_refuses_one_changed_pair_byte(rig):
+    assert rig.build().returncode == 0
+    campaign = rig.run.parent / "campaign"
+    shutil.copytree(rig.repo, campaign)
+    checked = rig.cli("check", rig.run / "VERSIONS.bootstrap.json", "--repo", campaign, "--run", rig.run)
+    assert checked.returncode == 0, checked.stderr
+    manifest = json.loads((rig.run / "VERSIONS.bootstrap.json").read_text())
+    assert all("canonical_abs" not in pair and "compatibility_abs" not in pair for pair in manifest["generated_pairs"])
+    target = campaign / km.PAIRS[0][2]
+    target.write_bytes(target.read_bytes() + b"x")
+    checked = rig.cli("check", rig.run / "VERSIONS.bootstrap.json", "--repo", campaign, "--run", rig.run)
+    assert checked.returncode == 1 and "copies differ" in checked.stderr
+
+
+def test_repository_area_review_paths_are_relative(rig):
+    review = json.loads(rig.review.read_text())
+    for entry in review["area_reviews"]:
+        source = Path(entry["record"])
+        dest = rig.repo / source.name
+        shutil.copy2(source, dest)
+        entry["record"] = dest.name
+    rig.review.write_text(json.dumps(review))
+    rig.commit("repository-local reviews")
+    assert rig.build().returncode == 0, rig.build().stderr
+    campaign = rig.run.parent / "campaign"
+    shutil.copytree(rig.repo, campaign)
+    checked = rig.cli("check", rig.run / "VERSIONS.bootstrap.json", "--repo", campaign, "--run", rig.run)
+    assert checked.returncode == 0, checked.stderr
+
+
+
+def test_absolute_repository_area_review_relocates_and_checks_campaign_bytes(rig):
+    review = json.loads(rig.review.read_text())
+    for entry in review["area_reviews"]:
+        source = Path(entry["record"])
+        dest = rig.repo / source.name
+        shutil.copy2(source, dest)
+        entry["record"] = str(dest)
+    rig.review.write_text(json.dumps(review))
+    rig.commit("absolute repository-local reviews")
+    assert rig.build().returncode == 0
+    campaign = rig.run.parent / "campaign"
+    shutil.copytree(rig.repo, campaign)
+    checked = rig.cli("check", rig.run / "VERSIONS.bootstrap.json", "--repo", campaign, "--run", rig.run)
+    assert checked.returncode == 0, checked.stderr
+    (campaign / "one.review.json").write_text("changed review")
+    checked = rig.cli("check", rig.run / "VERSIONS.bootstrap.json", "--repo", campaign, "--run", rig.run)
+    assert checked.returncode == 1 and "per-area review record missing or changed" in checked.stderr
+
+
+def test_loop_roles_constant_equals_the_controllers_roles():
+    """kymanifest.LOOP_ROLES is a constant (no sibling import); it must stay equal to kyloop.ROLES."""
+    import importlib.util
+    import os
+    spec = importlib.util.spec_from_file_location("_kyloop_for_roles", os.path.join(os.path.dirname(km.__file__), "kyloop.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert tuple(km.LOOP_ROLES) == tuple(mod.ROLES)
+
+
+@pytest.mark.parametrize("engine", [None, "claude", "codex"])
+@pytest.mark.parametrize("chart,tests", [(False, True), (True, False), (True, True)])
+def test_variant_receipt_selects_its_bound_template(rig, engine, chart, tests, monkeypatch):
+    suffix = (".chart" if chart else "") + (".tests" if tests else "") + (".codex" if engine == "codex" else "")
+    expected = km.FLEET + "/templates/LAUNCH_CONFIG.build" + suffix + ".json"
+    doc = {"result": "PASS", "role": "build", "model": "fixture", "context": "launchd", "binds": {
+        "env_names": ["HOME", "TESTS"] if tests else ["HOME"],
+        "argv": ["claude", "--mcp-config", "/installed/mcp.marsys-only.json"] if chart else ["agent"]}}
+    if engine is not None: doc["engine"] = engine
+    assert km.launch_config_of(doc) == expected
+    # A filename cannot grant a variant; derive from bound launch inputs, then call the real checker interface.
+    rig.receipt.unlink()
+    receipt = rig.run / "QUALIFICATIONS" / "misleading-plain-name.json"
+    receipt.write_text(json.dumps(doc))
+    (rig.repo / expected).write_text("variant configuration")
+    with pytest.raises(km.Refused, match="not a bound component"):
+        km.observe_qualifications(str(rig.repo), str(rig.run), bound=set())
+    calls = []
+    def checked(argv, **kwargs):
+        calls.append(argv)
+        assert argv[argv.index("--config") + 1] == str(rig.repo / expected)
+        return SimpleNamespace(returncode=0)
+    monkeypatch.setattr(km.subprocess, "run", checked)
+    rows = km.observe_qualifications(str(rig.repo), str(rig.run), bound={expected})
+    assert rows[0]["config"] == expected and len(calls) == 1
+
+
+@pytest.mark.parametrize("doc", [{"role": "../escape"}, {"role": "build", "engine": "unknown"},
+                                    {"role": "build", "binds": {"env_names": "TESTS"}}])
+def test_variant_mapping_refuses_unsafe_identity(doc):
+    assert km.launch_config_of(doc) is None

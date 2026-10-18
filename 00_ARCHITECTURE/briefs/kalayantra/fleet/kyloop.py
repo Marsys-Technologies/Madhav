@@ -13,7 +13,10 @@
 
 launchd supervises THIS script, never an unconditional chain of model runs. The controller
 
-  * is the sole holder of the role lock ($KY_RUN/locks/<role>, or $KY_FLEET/kylock.sh when installed) and
+  * is the sole holder of the role lock ($KY_RUN/locks/<role>; taken, given its child and released through
+    $KY_FLEET/kylock.sh when that is installed — Controller.kylock() is the one place it is run and reads its
+    exit codes one by one: 75 live holder · 76 cockpit · 77 unknown owner · 74 released-not-proven, lock kept ·
+    70 identity refused; nothing but 0 is success) and
     the sole writer of $KY_RUN/<ROLE>_STATE.json and JOURNAL_<ROLE>.md while it runs. ONE liveness rule
     (process_matches: True alive · False POSITIVELY gone · None unknown) governs every lock here: a lock is
     created atomically WITH its owner record (a private directory renamed onto the lock path, which fails when
@@ -31,7 +34,21 @@ launchd supervises THIS script, never an unconditional chain of model runs. The 
     also applies the `campaign` role's pause / resume (holding locks/campaign only for the application).
     While an owner pause is in force — applied, queued and not yet applied, or unknowable — no model job is
     launched by any role;
-  * waits itself (hold, pause, backoff, "no eligible work", inbox polling) and launches ONE bounded
+  * gives an answered owner-wait an end, on both sides (R15). An awaiting item with the OWNER's decision beside
+    it no longer blocks its item or its loop — and the owner's decision is a ky.owner_decision/1 record naming
+    that item which the queue's own `decide` command stands behind (for that item, with that answer, QUEUED or
+    APPLIED); a record a surrogate, a job or a hand wrote is none, so nothing but an owner `decide` releases a
+    wait where it lies, a hard stop least of all. The controller that applies the `decide` writes the decision
+    first — with what was asked — and then closes the item (moved to awaiting/done/, never deleted), under the
+    command's one action record; for the item it raised itself for a job action nobody could observe it also
+    carries the chosen option out (the job's record settled DONE or FAILED, on the owner's word). A controller
+    that dies in between is completed at the next look, without a second record. The role a wait holds up
+    answers for it, whoever raised it. The answer is a changed dependency that no run authored;
+  * waits itself (hold, pause, backoff, "no eligible work", inbox polling, messages another actor holds
+    locked — `items_locked`, never an immediate second look) — and says so, once, when a wait needs a person
+    (R16): a command queue that cannot be read (a pause no `resume` ends), a queued command another actor has
+    kept from being settled for half an hour, an answered owner-wait that cannot be closed — and launches ONE
+    bounded
     `claude -p` child only for an eligible work item (planner: a pending Wave B step) or an actionable,
     deduplicated, handled-state-checked batch of inbox messages (conductor);
   * wraps every side effect of its own in an action record (kyaction: INTENDED before, the observed result
@@ -69,7 +86,8 @@ nothing ever falls back to the installed manifest.
 
 The `veto` role (plan §4a.2/§4a.3) launches no model at all: it holds the `veto` lock and calls kyveto.py's
 `tick` as that lock's holder, waiting in between until the earliest pending veto deadline, a new command for
-the veto role, or its poll period. It is admitted exactly like the model loops — an installation receipt of
+the veto role, or its poll period. Before each tick it applies the veto role's own queued commands itself —
+`status`, `loops stop|status veto`, `decide` — and leaves `veto <decision-id>` to the handler. It is admitted exactly like the model loops — an installation receipt of
 mode bootstrap or final AND a passing kyversion.sh in the matching mode, at start-up and whenever the receipt
 changes — and passes the authorised bundle to every tick explicitly: the terminal activation link's source
 commit and its manifest's entrypoints digest when a chain exists, otherwise PLANNER_STATE.json
@@ -83,9 +101,14 @@ tell a controller that it runs under launchd. Any use of either is written into 
 $KY_RUN/loops/<role>.json (`test_hooks`), and a controller that PROVABLY runs under launchd refuses to launch
 while either is in use.
 
-Exit codes: 0 clean stop or legitimate "nothing to run" (launchd KeepAlive{SuccessfulExit:false} does not
-respawn); 78 refused environment (a credential variable NAME is present — names only are printed);
-64 usage; 128+signal when terminated without a STOP file (launchd respawns; durable state still governs).
+Exit codes: 0 clean stop, legitimate "nothing to run" and EVERY refusal (launchd KeepAlive{SuccessfulExit:false}
+does not respawn) — a refused environment included (N4-01): a credential variable NAME in the environment, or a
+KY_LOOP_SLEEP_SCALE that is not a number in (0, 1], is one awaiting item, the STOP file and `enabled: false`
+like any other refused precondition (raised by the lock holder; names only are printed, and the variable is
+dropped from this process's environment before any helper is started). Without a run directory nothing can be
+recorded: one notification is attempted and nothing is created. 64 usage; 78 the one-shot admin commands only
+(a bad KY_LOOP_SLEEP_SCALE); 128+signal when terminated without a STOP file (launchd respawns; durable state
+still governs).
 
 Interfaces this file defines or assumes are listed in the B-0c report (checkpoint requests, qualification
 receipts, activation chain, handled records, owner-decision files, kylock.sh / kygate.sh call forms).
@@ -109,6 +132,10 @@ import sys
 import time
 from pathlib import Path
 
+# System directories shared by controller plists and the installer's preflight proof.
+# Model-child PATHs below are separately qualified and deliberately retain their existing value.
+SYSTEM_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+
 ROLES = ("planner", "conductor")                # the roles that launch model jobs (kyqualify.py pins this tuple)
 CONTROLLER_ROLES = ROLES + ("veto",)            # every role this file is the controller of
 SWITCH_LOOPS = ("dispatcher",) + CONTROLLER_ROLES
@@ -116,6 +143,7 @@ SIBLINGS = ("kyaction", "kycommands", "kyveto")  # read-only modules beside this
 HARNESS = "kyqualify"                           # optional sibling: when installed, ITS check_receipt judges a receipt
 LABEL_PREFIX = "in.marsys.kalayantra."          # + <role>: the launchd label of a loop (kyctl.sh label_of)
 TEST_CONTEXT_ENV = "KY_LOOP_TEST_CONTEXT"       # TEST-ONLY, see Controller.context()
+TEST_CONTEXT_PREFIX = "test-hook:"              # what an injected context is reported as: never a proven context
 MIN_CLAUDE = (2, 1, 296)
 BACKOFF_MINUTES = (5, 10, 20, 30)
 NO_PROGRESS_LIMIT = 3
@@ -123,8 +151,15 @@ HOLD_POLL_S = 30.0          # the global HOLD and an owner pause are polled; oth
 WAIT_POLL_S = 15.0          # "no eligible work" / inbox polling period; also how often a running child's
                             # controller looks at STOP_<role> and at the queue for `loops stop` / `handoff`
 COMMAND_POLL_S = 1.0        # how often a waiting controller looks for a new command / a still-pending one
+COMMANDS_OVERDUE_S = 1800.0 # a queued command that cannot be settled for this long is raised as ONE attention item
 VETO_POLL_S = 30.0          # the veto controller's tick period when no deadline or command comes sooner
 VETO_LOCK_WAIT_S = 150.0    # how long the veto controller waits for another handler's tick to release the lock
+KYLOCK_TIMEOUT_S = 120.0    # kylock.sh acquire / child: it answers at once, or it is not an answer
+KYLOCK_RELEASE_TIMEOUT_S = 960.0    # kylock.sh release runs the KU-02 database step (900 s) before it answers
+# kylock.sh's exit codes (packet KV3-B-KYLOCK, "Contract"); anything else — and no answer — reads "error"
+KYLOCK_EXITS = {0: "ok", 64: "usage", 70: "bad_identity", 73: "not_owner", 74: "release_unproven", 75: "live",
+                76: "cockpit", 77: "unknown"}
+KYLOCK_REFUSALS = {"live": "live", "cockpit": "cockpit", "unknown": "unknown", "bad_identity": "identity_refused"}
 TERM_GRACE_S = 10.0         # TERM → KILL → record must fit inside launchd's default 20 s exit timeout
 CHILD_POLL_S = 0.2
 EVENT_SOURCE_FAILURE_LIMIT = 5
@@ -163,6 +198,13 @@ SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 HEX_COMMIT = re.compile(r"^[0-9a-f]{40}(?:[0-9a-f]{24})?\Z")
 ACTIVATION_NAME = re.compile(r"^ACTIVATION_RECORD(?:\.([1-9][0-9]{0,5}))?\.json\Z")
 OWNER_DECISION_SUFFIX = ".owner_decision.json"
+OWNER_DECISION_SCHEMA = "ky.owner_decision/1"   # the owner's answer beside an awaiting item (record_owner_decision)
+AWAITING_DONE = "done"      # $KY_RUN/awaiting/done/: where a closed owner-wait lies — never read as an open one
+WAIT_CLOSE_KIND = "awaiting_close:veto_executed"    # this controller's record AWCLOSE-<awaiting id> (R18)
+WAIT_CLOSE_PREFIX = "AWCLOSE-"
+VETO_EXECUTE_KIND = "veto_decision_execute:"        # kind of the veto handler's own `<SD id>.execute` record
+JOB_ACTION_SLUG = "job-action-"                 # + the record id: the item raised for a job action nobody observed
+JOB_ACTION_OPTIONS = ("happened", "did-not-happen")     # … and the two options that item offers the owner
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$")
 MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._\[\]-]{0,79}$")
 QUOTA_TEXT = re.compile(
@@ -289,15 +331,17 @@ def credential_names(env):
 
 
 def sleep_scale():
+    """(scale, None) — or (1.0, why) when KY_LOOP_SLEEP_SCALE is not a number with 0 < scale <= 1. Nothing here
+    ends the process: the caller refuses in its own shape (N4-01 — a controller's refusal is one awaiting item and
+    a stop, never an exit status launchd answers with a respawn every ten seconds)."""
     raw = os.environ.get("KY_LOOP_SLEEP_SCALE", "1")
     try:
         v = float(raw)
     except ValueError:
         v = -1.0
     if not 0 < v <= 1:
-        print("kyloop: REFUSED bad KY_LOOP_SLEEP_SCALE (need 0 < scale <= 1)", file=sys.stderr)
-        raise SystemExit(78)
-    return v
+        return 1.0, "bad_sleep_scale: KY_LOOP_SLEEP_SCALE must be a number with 0 < scale <= 1 (got %s)" % flat(repr(raw), 40)
+    return v, None
 
 
 def ps_probe(pid):
@@ -722,7 +766,9 @@ class Controller:
         self.scratch = Path(env.get("KY_SCRATCH") or
                             "/Users/Dev/scratch.noindex/claude/madhav/%s-kalayantra-v3" % time.strftime("%Y%m%d"))
         self.claude = Path(env.get("CLAUDE_BIN") or "/Users/Dev/.local/bin/claude")
-        self.scale = sleep_scale()
+        self.scale, problem = sleep_scale()
+        self.startup_refusal = [problem] if problem else []     # why THIS environment is refused (N4-01): raised
+                                                                # as the lock holder, in the one shape of a refusal
         self.controller_id = "CTL-%s-%s-%d" % (self.ROLE, utc("%Y%m%dT%H%M%SZ"), os.getpid())
         self.state_path = self.run / (self.ROLE + "_STATE.json")
         self.journal_path = self.run / ("JOURNAL_%s.md" % self.ROLE)
@@ -731,9 +777,13 @@ class Controller:
         self.lock_dir = self.run / "locks" / role
         self.signal = None
         self.lock_mode = None
-        self.lock_refusal = None    # why acquire_lock() said no: {"state": live|cockpit|unknown|kylock|race, …}
+        self.lock_refusal = None    # why acquire_lock() said no: {"state": live|cockpit|unknown|self_unknown|race|
+                                    # identity_refused|kylock_error, …} (the last two: kylock.sh's answers only)
+        self.items_waiting = []     # the message ids the last lock_items() skipped because another actor holds them
         self.ka = self.kc = self.kv = None      # kyaction / kycommands / kyveto, see load_siblings()
         self.commands_blocked = None            # why a QUEUED command of this role could not be settled yet
+        self.commands_blocked_since = None      # … and since when (time.time()), see commands_overdue()
+        self.logged = {}                        # {line: when log_once() last wrote it}
         self.cfg = None
         self.claude_version = None
         self.verified_once = False
@@ -748,10 +798,23 @@ class Controller:
         self.dispatcher_checked = False
         self.harness = None         # kyqualify, when it is installed beside this file (see load_harness)
         self.qualification_check = None     # which layer judged the receipt at the last verify_launch (N-05)
+        self.inbox_keys = set()     # conductor: the message ids of the last inbox poll that are not handled yet
 
     # ---- plumbing
     def log(self, msg):
         print("kyloop[%s] %s %s" % (self.role, utc(), msg), file=sys.stderr, flush=True)
+
+    def log_once(self, msg, every=300.0):
+        """log() for what a waiting controller finds again at every look (a held lock, a command that cannot be
+        settled yet): the same line at most once in `every` seconds of real time. A wait that is looked at every
+        second says what it waits for when that changes — it does not write two lines a second for as long as it
+        lasts."""
+        now = time.time()
+        if now - self.logged.get(msg, 0.0) >= every:
+            if len(self.logged) > 500:
+                self.logged.clear()
+            self.logged[msg] = now
+            self.log(msg)
 
     def ls(self, fn=None):
         """Read ($KY_RUN/loops/<role>.json as an object; {} when absent) or read-modify-write it. A file that
@@ -811,10 +874,16 @@ class Controller:
         ONLY while the test sleep-scale override is active (KY_LOOP_SLEEP_SCALE < 1). At the production scale
         (1, or unset) the variable is ignored — a `launchd`-labelled context is REFUSED there — so a real loop
         can never be told which context it runs in. Its use is recorded (test_hooks()), and a controller that
-        really runs under launchd refuses to launch with either hook set (verify_launch)."""
+        really runs under launchd refuses to launch with either hook set (verify_launch).
+
+        An injected context is never reported as a proven one (N3-04): it is `test-hook:launchd` /
+        `test-hook:shell`, a context of its own. A receipt earned in the real `launchd` or `shell` context
+        therefore never qualifies a controller that was merely TOLD where it runs (qualification_context_mismatch),
+        and a receipt written for a hook context qualifies no real controller — nor does kyqualify.py's own
+        check_receipt know such a context."""
         injected = os.environ.get(TEST_CONTEXT_ENV)
         if injected in ("launchd", "shell") and self.scale < 1:
-            return injected
+            return TEST_CONTEXT_PREFIX + injected
         return self.real_context()
 
     def admitted(self):
@@ -971,14 +1040,19 @@ class Controller:
         (lock_create), and an existing one is taken over only when its recorded owner is POSITIVELY gone, by a
         takeover that is verified after the rename (lock_bury). Nothing here ever removes a lock by its age."""
         self.lock_refusal = None
-        kylock = self.fleet / "kylock.sh"
-        if kylock.is_file() and os.access(kylock, os.X_OK):
-            r = subprocess.run([str(kylock), "acquire", self.role, self.controller_id], capture_output=True, text=True)
-            if r.returncode == 0:
+        answer = self.kylock("acquire")
+        if answer is not None:                  # kylock.sh is installed: it alone decides, by its exit code
+            outcome, rc, text = answer
+            if outcome == "ok":
                 self.lock_mode, self.lock_held = "kylock", True
                 return True
-            self.lock_refusal = {"state": "kylock", "detail": "kylock.sh rc=%d" % r.returncode}
-            self.log("lock held or refused by kylock.sh (rc=%d): %s" % (r.returncode, flat(r.stderr or r.stdout)))
+            owner, _ = read_json(self.lock_dir / "owner.json")
+            holder = {k: owner.get(k) for k in ("session_or_run_id", "holder_kind", "pid", "process_start")} \
+                if isinstance(owner, dict) else None
+            self.lock_refusal = {"state": KYLOCK_REFUSALS.get(outcome, "kylock_error"), "holder": holder,
+                                 "kylock": outcome, "kylock_rc": rc,
+                                 "detail": "kylock.sh acquire: %s (rc=%s) %s" % (outcome, rc, text)}
+            self.log("lock held or refused by kylock.sh (%s, rc=%s): %s" % (outcome, rc, text))
             return False
         os.makedirs(self.lock_dir.parent, exist_ok=True)
         if self.identity()["process_start"] is None:
@@ -1026,6 +1100,29 @@ class Controller:
         self.log("lock held: lost the takeover race")
         return False
 
+    def kylock(self, verb, *args, timeout=KYLOCK_TIMEOUT_S):
+        """THE one place $KY_FLEET/kylock.sh is run (packet KV3-B-KYLOCK: `acquire|release|child <role>
+        <controller identity> [pending|none|<JSON>]`). → None while kylock.sh is NOT installed as an executable
+        file beside this controller — then, and only then, the built-in lock above and below is what holds the
+        role — else (outcome, rc, text). `outcome` is read from the exit code and from nothing else: "ok" (0) ·
+        "live" (75: a live non-cockpit holder, or a lost race) · "cockpit" (76: a live cockpit) · "unknown" (77:
+        an owner nobody can judge; untouched) · "release_unproven" (74: the lock is KEPT, the databases of this
+        session are not proven removed) · "not_owner" (73) · "bad_identity" (70) · "usage" (64) · "error" (any
+        other code, no answer in time, or it could not be started). Nothing but 0 is ever taken for success."""
+        script = self.fleet / "kylock.sh"
+        if not (script.is_file() and os.access(script, os.X_OK)):
+            return None
+        try:
+            r = subprocess.run([str(script), verb, self.role, self.controller_id, *args], capture_output=True,
+                               text=True, timeout=timeout,
+                               env=dict(os.environ, KY_RUN=str(self.run), KY_FLEET=str(self.fleet),
+                                        KY_SCRATCH=str(self.scratch)))
+        except subprocess.TimeoutExpired:
+            return "error", None, "no answer within %d s" % timeout
+        except (OSError, ValueError) as e:
+            return "error", None, "not started (%s)" % type(e).__name__
+        return KYLOCK_EXITS.get(r.returncode, "error"), r.returncode, flat(r.stderr or r.stdout)
+
     def remove_stale_lock(self, judged):
         """Take the role lock away from an owner that was judged POSITIVELY gone — verify-after-rename (lock_bury),
         so two contenders can never remove each other's fresh lock. → lock_bury's outcome."""
@@ -1042,7 +1139,8 @@ class Controller:
         gone, so somebody has to look) — but no STOP and no switch: this instance never stops what it cannot see."""
         refusal = self.lock_refusal or {}
         waiting = {"cockpit": "role_held_by_cockpit", "unknown": "role_lock_owner_unknown",
-                   "self_unknown": "own_process_identity_unknown"}.get(refusal.get("state"))
+                   "self_unknown": "own_process_identity_unknown", "identity_refused": "role_lock_identity_refused",
+                   "kylock_error": "role_lock_helper_failed"}.get(refusal.get("state"))
         if not waiting:
             return
         try:
@@ -1056,6 +1154,19 @@ class Controller:
                 "no lock and launched nothing: a lock whose owner nobody can verify would block the role for good."
                 % self.role, ["controller: %s" % self.controller_id],
                 message="%s loop did not start: its own process identity cannot be read" % self.role)
+        if refusal.get("state") in ("identity_refused", "kylock_error"):
+            # kylock.sh said neither "held" nor "acquired": not a waiting state that ends by itself, so somebody
+            # is told — and nothing is stopped, since this instance holds nothing
+            self.raise_attention(
+                "loop-%s-lock-helper-refused" % self.role,
+                "kylock.sh did not give the %s loop controller the role lock and did not report a holder either "
+                "(%s). Nothing was launched. %s" % (
+                    self.role, flat(refusal.get("detail"), 200),
+                    "It refused this controller's identity (exit 70)." if refusal.get("state") == "identity_refused"
+                    else "Its answer is not one of its documented exit codes."),
+                ["controller: %s" % self.controller_id, "helper: %s" % (self.fleet / "kylock.sh"),
+                 "answer: %s" % flat(refusal.get("detail"), 300)],
+                message="%s loop did not start: kylock.sh refused or failed (%s)" % (self.role, refusal.get("kylock")))
         if refusal.get("state") == "unknown":
             self.raise_attention(
                 "loop-%s-lock-owner-unknown" % self.role,
@@ -1084,14 +1195,29 @@ class Controller:
     def write_owner(self, child):
         """Record the child this lock's holder is responsible for: None, "pending" (written BEFORE the child is
         started, so a controller that dies in between never looks child-less), or its identity."""
-        if self.lock_mode != "builtin":
-            return
-        write_json(self.lock_dir / "owner.json", self.owner_doc(child))
+        if self.lock_mode == "builtin":
+            write_json(self.lock_dir / "owner.json", self.owner_doc(child))
+        elif self.lock_mode == "kylock":
+            # `kylock.sh child <role> <identity> pending|none|<JSON>` — the same record, written by the lock's owner
+            arg = "none" if child is None else child if child == "pending" else json.dumps(child, sort_keys=True)
+            outcome, rc, text = self.kylock("child", arg) or ("error", None, "kylock.sh is no longer installed")
+            if outcome == "ok":
+                return
+            why = "role_lock_child_not_recorded: kylock.sh child %s: %s (rc=%s) %s" % (
+                "<identity>" if isinstance(child, dict) else arg, outcome, rc, text)
+            if child is None:
+                # a child that stays recorded after it ended is the safe side (it is judged by its identity);
+                # the next launch records "pending" first, and THAT is refused while kylock.sh still says no
+                self.log(why)
+                return
+            raise Refusal([why])                # no child is started, or left running, that the lock does not name
 
     def release_lock(self):
         if self.lock_mode == "kylock":
-            subprocess.run([str(self.fleet / "kylock.sh"), "release", self.role, self.controller_id],
-                           capture_output=True, text=True)
+            outcome, rc, text = self.kylock("release", timeout=KYLOCK_RELEASE_TIMEOUT_S) \
+                or ("error", None, "kylock.sh is no longer installed")
+            if outcome != "ok":
+                self.release_not_proven(outcome, rc, text)
         elif self.lock_mode == "builtin":
             owner, _ = read_json(self.lock_dir / "owner.json")
             if isinstance(owner, dict) and owner.get("session_or_run_id") == self.controller_id \
@@ -1103,6 +1229,38 @@ class Controller:
                 except OSError as e:
                     self.log("could not release the lock: %s" % type(e).__name__)
         self.lock_mode, self.lock_held = None, False
+
+    def release_not_proven(self, outcome, rc, text):
+        """kylock.sh did not answer `released`. Nothing here calls the lock released: what it said is recorded in
+        loops/<role>.json (`lock_release`) and — except for a lock that simply is not this controller's (73) — ONE
+        attention item is raised. 74 means the lock is KEPT because the databases of this session are not proven
+        removed (KU-02); the next controller takes the lock over from this process once it is positively gone,
+        and that takeover never removes a database. Never raises: this runs while the controller exits."""
+        kept = outcome == "release_unproven"
+        self.log("the role lock was NOT released by kylock.sh (%s, rc=%s): %s%s"
+                 % (outcome, rc, text, " — the lock is kept; this session's databases are not proven removed" if kept else ""))
+        note = {"state": "kept" if kept else "not_owner" if outcome == "not_owner" else "unknown", "kylock": outcome,
+                "kylock_rc": rc, "at": utc(), "controller_id": self.controller_id, "detail": flat(text, 200)}
+        try:
+            self.ls(lambda d: dict(d, lock_release=note))
+        except Exception as e:
+            self.log("the lock release result was not recorded (%s)" % type(e).__name__)
+        if outcome == "not_owner":
+            return
+        self.raise_attention(
+            "loop-%s-lock-release-unproven" % self.role,
+            "The %s loop controller %s ended, and %s" % (
+                self.role, self.controller_id,
+                "kylock.sh KEPT the role lock: the test databases of that session are not proven removed (exit 74). "
+                "Remove them?" if kept else
+                "kylock.sh did not confirm that the role lock was released (%s). Is the lock still there?" % outcome),
+            ["kylock.sh release: %s (rc=%s) %s" % (outcome, rc, flat(text, 240)), "lock: %s" % self.lock_dir,
+             "session: %s" % self.controller_id, "scratch: %s" % self.scratch],
+            options=[{"id": "close-databases", "text": "Run `local_db.sh close --session %s` (or remove that "
+                                                       "session's test databases by hand) and check that they are "
+                                                       "gone." % self.controller_id},
+                     {"id": "acknowledge", "text": "Seen; nothing further."}],
+            message="%s loop: kylock.sh did not release the role lock (%s)" % (self.role, outcome))
 
     # ---- configuration and launch preconditions
     def load_config(self):
@@ -1200,7 +1358,7 @@ class Controller:
                 "prompt_path": str(self.fleet / "prompts" / PROMPTS[self.role]),
                 "env_names": list(CHILD_ENV_NAMES), "child_path": self.child_path(), "extra_flags": [],
                 "disallowed_tools": [], "add_dirs": [str(self.root)], "intended_tools": list(QUALIFIED_TOOLS),
-                "denied_tools": []}
+                "denied_tools": [], "shell_canary": "python3"}
 
     def load_harness(self):
         """kyqualify — the launch-qualification harness — when it is installed beside this file; None when it is
@@ -1439,7 +1597,9 @@ class Controller:
         own `check_receipt(receipt, launch configuration, require_context=…)` — which re-evaluates the receipt's
         checks and negative probes, its launchd receipt, its tool coverage and the binds recomputed from disk —
         must return no reason either. Which layer judged is recorded in loops/<role>.json
-        (`qualification_check.mode`: "kyqualify.check_receipt" or "controller_only")."""
+        (`qualification_check.mode`: "kyqualify.check_receipt" or "controller_only"). Under launchd — where the
+        installed loops run — a missing harness refuses the launch (`qualification_harness_missing`, N3-05);
+        `controller_only` is left to a controller started by hand from a shell."""
         self.qualification_check = None
         path = self.qualification_path(cfg)
         doc, err = read_json(path)
@@ -1469,6 +1629,12 @@ class Controller:
         if diff:
             return ["qualification_mismatch: %s" % ", ".join(diff)]
         mode = "controller_only"
+        if harness is None and self.real_context() == "launchd":
+            # N3-05: an installed loop is judged by the harness or not at all. The controller's own, weaker
+            # comparison stays for a controller run by hand from a shell (recorded as `controller_only`).
+            return ["qualification_harness_missing: %s.py is not installed beside %s — under launchd the receipt "
+                    "is judged by its check_receipt, never by the controller's own comparison alone"
+                    % (HARNESS, os.path.abspath(__file__))]
         if harness is not None:
             config = self.launch_config(cfg)
             missing = sorted(set(getattr(harness, "CONFIG_KEYS", ())) - set(config))
@@ -1490,7 +1656,14 @@ class Controller:
     def write_awaiting(self, slug, question, options, recommendation, evidence, item=None, blocks="loop"):
         directory = self.run / "awaiting"
         os.makedirs(directory, exist_ok=True)
-        aid = "AW-%s-%s" % (utc("%Y%m%dT%H%M%SZ"), slug)
+        stamp = utc("%Y%m%dT%H%M%SZ")
+        aid, t = "AW-%s-%s" % (stamp, slug), calendar.timegm(time.strptime(stamp, "%Y%m%dT%H%M%SZ"))
+        # an id no item ever had — open, answered or closed: a second item of this slug within the same second
+        # neither replaces the first nor is born answered by the decision that lies beside the old id
+        while any(os.path.lexists(x) for x in (directory / (aid + ".json"), directory / (aid + OWNER_DECISION_SUFFIX),
+                                               directory / AWAITING_DONE / (aid + ".json"))):
+            t += 1
+            aid = "AW-%s-%s" % (utc("%Y%m%dT%H%M%SZ", t), slug)
         doc = {"schema": "ky.awaiting/1", "id": aid, "created_at": utc(),
                "raised_by": {"role": self.role, "session_id": self.controller_id, "job_id": None},
                "item": item or "loop.%s" % self.role, "question": question, "options": options,
@@ -1527,22 +1700,29 @@ class Controller:
         return doc
 
     def raise_precondition(self, reasons):
-        """The ONE shape of a refusal: STOP_<role>, one awaiting item (none while one is open) with one
-        notification, `enabled: false`. Each step is attempted whatever became of the others, and none of them can
-        raise: this is also where an unexpected exception ends, and it must end in exit 0."""
+        """The ONE shape of a refusal: STOP_<role>, one awaiting item with one notification, `enabled: false`.
+        No second item and no second notification while an item for THESE reasons is open — the same refusal,
+        met again at a restart, is before the owner already. A refusal for other reasons is a new item (R16): the
+        item tells the owner to correct the cause and start the loop again, nobody has to answer or close it, and
+        a later, different refusal must not hide behind it with nobody told. Each step is attempted whatever
+        became of the others, and none of them can raise: this is also where an unexpected exception ends, and it
+        must end in exit 0."""
         slug = "loop-%s-precondition" % self.role
         self.log("REFUSED launch: " + "; ".join(reasons))
 
         def item():
-            if self.open_awaiting(slug):
-                return
+            evidence = ["precondition: %s" % flat(r, 400) for r in reasons]
+            for path in self.open_awaiting(slug):
+                doc = read_json(path)[0]
+                if isinstance(doc, dict) and doc.get("evidence") == evidence:
+                    return                      # this very refusal is before the owner already
             doc = self.write_awaiting(
                 slug, "The %s loop controller refused to launch because a launch precondition failed. "
                       "Correct the cause and restart, or keep the loop stopped?" % self.role,
                 [{"id": "fix-and-restart", "text": "Correct the failed precondition(s), then run "
                                                    "`kyctl.sh start %s --clear-stop`." % self.role},
                  {"id": "keep-stopped", "text": "Leave the %s loop stopped." % self.role}],
-                "fix-and-restart", ["precondition: %s" % flat(r, 400) for r in reasons])
+                "fix-and-restart", evidence)
             self.notify("%s loop stopped: launch precondition failed (%s); see %s"
                         % (self.role, flat(reasons[0], 120), doc["id"]), "decision")
 
@@ -1563,13 +1743,134 @@ class Controller:
                 out[entry["id"]] = entry
         return out
 
-    def awaiting_blocks(self, authored=None):
-        """(loop_blocked, blocked item keys, ids) from open owner-waits. Everything the controller raised itself
-        is excluded (its items act through STOP, the breaker or as plain attention, and resolving them is not
-        changed evidence). `authored`, when given, is filled with the ids of the items a JOB of this role raised
-        (raised_by.role is this role and raised_by.job_id is set) — they block like any other, but a run is never
-        credited with a "changed dependency" for an owner-wait a job wrote (N-02)."""
+    def wait_target(self, doc, scope=None):
+        """What the owner-wait `doc` holds up FOR THIS ROLE → ("loop", None) · ("item", key) · None.
+        None for everything this role's controller raised itself, an item-level wait of its own apart (its other
+        items act through STOP, the breaker or as plain attention, and resolving them is not changed evidence).
+        A loop-level wait counts only when it names this loop or this role raised it. `scope`, when given, is the
+        keys of the items THIS role can work on (item_keys()): an item-level wait about anything else — another
+        role's wait for another item — is None too (L3-01), judged by the very comparison is_blocked() makes."""
+        raised = doc.get("raised_by") if isinstance(doc.get("raised_by"), dict) else {}
+        if raised.get("role") == self.role and str(raised.get("session_id", "")).startswith("CTL-") \
+                and raised.get("job_id") is None and doc.get("blocks") != "item":
+            return None                         # this role's controller wrote it: STOP / breaker / attention
+        item, blocks = str(doc.get("item", "")), doc.get("blocks")
+        if blocks == "loop" and (item == "loop.%s" % self.role or raised.get("role") == self.role):
+            return "loop", None
+        if blocks == "item" and item:
+            key = item.split(".", 1)[1] if item.startswith(("step.", "msg.")) else item
+            if scope is not None and not any(self.is_blocked(k, (key,)) for k in scope):
+                return None                     # not a wait of this role: it neither blocks nor counts here
+            return "item", key
+        return None
+
+    def owner_answers(self):
+        """{awaiting id: {"record", "command", "path"}} — the OWNER's recorded answers, and nothing else (R15).
+        `<id>.owner_decision.json` in $KY_RUN/awaiting is one only when
+          * it is a ky.owner_decision/1 object naming that awaiting id — the id of the item it lies beside — and
+          * the command it names is in the queue as an acceptable `decide` for that awaiting id, with that
+            answer, QUEUED or APPLIED. The queue admits the cockpit as its only sender, and those two states are
+            what kyveto.py reads as "the owner decided" as well.
+        A record no such command stands behind — a surrogate's, a job's, one written by hand — is not an answer,
+        whatever it says of itself: it releases nothing and is no evidence (so no wait, a hard stop least of all,
+        is released by anything but an owner `decide`). Nor is there an answer while the queue cannot be read:
+        unknown is never an answer."""
+        directory = self.run / "awaiting"
+        paths = sorted(directory.glob("*" + OWNER_DECISION_SUFFIX)) if directory.is_dir() else []
+        if not paths:
+            return {}
+        try:
+            self.load_siblings()
+            decides = {e["doc"]["id"]: e["doc"] for e in self.kc.scan(self.run)[0]
+                       if not e["invalid"] and e["doc"]["command"] == "decide"
+                       and e["doc"]["state"] in ("QUEUED", "APPLIED")}
+        except (Refusal, OSError):
+            return {}
+        out = {}
+        for p in paths:
+            aid = p.name[:-len(OWNER_DECISION_SUFFIX)]
+            rec, _ = read_json(p)
+            if not isinstance(rec, dict) or rec.get("schema") != OWNER_DECISION_SCHEMA or rec.get("awaiting_id") != aid:
+                continue
+            cmd = decides.get(rec["command_id"]) if isinstance(rec.get("command_id"), str) else None
+            if cmd is None or cmd["args"].get("awaiting_id") != aid or cmd["args"].get("answer") != rec.get("answer"):
+                continue
+            out[aid] = {"record": rec, "command": cmd, "path": p}
+        return out
+
+    def handler_answers(self):
+        """{awaiting id: {"record": {"wait": the item}, "decision", "path"}} — the owner-waits of a veto class
+        that the veto HANDLER itself completed (R18, L5-01): the surrogate leaves such an item in $KY_RUN/awaiting
+        and kyveto.py never moves one, so this is where an executed veto-class decision has its end. One counts
+        only when ALL of this holds, read from the handler's own files and judged by its own rule:
+          * DECISIONS_SURROGATE.jsonl can be read line for line (kyveto.load_decisions reports no problem — while
+            one exists no decision's state is known) and holds a decision whose every line is of class `veto` and
+            names THAT awaiting id;
+          * the handler's execute action record for that decision, `<SD id>.execute`, is DONE — a record of the
+            veto role's controller or supervisor, of the class executor's kind, naming that decision. A log line
+            is never that record: a bare EXECUTED line releases nothing;
+          * the decision reads EXECUTED as the handler accepts it (kyveto.first_terminal with that record);
+          * the wait is not a hard stop: neither its raiser called it one (class_hint) nor does any line of the
+            log about that awaiting id. A hard stop is released by an owner `decide` only (owner_answers()).
+        PENDING_VETO, EFFECTIVE, VETOED and FAILED therefore still block, and so does whatever cannot be read:
+        unknown is never an answer. `path` is the handler's record — the evidence the release is counted by."""
+        log = self.run / "DECISIONS_SURROGATE.jsonl"
+        if not log.is_file():
+            return {}
+        try:
+            self.load_siblings()
+            history, problems, unusable = self.kv.load_decisions(log)
+        except (Refusal, OSError):
+            return {}
+        if problems:
+            return {}
+        hard = {line.get("awaiting") for lines in history.values() for line in lines
+                if line.get("class") == "hard_stop"}
+        out, directory = {}, self.run / "awaiting"
+        for did, lines in sorted(history.items()):
+            aid = lines[0].get("awaiting")
+            if did in unusable or not isinstance(aid, str) or not self.kc.AW_RE.match(aid) or aid in hard \
+                    or aid in out or any(line.get("class") != "veto" or line.get("awaiting") != aid for line in lines):
+                continue
+            try:
+                rec = self.ka.load(self.run, did + ".execute")
+            except (self.ka.ActionError, OSError):
+                continue
+            actor = rec.get("actor") if isinstance(rec.get("actor"), dict) else {}
+            inputs = rec.get("inputs") if isinstance(rec.get("inputs"), dict) else {}
+            if rec["state"] != "DONE" or actor.get("role") != "veto" \
+                    or actor.get("holder_kind") not in ("controller", "supervisor") \
+                    or not str(rec.get("kind", "")).startswith(VETO_EXECUTE_KIND) or inputs.get("decision_id") != did \
+                    or self.kv.first_terminal(lines, True) != "EXECUTED":
+                continue
+            doc = None
+            for path in (directory / (aid + ".json"), directory / AWAITING_DONE / (aid + ".json")):
+                doc, _ = read_json(path)
+                if isinstance(doc, dict):
+                    break
+            if not isinstance(doc, dict) or doc.get("class_hint") == "hard_stop":
+                continue
+            out[aid] = {"record": {"wait": doc}, "decision": did, "path": self.ka.record_path(self.run, did + ".execute")}
+        return out
+
+    def wait_answers(self):
+        """Every answer an owner-wait can have: the veto handler's completed decision (handler_answers(), R18)
+        and the OWNER's `decide` (owner_answers(), R15), which stands before it when both are there."""
+        return dict(self.handler_answers(), **self.owner_answers())
+
+    def awaiting_blocks(self, authored=None, scope=None, answers=None):
+        """(loop_blocked, blocked item keys, ids) from the owner-waits that are OPEN and UNANSWERED: the files of
+        $KY_RUN/awaiting (not of awaiting/done/) that hold this role up (wait_target()) and have no answer of the
+        owner beside them. An owner-wait the owner answered, or a veto-class one whose decision the veto handler
+        itself completed — wait_answers(), `answers` when the caller has them already — no longer blocks its
+        item or its loop and is not counted (R15, R18: an answered wait has an end; the controller closes it,
+        and until it has, it is answered all the same).
+        An unanswered one blocks, whatever else lies beside it. `authored`, when given, is filled with the ids of
+        the items a JOB of this role raised (raised_by.role is this role and raised_by.job_id is set) — they block
+        like any other, but a run is never credited with a "changed dependency" for an owner-wait a job wrote
+        (N-02). `scope`: see wait_target()."""
         loop_blocked, items, ids = False, set(), []
+        answers = self.wait_answers() if answers is None else answers
         directory = self.run / "awaiting"
         for p in sorted(directory.glob("*.json")) if directory.is_dir() else []:
             if p.name.endswith(OWNER_DECISION_SUFFIX):  # the owner's recorded answer beside an item, not an item
@@ -1577,23 +1878,37 @@ class Controller:
             doc, _ = read_json(p)
             if not isinstance(doc, dict):
                 continue
+            target = self.wait_target(doc, scope)
+            if target is None or p.stem in answers:
+                continue
             raised = doc.get("raised_by") if isinstance(doc.get("raised_by"), dict) else {}
             aid = str(doc.get("id", p.stem))
-            if raised.get("role") == self.role and str(raised.get("session_id", "")).startswith("CTL-") \
-                    and raised.get("job_id") is None and doc.get("blocks") != "item":
-                continue                        # this role's controller wrote it: STOP / breaker / attention
-            item, blocks = str(doc.get("item", "")), doc.get("blocks")
-            counted = False
-            if blocks == "loop" and (item == "loop.%s" % self.role or raised.get("role") == self.role):
-                loop_blocked = counted = True
-            elif blocks == "item" and item:
-                items.add(item.split(".", 1)[1] if item.startswith(("step.", "msg.")) else item)
-                counted = True
-            if counted:
-                ids.append(aid)
-                if authored is not None and raised.get("role") == self.role and raised.get("job_id") is not None:
-                    authored.add(aid)
+            if target[0] == "loop":
+                loop_blocked = True
+            else:
+                items.add(target[1])
+            ids.append(aid)
+            if authored is not None and raised.get("role") == self.role and raised.get("job_id") is not None:
+                authored.add(aid)
         return loop_blocked, items, sorted(ids)
+
+    def answered_waits(self, scope=None, answers=None):
+        """[[awaiting id, sha256 of the owner's decision record]] — the owner-waits of this loop, or of an item
+        this role can work on, that the OWNER has answered: a changed dependency, and one no run authored — also
+        when a job of this role had raised the wait (R15). Judged by wait_target(), exactly as an open wait is,
+        on what the decision record says was asked (`wait`), else on the item itself, open or closed. The same
+        for a veto-class wait the veto handler released (R18): there the sha256 is that of the handler's DONE
+        execute record."""
+        out = []
+        for aid, answer in sorted((self.wait_answers() if answers is None else answers).items()):
+            doc = answer["record"].get("wait")
+            for path in (self.run / "awaiting" / (aid + ".json"), self.run / "awaiting" / AWAITING_DONE / (aid + ".json")):
+                if isinstance(doc, dict):
+                    break
+                doc, _ = read_json(path)
+            if isinstance(doc, dict) and self.wait_target(doc, scope) is not None:
+                out.append([aid, sha_file(answer["path"])])
+        return out
 
     @staticmethod
     def is_blocked(key, blocked):
@@ -1643,27 +1958,62 @@ class Controller:
         msgs = self.poll_inboxes()
         if msgs is None or loop_blocked:
             return []
-        items, seen = [], set()
+        items, seen, keys = [], set(), set()
         for stream, m in msgs:
             mid = str(m.get("msg_id", ""))
-            if not ID_RE.match(mid) or mid in seen or self.is_blocked(mid, blocked) \
-                    or (self.run / "handled" / ("msg.%s.json" % mid)).exists():
+            if not ID_RE.match(mid) or mid in seen or (self.run / "handled" / ("msg.%s.json" % mid)).exists():
+                continue
+            keys.add(mid)                       # asked of is_blocked() just below: a wait about it is this role's
+            if self.is_blocked(mid, blocked):
                 continue
             seen.add(mid)
             items.append({"id": "msg." + mid, "kind": "message", "key": mid, "stream": stream, "message": m})
+        self.inbox_keys = keys
         return items[:BATCH_MAX]
 
-    def verify_wave_b_done(self):
-        """WAVE_B_DONE is derived, never believed from a file's existence (plan §13)."""
-        receipt, err = read_json(self.run / "INSTALL_RECEIPT.json")
-        if err or not isinstance(receipt, dict) or receipt.get("mode") != "final":
-            return False, "the installation receipt is not a final receipt"
-        marker, _ = read_json(self.run / "WAVE_B_DONE")
-        if not isinstance(marker, dict) or marker.get("final_receipt_sha256") != sha_file(self.run / "INSTALL_RECEIPT.json"):
-            return False, "the marker does not bind the current final receipt"
-        return True, "final receipt %s" % marker["final_receipt_sha256"][:12]
+    def item_keys(self, items=()):
+        """The keys of the items this role can work on — exactly what eligible_items() asks is_blocked() about:
+        the Wave B steps (planner), or the unhandled messages of the last inbox poll together with the given
+        work items (conductor). An owner-wait about any other item is not a dependency of this role (L3-01)."""
+        if self.role == "planner":
+            return [step for step, _ in PLANNER_STEPS]
+        return sorted(self.inbox_keys | {str(it["key"]) for it in items if isinstance(it, dict) and it.get("key")})
 
-    def derive_completion(self, accepted):
+    def verify_wave_b_done(self):
+        """WAVE_B_DONE is derived, never believed from a file's existence or from what it says of itself (plan
+        §13, L3-02). The marker is re-derived each time it is met: every Wave B step is accepted in the role
+        state with the very evidence hash the marker records, the marker binds the current final receipt and the
+        current VERSIONS.json, and what derive_completion() itself requires holds NOW (completion_problems():
+        a final receipt, VERSIONS.json, a passing normal kyversion.sh). → (True, what was verified) or
+        (False, the first thing that does not hold)."""
+        marker, _ = read_json(self.run / "WAVE_B_DONE")
+        if not isinstance(marker, dict):
+            return False, "the marker is not a JSON object"
+        steps = [s for s, _ in PLANNER_STEPS]
+        state, err = self.read_role_state()
+        if err:
+            return False, "the role state cannot be read (%s)" % err
+        accepted, recorded = self.accepted_steps(state), marker.get("step_evidence")
+        if marker.get("steps") != steps or not isinstance(recorded, dict):
+            return False, "the marker does not record the evidence of %s" % ", ".join(steps)
+        for step in steps:
+            if step not in accepted:
+                return False, "%s is not accepted in %s" % (step, self.state_path.name)
+            if recorded.get(step) != accepted[step]["evidence_sha256"]:
+                return False, "the marker's evidence for %s differs from the accepted evidence" % step
+        for name, field in (("INSTALL_RECEIPT.json", "final_receipt_sha256"), ("VERSIONS.json", "versions_sha256")):
+            now = sha_file(self.run / name)
+            if now is None or marker.get(field) != now:
+                return False, "the marker does not bind the current %s" % name
+        problems = self.completion_problems()
+        if problems:
+            return False, "; ".join(problems)
+        return True, "accepted %s, final receipt %s, kyversion.sh passed" % (", ".join(steps), marker["final_receipt_sha256"][:12])
+
+    def completion_problems(self):
+        """What completion needs besides the accepted steps — the ONE list derive_completion() and
+        verify_wave_b_done() both judge by: a final installation receipt, VERSIONS.json and a passing normal
+        (argument-less) kyversion.sh, which is run only when the files are there (a missing helper is not a pass)."""
         receipt, err = read_json(self.run / "INSTALL_RECEIPT.json")
         problems = []
         if err or not isinstance(receipt, dict) or receipt.get("mode") != "final":
@@ -1674,6 +2024,10 @@ class Controller:
             rc = self.run_helper("kyversion.sh", [], 300)
             if rc != 0:
                 problems.append("normal kyversion.sh did not pass (rc=%s)" % rc)
+        return problems
+
+    def derive_completion(self, accepted):
+        problems = self.completion_problems()
         if problems:
             raise Refusal(["completion_unverified: B-3, B-4 and B-5 are recorded as accepted but " + "; ".join(problems)])
         steps = [s for s, _ in PLANNER_STEPS]
@@ -1685,14 +2039,19 @@ class Controller:
         self.log("WAVE_B_DONE derived from accepted B-3…B-5 evidence and the final receipt")
 
     # ---- progress and breaker evidence
-    def dependency_fingerprint(self, external_only=False):
-        """A digest of the external dependencies a run may be waiting for: the open owner-waits that block this
-        role, the installation receipt, the manifests, the owner's resume, the release receipt and the
-        activation chain. With `external_only`, owner-waits a job of this role raised are left out: a run that
-        only wrote an owner-wait has changed nothing it did not author (N-02)."""
-        authored = set()
-        _, _, ids = self.awaiting_blocks(authored)
-        parts = {"awaiting": [i for i in ids if i not in authored] if external_only else ids}
+    def dependency_fingerprint(self, external_only=False, keys=None):
+        """A digest of the external dependencies a run may be waiting for: the open, unanswered owner-waits that
+        block this loop or an item this role can work on (`keys`, default item_keys() — never another role's wait
+        for another item, L3-01), the owner's ANSWERS to such waits (answered_waits(), R15), the installation
+        receipt, the manifests, the owner's resume, the release receipt and the activation chain. With
+        `external_only`, owner-waits a job of this role raised are left out: a run that only wrote an owner-wait
+        has changed nothing it did not author (N-02). The owner's answer to such a wait stays in: no run authors
+        that."""
+        authored, answers = set(), self.wait_answers()
+        scope = self.item_keys() if keys is None else keys
+        _, _, ids = self.awaiting_blocks(authored, scope=scope, answers=answers)
+        parts = {"awaiting": [i for i in ids if i not in authored] if external_only else ids,
+                 "answered": self.answered_waits(scope, answers)}
         for name in ("INSTALL_RECEIPT.json", "VERSIONS.bootstrap.json", "VERSIONS.json", "OWNER_RESUME.json",
                      "RELEASE_RECEIPT.json"):
             parts[name] = sha_file(self.run / name)
@@ -1716,12 +2075,17 @@ class Controller:
                 out.append([p.name, sha_file(p)])
         return out
 
-    def accepted_summary(self):
+    def accepted_summary(self, keys=None):
+        """Accepted work and the two dependency fingerprints, taken over `keys` (default item_keys()). The keys
+        are part of the summary: a run's "after" is taken over the keys of its "before", so that the two differ
+        only when a dependency of this role did (L3-01)."""
         state, _ = read_json(self.state_path)
         ids = sorted(self.accepted_steps(state)) if isinstance(state, dict) else []
+        keys = self.item_keys() if keys is None else sorted(str(k) for k in keys)
         return {"accepted_count": len(ids), "accepted_digest": sha_bytes("\n".join(ids).encode()),
-                "dependency_fingerprint": self.dependency_fingerprint(),
-                "external_fingerprint": self.dependency_fingerprint(external_only=True)}
+                "item_keys": keys,
+                "dependency_fingerprint": self.dependency_fingerprint(keys=keys),
+                "external_fingerprint": self.dependency_fingerprint(external_only=True, keys=keys)}
 
     def evidence_fingerprint(self):
         """What must change before an open breaker may be reopened: accepted work, external dependencies,
@@ -1818,7 +2182,7 @@ class Controller:
             campaign = None
             if role == "campaign":
                 try:
-                    campaign = ka.acquire_lock(self.run, "campaign", self.controller_id, log=self.log)
+                    campaign = ka.acquire_lock(self.run, "campaign", self.controller_id, log=self.log_once)
                 except ka.LockUnknown as e:      # never taken over: the command waits, and somebody is told
                     self.lock_attention("campaign", e)
                     self.commands_blocked = "campaign_lock_owner_unknown"
@@ -1836,10 +2200,12 @@ class Controller:
             finally:
                 if campaign is not None:
                     ka.release_lock(campaign)
+        self.close_answered_waits()             # R15: an answered owner-wait an earlier look could not close
         return settled
 
-    def apply_one(self, role, doc):
-        """→ True when the command is settled (APPLIED or REJECTED, now or earlier); False when it has to wait."""
+    def apply_one(self, role, doc, in_order=True):
+        """→ True when the command is settled (APPLIED or REJECTED, now or earlier); False when it has to wait.
+        `in_order=False` (kycommands.apply) is the veto role's: its commands have independent targets."""
         kc, ka, cid = self.kc, self.ka, doc.get("id")
         args = doc.get("args") if isinstance(doc.get("args"), dict) else {}
         item = None
@@ -1847,7 +2213,8 @@ class Controller:
                 and kc.AW_RE.match(args["awaiting_id"]):
             # §4a.6: an awaiting item is locked by its id before it is acted on; the handler re-reads it afterwards
             try:
-                item = ka.acquire_lock(self.run, "awaiting." + args["awaiting_id"], self.controller_id, log=self.log)
+                item = ka.acquire_lock(self.run, "awaiting." + args["awaiting_id"], self.controller_id,
+                                       log=self.log_once)
             except ka.LockUnknown as e:
                 self.lock_attention("awaiting." + args["awaiting_id"], e)
                 self.commands_blocked = "awaiting_item_lock_owner_unknown: %s" % args["awaiting_id"]
@@ -1860,7 +2227,8 @@ class Controller:
         self.own_actions.add("CMD-%s" % cid)
         try:
             status, out = kc.apply(self.run, cid, self.controller_id, lambda cmd: self.handle_command(role, cmd),
-                                   observer=lambda record: self.observe_command(role, record), log=self.log)
+                                   observer=lambda record: self.observe_command(role, record),
+                                   in_order=in_order, log=self.log_once)
         except ka.LockBusy:
             self.commands_blocked = "action_record_busy: CMD-%s" % cid
             return False
@@ -1955,35 +2323,304 @@ class Controller:
         raise Reject("unsupported_by_%s_role: %s" % (self.role, name))
 
     def record_owner_decision(self, cmd, args):
-        """`decide`: the owner's answer goes beside the awaiting item as <id>.owner_decision.json — once — and counts
-        as changed evidence for this role's breaker. The item itself stays; closing it is its consumer's act."""
+        """`decide` (R15): an answered owner-wait has an end. In this order, under the command's ONE action record
+        (CMD-<id>, kycommands.apply):
+          1. the owner's answer goes beside the awaiting item as <id>.owner_decision.json — exclusively, once,
+             read-only — together with what was asked (`wait`), so that a job can read both after the item is
+             closed. From then on the wait no longer blocks (owner_answers(), awaiting_blocks());
+          2. for the item this controller raised for a job action it could not observe, the chosen option is
+             carried out (settle_job_action());
+          3. the item is closed: moved to awaiting/done/ (move_to_done()).
+        It is changed evidence for this role: the no-progress count starts again, the breaker and the sub-step
+        window read the answer, and the dependency fingerprints carry it (answered_waits()).
+
+        A controller that dies after step 1 leaves the command QUEUED and its action record unfinished: the next
+        one is asked what became of it (observe_command — done only once the item is closed), runs this handler
+        again, finds its own record — no second one is ever written — and completes steps 2 and 3. Once the record
+        is written nothing here raises: the command reads APPLIED, its result says what could not be completed
+        (`closed: null`, `close_error`), and close_answered_waits() finishes that at a later look.
+
+        Rejected, with nothing written: an item that is not open or cannot be read; one that is not this role's
+        (neither raised by this role, nor about its loop, nor about an item it works on — the role a wait holds
+        up answers for it, whoever raised it); one the owner has answered already; and, for a job-action item,
+        an answer that names none of its options. A record lying beside the item that is NOT the owner's answer
+        never stands in the owner's way: it is kept, set aside under awaiting/done/."""
         Reject, cid, aid = self.kc.Reject, cmd["id"], args.get("awaiting_id")
         if not isinstance(aid, str) or not self.kc.AW_RE.match(aid):
             raise Reject("awaiting_item_not_open: no usable awaiting id")
         path = self.run / "awaiting" / (aid + ".json")
+        out = path.with_name(aid + OWNER_DECISION_SUFFIX)
+        existing, eerr = read_json(out)
+        mine = isinstance(existing, dict) and existing.get("schema") == OWNER_DECISION_SCHEMA \
+            and (existing.get("command_id"), existing.get("awaiting_id"), existing.get("answer")) \
+            == (cid, aid, args.get("answer"))               # this very command wrote it, in an earlier application
+        answered = None if mine else self.owner_answers().get(aid)
+        already = "awaiting_item_already_answered: %s by command %s" % (
+            aid, answered["record"].get("command_id") if answered else "?")
         doc, err = read_json(path)                          # the fresh look, under the item's lock
         if err == "missing":
-            raise Reject("awaiting_item_not_open: %s" % aid)
+            if mine:                                        # … and got as far as closing the item: nothing is left
+                closed = path.parent / AWAITING_DONE / path.name
+                return {"awaiting_id": aid, "owner_decision": str(out), "sha256": sha_file(out),
+                        "closed": str(closed) if closed.is_file() else None, "reconciled": True}
+            raise Reject(already if answered else "awaiting_item_not_open: %s" % aid)
         if err or not isinstance(doc, dict):
             raise Reject("awaiting_item_unreadable: %s" % aid)
         raised = doc.get("raised_by") if isinstance(doc.get("raised_by"), dict) else {}
-        if doc.get("item") != "loop.%s" % self.role and raised.get("role") != self.role:
+        if doc.get("item") != "loop.%s" % self.role and raised.get("role") != self.role \
+                and self.wait_target(doc, self.item_keys()) is None:
             raise Reject("not_this_roles_item: %s was raised by %r for %r; address the role that owns it"
                          % (aid, raised.get("role"), doc.get("item")))
-        out = path.with_name(aid + OWNER_DECISION_SUFFIX)
-        record = {"schema": "ky.owner_decision/1", "awaiting_id": aid, "answer": args.get("answer"),
-                  "command_id": cid, "from": cmd.get("from"), "command_created_at": cmd.get("created_at"),
-                  "applied_at": utc(), "applied_by": {"role": self.role, "controller_id": self.controller_id},
-                  "awaiting_sha256": sha_file(path)}
-        text = json.dumps(record, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
-        if not self.ka.write_exclusive(out, text, mode=0o444):
-            existing, _ = read_json(out)
-            if not (isinstance(existing, dict) and existing.get("command_id") == cid):
-                raise Reject("awaiting_item_already_answered: %s by command %s"
-                             % (aid, existing.get("command_id") if isinstance(existing, dict) else "?"))
-        self.ls(lambda d: dict(d, no_progress_count=0,
-                               evidence_changed={"at": utc(), "by": "command:" + cid, "awaiting_id": aid}))
-        return {"awaiting_id": aid, "owner_decision": str(out), "sha256": sha_file(out)}
+        if answered:
+            raise Reject(already)
+        if self.job_action_of(aid, doc) is not None and self.chosen_option(args.get("answer")) is None:
+            raise Reject("answer_not_an_option: %s is the item of a job action this controller could not observe; "
+                         "answer with one of its options: %s" % (aid, " | ".join(JOB_ACTION_OPTIONS)))
+        result = {"awaiting_id": aid, "owner_decision": str(out)}
+        if not mine:
+            if eerr != "missing":                           # something lies there, and it is not the owner's answer
+                try:
+                    result["set_aside"] = str(self.archive(
+                        out, "%s.owner_decision.set_aside.%s" % (aid, utc("%Y%m%dT%H%M%SZ"))))
+                except OSError as e:
+                    raise Reject("stray_decision_record_in_the_way: %s is not the owner's answer and could not be "
+                                 "set aside (%s)" % (out.name, type(e).__name__))
+                self.log("%s was not the owner's answer to %s: set aside as %s" % (out.name, aid, result["set_aside"]))
+            existing = {"schema": OWNER_DECISION_SCHEMA, "awaiting_id": aid, "answer": args.get("answer"),
+                        "command_id": cid, "from": cmd.get("from"), "command_created_at": cmd.get("created_at"),
+                        "applied_at": utc(), "applied_by": {"role": self.role, "controller_id": self.controller_id},
+                        "awaiting_sha256": sha_file(path),
+                        "wait": {k: doc.get(k) for k in ("item", "blocks", "class_hint", "raised_by", "question",
+                                                         "options", "recommendation", "deadline")}}
+            text = json.dumps(existing, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+            if not self.ka.write_exclusive(out, text, mode=0o444):
+                raise Reject("awaiting_item_already_answered: %s (a decision record appeared beside it)" % aid)
+        result["sha256"] = sha_file(out)
+        # the owner's answer stands: from here on nothing raises, and the result says what was not completed
+        result.update(self.close_answered_wait(aid, doc, existing))
+        try:
+            self.ls(lambda d: dict(d, no_progress_count=0,
+                                   evidence_changed={"at": utc(), "by": "command:" + cid, "awaiting_id": aid}))
+        except Exception as e:
+            result["loop_state"] = "not updated (%s)" % type(e).__name__
+            self.log("the owner's answer to %s is recorded; the loop state was not updated (%s)" % (aid, type(e).__name__))
+        return result
+
+    # ---- closing an answered owner-wait (R15): the chosen option of a job-action item, then the move
+    @staticmethod
+    def job_action_slug(action_id):
+        """The slug of the ONE awaiting item raised for a job's action record nobody could observe."""
+        return JOB_ACTION_SLUG + re.sub(r"[^a-z0-9-]", "-", action_id.lower())
+
+    @staticmethod
+    def chosen_option(answer):
+        """The option of a job-action item an answer names: its id, alone or before a colon (`happened`,
+        `did-not-happen: no PR was opened`), in any case; None for anything else."""
+        head = answer.split(":", 1)[0].strip().lower() if isinstance(answer, str) else ""
+        return head if head in JOB_ACTION_OPTIONS else None
+
+    def job_action_of(self, aid, doc):
+        """The id of the job's action record an awaiting item is about, when the item is the one a controller of
+        THIS role raised for a job action it could not observe (reconcile_job_record()); else None. The item
+        names the record in its evidence (`action: <id>`); it is taken for such an item only when a controller of
+        this role raised it, its own id carries the job-action slug of exactly that record, and the record id
+        lies in a job namespace of this role."""
+        raised = doc.get("raised_by") if isinstance(doc.get("raised_by"), dict) else {}
+        if raised.get("role") != self.role or not str(raised.get("session_id", "")).startswith("CTL-") \
+                or raised.get("job_id") is not None:
+            return None
+        for line in doc.get("evidence") if isinstance(doc.get("evidence"), list) else []:
+            if isinstance(line, str) and line.startswith("action: "):
+                action_id = line[len("action: "):]
+                if action_id.startswith("JOB-%s-" % self.ROLE) and re.fullmatch(
+                        r"AW-[0-9]{8}T[0-9]{6}Z-" + re.escape(self.job_action_slug(action_id)), aid):
+                    return action_id
+        return None
+
+    def settle_job_action(self, action_id, aid, record):
+        """Carry out the option the owner chose for a job action this controller could not observe: `happened`
+        settles the job's record as DONE, `did-not-happen` as FAILED (the next job may then do it under a record
+        of its own) — on the owner's word, and the result says so (settled_by: owner_decision, observed: false).
+        Idempotent: a record that is settled already, or that is not there, is left as it is.
+        → {"action_id", "state", "settled"}. A record that cannot be read or updated right now raises what
+        kyaction raises: the caller leaves the item open and comes back (close_answered_waits())."""
+        ka, option = self.ka, self.chosen_option(record.get("answer"))
+        try:
+            rec = ka.load(self.run, action_id)
+        except ka.ActionUnreadable:
+            raise
+        except ka.ActionError:
+            return {"action_id": action_id, "state": None, "settled": "no_record"}
+        actor = rec.get("actor") if isinstance(rec.get("actor"), dict) else {}
+        if actor.get("role") != self.role or not ka.is_job_record(rec, actor.get("run_id")):
+            return {"action_id": action_id, "state": rec["state"], "settled": "not_a_job_record_of_this_role"}
+        if rec["state"] != "INTENDED":
+            return {"action_id": action_id, "state": rec["state"], "settled": "already_settled"}
+        if option is None:
+            return {"action_id": action_id, "state": rec["state"], "settled": "no_option_named"}
+        result = {"settled_by": "owner_decision", "awaiting_id": aid, "command_id": record.get("command_id"),
+                  "answer": option, "observed": False}
+        after = (ka.complete if option == JOB_ACTION_OPTIONS[0] else ka.fail)(self.run, action_id, result)
+        self.log("job action %s settled as %s on the owner's answer to %s (%s)" % (action_id, after["state"], aid, option))
+        return {"action_id": action_id, "state": after["state"], "settled": option}
+
+    def archive(self, src, stem):
+        """Move the file `src` to $KY_RUN/awaiting/done/<stem>.json in one rename that never replaces a file (when
+        that name is taken: <stem>.<UTC>[.n].json). Nothing under awaiting/done/ is ever read as an open item or
+        as an answer. → the path it lies at now."""
+        done = self.run / "awaiting" / AWAITING_DONE
+        os.makedirs(done, exist_ok=True)
+        dst = done / (stem + ".json")
+        for n in range(1, 100):
+            try:
+                rename_exclusive(src, dst)
+                return dst
+            except FileExistsError:
+                dst = done / ("%s.%s%s.json" % (stem, utc("%Y%m%dT%H%M%SZ"), "" if n == 1 else ".%d" % n))
+        raise FileExistsError(errno.EEXIST, os.strerror(errno.EEXIST), str(dst))
+
+    def move_to_done(self, aid):
+        """Close an owner-wait: $KY_RUN/awaiting/<id>.json → awaiting/done/<id>.json, never deleted and never
+        onto another file. → where it lies now; None when there was nothing to move and nothing closed. An open
+        item that is byte for byte the closed one of that name (a breaker item written back under its old id) is
+        a duplicate: removed."""
+        src = self.run / "awaiting" / (aid + ".json")
+        dst = src.parent / AWAITING_DONE / src.name
+        if not os.path.lexists(src):
+            return str(dst) if dst.is_file() else None
+        if dst.is_file() and sha_file(src) is not None and sha_file(src) == sha_file(dst):
+            os.unlink(src)
+            return str(dst)
+        return str(self.archive(src, aid))
+
+    def close_answered_wait(self, aid, doc, record, answered="The owner's answer to %s is recorded"):
+        """Steps 2 and 3 of an applied `decide` for the open item `doc` and the owner's decision `record`:
+        idempotent, and total — it never raises. → {"closed": where the item lies now | None[, "close_error"]
+        [, "job_action"]}. An option that could not be carried out leaves the item where it is (answered, so it
+        blocks nothing), for the next look to finish both. `answered` says, in the one notice a failed close
+        raises, what released the wait (R18: the veto handler's executed decision rather than an owner answer)."""
+        out = {"closed": None}
+        try:
+            action_id = self.job_action_of(aid, doc)
+            if action_id is not None:
+                out["job_action"] = self.settle_job_action(action_id, aid, record)
+            out["closed"] = self.move_to_done(aid)
+        except Exception as e:
+            out["close_error"] = "%s: %s" % (type(e).__name__, flat(e, 160))
+            self.log_once("owner-wait %s is answered but could not be closed (%s): it blocks nothing, and is closed "
+                          "at a later look" % (aid, out["close_error"]))
+            self.raise_attention(
+                "loop-%s-answered-wait-not-closed" % self.role,
+                "%s, but the %s controller could not close the item (%s). It "
+                "blocks nothing, yet it still lies in run/awaiting as if it were open; the controller tries again "
+                "at every look. Repair what keeps it there?" % (answered % aid, self.role, out["close_error"]),
+                ["item: %s" % (self.run / "awaiting" / (aid + ".json")),
+                 "closed items go to: %s" % (self.run / "awaiting" / AWAITING_DONE),
+                 "error: %s" % out["close_error"]],
+                options=[{"id": "repair", "text": "Repair the named directory or record; the item is then closed "
+                                                  "by itself."},
+                         {"id": "acknowledge", "text": "Seen; nothing further."}],
+                message="%s loop: an answered owner-wait could not be closed (%s)" % (self.role, aid))
+        return out
+
+    def close_answered_waits(self):
+        """What an applied `decide` could not finish is finished here, at every look at the queue (R15): each
+        owner-wait still in $KY_RUN/awaiting that the OWNER answered through this role — the command reads
+        APPLIED and this role applied it — is closed now, under the item's lock (close_answered_wait()). One
+        whose command is still QUEUED is left to that command's own action record (apply_one). Never raises."""
+        if self.ka is None:
+            return
+        try:
+            for aid, answer in sorted(self.owner_answers().items()):
+                by, path = answer["record"].get("applied_by"), self.run / "awaiting" / (aid + ".json")
+                if answer["command"]["state"] != "APPLIED" or not isinstance(by, dict) or by.get("role") != self.role \
+                        or not path.is_file():
+                    continue
+                try:
+                    lock = self.ka.acquire_lock(self.run, "awaiting." + aid, self.controller_id, log=self.log_once)
+                except self.ka.LockUnknown as e:
+                    self.lock_attention("awaiting." + aid, e)
+                    continue
+                if lock is None:
+                    continue
+                try:
+                    doc, _ = read_json(path)                # the fresh look, under the item's lock
+                    if isinstance(doc, dict):
+                        self.close_answered_wait(aid, doc, answer["record"])
+                finally:
+                    self.ka.release_lock(lock)
+        except Exception as e:
+            self.log("answered owner-waits were not closed at this look (%s: %s)" % (type(e).__name__, flat(e, 160)))
+        self.close_executed_waits()
+
+    def close_executed_waits(self):
+        """R18: each owner-wait still in $KY_RUN/awaiting that the veto handler released (handler_answers()) and
+        that is THIS role's — about its loop, raised by it, or about an item it works on: the role a wait holds
+        up closes it, as it answers for it (record_owner_decision) — is moved to awaiting/done/ now, under the
+        item's lock and under ONE action record of this controller, AWCLOSE-<awaiting id>. Idempotent, and the
+        crash window is R15's: a record a dead controller left begun is found again here (`unfinished`) and
+        completed under the same id, moved or not (move_to_done() says where the item lies); reconcile_each()
+        never refuses a launch over it. A move that fails leaves the record open and the item where it is —
+        released, so it blocks nothing — tells somebody once, and is tried again at every look. The first close
+        is changed evidence for this role, as an applied `decide` is. Never raises."""
+        if self.ka is None:
+            return
+        try:
+            released = sorted(self.handler_answers().items())
+        except Exception as e:
+            self.log("executed veto-class waits were not looked at (%s: %s)" % (type(e).__name__, flat(e, 160)))
+            return
+        for aid, answer in released:
+            path, lock = self.run / "awaiting" / (aid + ".json"), None
+            try:
+                if not path.is_file():
+                    continue
+                lock = self.ka.acquire_lock(self.run, "awaiting." + aid, self.controller_id, log=self.log_once)
+                if lock is None:
+                    continue
+                doc, _ = read_json(path)                    # the fresh look, under the item's lock
+                raised = doc.get("raised_by") if isinstance(doc, dict) and isinstance(doc.get("raised_by"), dict) else {}
+                if not isinstance(doc, dict) or doc.get("class_hint") == "hard_stop" or (
+                        doc.get("item") != "loop.%s" % self.role and raised.get("role") != self.role
+                        and self.wait_target(doc, self.item_keys()) is None):
+                    continue
+                did = answer["decision"]
+                status, _ = self.begin_own(
+                    WAIT_CLOSE_PREFIX + aid, WAIT_CLOSE_KIND, {"awaiting_id": aid, "decision_id": did},
+                    {"awaiting": path.name}, "close owner-wait %s: awaiting/ → awaiting/%s/" % (aid, AWAITING_DONE))
+                if status == "in_progress":                 # another live controller is closing it right now
+                    continue
+                closed = self.close_answered_wait(
+                    aid, {}, {}, "The veto handler executed " + did + " for %s").get("closed")
+                if closed is None or status in ("done", "failed"):
+                    continue
+                self.ka.complete(self.run, WAIT_CLOSE_PREFIX + aid, {
+                    "closed": closed, "released_by": did + ".execute",
+                    "execute_record_sha256": sha_file(answer["path"])})
+                self.log("owner-wait %s closed: the veto handler executed %s for it" % (aid, did))
+                self.ls(lambda d: dict(d, no_progress_count=0,
+                                       evidence_changed={"at": utc(), "by": "veto:" + did, "awaiting_id": aid}))
+            except self.ka.LockUnknown as e:
+                self.lock_attention("awaiting." + aid, e)
+            except Exception as e:
+                self.log_once("executed veto-class wait %s was not closed at this look (%s: %s)"
+                              % (aid, type(e).__name__, flat(e, 160)))
+            finally:
+                if lock is not None:
+                    self.ka.release_lock(lock)
+
+    def observe_wait_close(self, record):
+        """kyaction observer for an AWCLOSE record an earlier controller left begun: the item lies under
+        awaiting/done/ and no longer in awaiting/ → done; otherwise not_done — close_executed_waits() then
+        completes it under the same record."""
+        aid = (record.get("inputs") or {}).get("awaiting_id") if isinstance(record.get("inputs"), dict) else None
+        if not isinstance(aid, str) or not ID_RE.match(aid):
+            return "unknown", {"reason": "the record names no awaiting id"}
+        src = self.run / "awaiting" / (aid + ".json")
+        dst = src.parent / AWAITING_DONE / src.name
+        if dst.is_file() and not os.path.lexists(src):
+            return "done", {"closed": str(dst), "reconciled": True}
+        return "not_done", {"open": os.path.lexists(src), "closed": dst.is_file()}
 
     def observe_command(self, role, record):
         """kyaction observer for a command whose earlier application died inside its handler: did the handler's
@@ -2021,13 +2658,21 @@ class Controller:
             return ("done", {"recorded": name, "role_state": self.state_path.name, "reconciled": True}) if found \
                 else ("not_done", {"recorded": False})
         if name == "decide" and isinstance(args.get("awaiting_id"), str) and self.kc.AW_RE.match(args["awaiting_id"]):
-            out = self.run / "awaiting" / (args["awaiting_id"] + OWNER_DECISION_SUFFIX)
+            # R15: a `decide` is done when its decision record is written AND the item is closed. A record of this
+            # command beside an item that is still open is the crash window: not_done — the handler runs again
+            # under the same action record, finds its own record (no second one) and completes the rest.
+            item = self.run / "awaiting" / (args["awaiting_id"] + ".json")
+            out = item.with_name(args["awaiting_id"] + OWNER_DECISION_SUFFIX)
             existing, err = read_json(out)
             if err and err != "missing":
                 return "unknown", {"error": "owner decision %s" % err}
             if isinstance(existing, dict) and existing.get("command_id") == cid:
+                if os.path.lexists(item):
+                    return "not_done", {"owner_decision": "written", "closed": False}
+                closed = item.parent / AWAITING_DONE / item.name
                 return "done", {"awaiting_id": args["awaiting_id"], "owner_decision": str(out),
-                                "sha256": sha_file(out), "reconciled": True}
+                                "sha256": sha_file(out), "closed": str(closed) if closed.is_file() else None,
+                                "reconciled": True}
         return "not_done", {"note": "no trace of this command's effect"}
 
     def status_facts(self):
@@ -2083,6 +2728,56 @@ class Controller:
         except Exception as e:                  # kycommands.QueueUnreadable, or anything else it cannot answer
             return "unknown: %s" % type(e).__name__
         return "pending: %s" % pending if pending else None
+
+    def commands_overdue(self):
+        """R16. A queued command that cannot be settled yet keeps its place — and, in the model loops, keeps
+        anything from being launched: a wait that ends when another actor lets go of what it holds (an item or
+        command lock, an application it began and has not finished). While it is short it is nobody's business.
+        Once it has lasted COMMANDS_OVERDUE_S, ONE attention item says which command waits and why — the loop
+        would otherwise rest in `commands_pending` for good behind a holder that never lets go. Nothing is taken
+        over and nothing is stopped: the wait goes on, and ends by itself when the holder does."""
+        if not self.commands_blocked:
+            self.commands_blocked_since = None
+            return
+        now = time.time()
+        if self.commands_blocked_since is None:
+            self.commands_blocked_since = now
+        if now - self.commands_blocked_since < COMMANDS_OVERDUE_S * self.scale:
+            return
+        minutes = int(COMMANDS_OVERDUE_S // 60)
+        self.raise_attention(
+            "loop-%s-commands-not-settled" % self.role,
+            "A queued owner command of the %s role has not been settled for %d minutes (%s). %s Another actor "
+            "holds what it needs and has not let go; nothing is taken over. Is that actor still at work?"
+            % (self.role, minutes, flat(self.commands_blocked, 200),
+               "The veto handler goes on ticking." if self.role == "veto" else "Nothing is launched meanwhile."),
+            ["waiting for: %s" % flat(self.commands_blocked, 300), "queue: %s" % (self.run / "commands"),
+             "locks: %s" % (self.run / "locks"), "action records: %s" % (self.run / "actions")],
+            options=[{"id": "end-the-holder", "text": "The holder is stuck or gone: end it; the command is then "
+                                                      "applied by itself."},
+                     {"id": "leave", "text": "The holder is at work: leave it."}],
+            message="%s loop: a queued command has not been settled for %d minutes" % (self.role, minutes))
+
+    def queue_attention(self, pause):
+        """The owner's command queue cannot be read. Unknown is honoured as a pause (owner_pause()), so nothing
+        is launched — but this pause does not end by an owner's `resume`: a command file has to be repaired or
+        removed. ONE attention item says so while that lasts (R16: the loop would otherwise rest in the ordinary
+        waiting state `owner_paused` with nobody told); the loop is not stopped and goes on by itself once the
+        queue can be read again."""
+        try:
+            problems = list(self.kc.pause_state(self.run).get("problems") or [])
+        except Exception as e:
+            problems = ["the queue could not be read at all (%s)" % type(e).__name__]
+        self.raise_attention(
+            "loop-%s-command-queue-unreadable" % self.role,
+            "The %s loop launches nothing because the owner's command queue cannot be read (%s): whether a pause "
+            "is in force is unknown, and unknown is honoured as a pause. No `resume` ends this one. Repair the "
+            "queue?" % (self.role, flat(pause, 80)),
+            ["queue: %s" % (self.run / "commands")] + ["problem: %s" % flat(x, 240) for x in problems[:10]],
+            options=[{"id": "repair", "text": "Repair or remove the named command file(s) by hand; the %s loop "
+                                              "then goes on by itself." % self.role},
+                     {"id": "acknowledge", "text": "Seen; the loop stays paused meanwhile."}],
+            message="%s loop is paused: the owner's command queue cannot be read" % self.role)
 
     def launch_gate(self):
         """The last look before a launch. → the reason the launch must not happen now, or None. The same durable
@@ -2292,7 +2987,9 @@ class Controller:
         """One unfinished record a job of this role wrote (the job has exited). An observer for its kind settles
         it (done → DONE; not_done → FAILED, from the observation — the next job does it under its own record).
         Without one, or when the observer cannot tell, it is UNKNOWN: recorded as such, ONE awaiting item naming
-        the record (once per record), never retried — and the loop goes on with other items. → the outcome."""
+        the record (once per record), never retried — and the loop goes on with other items. That item has an
+        end (R15): the owner's `decide` names one of its two options, and the controller that applies it settles
+        the record accordingly and closes the item (record_owner_decision, settle_job_action). → the outcome."""
         ka, aid, kind = self.ka, rec["action_id"], str(rec.get("kind"))
         actor = rec.get("actor") if isinstance(rec.get("actor"), dict) else {}
         raised = any(isinstance(x, dict) and x.get("outcome") == "unknown" for x in rec.get("reconciliations") or [])
@@ -2312,17 +3009,20 @@ class Controller:
                 or (items[0] if len(items) == 1 else None)
             why = detail.get("reason") if isinstance(detail, dict) else None
             self.raise_attention(
-                "job-action-" + re.sub(r"[^a-z0-9-]", "-", aid.lower()),
+                self.job_action_slug(aid),
                 "The %s job %s recorded the intention of a side effect (action %s, kind %s) and exited without "
                 "recording its result; the controller cannot observe what became of it (%s). It is not retried. "
                 "Did it happen?" % (self.role, actor.get("run_id"), aid, kind, flat(why, 160) or "unknown"),
-                ["action record: %s" % (self.run / "actions" / (aid + ".json")),
+                ["action: %s" % aid,                # what job_action_of() reads: the record an answer settles
+                 "action record: %s" % (self.run / "actions" / (aid + ".json")),
                  "intended transition: %s" % flat(rec.get("intended_transition"), 200),
                  "target: %s" % flat(json.dumps(target, sort_keys=True), 200)],
-                options=[{"id": "happened", "text": "It happened: settle the record as done (kyaction reconcile) and "
-                                                    "let the item go on."},
-                         {"id": "did-not-happen", "text": "It did not happen: settle the record as failed; the next "
-                                                          "job may do it under its own record."}],
+                options=[{"id": JOB_ACTION_OPTIONS[0], "text": "It happened: on your `decide` the %s controller "
+                                                               "settles the record as done and the item goes on."
+                                                               % self.role},
+                         {"id": JOB_ACTION_OPTIONS[1], "text": "It did not happen: on your `decide` the %s controller "
+                                                               "settles the record as failed; the next job may do "
+                                                               "it under its own record." % self.role}],
                 item=named["id"] if named else None, blocks="item" if named else "none",
                 message="%s loop: the outcome of job action %s is unknown" % (self.role, aid))
         return outcome
@@ -2496,6 +3196,9 @@ class Controller:
             if kind in ("notification", "dispatcher_start"):
                 self.reconcile_soft(rec)
                 continue
+            if kind == WAIT_CLOSE_KIND:         # never stops the loop: the next look at the queue completes it (R18)
+                ka.reconcile(self.run, aid, self.observe_wait_close, by=self.controller_id)
+                continue
             if kind == "launch":
                 run_id = (rec.get("target") or {}).get("run_id") if isinstance(rec.get("target"), dict) else None
                 handled.add(run_id)
@@ -2542,7 +3245,10 @@ class Controller:
         """Message locks, each followed by a fresh handled-state check (double-action guard, §4a.6). Taken through
         kyaction's lock — the one rule: atomic with its owner, taken over only from an owner that is positively
         gone. A lock held by a live actor skips that message; one whose owner cannot be judged skips it too and
-        raises one attention item (never taken over)."""
+        raises one attention item (never taken over). The ids skipped for a lock are left in self.items_waiting:
+        when nothing else remains, the loop WAITS for them (waiting state `items_locked`) — it never comes
+        straight back for another look."""
+        self.items_waiting = []
         if self.role != "conductor":
             return items
         kept = []
@@ -2551,8 +3257,10 @@ class Controller:
                 lock = self.ka.acquire_lock(self.run, it["id"], run_id, log=self.log)
             except self.ka.LockUnknown as e:
                 self.lock_attention(it["id"], e)
+                self.items_waiting.append(it["id"])
                 continue
             if lock is None:
+                self.items_waiting.append(it["id"])
                 continue
             self.item_locks[it["id"]] = lock
             if (self.run / "handled" / (it["id"] + ".json")).exists():
@@ -2562,7 +3270,7 @@ class Controller:
         return kept
 
     def lock_attention(self, name, error):
-        self.log("%s — skipped" % flat(error, 200))
+        self.log_once("%s — skipped" % flat(error, 200))
         self.raise_attention(
             "lock-owner-unknown-" + re.sub(r"[^a-z0-9-]", "-", name.lower()),
             "The lock %s exists and its owner cannot be judged alive or gone (%s). It is never taken over and never "
@@ -2591,11 +3299,13 @@ class Controller:
         return as_int(window.get("count")) if window.get("evidence") == evidence else 0
 
     def run_job(self, items):
+        """Launch ONE bounded child for those items and see it through. → "items_locked" when nothing was
+        launched because every remaining item is locked by another actor (the caller waits); None otherwise."""
         cfg = self.cfg
         run_id = self.new_run_id()
         items = self.lock_items(items, run_id)
         if not items:
-            return
+            return "items_locked" if self.items_waiting else None
         rs = self.scratch / "loops" / self.role / run_id
         out = rs / "out"
         os.makedirs(out / "checkpoints")
@@ -2604,7 +3314,7 @@ class Controller:
         state_bytes = self.state_path.read_bytes()
         snap = rs / "state.snapshot.json"
         write_atomic(snap, state_bytes, 0o444)
-        before = self.accepted_summary()
+        before = self.accepted_summary(self.item_keys(items))
         deadline = time.time() + cfg["deadline_seconds"] * self.scale
         fence = secrets.token_hex(16)
         caps, evidence = self.ls().get("substeps") or {}, self.substep_evidence()
@@ -2685,7 +3395,12 @@ class Controller:
                                                 wakeups=(d.get("counters") or {}).get("wakeups", 0) + (self.role == "conductor")),
                                expected_child={"run_id": run_id, "pid": None, "pgid": None, "process_start": None,
                                                "pending": True}, last_run_id=run_id))
-        self.write_owner("pending")             # BEFORE the child exists: a dead owner never looks child-less (R2)
+        try:
+            self.write_owner("pending")         # BEFORE the child exists: a dead owner never looks child-less (R2)
+        except Refusal:                         # kylock.sh would not record it: nothing is started, and that is
+            with guarded("finalize"):           # recorded as the launch that did not happen — then the refusal
+                self.finalize(record, None, "launch_failed", state_bytes=state_bytes, actions_before=set(actions_before))
+            raise
         try:
             with open(prompt_path, "rb") as fin, open(record["stdout_path"], "wb") as fo, \
                     open(record["stderr_path"], "wb") as fe:
@@ -2958,10 +3673,13 @@ class Controller:
         self.state_sha = sha_file(self.state_path)
         seen = detect_quota(record.get("stdout_path", ""), record.get("stderr_path", ""))
         quota, backoff = seen["refusal"], [None]
-        after = self.accepted_summary()         # before the controller raises anything of its own below
-        before = record.get("progress_before") or {}
+        before = record.get("progress_before") if isinstance(record.get("progress_before"), dict) else {}
+        keys = before.get("item_keys")          # the same items as "before": only a dependency OF THIS ROLE counts
+        keys = keys if isinstance(keys, list) and all(isinstance(k, str) for k in keys) else None
+        after = self.accepted_summary(keys)     # before the controller raises anything of its own below
         # a changed external dependency counts only when the run did not author it (N-02): owner-waits raised by
-        # a job of this role are in neither fingerprint
+        # a job of this role are in neither fingerprint — nor is any role's wait for an item that is not this
+        # role's to work on (L3-01)
         basis = "external_fingerprint" if before.get("external_fingerprint") else "dependency_fingerprint"
         dependency_changed = bool(before.get(basis)) and before[basis] != after[basis]
         progressed = (bool(accepted) or dependency_changed) and not refuse_all
@@ -3048,7 +3766,8 @@ class Controller:
         switch · the owner's queued commands · completion (planner) / a valid OWNER_RESUME (conductor) · the global
         HOLD · an owner pause · the circuit breaker · launch preconditions · quota backoff · sole-writer check ·
         eligible work · unfinished actions · and once more, immediately before the launch, STOP / enabled /
-        commands / HOLD / pause."""
+        commands / HOLD / pause. A launch that finds every item locked by another actor is a wait
+        (wait_items_locked), never an immediate second look."""
         while True:
             if self.signal:
                 raise Interrupted()
@@ -3063,9 +3782,10 @@ class Controller:
                 return 0
             if self.apply_commands():
                 continue                        # a command may have disabled the loop or changed its evidence
+            self.commands_overdue()             # R16: a queue that stays blocked says so, once
             if self.commands_blocked:
-                self.log("a queued command cannot be settled yet (%s): nothing is launched meanwhile"
-                         % self.commands_blocked)
+                self.log_once("a queued command cannot be settled yet (%s): nothing is launched meanwhile"
+                              % self.commands_blocked)
                 self.wait("commands_pending", COMMAND_POLL_S)
                 continue
             if self.role == "planner" and (self.run / "WAVE_B_DONE").exists():
@@ -3073,7 +3793,7 @@ class Controller:
                 if not ok:
                     raise Refusal(["wave_b_done_unverified: " + why])
                 self.disable("WAVE_B_DONE verified (%s)" % why)
-                self.log("Wave B complete (verified): exiting")
+                self.log("Wave B complete (verified: %s): exiting" % why)
                 return 0
             if self.role == "conductor" and self.owner_resume() is None:
                 self.log("no valid OWNER_RESUME.json: nothing to do, nothing raised")
@@ -3086,6 +3806,8 @@ class Controller:
                 if (st.get("pause") or {}).get("state") != pause:
                     self.log("owner pause (%s): no model job is launched until an owner resume" % pause)
                     self.ls(lambda d: dict(d, pause={"state": pause, "since": utc()}))
+                if pause.startswith("unknown"):
+                    self.queue_attention(pause)  # R16: THIS pause no owner resume ends — somebody has to look
                 self.wait("owner_paused", HOLD_POLL_S)
                 continue
             if st.get("pause"):
@@ -3117,7 +3839,23 @@ class Controller:
             if closed:
                 self.log("launch withheld at the last look (%s)" % closed)
                 continue
-            self.run_job(items)
+            if self.run_job(items) == "items_locked":
+                self.wait_items_locked()
+
+    def wait_items_locked(self):
+        """Every eligible message is locked by another actor — a live one that is acting on it, or one that
+        cannot be judged (attention was raised). Nothing was launched and nothing is relaunched: this is a
+        waiting state of the CONTROLLER (`items_locked`, counted in counters.item_lock_waits), for one poll
+        period, after which every gate is read again from the top."""
+        held = sorted(self.items_waiting)
+
+        def fn(d):
+            counters = dict(d.get("counters") or {})
+            counters["item_lock_waits"] = as_int(counters.get("item_lock_waits")) + 1
+            return dict(d, counters=counters, item_lock_wait={"items": held, "at": utc()})
+        self.ls(fn)
+        self.log("nothing launched: %s locked by another actor; waiting" % ", ".join(held))
+        self.wait("items_locked", WAIT_POLL_S)
 
     def acquire(self):
         return self.acquire_lock()
@@ -3151,11 +3889,11 @@ class Controller:
 
     def main(self):
         """Exit 0 for every ending that launchd must not respawn — and that includes every UNEXPECTED exception
-        (R10): it becomes the one-awaiting-item + STOP + disabled refusal, never a traceback. Only a signal
-        without a STOP file ends non-zero."""
+        (R10) and a refused environment (N4-01): each becomes the one-awaiting-item + STOP + disabled refusal,
+        never a traceback and never an exit status launchd answers with a respawn. Only a signal without a STOP
+        file ends non-zero."""
         if not self.run.is_dir():
-            self.log("REFUSED: $KY_RUN is not a directory: %s" % self.run)
-            return 78
+            return self.no_run_directory()
         try:
             return self.run_controller()
         except LoopStateUnreadable as r:
@@ -3188,6 +3926,34 @@ class Controller:
                 except Exception as e:
                     self.log("the lock was not released at exit (%s)" % type(e).__name__)
 
+    def no_run_directory(self):
+        """$KY_RUN is not a directory: there is nowhere to write an awaiting item, a STOP file or the switch — and
+        nothing is created in its place. What is left of the one shape of a refusal (N4-01) is ONE notification
+        attempt (kynotify.sh cannot journal it either, and says so), a log line and exit 0: launchd does not
+        respawn this every ten seconds. → 0."""
+        self.log("REFUSED: $KY_RUN is not a directory: %s" % self.run)
+        try:
+            result = self.submit_notification(
+                flat("%s loop did not start: $KY_RUN is not a directory: %s" % (self.role, self.run), 300), "decision")
+        except Exception as e:
+            result = {"notify": "unknown", "rc": None, "journal": None, "error": type(e).__name__}
+        self.log("notification (decision): notify=%s journal=%s rc=%s — nothing can be recorded without a run "
+                 "directory; once it exists, `kyctl.sh start %s`"
+                 % (result.get("notify"), result.get("journal"), result.get("rc"), self.role))
+        return 0
+
+    def refuse_environment(self):
+        """Raise what main() or __init__ found wrong with this controller's environment (startup_refusal: a
+        credential variable NAME, a bad KY_LOOP_SLEEP_SCALE) as a refused precondition — by the lock holder, so
+        that it takes the one shape of every refusal (N4-01). The control modules are loaded first, so that its
+        one notification is a recorded side effect; what THEY refuse is raised with it."""
+        reasons = list(self.startup_refusal)
+        try:
+            self.load_siblings()
+        except Refusal as r:
+            reasons += r.reasons
+        raise Refusal(reasons)
+
     def refuse(self, reasons):
         """A refusal by the LOCK HOLDER is the full shape (STOP, one awaiting item, disabled). An instance that
         does not hold the role lock — a duplicate start that failed before or while acquiring it — raises its one
@@ -3210,10 +3976,12 @@ class Controller:
         signal.signal(signal.SIGTERM, self.on_signal)
         signal.signal(signal.SIGINT, self.on_signal)
         self.heartbeat()
-        if self.ls().get("lock_wait"):
-            self.ls(lambda d: {k: v for k, v in d.items() if k != "lock_wait"})
+        if self.ls().get("lock_wait") or self.ls().get("lock_release"):     # what an earlier instance observed
+            self.ls(lambda d: {k: v for k, v in d.items() if k not in ("lock_wait", "lock_release")})
         try:
             with guarded("prepare"):
+                if self.startup_refusal:        # N4-01: one item and a stop — or nothing, for a loop not admitted
+                    self.refuse_environment()
                 self.prepare()
         except Refusal as r:
             if self.admitted():
@@ -3234,6 +4002,11 @@ class VetoController(Controller):
     $KY_ROOT/HOLD, an owner pause and STOP_veto; this controller just keeps ticking, and exits on STOP_veto or
     when it is not enabled.
 
+    Of the owner's commands addressed to the veto role, `veto <decision-id>` is the handler's (consumed by the
+    tick under the decision's lock). Every other one is this controller's, applied before each tick as the holder
+    of the veto lock (apply_commands): `status`, `loops stop veto` — the owner's queued stop ends this loop —,
+    `loops status veto` and `decide`; anything else is rejected by name.
+
     Attention (what `kyveto.py tick` reports with exit 3) is never ticked through:
       * something that will be reported again on every tick — an unreconciled publication or execution, a
         decision log or command queue that cannot be read, a command that could not be settled — opens the
@@ -3245,6 +4018,8 @@ class VetoController(Controller):
       * decisions HELD because the authorised bundle cannot be read raise ONE attention item and the loop goes
         on: the hold ends by itself, and an owner veto is honoured meanwhile."""
 
+    COMMANDS = ("status", "loops", "decide")    # the queued commands this controller applies (kyctl.sh's usage
+                                                # text names exactly these; `veto` is the handler's)
     receipt_verified = None     # sha256 of the installation receipt the installed bundle was verified under
     authority_seen = None       # the authority source last logged (logged only when it changes)
     authority_source = None     # {"known", "source"} of the authority given to the last tick
@@ -3468,7 +4243,13 @@ class VetoController(Controller):
 
     def attention_fingerprint(self):
         """What must change before a veto loop stopped for attention may tick again: the decision log, the state
-        and observed result of the handler's own action records, or the command queue."""
+        and observed result of the handler's own action records, the command queue — or the AUTHORITY: the
+        authorised bundle and where it was read from (authority()), so that a stop taken while the bundle could
+        not be established, or under another bundle, lifts by itself once the authority returns or changes."""
+        try:
+            bundle, source = self.authority()
+        except Exception as e:                  # what cannot be read is its own, stable, value — never "no change"
+            bundle, source = None, "authority_unreadable: %s" % type(e).__name__
         actions = []
         directory = self.run / "actions"
         for path in sorted(directory.glob("SD-*.json")) if directory.is_dir() else []:
@@ -3477,15 +4258,26 @@ class VetoController(Controller):
                            if isinstance(doc, dict) else [path.name, "unreadable", sha_file(path)])
         directory = self.run / "commands"
         parts = {"decisions": sha_file(self.run / "DECISIONS_SURROGATE.jsonl"), "actions": actions,
+                 "authority": {"known": bundle is not None, "bundle": bundle, "source": source},
                  "commands": [[q.name, sha_file(q)] for q in sorted(directory.glob("*.json"))]
                  if directory.is_dir() else []}
         return sha_bytes(json.dumps(parts, sort_keys=True).encode())
 
     def open_attention(self, items):
+        """The veto loop's stop for something the handler would report again on every tick: one awaiting item
+        (blocks the loop), one notification, `enabled: false`. No second item and no second notification while
+        an item naming THESE things is open; a stop for something else is a new item (R16) — the item tells the
+        owner to reconcile and start the loop again, nobody has to close it, and a later, different stop must not
+        hide behind it with nobody told."""
         slug, fingerprint = "loop-veto-attention", self.attention_fingerprint()
-        existing = self.open_awaiting(slug)
-        doc = read_json(existing[0])[0] if existing else None
-        fresh = not isinstance(doc, dict)
+        named, doc = ["veto tick: %s" % x for x in items[:20]], None
+        for path in self.open_awaiting(slug):
+            seen = read_json(path)[0]
+            if isinstance(seen, dict) and isinstance(seen.get("evidence"), list) \
+                    and [e for e in seen["evidence"] if not str(e).startswith("evidence fingerprint ")] == named:
+                doc = seen
+                break
+        fresh = doc is None
         if fresh:
             doc = self.write_awaiting(
                 slug, "The veto handler reported something it cannot resolve by itself and would report again on "
@@ -3494,7 +4286,7 @@ class VetoController(Controller):
                                                          "(the evidence must differ from the recorded fingerprint), "
                                                          "then `kyctl.sh start veto`."},
                  {"id": "keep-stopped", "text": "Leave the veto loop stopped: no veto-class decision becomes effective."}],
-                "reconcile-and-restart", ["veto tick: %s" % x for x in items[:20]] + ["evidence fingerprint %s" % fingerprint])
+                "reconcile-and-restart", named + ["evidence fingerprint %s" % fingerprint])
 
         def fn(d):
             br = d.get("breaker") if isinstance(d.get("breaker"), dict) else {}
@@ -3533,6 +4325,40 @@ class VetoController(Controller):
         self.log("attention stop lifted: recorded evidence changed")
         return False
 
+    # ---- the veto role's own commands (plan §4a.5): everything but `veto <decision-id>`, which is the handler's
+    def apply_commands(self):
+        """Settle the QUEUED commands addressed to the veto role that are this CONTROLLER's — `status`, `loops
+        stop|status veto`, `decide` for an item this loop raised; anything else it rejects by name — through
+        kycommands.apply, as the holder of the veto lock, BEFORE the handler's tick sees the queue. `veto
+        <decision-id>` is never touched here: kyveto's tick consumes it under the decision's lock. Each command
+        has its own target, so one that has to wait (a held lock) does not keep the others, or the tick, waiting.
+        → True when at least one was settled (the caller re-reads STOP and the switch before anything else)."""
+        self.commands_blocked = None
+        try:
+            queue = self.kc.pending(self.run, self.role)
+        except (self.kc.CommandError, OSError) as e:    # the tick reports an unreadable queue as its own problem
+            self.log("command queue not read (%s): nothing applied by the controller" % type(e).__name__)
+            return False
+        settled = False
+        for doc in queue:
+            if doc.get("command") == "veto":
+                continue
+            if self.apply_one(self.role, doc, in_order=False):
+                settled = True
+            elif self.commands_blocked:
+                self.log_once("a queued command cannot be settled yet (%s)" % self.commands_blocked)
+        self.close_answered_waits()             # R15: an answered owner-wait an earlier look could not close
+        return settled
+
+    def handle_command(self, role, cmd):
+        """What the veto CONTROLLER carries out itself: `status` (its `kyctl.sh status` line), `loops stop veto`
+        (the switch, tagged with the command id — the loop then ends at its next look), `loops status veto`, and
+        `decide` for an awaiting item this loop raised. Everything else is rejected by name."""
+        if cmd.get("command") in self.COMMANDS:
+            return super().handle_command(role, cmd)
+        raise self.kc.Reject("unsupported_by_veto_role: %s (the veto controller takes status, loops stop|status "
+                             "veto and decide; `veto <decision-id>` is settled by the veto handler)" % cmd.get("command"))
+
     def queued_commands(self):
         try:
             return {str(d.get("id")) for d in self.kc.pending(self.run, "veto")}
@@ -3569,6 +4395,9 @@ class VetoController(Controller):
                          % (st.get("reason") or "no admission record", self.role))
                 return 0
             self.verify_veto()
+            if self.apply_commands():
+                continue                        # a command may have stopped this loop: STOP and the switch first
+            self.commands_overdue()             # R16: a command of this role that stays blocked says so, once
             if self.attention_gate(st):
                 return 0
             report = self.tick()
@@ -3654,6 +4483,9 @@ def admin(args):
         return 0
     if len(args) == 2 and args[0] in ("expected-qualification", "launch-config") and args[1] in ROLES:
         c = Controller(args[1])
+        if c.startup_refusal:                   # a person's own one-shot call: here the refusal is an exit status
+            print("kyloop: REFUSED %s" % "; ".join(c.startup_refusal), file=sys.stderr)
+            return 78
         cfg, errs = c.load_config()
         if errs:
             print("\n".join(errs), file=sys.stderr)
@@ -3676,10 +4508,15 @@ def main(argv=None):
         print(USAGE, file=sys.stderr)
         return 64
     names = credential_names(os.environ)
-    if names:
+    for name in names:                          # refused below — and meanwhile no helper this process starts (the
+        del os.environ[name]                    # lock helper, the notifier) is handed a value it must never see
+    controller = (VetoController if argv[0] == "veto" else Controller)(argv[0])
+    if names:                                   # N4-01: one awaiting item, STOP, disabled, exit 0 — names only
         print("kyloop: REFUSED credential-variable-present: %s" % ", ".join(names), file=sys.stderr)
-        return 78
-    return (VetoController if argv[0] == "veto" else Controller)(argv[0]).main()
+        controller.startup_refusal.append(
+            "credential_variable_present: %s — a controller's environment carries no credential (launchd plist, "
+            "shell profile); names only are ever printed" % ", ".join(names))
+    return controller.main()
 
 
 if __name__ == "__main__":

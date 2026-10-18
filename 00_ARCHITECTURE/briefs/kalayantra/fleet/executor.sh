@@ -5,7 +5,7 @@
 # The executor runs from a SNAPSHOT taken at `up`, and reads its operations table and every script from origin/main —
 # so nothing an agent edits in a working tree can change what it does. After a merged change to executor.py: down, then up.
 set -u
-KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; GIT="$KY_ROOT/wt/campaign"; OPS_PATH="00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py"
+KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; GIT="${KY_SOURCE_REPO:-/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign}"; OPS_PATH="00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py"
 RUN="$KY_ROOT/run"; LOGD="$KY_ROOT/logs"; PY="$KY_ROOT/venv/bin/python"; LIVE="$KY_ROOT/exec/executor.py"
 mkdir -p "$RUN/ops" "$LOGD" "$KY_ROOT/exec"
 case "${1:-status}" in

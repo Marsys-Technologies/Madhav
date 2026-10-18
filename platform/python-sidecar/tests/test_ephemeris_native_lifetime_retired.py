@@ -58,3 +58,22 @@ def test_ephemeris_routes_module_holds_no_native_birth_data():
     source = pathlib.Path(mod.__file__).read_text(encoding="utf-8")
     for needle in ("Abhisek", "Bhubaneswar", "1984-02-05", "10:43", "native-lifetime"):
         assert needle not in source, needle
+
+
+def test_l0_ephemeris_native_lifetime_function_deleted():
+    """The dead module-level twin `get_ephemeris_cache_native_lifetime` is gone.
+
+    It had no callers and baked the native's name/birth data into a payload.
+    The module must still import and its sibling year-cache resource survives.
+    """
+    import brahmagyan.l0_ephemeris as mod
+
+    assert not hasattr(mod, "get_ephemeris_cache_native_lifetime")
+    assert callable(mod.get_ephemeris_cache_year)
+    source = pathlib.Path(mod.__file__).read_text(encoding="utf-8")
+    assert "get_ephemeris_cache_native_lifetime" not in source
+    assert "ephemeris-cache/native-lifetime" not in source
+    # The module keeps the NATIVE_* seed/verify constants (and a comment naming
+    # the native) by design; only the retired payload's keys must be gone.
+    for needle in ("birth_location", "birth_time_ist", "Bhubaneswar, Odisha, India"):
+        assert needle not in source, needle

@@ -10,6 +10,7 @@ about exactly that: project settings are read from <cwd>/.claude/settings.json w
 every permission mode; without a TTY an unlisted command in "default" mode is denied and reported in the result
 event's permission_denials."""
 import copy
+import ast
 import hashlib
 import json
 import os
@@ -65,7 +66,7 @@ with open(os.path.join(here, "calls.jsonl"), "a") as f:
                         "home": os.environ.get("HOME"), "path": os.environ.get("PATH"),
                         "tmpdir": os.environ.get("TMPDIR"), "ky_root": os.environ.get("KY_ROOT"),
                         "job_scratch": os.environ.get("JOB_SCRATCH"), "ky_scratch": os.environ.get("KY_SCRATCH"),
-                        "zdotdir": os.environ.get("ZDOTDIR"),
+                        "zdotdir": os.environ.get("ZDOTDIR"), "tests": os.environ.get("TESTS"),
                         "project_settings": digest(os.path.join(".claude", "settings.json"))}) + "\n")
 def out(ev):
     sys.stdout.write(json.dumps(ev) + "\n"); sys.stdout.flush()
@@ -1908,26 +1909,35 @@ def test_verify_evidence_rejudges_from_the_streams_and_says_what_it_could_not(cl
     assert "evidence: launch_config.json is not this configuration" in said["reasons"]
 
 
-def test_planner_receipt_satisfies_the_loop_controller(rig, monkeypatch):
+@pytest.mark.parametrize("role", ["planner", "conductor"])
+def test_loop_python_shell_canary_receipt_satisfies_the_controller(rig, monkeypatch, role):
     import kyloop
 
     assert tuple(kyloop.ROLES) == tuple(kyqualify.LOOP_ROLES)
     fleet, run_dir = rig.root / "fleet_live", rig.root / "run"
     (fleet / "prompts").mkdir(parents=True)
     run_dir.mkdir()
-    (fleet / "prompts" / kyloop.PROMPTS["planner"]).write_text("# planner loop prompt\n")
+    (fleet / "prompts" / kyloop.PROMPTS[role]).write_text("# loop prompt\n")
     (fleet / "mcp.none.json").write_text('{"mcpServers":{}}\n')
     for name, value in (("KY_ROOT", rig.root), ("KY_RUN", run_dir), ("KY_FLEET", fleet),
                         ("CLAUDE_BIN", rig.bindir / "claude"), ("HOME", rig.home)):
         monkeypatch.setenv(name, str(value))
-    controller = kyloop.Controller("planner")
-    loop_cfg = dict(kyloop.DEFAULTS["planner"], worktree=str(rig.proj), mcp_config=str(fleet / "mcp.none.json"))
-    cfg = rig.config(role="planner", model=loop_cfg["model"], effort=loop_cfg["effort"],
+    controller = kyloop.Controller(role)
+    loop_cfg = dict(kyloop.DEFAULTS[role], worktree=str(rig.proj), mcp_config=str(fleet / "mcp.none.json"))
+    (run_dir / "loops.json").write_text(json.dumps({role: {"worktree": loop_cfg["worktree"],
+                                                         "mcp_config": loop_cfg["mcp_config"]}}))
+    extra_env = {"KY_RUN": str(run_dir), "KY_FLEET": str(fleet), "CLAUDE_BIN": str(rig.bindir / "claude")}
+    printed = rig.run("admin", "launch-config", role, script=FLEET / "kyloop.py", extra_env=extra_env)
+    assert printed.returncode == 0, printed.stderr
+    launch = json.loads(printed.stdout)
+    assert launch.get("shell_canary") == "python3"
+    assert launch == controller.launch_config(loop_cfg)
+    cfg = rig.config(role=role, model=loop_cfg["model"], effort=loop_cfg["effort"],
                      permission_mode=loop_cfg["permission_mode"], max_turns=loop_cfg["max_turns"],
                      deadline_seconds=loop_cfg["deadline_seconds"], mcp_config=loop_cfg["mcp_config"],
-                     prompt_path=str(fleet / "prompts" / kyloop.PROMPTS["planner"]),
+                     prompt_path=str(fleet / "prompts" / kyloop.PROMPTS[role]),
                      env_names=list(kyloop.CHILD_ENV_NAMES), child_path=controller.child_path(),
-                     add_dirs=[str(rig.root)])
+                     add_dirs=[str(rig.root)], shell_canary="python3")
     out = controller.qualification_path(loop_cfg)
     assert controller.check_qualification(loop_cfg) == ["qualification_missing: %s" % out]
     r, rc, _ = rig.qualify(cfg, out=out, extra_env={"KY_RUN": str(run_dir), "KY_FLEET": str(fleet)})
@@ -2125,7 +2135,8 @@ def test_wave_b_templates_are_valid_launch_configurations(role, tmp_path):
     fleet = doc["mcp_config"].rsplit("/", 1)[0]
     assert fleet.endswith("/00_ARCHITECTURE/briefs/kalayantra/fleet") and doc["worktree"] == fleet.rsplit("/", 4)[0]
     assert {k: v for k, v in doc.items() if k != "_note"} == dict({
-        "schema": "ky.launch_config/1", "role": role, "model": "claude-opus-5-5", "effort": "high",
+        "schema": "ky.launch_config/1", "role": role,
+        "model": "claude-fable-5-1" if role == "surrogate" else "claude-opus-5-5", "effort": "high",
         "permission_mode": mode, "max_turns": turns, "deadline_seconds": deadline, "worktree": doc["worktree"],
         "claude_bin": "/Users/Dev/.local/bin/claude", "mcp_config": fleet + "/mcp.none.json",
         "prompt_path": fleet + "/cards/" + card, "env_names": env_names,
@@ -2139,7 +2150,8 @@ def test_wave_b_templates_are_valid_launch_configurations(role, tmp_path):
     assert {"JOB_SCRATCH", "KY_SCRATCH"} <= set(doc["env_names"])
     argv = kyqualify.build_argv(doc)
     assert argv[:12] == ["/Users/Dev/.local/bin/claude", "-p", "--setting-sources", "project", "--permission-mode", mode,
-                         "--model", "claude-opus-5-5", "--effort", "high", "--max-turns", str(turns)]
+                         "--model", "claude-fable-5-1" if role == "surrogate" else "claude-opus-5-5",
+                         "--effort", "high", "--max-turns", str(turns)]
     assert argv[12:-5] == extra + ["--strict-mcp-config", "--mcp-config", doc["mcp_config"], "--disallowedTools"] + disallowed
     assert argv[-5:] == ["--output-format", "stream-json", "--verbose", "--add-dir", "/Users/Dev/kalayantra"]
     assert all(argv.count(flag) == 1 and argv.index(flag) < argv.index("--strict-mcp-config") for flag in extra)
@@ -2183,3 +2195,151 @@ def test_the_reviewer_template_says_what_it_is_and_denies_what_ruling_r7_lists()
         assert any(fnmatch.fnmatchcase(command, rule[5:-1]) for rule in rules) is by_rule, command
         assert not any(fnmatch.fnmatchcase(command, rule[5:-1]) or (rule.endswith(":*)") and command.startswith(rule[5:-3]))
                        for rule in allowed), command
+
+
+def job_launcher_helpers():
+    """Read the real shell launcher's Python helper without executing its CLI or any child."""
+    source = (FLEET / "kyjob.sh").read_text().split("\n#>>> kyjob helper\n", 1)[1].split(
+        "\n#<<< kyjob helper\n", 1)[0]
+    tree = ast.parse(source)
+    assert ast.unparse(tree.body[-1]) == "sys.exit(main(ARGV))"
+    tree.body.pop()
+    namespace = {"__file__": str(FLEET / "kyjob.sh")}
+    exec(compile(tree, str(FLEET / "kyjob.sh"), "exec"), namespace)
+    return namespace
+
+
+@pytest.mark.parametrize("role,parent,card", [("build", "bootstrap-builder", "KARAKA.md"),
+                                             ("verify", "bootstrap-reviewer", "PARIKSAKA.md")])
+def test_live_bootstrap_job_templates_match_the_actual_launcher(role, parent, card, tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    import datetime
+    import kyd_admit
+    import kyd_jobs
+    import kymanifest
+
+    cfg = json.loads((TEMPLATES / ("LAUNCH_CONFIG.%s.json" % role)).read_text())
+    baseline = json.loads((TEMPLATES / ("LAUNCH_CONFIG.%s.json" % parent)).read_text())
+    assert kyschema.validate(json.loads((SCHEMAS / "launch_config.json").read_text()), cfg) == []
+    assert kyqualify.validate_config(cfg, check_disk=False) == []
+    for key in ("effort", "permission_mode", "max_turns", "deadline_seconds", "extra_flags", "disallowed_tools",
+                "intended_tools", "denied_tools", "add_dirs", "shell_canary", "bash_canary", "denied_bash"):
+        assert cfg.get(key) == baseline.get(key)
+    assert cfg["role"] == role and cfg["model"] == "claude-opus-5-5"
+    assert cfg["worktree"] == "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign"
+    assert cfg["mcp_config"] == "/Users/Dev/kalayantra/fleet_live/mcp.none.json"
+    assert cfg["prompt_path"] == "/Users/Dev/kalayantra/fleet_live/cards/" + card
+    assert cfg["max_turns"] <= kyd_admit.TURN_CAPS[role.upper()]
+    launcher = job_launcher_helpers()
+    # Read nullability from the real packet and real job-state planner, not a retyped env-name list.
+    packet = FLEET.parent / "packets" / "PACKET_KV3-B-OPS-CONTRACT_v1.md"
+    front, reason = kyd_admit.front_matter(str(packet))
+    assert reason is None and front["needs_chart_data"] is False
+    tests, reason = kyd_admit.packet_tests(front)
+    assert reason is None and tests == []
+    ctx = SimpleNamespace(repo=str(tmp_path), controller_id="test-controller")
+    intent = {"kind": role.upper(), "role": role, "item": front["id"], "key": "template-test",
+              "claim": None, "locks": ["item." + front["id"]], "stream": "K" if role == "build" else "V",
+              "pool": "builder" if role == "build" else "verifier", "header": {}}
+    plan, reason = kyd_jobs._plan(ctx, intent, "b1" if role == "build" else "v1", {"tests": tests})
+    assert reason is None
+    state = plan["state"]
+    state.update(tmp_path=str(tmp_path), job_scratch=str(tmp_path), job_id="template-test", PRAVAHA=[])
+    own = {"HOME": str(tmp_path), "USER": "test", "KY_ROOT": "/Users/Dev/kalayantra",
+           "KY_RUN": str(tmp_path), "KY_FLEET": str(FLEET), "KY_SCRATCH": str(tmp_path)}
+    # Supply the recorded node directory to the real child_path reader without depending on the host's disk.
+    node = cfg["child_path"].split(":")[1]
+    (tmp_path / "NODE_BIN").write_text(node + "\n")
+    original_isdir = launcher["os"].path.isdir
+    monkeypatch.setattr(launcher["os"].path, "isdir", lambda path: path == node or original_isdir(path))
+    env = launcher["job_environment"](state, own)
+    assert cfg["env_names"] == [name for name, _ in env]
+    assert cfg["child_path"] == dict(env)["PATH"]
+    caller = dict(own, KY_STREAM=state["stream"], KY_LANE=state["slot"], KY_CONTROLLER_ID=ctx.controller_id)
+    resolved, errors = kyqualify.resolve_env(cfg, caller)
+    assert errors == [] and sorted(resolved) == sorted(cfg["env_names"])
+    state.update(claude_bin=cfg["claude_bin"], model=cfg["model"], effort=cfg["effort"],
+                 permission_mode=cfg["permission_mode"], max_turns=cfg["max_turns"], mcp_config=cfg["mcp_config"],
+                 extra_lean_flags=cfg["extra_flags"], disallowed_tools=cfg["disallowed_tools"], KY_ROOT=own["KY_ROOT"])
+    assert launcher["build_argv"](state) == kyqualify.build_argv(cfg)
+    assert kymanifest.launch_config_of({"role": role}) == str(
+        (TEMPLATES / ("LAUNCH_CONFIG.%s.json" % role)).relative_to(FLEET.parents[3]))
+    assert kymanifest.launch_config_of({"role": role}) in (FLEET / "BOOTSTRAP_COMPONENTS.txt").read_text().splitlines()
+
+    # Contract-only receipt: test admission and every launch-time bind without fabricating earned evidence.
+    run = tmp_path / "run"
+    (run / "QUALIFICATIONS").mkdir(parents=True)
+    state["worktree"] = str(tmp_path / "different-per-job-worktree")
+    state["deadline"] = kyd_admit.deadline_text(datetime.datetime.now(datetime.timezone.utc), cfg["deadline_seconds"])
+    facts = {"claude_bin_sha256": "a" * 64, "mcp_config_sha256": hashlib.sha256(
+        (FLEET / "mcp.none.json").read_bytes()).hexdigest(), "harness_sha256": "b" * 64}
+    binds = {"claude_bin": cfg["claude_bin"], "model": cfg["model"], "effort": cfg["effort"],
+             "permission_mode": cfg["permission_mode"], "max_turns": cfg["max_turns"], **facts,
+             "env_names": sorted(cfg["env_names"]), "child_path": cfg["child_path"],
+             "project_settings_sha256": "absent",
+             "zdotdir_sha256": kyqualify.directory_digest(own["KY_ROOT"] + "/zdotdir"),
+             "deadline_seconds": cfg["deadline_seconds"], "argv": kyqualify.build_argv(cfg),
+             "worktree": cfg["worktree"], "extra_flags": cfg["extra_flags"], "disallowed_tools": cfg["disallowed_tools"]}
+    receipt = {"schema": "ky.qualification/1", "role": role, "model": cfg["model"], "result": "PASS",
+               "context": "launchd", "binds": binds}
+    receipt_path = run / "QUALIFICATIONS" / (role + "-" + cfg["model"] + ".json")
+    receipt_path.write_text(json.dumps(receipt))
+    admission_ctx = SimpleNamespace(paths={"run": str(run), "fleet": str(FLEET)},
+                                    now=lambda: datetime.datetime.now(datetime.timezone.utc))
+    refusals, admitted_facts = [], {}
+    kyd_admit._check_launch(admission_ctx, intent, "opus", front, True, refusals, admitted_facts)
+    assert refusals == [] and admitted_facts["launch"]["max_turns"] == cfg["max_turns"]
+    own["KY_RUN"] = str(run)
+    assert launcher["check_qualification"](state, own, env, launcher["build_argv"](state), facts,
+                                           launcher["parse_deadline"](state["deadline"]))[0] == binds
+    for key in launcher["BOUND_FACTS"]:
+        changed = dict(binds, **{key: None})
+        receipt_path.write_text(json.dumps(dict(receipt, binds=changed)))
+        with pytest.raises(launcher["Refuse"], match="binds\\." + key):
+            launcher["check_qualification"](state, own, env, launcher["build_argv"](state), facts,
+                                              launcher["parse_deadline"](state["deadline"]))
+    receipt_path.write_text(json.dumps(receipt))
+    listed = kymanifest.launch_config_of(receipt)
+    with pytest.raises(kymanifest.Refused, match="not a bound component"):
+        kymanifest.observe_qualifications(str(FLEET.parents[3]), str(run), bound=set())
+    # An earned receipt must separately pass the real harness. Here isolate the manifest's routing/binding
+    # contract: assert the exact checker call and template; this stand-in asserts no real qualification.
+    calls = []
+
+    def accepted_harness(argv, **kwargs):
+        calls.append(argv)
+        assert argv == [sys.executable, "-I", "-B", str(FLEET / "kyqualify.py"), "check", str(receipt_path),
+                        "--config", str(TEMPLATES / ("LAUNCH_CONFIG.%s.json" % role)),
+                        "--require-context", "launchd"]
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(kymanifest.subprocess, "run", accepted_harness)
+    observed = kymanifest.observe_qualifications(str(FLEET.parents[3]), str(run), bound={listed})
+    assert len(calls) == 1 and observed[0]["config"] == listed
+
+
+@pytest.mark.parametrize("engine", ["claude", "codex"])
+def test_tests_environment_has_bounded_value_policy(engine):
+    cfg = json.loads((TEMPLATES / ("LAUNCH_CONFIG.build.tests" + (".codex" if engine == "codex" else "") + ".json")).read_text())
+    assert kyqualify.validate_config(cfg, check_disk=False) == []
+    caller = {"HOME": "/h", "USER": "u", "KY_STREAM": "K", "KY_LANE": "b1", "KY_CONTROLLER_ID": "CTL-q"}
+    env, errors = kyqualify.resolve_env(cfg, caller)
+    assert errors == []
+    assert env["TESTS"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_kyqualify.py"
+    value = "tests/test_a.py\nplatform/tests/test_b.py"
+    env, errors = kyqualify.resolve_env(cfg, dict(caller, TESTS=value))
+    assert errors == [] and env["TESTS"] == value
+    for bad in ("", "../outside.py", "/absolute.py", "tests/../escape.py", "a\r\nb", "a\x00b", "x" * 65537):
+        assert any("TESTS" in e for e in kyqualify.resolve_env(cfg, dict(caller, TESTS=bad))[1])
+    assert any("unknown" in e for e in kyqualify.validate_config(dict(cfg, env_names=cfg["env_names"] + ["UNKNOWN"]), check_disk=False))
+
+
+
+def test_tests_caller_value_survives_launchd_with_exact_receipt_names(rig):
+    value = "tests/test_one.py\ntests/test_two.py"
+    cfg = rig.config(env_names=ENV_NAMES + ["TESTS"])
+    result, receipt, evidence = rig.qualify(cfg, context="launchd", extra_env={"TESTS": value})
+    assert result.returncode == PASS, result.stderr
+    assert "TESTS" in receipt["binds"]["env_names"]
+    calls = [c for c in rig.calls() if "TESTS" in c["env_names"]]
+    assert calls and all(c["tests"] == value for c in calls)

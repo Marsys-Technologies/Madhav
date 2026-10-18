@@ -27,7 +27,9 @@ import asset_census as ac  # noqa: E402
 NA, NO_DET = ac.NA, ac.NO_DET
 REPO = HERE.parents[3]
 L0_CENSUS = REPO / "00_ARCHITECTURE/control/census/asset_census_2026-10-04T193639+0530.json"
-NO_WRITER_L0 = ("bg_ephemeris_engine", "bg_gochara_citation_resolution", "bg_panchanga", "bg_sarvatobhadra_grid")
+NO_WRITER_L0 = ("bg_ephemeris_engine", "bg_gochara_citation_resolution", "bg_panchanga", "bg_sarvatobhadra_grid")      # the four no-writer assets of the SAVED (historical) census
+RETIRED_L0 = ("bg_sarvatobhadra_grid",)      # registry revision 28 / declarations 1.74.0: the asset is retired and its has_writer:false declaration was dropped (the saved census still carries it)
+DECLARED_NO_WRITER_L0 = tuple(a for a in NO_WRITER_L0 if a not in RETIRED_L0)      # the L0 assets that STILL declare has_writer: false
 REGISTERED_BUT_FALSE = ("bg_nakshatra_medical", "bg_transit_engine")
 CRITS = ("Build.registered", "Build.contract", "Idem.pattern", "Build.exercised")
 OK = dict(declared=True, registry_has_writer=False, register_files=0, register_mentions=[])
@@ -55,7 +57,7 @@ def test_the_five_rules_are_declared_with_the_decision_n150_r5():
 
 
 def test_each_touched_criterion_revision_moved_once_and_says_the_declaration_keyed_reading():
-    assert [ac.CRITERION_REGISTRY[c]["revision"] for c in CRITS] == [3, 2, 4, 3]      # Build.registered 3: SS N-203 (the writer_sibling form); Idem.pattern 4: SS 2026-10-05 update-only (R5 moved it to 3); Build.exercised 3: SS R-c (legacy attempts vs the registry definition) moved it once more after R5
+    assert [ac.CRITERION_REGISTRY[c]["revision"] for c in CRITS] == [3, 2, 5, 3]      # Build.registered 3: SS N-203 (the writer_sibling form); Idem.pattern 5: registry revision 28 ONE bump (4: SS 2026-10-05 update-only; R5 moved it to 3); Build.exercised 3: SS R-c (legacy attempts vs the registry definition) moved it once more after R5
     for c in CRITS:
         assert "has_writer: false" in ac.CRITERION_REGISTRY[c]["applicability"], c
 
@@ -170,11 +172,10 @@ def _all_layers():
 
 
 # The saved no-writer N/A cells across ALL SIX layers, and what N-150 R5 does to each (intended, stated moves; review fix MED):
-RELEASED = {("L0", a, c) for a in NO_WRITER_L0 for c in ("Build.registered", "Build.contract", "Idem.pattern")} | {("L0", "bg_gochara_citation_resolution", "Build.exercised"),
-                                                                                                                    ("L0", "bg_sarvatobhadra_grid", "Build.exercised")}
+RELEASED = {("L0", a, c) for a in DECLARED_NO_WRITER_L0 for c in ("Build.registered", "Build.contract", "Idem.pattern")} | {("L0", "bg_gochara_citation_resolution", "Build.exercised")}
 MOVED_TO_NO_DETECTOR = {("L0", "bg_nakshatra_medical", "Build.exercised"), ("L0", "bg_transit_engine", "Build.exercised"),       # an @register exists: the fact register_files == 0 is false
                         ("L5", "lel_events", "Build.registered"), ("L5", "lel_events", "Build.contract"), ("L5", "lel_events", "Idem.pattern"),      # registry-writerless, NOT declared
-                        ("L5", "lel_events", "Build.exercised")}                                                                                   # (honest, conservative: no has_writer false is declared for it)
+                        ("L5", "lel_events", "Build.exercised")} | {("L0", a, c) for a in RETIRED_L0 for c in CRITS}      # (lel_events: honest, conservative, no has_writer false is declared for it) / a RETIRED asset (no has_writer:false declaration any more) no longer releases: its four saved cells read NO_DETECTOR; the saved-census shape of those cells is unchanged
 
 
 def test_every_saved_no_writer_n_a_across_all_layers_is_either_released_or_a_stated_move_to_no_detector():
@@ -239,9 +240,18 @@ def test_an_unrelated_or_resolved_register_call_is_not_a_mention(monkeypatch, tm
     assert ac.register_call_mentions("bg_x") == []
 
 
-def test_the_real_discovery_set_has_no_register_call_mention_of_the_four_declared_assets():
+def test_current_discovery_sees_the_citation_writer_and_keeps_the_other_historical_non_writers():
+    # K-CERT-2 adds a writer; the saved N-150 census/declarations stay historical.
     for a in NO_WRITER_L0:
-        assert ac.register_call_mentions(a) == [], a
+        expected = ["bg_gochara_citation_resolution.py"] if a == "bg_gochara_citation_resolution" else []
+        assert ac.register_call_mentions(a) == expected, a
+
+
+def test_the_citation_registration_defeats_a_stale_no_writer_release():
+    rec = ac._measure_contract("bg_gochara_citation_resolution", [], False, True)
+    assert rec["no_writer"]["register_mentions"] == ["bg_gochara_citation_resolution.py"]
+    assert _cell("Build.contract", rec)["v"] == NO_DET
+    assert not ac._na_released("Build.contract", rec)
 
 
 def test_a_mention_defeats_the_no_writer_release_end_to_end(monkeypatch, tmp_path):
@@ -255,7 +265,9 @@ def test_a_mention_defeats_the_no_writer_release_end_to_end(monkeypatch, tmp_pat
 
 def test_the_four_l0_no_writer_assets_declare_has_writer_false_and_nothing_else_does(l0):
     decl = ac.load_asset_declarations()
-    assert sorted(a for a, e in decl.items() if e.get("has_writer") is False) == sorted(NO_WRITER_L0)
+    assert sorted(a for a, e in decl.items() if e.get("has_writer") is False) == sorted(DECLARED_NO_WRITER_L0)
+    for a in RETIRED_L0:
+        assert a not in decl or decl[a].get("has_writer") is None      # the retired asset declares nothing
     for a in NO_WRITER_L0:
         assert l0[a]["has_writer"] is False and l0[a]["measurements"]["Build.registered"]["cause"] == "no-writer-registry-agrees"   # the registry row agrees
     for a in REGISTERED_BUT_FALSE:

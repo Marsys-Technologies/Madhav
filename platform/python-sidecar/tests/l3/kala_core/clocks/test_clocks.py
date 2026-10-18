@@ -80,10 +80,10 @@ class _ClockConnection:
 
     def execute(self, sql: str, params: list[object]) -> _Result:
         self.calls.append((sql, params))
-        assert "build_id = %s" in sql
+        assert "build_id = %s" not in sql
         assert "ayanamsha_id = %s" in sql
         assert "system_id = %s" in sql
-        assert "verification_pass_status = %s" in sql
+        assert "verification_pass_status = %s" not in sql
         assert "applies_to_this_chart_flag" in sql
         assert "is_truncated_at_window_start" in sql
         assert "is_truncated_at_window_end" in sql
@@ -91,8 +91,7 @@ class _ClockConnection:
         assert "sigma_boundary_seconds" not in sql
         assert "scenario_id" not in sql
         assert "applicability" not in sql
-        assert params[-1] == "two_pass_verified"
-        assert params[:4] == [CHART, "vimshottari", "build-1", "lahiri_chitrapaksha"]
+        assert params == [CHART, "vimshottari", "lahiri_chitrapaksha"]
         return _Result(self.rows)
 
 
@@ -100,17 +99,14 @@ def test_boundaries_equal_the_pinned_l1_rows_for_the_canonical_fixture() -> None
     conn = _ClockConnection()
 
     result = boundaries(
-        conn, CHART, "vimshottari", build_id="build-1",
+        conn, CHART, "vimshottari", as_of=datetime(2024, 2, 1, tzinfo=UTC), build_id="build-1",
         ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
     )
 
-    assert [(row.instant, row.source_row_id) for row in result] == [
-        (datetime(2024, 1, 1, tzinfo=UTC), "md-sun"),
-        (datetime(2024, 1, 1, tzinfo=UTC), "ad-moon"),
-        (datetime(2024, 4, 1, tzinfo=UTC), "ad-mars"),
-        (datetime(2024, 1, 1, tzinfo=UTC), "pd-mercury"),
-        (datetime(2024, 1, 1, tzinfo=UTC), "sd-jupiter"),
-    ]
+    assert [(b.instant, b.source_row_id, b.endpoint) for b in result] == [
+        (r[f'{endpoint}_iso'], r['dasha_row_id'], endpoint)
+        for r in conn.rows for endpoint in ('start', 'end')]
+
 
 
 def test_period_context_requires_explicit_as_of_and_only_changes_at_a_boundary() -> None:
@@ -169,11 +165,11 @@ def test_boundaries_can_be_projected_to_one_hierarchy_level() -> None:
     conn = _ClockConnection()
 
     result = boundaries(
-        conn, CHART, "vimshottari", build_id="build-1",
+        conn, CHART, "vimshottari", as_of=datetime(2024, 2, 1, tzinfo=UTC), build_id="build-1",
         ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified", level="PD",
     )
 
-    assert [row.source_row_id for row in result] == ["pd-mercury"]
+    assert [row.source_row_id for row in result] == ["pd-mercury", "pd-mercury"]
 
 
 def test_boundary_and_context_preserve_window_truncation() -> None:
@@ -182,7 +178,7 @@ def test_boundary_and_context_preserve_window_truncation() -> None:
     conn.rows[0]["is_truncated_at_window_end"] = True
 
     result = boundaries(
-        conn, CHART, "vimshottari", build_id="build-1",
+        conn, CHART, "vimshottari", as_of=datetime(2024, 2, 1, tzinfo=UTC), build_id="build-1",
         ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified", level="MD",
     )
     context = period_context(
@@ -215,3 +211,12 @@ def test_active_deepest_period_without_its_parent_is_hierarchy_unavailable() -> 
             conn, CHART, datetime(2024, 2, 1, tzinfo=UTC), "vimshottari",
             build_id="build-1", ayanamsha_id="lahiri_chitrapaksha", tier="two_pass_verified",
         )
+
+
+@pytest.fixture(autouse=True)
+def _governed_projection_fixture(monkeypatch):
+    """Domain fixtures start after the loader; real refusal coverage is J4P's."""
+    import importlib
+    from tests.l3._dasha_projection import emulated_projection
+    monkeypatch.setattr(importlib.import_module('services.kala_core.clocks'),
+                        "execute_governed_dasha_query", emulated_projection)

@@ -120,3 +120,63 @@ describe('POST /api/cockpit/refresh — P2-B-008 cross-tenant asset_throughput w
     expect(res.status).toBe(200)
   })
 })
+
+describe("POST /api/cockpit/refresh — scope 'asset' target guard (C32)", () => {
+  /** Mock where the targeted lookup finds the row only for an ACTIVE asset. */
+  function setupTargetMock(opts: { active: boolean }) {
+    mockGetServerUser.mockResolvedValue({ uid: VICTIM_UID })
+    issued = []
+    mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+      issued.push(sql)
+      if (/FROM profiles/.test(sql)) return Promise.resolve({ rows: [{ role: 'guest' }], rowCount: 1 })
+      if (/FROM chart_grants/.test(sql)) return Promise.resolve({ rows: [], rowCount: 0 })
+      if (/owner_id[\s\S]*FROM charts/.test(sql)) {
+        return Promise.resolve({ rows: [{ owner_id: VICTIM_UID }], rowCount: 1 })
+      }
+      if (/FROM asset_registry WHERE asset_id=\$1 AND is_active = true/.test(sql)) {
+        return Promise.resolve({
+          rows: opts.active ? [{ asset_id: params?.[0] }] : [],
+          rowCount: opts.active ? 1 : 0,
+        })
+      }
+      return Promise.resolve({ rows: [], rowCount: 0 })
+    })
+  }
+
+  it('REFUSES (400) an untargeted asset id — and writes NO asset_throughput row', async () => {
+    setupTargetMock({ active: false })
+    const res = await POST(makeReq({ chart_id: VICTIM_CHART, scope: 'asset', scope_target: 'no_such_asset' }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatch(/not an active asset/)
+    expect(throughputWrites()).toHaveLength(0)
+  })
+
+  it('REFUSES (400) an INACTIVE asset id — the registry row exists but is retired from the active set', async () => {
+    setupTargetMock({ active: false })
+    const res = await POST(makeReq({ chart_id: VICTIM_CHART, scope: 'asset', scope_target: 'ka_gochara_v3_century_materialize' }))
+    expect(res.status).toBe(400)
+    expect(throughputWrites()).toHaveLength(0)
+  })
+
+  it('ALLOWS an ACTIVE asset target — the legitimate single-asset refresh keeps working', async () => {
+    setupTargetMock({ active: true })
+    const res = await POST(makeReq({ chart_id: VICTIM_CHART, scope: 'asset', scope_target: 'ka_kshetra' }))
+    expect(res.status).toBe(200)
+    expect((await res.json()).refreshed.asset_count).toBe(1)
+    expect(throughputWrites().length).toBeGreaterThan(0)
+  })
+
+  it.each(['ka_avadhi', 'ka_gochara'])('refreshes exactly the requested active asset %s', async (target) => {
+    setupTargetMock({ active: true })
+    const res = await POST(makeReq({ chart_id: VICTIM_CHART, scope: 'asset', scope_target: target }))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ refreshed: { scope: 'asset', scope_target: target, asset_count: 1 } })
+    const lookup = mockQuery.mock.calls.filter(([sql]) => /FROM asset_registry/.test(sql))
+    expect(lookup).toHaveLength(1)
+    expect(lookup[0][1]).toEqual([target])
+    const writes = mockQuery.mock.calls.filter(([sql]) => /INSERT INTO asset_throughput/.test(sql))
+    expect(writes).toHaveLength(1)
+    expect(writes[0][1]).toEqual([VICTIM_CHART, [target]])
+  })
+
+})

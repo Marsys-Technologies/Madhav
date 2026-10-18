@@ -104,9 +104,11 @@ const DIVISIONALS: Record<string, Record<string, Record<string, { sign: string; 
 const MOON_SENSITIVE_CHART_ID = 'f159-test-moon-sensitive'
 const MOON_STABLE_CHART_ID = 'f159-test-moon-stable'
 const MOON_MISSING_DATA_CHART_ID = 'f159-test-moon-missing-data'
+const MOON_SPLIT_CHART_ID = 'pr3-test-moon-2-2-1-split'
 
 FACTS[MOON_SENSITIVE_CHART_ID] = { graha_position: { LAGNA: { sign: 'Aries', house: 1 }, MOON: { sign: 'Pisces', house: 12 } } }
 FACTS[MOON_STABLE_CHART_ID] = { graha_position: { LAGNA: { sign: 'Aries', house: 1 }, MOON: { sign: 'Pisces', house: 12 } } }
+FACTS[MOON_SPLIT_CHART_ID] = { graha_position: { LAGNA: { sign: 'Aries', house: 1 }, MOON: { sign: 'Aquarius', house: 11 } } }
 FACTS[MOON_MISSING_DATA_CHART_ID] = { graha_position: { LAGNA: { sign: 'Aries', house: 1 }, MOON: { sign: 'Pisces', house: 12 } } }
 
 // chart_id -> ayanamsha_id -> Moon's `sign` for THIS finding's own widened cross-ayanamsha read.
@@ -126,6 +128,15 @@ const MOON_SIGN_BY_AYANAMSHA: Record<string, Record<string, string>> = {
     raman: 'Pisces',
     surya_siddhanta_classical: 'Pisces',
     true_chitra: 'Pisces',
+  },
+  // Lahiri-primary PR-3: a 2-2-1 split. krishnamurti+raman (Pisces) come first in alphabetical order and
+  // would be the "modal" reading, making Lahiri (Aquarius) the odd one out; anchored on Lahiri it is not.
+  [MOON_SPLIT_CHART_ID]: {
+    krishnamurti: 'Pisces',
+    lahiri_chitrapaksha: 'Aquarius',
+    raman: 'Pisces',
+    surya_siddhanta_classical: 'Aries',
+    true_chitra: 'Aquarius',
   },
   // Missing-data case: 'raman' has no row at all; the 4 present rows agree.
   [MOON_MISSING_DATA_CHART_ID]: {
@@ -591,6 +602,47 @@ describe('resolveAddress — paradigm-specific address types', () => {
     expect(result.paradigm).toBe('kp')
   })
 
+  it('sub_lord_of reads the KP chain at Krishnamurti, not the Lahiri primary, and carries the KP frame label (SS N-342)', async () => {
+    const { query } = await import('@/lib/db/client')
+    const mockedQuery = vi.mocked(query)
+    mockedQuery.mockClear()
+    const result = await resolveAddress(NATIVE_CHART_ID, { type: 'sub_lord_of', cusp: 1 }, { ayanamsha_id: AYANAMSHA })
+    const kpCalls = mockedQuery.mock.calls.filter((c) => String(c[0]).includes('cusp_kp_lords'))
+    expect(kpCalls.length).toBe(1)
+    const kpParams = kpCalls[0]![1] as unknown[]
+    expect(kpParams[1]).toBe('krishnamurti')
+    expect(kpParams).not.toContain(AYANAMSHA)
+    const s = result.entities[0] as ResolvedSubLord
+    expect(s.ayanamsha_id).toBe('krishnamurti')
+    expect(s.frame_label).toBe('KP frame (Krishnamurti ayanamsha)')
+    expect(result.chain.join(' ')).toContain('KP frame (Krishnamurti ayanamsha)')
+  })
+
+  // SS N-359: the KP cusp-chain read never takes the caller's ayanamsha, whatever it is.
+  it.each([
+    ['no id (the Lahiri primary default)', undefined],
+    ['the Lahiri primary id', 'lahiri_chitrapaksha'],
+    ['"all"', 'all'],
+    ['the alias LAHIRI', 'LAHIRI'],
+    ['raman', 'raman'],
+    ['explicit krishnamurti', 'krishnamurti'],
+    ['a nonsense id', 'not_an_ayanamsha_xyz'],
+  ] as Array<[string, string | undefined]>)('sub_lord_of reads cusp_kp_lords at krishnamurti and says so: %s', async (_label, id) => {
+    const { query } = await import('@/lib/db/client')
+    const mockedQuery = vi.mocked(query)
+    mockedQuery.mockClear()
+    const result = await resolveAddress(NATIVE_CHART_ID, { type: 'sub_lord_of', cusp: 1 }, id === undefined ? {} : { ayanamsha_id: id })
+    const kpCalls = mockedQuery.mock.calls.filter((c) => String(c[0]).includes('cusp_kp_lords'))
+    expect(kpCalls).toHaveLength(1)
+    const kpParams = kpCalls[0]![1] as unknown[]
+    expect(kpParams[1]).toBe('krishnamurti')
+    for (const other of ['lahiri_chitrapaksha', 'LAHIRI', 'all', 'raman', 'not_an_ayanamsha_xyz']) expect(kpParams).not.toContain(other)
+    const s = result.entities[0] as ResolvedSubLord
+    expect(s.ayanamsha_id).toBe('krishnamurti')
+    expect(s.frame_label).toBe('KP frame (Krishnamurti ayanamsha)')
+    expect(result.chain.join(' ')).toContain('KP frame (Krishnamurti ayanamsha)')
+  })
+
   it("saham('ASHA') resolves the tajika sāham (paradigm defaults to 'tajika')", async () => {
     const result = await resolveAddress(NATIVE_CHART_ID, { type: 'saham', code: 'ASHA' }, { ayanamsha_id: AYANAMSHA })
     const s = result.entities[0] as ResolvedSaham
@@ -692,6 +744,18 @@ describe('resolveAddress — F-159 ayanamsha_frame_sensitivity (chandra frame on
     expect(sens!.variation.unanimous).toBe(false)
     expect(sens!.variation.divergent_ayanamshas).toEqual(['surya_siddhanta_classical'])
     expect(sens!.variation.missing_ayanamshas).toEqual([])
+  })
+
+  it('PR-3: the divergence is anchored on LAHIRI (never named divergent from itself) and listed in serve order', async () => {
+    const result = await resolveAddress(
+      MOON_SPLIT_CHART_ID, { type: 'bhava', house: 1, frame: 'chandra' }, { ayanamsha_id: AYANAMSHA },
+    )
+    const sens = (result.entities[0] as ResolvedSign).ayanamsha_frame_sensitivity!
+    expect(sens.frame_sensitivity_class).toBe('ayanamsha_sensitive')
+    expect(sens.variation.anchor_ayanamsha).toBe('lahiri_chitrapaksha')
+    expect(sens.variation.divergent_ayanamshas).toEqual(['krishnamurti', 'raman', 'surya_siddhanta_classical'])
+    expect(sens.variation.divergent_ayanamshas).not.toContain('lahiri_chitrapaksha')
+    expect(sens.variation.ayanamsha_agreement).toBe('2/5')
   })
 
   it('NEGATIVE: does NOT fire (reports stable_across_ayanamsha) when all 5 real ayanamshas unanimously agree', async () => {

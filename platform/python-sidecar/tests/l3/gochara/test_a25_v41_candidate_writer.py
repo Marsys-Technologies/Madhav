@@ -86,6 +86,8 @@ class FakeCursor:
         self._conn.rows_inserted += len(rows)
 
     def fetchone(self):
+        if "FROM pg_attribute" in self._conn._last_sql:
+            return {"present": True}
         return self._conn._fetchone()
 
     def fetchall(self):

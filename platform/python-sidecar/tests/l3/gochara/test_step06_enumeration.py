@@ -569,7 +569,7 @@ def test_coverage_rows_shape_and_invariants():
 
 # ── disposable-DB end-to-end ─────────────────────────────────────────────────
 
-E2E_CHART = "22222222-3333-4444-5555-666666666666"
+from tests.l3._settled_dasha_fixture import CHART_ID as E2E_CHART, DASHA_DDL, seed_default_periods
 
 MIGRATION_1082 = (
     Path(__file__).resolve().parents[4]
@@ -644,6 +644,8 @@ def wp6_enum_schema():
     conn.execute(_WP9_BASE_DDL)
     conn.execute(MIGRATION_1082.read_text())
     conn.execute(E2E_EXTRA_DDL)
+    conn.execute(DASHA_DDL)
+    seed_default_periods(conn)
     conn.execute(WP6_DROP_SQL)
     conn.execute(WP6_MIGRATION_1072.read_text())
     conn.execute(WP6_MIGRATION_1087.read_text())
@@ -692,6 +694,17 @@ def _seed_e2e(conn) -> None:
         cur.executemany(
             "INSERT INTO reference_signs (sign_id, lord) VALUES (%s,%s)",
             sorted(resonance_writer._CLASSICAL_SIGN_LORDS.items()),
+        )
+        # Step 3 §4: the overlay fingerprints carry the L0-owned node-series
+        # digest — the gate's recompute raises on an empty series, so the
+        # fixture seeds a minimal pinned ('true') Rahu/Ketu series.
+        cur.execute("DELETE FROM ephemeris_daily")
+        cur.executemany(
+            "INSERT INTO ephemeris_daily (date, body, ayanamsha_id,"
+            " tropical_longitude, speed_dps, is_retrograde, node_mode)"
+            " VALUES (%s,%s,%s,%s,%s,%s,%s)",
+            [("2026-01-01", "Rahu", "tropical", 100.0, -0.05, True, "true"),
+             ("2026-01-01", "Ketu", "tropical", 280.0, -0.05, True, "true")],
         )
         cur.execute("DELETE FROM ga_yoga_firings WHERE chart_id = %s", (E2E_CHART,))
         cur.execute(
@@ -751,8 +764,8 @@ def _seed_e2e(conn) -> None:
     from services.ka_vedha_gochara.freshness import (
         current_fingerprint, current_moorti_fingerprint)
 
-    vedha_fp = current_fingerprint(conn)
-    moorti_fp = current_moorti_fingerprint(conn)
+    vedha_fp = current_fingerprint(conn, E2E_CHART)
+    moorti_fp = current_moorti_fingerprint(conn, E2E_CHART)
     with conn.cursor() as cur:
         cur.execute("DELETE FROM kala_vedha_gochara WHERE chart_id = %s", (E2E_CHART,))
         cur.execute("DELETE FROM kala_moorti_nirnaya WHERE chart_id = %s", (E2E_CHART,))
@@ -1163,7 +1176,7 @@ def test_stale_overlay_refused_exit_7(wp6_enum_schema, tmp_path):
             conn.execute(
                 "UPDATE kala_vedha_gochara SET detail = jsonb_set(detail,"
                 " '{upstream_fingerprint}', %s::jsonb) WHERE chart_id = %s",
-                (json.dumps(current_fingerprint(conn)), E2E_CHART))
+                (json.dumps(current_fingerprint(conn, E2E_CHART)), E2E_CHART))
 
 
 @requires_swieph

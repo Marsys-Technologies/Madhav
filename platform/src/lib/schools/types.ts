@@ -62,6 +62,7 @@ export interface ChartData {
   yoginiDasha?: YoginiState
   charaPadas?: Record<string, string>  // {atmakaraka: 'moon', amatyakaraka: 'saturn', ...}
   kpSubLords?: Record<string, string>  // {ascendant: 'saturn', moon: 'venus', ...}
+  kpSubLordsFrame?: string             // 'KP frame (Krishnamurti ayanamsha)' whenever kpSubLords is set (SS N-342)
   varshaKundaliYear?: number
   pendingFlags?: string[]              // ['VARSHA_KUNDALI_PENDING', 'TRANSIT_DATA_PENDING']
 }

@@ -515,6 +515,80 @@ export const callMuhurtaScoreCapability: CapabilityDescriptor = {
 
 // ── call_priority_ranking ─────────────────────────────────────────────────────
 
+/** K7-4: one statement reads one forecaster snapshot. No production jury
+ * column/mapping is assumed. The actual scalar alias remains beside this service.
+ * (I) INTERPRETATION: field_snapshot_id is the existing publication authority
+ * for these legacy windows; a mixed snapshot is refused, never selected by guess.
+ */
+export interface TulanaComparison {
+  contract_version: 'k7-4:pareto:v1'
+  ordered: string[]
+  front: string[]
+  comparisons: Array<Record<string, unknown>>
+  evidence: Record<string, unknown>
+  rejected: Array<Record<string, unknown>>
+  order_policy: string[]
+  empty_reason: string | null
+}
+
+export async function callTulanaComparison(args: Record<string, unknown>): Promise<TulanaComparison> {
+  const result = await query(`WITH candidates AS (
+    SELECT w.*, e.domain AS event_domain,
+      to_jsonb(s)->'factor_informativeness' AS factor_informativeness,
+      to_jsonb(s)->'factor_consequence' AS factor_consequence
+    FROM kala_field_windows w
+    LEFT JOIN brahma_event_ontology e ON e.event_class_id = w.event_class
+    LEFT JOIN kala_field_salience s ON s.chart_id = w.chart_id AND s.window_id = w.window_id
+      AND s.field_snapshot_id = w.field_snapshot_id
+    WHERE w.chart_id = $1::uuid
+      AND ($2::text[] IS NULL OR e.domain = ANY($2::text[]))
+      AND w.window_start <= $3::date
+  ) SELECT count(DISTINCT field_snapshot_id) AS snapshots,
+    COALESCE(jsonb_agg(jsonb_build_object(
+      'chart_id', chart_id, 'window_id', window_id, 'field_snapshot_id', field_snapshot_id,
+      'window_start', to_char(window_start, 'YYYY-MM-DD'), 'window_end', to_char(window_end, 'YYYY-MM-DD'),
+      'event_class', event_class, 'event_domain', event_domain, 'precision_regime', precision_regime,
+      'confidence_tier', confidence_tier, 'weakest_link', weakest_link, 'robustness', robustness,
+      'lambda_peak', lambda_peak, 'null_p', null_p,
+      'factor_informativeness', factor_informativeness, 'factor_consequence', factor_consequence
+    ) ORDER BY window_id), '[]'::jsonb) AS windows FROM candidates`, [args.chart_id, args.domain_filter ?? null, args.date_to])
+  const snapshot = result.rows[0]
+  if (!snapshot || Number(snapshot.snapshots) > 1 || !Array.isArray(snapshot.windows)) {
+    throw new Error('Tulana comparison refused: mixed or unavailable field snapshot')
+  }
+  const sidecarUrl = process.env.PYTHON_SIDECAR_URL
+  if (!sidecarUrl) throw new Error('Tulana comparison unavailable: sidecar not configured')
+  const resp = await fetch(`${sidecarUrl}/api/compute/tulana_compare`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': process.env.PYTHON_SIDECAR_API_KEY ?? '' },
+    body: JSON.stringify({ windows: snapshot.windows, date_from: args.date_from, date_to: args.date_to,
+      ...(args.question_frame !== undefined ? { question_frame: args.question_frame } : {}),
+      ...(args.preference !== undefined ? { preference: args.preference } : {}) }),
+    signal: AbortSignal.timeout(30_000),
+  })
+  if (!resp.ok) throw new Error(`Tulana comparison refused (${resp.status})`)
+  const comparison = await resp.json() as TulanaComparison
+  if (comparison.contract_version !== 'k7-4:pareto:v1' || !Array.isArray(comparison.ordered)
+      || !Array.isArray(comparison.front) || !Array.isArray(comparison.comparisons)
+      || !comparison.evidence || !Array.isArray(comparison.rejected) || !Array.isArray(comparison.order_policy)) {
+    throw new Error('Tulana comparison refused: incompatible response')
+  }
+  const candidateIds = new Set((snapshot.windows as Array<{ window_id: string }>).map(w => w.window_id))
+  const evidenceIds = Object.keys(comparison.evidence)
+  const activeAxes = [...(args.question_frame !== undefined ? ['best_suited'] : []), 'most_robust', 'strongest', 'nearest']
+  if (Array.isArray(comparison.evidence) || evidenceIds.some(id => !candidateIds.has(id))
+      || comparison.ordered.length !== evidenceIds.length || new Set(comparison.ordered).size !== evidenceIds.length
+      || comparison.ordered.some(id => !Object.hasOwn(comparison.evidence, id))
+      || comparison.front.some(id => !Object.hasOwn(comparison.evidence, id))
+      || new Set(comparison.front).size !== comparison.front.length
+      || comparison.order_policy.length !== activeAxes.length || new Set(comparison.order_policy).size !== activeAxes.length
+      || comparison.order_policy.some(axis => !activeAxes.includes(axis))
+      || !(comparison.empty_reason === null || typeof comparison.empty_reason === 'string')
+      || comparison.comparisons.some(pair => !['tie', 'incomparable', 'A_dominates', 'B_dominates'].includes(String(pair.relation)))) {
+    throw new Error('Tulana comparison refused: incompatible evidence identities or policy')
+  }
+  return comparison
+}
+
 export const callPriorityRankingCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L3/call_priority_ranking',
   type:  'tool',
@@ -524,7 +598,7 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
   description: [
     'Returns priority-ranked signals for a chart in a given period (ka_tulana service).',
     'Per-chart: requires chart_id.',
-    'Ranks active signals by combined score of salience × activation_strength × convergence.',
+    'Calls the Tulana Pareto comparator over forecaster windows; scalar signals remain legacy context.',
     'Use to determine which signals deserve attention in a specific time window.',
     'Each row carries signal_headline_label (acharya-grade label from the signal-register',
     'glossary) alongside the raw signal_headline_text; headline_label_mapped=false means no',
@@ -545,6 +619,8 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
   required_inputs: ['chart_id'],
 
   input_schema: {
+    question_frame: { type: 'object', description: 'Declared question frame used for best_suited; entities echoed only.' },
+    preference: { type: 'array', items: { type: 'string' }, description: 'Unique active axes in caller presentation order; remaining defaults appended.' },
     chart_id: {
       type: 'string',
       description: 'Chart UUID (<chart_uuid>). Required.',
@@ -594,8 +670,18 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
 
     const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
     const date_from    = (args['date_from'] as string | undefined) ?? new Date().toISOString().split('T')[0]
-    const date_to      = (args['date_to'] as string | undefined) ?? new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]
-    const top_k        = Math.min(Number(args['top_k'] ?? 20), 100)
+    const validDate = (value: unknown): value is string => typeof value === 'string'
+      && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value))
+      && new Date(value).toISOString().slice(0, 10) === value
+    if (!validDate(date_from)) return { content: { error: 'date_from must be a valid DATE', chart_id }, is_error: true }
+    const date_to      = (args['date_to'] as string | undefined) ?? new Date(Date.parse(date_from) + 90 * 86400000).toISOString().split('T')[0]
+    if (!validDate(date_to) || date_to <= date_from) {
+      return { content: { error: 'date_to must exceed date_from by at least one day', chart_id }, is_error: true }
+    }
+    const top_k        = Number(args['top_k'] ?? 20)
+    if (!Number.isInteger(top_k) || top_k < 1 || top_k > 100) {
+      return { content: { error: 'top_k must be 1..100', chart_id }, is_error: true }
+    }
 
     // MC-024 (ŚODHANA T4): domain/domains facet. `domain` (singular) wins if both are passed —
     // same precedence pattern used elsewhere in this codebase (e.g. system > dasha_system).
@@ -611,6 +697,8 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
     }
 
     try {
+      const comparison = await callTulanaComparison({ chart_id, date_from, date_to, domain_filter: domainsFilter,
+        question_frame: args.question_frame, preference: args.preference })
       // Join activation with signals to compute combined priority.
       // WP-1.5: prior SQL referenced columns that do not exist on kala_activation
       // (activation_strength/window_start/window_end/trigger_type) → every call errored.
@@ -760,6 +848,7 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
         const humanized = humanizeSignalHeadline(row.signal_headline_text)
         return {
           ...rest,
+          legacy_scalar: true,
           // Raw template retained above via `rest.signal_headline_text` (B.10 / §N.5) —
           // the label is an ADDITIONAL display field, not a replacement.
           signal_headline_label:   humanized.headline_label,
@@ -786,6 +875,11 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
+          comparison,
+          legacy_scalar: true,
+          ordered_windows: comparison.ordered.slice(0, top_k),
+          front_members_omitted: comparison.front.filter(id => !comparison.ordered.slice(0, top_k).includes(id)).length,
+          empty_reason: comparison.empty_reason,
           ayanamsha_id,
           date_from,
           date_to,

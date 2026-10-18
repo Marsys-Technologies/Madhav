@@ -1,0 +1,63 @@
+{
+ "schema": "ky.launch_config/1",
+ "role": "ruling",
+ "model": "claude-opus-5-5",
+ "effort": "high",
+ "permission_mode": "bypassPermissions",
+ "max_turns": 30,
+ "deadline_seconds": 14400,
+ "worktree": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign",
+ "claude_bin": "/Users/Dev/.local/bin/claude",
+ "mcp_config": "/Users/Dev/kalayantra/fleet_live/mcp.none.json",
+ "prompt_path": "/Users/Dev/kalayantra/fleet_live/cards/ADHIKARIN.md",
+ "env_names": [
+  "HOME",
+  "PATH",
+  "LANG",
+  "TERM",
+  "USER",
+  "TMPDIR",
+  "ZDOTDIR",
+  "KY_ROOT",
+  "KY_RUN",
+  "KY_FLEET",
+  "KY_STREAM",
+  "KY_LANE",
+  "KY_ITEM",
+  "KY_PY",
+  "KY_SCRATCH",
+  "JOB_SCRATCH",
+  "KY_RUN_ID",
+  "KY_ROLE",
+  "KY_CONTROLLER_ID"
+ ],
+ "child_path": "/Users/Dev/kalayantra/bin:/Users/Dev/.nvm/versions/node/v24.14.0/bin:/opt/homebrew/bin:/usr/bin:/bin",
+ "extra_flags": [],
+ "disallowed_tools": [
+  "Task",
+  "Workflow",
+  "CronCreate",
+  "CronDelete",
+  "RemoteTrigger",
+  "ScheduleWakeup",
+  "PushNotification",
+  "SendMessage",
+  "EnterWorktree",
+  "ExitWorktree",
+  "WebFetch",
+  "WebSearch",
+  "DesignSync"
+ ],
+ "add_dirs": [
+  "/Users/Dev/kalayantra"
+ ],
+ "intended_tools": [
+  "Read",
+  "Write",
+  "Edit",
+  "Bash"
+ ],
+ "denied_tools": [],
+ "shell_canary": "python3",
+ "_note": "Live bootstrap code jobs with no test_commits or ephemeris header: kyjob.sh omits null SE_EPHE_PATH, SWE_EPHE_PATH and TESTS (19 names). Qualify with KY_STREAM, KY_LANE and KY_CONTROLLER_ID set. Settings must match the item worktree. python3 canary and tool policy inherited from bootstrap-builder; verifier still requires the enforced boundary. Requalify after NODE_BIN, settings, card or harness changes."
+}

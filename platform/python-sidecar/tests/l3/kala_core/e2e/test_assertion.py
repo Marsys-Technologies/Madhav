@@ -84,3 +84,70 @@ def test_unavailable_is_not_silent_and_unknown_release_is_honest():
     row["payload"]["effective_state"] = "evaluated_silent"
     with pytest.raises(ValueError):
         Assertion.model_validate(row)
+
+
+@pytest.mark.parametrize("system,lord", [
+    ("vimshottari", "Aries"), ("chara", "SAT"), ("yogini", "MOON"),
+    ("unknown_system", "SAT"), ("mula", "SAT"),
+])
+@pytest.mark.parametrize("level", ["MD", "AD", "PD"])
+def test_period_anchor_refuses_unknown_or_wrong_kind_lords(system, lord, level):
+    Assertion, _ = api()
+    row = envelope()
+    valid = {"chara": "Aries", "yogini": "Mangala"}.get(system, "SAT")
+    row["period_anchor"].update(system=system, MD=valid, AD=valid, PD=valid)
+    row["period_anchor"][level] = lord
+    with pytest.raises(ValueError):
+        Assertion.model_validate(row)
+
+
+@pytest.mark.parametrize("frame", ["unrecognised_frame", "graha:Aries", "graha:unknown"])
+def test_assertion_refuses_unknown_frames(frame):
+    Assertion, _ = api()
+    row = envelope()
+    row["frame"] = frame
+    with pytest.raises(ValueError):
+        Assertion.model_validate(row)
+
+
+@pytest.mark.parametrize("system,lord,canonical", [
+    ("vimshottari", "Saturn", "SAT"), ("chara_karaka", "Aries", "Aries"),
+    ("yogini", "Mangala", "Mangala"), ("kalachakra", "Cancer", "Cancer"),
+])
+def test_assertion_keeps_method_specific_lord_identities_on_the_wire(system, lord, canonical):
+    Assertion, _ = api()
+    row = envelope()
+    row["period_anchor"].update(system=system, MD=lord, AD=lord, PD=lord)
+    row["frame"] = "graha:Saturn"
+    encoded = Assertion.model_validate(row).model_dump(mode="json")
+    assert encoded["period_anchor"] == {
+        "system": "chara" if system == "chara_karaka" else system,
+        "MD": canonical, "AD": canonical, "PD": canonical, "applicability": "applicable",
+    }
+    assert encoded["frame"] == "graha:SAT"
+
+
+@pytest.mark.parametrize("mutation", ["frame", "lord"])
+def test_fixture_slice_refuses_bad_identities_before_candidate_writes(mutation):
+    from types import SimpleNamespace
+    from services.kala_core.assertion.slice import _run_fixture_slice
+
+    class BoundCandidate:
+        calls = 0
+
+        def execute(self, query, params=()):
+            self.calls += 1
+            assert query.startswith("SELECT generation FROM kala_layer_candidate"), "invalid envelope reached storage"
+            return SimpleNamespace(fetchone=lambda: ("candidate-a",))
+
+    row = envelope()
+    if mutation == "frame":
+        row["frame"] = "unrecognised_frame"
+    else:
+        row["period_anchor"]["MD"] = "Aries"
+    conn = BoundCandidate()
+    ctx = SimpleNamespace(build_id="build", dry_run=False,
+                          config={"chart_id": row["chart_id"], "kala_assertion_fixture": row})
+    with pytest.raises(ValueError):
+        _run_fixture_slice(ctx, conn)
+    assert conn.calls == 1

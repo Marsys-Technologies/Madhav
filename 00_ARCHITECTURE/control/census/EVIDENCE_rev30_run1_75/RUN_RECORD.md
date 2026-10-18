@@ -1,0 +1,11 @@
+# RUN_RECORD rev30
+- date (CENSUS_DATE, UTC): 2026-10-12 ; run 2026-10-12T20:26:03Z to 2026-10-12T22:22:50Z
+- tree: 7e63cc872eda2da19eed3b484c6e36569e03bf50 (detached, clean), /Users/Dev/worktrees.noindex/madhav/claude/census-run-rev30 ; REGISTRY_REVISION 30
+- post-process cwd: /Users/Dev/worktrees.noindex/madhav/claude/census-run-rev30/platform/scripts/governance
+- git rev-parse --show-toplevel there: /Users/Dev/worktrees.noindex/madhav/claude/census-run-rev30
+- command (no secret): EVAL_BACKUP_ID=1791835965446 EVAL_BACKUP_TIME=2026-10-12T20:15:07.308Z CENSUS_ASSETS_EXPECTED=82 CENSUS_OUT_DIR=/Users/Dev/suvarna-evidence/census_eval/7e63cc872-1791835965446-rev30 /bin/bash /Users/Dev/suvarna-evidence/N431/run_census_on_copy.sh /Users/Dev/worktrees.noindex/madhav/claude/census-run-rev30
+- exit code: 0 (census_parallel rc=0)
+- wall: L0 3512 s (exit 2) | L1 6397 s (exit 3) | L2 3488 s (exit 3)
+- timeouts.txt: empty (0 bytes); "no read timed out in any layer"; no rerun
+- stdout log: /Users/Dev/scratch.noindex/claude/madhav/20261013-c30run/run_stdout.log
+- result: N-268 75 of 82 CERTIFIED; strict 13 of 82. Full report: /Users/Dev/suvarna-evidence/N431/census_rev30_run_report.md
