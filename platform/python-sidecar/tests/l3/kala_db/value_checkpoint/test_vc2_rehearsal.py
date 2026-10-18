@@ -15,6 +15,7 @@ import re
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import quote
 from uuid import UUID
 
 import psycopg
@@ -269,13 +270,20 @@ def test_rehearsal_evidence_is_written_when_requested(seeded):
     assert evidence["unit_status_counts"]["ok"] > 0 and evidence["unit_status_counts"]["not_evaluable"] > 0
 
 
-def test_cli_rehearsal_reproduces_and_real_mode_is_refused_without_the_freeze(seeded, tmp_path, capsys):
-    """CLI path: lane-only DSN, byte-identical re-run to a second directory, real mode fail-closed (prereg §2)."""
+def test_cli_rehearsal_reproduces_and_real_mode_is_refused_without_the_freeze(seeded, tmp_path, capsys, monkeypatch):
+    """CLI path: lane-guarded DSN, byte-identical re-run to a second directory, real mode fail-closed (prereg §2).
+
+    The production guard (run.assert_lane_dsn: single-host loopback URI, ky_*/kala_ci_* database) is pinned to
+    127.0.0.1:55433 and is tested as such in governance/__tests__/test_vc2_core.py. CI's disposable server is not on
+    that port, and a skip here would leave this CLI path with no oracle (§N.8; the Kāla DB job fails on skips), so the
+    test points only the two lane constants at the disposable server it was given; every other guard check still runs.
+    """
     dsn, _ = seeded
     info = psycopg.conninfo.conninfo_to_dict(dsn)
-    if (info.get("host"), str(info.get("port"))) != (run.LANE_HOST, str(run.LANE_PORT)):
-        pytest.skip("CLI is lane-only (127.0.0.1:55433); the in-process tests above cover other clusters")
-    uri = f"postgresql://{info['user']}@{info['host']}:{info['port']}/{info['dbname']}"
+    monkeypatch.setattr(run, "LANE_HOST", info["host"])
+    monkeypatch.setattr(run, "LANE_PORT", int(info["port"]))
+    auth = quote(info["user"], safe="") + (":" + quote(info["password"], safe="") if info.get("password") else "")
+    uri = f"postgresql://{auth}@{info['host']}:{info['port']}/{info['dbname']}"
     elig = tmp_path / "eligibility.json"
     elig.write_text(json.dumps(eligibility()))
     common = ["--dsn", uri, "--chart", CHART, "--generation", GEN, "--eligibility", str(elig)]
