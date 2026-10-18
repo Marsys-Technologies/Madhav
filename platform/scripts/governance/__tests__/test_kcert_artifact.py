@@ -110,6 +110,10 @@ def completion_fixture(model, binding):
     events = [{'kind': 'item', 'item': dep, 'state': 'done', 'actor': 'stream-S:fixture',
                'guarded': True, 'ts': '2026-10-15T00:00:00Z'}
               for dep in row['depends_on']]
+    # SR-A6-EDGES: the merged-code precondition is a required step of the item itself.
+    events += [{'kind': 'item', 'item': 'K-CERT', 'step': step, 'state': 'done',
+                'actor': 'stream-K:fixture', 'ts': '2026-10-15T00:00:00Z'}
+               for step in row['steps']]
     verdict = {'kind': 'verdict', 'item': 'K-CERT', 'actor': 'stream-V:independent-fixture',
                'head': None, 'artifact_digest': binding['assessment']['sha256'],
                'phase': 'artifact', 'result': 'ACCEPTED', 'ts': '2026-10-16T00:00:00Z'}
@@ -136,6 +140,7 @@ def test_existing_guard_accepts_only_independent_exact_digest_after_dependencies
         ([*events, verdict], {**proof, 'artifact_digest': changed_digest}, {'status': 'done'}),
         ([*events, verdict], proof, {'status': 'pending'}),
         ([verdict], proof, {'status': 'done'}),
+        ([e for e in events if not e.get('step')] + [verdict], proof, {'status': 'done'}),  # merged-code step open
     ]:
         with pytest.raises(CompletionError):
             guarded_done_event(local, bad_events, 'K-CERT', 'stream-K:fixture', detector, bad_proof)
@@ -146,7 +151,10 @@ def test_retirement_is_limited_to_structural_prerequisite(model, binding):
     assert row['owner'] == row['producer'] == 'K'
     assert row['completion_kind'] == 'artifact'
     assert row['reviewer_rule'] == 'v_artifact_digest_reviewer_not_author'
-    assert row['depends_on'] == ['B-7', 'K0-SV', 'J-4d-pr3145']
+    # SR-A6-EDGES replaced the J-4d-pr3145 completion edge with a required merged-code step.
+    assert row['depends_on'] == ['B-7', 'K0-SV']
+    assert row['steps'] == ['p07_code_merged']
+    assert row['step_evidence']['p07_code_merged']['detector']['type'] == 'pr_merged'
     assert binding['decision']['id'] == 'SR-A2-11'
     assert 'never migrated' in binding['decision']['record']['title']
     schema = next(r for r in model['items'] if r['id'] == 'KV3-SCHEMA-1')

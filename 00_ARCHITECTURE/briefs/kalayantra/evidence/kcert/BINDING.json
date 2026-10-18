@@ -89,7 +89,7 @@
     "live tracker completion"
   ],
   "acceptance": "pending_independent_artifact_digest_review",
-  "declaration_entry_sha256": "1d27bb8c85dbc67fc763ffcdac3372a50a2513f325578207d9cc9e9c62fae62c",
+  "declaration_entry_sha256": "2600d4eb4f34b1e6e07a5cd4cc48cf6b56acdb4ffb284316a0b6332bc634bce9",
   "evidence_anchor": {
     "path": "evidence/assessment-artifacts.sha256.json",
     "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/assessment-artifacts.sha256.json",
