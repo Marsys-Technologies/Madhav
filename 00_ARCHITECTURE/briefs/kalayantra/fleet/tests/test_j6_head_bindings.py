@@ -72,11 +72,11 @@ def test_actual_bindings_and_dryruns_exist_but_stay_disabled():
         entry = ops[kind]
         assert next(iter(entry)) == 'enabled' and entry['enabled'] is False
         assert entry['script'] == '00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py'
-        assert entry['needs'] == 'builder' and entry['production'] is True
+        assert entry['needs'] == 'builder' and entry['production'] is (not kind.endswith('_dryrun'))   # A8 §3.8: a dry run is production:false
         assert entry['allowed_args'] == ['generation', 'manifest-id', 'expected-head-sha256']
         assert entry['fixed_args'] == ['--kind', kind.removesuffix('_dryrun'),
                                        '--dry-run' if kind.endswith('_dryrun') else '--execute']
-        assert entry['required_rows'] == list(head.G6_ROWS if kind.startswith('publish') else head.ROLLBACK_ROWS)
+        assert 'required_rows' not in entry     # A8 §5: retired from the table; the head policy itself still demands head.G6_ROWS / ROLLBACK_ROWS
 
 
 @pytest.mark.parametrize('outcome,effective', [('approved', True), ('refused', True), ('deferred', False), ('insufficient_evidence', False)])
@@ -301,10 +301,13 @@ def test_executor_g8_checks_remain_required_before_head_policy(tmp_path,monkeypa
     assert 'not enabled' in ex.validate(req,ops,{'builder':True})
     for key in ('backup_taken','restore_verified','dry_run_passed'):
         bad=copy.deepcopy(accepted);bad['checks'][key]=False;path.write_text(json.dumps(bad))
-        assert 'attestation' in ex.validate(req,fixture,{'builder':True})
-    for key in head.G6_ROWS:
+        if key == 'dry_run_passed':
+            assert 'attestation' in ex.validate(req,fixture,{'builder':True})
+        else:                                                    # A8 §5: restore_verified retired; backup_taken only for a *_teardown
+            assert ex.validate(req,fixture,{'builder':True}) is None
+    for key in head.G6_ROWS:                                     # A8 §5: the executor no longer gates on checklist rows (the verifier's acceptance owns them)
         bad=copy.deepcopy(accepted);bad['rows'].pop(key);path.write_text(json.dumps(bad))
-        assert 'rows' in ex.validate(req,fixture,{'builder':True})
+        assert ex.validate(req,fixture,{'builder':True}) is None
     path.write_text(json.dumps(accepted))
     assert 'lease' in ex.validate({**req,'lease_id':'expired'},fixture,{'builder':True})
     assert 'complete request' in ex.validate({**req,'kyd':'different'},fixture,{'builder':True})

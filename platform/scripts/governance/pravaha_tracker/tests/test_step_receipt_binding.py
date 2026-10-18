@@ -527,3 +527,131 @@ def test_operation_step_resolves_the_cited_executor_id(operation_step):
     w.verdict["artifact_digest"] = digest
     w.events.write_text(json.dumps(w.verdict) + "\n")
     w.run(expected=0)
+
+
+def _composed(w, tmp_path):
+    """SR-J2A-A55I-1/-ORDER: J-2d-a55i.json is composed by the run pack (handoff.py a55i-receipt) from accepted
+    executor receipts cited by name + sha256; it has no status/kind/item_id/request/output of its own."""
+    receipts, acceptance = w.executor_path.parent, w.ops / "acceptance"
+    acceptance.mkdir(exist_ok=True)
+
+    def sha(path):
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def component(opid):
+        out = receipts / (opid + ".output.txt")
+        out.write_bytes(b"measured " + opid.encode() + b"\n")
+        body = {"operation_id": opid, "item_id": "J-2x", "kind": "readback_sql", "status": "COMPLETED",
+                "exit_code": 0, "requested_by": "adhikarin", "output_file": out.name, "output_sha256": sha(out)}
+        (receipts / (opid + ".json")).write_text(json.dumps(body, sort_keys=True))
+        post = acceptance / (opid + ".post.json")
+        post.write_text(json.dumps({"operation_id": opid, "result": "ACCEPTED"}))
+        return {"operation_id": opid, "status": "COMPLETED", "output_sha256": body["output_sha256"],
+                "receipt": {"name": opid + ".json", "sha256": sha(receipts / (opid + ".json"))},
+                "acceptance": [{"name": post.name, "sha256": sha(post)}]}
+
+    run = {"run": 1, **{part: component("J-2x." + part) for part in
+                        ("dispatch", "terminal", "execution_readback", "absence")}}
+    w.executor.clear()
+    w.executor.update(schema="ky.a55i_both_runs/1", item=w.item["id"], operation_id=w.item["id"],
+                      step=w.step, request_id="6748070b-fb28-5d39-bb2c-cd30ed1a6861", runs=[run])
+    w.sync()
+    return receipts, acceptance
+
+
+def test_accepts_composed_receipt_whose_components_are_verified_executor_receipts(operation_step, tmp_path):
+    _composed(operation_step, tmp_path)
+    operation_step.run(expected=0)
+
+
+@pytest.mark.parametrize("problem", [
+    "component_digest_changed", "component_missing", "component_failed", "component_exit_nonzero",
+    "acceptance_digest_changed", "absence_without_acceptance", "no_independent_acceptance",
+    "component_outside_root", "run_parts_without_receipt", "acceptance_not_accepted",
+    "acceptance_for_other_operation",
+])
+def test_refuses_composed_receipt_with_an_unverified_component(operation_step, tmp_path, problem):
+    w = operation_step
+    receipts, acceptance = _composed(w, tmp_path)
+    run = w.executor["runs"][0]
+    target = receipts / "J-2x.dispatch.json"
+    if problem == "component_digest_changed":
+        target.write_text(target.read_text().replace('"exit_code": 0', '"exit_code": 0, "x": 1'))
+    elif problem == "component_missing":
+        target.unlink()
+    elif problem in ("component_failed", "component_exit_nonzero"):
+        body = json.loads(target.read_text())
+        body.update(status="FAILED") if problem == "component_failed" else body.update(exit_code=1)
+        target.write_text(json.dumps(body, sort_keys=True))
+        run["dispatch"]["receipt"]["sha256"] = hashlib.sha256(target.read_bytes()).hexdigest()
+    elif problem == "acceptance_digest_changed":
+        (acceptance / "J-2x.absence.post.json").write_text("{}")
+    elif problem == "absence_without_acceptance":
+        run["absence"]["acceptance"] = []
+    elif problem == "no_independent_acceptance":
+        w.verdict["result"] = "REJECTED"
+    elif problem == "run_parts_without_receipt":
+        # N.8: a run of parts that cite no executor receipt verifies zero components and must not pass.
+        w.executor["runs"] = [{"run": 1, **{part: {} for part in
+                                            ("dispatch", "terminal", "execution_readback", "absence")}}]
+    elif problem in ("acceptance_not_accepted", "acceptance_for_other_operation"):
+        # B.3/B.10: a cited acceptance record is read, not merely digest-bound.
+        post = acceptance / "J-2x.absence.post.json"
+        record = json.loads(post.read_text())
+        record.update(result="REJECTED") if problem == "acceptance_not_accepted" else record.update(operation_id="J-2x.other")
+        post.write_text(json.dumps(record))
+        run["absence"]["acceptance"] = [{"name": post.name, "sha256": hashlib.sha256(post.read_bytes()).hexdigest()}]
+    else:
+        run["dispatch"]["receipt"]["name"] = "../J-2x.dispatch.json"
+    w.sync()
+    w.run(expected=2)
+
+
+def _ready_for_done(w):
+    """Fixture model has one track and one item: no open dependency, the one recorded step is all there is."""
+    w.item.update(depends_on=[], track="K", steps=[w.step])
+    w.run(expected=0)    # the step is recorded first, as in life
+
+
+def _done(w, expected):
+    """`ky done` on the guarded operation path (guarded_done_event, completion.py)."""
+    _ready_for_done(w)
+    before = w.events.read_bytes()
+    code = cli.main(["done", w.item["id"], "--stream", "S", "--operation-receipt", str(w.executor_path),
+                     "--operation-id", w.item["id"]])
+    assert code == expected
+    if expected:
+        assert w.events.read_bytes() == before, "refusal must append no event"
+    else:
+        event = json.loads(w.events.read_text().splitlines()[-1])
+        assert (event["item"], event["state"], event.get("guarded")) == (w.item["id"], "done", True)
+        assert event["completion"]["artifact_digest"] == hashlib.sha256(w.executor_path.read_bytes()).hexdigest()
+
+
+def test_done_accepts_composed_receipt_whose_components_are_verified(operation_step, tmp_path):
+    _composed(operation_step, tmp_path)
+    _done(operation_step, expected=0)
+
+
+def test_done_refuses_composed_receipt_whose_component_digest_changed(operation_step, tmp_path):
+    receipts, _ = _composed(operation_step, tmp_path)
+    w = operation_step
+    _ready_for_done(w)    # the step passes while the components are intact; the component is then altered
+    target = receipts / "J-2x.dispatch.json"
+    target.write_text(target.read_text().replace('"exit_code": 0', '"exit_code": 0, "x": 1'))
+    before = w.events.read_bytes()
+    code = cli.main(["done", w.item["id"], "--stream", "S", "--operation-receipt", str(w.executor_path),
+                     "--operation-id", w.item["id"]])
+    assert code == 2 and w.events.read_bytes() == before
+
+
+def test_done_refuses_composed_receipt_without_the_accepted_verdict_at_its_digest(operation_step, tmp_path):
+    _composed(operation_step, tmp_path)
+    w = operation_step
+    w.verdict["result"] = "REJECTED"
+    w.sync()
+    w.item.update(depends_on=[], track="K", steps=[])
+    before = w.events.read_bytes()
+    code = cli.main(["done", w.item["id"], "--stream", "S", "--operation-receipt", str(w.executor_path),
+                     "--operation-id", w.item["id"]])
+    assert code == 2 and w.events.read_bytes() == before

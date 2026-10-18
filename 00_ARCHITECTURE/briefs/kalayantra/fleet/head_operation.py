@@ -58,7 +58,8 @@ def sha(value):
 
 
 def request_digest(req):
-    return sha({k:v for k,v in req.items() if k != 'acceptance_receipt'})
+    # executor.request_digest, byte for byte (A8 §3.9): the fields that may lawfully change after signing stay out of the binding
+    return sha({k:v for k,v in req.items() if k not in ('acceptance_receipt', 'expires_at') and not k.endswith('_expires_at')})
 
 
 def _unique(pairs):

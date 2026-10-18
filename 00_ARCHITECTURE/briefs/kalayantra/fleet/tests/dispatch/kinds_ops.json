@@ -189,12 +189,12 @@
    "expires_at": "2026-10-13T00:00:00Z"
   },
   "sha_rb": {
-   "$canon_sha": {
+   "$request_sha": {
     "$ref": "req_rb"
    }
   },
   "sha_pub": {
-   "$canon_sha": {
+   "$request_sha": {
     "$ref": "req_pub"
    }
   },
@@ -2290,7 +2290,7 @@
         "$ref": "req_pub2"
        },
        "request_sha256": {
-        "$canon_sha": {
+        "$request_sha": {
          "$ref": "req_pub2"
         }
        }
@@ -2628,7 +2628,7 @@
         }
        },
        "request_sha256": {
-        "$canon_sha": {
+        "$request_sha": {
          "operation_id": "OP-N-RB-9",
          "kind": "readback_sql",
          "item_id": "N-RB-9",
@@ -2656,7 +2656,7 @@
        "kind": "EXECUTE",
        "item": "N-RB-9",
        "digest": {
-        "$canon_sha": {
+        "$request_sha": {
          "operation_id": "OP-N-RB-9",
          "kind": "readback_sql",
          "item_id": "N-RB-9",
@@ -2735,7 +2735,7 @@
        "kind": "EXECUTE",
        "item": "N-RB-9",
        "digest": {
-        "$canon_sha": {
+        "$request_sha": {
          "operation_id": "OP-ELSEWHERE",
          "kind": "readback_sql",
          "item_id": "N-RB-9",
@@ -2811,7 +2811,7 @@
        "kind": "EXECUTE",
        "item": "N-RB-9",
        "digest": {
-        "$canon_sha": {
+        "$request_sha": {
          "operation_id": "OP-ELSEWHERE",
          "kind": "readback_sql",
          "item_id": "N-RB-9",
@@ -2859,7 +2859,7 @@
       }
      },
      "request_sha256": {
-      "$canon_sha": {
+      "$request_sha": {
        "operation_id": "OP-ELSEWHERE",
        "kind": "readback_sql",
        "item_id": "N-RB-9",
@@ -3307,7 +3307,7 @@
         }
        },
        "request_sha256": {
-        "$canon_sha": {
+        "$request_sha": {
          "operation_id": "OP-N-RB-7",
          "kind": "readback_sql",
          "item_id": "N-RB-7",
@@ -3340,7 +3340,7 @@
        "kind": "EXECUTE",
        "item": "N-RB-7",
        "digest": {
-        "$canon_sha": {
+        "$request_sha": {
          "operation_id": "OP-N-RB-7",
          "kind": "readback_sql",
          "item_id": "N-RB-7",
@@ -4074,7 +4074,7 @@
          "expires_at": "2026-10-13T00:00:00Z"
         },
         "request_sha256": {
-         "$canon_sha": {
+         "$request_sha": {
           "operation_id": "OP-N-PUB-1",
           "kind": "layer_publish",
           "item_id": "N-PUB-1",
@@ -4117,7 +4117,7 @@
         "by": "v2",
         "reviewed_commit": "3333333333333333333333333333333333333333",
         "request_sha256": {
-         "$canon_sha": {
+         "$request_sha": {
           "operation_id": "OP-N-PUB-1",
           "kind": "layer_publish",
           "item_id": "N-PUB-1",
@@ -4162,7 +4162,7 @@
          "expires_at": "2026-10-13T00:00:00Z"
         },
         "request_sha256": {
-         "$canon_sha": {
+         "$request_sha": {
           "operation_id": "OP-N-PUB-1",
           "kind": "layer_publish",
           "item_id": "N-PUB-1",
@@ -4513,7 +4513,7 @@
      "op": "intents",
      "expect": [],
      "unknown": [
-      "the acceptance $RUN/ops/acceptance/OP-N-PUB-1.json is not an ACCEPTED record of the prepared request cd24e0480f58cbe0ff91d66e4b2c521aad9537e64cbaa93e9d469ad1cda72595"
+      "the acceptance $RUN/ops/acceptance/OP-N-PUB-1.json is not an ACCEPTED record of the prepared request {{sha:sha_pub}}"
      ]
     }
    ],
@@ -4548,7 +4548,7 @@
      "op": "intents",
      "expect": [],
      "unknown": [
-      "the acceptance $RUN/ops/acceptance/OP-N-PUB-1.json is not an ACCEPTED record of the prepared request cd24e0480f58cbe0ff91d66e4b2c521aad9537e64cbaa93e9d469ad1cda72595"
+      "the acceptance $RUN/ops/acceptance/OP-N-PUB-1.json is not an ACCEPTED record of the prepared request {{sha:sha_pub}}"
      ]
     }
    ],
@@ -4585,7 +4585,7 @@
      "op": "intents",
      "expect": [],
      "unknown": [
-      "the acceptance $RUN/ops/acceptance/OP-N-PUB-1.json is not an ACCEPTED record of the prepared request cd24e0480f58cbe0ff91d66e4b2c521aad9537e64cbaa93e9d469ad1cda72595"
+      "the acceptance $RUN/ops/acceptance/OP-N-PUB-1.json is not an ACCEPTED record of the prepared request {{sha:sha_pub}}"
      ]
     }
    ],
@@ -4622,7 +4622,7 @@
      "op": "intents",
      "expect": [],
      "unknown": [
-      "the acceptance $RUN/ops/acceptance/OP-N-PUB-1.json is not an ACCEPTED record of the prepared request cd24e0480f58cbe0ff91d66e4b2c521aad9537e64cbaa93e9d469ad1cda72595"
+      "the acceptance $RUN/ops/acceptance/OP-N-PUB-1.json is not an ACCEPTED record of the prepared request {{sha:sha_pub}}"
      ]
     }
    ],
@@ -4659,7 +4659,7 @@
      "op": "intents",
      "expect": [],
      "unknown": [
-      "the acceptance $RUN/ops/acceptance/OP-N-PUB-1.json is not an ACCEPTED record of the prepared request cd24e0480f58cbe0ff91d66e4b2c521aad9537e64cbaa93e9d469ad1cda72595"
+      "the acceptance $RUN/ops/acceptance/OP-N-PUB-1.json is not an ACCEPTED record of the prepared request {{sha:sha_pub}}"
      ]
     }
    ],
@@ -5276,7 +5276,7 @@
      "op": "finish",
      "job": {
       "digest": {
-       "$canon_sha": {
+       "$request_sha": {
         "$ref": "req_pub"
        }
       },
@@ -14708,7 +14708,7 @@
          }
         },
         "request_sha256": {
-         "$canon_sha": {
+         "$request_sha": {
           "operation_id": "OP-N-RB-9",
           "kind": "readback_sql",
           "item_id": "N-RB-9",
@@ -14767,7 +14767,7 @@
          }
         },
         "request_sha256": {
-         "$canon_sha": {
+         "$request_sha": {
           "operation_id": "OP-N-RB-9",
           "kind": "readback_sql",
           "item_id": "N-RB-9",
@@ -14807,7 +14807,7 @@
         }
        },
        "request_sha256": {
-        "$canon_sha": {
+        "$request_sha": {
          "operation_id": "OP-N-RB-9",
          "kind": "readback_sql",
          "item_id": "N-RB-9",
@@ -14849,7 +14849,7 @@
          }
         },
         "request_sha256": {
-         "$canon_sha": {
+         "$request_sha": {
           "operation_id": "OP-N-RB-9",
           "kind": "readback_sql",
           "item_id": "N-RB-9",
@@ -14887,7 +14887,7 @@
         }
        },
        "request_sha256": {
-        "$canon_sha": {
+        "$request_sha": {
          "operation_id": "OP-N-RB-9",
          "kind": "readback_sql",
          "item_id": "N-RB-9",
@@ -15719,7 +15719,7 @@
       }
      ],
      "unknown": [
-      "the awaiting file $RUN/awaiting/AW-20261012T113000Z-exec-op-n-pub-1-e00943fe5863.json is not an awaiting item of that id"
+      "the awaiting file $RUN/awaiting/AW-20261012T113000Z-exec-op-n-pub-1-{{first12:sha_rcpt_pub_failed}}.json is not an awaiting item of that id"
      ]
     },
     {
@@ -15772,7 +15772,7 @@
       }
      ],
      "unknown": [
-      "the awaiting file $RUN/awaiting/AW-20261012T113000Z-exec-op-n-pub-1-e00943fe5863.json is not an awaiting item of that id"
+      "the awaiting file $RUN/awaiting/AW-20261012T113000Z-exec-op-n-pub-1-{{first12:sha_rcpt_pub_failed}}.json is not an awaiting item of that id"
      ]
     }
    ],
@@ -15996,7 +15996,7 @@
         }
        },
        "request_sha256": {
-        "$canon_sha": {
+        "$request_sha": {
          "operation_id": "OP-J-4f",
          "kind": "readback_sql",
          "item_id": "J-4f",
@@ -16020,7 +16020,7 @@
        "kind": "EXECUTE",
        "item": "J-4f",
        "digest": {
-        "$canon_sha": {
+        "$request_sha": {
          "operation_id": "OP-J-4f",
          "kind": "readback_sql",
          "item_id": "J-4f",
@@ -17139,7 +17139,7 @@
        "kind": "EXECUTE",
        "item": "N-PUB-1",
        "digest": {
-        "$canon_sha": {
+        "$request_sha": {
          "operation_id": "OP-N-PUB-1-s2",
          "kind": "readback_sql",
          "item_id": "N-PUB-1",
@@ -18918,7 +18918,7 @@
       "args": {}
      },
      "request_sha256": {
-      "$canon_sha": {
+      "$request_sha": {
        "operation_id": "OP-N-GONE-1",
        "kind": "retired_kind",
        "item_id": "N-GONE-1",
