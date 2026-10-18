@@ -99,7 +99,8 @@ def production_spec(plan, step=STEP):
 ])
 def test_ka3a_production_precondition_measures_exact_ledger_row(filename, digest, expected, monkeypatch, tmp_path):
     spec = production_spec(model())
-    with sqlite3.connect(":memory:") as conn:
+    # verify() measures on its own worker thread, so the fixture connection must be usable from it.
+    with sqlite3.connect(":memory:", check_same_thread=False) as conn:
         conn.execute("ATTACH DATABASE ':memory:' AS public")
         conn.execute("CREATE TABLE public._migrations_applied (filename TEXT, applied_at TEXT, sha256 TEXT)")
         if filename:
@@ -202,7 +203,7 @@ def test_ka3a_p06_edges_become_merge_step_and_production_readback_step():
 
 
 def gcw2_ledger(rows_present, monkeypatch, tmp_path):
-    conn = sqlite3.connect(":memory:")
+    conn = sqlite3.connect(":memory:", check_same_thread=False)  # verify() measures on its own worker thread
     conn.execute("ATTACH DATABASE ':memory:' AS public")
     conn.execute("CREATE TABLE public._migrations_applied (filename TEXT, applied_at TEXT, sha256 TEXT)")
     for filename, digest in rows_present:

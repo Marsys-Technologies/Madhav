@@ -328,6 +328,73 @@ def test_accepts_bound_operation_step(operation_step):
     operation_step.run(expected=0)
 
 
+def test_concurrent_rejection_cannot_overtake_operation_step(operation_step, monkeypatch):
+    """Removing only cmd_step's event-log lock lets REJECTED precede a stale done."""
+    import fcntl
+    import threading
+
+    from pravaha_tracker.events import append
+
+    w = operation_step
+    rejection_attempted = threading.Event()
+    errors = []
+    real_flock = fcntl.flock
+    real_append = cli._append
+
+    def reject():
+        try:
+            append(str(w.events), {**w.verdict, "result": "REJECTED",
+                                   "detail": "concurrent independent rejection"}, w.model)
+        except Exception as exc:
+            errors.append(exc)
+        finally:
+            # Without the step lock, wait for the rejection to be fully persisted
+            # before allowing the stale step append to proceed.
+            rejection_attempted.set()
+
+    rejector = threading.Thread(target=reject, name="operation-step-rejection")
+
+    def competing_flock(fd, operation):
+        if threading.current_thread() is rejector and operation == fcntl.LOCK_EX:
+            try:
+                real_flock(fd, operation | fcntl.LOCK_NB)
+            except BlockingIOError:
+                # This signal records actual kernel contention, not a scheduler
+                # delay. Keep the real blocking acquisition and append behavior.
+                rejection_attempted.set()
+                real_flock(fd, operation)
+            return
+        real_flock(fd, operation)
+
+    def append_after_rejection_attempt(fd, event):
+        # Acceptance and model validation have completed; exercise the last gap
+        # before the real step append, with all receipt checks left intact.
+        rejector.start()
+        assert rejection_attempted.wait(10), "rejection never attempted the event-log lock"
+        return real_append(fd, event)
+
+    monkeypatch.setattr(fcntl, "flock", competing_flock)
+    monkeypatch.setattr(cli, "_append", append_after_rejection_attempt)
+    try:
+        code = cli.main(["step", w.item["id"], w.step, "--stream", "N",
+                         "--evidence", str(w.receipt_path)])
+    finally:
+        if rejector.ident is not None:
+            rejector.join(timeout=10)
+    assert not rejector.is_alive(), "rejection writer did not finish after step released its lock"
+    assert not errors, errors
+    assert code == 0
+    events = [json.loads(line) for line in w.events.read_text().splitlines()]
+    assert [(event["kind"], event.get("result", event.get("state"))) for event in events] == [
+        ("verdict", "ACCEPTED"), ("item", "done"), ("verdict", "REJECTED"),
+    ], "concurrent rejection must not be followed by a step recorded against stale acceptance"
+    assert (events[1]["item"], events[1]["step"]) == (w.item["id"], w.step)
+    assert events[1]["evidence_sha256"] == hashlib.sha256(w.receipt_path.read_bytes()).hexdigest()
+    # The opposite ordering is refused: once rejection is current, no new step
+    # may be appended, even though the receipt and its detector still pass.
+    w.run(expected=2)
+
+
 @pytest.mark.parametrize("problem", [
     "missing_receipt", "wrong_evidence_digest", "wrong_operation", "wrong_item", "wrong_request",
     "wrong_request_digest", "changed_request", "missing_request", "wrong_request_item",
