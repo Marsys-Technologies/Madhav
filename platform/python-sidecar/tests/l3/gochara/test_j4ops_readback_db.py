@@ -37,9 +37,13 @@ def database():
 
 
 def environment(conn):
-    # Credential-free local fixture; never put a DSN on argv or print it.
-    return dict(os.environ, PGHOST=conn.info.host, PGPORT=str(conn.info.port),
-                PGDATABASE=conn.info.dbname, PGUSER=conn.info.user)
+    # Never put a DSN on argv or print it. The local cluster is trust-auth (no password);
+    # the CI service container requires its throwaway password, passed via the environment only.
+    env = dict(os.environ, PGHOST=conn.info.host, PGPORT=str(conn.info.port),
+               PGDATABASE=conn.info.dbname, PGUSER=conn.info.user)
+    if conn.info.password:
+        env['PGPASSWORD'] = conn.info.password
+    return env
 
 
 def run_capture(conn, name, phase='provision'):
