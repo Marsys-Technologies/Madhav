@@ -543,6 +543,31 @@ def test_accepts_actual_executor_producer_receipt(operation_step, monkeypatch):
     w.run(expected=0)
 
 
+def test_teardown_awaiting_absence_needs_the_executor_completion_bound_to_the_absence_receipt(operation_step):
+    """fleet/executor.py: a committed teardown is AWAITING_ABSENCE until fence_quiescent() publishes
+    <op>.completion.json (ky.smalltest_completion/1) naming the accepted absence receipt by sha256."""
+    w = operation_step
+    receipts = w.executor_path.parent
+    absence = receipts / "ABSENCE-readback.json"
+    absence.write_text(json.dumps({"operation_id": "ABSENCE-readback", "status": "COMPLETED"}))
+    w.req["kind"] = "smalltest_teardown"
+    w.request_path.write_text(json.dumps(w.req))
+    w.executor.update(kind="smalltest_teardown", status="AWAITING_ABSENCE",
+                      request_sha256=hashlib.sha256(canonical(w.req).rstrip("\n").encode()).hexdigest())
+    w.sync()
+    completion = receipts / (w.item["id"] + ".completion.json")
+    completion.write_text(json.dumps({
+        "schema": "ky.smalltest_completion/1", "status": "COMPLETED", "operation_id": w.item["id"],
+        "request_sha256": w.executor["request_sha256"],
+        "commit_receipt_sha256": hashlib.sha256(w.executor_path.read_bytes()).hexdigest(),
+        "absence_receipt": {"name": absence.name, "sha256": hashlib.sha256(absence.read_bytes()).hexdigest()}}))
+    w.run(expected=0)
+    # The absence receipt changed after the executor named it: the step must be refused again.
+    w.events.write_text(json.dumps(w.verdict) + "\n")
+    absence.write_text(json.dumps({"operation_id": "ABSENCE-readback", "status": "FAILED"}))
+    w.run(expected=2)
+
+
 def test_accepts_operation_output_relative_to_receipt(operation_step):
     w = operation_step
     w.executor["output_file"] = w.output.name
