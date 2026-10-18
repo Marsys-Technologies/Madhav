@@ -28,8 +28,8 @@ SIDECAR = REPO / "platform" / "python-sidecar"
 MIGRATION_ORDER = (167, 169, 171, 172, 184, 202, 223, 242, 342, 417, 426, 474, 499, 586, 590, 591, 595, 596, 598, 640, 641, 1200, 1201)
 SEED_MARK = "INSERT INTO asset_output_digest_specs"
 CHART = "482012f1-710e-4a25-994a-93821f5871aa"
-#: the migration-1304 shape of the small-test registry row (dispatch_v5_small_test_job.EXPECTED_REGISTRY_ROW), INACTIVE
-V5_ROW = {"scope": "per_chart", "is_active": False, "has_writer": True, "has_substeps": True, "writer_timeout_seconds": 28800,
+#: the migration-1304 shape (timeout raised to 72000 by migration 1395) of the small-test registry row (dispatch_v5_small_test_job.EXPECTED_REGISTRY_ROW), INACTIVE
+V5_ROW = {"scope": "per_chart", "is_active": False, "has_writer": True, "has_substeps": True, "writer_timeout_seconds": 72000,
           "depends_on": ["ga_positions", "ga_dashas"], "target_table": "ka_gochara_eval_window",
           "count_sql": "SELECT COUNT(*) FROM ka_gochara_eval_window WHERE chart_id=$1 AND generation='5.0'",
           "target_floor": 0, "estimated_seconds": None}
