@@ -61,7 +61,7 @@ def wrap(conn, **kw):
         conn, chart_id=CHART, manifest_sha256=MANIFEST, receipt=kw.pop('receipt', {}), **kw)
 
 
-def test_synthetic_binding_reaches_real_reader_and_independent_verifier(restored):
+def test_synthetic_binding_reaches_real_reader_and_independent_verifier(restored, isolated_kala_db_dsn):
     """A: one restored build, explicit synthetic provenance and retained receipt."""
     receipt = {}
     conn = wrap(restored, enabled=True, receipt=receipt)
@@ -104,7 +104,8 @@ def test_synthetic_binding_reaches_real_reader_and_independent_verifier(restored
     verified = verifier.validate_consumed_dasha_population(conn, chart_id=CHART, generation='5.0')
     assert verified == dict(consumed=1, pinned_overlapping=1, synthetic_settlement=True, production_acceptance=False)
     # A second connection to the SAME throwaway DB has no synthetic authority.
-    with psycopg.connect(restored.info.dsn) as other:
+    # The fixture's own DSN: Connection.info.dsn omits the password, which CI's password-authenticated server requires.
+    with psycopg.connect(isolated_kala_db_dsn) as other:
         with pytest.raises(reader.DashaBuildRefused, match='settled_build_absent'):
             reader.load_pinned_vimshottari(other, CHART)
 

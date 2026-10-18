@@ -799,8 +799,12 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
 
 
 def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: str) -> dict:
-    from services.gochara_kernel.rehearsal_settlement import settlement_for_connection
-    settlement = settlement_for_connection(conn, chart_id, _load_dasha_settlement)
+    # The verifier imports nothing from the builder (test_the_verifier_imports_nothing_from_the_builder), so the rehearsal
+    # connection is recognised by a marker on its CLASS, not by an import; a raw or mocked connection never carries it.
+    if getattr(type(conn), "synthetic_settlement_authority", False) is True:
+        settlement = conn.settlement(chart_id)
+    else:
+        settlement = _load_dasha_settlement(chart_id)
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot"
         " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()

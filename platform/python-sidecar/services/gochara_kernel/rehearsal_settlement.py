@@ -59,6 +59,9 @@ def _job_id():
 class _SyntheticSettlementConnection:
     """Transparent caller-owned connection; authority cannot leak to another one."""
 
+    # Read by inventory_verifier (which may not import this module) to route its settlement lookup to ``settlement``.
+    synthetic_settlement_authority = True
+
     def __init__(self, conn, record, receipt, identity, job_id, *, enabled=False):
         if enabled is not True:
             raise ValueError('explicit synthetic rehearsal gate required')
