@@ -28,11 +28,14 @@ from __future__ import annotations
 import collections
 import datetime as dt
 import json
+import os
 from pathlib import Path
 
 from .events import actor_stream
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+# A live install runs a copy of this file outside the repository; PRAVAHA_REPO names the repository it reads
+# (the same variable cli.py and server.py already honour). A9-NB-01.
+REPO_ROOT = Path(os.environ.get("PRAVAHA_REPO") or Path(__file__).resolve().parents[4])
 
 DECLARATION_KEYS = ("completion_kind", "producer", "reviewer_rule", "step_evidence")
 STATUS_ORDER = ["done", "not_applicable", "running", "review", "ready", "waiting", "blocked", "parked", "failed", "unknown", "conflict"]
@@ -281,6 +284,100 @@ def load_closure(model: dict, root: Path | None = None) -> dict | None:
     return data if isinstance(data.get("closure"), list) else None
 
 
+REMAINING_KEYS = ("built_awaiting_review_or_merge", "in_progress", "ready_to_start", "waiting_on_dependencies",
+                  "decision_pending", "needs_attention")
+WORK_CLASSES = ("a", "a_close")
+
+
+def _remaining_bucket(row: dict, item: dict) -> str:
+    """Where one not-yet-done item sits. Total: every status lands in exactly one bucket."""
+    st = row["status"]
+    if item.get("done_by") == "decision" and st != "waiting":
+        return "decision_pending"          # a decision not yet due (its inputs missing) is waiting, as the queue shows it
+    if row.get("built_waiting_on_gate") or st == "review":
+        return "built_awaiting_review_or_merge"
+    if st == "running":
+        return "in_progress"
+    if st == "ready":
+        return "ready_to_start"
+    if st == "waiting":
+        return "waiting_on_dependencies"
+    return "needs_attention"               # blocked, failed, parked, conflict, unknown
+
+
+def _tally(rows: list[tuple[dict, dict]]) -> dict:
+    out = {"total": len(rows), "done": 0, "not_applicable": 0, "remaining": 0, **{k: 0 for k in REMAINING_KEYS}}
+    for row, item in rows:
+        if row["status"] == "done":
+            out["done"] += 1
+        elif row["status"] == "not_applicable":
+            out["not_applicable"] += 1
+        else:
+            out["remaining"] += 1
+            out[_remaining_bucket(row, item)] += 1
+    return out
+
+
+def reconciliation(flat: list[dict], items: dict, members: set) -> dict:
+    """Account for EVERY plan item exactly once (owner request 2026-10-18); computed, never typed.
+
+    First matching rule wins: closure member → finish path; triage retire_decision → bookkeeping decision;
+    done_outside → done outside the plan path; status not_applicable or class retired → cancelled; class b → deferred;
+    class a / a_close → side work; anything else → unclassified (reported, never folded into a neighbour).
+    `sum_of_parts` must equal `plan_items`; test_tracker_reconciliation asserts it.
+    """
+    finish, side, deferred, cancelled, bookkeeping, outside, unclassified = [], [], [], [], [], [], []
+    for row in flat:
+        item = items[row["id"]]
+        cls = (item.get("triage") or {}).get("class")
+        pair = (row, item)
+        if row["id"] in members:
+            finish.append(pair)
+        elif cls == "retire_decision":
+            bookkeeping.append(pair)
+        elif cls == "done_outside":
+            outside.append(pair)
+        elif row["status"] == "not_applicable" or cls == "retired":
+            cancelled.append(pair)
+        elif cls == "b":
+            deferred.append(pair)
+        elif cls in WORK_CLASSES:
+            side.append(pair)
+        else:
+            unclassified.append(pair)
+    parked = sum(1 for row, _ in deferred if row["status"] == "parked")
+    rec = {
+        "plan_items": len(flat),
+        "finish_path": _tally(finish),
+        "side_work": _tally(side),
+        "deferred": {"total": len(deferred), "parked": parked, "other": len(deferred) - parked},
+        "cancelled": {"total": len(cancelled)},
+        "bookkeeping_decisions": {"total": len(bookkeeping)},
+        "done_outside_plan": {"total": len(outside)},
+        "unclassified": {"total": len(unclassified)},
+    }
+    rec["sum_of_parts"] = sum(rec[k]["total"] for k in ("finish_path", "side_work", "deferred", "cancelled",
+                                                        "bookkeeping_decisions", "done_outside_plan", "unclassified"))
+    return rec
+
+
+def reconciliation_line(rec: dict) -> str:
+    """The one-line plain-text form of `reconciliation` shown by `ky status`."""
+    def part(label, t):
+        left = {"built_awaiting_review_or_merge": "built and awaiting review or merge", "in_progress": "in progress",
+                "ready_to_start": "ready to start", "waiting_on_dependencies": "waiting on dependencies",
+                "decision_pending": "decision pending", "needs_attention": "needs attention"}
+        detail = ", ".join(f"{t[k]} {left[k]}" for k in REMAINING_KEYS if t[k])
+        na = f" · {t['not_applicable']} not applicable" if t["not_applicable"] else ""
+        return f"{label} {t['done']}/{t['total']} done" + (f" ({t['remaining']} left: {detail})" if t["remaining"] else "") + na
+    d = rec["deferred"]
+    tail = f" · unclassified {rec['unclassified']['total']}" if rec["unclassified"]["total"] else ""
+    return (f"All {rec['plan_items']} plan items: {part('finish path', rec['finish_path'])} · "
+            f"{part('side work', rec['side_work'])} · deferred {d['total']} ({d['parked']} parked) · "
+            f"cancelled {rec['cancelled']['total']} · decisions recorded {rec['bookkeeping_decisions']['total']} · "
+            f"done outside plan {rec['done_outside_plan']['total']}{tail}")
+
+
 def d46_headline(rows: list[dict]) -> dict:
     """A7 D-46 headline: implemented/total with activated/total beside it; close needs both."""
     return {"implemented": sum(1 for t in rows if t["status"] == "done"),
@@ -322,6 +419,7 @@ def closure_headline(overall: dict, flat: list[dict], items: dict, closure: dict
         "missing": sorted(members - set(rows)),
         "plan_wide": {k: overall[k] for k in ("total", "done", "not_applicable", "pct")},
         "deferred": deferred,
+        "reconciliation": reconciliation(flat, items, members),
     }
 
 
