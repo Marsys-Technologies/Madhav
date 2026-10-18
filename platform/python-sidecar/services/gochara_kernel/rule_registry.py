@@ -59,6 +59,8 @@ refuses later membership, F3/N5).
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from services.gochara_rules import registry as rules_registry
 
@@ -79,14 +81,33 @@ NATAL_RELATIONS = (
 # factor keeps ITS OWN version (the path row's composite references). Bumping a global would also disturb
 # every unchanged path and predicate.
 # Paths bound in this step (D1: P6 rides day_on_demand).
+#: ND-H-20261005 (FB-30): the P1/P3/P4 rows at rule_version 1.2.0 — the eight classes' tiers and kārakas.
+ND_H_PATH_REFS = tuple((pid, rules_registry.ND_H_VERSION) for pid in ("P1", "P3", "P4"))
 BOUND_PATH_REFS = (("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0"))
-BOUND_PATHS = tuple(pid for pid, _v in BOUND_PATH_REFS)
+BOUND_PATHS = tuple(dict.fromkeys(pid for pid, _v in BOUND_PATH_REFS))
+
+
+# Final-rule helpers require an explicit context; the production writer keeps
+# the legacy profile unless its candidate configuration opts in. Context-local state
+# prevents one concurrent writer from changing another writer's selection.
+_FINAL_RULES = ContextVar("gochara_final_rules", default=False)
+
+
+@contextmanager
+def rule_profile(*, final_rules: bool):
+    if type(final_rules) is not bool:
+        raise ValueError("gochara_v5_final_rules must be a boolean")
+    token = _FINAL_RULES.set(final_rules)
+    try:
+        yield
+    finally:
+        _FINAL_RULES.reset(token)
 
 
 def bound_path_refs() -> tuple[tuple[str, str], ...]:
     """The CURRENT bound CATALOGUE — every sealed (path, version) — read at call time (a consumer never
     captures the tuple at import)."""
-    return tuple(BOUND_PATH_REFS)
+    return tuple(dict.fromkeys(tuple(BOUND_PATH_REFS) + (ND_H_PATH_REFS if _FINAL_RULES.get() else ())))
 
 
 # R8-2 (Codex round 8): the bound CATALOGUE is not the SELECTION. `BOUND_PATH_REFS` is every (path, version)
@@ -95,7 +116,16 @@ def bound_path_refs() -> tuple[tuple[str, str], ...]:
 # path). The default selection is the 1.0.0 set; a successor is searched only by a deliberate edit of
 # `SELECTED_PATH_REFS` (or a per-class override) after its review gate passes. Both are read at call time.
 SELECTED_PATH_REFS = (("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0"))
-CLASS_SELECTION_OVERRIDES: dict = {}          # {(event_class, path_id): version}
+# ND-H-20261005 (FB-30): 1.2.0 is selected PER CLASS — the eight ND-H classes run P1/P3/P4 under 1.2.0; every
+# other class stays at the default selection, so its obligations, records and digests are byte-identical.
+CLASS_SELECTION_OVERRIDES: dict = {           # {(event_class, path_id): version}
+    (cls, pid): version
+    for cls in sorted(rules_registry.ND_H_CLASSES) for pid, version in ND_H_PATH_REFS}
+# ND-P2-20261005 rule 3 (FB-30: "the eight of ND-H plus bereavement for natal Sun"): father-bereavement runs the
+# paths its natal-Sun target lives on (P3, P4) under 1.2.0; its P1 and P2 stay on the default selection.
+CLASS_SELECTION_OVERRIDES.update({
+    (cls, pid): rules_registry.ND_H_VERSION
+    for cls in sorted(rules_registry.ND_P2_KB_TARGETS) for pid in rules_registry.ND_P2_KB_PATHS})
 
 
 def selected_versions_for(event_class: str) -> dict[str, str]:
@@ -103,12 +133,20 @@ def selected_versions_for(event_class: str) -> dict[str, str]:
     overrides applied; refuses a selection that is not sealed in the bound catalogue."""
     selected = dict(SELECTED_PATH_REFS)
     for (cls, pid), version in CLASS_SELECTION_OVERRIDES.items():
-        if cls == event_class:
+        if cls == event_class and (_FINAL_RULES.get() or version != rules_registry.ND_H_VERSION):
             selected[pid] = version
     for pid, version in selected.items():
-        if (pid, version) not in BOUND_PATH_REFS:
+        if (pid, version) not in bound_path_refs():
             raise ValueError(f"selected {pid}@{version} is not in the bound catalogue")
     return selected
+
+
+def p2_emits_no_row(event_class: str) -> bool:
+    """ND-H-20261005 item 5: P2 emits NO row for a parent class once that class runs under its ND-H rows (the
+    native's Moon never evidences the parent, §1.2 inv 6). Read from the CURRENT selection at call time: with the
+    class back on its pre-ND-H selection the P2 rows it had are enumerated again (a past generation is replayable)."""
+    return (event_class in rules_registry.P2_NO_ROW_CLASSES
+            and selected_versions_for(event_class).get("P3") == rules_registry.ND_H_VERSION)
 
 
 def selected_path_version(event_class: str, path_id: str) -> str:
@@ -149,6 +187,10 @@ _PATH_ROLES = {
     "P4": ("signature_house", "lord"),
     "P5": ("signature_house",),
 }
+# A role inventory that differs at ONE version is keyed by the composite reference — a sealed row's
+# object_selector is never changed by a later version's needs. ND-H K-B: P4's infl() reads the natal
+# luminary kāraka target at 1.2.0.
+_PATH_ROLES_AT = {("P4", rules_registry.ND_H_VERSION): ("signature_house", "lord", "karaka")}
 
 # E4/E5: factor binding overrides keyed by factor_id. Anything not overridden
 # binds straight from Stream B's row.
@@ -164,8 +206,10 @@ _FACTOR_DIRECTION = {
     "moon_paksa": "higher_stronger",
     "mercury_affiliation": "higher_stronger",
     "maitri_compound": "higher_stronger",
+    "karaka_agent": "higher_stronger",
 }
 _FACTOR_DOCTRINE_ORDERING = {
+    "karaka_agent": ["non_karaka", "karaka"],            # WEAKEST → STRONGEST (ND-H: karaka > non_karaka)
     "dignity_of_transit_sign": ["debility", "inimical", "neutral", "friendly",
                                 "own", "exaltation"],
     "agent_nature": ["malefic", "benefic"],
@@ -186,10 +230,19 @@ _FACTOR_OPERAND_TOKEN = {
     "moon_paksa": "moon:sun_moon_elongation",
     "mercury_affiliation": "mercury:joined_to_malefic",
     "maitri_compound": "maitri:pancadha_compound",
+    "karaka_agent": "karaka:agent_is_class_karaka",
 }
 # Factors bound in this step (D2: sad_bala_summary deferred — units conflict).
-BOUND_FACTOR_REFS = tuple((fid, "1.0.0") for fid in _FACTOR_DIRECTION)
+# `karaka_agent` exists from 1.2.0 only (ND-H K-A); every other bound factor stays at its 1.0.0 row.
+_FACTOR_FIRST_VERSION = {"karaka_agent": rules_registry.ND_H_VERSION}
+BOUND_FACTOR_REFS = tuple((fid, _FACTOR_FIRST_VERSION.get(fid, "1.0.0")) for fid in _FACTOR_DIRECTION if fid != "karaka_agent")
 BOUND_FACTORS = tuple(dict.fromkeys(fid for fid, _v in BOUND_FACTOR_REFS))
+
+
+def bound_factor_refs():
+    return tuple(dict.fromkeys(tuple(BOUND_FACTOR_REFS) +
+                               ((("karaka_agent", rules_registry.ND_H_VERSION),) if _FINAL_RULES.get() else ())))
+
 
 # E6: predicate declarations (id → (operator, operands)).
 PREDICATES: dict[str, tuple[str, dict]] = {
@@ -243,13 +296,15 @@ class RegistryDivergenceError(RuntimeError):
     detector, ADK-0026)."""
 
 
-def object_selector_for(path_id: str) -> list[dict]:
-    """E3: the full (agent × relation × object_role) cross for the path."""
+def object_selector_for(path_id: str, rule_version: str | None = None) -> list[dict]:
+    """E3: the full (agent × relation × object_role) cross for the path (at `rule_version`, where a
+    version declares its own role inventory)."""
+    roles = _PATH_ROLES_AT.get((path_id, rule_version), _PATH_ROLES[path_id])
     return [
         {"agent": agent, "relation": relation, "object_role": role}
         for agent in _PATH_AGENTS[path_id]
         for relation in _PATH_RELATIONS[path_id]
-        for role in _PATH_ROLES[path_id]
+        for role in roles
     ]
 
 
@@ -301,7 +356,7 @@ def decode_factor_selector(fid: str, selector: dict) -> dict | None:
 def factor_rows() -> list[dict]:
     """Stream B's FACTORS bound per E4/E5 at their EXPLICIT references (sad_bala_summary deferred, D2)."""
     rows = []
-    for fid, version in BOUND_FACTOR_REFS:
+    for fid, version in bound_factor_refs():
         src = rules_registry.FACTORS[(fid, version)]
         units = src["units"]
         if units not in ("degrees", "days", "count", "unitless"):
@@ -321,7 +376,7 @@ def factor_rows() -> list[dict]:
             "calibration_status": src["calibration_status"],
             "doctrine_ordering": _FACTOR_DOCTRINE_ORDERING.get(fid),
             "category_mapping": (src.get("ordering_anchor")
-                                 if fid == "dignity_of_transit_sign" else None),
+                                 if fid == "dignity_of_transit_sign" else src.get("category_mapping")),
             "null_state": src["null_state"],
             "effect": src["effect"],
         })
@@ -330,7 +385,7 @@ def factor_rows() -> list[dict]:
 
 def path_rows() -> list[dict]:
     rows = []
-    for pid, version in BOUND_PATH_REFS:
+    for pid, version in bound_path_refs():
         src = rules_registry.RULE_PATHS[(pid, version)]
         frame_kind, frame_arg = _PATH_FRAME[pid]
         rows.append({
@@ -340,7 +395,7 @@ def path_rows() -> list[dict]:
             "frame_arg": frame_arg,
             "agent_set": list(_PATH_AGENTS[pid]),
             "relation_set": list(_PATH_RELATIONS[pid]),
-            "object_selector": object_selector_for(pid),
+            "object_selector": object_selector_for(pid, version),
             "provenance": src["provenance"],
             "operator_role": src["operator_role"],
             "ruling_ref": src.get("ruling_ref"),
@@ -351,7 +406,7 @@ def path_rows() -> list[dict]:
 
 def prerequisite_rows() -> list[dict]:
     rows = []
-    for pid, version in BOUND_PATH_REFS:
+    for pid, version in bound_path_refs():
         src = rules_registry.RULE_PATHS[(pid, version)]
         for ordinal, (pred_id, pred_version) in enumerate(src["prerequisites"], start=1):
             rows.append({
@@ -364,7 +419,7 @@ def prerequisite_rows() -> list[dict]:
 
 def soft_factor_rows() -> list[dict]:
     rows = []
-    for pid, version in BOUND_PATH_REFS:
+    for pid, version in bound_path_refs():
         src = rules_registry.RULE_PATHS[(pid, version)]
         for factor_id, factor_version in src["soft_factors"]:
             rows.append({
@@ -385,11 +440,11 @@ def _membership_consistent() -> None:
         if pid in seen:
             raise ValueError(f"selected path {pid} appears twice — at most one version per path")
         seen.add(pid)
-        if (pid, version) not in BOUND_PATH_REFS:
+        if (pid, version) not in bound_path_refs():
             raise ValueError(f"selected path reference {(pid, version)} is not in the bound catalogue")
     declared_predicates = set(BOUND_PREDICATE_REFS)
-    declared_factors = set(BOUND_FACTOR_REFS)
-    for ref in BOUND_PATH_REFS:
+    declared_factors = set(bound_factor_refs())
+    for ref in bound_path_refs():
         if ref not in rules_registry.RULE_PATHS:
             raise ValueError(f"bound path reference {ref} is not in the catalogue")
         src = rules_registry.RULE_PATHS[ref]
@@ -487,7 +542,7 @@ class RuleRegistryStore:
             tally(self._bind("ka_gochara_rule_path_soft_factor",
                              ("path_id", "rule_version", "factor_id",
                               "factor_rule_version"), row), "soft_factors")
-        for pid, version in BOUND_PATH_REFS:
+        for pid, version in bound_path_refs():
             tally(self._bind("ka_gochara_rule_path_seal",
                              ("path_id", "rule_version"),
                              {"path_id": pid, "rule_version": version}),
@@ -576,6 +631,7 @@ __all__ = [
     "CLASS_SELECTION_OVERRIDES",
     "selected_path_version",
     "selected_versions_for",
+    "p2_emits_no_row",
     "BOUND_PREDICATE_REFS",
     "decode_factor_selector",
     "factor_operand_selector",

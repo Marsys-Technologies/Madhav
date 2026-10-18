@@ -231,3 +231,20 @@ def test_dasha_tier_readback_refuses_ungoverned_population(fresh, tmp_path, monk
     requested_chart = '00000000-0000-4000-8000-000000000902' if damage == 'other_chart' else CHART_ID
     with pytest.raises(DashaBuildRefused, match=code):
         dx.read_dasha_tiers(reader(conn), chart_id=requested_chart)
+
+
+def test_dump_rows_isolates_the_requested_chart_even_with_same_generation_and_dates(fresh):
+    conn, _ = fresh
+    other_chart = "11111111-1111-4111-8111-111111111111"
+    D = dt.date
+    row = ("marriage", D(2010, 5, 1), D(2010, 6, 1), D(2010, 5, 10), 0.7, 0.7, "gain", False, "day", "interval")
+    add(conn, "4.1", [row])
+    conn.execute("INSERT INTO kala_gochara_windows VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                 (other_chart, "4.1", *row))
+    # Check both directions and an absent chart: chart_id parameter binding
+    # alone cannot prove isolation if SQL broadens the predicate with OR TRUE.
+    for chart in (CHART_ID, other_chart):
+        result = dx.dump_rows(reader(conn), "4.1", True, chart_id=chart)
+        assert len(result) == 1 and result[0]["si"] == 0.7
+    assert dx.dump_rows(reader(conn), "4.1", True,
+                        chart_id="22222222-2222-4222-8222-222222222222") == []
