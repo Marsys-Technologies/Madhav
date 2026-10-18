@@ -49,13 +49,16 @@ def environment(conn):
 
 def test_environment_forwards_the_fixture_password_to_the_psql_child():
     # CI parity without a second server: a password-authenticated service must reach psql via libpq env.
+    probe = os.urandom(6).hex()  # a per-run value, so no literal credential sits in the source
+
     class Info:
-        host, port, dbname, user, password = '127.0.0.1', 5432, 'a53t_j4ops_x', 'postgres', 'ci-secret'
+        host, port, dbname, user = '127.0.0.1', 5432, 'a53t_j4ops_x', 'postgres'
+        password = probe
 
     class Conn:
         info = Info()
 
-    assert environment(Conn())['PGPASSWORD'] == 'ci-secret'
+    assert environment(Conn())['PGPASSWORD'] == probe
     Info.password = ''
     assert environment(Conn()).get('PGPASSWORD') == os.environ.get('PGPASSWORD')
 
