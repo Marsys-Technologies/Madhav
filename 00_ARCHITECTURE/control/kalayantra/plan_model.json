@@ -19489,13 +19489,18 @@
           "platform/src/app/api/mcp/db/query/route.ts",
           "platform/src/generated/capability_estate_census.json",
           "platform/src/generated/nirmana-writer-digests.json",
-          "platform/tests/unit/mcp_db_query_governed_generation_gate.test.ts"
+          "platform/tests/unit/mcp_db_query_governed_generation_gate.test.ts",
+          "platform/python-sidecar/scripts/kala_gochara_cutover/j4d_slice_qualify.py",
+          "platform/python-sidecar/tests/l3/kala_db/test_j4d_slice_qualification.py",
+          "platform/python-sidecar/tests/l3/gochara/test_j4d_slice_lane_db.py"
         ],
         "tests": [
-          "cap qualification figures recorded as measured"
+          "cap qualification figures recorded as measured",
+          "SR-BOLD-03: J-4d is 'qualified' when the three-class slice (the heaviest class by the measuring build's real per-class timings, plus two others) is built on the lane database under the final rules, J-4c's equality proof (unchanged cells byte-identical to the measuring golden) and non-interference proof (the measuring rules' outputs unchanged) pass for those classes, and P06b is complete; ANY defect means FULL_BUILD_REQUIRED, i.e. the full lane build runs instead",
+          "slice qualification harness: python -m scripts.kala_gochara_cutover.j4d_slice_qualify choose|qualify (class ids from --classes until J-3c's real timings exist, then from --timings); its verdict is QUALIFIED or FULL_BUILD_REQUIRED and carries no independent acceptance"
         ],
         "compat": "candidate-only",
-        "notes": "Wave 4 code source is P07; no inherited branch-tip detector. Code review/CI/containing deployment and applicable operation readbacks remain separate earned requirements."
+        "notes": "Wave 4 code source is P07; no inherited branch-tip detector. Code review/CI/containing deployment and applicable operation readbacks remain separate earned requirements. SR-BOLD-03 (owner-confirmed OWNER-BOLD-CONFIRM-20261018, /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl): the lane-database build for this item is the three-class slice qualification described under tests; PRE-D-CLOUD's 'J-4d is done (qualified)' reads that definition. A qualified slice does not seal or publish anything and does not replace J-5q, which still fully qualifies the production candidate before sealing."
       },
       "completion_kind": "code",
       "producer": "K",
