@@ -1,5 +1,5 @@
 {
-  "contract_version": "k6-123:read-models:v1",
+  "contract_version": "k6-123:read-models:v2",
   "authority": "KYD-140; ALGO 3.5/3.6/3.7; NR-KALA-R13(c); KYD-138",
   "acceptance_scope": "fixture_only; source mappings, method admission, live qualification and K9-4b publication remain due",
   "entry": "ctx.config.kala_read_model_fixture; absent means unchanged legacy writer dispatch",
@@ -21,11 +21,53 @@
     "kala_darshana_candidate": "chart/generation/row_kind/source_id; judge rows with separate valence, occurrence evidence, jury D(W)/witness/segments, negative-space effective state, coverage, provenance and stored fixture qualification tier; contextual rows for gaps/clock/uncomputed methods; no numeric composite/quality/confidence column",
     "kala_jivana_parva_candidate": "chart/generation/period_id; own lord, exact F2 boundaries/sigma/scenario/dossier; same-candidate judge/jury/negative-space assertions, role-gated LEL, mechanism event-class themes and condition-aware previous sibling chapter diff; no quality label or convergence count"
   },
-  "storage": "three additive protected table migrations plus one additive detector correction (creation files already applied in the lane rehearsal and kept immutable); private candidate tables, foreign key to kala_layer_candidate, deterministic natural primary keys; scoped replace in caller transaction; no legacy table mutation; count_sql depth-0 chart_id=$1 selects that chart's latest build-bound candidate generation or legacy fallback; integrity_check_sql scopes the latest build and remains valid after completion, retaining the entire legacy detector in the ELSE branch",
+  "storage": "Private candidate tables, foreign key to kala_layer_candidate, deterministic natural primary keys; scoped replace in caller transaction; no legacy table mutation. Applied migrations 1353/1354/1355, 1356 detector correction and 1375 chart/build binding remain immutable. count_sql depth-0 chart_id=$1 selects that chart's latest build-bound candidate generation or legacy fallback; this count selection is separate from integrity targeting. integrity_check_sql verifies exactly the transaction-bound chart/build from integrity_target, remains valid after completion, fails closed for missing/mismatched pins and retains the entire legacy detector in the ELSE branch.",
   "live_bindings": {
     "state": "information_unavailable",
-    "reasons": ["judge_source_mapping_unadmitted", "f1_source_mapping_unadmitted", "f2_source_mapping_unadmitted", "jury_source_mapping_unadmitted", "negative_space_source_mapping_unadmitted", "lel_role_mapping_unadmitted"],
+    "reasons": [
+      "judge_source_mapping_unadmitted",
+      "f1_source_mapping_unadmitted",
+      "f2_source_mapping_unadmitted",
+      "jury_source_mapping_unadmitted",
+      "negative_space_source_mapping_unadmitted",
+      "lel_role_mapping_unadmitted"
+    ],
     "admission_owner": "conductor with original k3; exact fields, identities, states, coverage and served locators required before live integration"
   },
-  "implementation_plan": ["pin contract and fail-on-base consumer oracles", "validate fixture pins and source envelopes before mutation", "project typed fixture inputs through SQL into three private candidate partitions", "guard-numbered additive migrations and own real SQL tests", "regenerate writer digests/census, item precheck, push stacked PR and hand to review"]
+  "implementation_plan": [
+    "validate fixture pins and source envelopes before candidate replacement",
+    "project typed fixture inputs through SQL into three private candidate partitions",
+    "run real SQL read-model and transaction-bound integrity oracles",
+    "validate private per-asset certification mappings against current detector revisions",
+    "independent exact-head review and deploy containment; live source admission, protected application, parent acceptance and K9-4b publication remain separate gates"
+  ],
+  "projection_payload_version": "k6-123:read-models:v1",
+  "changelog": [
+    "v2 (2026-10-16, K6-N1/N2): exact transaction-bound integrity target and private per-asset K8-K6 mappings; projection payload and runtime unchanged.",
+    "v1: private fixture read-model input/output contract."
+  ],
+  "integrity_target": {
+    "scope": "exact_transaction_bound_chart_and_build",
+    "settings": [
+      "kala.integrity_chart_id",
+      "kala.integrity_build_id"
+    ],
+    "transaction_local": true,
+    "standalone_requires_explicit_pins": true,
+    "missing_or_mismatched_pins": "false",
+    "valid_after_completion": true,
+    "legacy_else_preserved": true,
+    "standalone": "On the same open caller-owned transaction/connection as the probe, call bind_integrity_target(ctx) with ctx.config.chart_id and ctx.build_id for the build being verified, then execute integrity_check_sql before commit/rollback. Equivalent SQL: SELECT set_config('kala.integrity_chart_id', '<chart_id>', true), set_config('kala.integrity_build_id', '<build_id>', true). Never choose a newer build or borrow a different connection; dry_run deliberately sets no pins.",
+    "evidence": [
+      "platform/python-sidecar/pipeline/orchestrator/writers/ka_read_model_integrity.py:4",
+      "platform/migrations/1375_k6_integrity_chart_build_binding.sql:1",
+      "platform/python-sidecar/tests/l3/kala_db/ka_kalasutra/test_integrity_build_scope.py:32"
+    ]
+  },
+  "certification_mappings": {
+    "ka_kalasutra": "platform/python-sidecar/services/ka_kalasutra/certification_mapping.json",
+    "ka_jivana_parva": "platform/python-sidecar/services/ka_jivana_parva/certification_mapping.json",
+    "ka_kala_darshana": "platform/python-sidecar/services/kala_core/assertion/k6_certification_mapping.json"
+  },
+  "certification_scope": "Private fixture preparation only; all nine gate/revision mappings are separate per asset. No live serving, production certificate, independent acceptance or parent completion is earned; registrar validation alone cannot complete K8-K6. K6-4 mapping remains with its implementation."
 }

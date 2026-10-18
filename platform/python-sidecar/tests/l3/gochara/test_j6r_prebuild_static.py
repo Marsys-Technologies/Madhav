@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[5]
 
 
 def test_j6r_suites_are_mandatory_fail_closed_and_keep_existing_j6m_paths():
-    ci = (ROOT / '.github/workflows/ci.yml').read_text()
+    ci = _ci_text((ROOT / '.github/workflows/ci.yml').read_text())
     step = ci.split('- name: Pravāha A5.3 —', 1)[1].split('\n      - name:', 1)[0]
     assert "GOCHARA_A53_REQUIRE_DB: '1'" in step
     assert 'continue-on-error' not in step
@@ -27,3 +27,8 @@ def test_prebuild_never_enables_executor_or_forges_real_rehearsal_acceptance():
     item = next(row for row in model['items'] if row['id'] == 'J-6r')
     assert item['completion_kind'] == 'artifact'
     assert item['detector']['path'] == '/Users/Dev/kalayantra/run/J6R_REHEARSAL.json'
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[5] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow_text as _ci_text

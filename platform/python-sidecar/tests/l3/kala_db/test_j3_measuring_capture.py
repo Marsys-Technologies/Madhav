@@ -1,8 +1,13 @@
 """MB-3: independent stored-column golden, never a 4.1 scoring receipt."""
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
+import os
+import re
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -354,3 +359,103 @@ def test_read_candidate_refuses_unstamped_or_incomplete_manifest(candidate_db, m
         with conn.transaction():
             conn.execute("SET LOCAL session_replication_role = replica")
             conn.execute("UPDATE public.kala_gochara_publication SET input_generation_vector = %s::jsonb", (json.dumps(original),))
+
+
+# ── Route A: the same capture through the existing read-only readback_sql kind ──────────────────────
+# SR-J3-READ-KINDS: one SELECT/WITH file (one statement = one snapshot) + an offline reassembler.
+
+READBACK_SQL = (Path(os.environ.get("MB3_CAPTURE_READ_SQL") or
+                     Path(__file__).resolve().parents[5] / "00_ARCHITECTURE/briefs/kalayantra/fleet/sql/mb3-capture-read.sql"))
+
+
+def _readback_tsv(conn, sql):
+    """What readback_sql.sh does: executor file rules, read-only, prepared single statement, TSV with header."""
+    assert "\\" not in sql and re.match(r"\s*(SELECT|WITH)\b", sql, re.I)
+    out = io.StringIO()
+    with conn.transaction():
+        conn.execute("SET TRANSACTION READ ONLY")
+        cur = conn.cursor()
+        cur.execute(sql, None, prepare=True)
+        writer = csv.writer(out, delimiter="\t", lineterminator="\n")
+        writer.writerow([c.name for c in cur.description])
+        for row in cur:
+            writer.writerow(row)
+    return out.getvalue()
+
+
+def _reassemble(tsv):
+    from services.gochara_kernel.measuring_capture_reassemble import reassemble_candidate
+    return reassemble_candidate(tsv, run_id="local-rehearsal", source_commit="a" * 40, stretch_sink=[])
+
+
+def test_readback_route_reassembles_exactly_what_read_candidate_returns(candidate_db, tmp_path):
+    """Claim 1: readback_sql output of the one file + reassembler == read_candidate, byte for byte once written."""
+    conn, chart = candidate_db
+    with conn.transaction():
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        live = _read(conn, chart)
+    tsv = _readback_tsv(conn, READBACK_SQL.read_text())
+    assert _reassemble(tsv) == live
+    assert live["records.jsonl"] and live["contacts.jsonl"] and live["windows.jsonl"]
+    mc.write_bundle(tmp_path / "live", live)
+    mc.write_bundle(tmp_path / "readback", _reassemble(tsv))
+    for name in mc.FILES | {"MANIFEST.sha256"}:
+        assert (tmp_path / "live" / name).read_bytes() == (tmp_path / "readback" / name).read_bytes()
+    # negative control: the oracle can read false (a column mix-up in the SQL is visible)
+    wrong = READBACK_SQL.read_text().replace("'t_exact', to_char(c.t_exact", "'t_exact', to_char(c.t_in")
+    assert wrong != READBACK_SQL.read_text()
+    assert _reassemble(_readback_tsv(conn, wrong)) != live
+
+
+def _synthetic_tsv(mutate=None):
+    m = manifest()
+    parts = {
+        "binding": [{"chart_id": "chart", "generation": "5.0"}],
+        "manifest": [dict(m, manifest_id="manifest")],
+        "sealed": [{"n": 0}], "published": [{"n": 0}],
+        "contact": [{"contact_id": "c", "body": "saturn", "relation_kind": "residence", "canonical_target": "span:7",
+                     "t_in": "2025-01-10T00:00:00.000000+00:00", "t_out": None, "t_exact": None, "delta_lambda": "0.0001"}],
+        "record": [dict(record(), temporal_support_intervals=[
+            {"lo": "2025-01-10T00:00:00.000000+00:00", "hi": "2025-02-20T00:00:00.000000+00:00", "bounds": "[)", "empty": False}])],
+        "window": [],
+    }
+    for row in parts["record"]:
+        for k in ("chart_id", "generation"):
+            row.pop(k)
+    parts["manifest"][0].pop("input_generation_vector")
+    parts["manifest"][0]["input_generation_vector"] = m["input_generation_vector"]
+    if mutate:
+        mutate(parts)
+    out = io.StringIO()
+    writer = csv.writer(out, delimiter="\t", lineterminator="\n")
+    writer.writerow(["section", "row_json"])
+    for section, rows in parts.items():
+        for row in rows:
+            writer.writerow([section, json.dumps(row)])
+    return out.getvalue()
+
+
+def test_readback_route_synthetic_baseline_assembles():
+    assert _reassemble(_synthetic_tsv())["records.jsonl"]
+
+
+@pytest.mark.parametrize("section,refusal", [("sealed", "measuring_build_sealed"), ("published", "measuring_build_published")])
+def test_readback_route_refuses_sealed_or_published_generation(section, refusal):
+    """Claim 2: the seal/authority probes still refuse (read_candidate semantics, shared assemble_candidate)."""
+    with pytest.raises(mc.CaptureRefused, match=rf"^{refusal}$"):
+        _reassemble(_synthetic_tsv(lambda parts: parts.__setitem__(section, [{"n": 1}])))
+
+
+@pytest.mark.parametrize("section", ["sealed", "published", "binding"])
+def test_readback_route_missing_section_is_a_refusal_not_a_zero(section):
+    """Claim 3 (N.8 / N.7.6): a probe that never ran must not read as 'not sealed'."""
+    with pytest.raises(mc.CaptureRefused, match="readback_section_missing_or_repeated"):
+        _reassemble(_synthetic_tsv(lambda parts: parts.__setitem__(section, [])))
+
+
+def test_readback_route_refuses_closed_support_interval():
+    """Claim 4: the half-open support rule survives the readback form (as test_export_preserves_range_bounds)."""
+    def close(parts):
+        parts["record"][0]["temporal_support_intervals"][0]["bounds"] = "[]"
+    with pytest.raises(mc.CaptureRefused, match="support_interval_unbounded_or_not_half_open"):
+        _reassemble(_synthetic_tsv(close))

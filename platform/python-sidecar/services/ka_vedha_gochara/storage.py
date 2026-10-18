@@ -12,6 +12,21 @@ from services.ka_vedha_gochara.candidate import KINDS, VedhaPayload, canonical
 def replace_candidate(ctx, payload: VedhaPayload):
     if not isinstance(payload,VedhaPayload) or len(payload.headers)!=3:
         raise ValueError('three typed family headers required')
+    # VedhaPayload is typed but its dictionaries remain caller-editable. Check
+    # these earned claims again at persistence, before any candidate mutation.
+    for header in payload.headers:
+        coverage=header['coverage']
+        if coverage['covered'] is None and (
+            coverage['search_state']!='unsearched' or coverage['complete']
+            or header['method_qualification'] is not None
+            or header['null_reason']!='information_unavailable'
+        ):
+            raise ValueError('outside sky coverage must be unsearched and unqualified')
+        if header['vedha_kind']=='latta' and header['method_qualification'] is not None:
+            rules=(payload.sources or {}).get('latta_rules',())
+            if not rules or any(not str(rule.get(key) or '').strip()
+                                for rule in rules for key in ('source_citation','verse_ref')):
+                raise ValueError('latta qualification requires cited source rules')
     conn=ctx.db_conn
     chart=str(ctx.config['chart_id'])
     with conn.cursor(row_factory=tuple_row) as cur:
