@@ -639,6 +639,13 @@ jobs:
         working-directory: platform-mcp
         run: npm ci
 
+      # disposable_sql.test_support.ts shells out to `python3` and imports psycopg (plus the
+      # sidecar disposable-DB guard, which imports psycopg too). The only other pip install in
+      # this job sits inside the 9-12 step, which a PR that selects just the 10-0 profile skips,
+      # so without this the K9-6 public-view SQL tests die on ModuleNotFoundError: psycopg.
+      - name: Install psycopg for published public-view SQL tests
+        run: python3 -m pip install 'psycopg[binary]>=3.2' --quiet
+
       - name: K7-3 — stage readers before and after protected migration 1376
         if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'db-integration-tests-10-0'))) }}
         env:
