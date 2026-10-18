@@ -329,7 +329,7 @@ def test_the_seed_and_the_input_differ_on_exactly_sixteen_assets_in_exactly_thes
         "ka_gochara": ([], ["bg_ghatana", "bg_gochara_arcs", "bg_reference"]),
         "ka_gochara_resonance": ([], ["bg_ghatana", "bg_reference", "ga_dashas", "ga_positions", "ga_yoga", "ka_yojaka"]),
         "ka_kala_darshana": ([], ["ka_gochara_v3_century_materialize"]),
-        "ka_kshetra": (["ka_vedha_gochara"], ["bg_ghatana", "bo_bimba", "bo_karanajala", "bo_laksana", "ka_gochara", "ka_gochara_v3_century_materialize"]),
+        "ka_kshetra": (["ka_vedha_gochara"], ["bg_ghatana", "bo_bimba", "bo_karanajala", "bo_laksana", "ka_gochara", "ka_gochara_v3_century_materialize", "ka_vighnakara"]),
         "ka_muhurta_seva": ([], ["ka_graha_sancara"]),
         "ka_vedha_gochara": (["bg_sarvatobhadra_grid"], ["bg_texts"]),
         "ka_vighnakara": ([], ["ka_gochara"]),

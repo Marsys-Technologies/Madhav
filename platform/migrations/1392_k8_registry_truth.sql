@@ -6,6 +6,10 @@
 -- writers and source-bound tests pin the corrected read edges and substep shapes.
 -- PR #3557: the candidate vedha writer reads classical_text_chunks for cited
 -- enrichment (services/ka_vedha_gochara/storage.py:71 on merged main).
+-- Merge with main (#3596): ka_gochara_v4_41_candidate now reaches ephemeris_daily through
+-- check_overlay_freshness -> node_series_digest / l1_identity (natal Moon longitude);
+-- bg_ephemeris and ga_positions are added as direct edges. ka_kshetra now reads
+-- kala_obstruction (services/ka_kshetra/g1_inputs.py:210, #3605); ka_vighnakara is its producer.
 -- (I) INTERPRETATION: retain service/runtime ordering edges for compatible legacy
 -- dispatch; add direct SQL reads, remove the already-retired grid (1360).
 -- (I) INTERPRETATION: preserve accepted integrity SQL and generation selection.
@@ -82,7 +86,9 @@ DECLARE
       "ka_moorti_nirnaya",
       "ka_vedha_gochara",
       "bg_transit_rules",
-      "bg_vedha_malefic_scale"
+      "bg_vedha_malefic_scale",
+      "bg_ephemeris",
+      "ga_positions"
     ],
     "has_writer": true,
     "has_substeps": true
@@ -319,7 +325,8 @@ DECLARE
       "ka_gochara_v3_century_materialize",
       "bo_laksana",
       "bo_karanajala",
-      "bo_bimba"
+      "bo_bimba",
+      "ka_vighnakara"
     ],
     "has_writer": true,
     "has_substeps": true

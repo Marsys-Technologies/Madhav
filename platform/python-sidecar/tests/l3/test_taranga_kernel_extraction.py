@@ -155,9 +155,13 @@ class TestWriterNoLongerDefinesOwnCopies:
             "its own module-level dict literal"
         )
 
-    def test_writer_imports_from_taranga_kernel(self):
-        src = _WRITER_PATH.read_text()
-        assert "from services.taranga_kernel.kernel import" in src
+    def test_read_model_no_longer_imports_legacy_engine(self):
+        # K6-4 replaces the writer with the forecaster projection. The kernel
+        # still serves legacy callers until KR-1; its numeric tests stay above.
+        tree = ast.parse(_WRITER_PATH.read_text())
+        modules = [node.module or '' for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
+        assert not any(name.startswith('services.taranga_kernel') for name in modules)
+        assert 'services.ka_kshetra.integrator' in modules
 
 
 class TestCombineActivationMatchesInlineFormula:

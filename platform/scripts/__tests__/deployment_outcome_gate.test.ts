@@ -107,6 +107,8 @@ describe('deploy.yml earned-signal wiring', () => {
     expect(signal).toBeDefined()
     expect(signal.if).toContain('always()')
     expect(signal.if).toContain("github.event_name != 'pull_request'")
+    // A cancelled/superseded upstream skips `changes`; that is SKIPPED, not an unearned deploy.
+    expect(signal.if).toContain("needs.changes.result != 'skipped'")
     expect(signal.needs).toEqual(expect.arrayContaining([
       'changes', 'migrate', 'deploy-web', 'deploy-sidecar', 'deploy-mcp', 'deploy-pipeline-job',
     ]))

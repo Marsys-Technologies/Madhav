@@ -810,8 +810,10 @@
     "asset_id": "ka_gochara_v4_41_candidate",
     "layer": "kala",
     "depends_on": [
+      "bg_ephemeris",
       "bg_transit_rules",
       "bg_vedha_malefic_scale",
+      "ga_positions",
       "ka_moorti_nirnaya",
       "ka_vedha_gochara"
     ],

@@ -1,12 +1,22 @@
 ---
 artifact: W4_EXECUTOR_BINDINGS
-version: 1.0
+version: 1.1
 status: PREPARATION_ONLY — independent review, integration and phase enablement outstanding
 produced_on: 2026-10-15
-changelog: Initial small-test launch bridge and disabled operation preparation surfaces.
+changelog: "v1.1 (2026-10-16): J3C-BINDINGS supersedes measuring proposal metadata with dedicated disabled bindings; v1.0: initial launch/preparation surfaces."
 ---
 
 # Wave 4 step 7 — executable launch bridge and later preparation
+
+> **2026-10-16 J3C-BINDINGS amendment:** the measuring-specific proposal and
+> `staging_dry_run` metadata below are superseded by
+> [J3C_BINDINGS_PREBUILD_v1_0.md](../../pravaha/measurement/J3C_BINDINGS_PREBUILD_v1_0.md).
+> `measuring_dispatch`, `measuring_dispatch_dryrun`, `measuring_teardown_dryrun`
+> and `measuring_teardown` now have real prepared bindings and remain DISABLED.
+> The small-test dispatcher still refuses the measuring shape. P01's six
+> small-test/backup kinds are now enabled on this source baseline; this amendment
+> changes none of their enablement states. The remaining text records the earlier
+> Wave 4 preparation and is not an activation or operational acceptance receipt.
 
 Scope: the existing `smalltest_dispatch` kind now points to `smalltest_launch.py`.
 All existing enablement states are preserved: only the four baseline read/local

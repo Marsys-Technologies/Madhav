@@ -83,3 +83,44 @@ def test_invalid_null_parameters_fail(replicates, alpha):
 def test_noninteger_midpoint_grid_horizon_is_not_silently_rounded():
     with pytest.raises(ValueError, match='integer'):
         compute_null(evaluator(horizon=32.2))
+
+
+def test_long_horizon_shifted_buckets_match_independent_window_sums():
+    from .fixtures import long_horizon_evaluator
+
+    ev = long_horizon_evaluator()
+    horizon = ev.horizon_days
+    assert horizon > 730
+    days = np.arange(int(horizon), dtype=np.float64)
+    clock = evaluator(horizon=horizon)
+    clock_log = np.array([clock.ln_lambda(t + .5) for t in days])
+    envelope_log = np.array([ev.ln_lambda(t + .5) for t in days]) - clock_log
+    assert np.ptp(envelope_log) > .1  # A long constant field is not an adversary.
+    replicates = 31  # Fractional shifts, including both sides of the wrap seam.
+    reference = dhara_compute_null(ev, replicates=replicates)
+    candidate = compute_null(ev, replicates=replicates)
+    assert reference.shift_count == candidate.shift_count == 30
+    assert candidate.shift_grid_step == horizon / replicates
+    assert candidate.resolution == 1 / replicates
+    expected = {b: [] for b in DURATION_BUCKETS}
+    pooled = []
+    for r in range(1, replicates):
+        # Independent periodic interpolation, followed by direct window sums:
+        # neither oracle uses the null engines' cumulative/sliding-max helpers.
+        shifted = np.interp(days - r * horizon / replicates, days, envelope_log, period=horizon)
+        lam = np.exp(clock_log + shifted)
+        pooled.extend(lam)
+        for bucket in DURATION_BUCKETS:
+            windows = np.convolve(lam, np.ones(bucket), mode='valid')
+            expected[bucket].append(float(windows.max()))
+            assert expected[bucket][-1] < float(lam.sum())
+        assert all(expected[a][-1] < expected[b][-1]
+                   for a, b in zip(DURATION_BUCKETS, DURATION_BUCKETS[1:]))
+    for bucket in DURATION_BUCKETS:
+        assert np.ptp(expected[bucket]) > 1e-6, bucket
+        np.testing.assert_allclose(reference.max_stats[bucket], expected[bucket], rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(candidate.max_stats[bucket], expected[bucket], rtol=1e-12, atol=1e-12)
+    expected_q = sorted(pooled)[math.ceil(.95 * len(pooled)) - 1]
+    assert candidate.q_threshold == pytest.approx(expected_q, rel=1e-12, abs=1e-12)
+    probes = {b: (values[0], sum(values) / len(values)) for b, values in reference.max_stats.items()}
+    assert compare_null(reference, candidate, observations=probes)['passed']

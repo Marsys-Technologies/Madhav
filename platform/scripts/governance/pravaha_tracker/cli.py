@@ -36,8 +36,10 @@ import hashlib
 import json
 import math
 import os
+import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from urllib.parse import quote
@@ -46,14 +48,15 @@ if __package__ in (None, ""):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     __package__ = "pravaha_tracker"
 
-from pravaha_tracker.events import EventError, append  # noqa: E402
+from pravaha_tracker.events import EventError, append, actor_slot, actor_stream  # noqa: E402
 from pravaha_tracker.claims import ClaimError, claim_item, renew_claim, release_claim  # noqa: E402
 from pravaha_tracker.audit import audit  # noqa: E402
-from pravaha_tracker.state import build_snapshot  # noqa: E402
+from pravaha_tracker.state import build_snapshot, load_closure, reconciliation_line  # noqa: E402
 from pravaha_tracker.detectors import git_activity  # noqa: E402
-from pravaha_tracker.completion import CompletionError, guarded_done_event  # noqa: E402
+from pravaha_tracker.completion import COMPOSED_RECEIPT_SCHEMA, CompletionError, guarded_done_event  # noqa: E402
 from pravaha_tracker.claims import _locked, _read, _append, _close  # noqa: E402
 from pravaha_tracker.events import validate_against_model  # noqa: E402
+from pravaha_tracker.verdicts import accepted_verdict  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
@@ -82,7 +85,12 @@ def get(path: str, timeout: float = 3.0):
         if path.startswith("/api/verify?"):
             # Guarded measurements never fall back to a persisted snapshot.
             reason = exc.reason if isinstance(exc, urllib.error.URLError) else exc
-            return None, "tracker-timeout" if isinstance(reason, TimeoutError) else "tracker-unreachable"
+            if isinstance(reason, TimeoutError):
+                return None, "tracker-timeout"
+            # A received HTTP error or malformed reply is not a transport outage.
+            if isinstance(exc, urllib.error.HTTPError) or not isinstance(reason, OSError):
+                return None, "unavailable"
+            return None, "tracker-unreachable"
         try:
             with open(SNAPSHOT, encoding="utf-8") as f:
                 return {"_snapshot": json.load(f)}, "stale-snapshot"
@@ -227,7 +235,12 @@ def cmd_guarded_done(a, actor: str) -> int:
         timeout = float(os.environ.get("KY_VERIFY_TIMEOUT_S", "300"))
         if not math.isfinite(timeout) or timeout <= 0:
             raise CompletionError("KY_VERIFY_TIMEOUT_S must be a positive finite number")
-        observed, via = get("/api/verify?id=" + quote(a.item, safe=""), timeout=timeout)
+        for attempt in range(4):
+            observed, via = get("/api/verify?id=" + quote(a.item, safe=""), timeout=timeout)
+            # Stop on any reply or timeout: a retry must never replace a failed verdict.
+            if via != "tracker-unreachable" or attempt == 3:
+                break
+            time.sleep(2 ** (attempt + 1))  # 2/4/8s; at most 14s beyond request timeouts.
         if via == "tracker-timeout":
             raise CompletionError(f"tracker timed out after {timeout:g}s during live detector verification")
         if via == "tracker-unreachable":
@@ -270,6 +283,14 @@ def cmd_guarded_done(a, actor: str) -> int:
             proof = {"type": "operation", "artifact_digest": hashlib.sha256(raw).hexdigest(),
                      "operation_id": a.operation_id, "receipt": receipt,
                      "path": os.path.realpath(a.operation_receipt)}
+            if isinstance(receipt, dict) and receipt.get("schema") == COMPOSED_RECEIPT_SCHEMA:
+                # Same admission as `ky step` (#3716): every cited component must verify; completion.py then
+                # accepts the composed receipt as the item's completed receipt (the accepted verdict at its
+                # digest is still required there).
+                if not isinstance(a.operation_id, str) or not a.operation_id:
+                    raise CompletionError("composed operation receipt needs --operation-id")
+                _check_composed_components(receipt, a.operation_id, _ANY_STEP, a.item, _ops_dir())
+                proof["composed_components_verified"] = True
         elif a.packet_verdict:
             declared = item.get("detector", {}).get("path")
             if os.path.realpath(a.packet_verdict) != os.path.realpath(declared or ""):
@@ -303,7 +324,7 @@ def cmd_guarded_done(a, actor: str) -> int:
         return 2
 
 
-def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str) -> None:
+def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str, *, operation: bool = False) -> dict:
     """Bind a file_contains step to the canonical receipt and its source evidence."""
     declared_path = spec.get("path")
     if (not isinstance(declared_path, str) or not declared_path
@@ -317,6 +338,8 @@ def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str)
         raise CompletionError("step receipt must use canonical JSON (sorted keys, no spaces or duplicate fields)")
     if receipt.get("item") != item or receipt.get("step") != step:
         raise CompletionError("step receipt item/step does not match the command")
+    if operation and (receipt.get("verdict") != "MET" or not receipt.get("review_job")):
+        raise CompletionError("operation step requires a named independent MET review")
 
     artifact_bound = False
     if "artifact_sha256" in receipt:
@@ -343,13 +366,215 @@ def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str)
             raise CompletionError("step receipt review_job result escapes the jobs directory")
         with open(result_path, encoding="utf-8") as handle:
             result = json.load(handle)
+        batched = isinstance(result, dict) and "items" in result
+        if batched:
+            items = result["items"]
+            matching_items = ([row for row in items if isinstance(row, dict) and row.get("item") == item]
+                              if isinstance(items, list) else [])
+            if len(matching_items) != 1:
+                raise CompletionError("step receipt review result does not match the item")
+            result = matching_items[0]
         if not isinstance(result, dict) or result.get("item") != item:
             raise CompletionError("step receipt review result does not match the item")
         steps = result.get("steps")
         matching = ([row for row in steps if isinstance(row, dict) and row.get("step") == step]
                     if isinstance(steps, list) else [])
-        if not artifact_bound and (len(matching) != 1 or matching[0].get("verdict") != "MET"):
+        # Artifact hashes remain an alternative only for legacy single-item results.
+        if (operation or batched or not artifact_bound) and (len(matching) != 1 or matching[0].get("verdict") != "MET"):
             raise CompletionError("step receipt review result does not say MET for this step")
+    return receipt
+
+
+def _teardown_completed(executor: dict, receipts: str, digest: str) -> bool:
+    """A committed production teardown stays AWAITING_ABSENCE by design (fleet/executor.py: the
+    COMMITTED_AWAITING_ABSENCE proof sets that status). It counts as complete only once the executor has
+    published <op>.completion.json after the separate absence readback was accepted: status COMPLETED, the
+    same operation and request, the digest of this very receipt, and the digest of the named absence receipt.
+
+    (I) INTERPRETATION: commit_receipt_sha256 is also bound to this receipt's bytes (the executor writes
+    digest_bytes of the commit receipt there); the alternative of checking only the fields named in the
+    job brief would let a receipt edited after completion pass.
+    """
+    opid = executor["operation_id"]
+    if (executor.get("status") != "AWAITING_ABSENCE"
+            or executor.get("kind") not in ("smalltest_teardown", "measuring_teardown")):
+        return False
+    path = os.path.join(receipts, opid + ".completion.json")
+    try:
+        if os.path.realpath(path) != path:
+            return False
+        with open(path, encoding="utf-8") as handle:
+            completion = json.load(handle)
+        absence = completion.get("absence_receipt")
+        name = absence.get("name") if isinstance(absence, dict) else None
+        if not isinstance(name, str) or re.fullmatch(r"[A-Za-z0-9_.-]+\.json", name) is None:
+            return False
+        absence_path = os.path.join(receipts, name)
+        if os.path.realpath(absence_path) != absence_path:
+            return False
+        with open(absence_path, "rb") as handle:
+            absence_digest = hashlib.sha256(handle.read()).hexdigest()
+    except (OSError, ValueError, AttributeError):
+        return False
+    return (isinstance(completion, dict) and completion.get("status") == "COMPLETED"
+            and completion.get("operation_id") == opid
+            and completion.get("request_sha256") == executor.get("request_sha256")
+            and completion.get("commit_receipt_sha256") == digest
+            and absence.get("sha256") == absence_digest)
+
+
+_ANY_STEP = object()    # guarded completion records no step: the composed receipt's own step is not compared
+_COMPOSED_RUN_PARTS = ("dispatch", "terminal", "execution_readback", "absence")
+
+
+def _ops_dir() -> str:
+    return os.path.realpath(os.path.join(os.environ.get("PRAVAHA_HOME", HOME), "run", "ops"))
+
+
+def _check_composed_components(composed: dict, opid: str, step, item_id: str, ops: str) -> None:
+    """Verify a COMPOSED operation receipt (SR-J2A-A55I-1/-ORDER: J-2d-a55i.json has no status, kind or
+    request of its own) by its components.
+
+    Every component is cited by name + sha256 and must exist byte-identical under run/ops/receipts (or
+    run/ops/acceptance); every cited executor receipt must be COMPLETED (or a committed teardown whose
+    completion is published) with exit 0 and the cited operation_id.
+
+    (I) INTERPRETATION: the composed receipt has no request or requester of its own, so only the signer's
+    stream and slot are checked for it (each component carries its own acceptance); each run must cite
+    dispatch, terminal, execution_readback and an absence receipt WITH accepted evidence.
+    """
+    receipts = os.path.join(ops, "receipts")
+    acceptance = os.path.join(ops, "acceptance")
+    runs = composed.get("runs")
+    if (composed.get("item") != item_id or composed.get("operation_id") != opid
+            or (step is not _ANY_STEP and composed.get("step") != step) or not isinstance(runs, list) or not runs):
+        raise CompletionError("composed operation receipt does not name this item, operation and step")
+
+    def digest_of(directory: str, name, expected) -> bytes:
+        if (not isinstance(name, str) or re.fullmatch(r"[A-Za-z0-9_.-]+\.json", name) is None
+                or not isinstance(expected, str)):
+            raise CompletionError("composed operation receipt cites a malformed component")
+        path = os.path.join(directory, name)
+        if os.path.realpath(path) != path:
+            raise CompletionError("composed component escapes its run/ops directory")
+        try:
+            with open(path, "rb") as handle:
+                body = handle.read()
+        except OSError as exc:
+            raise CompletionError(f"composed component {name} is not present ({exc.strerror})") from exc
+        if hashlib.sha256(body).hexdigest() != expected:
+            raise CompletionError(f"composed component {name} differs from the digest it is cited by")
+        return body
+
+    for run in runs:
+        if not isinstance(run, dict) or any(not isinstance(run.get(part), dict) for part in _COMPOSED_RUN_PARTS):
+            raise CompletionError("composed operation receipt lacks a run's dispatch/terminal/execution/absence")
+        if any("receipt" not in run[part] for part in _COMPOSED_RUN_PARTS):
+            raise CompletionError("composed operation receipt cites no executor receipt for a run part")
+        for part, cite in run.items():
+            if not isinstance(cite, dict) or "receipt" not in cite:
+                continue
+            ref = cite["receipt"] if isinstance(cite["receipt"], dict) else {}
+            component_id = cite.get("operation_id")
+            if not isinstance(component_id, str) or ref.get("name") != component_id + ".json":
+                raise CompletionError("composed component receipt must be named after its operation_id")
+            body = digest_of(receipts, ref.get("name"), ref.get("sha256"))
+            component = json.loads(body)
+            if (not isinstance(component, dict) or component.get("operation_id") != component_id
+                    or type(component.get("exit_code")) is not int or component["exit_code"] != 0
+                    or component.get("output_sha256") != cite.get("output_sha256")
+                    or not (component.get("status") == "COMPLETED"
+                            or _teardown_completed(component, receipts, ref["sha256"]))):
+                raise CompletionError(f"composed component {component_id} is not a COMPLETED executor receipt with exit 0")
+            accepted = cite.get("acceptance")
+            if not isinstance(accepted, list) or (part == "absence" and not accepted):
+                raise CompletionError(f"composed component {component_id} cites no accepted evidence")
+            for entry in accepted:
+                entry = entry if isinstance(entry, dict) else {}
+                record = json.loads(digest_of(acceptance, entry.get("name"), entry.get("sha256")))
+                if (not isinstance(record, dict) or record.get("result") != "ACCEPTED"
+                        or record.get("operation_id") != component_id):
+                    raise CompletionError(f"composed component {component_id} cites an acceptance that is not ACCEPTED for it")
+
+
+def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[dict]) -> None:
+    """Check the executor's receipt, archived request, measured output and independent acceptance.
+
+    (I) INTERPRETATION: request_id is the executor's request filename stem. The executor
+    moves <operation_id>.json to ops/done and hashes the complete request without its
+    acceptance_receipt field (fleet/executor.py:request_digest, receipt, run_one).
+    Acceptance is the latest artifact verdict at the executor receipt's digest, as in
+    guarded operation completion; a review job's MET marker alone has no signer identity.
+    """
+    opid, request_id = receipt.get("operation_id"), receipt.get("request_id")
+    if (not isinstance(opid, str) or re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", opid) is None
+            or opid in (".", "..") or request_id != opid):
+        raise CompletionError("operation step must name the same executor operation and request")
+    ops = _ops_dir()
+    receipts = os.path.join(ops, "receipts")
+    path = os.path.join(receipts, opid + ".json")
+    if os.path.realpath(path) != path:
+        raise CompletionError("operation receipt escapes run/ops/receipts")
+    with open(path, "rb") as handle:
+        raw = handle.read()
+    digest = hashlib.sha256(raw).hexdigest()
+    if receipt.get("evidence_sha256") != digest:
+        raise CompletionError("operation step evidence_sha256 does not match the executor receipt")
+    executor = json.loads(raw)
+    composed = isinstance(executor, dict) and executor.get("schema") == COMPOSED_RECEIPT_SCHEMA
+    if not composed and (not isinstance(executor, dict) or executor.get("operation_id") != opid
+            or executor.get("item_id") != item["id"]
+            or type(executor.get("exit_code")) is not int or executor["exit_code"] != 0
+            or not (executor.get("status") == "COMPLETED"
+                    or _teardown_completed(executor, receipts, digest))):
+        raise CompletionError("operation step requires this item's COMPLETED executor receipt with exit 0")
+
+    if composed:
+        _check_composed_components(executor, opid, receipt.get("step"), item["id"], ops)
+        requesters = []
+    else:
+        request_path = os.path.join(ops, "done", request_id + ".json")
+        if os.path.realpath(request_path) != request_path:
+            raise CompletionError("operation request escapes run/ops/done")
+        with open(request_path, encoding="utf-8") as handle:
+            request = json.load(handle)
+        if not isinstance(request, dict):
+            raise CompletionError("operation request must be a JSON object")
+        bound = {key: value for key, value in request.items() if key != "acceptance_receipt"}
+        request_digest = hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":"),
+                                                 allow_nan=False).encode("utf-8")).hexdigest()
+        requester = request.get("requested_by")
+        if (not isinstance(requester, str) or not requester.strip()
+                or any(request.get(key) != executor.get(key)
+                       for key in ("operation_id", "item_id", "requested_by", "kind", "reviewed_commit", "kyd"))
+                or executor.get("request_sha256") != request_digest
+                or receipt.get("request_sha256", request_digest) != request_digest):
+            raise CompletionError("operation receipt does not bind the complete request and requester")
+
+        output = executor.get("output_file")
+        if not isinstance(output, str) or not output:
+            raise CompletionError("operation receipt has no measured output file")
+        if not os.path.isabs(output):
+            output = os.path.join(receipts, output)
+        if os.path.dirname(os.path.realpath(output)) != receipts:
+            raise CompletionError("operation output escapes run/ops/receipts")
+        with open(output, "rb") as handle:
+            body = handle.read()
+        if not body or hashlib.sha256(body).hexdigest() != executor.get("output_sha256"):
+            raise CompletionError("operation output_sha256 does not match its measured output")
+        requesters = [requester]
+
+    verdict = accepted_verdict(events, item["id"], artifact_digest=digest, phase="artifact")
+    signer = verdict.get("actor", "") if verdict else ""
+    slot = actor_slot(signer)
+    # A requester may be a role, a bare slot, or a stream-qualified slot. Compare
+    # slots as well as actor strings so switching stream prefixes cannot self-accept.
+    if (not verdict or actor_stream(signer) != model.get("control_plane", {}).get("verdict_stream")
+            or not slot or any(signer.strip().casefold() == requester.strip().casefold()
+                               or slot.casefold() == (actor_slot(requester) or requester.strip()).casefold()
+                               for requester in requesters)):
+        raise CompletionError("operation step needs independent acceptance at the executor receipt digest")
+    validate_against_model(verdict, model, events)
 
 
 def cmd_step(a, actor: str) -> int:
@@ -371,6 +596,13 @@ def cmd_step(a, actor: str) -> int:
         spec = declared.get("detector") if isinstance(declared, dict) else None
         if not isinstance(spec, dict) or not spec:
             raise CompletionError(f"step {a.step_name} has no named detector; it cannot be recorded")
+        # Plan v2.7 §6 STEP / §N.8: a code prerequisite may cite executor
+        # provenance while its live DB detector measures the production fact.
+        # Actual operation items still require independently bound receipts.
+        operation = item.get("completion_kind") == "operation" or (
+            declared.get("evidence") == "executor_receipt" and spec.get("type") != "db_query")
+        if operation and spec.get("type") != "file_contains":
+            raise CompletionError("operation step requires a canonical file_contains acceptance receipt")
         if not a.evidence or not os.path.isfile(a.evidence):
             raise CompletionError("step evidence must be an existing file (--evidence <path>)")
         observed, via = get("/api/verify?id=" + quote(a.item, safe="") + "&step=" + quote(a.step_name, safe=""),
@@ -384,11 +616,32 @@ def cmd_step(a, actor: str) -> int:
         with open(path, "rb") as handle:
             if spec.get("type") == "file_contains":
                 raw = handle.read()
-                _check_step_receipt(raw, path, spec, a.item, a.step_name)
+                receipt = _check_step_receipt(raw, path, spec, a.item, a.step_name, operation=operation)
                 digest = hashlib.sha256(raw).hexdigest()
             else:
                 digest = hashlib.file_digest(handle, "sha256").hexdigest()
-    except (CompletionError, OSError, ValueError, AttributeError) as exc:
+        event = {"kind": "item", "actor": actor, "item": a.item, "state": "done", "step": a.step_name,
+                 "detail": a.detail, "evidence": path, "evidence_sha256": digest}
+        if operation:
+            # Check the current verdict and append under the same lock: a concurrent
+            # rejection must not be lost between acceptance lookup and step recording.
+            if not os.path.isfile(EVENTS):
+                raise CompletionError("operation step has no independent acceptance history")
+            fd = _locked(EVENTS)
+            try:
+                events = _read(fd)
+                _check_operation_step(receipt, item, model, events)
+                lane = os.environ.get("KY_LANE", "").strip()
+                if (model.get("control_plane", {}).get("verdict_stream") and lane
+                        and actor.startswith("stream-") and ":" not in actor):
+                    event["actor"] += f":{lane}"
+                validate_against_model(event, model, events)
+                written = _append(fd, event)
+            finally:
+                _close(fd)
+            print(json.dumps(written, ensure_ascii=False))
+            return 0
+    except (CompletionError, EventError, OSError, ValueError, AttributeError) as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 2
     return write({"kind": "item", "actor": actor, "item": a.item, "state": "done", "step": a.step_name,
@@ -433,8 +686,11 @@ def cmd_status(a) -> int:
         print("tracker unreachable and no snapshot on disk", file=sys.stderr)
         return 3
     o = snap["overall"]
-    print(f"{snap.get('campaign')} — {o['pct']}% · done {o['done']}/{o['total']} · running {o['running']} · ready {o['ready']} · "
+    scope = " (closure)" if o.get("scope") == "closure" else ""
+    print(f"{snap.get('campaign')} — {o['pct']}% · done {o['done']}/{o['total']}{scope} · running {o['running']} · ready {o['ready']} · "
           f"blocked {o['blocked']} · unmeasured {o['unknown']}   [{via}, v{snap.get('version')}]")
+    if o.get("reconciliation") and not a.stream:
+        print("  " + reconciliation_line(o["reconciliation"]))
     for st in snap.get("streams", []):
         if a.stream and st["id"] != a.stream.upper():
             continue
@@ -446,6 +702,8 @@ def cmd_status(a) -> int:
             print(f"     running  {t['id']} {t['title']}")
         if g.get("subject"):
             print(f"     last commit {g.get('last_commit')} on {g.get('branch')}: {g.get('subject')}")
+    if o.get("deferred") and not a.stream:
+        print(f"  Deferred (not counted): {', '.join(d['id'] for d in o['deferred'])}")
     nq = snap.get("native_queue", [])
     if nq and not a.stream:
         print(f"  Native decisions open: {', '.join(d['id'] for d in nq)}")
@@ -525,7 +783,7 @@ def cmd_audit(a) -> int:
         model = load_model()
         findings = audit(model, events, os.path.dirname(EVENTS), since=since,
                          repo=os.environ.get("PRAVAHA_REPO", REPO_ROOT))
-        snapshot = build_snapshot(model, events, {}, {}, {})
+        snapshot = build_snapshot(model, events, {}, {}, {}, closure=load_closure(model))
     except (OSError, KeyError, ValueError) as exc:
         print(f"audit unavailable: {exc}", file=sys.stderr)
         return 2

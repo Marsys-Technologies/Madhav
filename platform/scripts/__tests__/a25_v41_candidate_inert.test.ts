@@ -25,7 +25,7 @@ describe('A2.5 candidate asset planner inertness', () => {
     expect(row, 'seed row missing').toBeDefined()
     expect(row!.is_active).toBe(false)
     // K8-REG / migration 1392 declares direct reads without activating the row.
-    expect(row!.depends_on ?? []).toEqual(['ka_moorti_nirnaya', 'ka_vedha_gochara', 'bg_transit_rules', 'bg_vedha_malefic_scale'])
+    expect(row!.depends_on ?? []).toEqual(['ka_moorti_nirnaya', 'ka_vedha_gochara', 'bg_transit_rules', 'bg_vedha_malefic_scale', 'bg_ephemeris', 'ga_positions'])
     expect(row!.has_writer).toBe(true)
     // ASTRA A2.5 A10: the seed must carry the same timeout the dispatch stages
     // (7200s) — ON CONFLICT DO NOTHING preserves the seeded value, and the

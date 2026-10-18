@@ -14,20 +14,25 @@ from services.gochara_grammar import dasha_data as DD
 from services.gochara_kernel import dasha_read as reader, inventory_verifier as verifier
 
 CHART = "482012f1-710e-4a25-994a-93821f5871aa"
-BUILD = "ca17639b-f3cf-42c7-9866-0a61f3855802"
+BUILD = "7377833e-5d3b-4e70-8bef-1318904f470e"
 UNKNOWN = "22222222-2222-4222-8222-222222222222"  # negative fixture only
-COLLISION = "ca17639b-2222-4222-8222-222222222222"  # negative prefix collision
+COLLISION = "7377833e-2222-4222-8222-222222222222"  # negative prefix collision
 LO, HI = (datetime(2026, 1, day, tzinfo=timezone.utc) for day in (1, 9))
+# Suvarṇa's attestation, copied byte-exactly from origin/campaign-coordination at POSTED_COMMIT
+# (00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md, "2026-10-17T05:41:43Z — SUVARṆA (Exec) → KĀLA-YANTRA: L1_SETTLED v1").
+POSTED_COMMIT = "5a8a80ebfc0fc6135020f24d82ff9ed43ab14d73"
+POSTED_LINE = ("L1_SETTLED v1 utc=2026-10-17T05:41:43Z pos_build=7377833e dash_build=7377833e "
+               "natal_fp=3c034bdf vim13_fp=ee2e8bc7 vim13_rows=1040 dash_all_fp=ea7611f7")
 RECEIPT = {
     "schema": "gochara_dasha_settlement/1",
     "header_comment": "Governed settlement record. Changes require a reviewed PR.",
-    "line": "L1_SETTLED v1 utc=2026-10-07T22:18:24Z pos_build=ca17639b dash_build=ca17639b natal_fp=7e4278be vim13_fp=ee2e8bc7 vim13_rows=1040 dash_all_fp=ea7611f7",
-    "utc": "2026-10-07T22:18:24Z", "pos_build": "ca17639b", "dash_build": "ca17639b",
-    "natal_fp": "7e4278be", "vim13_fp": "ee2e8bc7", "vim13_rows": 1040,
+    "line": POSTED_LINE,
+    "utc": "2026-10-17T05:41:43Z", "pos_build": "7377833e", "dash_build": "7377833e",
+    "natal_fp": "3c034bdf", "vim13_fp": "ee2e8bc7", "vim13_rows": 1040,
     "dash_all_fp": "ea7611f7", "run_id": BUILD, "chart_id": CHART,
     "provenance": {
         "source": "origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md",
-        "commit": "2051951aaa3f4e1b6a55d728f703bc074daf11ef", "heading": "L1_SETTLED v1",
+        "commit": POSTED_COMMIT, "heading": "L1_SETTLED v1",
         "release_receipt": "SUVARNA-L0L2-CLOSE-REV30-20261013", "rebuild_run": BUILD,
     },
 }
@@ -139,8 +144,8 @@ def test_invalid_json_shape_refuses(settlement, invoke, payload):
 @pytest.mark.parametrize("field, value", [
     ("line", RECEIPT["line"].replace("vim13_fp=ee2e8bc7", "vim13_fp=ffffffff")),
     ("line", RECEIPT["line"] + " unknown=1"),
-    ("utc", "2026-02-30T22:18:24Z"),
-    ("dash_build", "22222222"), ("run_id", UNKNOWN), ("run_id", "ca17639b-bad"),
+    ("utc", "2026-02-30T05:41:43Z"),
+    ("dash_build", "22222222"), ("run_id", UNKNOWN), ("run_id", "7377833e-bad"),
     ("chart_id", "bad"), ("vim13_rows", "1040"), ("vim13_rows", True),
     ("schema", "unknown"), ("provenance", {}), ("header_comment", ""),
 ])
@@ -179,6 +184,19 @@ def test_reviewed_record_loads_through_both_independent_paths():
     assert verifier._load_dasha_settlement(CHART)["run_id"] == BUILD
 
 
+def test_governed_record_is_exactly_suvarnas_posted_line():
+    """The committed record binds the posted L1_SETTLED v1 line and nothing else (copied, never synthesised)."""
+    record = json.loads(reader.SETTLEMENT_PATH.read_text(encoding="utf-8"))
+    assert record["line"] == POSTED_LINE
+    assert record["provenance"]["commit"] == POSTED_COMMIT
+    assert (record["run_id"], record["provenance"]["rebuild_run"], record["chart_id"]) == (
+        "7377833e-5d3b-4e70-8bef-1318904f470e", "7377833e-5d3b-4e70-8bef-1318904f470e", CHART)
+    assert (record["utc"], record["pos_build"], record["dash_build"], record["natal_fp"], record["vim13_fp"],
+            record["vim13_rows"], record["dash_all_fp"]) == (
+        "2026-10-17T05:41:43Z", "7377833e", "7377833e", "3c034bdf", "ee2e8bc7", 1040, "ea7611f7")
+    assert reader.load_dasha_settlement(CHART) == record
+
+
 @pytest.mark.parametrize("field", ["pos_build", "natal_fp", "vim13_fp", "dash_all_fp"])
 def test_each_fingerprint_field_must_match_the_line(settlement, invoke, field):
     record = copy.deepcopy(RECEIPT)
@@ -194,8 +212,8 @@ def test_invalid_encoding_is_a_typed_refusal(settlement, invoke):
 
 def test_coherent_but_invalid_date_is_a_typed_refusal(settlement, invoke):
     record = copy.deepcopy(RECEIPT)
-    record["line"] = record["line"].replace("2026-10-07", "2026-02-30")
-    record["utc"] = "2026-02-30T22:18:24Z"
+    record["line"] = record["line"].replace("2026-10-17", "2026-02-30")
+    record["utc"] = "2026-02-30T05:41:43Z"
     settlement.write_text(json.dumps(record))
     refused(invoke, "settlement_malformed")
 
@@ -203,7 +221,7 @@ def test_coherent_but_invalid_date_is_a_typed_refusal(settlement, invoke):
 def test_reviewed_successor_requires_only_a_consistent_receipt(settlement, invoke):
     # Synthetic reviewed-repin fixture; this asserts no future L1 computation.
     record = copy.deepcopy(RECEIPT)
-    record["line"] = record["line"].replace("dash_build=ca17639b", "dash_build=22222222")
+    record["line"] = record["line"].replace("dash_build=7377833e", "dash_build=22222222")
     record["dash_build"] = "22222222"
     record["run_id"] = UNKNOWN
     record["provenance"]["rebuild_run"] = UNKNOWN
@@ -224,3 +242,51 @@ def test_settlement_bytes_are_bound_to_the_implementation_digest(monkeypatch, pa
         return content + " " if p.name == "dasha_settlement.json" else content
     monkeypatch.setattr(Path, "read_text", altered)
     assert digest(modules) != before, "unreviewed settlement edit escaped implementation identity"
+
+
+# P01-B1: exercise the lazy P1 operand and the actual writer snapshot branch.
+# Replacing the governed selector with builds[0] must fail both regressions.
+@pytest.mark.parametrize("build", [UNKNOWN, COLLISION])
+def test_p01_lazy_p1_operand_refuses_ungoverned_sole_build(settlement, monkeypatch, build):
+    conn = Conn([build])
+    calls = []
+    def fetch(c, chart_id, **kw):
+        calls.append(kw)
+        return [row(build)]
+    monkeypatch.setattr(reader, "_fetch_dasha_periods_multilevel", fetch)
+    rows_for, contract = reader.make_period_rows_for(conn, CHART)
+    with pytest.raises(reader.DashaBuildRefused, match="settled_build_absent"):
+        rows_for("Saturn", "md")
+    assert contract["read"] is False and contract["build_id"] is None
+    assert len(calls) == 1 and calls[0]["canonicalize"] is False
+
+
+def test_p01_lazy_p1_operand_uses_full_settled_build_once(settlement, monkeypatch):
+    conn = Conn([BUILD])
+    pins = []
+    def fetch(c, chart_id, **kw):
+        pins.append(kw.get("build_id"))
+        return [row(BUILD)]
+    monkeypatch.setattr(reader, "_fetch_dasha_periods_multilevel", fetch)
+    rows_for, contract = reader.make_period_rows_for(conn, CHART)
+    assert rows_for("Saturn", "md") == [{"start_iso": LO, "end_iso": HI}]
+    assert rows_for("Saturn", "ad") == []
+    assert contract["build_id"] == BUILD and contract["read"] is True
+    assert pins == [None, BUILD]
+
+
+def test_p01_snapshot_refuses_unknown_build_before_generation_delete(settlement, monkeypatch):
+    from types import SimpleNamespace
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer
+    from pipeline.orchestrator.writers import SubStep
+    conn = Conn([UNKNOWN])
+    monkeypatch.setattr(reader, "_fetch_dasha_periods_multilevel", lambda *a, **kw: [row(UNKNOWN)])
+    monkeypatch.setattr(writer, "fetch_chart_context", lambda *a: {})
+    monkeypatch.setattr(writer, "require_complete", lambda *a: None)
+    monkeypatch.setattr(writer.SkyEventStore, "register_convention", lambda self: "synthetic-convention")
+    def forbidden(*a, **kw):
+        pytest.fail("ungoverned daśā build reached generation deletion")
+    monkeypatch.setattr(writer.RecordStore, "delete_generation_chain", forbidden)
+    ctx = SimpleNamespace(db_conn=conn, config={})
+    with pytest.raises(reader.DashaBuildRefused, match="settled_build_absent"):
+        writer.GocharaV5Writer()._run_inventory_phase(ctx, SubStep(key=writer.SNAPSHOT_SUBSTEP), CHART)

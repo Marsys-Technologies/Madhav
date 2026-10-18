@@ -666,10 +666,42 @@ class EnvelopeIndex:
         return out
 
     def breakpoints(self) -> list[float]:
-        """Every envelope knot. Placing a breakpoint at each is what makes the
-        stored log-linear field FAITHFUL to the piecewise-linear covariates
-        rather than an approximation of them."""
-        return sorted({k[0] for p in self.supportive + self.obstructive for k in p.knots})
+        """All knots and piecewise-operator roots, including interior switches.
+
+        A sweep retains overlapping linear pieces only. Pairwise crossings
+        within one max group (and between Moon/Lagna for their min) cannot be
+        recovered by midpoint refinement: an off-centre peak can be missed.
+        Extra inactive-branch roots are conservative, never a compact subset.
+        """
+        if hasattr(self, '_operator_breakpoints'):
+            return list(self._operator_breakpoints)
+        points = {0.0, self.horizon_days}
+        pieces = []
+        for p in self.supportive + self.obstructive:
+            points.update(t for t, _ in p.knots)
+            groups = (('obstruction:' + p.vighna_key(),) if p.polarity == 'obstructive'
+                      else self._covariate_keys(p))
+            for (a, va), (b, vb) in zip(p.knots, p.knots[1:]):
+                if b > a:
+                    pieces.append((a, b, va, (vb-va)/(b-a), frozenset(groups)))
+        active = []
+        dual = {'contact_moon_ref', 'contact_lagna_ref'}
+        for piece in sorted(pieces):
+            a,b,va,slope,groups = piece
+            active = [q for q in active if q[1] > a]
+            for c,d,vc,other_slope,other_groups in active:
+                if not (groups & other_groups or
+                        (groups | other_groups) >= dual):
+                    continue
+                if slope == other_slope:
+                    continue
+                lo, hi = max(a,c), min(b,d)
+                root = lo + ((vc + other_slope*(lo-c)) - (va + slope*(lo-a))) / (slope-other_slope)
+                if lo < root < hi:
+                    points.add(root)
+            active.append(piece)
+        self._operator_breakpoints = tuple(sorted(points))
+        return list(self._operator_breakpoints)
 
     def obstruction_sources(self) -> dict[str, Primitive]:
         return {p.vighna_key(): p for p in self.obstructive}

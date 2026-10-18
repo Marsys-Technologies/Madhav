@@ -2343,7 +2343,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     expected_volume_formula: null,
     expected_volume_inputs: null,
     volume_explanation: "'4.1' candidate windows over the narrowed scored horizon [1998-01-01, 2026-04-18) — era/month/day tiers per event class. Candidate-only generation; the count stays 0 until the steward-dispatched run lands.",
-    depends_on: ['ka_moorti_nirnaya', 'ka_vedha_gochara', 'bg_transit_rules', 'bg_vedha_malefic_scale'],
+    depends_on: ['ka_moorti_nirnaya', 'ka_vedha_gochara', 'bg_transit_rules', 'bg_vedha_malefic_scale', 'bg_ephemeris', 'ga_positions'],
     // Pravāha A2.5: INERT to all planners. is_active=false keeps this row out
     // of runPreparation's planning set (src/lib/build/runPreparation.ts:183,
     // WHERE is_active = true) and recalibrationEnqueue's writer sweep
@@ -3292,7 +3292,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
       'ACHIEVED count after the first build (§N.4 — floors are aspirational, never fabricated).',
     // Eight real edges per live DB (migration 494 + migration 522; migration 569 drops ka_gochara_sweep per SAMPŪRTI R0).
     // All eight are now represented by seed rows in this file (W0.1, 2026-08-10).
-    depends_on: ['ka_dasha_kala', 'ka_gochara_resonance', 'ga_panchanga', 'bo_pratijna', 'bo_sangati', 'bo_upaya', 'bg_cohort', 'bg_class_lifetime_counts', 'bg_ghatana', 'ka_gochara', 'ka_gochara_v3_century_materialize', 'bo_laksana', 'bo_karanajala', 'bo_bimba'],
+    depends_on: ['ka_dasha_kala', 'ka_gochara_resonance', 'ga_panchanga', 'bo_pratijna', 'bo_sangati', 'bo_upaya', 'bg_cohort', 'bg_class_lifetime_counts', 'bg_ghatana', 'ka_gochara', 'ka_gochara_v3_century_materialize', 'bo_laksana', 'bo_karanajala', 'bo_bimba', 'ka_vighnakara'],
     scope: 'per_chart', is_active: true, estimated_seconds: null,
     layer_name: 'Kāla', layer_index: 'L3', catalog_status: 'DRAFT', asset_kind: 'data',
     has_substeps: true,

@@ -59,6 +59,14 @@ def test_k8_reads_match_the_actual_known_active_producers_with_one_disclosed_bac
         for table,sites in scan['reads'].items():
             producers=set(owners.get(table,[]))
             if not producers or aid in producers:continue
+            # The scanner attributes a family-gated branch of the SHARED contested_storage.replace_candidate
+            # to every family writer that calls it. The kota_chakra ring lock/read executes only when
+            # payload.family == 'kota_chakra'; the gate is asserted from source here, so the exemption cannot
+            # outlive the guard. Only ka_kota_chakra itself must declare the edge.
+            if table=='bg_kota_chakra_rings' and aid!='ka_kota_chakra' and {x[0] for x in sites}=={'services/kala_core/overlays/contested_storage.py'}:
+                shared=(ac.SIDECAR/'services/kala_core/overlays/contested_storage.py').read_text()
+                assert "if payload.family == 'kota_chakra':\n            cur.execute('LOCK TABLE bg_kota_chakra_rings" in shared
+                continue
             if producers & set(row['depends_on']):matched+=1;continue
             # Never repair a downstream calibration read by creating a cycle.
             cyclic={p for p in producers if aid in ac._ancestors(graph,p)}

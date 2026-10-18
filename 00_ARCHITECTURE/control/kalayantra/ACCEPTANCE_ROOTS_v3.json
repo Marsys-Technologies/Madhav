@@ -1,0 +1,225 @@
+{
+ "acceptances": [
+  {
+   "charter": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md §2.1",
+   "id": "i",
+   "roots": [
+    {
+     "brief_spec": [
+      "PLAN §4.4 steps 3–5",
+      "CHARTER §10 production gates"
+     ],
+     "detector": {
+      "min_bytes": 200,
+      "path": "/Users/Dev/kalayantra/run/ops/receipts/K9-4b.published.json",
+      "type": "file_exists"
+     },
+     "item": "K9-4b",
+     "role": "the rebuild is read back per writer, verified, and the new head published and read back",
+     "step": null,
+     "title": "Production rebuild read back per writer, verification job run, the new head published by compare-and-swap, and the publication read back"
+    },
+    {
+     "brief_spec": [
+      "CHARTER §0 line 3",
+      "PLAN §5",
+      "PLAN §10 Serving"
+     ],
+     "detector": {
+      "ref": "origin/kalayantra/k9-6",
+      "type": "branch_merged"
+     },
+     "item": "K9-6",
+     "role": "live acceptance: the seven views resolve through the registry and the Vidhi bridge against the published head",
+     "step": null,
+     "title": "Live acceptance: the seven views resolve through the registry and the Vidhi bridge against the published head; kala_now_get serves the negative-space sentinel distinction; the arrival line renders the honest state"
+    }
+   ],
+   "statement": "Kāla serves chart 482012f1 end-to-end from a rebuilt, published layer (production rebuild read back and published; live acceptance)"
+  },
+  {
+   "charter": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md §2.1",
+   "id": "ii",
+   "roots": [
+    {
+     "brief_spec": [
+      "SURROGATE G6",
+      "CHARTER §10 production gates"
+     ],
+     "detector": {
+      "min_bytes": 200,
+      "path": "/Users/Dev/kalayantra/run/J6L_LIVE.json",
+      "type": "file_exists"
+     },
+     "item": "J-6l",
+     "role": "the 5.0 flip is served and soaked",
+     "step": null,
+     "title": "Phase 12 — live readback (a served response answers from '5.0', identifying the deployed image and migration set) and the soak recorded"
+    },
+    {
+     "brief_spec": [
+      "ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0",
+      "PLAN §4.4 steps 3–4",
+      "ALGO 3.21 (verification separated from the builder)",
+      "/Users/Dev/kalayantra/tracker_live/pravaha_tracker/cli.py:244–259"
+     ],
+     "detector": {
+      "expect": "nonempty",
+      "path": "/Users/Dev/kalayantra/run/ops/receipts/J-5s.json",
+      "receipt_binding": "(I) INTERPRETATION: this nominated canonical item receipt path is a required future evidence binding, not an observed completed operation. CLI hashes the exact declared path; receipt item_id equals this item, status COMPLETED, and operation_id equals --operation-id. Independent V acceptance binds the same digest, request, manifest and job; SQL alone is not completion.",
+      "sql": "SELECT p.generation FROM public.kala_gochara_publication AS p WHERE p.chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND p.generation = '5.0' AND public.ka_gochara_generation_is_sealed(p.chart_id, p.generation)",
+      "type": "db_query"
+     },
+     "item": "J-5s",
+     "role": "the Gochara ledger is sealed",
+     "step": null,
+     "title": "Phase 10 — independent verification job dispatched under the verifier principal; generation '5.0' sealed (every included grain verified)"
+    },
+    {
+     "brief_spec": [
+      "CHARTER §10"
+     ],
+     "detector": {
+      "path": "/Users/Dev/kalayantra/run/reviews/J6.VERDICT.json",
+      "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\"",
+      "type": "file_contains"
+     },
+     "item": "V-J6",
+     "role": "the flip packet is accepted by the normal reviewer under criterion v2",
+     "step": null,
+     "title": "Flip packet review (Astra): seal evidence, protocol run, reader behaviour, authority switch, rollback rehearsal"
+    }
+   ],
+   "statement": "The Gochara 5.0 flip is sealed and served (ledger sealed, flip reviewed)"
+  },
+  {
+   "charter": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md §2.1",
+   "id": "iii",
+   "roots": [
+    {
+     "brief_spec": [
+      "PLAN §9 row K8",
+      "PLAN §7 Build row",
+      "PLAN §8 vocabulary paragraph (no registry row deleted)",
+      "PLAN §8.1 V-1, K-1, PCD-2",
+      "CLAUDE §N.4 cockpit truth"
+     ],
+     "detector": {
+      "ref": "origin/kalayantra/k8-reg",
+      "type": "branch_merged"
+     },
+     "item": "K8-REG",
+     "role": "the registry carries a certification mapping for every served Kāla asset",
+     "step": null,
+     "title": "Registry-truth migration: depends_on equal to the tables actually read; has_substeps, count_sql, integrity_check_sql (engine form) and produced_tables per re-shaped asset; lifecycle fields (is_active, superseded_by, data_disposition) for superseded and historical assets; writer-digest entries; the first L3 fingerprint declarations"
+    },
+    {
+     "brief_spec": [
+      "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:16 (SR-A2-11, 2026-10-15T10:16:20.753617+00:00)",
+      "/Users/Dev/kalayantra/run/reviews/K-CERT_ASSESSMENT_REVIEW.md:9–13,15–34,38–48",
+      "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess",
+      "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md:544–551 (already-satisfied assessment uses ARTIFACT)",
+      "CLAUDE.md §N.6–§N.8 (density, narration fidelity and earned signals)"
+     ],
+     "detector": {
+      "measures": "The independent assessment’s explicit bounded structural MET verdict; guarded completion additionally requires acceptance at the artifact SHA-256, never file presence alone.",
+      "path": "/Users/Dev/kalayantra/run/reviews/K-CERT_ASSESSMENT_REVIEW.md",
+      "pattern": "^\\*\\*K-CERT: MET — bounded structural Dens\\.served\\.\\*\\*",
+      "type": "file_contains"
+     },
+     "item": "K-CERT",
+     "role": "certification mappings exist for every served Kāla asset",
+     "step": null,
+     "title": "bg_gochara_citation_resolution Dens.served: independently assessed MET from the existing stored status column; bounded structural artifact under SR-A2-11"
+    }
+   ],
+   "statement": "Certification mappings exist for every served Kāla asset (registry and the certification item)"
+  },
+  {
+   "charter": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md §2.1",
+   "id": "iv",
+   "roots": [
+    {
+     "brief_spec": [
+      "CHARTER §10"
+     ],
+     "detector": {
+      "path": "/Users/Dev/kalayantra/run/reviews/K9.VERDICT.json",
+      "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\"",
+      "type": "file_contains"
+     },
+     "item": "V-K9",
+     "role": "final whole-layer review of the rebuilt layer against the exit criteria",
+     "step": null,
+     "title": "Final packet review (Astra): the rebuilt layer against the plan's exit criteria"
+    },
+    {
+     "brief_spec": [
+      "CHARTER §0, §14"
+     ],
+     "detector": {
+      "min_bytes": 6000,
+      "path": "/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign/00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CLOSE_REPORT_v1_0.md",
+      "type": "file_exists"
+     },
+     "item": "C-1",
+     "role": "guarded close step 1",
+     "step": null,
+     "title": "Close report: the five definition-of-done lines, each MET or NOT MET with its detector evidence; decisions ledger; gaps; measured costs; lessons"
+    },
+    {
+     "brief_spec": [
+      "CHARTER §8 rule 6, §14",
+      "00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md"
+     ],
+     "detector": {
+      "ref": "origin/kalayantra/c-2",
+      "type": "branch_merged"
+     },
+     "item": "C-2",
+     "role": "guarded close step 2",
+     "step": null,
+     "title": "SESSION_CLOSE validated; SESSION_LOG entry; CURRENT_STATE §2; CCD closure row; one PR merged"
+    },
+    {
+     "brief_spec": [
+      "CHARTER §12",
+      "fleet/finalize.sh"
+     ],
+     "detector": {
+      "path": "/Users/Dev/kalayantra/run/DRAIN_RECEIPT.json",
+      "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\"",
+      "type": "file_contains"
+     },
+     "item": "C-3",
+     "role": "guarded close step 3",
+     "step": null,
+     "title": "Drain: every lane except v1 stopped, locks released, only clean worktrees removed — an accepted drain receipt, or an honest failure"
+    },
+    {
+     "brief_spec": [
+      "CHARTER §0, §12, §14",
+      "PARIKSAKA final acceptance"
+     ],
+     "detector": {
+      "path": "/Users/Dev/kalayantra/run/FINAL_RECEIPT.json",
+      "pattern": "\"result\"\\s*:\\s*\"ACCEPTED\"",
+      "type": "file_contains"
+     },
+     "item": "C-4",
+     "role": "guarded close step 4",
+     "step": null,
+     "title": "Final acceptance and physical shutdown: v1's independent review of the five lines, then all ten lanes stopped and their worktrees gone"
+    }
+   ],
+   "statement": "A guarded close: the final whole-layer review, then C-1 → C-2 → C-3 → C-4 (A9 D-51: the close chain is rooted, JOIN-ALL is superseded)"
+  }
+ ],
+ "artifact": "ACCEPTANCE_ROOTS",
+ "canonical_path": "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v3.json",
+ "content_version": "3.0",
+ "model": "00_ARCHITECTURE/control/kalayantra/plan_model.json (every brief_spec and detector below is copied from it and re-checked by fleet/kyclosure.py)",
+ "plan": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md §2 (D-51); plan v2.7 §0 closure procedure step 1",
+ "plan_version": "2.7+A9",
+ "supersedes": "ACCEPTANCE_ROOTS_v2_2.json (JOIN-ALL superseded by this file, A9 D-51)"
+}
