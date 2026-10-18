@@ -74,7 +74,7 @@ def dtemplate(template):  # noqa: F811
 
 
 @pytest.fixture()
-def dw(dtemplate):
+def dw(dtemplate, digest_overlay_applied):   # SR-HYG-LOCAL-OVERLAY: the dispatch reads the CI-style regenerated digest inventory
     w = _World(dtemplate)
     try:
         yield w

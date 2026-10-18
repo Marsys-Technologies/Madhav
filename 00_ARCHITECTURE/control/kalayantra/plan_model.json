@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -4627,7 +4627,8 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/vc-2"
+        "ref": "origin/kalayantra/vc-2",
+        "measures": "UNMEASURED until origin/kalayantra/vc-2 exists (no branch yet; SR-DETECTOR-REFS 2026-10-18): this is not a pass and not a failure of the item; it is read as not yet measured. Once the branch exists it measures that its PR is contained in origin/main; guarded completion additionally requires exact-head acceptance."
       },
       "brief": {
         "spec": [
@@ -4821,7 +4822,9 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-COMPACT",
+        "reason": "D-COMPACT refused (PRE-D-COMPACT: K5-2 numerical contract NC11-NC13/NC17 fail; dense path retained) — SR-CLOSURE-272"
       }
     },
     {
@@ -5513,7 +5516,8 @@
       ],
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/l0-k"
+        "ref": "origin/kalayantra/l0-k",
+        "measures": "UNMEASURED until origin/kalayantra/l0-k exists (no branch yet; SR-DETECTOR-REFS 2026-10-18): this is not a pass and not a failure of the item; it is read as not yet measured. Once the branch exists it measures that its PR is contained in origin/main; guarded completion additionally requires exact-head acceptance."
       },
       "brief": {
         "spec": [
@@ -18665,8 +18669,7 @@
       "depends_on": [
         "J-RUN2-RESOLVED",
         "J-3a-pr2914",
-        "J-3a-pr3144",
-        "J-3a-b44"
+        "J-3a-pr3144"
       ],
       "mandatory": true,
       "detector": {
@@ -20318,7 +20321,7 @@
       "mandatory": false,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/j-7"
+        "ref": "origin/kalayantra/pb-j7"
       },
       "brief": {
         "spec": [
@@ -20766,7 +20769,7 @@
       ],
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k9-6"
+        "ref": "origin/kalayantra/pb-k9-final"
       },
       "brief": {
         "spec": [
@@ -22787,7 +22790,7 @@
       "title": "ka_avadhi builds clean on 482012f1: the post-write integrity check's conjunct (c) lord_condition_fact_refs (RED by design under W2 M4 since 2026-09-10) is made to hold or honestly re-scoped, so Suvarṇa's single rebuild tail does not error; merged by Suvarṇa in its window",
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k-avadhi-conjunct-c"
+        "ref": "origin/kalayantra/k-avadhi-c"
       },
       "brief": {
         "spec": [
@@ -26693,8 +26696,9 @@
       "producer": "K",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "a",
-        "reason": "the '4.1' geometric baseline is a scored baseline named by J-5q-b54 (title '5.0 vs 3.0 vs 4.1'; brief.tests 'independently prove inherited prerequisite: B4.4'); stays in the closure (A9-NB-04 class a)"
+        "class": "b",
+        "reason": "deferred by A9 (SR-A9-INTERP, A9-NB-04): its '4.1' baseline cannot exist while J-4a-a25 is parked; no consuming phase brief reads its output (FINAL_BUILD_SCOPE_v1_0 and the J-4a brief are silent on A2.5/A2.6) — SR-A9-NB-04-B44 (SR-CLOSURE-272)",
+        "re_entry": "when the owner/surrogate records the approved Q6 disposition of the historical 4.1 build, or a phase brief names the 4.1 build as a measured input"
       }
     },
     {
