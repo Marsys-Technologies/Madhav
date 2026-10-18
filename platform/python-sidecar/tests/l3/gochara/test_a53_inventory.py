@@ -46,7 +46,7 @@ def _row(i, level, lord, a, b):
 DASHA_PARENT = {1: None, 2: 1, 3: 1, 4: 2, 5: 2, 6: 3}
 L0_VEDHA_ROWS = [tuple(r) for r in json.loads(
     (Path(__file__).resolve().parents[1] / "gochara_rules" / "fixtures" / "l0_vedha_rows_2026_10_02.json").read_text())]
-PINNED_BUILD = "ca17639b-f3cf-42c7-9866-0a61f3855802"      # governed settlement; synthetic period fixtures below
+PINNED_BUILD = "7377833e-5d3b-4e70-8bef-1318904f470e"      # governed settlement; synthetic period fixtures below
 
 
 # Pinned Vimśottarī rows around the class horizon [2025-01-01, 2025-03-01): each level

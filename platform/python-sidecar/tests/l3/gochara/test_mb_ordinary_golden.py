@@ -16,8 +16,8 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
     and notes, or the refusal's type and message), the SQL statements it issued through the connection (whitespace-normalised text and parameter count, kept as a count
     per distinct statement shape plus the sha256 of the ordered sequence), and the row count of every ka_gochara_* / kala_gochara_* table after it;
   * the candidate manifest's input vector, every component.
-HEAD must equal it except the evaluation implementation identity. Geometry and
-window identities must remain equal. Exactly one state-guard SELECT is checked
+HEAD must equal it except the evaluation implementation identity and the pinned
+J4C-A geometry/window source updates below. Exactly one state-guard SELECT is checked
 per non-dry-run substep and excluded from both SQL summaries. B5 adds exactly
 one invalid-period guard SELECT to inventory:marriage; its complete shape and
 parameter count are checked separately, preserving the stored baseline.
@@ -42,6 +42,28 @@ from .test_a55_replace_chain import SHORT, _World, template  # noqa: F401
 
 GOLDEN = Path(__file__).resolve().parent / "fixtures" / "mb_ordinary_golden_j4p.json"
 GOLDEN_COMMIT = "2d75833d3963a61544deaa4c36cc8322cb2cdcb5"
+# The immutable capture recorded the dasha build then settled (L1_SETTLED v1, ca17639b); the snapshot notes name it as
+# "build <uuid first four groups>-<hex>", and the final group is normalised away by `_norm`. A settlement move
+# (dasha_settlement.json) changes only this identity, so the comparison re-points it at the governed record instead of
+# re-capturing the golden or pinning a second literal.
+GOLDEN_SETTLED_BUILD_PREFIX = "ca17639b-f3cf-42c7-9866-"
+# PR #3596 (ci-kalayantra-pb-j4c-a), J4C-A: substrate.DB_BODY and
+# window_sweep.GRAHA_TITLE now derive the same graha mapping from the SSoT.
+# Computed from this tree with implementation_registry.compute(); pin these
+# source identities without changing the historical capture or other components.
+# (I) INTERPRETATION: apply the stage update here, preserving the immutable fixture.
+J4C_IMPLEMENTATION = {
+    "geometry": "22f14a9c648a497b7702ab4ee3263fc37100ab5d352e01d60bd254c9384efc43",
+    "window": "3afc40476aec141bc635309b09f32084c475ad3bd03e6f100101d52475d2c507",
+}
+# PR #3693 (kalayantra/p1-anchor-fix): record_store.materialise_record_grain now WRITES the contact of a P1 transit whose every anchor is a
+# testimony lord (it wrote nothing before; the record stays unminted, kgrr_ruling_ck). That edit to `record_store` (a geometry-stage module) is the ONLY
+# source change to the geometry stage: with main's record_store.py restored the geometry digest is exactly J4C_IMPLEMENTATION["geometry"] above.
+# Computed from this tree with implementation_registry.compute(). The golden fixture itself is not re-captured; every non-implementation
+# component, outcome, row count and SQL shape is still compared to it unchanged.
+P1_ANCHOR_IMPLEMENTATION = {
+    "geometry": "b47f2fb901d42c8a44625da1b1a05774f1e265350b4816cc43dbed081563a6f8",
+}
 # the REAL runner's birth parameters shape (birth_params._to_birth_params): main ignores them, an ordinary HEAD build must too
 BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, "longitude_deg": 85.8245, "tz_offset_hours": 5.5, "place_name": "Bhubaneswar",
                 "subject_label": "native"}
@@ -168,6 +190,21 @@ def _load():
     return golden
 
 
+def _follow_settlement(golden: dict) -> dict:
+    """The golden with its one settled-build identity re-pointed at the governed settlement record.
+
+    Only the dasha build named in the snapshot notes moves; the golden must carry that identity exactly once (so the
+    re-pointing is never silent or vacuous) and every other field stays strictly compared.
+    """
+    from services.gochara_kernel import dasha_read
+
+    run_id = dasha_read.load_dasha_settlement(CHART_ID)["run_id"]
+    settled_prefix = run_id.rsplit("-", 1)[0] + "-"
+    text = json.dumps(golden, sort_keys=True)
+    assert text.count(GOLDEN_SETTLED_BUILD_PREFIX) == 1, "the golden names its settled dasha build exactly once"
+    return json.loads(text.replace(GOLDEN_SETTLED_BUILD_PREFIX, settled_prefix))
+
+
 def test_b4_baseline_preserves_final_main_settlement_amendments():
     """Keep final J-4p's outcomes and transcript alongside B4's baseline.
 
@@ -215,7 +252,7 @@ def head(template):
 
 def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read_only_state_guard_select(head):
     got, raw = head
-    want = _load()
+    want = _follow_settlement(_load())
     assert [s["key"] for s in got["substeps"]] == [s["key"] for s in want["substeps"]]
     kinds = {s["key"].split(":")[0].split(" ")[0] for s in want["substeps"]}
     assert kinds >= {"rules", "convention", "body", "manifest", "snapshot", "inventory", "coverage", "record", "window", "verify"}, kinds
@@ -232,11 +269,12 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
 
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
-    """Preserve valid-data inputs; only B4's evaluation implementation changes.
+    """Preserve valid-data inputs with J4C-A's geometry/window source pins.
 
     No `horizon_basis` or `test_slice` component may appear in an ordinary run.
     """
     got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
+    want["implementation"] = {**want["implementation"], **J4C_IMPLEMENTATION, **P1_ANCHOR_IMPLEMENTATION}
     assert "horizon_basis" not in got and "test_slice" not in got
 
     same_host = got["ephemeris"]["platform"] == want["ephemeris"]["platform"]

@@ -21,6 +21,7 @@ Saturn-in-the-7th); rebuilding both at a longer horizon left the contact's end a
 contact insert was `ON CONFLICT DO NOTHING` and the class replace keeps a contact another class still references."""
 from __future__ import annotations
 
+import os
 import re
 import sys
 import uuid
@@ -200,19 +201,34 @@ def template():
         pytest.skip("pinned .se1 corpus unavailable")
     import psycopg
     admin, name, dsn = create_am5_database("a55rc")
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
     try:
-        conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
-        try:
-            RuleRegistryStore(conn).seed()
-            w = writer_mod.GocharaV5Writer()
+        RuleRegistryStore(conn).seed()
+        w = writer_mod.GocharaV5Writer()
+        prepared = os.environ.get("CI_REPLACE_CHAIN_SUBSTRATE")
+        if prepared:
+            # Same real full-domain rows, produced by body substeps in parallel CI workers.
+            sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts/governance"))
+            from ci_replace_chain_fixture import load
+            ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="tpl", db_conn=conn, dry_run=False,
+                              config={"chart_id": CHART_ID, "horizon": LONG, "ephe_path": EPHE_PATH})
+            with conn.transaction():
+                w.run_substep(ctx, SubStep(key=writer_mod.CONVENTION_SUBSTEP, label="convention"))
+                load(conn, prepared)  # same chart-locked transaction; no silent rebuild
+        else:
             for key in [writer_mod.CONVENTION_SUBSTEP] + [f"{writer_mod.BODY_SUBSTEP_PREFIX}{b}"
                                                           for b in writer_mod.SUBSTRATE_BODIES]:
                 ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="tpl", db_conn=conn, dry_run=False,
                                   config={"chart_id": CHART_ID, "horizon": LONG, "ephe_path": EPHE_PATH})
                 with conn.transaction():
                     w.run_substep(ctx, SubStep(key=key, label=key))
-        finally:
-            conn.close()
+    except BaseException:
+        conn.close()
+        drop_am5_database(admin, name)
+        raise
+    else:
+        conn.close()
+    try:
         yield admin, name, dsn
     finally:
         drop_am5_database(admin, name)

@@ -926,6 +926,13 @@ __all__ += ["check_dasha_population", "validate_consumed_dasha_population"]
 
 
 # Snapshot-bound record verification SQL; deliberately independent of the builder.
+#: the pins of the "held" probe below (the verifier's own §4.0 literals: ayanāṃśa, system, tier)
+RECORD_SUPPORT_PINS = {"ayan": _C_AYANAMSHA, "system": _C_SYSTEM, "tier": _C_TIER}
+# J-2a run 1: the SNAPSHOT binds only the daśā rows OVERLAPPING the horizon, so it fixes the running intervals `m` (a contact
+# is clipped to the horizon, so a row wholly outside it cannot change contact ∩ m) but it CANNOT say whether L1 holds a
+# row for an anchor (lord, level) at all. "No rows" (⇒ unrestricted + `unknown`, A5_3 brief v1.27) means no pinned row
+# for that (lord, level) ANYWHERE in the settled build — `held` probes exactly that; a lord that is held but not running
+# in the horizon has an empty running set (`false`), never `unknown` (§N.8: has_rows must measure its own claim).
 RECORD_SUPPORT_SQL = """
 WITH snap AS (
   SELECT s.consumed_dasha_row_ids AS ids FROM public.ka_gochara_search_input_snapshot s
@@ -936,6 +943,13 @@ runs AS (
   FROM public.chart_dashas d, snap
   WHERE d.chart_id = %(chart)s AND d.dasha_row_id = ANY (snap.ids) AND d.level_n IN (1, 2, 3)
   GROUP BY 1, 2),
+held AS (
+  SELECT DISTINCT lower(d.lord_graha) AS lord, d.level_n
+  FROM public.chart_dashas d
+  WHERE d.chart_id = %(chart)s AND d.ayanamsha_id = %(ayan)s AND d.system_id = %(system)s
+    AND d.verification_pass_status = %(tier)s AND d.level_n IN (1, 2, 3)
+    AND d.build_id IN (SELECT x.build_id FROM public.chart_dashas x, snap WHERE x.chart_id = %(chart)s
+                       AND x.dasha_row_id = ANY (snap.ids))),
 rec AS (
   SELECT r.record_id, r.period_anchor_lord AS lord,
          CASE r.period_anchor_level WHEN 'md' THEN 1 WHEN 'ad' THEN 2 WHEN 'pd' THEN 3 END AS level_n,
@@ -953,9 +967,10 @@ rec AS (
   WHERE r.chart_id = %(chart)s AND r.generation = %(gen)s AND r.event_class = %(cls)s
     AND r.path_id = 'P1' AND r.contact_id IS NOT NULL)
 SELECT rec.record_id::text, rec.stored::text,
-       (CASE WHEN runs.m IS NULL THEN rec.contact ELSE rec.contact * runs.m END)::text AS expected_text,
-       rec.stored = (CASE WHEN runs.m IS NULL THEN rec.contact ELSE rec.contact * runs.m END) AS equal,
-       isempty(CASE WHEN runs.m IS NULL THEN rec.contact ELSE rec.contact * runs.m END) AS expected_empty,
-       rec.result, runs.m IS NOT NULL AS has_rows
-FROM rec LEFT JOIN runs ON (runs.lord, runs.level_n) = (rec.lord, rec.level_n)
+       (CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END)::text AS expected_text,
+       rec.stored = (CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS equal,
+       isempty(CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS expected_empty,
+       rec.result, held.lord IS NOT NULL AS has_rows
+FROM rec LEFT JOIN held ON (held.lord, held.level_n) = (rec.lord, rec.level_n)
+         LEFT JOIN runs ON (runs.lord, runs.level_n) = (rec.lord, rec.level_n)
 """
