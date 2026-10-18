@@ -141,7 +141,7 @@ def receipt_and_archive(backup, tmp_path):
                                 'sequences': {'public.s_seq': {'last_value': 1, 'is_called': False}}},
                'measurement_method': backup.SCOPED_MEASUREMENT_METHOD,
                'scope': {'name': sc['name'], 'sha256': sc['sha256'], 'tables': list(sc['tables']), 'closure': [],
-                         'sequences': ['public.s_seq'], 'data_bytes': 0},
+                         'sequences': ['public.s_seq'], 'data_bytes': 0, 'dump_excludes': []},
                'validity': {'not_before': start.isoformat(), 'not_after': (start + window).isoformat(),
                             'seconds': int(window.total_seconds())}}
     return receipt, archive
@@ -194,9 +194,90 @@ def test_scoped_capture_refuses_anything_not_bound_to_the_reviewed_scope_files_a
         backup.validate_scoped_capture(receipt, archive, 'p02_fixture')
 
 
-def test_exclude_args_quote_every_name_so_no_pattern_character_widens_the_exclusion(backup):
-    assert backup.exclude_data_args(['public.plain', 'Mixed.t"q?']) == [
-        '--exclude-table-data="public"."plain"', '--exclude-table-data="Mixed"."t""q?"']
+def test_dump_names_exactly_the_data_set_one_quoted_table_each_and_nothing_else(backup):
+    """SR-J2A-BACKUP-POSITIVE: an explicit -t per relation (no pattern character widens it); no schema-wide selector."""
+    args = backup.dump_table_args(['public.plain', 'Mixed.t"q?'], [{'table': 'public.skip', 'owner': 'someone'}])
+    assert args == ['--strict-names', '--table="public"."plain"', '--table="Mixed"."t""q?"', '--exclude-table="public"."skip"']
+    assert not any(a.startswith(('--schema', '-n', '--exclude-table-data')) for a in args)
+
+
+def _bundle(tmp_path, backup, monkeypatch, body):
+    """A synthetic stand-in for the governed L1 bundle's schema.sql, pinned the way the real one is."""
+    path = tmp_path / 'run/canonical_l1/b/schema.sql'
+    path.parent.mkdir(parents=True)
+    path.write_bytes(body)
+    monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_PATH', 'run/canonical_l1/b/schema.sql')
+    monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_SHA256', hashlib.sha256(body).hexdigest())
+    return tmp_path
+
+
+def test_restore_base_is_the_hash_checked_governed_bundle_bootstrapped_the_way_its_own_restore_ran(backup, tmp_path, monkeypatch):
+    body = b"\\restrict k\nSET x = 1;\n\nCREATE SCHEMA public;\nCREATE TABLE public.t (id int);\n\\unrestrict k\n"
+    root = _bundle(tmp_path, backup, monkeypatch, body)
+    text, identity = backup.restore_base_sql(root)
+    assert '\\restrict' not in text and '\\unrestrict' not in text                  # psql-only guard lines are not SQL
+    order = [text.index(m) for m in ('DROP SCHEMA public;', 'CREATE SCHEMA public;', 'CREATE EXTENSION IF NOT EXISTS "vector"',
+                                     'CREATE TABLE public.t')]
+    assert order == sorted(order)                                                    # schema, then extensions, then the rest
+    assert identity == {'bundle': 'run/canonical_l1/b/schema.sql', 'sha256': hashlib.sha256(body).hexdigest(), 'migrations': []}
+    (root / 'run/canonical_l1/b/schema.sql').write_bytes(body + b'-- drift\n')
+    with pytest.raises(backup.BackupRefused, match='differs from the governed L1 bundle'):
+        backup.restore_base_sql(root)
+
+
+def test_restore_base_migrations_are_applied_in_order_and_only_as_reviewed(backup, tmp_path, monkeypatch):
+    root = _bundle(tmp_path, backup, monkeypatch, b"-- x\nCREATE SCHEMA public;\n")
+    migrations = tmp_path / 'migrations'
+    migrations.mkdir()
+    (migrations / '1_a.sql').write_text('SELECT 1;')
+    (migrations / '2_b.sql').write_text('SELECT 2;')
+    monkeypatch.setattr(backup, 'MIGRATIONS_DIR', migrations)
+    pins = tuple((n, hashlib.sha256((migrations / n).read_bytes()).hexdigest()) for n in ('1_a.sql', '2_b.sql'))
+    text, identity = backup.restore_base_sql(root, pins)
+    assert text.index('SELECT 1;') < text.index('SELECT 2;') and [m['file'] for m in identity['migrations']] == ['1_a.sql', '2_b.sql']
+    (migrations / '2_b.sql').write_text('SELECT 3;')
+    with pytest.raises(backup.BackupRefused, match='migration is missing or differs'):
+        backup.restore_base_sql(root, pins)
+
+
+# ---- SR-J2A-RESTORE-BASE: the migrations on top of the bundle are derived from the ledger, never pinned ------------------
+
+def _ledger(backup, tmp_path, monkeypatch, files):
+    """files: [(ledger id, name, applied hour relative to the cut, SQL text)] -> (ledger entries, migrations dir)."""
+    directory = tmp_path / 'migrations'
+    directory.mkdir()
+    monkeypatch.setattr(backup, 'SCOPED_RESTORE_BASE_CUT', '2026-10-16T17:10:23+00:00')
+    cut = datetime.fromisoformat(backup.SCOPED_RESTORE_BASE_CUT)
+    rows = []
+    for ident, name, hours, text in files:
+        (directory / name).write_text(text)
+        rows.append((ident, name, cut + timedelta(hours=hours), hashlib.sha256(text.encode()).hexdigest()))
+    return backup.ledger_entries(rows), directory
+
+
+def test_restore_migrations_are_those_applied_after_the_bundle_that_mention_a_scope_table_in_ledger_order(backup, tmp_path, monkeypatch):
+    """Claim: base = bundle + every ledger migration applied after the bundle that touches a scope table (the 1394 shape:
+    a function and a trigger on kala_gochara_publication). Earlier ones are already in the bundle; unrelated ones are not
+    needed; order is the ledger's, not the file name's."""
+    ledger, directory = _ledger(backup, tmp_path, monkeypatch, [
+        (9, '1394_late.sql', 17, 'CREATE TRIGGER t BEFORE UPDATE ON public.kala_gochara_publication EXECUTE FUNCTION f();'),
+        (4, '1235_before_the_bundle.sql', -3, 'ALTER TABLE public.kala_gochara_publication ADD COLUMN x int;'),
+        (7, '1393_unrelated.sql', 5, 'ALTER TABLE public.some_other_table ADD COLUMN y int;'),
+        (8, '1500_between.sql', 6, 'UPDATE public.asset_throughput SET state = state;')])
+    chosen = backup.derive_restore_migrations(ledger, ['public.kala_gochara_publication', 'public.asset_throughput'], directory)
+    assert [name for name, _ in chosen] == ['1500_between.sql', '1394_late.sql']
+    assert chosen[0][1] == hashlib.sha256((directory / '1500_between.sql').read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize('fault,reason', [('absent', 'missing from the repository'), ('edited', 'differs from the file production applied')])
+def test_a_ledger_migration_the_repository_cannot_reproduce_exactly_refuses_the_base(backup, tmp_path, monkeypatch, fault, reason):
+    ledger, directory = _ledger(backup, tmp_path, monkeypatch, [(1, '1394_late.sql', 17, 'ALTER TABLE public.t ADD COLUMN x int;')])
+    if fault == 'absent':
+        (directory / '1394_late.sql').unlink()
+    else:
+        (directory / '1394_late.sql').write_text('ALTER TABLE public.t ADD COLUMN x bigint;')
+    with pytest.raises(backup.BackupRefused, match=reason):
+        backup.derive_restore_migrations(ledger, ['public.t'], directory)
 
 
 # ---- C5: the validity window gates the dispatch ------------------------------------------------------------------------

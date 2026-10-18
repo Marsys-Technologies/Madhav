@@ -32,7 +32,7 @@ COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 PROTECTED = [EXECUTOR_PY, OPS_FILE, DISPATCH_PY, PREFLIGHT_TS]
 P01_KINDS = {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch_dryrun",
              "smalltest_dispatch", "smalltest_teardown_dryrun", "smalltest_teardown"}
-ENABLED_KINDS = {"readback_sql", "migration_readback", "local_schema_seed", "finalize"} | P01_KINDS
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "local_schema_seed", "finalize"} | P01_KINDS
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 ITEM = "K9-FIXTURE"
 LEASE = "LEASE-KY-FIXTURE"
