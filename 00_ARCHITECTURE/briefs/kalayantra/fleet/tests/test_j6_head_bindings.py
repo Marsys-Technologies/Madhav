@@ -133,6 +133,37 @@ def test_execute_needs_hash_bound_real_dryrun_of_identical_scope(tmp_path):
     assert head.request_problem(req, ops) is not None
 
 
+def test_publish_refuses_a_decision_digest_that_is_not_the_latest_approved_event(tmp_path):
+    # Latest controller D-FLIP event wins (tracker.state.decision_status); the request must bind that event's digest.
+    ops = setup_ops(tmp_path)
+    (ops.parent/'EVENTS.jsonl').write_text(json.dumps(decision(detail='earlier'))+'\n'+json.dumps(decision())+'\n')
+    stale = request(); stale['decision_event_sha256'] = head.sha(decision(detail='earlier'))
+    assert head.request_problem(stale, ops) == 'D-FLIP_latest_effective_approved_event_required'
+    assert head.request_problem(request(), ops) is None
+
+
+def test_j6_publishes_only_generation_5_0(tmp_path):
+    # Plan item J-6 is the 5.0 flip; another well-formed governed target (args bound to it) must still be refused.
+    ops = setup_ops(tmp_path)
+    other = request()
+    other['head_change']['target']['generation'] = '6.0'
+    other['args']['generation'] = '6.0'
+    assert head.shape(other)['target']['generation'] == '6.0'      # well-formed: only the J-6 policy can refuse it
+    assert head.request_problem(other, ops) == 'J-6_requires_5.0'
+
+
+def test_execute_refuses_a_self_consistent_dryrun_receipt_for_another_scope(tmp_path):
+    # A real dry run of a different manifest, with its own consistent request digest, is not the dry run of this scope.
+    ops = setup_ops(tmp_path)
+    other_dry = request(); other_manifest = str(uuid.UUID(int=51))
+    other_dry['head_change']['target']['manifest_id'] = other_manifest
+    other_dry['args']['manifest-id'] = other_manifest
+    head.shape(other_dry)
+    req = request('publish_head')
+    req['dry_run_receipt'] = store(ops, 'other-dry.json', receipt(other_dry, stage(other_dry)))
+    assert head.request_problem(req, ops) == 'dry-run_exact_scope_rollback_receipt_required'
+
+
 def rollback_request(ops):
     pub = request('publish_head')
     proof = stage(pub)

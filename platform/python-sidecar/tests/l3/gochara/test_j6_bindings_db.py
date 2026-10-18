@@ -128,3 +128,17 @@ def test_failure_after_update_rolls_back_and_preserves_caller_scope(db, monkeypa
     with pytest.raises(head.Refused, match='retained_rows_changed'):
         head.change_head(conn,req(conn,mids),dry_run=True)
     assert len(calls) == 2 and _heads(conn) == before
+
+
+def test_readback_target_matches_only_the_exact_published_non_slice_manifest(db):
+    # Head at 5.0 with the right generation but another manifest must read target_matches=false.
+    conn, mids = db
+    request = req(conn, mids, 'publish_head')
+    conn.execute('UPDATE public.kala_gochara_authority SET authoritative_generation=%s WHERE chart_id=%s',
+                 ('5.0', CHART_ID))
+    assert head.observe(conn, request)['target_matches'] is True
+    other = copy.deepcopy(request)
+    other['head_change']['target']['manifest_id'] = mids['5.1']
+    other['args']['manifest-id'] = mids['5.1']
+    got = head.observe(conn, other)
+    assert got['head']['generation'] == '5.0' and got['target_matches'] is False
