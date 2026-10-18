@@ -10,6 +10,7 @@ FLEET = Path(__file__).resolve().parents[1]
 BASE_ENABLED = {"readback_sql", "migration_readback", "cloudrun_job_readback", "local_schema_seed", "finalize"}
 # A7 D-44 (owner direction): the one read-only kind added after Wave 4; enabled by B-1, not a Wave 4 op, so it is named here rather than folded into W4.
 D44_READ_ONLY = {"quiescence_check"}
+SCHEDULER = {"scheduler_readback", "scheduler_pause_dryrun", "scheduler_pause", "scheduler_resume_dryrun", "scheduler_resume", "measuring_cancel_dryrun", "measuring_cancel"}   # SR-J3-REAPER-PAUSE + SR-J3-CANCEL-NULL (J-3c): exact bindings are pinned in test_executor_table / test_executor_scheduler_reaper
 W4 = {
     "backup_snapshot": ("owner", "platform/scripts/backup_v5_small_test_job.py", ["--operation", "snapshot", "--execute"], ["label", "scope"]),
     "backup_restore_verify": ("owner", "platform/scripts/backup_v5_small_test_job.py", ["--operation", "restore-verify", "--execute"], ["label", "scope"]),
@@ -40,9 +41,9 @@ def executor(tmp_path, monkeypatch):
     return load_executor(tmp_path, monkeypatch)
 
 
-def test_only_six_wave4_and_four_measuring_ops_are_newly_enabled(table):
-    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | DISABLED
-    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING)
+def test_only_six_wave4_measuring_and_scheduler_ops_are_newly_enabled(table):
+    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | DISABLED
+    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER
     for kind in DISABLED:
         assert table[kind]["enabled"] is False
         if "prepared_dry_run" in table[kind]:
