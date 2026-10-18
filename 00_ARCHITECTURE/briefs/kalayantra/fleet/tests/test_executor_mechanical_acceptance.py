@@ -414,6 +414,7 @@ def test_marker_formula_is_the_same_in_the_executor_and_the_script(tmp_path):
 
 # ───────── the marker reaches every database connection of every production kind eligible for mechanical quiescence (R3694-B1) ─────────
 # A kind is eligible when mechanical_quiescence() can accept it: enabled, production, and not a teardown (executor.py `target_is_not_a_teardown`).
+# The *_dryrun kinds are production:false (A8), so `target_is_a_production_operation` refuses them: they are not eligible and carry no row.
 # Quiescence reads sessions by application_name; a client that opens connections without the marker (pg_dump under a scrubbed environment was the
 # defect) would leave a live session invisible, so "zero sessions" would read green with a backup still running. One row per eligible kind says how
 # its connections get the marker; the table must cover exactly the eligible kinds, so a newly eligible kind cannot slip in unproven.
@@ -429,9 +430,7 @@ ELIGIBLE = {kind for kind, entry in TABLE.items() if entry.get("enabled") is Tru
 MARKER_ROUTE = {
     "backup_snapshot": "client_env",
     "backup_restore_verify": "client_env",
-    "smalltest_dispatch_dryrun": "in_process",
     "smalltest_dispatch": "in_process",
-    "smalltest_teardown_dryrun": "in_process",
 }
 BACKUP_CARRY = "        env['PGAPPNAME'] = os.environ['PGAPPNAME']"
 SUBPROCESS_CALLS = {"run", "Popen", "call", "check_call", "check_output"}
