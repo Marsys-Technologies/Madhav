@@ -1,6 +1,13 @@
 {
   "schema": "ci.test_suites/1",
   "suites": {
+    "selfhosted-fork-guard-tests": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "platform/scripts/governance/__tests__/test_selfhosted_fork_guard*.py"
+      ]
+    },
     "deploy-build-check-tests": {
       "cwd": ".",
       "engine": "pytest",
@@ -563,6 +570,7 @@
       "include": [
         "platform/scripts/governance/pravaha_tracker/tests/test_verify*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_hang*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_external_isolation*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_kalayantra*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_decision*.py",

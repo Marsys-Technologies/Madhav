@@ -1,0 +1,222 @@
+{
+  "REVIEW.md": {
+    "sha256": "c2ef88286b21e6fd3a412bcc2033c266bad23dd8574bc6f64c12c56e3fbfa522",
+    "bytes": 10096
+  },
+  "BOOKKEEPING.md": {
+    "sha256": "f20cc106e9579c1fdbfaabaa9d353e56cd8de3cf5adab6e0bb7a811dc672ee99",
+    "bytes": 5842
+  },
+  "source-pin.json": {
+    "sha256": "10f520d90652baeaa71d40d5a23118aa3b3fe5a792682483d74c0ffbb024a99c",
+    "bytes": 899
+  },
+  "current-main-equivalence.json": {
+    "sha256": "228ff61ceb7466fee883c6750019083109f51b9f8cf7eee1ea8c0e599061ef34",
+    "bytes": 2140
+  },
+  "source-evidence.txt": {
+    "sha256": "f48cb546d27d021a5d95a69544107fe7965b2d67271372239c33b1ca362fbb21",
+    "bytes": 50859
+  },
+  "model-items.json": {
+    "sha256": "dd4d70e535135e944c86694063c6b1d1e70381c45d31faa31c93705af7f03d31",
+    "bytes": 6853
+  },
+  "KYD-150.json": {
+    "sha256": "048daa8fcb0e3921c5252697a5aa2bbe6e21cce3597c3d277d053e4e237259a4",
+    "bytes": 1845
+  },
+  "rulings-references.json": {
+    "sha256": "76a8ba3a57d5bf0b1a1e6f214f88246a5065cacd7a06048da95d91141757e904",
+    "bytes": 710
+  },
+  "schema-source-audit.json": {
+    "sha256": "5c41bfae6b79308e34eba9da94bf7ba46b44a9716bddcdd4be63bbb0efb3150b",
+    "bytes": 2816
+  },
+  "db-reachability.json": {
+    "sha256": "ffaadcf12e2521f148ef436c26157501baa79d156c6e8959af3a2a610987f2b0",
+    "bytes": 55
+  },
+  "db-catalog-scanner.json": {
+    "sha256": "378747e21b853cc8c9e21e1b34cc04dc6e6ca69acddc11822e83f583e9468166",
+    "bytes": 1937
+  },
+  "db-cleanup.json": {
+    "sha256": "61847c718582b16534edc2a9fd5765c33457564a51877b8a6a21c70d4f982b30",
+    "bytes": 209
+  },
+  "db.test-run.json": {
+    "sha256": "51619410ed40d816469e7fe7b4c815f787b2d744645519fff1d732eb983764ae",
+    "bytes": 482
+  },
+  "db.pytest.log": {
+    "sha256": "f407d0ce855d1961a26fee3d041ea67b84caa854266744668fa2901ae4a85674",
+    "bytes": 2026
+  },
+  "test-runs.json": {
+    "sha256": "f9fd18bb5934ed50f068ffe47f1df857d3acff6eb37d311284bf293ce6e38b89",
+    "bytes": 3307
+  },
+  "baseline.vitest.log": {
+    "sha256": "70e9050498099286391f2a690d117388424777f59a67e97560e1499131ce1f68",
+    "bytes": 8589
+  },
+  "baseline.scanner.json": {
+    "sha256": "2262a15e1dacd14d0fdb19a978beba81cc6609348e620c91c8d392ee6fd9b5b1",
+    "bytes": 5228
+  },
+  "baseline.scanner.log": {
+    "sha256": "0be50d7b9d42d7b5ee539389b927372f3f31a2e4f2484d7b3f08ebe236937420",
+    "bytes": 1009
+  },
+  "negative-selection.vitest.log": {
+    "sha256": "5d4188ba090e817ef75fe5941df23d2d84dfcdd919fc065cdd3b1f7fd785263f",
+    "bytes": 3546
+  },
+  "negative-selection.scanner.json": {
+    "sha256": "6c3d9b531bf9749f338524568b0f13c864264ddbc96f2c5416fcb5a5fbd23300",
+    "bytes": 5288
+  },
+  "negative-selection.scanner.log": {
+    "sha256": "d091ab4f1b462808b90331dee45e0f0becb5dda5ee1fd2dceb160bf55d488769",
+    "bytes": 1721
+  },
+  "negative-selection.patch": {
+    "sha256": "c4b3086abb08fc3bfbf906ea64a37c1cba4ff78628a8ca5690558aca942d2eeb",
+    "bytes": 520
+  },
+  "governance.pytest.log": {
+    "sha256": "e712334727311abbaca23d922fdf0cb89d089f19c5f3ed41d989a4f2cd4e08f3",
+    "bytes": 356
+  },
+  "git-verification.json": {
+    "sha256": "0c2a44d953077b633c5bc8a10173240b00ad922b274ed3526b29219d8c56e484",
+    "bytes": 487
+  },
+  "final-cleanliness.json": {
+    "sha256": "d201f0954f7ace419b1647965bab72f2301235f345b528554d9a5c905b947770",
+    "bytes": 183
+  },
+  "kcert_assessment.test.ts": {
+    "sha256": "f0144029af8c34e499b78b69b51f6049e23bc2260e77e386cd452fd8d3a7a8f7",
+    "bytes": 4021
+  },
+  "scanner_assert.py": {
+    "sha256": "625c4e7dd82a6f7070fa0457a57d7dbcdc04237eda968ec6641021ae8d1d001d",
+    "bytes": 2248
+  },
+  "run_checks.py": {
+    "sha256": "5cb42ac246e13a7b9da719630c9bce451c2ebabf2b78994480198c81b9c4ff9e",
+    "bytes": 2108
+  },
+  "run_db_checks.py": {
+    "sha256": "fbbc2ddcf82834cc877ce15ed2591376cac30b8cf71801b8f2794081b1bd9409",
+    "bytes": 966
+  },
+  "final_checks.py": {
+    "sha256": "c71a0638db85233614138906a47af0f9c946ed0136a07b335ac24084ec0d75b1",
+    "bytes": 2681
+  },
+  "prepare_review.py": {
+    "sha256": "a00f86867f84ad961a695ed7329e4388b6b35f172f726d249d7c5c519d0baabe",
+    "bytes": 18935
+  },
+  "finalize_result.py": {
+    "sha256": "47d5980e2c5ed699c66faae6c0d2308c5a54be10a2c05a8c6d2b691fb114202f",
+    "bytes": 10737
+  },
+  "bookkeeping.json": {
+    "sha256": "276805878c533ee8532a37fc699817250996154db305336faac19512b1df77a6",
+    "bytes": 5895
+  },
+  "assessment-metadata.json": {
+    "sha256": "25f5f7dc19243a339879ce35bada5c1209795f9ea164edc92e7c17f545e49f06",
+    "bytes": 1857
+  },
+  "notes.txt": {
+    "sha256": "2181085371da4e52bbb70266faeb096aa54041da5775fe99fe2980757f3622d5",
+    "bytes": 1695
+  },
+  "suvarna-3435.txt": {
+    "sha256": "e265065b3bf37341af2aca6d30624238702fb941b0a61790081926563a3911e9",
+    "bytes": 23084
+  },
+  "evidence/main/00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_RELAUNCH_PLAN_v2_7.md": {
+    "sha256": "96061d91fbc6ac4cd461311944029ee7edffab0b0263c33fe08ce77c954ba90c",
+    "bytes": 79854
+  },
+  "evidence/main/00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A1_FULL_AUTONOMY.md": {
+    "sha256": "99c7156dd93a50febb45fd7d265d2fbef4b4ee733de1e94301a2b9e18b00216d",
+    "bytes": 6693
+  },
+  "evidence/main/00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A2_VELOCITY.md": {
+    "sha256": "ee4ab39dc97c75057e18888c9aa6aec32bb2115a2c206baa6b37ca772d6dd286",
+    "bytes": 9813
+  },
+  "evidence/main/00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_v1_0.md": {
+    "sha256": "f251df647108b6057a9ddc03fc03eba1ada9e6a142e41f73fdfb9696fe3cad2f",
+    "bytes": 6714
+  },
+  "evidence/main/00_ARCHITECTURE/briefs/kalayantra/packets/PACKET_KV3-SCHEMA-1_v1.md": {
+    "sha256": "2240409547ebb58f802b88c0d8751b28cba5ca5829587581d8c22db78be93c1d",
+    "bytes": 8959
+  },
+  "evidence/main/CLAUDE.md": {
+    "sha256": "788abf51023f6585b54e8e682a58a097495b0fcc13f510ad4409f41cd4165e0b",
+    "bytes": 13495
+  },
+  "evidence/main/platform/migrations/1362_gochara_citation_resolution_dispatchable.sql": {
+    "sha256": "89dc5642cadefd522078b6722adf9358c01eb5ff77db99c57e97110c9187377e",
+    "bytes": 1137
+  },
+  "evidence/main/platform/python-sidecar/tests/l3/kala_db/conftest.py": {
+    "sha256": "9964d8ba7336541025a920fa55679e7e6774ac0fbdb51653d20f03daa022ae96",
+    "bytes": 4592
+  },
+  "evidence/main/platform/python-sidecar/tests/l3/kala_db/test_k_cert_citation_resolution.py": {
+    "sha256": "cd562e102db24ab427fdc870ea90e99c947831690d1e8cf6221bf30135f85d07",
+    "bytes": 7465
+  },
+  "evidence/main/platform/python-sidecar/tests/l3/kala_db/test_kcert_independent_assessment.py": {
+    "sha256": "5d81e6da13b2b3618ff06bf996f6a426ff6ff93df4afdfab85d45eda81fbd34e",
+    "bytes": 3098
+  },
+  "evidence/main/platform/scripts/governance/asset_census.py": {
+    "sha256": "523f50ea74e24875f650f13b0659d4ee6165a0ec0eb864124b2e3d3fccf8c60b",
+    "bytes": 1977541
+  },
+  "evidence/main/platform/scripts/governance/asset_declarations.json": {
+    "sha256": "2a088beeb944b83c47b1c382f1a8b8271fbf255f8fb3da807b39c9320842c7d8",
+    "bytes": 920919
+  },
+  "evidence/main/platform/supabase/migrations/565_bg_gochara_citation_resolution.sql": {
+    "sha256": "d03fb109aa7ff4be71b25328a8ef78076b4136a2406ac0de6c62e8ea1609e2d6",
+    "bytes": 19426
+  },
+  "evidence/main/platform-mcp/src/tools/retrieval/register_gochara_windows.test.ts": {
+    "sha256": "114f203c5ec1b86cfdb7338c9fd1104d44b6ceba78e1cf62955da5374defb644",
+    "bytes": 41997
+  },
+  "evidence/main/platform-mcp/src/tools/retrieval/register_gochara_windows.ts": {
+    "sha256": "b034e41e92450004a6510936d31298d4a3ff7bfab8b278dd176215a3515f44bd",
+    "bytes": 134956
+  },
+  "evidence/main/platform-mcp/src/tools/retrieval/register_gochara_windows_dens_served.test.ts": {
+    "sha256": "7bb34f4e5fee5fe36f54c0de0f0652dee7af4f12ad315696cee3d286476abc82",
+    "bytes": 5406
+  },
+  "evidence/main/platform-mcp/src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts": {
+    "sha256": "f0144029af8c34e499b78b69b51f6049e23bc2260e77e386cd452fd8d3a7a8f7",
+    "bytes": 4021
+  },
+  "evidence/main/platform-mcp/vitest.assessment.config.ts": {
+    "sha256": "6570443405790d1885f1c03dc8256ecea37f1da94aadbf22765536262b91e68b",
+    "bytes": 319
+  },
+  "evidence/negative-selection/platform-mcp/src/tools/retrieval/register_gochara_windows.ts": {
+    "sha256": "dcd0c2f5eb46c04f7f005dedc547cdb30c0116cdff9b7858b0b0f620d441939a",
+    "bytes": 134948
+  }
+}

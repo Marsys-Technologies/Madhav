@@ -29,6 +29,11 @@ positional filename filters use substring matching (`ci_discovery.py:152`).
   An unselected PR job is skipped whole, as it was on main, and its umbrella is skipped with it. Alternative: always run
   the shards on PRs (rejected: it reverses D-29's CI demand halving). The `full-suite` aggregate lists the umbrellas
   and `replace-chain-substrate`, whose selection comes from `ci_gate.select_db`'s needs closure.
+- **(I) INTERPRETATION (SR-BOLD-08a):** `db-integration-tests` is merge_group-only: `ci_gate.PR_DEFERRED_DB_JOBS` removes it from
+  a PR's selection even when the diff touches its tests, unless the PR changes the scoping itself (`ci_gate.SCOPER_PATHS`).
+  Its umbrella `required-db-integration-tests` therefore runs on every event and passes a skipped shard set only on a
+  pull_request whose `changes` job succeeded (otherwise red). Alternative: keep the changed-profile PR run (rejected by the
+  ruling; the fast/ preflight and the queue cover it). The other umbrellas keep the D-29 skip-whole behaviour above.
 - **(I) INTERPRETATION:** unmeasured/new files receive a one-second scheduling weight
   until measured. That estimate affects assignment only (`ci_db_shard.py:25`).
 

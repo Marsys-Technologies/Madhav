@@ -22,6 +22,11 @@ Honest nulls (CLAUDE.md §N.7.6 / §N.8): a value that could not be measured is 
 resume/run only; the scheduler permissions are project-scoped). The permission test therefore runs on the PROJECT with the executor's own
 gcloud identity: POST cloudresourcemanager v1 projects/<project>:testIamPermissions, read-only. The access token lives in this process's
 memory for that one call; it is never printed, logged or stored.
+When the batch call fails with an HTTP 4xx, Google's own `error.message` is recorded (sanitised, <= 300 chars) and every permission is then tested
+ONE AT A TIME, so one invalid name yields granted / missing / invalid_permission per permission instead of one opaque failure. The overall
+status is MEASURED only when every requested permission has a definite answer (N.8); an unanswered one is `unmeasured`, never granted.
+SR-IAM-MEASURE: the readback also reads the project IAM policy (read-only) and records ONLY the roles bound to the measured principal, with a
+condition title where a binding has one, and derives `cancel_basis` / `scheduler_basis` from them. A failed read is null, never granted.
 
 Standard library only: the executor copies this single file out of origin/main (or a merged commit) and runs it, so it cannot import its
 siblings."""
@@ -44,6 +49,10 @@ REGION = "asia-south1"                           # provision_watchdog_scheduler.
 JOB = "watchdog-reaper"                          # provision_watchdog_scheduler.sh: the job it creates
 PERMISSIONS = ("cloudscheduler.jobs.pause", "cloudscheduler.jobs.resume", "cloudscheduler.jobs.get", "run.executions.cancel")   # + the one measuring_cancel needs (SR-J3-CANCEL-NULL)
 PERMISSION_ENDPOINT = f"https://cloudresourcemanager.googleapis.com/v1/projects/{PROJECT}:testIamPermissions"
+CANCEL_ROLES = ("roles/owner", "roles/editor", "roles/run.admin")                   # each contains run.executions.cancel
+SCHEDULER_ROLES = ("roles/owner", "roles/editor", "roles/cloudscheduler.admin")      # each contains cloudscheduler.jobs.pause / resume / get
+ERROR_MESSAGE_MAX = 300
+ERROR_BODY_MAX = 65536
 KNOWN_STATES = ("ENABLED", "PAUSED", "DISABLED", "UPDATE_FAILED")      # google.cloud.scheduler.v1.Job.State (STATE_UNSPECIFIED reads as unknown)
 TARGET_STATE = {"pause": "PAUSED", "resume": "ENABLED"}
 GCLOUD_TIMEOUT_S = 120
@@ -51,6 +60,7 @@ HTTP_TIMEOUT_S = 30
 UTC_STAMP = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|\+00:00)")
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]{1,100}@[A-Za-z0-9.-]{1,100}")
 TOKEN = re.compile(r"[A-Za-z0-9._~+/=-]{20,4096}")
+SECRET_SHAPES = re.compile(r"(?i)bearer\s+\S+|\bya29\.[A-Za-z0-9._~+/=-]+")
 SAFE_NAME = re.compile(r"[A-Za-z0-9_.-]{1,80}")
 UNBOUND_REQUEST_FIELDS = frozenset({"acceptance_receipt", "expires_at"})      # mirrors executor.request_digest, byte for byte
 
@@ -131,29 +141,119 @@ class Measure:
             return {"principal": lines[0], "reason": None}
         return {"principal": None, "reason": "the active gcloud account is missing, ambiguous or not an e-mail principal"}
 
+    def test_permissions(self, token: str, names: list[str]) -> list[str]:
+        """One testIamPermissions call. Returns the granted subset of `names`; raises HTTPError / OSError / ValueError / Refused as they come."""
+        self.calls += 1
+        answer = self.fetch(PERMISSION_ENDPOINT, token, {"permissions": list(names)})
+        granted = answer.get("permissions", []) if isinstance(answer, dict) else None            # Google omits the field when nothing is granted
+        if not isinstance(granted, list) or any(p not in names for p in granted):
+            raise Refused("testIamPermissions: unexpected answer shape")
+        return granted
+
     def permissions(self) -> dict:
         record = {"checked_on": f"projects/{PROJECT}", "method": "cloudresourcemanager.v1.projects.testIamPermissions",
-                  "requested": list(PERMISSIONS), "granted": None, "missing": None, "status": "UNAVAILABLE", "reason": None}
+                  "requested": list(PERMISSIONS), "granted": None, "missing": None, "invalid": None, "results": None,
+                  "status": "UNAVAILABLE", "reason": None}
+        batch_note = None
         try:
             token = self.gcloud(["gcloud", "auth", "print-access-token"], "access token").strip()
             if not TOKEN.fullmatch(token):
                 raise Refused("access token: gcloud returned no usable token")
-            self.calls += 1
             try:
-                answer = self.fetch(PERMISSION_ENDPOINT, token, {"permissions": list(PERMISSIONS)})
+                granted = self.test_permissions(token, list(PERMISSIONS))
+                results = {p: ({"result": "granted"} if p in granted else {"result": "missing"}) for p in PERMISSIONS}
             except urllib.error.HTTPError as e:
-                raise Refused(f"testIamPermissions: HTTP {e.code}") from None
+                if not 400 <= e.code < 500:
+                    raise Refused(f"testIamPermissions: HTTP {e.code}{error_suffix(e, token)}") from None
+                batch_note = f"batch testIamPermissions: HTTP {e.code}{error_suffix(e, token)}"
+                results = self.permissions_one_by_one(token)
             except (OSError, ValueError):
                 raise Refused("testIamPermissions: the call failed") from None
         except Refused as e:
             record["reason"] = str(e)
             return record
-        granted = answer.get("permissions", []) if isinstance(answer, dict) else None
-        if not isinstance(granted, list) or any(p not in PERMISSIONS for p in granted):
-            record["reason"] = "testIamPermissions: unexpected answer shape"
+        record["results"] = results
+        record["reason"] = None if batch_note is None else batch_note + "; each permission was then tested on its own"
+        unanswered = [p for p in PERMISSIONS if results[p]["result"] == "unmeasured"]
+        if unanswered:
+            record["reason"] = (record["reason"] + "; " if record["reason"] else "") + "no definite answer for: " + ", ".join(unanswered)
             return record
-        record.update(status="MEASURED", granted=[p for p in PERMISSIONS if p in granted], missing=[p for p in PERMISSIONS if p not in granted])
+        record.update(status="MEASURED", granted=[p for p in PERMISSIONS if results[p]["result"] == "granted"],
+                      missing=[p for p in PERMISSIONS if results[p]["result"] == "missing"],
+                      invalid=[p for p in PERMISSIONS if results[p]["result"] == "invalid_permission"])
         return record
+
+    def permissions_one_by_one(self, token: str) -> dict:
+        """Per-permission answers after a failed batch. An HTTP 400 on a single name means `invalid_permission` only when another single call in
+        this run was answered (a control: the request itself is well-formed); otherwise it proves nothing about the name and stays `unmeasured`."""
+        results, rejected = {}, []
+        for name in PERMISSIONS:
+            try:
+                results[name] = {"result": "granted" if self.test_permissions(token, [name]) else "missing"}
+            except urllib.error.HTTPError as e:
+                note = f"HTTP {e.code}{error_suffix(e, token)}"
+                results[name] = {"result": "unmeasured", "reason": note}
+                if e.code == 400:
+                    rejected.append(name)
+            except Refused as e:
+                results[name] = {"result": "unmeasured", "reason": str(e)}
+            except (OSError, ValueError):
+                results[name] = {"result": "unmeasured", "reason": "the call failed"}
+        if any(r["result"] in ("granted", "missing") for r in results.values()):
+            for name in rejected:
+                results[name]["result"] = "invalid_permission"
+        return results
+
+    def policy_read(self, principal: str | None) -> dict:
+        """SR-IAM-MEASURE: read-only `gcloud projects get-iam-policy`; keeps ONLY the bindings that name the measured principal (roles and
+        condition titles) — no other member, no etag, no raw output is recorded. A failed read is null, never granted."""
+        record = {"checked_on": f"projects/{PROJECT}", "method": "gcloud projects get-iam-policy", "status": None, "reason": None,
+                  "principal_roles": None, "cancel_basis": None, "cancel_basis_role": None, "scheduler_basis": None, "scheduler_basis_role": None}
+        if not principal:
+            record["reason"] = "iam policy: no measured principal to filter by"
+            return record
+        try:
+            policy = json.loads(self.gcloud(["gcloud", "projects", "get-iam-policy", PROJECT, "--format=json"], "iam policy"))
+        except Refused as e:
+            record["reason"] = str(e)
+            return record
+        except ValueError:
+            record["reason"] = "iam policy: gcloud output is not JSON"
+            return record
+        bindings = policy.get("bindings") if isinstance(policy, dict) else None
+        if not isinstance(bindings, list) or not all(isinstance(b, dict) and isinstance(b.get("members"), list) and isinstance(b.get("role"), str) for b in bindings):
+            record["reason"] = "iam policy: unexpected answer shape"
+            return record
+        mine = {f"user:{principal.lower()}", f"serviceaccount:{principal.lower()}"}
+        roles = []
+        for b in bindings:
+            if any(isinstance(m, str) and m.lower() in mine for m in b["members"]):
+                condition = b.get("condition")
+                title = condition.get("title") if isinstance(condition, dict) else None
+                roles.append({"role": b["role"], "conditional": bool(condition), "condition_title": title if isinstance(title, str) else None})
+        unconditional = {r["role"] for r in roles if not r["conditional"]}
+        record.update(status="MEASURED", principal_roles=roles)
+        for basis, candidates in (("cancel", CANCEL_ROLES), ("scheduler", SCHEDULER_ROLES)):
+            held = next((r for r in candidates if r in unconditional), None)
+            record[f"{basis}_basis"] = "MEASURED_GRANTED" if held else "NOT_PROVEN"
+            record[f"{basis}_basis_role"] = held
+        return record
+
+
+def error_suffix(error: urllib.error.HTTPError, token: str) -> str:
+    """Google's `error.message` for an HTTP error, as ': <message>' — sanitised (token, bearer strings and e-mail addresses removed, one line,
+    <= 300 chars) — or '' when the body is not Google's JSON error shape."""
+    try:
+        message = json.loads(error.read(ERROR_BODY_MAX).decode("utf-8", "replace"))["error"]["message"]
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return ""
+    if not isinstance(message, str):
+        return ""
+    if token:
+        message = message.replace(token, "<token>")
+    message = EMAIL.sub("<email>", SECRET_SHAPES.sub("<token>", message))
+    message = " ".join(message.split())
+    return ": " + message[:ERROR_MESSAGE_MAX] if message else ""
 
 
 def run(action: str, dry_run: bool, job: str | None, resume_by: str | None, environ: dict, runner=default_runner, fetch=default_fetch,
@@ -167,7 +267,7 @@ def run(action: str, dry_run: bool, job: str | None, resume_by: str | None, envi
     record = {"schema": SCHEMA, "action": action, "dry_run": dry_run, "status": None, "reason": None, "project": PROJECT, "region": REGION,
               "job": JOB, "requested_job": job if isinstance(job, str) and SAFE_NAME.fullmatch(job) else None,
               "operation_id": request.get("operation_id"), "request_sha256": request_digest(request) if request else None,
-              "state_before": None, "changed": False, "state": None, "resume_by": None, "identity": None, "permissions": None,
+              "state_before": None, "changed": False, "state": None, "resume_by": None, "identity": None, "permissions": None, "policy_read": None,
               "plan": None, "gcloud_calls": 0, "measured_at": now.isoformat(timespec="seconds")}
     measure = Measure(runner, fetch)
     try:
@@ -190,6 +290,7 @@ def run(action: str, dry_run: bool, job: str | None, resume_by: str | None, envi
                 record.update(status="PARTIAL", reason=str(e))
             record["identity"] = measure.identity()
             record["permissions"] = measure.permissions()
+            record["policy_read"] = measure.policy_read(record["identity"]["principal"])
         else:
             target = TARGET_STATE[action]
             before = measure.state("state before")
