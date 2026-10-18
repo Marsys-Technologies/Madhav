@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -18838,7 +18838,8 @@
         "J-3b",
         "J-3c-pr2923",
         "J-3c-pr3194",
-        "J-3c-a52"
+        "J-3c-a52",
+        "J-3-SUBSTEP-LOG"
       ],
       "mandatory": true,
       "steps": [
@@ -19227,6 +19228,53 @@
           "(I) INTERPRETATION: depends_on is the parent J-2a (as J-4p-B4 depends on J-4p) so the tracker derives waiting/ready without a stored status; the alternative, no dependency, would break the parent-child convention. J-2a gates nothing in this item's work, so the fix may be built while J-2a is open."
         ],
         "contract": "SR-J2A-RUN1-FAILED-AMEND-1 B: every stored period_running_at='false' has its consulted (lord, level) rows in consumed_dasha_row_ids; the SNAPSHOT substep binds the rows the builder consulted for every P1 anchor (not only rows overlapping the horizon), so the verifier's snapshot-only read agrees with the builder (B.3). No orchestrator contract change."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "J-3-SUBSTEP-LOG",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Measuring launch sets PUBSUB_DISABLED=1 for its own execution so asset.substep reaches Cloud Logging (J-3 gate evidence)",
+      "owner": "K",
+      "depends_on": [
+        "J-3a"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/j3-substep-log",
+        "measures": "This item's PR is contained in origin/main; the oracle test_smalltest_measuring_substep_log.py (S1-S3) ships in the same PR and runs in the fleet pytest profile."
+      },
+      "brief": {
+        "spec": [
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl SR-J2D-TEARDOWN-EVIDENCE item 2 (the J-3 gate reads sub-step progress from the execution's job log; with Pub/Sub on, asset.substep is published to the topic and never printed)",
+          "platform/python-sidecar/pipeline/orchestrator/events.py:202-205 (emit_event: PUBSUB_DISABLED set, or PUBSUB_TOPIC unset, prints every event to stdout as '[event] <json>'; otherwise publishes and prints nothing)",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py (_read_substep / measure_logs: parses the '[event] ' asset.substep lines; last_index and total per asset) and CLOUDRUN_READBACK_v1_0.md (I) INTERPRETATION on PUBSUB_TOPIC",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py cloud_launcher (the one fixed 'gcloud run jobs execute') and measuring_launch.py (the measuring bridge)",
+          "CLAUDE.md §N.7.6 (honest null), §N.8 (earned signal)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_launch.py",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_measuring_substep_log.py"
+        ],
+        "tests": [
+          "completion detector (N.8): with the measuring launch's argv, a job whose own environment has Pub/Sub on prints every asset.substep as '[event] <json>' (real emit_event), the real logs reader reports last index == total, and the J-3 gate reads PASS",
+          "planted reversion (single): the launch without the override leaves the job log with no sub-step lines; the reader reports no sub-steps and the gate reads NULL, never PASS",
+          "the small-test launch's argv is unchanged (existing test_smalltest_launch.py pin and test_operation_adapters.py plan-equality pin stay green)"
+        ],
+        "compat": "Per-execution override only (gcloud run jobs execute --update-env-vars=PUBSUB_DISABLED=1); the Cloud Run job's stored environment is not modified, so the cockpit SSE feed of every other execution is unchanged. No orchestrator code is touched (FROZEN paths untouched).",
+        "notes": [
+          "Required before J-3c dispatch: J-3c lists this item in depends_on, so the measuring build is not dispatched until the sub-step log evidence path is in place.",
+          "(I) INTERPRETATION: only the measuring launch (measuring_launch.py's default launcher) carries the override; the small-test launch and the operation_adapters.remote_execute_argv plan are left as they were (the latter is pinned equal to the small-test launcher). century_dispatch has no launch script yet (TO_BE_SET_BY_J-4d); J-4d adds the same override to its launcher. Alternative: set the override inside the shared cloud_launcher for every dispatch kind, rejected because it changes the enabled small-test run's event feed unasked.",
+          "(I) INTERPRETATION: the J-3 gate predicate used in the oracle is 'every measured asset has last_index == total, else null'; no gate code exists in the repo to import, so the predicate is stated in the test."
+        ]
       },
       "completion_kind": "code",
       "producer": "K",
@@ -20476,7 +20524,9 @@
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
         "class": "a"
-      }
+      },
+      "accepts_not_applicable_dependencies": true,
+      "notes": "D-COMPACT refused 2026-10-16 (dense path retained): K5-2b is not_applicable; the rehearsal builds the applicable path, so K9-1 accepts not-applicable dependencies (prevents a false not_applicable cascade into K9-4a/K9-4b/K9-6/K9-23/KR-1/KR-2)."
     },
     {
       "id": "K9-4a",

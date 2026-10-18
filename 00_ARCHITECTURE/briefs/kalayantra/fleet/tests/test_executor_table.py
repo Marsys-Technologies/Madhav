@@ -58,25 +58,25 @@ P01_BINDINGS = {
                           "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": []},
 }
 W4_KINDS = set(P01_BINDINGS)
-# #3607 (f847ba24d): exact disabled bindings, not permission to enable measuring — in their A8 form (§3.8 dry runs are
-# production:false, §3.11 the remote launch carries remote_async, §5 required_rows retired).
+# #3607 (f847ba24d) bound the four measuring kinds exactly, disabled; J-3a enables them with those same bindings, in their A8 form
+# (§3.8 dry runs are production:false, §3.11 the remote launch carries remote_async, §5 required_rows retired).
 MEASURING_BINDINGS = {
     "measuring_dispatch": {
-        "enabled": False, "needs": "builder", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_launch.py",
+        "enabled": True, "needs": "builder", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_launch.py",
         "fixed_args": [], "allowed_args": ["run", "classes"], "production": True, "remote_async": True, "enabled_by": "J-3c",
         "also_needs": ["gcloud"],
     },
     "measuring_dispatch_dryrun": {
-        "enabled": False, "needs": "builder", "script": "platform/scripts/dispatch_v5_measuring_job.py",
+        "enabled": True, "needs": "builder", "script": "platform/scripts/dispatch_v5_measuring_job.py",
         "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run"], "allowed_args": ["run", "classes"],
         "production": False, "enabled_by": "J-3c",
     },
     "measuring_teardown_dryrun": {
-        "enabled": False, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
+        "enabled": True, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
         "fixed_args": ["--dry-run"], "allowed_args": [], "production": False, "enabled_by": "J-3d",
     },
     "measuring_teardown": {
-        "enabled": False, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
+        "enabled": True, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
         "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": [], "production": True, "enabled_by": "J-3d",
     },
 }
@@ -95,7 +95,7 @@ QUIESCENCE_CHECK = {
     "fixed_args": [], "allowed_args": ["operation", "execution_readback"], "requesters": ["adhikarin", "v1", "v2", "sutradhara"],
     "production": False, "read_only": True, "timeout_s": 300, "enabled_by": "B-1",
 }
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS)
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS)   # J-3a: exactly the four measuring kinds join
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
@@ -249,7 +249,7 @@ def test_table_pin_refuses_an_extra_kind():
 
 @pytest.mark.parametrize("kind", MEASURING_BINDINGS)
 @pytest.mark.parametrize("field,value", [
-    ("enabled", True), ("script", "platform/scripts/unreviewed.py"),
+    ("enabled", False), ("script", "platform/scripts/unreviewed.py"),
     ("fixed_args", ["--execute"]), ("allowed_args", ["unreviewed"]),
 ])
 def test_table_pin_refuses_unreviewed_measuring_changes(kind, field, value):
@@ -650,8 +650,7 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head",
-                                  "measuring_dispatch", *K9_KINDS])
+@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head", *K9_KINDS])
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)
