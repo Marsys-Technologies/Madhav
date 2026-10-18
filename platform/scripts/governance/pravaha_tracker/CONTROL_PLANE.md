@@ -46,6 +46,21 @@ the running tracker uses a separate installed snapshot and changes only at B-2.
   evidence, unmet dependencies, unbound operations or fences, and intervals
   with no earned progress. It lists skipped mandatory items separately.
 
+## A7 D-46: implemented vs. activated
+
+A code or artifact item (declared `completion_kind`, else the proof's type) is *implemented* — `done` — once merged,
+independently accepted and contained in a successful main deploy (artifact: digest + independent verdict). Its open
+dependencies no longer block `done`; they are written to the completion event as `activation_pending`, together with
+`merged_pr`, `acceptance_ref` and `deploy_run_id`. Code items need no separate step receipts. Operation, packet,
+decision, join and verdict items keep strict ordered completion (SR-A4-01). The snapshot reports per row
+`activation_pending` (recomputed, so it empties when the last gate closes) and in `overall`: `implemented`,
+`activated`, `activation_pending` and `close_ready` (every applicable item implemented AND activated).
+`audit` reports `activation_pending_unrecorded` for a deferred gate the completion does not name.
+
+`python3 -m pravaha_tracker.d46_sweep --evidence <file>` (run with `PYTHONPATH=platform/scripts/governance`) lists
+what would close and what is missing, reading git read-only; `--apply` writes the completions through the same guard.
+The evidence file (schema `ky.d46_evidence/1`) is documented in the module docstring.
+
 ## Tracker responsiveness
 
 State, health, item, next and SSE reads serve the last completed tick from memory

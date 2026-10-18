@@ -419,6 +419,39 @@ def evidence_digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
+
+def lane_rehearsal_request():
+    """Only the initial empty LOCAL teardown rehearsal; never execute authority.
+
+    Production's operation_request/acceptance path is unchanged. Called before
+    connecting, only from teardown(dry_run=True). No service, implicit libpq
+    defaults, host override or populated scope may enter this exception.
+    """
+    import json
+    import re
+    try: req = json.loads(os.environ.get('KY_OPERATION_REQUEST', '{}'))
+    except (TypeError, ValueError): return None
+    if not isinstance(req, dict) or 'lane_target' not in req: return None
+    target = req.get('lane_target')
+    if (req.get('kind') != 'smalltest_teardown_dryrun' or req.get('dry_run') is not True
+            or req.get('smalltest_scope') != {'empty': True} or req.get('chart_id') != CHART_ID
+            or not isinstance(target, dict) or set(target) != {'host', 'port', 'database'}
+            or target.get('host') not in ('127.0.0.1', 'localhost', '::1')
+            or type(target.get('port')) is not int or target['port'] != 55433
+            or not isinstance(target.get('database'), str)
+            or re.fullmatch(r'ky_[a-z][a-z0-9_]{0,54}', target['database']) is None):
+        raise Refused('local lane exception requires dry-run kind and an empty scope on ky_<lane>')
+    from psycopg.conninfo import conninfo_to_dict
+    try: settings = conninfo_to_dict(os.environ.get('DATABASE_URL', ''))
+    except Exception: raise Refused('lane rehearsal connection settings invalid') from None
+    expected = dict(host=target['host'], hostaddr='::1' if target['host'] == '::1' else '127.0.0.1',
+                    port='55433', dbname=target['database'], user='postgres', password='',
+                    passfile=os.devnull, options='', sslmode='disable', connect_timeout='10')
+    if settings != expected or any(key.startswith('PG') and key != 'PGPASSFILE' for key in os.environ):
+        raise Refused('lane rehearsal connection must be explicit and match the local target')
+    return req
+
+
 def operation_request():
     import json
     try:
@@ -496,20 +529,23 @@ def accepted_receipt(root, receipt_ref, acceptance_ref, kind):
 def staged_scope(req, root):
     import re
     import uuid
-    scope = req.get('smalltest_scope')
+    measuring = req.get('kind') in ('measuring_teardown', 'measuring_teardown_dryrun')
+    if measuring and req.get('item_id') != 'J-3d':
+        raise Refused('measuring teardown belongs to J-3d')
+    scope = req.get('measuring_scope' if measuring else 'smalltest_scope')
     if not isinstance(scope, dict):
         raise Refused('identified staged small-test scope required')
     if scope.get('empty') is True:
         if req.get('kind') != 'smalltest_teardown_dryrun' or scope != {'empty': True}:
             raise Refused('empty scope is for the initial teardown rehearsal only')
         return scope
-    r, a = accepted_receipt(root, scope.get('dispatch_receipt'), scope.get('dispatch_acceptance'), 'smalltest_dispatch')
+    r, a = accepted_receipt(root, scope.get('dispatch_receipt'), scope.get('dispatch_acceptance'), 'measuring_dispatch' if measuring else 'smalltest_dispatch')
     launch = r.get('launch') or {}
     try:
         valid_uuid = str(uuid.UUID(str(scope.get('run_id')))) == scope.get('run_id')
     except ValueError:
         valid_uuid = False
-    if (not valid_uuid or r.get('item_id') not in ('J-2a', 'J-2c') or r.get('status') != 'COMPLETED'
+    if (not valid_uuid or r.get('item_id') not in (('J-3c',) if measuring else ('J-2a', 'J-2c')) or r.get('status') != 'COMPLETED'
             or launch.get('status') != 'LAUNCHED' or launch.get('run_id') != scope.get('run_id')
             or launch.get('chart_id') != CHART_ID or launch.get('asset_id') != ASSET_ID
             or scope.get('chart_id') != CHART_ID or scope.get('generation') != GENERATION
@@ -519,13 +555,19 @@ def staged_scope(req, root):
             or not ((scope.get('manifest_id') is None and scope.get('input_vector_sha256') is None)
                     or (scope.get('manifest_id') and re.fullmatch(r'[0-9a-f]{64}', str(scope.get('input_vector_sha256', '')))))):
         raise Refused('scope differs from the accepted staged launch/manifest identity')
+    if measuring and (launch.get('schema') != 'ky.measuring_launch/1'
+            or not re.fullmatch(r'[0-9a-f]{64}', str(scope.get('input_vector_sha256', '')))
+            or not re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', str(scope.get('manifest_id', '')))):
+        raise Refused('measuring scope requires its actual launch, candidate manifest and input vector')
     return scope
 
 
 def dryrun_evidence(req, root, scope, rowset_sha256=None):
-    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'), 'smalltest_teardown_dryrun')
+    measuring = req.get('kind') == 'measuring_teardown'
+    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'),
+                            'measuring_teardown_dryrun' if measuring else 'smalltest_teardown_dryrun')
     p = r.get('teardown') or {}
-    if (r.get('reviewed_commit') != req.get('reviewed_commit') or r.get('status') != 'COMPLETED' or p.get('schema') != 'ky.smalltest_teardown/1'
+    if (r.get('reviewed_commit') != req.get('reviewed_commit') or r.get('status') != 'COMPLETED' or p.get('schema') != ('ky.measuring_teardown/1' if measuring else 'ky.smalltest_teardown/1')
             or p.get('status') != 'ROLLED_BACK' or p.get('rollback_confirmed') is not True
             or p.get('scope') != scope or p.get('scope_sha256') != evidence_digest(scope)
             or p.get('request_sha256') != r.get('request_sha256') or p.get('operation_id') != r.get('operation_id')
@@ -600,12 +642,14 @@ def absence_evidence(req, root, *, teardown_receipt=None):
                 old = json.loads(path.read_text())
             except (OSError, ValueError):
                 raise Refused('prior operation evidence unreadable') from None
-            if ((old.get('kind') == 'smalltest_teardown' and (old.get('teardown') or {}).get('status') == 'COMMITTED_AWAITING_ABSENCE')
-                    or (old.get('kind') == 'smalltest_dispatch' and old.get('status') == 'COMPLETED' and old.get('launch'))):
+            if ((old.get('kind') in ('smalltest_teardown', 'measuring_teardown') and (old.get('teardown') or {}).get('status') == 'COMMITTED_AWAITING_ABSENCE')
+                    or (old.get('kind') in ('smalltest_dispatch', 'measuring_dispatch') and old.get('status') == 'COMPLETED' and old.get('launch'))):
                 raise Refused('prior teardown requires its own independent absence')
     else:
         proof = committed.get('teardown') or {}
-        if (committed.get('kind') != 'smalltest_teardown' or committed.get('exit_code') != 0
+        if (committed.get('kind') not in ('smalltest_teardown', 'measuring_teardown')
+                or proof.get('schema') != ('ky.measuring_teardown/1' if committed.get('kind') == 'measuring_teardown' else 'ky.smalltest_teardown/1')
+                or committed.get('exit_code') != 0
                 or committed.get('status') not in ('AWAITING_ABSENCE', 'COMPLETED')
                 or proof.get('status') != 'COMMITTED_AWAITING_ABSENCE'
                 or p.get('run_id') != (proof.get('scope') or {}).get('run_id')
@@ -623,7 +667,7 @@ def absence_evidence(req, root, *, teardown_receipt=None):
         for path in (root / 'receipts').glob('*.json'):
             try:
                 old = json.loads(path.read_text())
-                if (old.get('kind') == 'smalltest_dispatch' and old.get('status') == 'COMPLETED'
+                if (old.get('kind') in ('smalltest_dispatch', 'measuring_dispatch') and old.get('status') == 'COMPLETED'
                         and old.get('launch') and datetime.fromisoformat(old['ts']) > datetime.fromisoformat(committed['ts'])):
                     raise Refused('a later staged launch requires its own teardown and independent absence')
             except (OSError, ValueError, KeyError, TypeError):
@@ -634,6 +678,84 @@ def absence_evidence(req, root, *, teardown_receipt=None):
         except (ValueError, KeyError, TypeError):
             raise Refused('independent readback must follow the committed teardown') from None
     return p
+
+
+# J-2a SCOPED backup (backup_v5_small_test_job.py --scope small_test; spec fleet/J2A_SCOPED_BACKUP_v1_0.md).
+# The digest is the reviewed scope file's (backup_v5_small_test_scope.json) and is pinned HERE because the executor
+# loads this module alone, from the reviewed commit; a test ties the pin to the file. The window is how long a scoped
+# backup stays a valid pre-test record: outside it the dispatch requires a fresh backup + restore proof.
+SCOPED_BACKUP_SCOPE_SHA256 = "489330948aecf7b6fdaa52d00a8f8fa8735e4ed1dcd27a14ee957bd43c07b528"
+SCOPED_BACKUP_VALIDITY_S = 4 * 3600
+
+
+def full_backup_window_problem(proof, label, folder, root, now=None):
+    """A full-form (/1) proof names its backup only with the same freshness bound as a scoped one."""
+    from datetime import datetime, timedelta, timezone
+    if (proof.get('status') != 'verified' or proof.get('label') != label or proof.get('restore_verified') is not True
+            or proof.get('backup_taken') is not True or proof.get('target_removed') is not True):
+        raise Refused('full backup restore proof is not a verified proof for this label')
+    capture = read_evidence(root, folder, {'name': 'capture.json', 'sha256': proof.get('capture_sha256')})
+    if (capture.get('schema') != 'ky.smalltest_backup/1' or capture.get('label') != label
+            or capture.get('archive_sha256') != proof.get('archive_sha256')):
+        raise Refused('full backup restore proof does not match its capture')
+    try:
+        start = datetime.fromisoformat(capture['ts'])
+        taken = datetime.fromisoformat(proof['ts'])
+        if start.tzinfo is None or taken.tzinfo is None:
+            raise ValueError()
+    except (KeyError, TypeError, ValueError):
+        raise Refused('full backup has no timestamp inside a validity window') from None
+    instant = now or datetime.now(timezone.utc)
+    if not start <= taken <= instant <= start + timedelta(seconds=SCOPED_BACKUP_VALIDITY_S):
+        raise Refused('backup is outside its validity window; a fresh backup and restore proof are required')
+
+
+def scoped_backup_problem(req, root, now=None):
+    """A `smalltest_dispatch` MUST name its backup (`backup_label` + the restore proof's `backup_restore_sha256`), and
+    that proof must be taken no more than SCOPED_BACKUP_VALIDITY_S ago (SR-J2A-BACKUP-SCOPE condition 4). A scoped proof
+    (schema /2) must be a verified proof of the pinned scope; a full proof (schema /1) is accepted only with the same
+    window, measured from its capture receipt's `ts`. Raises Refused.
+
+    (I) INTERPRETATION J2A-S2 (replaces the earlier opt-in reading): no label, no restore-proof digest, or a /1 proof
+    without a readable timestamp is refused, never silently allowed. (I) INTERPRETATION J2A-S4: the /1 capture has no
+    snapshot instant, so its window starts at the capture receipt's `ts`, written after the dump; alternative: refuse
+    every /1 proof."""
+    label = req.get('backup_label')
+    if label is None or req.get('backup_restore_sha256') is None:
+        raise Refused('a dispatch must name its backup_label and backup_restore_sha256; run a fresh backup and restore proof')
+    import re
+    from datetime import datetime, timedelta, timezone
+    if not isinstance(label, str) or not re.fullmatch(r'[a-z][a-z0-9_]{2,39}', label):
+        raise Refused('backup label malformed')
+    folder = 'backups/' + label
+    proof = read_evidence(root, folder, {'name': 'restore.json', 'sha256': req.get('backup_restore_sha256')})
+    if proof.get('schema') == 'ky.smalltest_restore/1':
+        return full_backup_window_problem(proof, label, folder, root, now)
+    if (proof.get('schema') != 'ky.smalltest_restore/2' or proof.get('status') != 'verified' or proof.get('label') != label
+            or proof.get('scoped') is not True or proof.get('restore_verified') is not True
+            or proof.get('backup_taken') is not True or proof.get('target_removed') is not True):
+        raise Refused('scoped backup restore proof is not a verified proof for this label')
+    if proof.get('scope_sha256') != SCOPED_BACKUP_SCOPE_SHA256:
+        raise Refused('scoped backup covers a scope other than the reviewed one')
+    capture = read_evidence(root, folder, {'name': 'capture.json', 'sha256': proof.get('capture_sha256')})
+    scope = capture.get('scope') or {}
+    window = capture.get('validity') or {}
+    try:
+        start = datetime.fromisoformat(window['not_before'])
+        end = datetime.fromisoformat(window['not_after'])
+        taken = datetime.fromisoformat(proof['ts'])
+        if (start.tzinfo is None or end.tzinfo is None or taken.tzinfo is None
+                or end - start != timedelta(seconds=SCOPED_BACKUP_VALIDITY_S) or window.get('seconds') != SCOPED_BACKUP_VALIDITY_S):
+            raise ValueError()
+    except (KeyError, TypeError, ValueError):
+        raise Refused('scoped backup validity window missing or malformed') from None
+    if (capture.get('schema') != 'ky.smalltest_backup/2' or capture.get('label') != label
+            or scope.get('sha256') != SCOPED_BACKUP_SCOPE_SHA256 or capture.get('archive_sha256') != proof.get('archive_sha256')
+            or proof.get('validity') != window):
+        raise Refused('scoped backup restore proof does not match its capture')
+    instant = now or datetime.now(timezone.utc)
+    if not start <= taken <= instant <= end:
+        raise Refused('scoped backup is outside its validity window; a fresh backup and restore proof are required')
 
 
 def smalltest_request_problem(req, root):
@@ -659,6 +781,7 @@ def smalltest_request_problem(req, root):
                     raise Refused('annual small test requires timezone-qualified bounds of at most 366 days') from None
             if kind == 'smalltest_dispatch':
                 absence_evidence(req, root)
+                scoped_backup_problem(req, root)
         elif kind in ('smalltest_teardown', 'smalltest_teardown_dryrun'):
             scope = staged_scope(req, root)
             if kind == 'smalltest_teardown':
@@ -706,3 +829,48 @@ def absence_readback_sql(committed=None):
     counts = ', '.join("'" + table + "', (" + sql + ")" for table, sql in sorted(queries.items()))
     return ("SELECT (" + literal(proof) + " || jsonb_build_object('counts', jsonb_build_object(" + counts + "), "
             "'registry_inert', (SELECT is_active IS FALSE FROM asset_registry WHERE asset_id = " + asset + ")))::text AS absence_proof")
+
+
+def measuring_request_problem(req, root):
+    """Measuring-only file evidence admission, loaded from reviewed source."""
+    try:
+        kind = req.get('kind')
+        if kind in ('measuring_dispatch', 'measuring_dispatch_dryrun'):
+            if req.get('item_id') != 'J-3c':
+                raise Refused('measuring dispatch belongs to J-3c')
+            args = req.get('args') or {}
+            if args != {'run': 'all_classes_full', 'classes': 'all'}:
+                raise Refused('measuring request requires only all_classes_full and all classes')
+            # Even a staging rollback may not bypass the previous lifecycle.
+            absence_evidence(req, root)
+            if kind == 'measuring_dispatch':
+                measuring_dryrun_evidence(req, root)
+        elif kind in ('measuring_teardown', 'measuring_teardown_dryrun'):
+            scope = staged_scope(req, root)
+            if kind == 'measuring_teardown':
+                dryrun_evidence(req, root, scope)
+        else:
+            raise Refused('unknown measuring operation kind')
+        return None
+    except (Refused, KeyError, TypeError, ValueError) as exc:
+        return str(exc) if isinstance(exc, Refused) else 'malformed measuring evidence'
+
+
+def measuring_dryrun_evidence(req, root, manifest_digest=None):
+    """A real accepted staging rollback, same source/args/manifest, before launch."""
+    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'), 'measuring_dispatch_dryrun')
+    p = r.get('staging') or {}
+    if (r.get('status') != 'COMPLETED' or r.get('item_id') != 'J-3c' or r.get('reviewed_commit') != req.get('reviewed_commit')
+            or p.get('schema') != 'ky.measuring_staging/1' or p.get('status') != 'ROLLED_BACK'
+            or p.get('rollback_confirmed') is not True or p.get('args') != req.get('args')
+            or p.get('operation_id') != r.get('operation_id') or p.get('request_sha256') != r.get('request_sha256')
+            or p.get('plan_manifest_digest') != evidence_digest(p.get('plan_manifest'))
+            or (manifest_digest is not None and p.get('plan_manifest_digest') != manifest_digest)):
+        raise Refused('accepted measuring staging rollback for the same source, args and manifest required')
+    from datetime import datetime
+    try:
+        if datetime.fromisoformat(r['ts']) >= datetime.fromisoformat(acceptance(req, root)['ts']):
+            raise ValueError()
+    except (KeyError, ValueError, TypeError):
+        raise Refused('measuring staging rollback must precede the accepted launch request') from None
+    return p

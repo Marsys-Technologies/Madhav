@@ -23,7 +23,7 @@ KINDS = ('backup_snapshot', 'backup_restore_verify', 'smalltest_dispatch_dryrun'
 
 
 def argv_for(op):
-    values = {'label': 'p01_fixture', 'run': 'one_class_full', 'classes': 'marriage',
+    values = {'label': 'p01_fixture', 'scope': 'small_test', 'run': 'one_class_full', 'classes': 'marriage',
               'horizon-start': '1998-01-01T00:00:00+00:00',
               'horizon-end': '2026-04-17T00:00:00+00:00'}
     return op['fixed_args'] + [a for key in op['allowed_args'] for a in (f'--{key}', values[key])]
@@ -36,7 +36,7 @@ def test_enabled_table_argv_agrees_with_script(kind):
     assert (ROOT / op['script']).is_file(), op['script']
     assert op['production'] is True
     assert op['enabled_by'] == 'J-1a'
-    assert op['allowed_args'] == (['label'] if kind.startswith('backup_') else
+    assert op['allowed_args'] == (['label', 'scope'] if kind.startswith('backup_') else
                                  ['run', 'classes', 'horizon-start', 'horizon-end'] if 'dispatch' in kind else [])
     if kind == 'smalltest_dispatch':
         # Final main owns remote launching; the bridge injects the reviewed staging argv.
@@ -79,6 +79,27 @@ def test_unsupported_arguments_refused_at_parser(script, flag):
         ['--operation', 'snapshot', '--label', 'p01_fixture'] if script == 'backup' else [])
     with pytest.raises(SystemExit) as error:
         module._parse_args(base + [flag, 'synthetic'])
+    assert error.value.code == 2
+
+
+@pytest.mark.parametrize('script', ['dispatch', 'teardown', 'backup'])
+@pytest.mark.parametrize('flag', ['--exec', '--dry-r'])
+def test_bare_mode_abbreviations_refused_at_parser(script, flag):
+    """No extra positional token may mask acceptance of an abbreviated mode."""
+    module = {'dispatch': dispatch, 'teardown': teardown}.get(script)
+    if module is None:
+        module = importlib.import_module('backup_v5_small_test_job')
+    base = (['--run', 'one_class_full', '--i-am-steward', '--after-settled-1']
+            if script == 'dispatch' else ['--i-am-steward'] if script == 'teardown' else
+            ['--operation', 'snapshot', '--label', 'p01_fixture'])
+    # The full spelling must parse with the SAME prerequisites; in particular,
+    # teardown's steward requirement must not accidentally reject --exec for us.
+    full_flag = '--execute' if flag == '--exec' else '--dry-run'
+    args = module._parse_args(base + [full_flag])
+    assert args.execute is (full_flag == '--execute')
+    assert args.dry_run is (full_flag == '--dry-run')
+    with pytest.raises(SystemExit) as error:
+        module._parse_args(base + [flag])
     assert error.value.code == 2
 
 

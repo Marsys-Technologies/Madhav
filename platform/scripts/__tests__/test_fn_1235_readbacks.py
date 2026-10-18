@@ -13,6 +13,8 @@ Covered:
 * one STOP each for: function MISSING, wrong owner, a PUBLIC entry, a grant option, an extra
   grantee, a missing ledger row, a wrong ledger sha256;
 * the pin refusal (a tampered SQL file is never executed), the backslash refusal;
+* A6: real-catalog wrong argument name, SECURITY INVOKER and wrong search_path each STOP;
+  the recorded self-hash must equal the executed runner bytes and verify through the manifest;
 * the read-only refusal: SHOW transaction_read_only != on -> exit 2;
 * the no-DSN guarantee: the stub's argv log carries no -d/--dbname/postgresql:// and PGOPTIONS
   forces default_transaction_read_only=on;
@@ -326,3 +328,45 @@ def test_real_cluster_a_missing_ledger_row_stops(disposable_pg, monkeypatch, tmp
     proc = _real_run(disposable_pg, monkeypatch, tmp_path, setup)
     assert proc.returncode == 1
     assert "STOP FN1235-ledger" in proc.stderr
+
+
+@pytest.mark.parametrize(('before', 'after', 'check'), [
+    ('p_asset_id', 'wrong_asset_id', 'signature'),
+    ('SECURITY DEFINER', 'SECURITY INVOKER', 'secdef'),
+    ('SET search_path = pg_catalog, pg_temp', 'SET search_path = public', 'search-path'),
+])
+def test_real_cluster_invalid_function_contract_stops(disposable_pg, monkeypatch, tmp_path,
+                                                       before, after, check):
+    # A real catalog readback, not a fabricated SQL response: each changed property must STOP.
+    proc = _real_run(disposable_pg, monkeypatch, tmp_path, SETUP.replace(before, after))
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert f'STOP FN1235-{check} ' in proc.stderr
+    assert f'PASS FN1235-{check} ' not in proc.stdout
+
+
+def test_runner_self_hash_matches_executed_bytes(tmp_path):
+    proc, out, _log = _run(tmp_path, HAPPY_READBACK)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    executed = tmp_path / 'fn-1235-readbacks.sh'
+    assert (out / 'RUNNER_SHA256').read_text().strip() == hashlib.sha256(executed.read_bytes()).hexdigest()
+    manifest = (out / 'MANIFEST.sha256').read_text().splitlines()
+    assert sum(line.split(maxsplit=1)[1] == 'RUNNER_SHA256' for line in manifest) == 1
+    verified = subprocess.run(['shasum', '-a', '256', '-c', 'MANIFEST.sha256'],
+                              cwd=out, capture_output=True, text=True)
+    assert verified.returncode == 0, verified.stdout + verified.stderr
+
+
+def test_manifest_covers_every_raw_output_once_with_its_actual_digest(tmp_path):
+    proc, out, _log = _run(tmp_path, HAPPY_READBACK)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    entries = [line.split(maxsplit=1) for line in (out / 'MANIFEST.sha256').read_text().splitlines()]
+    names = [name for _digest, name in entries]
+    # Successful verification of a subset is insufficient: both raw readbacks
+    # and the runner identity must be bound into the evidence manifest.
+    assert sorted(names) == ['FN1235-readback.out', 'RUNNER_SHA256', 'SESSION-identity.out']
+    assert sorted(p.name for p in out.glob('*.out')) == ['FN1235-readback.out', 'SESSION-identity.out']
+    for digest, name in entries:
+        assert digest == hashlib.sha256((out / name).read_bytes()).hexdigest(), name
+    assert (out / 'FN1235-readback.out').read_text() == HAPPY_READBACK
+    assert (out / 'SESSION-identity.out').read_text() == (
+        'c49\tc49\tsuvarna_disposable\t127.0.0.1\t1\tPostgreSQL test\n')

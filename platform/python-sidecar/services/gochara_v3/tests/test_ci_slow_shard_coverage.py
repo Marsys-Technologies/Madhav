@@ -36,22 +36,20 @@ def _slow_marked_files() -> set[str]:
 
 
 def _sharded_files() -> list[str]:
-    ci = CI_YML.read_text(encoding="utf-8")
-    files: list[str] = []
-    for group in SHARD_FILES_RE.findall(ci):
-        files.extend(
-            Path(token).name
-            for token in group.split()
-            if token.startswith("services/gochara_v3/tests/")
-        )
-    return files
+    import sys
+    sys.path.insert(0, str(REPO_ROOT / 'platform/scripts/governance'))
+    from ci_discovery import slow_files
+    ci = CI_YML.read_text()
+    assert 'ci_discovery.py" slow ${{ matrix.leg }} --' in ci
+    return [Path(path).name for leg in range(1, 4) for path in slow_files(REPO_ROOT, leg)]
+
 
 
 def test_every_slow_real_ephemeris_file_is_in_exactly_one_ci_shard():
     slow = _slow_marked_files()
     sharded = _sharded_files()
     assert slow, "sanity: at least one slow_real_ephemeris file must exist"
-    assert sharded, "sanity: ci.yml must declare shard_files entries"
+    assert sharded, "sanity: marker discovery must produce nonempty shards"
     missing = slow - set(sharded)
     assert not missing, (
         f"slow_real_ephemeris files in NO governance-gates-gochara shard: "
