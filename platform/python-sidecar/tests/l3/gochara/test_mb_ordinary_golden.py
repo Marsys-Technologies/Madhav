@@ -316,6 +316,6 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # source changes on top of the accepted P06 capture. The three digests below are re-derived from this merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the function the manifest vector itself is built by); the golden
     # fixture is not re-captured and every other component, outcome, row count and SQL shape is still compared to it unchanged.
-    assert got["implementation"]["evaluation"] == "1f0efdd98ab0120e322ffb35582d1ef2292de9a622969cc7e0e2e00eec4179a0"
+    assert got["implementation"]["evaluation"] == "92fabb45daba11509cc90f81246c0fe1e5b55b3a09a14f3fd986655b30a9c904"
     assert got["implementation"]["geometry"] == "06825a43711d85cd82d6648f40b1d6ec99ef7f034b9dc53aed89b05cc33fa17a"
-    assert got["implementation"]["window"] == "07121396d884b2d7d17c7f5ba2a3ef03748d608c68064c36aaab39fb606b181e"
+    assert got["implementation"]["window"] == "78b4d0a1cc63047045710a873f76b87f90de4493c4960bb08fd97ef1ad13aea3"
