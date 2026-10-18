@@ -59,6 +59,8 @@ def test_single_select_jsonb_wrapper_runs_under_actual_readback_shell(kala_db_ds
     import os
     env={k:v for k,v in os.environ.items() if not k.startswith('PG') and k not in {'DATABASE_URL','KY_BUILDER_DATABASE_URL','KY_OWNER_DATABASE_URL','KY_LAYER_VERIFIER_DATABASE_URL'}}
     env.update(KY_ROOT=str(root),KY_READBACK_PGENV=str(tmp_path/'pgenv.sh'),PGHOST=settings['host'],PGPORT=settings['port'],PGUSER='postgres',PGDATABASE=settings['dbname'],PGPASSFILE='/dev/null')
+    # CI's throwaway server requires the password in its own fixture DSN; the local cluster is trust-auth and carries none.
+    if settings.get('password'): env['PGPASSWORD']=settings['password']
     (tmp_path/'pgenv.sh').write_text('# test uses guarded fixture PG settings\n')
     argv=['bash',str(FLEET/'readback_sql.sh'),'--sql_file',str(query),'--sql-sha256',result['request']['args']['sql-sha256']]
     run=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=10)
