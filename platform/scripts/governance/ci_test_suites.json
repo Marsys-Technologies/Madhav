@@ -114,7 +114,6 @@
         "tests/l3/gochara/test_mb_horizon*.py",
         "tests/l3/gochara/test_mb_stretch*.py",
         "tests/l3/gochara/test_j6r*.py",
-        "tests/l3/gochara/test_j4d*.py",
         "tests/l3/gochara/test_n18*.py",
         "tests/l3/gochara/test_nd_h*.py",
         "tests/l3/gochara/test_near_miss*.py",
@@ -466,7 +465,8 @@
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
       "include": [
-        "tests/l3/gochara/test_a55*.py"
+        "tests/l3/gochara/test_a55*.py",
+        "tests/l3/gochara/test_j4d*.py"
       ]
     },
     "gochara-a55-slice-transitions-1-9": {
