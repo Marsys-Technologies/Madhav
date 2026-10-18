@@ -16,7 +16,16 @@ Production approval binds the request (A8 §3.9): ONE verifier lane's acceptance
 sorted compact JSON without the fields that may lawfully change after signing — `acceptance_receipt`, `expires_at` and any
 `*_expires_at` lease-expiry field (see request_digest) — plus the attestations the kind needs: `dry_run_passed` for a mutating
 kind and `backup_taken` for a `*_teardown`. It is valid from its timestamp until the request's `expires_at`; there is no age cap.
-The lease must be the ONLY unexpired ACTIVE row of the shared lease table. `*_dryrun` kinds are `production: false` — read-only
+The lease must be the ONLY unexpired ACTIVE row of the shared lease table.
+
+Mechanical acceptance of a production write (OWNER-MINIMAL-PROTECTION-NOW-20261018; SR-MINIMAL-PROTECTION §2): a request with NO `acceptance_receipt` but a
+`pack_fill` may instead be accepted by this executor, without a signer, when ALL hold — (1) its bytes equal a VERIFIED pack fill (pack_fill_check: the pack
+manifest is on run/ops/PACK_ALLOWLIST.json, which the cockpit writes only from an ACCEPTED verify job; the allow-list pins the template digest per kind; every fixed
+field equals the template; no field the template does not define; the fill digest re-derives from the request bytes), (2) its kind's `<kind>_dryrun` COMPLETED OK for
+the same request identity in THIS executor's own receipts (dry_run_check; `backup_snapshot` / `backup_restore_verify` have no dry-run kind and need none), (3) the
+lease is live. It is recorded as acceptance/<operation_id>.json, by executor-mechanical, with the request digest and the evidence digests, and is re-measured
+immediately before execution. NEVER mechanical: deletions (every `*_teardown`) and serving changes (publish_head, layer_publish, rollback_head, layer_rollback), and
+measuring_cancel (held with them): those keep requiring ONE verifier lane's acceptance exactly as above. A request that carries an `acceptance_receipt` is always judged by it. `*_dryrun` kinds are `production: false` — read-only
 with a credential: no lease, acceptance or fence, but a merged `reviewed_commit` (they run in its tree) and a rollback proof in
 the receipt.
 
@@ -60,6 +69,12 @@ SEEN = OPS / "idempotency.jsonl"; MAX_TIMEOUT = 6 * 3600
 UNBOUND_REQUEST_FIELDS = frozenset({"acceptance_receipt", "expires_at"})   # A8 §3.9: plus any `*_expires_at` field — see request_digest; mirrored by kyd_kinds_ops.request_digest and v5_small_test_shared.request_hash
 REMOTE_ASYNC_KINDS = frozenset({"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"})   # A8 §3.11: work continues remotely after the child returns — fenced even if a table drops `remote_async`
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
+PACK_ALLOWLIST = OPS / "PACK_ALLOWLIST.json"   # OWNER-MINIMAL-PROTECTION-NOW: written by the cockpit ONLY from an ACCEPTED verify job of a pack; this executor only reads it
+SIGNED_ONLY_KINDS = frozenset({"publish_head", "layer_publish", "rollback_head", "layer_rollback", "measuring_cancel"})   # serving changes, plus the deletion-adjacent cancel; every `*_teardown` kind is signed-only too (see mechanical_exempt)
+NO_DRYRUN_KINDS = frozenset({"backup_snapshot", "backup_restore_verify"})   # the two production kinds with no dry-run kind and no `dry_run_passed` attestation (kyd_kinds_ops.required_checks)
+PACK_NEVER_FILLED = frozenset({"kind", "chart_id", "reviewed_commit", "requested_by", "acceptance_receipt", "pack_fill"})   # a pack template pins these (or the request cannot carry them); a fill may never set them
+DRYRUN_IDENTITY_FIELDS = ("item_id", "chart_id", "reviewed_commit", "args")   # what "the same request" means between a `<kind>_dryrun` request and its production request
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SCHEDULER_JOB = "watchdog-reaper"   # platform/scripts/provision_watchdog_scheduler.sh creates exactly this job ...
 SCHEDULER_PROJECT = "madhav-astrology"   # ... in this project (GCP_PROJECT default) ...
 SCHEDULER_REGION = "asia-south1"   # ... and this region (GCP_REGION default)
@@ -304,6 +319,133 @@ def lease_expiry(lease_id: str) -> dt.datetime | None:
         try: return dt.datetime.strptime(cells[4][:16], "%Y-%m-%d %H:%M").replace(tzinfo=ist).astimezone(dt.timezone.utc)
         except ValueError: return None
     return None
+
+
+def canonical_sha(value) -> str:
+    """sha256 of `value` as sorted compact JSON — the digest every pack and dry-run comparison below uses."""
+    return digest_bytes(json.dumps(value, sort_keys=True, separators=(",", ":")).encode())
+
+
+def mechanical_exempt(kind: str) -> bool:
+    """OWNER-MINIMAL-PROTECTION-NOW: deletions (every `*_teardown`) and serving changes (publish / rollback of a head or layer) never go mechanical; they keep
+    requiring a V1 signer's acceptance exactly as before. `measuring_cancel` is held with them (I): it removes no data itself, but it is the first step of the
+    cancel-then-teardown path the owner named, and it cannot be undone."""
+    return kind.endswith("_teardown") or kind in SIGNED_ONLY_KINDS
+
+
+def pack_fill_check(req: dict) -> tuple[str | None, dict]:
+    """(problem, evidence): do the request's bytes equal a VERIFIED pack fill? A request carries
+        pack_fill = {pack_manifest_sha256, template: {kind, fixed: {field: value}, fill: [field names]}, fill_sha256}
+    and is a pack fill iff ALL of: the pack manifest digest is on run/ops/PACK_ALLOWLIST.json with verdict ACCEPTED and a verify_job (the cockpit writes an entry
+    only from an ACCEPTED verify job); that entry lists sha256(template) for exactly this kind; the template never fills kind, chart_id, reviewed_commit,
+    requested_by or an approval field (so the request, which must carry them, has them pinned); every `fixed` field of the request equals the template's value (type-strict); the request has no field the template does
+    not define (the clocks `expires_at` / `*_expires_at` excepted); and fill_sha256 equals the digest the executor re-derives from the request's own filled fields."""
+    pf = req.get("pack_fill")
+    if not (isinstance(pf, dict) and set(pf) == {"pack_manifest_sha256", "template", "fill_sha256"}):
+        return "pack_fill must carry exactly pack_manifest_sha256, template and fill_sha256", {}
+    manifest, template, declared = pf["pack_manifest_sha256"], pf["template"], pf["fill_sha256"]
+    if not (isinstance(manifest, str) and HEX64.fullmatch(manifest) and isinstance(declared, str) and HEX64.fullmatch(declared)):
+        return "pack_fill digests must be 64 lowercase hex characters", {}
+    try: listing = json.loads(PACK_ALLOWLIST.read_text())
+    except (OSError, ValueError): return "the verified-pack allow-list is missing or unreadable", {}
+    packs = listing.get("packs") if isinstance(listing, dict) and listing.get("schema") == "ky.pack_allowlist/1" else None
+    entry = next((p for p in packs if isinstance(p, dict) and p.get("pack_manifest_sha256") == manifest), None) if isinstance(packs, list) else None
+    if entry is None or entry.get("verdict") != "ACCEPTED" or not entry.get("verify_job"):
+        return "the pack manifest is not on the verified-pack allow-list", {}
+    templates = entry.get("templates"); template_sha = canonical_sha(template)
+    if not (isinstance(templates, dict) and templates.get(template_sha) == req.get("kind")):
+        return "the pack template is not one the verified pack lists for this kind", {}
+    if not (isinstance(template, dict) and set(template) == {"kind", "fixed", "fill"} and template["kind"] == req.get("kind")
+            and isinstance(template["fixed"], dict) and isinstance(template["fill"], list) and all(isinstance(n, str) for n in template["fill"])):
+        return "the pack template is malformed", {}
+    fixed, fill = template["fixed"], template["fill"]
+    if set(fill) & PACK_NEVER_FILLED: return "the pack template may not fill kind, chart_id, reviewed_commit, requested_by or an approval field", {}
+    clock = lambda k: k in UNBOUND_REQUEST_FIELDS or k.endswith("_expires_at")
+    extra = sorted(k for k in req if k != "pack_fill" and not clock(k) and k not in fixed and k not in fill)
+    if extra: return f"the request carries fields the pack template does not define: {extra}", {}
+    for k, v in fixed.items():
+        if not clock(k) and (k not in req or canonical_sha(req[k]) != canonical_sha(v)):
+            return f"the request differs from the verified pack template at fixed field {k}", {}
+    if canonical_sha({k: req[k] for k in sorted(fill) if k in req and not clock(k)}) != declared:
+        return "fill_sha256 does not equal the digest re-derived from the request bytes", {}
+    return None, {"pack_manifest_sha256": manifest, "template_sha256": template_sha, "fill_sha256": declared, "verify_job": entry["verify_job"]}
+
+
+def dry_run_check(req: dict, table: dict) -> tuple[str | None, dict | None]:
+    """(problem, evidence): did this kind's `<kind>_dryrun` COMPLETE OK for the same request identity? The executor reads ITS OWN receipt
+    (run/ops/receipts, cited by `dryrun_receipt` {name, sha256}) and the archived dry-run request — never a signer's attestation. Same identity = the
+    dry-run request and this one agree on DRYRUN_IDENTITY_FIELDS, and the receipt binds that archived request (digest) and its complete output (digest).
+    The two kinds with no dry-run kind need none (evidence None)."""
+    kind = req["kind"]
+    if kind in NO_DRYRUN_KINDS: return None, None
+    dry_kind = kind + "_dryrun"; entry = table.get(dry_kind) or {}
+    if not entry.get("enabled") or entry.get("production") is not False:
+        return f"kind {kind} has no enabled read-only dry-run kind ({dry_kind}), so it needs a V1 signer", None
+    ref = req.get("dryrun_receipt")
+    if not (isinstance(ref, dict) and set(ref) == {"name", "sha256"} and isinstance(ref["name"], str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,80}\.json", ref["name"])
+            and isinstance(ref["sha256"], str) and HEX64.fullmatch(ref["sha256"])):
+        return "dryrun_receipt {name, sha256} citing this kind's completed dry run is required", None
+    try:
+        path = REC / ref["name"]
+        if path.resolve().parent != REC.resolve(): return "the dry-run receipt reference escapes the receipts directory", None
+        body = path.read_bytes()
+        if digest_bytes(body) != ref["sha256"]: return "the dry-run receipt differs from its cited sha256", None
+        rec = json.loads(body); dry_oid = rec["operation_id"]
+        if not (isinstance(dry_oid, str) and SAFE_ID.fullmatch(dry_oid) and ref["name"] == dry_oid + ".json"): return "the dry-run receipt does not name its own operation", None
+        output = (REC / f"{dry_oid}.output.txt").read_bytes()
+        archived = json.loads((DONE / f"{dry_oid}.json").read_text())
+        ok = (isinstance(rec, dict) and rec.get("kind") == dry_kind and rec.get("status") == "COMPLETED" and type(rec.get("exit_code")) is int and rec["exit_code"] == 0
+              and "lane_target" not in rec and digest_bytes(output) == rec.get("output_sha256")
+              and isinstance(archived, dict) and archived.get("operation_id") == dry_oid and archived.get("kind") == dry_kind and "lane_target" not in archived
+              and request_digest(archived) == rec.get("request_sha256")
+              and rec.get("reviewed_commit") == archived.get("reviewed_commit") == req.get("reviewed_commit")
+              and all(canonical_sha(archived.get(f)) == canonical_sha(req.get(f)) for f in DRYRUN_IDENTITY_FIELDS))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return "the dry-run receipt, its output or its archived request cannot be read", None
+    if not ok: return "the dry run did not COMPLETE OK (exit 0, complete output, bound archived request) for this request's identity", None
+    return None, {"operation_id": dry_oid, "kind": dry_kind, "receipt_sha256": ref["sha256"], "request_sha256": rec["request_sha256"], "output_sha256": rec["output_sha256"]}
+
+
+def mechanical_problem(req: dict, table: dict) -> tuple[str | None, dict]:
+    """(problem, evidence) for the MECHANICAL route to a production write: not a deletion or serving change, merged reviewed_commit, unexpired request,
+    request bytes equal a verified pack fill, this kind's dry run completed OK for the same identity. (The lease is checked by validate and again by
+    mechanical_pre_acceptance.) Pure reads — nothing is written."""
+    kind = req["kind"]
+    if mechanical_exempt(kind): return f"kind {kind} is a deletion or serving change: it needs a V1 signer's acceptance, never a mechanical one", {}
+    rc = str(req.get("reviewed_commit", ""))
+    if not SHA.match(rc): return "reviewed_commit required for a production operation", {}
+    if git("merge-base", "--is-ancestor", rc, "origin/main").returncode != 0: return "reviewed_commit is not merged to main", {}
+    try:
+        if not dt.datetime.now(dt.timezone.utc) < utc_time(req["expires_at"]): return "approval expired or not yet valid", {}
+    except (KeyError, TypeError, ValueError): return "valid approval timestamp and a timezone-qualified request expires_at required", {}
+    why, pack = pack_fill_check(req)
+    if why: return why, {}
+    why, dry = dry_run_check(req, table)
+    if why: return why, {}
+    return None, {"pack": pack, "dry_run": dry}
+
+
+def mechanical_pre_acceptance(req: dict, table: dict) -> str | None:
+    """OWNER-MINIMAL-PROTECTION-NOW: accept a production write MECHANICALLY (instead of a V1 signer) when mechanical_problem finds nothing and the lease is
+    live, and record it as acceptance/<operation_id>.json — schema ky.mechanical_acceptance/1, phase pre, by executor-mechanical, the request digest and the
+    evidence digests. Returns None when the request is accepted, else the reason. Idempotent: the same request finds its own record; a different record for
+    the operation id refuses. validate calls this on admission AND again immediately before execution; nothing it recorded is trusted without re-measuring."""
+    problem, evidence = mechanical_problem(req, table)
+    if problem: return problem
+    lease = lease_live(str(req.get("lease_id", "")))
+    if not lease: return "lease is not the single unexpired ACTIVE row on origin/campaign-coordination"
+    checks = {"kind_is_not_a_deletion_or_serving_change": True, "reviewed_commit_merged": True, "request_equals_verified_pack_fill": True, "lease_live": lease is True}
+    checks["dry_run_completed_ok_for_same_identity" if evidence["dry_run"] else "dry_run_not_applicable_to_kind"] = True
+    digest = request_digest(req)
+    document = {"schema": "ky.mechanical_acceptance/1", "phase": "pre", "by": "executor-mechanical", "result": "ACCEPTED", "operation_id": req["operation_id"],
+                "kind": req["kind"], "request_sha256": digest, "reviewed_commit": req["reviewed_commit"], "lease_id": req["lease_id"], "checks": checks,
+                "evidence": evidence, "ts": now()}
+    path = ACC / f"{req['operation_id']}.json"
+    if write_new_json(path, document): return None
+    try: existing = json.loads(path.read_text())
+    except (OSError, ValueError): existing = None
+    if isinstance(existing, dict) and existing.get("by") == "executor-mechanical" and existing.get("result") == "ACCEPTED" and existing.get("request_sha256") == digest: return None
+    return "an acceptance record for this operation already exists and does not bind this request"
 
 
 def scheduler_policy_problem(req: dict) -> str | None:
@@ -601,6 +743,32 @@ def smalltest_policy_problem(req: dict) -> str | None:
         return "reviewed small-test evidence policy unavailable or invalid"
 
 
+def signer_acceptance_problem(req: dict) -> str | None:
+    """A8 §3.9: the SIGNED route to a production write — ONE verifier lane's (v1..v4) acceptance receipt, bound to the complete request, carrying the
+    attestations the kind needs. Unchanged by OWNER-MINIMAL-PROTECTION-NOW; deletions and serving changes can only be admitted this way."""
+    acc = req.get("acceptance_receipt")
+    if not acc or not pathlib.Path(acc).exists() or ACC.resolve() not in pathlib.Path(acc).resolve().parents: return "pre-acceptance receipt missing (must live under run/ops/acceptance/)"
+    try:
+        a = json.loads(pathlib.Path(acc).read_text())
+    except Exception: return "pre-acceptance receipt unreadable"
+    if a.get("result") != "ACCEPTED" or a.get("operation_id") != req["operation_id"] or a.get("by") not in ("v1", "v2", "v3", "v4"):
+        return "pre-acceptance receipt is not an ACCEPTED receipt by a verifier lane for this operation"
+    rc = str(req.get("reviewed_commit", ""))
+    if not SHA.match(rc): return "reviewed_commit required for a production operation"
+    if git("merge-base", "--is-ancestor", rc, "origin/main").returncode != 0: return "reviewed_commit is not merged to main"
+    if a.get("reviewed_commit") != rc: return "the acceptance receipt names a different reviewed_commit"
+    try:
+        current = dt.datetime.now(dt.timezone.utc); issued = utc_time(a["ts"]); expires = utc_time(req["expires_at"])
+        if not issued <= current < expires: return "approval expired or not yet valid"      # A8 §4: no age cap — valid until the request's own expiry
+    except (KeyError, TypeError, ValueError): return "valid approval timestamp and a timezone-qualified request expires_at required"
+    if a.get("request_sha256") != request_digest(req): return "approval does not bind the complete request"
+    kind = req["kind"]; required = []                                        # A8 §5: `required_rows` and `restore_verified` are retired as preconditions
+    if kind.endswith("_teardown"): required.append("backup_taken")
+    if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"): required.append("dry_run_passed")
+    if any((a.get("checks") or {}).get(k) is not True for k in required): return "required backup/restore/dry-run attestation missing"
+    return None
+
+
 def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str | None:
     for k in ("operation_id", "kind", "item_id", "idempotency_key", "requested_by", "kyd"):
         if not req.get(k): return f"missing field {k}"
@@ -629,26 +797,10 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
     if op.get("production"):
         if req.get("chart_id") != CANONICAL_CHART: return "chart_id is not the canonical chart"
         if not req.get("lease_id") or not lease_live(req["lease_id"]): return "lease is not the single unexpired ACTIVE row on origin/campaign-coordination"
-        acc = req.get("acceptance_receipt")
-        if not acc or not pathlib.Path(acc).exists() or ACC.resolve() not in pathlib.Path(acc).resolve().parents: return "pre-acceptance receipt missing (must live under run/ops/acceptance/)"
-        try:
-            a = json.loads(pathlib.Path(acc).read_text())
-        except Exception: return "pre-acceptance receipt unreadable"
-        if a.get("result") != "ACCEPTED" or a.get("operation_id") != req["operation_id"] or a.get("by") not in ("v1", "v2", "v3", "v4"):
-            return "pre-acceptance receipt is not an ACCEPTED receipt by a verifier lane for this operation"
-        rc = str(req.get("reviewed_commit", ""))
-        if not SHA.match(rc): return "reviewed_commit required for a production operation"
-        if git("merge-base", "--is-ancestor", rc, "origin/main").returncode != 0: return "reviewed_commit is not merged to main"
-        if a.get("reviewed_commit") != rc: return "the acceptance receipt names a different reviewed_commit"
-        try:
-            current = dt.datetime.now(dt.timezone.utc); issued = utc_time(a["ts"]); expires = utc_time(req["expires_at"])
-            if not issued <= current < expires: return "approval expired or not yet valid"      # A8 §4: no age cap — valid until the request's own expiry
-        except (KeyError, TypeError, ValueError): return "valid approval timestamp and a timezone-qualified request expires_at required"
-        if a.get("request_sha256") != request_digest(req): return "approval does not bind the complete request"
-        kind = req["kind"]; required = []                                        # A8 §5: `required_rows` and `restore_verified` are retired as preconditions
-        if kind.endswith("_teardown"): required.append("backup_taken")
-        if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"): required.append("dry_run_passed")
-        if any((a.get("checks") or {}).get(k) is not True for k in required): return "required backup/restore/dry-run attestation missing"
+        if not req.get("acceptance_receipt") and req.get("pack_fill") is not None:      # OWNER-MINIMAL-PROTECTION-NOW: no signer named, a pack fill offered -> the mechanical route (a signer's receipt, when present, is always judged as before)
+            why = mechanical_pre_acceptance(req, table)
+        else: why = signer_acceptance_problem(req)
+        if why: return why
     if not reserved and seen(req["idempotency_key"]): return "idempotency key already used"
     return smalltest_policy_problem(req) or scheduler_policy_problem(req) or measuring_cancel_problem(req)
 

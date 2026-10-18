@@ -109,6 +109,7 @@
         "tests/l3/gochara/test_w2*.py",
         "tests/l3/gochara/test_p09*.py",
         "tests/l3/gochara/test_j7b*.py",
+        "tests/l3/gochara/test_j4ops_*.py",
         "tests/l3/gochara/test_j6m*.py",
         "tests/l3/gochara/test_horizon*.py",
         "tests/l3/gochara/test_mb_horizon*.py",
@@ -509,6 +510,13 @@
         "tests/l3/gochara/test_mb_real*.py",
         "tests/l3/gochara/test_mb_ordinary*.py",
         "tests/l3/gochara_eval/test_dump*.py"
+      ]
+    },
+    "gochara-j5s-full-class-seal": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_j5s_*_db.py"
       ]
     },
     "gochara-a55-dispatch-1-9": {
