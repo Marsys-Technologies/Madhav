@@ -63,10 +63,20 @@ The evidence file (schema `ky.d46_evidence/1`) is documented in the module docst
 
 ## Tracker responsiveness
 
-Health and state requests read the last complete snapshot. Health requests never
-run power, socket, filesystem or detector probes; only freshness and recent errors
-are updated in memory. Snapshot persistence runs outside the publication lock.
-Subprocesses have their own sessions and their process groups are killed on timeout.
+State, health, item, next and SSE reads serve the last completed tick from memory
+with `tick_age_s`. State and health reads take no collector or detector lock;
+SSE's condition only coordinates in-memory publication. Health requests never run
+power, socket, filesystem or detector probes. Snapshot persistence runs outside
+the publication lock. Every subprocess has a hard five-second ceiling, even if a
+caller asks for longer, and its process group is killed on timeout.
+
+Timed-out measurements retain their last value. Detector results carry `stale`,
+`age_s` and `error`; health groups external call outcomes under `sources` (for
+example `power`, `git`, `gh`, `db`) with a stale flag and the age of the last
+successful measurement. An unmeasured source has a null age. `degraded` flags a
+stale source independently of `ok`, which reports tick liveness. The browser
+shows stale sources and preserves the supplied tick age when accepting snapshots.
+Power-value changes advance the snapshot version so existing SSE clients receive them.
 
 `PRAVAHA_TICK_BUDGET_S` defaults to 8 seconds. A tick that exceeds it records an
 abandonment in `tick_errors`, retains the last complete model/event cursor/snapshot,
@@ -78,11 +88,19 @@ the tick and uses the same subprocess timeout cleanup.
 Guarded `done` calls `/api/verify` with `KY_VERIFY_TIMEOUT_S` (positive finite
 seconds, default 300). A timeout reports “tracker timed out”; a connection failure
 reports “tracker unreachable”. Verification never accepts a persisted snapshot or
-a completed fetch's TTL. Same-ref fetches already in flight share their live
-result (including failure); unrelated refs fetch independently. Verification runs
-on the request thread outside the four dashboard workers, and new dashboard polls
-defer until active verifications finish. Failed fetches refuse completion rather
-than measuring stale refs.
+a completed fetch's TTL. A shared same-ref fetch must have started at or after
+the HTTP request; an older flight is followed by a fresh fetch, with bounded waits.
+Unrelated refs fetch independently. Verification runs on its own worker, outside
+the four dashboard workers, and new dashboard polls defer until active
+verifications finish. Failed fetches refuse completion rather than measuring stale
+refs. Verification does not update the dashboard result cache.
+
+(I) INTERPRETATION: the unspecified live-verification budget is 20 seconds per
+request, with at most four concurrent verification workers and immediate refusal
+when those slots are full. Each subprocess also obeys the remaining request
+budget. A late worker result is refused, and a slot stays occupied until its
+worker exits; timed-out requests cannot accumulate unlimited workers. This server
+budget is independent of the CLI's longer transport timeout.
 
 ## Acceptance command
 
