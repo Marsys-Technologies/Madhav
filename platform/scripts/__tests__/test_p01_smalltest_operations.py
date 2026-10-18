@@ -191,7 +191,10 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
                 'lease_live': lambda lease: True, 'git': lambda *args: types.SimpleNamespace(returncode=0),
                 'dt': dt, 'json': json, 'seen': lambda key: False,
                 'utc_time': lambda value: dt.datetime.fromisoformat(value),
-                'smalltest_policy_problem': lambda req: None, 'request_digest': lambda req: 'synthetic_bound_digest'}
+                'smalltest_policy_problem': lambda req: None, 'request_digest': lambda req: 'synthetic_bound_digest',
+                # validate() ends with the scheduler and measuring-cancel admission rules; neither applies to a small-test kind
+                # (each has its own suite), so they are transport doubles here like smalltest_policy_problem.
+                'scheduler_policy_problem': lambda req: None, 'measuring_cancel_problem': lambda req: None}
     exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), 'exec'), globals_)
     validate = globals_['validate']
     table = json.loads(TABLE.read_text())['ops']

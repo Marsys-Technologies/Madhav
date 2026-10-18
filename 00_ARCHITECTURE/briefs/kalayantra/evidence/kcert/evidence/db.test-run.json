@@ -1,0 +1,5 @@
+{
+  "cmd": "/Users/Dev/kalayantra/venv/bin/python3 -B -m pytest tests/l3/kala_db/test_k_cert_citation_resolution.py tests/l3/kala_db/test_kcert_independent_assessment.py -v -p no:cacheprovider --basetemp=/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/pytest-db",
+  "cwd": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/src/platform/python-sidecar",
+  "exit": 0
+}

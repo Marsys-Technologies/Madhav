@@ -1,0 +1,98 @@
+{
+  "schema": "ky.kcert_artifact/1",
+  "item": "K-CERT",
+  "assessment": {
+    "path": "ASSESSMENT.md",
+    "source_path": "/Users/Dev/kalayantra/run/reviews/K-CERT_ASSESSMENT_REVIEW.md",
+    "sha256": "c2ef88286b21e6fd3a412bcc2033c266bad23dd8574bc6f64c12c56e3fbfa522"
+  },
+  "assessment_job": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess",
+  "assessed_commit": "4ed06a493faef9659ce1005280cf6130982bd0a6",
+  "evidence": [
+    {
+      "path": "evidence/source-pin.json",
+      "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/source-pin.json",
+      "sha256": "10f520d90652baeaa71d40d5a23118aa3b3fe5a792682483d74c0ffbb024a99c"
+    },
+    {
+      "path": "evidence/test-runs.json",
+      "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/test-runs.json",
+      "sha256": "f9fd18bb5934ed50f068ffe47f1df857d3acff6eb37d311284bf293ce6e38b89"
+    },
+    {
+      "path": "evidence/baseline.scanner.json",
+      "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/baseline.scanner.json",
+      "sha256": "2262a15e1dacd14d0fdb19a978beba81cc6609348e620c91c8d392ee6fd9b5b1"
+    },
+    {
+      "path": "evidence/negative-selection.scanner.json",
+      "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/negative-selection.scanner.json",
+      "sha256": "6c3d9b531bf9749f338524568b0f13c864264ddbc96f2c5416fcb5a5fbd23300"
+    },
+    {
+      "path": "evidence/negative-selection.patch",
+      "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/negative-selection.patch",
+      "sha256": "c4b3086abb08fc3bfbf906ea64a37c1cba4ff78628a8ca5690558aca942d2eeb"
+    },
+    {
+      "path": "evidence/baseline.vitest.log",
+      "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/baseline.vitest.log",
+      "sha256": "70e9050498099286391f2a690d117388424777f59a67e97560e1499131ce1f68"
+    },
+    {
+      "path": "evidence/negative-selection.vitest.log",
+      "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/negative-selection.vitest.log",
+      "sha256": "5d4188ba090e817ef75fe5941df23d2d84dfcdd919fc065cdd3b1f7fd785263f"
+    },
+    {
+      "path": "evidence/db-catalog-scanner.json",
+      "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/db-catalog-scanner.json",
+      "sha256": "378747e21b853cc8c9e21e1b34cc04dc6e6ca69acddc11822e83f583e9468166"
+    },
+    {
+      "path": "evidence/db.test-run.json",
+      "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/db.test-run.json",
+      "sha256": "51619410ed40d816469e7fe7b4c815f787b2d744645519fff1d732eb983764ae"
+    },
+    {
+      "path": "evidence/db.pytest.log",
+      "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/db.pytest.log",
+      "sha256": "f407d0ce855d1961a26fee3d041ea67b84caa854266744668fa2901ae4a85674"
+    },
+    {
+      "path": "evidence/db-cleanup.json",
+      "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/db-cleanup.json",
+      "sha256": "61847c718582b16534edc2a9fd5765c33457564a51877b8a6a21c70d4f982b30"
+    }
+  ],
+  "decision": {
+    "id": "SR-A2-11",
+    "source_path": "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:16",
+    "record": {
+      "id": "SR-A2-11",
+      "items": [
+        "K-CERT",
+        "KV3-SCHEMA-1"
+      ],
+      "title": "K-CERT already satisfied on main (independent executing assessment X-20261015T095803Z-kcert-assess, negative controls 3/3). Supersede owner-decisions Q2 only as the K-CERT structural prerequisite; retire KV3-SCHEMA-1 (never migrated); K-CERT to complete as an artifact item after the plan-model binding.",
+      "decided_by": "cockpit under owner full-authority delegation 2026-10-14; A2",
+      "ts": "2026-10-15T10:16:20.753617+00:00"
+    }
+  },
+  "scope": "bounded structural Dens.served from stored citation-resolution status",
+  "excluded_claims": [
+    "new migration",
+    "computed-value verification",
+    "prose verification",
+    "production certification",
+    "K-CERT-2 completion",
+    "live tracker completion"
+  ],
+  "acceptance": "pending_independent_artifact_digest_review",
+  "declaration_entry_sha256": "2600d4eb4f34b1e6e07a5cd4cc48cf6b56acdb4ffb284316a0b6332bc634bce9",
+  "evidence_anchor": {
+    "path": "evidence/assessment-artifacts.sha256.json",
+    "source_path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/assessment-artifacts.sha256.json",
+    "sha256": "47f7dff0585d4335d3d66807ece3f4f03df7b0466f3c4e246ed9903ece22af61"
+  }
+}
