@@ -62,7 +62,7 @@ def test_measuring_receipt_requires_launch_record_and_cannot_replay_smalltest(tm
     body = dict(schema='ky.measuring_launch/1', status='LAUNCHED', run_id=S.RUN, chart_id=shared.CHART_ID,
         asset_id=shared.ASSET_ID, plan_manifest_digest='a' * 64, execution_name='brahma-build-pipeline-job-fixture')
     for output in (S.RUN, json.dumps({**body, 'schema': 'ky.smalltest_launch/1'}), json.dumps(body) + '\n' + json.dumps(body)):
-        executor.receipt(req, 'COMPLETED', rc=0, out=output)
+        executor.receipt(req, 'COMPLETED', rc=0, out=output, stdout=output)
         assert json.loads((tmp_path / 'launch.json').read_text())['status'] == 'FAILED'
     executor.receipt(req, 'COMPLETED', rc=0, out=json.dumps(body))
     assert json.loads((tmp_path / 'launch.json').read_text())['launch'] == body
@@ -227,9 +227,9 @@ def test_measuring_staging_receipt_requires_confirmed_rollback(tmp_path, monkeyp
         plan_manifest=manifest, plan_manifest_digest=shared.evidence_digest(manifest))
     for output in ('{}', json.dumps({**proof, 'rollback_confirmed': False}),
                    json.dumps({**proof, 'request_sha256': '0' * 64})):
-        executor.receipt(req, 'COMPLETED', rc=0, out=output)
+        executor.receipt(req, 'COMPLETED', rc=0, out=output, stdout=output)
         assert json.loads((tmp_path / 'rollback.json').read_text())['status'] == 'FAILED'
-    executor.receipt(req, 'COMPLETED', rc=0, out=json.dumps(proof))
+    executor.receipt(req, 'COMPLETED', rc=0, out=json.dumps(proof), stdout=json.dumps(proof))
     assert json.loads((tmp_path / 'rollback.json').read_text())['staging'] == proof
 
 
