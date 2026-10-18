@@ -24,6 +24,7 @@ NOT_APPLICABLE = ["JOIN-ALL", "K-CERT-2", "W4-SAFETY-N01", "W4-SAFETY-N02", "KA3
                   "V-K3b", "V-K5", "V-K6", "V-KA", "V-VC"]
 DEFERRED = ["J-7a", "J-7a-a62", "J-7a-pr3099", "KR-1", "KR-2", "J-8", "J-8-b63", "J-8-j3", "J-8a", "K9-5",
             "K9-5-NB-01"]
+DEFERRED_NB04 = ["J-4a-a25", "J-4a-a26"]   # SR-A9-INTERP A9-NB-04: no phase brief reads their output
 
 
 def _rows(snap):
@@ -106,8 +107,9 @@ def test_not_applicable_does_not_spread_into_the_closure(decided):
 def test_the_headline_denominator_is_the_closure_and_every_deferred_item_is_listed(decided):
     _, snap = decided
     o = snap["overall"]
-    assert o["total"] == 188 and o["plan_wide"]["total"] == 270
+    assert o["total"] == 186 and o["plan_wide"]["total"] == 270
     listed = {d["id"]: d for d in o["deferred"]}
-    assert set(DEFERRED) <= set(listed)
-    assert all(listed[i]["re_entry"] for i in DEFERRED)
+    assert set(DEFERRED + DEFERRED_NB04) <= set(listed)
+    assert all(listed[i]["re_entry"] for i in DEFERRED + DEFERRED_NB04)
+    assert "J-3a-b44" not in listed   # A9-NB-04 class a: B5.4's brief names the 4.1 baseline, so it stays counted
     assert not set(listed) & {"D-T2", "J-7", "J-7b", "L0-K"}   # D-52: the post-flip phase is not deferred

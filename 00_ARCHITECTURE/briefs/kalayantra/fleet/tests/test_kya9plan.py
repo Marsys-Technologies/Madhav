@@ -5,6 +5,8 @@
   §3.1  the Tier-2 methods and the L5 hand-off depend on J-6l and sit in the closure (not deferred)
   §3.2  K-AVADHI-C is in the closure
   §4    no closure member depends on a deferred or not_applicable item (they could never complete)
+  NB-04 (SR-A9-INTERP) J-4a-a25/a26 are deferred and no longer gate J-4a (its brief reads only the settled build);
+        J-3a-b44 stays in the closure as class a (J-5q-b54's brief names B4.4)
   §5    K9-4a drops the five retired packet exits and keeps D-FLIP, J-6l, V-J6, K9-23; the plan is acyclic
 """
 import json
@@ -74,9 +76,22 @@ def test_k_avadhi_c_is_in_the_closure(closure):  # §3.2
 
 
 def test_no_closure_member_waits_on_a_deferred_or_retired_item(items, closure):  # §4
-    gone = set(kya9plan.DEFERRED) | {t for _, _, ts in kya9plan.NOT_APPLICABLE for t in ts}
+    gone = set(kya9plan.DEFERRED) | set(kya9plan.A9_NB04_DEFERRED) | {t for _, _, ts in kya9plan.NOT_APPLICABLE for t in ts}
     assert not gone & set(closure["closure"])
     assert [(i, d) for i in closure["closure"] for d in items[i]["depends_on"] if d in gone] == []
+
+
+def test_unread_4_1_evidence_is_deferred_and_no_longer_gates_j_4a(items, closure):  # NB-04
+    # J-4a's brief/tests name only the single settled Vimśottarī build; FINAL_BUILD_SCOPE_v1_0 never mentions A2.5/A2.6
+    for iid in ("J-4a-a25", "J-4a-a26"):
+        assert iid not in closure["closure"] and iid not in items["J-4a"]["depends_on"]
+        assert items[iid]["triage"]["class"] == "b" and items[iid]["triage"]["re_entry"]
+
+
+def test_the_4_1_baseline_named_by_the_retrodiction_brief_stays_in_the_closure(items, closure):  # NB-04 class (a)
+    assert any("prerequisite: B4.4" in t for t in items["J-5q-b54"]["brief"]["tests"])
+    assert "J-3a-b44" in closure["closure"] and items["J-3a-b44"]["triage"]["class"] == "a"
+    assert "J-3a-b44" in items["J-3a"]["depends_on"]
 
 
 def test_k9_4a_follows_the_flip_without_the_retired_exits(items):  # §5

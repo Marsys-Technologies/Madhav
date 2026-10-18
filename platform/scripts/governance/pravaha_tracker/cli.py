@@ -51,7 +51,7 @@ if __package__ in (None, ""):
 from pravaha_tracker.events import EventError, append, actor_slot, actor_stream  # noqa: E402
 from pravaha_tracker.claims import ClaimError, claim_item, renew_claim, release_claim  # noqa: E402
 from pravaha_tracker.audit import audit  # noqa: E402
-from pravaha_tracker.state import build_snapshot, load_closure  # noqa: E402
+from pravaha_tracker.state import build_snapshot, load_closure, reconciliation_line  # noqa: E402
 from pravaha_tracker.detectors import git_activity  # noqa: E402
 from pravaha_tracker.completion import CompletionError, guarded_done_event  # noqa: E402
 from pravaha_tracker.claims import _locked, _read, _append, _close  # noqa: E402
@@ -600,6 +600,8 @@ def cmd_status(a) -> int:
     scope = " (closure)" if o.get("scope") == "closure" else ""
     print(f"{snap.get('campaign')} — {o['pct']}% · done {o['done']}/{o['total']}{scope} · running {o['running']} · ready {o['ready']} · "
           f"blocked {o['blocked']} · unmeasured {o['unknown']}   [{via}, v{snap.get('version')}]")
+    if o.get("reconciliation") and not a.stream:
+        print("  " + reconciliation_line(o["reconciliation"]))
     for st in snap.get("streams", []):
         if a.stream and st["id"] != a.stream.upper():
             continue

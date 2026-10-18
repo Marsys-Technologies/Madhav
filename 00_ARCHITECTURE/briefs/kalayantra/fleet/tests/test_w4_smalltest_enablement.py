@@ -8,6 +8,8 @@ from smalltest_admission_support import ARG_VALUES, approve, caps, load_executor
 
 FLEET = Path(__file__).resolve().parents[1]
 BASE_ENABLED = {"readback_sql", "migration_readback", "cloudrun_job_readback", "local_schema_seed", "finalize"}
+# A7 D-44 (owner direction): the one read-only kind added after Wave 4; enabled by B-1, not a Wave 4 op, so it is named here rather than folded into W4.
+D44_READ_ONLY = {"quiescence_check"}
 W4 = {
     "backup_snapshot": ("owner", "platform/scripts/backup_v5_small_test_job.py", ["--operation", "snapshot", "--execute"], ["label", "scope"]),
     "backup_restore_verify": ("owner", "platform/scripts/backup_v5_small_test_job.py", ["--operation", "restore-verify", "--execute"], ["label", "scope"]),
@@ -32,8 +34,8 @@ def executor(tmp_path, monkeypatch):
 
 
 def test_only_six_wave4_ops_are_newly_enabled(table):
-    assert set(table) == BASE_ENABLED | set(W4) | DISABLED
-    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | set(W4)
+    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | DISABLED
+    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4)
     for kind in DISABLED:
         assert table[kind]["enabled"] is False
         if "prepared_dry_run" in table[kind]:

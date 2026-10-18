@@ -19,6 +19,9 @@ Edits to plan_model.json (nothing else is touched):
                           that contradicts requires_outcome): one retirement decision per reason, requires_outcome
                           {decision: approved}; the cockpit records each decision `refused` after the merge
   D-53 deferred set       triage class b with the re-entry condition (never counted as closed)
+  A9-NB-04 triage-b       (SR-A9-INTERP) J-4a-a25 / J-4a-a26: no phase brief reads their output (J-4a reads the single
+                          settled build only) → J-4a's depends_on edges cut, deferred with re-entry; J-3a-b44: the '4.1'
+                          scored baseline is named by J-5q-b54's brief → class a, stays in the closure
   control_plane.triage    roots/closure point at the v3 files
 
 Usage:  kya9plan.py [--repo-root DIR]      (default: the repository containing this file)
@@ -77,6 +80,23 @@ DEFERRED = {  # D-53 (parked, re-entry stated)
     "K9-5-NB-01": "when Suvarṇa schedules its certification census",
 }
 
+# A9-NB-04 (SR-A9-INTERP): J-4a reads the single settled Vimśottarī build (its brief/tests name no A2.5/A2.6 output),
+# so the edges J-4a → A2.5/A2.6 are cut and both items are deferred with a re-entry condition.
+A9_NB04_CUT_EDGES = {"J-4a": ["J-4a-a25", "J-4a-a26"]}
+A9_NB04_REASON = ("deferred by A9 (SR-A9-INTERP, A9-NB-04): no consuming phase brief reads its output "
+                  "(FINAL_BUILD_SCOPE_v1_0 and the J-4a brief are silent on A2.5/A2.6)")
+A9_NB04_DEFERRED = {
+    "J-4a-a25": "when the owner/surrogate records the approved Q6 disposition of the historical 4.1 build, or a phase brief "
+                "names the 4.1 build as a measured input",
+    "J-4a-a26": "when J-4a-a25 re-enters and the 4.1 evidence (Link-2, gates, PRAMĀṆIN, benchmark) is wanted by a phase brief",
+}
+# A9-NB-04 class (a): J-5q-b54 (retrodiction '5.0' vs '3.0' vs '4.1') lists B4.4 as an inherited prerequisite it must prove
+# (J-5q-b54 brief.tests), so the '4.1' scored baseline is a baseline a contract names: it stays, no longer class b.
+A9_NB04_KEPT = {
+    "J-3a-b44": "the '4.1' geometric baseline is a scored baseline named by J-5q-b54 (title '5.0 vs 3.0 vs 4.1'; brief.tests "
+                "'independently prove inherited prerequisite: B4.4'); stays in the closure (A9-NB-04 class a)",
+}
+
 # not_applicable by decision: (decision id, reason, items). Reasons are A9's wording.
 NOT_APPLICABLE = [
     ("D-A9-NA-JOIN-ALL", "superseded by ACCEPTANCE_ROOTS_v3 (A9 D-51)", ["JOIN-ALL"]),
@@ -129,6 +149,14 @@ def apply_model_edits(model: dict) -> dict:
     # D-53 — deferred with re-entry (triage class b: never counted as closed)
     for iid, re_entry in DEFERRED.items():
         items[iid]["triage"] = {"class": "b", "reason": f"deferred by A9 D-53 ({BRIEF})", "re_entry": re_entry}
+
+    # A9-NB-04 — cut the edges nothing reads, defer the items; keep the baseline B5.4 names
+    for consumer, cut in A9_NB04_CUT_EDGES.items():
+        items[consumer]["depends_on"] = [d for d in items[consumer]["depends_on"] if d not in cut]
+    for iid, re_entry in A9_NB04_DEFERRED.items():
+        items[iid]["triage"] = {"class": "b", "reason": A9_NB04_REASON, "re_entry": re_entry}
+    for iid, reason in A9_NB04_KEPT.items():
+        items[iid]["triage"] = {"class": "a", "reason": reason}
 
     # not_applicable, recorded by decision (the tracker's own mechanism)
     anchor = items["D-KCERT-EXISTING-STATUS-20261015"]
