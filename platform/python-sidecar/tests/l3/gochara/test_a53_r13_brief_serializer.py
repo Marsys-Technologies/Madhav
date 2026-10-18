@@ -75,8 +75,10 @@ def test_the_display_and_the_digest_share_one_serializer_and_the_brief_path_has_
     from pipeline.orchestrator import verification_job as entry
     src = inspect.getsource(sb)
     assert "default=str" not in src and sb._canon is sb.canonical_json
-    main = inspect.getsource(entry.main)
-    brief_block = main[main.index("if args.brief:"):main.index("report = vj.run(")]
+    # PR #3604 (J4C-B): main selects the rule profile, then delegates both
+    # brief and report execution to _run. Inspect the actual brief path.
+    run = inspect.getsource(entry._run)
+    brief_block = run[run.index("if args.brief:"):run.index("report = vj.run(")]
     assert "default=str" not in brief_block and "json.dumps" not in brief_block        # everything printed goes through canonical_json
     payload = {"schema": "x", "n": Decimal("3.50")}
     assert sb.payload_digest(payload) == hashlib.sha256(sb.canonical_json(payload).encode()).hexdigest()

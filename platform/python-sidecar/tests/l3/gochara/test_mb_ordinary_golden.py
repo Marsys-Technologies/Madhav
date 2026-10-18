@@ -296,3 +296,8 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     assert set(got["implementation"]) == set(want["implementation"])
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
     assert differing == ["evaluation", "geometry", "window"], differing
+    # J4C-B (and P06b's near-miss geometry) change the version-aware record store (geometry), independent
+    # derivation (evaluation), and rank-only factor support / job (window).
+    # All SQL, row counts, outcomes and non-implementation inputs stay pinned.
+    from services.gochara_kernel import input_vector as iv, input_vector_verifier as ivv
+    assert got["implementation"] == ivv.module_digests(iv.IMPLEMENTATION_MODULES)

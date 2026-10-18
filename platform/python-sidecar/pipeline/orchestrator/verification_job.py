@@ -77,6 +77,8 @@ def main(argv=None) -> int:
     ap.add_argument("--generation", default=vj.GENERATION)
     ap.add_argument("--class", dest="classes", action="append", default=None)
     ap.add_argument("--report-only", action="store_true")
+    ap.add_argument("--final-rules", action="store_true",
+                    help="verify an explicitly configured final-rule candidate; default keeps measuring rules")
     ap.add_argument("--brief", action="store_true", help="produce, persist and digest the canonical seal approval payload; stdout ends in "
                     "{brief_chunk,...} lines then a COMPACT last line {status, sha256, persisted, brief_bytes, brief_file, brief_chunks}")
     ap.add_argument("--brief-out", default=None, help="also write the full brief (canonical JSON bytes; sha256 == the digest) to this file")
@@ -84,6 +86,12 @@ def main(argv=None) -> int:
     ap.add_argument("--sealing-commit", default=os.environ.get("GOCHARA_SEALING_COMMIT"))
     ap.add_argument("--ephe-path", default=os.environ.get("SE_EPHE_PATH"))
     args = ap.parse_args(argv)
+    from services.gochara_kernel import rule_registry
+    with rule_registry.rule_profile(final_rules=args.final_rules):
+        return _run(args)
+
+
+def _run(args):
     url = os.environ.get(ENV_URL)
     if not url:
         print(json.dumps({"status": "REFUSED", "code": "no_verifier_credential",

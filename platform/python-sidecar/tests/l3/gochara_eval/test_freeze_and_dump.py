@@ -744,3 +744,22 @@ class TestCli:
         assert (r["t_cover"]["hits"], r["t_time"]["capped_median_days"], r["t_rank"]["status"]) == (32, 182, "VOID")
         assert r["random_controls"]["total_hits"] == rec["random_controls"]["total_hits"] == 638
         assert r["t_fp"] == rec["t_fp"] and r["t_fp_gain"] == rec["t_fp_gain"] and r["degeneracy"] == rec["degeneracy"]
+
+
+def test_frozen_code_binds_the_unknown_competitor_bounds_implementation(tmp_path):
+    rel = "services/gochara_eval/unknowns.py"
+    hashes = code_hashes(SIDECAR)
+    assert rel in hashes
+    assert hashes[rel] == hashlib.sha256((SIDECAR / rel).read_bytes()).hexdigest()
+    # A change in the algorithm must change the stage-1 identity, not merely
+    # the file list asserted against a production-derived constant.
+    for path in hashes:
+        dest = tmp_path / path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes((SIDECAR / path).read_bytes())
+    before = code_hashes(tmp_path)
+    with (tmp_path / rel).open('a') as f:
+        f.write('\n# changed bounds implementation\n')
+    after = code_hashes(tmp_path)
+    assert after[rel] != before[rel]
+    assert {k: v for k, v in after.items() if k != rel} == {k: v for k, v in before.items() if k != rel}

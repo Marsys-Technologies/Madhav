@@ -43,6 +43,7 @@ import path from 'path'
 import crypto from 'crypto'
 import { execFileSync } from 'node:child_process'
 import { Pool, type PoolClient } from 'pg'
+import { transactionalMigrationSql } from './migration-transaction'
 
 export const TRACKER_DDL = `
 CREATE TABLE IF NOT EXISTS _migrations_applied (
@@ -938,7 +939,9 @@ export async function runMigrations(
       assertGeneralRunnerMayApplyPublicSchema(file.name, only !== undefined)
       // Surface a renumbered re-apply from the PREVIEW too, not only from a real run —
       // same reasoning as the dry-run hash check above it.
-      assertNotRenumberedReapply(file, readMigrationSql(file), applied, renumbers)
+      const sql = readMigrationSql(file)
+      assertNotRenumberedReapply(file, sql, applied, renumbers)
+      transactionalMigrationSql(sql, file.name)
     }
     return files.filter(f => !applied.has(f.name) && !isSkippedKala(f.name)).map(f => f.name)
   }
@@ -999,9 +1002,18 @@ export async function runMigrations(
       continue
     }
 
+    // Validate before executing any file DDL. Historical files (including 1376)
+    // have their own outer BEGIN/COMMIT; only the runner may end this transaction.
+    // Keep hashes/identity above bound to the ORIGINAL bytes, not this executable body.
+    const transactionSql = transactionalMigrationSql(sql, file.name)
     await client.query('BEGIN')
     try {
-      await client.query(sql)
+      // Absorbing a historical COMMIT also retains SET LOCAL ROLE. Restore the
+      // entry role for runner bookkeeping without committing the migration DDL.
+      // Preserve an existing SET ROLE too: RESET ROLE would select session_user.
+      const entryRole = await client.query<{ role: string }>("SELECT current_setting('role') AS role")
+      await client.query(transactionSql)
+      await client.query("SELECT set_config('role', $1, true)", [entryRole.rows[0].role])
       await client.query(
         'INSERT INTO _migrations_applied (filename, sha256, sql_identity) VALUES ($1, $2, $3)',
         [file.name, sha256, identity]
