@@ -27,8 +27,9 @@ MEASURING = {
     "measuring_teardown_dryrun": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--dry-run"], [], "J-3d"),
     "measuring_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], [], "J-3d"),
 }
-DISABLED = {"verification_job", "century_dispatch", "publish_head", "rollback_head",
-            "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"}
+DISABLED = {"verification_job", "century_dispatch", "publish_head", "rollback_head"}
+K9 = {"orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify_dryrun", "layer_verify", "layer_publish_dryrun", "layer_publish",
+      "layer_rollback_dryrun", "layer_rollback"}   # K9-23 (SR-PREBUILD-ALL): bound and enabled; their exact bindings are pinned in test_executor_table.py
 
 
 @pytest.fixture
@@ -42,8 +43,8 @@ def executor(tmp_path, monkeypatch):
 
 
 def test_only_six_wave4_measuring_and_scheduler_ops_are_newly_enabled(table):
-    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | DISABLED
-    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER
+    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | DISABLED | K9
+    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | K9
     for kind in DISABLED:
         assert table[kind]["enabled"] is False
         if "prepared_dry_run" in table[kind]:
