@@ -2696,14 +2696,14 @@ jobs:
           -q --no-header -p no:cacheprovider
 
   governance-readback-tests:
-    # P05-B02 + P07 / A6: readback (including populated real-DB negatives) and publication oracles feed the required governance aggregate.
+    # P05-B02 / J4B + P07 / A6: readback (including populated real-DB negatives), current-source rehearsal and publication oracles feed the required governance aggregate.
     # The helper owns and cleans up its loopback-only cluster. Missing binaries,
     # unavailable helpers, or any other skipped oracle fail the required aggregate.
     needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'governance-readback-tests'))) }}
     name: Governance Gochara readback tests (throwaway Postgres)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       actions: read
       contents: read
@@ -2728,9 +2728,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - name: Install pinned migration-runner dependencies for the offline rehearsal
+        run: npm ci --ignore-scripts
+        working-directory: platform
       - name: Install pytest and disposable PostgreSQL server binaries
         run: |
-          python -m pip install pytest
+          python -m pip install pytest 'psycopg[binary]'
           sudo apt-get update
           sudo apt-get install -y postgresql
       - name: pytest — all ported Gochara readback oracles; skips fail

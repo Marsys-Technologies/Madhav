@@ -2394,7 +2394,8 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     // itself hard-refuses any chart other than the pinned candidate chart.
     scope: 'per_chart', is_active: false, estimated_seconds: null,
     has_writer: true, has_substeps: true,
-    writer_timeout_seconds: 28800,
+    // 28800 (migration 1304, small test) -> 72000 (migration 1395, J-3c cap, SR-J3-CAP-LIVE): the measuring build is projected at 34,593 s.
+    writer_timeout_seconds: 72000,
     asset_kind: 'data',
   },
   // ── KALA K1 services (K1 wave — no stored rows; service_kind per mig 242) ──

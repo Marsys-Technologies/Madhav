@@ -431,6 +431,9 @@ MARKER_ROUTE = {
     "backup_snapshot": "client_env",
     "backup_restore_verify": "client_env",
     "smalltest_dispatch": "in_process",
+    "scheduler_pause": "no_database",       # SR-J3-REAPER-PAUSE: needs gcloud only, no DATABASE_URL, no connection at all (test_executor_scheduler_reaper pins that); synchronous, never fenced
+    "scheduler_resume": "no_database",
+    "measuring_cancel": "no_database",      # SR-J3-CANCEL-NULL: gcloud only, no DATABASE_URL; synchronous, never fenced
     "measuring_dispatch": "in_process",     # J-3a: measuring_launch.py opens only psycopg connections from DATABASE_URL (no PGAPPNAME/application_name in its closure — the next test)
 }
 # A8 §3 fences only remote_async kinds; the *_dryrun kinds are production:false in executor_ops.json, so they are not eligible and carry no row.

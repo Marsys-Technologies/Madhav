@@ -1,0 +1,42 @@
+[
+  {
+    "label": "governance.pytest",
+    "cmd": "/Users/Dev/kalayantra/venv/bin/python3 -B -m pytest platform/scripts/governance/__tests__/test_e6_dens_tier_guard.py platform/scripts/governance/__tests__/test_dens_served_review2.py -k 'not REAL_SQL' -q -p no:cacheprovider --basetemp=/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/pytest",
+    "cwd": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/src",
+    "exit": 0,
+    "expected": 0,
+    "log": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/governance.pytest.log"
+  },
+  {
+    "label": "baseline.vitest",
+    "cmd": "node /Users/Dev/kalayantra/wt/campaign/platform-mcp/node_modules/vitest/vitest.mjs run --config vitest.assessment.config.ts --no-cache --reporter=verbose src/tools/retrieval/register_gochara_windows.test.ts src/tools/retrieval/register_gochara_windows_dens_served.test.ts src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts",
+    "cwd": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/src/platform-mcp",
+    "exit": 0,
+    "expected": 0,
+    "log": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/baseline.vitest.log"
+  },
+  {
+    "label": "negative-selection.vitest",
+    "cmd": "node /Users/Dev/kalayantra/wt/campaign/platform-mcp/node_modules/vitest/vitest.mjs run --config vitest.assessment.config.ts --no-cache --reporter=verbose src/tools/retrieval/register_gochara_windows_kcert_assessment.test.ts",
+    "cwd": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/negative-selection/platform-mcp",
+    "exit": 1,
+    "expected": "nonzero",
+    "log": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/negative-selection.vitest.log"
+  },
+  {
+    "label": "baseline.scanner",
+    "cmd": "python3 -B /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/scanner_assert.py /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/src baseline",
+    "cwd": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess",
+    "exit": 0,
+    "expected": 0,
+    "log": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/baseline.scanner.log"
+  },
+  {
+    "label": "negative-selection.scanner",
+    "cmd": "python3 -B /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/scanner_assert.py /Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/negative-selection negative-selection",
+    "cwd": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess",
+    "exit": 1,
+    "expected": "nonzero",
+    "log": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T095803Z-kcert-assess/negative-selection.scanner.log"
+  }
+]
