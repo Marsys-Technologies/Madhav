@@ -107,8 +107,8 @@ def _run(step, **env):
 
 
 GOV = dict(EVENT_NAME='pull_request', READBACK_EXPECTED='false', SHARDS_RESULT='skipped', READBACK_RESULT='skipped',
-           J5S_RESULT='skipped', J5S_EXPECTED='false',   # the J5S rehearsal job is skipped and not expected on a light PR
-           DOCS_ONLY='false', RUN_COMBINATION='false', CHANGES_RESULT='success')
+           DOCS_ONLY='false', RUN_COMBINATION='false', CHANGES_RESULT='success',
+           J5S_RESULT='skipped', J5S_EXPECTED='false')   # light PR that did not select the J5S rehearsal (PR #3646 input of the aggregate step)
 
 
 @pytest.mark.parametrize('override,passes', [

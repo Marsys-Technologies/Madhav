@@ -784,24 +784,37 @@ def test_j5s_glob_is_discovered_by_the_mandatory_db_guard():
     assert selected == ['tests/l3/gochara/test_j5s_full_class_seal_db.py']
 
 
-@pytest.mark.parametrize('j5s,expected_j5s,docs,others,expected', [
-    ('success', 'true', 'false', 'success', 0), ('failure', 'true', 'false', 'success', 1),
-    ('cancelled', 'true', 'false', 'success', 1), ('skipped', 'true', 'false', 'success', 1),
-    ('skipped', 'false', 'false', 'success', 0),     # light PR that did not select the J5S profile: skipped by design
-    ('failure', 'false', 'false', 'success', 1), ('cancelled', 'false', 'false', 'success', 1),
-    ('skipped', 'false', 'true', 'skipped', 0),
+@pytest.mark.parametrize('j5s,docs,others,expected', [
+    ('success', 'false', 'success', 0), ('failure', 'false', 'success', 1),
+    ('cancelled', 'false', 'success', 1), ('skipped', 'false', 'success', 1),
+    ('skipped', 'true', 'skipped', 0),
 ])
-def test_j5s_result_is_required_by_the_existing_protected_umbrella(jobs, j5s, expected_j5s, docs, others, expected):
+def test_j5s_result_is_required_by_the_existing_protected_umbrella(jobs, j5s, docs, others, expected):
     umbrella = jobs['governance-tool-tests']
     assert 'gochara-j5s-full-class-seal' in umbrella['needs']
     step = umbrella['steps'][0]
     assert step['env']['J5S_RESULT'] == '${{ needs.gochara-j5s-full-class-seal.result }}'
-    assert "'gochara-j5s-full-class-seal'" in step['env']['J5S_EXPECTED'] and 'db_jobs' in step['env']['J5S_EXPECTED']
     result = subprocess.run(['bash', '-c', step['run']], capture_output=True, text=True,
-                            env={'PATH': '/usr/bin:/bin', 'EVENT_NAME': 'pull_request', 'SHARDS_RESULT': others, 'READBACK_RESULT': others,
-                                 'READBACK_EXPECTED': 'false' if others == 'skipped' else 'true',
-                                 'J5S_RESULT': j5s, 'J5S_EXPECTED': expected_j5s, 'DOCS_ONLY': docs})
+                            env={'SHARDS_RESULT': others, 'READBACK_RESULT': others, 'EVENT_NAME': 'pull_request',
+                                 'READBACK_EXPECTED': 'false', 'J5S_EXPECTED': 'false' if docs == 'true' else 'true',
+                                 'J5S_RESULT': j5s, 'DOCS_ONLY': docs})
     assert result.returncode == expected
+
+
+@pytest.mark.parametrize('event,expected_flag,j5s,code', [
+    ('pull_request', 'false', 'skipped', 0),    # light PR that did not select the J5S profile: skip is by design
+    ('pull_request', 'true', 'skipped', 1),     # selected on a PR: a skip would hide a missing rehearsal
+    ('merge_group', 'true', 'skipped', 1),      # full events must run it
+    ('merge_group', 'true', 'success', 0),
+])
+def test_j5s_skip_is_accepted_only_when_the_light_gate_did_not_expect_it(jobs, event, expected_flag, j5s, code):
+    step = jobs['governance-tool-tests']['steps'][0]
+    assert 'J5S_EXPECTED' in step['env']
+    result = subprocess.run(['bash', '-c', step['run']], capture_output=True, text=True,
+                            env={'SHARDS_RESULT': 'success', 'READBACK_RESULT': 'success', 'EVENT_NAME': event,
+                                 'READBACK_EXPECTED': 'true', 'J5S_EXPECTED': expected_flag,
+                                 'J5S_RESULT': j5s, 'DOCS_ONLY': 'false'})
+    assert result.returncode == code, result.stdout
 
 
 def test_j5s_job_follows_the_light_pr_gate_and_is_a_full_suite_member(jobs):

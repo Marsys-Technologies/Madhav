@@ -2029,11 +2029,13 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
+    env:
+      CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Restore source-bound generated files
         uses: ./.github/actions/restore-generated
-      - name: Full-class real-sky seal rehearsal (required; never skipped)
+      - name: Full-class real-sky seal rehearsal (required when selected; never skipped)
         if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-j5s-full-class-seal'))) }}
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
@@ -2946,7 +2948,7 @@ jobs:
       contents: read
 
     steps:
-      - name: Every expected governance shard, readback suite and J5S rehearsal passed
+      - name: Every expected governance shard, readback and J5S rehearsal passed
         env:
           EVENT_NAME: ${{ github.event_name }}
           READBACK_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'governance-readback-tests')) }}
@@ -2958,16 +2960,19 @@ jobs:
           RUN_COMBINATION: ${{ needs.changes.outputs.run_combination_suites }}
           CHANGES_RESULT: ${{ needs.changes.result }}
         run: |
+          # J5S rehearsal (PR #3646) obeys the same light-gate event policy as every other heavy DB job: it must succeed on a full event or a
+          # PR that selected it, and may be skipped only when it was not expected. The shard/readback decision below is main's, unchanged.
+          if [ "$J5S_RESULT" != "success" ] && { [ "$J5S_RESULT" != "skipped" ] || [ "$J5S_EXPECTED" != "false" ]; }; then
+            echo "::error::J5S full-class seal rehearsal finished '$J5S_RESULT' (expected='$J5S_EXPECTED'), not 'success'"; exit 1
+          fi
           # A skipped shard set is "not applicable" only on a pull_request and only for the
           # two proven reasons: a docs-only diff (only a succeeded `changes` can say so), or the merge_group-only deferral (SR-BOLD-08a).
           shards_not_applicable=false
           if [ "$SHARDS_RESULT" = "skipped" ] && [ "$EVENT_NAME" = "pull_request" ] \
              && { [ "$DOCS_ONLY" = "true" ] || { [ "$RUN_COMBINATION" = "false" ] && [ "$CHANGES_RESULT" = "success" ]; }; }; then shards_not_applicable=true; fi
-          J5S_OK=false
-          if [ "$J5S_RESULT" = "success" ] || { [ "$J5S_RESULT" = "skipped" ] && [ "$J5S_EXPECTED" = "false" ]; }; then J5S_OK=true; fi
-          if [ "$J5S_OK" = "true" ] && [ "$READBACK_RESULT" = "skipped" ] && [ "$READBACK_EXPECTED" = "false" ]; then
+          if [ "$READBACK_RESULT" = "skipped" ] && [ "$READBACK_EXPECTED" = "false" ]; then
             if [ "$SHARDS_RESULT" = "success" ] || [ "$shards_not_applicable" = "true" ]; then
-              echo "governance tests passed; unchanged readbacks and J5S rehearsal skipped by event policy"
+              echo "governance tests passed; unchanged readbacks skipped by event policy"
               if [ "$shards_not_applicable" = "true" ]; then
                 msg="Governance Tool Tests shards NOT APPLICABLE on this PR: merge_group-only (SR-BOLD-08a) or docs-only; the merge queue runs them"
                 echo "$msg"; echo "$msg" >> "$GITHUB_STEP_SUMMARY"
@@ -2975,8 +2980,8 @@ jobs:
               exit 0
             fi
           fi
-          if [ "$J5S_OK" = "true" ] && [ "$SHARDS_RESULT" = "success" ] && [ "$READBACK_RESULT" = "success" ]; then echo "all governance test shards, readbacks and expected J5S rehearsal passed"; exit 0; fi
-          echo "::error::governance test shards finished '$SHARDS_RESULT', readbacks '$READBACK_RESULT', J5S '$J5S_RESULT' (expected='$J5S_EXPECTED', docs_only='$DOCS_ONLY'), not 'success'"; exit 1
+          if [ "$SHARDS_RESULT" = "success" ] && [ "$READBACK_RESULT" = "success" ]; then echo "all governance test shards, readbacks and J5S rehearsal passed"; exit 0; fi
+          echo "::error::governance test shards finished '$SHARDS_RESULT', readbacks '$READBACK_RESULT' (docs_only='$DOCS_ONLY'), not 'success'"; exit 1
 
   governance-gates-py-sidecar-shard:
     needs: [changes, generated-artifacts]
@@ -3799,7 +3804,7 @@ jobs:
 
   full-suite:
     name: Full suite event contract
-    needs: [changes, db-integration-tests, gochara-a55-dispatch, gochara-a55-measuring-build, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, gochara-j5s-full-class-seal, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, replace-chain-substrate, required-db-integration-tests, required-gochara-a55-replace-chain, required-gochara-a55-round2-runner, required-gochara-a55-teardown, required-gochara-a55-teardown-round3, required-gochara-a55-verifier-fixes, unit-db-tests]
+    needs: [changes, db-integration-tests, gochara-j5s-full-class-seal, gochara-a55-dispatch, gochara-a55-measuring-build, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, replace-chain-substrate, required-db-integration-tests, required-gochara-a55-replace-chain, required-gochara-a55-round2-runner, required-gochara-a55-teardown, required-gochara-a55-teardown-round3, required-gochara-a55-verifier-fixes, unit-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

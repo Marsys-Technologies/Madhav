@@ -146,7 +146,7 @@ def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate_unless_docs_
     """N-98 A + the fast path: run the aggregate job's own script with each `needs.<shard>.result` and docs_only: only success, or skipped
     together with docs_only=true, may pass."""
     script = jobs["governance-tool-tests"]["steps"][0]["run"]
-    p = subprocess.run(["bash", "-c", script], env={**os.environ, "SHARDS_RESULT": result, "READBACK_RESULT": readback, "DOCS_ONLY": docs_only, "EVENT_NAME": "pull_request", "READBACK_EXPECTED": "false", "J5S_RESULT": "skipped", "J5S_EXPECTED": "false"}, capture_output=True, text=True)
+    p = subprocess.run(["bash", "-c", script], env={**os.environ, "SHARDS_RESULT": result, "READBACK_RESULT": readback, "DOCS_ONLY": docs_only, "EVENT_NAME": "pull_request", "READBACK_EXPECTED": "false", "J5S_RESULT": "success", "J5S_EXPECTED": "true"}, capture_output=True, text=True)
     ok = ok and (readback in ("success", "skipped") if result == "success" else readback == "skipped")
     assert (p.returncode == 0) is ok, (result, readback, docs_only, p.stdout, p.stderr)
     assert ("::error::" in p.stdout) is (not ok)
