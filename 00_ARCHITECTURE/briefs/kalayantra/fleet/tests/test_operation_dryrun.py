@@ -30,7 +30,7 @@ def test_existing_kind_has_disabled_bounded_preparation(kind, args, cap):
     assert result["status"] == "PREPARATION_ONLY" and result["dry_run_passed"] is False
     assert result["executor_capabilities"] == cap and result["blockers"]
     op = json.loads((FLEET / "executor_ops.json").read_text())["ops"][kind]
-    assert op["enabled"] is False
+    assert op["enabled"] is (kind == "measuring_dispatch")      # J-3a enabled the kind; the prepared surface stays disabled review metadata
     surface = op["prepared_dry_run"]
     assert surface["enabled"] is False and surface["script"].endswith("/operation_dryrun.py")
     assert surface["fixed_args"] == ["--dry-run", "--kind", kind]
@@ -70,7 +70,8 @@ def test_cli_requires_explicit_dry_run_and_rejects_extra_flags(capsys):
 def test_measuring_preparation_binds_the_real_rollback_path_without_overrides():
     entry = json.loads((FLEET / "executor_ops.json").read_text())["ops"]["measuring_dispatch_dryrun"]
     surface = entry
-    assert surface["enabled"] is False and surface["needs"] == "builder"
+    assert surface["enabled"] is True and surface["needs"] == "builder"       # J-3a: the real rollback kind is enabled, production:false
+    assert surface["production"] is False
     assert surface["script"] == "platform/scripts/dispatch_v5_measuring_job.py"
     assert surface["fixed_args"] == ["--i-am-steward", "--after-settled-1", "--dry-run"]
     assert surface["allowed_args"] == ["run", "classes"]
