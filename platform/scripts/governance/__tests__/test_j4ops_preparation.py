@@ -272,6 +272,10 @@ def test_db_and_ephemeris_suites_run_by_glob_in_the_required_db_job():
     assert "GOCHARA_A53_REQUIRE_DB: '1'" in step
     assert 'export GOCHARA_SE1_REQUIRE=1' in step
     assert 'python -B -m pytest tests/l3/gochara/test_j4ops_*.py -q -rs -p no:cacheprovider' in step
+    # The glob is relative: the line must pin the sidecar directory itself, not rely on where the step's earlier
+    # lines leave the shell (main later appended `cd ..` to this step; the merge queue then ran it from platform/).
+    line = next(l for l in step.splitlines() if 'test_j4ops_*.py' in l and not l.lstrip().startswith('#'))
+    assert line.strip().startswith('(cd "$GITHUB_WORKSPACE/platform/python-sidecar" && python -B -m pytest')
     assert {p.name for p in (ROOT / 'platform/python-sidecar/tests/l3/gochara').glob('test_j4ops_*.py')} == {
         'test_j4ops_readback_db.py', 'test_j4ops_ephemeris_preflight.py'}
 

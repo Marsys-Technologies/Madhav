@@ -623,7 +623,8 @@ jobs:
           # it still runs in Governance Gates.
           # J4OPS: glob discovery in the existing mandatory DB/corpus step.
           # Fixture absence is fatal here; collection by the DB-free sidecar shard alone is insufficient.
-          python -B -m pytest tests/l3/gochara/test_j4ops_*.py -q -rs -p no:cacheprovider
+          # Pinned to the sidecar directory so the glob holds wherever earlier lines of this step leave the shell.
+          (cd "$GITHUB_WORKSPACE/platform/python-sidecar" && python -B -m pytest tests/l3/gochara/test_j4ops_*.py -q -rs -p no:cacheprovider)
 
       - name: K7-3 — stage readers before and after protected migration 1376
         if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'db-integration-tests-10-0'))) }}
