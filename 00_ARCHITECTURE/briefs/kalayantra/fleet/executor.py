@@ -40,6 +40,11 @@ Measuring cancel (SR-J3-CANCEL-NULL 2(a)): `measuring_cancel` cancels ONE runnin
 twice — the target execution must be the one named in the cited `measuring_dispatch` receipt (name + sha256, read back byte for byte) and an ABORT or stall
 verdict file must be cited the same way and say so. The receipt carries the execution state read back after the cancel; anything but CANCELLED is FAILED.
 Like a resume it is never held by the production fence (the dispatch it stops is what holds it). `measuring_cancel_dryrun` plans the calls and makes none.
+
+Served probe (SR-TEARDOWN-AUTHORITY-GATE item 3): the read-only `served_probe` kind GETs ONE URL, chosen by NAME from the fixed `probe_endpoints` object of its table
+entry (a name the table does not declare is refused at admission, before any process starts), sends no credential and follows no redirect, and records the HTTP
+status, content type, byte length and sha256 of the body — the body itself only for an endpoint declared `store_body: true` and only if it carries no personal data.
+A non-2xx answer, or a record that does not bind this operation, is a FAILED receipt; a 2xx one is accepted mechanically like `readback_sql` (fleet/served_probe.py).
 """
 from __future__ import annotations
 import concurrent.futures as cf, datetime as dt, fcntl, hashlib, json, os, pathlib, re, shutil, signal, subprocess, sys, tempfile, threading, time
@@ -68,6 +73,8 @@ SCHEDULER_ACTION = {"scheduler_readback": "readback", "scheduler_pause_dryrun": 
 SCHEDULER_STATES = ("ENABLED", "PAUSED", "DISABLED", "UPDATE_FAILED")   # google.cloud.scheduler.v1.Job.State values a record may report
 SCHEDULER_UTC = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|\+00:00)")
 SCHEDULER_BACKSTOP = OPS / "scheduler_backstop"
+PROBE_SCHEMA = "ky.served_probe/1"
+PROBE_SHA256 = re.compile(r"[0-9a-f]{64}")
 _lock = threading.Lock()
 
 
@@ -499,6 +506,45 @@ def measuring_cancel_proof(req: dict, rc: int | None, out: str) -> tuple[dict | 
     return rec, None
 
 
+def served_probe_problem(req: dict, op: dict) -> str | None:
+    """SR-TEARDOWN-AUTHORITY-GATE admission for `served_probe`, run at the tail of validate (so again immediately before execution): the endpoint NAME must
+    be a key of the fixed `probe_endpoints` object in the kind's own table entry. A request carries no URL, so there is nothing else to check."""
+    if req.get("kind") != "served_probe": return None
+    declared = op.get("probe_endpoints")
+    name = (req.get("args") or {}).get("endpoint")
+    if not (isinstance(declared, dict) and isinstance(name, str) and name in declared): return "endpoint is not on the served-probe allow-list in the operation table"
+    return None
+
+
+def served_probe_proof(req: dict, op: dict, rc: int | None, out: str) -> tuple[dict | None, str | None]:
+    """(record, problem) for a `served_probe`'s complete output. `record` is the ONE ky.served_probe/1 line when it names this operation, this request
+    digest and a declared endpoint with exactly its declared URL (else None); `problem` is None only when the answer was 2xx, the digest and length are
+    present, a stored body matches that digest and length, and a body is stored only where the table says it may be. An exit status alone proves nothing."""
+    found = []
+    for line in out.splitlines():
+        try: value = json.loads(line)
+        except ValueError: continue
+        if isinstance(value, dict) and value.get("schema") == PROBE_SCHEMA: found.append(value)
+    if len(found) != 1: return None, "probe record missing or not unique"
+    rec = found[0]
+    declared = (op.get("probe_endpoints") or {}).get((req.get("args") or {}).get("endpoint")) or {}
+    if (not declared or rec.get("endpoint") != (req.get("args") or {}).get("endpoint") or rec.get("url") != declared.get("url") or rec.get("method") != "GET"
+            or rec.get("operation_id") != req.get("operation_id") or rec.get("request_sha256") != request_digest(req)):
+        return None, "probe record does not bind this operation, request and declared endpoint"
+    code = rec.get("http_status")
+    if rc == 0 and rec.get("status") != "OK": return rec, f"probe record status is {rec.get('status')}, not OK"
+    if not (type(code) is int and 200 <= code < 300):
+        return rec, f"the served response is HTTP {code}, not 2xx" if type(code) is int else str(rec.get("reason") or "no HTTP status was read")
+    length, digest, body = rec.get("body_bytes"), rec.get("body_sha256"), rec.get("body")
+    if not (type(length) is int and length >= 0 and isinstance(digest, str) and PROBE_SHA256.fullmatch(digest)): return rec, "probe record lacks the body length and sha256"
+    if rec.get("credentials_sent") is not False: return rec, "probe record does not state that no credential was sent"
+    if body is not None:
+        if declared.get("store_body") is not True: return rec, "a body was stored for an endpoint declared digest-only"
+        raw = body.encode() if isinstance(body, str) else b""
+        if not isinstance(body, str) or len(raw) != length or hashlib.sha256(raw).hexdigest() != digest: return rec, "the stored body does not match its recorded length and sha256"
+    return rec, None
+
+
 def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str = "", extra: dict | None = None) -> None:
     name = req.get("operation_id") if SAFE_ID.match(str(req.get("operation_id", ""))) else "unknown"
     r = {"operation_id": req.get("operation_id"), "kind": req.get("kind"), "item_id": req.get("item_id"), "status": status, "reason": reason,
@@ -647,7 +693,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"): required.append("dry_run_passed")
         if any((a.get("checks") or {}).get(k) is not True for k in required): return "required backup/restore/dry-run attestation missing"
     if not reserved and seen(req["idempotency_key"]): return "idempotency key already used"
-    return smalltest_policy_problem(req) or scheduler_policy_problem(req) or measuring_cancel_problem(req)
+    return smalltest_policy_problem(req) or scheduler_policy_problem(req) or measuring_cancel_problem(req) or served_probe_problem(req, op)
 
 
 def lane_selected(req: dict) -> bool:
@@ -1116,8 +1162,10 @@ def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
         if proof is not None: extra["scheduler"] = proof        # the state read back AFTER the action, as the reviewed script measured it
         cancelled, cancel_problem = measuring_cancel_proof(req, rc, out) if extra is not None and req["kind"] in ("measuring_cancel", "measuring_cancel_dryrun") else (None, None)
         if cancelled is not None: extra["cancel"] = cancelled   # likewise: the execution state read back after the cancel (CANCELLED, or the observed state beside a FAILED receipt)
-        ok = rc == 0 and problem is None and cancel_problem is None
-        receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra)
+        probed, probe_problem = served_probe_proof(req, op, rc, out) if extra is not None and req["kind"] == "served_probe" else (None, None)
+        if probed is not None: extra["probe"] = probed          # SR-TEARDOWN-AUTHORITY-GATE: status, content type, length and sha256 of the served body (the body only where the table allows)
+        ok = rc == 0 and problem is None and cancel_problem is None and probe_problem is None
+        receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or probe_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra)
         if ok and req["kind"] == "scheduler_resume": scheduler_backstop_satisfy(req)
     except subprocess.TimeoutExpired as e:
         receipt(req, "FAILED", "timeout — the local process group was killed; a remote job may still be running: read the postconditions", 124, str(e))

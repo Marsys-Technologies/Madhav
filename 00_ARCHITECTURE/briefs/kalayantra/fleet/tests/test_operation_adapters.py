@@ -33,8 +33,9 @@ PROTECTED = [EXECUTOR_PY, OPS_FILE, DISPATCH_PY, PREFLIGHT_TS]
 P01_KINDS = {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch_dryrun",
              "smalltest_dispatch", "smalltest_teardown_dryrun", "smalltest_teardown"}
 SCHEDULER_KINDS = {"scheduler_readback", "scheduler_pause_dryrun", "scheduler_pause", "scheduler_resume_dryrun", "scheduler_resume", "measuring_cancel_dryrun", "measuring_cancel"}   # SR-J3-REAPER-PAUSE (+ SR-J3-CANCEL-NULL)
+PROBE_KINDS = {"served_probe"}   # SR-TEARDOWN-AUTHORITY-GATE item 3: read-only, production:false
 MEASURING_KINDS = {"measuring_dispatch_dryrun", "measuring_dispatch", "measuring_teardown_dryrun", "measuring_teardown"}   # J-3a
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS | MEASURING_KINDS | SCHEDULER_KINDS
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS | MEASURING_KINDS | SCHEDULER_KINDS | PROBE_KINDS
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 ITEM = "K9-FIXTURE"
 LEASE = "LEASE-KY-FIXTURE"
