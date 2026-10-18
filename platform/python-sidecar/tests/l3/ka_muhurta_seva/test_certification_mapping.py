@@ -254,16 +254,28 @@ def test_oracle_rejects_mutated_mapping_copy(evidence_copy, mutation):
 def test_mapping_runs_in_mandatory_governance_and_evaluator_ci():
     """Omitting this oracle from mandatory CI must be observable."""
     import yaml
-    jobs = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs']
+    jobs = _ci_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs']
     shard = jobs['governance-gates-py-sidecar-shard']
     runs = [step.get('run', '') for step in shard['steps']]
-    assert any('python -m pytest tests/l3/test_certification_validation.py' in run
+    assert any('tests/l3/test_certification_validation.py' in run
                and 'tests/l3/ka_muhurta_seva/test_certification_mapping.py' in run
                for run in runs)
     assert not shard.get('continue-on-error')
     aggregate = jobs['governance-gates']
-    assert 'governance-gates-py-sidecar-shard' in aggregate['needs']
+    assert 'full-suite' in aggregate['needs']
+    assert 'governance-gates-py-sidecar-shard' in jobs['full-suite']['needs']
     assert 'always()' in aggregate['if']
     assert not aggregate.get('continue-on-error')
     assert any('tests/l3/ka_muhurta_seva -q' in step.get('run', '')
                for step in jobs['kala-db-tests']['steps'])
+
+from pathlib import Path as _CiPath
+import sys as _ci_sys
+_ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[5] / 'platform/scripts/governance'))
+from ci_discovery import expanded_workflow as _ci_expanded
+
+def _ci_load(text):
+    import yaml
+    data = yaml.safe_load(text)
+    data['jobs'] = _ci_expanded(data['jobs'])
+    return data

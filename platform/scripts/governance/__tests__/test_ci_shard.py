@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import re
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -144,8 +145,8 @@ def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate_unless_docs_
     """N-98 A + the fast path: run the aggregate job's own script with each `needs.<shard>.result` and docs_only: only success, or skipped
     together with docs_only=true, may pass."""
     script = jobs["governance-tool-tests"]["steps"][0]["run"]
-    p = subprocess.run(["bash", "-c", script], env={"SHARDS_RESULT": result, "READBACK_RESULT": readback, "DOCS_ONLY": docs_only, "PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
-    ok = ok and (readback == "success" if result == "success" else readback == "skipped")
+    p = subprocess.run(["bash", "-c", script], env={**os.environ, "SHARDS_RESULT": result, "READBACK_RESULT": readback, "DOCS_ONLY": docs_only, "EVENT_NAME": "pull_request", "READBACK_EXPECTED": "false"}, capture_output=True, text=True)
+    ok = ok and (readback in ("success", "skipped") if result == "success" else readback == "skipped")
     assert (p.returncode == 0) is ok, (result, readback, docs_only, p.stdout, p.stderr)
     assert ("::error::" in p.stdout) is (not ok)
 
@@ -181,16 +182,17 @@ def test_verify_exits_nonzero_on_a_broken_partition(tmp_path):
 def test_tracker_suite_is_mandatory_in_governance_shards():
     import yaml
 
-    job = yaml.safe_load(CI.read_text())["jobs"]["governance-tool-tests-shard"]
+    from ci_discovery import expanded_workflow
+    job = expanded_workflow(yaml.safe_load(CI.read_text())["jobs"])["governance-tool-tests-shard"]
     tracker = [step for step in job["steps"]
-               if "python -m pytest platform/scripts/governance/pravaha_tracker/tests/test_verify_priority.py" in step.get("run", "")]
+               if "platform/scripts/governance/pravaha_tracker/tests/test_verify_priority.py" in step.get("run", "")]
     assert len(tracker) == 1, "tracker regressions must run in required governance CI"
     assert tracker[0].get("continue-on-error", False) is False
     assert tracker[0].get("if") == "matrix.shard == 1"
     assert tracker[0]["env"]["PYTHONPATH"] == "platform/scripts/governance"
     assert "-p no:cacheprovider" in tracker[0]["run"]
     assert "platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py" in tracker[0]["run"]
-    assert "test_kalayantra_control_plane.py::GuardedCompletionCases" in tracker[0]["run"]
+    assert "test_kalayantra_control_plane.py" in tracker[0]["run"]
     assert "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt_binding.py" in tracker[0]["run"]
 
 

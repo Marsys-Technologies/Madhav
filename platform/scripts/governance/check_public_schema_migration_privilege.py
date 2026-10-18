@@ -23,7 +23,7 @@ The migrate.ts sets are PARSED from migrate.ts (one source of truth); a parse fa
 
 Scope: files numbered > BASELINE_MAX_APPLIED (the highest number applied in production on 2026-10-08, pinned so
 historical files cannot fail), PLUS any migration file added/changed in the diff against the merge base with
-origin/main (or --base). Fix for a finding: add the filename to kala_protected_migrations.txt in the same PR
+origin/main (or --base). Fix for a finding: public-schema DDL is discovered automatically by kala_protected_migrations.py
 (see 00_ARCHITECTURE/briefs/kalayantra/KALA_PROTECTED_WINDOW_v1_0.md), or move the DDL out of schema public.
 
 Known limits (stated so the check cannot overclaim, CLAUDE.md §N.8): text inside string literals and dollar-quoted
@@ -180,7 +180,8 @@ def load_protected(repo_root: Path) -> set[str]:
     kala = repo_root / KALA_LIST
     if not kala.is_file():
         raise ValueError(f"{KALA_LIST} is missing")
-    names.update(parse_list_file(kala.read_text(encoding="utf-8")))
+    from kala_protected_migrations import derive
+    names.update(derive(repo_root))
     return names
 
 
@@ -261,8 +262,8 @@ def main(argv: list[str] | None = None) -> int:
         changed = set()
     findings = scan(args.repo_root, protected, changed)
     for f in findings:
-        print(f"::error::{f} — the routine migrator has no CREATE on schema public. Add the filename to {KALA_LIST} "
-              "in this PR (applied via `gh workflow run deploy.yml -f kala_schema_migration=true`) or keep the DDL out of public.")
+        print(f"::error::{f} — the routine migrator has no CREATE on schema public. Inspect automatic protected membership / explicit exclusions "
+              "for this migration (applied via `gh workflow run deploy.yml -f kala_schema_migration=true`) or keep the DDL out of public.")
     print(f"check_public_schema_migration_privilege: {len(findings)} finding(s) "
           f"(baseline > {BASELINE_MAX_APPLIED}, {len(changed)} changed migration file(s) in diff, {len(protected)} protected names)")
     return 1 if findings else 0

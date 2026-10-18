@@ -96,8 +96,9 @@ def test_dashboard_open_dependencies_equal_guarded_done_refusal(
 def test_cli_done_refusal_matches_dashboard_and_does_not_append(scenario, tmp_path, monkeypatch, capsys):
     model, events, detectors = scenario
     # Use local artifact evidence to exercise the real CLI without any network or GitHub call.
-    artifact = tmp_path / "proof.txt"
-    artifact.write_text("built")
+    # An operation receipt: D-46 defers a code/artifact item's open gates, an operation keeps strict ordering.
+    artifact = tmp_path / "receipt.json"
+    artifact.write_text("{}")
     model["items"][0]["detector"]["path"] = str(artifact)
     log = tmp_path / "EVENTS.jsonl"
     log.write_text("".join(json.dumps(event) + "\n" for event in events))
@@ -107,7 +108,8 @@ def test_cli_done_refusal_matches_dashboard_and_does_not_append(scenario, tmp_pa
     monkeypatch.setattr(cli, "get", lambda *args, **kwargs: (
         {"item": "K-BUILT", "detector": detectors["K-BUILT"]}, "live"))
     expected = ["D-GATE", "V-GATE", "JOIN-GATE", "K-INPUT"]
-    assert cli.main(["done", "K-BUILT", "--stream", "K", "--artifact-path", str(artifact)]) == 2
+    assert cli.main(["done", "K-BUILT", "--stream", "K", "--operation-receipt", str(artifact),
+                     "--operation-id", "op-1"]) == 2
     assert capsys.readouterr().err.strip() == "refused: dependencies remain open: " + ", ".join(expected)
     assert snapshot(scenario)[1]["K-BUILT"]["deps_open"] == expected
     assert log.read_bytes() == before

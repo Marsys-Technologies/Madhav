@@ -1,0 +1,55 @@
+{
+  "schema": "ky.scope_correction/1",
+  "status": "RECONCILIATION",
+  "corrections": [
+    {
+      "finding": "JGT-NB-01-R1",
+      "source_job": "X-20261016T005022Z-child-jgt-nb-01",
+      "original_result": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T005022Z-child-jgt-nb-01/result.json",
+      "original_result_sha256": "b028497ccb943e61840c5a2e07d2c9e544675919a1e5598dbc657f9de0f41948",
+      "original_out_of_owns": [],
+      "changed_paths": [
+        "platform/python-sidecar/tests/l3/kala_db/test_gochara_materializer_timeout.py"
+      ],
+      "child_owned_changed_paths": [],
+      "out_of_owns": [
+        {
+          "path": "platform/python-sidecar/tests/l3/kala_db/test_gochara_materializer_timeout.py",
+          "why": "Add the requested concurrency regression using the existing guarded mandatory CI suite."
+        }
+      ],
+      "rewrites_historical_result": false
+    },
+    {
+      "finding": "K64-NB-02-R01",
+      "source_job": "X-20261016T020912Z-child-k64-nb-02",
+      "original_result": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261016T020912Z-child-k64-nb-02/result.json",
+      "original_result_sha256": "109b3bdb39cb61525fc7e620637b966f41fbccf204323e576d8c90a5b4576bd8",
+      "original_out_of_owns": [],
+      "changed_paths": [
+        "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py",
+        "platform/python-sidecar/tests/l3/kala_db/ka_taranga/test_monthly.py",
+        "platform/src/generated/capability_estate_census.json",
+        "platform/src/generated/nirmana-writer-digests.json"
+      ],
+      "child_owned_changed_paths": [
+        "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py"
+      ],
+      "out_of_owns": [
+        {
+          "path": "platform/python-sidecar/tests/l3/kala_db/ka_taranga/test_monthly.py",
+          "why": "SQL regressions for unavailable judge counts while preserving integrals and provenance."
+        },
+        {
+          "path": "platform/src/generated/nirmana-writer-digests.json",
+          "why": "Historical child regenerated the modified writer inventory; this correction does not edit generated output."
+        },
+        {
+          "path": "platform/src/generated/capability_estate_census.json",
+          "why": "Historical child refreshed the writer inventory hash pin; this correction does not edit generated output."
+        }
+      ],
+      "rewrites_historical_result": false
+    }
+  ]
+}

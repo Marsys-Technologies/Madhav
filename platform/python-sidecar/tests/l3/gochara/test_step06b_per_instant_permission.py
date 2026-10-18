@@ -594,8 +594,8 @@ def test_step06a_chart_operands_are_title_cased_from_l1_codes():
 def test_step06a_read_contract_selects_one_settled_build_and_refuses_mixed_builds():
     mod = _load_step06a()
     rows = _l1_rows() + _l1_rows(build="other-build")
-    c = mod.select_dasha_read_contract(CHART["chart_id"], _l1_rows(build="ca17639b-f3cf-42c7-9866-0a61f3855802"))
-    assert c["build_id"] == "ca17639b-f3cf-42c7-9866-0a61f3855802"
+    c = mod.select_dasha_read_contract(CHART["chart_id"], _l1_rows(build="7377833e-5d3b-4e70-8bef-1318904f470e"))
+    assert c["build_id"] == "7377833e-5d3b-4e70-8bef-1318904f470e"
     with pytest.raises(DD.DashaReadConflict):
         mod.select_dasha_read_contract(CHART["chart_id"], rows)
     with pytest.raises(DD.DashaReadConflict, match="chart_not_settled"):
@@ -620,7 +620,7 @@ def _l1row(rid, level, parent, lord, start, end, *, build=BUILD, tier=TIER,
 
 def test_canonical_chart_accepts_a_rebuilt_population_but_refuses_absent_and_null_builds():
     mod = _load_step06a()
-    assert mod.select_dasha_read_contract(CHART["chart_id"], _l1_rows(build="ca17639b-f3cf-42c7-9866-0a61f3855802"))["build_id"] == "ca17639b-f3cf-42c7-9866-0a61f3855802"
+    assert mod.select_dasha_read_contract(CHART["chart_id"], _l1_rows(build="7377833e-5d3b-4e70-8bef-1318904f470e"))["build_id"] == "7377833e-5d3b-4e70-8bef-1318904f470e"
     with pytest.raises(DD.DashaReadConflict):
         mod.select_dasha_read_contract(CHART["chart_id"], [])
     with pytest.raises(DD.DashaReadConflict, match="dasha_build_null"):
@@ -830,7 +830,7 @@ def test_actual_main_path_pins_the_build_before_canonicalization():
     build predicate before duplicate handling. Mixed populations still refuse.
     """
     mod = _load_step06a()
-    settled = "ca17639b-f3cf-42c7-9866-0a61f3855802"
+    settled = "7377833e-5d3b-4e70-8bef-1318904f470e"
     foreign = [_l1row("md-foreign", 1, None, "Venus", "2005-01-01T00:00:00Z",
                       "2025-01-01T00:00:00Z", build="other-build")]
     conn = _DashaConn({settled: _l1_rows(build=settled)})
