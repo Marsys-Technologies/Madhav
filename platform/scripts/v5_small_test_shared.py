@@ -682,10 +682,31 @@ def absence_evidence(req, root, *, teardown_receipt=None):
 
 # J-2a SCOPED backup (backup_v5_small_test_job.py --scope small_test; spec fleet/J2A_SCOPED_BACKUP_v1_0.md).
 # The digest is the reviewed scope file's (backup_v5_small_test_scope.json) and is pinned HERE because the executor
-# loads this module alone, from the reviewed commit; a test ties the pin to the file. The window is how long a scoped
-# backup stays a valid pre-test record: outside it the dispatch requires a fresh backup + restore proof.
+# loads this module alone, from the reviewed commit; a test ties the pin to the file.
+# SR-BACKUP-VALIDITY-A8 (A8 §3): a scoped backup stays a valid pre-test record exactly while the content digest of its
+# scoped relations is unchanged: the digest recorded at capture equals a fresh read-only measurement of the same
+# relations, and its restore proof is verified. There is no clock. SCOPED_BACKUP_VALIDITY_S is now the window of the
+# FULL-form (/1) proof only (full_backup_window_problem); an old scoped capture's `validity.not_after` stays readable
+# and is never a gate.
 SCOPED_BACKUP_SCOPE_SHA256 = "489330948aecf7b6fdaa52d00a8f8fa8735e4ed1dcd27a14ee957bd43c07b528"
 SCOPED_BACKUP_VALIDITY_S = 4 * 3600
+SCOPED_MEASUREMENT_METHOD = 'sql_sum_sha256_rowjson/1'
+
+
+def scoped_content_digest(measurements):
+    """THE scoped-content digest: SHA-256 over the canonical JSON of a scoped measurement (per-table row count and
+    content hash, per-sequence state) and the method that produced it. The capture records it from its snapshot
+    measurement, the dispatch check compares it to a fresh measurement of the same relations: one implementation, so
+    the two can never be computed differently. Raises ValueError for anything that is not a measurement."""
+    import hashlib
+    import json
+    if (not isinstance(measurements, dict) or set(measurements) != {'tables', 'sequences'}
+            or not isinstance(measurements['tables'], dict) or not measurements['tables']
+            or not isinstance(measurements['sequences'], dict)):
+        raise ValueError('not a scoped measurement')
+    body = json.dumps({'method': SCOPED_MEASUREMENT_METHOD, 'tables': measurements['tables'],
+                       'sequences': measurements['sequences']}, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(body.encode()).hexdigest()
 
 
 def full_backup_window_problem(proof, label, folder, root, now=None):
@@ -710,21 +731,26 @@ def full_backup_window_problem(proof, label, folder, root, now=None):
         raise Refused('backup is outside its validity window; a fresh backup and restore proof are required')
 
 
-def scoped_backup_problem(req, root, now=None):
+def scoped_backup_problem(req, root, now=None, measure=None):
     """A `smalltest_dispatch` MUST name its backup (`backup_label` + the restore proof's `backup_restore_sha256`), and
-    that proof must be taken no more than SCOPED_BACKUP_VALIDITY_S ago (SR-J2A-BACKUP-SCOPE condition 4). A scoped proof
-    (schema /2) must be a verified proof of the pinned scope; a full proof (schema /1) is accepted only with the same
-    window, measured from its capture receipt's `ts`. Raises Refused.
+    that backup must still describe the database (SR-BACKUP-VALIDITY-A8): its restore proof is a verified proof of the
+    pinned scope, bound to its capture, and the scoped-content digest recorded at capture equals the digest of a fresh
+    measurement of the same relations. A scoped proof (schema /2) is checked that way; a full proof (schema /1) is
+    accepted only with its 4 h window, measured from its capture receipt's `ts`. Raises Refused.
 
-    (I) INTERPRETATION J2A-S2 (replaces the earlier opt-in reading): no label, no restore-proof digest, or a /1 proof
-    without a readable timestamp is refused, never silently allowed. (I) INTERPRETATION J2A-S4: the /1 capture has no
-    snapshot instant, so its window starts at the capture receipt's `ts`, written after the dump; alternative: refuse
-    every /1 proof."""
+    `measure(tables, sequences) -> {'tables': ..., 'sequences': ...}` is a read-only measurement of those relations as
+    the capture measured them (backup_v5_small_test_job.measure_scope_now). Without it (the executor's admission,
+    which has no database) every recorded-evidence check still runs and the fresh comparison is left to the dispatch
+    script, which re-runs this policy with a measure at `--execute`. A measure that fails refuses; it never admits.
+
+    (I) INTERPRETATION J2A-S2: no label, no restore-proof digest, or a /1 proof without a readable timestamp is
+    refused, never silently allowed. (I) INTERPRETATION J2A-S4: the /1 capture has no snapshot instant, so its window
+    starts at the capture receipt's `ts`, written after the dump; alternative: refuse every /1 proof."""
     label = req.get('backup_label')
     if label is None or req.get('backup_restore_sha256') is None:
         raise Refused('a dispatch must name its backup_label and backup_restore_sha256; run a fresh backup and restore proof')
     import re
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timezone
     if not isinstance(label, str) or not re.fullmatch(r'[a-z][a-z0-9_]{2,39}', label):
         raise Refused('backup label malformed')
     folder = 'backups/' + label
@@ -742,24 +768,43 @@ def scoped_backup_problem(req, root, now=None):
     window = capture.get('validity') or {}
     try:
         start = datetime.fromisoformat(window['not_before'])
-        end = datetime.fromisoformat(window['not_after'])
         taken = datetime.fromisoformat(proof['ts'])
-        if (start.tzinfo is None or end.tzinfo is None or taken.tzinfo is None
-                or end - start != timedelta(seconds=SCOPED_BACKUP_VALIDITY_S) or window.get('seconds') != SCOPED_BACKUP_VALIDITY_S):
+        if start.tzinfo is None or taken.tzinfo is None:
             raise ValueError()
     except (KeyError, TypeError, ValueError):
-        raise Refused('scoped backup validity window missing or malformed') from None
+        raise Refused('scoped backup capture instant missing or malformed') from None
     if (capture.get('schema') != 'ky.smalltest_backup/2' or capture.get('label') != label
             or scope.get('sha256') != SCOPED_BACKUP_SCOPE_SHA256 or capture.get('archive_sha256') != proof.get('archive_sha256')
             or proof.get('validity') != window):
         raise Refused('scoped backup restore proof does not match its capture')
     instant = now or datetime.now(timezone.utc)
-    if not start <= taken <= instant <= end:
-        raise Refused('scoped backup is outside its validity window; a fresh backup and restore proof are required')
+    if not start <= taken <= instant:
+        raise Refused('scoped backup restore proof predates its capture or lies in the future')
+    # the content the backup describes: recorded at capture, re-proven by the restore, compared with the database now
+    try:
+        recorded = scoped_content_digest(capture.get('measurements'))
+        restored = scoped_content_digest(proof.get('measurements'))
+    except ValueError:
+        raise Refused('scoped backup records no scoped content measurements') from None
+    if capture.get('measurement_method') != SCOPED_MEASUREMENT_METHOD:
+        raise Refused('scoped backup measurement method differs')
+    if 'scoped_content_digest' in capture and capture['scoped_content_digest'] != recorded:
+        raise Refused('scoped backup digest differs from its recorded measurements')
+    if restored != recorded:
+        raise Refused('scoped backup restore proof measured content other than the capture recorded')
+    if measure is not None:
+        try:
+            fresh = scoped_content_digest(measure(sorted(capture['measurements']['tables']),
+                                                  sorted(capture['measurements']['sequences'])))
+        except Exception:
+            raise Refused('scoped content could not be measured now; the backup is not shown to be valid') from None
+        if fresh != recorded:
+            raise Refused('scoped content has changed since the backup was captured; a fresh backup and restore proof are required')
 
 
-def smalltest_request_problem(req, root):
-    """Pure file evidence admission; used from the reviewed source by executor."""
+def smalltest_request_problem(req, root, measure=None):
+    """File evidence admission; used from the reviewed source by executor (no `measure`: no database) and by the
+    dispatch script at `--execute` (with `measure`, see scoped_backup_problem)."""
     try:
         kind = req.get('kind')
         if kind in ('smalltest_dispatch', 'smalltest_dispatch_dryrun'):
@@ -781,7 +826,7 @@ def smalltest_request_problem(req, root):
                     raise Refused('annual small test requires timezone-qualified bounds of at most 366 days') from None
             if kind == 'smalltest_dispatch':
                 absence_evidence(req, root)
-                scoped_backup_problem(req, root)
+                scoped_backup_problem(req, root, measure=measure)
         elif kind in ('smalltest_teardown', 'smalltest_teardown_dryrun'):
             scope = staged_scope(req, root)
             if kind == 'smalltest_teardown':

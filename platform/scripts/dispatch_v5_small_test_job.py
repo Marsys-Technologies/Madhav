@@ -507,12 +507,21 @@ def _admit(cur) -> tuple[list[dict], list[str]]:
     return existing, notes
 
 
+def _smalltest_request_policy(req, root):
+    """The small-test evidence policy with its fresh, read-only scoped-content measurement (SR-BACKUP-VALIDITY-A8): a
+    named scoped backup admits this dispatch only while the database's scoped content still has the digest the backup
+    recorded. The executor's own admission has no database and checks the recorded evidence alone; this is the check
+    that reads the database, at --execute and before anything is staged."""
+    import backup_v5_small_test_job as backup
+    return shared.smalltest_request_problem(req, root, measure=backup.measure_scope_now)
+
+
 def main(argv: list[str] | None = None) -> None:
     return _main(argv)
 
 
 def _main(argv=None, *, marker_builder=build_slice_marker,
-          operation_kind="smalltest_dispatch", request_policy=shared.smalltest_request_problem,
+          operation_kind="smalltest_dispatch", request_policy=_smalltest_request_policy,
           manifest_check=None):
     """Shared staging transaction; explicit measuring entry point supplies its policy.
 

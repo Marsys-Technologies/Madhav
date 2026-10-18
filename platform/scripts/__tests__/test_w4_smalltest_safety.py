@@ -46,6 +46,14 @@ import hashlib
 import importlib.util
 from types import SimpleNamespace
 import smalltest_safety_support as S
+
+
+@pytest.fixture(autouse=True)
+def _scoped_content_unchanged(monkeypatch):
+    """These tests stage a dispatch against a fake database; the fresh scoped-content measurement is not their subject
+    (it is proved in test_backup_v5_small_test_scoped.py and the kala_db suite)."""
+    import backup_v5_small_test_job
+    monkeypatch.setattr(backup_v5_small_test_job, 'measure_scope_now', S.fixture_measure)
 import v5_small_test_shared as shared
 
 ROOT = Path(__file__).resolve().parents[3]

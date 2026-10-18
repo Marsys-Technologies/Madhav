@@ -5,7 +5,8 @@ One oracle per production claim (testing standard D-OWNER-TESTS-20261016):
   C2 the scope digest the dispatch policy trusts is the reviewed file's;
   C3 trigger write targets are read from the catalog's function bodies (real bodies from the migrations);
   C4 the capture receipt is bound to the reviewed scope, the archive's file hashes and its validity window;
-  C5 a backup outside its validity window (or of another scope, or tampered) cannot admit a dispatch;
+  C5 a scoped backup admits a dispatch exactly while its scoped-content digest is unchanged (SR-BACKUP-VALIDITY-A8: no
+     clock; another scope, a tampered record or a changed row cannot admit);
   C6 scope and receipt generation cannot be crossed (scoped receipt under full, full receipt under scoped);
   C7 the executor can request the scope, and the plan states it without side effects.
 The real pg_dump / pg_restore / SQL-measurement claims are in
@@ -133,17 +134,16 @@ def receipt_and_archive(backup, tmp_path):
     manifest = backup.archive_manifest(archive)
     sc = backup.load_scope()
     start = datetime.now(timezone.utc)
-    window = timedelta(seconds=backup.scoped_validity_seconds())
+    measured = {'tables': {t: {'rows': 0, 'sha256': 'a' * 64} for t in sc['tables']},
+                'sequences': {'public.s_seq': {'last_value': 1, 'is_called': False}}}
     receipt = {'schema': 'ky.smalltest_backup/2', 'status': 'captured', 'label': 'p02_fixture',
                'snapshot': '00000003-0000001B-1', 'source': {'database': 'fixture_source', 'address': '192.0.2.1', 'port': 5432},
                'archive_sha256': manifest['sha256'], 'archive': {'format': 'directory', 'files': manifest['files']},
-               'measurements': {'tables': {t: {'rows': 0, 'sha256': 'a' * 64} for t in sc['tables']},
-                                'sequences': {'public.s_seq': {'last_value': 1, 'is_called': False}}},
+               'measurements': measured, 'scoped_content_digest': backup.shared_policy.scoped_content_digest(measured),
                'measurement_method': backup.SCOPED_MEASUREMENT_METHOD,
                'scope': {'name': sc['name'], 'sha256': sc['sha256'], 'tables': list(sc['tables']), 'closure': [],
                          'sequences': ['public.s_seq'], 'data_bytes': 0, 'dump_excludes': []},
-               'validity': {'not_before': start.isoformat(), 'not_after': (start + window).isoformat(),
-                            'seconds': int(window.total_seconds())}}
+               'validity': {'not_before': start.isoformat(), 'basis': 'scoped_content_digest_unchanged'}}
     return receipt, archive
 
 
@@ -157,9 +157,9 @@ def test_a_well_formed_scoped_capture_validates(backup, receipt_and_archive):
     ('closure_inconsistent', 'differs from the reviewed scope'),
     ('file_tampered', 'file hashes differ'),
     ('file_added', 'file hashes differ'),
-    ('window_shortened', 'validity window'),
-    ('window_naive_clock', 'validity window'),
-    ('window_missing', 'validity window'),
+    ('window_naive_clock', 'capture instant'),
+    ('window_missing', 'capture instant'),
+    ('digest_tampered', 'scoped-content digest differs'),
     ('method_changed', 'measurement method'),
     ('table_not_measured', 'measured relations differ'),
     ('label', 'label differs'),
@@ -175,9 +175,8 @@ def test_scoped_capture_refuses_anything_not_bound_to_the_reviewed_scope_files_a
         (archive / '1.dat.gz').write_bytes(b'ROWS')
     elif mutation == 'file_added':
         (archive / 'extra.dat.gz').write_bytes(b'x')
-    elif mutation == 'window_shortened':
-        start = datetime.fromisoformat(receipt['validity']['not_before'])
-        receipt['validity'].update(not_after=(start + timedelta(hours=40)).isoformat(), seconds=40 * 3600)
+    elif mutation == 'digest_tampered':
+        receipt['measurements']['tables'][next(iter(receipt['measurements']['tables']))]['rows'] = 7
     elif mutation == 'window_naive_clock':
         receipt['validity']['not_before'] = receipt['validity']['not_before'][:19]
     elif mutation == 'window_missing':
@@ -192,6 +191,15 @@ def test_scoped_capture_refuses_anything_not_bound_to_the_reviewed_scope_files_a
         receipt['snapshot'] = 'this is not an exported PostgreSQL snapshot'
     with pytest.raises(backup.BackupRefused, match=reason):
         backup.validate_scoped_capture(receipt, archive, 'p02_fixture')
+
+
+def test_an_older_capture_with_an_expired_not_after_still_validates_and_the_field_is_never_a_gate(backup, receipt_and_archive):
+    """SR-BACKUP-VALIDITY-A8: not_after / seconds from the 4 h era stay readable; an expired one does not refuse."""
+    receipt, archive = receipt_and_archive
+    start = datetime.fromisoformat(receipt['validity']['not_before']) - timedelta(days=3)
+    receipt['validity'] = {'not_before': start.isoformat(), 'not_after': (start + timedelta(hours=4)).isoformat(), 'seconds': 4 * 3600}
+    del receipt['scoped_content_digest']                                    # captures of that era carry no separate digest
+    assert backup.validate_scoped_capture(receipt, archive, 'p02_fixture') == receipt['measurements']
 
 
 def test_dump_names_exactly_the_data_set_one_quoted_table_each_and_nothing_else(backup):
@@ -282,20 +290,42 @@ def test_a_ledger_migration_the_repository_cannot_reproduce_exactly_refuses_the_
 
 # ---- C5: the validity window gates the dispatch ------------------------------------------------------------------------
 
-def write_evidence(root, shared, *, label='p02_win', scope_sha=None, started=None, ts=None, tamper=None, proof_schema='ky.smalltest_restore/2'):
+MEASURED = {'tables': {'public.a': {'rows': 3, 'sha256': 'a' * 64}, 'public.b': {'rows': 0, 'sha256': 'b' * 64}},
+            'sequences': {'public.a_id_seq': {'last_value': 3, 'is_called': True}}}
+
+
+def now_measure(changed=None):
+    """What a fresh read-only measurement of the recorded relations returns: the same content, or one changed table."""
+    seen = []
+
+    def measure(tables, sequences):
+        seen.append((tables, sequences))
+        out = json.loads(json.dumps(MEASURED))
+        if changed:
+            out['tables'][changed]['sha256'] = 'c' * 64                  # one row of one table differs
+        return out
+    measure.seen = seen
+    return measure
+
+
+def write_evidence(root, shared, *, label='p02_win', scope_sha=None, started=None, ts=None, tamper=None, proof_schema='ky.smalltest_restore/2',
+                   legacy_window=False, proof_measured=None, capture_digest=None):
     started = started or datetime.now(timezone.utc) - timedelta(minutes=30)
-    window = timedelta(seconds=shared.SCOPED_BACKUP_VALIDITY_S)
     folder = root / 'backups' / label
     folder.mkdir(parents=True)
+    validity = {'not_before': started.isoformat(), 'basis': 'scoped_content_digest_unchanged'}
+    if legacy_window:                                                    # the 4 h era: a window that has long expired
+        validity = {'not_before': started.isoformat(), 'not_after': (started + timedelta(hours=4)).isoformat(), 'seconds': 4 * 3600}
     capture = {'schema': 'ky.smalltest_backup/2', 'label': label, 'archive_sha256': 'b' * 64,
                'scope': {'sha256': scope_sha or shared.SCOPED_BACKUP_SCOPE_SHA256},
-               'validity': {'not_before': started.isoformat(), 'not_after': (started + window).isoformat(),
-                            'seconds': shared.SCOPED_BACKUP_VALIDITY_S}}
+               'measurements': MEASURED, 'measurement_method': shared.SCOPED_MEASUREMENT_METHOD, 'validity': validity}
+    if not legacy_window:
+        capture['scoped_content_digest'] = capture_digest or shared.scoped_content_digest(MEASURED)
     (folder / 'capture.json').write_text(json.dumps(capture))
     proof = {'schema': proof_schema, 'label': label, 'status': 'verified', 'scoped': True, 'restore_verified': True,
              'backup_taken': True, 'target_removed': True, 'scope_sha256': scope_sha or shared.SCOPED_BACKUP_SCOPE_SHA256,
              'archive_sha256': 'b' * 64, 'capture_sha256': hashlib.sha256((folder / 'capture.json').read_bytes()).hexdigest(),
-             'validity': capture['validity'], 'ts': (ts or started + timedelta(minutes=10)).isoformat()}
+             'measurements': proof_measured or MEASURED, 'validity': validity, 'ts': (ts or started + timedelta(minutes=10)).isoformat()}
     if tamper:
         proof.update(tamper)
     (folder / 'restore.json').write_text(json.dumps(proof))
@@ -303,15 +333,49 @@ def write_evidence(root, shared, *, label='p02_win', scope_sha=None, started=Non
     return {'backup_label': label, 'backup_restore_sha256': digest}
 
 
-def test_dispatch_naming_a_valid_scoped_backup_inside_its_window_is_admitted(shared, tmp_path):
+def test_dispatch_naming_a_valid_scoped_backup_with_unchanged_content_is_admitted(shared, tmp_path):
     req = write_evidence(tmp_path, shared)
-    shared.scoped_backup_problem(req, tmp_path)
+    measure = now_measure()
+    shared.scoped_backup_problem(req, tmp_path, measure=measure)
+    assert measure.seen == [(['public.a', 'public.b'], ['public.a_id_seq'])]       # the recorded relations, nothing else
 
 
-def test_dispatch_after_the_window_requires_a_fresh_backup(shared, tmp_path):
-    req = write_evidence(tmp_path, shared, started=datetime.now(timezone.utc) - timedelta(seconds=shared.SCOPED_BACKUP_VALIDITY_S + 60))
-    with pytest.raises(shared.Refused, match='outside its validity window'):
-        shared.scoped_backup_problem(req, tmp_path)
+@pytest.mark.parametrize('legacy_window', [False, True])
+def test_an_unchanged_scope_reads_valid_hours_and_days_later(shared, tmp_path, legacy_window):
+    """SR-BACKUP-VALIDITY-A8: no clock. Captured nine hours ago (past the old 4 h) and read three days later, with the
+    expired not_after of an older capture left in place, the backup is still valid while the content digest is equal."""
+    started = datetime.now(timezone.utc) - timedelta(hours=9)
+    req = write_evidence(tmp_path, shared, started=started, legacy_window=legacy_window)
+    shared.scoped_backup_problem(req, tmp_path, now=started + timedelta(hours=9), measure=now_measure())
+    shared.scoped_backup_problem(req, tmp_path, now=started + timedelta(days=3), measure=now_measure())
+
+
+def test_one_changed_row_in_scope_makes_the_backup_invalid(shared, tmp_path):
+    req = write_evidence(tmp_path, shared)
+    with pytest.raises(shared.Refused, match='content has changed since the backup'):
+        shared.scoped_backup_problem(req, tmp_path, measure=now_measure(changed='public.b'))
+
+
+def test_a_backup_that_cannot_be_measured_now_is_refused_never_assumed_valid(shared, tmp_path):
+    req = write_evidence(tmp_path, shared)
+
+    def broken(tables, sequences):
+        raise RuntimeError('permission denied for table b')
+    with pytest.raises(shared.Refused, match='could not be measured now'):
+        shared.scoped_backup_problem(req, tmp_path, measure=broken)
+
+
+def test_executor_admission_without_a_database_checks_the_recorded_evidence_and_leaves_the_fresh_read_to_the_dispatch(shared, tmp_path):
+    shared.scoped_backup_problem(write_evidence(tmp_path / 'ok', shared), tmp_path / 'ok')
+    bad = write_evidence(tmp_path / 'bad', shared, proof_measured={'tables': MEASURED['tables'], 'sequences': {}})
+    with pytest.raises(shared.Refused, match='measured content other than the capture recorded'):
+        shared.scoped_backup_problem(bad, tmp_path / 'bad')
+
+
+def test_a_capture_whose_digest_is_not_its_measurements_digest_is_refused(shared, tmp_path):
+    req = write_evidence(tmp_path, shared, capture_digest='0' * 64)
+    with pytest.raises(shared.Refused, match='digest differs from its recorded measurements'):
+        shared.scoped_backup_problem(req, tmp_path, measure=now_measure())
 
 
 @pytest.mark.parametrize('fault,reason', [
@@ -319,7 +383,7 @@ def test_dispatch_after_the_window_requires_a_fresh_backup(shared, tmp_path):
     ('proof_edited_after_review', 'digest mismatch'),
     ('proof_not_from_the_restore', 'not a verified proof'),
     ('capture_swapped', 'does not match its capture|digest mismatch'),
-    ('proof_before_window', 'outside its validity window'),
+    ('proof_before_window', 'predates its capture'),
 ])
 def test_dispatch_refuses_a_scoped_backup_that_is_not_the_reviewed_scope_or_not_the_evidence_reviewed(shared, tmp_path, fault, reason):
     if fault == 'other_scope':
@@ -343,11 +407,12 @@ def test_dispatch_refuses_a_scoped_backup_that_is_not_the_reviewed_scope_or_not_
 def test_request_policy_applies_the_window_to_a_dispatch_that_names_a_backup(shared, tmp_path, monkeypatch):
     seen = []
     monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)
-    monkeypatch.setattr(shared, 'scoped_backup_problem', lambda req, root: seen.append(req.get('backup_label')) or (_ for _ in ()).throw(
+    monkeypatch.setattr(shared, 'scoped_backup_problem', lambda req, root, **kw: seen.append((req.get('backup_label'), kw.get('measure'))) or (_ for _ in ()).throw(
         shared.Refused('stale')))
     req = {'kind': 'smalltest_dispatch', 'args': {'run': 'one_class_full', 'classes': 'marriage'}, 'backup_label': 'p02_win'}
     assert shared.smalltest_request_problem(req, tmp_path) == 'stale'
-    assert seen == ['p02_win']
+    assert shared.smalltest_request_problem(req, tmp_path, measure=now_measure) == 'stale'
+    assert seen == [('p02_win', None), ('p02_win', now_measure)]
     seen.clear()
     assert shared.smalltest_request_problem(dict(req, kind='smalltest_dispatch_dryrun'), tmp_path) is None and not seen
 
@@ -380,11 +445,12 @@ def test_dispatch_without_a_named_backup_is_refused_even_when_no_backup_exists_t
         assert 'must name its backup' in dispatch_problem(shared, tmp_path, monkeypatch, **backup), backup
 
 
-def test_dispatch_naming_a_stale_scoped_backup_is_refused_and_a_fresh_one_admitted(shared, tmp_path, monkeypatch):
-    stale = write_evidence(tmp_path / 'stale', shared, started=datetime.now(timezone.utc) - timedelta(hours=9))
-    fresh = write_evidence(tmp_path / 'fresh', shared)
-    assert 'outside its validity window' in dispatch_problem(shared, tmp_path / 'stale', monkeypatch, **stale)
-    assert dispatch_problem(shared, tmp_path / 'fresh', monkeypatch, **fresh) is None
+def test_dispatch_policy_admits_a_nine_hour_old_scoped_backup_while_its_content_is_unchanged_and_refuses_it_after_a_change(shared, tmp_path, monkeypatch):
+    old = write_evidence(tmp_path, shared, started=datetime.now(timezone.utc) - timedelta(hours=9))
+    monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)
+    req = {'kind': 'smalltest_dispatch', 'args': {'run': 'one_class_full', 'classes': 'marriage'}, **old}
+    assert shared.smalltest_request_problem(req, tmp_path, measure=now_measure()) is None
+    assert 'content has changed' in shared.smalltest_request_problem(req, tmp_path, measure=now_measure(changed='public.a'))
 
 
 def test_a_full_backup_proof_is_admitted_only_inside_the_same_window(shared, tmp_path, monkeypatch):
@@ -422,12 +488,12 @@ def test_full_receipt_cannot_be_restored_as_scoped_and_scoped_receipt_cannot_be_
         assert not (folder / 'restore.json').exists()
 
 
-def test_scoped_plan_states_scope_digest_and_window_and_touches_nothing(backup, shared, tmp_path, monkeypatch, capsys):
+def test_scoped_plan_states_scope_digest_and_validity_basis_and_touches_nothing(backup, shared, tmp_path, monkeypatch, capsys):
     monkeypatch.setenv('KY_ROOT', str(tmp_path))
     assert backup.main(['--operation', 'snapshot', '--label', 'p02_plan', '--scope', 'small_test', '--dry-run']) == 0
     plan = json.loads(capsys.readouterr().out)
     assert plan['scope'] == 'small_test' and plan['scope_sha256'] == shared.SCOPED_BACKUP_SCOPE_SHA256
-    assert plan['validity_seconds'] == shared.SCOPED_BACKUP_VALIDITY_S and plan['backup_taken'] is None
+    assert plan['validity_basis'] == 'scoped_content_digest_unchanged' and 'validity_seconds' not in plan and plan['backup_taken'] is None
     assert list(tmp_path.iterdir()) == []
     assert backup.main(['--operation', 'snapshot', '--label', 'p02_plan', '--dry-run']) == 0
     assert 'scope' not in json.loads(capsys.readouterr().out)
