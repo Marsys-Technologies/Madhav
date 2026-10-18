@@ -199,12 +199,35 @@ def validate_candidate_manifest(manifest):
     return vector
 
 
+def assemble_candidate(*, chart_id, generation, run_id, source_commit, stretch_sink,
+                       manifests, sealed_count, published_count, contacts, records, windows):
+    """Every refusal and the bundle, from already-read rows (no connection).
+
+    Shared by read_candidate (live snapshot) and the offline readback reassembler.
+    """
+    if len(manifests) != 1:
+        raise CaptureRefused("measuring_manifest_missing" if not manifests else "measuring_manifest_ambiguous")
+    manifest = manifests[0]
+    vector = validate_candidate_manifest(manifest)
+    if sealed_count:
+        raise CaptureRefused("measuring_build_sealed")
+    if published_count:
+        raise CaptureRefused("measuring_build_published")
+    return make_bundle(binding={"chart_id": str(chart_id), "generation": generation, "run_id": run_id,
+                                "manifest_id": str(manifest["manifest_id"]), "source_commit": source_commit},
+                       contacts=contacts, records=records, windows=windows, horizon_basis=vector["horizon_basis"],
+                       stretch_sink=stretch_sink,
+                       informational={"input_vector": vector, "horizon": [manifest["lo"], manifest["hi"]],
+                                      "candidate_status": manifest["status"]})
+
+
 def read_candidate(conn, *, chart_id, generation, run_id, source_commit, stretch_sink):
     """Read one snapshot. Caller supplies exported log records and source claim.
 
     The caller's run ID and declared commit are recorded, not independently
     attested. Runtime/log and sink verification belong to verifier B, not this
-    exporter. All candidate-table reads are chart AND generation scoped.
+    exporter. All candidate-table reads are chart AND generation scoped. Every
+    table is read before any refusal, so one snapshot feeds assemble_candidate.
     """
     from psycopg.pq import TransactionStatus
 
@@ -217,15 +240,8 @@ def read_candidate(conn, *, chart_id, generation, run_id, source_commit, stretch
     pair = (chart_id, generation)
     manifests = _rows(conn, "SELECT manifest_id, status, input_generation_vector, lower(horizon) AS lo, upper(horizon) AS hi"
                       " FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", pair)
-    if len(manifests) != 1:
-        raise CaptureRefused("measuring_manifest_missing" if not manifests else "measuring_manifest_ambiguous")
-    manifest = manifests[0]
-    vector = validate_candidate_manifest(manifest)
-    if conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal WHERE chart_id = %s AND generation = %s", pair).fetchone()[0]:
-        raise CaptureRefused("measuring_build_sealed")
-    if conn.execute("SELECT count(*) FROM public.kala_gochara_authority WHERE chart_id = %s AND authoritative_generation = %s", pair).fetchone()[0]:
-        raise CaptureRefused("measuring_build_published")
-    basis = vector["horizon_basis"]
+    sealed = conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal WHERE chart_id = %s AND generation = %s", pair).fetchone()[0]
+    published = conn.execute("SELECT count(*) FROM public.kala_gochara_authority WHERE chart_id = %s AND authoritative_generation = %s", pair).fetchone()[0]
     contacts = _rows(conn, "SELECT c.contact_id, c.body, c.relation_kind, o.canonical_target, c.t_in, c.t_out, c.t_exact, c.delta_lambda"
                      " FROM public.ka_gochara_contact c JOIN public.ka_gochara_physical_object o"
                      " ON o.physical_object_id = c.physical_object_id WHERE c.chart_id = %s AND c.generation = %s", pair)
@@ -235,8 +251,6 @@ def read_candidate(conn, *, chart_id, generation, run_id, source_commit, stretch
                     " FROM public.ka_gochara_relationship_record r WHERE r.chart_id = %s AND r.generation = %s", pair)
     windows = _rows(conn, "SELECT event_class, path_id, rule_version, lower(interval) AS lo, upper(interval) AS hi"
                     " FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s", pair)
-    return make_bundle(binding={"chart_id": str(chart_id), "generation": generation, "run_id": run_id,
-                                "manifest_id": str(manifest["manifest_id"]), "source_commit": source_commit},
-                       contacts=contacts, records=records, windows=windows, horizon_basis=basis, stretch_sink=stretch_sink,
-                       informational={"input_vector": vector, "horizon": [manifest["lo"], manifest["hi"]],
-                                      "candidate_status": manifest["status"]})
+    return assemble_candidate(chart_id=chart_id, generation=generation, run_id=run_id, source_commit=source_commit,
+                              stretch_sink=stretch_sink, manifests=manifests, sealed_count=sealed, published_count=published,
+                              contacts=contacts, records=records, windows=windows)

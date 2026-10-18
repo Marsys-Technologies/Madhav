@@ -31,15 +31,26 @@ def newer_build(db, chart=OTHER_CHART, fixture=True):
 @pytest.mark.parametrize('chart,fixture', [(OTHER_CHART, True), (CHART, True), (CHART, False)])
 def test_newer_build_cannot_mask_corrupted_candidate(db, asset, chart, fixture):
     WRITERS[ASSETS.index(asset)]().run(ctx(db))
+    sql = check_sql(db, asset)
+    assert db.execute(sql).fetchone()[0] is True, 'healthy candidate integrity must succeed before corruption'
     table = MODELS[asset][0]
     db.execute(f"UPDATE {table} SET payload=jsonb_set(payload,'{{acceptance_scope}}','\"admitted\"') "
                'WHERE chart_id=%s AND generation=%s', (CHART, GEN))
-    sql = check_sql(db, asset)
     assert db.execute(sql).fetchone()[0] is False
     newer_build(db, chart, fixture)
     assert db.execute(f"SELECT count(*) FROM {table} WHERE chart_id=%s AND generation=%s "
                       "AND payload->>'acceptance_scope'='admitted'", (CHART, GEN)).fetchone()[0] > 0
     assert db.execute(sql).fetchone()[0] is False
+
+
+@pytest.mark.parametrize('asset', ASSETS)
+@pytest.mark.parametrize('chart,fixture', [(OTHER_CHART, True), (CHART, True), (CHART, False)])
+def test_masking_cases_detect_missing_integrity_binding(db, asset, chart, fixture, monkeypatch):
+    """The masking oracle must kill a no-op binding, not accept always-false SQL."""
+    from pipeline.orchestrator.writers import ka_read_model_integrity
+    monkeypatch.setattr(ka_read_model_integrity, 'bind_integrity_target', lambda ctx: None)
+    with pytest.raises(AssertionError, match='healthy candidate integrity'):
+        test_newer_build_cannot_mask_corrupted_candidate(db, asset, chart, fixture)
 
 
 @pytest.mark.parametrize('asset', ASSETS)
