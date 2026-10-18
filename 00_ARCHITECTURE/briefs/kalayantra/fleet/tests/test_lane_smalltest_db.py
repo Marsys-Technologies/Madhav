@@ -133,6 +133,11 @@ def test_executor_export_six_receipts_and_final_independent_readback(lane_db, tm
     read_git = ex.git
     reviewed = read_git('rev-parse', 'HEAD').stdout.strip()
     def candidate_git(*args, **kwargs):
+        # The candidate base is the checked-out HEAD, which on a PR (or merge-queue) checkout is not an ancestor of origin/main (and
+        # origin/main may be absent from a shallow checkout). The ancestry refusal has its own oracles in test_lane_smalltest.py
+        # (test_lane_reviewed_source_must_be_merged_and_have_both_scripts); this test is about export, CLI, receipts and readback.
+        if args[:3] == ('merge-base', '--is-ancestor', reviewed) and args[3:] == ('origin/main',):
+            return SimpleNamespace(returncode=0)
         if args[0] == 'cat-file':
             return SimpleNamespace(returncode=0 if (ROOT / args[2].split(':', 1)[1]).is_file() else 1)
         if args[0] == 'show':
