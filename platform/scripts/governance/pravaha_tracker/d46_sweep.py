@@ -37,6 +37,7 @@ if __package__ in (None, ""):
 
 from pravaha_tracker.completion import D46_KINDS, d46_kind, evidence_requirements  # noqa: E402
 from pravaha_tracker.events import actor_stream  # noqa: E402
+from pravaha_tracker import merged_deployed  # noqa: E402
 from pravaha_tracker.state import build_snapshot  # noqa: E402
 from pravaha_tracker.verdicts import accepted_verdict  # noqa: E402
 
@@ -132,10 +133,10 @@ def _first_deploy(repo, evidence, merge):
     return None
 
 
-def classify(model: dict, events: list[dict], evidence: dict, repo: str) -> list[dict]:
+def classify(model: dict, events: list[dict], evidence: dict, repo: str, derived_done: dict | None = None) -> list[dict]:
     """One report per executable item, in plan order: would_close | already_done | not_applicable | not_closable |
     out_of_scope (operation / packet kinds keep their own completion and are only counted)."""
-    snapshot = build_snapshot(model, events, {}, {}, {})
+    snapshot = build_snapshot(model, events, {}, {}, {}, derived_done=derived_done)
     rows = {r["id"]: r for track in snapshot["tracks"] for r in track["items"]}
     done = _completed(events)
     main_sha = evidence.get("main_sha")
@@ -240,7 +241,8 @@ def render(reports: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def apply(model: dict, evidence: dict, repo: str, events_path: str, observe_detector) -> list[dict]:
+def apply(model: dict, evidence: dict, repo: str, events_path: str, observe_detector,
+          derived_done: dict | None = None) -> list[dict]:
     """Close every would_close item under the event-log lock, through the same guard `done` uses.
 
     All-or-nothing per item: the verdict / review events an item needs are staged in memory beside its done event,
@@ -252,7 +254,7 @@ def apply(model: dict, evidence: dict, repo: str, events_path: str, observe_dete
     results = []
     fd = _locked(events_path)
     try:
-        for report in classify(model, _read(fd), evidence, repo):
+        for report in classify(model, _read(fd), evidence, repo, derived_done):
             if report["status"] != "would_close":
                 continue
             item = next(i for i in model["items"] if i["id"] == report["item"])
@@ -277,7 +279,7 @@ def apply(model: dict, evidence: dict, repo: str, events_path: str, observe_dete
                 else:
                     _log_verdict(item, ev, stage)
                     proof = {"type": "artifact", "artifact_digest": ev["artifact_digest"], "path": ev["artifact_path"]}
-                stage(guarded_done_event(model, view, item["id"], actor, detector, proof))
+                stage(guarded_done_event(model, view, item["id"], actor, detector, proof, derived_done=derived_done))
             except (CompletionError, ValueError) as exc:
                 results.append({"item": item["id"], "closed": False, "refused": str(exc)})
                 continue
@@ -346,7 +348,11 @@ def main(argv=None) -> int:
                         continue
         except OSError as exc:
             raise SweepError(f"event log unreadable: {exc}") from exc
-        reports = classify(model, events, evidence, a.repo)
+        # the display's own derivation, so a dependency shown as done by merge+deploy counts here too (SR-BOLD-07)
+        source = merged_deployed.GitHubSource(a.repo)
+        source.refresh()
+        derived = merged_deployed.derive_for_events(model, events, source)
+        reports = classify(model, events, evidence, a.repo, derived)
     except (OSError, ValueError) as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 2
@@ -360,7 +366,7 @@ def main(argv=None) -> int:
             return {"status": "unknown", "detail": f"live detector unavailable ({via}) at {cli.URL}"}
         return observed.get("detector") or {}
 
-    results = apply(model, evidence, a.repo, a.events, observe)
+    results = apply(model, evidence, a.repo, a.events, observe, derived)
     print(json.dumps(results, indent=1, default=str) if a.json else "\n".join(
         (f"CLOSED  {r['item']}" if r["closed"] else f"REFUSED {r['item']}: {r['refused']}") for r in results))
     return 0 if all(r["closed"] for r in results) else 3
