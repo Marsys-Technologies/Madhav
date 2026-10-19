@@ -590,6 +590,7 @@
       "engine": "pytest",
       "include": [
         "platform/scripts/__tests__/test_gochara_window_readbacks*.py",
+        "platform/scripts/__tests__/test_gochara_readback_sql*.py",
         "platform/scripts/__tests__/test_gochara_sitting_evidence*.py",
         "platform/scripts/__tests__/test_fn*.py",
         "platform/scripts/__tests__/test_gochara_rehearsal*.py"
