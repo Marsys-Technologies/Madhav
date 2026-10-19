@@ -13,7 +13,7 @@ from pipeline.orchestrator.writers import ka_gochara_v5 as writer
 from services.gochara_kernel.rule_registry import RuleRegistryStore
 from . import _runner_world as rw
 from .conftest import EPHE_PATH
-from .test_a53_inventory import create_am5_database, drop_am5_database
+from .test_a53_inventory import apply_near_miss_storage, create_am5_database, drop_am5_database
 from .test_c38_teardown_real_db import STUB_DDL
 
 
@@ -39,6 +39,7 @@ def measuring_teardown_world():
     try:
         for ddl in STUB_DDL:
             conn.execute(ddl)
+        apply_near_miss_storage(conn)           # the teardown's closed list covers the migration-1308 generation tables
         import teardown_v5_small_test_job as td
         e = td.EXPECTED_REGISTRY_ROW
         conn.execute('INSERT INTO public.asset_registry VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
