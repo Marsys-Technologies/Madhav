@@ -513,13 +513,18 @@ def main(argv: list[str] | None = None) -> None:
 
 def _main(argv=None, *, marker_builder=build_slice_marker,
           operation_kind="smalltest_dispatch", request_policy=shared.smalltest_request_problem,
-          manifest_check=None):
-    """Shared staging transaction; explicit measuring entry point supplies its policy.
+          manifest_check=None, parse_args=None, manifest_builder=None, triggered_by=None, report_builder=None):
+    """Shared staging transaction; explicit measuring and century entry points supply their policy.
 
     This is not a CLI override. The small-test entry point retains its full-shape
     refusal; no environment flag or request argument can switch its authority.
+    The four trailing keywords are for dispatch_v5_century_job.py only: its own argument parser, its manifest (NO slice marker),
+    its run trigger and its report. Left at None they are the small-test/measuring behaviour, unchanged.
     """
-    args = _parse_args(sys.argv[1:] if argv is None else argv)
+    args = (parse_args or _parse_args)(sys.argv[1:] if argv is None else argv)
+    manifest_builder = manifest_builder or build_small_test_manifest
+    triggered_by = triggered_by or TRIGGERED_BY
+    report_builder = report_builder or _prepare_report
     if args.list_runs or args.lookup:
         run_id = None
         if args.lookup:
@@ -585,7 +590,7 @@ def _main(argv=None, *, marker_builder=build_slice_marker,
     try:
         existing, notes = _admit(cur)
         candidate = _load_inactive_candidate(cur)    # the row is read inactive; NO UPDATE of asset_registry is ever issued
-        manifest, manifest_digest = build_small_test_manifest(
+        manifest, manifest_digest = manifest_builder(
             candidate=candidate, slice_marker=slice_marker)
         if manifest_check is not None:
             manifest_check(manifest, manifest_digest)
@@ -608,7 +613,7 @@ def _main(argv=None, *, marker_builder=build_slice_marker,
                        %s::jsonb, %s, %s)
                RETURNING created_at""",
             (run_id, CHART_ID, ASSET_ID, json.dumps([ASSET_ID]),
-             json.dumps(manifest), manifest_digest, TRIGGERED_BY),
+             json.dumps(manifest), manifest_digest, triggered_by),
         )
         # Codex round 4 D4: the deadlines come from the STORED created_at (the database clock the watchdog uses), never the client's
         created_at = cur.fetchone()["created_at"]
@@ -618,8 +623,8 @@ def _main(argv=None, *, marker_builder=build_slice_marker,
             (run_id, ASSET_ID),
         )
         # Codex round 6 (1): EVERYTHING that will be printed is prepared BEFORE the COMMIT, so nothing that can fail after it needs data or work
-        report = _prepare_report(dry_run=dry_run, run_id=run_id, manifest=manifest, manifest_digest=manifest_digest, existing=existing,
-                                 notes=notes, created_at=created_at)
+        report = report_builder(dry_run=dry_run, run_id=run_id, manifest=manifest, manifest_digest=manifest_digest, existing=existing,
+                                notes=notes, created_at=created_at)
         if dry_run:
             conn.rollback()
             phase = "rolled_back"
