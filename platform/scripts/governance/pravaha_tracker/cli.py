@@ -53,10 +53,14 @@ from pravaha_tracker.claims import ClaimError, claim_item, renew_claim, release_
 from pravaha_tracker.audit import audit  # noqa: E402
 from pravaha_tracker.state import build_snapshot, load_closure, reconciliation_line  # noqa: E402
 from pravaha_tracker.detectors import git_activity  # noqa: E402
+from pravaha_tracker import merged_deployed  # noqa: E402
 from pravaha_tracker.completion import COMPOSED_RECEIPT_SCHEMA, CompletionError, guarded_done_event  # noqa: E402
 from pravaha_tracker.claims import _locked, _read, _append, _close  # noqa: E402
 from pravaha_tracker.events import validate_against_model  # noqa: E402
 from pravaha_tracker.verdicts import accepted_verdict  # noqa: E402
+from pravaha_tracker.op_steps import (check_acceptance_file_evidence, check_lease_row_evidence,  # noqa: E402
+                                      committed_teardown_absence_accepted, executor_acceptance)
+from pravaha_tracker.op_steps import request_digest as _request_digest  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
@@ -107,11 +111,26 @@ def actor_for(a) -> str:
     return f"stream-{s}"
 
 
+def _dispatch_earned(repo: str, run_id) -> bool:
+    """The dispatch run's own jobs show an earned deploy; unreadable means not earned."""
+    if not isinstance(run_id, int) or isinstance(run_id, bool):
+        return False
+    proc = subprocess.run(["gh", "run", "view", str(run_id), "--json", "jobs"], cwd=repo, capture_output=True,
+                          text=True, timeout=60, check=False)
+    if proc.returncode:
+        return False
+    try:
+        return merged_deployed.earned_deploy(json.loads(proc.stdout or "{}").get("jobs"))
+    except (ValueError, AttributeError):
+        return False
+
+
 def observe_containment(repo: str, merge: str) -> dict:
     """Find a SUCCESSFUL `Deploy to Cloud Run` run on main whose deployed sha contains `merge`.
 
-    Only runs triggered by `workflow_run` are trusted: for them DEPLOY_SHA equals the run's head sha (deploy.yml);
-    a `workflow_dispatch` run may deploy a different sha than its head (Trap 103) and is ignored here.
+    Any trigger counts (SR-BOLD-07): for `workflow_run` and for a `workflow_dispatch` on main DEPLOY_SHA equals the
+    run's head sha (deploy.yml). A dispatch run is green even when it only migrated and skipped every deploy job, so
+    it counts only when its jobs show the outcome gate passed and a deploy job succeeded (merged_deployed.earned_deploy).
     """
     out = {"deployed_sha": None, "run_id": None, "contains_merge": False}
     try:
@@ -126,12 +145,12 @@ def observe_containment(repo: str, merge: str) -> dict:
         except ValueError:
             return out
         for run in (runs if isinstance(runs, list) else []):
-            if not isinstance(run, dict) or run.get("event") != "workflow_run":
+            if not isinstance(run, dict) or run.get("event") not in merged_deployed.DEPLOY_EVENTS:
                 continue
             sha = run.get("headSha") or ""
             anc = subprocess.run(["git", "merge-base", "--is-ancestor", merge, sha], cwd=repo,
                                  capture_output=True, text=True, timeout=30, check=False)
-            if anc.returncode == 0:
+            if anc.returncode == 0 and (run["event"] == "workflow_run" or _dispatch_earned(repo, run.get("databaseId"))):
                 return {"deployed_sha": sha, "run_id": run.get("databaseId"), "contains_merge": True,
                         "deployed_at": run.get("createdAt")}
     except (OSError, ValueError, subprocess.SubprocessError):
@@ -227,6 +246,14 @@ def cmd_transition(a, actor: str) -> int:
         return 2
 
 
+def observe_derived_done(model: dict, events: list[dict], item_id: str, repo: str) -> dict:
+    """The display's merged+deployed derivation for `item_id` and its upstream, read live (SR-BOLD-07).
+    Read before the event-log lock is taken: it calls GitHub. A failed read derives fewer items, never more."""
+    src = merged_deployed.GitHubSource(repo)
+    src.refresh()
+    return merged_deployed.derive_for_events(model, events, src, only=merged_deployed.upstream_ids(model, item_id) - {item_id})
+
+
 def cmd_guarded_done(a, actor: str) -> int:
     """Obtain live observations, then check and append under the event-log lock."""
     try:
@@ -309,9 +336,10 @@ def cmd_guarded_done(a, actor: str) -> int:
                      "path": os.path.realpath(a.packet_verdict)}
         else:
             raise CompletionError("typed evidence is required")
+        derived = observe_derived_done(model, _read_events(), a.item, os.environ.get("PRAVAHA_REPO", REPO_ROOT))
         fd = _locked(EVENTS)
         try:
-            event = guarded_done_event(model, _read(fd), a.item, actor, detector, proof)
+            event = guarded_done_event(model, _read(fd), a.item, actor, detector, proof, derived_done=derived)
             validate_against_model(event, model)
             written = _append(fd, event)
         finally:
@@ -324,8 +352,46 @@ def cmd_guarded_done(a, actor: str) -> int:
         return 2
 
 
-def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str, *, operation: bool = False) -> dict:
-    """Bind a file_contains step to the canonical receipt and its source evidence."""
+def _declared_artifact(item_row: dict | None) -> str | None:
+    """The file an artifact item's own completion detector measures (a file_exists on run/residuals/...), else None."""
+    if not isinstance(item_row, dict) or item_row.get("completion_kind") != "artifact":
+        return None
+    detector = item_row.get("detector")
+    declared = detector.get("path") if isinstance(detector, dict) and detector.get("type") == "file_exists" else None
+    return declared if isinstance(declared, str) and declared else None
+
+
+def _repo_artifact_bytes(repo: str, pinned: dict) -> bytes:
+    """The bytes of a step's pinned repository-file artifact (SR-J3D-REPORT-STEP).
+
+    The step spec pins {repo_path, blob, sha256}. The bytes are read from the git object store by blob id, never
+    from a working tree: a blob id is a content address, so a dirty or stale checkout (or a branch that has since
+    moved) can neither fake nor lose the reviewed bytes, and the sha256 is then checked against the pin."""
+    blob, pin = pinned.get("blob"), pinned.get("sha256")
+    if (not isinstance(blob, str) or re.fullmatch(r"[0-9a-f]{40}", blob) is None
+            or not isinstance(pin, str) or re.fullmatch(r"[0-9a-f]{64}", pin) is None
+            or not isinstance(pinned.get("repo_path"), str) or not pinned["repo_path"]):
+        raise CompletionError("step artifact pin needs repo_path, a 40-hex blob and a 64-hex sha256")
+    done = subprocess.run(["git", "-C", repo, "cat-file", "blob", blob], capture_output=True, timeout=60)
+    if done.returncode != 0:
+        raise CompletionError(f"pinned artifact blob {blob} is not in the repository")
+    if hashlib.sha256(done.stdout).hexdigest() != pin:
+        raise CompletionError("pinned artifact blob does not match its pinned sha256")
+    return done.stdout
+
+
+def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str, *, operation: bool = False,
+                        declared_artifact: str | None = None, repo_artifact: dict | None = None,
+                        repo: str | None = None) -> dict:
+    """Bind a file_contains step to the canonical receipt and its source evidence.
+
+    A step whose evidence is a repository file (`repo_artifact`, the step's pinned {repo_path, blob, sha256}) takes
+    its artifact_sha256 from that pin alone: the receipt must carry it, must name no artifact_path, and the digest
+    is checked against the pinned blob's bytes.
+
+    An artifact_section receipt carries no artifact_path (the plan model's pattern admits only artifact_sha256,
+    item, review_job, step, verdict): its artifact_sha256 is checked against `declared_artifact`, the very file
+    the item's own detector measures. An explicit artifact_path is accepted only when it is that same file."""
     declared_path = spec.get("path")
     if (not isinstance(declared_path, str) or not declared_path
             or os.path.realpath(path) != os.path.realpath(declared_path)):
@@ -342,12 +408,23 @@ def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str,
         raise CompletionError("operation step requires a named independent MET review")
 
     artifact_bound = False
-    if "artifact_sha256" in receipt:
+    if repo_artifact is not None:
+        if "artifact_path" in receipt or "artifact_sha256" not in receipt:
+            raise CompletionError("repository-file artifact step needs artifact_sha256 and no artifact_path")
+        digest = hashlib.sha256(_repo_artifact_bytes(repo or REPO_ROOT, repo_artifact)).hexdigest()
+        if receipt["artifact_sha256"] != digest:
+            raise CompletionError("step receipt artifact_sha256 does not match its artifact")
+        artifact_bound = True
+    elif "artifact_sha256" in receipt:
         artifact = receipt.get("artifact_path")
-        if not isinstance(artifact, str) or not artifact:
+        if declared_artifact and artifact is None:
+            artifact = declared_artifact
+        elif not isinstance(artifact, str) or not artifact:
             raise CompletionError("step receipt artifact_sha256 needs an artifact_path")
-        if not os.path.isabs(artifact):
+        elif not os.path.isabs(artifact):
             artifact = os.path.join(os.path.dirname(os.path.realpath(path)), artifact)
+        if declared_artifact and os.path.realpath(artifact) != os.path.realpath(declared_artifact):
+            raise CompletionError("step receipt artifact_path is not the item's declared artifact")
         with open(artifact, "rb") as handle:
             digest = hashlib.file_digest(handle, "sha256").hexdigest()
         if receipt["artifact_sha256"] != digest:
@@ -387,9 +464,19 @@ def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str,
 
 def _teardown_completed(executor: dict, receipts: str, digest: str) -> bool:
     """A committed production teardown stays AWAITING_ABSENCE by design (fleet/executor.py: the
-    COMMITTED_AWAITING_ABSENCE proof sets that status). It counts as complete only once the executor has
-    published <op>.completion.json after the separate absence readback was accepted: status COMPLETED, the
-    same operation and request, the digest of this very receipt, and the digest of the named absence receipt.
+    COMMITTED_AWAITING_ABSENCE proof sets that status). It counts as complete when the executor has published
+    <op>.completion.json (_teardown_completion_published), or (SR-TEARDOWN-COMPLETION) while that is not yet
+    published, when the receipt is COMMITTED (exit 0, teardown proof COMMITTED_AWAITING_ABSENCE) and an ACCEPTED
+    absence receipt binds its evidence_digest (op_steps.committed_teardown_absence_accepted mirrors the executor's
+    own absence_evidence check)."""
+    return (_teardown_completion_published(executor, receipts, digest)
+            or committed_teardown_absence_accepted(executor, receipts))
+
+
+def _teardown_completion_published(executor: dict, receipts: str, digest: str) -> bool:
+    """The executor published <op>.completion.json after the separate absence readback was accepted: status
+    COMPLETED, the same operation and request, the digest of this very receipt, and the digest of the named
+    absence receipt.
 
     (I) INTERPRETATION: commit_receipt_sha256 is also bound to this receipt's bytes (the executor writes
     digest_bytes of the commit receipt there); the alternative of checking only the fields named in the
@@ -505,6 +592,9 @@ def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[d
     acceptance_receipt, expires_at and *_expires_at fields (fleet/executor.py:request_digest, A8 §3.9).
     Acceptance is the latest artifact verdict at the executor receipt's digest, as in
     guarded operation completion; a review job's MET marker alone has no signer identity.
+    Failing that (SR-OP-STEPS-2), the executor's OWN recorded acceptance for this operation is read directly
+    (op_steps.executor_acceptance); no verdict event is ever synthesised. (I) INTERPRETATION: a composed
+    receipt has no request digest of its own, so only the verdict path applies to it.
     """
     opid, request_id = receipt.get("operation_id"), receipt.get("request_id")
     if (not isinstance(opid, str) or re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", opid) is None
@@ -540,9 +630,7 @@ def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[d
             request = json.load(handle)
         if not isinstance(request, dict):
             raise CompletionError("operation request must be a JSON object")
-        bound = {key: value for key, value in request.items() if key not in ("acceptance_receipt", "expires_at") and not key.endswith("_expires_at")}   # executor.request_digest, A8 §3.9
-        request_digest = hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":"),
-                                                 allow_nan=False).encode("utf-8")).hexdigest()
+        request_digest = _request_digest(request)    # executor.request_digest, A8 §3.9
         requester = request.get("requested_by")
         if (not isinstance(requester, str) or not requester.strip()
                 or any(request.get(key) != executor.get(key)
@@ -573,7 +661,15 @@ def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[d
             or not slot or any(signer.strip().casefold() == requester.strip().casefold()
                                or slot.casefold() == (actor_slot(requester) or requester.strip()).casefold()
                                for requester in requesters)):
-        raise CompletionError("operation step needs independent acceptance at the executor receipt digest")
+        if composed:
+            raise CompletionError("operation step needs independent acceptance at the executor receipt digest")
+        latest = next((ev for ev in reversed(events) if ev.get("kind") == "verdict" and ev.get("item") == item["id"]
+                       and ev.get("phase") == "artifact" and ev.get("head") is None
+                       and ev.get("artifact_digest") == digest), None)
+        if latest and latest.get("result") != "ACCEPTED":    # a recorded rejection at this digest revokes acceptance
+            raise CompletionError(f"the independent verdict at the executor receipt digest is {latest.get('result')!r}")
+        executor_acceptance(ops, opid, request_digest, digest, executor, requesters)
+        return
     validate_against_model(verdict, model, events)
 
 
@@ -601,7 +697,15 @@ def cmd_step(a, actor: str) -> int:
         # Actual operation items still require independently bound receipts.
         operation = item.get("completion_kind") == "operation" or (
             declared.get("evidence") == "executor_receipt" and spec.get("type") != "db_query")
-        if operation and spec.get("type") != "file_contains":
+        # SR-J3D-REPORT-STEP: a step whose evidence is a repository file is an artifact_section step even on an
+        # operation item; it carries no executor receipt, so the executor-receipt binding below does not apply.
+        repo_artifact = declared.get("artifact") if declared.get("evidence") == "artifact_section" else None
+        if repo_artifact is not None and not isinstance(repo_artifact, dict):
+            raise CompletionError("step artifact pin must be a mapping")
+        lease_row = declared.get("evidence") == "lease_row"    # SR-OP-STEPS item 2: a ledger read, no verdict
+        acceptance_file = declared.get("evidence") == "acceptance_file"    # pre_acceptance: the executor's acceptance record
+        ledger = lease_row or acceptance_file
+        if (operation or ledger) and spec.get("type") != "file_contains":
             raise CompletionError("operation step requires a canonical file_contains acceptance receipt")
         if not a.evidence or not os.path.isfile(a.evidence):
             raise CompletionError("step evidence must be an existing file (--evidence <path>)")
@@ -614,15 +718,26 @@ def cmd_step(a, actor: str) -> int:
             raise CompletionError(f"the detector of step {a.step_name} has not passed")
         path = os.path.abspath(a.evidence)
         with open(path, "rb") as handle:
-            if spec.get("type") == "file_contains":
+            if ledger:
                 raw = handle.read()
-                receipt = _check_step_receipt(raw, path, spec, a.item, a.step_name, operation=operation)
+                if lease_row:
+                    check_lease_row_evidence(raw, path, spec, a.item, a.step_name,
+                                             os.environ.get("PRAVAHA_REPO", REPO_ROOT))
+                else:
+                    check_acceptance_file_evidence(raw, path, spec, a.item, a.step_name, _ops_dir())
+                digest = hashlib.sha256(raw).hexdigest()
+            elif spec.get("type") == "file_contains":
+                raw = handle.read()
+                receipt = _check_step_receipt(raw, path, spec, a.item, a.step_name, operation=operation,
+                                              declared_artifact=_declared_artifact(item),
+                                              repo_artifact=repo_artifact,
+                                              repo=os.environ.get("PRAVAHA_REPO", REPO_ROOT))
                 digest = hashlib.sha256(raw).hexdigest()
             else:
                 digest = hashlib.file_digest(handle, "sha256").hexdigest()
         event = {"kind": "item", "actor": actor, "item": a.item, "state": "done", "step": a.step_name,
                  "detail": a.detail, "evidence": path, "evidence_sha256": digest}
-        if operation:
+        if (operation and repo_artifact is None) or ledger:
             # Check the current verdict and append under the same lock: a concurrent
             # rejection must not be lost between acceptance lookup and step recording.
             if not os.path.isfile(EVENTS):
@@ -630,7 +745,8 @@ def cmd_step(a, actor: str) -> int:
             fd = _locked(EVENTS)
             try:
                 events = _read(fd)
-                _check_operation_step(receipt, item, model, events)
+                if not ledger:    # the lease row / acceptance record was read from its ledger above
+                    _check_operation_step(receipt, item, model, events)
                 lane = os.environ.get("KY_LANE", "").strip()
                 if (model.get("control_plane", {}).get("verdict_stream") and lane
                         and actor.startswith("stream-") and ":" not in actor):

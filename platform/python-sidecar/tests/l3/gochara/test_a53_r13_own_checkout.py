@@ -9,6 +9,10 @@ import json
 
 import pytest
 
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises the job's own-checkout digest identity on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from pipeline.orchestrator import seal_job
 from services.gochara_kernel import implementation_registry as reg
 from services.gochara_kernel import seal_flow as sf

@@ -237,7 +237,7 @@ def test_cli_fails_closed(tmp_path):
 
 HEAVY = ("replace-chain-substrate", "typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
-         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build", "gochara-j5s-full-class-seal")
+         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build", "gochara-a55-final-rules", "gochara-a55-p06-legacy", "gochara-a55-g12-mutations", "gochara-j5s-full-class-seal")
 NEVER_SKIPPED = ("generated-artifacts", "changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
                  "governance-gates-static",       # the required Governance Gates check's parts (sharded 2026-10-08): never skipped, as before
                  "coverage-gate", "density-census", "governance-tool-tests",
@@ -371,7 +371,7 @@ def test_the_classifier_has_no_unhandled_exception_path(monkeypatch):
 # ---------------------------------------------------------------- the A5.5f replace-chain job: a real, mandatory gate -----------------------
 
 A55_PREFIX = "gochara-a55-"                      # EVERY job with this prefix is a real-database Gochara job and is hardened below (CI-A55-SPLIT)
-A55_JOBS = ("gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes", "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")      # the jobs that must exist today; a new `gochara-a55-<name>` job is hardened automatically
+A55_JOBS = ("gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes", "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-final-rules", "gochara-a55-p06-legacy", "gochara-a55-g12-mutations", "gochara-a55-measuring-build")      # the jobs that must exist today; a new `gochara-a55-<name>` job is hardened automatically
 A55_MAX_TIMEOUT_MINUTES = 45                     # the old single job reached this limit; no job may be given more (split it instead)
 _FORBIDDEN_FLAGS = ("--deselect", "--ignore", "-k", "-m", "--collect-only", "--co", "--lf", "--last-failed", "--sw", "--stepwise")
 GOCHARA_TESTS = Path(__file__).resolve().parents[3] / "python-sidecar" / "tests" / "l3" / "gochara"
@@ -817,3 +817,9 @@ def test_j5s_skip_is_accepted_only_when_the_light_gate_did_not_expect_it(jobs, e
                                  'READBACK_EXPECTED': 'true', 'J5S_EXPECTED': expected_flag,
                                  'J5S_RESULT': j5s, 'DOCS_ONLY': 'false'})
     assert result.returncode == code, result.stdout
+
+
+def test_j5s_job_follows_the_light_pr_gate_and_is_a_full_suite_member(jobs):
+    job = jobs['gochara-j5s-full-class-seal']
+    assert "contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-j5s-full-class-seal')" in job['if']
+    assert 'gochara-j5s-full-class-seal' in jobs['full-suite']['needs']

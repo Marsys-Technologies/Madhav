@@ -80,6 +80,20 @@ class ExposureManifest:
 
 
 @dataclass(frozen=True)
+class ShiftSchedule:
+    """The candidate's non-identity shifts, prepared once for every experiment.
+
+    Depends only on the horizon duration and the shift count, so the jury, the
+    selection null and each class's field-maximum null consume one object and
+    cannot drift apart. It carries no geometry and no estimand.
+    """
+    duration: float
+    non_identity_shifts: int
+    offsets: tuple[float, ...]
+    digest: str
+
+
+@dataclass(frozen=True)
 class Preparation:
     observation: Draw
     null_draws: tuple[Draw, ...]
@@ -87,6 +101,7 @@ class Preparation:
     exposure: ExposureManifest
     exchangeable: bool
     digest: str
+    schedule: ShiftSchedule | None = None
 
 
 @dataclass(frozen=True)
@@ -202,21 +217,39 @@ def shift_schedule(horizon: Interval, non_identity_shifts: int = DEFAULT_NON_IDE
     return offsets
 
 
+def prepare_schedule(horizon: Interval, non_identity_shifts: int = DEFAULT_NON_IDENTITY_SHIFTS) -> ShiftSchedule:
+    offsets = shift_schedule(horizon, non_identity_shifts)
+    material = {'version': 'k4-1:shift_schedule:v1', 'duration': horizon.duration, 'offsets': offsets}
+    digest = hashlib.sha256(json.dumps(material, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    return ShiftSchedule(horizon.duration, non_identity_shifts, offsets, digest)
+
+
+def bind_schedule(schedule: ShiftSchedule, duration: float, non_identity_shifts: int | None = None) -> ShiftSchedule:
+    """Refuse a schedule prepared for another horizon or shift count."""
+    if schedule.duration != float(duration) or (non_identity_shifts is not None and schedule.non_identity_shifts != non_identity_shifts):
+        raise ValueError('schedule does not match this horizon and shift count')
+    return schedule
+
+
 def prepare_draws(horizon: Interval, witnesses: Iterable[Witness], *, anchor_id: str,
-                  non_identity_shifts: int = DEFAULT_NON_IDENTITY_SHIFTS,
-                  exchangeable: bool) -> Preparation:
+                  non_identity_shifts: int | None = None,
+                  exchangeable: bool, schedule: ShiftSchedule | None = None) -> Preparation:
+    if schedule is None:
+        schedule = prepare_schedule(horizon, DEFAULT_NON_IDENTITY_SHIFTS if non_identity_shifts is None else non_identity_shifts)
+    else:
+        bind_schedule(schedule, horizon.duration, non_identity_shifts)
     witnesses = tuple(sorted((Witness(w.witness_id, union_intervals(w.intervals, horizon)) for w in witnesses), key=lambda w: w.witness_id))
     if anchor_id not in {w.witness_id for w in witnesses}:
         raise ValueError('conditioning anchor must be a declared witness')
     if not isinstance(exchangeable, bool):
         raise ValueError('exchangeability must be explicitly assessed')
     observation = Draw(0, elementary_segments(horizon, witnesses))
-    offsets = shift_schedule(horizon, non_identity_shifts)
+    offsets = schedule.offsets
     draws = tuple(Draw(offset, elementary_segments(horizon, tuple(Witness(w.witness_id, w.intervals if w.witness_id == anchor_id else circular_shift(w.intervals, horizon, offset)) for w in witnesses))) for offset in offsets)
     exposure = ExposureManifest(horizon, tuple((w.witness_id, math.fsum(i.duration for i in w.intervals)) for w in witnesses))
     material = {'version': 'k4-1:conditional_common_shift:v1', 'horizon': [horizon.start, horizon.end], 'anchor': anchor_id, 'exchangeable': exchangeable, 'offsets': offsets, 'witnesses': [(w.witness_id, [(i.start, i.end) for i in w.intervals]) for w in witnesses]}
     digest = hashlib.sha256(json.dumps(material, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-    return Preparation(observation, draws, anchor_id, exposure, exchangeable, digest)
+    return Preparation(observation, draws, anchor_id, exposure, exchangeable, digest, schedule)
 
 
 def evaluate_experiment(preparation: Preparation, experiment: Experiment,
@@ -250,4 +283,4 @@ def jury_agreement(preparation: Preparation, *, alpha: float) -> NullResult:
     return evaluate_experiment(preparation, experiment, joint_support, alpha=alpha)
 
 
-__all__ = ['DEFAULT_NON_IDENTITY_SHIFTS', 'Verdict', 'Interval', 'Witness', 'Segment', 'Draw', 'ExposureManifest', 'Preparation', 'Experiment', 'NullResult', 'union_intervals', 'intersect_intervals', 'elementary_segments', 'circular_shift', 'shift_schedule', 'prepare_draws', 'evaluate_experiment', 'jury_agreement']
+__all__ = ['DEFAULT_NON_IDENTITY_SHIFTS', 'Verdict', 'Interval', 'Witness', 'Segment', 'Draw', 'ExposureManifest', 'ShiftSchedule', 'Preparation', 'Experiment', 'NullResult', 'union_intervals', 'intersect_intervals', 'elementary_segments', 'circular_shift', 'shift_schedule', 'prepare_schedule', 'bind_schedule', 'prepare_draws', 'evaluate_experiment', 'jury_agreement']

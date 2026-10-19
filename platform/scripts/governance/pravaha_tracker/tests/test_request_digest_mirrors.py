@@ -36,13 +36,13 @@ def _fixture_request(**over):
     return req
 
 
-def _unbound(request, digest, tmp):
+def _unbound(request, digest, tmp, **acceptance):
     root = Path(tmp)
     (root / "ops/requests").mkdir(parents=True)
     (root / "ops/acceptance").mkdir(parents=True)
     (root / "ops/requests/op-mirror.json").write_text(json.dumps(request))
     (root / "ops/acceptance/op-mirror.json").write_text(json.dumps(
-        {"operation_id": "op-mirror", "result": "ACCEPTED", "by": "v1", "reviewed_commit": request["reviewed_commit"], "request_sha256": digest}))
+        {"operation_id": "op-mirror", "result": "ACCEPTED", "by": "v1", "reviewed_commit": request["reviewed_commit"], "request_sha256": digest, **acceptance}))
     now = dt.datetime(2026, 10, 18, tzinfo=dt.timezone.utc)
     findings = audit_module.audit({"items": []}, [], root, since=now - dt.timedelta(minutes=10), now=now)
     return any(f["code"] == "unbound_production_operation" for f in findings)
@@ -75,3 +75,18 @@ def test_every_mirror_of_the_request_digest_agrees_on_one_fixture_request(operat
     w.req["kyd"] = "changed-after-receipt"
     w.request_path.write_text(json.dumps(w.req))
     w.run(expected=2)
+
+
+def test_audit_reads_the_executors_complete_mechanical_pre_acceptance_as_bound_and_nothing_less(tmp_path):
+    """OWNER-MINIMAL-PROTECTION-NOW: a production write accepted by the executor itself (no signer) is bound; an incomplete or post-phase record is still unbound."""
+    executor = _load("mirrors_executor_mech", FLEET / "executor.py")
+    req = _fixture_request(kind="scheduler_resume")
+    req.pop("acceptance_receipt"); req["pack_fill"] = {"pack_manifest_sha256": "a" * 64, "template": {}, "fill_sha256": "b" * 64}
+    digest = executor.request_digest(req)
+    mechanical = dict(by="executor-mechanical", schema="ky.mechanical_acceptance/1", phase="pre", checks={"request_equals_verified_pack_fill": True, "lease_live": True})
+    cases = {"complete": (mechanical, False), "a check that is false": (dict(mechanical, checks={"lease_live": False}), True),
+             "no checks": (dict(mechanical, checks={}), True), "post phase": (dict(mechanical, phase="post"), True),
+             "another schema": (dict(mechanical, schema="ky.mechanical_quiescence/1"), True), "an unknown signer": (dict(mechanical, by="b1"), True)}
+    for label, (record, flagged) in cases.items():
+        with tempfile.TemporaryDirectory(dir=tmp_path) as directory:
+            assert _unbound(req, digest, directory, **record) is flagged, label

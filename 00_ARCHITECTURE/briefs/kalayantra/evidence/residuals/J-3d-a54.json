@@ -1,0 +1,358 @@
+{
+ "claim": "Phase 5 keep inherited Pravāha A5.4: Tier 0-S projection & overlay repairs — ten repairs on main, and the measuring golden captured from the J-3c run and committed",
+ "claims": [
+  {
+   "claim": "The golden is the capture of THE measuring run (run id, manifest id, generation, chart bound) and the run was the J-3c dispatch",
+   "id": "C1",
+   "measurement": "digests.json binding compared with the J-3c.dispatch receipt and the canonical chart id",
+   "note": "source_commit is an operator declaration (null attestation by design, J3_MEASURING_PREBUILD_v1_0.md 'Export and comparison contract'); not claimed as attested",
+   "status": "measured",
+   "values": {
+    "chart_is_canonical_482012f1": true,
+    "generation": "5.0",
+    "manifest_id": "f43cd844-7330-4de7-bca0-f1ed072e1617",
+    "run_id": "9b8a3c01-6eb9-4679-9434-680c29cf7492",
+    "run_id_named_in_J-3c.dispatch_receipt": true,
+    "source_commit_attested": null,
+    "source_commit_declared_by_operator": "1078dd1cfea606cf913d3a9f9258c46aafa232fa"
+   }
+  },
+  {
+   "claim": "The export is the exact six-file set and every file hashes to MANIFEST.sha256 (byte integrity only)",
+   "id": "C2",
+   "measurement": "python -m services.gochara_kernel.measuring_delivery verify --golden <local golden>, run now at origin/main",
+   "note": "a clean rehash proves bytes, never semantic or independent acceptance (prebuild doc)",
+   "status": "measured",
+   "values": {
+    "acceptance_field": null,
+    "files": {
+     "contacts.jsonl": "3d4b76291deedb435f3b883b071d2ecd53077c38b843bb1dd5826ce6746d554f",
+     "digests.json": "e0750ccc6e9006a0c05cd2f4a90172b9cee406771775e1bfc421600c5331c37f",
+     "horizon_basis.json": "3d03a20ebb371a4453e2259c01c11a639bb56074a5bb9d668a8c03462cc7e1df",
+     "records.jsonl": "94f03216d24b7651496a241f630a48a6630a76eeee4cc02d25a6f75f81e2aff5",
+     "stretch_sink.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+     "windows.jsonl": "11d9fda5489dbe3dc878325e8b27a226a90e13e5a170f9bb72cb55646c855589"
+    },
+    "manifest_sha256": "0926425f99dd1886bd1f69b5f970fee6f27428856da7e6fecf494b56253a2d32",
+    "receipt_schema": "ky.measuring_golden_receipt/1",
+    "verify_exit": 0
+   }
+  },
+  {
+   "claim": "Row counts in the golden equal the counts the run produced (contact, record, window)",
+   "id": "C3",
+   "measurement": "line counts of the local golden files compared with J3D_REPORT.json golden_capture.section_rows (from J-3d.golden-capture readback) and with the records/contacts digest group sums",
+   "note": "26 classes in the run; 2 have no records (psychological_arc, spiritual_turn: no intervals/obligations either, J3D_REPORT.md section 4) — an empty class is reported as empty, not as covered",
+   "status": "measured",
+   "values": {
+    "contacts_digest_group_count_sum": 14912,
+    "contacts_digest_groups": 259,
+    "distinct_event_classes_in_records": 24,
+    "equal": true,
+    "event_classes_without_records": 2,
+    "golden_lines": {
+     "contacts": 14912,
+     "records": 174974,
+     "windows": 6629
+    },
+    "records_digest_group_count_sum": 174974,
+    "records_digest_groups": 78,
+    "report_section_rows": {
+     "contact": 14912,
+     "record": 174974,
+     "window": 6629
+    }
+   }
+  },
+  {
+   "claim": "The golden commit is on main and its committed files are byte-identical to the local golden",
+   "id": "C4",
+   "measurement": "git merge-base --is-ancestor b2d88bfdd origin/main; cmp of the three committed files with the local golden",
+   "note": "the three large files (contacts, records, windows) are not committed by design ('the full export must remain available'); they are verified here by C2 against the same manifest",
+   "status": "measured",
+   "values": {
+    "commit_record": {
+     "path": "/Users/Dev/kalayantra/run/ops/measuring_golden_commit.json",
+     "sha256": "66a7bbe630d779e239219fd35519805ae3840762ead9ea379fdee50128385f85"
+    },
+    "committed_files_byte_identical_to_local_golden": true,
+    "digests_json_sha256": "e0750ccc6e9006a0c05cd2f4a90172b9cee406771775e1bfc421600c5331c37f",
+    "golden_commit": "b2d88bfdd5011c2bce5396f0f0a689445458c370",
+    "horizon_basis_json_sha256": "3d03a20ebb371a4453e2259c01c11a639bb56074a5bb9d668a8c03462cc7e1df",
+    "in_origin_main": true,
+    "manifest_sha256": "0926425f99dd1886bd1f69b5f970fee6f27428856da7e6fecf494b56253a2d32",
+    "pr": 3750,
+    "repo_dir": "00_ARCHITECTURE/briefs/pravaha/measurement/fixtures/measuring_golden_20261018"
+   }
+  },
+  {
+   "claim": "The golden was read from the candidate by the governed read-only readback after the terminal state",
+   "id": "C5",
+   "measurement": "executor receipt + executor-mechanical acceptance for J-3d.golden-capture (kind read-only per table, request/output digests equal)",
+   "note": "acceptance is executor-mechanical (by: executor-mechanical), NOT the independent golden_capture_accepted receipt",
+   "status": "measured",
+   "values": {
+    "acceptance": [
+     {
+      "by": "executor-mechanical",
+      "name": "J-3d.golden-capture-20261018T061409Z.post.json",
+      "result": "ACCEPTED",
+      "sha256": "34660bab7105195d82d3bffdcda1a8337c809cf83a2955cf2745151e3236d308",
+      "ts": "2026-10-18T22:39:36+00:00"
+     }
+    ],
+    "exit_code": 0,
+    "operation_id": "J-3d.golden-capture-20261018T061409Z",
+    "output_sha256": "5ca401650ee8d4ad23ef9c70458c0f7a0710899d727ec54f42c2e4b2423ff024",
+    "receipt": {
+     "name": "J-3d.golden-capture-20261018T061409Z.json",
+     "sha256": "4ac514d6afbb67564a163dc93816d44532678f3eca2d7a52dfbab7a8ab4890a2"
+    },
+    "reviewed_commit": "1078dd1cfea606cf913d3a9f9258c46aafa232fa",
+    "status": "COMPLETED"
+   }
+  },
+  {
+   "cause": "No same-day exported sink JSONL was supplied to the exporter, so the file is empty; an empty file is not a measurement of zero sink records. The sink counts that exist (13140 records by summary line, J3D_REPORT filled by job X-20261018T231001Z-report-fill) come from the report fill, not from this golden, and their record-vs-summary reconciliation is NULL in the original report (J3D_REPORT.md section 5)",
+   "claim": "The golden's stretch_sink.jsonl holds the same-run sink observations",
+   "id": "C6",
+   "measurement": "line count and sha256 of stretch_sink.jsonl in the golden",
+   "report_sources": {
+    "J3D_REPORT.json": {
+     "path": "/Users/Dev/kalayantra/run/J3D_REPORT_20261018/J3D_REPORT.json",
+     "sha256": "f0fc2a3fb1f80574c42a0a7bdab096f38bb310c4af223fc6bd0d54c40a2980d4"
+    },
+    "J3D_REPORT.md": {
+     "path": "/Users/Dev/kalayantra/run/J3D_REPORT_20261018/J3D_REPORT.md",
+     "sha256": "1853430672695225864481d739fbc2a40055a2b45a26aca932f4889b43b5f184"
+    },
+    "filled_report_json": {
+     "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261018T231001Z-report-fill/out/J3D_REPORT.json",
+     "sha256": "3bb1b145f6fdbeef18c3e70a97904bfb38396328f558333ee50b87af8e987f9b"
+    },
+    "filled_report_md": {
+     "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261018T231001Z-report-fill/out/J3D_REPORT.md",
+     "sha256": "983a676700ee4ecec2b7459a081db7284e9421b0b1b64ead27b328f8a34afc3e"
+    }
+   },
+   "status": "null",
+   "values": {
+    "lines": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 (= sha256 of empty input)"
+   }
+  },
+  {
+   "claim": "The ten Tier 0-S projection and overlay obligations (A5.4 steps) are on main and their oracles pass",
+   "id": "C7",
+   "limits": [
+    "4 tests in tests/l3/gochara/test_step06b_windows_projection.py (lines 748, 846, 869, 889) skip as NOT_RUN: they need a pre-existing database named wp6 (conftest WP6_LEDGER_DSN) and this job may not create databases; not green, not run (deferred to CI)",
+    "These are the repairs' own merged oracles; the plant-one-reversion-per-claim proof belongs to the independent reviewer (testing standard D-OWNER-TESTS-20261016) and is not claimed here",
+    "The A5.4 production effect (the repairs acting inside the registered writer on the real run) is not separately measured: no per-repair readback exists in this window's receipts"
+   ],
+   "measurement": "the pytest modules that carry each obligation, run now at origin/main against the local disposable cluster (127.0.0.1:55433) with the pinned ephemeris, interpreter /Users/Dev/kalayantra/venv (PyJHora present)",
+   "status": "measured",
+   "values": {
+    "see": "ten_obligations",
+    "total_failed": 0,
+    "total_passed": 522,
+    "total_skipped": 4
+   }
+  },
+  {
+   "cause": "not yet written; this file is the artifact the independent reviewer (not the author) is to digest-bind. No acceptance is asserted here.",
+   "claim": "Independent golden_capture_accepted receipt exists",
+   "id": "C8",
+   "measurement": "existence of /Users/Dev/kalayantra/run/reviews/steps/J-3d-a54.golden_capture_accepted.json",
+   "status": "null",
+   "values": {
+    "exists": false
+   }
+  },
+  {
+   "cause": "dependency completion is the tracker's and the controller's to assert; J-3c's own a52 step receipt exists but J-3c as an item is not asserted by this file",
+   "claim": "Dependency J-3c (and J-0m) are done",
+   "id": "C9",
+   "status": "null",
+   "values": null
+  }
+ ],
+ "context": {
+  "d_g9": {
+   "decision": "D-G9 posted APPROVED 2026-10-19T01:49:04Z (SR-DG9-DECIDE c) after trace verdict certifier_findings",
+   "finding": "invented=12 / anomaly=12 emissions = 3 distinct ids each; blocking J-4c findings F-INVENTED / F-ANOMALY (preconditions of D-CLOUD); the 3 obligations are not identified (raw sink lines were not kept)",
+   "record": {
+    "id": "EXEC-D-G9-POSTED",
+    "line": 224,
+    "line_sha256": "f34d96920ceab42740f1a2d0ddbfb6a06c09b287a1afeb750b28686115902757",
+    "path": "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl"
+   },
+   "trace": {
+    "TRACE.md": {
+     "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261019T005038Z-g903-trace/TRACE.md",
+     "sha256": "e5b2bd1ad0c6b0213d4383680d64b939b5d4e4d02fe2edbff98f2bf998a7f1d9"
+    },
+    "trace.json": {
+     "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261019T005038Z-g903-trace/trace.json",
+     "sha256": "c3c7f1f7e1bd003e09d0281c35945415900090b4b0e7049bbada1649185feb6c"
+    }
+   }
+  }
+ },
+ "interpretations": [
+  {
+   "alternative": "evidence limited to the golden capture alone",
+   "choice": "a54's evidence is the golden capture (the one step) plus a per-obligation oracle run for the ten repairs it names in its title/prebuild disposition"
+  }
+ ],
+ "item": "J-3d-a54",
+ "measured_at": "2026-10-19T03:22:18+00:00",
+ "measured_at_head": "28c2772483909c3b14e5ee8b1359887554a9b450",
+ "not_claimed": [
+  "independent acceptance of the golden capture",
+  "that the 3 invented/anomaly ids are resolved",
+  "J-3c item completion",
+  "per-repair production readbacks for the ten obligations",
+  "the four WP6-database tests"
+ ],
+ "personal_data": "none: counts, digests, hashes, file names, commit ids and test totals only; no life-event rows, event dates, targets or chart-binding content are copied (the golden's own files stay where they are and are cited by sha256)",
+ "schema": "ky.job_evidence/1",
+ "step": "golden_capture_accepted",
+ "ten_obligations": [
+  {
+   "exit": 0,
+   "failed": 0,
+   "merged_by": "PR #2769 (fedc5ae50) with its rework rounds; plan model pravaha A5.4 steps",
+   "obligation": "angular_m1",
+   "passed": 20,
+   "pytest_modules": [
+    "tests/l3/gochara/test_step06b_angular_m1.py"
+   ],
+   "result_line": "20 passed in 0.44s",
+   "skipped": 0,
+   "what": "angular M-1 kernel"
+  },
+  {
+   "exit": 0,
+   "failed": 0,
+   "merged_by": "PR #2769 (fedc5ae50) with its rework rounds; plan model pravaha A5.4 steps",
+   "obligation": "per_instant_permission",
+   "passed": 37,
+   "pytest_modules": [
+    "tests/l3/gochara/test_step06b_per_instant_permission.py"
+   ],
+   "result_line": "37 passed in 0.74s",
+   "skipped": 0,
+   "what": "per-instant dasha permission (C5)"
+  },
+  {
+   "exit": 0,
+   "failed": 0,
+   "merged_by": "PR #2769 (fedc5ae50) with its rework rounds; plan model pravaha A5.4 steps",
+   "obligation": "three_field_valence",
+   "passed": 27,
+   "pytest_modules": [
+    "tests/l3/gochara/test_step06b_three_field_valence.py"
+   ],
+   "result_line": "27 passed in 0.92s",
+   "skipped": 0,
+   "what": "three-field valence contract"
+  },
+  {
+   "exit": 0,
+   "failed": 0,
+   "merged_by": "PR #2769 (fedc5ae50) with its rework rounds; plan model pravaha A5.4 steps",
+   "obligation": "vedha_interval_relation",
+   "passed": 50,
+   "pytest_modules": [
+    "tests/l3/gochara/test_vedha_interval_relation.py",
+    "tests/l3/gochara/test_vedha_interval_gate.py"
+   ],
+   "result_line": "50 passed in 14.24s",
+   "skipped": 0,
+   "what": "vedha obstruction as per-overlap interval relation"
+  },
+  {
+   "exit": 0,
+   "failed": 0,
+   "merged_by": "PR #2769 (fedc5ae50) with its rework rounds; plan model pravaha A5.4 steps",
+   "obligation": "peak_filter_serve_time",
+   "passed": 31,
+   "pytest_modules": [
+    "tests/l3/gochara/test_wp10_cutover.py",
+    "tests/l3/gochara/test_step06b_windows_projection.py"
+   ],
+   "result_line": "31 passed, 4 skipped in 16.46s",
+   "skipped": 4,
+   "what": "90-day peak filter moved to serve time"
+  },
+  {
+   "exit": 0,
+   "failed": 0,
+   "merged_by": "PR #2769 (fedc5ae50) with its rework rounds; plan model pravaha A5.4 steps",
+   "obligation": "birth_anchor_excluded",
+   "passed": 129,
+   "pytest_modules": [
+    "services/ka_gochara_resonance/tests/test_w31_27_class_coverage.py",
+    "tests/l3/test_ka_gochara_resonance.py"
+   ],
+   "result_line": "129 passed in 1.20s",
+   "skipped": 0,
+   "what": "birth_anchor excluded from resonance-map enumeration"
+  },
+  {
+   "exit": 0,
+   "failed": 0,
+   "merged_by": "PR #2769 (fedc5ae50) with its rework rounds; plan model pravaha A5.4 steps",
+   "obligation": "moorti_flag_honest",
+   "passed": 18,
+   "pytest_modules": [
+    "tests/l3/test_ka_moorti_nirnaya.py"
+   ],
+   "result_line": "18 passed in 0.65s",
+   "skipped": 0,
+   "what": "mūrti provenance flag reflects corpus presence"
+  },
+  {
+   "exit": 0,
+   "failed": 0,
+   "merged_by": "PR #2769 (fedc5ae50) with its rework rounds; plan model pravaha A5.4 steps",
+   "obligation": "tara_key",
+   "passed": 25,
+   "pytest_modules": [
+    "services/gochara_v3/mechanisms/tests/test_w23_tara_bala.py",
+    "tests/l3/gochara/test_step06b_tara_testimony.py"
+   ],
+   "result_line": "25 passed in 0.95s",
+   "skipped": 0,
+   "what": "tārā key (P6 testimony only)"
+  },
+  {
+   "exit": 0,
+   "failed": 0,
+   "merged_by": "PR #2769 (fedc5ae50) with its rework rounds; plan model pravaha A5.4 steps",
+   "obligation": "kakshya_key",
+   "passed": 52,
+   "pytest_modules": [
+    "tests/l3/gochara/test_p5c_kakshya_donor_key.py",
+    "tests/l3/gochara/test_kakshya_l1_seam.py",
+    "tests/l3/gochara/test_n22_kakshya_bindu_interim.py"
+   ],
+   "result_line": "52 passed in 0.44s",
+   "skipped": 0,
+   "what": "kakṣyā key / L1 boundary seam"
+  },
+  {
+   "exit": 0,
+   "failed": 0,
+   "merged_by": "PR #2769 (fedc5ae50) with its rework rounds; plan model pravaha A5.4 steps",
+   "obligation": "resonance_rebuild",
+   "passed": 133,
+   "pytest_modules": [
+    "tests/l3/test_resonance_rebuild_rehearsal.py"
+   ],
+   "result_line": "133 passed in 9.58s",
+   "skipped": 0,
+   "what": "resonance rebuild R-1..R-6 (governed path + rehearsal)"
+  }
+ ]
+}

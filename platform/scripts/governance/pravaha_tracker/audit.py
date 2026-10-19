@@ -204,7 +204,9 @@ def audit(model: dict, events: list[dict], run_root: str | Path, *,
                 digest = hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
                 if not acceptance or acceptance.get("result") != "ACCEPTED" or \
                         acceptance.get("operation_id") != operation_id or \
-                        acceptance.get("by") not in ("v1", "v2", "v3", "v4") or \
+                        not (acceptance.get("by") in ("v1", "v2", "v3", "v4") or (       # or the executor's own mechanical pre-acceptance (OWNER-MINIMAL-PROTECTION-NOW), every check recorded true
+                            acceptance.get("by") == "executor-mechanical" and acceptance.get("schema") == "ky.mechanical_acceptance/1" and acceptance.get("phase") == "pre"
+                            and isinstance(acceptance.get("checks"), dict) and bool(acceptance["checks"]) and all(v is True for v in acceptance["checks"].values()))) or \
                         acceptance.get("request_sha256") != digest or \
                         acceptance.get("reviewed_commit") != req.get("reviewed_commit"):
                     fail("unbound_production_operation", operation_id, "independent acceptance is absent")

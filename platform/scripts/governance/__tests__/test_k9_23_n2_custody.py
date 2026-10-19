@@ -36,15 +36,19 @@ def test_child_keeps_independent_acceptance_without_reopening_parent():
     assert "K9-23-N2" not in parent["depends_on"]
     assert child["completion_kind"] == "code"
     assert child["reviewer_rule"] == parent["reviewer_rule"] == "v_exact_head_then_deploy_containment"
-    assert child["detector"] == {"type": "branch_merged", "ref": "origin/kalayantra/k9-23-n2"}
+    # SR-DETECTOR-REFS: the source branch was deleted at merge, so the detector pins the PR #3606 squash commit
+    # (K9-23-N2: pre-build K9-23-N2 (A6 D-40) (#3606)), which must stay contained in origin/main.
+    detector = child["detector"]
+    assert (detector["type"], detector["ref"], detector["packet_pr"]) == (
+        "branch_merged", "ee51abe09bd5e62d8bba6999515ef160fe688cbc", 3606)
     assert "status" not in child and "steps" not in child
 
 
-def test_preparation_preserves_disabled_production_operations():
+def test_k9_23_enablement_preserves_the_production_flags():
     ops = json.loads((BRIEFS / "fleet/executor_ops.json").read_text())["ops"]
     for kind in ("orchestrator_rebuild_dryrun", "orchestrator_rebuild",
                  "layer_verify", "layer_publish", "layer_rollback"):
-        assert ops[kind]["enabled"] is False, kind
+        assert ops[kind]["enabled"] is True, kind               # SR-PREBUILD-ALL: K9-23 bound and enabled them
         assert ops[kind]["production"] is (not kind.endswith("_dryrun")), kind   # A8 §3.8: a dry run is read-only with a credential
 
 

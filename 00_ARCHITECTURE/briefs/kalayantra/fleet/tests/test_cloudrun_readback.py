@@ -21,7 +21,9 @@ SR-J3-READ-KINDS (optional `logs` argument; fixtures/cloudrun_readback/logs_run.
 prints: stretch_sink.log_line / summary_line, and events.emit_event's "[event] <json>" for asset_runner's `asset.substep`):
   L1  the logs call is one fixed `gcloud logging read` scoped to the job, region, execution and a bounded page; no logs argument = no fourth call
   L2  `logs` needs a well-formed execution; refused before any cloud call otherwise
-  L3  STRETCH_SINK/1 records are counted by kind/reason, de-duplicated by record_id, and reconciled to the STRETCH_SINK_SUMMARY/1 digest
+  L3  STRETCH_SINK/1 records are counted by kind/reason, de-duplicated by (event_class, record_id), and reconciled to the STRETCH_SINK_SUMMARY/1 digest
+  L3b classes share record_ids (record_id has no event_class: stretch_sink.record_id), so read counts by kind are kept PER CLASS and equal the
+      per-class STRETCH_SINK_SUMMARY/1 counts (SR-STRETCH-SINK-COUNTS; shape of execution brahma-build-pipeline-job-lzl87: 13,140 = 13,140)
   L4  a truncated or malformed sink line reads NULL (never zero, never the readable part standing in for the whole)
   L5  asset.substep: seconds between sub-steps, per-asset elapsed, last index/total; an unreadable time reads null
   L6  an empty read is not reported as a zero count
@@ -332,7 +334,7 @@ def test_c11_table_entry_and_real_validate(tmp_path, monkeypatch):
     table = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
     entry = table["cloudrun_job_readback"]
     assert list(entry)[0] == "enabled" and entry["enabled"] is True and entry["production"] is False
-    assert (entry["needs"], entry["fixed_args"], entry["allowed_args"], entry["requesters"]) == ("gcloud", [], ["execution", "logs"], ["adhikarin", "v1", "v2"])
+    assert (entry["needs"], entry["fixed_args"], entry["allowed_args"], entry["requesters"]) == ("gcloud", [], ["execution", "logs", "metrics"], ["adhikarin", "v1", "v2"])
     assert entry["script"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py" and "also_needs" not in entry
     ex = _executor(tmp_path, monkeypatch)
     caps = {"gcloud": True}
@@ -702,3 +704,78 @@ def test_p5_a_paging_failure_on_a_later_page_refuses_the_whole_record():
     with pytest.raises(CR.Refused) as caught:
         CR.measure(EXEC, flaky, logs=True)
     assert str(caught.value) == "logs: gcloud exited 1" and "ya29" not in str(caught.value)       # never a partial record from page 1 alone
+
+
+# --- SR-STRETCH-SINK-COUNTS: records of different event classes may share a record_id -------------------------------------------------------
+# Counts per class and kind are the 26 STRETCH_SINK_SUMMARY/1 lines of execution brahma-build-pipeline-job-lzl87 (the J-3d logs receipt; counts
+# only). The raw record lines are not in that receipt, so the ids are INVENTED: the n-th record of a kind carries the same id in every class
+# that has one, which reproduces the shape (same-count classes share their whole id set; others overlap) without claiming the real ids.
+_K = ("anomaly/boundary_pairing_mismatch", "horizon_clipped/clipped_at_end", "horizon_clipped/clipped_at_start", "invented/ledger_contact_not_reconstructed",
+      "multi_episode_stretch/multiple_ledger_episodes", "near_miss/certified_positive_clearance", "station_seam/arc_index_station_inside",
+      "wrap/ray_band_contains_wrap_cut")
+_RECEIPT_SUMMARIES = {                     # event_class -> counts per _K, in order (0 = key absent)
+    "travel_event": (0, 9, 9, 0, 15, 14, 698, 0), "relocation": (0, 9, 9, 0, 15, 14, 698, 0),
+    "surgery": (2, 9, 6, 2, 27, 16, 565, 18), "illness_acute": (2, 9, 6, 2, 27, 16, 565, 18), "chronic_onset": (2, 9, 6, 2, 27, 16, 565, 18),
+    "separation": (1, 7, 6, 1, 25, 21, 557, 18),
+    "romantic_start": (1, 5, 5, 1, 8, 11, 515, 0), "marriage": (1, 5, 5, 1, 8, 11, 515, 0),
+    "property_acquisition": (0, 3, 3, 0, 0, 0, 335, 0), "foreign_settlement": (0, 3, 3, 0, 0, 0, 335, 0),
+    "business_launch": (0, 3, 3, 0, 0, 0, 335, 0), "achievement_recognition": (0, 3, 3, 0, 0, 0, 335, 0),
+    "parental_event": (0, 2, 3, 0, 0, 0, 61, 0), "financial_deception": (0, 2, 3, 0, 0, 0, 61, 0),
+    "major_loss": (2, 7, 4, 2, 18, 10, 416, 0), "major_gain": (1, 6, 9, 1, 12, 22, 638, 0),
+    "exam_outcome": (0, 10, 9, 0, 13, 21, 644, 0), "education_milestone": (0, 10, 9, 0, 13, 21, 644, 0),
+    "childbirth": (0, 7, 6, 0, 6, 11, 522, 0), "career_setback": (0, 8, 6, 0, 13, 17, 393, 18),
+    "career_entry": (0, 10, 7, 0, 13, 17, 639, 18), "career_change": (0, 10, 7, 0, 13, 17, 639, 18), "career_advancement": (0, 10, 7, 0, 13, 17, 639, 18),
+    "bereavement": (0, 12, 10, 0, 28, 31, 731, 18),
+    "spiritual_turn": (0,) * 8, "psychological_arc": (0,) * 8,
+}
+SHARED_ID_SETS = 7                         # 18 of the 24 non-empty classes share their full id set with another class, in 7 sets (SR-STRETCH-SINK-COUNTS item 3)
+
+
+def _shared_id_run():
+    import hashlib
+    entries, expected, ids_by_class, second = [], {}, {}, 0
+    for event_class, counts in _RECEIPT_SUMMARIES.items():
+        ids_by_class[event_class], expected[event_class] = [], {}
+        for key, count in zip(_K, counts):
+            kind, reason = key.split("/")
+            for n in range(1, count + 1):
+                rid = f"{_K.index(key):08x}-0000-8000-8000-{n:012d}"
+                ids_by_class[event_class].append(rid)
+                expected[event_class][key] = expected[event_class].get(key, 0) + 1
+                second += 1
+                body = {"schema": "stretch_sink/1", "kind": kind, "reason": reason, "event_class": event_class, "record_id": rid}
+                entries.append({"insertId": f"r{second:06d}", "timestamp": _stamp(second), "textPayload": "STRETCH_SINK/1 " + json.dumps(body, sort_keys=True)})
+    for event_class, ids in ids_by_class.items():
+        second += 1
+        summary = {"schema": "stretch_sink_summary/1", "event_class": event_class, "records": len(ids), "counts_by_kind_reason": expected[event_class],
+                   "record_ids_digest": hashlib.sha256("\n".join(sorted(ids)).encode()).hexdigest()}
+        entries.append({"insertId": f"z{second:06d}", "timestamp": _stamp(second), "textPayload": "STRETCH_SINK_SUMMARY/1 " + json.dumps(summary)})
+    return entries, expected, ids_by_class
+
+
+def test_l3b_classes_that_share_record_ids_are_counted_per_class_and_equal_their_summaries():
+    entries, expected, ids_by_class = _shared_id_run()
+    emitted = sum(len(ids) for ids in ids_by_class.values())
+    id_sets = {frozenset(ids) for ids in ids_by_class.values() if ids}
+    assert emitted == 13140 and len(id_sets) == 13 and len({i for ids in ids_by_class.values() for i in ids}) < emitted      # the fixture does share ids
+    assert sum(1 for ids in id_sets if sum(frozenset(v) == ids for v in ids_by_class.values()) > 1) == SHARED_ID_SETS
+    logs = CR.measure(EXEC, PagedCloud(entries), logs=True)["logs"]
+    sink = logs["sink"]
+    assert logs["truncated"] is False and logs["unreadable_lines"] == 0 and logs["pages_read"] > 1
+    assert sink["record_count"] == 13140 and sink["duplicate_record_lines"] == 0         # a shared id across classes is not a duplicate line
+    assert sink["records_by_event_class"] == {c: len(ids) for c, ids in sorted(ids_by_class.items()) if ids}
+    assert sink["counts_by_kind_reason_by_event_class"] == {c: dict(sorted(k.items())) for c, k in sorted(expected.items()) if k}
+    assert sum(sum(k.values()) for k in sink["counts_by_kind_reason_by_event_class"].values()) == sum(s["records"] for s in sink["summaries"]) == 13140
+    assert len(sink["summaries"]) == 26
+    for row in sink["summaries"]:                                                         # per class: read == summary, by kind, count and digest
+        assert row["read_counts_by_kind_reason"] == dict(sorted(expected[row["event_class"]].items())), row["event_class"]
+        assert row["records_match_summary"] is True and row["counts_by_kind_match_summary"] is True and row["digest_matches_records"] is True, row["event_class"]
+
+
+def test_l3b_a_class_short_of_its_summary_by_kind_reads_false_for_that_class_only():
+    entries, _, _ = _shared_id_run()
+    dropped = next(e for e in entries if e["textPayload"].startswith("STRETCH_SINK/1 ") and '"event_class": "marriage"' in e["textPayload"]
+                   and '"near_miss"' in e["textPayload"])
+    sink = CR.measure(EXEC, PagedCloud([e for e in entries if e is not dropped]), logs=True)["logs"]["sink"]
+    flags = {s["event_class"]: (s["records_match_summary"], s["counts_by_kind_match_summary"], s["digest_matches_records"]) for s in sink["summaries"]}
+    assert flags["marriage"] == (False, False, False) and flags["romantic_start"] == (True, True, True)       # same ids, other class: untouched
