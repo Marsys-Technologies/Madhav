@@ -28,7 +28,8 @@ MEASURING = {
     "measuring_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], [], "J-3d"),
 }
 DISABLED = {"verification_job", "century_dispatch", "publish_head", "rollback_head",
-            "publish_head_dryrun", "rollback_head_dryrun"}
+            "publish_head_dryrun", "rollback_head_dryrun",
+            "github_run_readback"}   # U-M-12: prepared for W3/W4, shipped disabled; exact binding pinned in test_executor_table
 K9 = {"orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify_dryrun", "layer_verify", "layer_publish_dryrun", "layer_publish",
       "layer_rollback_dryrun", "layer_rollback"}   # K9-23 (SR-PREBUILD-ALL): bound and enabled; their exact bindings are pinned in test_executor_table.py
 
