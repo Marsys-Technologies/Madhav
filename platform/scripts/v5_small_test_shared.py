@@ -710,7 +710,7 @@ def absence_evidence(req, root, *, teardown_receipt=None):
 # The digest is the reviewed scope file's (backup_v5_small_test_scope.json) and is pinned HERE because the executor
 # loads this module alone, from the reviewed commit; a test ties the pin to the file. The window is how long a scoped
 # backup stays a valid pre-test record: outside it the dispatch requires a fresh backup + restore proof.
-SCOPED_BACKUP_SCOPE_SHA256 = "489330948aecf7b6fdaa52d00a8f8fa8735e4ed1dcd27a14ee957bd43c07b528"
+SCOPED_BACKUP_SCOPE_SHA256 = "1daf69d6e31279592947aa25e2b4f9a5c1c8137d6663ba039c27e7331ac7335a"
 SCOPED_BACKUP_VALIDITY_S = 4 * 3600
 
 
