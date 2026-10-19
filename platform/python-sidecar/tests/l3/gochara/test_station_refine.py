@@ -69,7 +69,11 @@ def test_the_computation_is_unchanged_from_main_through_the_production_wiring_an
     roots are looser because a station (the zero of the spline velocity) and an ingress are ill-conditioned root-finds. The full table, both environments and the reason are in
     `station_golden_matrix.py` and in the fixture's `provenance`. The defects this test exists for (a station moved by 8.6 s, an exit moved by 70 s, a lost crossing) are
     orders of magnitude outside the tolerances. A design that reaches the index through the production wiring fails here (shown by the harness mutations 'round-1 design' and the
-    'just outside the tolerance' ones; the 'inside the tolerance' controls survive)."""
+    'just outside the tolerance' ones; the 'inside the tolerance' controls survive).
+
+    J-4c: the golden's solved-occurrence t_in / t_out cells were replaced when `record_store._in_orb_span_around_root` began Swiss-polishing the in-orb span edges (each edge moves by
+    up to ~1.5 arcsec of longitude to the ephemeris band edge; see the fixture's `provenance.j4c_span_edge_polish`). Nothing else moved: ordinals, contact ids, t_exact, stations, arcs,
+    segments and ingress roots are still the main-tree values."""
     golden = json.loads(GOLDEN.read_text())
     assert golden["schema"] == matrix.SCHEMA and golden["tolerances"] == matrix.TOLERANCES
     cases = golden["cases"]
