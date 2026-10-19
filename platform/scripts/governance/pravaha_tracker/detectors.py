@@ -39,7 +39,32 @@ from dataclasses import asdict, dataclass, replace
 
 from .events import now_iso
 
-CALL_TIMEOUT_S = 5.0
+MAX_CONFIGURED_S = 120.0
+# Notes about environment settings that were rejected; health serves them, so a bad value is never silent.
+CONFIG_NOTES: list[str] = []
+
+
+def env_seconds(name: str, default: float, maximum: float = MAX_CONFIGURED_S, notes: list | None = None) -> float:
+    """Seconds from the environment: finite, positive, <= maximum. Anything else falls back to `default` and
+    leaves a note in `notes` (health) rather than failing the tracker's start."""
+    notes = CONFIG_NOTES if notes is None else notes
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        value = float("nan")
+    if not (0 < value <= maximum):  # NaN fails the comparison too
+        notes.append(f"{name}={raw[:40]!r} rejected (need 0 < seconds <= {maximum:g}); using {default:g}")
+        return default
+    return value
+
+
+# A loaded machine can make `gh pr list` take longer than 5 s (incident 2026-10-19: ~7.4 s at load ~60).
+CALL_TIMEOUT_S = env_seconds("PRAVAHA_CALL_TIMEOUT_S", 5.0)
+# Budget for one live verification (`ky done`, the D-46 sweep): all of a detector's calls share it.
+VERIFY_BUDGET_S = env_seconds("PRAVAHA_VERIFY_BUDGET_S", 20.0)
 _EXTERNAL = threading.local()
 
 ENV_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
@@ -65,7 +90,7 @@ class Config:
     repo: str              # a checkout of the project repo (for git/gh)
     pgenv: str | None      # path to a read-only DB env file (sourced by bash), or None
     home: str              # PRAVAHA_HOME
-    verify_budget_s: float = 20.0
+    verify_budget_s: float = VERIFY_BUDGET_S
 
 
 class SourceMonitor:
@@ -245,7 +270,7 @@ class Detectors:
         """
         requested_at = requested_at if requested_at is not None else time.monotonic_ns()
         typ = spec.get("type", "?")
-        budget = min(20.0, max(0.01, self.cfg.verify_budget_s))
+        budget = min(MAX_CONFIGURED_S, max(0.01, self.cfg.verify_budget_s))
         deadline = time.monotonic() + budget
         refused = lambda detail: DetectorResult("error", f"{typ}: {detail}", now_iso(), f"detector:{typ}")
         if not self._verify_slots.acquire(blocking=False):

@@ -168,6 +168,15 @@ proof repeats it. **(I) INTERPRETATION J2A-S3:** 4 h, so a sitting (dry run, pre
 alternative: shorter, at the cost of re-running step 10 inside a long sitting. A dispatch must satisfy
 `restore proof time <= now <= not_after`.
 
+**Amended by SR-BACKUP-VALIDITY-A8 (A8 §3, 2026-10-18): the 4 h clock above no longer gates a scoped backup.** A scoped capture records
+`scoped_content_digest` (SHA-256 over its per-table row-count/content-hash and per-sequence measurements,
+`v5_small_test_shared.scoped_content_digest`) and `validity = {not_before: snapshot instant, basis}`; no `not_after`. A scoped backup
+is valid while (a) its restore proof is a verified proof of the pinned scope, bound to its capture, whose measured content has that
+digest, and (b) a fresh, read-only measurement of the same relations (`backup_v5_small_test_job.measure_scope_now`, the capture's
+own `scoped_measurements`) has that digest. The dispatch script runs (b) at `--execute` before anything is staged; the executor's
+admission has no database and checks (a) only. A measurement that cannot be taken refuses. An older capture's `not_after` stays
+readable and is never a gate. The 4 h window (`SCOPED_BACKUP_VALIDITY_S`) now applies to full-form (/1) proofs only.
+
 Enforcement is the smallest change that works: `scoped_backup_problem` in `v5_small_test_shared.py`, called from
 `smalltest_request_problem`, which runs at executor admission **and again inside the dispatch script at `--execute`**. A
 `smalltest_dispatch` request **must** carry `backup_label` and `backup_restore_sha256` (the SHA-256 of that label's

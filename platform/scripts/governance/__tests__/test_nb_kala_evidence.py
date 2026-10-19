@@ -89,7 +89,7 @@ def test_followups_are_registered_without_completing_their_parents():
         assert finding in items['JOIN-ALL']['depends_on']
 
 
-def test_bounded_parent_dependencies_are_exact_and_executor_operations_stay_disabled():
+def test_bounded_parent_dependencies_are_exact_and_executor_operations_use_the_pinned_module():
     receipt = CORRECTIONS.parent / 'source_imports.json'
     assert receipt.is_file(), 'accepted parent dependency imports need exact source-byte receipts'
     sources = json.loads(receipt.read_text())['sources']
@@ -101,4 +101,7 @@ def test_bounded_parent_dependencies_are_exact_and_executor_operations_stay_disa
         assert len(row['source_commit']) == 40 and row['byte_exact'] is True
     ops = json.loads((ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json').read_text())['ops']
     for name in ('orchestrator_rebuild_dryrun','orchestrator_rebuild','layer_verify','layer_publish','layer_rollback'):
-        assert ops[name]['enabled'] is False
+        # K9-23 (SR-PREBUILD-ALL) enabled these; publication.py itself is still the byte-pinned module above, so the
+        # real operations must run it directly or through the admission layer that delegates to it.
+        assert ops[name]['enabled'] is True
+        assert ops[name]['python_module'] in ('services.kala_core.publication', 'services.kala_core.publication_admission')

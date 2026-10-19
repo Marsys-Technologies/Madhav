@@ -353,6 +353,8 @@ class Engine:
             self.tick_errors.append("power: timed out; keeping last measurement")
         return {
             "sources": self.det.sources.snapshot(),
+            "call_timeout_s": D.CALL_TIMEOUT_S, "verify_budget_s": self.det.cfg.verify_budget_s,
+            "config_notes": list(D.CONFIG_NOTES),
             "server_started_at": self.started_at.isoformat(timespec="seconds"),
             "engine_tick_age_s": round(time.time() - self._last_tick, 1),
             "db_proxy": D.port_open(self.cfg["db_port"]),
