@@ -73,7 +73,6 @@
     "J-4c",
     "J-4c-a55l",
     "J-4c-a55m",
-    "J-4c-pr2907",
     "J-4c-pr2953",
     "J-4c-pr2988",
     "J-4c-pr3082",
@@ -174,7 +173,7 @@
     "VC-1",
     "VC-2"
    ],
-   "closure_count": 171,
+   "closure_count": 170,
    "gap_candidates": [
     {
      "absorbed_by": "J-RUN2-RESOLVED",
@@ -374,7 +373,6 @@
     "J-4c",
     "J-4c-a55l",
     "J-4c-a55m",
-    "J-4c-pr2907",
     "J-4c-pr2953",
     "J-4c-pr2988",
     "J-4c-pr3082",
@@ -414,7 +412,7 @@
     "P06b",
     "V-J6"
    ],
-   "closure_count": 104,
+   "closure_count": 103,
    "gap_candidates": [
     {
      "absorbed_by": "J-RUN2-RESOLVED",
@@ -535,7 +533,6 @@
     "J-4c",
     "J-4c-a55l",
     "J-4c-a55m",
-    "J-4c-pr2907",
     "J-4c-pr2953",
     "J-4c-pr2988",
     "J-4c-pr3082",
@@ -606,7 +603,7 @@
     "L0-M",
     "P06b"
    ],
-   "closure_count": 136,
+   "closure_count": 135,
    "gap_candidates": [
     {
      "absorbed_by": "J-RUN2-RESOLVED",
@@ -722,7 +719,6 @@
     "J-4c",
     "J-4c-a55l",
     "J-4c-a55m",
-    "J-4c-pr2907",
     "J-4c-pr2953",
     "J-4c-pr2988",
     "J-4c-pr3082",
@@ -832,7 +828,7 @@
     "VC-1",
     "VC-2"
    ],
-   "closure_count": 184,
+   "closure_count": 183,
    "gap_candidates": [
     {
      "absorbed_by": "C-1",
@@ -1136,7 +1132,6 @@
   "J-4c",
   "J-4c-a55l",
   "J-4c-a55m",
-  "J-4c-pr2907",
   "J-4c-pr2953",
   "J-4c-pr2988",
   "J-4c-pr3082",
@@ -1246,12 +1241,12 @@
   "VC-1",
   "VC-2"
  ],
- "closure_count": 184,
- "closure_sha256": "3bc61c5bc43c8815095c2e53898c23a951c2ca68f214b6e12ac3424813a63c10",
+ "closure_count": 183,
+ "closure_sha256": "57e3097bf84c38dd3266c7693c01cddbd22fc3b775d574e2cd1c85da1edf30a1",
  "inputs": {
-  "model_canonical_sha256": "0794d50c0e16ffc707d69699285a48741608d4ad1ecf875bc51dbb03634e89a8",
-  "model_items": 273,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019",
+  "model_canonical_sha256": "f9a4f0116ffd15bc95cf00af36170322e97d3e61bed094338b4c9f2d7527759d",
+  "model_items": 274,
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020",
   "roots_canonical_sha256": "3f3c10afe434afee563bbc436f5c7ad07578422d05b29149887b2fc526f54e77"
  },
  "mechanical_close_chain_excluded_as_roots": [],
@@ -2014,7 +2009,6 @@
     "J-4b-pr3119",
     "J-4c-a55l",
     "J-4c-a55m",
-    "J-4c-pr2907",
     "J-4c-pr2953",
     "J-4c-pr2988",
     "J-4c-pr3082",
@@ -2739,7 +2733,6 @@
     "J-4c",
     "J-4c-a55l",
     "J-4c-a55m",
-    "J-4c-pr2907",
     "J-4c-pr2953",
     "J-4c-pr2988",
     "J-4c-pr3082",
@@ -2937,9 +2930,6 @@
     "J-4c-a55m": [
      "item"
     ],
-    "J-4c-pr2907": [
-     "item"
-    ],
     "J-4c-pr2953": [
      "item"
     ],
@@ -3019,26 +3009,6 @@
      "item"
     ],
     "J-4c-a55l": [
-     "item"
-    ]
-   },
-   "required_by": [
-    "J-4c"
-   ],
-   "skip_capable": []
-  },
-  "J-4c-pr2907": {
-   "acceptances": [
-    "i",
-    "ii",
-    "iii",
-    "iv"
-   ],
-   "prerequisites": {
-    "J-0m": [
-     "item"
-    ],
-    "J-4b": [
      "item"
     ]
    },
@@ -5671,6 +5641,7 @@
   "D-A9-NA-PROCESS-NOTES",
   "D-A9-NA-W4-SAFETY",
   "D-GOCHARA-TIMEOUT",
+  "D-J4C-PR2907-NA",
   "D-KCERT-EXISTING-STATUS-20261015",
   "D-KR",
   "D-R5",
@@ -5682,6 +5653,7 @@
   "J-3a-b44",
   "J-4a-a25",
   "J-4a-a26",
+  "J-4c-pr2907",
   "J-4p-B4",
   "J-7a",
   "J-7a-a62",
@@ -5748,7 +5720,7 @@
   "W4-SAFETY-N01",
   "W4-SAFETY-N02"
  ],
- "outside_count": 89,
+ "outside_count": 91,
  "plan_version": "2.7+A9",
  "schema": "kalayantra.closure/1"
 }
