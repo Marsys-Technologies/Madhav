@@ -439,3 +439,26 @@ def test_restore_refuses_when_the_restored_targets_ledger_is_not_the_one_the_bas
         backup.restore_verify(folder, label, 'small_test')
     assert not (folder / 'restore.json').exists()
     assert_target_removed(dsn, label)
+
+
+@pytest.mark.parametrize('name', ['century', 'verification_seal'])
+def test_the_other_reviewed_scopes_capture_and_restore_through_the_same_mechanism_and_never_cross(scoped, monkeypatch, name):
+    """W3W4 pack verify E3: `--scope century` / `--scope verification_seal` are the same capture and restore under their own reviewed file (here a synthetic
+    scope of the same shape, named for the scope under test). A capture of one scope is never restorable, or valid, as another."""
+    dsn, tmp_path, small_test_file = scoped
+    scope_file = tmp_path / f'{name}.json'
+    document = json.loads(small_test_file.read_text())
+    document['name'] = name
+    scope_file.write_text(json.dumps(document))
+    monkeypatch.setitem(backup.SCOPE_PATHS, name, scope_file)
+    label = 'p02_' + uuid.uuid4().hex
+    folder = tmp_path / label
+    receipt = backup.snapshot(folder, label, name)
+    assert receipt['scope']['name'] == name and receipt['scope']['sha256'] == backup.load_scope(name=name)['sha256']
+    assert receipt['scope']['sha256'] != backup.load_scope(name='small_test')['sha256']      # the digest covers the name: same tables, another scope
+    with pytest.raises(backup.BackupRefused, match='capture scope differs from the reviewed scope'):
+        backup.restore_verify(folder, label, 'small_test')
+    assert not (folder / 'restore.json').exists()
+    proof = backup.restore_verify(folder, label, name)
+    assert proof['restore_verified'] is True and proof['target_removed'] is True and proof['scope_sha256'] == receipt['scope']['sha256']
+    assert_target_removed(dsn, label)

@@ -5,6 +5,7 @@ status: REVIEW_CANDIDATE
 produced_on: 2026-10-17
 authority: surrogate rulings SR-J2A-BACKUP-SCOPE (DECISIONS_SURROGATE.jsonl, 2026-10-16T22:08Z), SR-J2A-BACKUP-POSITIVE (2026-10-17T01:50Z) and SR-J2A-RESTORE-BASE (2026-10-17T10:52Z); amends P01_REWORK_v1_0.md (paired logical backup) and the step-10 text of the small-test sitting checklist
 changelog:
+  - "1.3: W3W4 pack verify E3. `--scope century` and `--scope verification_seal` share this mechanism, each with its own reviewed scope file and pinned digest (SCOPED_BACKUP_SCOPE_SHA256S): century = the final candidate build (same tables as small_test, its own name), verification_seal = the verifier's and the sealer's declared write surface (verification_job.VERIFIER_WRITE_TABLES + seal_flow.SEALER_WRITE_ALLOWED + the migration ledger as context). A proof of one scope never admits a dispatch of another."
   - "1.2: SR-J2A-RESTORE-BASE. The 2026-10-17T09:04Z restore proof failed (`pg_restore failed`): production had since applied migration 1394 (functions `ka_gochara_governed_chart_statement_lock` / `ka_gochara_touched_chart_statement_lock`, triggers on `kala_gochara_publication` / `kala_gochara_authority`, both in scope), and the pinned, empty `SCOPED_RESTORE_BASE_MIGRATIONS` could not supply them. The restore base is now DERIVED, never pinned: the governed bundle schema plus every migration the archive's own `_migrations_applied` ledger records as applied after the bundle whose file mentions a scope table, each file hash-checked against the ledger. New captures record the ledger digest and the base identity in capture.json; the proof refuses if the ledger differs from the one recorded (or, for a capture that recorded none, from the one the base was derived from). `SCOPED_RESTORE_BASE_MIGRATIONS` is removed."
   - "1.1: SR-J2A-BACKUP-POSITIVE. The 01:48Z production capture failed because the full-schema dump locked relations the backup login (amjis_app) cannot read (four planner_* tables owned by purna_inquiry_owner). The scoped dump now names ONLY the scope plus its foreign-key parents, each with its own -t (definitions and data), so nothing else is locked or dumped; the restore target is built from the governed L1 bundle schema instead of from a production schema dump; a guarded --exclude-table fallback is recorded in capture.json with each table's owner. No grant was widened."
   - "1.0: scoped small-test backup (--scope small_test): reviewed scope file + digest, SQL-aggregate measurement, parallel directory dump, restore proof, validity window, dispatch check."
@@ -68,6 +69,16 @@ overwrites and the teardown deletes, and the insert-only global Gochara tables n
 * **Foreign-key parents** are computed at capture (`pg_constraint`, upward and transitive) and archived as data, because
   `pg_restore` adds foreign keys after loading data. On the migration-derived schema they are `charts`, `profiles`,
   `asset_output_digest_specs`. They are recorded in the receipt (`scope.closure`) and measured.
+
+* **2.5 The other two scopes (W3W4 pack verify E3).** `--scope century` and `--scope verification_seal` are this mechanism under two more reviewed files, each pinned by digest in
+  `v5_small_test_shared.SCOPED_BACKUP_SCOPE_SHA256S` (the executor loads that file alone). The digest is over `{schema, name, sorted tables}`, so the NAME is part of it: a proof of one scope never admits a
+  dispatch of another (`scoped_backup_problem(..., scope=)`; `century_request_problem` demands `century`).
+  * `century` (`backup_v5_century_scope.json`): the final, ordinary candidate build is the small-test staged run without the test-slice marker, so it writes the same tables; the file is derived from the small-test one
+    and `test_backup_v5_century_verification_scopes.py` (S1) runs the same AST scan over `dispatch_v5_century_job.py` and `century_launch.py` as well and refuses a write target the file does not list.
+  * `verification_seal` (`backup_v5_verification_seal_scope.json`): the write surface the verifier job and the sealer each PROVE they hold at run time — `verification_job.VERIFIER_WRITE_TABLES`
+    (`ka_gochara_search_inventory_verification`, `ka_gochara_eval_window_verification`, `ka_gochara_seal_brief`) and `seal_flow.SEALER_WRITE_ALLOWED` (`ka_gochara_generation_seal`, `ka_gochara_seal_approval`, four
+    columns of `kala_gochara_publication`) — plus `_migrations_applied` as context. The test (V1) re-derives it from those constants; its digest equals the one the J5S pack's `derive_scope.py` computes.
+    `guarded_children` is empty by design: an unreviewed referential-action child fails the capture by name (§2.4b), it is never assumed away.
 
 ## 3. How capture and restore work
 

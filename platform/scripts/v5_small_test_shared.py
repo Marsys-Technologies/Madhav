@@ -737,6 +737,11 @@ def absence_evidence(req, root, *, teardown_receipt=None):
 # loads this module alone, from the reviewed commit; a test ties the pin to the file. The window is how long a scoped
 # backup stays a valid pre-test record: outside it the dispatch requires a fresh backup + restore proof.
 SCOPED_BACKUP_SCOPE_SHA256 = "1daf69d6e31279592947aa25e2b4f9a5c1c8137d6663ba039c27e7331ac7335a"
+# W3W4 pack verify E3: the other two reviewed scopes (backup_v5_century_scope.json, backup_v5_verification_seal_scope.json), pinned the same way and for the same reason.
+# A dispatch names ITS scope (scoped_backup_problem(scope=...)); a proof of another scope never admits it (the digest covers the scope's name as well as its tables).
+SCOPED_BACKUP_SCOPE_SHA256S = {"small_test": SCOPED_BACKUP_SCOPE_SHA256,
+                               "century": "eab44eef1ceb06604cab21fbcc464334a9253af1f320ca322b797cf3ff32b020",
+                               "verification_seal": "2c2c11d097fc8793e4d3eb0db9e09ef184f0294b3fdbc70b782ef8fdd2a287ca"}
 SCOPED_BACKUP_VALIDITY_S = 4 * 3600
 
 
@@ -762,8 +767,8 @@ def full_backup_window_problem(proof, label, folder, root, now=None):
         raise Refused('backup is outside its validity window; a fresh backup and restore proof are required')
 
 
-def scoped_backup_problem(req, root, now=None):
-    """A `smalltest_dispatch` MUST name its backup (`backup_label` + the restore proof's `backup_restore_sha256`), and
+def scoped_backup_problem(req, root, now=None, scope='small_test'):
+    """A `smalltest_dispatch` (or, with `scope=`, a `century_dispatch`) MUST name its backup (`backup_label` + the restore proof's `backup_restore_sha256`), and
     that proof must be taken no more than SCOPED_BACKUP_VALIDITY_S ago (SR-J2A-BACKUP-SCOPE condition 4). A scoped proof
     (schema /2) must be a verified proof of the pinned scope; a full proof (schema /1) is accepted only with the same
     window, measured from its capture receipt's `ts`. Raises Refused.
@@ -787,7 +792,8 @@ def scoped_backup_problem(req, root, now=None):
             or proof.get('scoped') is not True or proof.get('restore_verified') is not True
             or proof.get('backup_taken') is not True or proof.get('target_removed') is not True):
         raise Refused('scoped backup restore proof is not a verified proof for this label')
-    if proof.get('scope_sha256') != SCOPED_BACKUP_SCOPE_SHA256:
+    expected_scope = SCOPED_BACKUP_SCOPE_SHA256S[scope]
+    if proof.get('scope_sha256') != expected_scope:
         raise Refused('scoped backup covers a scope other than the reviewed one')
     capture = read_evidence(root, folder, {'name': 'capture.json', 'sha256': proof.get('capture_sha256')})
     scope = capture.get('scope') or {}
@@ -802,7 +808,7 @@ def scoped_backup_problem(req, root, now=None):
     except (KeyError, TypeError, ValueError):
         raise Refused('scoped backup validity window missing or malformed') from None
     if (capture.get('schema') != 'ky.smalltest_backup/2' or capture.get('label') != label
-            or scope.get('sha256') != SCOPED_BACKUP_SCOPE_SHA256 or capture.get('archive_sha256') != proof.get('archive_sha256')
+            or scope.get('sha256') != expected_scope or capture.get('archive_sha256') != proof.get('archive_sha256')
             or proof.get('validity') != window):
         raise Refused('scoped backup restore proof does not match its capture')
     instant = now or datetime.now(timezone.utc)
@@ -950,7 +956,7 @@ def century_request_problem(req, root):
             # Even a staging rollback may not bypass the previous lifecycle: generation '5.0' must be independently absent.
             absence_evidence(req, root)
             if kind == 'century_dispatch':
-                scoped_backup_problem(req, root)
+                scoped_backup_problem(req, root, scope='century')       # the CENTURY scope's proof (W3W4 pack verify E3), not the small-test one
                 century_dryrun_evidence(req, root)
         elif kind in ('century_teardown', 'century_teardown_dryrun'):
             scope = staged_scope(req, root)

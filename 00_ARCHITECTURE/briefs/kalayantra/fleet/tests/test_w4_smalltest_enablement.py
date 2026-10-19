@@ -28,14 +28,17 @@ MEASURING = {
     "measuring_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], [], "J-3d"),
 }
 # SR-PREBUILD-ALL (enabled_by J-4d, request item J-4e): the century family. century_dispatch = the measuring launch without the test slice (builder: it stages the
-# run; gcloud: it launches it). century_teardown (the REAL deletion) stays disabled until the owner's teardown authority is recorded (SR-TEARDOWN-AUTHORITY-GATE).
+# run; gcloud: it launches it). century_teardown (the REAL deletion) was disabled until W3W4 pack verify E1: its dry-run twin exists and the pack's bind predicate needs all six century
+# kinds enabled. Enabling the kind adds no unsigned path: every `*_teardown` stays signed-only (executor.mechanical_exempt), and the pack's own teardown gate still reads the owner authority.
 CENTURY = {
     "century_dispatch_dryrun": ("builder", "platform/scripts/dispatch_v5_century_job.py", ["--i-am-steward", "--after-settled-1", "--dry-run"], ["classes"], "J-4d"),
     "century_dispatch": ("builder", "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py", [], ["classes"], "J-4d"),
     "century_teardown_dryrun": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--dry-run"], [], "J-4d"),
+    "century_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], [], "J-4d"),
 }
-CENTURY_DISABLED = {"century_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], [], "J-4d")}
-DISABLED = {"verification_job", "publish_head", "rollback_head", *CENTURY_DISABLED,
+# W3W4 pack verify E1: measuring_cancel's siblings for the century build and the verification job; exact bindings pinned in test_executor_table, behaviour in test_executor_family_cancel.
+FAMILY_CANCEL = {"century_cancel_dryrun", "century_cancel", "verification_cancel_dryrun", "verification_cancel"}
+DISABLED = {"verification_job", "publish_head", "rollback_head",
             "publish_head_dryrun", "rollback_head_dryrun",
             "gochara_role_provisioning_dispatch", "gochara_role_provisioning_dispatch_dryrun",      # U-M-03: shipped disabled
             "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback",
@@ -54,8 +57,8 @@ def executor(tmp_path, monkeypatch):
 
 
 def test_only_six_wave4_measuring_scheduler_and_century_ops_are_newly_enabled(table):
-    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(CENTURY) | DISABLED
-    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(CENTURY)
+    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | FAMILY_CANCEL | set(CENTURY) | DISABLED
+    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | FAMILY_CANCEL | set(CENTURY)
     for kind in DISABLED:
         assert table[kind]["enabled"] is False
         if "prepared_dry_run" in table[kind]:
@@ -174,11 +177,11 @@ def test_measuring_requests_reach_the_reviewed_measuring_policy_not_the_enableme
 
 
 # ───────────── SR-PREBUILD-ALL: the century family (item J-4e, enabled_by J-4d) ─────────────
-@pytest.mark.parametrize("kind", [*CENTURY, *CENTURY_DISABLED])
+@pytest.mark.parametrize("kind", CENTURY)
 def test_century_exact_script_capability_and_argv(table, kind):
     op = table[kind]
-    needs, script, fixed, allowed, item = {**CENTURY, **CENTURY_DISABLED}[kind]
-    assert op["enabled"] is (kind in CENTURY) and next(iter(op)) == "enabled"
+    needs, script, fixed, allowed, item = CENTURY[kind]
+    assert op["enabled"] is True and next(iter(op)) == "enabled"
     assert op["needs"] == needs and op["script"] == script and (FLEET.parents[3] / script).is_file()       # never TO_BE_SET
     assert op["fixed_args"] == fixed and op["allowed_args"] == allowed and op["enabled_by"] == item
     assert op["production"] is (not kind.endswith("_dryrun"))                                              # A8 §3.8 / SR-TEARDOWN-AUTHORITY-GATE 2: every dryrun sibling is production:false
@@ -188,7 +191,7 @@ def test_century_exact_script_capability_and_argv(table, kind):
     assert op.get("remote_async", False) is (kind == "century_dispatch")                                  # A8 §3.11: only the remote launch takes the fence
 
 
-@pytest.mark.parametrize("kind", ["century_dispatch", "century_dispatch_dryrun", "century_teardown_dryrun"])
+@pytest.mark.parametrize("kind", ["century_dispatch", "century_dispatch_dryrun", "century_teardown_dryrun", "century_teardown"])
 def test_century_missing_each_required_capability_is_refused(table, executor, kind):
     req = request(executor, kind)
     for required in [table[kind]["needs"], *table[kind].get("also_needs", [])]:
@@ -202,7 +205,7 @@ def test_century_validate_refuses_unlisted_arguments_run_names_and_any_horizon(t
         assert executor.validate(request(executor, kind, {name: "fixture"}), table, caps()) == f"disallowed args ['{name}']"
 
 
-@pytest.mark.parametrize("kind", ["century_dispatch", "century_dispatch_dryrun", "century_teardown_dryrun"])
+@pytest.mark.parametrize("kind", ["century_dispatch", "century_dispatch_dryrun", "century_teardown_dryrun", "century_teardown"])
 def test_century_requests_reach_the_reviewed_century_policy_not_the_enablement_refusal(table, executor, kind):
     # the fixture's item is J-2a; the real century policy (loaded from the reviewed commit) must be what answers
     args = {"classes": "all"} if "dispatch" in kind else {}
@@ -210,5 +213,8 @@ def test_century_requests_reach_the_reviewed_century_policy_not_the_enablement_r
     assert why == ("century dispatch belongs to J-4e" if "dispatch" in kind else "century teardown belongs to J-4e")
 
 
-def test_century_teardown_stays_disabled_until_the_owner_authority_is_recorded(table, executor):
-    assert executor.validate(request(executor, "century_teardown"), table, caps()).startswith("kind century_teardown is not enabled")
+def test_century_teardown_is_enabled_but_never_mechanical(table, executor):
+    # W3W4 pack verify E1: enabled (its dry-run twin exists; the pack's bind predicate needs all six century kinds enabled) and still a deletion, so signed-only
+    assert table["century_teardown"]["enabled"] is True and table["century_teardown_dryrun"]["enabled"] is True
+    assert executor.mechanical_exempt("century_teardown") is True
+    assert "pre-acceptance receipt missing" in executor.validate({**request(executor, "century_teardown"), "acceptance_receipt": None}, table, caps())

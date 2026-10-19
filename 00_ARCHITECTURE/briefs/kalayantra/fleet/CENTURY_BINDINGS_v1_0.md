@@ -18,7 +18,9 @@ and unsealable by construction, MEASURING_BUILD_CONTRACT_v1_0 MB-1).
 | `century_dispatch_dryrun` | `platform/scripts/dispatch_v5_century_job.py` | builder | false | enabled |
 | `century_dispatch` | `fleet/century_launch.py` | builder + gcloud | true, `remote_async` | enabled |
 | `century_teardown_dryrun` | `platform/scripts/teardown_v5_small_test_job.py` | owner | false | enabled |
-| `century_teardown` | same script, `--execute --i-am-steward` | owner | true | **disabled** |
+| `century_teardown` | same script, `--execute --i-am-steward` | owner | true | enabled (W3W4 pack verify E1; signed-only) |
+| `century_cancel_dryrun` | `fleet/century_cancel.py` (`--dry-run`) | gcloud | false | enabled (W3W4 pack verify E1) |
+| `century_cancel` | `fleet/century_cancel.py` | gcloud | true | enabled (W3W4 pack verify E1; signed-only; fence-exempt; `ky.century_cancel/1`) |
 
 Requests carry `item_id=J-4e`, the canonical chart and `args={"classes":"all"}` only. No run name, no horizon: **the launcher chooses no horizon, class
 set or rule version** — what generation '5.0' answers after 2026-04-17 is the owner's open N-G9 decision and the writer code J-4d lands.
@@ -54,7 +56,8 @@ set or rule version** — what generation '5.0' answers after 2026-04-17 is the 
   The teardown kinds use the same item.
 * **(I) INTERPRETATION C4:** a real century dispatch requires the scoped backup proof (`scoped_backup_problem`) as `smalltest_dispatch` does, because
   SR-PREBUILD-ALL lists "scoped backup by content hash" among the J3C gates; `measuring_dispatch` does not. Alternative: drop it to match measuring.
-* **(I) INTERPRETATION C5:** `century_teardown` is added **disabled**: SR-TEARDOWN-AUTHORITY-GATE says no century teardown executes until an owner
+* **(I) INTERPRETATION C6 (W3W4 pack verify E1/E3):** `century_teardown` is now **enabled** because its dry-run twin exists and the W3W4 pack's bind predicate (`century/rebind_pins.py`) needs all six century kinds enabled; every `*_teardown` stays signed-only, and the pack's own teardown gate still reads the owner authority named in C5. `century_cancel(+dryrun)` bind to the `century_dispatch` receipt (J-4e) and an ABORT/stall verdict, exactly as `measuring_cancel` does for the measuring build. The scoped backup of C4 is now the **`century` scope** (`backup_v5_century_scope.json`, digest pinned in `v5_small_test_shared.SCOPED_BACKUP_SCOPE_SHA256S`): same tables as the small-test scope (the unmarked run writes no other table), its own name and digest, so a small-test proof no longer admits a century dispatch. Alternative: keep accepting the small-test scope's proof.
+* **(I) INTERPRETATION C5 (superseded by C6 for the enabled flag):** `century_teardown` was added **disabled**: SR-TEARDOWN-AUTHORITY-GATE says no century teardown executes until an owner
   authority naming century candidate rows (OWNER-AUTH-TEARDOWN-v2) is recorded and `teardown_gate` reads it. Flipping `enabled` is a table-only edit.
 * Still open, not decided here: N-G9 (the horizon '5.0' answers), P06b, D-G9, the measured cap and Cloud Run timeout readback, D-CLOUD, the
   `teardown_gate` ledger check and OWNER-AUTH-TEARDOWN-v2.

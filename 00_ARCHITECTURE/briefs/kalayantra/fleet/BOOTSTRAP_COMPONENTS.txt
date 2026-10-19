@@ -302,6 +302,8 @@ platform/scripts/governance/pravaha_tracker/verdicts.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/SCHEDULER_REAPER_v1_0.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_cancel.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/century_cancel.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/verification_cancel.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/scheduler_reaper.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py
@@ -309,6 +311,8 @@ platform/scripts/governance/pravaha_tracker/verdicts.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cloudrun_readback.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_scheduler_reaper.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_measuring_cancel.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_family_cancel.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_cloudrun_job_arg.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_launch.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/conftest.py
 

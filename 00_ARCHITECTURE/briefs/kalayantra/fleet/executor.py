@@ -25,7 +25,7 @@ field equals the template; no field the template does not define; the fill diges
 the same request identity in THIS executor's own receipts (dry_run_check; `backup_snapshot` / `backup_restore_verify` have no dry-run kind and need none), (3) the
 lease is live. It is recorded as acceptance/<operation_id>.json, by executor-mechanical, with the request digest and the evidence digests, and is re-measured
 immediately before execution. NEVER mechanical: deletions (every `*_teardown`) and serving changes (publish_head, layer_publish, rollback_head, layer_rollback), and
-measuring_cancel (held with them): those keep requiring ONE verifier lane's acceptance exactly as above. A request that carries an `acceptance_receipt` is always judged by it. `*_dryrun` kinds are `production: false` — read-only
+measuring_cancel, century_cancel and verification_cancel (held with them): those keep requiring ONE verifier lane's acceptance exactly as above. A request that carries an `acceptance_receipt` is always judged by it. `*_dryrun` kinds are `production: false` — read-only
 with a credential: no lease, acceptance or fence, but a merged `reviewed_commit` (they run in its tree) and a rollback proof in
 the receipt.
 
@@ -49,6 +49,9 @@ Measuring cancel (SR-J3-CANCEL-NULL 2(a)): `measuring_cancel` cancels ONE runnin
 twice — the target execution must be the one named in the cited `measuring_dispatch` receipt (name + sha256, read back byte for byte) and an ABORT or stall
 verdict file must be cited the same way and say so. The receipt carries the execution state read back after the cancel; anything but CANCELLED is FAILED.
 Like a resume it is never held by the production fence (the dispatch it stops is what holds it). `measuring_cancel_dryrun` plans the calls and makes none.
+The same admission, proof and fence rule serve `century_cancel` (the century build, item J-4e, its `century_dispatch` receipt) and `verification_cancel` (the
+verification job `gochara-verification-job`, item J-5s, its `verification_job` receipt), each with a `*_dryrun` twin (CANCEL_FAMILIES). All three cancels are
+SIGNED_ONLY: a stop is never mechanical.
 """
 from __future__ import annotations
 import concurrent.futures as cf, datetime as dt, fcntl, hashlib, json, os, pathlib, re, shutil, signal, subprocess, sys, tempfile, threading, time
@@ -72,7 +75,9 @@ LAUNCH_SCHEMAS = {"smalltest_dispatch": "ky.smalltest_launch/1", "measuring_disp
 REMOTE_ASYNC_KINDS = frozenset({"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"})   # A8 §3.11: work continues remotely after the child returns — fenced even if a table drops `remote_async`
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
 PACK_ALLOWLIST = OPS / "PACK_ALLOWLIST.json"   # OWNER-MINIMAL-PROTECTION-NOW: written by the cockpit ONLY from an ACCEPTED verify job of a pack; this executor only reads it
-SIGNED_ONLY_KINDS = frozenset({"publish_head", "layer_publish", "rollback_head", "layer_rollback", "measuring_cancel"})   # serving changes, plus the deletion-adjacent cancel; every `*_teardown` kind is signed-only too (see mechanical_exempt)
+SIGNED_ONLY_KINDS = frozenset({"publish_head", "layer_publish", "rollback_head", "layer_rollback", "measuring_cancel", "century_cancel", "verification_cancel"})   # serving changes, plus the deletion-adjacent cancels; every `*_teardown` kind is signed-only too (see mechanical_exempt)
+CANCEL_FAMILIES = {"measuring": {"item": "J-3c", "dispatch": "measuring_dispatch", "schema": "ky.measuring_cancel/1", "job": "brahma-build-pipeline-job", "execution": r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*"}, "century": {"item": "J-4e", "dispatch": "century_dispatch", "schema": "ky.century_cancel/1", "job": "brahma-build-pipeline-job", "execution": r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*"}, "verification": {"item": "J-5s", "dispatch": "verification_job", "schema": "ky.verification_cancel/1", "job": "gochara-verification-job", "execution": r"gochara-verification-job-[a-z0-9]+(?:-[a-z0-9]+)*"}}   # per family: the request item, the dispatch kind whose receipt names the target, the record schema the reviewed script prints, the Cloud Run job and its execution-name shape (the century build runs on the same job as the measuring build)
+CANCEL_KINDS = {f"{family}_cancel{twin}": family for family in CANCEL_FAMILIES for twin in ("", "_dryrun")}
 NO_DRYRUN_KINDS = frozenset({"backup_snapshot", "backup_restore_verify"})   # the two production kinds with no dry-run kind and no `dry_run_passed` attestation (kyd_kinds_ops.required_checks)
 PACK_NEVER_FILLED = frozenset({"kind", "chart_id", "reviewed_commit", "requested_by", "acceptance_receipt", "pack_fill"})   # a pack template pins these (or the request cannot carry them); a fill may never set them
 DRYRUN_IDENTITY_FIELDS = ("item_id", "chart_id", "reviewed_commit", "args")   # what "the same request" means between a `<kind>_dryrun` request and its production request
@@ -329,8 +334,8 @@ def canonical_sha(value) -> str:
 
 def mechanical_exempt(kind: str) -> bool:
     """OWNER-MINIMAL-PROTECTION-NOW: deletions (every `*_teardown`) and serving changes (publish / rollback of a head or layer) never go mechanical; they keep
-    requiring a V1 signer's acceptance exactly as before. `measuring_cancel` is held with them (I): it removes no data itself, but it is the first step of the
-    cancel-then-teardown path the owner named, and it cannot be undone."""
+    requiring a V1 signer's acceptance exactly as before. `measuring_cancel`, `century_cancel` and `verification_cancel` are held with them (I): none removes data itself, but
+    each is the first step of the cancel-then-teardown path the owner named, and a cancelled execution cannot be resumed."""
     return kind.endswith("_teardown") or kind in SIGNED_ONLY_KINDS
 
 
@@ -591,13 +596,16 @@ def scheduler_backstop_tick(at: dt.datetime | None = None) -> list[str]:
 
 
 def measuring_cancel_problem(req: dict) -> str | None:
-    """SR-J3-CANCEL-NULL 2(a) admission for `measuring_cancel`, run at the tail of validate (so again immediately before execution): the target
-    execution is the one the J-3c `measuring_dispatch` receipt named, and an ABORT / stall verdict is cited; both are cited by file name + sha256 and
-    read back byte for byte from run/ops/receipts and run/ops/verdicts. A missing or altered file, a different execution, CONTINUE and NULL all refuse."""
-    if req.get("kind") not in ("measuring_cancel", "measuring_cancel_dryrun"): return None
+    """SR-J3-CANCEL-NULL 2(a) admission for a cancel kind (`measuring_cancel`, `century_cancel`, `verification_cancel` and their `*_dryrun` twins), run at the tail of
+    validate (so again immediately before execution; the name is the J-3c one, the rule is family-aware since W3W4 verify E1): the target execution is the one the family's dispatch receipt named (measuring_dispatch J-3c, century_dispatch J-4e,
+    verification_job J-5s), and an ABORT / stall verdict is cited; both are cited by file name + sha256 and read back byte for byte from run/ops/receipts and
+    run/ops/verdicts. A missing or altered file, a different execution, another family's receipt, CONTINUE and NULL all refuse."""
+    family = CANCEL_KINDS.get(req.get("kind"))
+    if family is None: return None
+    spec = CANCEL_FAMILIES[family]; dispatch_kind = spec["dispatch"]
     target = (req.get("args") or {}).get("execution")
-    if not (isinstance(target, str) and re.fullmatch(r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*", target)): return "execution must be a brahma-build-pipeline-job execution name"
-    if req.get("item_id") != "J-3c": return "measuring cancel belongs to J-3c"
+    if not (isinstance(target, str) and re.fullmatch(spec["execution"], target)): return f"execution must be a {spec['job']} execution name"
+    if req.get("item_id") != spec["item"]: return f"{family} cancel belongs to {spec['item']}"
     def cited(folder: str, ref) -> dict | None:
         if not (isinstance(ref, dict) and re.fullmatch(r"[A-Za-z0-9_.-]+\.json", str(ref.get("name", "")))): return None
         path = OPS / folder / ref["name"]
@@ -607,12 +615,12 @@ def measuring_cancel_problem(req: dict) -> str | None:
         except (OSError, ValueError): return None
         return value if isinstance(value, dict) and digest_bytes(body) == ref.get("sha256") else None
     dispatch = cited("receipts", req.get("dispatch_receipt"))
-    if dispatch is None: return "the cited measuring_dispatch receipt is missing, unreadable or does not match its sha256"
+    if dispatch is None: return f"the cited {dispatch_kind} receipt is missing, unreadable or does not match its sha256"
     launch = dispatch.get("launch") if isinstance(dispatch.get("launch"), dict) else {}
-    if (dispatch.get("kind") != "measuring_dispatch" or dispatch.get("status") != "COMPLETED" or dispatch.get("exit_code") != 0 or dispatch.get("item_id") != "J-3c"
+    if (dispatch.get("kind") != dispatch_kind or dispatch.get("status") != "COMPLETED" or dispatch.get("exit_code") != 0 or dispatch.get("item_id") != spec["item"]
             or req["dispatch_receipt"]["name"] != f"{dispatch.get('operation_id')}.json" or launch.get("status") != "LAUNCHED"):
-        return "the cited receipt is not the COMPLETED launch of a J-3c measuring_dispatch"
-    if launch.get("execution_name") != target: return "the target execution is not the execution named in the cited measuring_dispatch receipt"
+        return f"the cited receipt is not the COMPLETED launch of a {spec['item']} {dispatch_kind}"
+    if launch.get("execution_name") != target: return f"the target execution is not the execution named in the cited {dispatch_kind} receipt"
     verdict = cited("verdicts", req.get("verdict"))
     if verdict is None: return "the cited ABORT/stall verdict file is missing, unreadable or does not match its sha256"
     form = re.fullmatch(r"ky\.(reproject|stall)_verdict/\d+", str(verdict.get("schema")))
@@ -621,18 +629,19 @@ def measuring_cancel_problem(req: dict) -> str | None:
 
 
 def measuring_cancel_proof(req: dict, rc: int | None, out: str) -> tuple[dict | None, str | None]:
-    """(record, problem) for `measuring_cancel`'s (or its dry run's) complete output. `record` is the ONE ky.measuring_cancel/1 line when it names this
-    operation, this request digest, this kind and exactly the targeted execution of the measuring job (else None); `problem` is None only when the state
+    """(record, problem) for a cancel kind's (or its dry run's) complete output. `record` is the ONE ky.<family>_cancel/1 line when it names this
+    operation, this request digest, this kind and exactly the targeted execution of the family's job (else None); `problem` is None only when the state
     read back after the action is CANCELLED (a dry run: when it planned and called nothing). An exit status alone proves nothing, and any other observed
     state is a failure whatever the exit status."""
-    dry = req.get("kind") == "measuring_cancel_dryrun"; found = []
+    spec = CANCEL_FAMILIES[CANCEL_KINDS[req.get("kind")]]
+    dry = str(req.get("kind")).endswith("_dryrun"); found = []
     for line in out.splitlines():
         try: value = json.loads(line)
         except ValueError: continue
-        if isinstance(value, dict) and value.get("schema") == "ky.measuring_cancel/1": found.append(value)
+        if isinstance(value, dict) and value.get("schema") == spec["schema"]: found.append(value)
     if len(found) != 1: return None, "cancel record missing or not unique"
-    rec = found[0]       # the project / region / job below are cloudrun_readback.py's constants
-    if (rec.get("execution") != (req.get("args") or {}).get("execution") or (rec.get("project"), rec.get("region"), rec.get("job")) != ("madhav-astrology", "asia-south1", "brahma-build-pipeline-job")
+    rec = found[0]       # the project / region below are cloudrun_readback.py's constants; the job is the family's
+    if (rec.get("execution") != (req.get("args") or {}).get("execution") or (rec.get("project"), rec.get("region"), rec.get("job")) != ("madhav-astrology", "asia-south1", spec["job"])
             or rec.get("operation_id") != req.get("operation_id") or rec.get("request_sha256") != request_digest(req) or rec.get("dry_run") is not dry):
         return None, "cancel record does not bind this operation, request and targeted execution"
     if dry:
@@ -1355,7 +1364,7 @@ def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
         extra = None if lane_selected(req) else {"session_marker": session_marker(req["operation_id"])}
         proof, problem = scheduler_proof(req, rc, out) if extra is not None and req["kind"] in SCHEDULER_ACTION else (None, None)
         if proof is not None: extra["scheduler"] = proof        # the state read back AFTER the action, as the reviewed script measured it
-        cancelled, cancel_problem = measuring_cancel_proof(req, rc, out) if extra is not None and req["kind"] in ("measuring_cancel", "measuring_cancel_dryrun") else (None, None)
+        cancelled, cancel_problem = measuring_cancel_proof(req, rc, out) if extra is not None and req["kind"] in CANCEL_KINDS else (None, None)
         if cancelled is not None: extra["cancel"] = cancelled   # likewise: the execution state read back after the cancel (CANCELLED, or the observed state beside a FAILED receipt)
         ok = rc == 0 and problem is None and cancel_problem is None
         receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra, stderr)
@@ -1409,7 +1418,7 @@ def main() -> int:
             except Exception as e:
                 receipt({"operation_id": f.stem}, "REFUSED", f"unreadable request: {e}"); shutil.move(str(f), DONE / f.name); continue
             production = bool((table.get(req.get("kind")) or {}).get("production")) and not lane_selected(req)
-            if production and FENCE.exists() and req.get("kind") not in ("scheduler_resume", "measuring_cancel"): continue      # the single production slot is taken; the request waits where it is (a resume of the watchdog is the safe direction and a cancel stops the very dispatch that holds the fence: neither waits)
+            if production and FENCE.exists() and req.get("kind") not in ("scheduler_resume", "measuring_cancel", "century_cancel", "verification_cancel"): continue      # the single production slot is taken; the request waits where it is (a resume of the watchdog is the safe direction and a cancel stops the very dispatch that holds the fence: neither waits)
             why = validate(req, table, caps)
             if why:
                 receipt(req, "REFUSED", why, preserve_existing=True); shutil.move(str(f), DONE / f.name); continue

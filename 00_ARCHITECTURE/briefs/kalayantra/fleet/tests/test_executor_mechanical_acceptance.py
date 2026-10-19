@@ -434,6 +434,8 @@ MARKER_ROUTE = {
     "scheduler_pause": "no_database",       # SR-J3-REAPER-PAUSE: needs gcloud only, no DATABASE_URL, no connection at all (test_executor_scheduler_reaper pins that); synchronous, never fenced
     "scheduler_resume": "no_database",
     "measuring_cancel": "no_database",      # SR-J3-CANCEL-NULL: gcloud only, no DATABASE_URL; synchronous, never fenced
+    "century_cancel": "no_database",        # W3W4 pack verify E1: measuring_cancel's engine (gcloud only, no DATABASE_URL), synchronous, never fenced
+    "verification_cancel": "no_database",   # likewise, pointed at gochara-verification-job
     "measuring_dispatch": "in_process",     # J-3a: measuring_launch.py opens only psycopg connections from DATABASE_URL (no PGAPPNAME/application_name in its closure — the next test)
     "century_dispatch": "in_process",       # SR-PREBUILD-ALL: century_launch.py is the same bridge (smalltest_launch.launch_staged) over the same staging closure — the next test scans it
 }
