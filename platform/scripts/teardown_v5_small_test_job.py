@@ -136,7 +136,7 @@ EXPECTED_REGISTRY_ROW = {
     "is_active": False,
     "has_writer": True,
     "has_substeps": True,
-    "writer_timeout_seconds": 28800,
+    "writer_timeout_seconds": 72000,                       # 28800 from migration 1304, raised by migration 1395 (J-3c cap, SR-J3-CAP-LIVE)
     "depends_on": ["ga_positions", "ga_dashas"],
     "target_table": "ka_gochara_eval_window",
     "count_sql": ("SELECT COUNT(*) FROM ka_gochara_eval_window "

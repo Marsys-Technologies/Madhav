@@ -458,7 +458,10 @@ def operation_request():
         req = json.loads(os.environ['KY_OPERATION_REQUEST'])
     except (KeyError, TypeError, ValueError):
         raise Refused('executor-bound small-test request required') from None
-    acceptance(req, evidence_root())
+    if not isinstance(req, dict):
+        raise Refused('executor-bound small-test request required')
+    if not str(req.get('kind', '')).endswith('_dryrun'):    # A8 §3.8: a dry run is read-only with a credential; no V acceptance exists
+        acceptance(req, evidence_root())                    # A8 §3.9: a writing kind carries exactly one V acceptance, bound to the request
     return req
 
 
@@ -497,15 +500,27 @@ def read_evidence(root, folder, ref):
         raise Refused('referenced evidence unreadable') from None
 
 
+def independent_acceptance(a):
+    """A verifier lane's (v1..v4) acceptance, or the executor's own MECHANICAL pre-acceptance (OWNER-MINIMAL-PROTECTION-NOW): schema
+    ky.mechanical_acceptance/1, phase pre, and every check recorded true. executor.mechanical_pre_acceptance writes it only for a request that equals a
+    verified pack fill with a completed dry run and a live lease; deletions and serving changes never get one."""
+    if a.get('by') in ('v1', 'v2', 'v3', 'v4'):
+        return True
+    checks = a.get('checks')
+    return (a.get('by') == 'executor-mechanical' and a.get('schema') == 'ky.mechanical_acceptance/1' and a.get('phase') == 'pre'
+            and isinstance(checks, dict) and bool(checks) and all(v is True for v in checks.values()))
+
+
 def acceptance(req, root):
     import json
     from pathlib import Path
     try:
-        path = Path(req['acceptance_receipt'])
+        # a mechanically accepted request names no acceptance_receipt: its record is acceptance/<operation_id>.json (and only a pack-fill request may omit one)
+        path = Path(req['acceptance_receipt']) if req.get('acceptance_receipt') or not req.get('pack_fill') else root / 'acceptance' / (str(req['operation_id']) + '.json')
         if path.resolve().parent != (root / 'acceptance').resolve():
             raise Refused('request acceptance outside executor directory')
         a = json.loads(path.read_text())
-        if (a.get('result') != 'ACCEPTED' or a.get('by') not in ('v1', 'v2', 'v3', 'v4')
+        if (a.get('result') != 'ACCEPTED' or not independent_acceptance(a)
                 or a.get('operation_id') != req.get('operation_id')
                 or not req.get('reviewed_commit') or a.get('reviewed_commit') != req['reviewed_commit']
                 or a.get('request_sha256') != request_hash(req) or req.get('chart_id') != CHART_ID):
@@ -520,11 +535,22 @@ def accepted_receipt(root, receipt_ref, acceptance_ref, kind):
     a = read_evidence(root, 'acceptance', acceptance_ref)
     if (r.get('kind') != kind or r.get('status') not in ('COMPLETED', 'AWAITING_ABSENCE') or r.get('exit_code') != 0
             or not r.get('request_sha256') or not r.get('reviewed_commit')
-            or a.get('result') != 'ACCEPTED' or a.get('by') not in ('v1', 'v2', 'v3', 'v4')
+            or a.get('result') != 'ACCEPTED' or not independent_acceptance(a)
             or a.get('operation_id') != r.get('operation_id')
             or a.get('request_sha256') != r['request_sha256'] or a.get('reviewed_commit') != r['reviewed_commit']):
         raise Refused('operation receipt is not independently accepted for this request')
     return r, a
+
+
+def completed_receipt(root, receipt_ref, kind):
+    """The executor receipt of a `*_dryrun` kind (A8 §3.8): COMPLETED, exit 0, bound to a request and a reviewed commit.
+
+    A dry run is read-only with a credential, so no V lane accepts it; its receipt is the whole evidence."""
+    r = read_evidence(root, 'receipts', receipt_ref)
+    if (r.get('kind') != kind or r.get('status') != 'COMPLETED' or r.get('exit_code') != 0
+            or not r.get('request_sha256') or not r.get('reviewed_commit')):
+        raise Refused('dry-run operation receipt is not a completed receipt for this kind')
+    return r
 
 
 def staged_scope(req, root):
@@ -565,8 +591,7 @@ def staged_scope(req, root):
 
 def dryrun_evidence(req, root, scope, rowset_sha256=None):
     measuring = req.get('kind') == 'measuring_teardown'
-    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'),
-                            'measuring_teardown_dryrun' if measuring else 'smalltest_teardown_dryrun')
+    r = completed_receipt(root, req.get('dryrun_receipt'), 'measuring_teardown_dryrun' if measuring else 'smalltest_teardown_dryrun')
     p = r.get('teardown') or {}
     if (r.get('reviewed_commit') != req.get('reviewed_commit') or r.get('status') != 'COMPLETED' or p.get('schema') != ('ky.measuring_teardown/1' if measuring else 'ky.smalltest_teardown/1')
             or p.get('status') != 'ROLLED_BACK' or p.get('rollback_confirmed') is not True
@@ -858,8 +883,8 @@ def measuring_request_problem(req, root):
 
 
 def measuring_dryrun_evidence(req, root, manifest_digest=None):
-    """A real accepted staging rollback, same source/args/manifest, before launch."""
-    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'), 'measuring_dispatch_dryrun')
+    """A real completed staging rollback, same source/args/manifest, before launch (no V acceptance of a dry run, A8 §3.8)."""
+    r = completed_receipt(root, req.get('dryrun_receipt'), 'measuring_dispatch_dryrun')
     p = r.get('staging') or {}
     if (r.get('status') != 'COMPLETED' or r.get('item_id') != 'J-3c' or r.get('reviewed_commit') != req.get('reviewed_commit')
             or p.get('schema') != 'ky.measuring_staging/1' or p.get('status') != 'ROLLED_BACK'

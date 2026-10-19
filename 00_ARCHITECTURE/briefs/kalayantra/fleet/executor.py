@@ -16,7 +16,16 @@ Production approval binds the request (A8 §3.9): ONE verifier lane's acceptance
 sorted compact JSON without the fields that may lawfully change after signing — `acceptance_receipt`, `expires_at` and any
 `*_expires_at` lease-expiry field (see request_digest) — plus the attestations the kind needs: `dry_run_passed` for a mutating
 kind and `backup_taken` for a `*_teardown`. It is valid from its timestamp until the request's `expires_at`; there is no age cap.
-The lease must be the ONLY unexpired ACTIVE row of the shared lease table. `*_dryrun` kinds are `production: false` — read-only
+The lease must be the ONLY unexpired ACTIVE row of the shared lease table.
+
+Mechanical acceptance of a production write (OWNER-MINIMAL-PROTECTION-NOW-20261018; SR-MINIMAL-PROTECTION §2): a request with NO `acceptance_receipt` but a
+`pack_fill` may instead be accepted by this executor, without a signer, when ALL hold — (1) its bytes equal a VERIFIED pack fill (pack_fill_check: the pack
+manifest is on run/ops/PACK_ALLOWLIST.json, which the cockpit writes only from an ACCEPTED verify job; the allow-list pins the template digest per kind; every fixed
+field equals the template; no field the template does not define; the fill digest re-derives from the request bytes), (2) its kind's `<kind>_dryrun` COMPLETED OK for
+the same request identity in THIS executor's own receipts (dry_run_check; `backup_snapshot` / `backup_restore_verify` have no dry-run kind and need none), (3) the
+lease is live. It is recorded as acceptance/<operation_id>.json, by executor-mechanical, with the request digest and the evidence digests, and is re-measured
+immediately before execution. NEVER mechanical: deletions (every `*_teardown`) and serving changes (publish_head, layer_publish, rollback_head, layer_rollback), and
+measuring_cancel (held with them): those keep requiring ONE verifier lane's acceptance exactly as above. A request that carries an `acceptance_receipt` is always judged by it. `*_dryrun` kinds are `production: false` — read-only
 with a credential: no lease, acceptance or fence, but a merged `reviewed_commit` (they run in its tree) and a rollback proof in
 the receipt.
 
@@ -28,6 +37,18 @@ production worker serialises them); read-only operations are not fenced and run 
 at a restart is NEVER re-run: its receipt says INTERRUPTED. A refused executor refresh (HOLD, STOP, queued or in-flight work,
 an unproven fence) is logged as REFRESH_REFUSED and recorded in run/ops/EXECUTOR_REFRESH.json; this snapshot keeps serving.
 A child process receives an allow-listed environment plus, at most, the ONE connection its operation needs.
+
+Scheduler pause (SR-J3-REAPER-PAUSE): `scheduler_pause` / `scheduler_resume` (+ `*_dryrun`) and the read-only `scheduler_readback` act on ONE Cloud
+Scheduler job, the cockpit watchdog `watchdog-reaper`; every other job name is refused at admission and again in the reviewed script. A pause carries
+`resume-by` (UTC, not after its lease's end) and is ARMED before it runs: a durable record under run/ops/scheduler_backstop/ that the loop honours on EVERY
+tick — before the table, HOLD or sync gates, and on the first tick after a restart (an overdue record fires immediately). The executor then runs the
+reviewed resume script itself, with no request, lease or signer: the signed pause already bound `resume-by`. A failed attempt backs off and retries until
+the job reads ENABLED. A verified `scheduler_resume` satisfies (cancels) the armed records. Each scheduler receipt carries the state read back AFTER the action.
+
+Measuring cancel (SR-J3-CANCEL-NULL 2(a)): `measuring_cancel` cancels ONE running Cloud Run execution of the measuring build and only when admission binds it
+twice — the target execution must be the one named in the cited `measuring_dispatch` receipt (name + sha256, read back byte for byte) and an ABORT or stall
+verdict file must be cited the same way and say so. The receipt carries the execution state read back after the cancel; anything but CANCELLED is FAILED.
+Like a resume it is never held by the production fence (the dispatch it stops is what holds it). `measuring_cancel_dryrun` plans the calls and makes none.
 """
 from __future__ import annotations
 import concurrent.futures as cf, datetime as dt, fcntl, hashlib, json, os, pathlib, re, shutil, signal, subprocess, sys, tempfile, threading, time
@@ -48,6 +69,20 @@ SEEN = OPS / "idempotency.jsonl"; MAX_TIMEOUT = 6 * 3600
 UNBOUND_REQUEST_FIELDS = frozenset({"acceptance_receipt", "expires_at"})   # A8 §3.9: plus any `*_expires_at` field — see request_digest; mirrored by kyd_kinds_ops.request_digest and v5_small_test_shared.request_hash
 REMOTE_ASYNC_KINDS = frozenset({"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"})   # A8 §3.11: work continues remotely after the child returns — fenced even if a table drops `remote_async`
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
+PACK_ALLOWLIST = OPS / "PACK_ALLOWLIST.json"   # OWNER-MINIMAL-PROTECTION-NOW: written by the cockpit ONLY from an ACCEPTED verify job of a pack; this executor only reads it
+SIGNED_ONLY_KINDS = frozenset({"publish_head", "layer_publish", "rollback_head", "layer_rollback", "measuring_cancel"})   # serving changes, plus the deletion-adjacent cancel; every `*_teardown` kind is signed-only too (see mechanical_exempt)
+NO_DRYRUN_KINDS = frozenset({"backup_snapshot", "backup_restore_verify"})   # the two production kinds with no dry-run kind and no `dry_run_passed` attestation (kyd_kinds_ops.required_checks)
+PACK_NEVER_FILLED = frozenset({"kind", "chart_id", "reviewed_commit", "requested_by", "acceptance_receipt", "pack_fill"})   # a pack template pins these (or the request cannot carry them); a fill may never set them
+DRYRUN_IDENTITY_FIELDS = ("item_id", "chart_id", "reviewed_commit", "args")   # what "the same request" means between a `<kind>_dryrun` request and its production request
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+SCHEDULER_JOB = "watchdog-reaper"   # platform/scripts/provision_watchdog_scheduler.sh creates exactly this job ...
+SCHEDULER_PROJECT = "madhav-astrology"   # ... in this project (GCP_PROJECT default) ...
+SCHEDULER_REGION = "asia-south1"   # ... and this region (GCP_REGION default)
+SCHEDULER_SCRIPT = "00_ARCHITECTURE/briefs/kalayantra/fleet/scheduler_reaper.py"   # the one reviewed script every scheduler kind (and the backstop) runs
+SCHEDULER_ACTION = {"scheduler_readback": "readback", "scheduler_pause_dryrun": "pause", "scheduler_pause": "pause", "scheduler_resume_dryrun": "resume", "scheduler_resume": "resume"}
+SCHEDULER_STATES = ("ENABLED", "PAUSED", "DISABLED", "UPDATE_FAILED")   # google.cloud.scheduler.v1.Job.State values a record may report
+SCHEDULER_UTC = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|\+00:00)")
+SCHEDULER_BACKSTOP = OPS / "scheduler_backstop"
 _lock = threading.Lock()
 
 
@@ -267,7 +302,348 @@ def utc_time(value: str) -> dt.datetime:
     return parsed.astimezone(dt.timezone.utc)
 
 
-def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str = "", extra: dict | None = None) -> None:
+def lease_expiry(lease_id: str) -> dt.datetime | None:
+    """The stated expiry (UTC) of the ACTIVE row `lease_id` in §1 of the shared lease table, read exactly as lease_live reads it; None when
+    the table, the row or its expiry cannot be read (a bound that cannot be measured is not a bound)."""
+    p = git("show", f"origin/campaign-coordination:{COORD_PATH}", timeout=30)
+    if p.returncode: return None
+    section = p.stdout.split("## 1.", 1)
+    if len(section) != 2: return None
+    ist = dt.timezone(dt.timedelta(hours=5, minutes=30))
+    for line in section[1].split("## 2.", 1)[0].splitlines():
+        if not line.startswith("|"): continue
+        cells = [s.strip() for s in line.strip().strip("|").split("|")]
+        if len(cells) != 6 or cells[0].replace("*", "").strip() != lease_id: continue
+        if not re.match(r"^ACTIVE(?:\s|$)", cells[5].replace("*", "").strip()): continue
+        try: return dt.datetime.strptime(cells[4][:16], "%Y-%m-%d %H:%M").replace(tzinfo=ist).astimezone(dt.timezone.utc)
+        except ValueError: return None
+    return None
+
+
+def canonical_sha(value) -> str:
+    """sha256 of `value` as sorted compact JSON — the digest every pack and dry-run comparison below uses."""
+    return digest_bytes(json.dumps(value, sort_keys=True, separators=(",", ":")).encode())
+
+
+def mechanical_exempt(kind: str) -> bool:
+    """OWNER-MINIMAL-PROTECTION-NOW: deletions (every `*_teardown`) and serving changes (publish / rollback of a head or layer) never go mechanical; they keep
+    requiring a V1 signer's acceptance exactly as before. `measuring_cancel` is held with them (I): it removes no data itself, but it is the first step of the
+    cancel-then-teardown path the owner named, and it cannot be undone."""
+    return kind.endswith("_teardown") or kind in SIGNED_ONLY_KINDS
+
+
+def pack_fill_check(req: dict) -> tuple[str | None, dict]:
+    """(problem, evidence): do the request's bytes equal a VERIFIED pack fill? A request carries
+        pack_fill = {pack_manifest_sha256, template: {kind, fixed: {field: value}, fill: [field names]}, fill_sha256}
+    and is a pack fill iff ALL of: the pack manifest digest is on run/ops/PACK_ALLOWLIST.json with verdict ACCEPTED and a verify_job (the cockpit writes an entry
+    only from an ACCEPTED verify job); that entry lists sha256(template) for exactly this kind; the template never fills kind, chart_id, reviewed_commit,
+    requested_by or an approval field (so the request, which must carry them, has them pinned); every `fixed` field of the request equals the template's value (type-strict); the request has no field the template does
+    not define (the clocks `expires_at` / `*_expires_at` excepted); and fill_sha256 equals the digest the executor re-derives from the request's own filled fields."""
+    pf = req.get("pack_fill")
+    if not (isinstance(pf, dict) and set(pf) == {"pack_manifest_sha256", "template", "fill_sha256"}):
+        return "pack_fill must carry exactly pack_manifest_sha256, template and fill_sha256", {}
+    manifest, template, declared = pf["pack_manifest_sha256"], pf["template"], pf["fill_sha256"]
+    if not (isinstance(manifest, str) and HEX64.fullmatch(manifest) and isinstance(declared, str) and HEX64.fullmatch(declared)):
+        return "pack_fill digests must be 64 lowercase hex characters", {}
+    try: listing = json.loads(PACK_ALLOWLIST.read_text())
+    except (OSError, ValueError): return "the verified-pack allow-list is missing or unreadable", {}
+    packs = listing.get("packs") if isinstance(listing, dict) and listing.get("schema") == "ky.pack_allowlist/1" else None
+    entry = next((p for p in packs if isinstance(p, dict) and p.get("pack_manifest_sha256") == manifest), None) if isinstance(packs, list) else None
+    if entry is None or entry.get("verdict") != "ACCEPTED" or not entry.get("verify_job"):
+        return "the pack manifest is not on the verified-pack allow-list", {}
+    templates = entry.get("templates"); template_sha = canonical_sha(template)
+    if not (isinstance(templates, dict) and templates.get(template_sha) == req.get("kind")):
+        return "the pack template is not one the verified pack lists for this kind", {}
+    if not (isinstance(template, dict) and set(template) == {"kind", "fixed", "fill"} and template["kind"] == req.get("kind")
+            and isinstance(template["fixed"], dict) and isinstance(template["fill"], list) and all(isinstance(n, str) for n in template["fill"])):
+        return "the pack template is malformed", {}
+    fixed, fill = template["fixed"], template["fill"]
+    if set(fill) & PACK_NEVER_FILLED: return "the pack template may not fill kind, chart_id, reviewed_commit, requested_by or an approval field", {}
+    clock = lambda k: k in UNBOUND_REQUEST_FIELDS or k.endswith("_expires_at")
+    extra = sorted(k for k in req if k != "pack_fill" and not clock(k) and k not in fixed and k not in fill)
+    if extra: return f"the request carries fields the pack template does not define: {extra}", {}
+    for k, v in fixed.items():
+        if not clock(k) and (k not in req or canonical_sha(req[k]) != canonical_sha(v)):
+            return f"the request differs from the verified pack template at fixed field {k}", {}
+    if canonical_sha({k: req[k] for k in sorted(fill) if k in req and not clock(k)}) != declared:
+        return "fill_sha256 does not equal the digest re-derived from the request bytes", {}
+    return None, {"pack_manifest_sha256": manifest, "template_sha256": template_sha, "fill_sha256": declared, "verify_job": entry["verify_job"]}
+
+
+def dry_run_check(req: dict, table: dict) -> tuple[str | None, dict | None]:
+    """(problem, evidence): did this kind's `<kind>_dryrun` COMPLETE OK for the same request identity? The executor reads ITS OWN receipt
+    (run/ops/receipts, cited by `dryrun_receipt` {name, sha256}) and the archived dry-run request — never a signer's attestation. Same identity = the
+    dry-run request and this one agree on DRYRUN_IDENTITY_FIELDS, and the receipt binds that archived request (digest) and its complete output (digest).
+    The two kinds with no dry-run kind need none (evidence None)."""
+    kind = req["kind"]
+    if kind in NO_DRYRUN_KINDS: return None, None
+    dry_kind = kind + "_dryrun"; entry = table.get(dry_kind) or {}
+    if not entry.get("enabled") or entry.get("production") is not False:
+        return f"kind {kind} has no enabled read-only dry-run kind ({dry_kind}), so it needs a V1 signer", None
+    ref = req.get("dryrun_receipt")
+    if not (isinstance(ref, dict) and set(ref) == {"name", "sha256"} and isinstance(ref["name"], str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,80}\.json", ref["name"])
+            and isinstance(ref["sha256"], str) and HEX64.fullmatch(ref["sha256"])):
+        return "dryrun_receipt {name, sha256} citing this kind's completed dry run is required", None
+    try:
+        path = REC / ref["name"]
+        if path.resolve().parent != REC.resolve(): return "the dry-run receipt reference escapes the receipts directory", None
+        body = path.read_bytes()
+        if digest_bytes(body) != ref["sha256"]: return "the dry-run receipt differs from its cited sha256", None
+        rec = json.loads(body); dry_oid = rec["operation_id"]
+        if not (isinstance(dry_oid, str) and SAFE_ID.fullmatch(dry_oid) and ref["name"] == dry_oid + ".json"): return "the dry-run receipt does not name its own operation", None
+        output = (REC / f"{dry_oid}.output.txt").read_bytes()
+        archived = json.loads((DONE / f"{dry_oid}.json").read_text())
+        ok = (isinstance(rec, dict) and rec.get("kind") == dry_kind and rec.get("status") == "COMPLETED" and type(rec.get("exit_code")) is int and rec["exit_code"] == 0
+              and "lane_target" not in rec and digest_bytes(output) == rec.get("output_sha256")
+              and isinstance(archived, dict) and archived.get("operation_id") == dry_oid and archived.get("kind") == dry_kind and "lane_target" not in archived
+              and request_digest(archived) == rec.get("request_sha256")
+              and rec.get("reviewed_commit") == archived.get("reviewed_commit") == req.get("reviewed_commit")
+              and all(canonical_sha(archived.get(f)) == canonical_sha(req.get(f)) for f in DRYRUN_IDENTITY_FIELDS))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return "the dry-run receipt, its output or its archived request cannot be read", None
+    if not ok: return "the dry run did not COMPLETE OK (exit 0, complete output, bound archived request) for this request's identity", None
+    return None, {"operation_id": dry_oid, "kind": dry_kind, "receipt_sha256": ref["sha256"], "request_sha256": rec["request_sha256"], "output_sha256": rec["output_sha256"]}
+
+
+def mechanical_problem(req: dict, table: dict) -> tuple[str | None, dict]:
+    """(problem, evidence) for the MECHANICAL route to a production write: not a deletion or serving change, merged reviewed_commit, unexpired request,
+    request bytes equal a verified pack fill, this kind's dry run completed OK for the same identity. (The lease is checked by validate and again by
+    mechanical_pre_acceptance.) Pure reads — nothing is written."""
+    kind = req["kind"]
+    if mechanical_exempt(kind): return f"kind {kind} is a deletion or serving change: it needs a V1 signer's acceptance, never a mechanical one", {}
+    rc = str(req.get("reviewed_commit", ""))
+    if not SHA.match(rc): return "reviewed_commit required for a production operation", {}
+    if git("merge-base", "--is-ancestor", rc, "origin/main").returncode != 0: return "reviewed_commit is not merged to main", {}
+    try:
+        if not dt.datetime.now(dt.timezone.utc) < utc_time(req["expires_at"]): return "approval expired or not yet valid", {}
+    except (KeyError, TypeError, ValueError): return "valid approval timestamp and a timezone-qualified request expires_at required", {}
+    why, pack = pack_fill_check(req)
+    if why: return why, {}
+    why, dry = dry_run_check(req, table)
+    if why: return why, {}
+    return None, {"pack": pack, "dry_run": dry}
+
+
+def mechanical_pre_acceptance(req: dict, table: dict) -> str | None:
+    """OWNER-MINIMAL-PROTECTION-NOW: accept a production write MECHANICALLY (instead of a V1 signer) when mechanical_problem finds nothing and the lease is
+    live, and record it as acceptance/<operation_id>.json — schema ky.mechanical_acceptance/1, phase pre, by executor-mechanical, the request digest and the
+    evidence digests. Returns None when the request is accepted, else the reason. Idempotent: the same request finds its own record; a different record for
+    the operation id refuses. validate calls this on admission AND again immediately before execution; nothing it recorded is trusted without re-measuring."""
+    problem, evidence = mechanical_problem(req, table)
+    if problem: return problem
+    lease = lease_live(str(req.get("lease_id", "")))
+    if not lease: return "lease is not the single unexpired ACTIVE row on origin/campaign-coordination"
+    checks = {"kind_is_not_a_deletion_or_serving_change": True, "reviewed_commit_merged": True, "request_equals_verified_pack_fill": True, "lease_live": lease is True}
+    checks["dry_run_completed_ok_for_same_identity" if evidence["dry_run"] else "dry_run_not_applicable_to_kind"] = True
+    digest = request_digest(req)
+    document = {"schema": "ky.mechanical_acceptance/1", "phase": "pre", "by": "executor-mechanical", "result": "ACCEPTED", "operation_id": req["operation_id"],
+                "kind": req["kind"], "request_sha256": digest, "reviewed_commit": req["reviewed_commit"], "lease_id": req["lease_id"], "checks": checks,
+                "evidence": evidence, "ts": now()}
+    path = ACC / f"{req['operation_id']}.json"
+    if write_new_json(path, document): return None
+    try: existing = json.loads(path.read_text())
+    except (OSError, ValueError): existing = None
+    if isinstance(existing, dict) and existing.get("by") == "executor-mechanical" and existing.get("result") == "ACCEPTED" and existing.get("request_sha256") == digest: return None
+    return "an acceptance record for this operation already exists and does not bind this request"
+
+
+def scheduler_policy_problem(req: dict) -> str | None:
+    """SR-J3-REAPER-PAUSE admission rules for the scheduler kinds, run at the tail of validate (so again immediately before execution): the job
+    is on the allow-list, and a pause names a UTC `resume-by` in the future that is not after the end of its lease."""
+    kind = req.get("kind")
+    if kind not in SCHEDULER_ACTION: return None
+    args = req.get("args") or {}
+    if args.get("job", SCHEDULER_JOB) != SCHEDULER_JOB: return f"scheduler job is not on the allow-list (only {SCHEDULER_JOB})"
+    if SCHEDULER_ACTION[kind] != "pause": return None
+    stamp = args.get("resume-by")
+    if not stamp: return "a scheduler pause requires resume-by (the UTC time the watchdog is resumed whatever happens)"
+    if not SCHEDULER_UTC.fullmatch(str(stamp)): return "resume-by must be a UTC timestamp YYYY-MM-DDTHH:MM:SS followed by Z or +00:00"
+    due = utc_time(stamp)
+    if due <= dt.datetime.now(dt.timezone.utc): return "resume-by is not in the future"
+    if kind == "scheduler_pause" or req.get("lease_id"):       # the dry run has no lease of its own; when it names one, the same bound applies
+        end = lease_expiry(str(req.get("lease_id", "")))
+        if end is None: return "the lease end cannot be read, so resume-by cannot be bounded by it"
+        if due > end: return "resume-by is after the end of the lease"
+    return None
+
+
+def scheduler_proof(req: dict, rc: int | None, out: str) -> tuple[dict | None, str | None]:
+    """(record, problem) for a scheduler kind's complete output. `record` is the ONE ky.scheduler_job/1 line when it names this operation, this
+    request digest, this action and exactly the allow-listed project / region / job (else None); `problem` is None only when its status and the
+    state read back after the action are what the kind promises. An exit status alone proves nothing."""
+    kind = str(req.get("kind")); action = SCHEDULER_ACTION.get(kind)
+    found = []
+    for line in out.splitlines():
+        try: value = json.loads(line)
+        except ValueError: continue
+        if isinstance(value, dict) and value.get("schema") == "ky.scheduler_job/1": found.append(value)
+    if action is None or len(found) != 1: return None, "scheduler record missing or not unique"
+    rec = found[0]
+    if (rec.get("action") != action or rec.get("dry_run") is not kind.endswith("_dryrun")
+            or (rec.get("project"), rec.get("region"), rec.get("job")) != (SCHEDULER_PROJECT, SCHEDULER_REGION, SCHEDULER_JOB)
+            or rec.get("operation_id") != req.get("operation_id") or rec.get("request_sha256") != request_digest(req)):
+        return None, "scheduler record does not bind this operation, request, action and allow-listed job"
+    state = rec.get("state")
+    if kind.endswith("_dryrun"):
+        kept = rec.get("status") == "DRY_RUN" and rec.get("gcloud_calls") == 0 and state is None and rec.get("changed") is False
+    elif action == "readback":
+        kept = (rec.get("status") == "MEASURED" and state in SCHEDULER_STATES) or (rec.get("status") == "PARTIAL" and state is None)
+    else:
+        kept = rec.get("status") == "OK" and state == {"pause": "PAUSED", "resume": "ENABLED"}[action]
+    if rc == 0 and not kept: return rec, "scheduler record does not prove the promised status and the state read back after the action"
+    return rec, None
+
+
+def scheduler_write(path: pathlib.Path, document: dict) -> None:
+    """Durable replace: temp file, fsync, rename — a crash leaves the old record or the new one, never half of either."""
+    pending = path.with_name("." + path.name + ".tmp")
+    with pending.open("w") as stream:
+        stream.write(json.dumps(document, indent=1)); stream.flush(); os.fsync(stream.fileno())
+    os.replace(pending, path)
+
+
+def scheduler_backstop_records() -> list[tuple[pathlib.Path, dict]]:
+    found = []
+    for path in sorted(SCHEDULER_BACKSTOP.glob("*.json")):
+        try: record = json.loads(path.read_text())
+        except (OSError, ValueError):
+            noted = scheduler_backstop_records.__dict__.setdefault("noted", set())
+            if path.name not in noted: noted.add(path.name); log(f"BACKSTOP_UNREADABLE {path.name}: skipped, read it")
+            continue
+        if isinstance(record, dict) and record.get("schema") == "ky.scheduler_backstop/1": found.append((path, record))
+    return found
+
+
+def arm_scheduler_backstop(req: dict) -> dict:
+    """Write the durable resume record of a scheduler_pause BEFORE the pause runs, so a pause that fails half-way or is interrupted leaves a
+    harmless (idempotent) resume behind — never a pause nobody will undo. Refuses (so the pause does not run) if the record cannot be made."""
+    stamp = (req.get("args") or {}).get("resume-by"); commit = str(req.get("reviewed_commit", ""))
+    if not (isinstance(stamp, str) and SCHEDULER_UTC.fullmatch(stamp)): raise ValueError("backstop not armed: resume-by missing or not UTC")
+    if not SHA.fullmatch(commit) or git("cat-file", "-e", f"{commit}:{SCHEDULER_SCRIPT}").returncode:
+        raise ValueError("backstop not armed: the resume script does not exist at the reviewed commit")
+    record = {"schema": "ky.scheduler_backstop/1", "status": "ARMED", "operation_id": req["operation_id"], "request_sha256": request_digest(req),
+              "item_id": req.get("item_id"), "kyd": req.get("kyd"), "job": SCHEDULER_JOB, "resume_by": utc_time(stamp).isoformat(timespec="seconds"),
+              "lease_id": req.get("lease_id"), "reviewed_commit": commit, "attempts": 0, "armed_at": now()}
+    SCHEDULER_BACKSTOP.mkdir(parents=True, exist_ok=True)
+    scheduler_write(SCHEDULER_BACKSTOP / f"{req['operation_id']}.json", record)
+    log(f"{req['operation_id']} scheduler backstop armed: resume {SCHEDULER_JOB} at {record['resume_by']}")
+    return record
+
+
+def scheduler_backstop_satisfy(req: dict) -> int:
+    """A scheduler_resume whose read-back state was ENABLED has done what every armed record would do: cancel them (keeping the evidence)."""
+    count = 0
+    for path, record in scheduler_backstop_records():
+        if record.get("status") == "ARMED" and record.get("job") == SCHEDULER_JOB:
+            scheduler_write(path, dict(record, status="SATISFIED", satisfied_by=req["operation_id"], satisfied_at=now())); count += 1
+    return count
+
+
+def scheduler_backstop_fire(path: pathlib.Path, record: dict, at: dt.datetime) -> bool:
+    """Run the reviewed resume script itself — no request queue, lease or signer; the signed pause already bound resume-by — from the commit the
+    pause named, and write a receipt. FIRED only if the state read back is ENABLED; otherwise the record stays ARMED with a back-off."""
+    try: attempt = int(record.get("attempts", 0)) + 1
+    except (TypeError, ValueError): attempt = 1
+    oid = "bs-" + hashlib.sha256(str(record.get("operation_id")).encode()).hexdigest()[:12] + f"-{attempt}"
+    commit = str(record.get("reviewed_commit", ""))
+    req = {"operation_id": oid, "kind": "scheduler_resume", "item_id": str(record.get("item_id") or "unknown"), "idempotency_key": oid,
+           "requested_by": "executor-backstop", "kyd": str(record.get("kyd") or "backstop"), "reviewed_commit": commit,
+           "args": {"job": SCHEDULER_JOB}, "backstop_for": record.get("operation_id")}
+    rc, out = 127, ""
+    try:
+        if not SHA.fullmatch(commit) or git("merge-base", "--is-ancestor", commit, "origin/main").returncode: raise ValueError("reviewed commit is not merged")
+        source = git("show", f"{commit}:{SCHEDULER_SCRIPT}")
+        if source.returncode: raise ValueError("resume script unreadable at the reviewed commit")
+        script = TMP / f"{oid}.scheduler_reaper.py"; script.write_text(source.stdout)
+        env = {k: v for k, v in os.environ.items() if k in CHILD_ENV_ALLOW}
+        env["KY_OPERATION_REQUEST"] = json.dumps(req, sort_keys=True, separators=(",", ":")); env["KY_ROOT"] = str(KY_ROOT)
+        try: p = run_group([PY, str(script), "--action", "resume", "--job", SCHEDULER_JOB], KY_ROOT, env, 600); rc, out = p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
+        finally: script.unlink(missing_ok=True)
+    except Exception as e: out = f"backstop could not run: {type(e).__name__}: {redact(str(e))}"
+    proof, problem = scheduler_proof(req, rc, out)
+    ok = rc == 0 and problem is None and proof is not None and proof.get("state") == "ENABLED"
+    receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or "backstop resume did not read back ENABLED"), rc, out,
+            {"scheduler": proof, "backstop_for": record.get("operation_id"), "attempt": attempt})
+    update = dict(record, attempts=attempt, last_attempt_at=now(), last_receipt=oid)
+    if ok: update.update(status="FIRED", fired_at=now())
+    else: update["next_attempt_at"] = (at + dt.timedelta(seconds=min(900, 30 * 2 ** (attempt - 1)))).isoformat(timespec="seconds")
+    scheduler_write(path, update)
+    log(f"{record.get('operation_id')} scheduler backstop {'FIRED' if ok else 'FAILED, will retry'} ({oid})")
+    return ok
+
+
+def scheduler_backstop_tick(at: dt.datetime | None = None) -> list[str]:
+    """Honour every ARMED record whose resume-by has passed (or whose back-off has elapsed). Called on every loop turn BEFORE the sync, table and
+    HOLD gates, and so on the first turn after a restart: a record that fell due while the executor was down fires immediately. An unreadable
+    due time counts as overdue — resuming the watchdog is idempotent and the safe direction. Returns the operation ids it fired."""
+    at = at or dt.datetime.now(dt.timezone.utc); fired = []
+    for path, record in scheduler_backstop_records():
+        if record.get("status") != "ARMED": continue
+        try:
+            if at < utc_time(record["resume_by"]) or at < utc_time(record.get("next_attempt_at") or record["resume_by"]): continue
+        except (KeyError, TypeError, ValueError): pass
+        try:
+            if scheduler_backstop_fire(path, record, at): fired.append(str(record.get("operation_id")))
+        except Exception as e: log(f"{record.get('operation_id')} scheduler backstop error: {type(e).__name__}: {redact(str(e))}")      # never stops the loop; the record stays ARMED
+    return fired
+
+
+def measuring_cancel_problem(req: dict) -> str | None:
+    """SR-J3-CANCEL-NULL 2(a) admission for `measuring_cancel`, run at the tail of validate (so again immediately before execution): the target
+    execution is the one the J-3c `measuring_dispatch` receipt named, and an ABORT / stall verdict is cited; both are cited by file name + sha256 and
+    read back byte for byte from run/ops/receipts and run/ops/verdicts. A missing or altered file, a different execution, CONTINUE and NULL all refuse."""
+    if req.get("kind") not in ("measuring_cancel", "measuring_cancel_dryrun"): return None
+    target = (req.get("args") or {}).get("execution")
+    if not (isinstance(target, str) and re.fullmatch(r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*", target)): return "execution must be a brahma-build-pipeline-job execution name"
+    if req.get("item_id") != "J-3c": return "measuring cancel belongs to J-3c"
+    def cited(folder: str, ref) -> dict | None:
+        if not (isinstance(ref, dict) and re.fullmatch(r"[A-Za-z0-9_.-]+\.json", str(ref.get("name", "")))): return None
+        path = OPS / folder / ref["name"]
+        try:
+            if path.resolve().parent != (OPS / folder).resolve(): return None
+            body = path.read_bytes(); value = json.loads(body)
+        except (OSError, ValueError): return None
+        return value if isinstance(value, dict) and digest_bytes(body) == ref.get("sha256") else None
+    dispatch = cited("receipts", req.get("dispatch_receipt"))
+    if dispatch is None: return "the cited measuring_dispatch receipt is missing, unreadable or does not match its sha256"
+    launch = dispatch.get("launch") if isinstance(dispatch.get("launch"), dict) else {}
+    if (dispatch.get("kind") != "measuring_dispatch" or dispatch.get("status") != "COMPLETED" or dispatch.get("exit_code") != 0 or dispatch.get("item_id") != "J-3c"
+            or req["dispatch_receipt"]["name"] != f"{dispatch.get('operation_id')}.json" or launch.get("status") != "LAUNCHED"):
+        return "the cited receipt is not the COMPLETED launch of a J-3c measuring_dispatch"
+    if launch.get("execution_name") != target: return "the target execution is not the execution named in the cited measuring_dispatch receipt"
+    verdict = cited("verdicts", req.get("verdict"))
+    if verdict is None: return "the cited ABORT/stall verdict file is missing, unreadable or does not match its sha256"
+    form = re.fullmatch(r"ky\.(reproject|stall)_verdict/\d+", str(verdict.get("schema")))
+    if not form or verdict.get("verdict") != {"reproject": "ABORT", "stall": "STALL"}[form.group(1)]: return "the cited verdict is not an ABORT or stall verdict (CONTINUE and NULL never cancel)"
+    return None
+
+
+def measuring_cancel_proof(req: dict, rc: int | None, out: str) -> tuple[dict | None, str | None]:
+    """(record, problem) for `measuring_cancel`'s (or its dry run's) complete output. `record` is the ONE ky.measuring_cancel/1 line when it names this
+    operation, this request digest, this kind and exactly the targeted execution of the measuring job (else None); `problem` is None only when the state
+    read back after the action is CANCELLED (a dry run: when it planned and called nothing). An exit status alone proves nothing, and any other observed
+    state is a failure whatever the exit status."""
+    dry = req.get("kind") == "measuring_cancel_dryrun"; found = []
+    for line in out.splitlines():
+        try: value = json.loads(line)
+        except ValueError: continue
+        if isinstance(value, dict) and value.get("schema") == "ky.measuring_cancel/1": found.append(value)
+    if len(found) != 1: return None, "cancel record missing or not unique"
+    rec = found[0]       # the project / region / job below are cloudrun_readback.py's constants
+    if (rec.get("execution") != (req.get("args") or {}).get("execution") or (rec.get("project"), rec.get("region"), rec.get("job")) != ("madhav-astrology", "asia-south1", "brahma-build-pipeline-job")
+            or rec.get("operation_id") != req.get("operation_id") or rec.get("request_sha256") != request_digest(req) or rec.get("dry_run") is not dry):
+        return None, "cancel record does not bind this operation, request and targeted execution"
+    if dry:
+        if rc == 0 and not (rec.get("status") == "DRY_RUN" and rec.get("gcloud_calls") == 0 and rec.get("state") is None and rec.get("changed") is False):
+            return rec, "the dry-run record does not prove a plan with no external call"
+    elif rc == 0 and not (rec.get("status") == "OK" and rec.get("state") == "CANCELLED"):
+        return rec, f"the execution was not read back CANCELLED (observed state: {rec.get('state')})"
+    return rec, None
+
+
+def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str = "", extra: dict | None = None, stdout: str | None = None) -> None:
+    """`out` is the complete evidence (stdout, then stderr). `stdout` is the child's stdout alone: the one stream a whole-document proof is parsed from,
+    because a child may lawfully print advisory lines on stderr. A caller that does not pass it supplies no proof stream, so such a proof reads as missing."""
     name = req.get("operation_id") if SAFE_ID.match(str(req.get("operation_id", ""))) else "unknown"
     r = {"operation_id": req.get("operation_id"), "kind": req.get("kind"), "item_id": req.get("item_id"), "status": status, "reason": reason,
          "exit_code": rc, "stdout_tail": redact(out[-20000:]), "ts": now(), "reviewed_commit": req.get("reviewed_commit"),
@@ -279,7 +655,7 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
         r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body.encode()).hexdigest(); r["output_bytes"] = len(body.encode())
     if req.get("kind") == "measuring_dispatch_dryrun" and status == "COMPLETED":
         try:
-            proof = json.loads(out)
+            proof = json.loads(stdout or "")                      # stdout only: the advisory lines on stderr are evidence, never part of the proof
             manifest = proof.get("plan_manifest") or {}
             valid = (rc == 0 and proof.get("schema") == "ky.measuring_staging/1"
                 and proof.get("status") == "ROLLED_BACK" and proof.get("rollback_confirmed") is True
@@ -334,6 +710,16 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             if expected == "COMMITTED_AWAITING_ABSENCE": r["status"] = "AWAITING_ABSENCE"
         else:
             r.update(status="FAILED", reason="bound teardown proof missing; reconcile transaction outcome")
+    if req.get("kind") in ("publish_head", "rollback_head", "publish_head_dryrun", "rollback_head_dryrun") and status == "COMPLETED":
+        try:
+            if rc != 0:
+                raise ValueError("non-zero head adapter exit")
+            proof = head_policy(req)["child_proof"](req, out)
+            r["head_change"] = proof
+            if not req["kind"].endswith("_dryrun"):
+                r["status"] = "AWAITING_READBACK"
+        except Exception:
+            r.update(status="FAILED", reason="bound head-change proof missing; reconcile through independent readback")
     overlay = overlay_proofs().pop(str(req.get("operation_id")), None)
     if overlay: r["generated_overlay"] = overlay                 # the proof the executor itself measured, never the child's words
     if extra: r.update(extra)
@@ -366,6 +752,51 @@ def smalltest_policy_problem(req: dict) -> str | None:
         return "reviewed small-test evidence policy unavailable or invalid"
 
 
+def head_policy(req: dict):
+    """Load the authority policy from the operation's exact reviewed source."""
+    source = git("show", f"{req['reviewed_commit']}:00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py")
+    if source.returncode or not getattr(source, "stdout", ""):
+        raise ValueError("reviewed head policy unavailable")
+    namespace = {"__name__": "reviewed_head_policy", "__file__": "reviewed_head_policy.py"}
+    exec(compile(source.stdout, "reviewed head evidence policy", "exec"), namespace)
+    return namespace
+
+
+def head_policy_problem(req: dict) -> str | None:
+    if req.get("kind") not in ("publish_head", "rollback_head", "publish_head_dryrun", "rollback_head_dryrun"):
+        return None
+    try:
+        return head_policy(req)["request_problem"](req, OPS)
+    except Exception:
+        return "reviewed head evidence policy unavailable or invalid"
+
+
+def signer_acceptance_problem(req: dict) -> str | None:
+    """A8 §3.9: the SIGNED route to a production write — ONE verifier lane's (v1..v4) acceptance receipt, bound to the complete request, carrying the
+    attestations the kind needs. Unchanged by OWNER-MINIMAL-PROTECTION-NOW; deletions and serving changes can only be admitted this way."""
+    acc = req.get("acceptance_receipt")
+    if not acc or not pathlib.Path(acc).exists() or ACC.resolve() not in pathlib.Path(acc).resolve().parents: return "pre-acceptance receipt missing (must live under run/ops/acceptance/)"
+    try:
+        a = json.loads(pathlib.Path(acc).read_text())
+    except Exception: return "pre-acceptance receipt unreadable"
+    if a.get("result") != "ACCEPTED" or a.get("operation_id") != req["operation_id"] or a.get("by") not in ("v1", "v2", "v3", "v4"):
+        return "pre-acceptance receipt is not an ACCEPTED receipt by a verifier lane for this operation"
+    rc = str(req.get("reviewed_commit", ""))
+    if not SHA.match(rc): return "reviewed_commit required for a production operation"
+    if git("merge-base", "--is-ancestor", rc, "origin/main").returncode != 0: return "reviewed_commit is not merged to main"
+    if a.get("reviewed_commit") != rc: return "the acceptance receipt names a different reviewed_commit"
+    try:
+        current = dt.datetime.now(dt.timezone.utc); issued = utc_time(a["ts"]); expires = utc_time(req["expires_at"])
+        if not issued <= current < expires: return "approval expired or not yet valid"      # A8 §4: no age cap — valid until the request's own expiry
+    except (KeyError, TypeError, ValueError): return "valid approval timestamp and a timezone-qualified request expires_at required"
+    if a.get("request_sha256") != request_digest(req): return "approval does not bind the complete request"
+    kind = req["kind"]; required = []                                        # A8 §5: `required_rows` and `restore_verified` are retired as preconditions
+    if kind.endswith("_teardown"): required.append("backup_taken")
+    if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"): required.append("dry_run_passed")
+    if any((a.get("checks") or {}).get(k) is not True for k in required): return "required backup/restore/dry-run attestation missing"
+    return None
+
+
 def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str | None:
     for k in ("operation_id", "kind", "item_id", "idempotency_key", "requested_by", "kyd"):
         if not req.get(k): return f"missing field {k}"
@@ -373,6 +804,17 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
     op = table.get(req["kind"])
     if not op: return f"unknown kind {req['kind']}"
     if not op.get("enabled"): return f"kind {req['kind']} is not enabled (enabled_by {op.get('enabled_by')})"
+    if req["kind"] in ("publish_head", "rollback_head", "publish_head_dryrun", "rollback_head_dryrun"):
+        prior_path = REC / f"{req['operation_id']}.json"
+        if prior_path.exists():
+            if not reserved:
+                return "head operation_id already has a receipt; reconcile instead of re-requesting"
+            try:
+                prior = json.loads(prior_path.read_text())
+                if prior.get("status") != "RUNNING" or prior.get("request_sha256") != request_digest(req):
+                    return "reserved head operation no longer matches its RUNNING receipt"
+            except Exception:
+                return "reserved head operation receipt unreadable"
     if "TO_BE_SET" in op.get("script", "") or "TO_BE_SET" in str(op.get("needs", "")): return "operation script not yet reviewed/landed"
     if req["requested_by"] not in op.get("requesters", ["adhikarin"]): return f"requested_by {req['requested_by']} may not request {req['kind']}"
     if "dry_run" in req and "lane_target" not in req:
@@ -394,28 +836,12 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
     if op.get("production"):
         if req.get("chart_id") != CANONICAL_CHART: return "chart_id is not the canonical chart"
         if not req.get("lease_id") or not lease_live(req["lease_id"]): return "lease is not the single unexpired ACTIVE row on origin/campaign-coordination"
-        acc = req.get("acceptance_receipt")
-        if not acc or not pathlib.Path(acc).exists() or ACC.resolve() not in pathlib.Path(acc).resolve().parents: return "pre-acceptance receipt missing (must live under run/ops/acceptance/)"
-        try:
-            a = json.loads(pathlib.Path(acc).read_text())
-        except Exception: return "pre-acceptance receipt unreadable"
-        if a.get("result") != "ACCEPTED" or a.get("operation_id") != req["operation_id"] or a.get("by") not in ("v1", "v2", "v3", "v4"):
-            return "pre-acceptance receipt is not an ACCEPTED receipt by a verifier lane for this operation"
-        rc = str(req.get("reviewed_commit", ""))
-        if not SHA.match(rc): return "reviewed_commit required for a production operation"
-        if git("merge-base", "--is-ancestor", rc, "origin/main").returncode != 0: return "reviewed_commit is not merged to main"
-        if a.get("reviewed_commit") != rc: return "the acceptance receipt names a different reviewed_commit"
-        try:
-            current = dt.datetime.now(dt.timezone.utc); issued = utc_time(a["ts"]); expires = utc_time(req["expires_at"])
-            if not issued <= current < expires: return "approval expired or not yet valid"      # A8 §4: no age cap — valid until the request's own expiry
-        except (KeyError, TypeError, ValueError): return "valid approval timestamp and a timezone-qualified request expires_at required"
-        if a.get("request_sha256") != request_digest(req): return "approval does not bind the complete request"
-        kind = req["kind"]; required = []                                        # A8 §5: `required_rows` and `restore_verified` are retired as preconditions
-        if kind.endswith("_teardown"): required.append("backup_taken")
-        if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"): required.append("dry_run_passed")
-        if any((a.get("checks") or {}).get(k) is not True for k in required): return "required backup/restore/dry-run attestation missing"
+        if not req.get("acceptance_receipt") and req.get("pack_fill") is not None:      # OWNER-MINIMAL-PROTECTION-NOW: no signer named, a pack fill offered -> the mechanical route (a signer's receipt, when present, is always judged as before)
+            why = mechanical_pre_acceptance(req, table)
+        else: why = signer_acceptance_problem(req)
+        if why: return why
     if not reserved and seen(req["idempotency_key"]): return "idempotency key already used"
-    return smalltest_policy_problem(req)
+    return smalltest_policy_problem(req) or scheduler_policy_problem(req) or measuring_cancel_problem(req) or head_policy_problem(req)
 
 
 def lane_selected(req: dict) -> bool:
@@ -544,6 +970,12 @@ def lane_qualification(req: dict) -> list[dict]:
             or req.get("request_id") in {entry["request_id"] for entry in bound}):
         raise ValueError("final lane readback identity must be distinct from rehearsals")
     return bound
+
+
+def child_stdouts(_store: dict = {}) -> dict:
+    """In-memory hand-off of each operation's child stdout (alone, without stderr) from execute() to receipt(); execute() keeps returning the
+    combined output that is the evidence file."""
+    return _store
 
 
 def overlay_proofs(_store: dict = {}) -> dict:
@@ -699,6 +1131,7 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
                 p = run_group(argv, KY_ROOT, env, timeout)
         finally:
             tmp.unlink(missing_ok=True)
+        child_stdouts()[oid] = p.stdout or ""
         return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
     wt = EXEC / f"op-{oid}"
     a = git("worktree", "add", "--detach", str(wt), req["reviewed_commit"], timeout=600)
@@ -713,6 +1146,7 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
         if overlay is None: return 126, "generated overlay refused: " + why
         overlay_proofs()[oid] = overlay
         p = run_group(argv, cwd, env, timeout)
+        child_stdouts()[oid] = p.stdout or ""
         return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
     finally:
         git("worktree", "remove", "--force", str(wt), timeout=300)
@@ -877,9 +1311,17 @@ def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
         why = validate(req, current_table, capabilities(True), reserved=True)
         if why:
             receipt(req, "REFUSED", why); return
+        if req["kind"] == "scheduler_pause": arm_scheduler_backstop(req)      # SR-J3-REAPER-PAUSE: armed BEFORE the pause runs; a refusal to arm stops the pause
         rc, out = execute(req, op)
-        receipt(req, "COMPLETED" if rc == 0 else "FAILED", "" if rc == 0 else "non-zero exit (read the postconditions; an exit status proves nothing)", rc, out,
-                None if lane_selected(req) else {"session_marker": session_marker(req["operation_id"])})
+        stdout = child_stdouts().pop(req["operation_id"], None)
+        extra = None if lane_selected(req) else {"session_marker": session_marker(req["operation_id"])}
+        proof, problem = scheduler_proof(req, rc, out) if extra is not None and req["kind"] in SCHEDULER_ACTION else (None, None)
+        if proof is not None: extra["scheduler"] = proof        # the state read back AFTER the action, as the reviewed script measured it
+        cancelled, cancel_problem = measuring_cancel_proof(req, rc, out) if extra is not None and req["kind"] in ("measuring_cancel", "measuring_cancel_dryrun") else (None, None)
+        if cancelled is not None: extra["cancel"] = cancelled   # likewise: the execution state read back after the cancel (CANCELLED, or the observed state beside a FAILED receipt)
+        ok = rc == 0 and problem is None and cancel_problem is None
+        receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra, stdout)
+        if ok and req["kind"] == "scheduler_resume": scheduler_backstop_satisfy(req)
     except subprocess.TimeoutExpired as e:
         receipt(req, "FAILED", "timeout — the local process group was killed; a remote job may still be running: read the postconditions", 124, str(e))
     except Exception as e:
@@ -908,9 +1350,12 @@ def main() -> int:
     if production_interrupted and not FENCE.exists(): FENCE.write_text(json.dumps({"interrupted": production_interrupted, "ts": now()}))
     table = None; caps = capabilities(False); last_caps = 0.0; last_sync = 0.0
     log("executor up")
+    for _, armed in scheduler_backstop_records():
+        if armed.get("status") == "ARMED": log(f"{armed.get('operation_id')} scheduler backstop re-armed from disk: resume {armed.get('job')} at {armed.get('resume_by')}")
     readers = cf.ThreadPoolExecutor(max_workers=4, thread_name_prefix="read"); builder = cf.ThreadPoolExecutor(max_workers=1, thread_name_prefix="prod")
     while True:
         if (RUN / "STOP_executor").exists(): log("STOP_executor present; no new operations; exiting when idle"); readers.shutdown(wait=True); builder.shutdown(wait=True); return 0
+        scheduler_backstop_tick()                            # SR-J3-REAPER-PAUSE: before every gate below; the first turn after a restart fires an overdue resume at once
         if time.time() - last_sync > 60:
             try:
                 sync()
@@ -926,7 +1371,7 @@ def main() -> int:
             except Exception as e:
                 receipt({"operation_id": f.stem}, "REFUSED", f"unreadable request: {e}"); shutil.move(str(f), DONE / f.name); continue
             production = bool((table.get(req.get("kind")) or {}).get("production")) and not lane_selected(req)
-            if production and FENCE.exists(): continue      # the single production slot is taken; the request waits where it is
+            if production and FENCE.exists() and req.get("kind") not in ("scheduler_resume", "measuring_cancel"): continue      # the single production slot is taken; the request waits where it is (a resume of the watchdog is the safe direction and a cancel stops the very dispatch that holds the fence: neither waits)
             why = validate(req, table, caps)
             if why:
                 receipt(req, "REFUSED", why); shutil.move(str(f), DONE / f.name); continue

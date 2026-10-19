@@ -93,6 +93,14 @@ def test_real_partition_is_complete_and_required_names_remain_unique():
         assert umbrella['needs'] == expected_needs
         assert not umbrella.get('continue-on-error')
         assert not umbrella['steps'][0].get('continue-on-error')
+        if job == 'db-integration-tests':
+            # SR-BOLD-08(a): this umbrella reports on EVERY event and earns its verdict in its own script; its selection, skip-proof and
+            # failure oracles are in test_ci_shape_scoping.py. The worker keeps the shared selection rule (a PR never selects it: ci_gate).
+            assert umbrella['if'] == '${{ always() }}'
+            for event, selected, full, want in (('pull_request', [job], False, True), ('pull_request', [], False, False),
+                                                ('merge_group', [job], False, True), ('push', [], False, True)):
+                assert discovery_eval(worker['if'], event=event, selected=selected, full=full) is want, (job, event, selected)
+            continue
         # D-29 x D-31: job and umbrella share ONE selection rule (main's full-suite expects `required-<job>` iff <job> is selected).
         for event, selected, full, want in (('pull_request', [job], False, True), ('pull_request', [], False, False),
                                             ('pull_request', ['other'], False, False), ('merge_group', [], False, False),

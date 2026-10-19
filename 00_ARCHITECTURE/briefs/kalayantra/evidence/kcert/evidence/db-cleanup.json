@@ -1,0 +1,6 @@
+{
+  "fixture_database": "kala_ci_211cce31656548ccbf1677851e9addb8",
+  "present_after_pytest": false,
+  "admin": "127.0.0.1:55433/postgres",
+  "action": "read-only absence check; fixture owned creation/drop"
+}

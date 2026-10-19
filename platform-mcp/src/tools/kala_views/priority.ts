@@ -49,7 +49,7 @@ import {
 import { composeArgument } from '../../lib/argument_composer.js'
 import { callKalaRegistryCap, unwrapKalaPayload, kalaBudgetedDualOutput, kalaErrorOutput, round3 } from './shared.js'
 import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
-import { kalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias, publishedRequestSchema } from './registry_alias.js'
 // ── W2.7: kala_field_salience DB read (item 25) ──────────────────────────────
 // Reads the NEWEST field_snapshot's salience rows for a chart via the whitelisted
 // read-only DB proxy (platform/src/app/api/mcp/db/query/route.ts — kala_field_salience
@@ -343,6 +343,7 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
     'catalog_only_rows_in_page/_note flags rows awaiting cross-verification (never confirmed ' +
     'findings, §N.6). [ṢAḌ-DARŚANA W0.4]',
     {
+      published_request: publishedRequestSchema,
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')."),
       date_from: z.string().optional().describe('Start of evaluation period (YYYY-MM-DD). Default: today.'),
