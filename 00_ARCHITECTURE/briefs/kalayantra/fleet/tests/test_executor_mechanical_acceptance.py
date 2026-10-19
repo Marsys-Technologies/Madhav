@@ -262,7 +262,7 @@ QUIESCENCE = {
     "q7_fence_other": (blocked("fence_other"), ('fence.get("operation_id") == target and bool(done.get("request_sha256")) and fence.get("request_sha256") == done.get("request_sha256"),', "True,")),
     "q8_measured_early": (blocked("measured_early"), ("session_readback_after_the_target_ended=after_terminal,", "session_readback_after_the_target_ended=True,")),
     "q9_remote_running": (blocked("remote_running", True), ("remote_execution_terminal=(remote is not None) if needs_remote else True)", "remote_execution_terminal=True)")),
-    "q10_teardown": (blocked("teardown"), ('target_is_not_a_teardown=done.get("kind") not in ("smalltest_teardown", "measuring_teardown"),', "target_is_not_a_teardown=True,")),
+    "q10_teardown": (blocked("teardown"), ('target_is_not_a_teardown=done.get("kind") not in TEARDOWN_KINDS,', "target_is_not_a_teardown=True,")),
     "q11_read_only_target": (blocked("readonly_target"), ('target_is_a_production_operation=entry.get("production") is True and "lane_target" not in done,', "target_is_a_production_operation=True,")),
     "q13_readback_record_unproven": (lambda w: [blocked(f, True)(w) for f in ("readback_empty_checks", "readback_no_schema")],
                                      ('(accepted.get("by") != "executor-mechanical"       # same bar as fence_quiescent: the record\'s own schema, and every check present and true\n'
@@ -422,7 +422,7 @@ import ast
 
 ROOT = FLEET.parents[3]
 PLATFORM_SCRIPTS = ROOT / "platform/scripts"
-TEARDOWN_KINDS = ("smalltest_teardown", "measuring_teardown")
+TEARDOWN_KINDS = ("smalltest_teardown", "measuring_teardown", "century_teardown")
 ELIGIBLE = {kind for kind, entry in TABLE.items() if entry.get("enabled") is True and entry.get("production") is True and kind not in TEARDOWN_KINDS}
 # route "client_env": the op's own psycopg connections inherit PGAPPNAME and every pg_dump / pg_restore client it starts gets it through client_env().
 # route "in_process": every database connection is a psycopg connection opened inside the op's own process from DATABASE_URL (libpq applies PGAPPNAME);
@@ -439,9 +439,10 @@ MARKER_ROUTE = {
     "layer_publish": "in_process",
     "layer_rollback": "in_process",
     "measuring_dispatch": "in_process",     # J-3a: measuring_launch.py opens only psycopg connections from DATABASE_URL (no PGAPPNAME/application_name in its closure — the next test)
+    "century_dispatch": "in_process",       # SR-PREBUILD-ALL: century_launch.py is the same bridge (smalltest_launch.launch_staged) over the same staging closure — the next test scans it
 }
 # A8 §3 fences only remote_async kinds; the *_dryrun kinds are production:false in executor_ops.json, so they are not eligible and carry no row.
-# Teardowns (smalltest_teardown, measuring_teardown) stay excluded by TEARDOWN_KINDS: executor.py `target_is_not_a_teardown` still refuses them.
+# Teardowns (smalltest_teardown, measuring_teardown, century_teardown) stay excluded by TEARDOWN_KINDS: executor.py `target_is_not_a_teardown` still refuses them.
 BACKUP_CARRY = "        env['PGAPPNAME'] = os.environ['PGAPPNAME']"
 SUBPROCESS_CALLS = {"run", "Popen", "call", "check_call", "check_output"}
 
