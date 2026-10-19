@@ -262,3 +262,84 @@ def test_every_tick_is_logged(box):
     run(box, w)
     lines = (box["root"] / "run" / "watchdog" / "watchdog.jsonl").read_text().splitlines()
     assert len(lines) == 2 and all(json.loads(x)["action"] for x in lines)
+
+
+# ───────────────────────────── SR-IDLE-NUDGE: a live, idle cockpit with work waiting is nudged ─────────────────────────────
+
+def nudge_box(box, idle_min=60, status="idle"):
+    """A live cockpit, silent for `idle_min`, with a registry status of `status`. Queue files sit beside fast/jobs."""
+    set_mtime(box["transcript"], NOW - dt.timedelta(minutes=idle_min))
+    add_session(box, os.getpid(), status=status)
+    box["cfg"].fast_dir = str(box["fast"].parent)
+    return box["fast"].parent
+
+
+def nudge_file(box):
+    return box["root"] / "run" / "watchdog" / "NUDGE.txt"
+
+
+def test_idle_live_cockpit_with_unread_jobs_is_nudged_once_per_30_min(box):
+    """SR-IDLE-NUDGE: live + idle >= 20 min + unread finished jobs -> one nudge, then none for 30 min."""
+    queue = nudge_box(box)
+    add_job(box, "X-a", finished_at=NOW - dt.timedelta(minutes=10))
+    add_job(box, "X-b", finished_at=NOW - dt.timedelta(minutes=5))
+    (queue / "BACKLOG.txt").write_text("# header\nitem1\n\nitem2\nitem3\n")
+    (queue / "ARM_ORDER.txt").write_text("# header\n3773\n")
+    w = Waker()
+    rec = run(box, w)
+    assert rec["action"] == "nudge" and not w.calls
+    assert rec["nudge"] == "2 finished jobs unread; backlog 3; arm-order 1; act"
+    assert nudge_file(box).read_text().strip().endswith("2 finished jobs unread; backlog 3; arm-order 1; act")
+    assert run(box, w, now=NOW + dt.timedelta(minutes=15))["action"] == "none"  # inside the 30 min
+    assert run(box, w, now=NOW + dt.timedelta(minutes=29))["action"] == "none"
+    assert run(box, w, now=NOW + dt.timedelta(minutes=31))["action"] == "nudge"  # window over
+    log = [json.loads(x) for x in (box["root"] / "run" / "watchdog" / "watchdog.jsonl").read_text().splitlines()]
+    assert [r["action"] for r in log].count("nudge") == 2 and not w.calls
+
+
+def test_backlog_or_arm_order_alone_is_enough_to_nudge(box):
+    queue = nudge_box(box)
+    (queue / "ARM_ORDER.txt").write_text("3773\n")
+    rec = run(box, Waker())
+    assert rec["action"] == "nudge" and rec["nudge"] == "0 finished jobs unread; backlog 0; arm-order 1; act"
+
+
+def test_no_nudge_when_not_idle_long_enough(box):
+    nudge_box(box, idle_min=10)
+    add_job(box, "X-a", finished_at=NOW - dt.timedelta(minutes=5))
+    rec = run(box, Waker())
+    assert rec["action"] == "none" and not nudge_file(box).exists()
+
+
+def test_no_nudge_when_session_is_busy_not_idle(box):
+    nudge_box(box, status="busy")
+    add_job(box, "X-a", finished_at=NOW - dt.timedelta(minutes=5))
+    assert run(box, Waker())["action"] == "none" and not nudge_file(box).exists()
+
+
+def test_no_nudge_when_nothing_is_pending(box):
+    queue = nudge_box(box)
+    (queue / "BACKLOG.txt").write_text("# only a comment\n\n")  # empty in substance
+    add_job(box, "X-old", finished_at=NOW - dt.timedelta(hours=3))  # read before the last activity
+    add_job(box, "X-running")  # running work is not "unread"
+    rec = run(box, Waker())
+    assert rec["action"] == "none" and not nudge_file(box).exists()
+
+
+def test_dead_session_still_wakes_and_is_never_nudged(box):
+    """The resume path is unchanged: an absent session with pending work wakes; nothing is nudged."""
+    queue = nudge_box(box)
+    os.remove(box["sessions"] / ("%d.json" % os.getpid()))
+    (queue / "ARM_ORDER.txt").write_text("3773\n")
+    add_job(box, "X-a", finished_at=NOW - dt.timedelta(minutes=5))
+    w = Waker()
+    rec = run(box, w)
+    assert rec["action"] == "wake" and w.calls == [SID] and not nudge_file(box).exists()
+
+
+def test_dry_run_nudge_writes_no_file(box):
+    queue = nudge_box(box)
+    (queue / "BACKLOG.txt").write_text("item1\n")
+    box["cfg"].dry_run = True
+    rec = run(box, Waker())
+    assert rec["action"] == "nudge" and not nudge_file(box).exists()

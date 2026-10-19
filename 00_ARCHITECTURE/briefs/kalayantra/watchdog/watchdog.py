@@ -13,7 +13,13 @@ by resuming it in the background ONLY when every condition holds:
     wakes happened in the last 24 hours.
 
 It never plans, launches jobs, merges, writes campaign state or reads credentials. Its only writes are its
-own state file and log under KY_WD_DIR. Every decision is logged as one JSON line.
+own state file, log and nudge file under KY_WD_DIR. Every decision is logged as one JSON line.
+
+A LIVE cockpit is never woken or copied. When it is live, idle for at least KY_WD_NUDGE_IDLE_MIN minutes and
+work is waiting (finished jobs unread, a non-empty fast/BACKLOG.txt or fast/ARM_ORDER.txt), the watchdog leaves
+ONE nudge at most every KY_WD_NUDGE_EVERY_MIN minutes: it writes the line to KY_WD_DIR/NUDGE.txt (the cockpit's
+loop reads it) and logs action "nudge". No script-callable send into a running session exists (the SendMessage
+tool is the model's, and `claude --resume` on a live session starts a copy), so the file is the channel.
 """
 import datetime as dt
 import glob
@@ -57,6 +63,9 @@ class Config:
         self.max_failed = int(g("KY_WD_MAX_FAILED", "3"))
         self.max_daily = int(g("KY_WD_MAX_DAILY", "12"))
         self.running_max_h = float(g("KY_WD_RUNNING_MAX_H", "8"))
+        self.fast_dir = g("KY_WD_FAST_DIR", os.path.dirname(self.fast_jobs.rstrip("/")))
+        self.nudge_idle_min = float(g("KY_WD_NUDGE_IDLE_MIN", "20"))
+        self.nudge_every_min = float(g("KY_WD_NUDGE_EVERY_MIN", "30"))
         self.dry_run = g("KY_WD_DRY_RUN", "0") == "1"
         self.notify = g("KY_WD_NOTIFY", "1") == "1"
 
@@ -218,6 +227,19 @@ def pending_work(cfg, since, now):
     return reasons
 
 
+def queue_depth(path):
+    """Entries in a fast-lane queue file: non-blank lines that are not '#' comments. Missing/unreadable = 0."""
+    try:
+        with open(path) as fh:
+            return sum(1 for line in fh if line.strip() and not line.lstrip().startswith("#"))
+    except OSError:
+        return 0
+
+
+def nudge_text(unread, backlog, arm_order):
+    return "%d finished jobs unread; backlog %d; arm-order %d; act" % (unread, backlog, arm_order)
+
+
 # ───────────────────────────── state, log, actions ─────────────────────────────
 
 def load_state(cfg):
@@ -250,6 +272,23 @@ def notify(cfg, state, key, text, now, every_h=1.0):
     if cfg.notify and not cfg.dry_run:
         script = 'display notification "%s" with title "Kāla watchdog"' % text.replace('"', "'")
         subprocess.run(["osascript", "-e", script], capture_output=True, timeout=20)
+    return True
+
+
+def nudge(cfg, state, rec, unread, backlog, arm_order, now):
+    """Leave ONE nudge for a live, idle cockpit; at most one per cfg.nudge_every_min. True when one was left.
+
+    The only write is KY_WD_DIR/NUDGE.txt (overwritten, one line). It never resumes, flags or copies a session."""
+    last = state.get("last_nudge")
+    if last and (now - dt.datetime.fromisoformat(last)).total_seconds() < cfg.nudge_every_min * 60:
+        return False
+    text = nudge_text(unread, backlog, arm_order)
+    if not cfg.dry_run:
+        os.makedirs(cfg.dir, exist_ok=True)
+        with open(os.path.join(cfg.dir, "NUDGE.txt"), "w") as fh:
+            fh.write("%s %s\n" % (now.isoformat(), text))
+    state["last_nudge"] = now.isoformat()
+    rec.update(action="nudge", reason="session live and idle; " + text, nudge=text)
     return True
 
 
@@ -302,12 +341,16 @@ def tick(cfg, now=None, ps_start=proc_start, waker=wake):
 
     if liveness != "absent":
         rec.update(action="none", reason="session %s" % liveness)
-        if liveness == "live" and srec and srec.get("status") == "idle" and silent_min and silent_min >= 45:
+        if liveness == "live" and srec and srec.get("status") == "idle" and silent_min:
             reasons = pending_work(cfg, seen, now)
             finished = [r for r in reasons if r.startswith("finished after")]
-            if finished:
+            if silent_min >= 45 and finished:
                 rec["reason"] = "session live but idle with %d unread finished jobs" % len(finished)
                 notify(cfg, state, "idle_unread", "Cockpit idle with finished jobs unread", now)
+            backlog = queue_depth(os.path.join(cfg.fast_dir, "BACKLOG.txt"))
+            arm_order = queue_depth(os.path.join(cfg.fast_dir, "ARM_ORDER.txt"))
+            if silent_min >= cfg.nudge_idle_min and (finished or backlog or arm_order):
+                nudge(cfg, state, rec, len(finished), backlog, arm_order, now)
         return finish(cfg, state, rec)
 
     if seen is None:
