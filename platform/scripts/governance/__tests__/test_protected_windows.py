@@ -160,6 +160,15 @@ def test_lowest_pending_set_first_with_one_batch_per_head(rig):
     assert rig.data()['dispatches'] == 1
 
 
+def test_dispatch_names_its_own_lease_so_the_deploy_lease_gate_does_not_read_it_as_foreign(rig):
+    """W2-M-08 B-1: deploy.yml's gate (window_lease_gate.py --own-lease "$WINDOW_LEASE_ID") treats every ACTIVE lease but the one named as foreign;
+    this dispatcher holds the sole ACTIVE lease (require_lease), so it must pass it as -f window_lease_id=<lease>."""
+    rig.pending('1330_kala_layer_manifest_candidates.sql')
+    assert rig.run()['status'] == 'verified'
+    call = next(c for c in rig.data()['calls'] if c[:2] == ['workflow', 'run'])
+    assert call[call.index(f'window_lease_id={LEASE}') - 1] == '-f'
+
+
 def test_dry_run_is_read_only_and_does_not_consume_head(rig):
     rig.pending('1330_kala_layer_manifest_candidates.sql')
     assert rig.run(dry_run=True)['status'] == 'dry_run'

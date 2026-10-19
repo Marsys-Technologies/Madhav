@@ -434,9 +434,9 @@ def test_seed_row_is_inactive_and_cites_both_planner_predicates():
     block = block.split("asset_id:", 1)[0]  # this asset's entry only
     assert "is_active: false" in block
     assert "is_active: true" not in block
-    # migration 1304 (the small-test registry shape) declares what the writer truly reads: the seed ships those edges (this assertion was `depends_on: []`, the
-    # INERT-skeleton value, written with the a53 train in PR 2999)
-    assert "depends_on: ['ga_positions', 'ga_dashas']" in block
+    # K8-REG / migration 1392 also declares the direct rule-registry read.
+    # This dependency correction does not activate the staged writer.
+    assert "depends_on: ['ga_positions', 'ga_dashas', 'bg_transit_rules']" in block
     # the inertness comment cites both planner predicates
     assert "runPreparation" in block and "recalibrationEnqueue" in block
 
