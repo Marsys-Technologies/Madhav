@@ -74,34 +74,15 @@ const MIGRATION_GOVERNED_DEPENDENCIES: Record<string, string[]> = {
     'bo_vargottama_dhana',
     'bo_bimba', 'ga_vichara', // migration 1210 (cgm_nodes + chart_vichara reads, bo_laksana.py rerank writer)
   ],
-  ka_kalasutra: [
-    'ka_yojaka', 'ka_sangam', 'bo_laksana',
-    'ga_dashas', // migration 1210 (chart_dashas read via ka_temporal date_resolver)
-  ],
-  ka_sangam: [
-    'ka_yojaka', 'ka_dasha_kala', 'ka_gochara', 'ka_muhurta_seva',
-    'bo_laksana', 'ga_dashas', 'ga_strength', 'ga_positions',
-    'ga_tajaka', 'bg_transit_rules',
-  ],
-  ka_vighnakara: [
-    'ka_sangam', 'ka_gochara', 'ka_muhurta_seva', 'ga_positions',
-    'ga_dashas', // migration 1210 (chart_dashas read via ka_temporal date_resolver)
-  ],
-  ka_jivana_parva: [
-    'ka_kala_darshana', 'ka_dasha_kala', 'ka_sangam', 'ka_yojaka',
-    'ga_dashas',
-  ],
-  ka_bhavishya_lekha: [
-    'ka_kala_darshana', 'ka_vighnakara', 'ka_sangam', 'bo_laksana',
-  ],
-  // Migration 1360 (SS N-430) RETIRES bg_sarvatobhadra_grid in the live registry and removes it from ka_vedha_gochara.depends_on. The seed row
-  // is deliberately NOT edited (hashed census source): the seed upsert never rewrites depends_on of an existing row and keeps a RETIRED row
-  // RETIRED / inactive, so the seed literal below is the pre-1360 set and the live registry is this set minus bg_sarvatobhadra_grid.
-  ka_vedha_gochara: [
-    'ga_positions', 'bg_ephemeris', 'bg_transit_rules',
-    'bg_sarvatobhadra_grid', 'bg_vedha_malefic_scale',
-    'bg_phaladeepika_latta',
-  ],
+  ka_kalasutra: ['ka_yojaka', 'ka_sangam', 'bo_laksana', 'ga_dashas'],
+  ka_sangam: ['ka_yojaka', 'ka_dasha_kala', 'ka_gochara', 'ka_muhurta_seva', 'bo_laksana', 'ga_dashas', 'ga_strength', 'ga_positions', 'ga_tajaka', 'bg_transit_rules', 'ka_vedha_gochara'],
+  ka_vighnakara: ['ka_sangam', 'ka_gochara', 'ka_muhurta_seva', 'ga_positions', 'ga_dashas', 'bg_dignity_reference', 'ka_yojaka'],
+  ka_jivana_parva: ['ka_kala_darshana', 'ka_dasha_kala', 'ka_sangam', 'ka_yojaka', 'ga_dashas'],
+  ka_bhavishya_lekha: ['ka_kala_darshana', 'ka_vighnakara', 'ka_sangam', 'bo_laksana'],
+  // K8 mirrors migration 1360 (SS N-430), which RETIRES bg_sarvatobhadra_grid in the live registry and removes it from ka_vedha_gochara.depends_on. The seed row
+  // now mirrors K8; the seed upsert never rewrites depends_on of an existing row and keeps a RETIRED row
+  // RETIRED / inactive. K8 adds the missing direct edges without reintroducing the grid.
+  ka_vedha_gochara: ['ga_positions', 'bg_ephemeris', 'bg_transit_rules', 'bg_vedha_malefic_scale', 'bg_phaladeepika_latta', 'bg_texts'],
   ph_nimitta: [
     'ka_sangam', 'ka_bhavishya_lekha', 'bo_bimba', 'bo_samskara',
     'bo_karanajala', 'bo_sangati', 'bo_anveshana', 'bo_cgm_paths',
@@ -403,8 +384,46 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
     const migration = readFileSync(new URL('../../migrations/1360_retire_bg_sarvatobhadra_grid.sql', import.meta.url), 'utf8')
     expect(migration).toContain("catalog_status = 'RETIRED'")
     expect(migration).toContain('array_remove(depends_on, c_grid)')
-    // the seed literal is the pre-1360 set; only ka_vedha_gochara names the grid as a dependency
+    // K8 aligns bootstrap with 1360: no new registry row depends on the retired grid.
     const dependents = ASSETS.filter((asset) => asset.depends_on.includes('bg_sarvatobhadra_grid')).map((asset) => asset.asset_id)
-    expect(dependents).toEqual(['ka_vedha_gochara'])
+    expect(dependents).toEqual([])
+  })
+})
+
+// K8: bootstrap agrees with the migration without activating candidate writers.
+describe('K8 registry truth', () => {
+  const byId = new Map(ASSETS.map(a => [a.asset_id, a]))
+  it('declares the real F1/F2, vedha, arc and Gochara read inputs', () => {
+    expect(byId.get('ka_avadhi')?.depends_on).toEqual([
+      'ga_positions', 'ga_dashas', 'ka_yojaka', 'ka_dasha_kala',
+    ])
+    for (const [id, edge] of [['ka_sangam','ka_vedha_gochara'],['ka_kshetra','ka_gochara'],
+      ['ka_gochara','bg_gochara_arcs'],['ka_yojaka','bo_karanajala']]) {
+      expect(byId.get(id)?.depends_on,id).toContain(edge)
+    }
+    expect(byId.get('ka_vedha_gochara')?.depends_on).not.toContain('bg_sarvatobhadra_grid')
+  })
+  it('declares every heavy writer while candidate activation stays gated', () => {
+    for (const id of ['ka_gochara','ka_gochara_v3_century_materialize',
+      'ka_gochara_v4_41_candidate','ka_gochara_v5','ka_yojaka','ka_sangam','ka_kshetra']) {
+      expect(byId.get(id)?.has_substeps,id).toBe(true)
+    }
+    for (const id of ['ka_gochara_v4_41_candidate','ka_gochara_v5','ka_gochara_sweep']) {
+      expect(byId.get(id)?.is_active,id).toBe(false)
+    }
+  })
+  it('keeps bootstrap equal to the K8 migration, including generation-aware counters', () => {
+    const migration = readFileSync(new URL('../../migrations/1392_k8_registry_truth.sql', import.meta.url),'utf8')
+    const rows = JSON.parse(migration.split('$k8_rows$')[1]) as {
+      asset_id:string; depends_on:string[]; has_writer:boolean; has_substeps:boolean; count_sql?:string
+    }[]
+    expect(rows.map(r=>r.asset_id).sort()).toEqual(ASSETS.filter(a=>a.asset_id.startsWith('ka_')).map(a=>a.asset_id).sort())
+    for (const row of rows) {
+      const asset = byId.get(row.asset_id)!
+      expect(asset.depends_on,row.asset_id).toEqual(row.depends_on)
+      expect(asset.has_writer,row.asset_id).toEqual(row.has_writer)
+      expect(asset.has_substeps ?? false,row.asset_id).toEqual(row.has_substeps)
+      if (row.count_sql) expect(asset.count_sql,row.asset_id).toEqual(row.count_sql)
+    }
   })
 })
