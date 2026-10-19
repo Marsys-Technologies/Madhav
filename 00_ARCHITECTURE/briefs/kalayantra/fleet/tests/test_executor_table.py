@@ -178,11 +178,12 @@ PROVISIONING_BINDINGS = {
     "gochara_role_provisioning_dispatch": {"enabled": False, "needs": "none", "script": PROVISIONING_SCRIPT, "fixed_args": ["--execute"],
                                            "allowed_args": ["stage", "dsn_tail", "confirm", "window_lease_id"], "production": True, "timeout_s": 300, "enabled_by": "J-4b"},
 }
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(K9_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]}   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; K9-23: the eight layer/rebuild kinds; J-4d: the three enabled century kinds
+HEAD_KINDS = ("publish_head", "publish_head_dryrun", "rollback_head", "rollback_head_dryrun")   # J-6m / J-6r: enabled only through head_operation.py's reviewed policy (SR-HEAD-POLICY-KEEP)
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(HEAD_KINDS) | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(K9_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]}   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; K9-23: the eight layer/rebuild kinds; J-4d: the three enabled century kinds
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
-P10_ENABLED_ITEMS = ("J-1a", "J-4d")      # J-1a: Wave 4 small test; J-4d: SR-PREBUILD-ALL (the century launcher is merged-with-this-PR)
+P10_ENABLED_ITEMS = ("J-1a", "J-4d", "J-6m", "J-6r")      # J-1a: Wave 4 small test; J-4d: SR-PREBUILD-ALL (the century launcher is merged-with-this-PR); J-6m / J-6r: SR-HEAD-POLICY-KEEP (the head kinds, through the head policy)
 P10_STILL_DISABLED = {item: kind for item, kind in P10.items() if item not in P10_ENABLED_ITEMS}
 BOUNDARY_FUNCTIONS = ["validate", "execute", "run_one", "main", "lease_live", "request_digest", "fence_quiescent",
                       "refresh_refusal_reason", "handover_from_main", "refresh_from_main_or_fail_closed",
@@ -319,7 +320,7 @@ def assert_table_matches_pin(now):
     for kind in ("publish_head", "rollback_head"):
         original = expected[kind]
         for dry in (False, True):
-            entry = {"enabled": False, "needs": "builder",
+            entry = {"enabled": True, "needs": "builder",      # SR-HEAD-POLICY-KEEP: enabled; the executor still refuses whatever head_operation.request_problem refuses
                 "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py",
                 "fixed_args": ["--kind", kind, "--dry-run" if dry else "--execute"],
                 "allowed_args": ["generation", "manifest-id", "expected-head-sha256"],
@@ -765,7 +766,7 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["verification_job", "century_teardown", "publish_head", "rollback_head", *PROTECTED_WINDOW_BINDINGS, *PROVISIONING_BINDINGS])   # K9 kinds are enabled here (K9-23), not disabled
+@pytest.mark.parametrize("kind", ["verification_job", "century_teardown", *PROTECTED_WINDOW_BINDINGS, *PROVISIONING_BINDINGS])   # K9 kinds are enabled here (K9-23), not disabled
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)

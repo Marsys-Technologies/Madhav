@@ -20787,8 +20787,9 @@
         "arrival_line_wired"
       ],
       "detector": {
-        "type": "branch_merged",
-        "ref": "origin/kalayantra/pb-k9-final"
+        "type": "file_exists",
+        "path": "/Users/Dev/kalayantra/run/K9_6_LIVE.json",
+        "min_bytes": 200
       },
       "brief": {
         "spec": [
