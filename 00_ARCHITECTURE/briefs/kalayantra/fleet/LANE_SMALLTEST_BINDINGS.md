@@ -70,7 +70,7 @@ hashes, unchanged before/after measurements and independent readback. Its wire
 receipt copies `request_id`, stores the proof under `lane`, and publishes:
 
 - `request_sha256`: the existing complete-request digest.
-- `output_sha256`: the digest of the complete redacted output file.
+- `output_sha256`: the digest of the complete redacted output file. Since SR-EXECUTOR-FRAMING the file holds the child's stdout exactly; stderr is its own `<operation_id>.stderr.txt` (`stderr_sha256`, `stderr_bytes`). Receipts made earlier hold one combined file and still verify against `output_sha256`.
 - `evidence_sha256`: SHA-256 of canonical compact sorted JSON of `lane`.
 
 Lane receipts have neither production `launch` nor production `teardown`
