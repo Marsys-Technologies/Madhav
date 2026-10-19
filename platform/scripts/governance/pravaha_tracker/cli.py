@@ -111,11 +111,26 @@ def actor_for(a) -> str:
     return f"stream-{s}"
 
 
+def _dispatch_earned(repo: str, run_id) -> bool:
+    """The dispatch run's own jobs show an earned deploy; unreadable means not earned."""
+    if not isinstance(run_id, int) or isinstance(run_id, bool):
+        return False
+    proc = subprocess.run(["gh", "run", "view", str(run_id), "--json", "jobs"], cwd=repo, capture_output=True,
+                          text=True, timeout=60, check=False)
+    if proc.returncode:
+        return False
+    try:
+        return merged_deployed.earned_deploy(json.loads(proc.stdout or "{}").get("jobs"))
+    except (ValueError, AttributeError):
+        return False
+
+
 def observe_containment(repo: str, merge: str) -> dict:
     """Find a SUCCESSFUL `Deploy to Cloud Run` run on main whose deployed sha contains `merge`.
 
-    Only runs triggered by `workflow_run` are trusted: for them DEPLOY_SHA equals the run's head sha (deploy.yml);
-    a `workflow_dispatch` run may deploy a different sha than its head (Trap 103) and is ignored here.
+    Any trigger counts (SR-BOLD-07): for `workflow_run` and for a `workflow_dispatch` on main DEPLOY_SHA equals the
+    run's head sha (deploy.yml). A dispatch run is green even when it only migrated and skipped every deploy job, so
+    it counts only when its jobs show the outcome gate passed and a deploy job succeeded (merged_deployed.earned_deploy).
     """
     out = {"deployed_sha": None, "run_id": None, "contains_merge": False}
     try:
@@ -130,12 +145,12 @@ def observe_containment(repo: str, merge: str) -> dict:
         except ValueError:
             return out
         for run in (runs if isinstance(runs, list) else []):
-            if not isinstance(run, dict) or run.get("event") != "workflow_run":
+            if not isinstance(run, dict) or run.get("event") not in merged_deployed.DEPLOY_EVENTS:
                 continue
             sha = run.get("headSha") or ""
             anc = subprocess.run(["git", "merge-base", "--is-ancestor", merge, sha], cwd=repo,
                                  capture_output=True, text=True, timeout=30, check=False)
-            if anc.returncode == 0:
+            if anc.returncode == 0 and (run["event"] == "workflow_run" or _dispatch_earned(repo, run.get("databaseId"))):
                 return {"deployed_sha": sha, "run_id": run.get("databaseId"), "contains_merge": True,
                         "deployed_at": run.get("createdAt")}
     except (OSError, ValueError, subprocess.SubprocessError):
