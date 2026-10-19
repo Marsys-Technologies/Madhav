@@ -11,7 +11,12 @@ argument, equal to the command line) · V3 the launch is exactly the seal workfl
 V4 an unconforming deployed definition refuses before any claim or launch (digest of reviewed_commit, identity, secret, retries, same-commit rule) ·
 V5 the durable no-retry fence: claim before the remote call, never cleared, a second run refuses · V6 launch evidence: the execution is this job's, and the record
 binds operation, request digest and execution · V7 the executed resource is judged and a nonconforming or unreadable one exits non-zero · V8 the dry run does the same
-validation and no write · V9 no credential value reaches an argv or an output · V10 the script runs standalone from the reviewed tree.
+validation and writes no claim · V9 no credential value reaches an argv or an output · V10 the script runs standalone from the reviewed tree.
+PR #3747 verify finding B3 (the dry run was a DEFINITION check, not a `--report-only` run, so the pack's dryrun_gate read NULL and its seconds-long wall time was a proxy for the cost):
+R1 the dry run executes the job once in its own `--report-only` mode (the flag of pipeline/orchestrator/verification_job.py) and never in a persisting or sealing mode · R2 its output
+carries exactly ONE report line, the job's own words byte for byte, which the pack's dryrun_gate selects and judges (verify/dryrun_gate.py: report_only true, status REPORT_ONLY), plus a
+measured wall time · R3 the run is waited for and a failed, still-running, unreadable, report-less or non-REPORT_ONLY run is never a green · R4 the executed resource is judged with the
+report-only arguments (a run that could persist is NONCONFORMING) · R5 a report split by Cloud Logging is joined only when complete.
 """
 import copy
 import hashlib
@@ -73,6 +78,40 @@ def job_v2():
     return {"template": {"template": {"maxRetries": 0}}}
 
 
+CLASSES = ("lagna_stretch", "dasha_sandhi", "transit_ingress")
+
+
+def report_dict(**more):
+    """The shape of vj.run's report (services/gochara_kernel/verification_job.py: run()): what a `--report-only` execution prints as its one stdout line."""
+    report = {"chart_id": CHART, "generation": "5.0", "report_only": True, "status": "REPORT_ONLY", "exit_code": 0, "gate": [], "gate_outside_scope": [],
+              "gate_source": "ka_gochara_candidate_gate_violations", "identity": {"separate": True},
+              "classes": {c: {"event_class": c, "status": "VERIFIED"} for c in CLASSES}, "cockpit": "REPORT ONLY (nothing persisted) · combined gate: 0 violation(s)"}
+    report.update(more)
+    return report
+
+
+def report_line(**more):
+    return json.dumps(report_dict(**more), default=str, sort_keys=True)               # the job's own serialisation (verification_job._run)
+
+
+def log_entry(text, insert_id, **more):
+    return {"insertId": insert_id, "textPayload": text, "timestamp": "2026-10-19T10:41:41.000000Z", **more}
+
+
+class Clock:
+    """The injected sleep and monotonic clock: waiting costs nothing and is counted."""
+
+    def __init__(self):
+        self.now, self.sleeps = 0.0, []
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+    def monotonic(self):
+        return self.now
+
+
 def execution_v1(name=NAME, args=vl.EXECUTE_ARGS):
     return {"metadata": {"name": name}, "spec": {"taskCount": 1, "template": {"spec": task(args)}}}
 
@@ -84,6 +123,14 @@ class Cloud:
         self.job, self.job_v2, self.digest = job_v1(), job_v2(), DIGEST
         self.execution, self.execution_v2, self.exec_name = execution_v1(), {"template": {"maxRetries": 0}}, NAME
         self.calls, self.fetches, self.launch_rc = [], [], 0
+        self.report_only = False                                       # set by a `jobs execute ... --report-only`
+        self.dry_execution = execution_v1(args=vl.REPORT_ONLY_ARGS)
+        self.dry_execution["status"] = {"startTime": "2026-10-19T10:00:00.000000Z", "completionTime": "2026-10-19T10:41:40.500000Z", "succeededCount": 1,
+                                       "conditions": [{"type": "Completed", "status": "True"}]}
+        self.running_polls = 0                                         # describe answers RUNNING this many times before the final state
+        self.never_completes = False
+        self.log_entries = [log_entry(report_line(), "1")]
+        self.log_calls, self.logs_lag = 0, 0                           # logs_lag: reads that return nothing yet (Cloud Logging lags a finished execution)
 
     def __call__(self, argv):
         self.calls.append(list(argv))
@@ -95,10 +142,20 @@ class Cloud:
             assert argv[4] == "gochara-verification-job", argv
             return done(json.dumps(self.job))
         if argv[:4] == ["gcloud", "run", "jobs", "execute"]:
+            self.report_only = any(a.endswith(",--report-only") for a in argv)
             return done(self.exec_name + "\n", self.launch_rc)
         if argv[:5] == ["gcloud", "run", "jobs", "executions", "describe"]:
             assert argv[5] == self.exec_name, argv
-            return done(json.dumps(self.execution))
+            if not self.report_only:
+                return done(json.dumps(self.execution))
+            execution = copy.deepcopy(self.dry_execution)
+            if self.never_completes or self.running_polls > 0:
+                self.running_polls -= 1
+                execution["status"] = {"startTime": "2026-10-19T10:00:00.000000Z", "runningCount": 1, "conditions": [{"type": "Completed", "status": "Unknown"}]}
+            return done(json.dumps(execution))
+        if argv[:3] == ["gcloud", "logging", "read"]:
+            self.log_calls += 1
+            return done(json.dumps(self.log_entries if self.log_calls > self.logs_lag else []))
         if argv == ["gcloud", "auth", "print-access-token"]:
             return done(TOKEN + "\n")
         raise AssertionError(f"unexpected call {argv}")
@@ -122,25 +179,42 @@ def request(kind="verification_job", **more):
     return req
 
 
-def injected(tmp_path, cloud, req, launcher=None):
-    return dict(environ={"KY_OPERATION_REQUEST": json.dumps(req), "KY_ROOT": str(tmp_path)}, runner=cloud, fetch=cloud.fetch, claim_dir=tmp_path / "claims", launcher=launcher)
+def injected(tmp_path, cloud, req, launcher=None, clock=None):
+    clock = clock or Clock()
+    return dict(environ={"KY_OPERATION_REQUEST": json.dumps(req), "KY_ROOT": str(tmp_path)}, runner=cloud, fetch=cloud.fetch, claim_dir=tmp_path / "claims", launcher=launcher,
+                sleep=clock.sleep, monotonic=clock.monotonic)
 
 
-def go(tmp_path, cloud=None, req=None, argv=("--generation", "5.0"), launcher=None, dry=False):
+def go(tmp_path, cloud=None, req=None, argv=("--generation", "5.0"), launcher=None, dry=False, clock=None):
     cloud = cloud or Cloud()
     req = request("verification_job_dryrun" if dry else "verification_job") if req is None else req
     argv = list(argv) + (["--dry-run"] if dry else [])
-    return cloud, vl.run(argv, **injected(tmp_path, cloud, req, launcher)), tmp_path / "claims"
+    return cloud, vl.run(argv, **injected(tmp_path, cloud, req, launcher, clock)), tmp_path / "claims"
 
 
-def cli_go(tmp_path, cloud):
+def cli_go(tmp_path, cloud, dry=False, clock=None):
     """The command-line entry on the same fakes: (exit code, stdout, stderr) as the executor would see them."""
     import contextlib
     import io
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        rc = vl.cli(["--generation", "5.0"], **injected(tmp_path, cloud, request()))
+        rc = vl.cli(["--generation", "5.0"] + (["--dry-run"] if dry else []), **injected(tmp_path, cloud, request("verification_job_dryrun" if dry else "verification_job"), clock=clock))
     return rc, out.getvalue(), err.getvalue()
+
+
+def gate_reports(output):
+    """The pack's report selection (verify/gatelib.py reports_in, used by dryrun_gate.py): stdout lines that are JSON objects with a `classes` object and `generation`."""
+    found = []
+    for line in output.splitlines():
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                value = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(value, dict) and isinstance(value.get("classes"), dict) and "generation" in value:
+                found.append(value)
+    return found
 
 
 # V1 ── the kind binds the mode ──────────────────────────────────────────────────────────────────────────────────────
@@ -332,13 +406,156 @@ def test_v7_an_unreadable_executed_resource_is_unreadable_not_green(tmp_path):
     assert json.loads((claims / "op-verify-1.json").read_text())["executed_check"]["status"] == "UNREADABLE"
 
 
-# V8 ── the dry run: same validation, no write ───────────────────────────────────────────────────────────────────────
-def test_v8_the_dry_run_validates_reads_and_prints_the_plan_but_writes_nothing(tmp_path):
+# V8 ── the dry run: same validation, no claim, and the job in its own --report-only mode ────────────────────────────
+def test_v8_the_dry_run_validates_reads_first_and_writes_no_claim(tmp_path):
     cloud, record, claims = go(tmp_path, dry=True)
     assert record["status"] == "DRY_RUN" and record["mode"] == "dry_run" and record["execution_name"] is None and record["executed_check"] is None
-    assert record["definition_check"] == "CONFORMS" and record["image_digest"] == DIGEST and record["plan"] == {"execute": vl.execute_argv()}
-    assert cloud.writes() == [] and not claims.exists()
-    assert {tuple(c[:4]) for c in cloud.calls} <= {("gcloud", "artifacts", "docker", "images"), ("gcloud", "run", "jobs", "describe"), ("gcloud", "auth", "print-access-token")}
+    assert record["definition_check"] == "CONFORMS" and record["image_digest"] == DIGEST and record["plan"] == {"execute": vl.execute_argv(vl.REPORT_ONLY_ARGS)}
+    assert not claims.exists()
+    first_execute = next(i for i, c in enumerate(cloud.calls) if c[:4] == ["gcloud", "run", "jobs", "execute"])
+    assert all(tuple(c[:4]) in {("gcloud", "artifacts", "docker", "images"), ("gcloud", "run", "jobs", "describe"), ("gcloud", "auth", "print-access-token")} for c in cloud.calls[:first_execute])
+
+
+# R1 ── the dry run IS the job's --report-only run ───────────────────────────────────────────────────────────────────
+def test_r1_the_dry_run_executes_the_job_once_in_report_only_mode_and_never_in_a_persisting_or_sealing_mode(tmp_path):
+    cloud, record, _ = go(tmp_path, dry=True)
+    assert cloud.writes() == [["gcloud", "run", "jobs", "execute", "gochara-verification-job", "--project=madhav-astrology", "--region=asia-south1",
+                               f"--args=--chart,{CHART},--generation,5.0,--report-only", "--async", "--format=value(metadata.name)"]]
+    joined = " ".join(cloud.writes()[0])
+    for forbidden in ("--brief", "--sealing-commit", "--final-rules", "--class"):
+        assert forbidden not in joined, forbidden
+    assert record["report_only_run"]["args"] == ["--chart", CHART, "--generation", "5.0", "--report-only"] and record["args"] == record["report_only_run"]["args"]
+    assert vl.EXECUTE_ARGS == ("--chart", CHART, "--generation", "5.0")                  # the real launch still has no --report-only (it can never reach VERIFIED)
+
+
+def test_r1_the_flag_is_the_one_the_job_entrypoint_defines():
+    entry = (REPO / "platform/python-sidecar/pipeline/orchestrator/verification_job.py").read_text()
+    kernel = (REPO / "platform/python-sidecar/services/gochara_kernel/verification_job.py").read_text()
+    assert 'ap.add_argument("--report-only", action="store_true")' in entry and "persist=not report_only" in kernel
+    assert vl.REPORT_ONLY_ARGS[-1] == "--report-only"
+
+
+# R2 ── the output carries the job's report, the one the pack's gate judges, and a measured wall time ───────────────
+def test_r2_the_output_is_the_record_then_exactly_one_report_which_is_the_jobs_line_byte_for_byte(tmp_path):
+    cloud = Cloud()
+    rc, out, err = cli_go(tmp_path, cloud, dry=True)
+    assert rc == 0 and err == ""
+    lines = out.splitlines()
+    assert len(lines) == 2 and json.loads(lines[0])["schema"] == "ky.verification_launch/1" and lines[1] == report_line()
+    reports = gate_reports(out)
+    assert len(reports) == 1 and reports[0]["report_only"] is True and reports[0]["status"] == "REPORT_ONLY" and reports[0]["generation"] == "5.0"
+    assert set(reports[0]["classes"]) == set(CLASSES)
+    ran = json.loads(lines[0])["report_only_run"]
+    assert "report_line" not in ran and ran["report_sha256"] == hashlib.sha256(report_line().encode()).hexdigest() and ran["ok"] is True
+
+
+def test_r2_the_record_carries_the_measured_wall_time_of_the_execution_and_of_the_wait(tmp_path):
+    cloud, clock = Cloud(), Clock()
+    cloud.running_polls = 3
+    _, record, _ = go(tmp_path, cloud, dry=True, clock=clock)
+    ran = record["report_only_run"]
+    assert ran["start_time"] == "2026-10-19T10:00:00.000000Z" and ran["completion_time"] == "2026-10-19T10:41:40.500000Z"
+    assert ran["execution_wall_s"] == 2500.5                                              # completionTime - startTime, read from the execution itself
+    assert ran["waited_s"] == 3 * vl.POLL_INTERVAL_S == 90 and clock.sleeps == [vl.POLL_INTERVAL_S] * 3
+
+
+def test_r2_a_definition_only_answer_carries_no_report_and_the_gate_would_refuse_it(tmp_path):
+    cloud = Cloud()
+    cloud.log_entries = [log_entry(json.dumps({"schema": "ky.verification_launch/1", "status": "DRY_RUN"}), "1")]       # what a definition check printed: a record, no report
+    rc, out, _ = cli_go(tmp_path, cloud, dry=True)
+    assert rc == 1 and gate_reports(out) == []
+    assert "report_problem" in json.loads(out.splitlines()[0])["report_only_run"] and json.loads(out.splitlines()[0])["report_only_run"]["ok"] is False
+
+
+# R3 ── the run is waited for and never a green when it did not finish as a clean report-only run ────────────────────
+def test_r3_a_failed_execution_exits_one_even_though_its_report_is_printed(tmp_path):
+    cloud = Cloud()
+    cloud.dry_execution["status"] = {"startTime": "2026-10-19T10:00:00Z", "completionTime": "2026-10-19T10:30:00Z", "failedCount": 1, "conditions": [{"type": "Completed", "status": "False"}]}
+    cloud.log_entries = [log_entry(report_line(status="DISAGREE", exit_code=3, classes={"lagna_stretch": {"status": "DISAGREE", "stage": "x", "detail": "y"}}), "1")]
+    rc, out, _ = cli_go(tmp_path, cloud, dry=True)
+    ran = json.loads(out.splitlines()[0])["report_only_run"]
+    assert rc == 1 and ran["outcome"] == "FAILED" and ran["ok"] is False and len(gate_reports(out)) == 1
+
+
+def test_r3_a_job_that_persisted_is_not_a_report_only_run(tmp_path):
+    cloud = Cloud()
+    cloud.log_entries = [log_entry(report_line(report_only=False, status="VERIFIED"), "1")]
+    rc, out, _ = cli_go(tmp_path, cloud, dry=True)
+    assert rc == 1 and json.loads(out.splitlines()[0])["report_only_run"]["ok"] is False
+
+
+@pytest.mark.parametrize("entries,needle", [([], "0 verification reports"), ([log_entry(report_line(), "1"), log_entry(report_line(), "2")], "2 verification reports")])
+def test_r3_no_report_or_two_reports_is_a_named_problem_and_exit_one(tmp_path, entries, needle):
+    cloud = Cloud()
+    cloud.log_entries = entries
+    rc, out, _ = cli_go(tmp_path, cloud, dry=True)
+    ran = json.loads(out.splitlines()[0])["report_only_run"]
+    assert rc == 1 and needle in ran["report_problem"] and ran["report_line"] if "report_line" in ran else needle in ran["report_problem"]
+    assert gate_reports(out) == []
+
+
+def test_r3_a_log_that_lags_the_execution_is_re_read_a_bounded_number_of_times(tmp_path):
+    cloud, clock = Cloud(), Clock()
+    cloud.logs_lag = 3
+    _, record, _ = go(tmp_path, cloud, dry=True, clock=clock)
+    assert record["report_only_run"]["ok"] is True and cloud.log_calls == 4
+    cloud2 = Cloud()
+    cloud2.logs_lag = 99
+    _, record2, _ = go(tmp_path / "b", cloud2, dry=True)
+    assert record2["report_only_run"]["ok"] is False and cloud2.log_calls == vl.LOG_ATTEMPTS
+
+
+def test_r3_an_execution_that_outlives_the_wait_budget_refuses_naming_it_and_the_cancel_is_not_made(tmp_path):
+    cloud, clock = Cloud(), Clock()
+    cloud.never_completes = True
+    rc, out, err = cli_go(tmp_path, cloud, dry=True, clock=clock)
+    assert rc == 1 and NAME in err and "still running" in err and out == ""
+    assert clock.now >= vl.WAIT_BUDGET_S and vl.WAIT_BUDGET_S < 6 * 3600                  # under the executor's MAX_TIMEOUT, so the refusal is ours and names the execution
+    assert [c for c in cloud.calls if "cancel" in c] == []
+
+
+def test_r3_the_wait_budget_is_under_the_table_timeout_which_is_at_the_executors_cap():
+    table = json.loads((FLEET / "executor_ops.json").read_text())["ops"]["verification_job_dryrun"]
+    assert table["timeout_s"] == 21600 and vl.WAIT_BUDGET_S < table["timeout_s"] and re.search(r"MAX_TIMEOUT = 6 \* 3600", (FLEET / "executor.py").read_text())
+
+
+def test_r3_a_launch_that_fails_or_names_another_job_refuses_without_a_claim(tmp_path):
+    cloud = Cloud()
+    cloud.launch_rc = 1
+    with pytest.raises(vl.Refused, match="report-only launch failed"):
+        go(tmp_path, cloud, dry=True)
+    cloud = Cloud()
+    cloud.exec_name = "brahma-build-pipeline-job-abc12"
+    with pytest.raises(vl.Refused, match="identity absent or wrong job"):
+        go(tmp_path, cloud, dry=True)
+    assert not (tmp_path / "claims").exists()
+
+
+# R4 ── the executed resource is judged with the report-only arguments ───────────────────────────────────────────────
+def test_r4_an_execution_that_could_persist_is_nonconforming_and_the_dry_run_is_not_ok(tmp_path):
+    cloud = Cloud()
+    cloud.dry_execution["spec"]["template"]["spec"]["containers"][0]["args"] = list(vl.EXECUTE_ARGS)       # same job, no --report-only: a persisting run
+    rc, out, _ = cli_go(tmp_path, cloud, dry=True)
+    ran = json.loads(out.splitlines()[0])["report_only_run"]
+    assert rc == 1 and ran["executed_check"]["status"] == "NONCONFORMING" and ran["ok"] is False
+
+
+# R5 ── a split report is joined only when complete ───────────────────────────────────────────────────────────────────
+def _split(text, uid, n):
+    size = -(-len(text) // n)
+    return [log_entry(text[i * size:(i + 1) * size], f"{uid}-{i}", split={"uid": uid, "index": i, "totalSplits": n}) for i in range(n)]
+
+
+def test_r5_split_entries_are_joined_in_index_order_and_only_when_every_part_is_present(tmp_path):
+    parts = _split(report_line(), "u1", 3)
+    cloud = Cloud()
+    cloud.log_entries = [parts[2], parts[0], parts[1]]                                       # newest first, as gcloud returns them
+    _, record, _ = go(tmp_path, cloud, dry=True)
+    assert record["report_only_run"]["ok"] is True and record["report_only_run"]["report_sha256"] == hashlib.sha256(report_line().encode()).hexdigest()
+    cloud = Cloud()
+    cloud.log_entries = [parts[2], parts[0]]                                                 # the middle part is missing: never guessed
+    _, record, _ = go(tmp_path / "b", cloud, dry=True)
+    assert record["report_only_run"]["ok"] is False and "incomplete" in record["report_only_run"]["report_problem"]
 
 
 # V9 ── no credential value ──────────────────────────────────────────────────────────────────────────────────────────

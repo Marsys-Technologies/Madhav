@@ -108,14 +108,14 @@ VERIFICATION_BINDINGS = {
     "verification_job": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", "fixed_args": [],
                          "allowed_args": ["generation"], "production": True, "remote_async": True, "timeout_s": 900, "enabled_by": "J-4b"},
     "verification_job_dryrun": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", "fixed_args": ["--dry-run"],
-                                "allowed_args": ["generation"], "production": False, "timeout_s": 600, "enabled_by": "J-4b"},
+                                "allowed_args": ["generation"], "production": False, "timeout_s": 21600, "enabled_by": "J-4b"},
 }
 # A8 §3.11: the kinds whose work continues remotely after the child returns — the only ones that take the production fence.
 REMOTE_ASYNC_KINDS = {"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"}
 # J-2a M6/M7: the one added read-only kind (fleet/CLOUDRUN_READBACK_v1_0.md). Exact binding, not permission for any other op.
 CLOUDRUN_READBACK = {
     "enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py",
-    "fixed_args": [], "allowed_args": ["execution", "logs"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
+    "fixed_args": [], "allowed_args": ["execution", "logs", "metrics"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
     "timeout_s": 600, "enabled_by": "J-2a",
 }
 # A7 D-44: `read_only` marks the kinds the executor accepts mechanically; `quiescence_check` is the one added read-only kind (session readback).

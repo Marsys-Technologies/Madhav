@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Launch ONE run of the Gochara verification job under the verifier principal (J-4b; SR-PREBUILD-ALL). Durable no-retry launch fence.
 
-The executor runs this for the fixed kinds `verification_job` (launch) and `verification_job_dryrun` (`--dry-run`: the same validation, no claim and
-no launch) of fleet/executor_ops.json. The job it starts is the already-defined Cloud Run job `gochara-verification-job` (gochara-verification-job-deploy.yml);
+The executor runs this for the fixed kinds `verification_job` (launch) and `verification_job_dryrun` (`--dry-run`: the same validation, then the job's own
+`--report-only` run, waited for, with its ONE report printed) of fleet/executor_ops.json. The job it starts is the already-defined Cloud Run job `gochara-verification-job` (gochara-verification-job-deploy.yml);
 this module never defines or changes a job, holds no database connection and no credential: the job's own task holds GOCHARA_VERIFIER_DB_URL
 (operation_adapters INTERPRETATION I3), so the executor needs `gcloud` and nothing else.
 
@@ -15,12 +15,18 @@ What one run does, in order (every refusal happens before the next step):
   3 claim       (execute only) an O_EXCL claim file per operation, fsynced before the remote call and never cleared: a timeout may mean the job started.
   4 launch      (execute only) ONE `gcloud run jobs execute gochara-verification-job --args=--chart,<canonical>,--generation,5.0 --async`. The arguments are a
                 constant of this file; the request supplies only the generation, which must be 5.0. `--brief` and `--sealing-commit` are NEVER passed: the seal brief
-                belongs to the human-approved gochara-seal-approved.yml workflow, which this kind does not replace. `--report-only` is not passed either (it can
-                never reach VERIFIED).
+                belongs to the human-approved gochara-seal-approved.yml workflow, which this kind does not replace. `--report-only` is not passed by the launch (it can
+                never reach VERIFIED); it is the dry run's one mode (step 6).
   5 readback    (execute only) the EXECUTED resource is read and judged by the same contract (image digest, exact args, no env override, no retries). A launch whose
                 executed resource does not conform, or cannot be read, still printed LAUNCHED (it was) but exits 1: it is never a green.
 
-Prints ONE line, a `ky.verification_launch/1` JSON record (status DRY_RUN | LAUNCHED). `executed_check.status` is CONFORMS | NONCONFORMING | UNREADABLE (null in a dry run).
+  6 report-only (dry run only) ONE `gcloud run jobs execute gochara-verification-job --args=--chart,<canonical>,--generation,5.0,--report-only --async`, then the execution is
+                polled until it completes (never past WAIT_BUDGET_S, which is under the executor's cap), judged by the same contract with the report-only arguments,
+                and the job's ONE report line is read back from its stdout log and printed UNCHANGED after the record. The job in this mode persists nothing (verification_job.run
+                `persist=not report_only`) and reports the combined candidate gate honestly; whether the report is clean is judged by the pack's dryrun_gate, not here.
+
+Prints a `ky.verification_launch/1` JSON record (status DRY_RUN | LAUNCHED). A launch prints that one line; a dry run prints it and then the job's report line (the
+record carries no `classes`, so the report is the one report in the output). `executed_check.status` is CONFORMS | NONCONFORMING | UNREADABLE (null in a dry run; the dry run's own is under `report_only_run`).
 A failure after step 3 leaves the claim in LAUNCH_PENDING and the exit non-zero: reconcile, never retry. Honest nulls (CLAUDE.md §N.7.6 / §N.8): nothing here says the
 job SUCCEEDED; the launch is not the verification. Its outcome is the execution read back later and the persisted attestations.
 
@@ -31,19 +37,26 @@ job SUCCEEDED; the launch is not the verification. Its outcome is the execution 
   accept any commit the job runs; refused, it would let an older image verify a newer build.
 (I) INTERPRETATION V-3 (claim key): one claim per operation_id, under $KY_ROOT/run/ops/verification_launch. Alternative: one per (chart, generation, commit); refused, a
   governed re-run after a REFUSED/exit-3 verification is legitimate and the executor's idempotency key already stops a replay of the same request.
-(I) INTERPRETATION V-4 (dry run reads): the dry run does the cloud READS (digest, definition) and no write, so `dry_run_passed` means the definition is launchable now.
-  Alternative: plan only, no read; refused, a dry run that cannot fail on the definition attests nothing.
+(I) INTERPRETATION V-4 (dry run = the job in --report-only): the dry run does the cloud READS (digest, definition), then runs the job with `--report-only` and returns its report,
+  so `dry_run_passed` means the classes were measured, not that a definition exists (PR #3747 verify finding B3: a definition check read NULL at the pack's dryrun_gate and its seconds-long wall
+  time was a proxy for the cost gate). Alternative: reads only; refused, it attests nothing about the classes or their cost. It writes no durable claim (a repeated report-only run persists
+  nothing); a run that outlives the wait budget keeps running to the job's own task timeout and the refusal names it.
+(I) INTERPRETATION V-5 (measured time): `execution_wall_s` is the execution's own completionTime - startTime and `waited_s` this process's wait; either is null when unread, never a guess.
+(I) INTERPRETATION V-6 (the report line): taken from the execution's stdout log, newest 1000 entries, split entries (Cloud Logging `split`) reassembled in index order and only when
+  complete; exactly one report or a refusal. The line is printed byte for byte as the job wrote it. Alternative: a projection of the report; refused, the gate must judge the job's own words.
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import subprocess
 import sys
+import time
 import urllib.request
 
 HERE = Path(__file__).resolve().parent
@@ -65,11 +78,17 @@ SECRET = "gochara-verifier-db-url"
 CLOUDSQL_INSTANCE = "madhav-astrology:asia-south1:amjis-postgres"
 KIND_EXECUTE, KIND_DRYRUN = "verification_job", "verification_job_dryrun"
 EXECUTE_ARGS = ("--chart", CHART, "--generation", GENERATION)
+REPORT_ONLY_ARGS = EXECUTE_ARGS + ("--report-only",)
+WAIT_BUDGET_S = 21000          # under the executor's MAX_TIMEOUT (6 h = 21600): the refusal names the execution instead of the executor killing us silently
+POLL_INTERVAL_S = 30
+LOG_ATTEMPTS, LOG_RETRY_S = 8, 15                    # Cloud Logging lags a completed execution by seconds
+LOG_PAGE_SIZE = 1000
 EXECUTION = re.compile(JOB + r"-[a-z0-9]+(?:-[a-z0-9]+)*")
 SAFE_ID = re.compile(r"[A-Za-z0-9_.-]{1,80}")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 V2_JOB_URL = f"https://run.googleapis.com/v2/projects/{readback.PROJECT}/locations/{readback.REGION}/jobs/{JOB}"
 HTTP_TIMEOUT_S = 60
+UNREADABLE_POLLS = 5
 Refused = bridge.Refused
 REFUSALS = (bridge.Refused, readback.Refused, execchk.Refused, jobrb.Refused)      # each message is structural text (no stderr, no value)
 
@@ -78,10 +97,17 @@ def job_describe_argv() -> list[str]:
     return ["gcloud", "run", "jobs", "describe", JOB, f"--project={readback.PROJECT}", f"--region={readback.REGION}", "--format=json"]
 
 
-def execute_argv() -> list[str]:
-    """The one launch: fixed project, region, job and arguments; asynchronous; prints only the execution name."""
+def execute_argv(job_args=EXECUTE_ARGS) -> list[str]:
+    """The one launch: fixed project, region, job and arguments (the dry run passes REPORT_ONLY_ARGS); asynchronous; prints only the execution name."""
     return ["gcloud", "run", "jobs", "execute", JOB, f"--project={readback.PROJECT}", f"--region={readback.REGION}",
-            "--args=" + ",".join(EXECUTE_ARGS), "--async", "--format=value(metadata.name)"]
+            "--args=" + ",".join(job_args), "--async", "--format=value(metadata.name)"]
+
+
+def report_logs_argv(name: str) -> list[str]:
+    """The one fixed read of the execution's STDOUT log, newest first. `name` has matched EXECUTION, so nothing else varies."""
+    flt = (f'resource.type="cloud_run_job" AND resource.labels.job_name="{JOB}" AND resource.labels.location="{readback.REGION}" '
+           f'AND labels."run.googleapis.com/execution_name"="{name}" AND logName="projects/{readback.PROJECT}/logs/run.googleapis.com%2Fstdout"')
+    return ["gcloud", "logging", "read", flt, f"--project={readback.PROJECT}", f"--limit={LOG_PAGE_SIZE}", "--order=desc", "--format=json"]
 
 
 def execution_describe_argv(name: str) -> list[str]:
@@ -152,7 +178,7 @@ def definition_check(request: dict, runner, fetch) -> dict:
     return {"image_digest": digest, "status": "CONFORMS"}
 
 
-def executed_check(name: str, image_digest: str, commit: str, runner, fetch) -> dict:
+def executed_check(name: str, image_digest: str, commit: str, runner, fetch, job_args=EXECUTE_ARGS) -> dict:
     """The EXECUTED resource, judged by the same contract as the definition and with the exact arguments this launcher passed. Never raises: UNREADABLE says so."""
     try:
         execution = readback.gcloud_json(execution_describe_argv(name), runner, "execution")
@@ -162,24 +188,158 @@ def executed_check(name: str, image_digest: str, commit: str, runner, fetch) -> 
         retries = jobrb.strict_v2_retries(v2, "execution")
         problems = vjc.forbidden_annotations(execution, v2) + vjc.validate_task(
             execchk._task_spec(execution), image_repo=readback.IMAGE_REPO, image_digest=image_digest, service_account=execchk.VERIFIER_SERVICE_ACCOUNT,
-            runner_commit=commit, secret_name=SECRET, expected_args=list(EXECUTE_ARGS), timeout_seconds=execchk.JOB_TIMEOUT_SECONDS,
+            runner_commit=commit, secret_name=SECRET, expected_args=list(job_args), timeout_seconds=execchk.JOB_TIMEOUT_SECONDS,
             memory=execchk.JOB_MEMORY, cpu=execchk.JOB_CPU, v2_retries=retries)
     except REFUSALS as exc:
         return {"status": "UNREADABLE", "problems": [str(exc)]}
     return {"status": "NONCONFORMING", "problems": problems} if problems else {"status": "CONFORMS", "problems": []}
 
 
-def cloud_launcher(runner=readback.default_runner) -> str:
+def cloud_launcher(runner=readback.default_runner, job_args=EXECUTE_ARGS, failure="remote launch failed or outcome unknown; reconcile the retained claim, never retry") -> str:
     try:
-        result = runner(execute_argv())
+        result = runner(execute_argv(job_args))
     except (OSError, subprocess.SubprocessError):
-        raise Refused("remote launch failed or outcome unknown; reconcile the retained claim, never retry") from None
+        raise Refused(failure) from None
     if result.returncode:
-        raise Refused("remote launch failed or outcome unknown; reconcile the retained claim, never retry")
+        raise Refused(failure)
     return (result.stdout or "").strip()
 
 
-def run(argv=None, *, environ=None, runner=readback.default_runner, fetch=http_get, launcher=None, claim_dir=None, now=None) -> dict:
+def _entry_text(entry: dict):
+    text = entry.get("textPayload")
+    if not isinstance(text, str):
+        payload = entry.get("jsonPayload")
+        text = payload.get("message") if isinstance(payload, dict) else None
+    return text if isinstance(text, str) else None
+
+
+def _split_part(entry: dict):
+    """(uid, index, total) of a Cloud Logging split entry; None when the entry is not split. A malformed `split` is a refusal, never a guess."""
+    split = entry.get("split")
+    if split is None:
+        return None
+    index, total = (split.get("index", 0), split.get("totalSplits")) if isinstance(split, dict) else (None, None)
+    index = int(index) if isinstance(index, str) and index.isdigit() else index
+    total = int(total) if isinstance(total, str) and total.isdigit() else total
+    uid = split.get("uid") if isinstance(split, dict) else None
+    if not (isinstance(uid, str) and uid and isinstance(index, int) and isinstance(total, int) and not isinstance(index, bool) and not isinstance(total, bool) and 0 <= index < total):
+        raise Refused("report log: a split entry is malformed")
+    return uid, index, total
+
+
+def report_from_entries(entries: list) -> tuple[str, dict]:
+    """The job's ONE report line (verbatim) and its parsed form. A report is a stdout line that is a JSON object carrying `classes` (an object) and `generation`
+    - the same shape the pack's dryrun_gate selects. Split entries are joined in index order and only when every part is present. Exactly one report or a refusal."""
+    texts, parts, seen = [], {}, set()
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise Refused("report log: an entry is not a JSON object")
+        key = entry.get("insertId")
+        if isinstance(key, str) and key:
+            if key in seen:
+                continue
+            seen.add(key)
+        text = _entry_text(entry)
+        part = _split_part(entry)
+        if text is None:
+            continue
+        if part is None:
+            texts.append(text)
+        else:
+            uid, index, total = part
+            if parts.setdefault(uid, {"total": total, "texts": {}})["total"] != total:
+                raise Refused("report log: split entries disagree on their count")
+            parts[uid]["texts"][index] = text
+    incomplete = 0
+    for group in parts.values():
+        if sorted(group["texts"]) == list(range(group["total"])):
+            texts.append("".join(group["texts"][i] for i in range(group["total"])))
+        else:
+            incomplete += 1
+    found = []
+    for text in texts:
+        for line in text.splitlines():
+            line = line.strip()
+            if not line.startswith("{"):
+                continue
+            try:
+                value = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(value, dict) and isinstance(value.get("classes"), dict) and "generation" in value:
+                found.append((line, value))
+    if len(found) != 1:
+        raise Refused(f"report log: {len(found)} verification reports in the newest {len(entries)} stdout entries, not exactly one"
+                      + (f" ({incomplete} split report(s) incomplete)" if incomplete else ""))
+    return found[0]
+
+
+def read_report(name: str, runner, sleep) -> tuple[str, dict]:
+    """The execution's report, read back from its stdout log. Cloud Logging lags a finished execution by seconds, so an absent report is re-read a bounded number of times."""
+    last = None
+    for attempt in range(LOG_ATTEMPTS):
+        if attempt:
+            sleep(LOG_RETRY_S)
+        entries = readback.gcloud_json(report_logs_argv(name), runner, "report log", shape=list)
+        try:
+            return report_from_entries(entries)
+        except Refused as exc:
+            last = exc
+    raise last
+
+
+def wait_for_execution(name: str, job_reference: str, runner, sleep, monotonic) -> tuple[dict, float]:
+    """Poll the execution until it is no longer RUNNING. A poll that cannot be read is retried (a multi-hour wait is not lost to one flaky call) up to UNREADABLE_POLLS in a row."""
+    started, unreadable = monotonic(), 0
+    while True:
+        try:
+            measured = readback.measure_execution(name, job_reference, runner)
+            unreadable = 0
+        except REFUSALS as exc:
+            unreadable += 1
+            if unreadable >= UNREADABLE_POLLS:
+                raise Refused(f"execution {name} could not be read {UNREADABLE_POLLS} times in a row ({exc}); it may still be running: it persists nothing and ends at its task timeout") from None
+            measured = None
+        if measured is not None and measured["outcome"] != "RUNNING":
+            return measured, monotonic() - started
+        if monotonic() - started >= WAIT_BUDGET_S:
+            raise Refused(f"execution {name} is still running after {WAIT_BUDGET_S} s; it persists nothing and ends at its task timeout; read it back with cloudrun_job_readback")
+        sleep(POLL_INTERVAL_S)
+
+
+def _wall_seconds(measured: dict):
+    """completionTime - startTime of the execution itself (null when either is unread)."""
+    try:
+        start, end = (dt.datetime.fromisoformat(measured[k].replace("Z", "+00:00")) for k in ("start_time", "completion_time"))
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return None
+    return round((end - start).total_seconds(), 3) if end >= start else None
+
+
+def report_only_run(definition: dict, request: dict, runner, fetch, launcher, sleep, monotonic) -> dict:
+    """The dry run's body: ONE `--report-only` execution of the job, waited for, judged and its report read back. -> the `report_only_run` record (with `report_line`)."""
+    execution = (launcher or (lambda: cloud_launcher(runner, REPORT_ONLY_ARGS, "report-only launch failed or outcome unknown; list the job's executions before running again")))()
+    if not isinstance(execution, str) or not EXECUTION.fullmatch(execution):
+        raise Refused("report-only execution identity absent or wrong job; list the job's executions before running again")
+    measured, waited = wait_for_execution(execution, f"{readback.IMAGE_REPO}@{definition['image_digest']}", runner, sleep, monotonic)
+    run_record = {"execution_name": execution, "args": list(REPORT_ONLY_ARGS), "outcome": measured["outcome"], "start_time": measured["start_time"],
+                  "completion_time": measured["completion_time"], "execution_wall_s": _wall_seconds(measured), "waited_s": round(waited, 3),
+                  "executed_check": executed_check(execution, definition["image_digest"], request["reviewed_commit"], runner, fetch, REPORT_ONLY_ARGS),
+                  "report_status": None, "report_line": None}
+    try:
+        line, report = read_report(execution, runner, sleep)
+    except REFUSALS as exc:
+        run_record["report_problem"] = str(exc)
+    else:
+        run_record.update(report_line=line, report_status=report.get("status") if isinstance(report.get("status"), str) else None,
+                          report_sha256=hashlib.sha256(line.encode()).hexdigest())
+        run_record["report_only"] = report.get("report_only") is True and report.get("status") == "REPORT_ONLY"
+    # ok = the job ran to completion in report-only mode, as defined, and said so; whether its classes and gate are clean is the pack's dryrun_gate to judge
+    run_record["ok"] = (run_record["outcome"] == "SUCCEEDED" and run_record["executed_check"]["status"] == "CONFORMS" and run_record.get("report_only") is True)
+    return run_record
+
+
+def run(argv=None, *, environ=None, runner=readback.default_runner, fetch=http_get, launcher=None, claim_dir=None, now=None, sleep=time.sleep, monotonic=time.monotonic) -> dict:
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--generation", required=True)
     parser.add_argument("--dry-run", action="store_true", help="validate and print the plan; no claim, no launch")
@@ -193,8 +353,9 @@ def run(argv=None, *, environ=None, runner=readback.default_runner, fetch=http_g
               "chart_id": CHART, "generation": GENERATION, "project": readback.PROJECT, "region": readback.REGION, "job": JOB,
               "service_account": execchk.VERIFIER_SERVICE_ACCOUNT, "image_digest": definition["image_digest"], "definition_check": definition["status"],
               "args": list(EXECUTE_ARGS), "execution_name": None, "executed_check": None, "measured_at": now.isoformat(timespec="seconds"),
-              "plan": {"execute": execute_argv()}}
+              "plan": {"execute": execute_argv(REPORT_ONLY_ARGS if args.dry_run else EXECUTE_ARGS)}}
     if args.dry_run:
+        record.update(args=list(REPORT_ONLY_ARGS), report_only_run=report_only_run(definition, request, runner, fetch, launcher, sleep, monotonic))
         return record
     root = environ.get("KY_ROOT")
     if not root and claim_dir is None:
@@ -224,8 +385,14 @@ def cli(argv=None, **injected):
         reason = f": {exc}" if isinstance(exc, REFUSALS) else ""      # a refusal's message never repeats a credential; any other exception is named by class only
         print(f"verification launch failed ({type(exc).__name__}{reason}); reconcile retained evidence, never retry", file=sys.stderr)
         return 130 if isinstance(exc, KeyboardInterrupt) else 1
+    ran = record.get("report_only_run")
+    report_line = ran.pop("report_line", None) if ran else None
     print(bridge.canonical(record), flush=True)
-    return 0 if record["status"] == "DRY_RUN" or record["executed_check"]["status"] == "CONFORMS" else 1
+    if report_line:
+        print(report_line, flush=True)                  # the job's report, byte for byte, as the ONE report line of this output
+    if ran is not None:
+        return 0 if ran["ok"] else 1
+    return 0 if record["executed_check"]["status"] == "CONFORMS" else 1
 
 
 if __name__ == "__main__":

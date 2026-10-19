@@ -29,7 +29,7 @@ MEASURING = {
 }
 # J-4b (SR-PREBUILD-ALL): the verification launcher and its dry-run sibling. kind: (needs, script, fixed_args, allowed_args, production, timeout_s)
 VERIFICATION = {
-    "verification_job_dryrun": ("gcloud", "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", ["--dry-run"], ["generation"], False, 600),
+    "verification_job_dryrun": ("gcloud", "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", ["--dry-run"], ["generation"], False, 21600),
     "verification_job": ("gcloud", "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", [], ["generation"], True, 900),
 }
 # SR-PREBUILD-ALL (enabled_by J-4d, request item J-4e): the century family. century_dispatch = the measuring launch without the test slice (builder: it stages the
