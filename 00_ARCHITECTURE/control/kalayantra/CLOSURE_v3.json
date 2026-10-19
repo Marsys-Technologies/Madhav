@@ -1247,12 +1247,12 @@
   "VC-2"
  ],
  "closure_count": 184,
- "closure_sha256": "3bc61c5bc43c8815095c2e53898c23a951c2ca68f214b6e12ac3424813a63c10",
+ "closure_sha256": "e2baf82c323a1c6139b1fce0dfc52c656c528b52fdc092ef3148ea36b3007f01",
  "inputs": {
-  "model_canonical_sha256": "0794d50c0e16ffc707d69699285a48741608d4ad1ecf875bc51dbb03634e89a8",
+  "model_canonical_sha256": "72949a311880474fe3672c9df328a6e8db1b75db2718a101b86eebe1403d084a",
   "model_items": 273,
   "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019",
-  "roots_canonical_sha256": "3f3c10afe434afee563bbc436f5c7ad07578422d05b29149887b2fc526f54e77"
+  "roots_canonical_sha256": "a529d11f415efe2e5aca8e4f0b8592e1ef281bcc0ac507df3da0b38ca285c6a3"
  },
  "mechanical_close_chain_excluded_as_roots": [],
  "members": {
