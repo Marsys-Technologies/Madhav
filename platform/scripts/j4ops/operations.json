@@ -1,0 +1,136 @@
+{
+  "schema": "ky.j4ops_preparation_declarations/1",
+  "status": "BUILT_WAITING_ON_GATE",
+  "production_operations_installed": false,
+  "meaning": "Disabled preparation declarations only; no brief.op binding and no operation acceptance.",
+  "items": {
+    "J-4a-a25": {
+      "enabled": false,
+      "phase": 6,
+      "generation": "4.1",
+      "executor_entry": {
+        "enabled": false,
+        "needs": "none",
+        "script": "platform/scripts/j4ops/prepare.py",
+        "fixed_args": [
+          "--item",
+          "J-4a-a25"
+        ],
+        "allowed_args": [
+          "request-file",
+          "request-sha256"
+        ],
+        "requesters": [
+          "adhikarin"
+        ],
+        "production": false,
+        "timeout_s": 300,
+        "enabled_by": "J-4a-a25"
+      },
+      "required_inputs": [
+        "settlement_readback",
+        "historical_disposition",
+        "candidate_input_manifest",
+        "timing_projection"
+      ],
+      "missing": [
+        "accepted Q5 single-build/consumed-copy readback and Q6 historical disposition",
+        "reviewed candidate launcher with same-operation rehearsal and terminal readback"
+      ],
+      "depends_on": [
+        "J-0m",
+        "J-3d"
+      ],
+      "inherited_prerequisites": [
+        "detector:db_query"
+      ]
+    },
+    "J-4b-a55j": {
+      "enabled": false,
+      "phase": 7,
+      "generation": "5.0",
+      "executor_entry": {
+        "enabled": false,
+        "needs": "none",
+        "script": "platform/scripts/j4ops/prepare.py",
+        "fixed_args": [
+          "--item",
+          "J-4b-a55j"
+        ],
+        "allowed_args": [
+          "request-file",
+          "request-sha256"
+        ],
+        "requesters": [
+          "adhikarin"
+        ],
+        "production": false,
+        "timeout_s": 300,
+        "enabled_by": "J-4b-a55j"
+      },
+      "required_inputs": [
+        "grant_readback",
+        "verification_job_definition",
+        "act_2b_metadata",
+        "independent_readback"
+      ],
+      "missing": [
+        "needs migration number: J4OPS L1 read-grant migration is not allocated",
+        "approved act 2b and disabled deployed job definition, original A5.5e acceptance"
+      ],
+      "depends_on": [
+        "J-0m",
+        "J-4a"
+      ],
+      "inherited_prerequisites": [
+        "A5.5e"
+      ]
+    },
+    "J-4c-a55m": {
+      "enabled": false,
+      "phase": 8,
+      "generation": "5.0",
+      "executor_entry": {
+        "enabled": false,
+        "needs": "none",
+        "script": "platform/scripts/j4ops/prepare.py",
+        "fixed_args": [
+          "--item",
+          "J-4c-a55m"
+        ],
+        "allowed_args": [
+          "request-file",
+          "request-sha256"
+        ],
+        "requesters": [
+          "adhikarin"
+        ],
+        "production": false,
+        "timeout_s": 300,
+        "enabled_by": "J-4c-a55m"
+      },
+      "required_inputs": [
+        "window_expected",
+        "window_readback",
+        "grant_readback",
+        "disabled_job_definition",
+        "measuring_golden",
+        "unchanged_class_inventory",
+        "independent_readback"
+      ],
+      "missing": [
+        "accepted source-bound protected migration train including G8 and P06b; dormant-role revoke disposition",
+        "reviewed mirror expectations, genuine measuring golden, acts 12-14 and original A5.5e/A5.5l acceptance"
+      ],
+      "depends_on": [
+        "J-0m",
+        "J-4b",
+        "J-4c-a55l"
+      ],
+      "inherited_prerequisites": [
+        "A5.5e",
+        "A5.5l"
+      ]
+    }
+  }
+}
