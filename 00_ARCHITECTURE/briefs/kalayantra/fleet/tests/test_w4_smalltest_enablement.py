@@ -29,6 +29,7 @@ MEASURING = {
 }
 DISABLED = {"verification_job", "century_dispatch", "publish_head", "rollback_head",
             "publish_head_dryrun", "rollback_head_dryrun",
+            "gochara_role_provisioning_dispatch", "gochara_role_provisioning_dispatch_dryrun",      # U-M-03: shipped disabled
             "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"}
 
 
