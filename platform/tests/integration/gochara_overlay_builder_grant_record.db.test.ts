@@ -31,6 +31,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Pool } from 'pg'
+import { acquireClusterRoleLock, ensureRole } from './builder_role_fixture'
 import fs from 'fs'
 import path from 'path'
 
@@ -79,6 +80,7 @@ const INSERTS: Record<(typeof TABLES)[number], string> = {
 }
 
 let pool: Pool
+let releaseRoleLock: (() => Promise<void>) | undefined
 
 async function builderRun(sql: string) {
   const client = await pool.connect()
@@ -112,6 +114,8 @@ describe.skipIf(!TEST_DB_URL)('migration 1239 — overlay builder grant record (
     }
 
     pool = new Pool({ connectionString: TEST_DB_URL })
+    // Cluster-wide role: serialise against every other suite that mirrors data_plane_builder.
+    releaseRoleLock = await acquireClusterRoleLock(TEST_DB_URL!)
 
     await pool.query(`
       DROP TABLE IF EXISTS kala_gochara_v2_build_state CASCADE;
@@ -124,7 +128,7 @@ describe.skipIf(!TEST_DB_URL)('migration 1239 — overlay builder grant record (
     )
     roleCreatedBySuite = !roleCheck.rows[0]!.exists
     if (roleCreatedBySuite) {
-      await pool.query(`CREATE ROLE ${BUILDER_ROLE} NOLOGIN`)
+      await ensureRole(pool, BUILDER_ROLE)
     } else {
       // Scrub privileges held in THIS database so the before-state is exactly
       // "USAGE on schema public, nothing on the three tables".
@@ -158,7 +162,7 @@ describe.skipIf(!TEST_DB_URL)('migration 1239 — overlay builder grant record (
     // A role with EXACTLY data_plane_builder's relevant grants for this path
     // before 1239: USAGE on schema public, NOTHING on the three tables.
     await pool.query(`GRANT USAGE ON SCHEMA public TO ${BUILDER_ROLE}`)
-  })
+  }, 120_000)
 
   afterAll(async () => {
     if (!pool) return
@@ -175,6 +179,7 @@ describe.skipIf(!TEST_DB_URL)('migration 1239 — overlay builder grant record (
       await pool.query(`DROP ROLE ${BUILDER_ROLE}`)
     }
     await pool.end()
+    await releaseRoleLock?.()
   })
 
   for (const table of TABLES) {
@@ -271,6 +276,6 @@ describe.skipIf(!TEST_DB_URL)('migration 1239 — overlay builder grant record (
       pool.query(fs.readFileSync(GRANT_MIGRATION_PATH, 'utf8'))
     ).resolves.toBeDefined()
     // restore the role for teardown symmetry (teardown drops what it created)
-    await pool.query(`CREATE ROLE ${BUILDER_ROLE} NOLOGIN`)
+    await ensureRole(pool, BUILDER_ROLE)
   })
 })

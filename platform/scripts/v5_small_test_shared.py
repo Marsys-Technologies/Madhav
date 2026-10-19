@@ -42,6 +42,16 @@ INVENTORY_TABLES = (
     ("ka_gochara_search_input_snapshot", ""),
 )
 OUTPUT_TABLES = CHAIN_TABLES + INVENTORY_TABLES     # what "generation output exists" means (the manifest is judged on its own)
+# Migration 1308's chart x generation near-miss tables (NearMissStore.delete_generation deletes exactly these two, by chart_id AND generation).
+# Neither references the other and nothing references them, so their order is free. They are the teardown's to delete and the absence proof's
+# to count, but they are NOT in OUTPUT_TABLES: the dispatch's "generation output exists" test is unchanged. ka_gochara_near_miss_object is GLOBAL
+# and insert-only (its trigger refuses DELETE; other charts and generations share an object): it is deliberately in none of these lists, so no
+# teardown deletes it and no absence proof counts it. The scoped backup (backup_v5_small_test_scope.json) records it instead.
+NEAR_MISS_TABLES = (
+    ("ka_gochara_near_miss", ""),
+    ("ka_gochara_near_miss_search", ""),
+)
+ABSENCE_TABLES = OUTPUT_TABLES + NEAR_MISS_TABLES   # the generation-scoped tables the absence census must count (the manifest and the cascade children are added where it is built)
 
 
 class Refused(RuntimeError):
@@ -458,7 +468,10 @@ def operation_request():
         req = json.loads(os.environ['KY_OPERATION_REQUEST'])
     except (KeyError, TypeError, ValueError):
         raise Refused('executor-bound small-test request required') from None
-    acceptance(req, evidence_root())
+    if not isinstance(req, dict):
+        raise Refused('executor-bound small-test request required')
+    if not str(req.get('kind', '')).endswith('_dryrun'):    # A8 §3.8: a dry run is read-only with a credential; no V acceptance exists
+        acceptance(req, evidence_root())                    # A8 §3.9: a writing kind carries exactly one V acceptance, bound to the request
     return req
 
 
@@ -471,7 +484,8 @@ def evidence_root():
 
 
 def request_hash(req):
-    return evidence_digest({k: v for k, v in req.items() if k != 'acceptance_receipt'})
+    """executor.request_digest, byte for byte (A8 §3.9): without `acceptance_receipt`, `expires_at` and any `*_expires_at` field."""
+    return evidence_digest({k: v for k, v in req.items() if k not in ('acceptance_receipt', 'expires_at') and not k.endswith('_expires_at')})
 
 
 def read_evidence(root, folder, ref):
@@ -496,15 +510,27 @@ def read_evidence(root, folder, ref):
         raise Refused('referenced evidence unreadable') from None
 
 
+def independent_acceptance(a):
+    """A verifier lane's (v1..v4) acceptance, or the executor's own MECHANICAL pre-acceptance (OWNER-MINIMAL-PROTECTION-NOW): schema
+    ky.mechanical_acceptance/1, phase pre, and every check recorded true. executor.mechanical_pre_acceptance writes it only for a request that equals a
+    verified pack fill with a completed dry run and a live lease; deletions and serving changes never get one."""
+    if a.get('by') in ('v1', 'v2', 'v3', 'v4'):
+        return True
+    checks = a.get('checks')
+    return (a.get('by') == 'executor-mechanical' and a.get('schema') == 'ky.mechanical_acceptance/1' and a.get('phase') == 'pre'
+            and isinstance(checks, dict) and bool(checks) and all(v is True for v in checks.values()))
+
+
 def acceptance(req, root):
     import json
     from pathlib import Path
     try:
-        path = Path(req['acceptance_receipt'])
+        # a mechanically accepted request names no acceptance_receipt: its record is acceptance/<operation_id>.json (and only a pack-fill request may omit one)
+        path = Path(req['acceptance_receipt']) if req.get('acceptance_receipt') or not req.get('pack_fill') else root / 'acceptance' / (str(req['operation_id']) + '.json')
         if path.resolve().parent != (root / 'acceptance').resolve():
             raise Refused('request acceptance outside executor directory')
         a = json.loads(path.read_text())
-        if (a.get('result') != 'ACCEPTED' or a.get('by') not in ('v1', 'v2', 'v3', 'v4')
+        if (a.get('result') != 'ACCEPTED' or not independent_acceptance(a)
                 or a.get('operation_id') != req.get('operation_id')
                 or not req.get('reviewed_commit') or a.get('reviewed_commit') != req['reviewed_commit']
                 or a.get('request_sha256') != request_hash(req) or req.get('chart_id') != CHART_ID):
@@ -519,11 +545,22 @@ def accepted_receipt(root, receipt_ref, acceptance_ref, kind):
     a = read_evidence(root, 'acceptance', acceptance_ref)
     if (r.get('kind') != kind or r.get('status') not in ('COMPLETED', 'AWAITING_ABSENCE') or r.get('exit_code') != 0
             or not r.get('request_sha256') or not r.get('reviewed_commit')
-            or a.get('result') != 'ACCEPTED' or a.get('by') not in ('v1', 'v2', 'v3', 'v4')
+            or a.get('result') != 'ACCEPTED' or not independent_acceptance(a)
             or a.get('operation_id') != r.get('operation_id')
             or a.get('request_sha256') != r['request_sha256'] or a.get('reviewed_commit') != r['reviewed_commit']):
         raise Refused('operation receipt is not independently accepted for this request')
     return r, a
+
+
+def completed_receipt(root, receipt_ref, kind):
+    """The executor receipt of a `*_dryrun` kind (A8 §3.8): COMPLETED, exit 0, bound to a request and a reviewed commit.
+
+    A dry run is read-only with a credential, so no V lane accepts it; its receipt is the whole evidence."""
+    r = read_evidence(root, 'receipts', receipt_ref)
+    if (r.get('kind') != kind or r.get('status') != 'COMPLETED' or r.get('exit_code') != 0
+            or not r.get('request_sha256') or not r.get('reviewed_commit')):
+        raise Refused('dry-run operation receipt is not a completed receipt for this kind')
+    return r
 
 
 def staged_scope(req, root):
@@ -564,8 +601,7 @@ def staged_scope(req, root):
 
 def dryrun_evidence(req, root, scope, rowset_sha256=None):
     measuring = req.get('kind') == 'measuring_teardown'
-    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'),
-                            'measuring_teardown_dryrun' if measuring else 'smalltest_teardown_dryrun')
+    r = completed_receipt(root, req.get('dryrun_receipt'), 'measuring_teardown_dryrun' if measuring else 'smalltest_teardown_dryrun')
     p = r.get('teardown') or {}
     if (r.get('reviewed_commit') != req.get('reviewed_commit') or r.get('status') != 'COMPLETED' or p.get('schema') != ('ky.measuring_teardown/1' if measuring else 'ky.smalltest_teardown/1')
             or p.get('status') != 'ROLLED_BACK' or p.get('rollback_confirmed') is not True
@@ -620,7 +656,7 @@ def absence_evidence(req, root, *, teardown_receipt=None):
             or not isinstance(p.get('counts'), dict) or not p['counts']
             or any(type(n) is not int or n != 0 for n in p['counts'].values())):
         raise Refused('measured, scope-bound independent absence required')
-    required = {t for t, _ in OUTPUT_TABLES} | {'kala_gochara_publication', 'build_runs', 'build_run_assets',
+    required = {t for t, _ in ABSENCE_TABLES} | {'kala_gochara_publication', 'build_runs', 'build_run_assets',
                 'asset_provenance_receipts', 'asset_freshness', 'asset_throughput',
                 'ka_gochara_eval_window_record', 'ka_gochara_record_prerequisite',
                 'ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification', 'owned_test_runs'}
@@ -688,7 +724,7 @@ def absence_evidence(req, root, *, teardown_receipt=None):
 # relations, and its restore proof is verified. There is no clock. SCOPED_BACKUP_VALIDITY_S is now the window of the
 # FULL-form (/1) proof only (full_backup_window_problem); an old scoped capture's `validity.not_after` stays readable
 # and is never a gate.
-SCOPED_BACKUP_SCOPE_SHA256 = "489330948aecf7b6fdaa52d00a8f8fa8735e4ed1dcd27a14ee957bd43c07b528"
+SCOPED_BACKUP_SCOPE_SHA256 = "1daf69d6e31279592947aa25e2b4f9a5c1c8137d6663ba039c27e7331ac7335a"
 SCOPED_BACKUP_VALIDITY_S = 4 * 3600
 SCOPED_MEASUREMENT_METHOD = 'sql_sum_sha256_rowjson/1'
 
@@ -861,7 +897,7 @@ def absence_readback_sql(committed=None):
     run = "(" + literal(proof['run_id']) + " #>> '{}')::uuid" if scope else None
     run_where = f"id = {run}" if run else f"chart_id = {chart} AND triggered_by = '{TRIGGERED_BY}'"
     queries = {t: f"SELECT count(*) FROM {t} WHERE chart_id = {chart} AND generation = {gen}{extra}"
-               for t, extra in OUTPUT_TABLES + (("kala_gochara_publication", ""),)}
+               for t, extra in ABSENCE_TABLES + (("kala_gochara_publication", ""),)}
     for t in ('ka_gochara_eval_window_record', 'ka_gochara_record_prerequisite',
               'ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification'):
         queries[t] = f"SELECT count(*) FROM {t} WHERE chart_id = {chart} AND generation = {gen}"
@@ -902,8 +938,8 @@ def measuring_request_problem(req, root):
 
 
 def measuring_dryrun_evidence(req, root, manifest_digest=None):
-    """A real accepted staging rollback, same source/args/manifest, before launch."""
-    r, _ = accepted_receipt(root, req.get('dryrun_receipt'), req.get('dryrun_acceptance'), 'measuring_dispatch_dryrun')
+    """A real completed staging rollback, same source/args/manifest, before launch (no V acceptance of a dry run, A8 §3.8)."""
+    r = completed_receipt(root, req.get('dryrun_receipt'), 'measuring_dispatch_dryrun')
     p = r.get('staging') or {}
     if (r.get('status') != 'COMPLETED' or r.get('item_id') != 'J-3c' or r.get('reviewed_commit') != req.get('reviewed_commit')
             or p.get('schema') != 'ky.measuring_staging/1' or p.get('status') != 'ROLLED_BACK'

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -4627,7 +4627,8 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/vc-2"
+        "ref": "origin/kalayantra/vc-2",
+        "measures": "UNMEASURED until origin/kalayantra/vc-2 exists (no such branch; SR-DETECTOR-REFS 2026-10-18): this is not a pass and not a failure of the item; it is read as not yet measured. The arm generator and readiness gate merged as PR #3732 (branch vc-2-build) but no real outputs were committed (the G1 baseline and binding receipt do not exist), so that merge does not satisfy the item's byte-identical-outputs claim and is not used as its detector."
       },
       "brief": {
         "spec": [
@@ -4821,7 +4822,9 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-COMPACT",
+        "reason": "D-COMPACT refused (PRE-D-COMPACT: K5-2 numerical contract NC11-NC13/NC17 fail; dense path retained) — SR-CLOSURE-272"
       }
     },
     {
@@ -5194,7 +5197,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k6-n1"
+        "ref": "93544cd759bdf8024e6bd8930239650b737f2d53",
+        "packet_pr": 3635,
+        "measures": "K6N pre-build (job X-20261016T142607Z-pb-k6n): PR #3635 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -5237,7 +5242,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k6-n2"
+        "ref": "93544cd759bdf8024e6bd8930239650b737f2d53",
+        "packet_pr": 3635,
+        "measures": "K6N pre-build (job X-20261016T142607Z-pb-k6n): PR #3635 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -5282,7 +5289,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k6-n3"
+        "ref": "93544cd759bdf8024e6bd8930239650b737f2d53",
+        "packet_pr": 3635,
+        "measures": "K6N pre-build (job X-20261016T142607Z-pb-k6n): PR #3635 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -5513,7 +5522,8 @@
       ],
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/l0-k"
+        "ref": "origin/kalayantra/l0-k",
+        "measures": "UNMEASURED until origin/kalayantra/l0-k exists (no branch yet; SR-DETECTOR-REFS 2026-10-18): this is not a pass and not a failure of the item; it is read as not yet measured. Once the branch exists it measures that its PR is contained in origin/main; guarded completion additionally requires exact-head acceptance."
       },
       "brief": {
         "spec": [
@@ -18665,8 +18675,7 @@
       "depends_on": [
         "J-RUN2-RESOLVED",
         "J-3a-pr2914",
-        "J-3a-pr3144",
-        "J-3a-b44"
+        "J-3a-pr3144"
       ],
       "mandatory": true,
       "detector": {
@@ -18838,7 +18847,8 @@
         "J-3b",
         "J-3c-pr2923",
         "J-3c-pr3194",
-        "J-3c-a52"
+        "J-3c-a52",
+        "J-3-SUBSTEP-LOG"
       ],
       "mandatory": true,
       "steps": [
@@ -18868,12 +18878,12 @@
       "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
       "step_evidence": {
         "lease_held": {
-          "evidence": "executor_receipt",
+          "evidence": "lease_row",
           "detector": {
             "type": "file_contains",
             "path": "/Users/Dev/kalayantra/run/reviews/steps/J-3c.lease_held.json",
-            "pattern": "\\A\\{\"evidence_sha256\":\"[0-9a-f]{64}\",\"item\":\"J\\-3c\",\"operation_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"request_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"lease_held\",\"verdict\":\"MET\"\\}\\n?\\Z",
-            "measures": "Canonical whole-file independent acceptance receipt, no extra/duplicate/conflicting fields. Controller verifies the cited evidence digest and item/step identity; operation steps bind the SAME request and operation as the executor receipt and its independent readback. A marker alone is not operational acceptance."
+            "pattern": "\\A\\{\"coordination_commit\":\"[0-9a-f]{40}\",\"expires\":\"[^\"\\\\]+\",\"item\":\"J\\-3c\",\"lease_id\":\"L\\-(?:KALAYANTRA|KY)\\-[A-Za-z0-9_.\\-]+\",\"row\":\".+\",\"schema\":\"ky\\.lease_row_evidence/1\",\"step\":\"lease_held\",\"taken\":\"[^\"\\\\]+\"\\}\\n?\\Z",
+            "measures": "Canonical whole-file lease evidence {coordination_commit, expires, item, lease_id, row, schema, step, taken}, no extra/duplicate/conflicting fields. The tracker mechanically reads the coordination ledger: the commit must be an ancestor of origin/campaign-coordination and CAMPAIGN_COORDINATION.md at that commit must hold exactly this row, status ACTIVE (SR-OP-STEPS item 2). No verifier verdict is involved."
           }
         },
         "backup_restore_verified": {
@@ -18895,12 +18905,12 @@
           }
         },
         "pre_acceptance": {
-          "evidence": "executor_receipt",
+          "evidence": "acceptance_file",
           "detector": {
             "type": "file_contains",
-            "path": "/Users/Dev/kalayantra/run/reviews/steps/J-3c.pre_acceptance.json",
-            "pattern": "\\A\\{\"evidence_sha256\":\"[0-9a-f]{64}\",\"item\":\"J\\-3c\",\"operation_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"request_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"pre_acceptance\",\"verdict\":\"MET\"\\}\\n?\\Z",
-            "measures": "Canonical whole-file independent acceptance receipt, no extra/duplicate/conflicting fields. Controller verifies the cited evidence digest and item/step identity; operation steps bind the SAME request and operation as the executor receipt and its independent readback. A marker alone is not operational acceptance."
+            "path": "/Users/Dev/kalayantra/run/ops/acceptance/J-3c.dispatch.post.json",
+            "pattern": "\\A(?=[\\s\\S]*\"result\": \"ACCEPTED\")(?=[\\s\\S]*\"operation_id\": \"J\\-3c\\.dispatch\")",
+            "measures": "The executor's own recorded acceptance of the dispatch, run/ops/acceptance/J-3c.dispatch.post.json (SR-OP-STEPS-2, SR-TEARDOWN-COMPLETION). The tracker reads it mechanically: it names the dispatch operation of J-3c and the digest of the archived request, is signed by a verifier lane v1-v4 or executor-mechanical with every check true, and the signer is not the requester. No verifier verdict event is involved or synthesised."
           }
         },
         "dispatched": {
@@ -18915,6 +18925,12 @@
       },
       "triage": {
         "class": "a"
+      },
+      "not_applicable_steps": {
+        "backup_restore_verified": {
+          "decision": "SR-OP-STEPS",
+          "reason": "not applicable: restore proof dropped by OWNER-MINIMAL-PROTECTION-NOW-20261018; backup taken per receipt J-3c.backup (label j3c_20261018t130045z)"
+        }
       }
     },
     {
@@ -18980,12 +18996,17 @@
           }
         },
         "report_written": {
-          "evidence": "executor_receipt",
+          "evidence": "artifact_section",
           "detector": {
             "type": "file_contains",
             "path": "/Users/Dev/kalayantra/run/reviews/steps/J-3d.report_written.json",
-            "pattern": "\\A\\{\"evidence_sha256\":\"[0-9a-f]{64}\",\"item\":\"J\\-3d\",\"operation_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"request_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"report_written\",\"verdict\":\"MET\"\\}\\n?\\Z",
-            "measures": "Canonical whole-file independent acceptance receipt, no extra/duplicate/conflicting fields. Controller verifies the cited evidence digest and item/step identity; operation steps bind the SAME request and operation as the executor receipt and its independent readback. A marker alone is not operational acceptance."
+            "pattern": "\\A\\{\"artifact_sha256\":\"6fbd974247ab59d0b15e16b33041488a0d690c7581e509cc8ec9c93889d28097\",\"item\":\"J\\-3d\",\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"report_written\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "measures": "Canonical whole-file independent acceptance receipt, no extra/duplicate/conflicting fields. The report is a repository file: artifact_sha256 is pinned in this pattern and must equal the sha256 of the pinned git blob (c9ee82cfda08362a4eaef12438495bc594d314fd) of 00_ARCHITECTURE/briefs/pravaha/measurement/MEASURING_BUILD_REPORT_v1_0.md on main; the controller reads that blob from the object store and refuses any other digest. A marker alone is not acceptance."
+          },
+          "artifact": {
+            "repo_path": "00_ARCHITECTURE/briefs/pravaha/measurement/MEASURING_BUILD_REPORT_v1_0.md",
+            "blob": "c9ee82cfda08362a4eaef12438495bc594d314fd",
+            "sha256": "6fbd974247ab59d0b15e16b33041488a0d690c7581e509cc8ec9c93889d28097"
           }
         },
         "teardown": {
@@ -19227,6 +19248,53 @@
           "(I) INTERPRETATION: depends_on is the parent J-2a (as J-4p-B4 depends on J-4p) so the tracker derives waiting/ready without a stored status; the alternative, no dependency, would break the parent-child convention. J-2a gates nothing in this item's work, so the fix may be built while J-2a is open."
         ],
         "contract": "SR-J2A-RUN1-FAILED-AMEND-1 B: every stored period_running_at='false' has its consulted (lord, level) rows in consumed_dasha_row_ids; the SNAPSHOT substep binds the rows the builder consulted for every P1 anchor (not only rows overlapping the horizon), so the verifier's snapshot-only read agrees with the builder (B.3). No orchestrator contract change."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "J-3-SUBSTEP-LOG",
+      "track": "J",
+      "lane": "J · Gochara 5.0 absorbed",
+      "title": "Measuring launch sets PUBSUB_DISABLED=1 for its own execution so asset.substep reaches Cloud Logging (J-3 gate evidence)",
+      "owner": "K",
+      "depends_on": [
+        "J-3a"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/j3-substep-log",
+        "measures": "This item's PR is contained in origin/main; the oracle test_smalltest_measuring_substep_log.py (S1-S3) ships in the same PR and runs in the fleet pytest profile."
+      },
+      "brief": {
+        "spec": [
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl SR-J2D-TEARDOWN-EVIDENCE item 2 (the J-3 gate reads sub-step progress from the execution's job log; with Pub/Sub on, asset.substep is published to the topic and never printed)",
+          "platform/python-sidecar/pipeline/orchestrator/events.py:202-205 (emit_event: PUBSUB_DISABLED set, or PUBSUB_TOPIC unset, prints every event to stdout as '[event] <json>'; otherwise publishes and prints nothing)",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py (_read_substep / measure_logs: parses the '[event] ' asset.substep lines; last_index and total per asset) and CLOUDRUN_READBACK_v1_0.md (I) INTERPRETATION on PUBSUB_TOPIC",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py cloud_launcher (the one fixed 'gcloud run jobs execute') and measuring_launch.py (the measuring bridge)",
+          "CLAUDE.md §N.7.6 (honest null), §N.8 (earned signal)"
+        ],
+        "owns": [
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_launch.py",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_measuring_substep_log.py"
+        ],
+        "tests": [
+          "completion detector (N.8): with the measuring launch's argv, a job whose own environment has Pub/Sub on prints every asset.substep as '[event] <json>' (real emit_event), the real logs reader reports last index == total, and the J-3 gate reads PASS",
+          "planted reversion (single): the launch without the override leaves the job log with no sub-step lines; the reader reports no sub-steps and the gate reads NULL, never PASS",
+          "the small-test launch's argv is unchanged (existing test_smalltest_launch.py pin and test_operation_adapters.py plan-equality pin stay green)"
+        ],
+        "compat": "Per-execution override only (gcloud run jobs execute --update-env-vars=PUBSUB_DISABLED=1); the Cloud Run job's stored environment is not modified, so the cockpit SSE feed of every other execution is unchanged. No orchestrator code is touched (FROZEN paths untouched).",
+        "notes": [
+          "Required before J-3c dispatch: J-3c lists this item in depends_on, so the measuring build is not dispatched until the sub-step log evidence path is in place.",
+          "(I) INTERPRETATION: only the measuring launch (measuring_launch.py's default launcher) carries the override; the small-test launch and the operation_adapters.remote_execute_argv plan are left as they were (the latter is pinned equal to the small-test launcher). century_dispatch has no launch script yet (TO_BE_SET_BY_J-4d); J-4d adds the same override to its launcher. Alternative: set the override inside the shared cloud_launcher for every dispatch kind, rejected because it changes the enabled small-test run's event feed unasked.",
+          "(I) INTERPRETATION: the J-3 gate predicate used in the oracle is 'every measured asset has last_index == total, else null'; no gate code exists in the repo to import, so the predicate is stated in the test."
+        ]
       },
       "completion_kind": "code",
       "producer": "K",
@@ -20270,7 +20338,7 @@
       "mandatory": false,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/j-7"
+        "ref": "origin/kalayantra/pb-j7"
       },
       "brief": {
         "spec": [
@@ -20476,7 +20544,9 @@
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
         "class": "a"
-      }
+      },
+      "accepts_not_applicable_dependencies": true,
+      "notes": "D-COMPACT refused 2026-10-16 (dense path retained): K5-2b is not_applicable; the rehearsal builds the applicable path, so K9-1 accepts not-applicable dependencies (prevents a false not_applicable cascade into K9-4a/K9-4b/K9-6/K9-23/KR-1/KR-2)."
     },
     {
       "id": "K9-4a",
@@ -20716,7 +20786,7 @@
       ],
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k9-6"
+        "ref": "origin/kalayantra/pb-k9-final"
       },
       "brief": {
         "spec": [
@@ -22737,7 +22807,7 @@
       "title": "ka_avadhi builds clean on 482012f1: the post-write integrity check's conjunct (c) lord_condition_fact_refs (RED by design under W2 M4 since 2026-09-10) is made to hold or honestly re-scoped, so Suvarṇa's single rebuild tail does not error; merged by Suvarṇa in its window",
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k-avadhi-conjunct-c"
+        "ref": "origin/kalayantra/k-avadhi-c"
       },
       "brief": {
         "spec": [
@@ -23064,10 +23134,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -23353,10 +23423,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -23593,10 +23663,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -23742,10 +23812,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -23883,10 +23953,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -24297,10 +24367,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -24987,10 +25057,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "2fa1cafdf207d9243f8f89b34b42e15b580a3830",
+        "packet_pr": 3604,
+        "measures": "J4C-B pre-build (job X-20261016T074630Z-pb-j4c-b): PR #3604 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -25062,10 +25132,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "2fa1cafdf207d9243f8f89b34b42e15b580a3830",
+        "packet_pr": 3604,
+        "measures": "J4C-B pre-build (job X-20261016T074630Z-pb-j4c-b): PR #3604 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -25705,7 +25775,7 @@
       "track": "J",
       "lane": "J · Gochara 5.0 absorbed",
       "title": "Phase 5 — keep inherited Pravāha A5.3: Registered ka_gochara writer — three objects, per-path pruning, interval sweep with interior extrema, day tier on demand (closes Disclosure 3)",
-      "owner": "N",
+      "owner": "K",
       "depends_on": [
         "J-0m",
         "J-3c"
@@ -25713,7 +25783,7 @@
       "mandatory": true,
       "detector": {
         "type": "file_exists",
-        "path": "/Users/Dev/kalayantra/run/ops/receipts/J-3d-a53.json",
+        "path": "/Users/Dev/kalayantra/run/residuals/J-3d-a53.json",
         "min_bytes": 200,
         "measures": "Only the evidence bytes exist; typed SHA-256-bound independent acceptance and all dependencies/steps are separately mandatory. Not a code-merge proxy."
       },
@@ -25727,7 +25797,7 @@
           "/Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749"
         ],
         "owns": [
-          "/Users/Dev/kalayantra/run/ops/receipts/J-3d-a53.json"
+          "/Users/Dev/kalayantra/run/residuals/J-3d-a53.json"
         ],
         "tests": [
           "Accepted disposition evidence (observation, not completion): running event",
@@ -25735,11 +25805,11 @@
           "Measure this residual itself at its declared phase; a carrying packet code merge never satisfies it. Independent acceptance binds the evidence digest and every original dependency."
         ],
         "compat": "candidate-only production writes on the governed path; served output unchanged; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix)."
+        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class artifact; producer K. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix). Its \"closes Disclosure 3\" clause is \"carried to J-7a-a62 (deferred)\" (GOCHARA_DESIGN_SPECS_v1_4.md:816; J-7a family deferred under A9 D-53; SR-J3-RESIDUALS). Completion kind changed from operation to artifact: no executor op can produce a golden-measured bundle (SR-A53-ARTIFACT)."
       },
-      "completion_kind": "operation",
-      "producer": "N",
-      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "a",
         "reason": "Re-entered at the original J phase by completion-path step 2; scope, producer and evidence class now bound; no independent assertion-child job."
@@ -25749,11 +25819,11 @@
       ],
       "step_evidence": {
         "writer_completion_readback": {
-          "evidence": "executor_receipt",
+          "evidence": "artifact_section",
           "detector": {
             "type": "file_contains",
             "path": "/Users/Dev/kalayantra/run/reviews/steps/J-3d-a53.writer_completion_readback.json",
-            "pattern": "\\A\\{\"evidence_sha256\":\"[0-9a-f]{64}\",\"item\":\"J\\-3d\\-a53\",\"operation_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"request_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"writer_completion_readback\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "pattern": "\\A\\{\"artifact_sha256\":\"[0-9a-f]{64}\",\"item\":\"J\\-3d\\-a53\",\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"writer_completion_readback\",\"verdict\":\"MET\"\\}\\n?\\Z",
             "measures": "Canonical whole-file independent acceptance receipt, no extra/duplicate/conflicting fields. Controller verifies the cited evidence digest and item/step identity; operation steps bind the SAME request and operation as the executor receipt and its independent readback. A marker alone is not operational acceptance."
           }
         }
@@ -26643,8 +26713,9 @@
       "producer": "K",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "a",
-        "reason": "the '4.1' geometric baseline is a scored baseline named by J-5q-b54 (title '5.0 vs 3.0 vs 4.1'; brief.tests 'independently prove inherited prerequisite: B4.4'); stays in the closure (A9-NB-04 class a)"
+        "class": "b",
+        "reason": "deferred by A9 (SR-A9-INTERP, A9-NB-04): its '4.1' baseline cannot exist while J-4a-a25 is parked; no consuming phase brief reads its output (FINAL_BUILD_SCOPE_v1_0 and the J-4a brief are silent on A2.5/A2.6) — SR-A9-NB-04-B44 (SR-CLOSURE-272)",
+        "re_entry": "when the owner/surrogate records the approved Q6 disposition of the historical 4.1 build, or a phase brief names the 4.1 build as a measured input"
       }
     },
     {
@@ -27477,7 +27548,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k9-23-n2"
+        "ref": "ee51abe09bd5e62d8bba6999515ef160fe688cbc",
+        "packet_pr": 3606,
+        "measures": "K9-23-N2 pre-build (job X-20261016T091430Z-pb-k9-23-n2): PR #3606 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -28202,7 +28275,7 @@
       "id": "K5-G1b-N1",
       "track": "K",
       "lane": "K · K5 forecaster",
-      "title": "Once-per-candidate preparation shared with the jury remains unfinished",
+      "title": "One shift schedule per candidate, shared by the field classes and accepted by the jury preparation (schedule object only)",
       "owner": "K",
       "depends_on": [
         "K5-G1b"
@@ -28210,7 +28283,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k5-g1b-n1"
+        "ref": "f525f7280495da24cb85d79d342c49916ad4bf3b",
+        "packet_pr": 3640,
+        "measures": "KN-B pre-build (job X-20261016T142635Z-pb-kn-b): PR #3640 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -28230,9 +28305,57 @@
         "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
         "notes": [
           "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
-          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION: PR #3758 lands only the schedule object; the remainder is registered as K5-G1b-N2 (D-17 form), so an accepted verdict on this item no longer reads as full closure of the original contract. Alternative: finish the contract here, which needs cross-writer sharing and a content-bound resume design that is the native's decision (CLAUDE.md §N.2)."
         ],
-        "contract": "Once-per-candidate preparation shared with the jury remains unfinished. The field shares the schedule and numerical reducers, but prepare_field builds a separate per-class preparation and run_field_block rebuilds field geometry per draw; it does not consume the jury prepare_draws Preparation."
+        "contract": "Narrowed (PR #3758 review K5-G1b-N1-R-B1): the candidate's one shift schedule is prepared once (measure.prepare_schedule), every class's field null consumes it (ka_kshetra writer), and the jury preparation (prepare_draws) accepts it with a horizon/shift-count refusal; preparation digests and full-reference null statistics are unchanged. The jury-shared once-per-candidate preparation is NOT claimed here: the production jury caller (ka_sangam/jury/agreement.py) does not receive the schedule, field geometry is rebuilt per class and per draw, and the field does not consume the jury Preparation. That remainder is the child K5-G1b-N2."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-G1b-N2",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Once-per-candidate preparation shared with the jury: production jury binding, shared geometry, content-bound resume",
+      "owner": "K",
+      "depends_on": [
+        "K5-G1b-N1"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-g1b-n2"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md §6.2(2) (no per-class re-preparation), §6.2(5) (schedule, segment preparation and draw machinery run once per candidate), §6.2(7) (content-bound resume)",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/KN_B_PREBUILD_v1.md \"K5-G1b-N1: reproduced unfinished integration\" (the three gaps, with the separate-estimand constraint)",
+          "platform/python-sidecar/services/ka_sangam/jury/agreement.py:79,85 (prepare_draws called without a schedule), platform/python-sidecar/services/ka_kshetra/stage5_null.py (field geometry rebuilt per draw)",
+          "PR #3758 review X-20261019T022058Z-review-3758 (finding K5-G1b-N1-R-B1)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/stage5_null.py",
+          "platform/python-sidecar/services/ka_kshetra/writer.py",
+          "platform/python-sidecar/services/kala_core/measure/**",
+          "platform/python-sidecar/services/ka_sangam/jury/**"
+        ],
+        "tests": [
+          "Production jury (ka_sangam jury candidate/agreement) receives the candidate schedule, the field consumes the shared candidate-bound preparation and no class or draw rebuilds shared geometry; the distinguishing negative case is the separate field estimand: substituting jury draws for the field transit/obstruction geometry must fail.",
+          "Resume is bound to the preparation content digest (a changed schedule or witness set refuses resume).",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates. No orchestrator contract change: a writer-to-writer sharing design that needs one is a STOP for the native (CLAUDE.md §N.2).",
+        "notes": [
+          "D-17 carry-forward registration of the remainder of K5-G1b-N1; no part of it is claimed done.",
+          "DECISION NEEDED BEFORE BUILD: how the candidate preparation is shared between the ka_sangam and ka_kshetra writers (substep order, content-bound persistence) without a FROZEN-contract change; raise with the native.",
+          "(I) INTERPRETATION: id K5-G1b-N2 follows the K5-G1b-N1 numbering; depends_on is the narrowed parent K5-G1b-N1 so the tracker derives waiting/ready without a stored status."
+        ],
+        "contract": "Once-per-candidate preparation shared with the jury: the production jury caller receives the candidate's schedule and the shared preparation, the field consumes it with its own estimand, no class or draw rebuilds shared geometry, and resume is content-bound (PLAN §6.2(2,5,7))."
       },
       "completion_kind": "code",
       "producer": "K",
@@ -28253,7 +28376,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k5g1a-r1"
+        "ref": "415bc19609b4838759c0873bb1242c02aa778b8d",
+        "packet_pr": 3605,
+        "measures": "K5G1A-CHILDREN pre-build (job X-20261016T085438Z-pb-k5g1a-children): PR #3605 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -28295,7 +28420,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k5g1a-r2"
+        "ref": "415bc19609b4838759c0873bb1242c02aa778b8d",
+        "packet_pr": 3605,
+        "measures": "K5G1A-CHILDREN pre-build (job X-20261016T085438Z-pb-k5g1a-children): PR #3605 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -28303,7 +28430,9 @@
           "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T204858Z-review-k5-g1a/result.json:38 (K5G1A-R2)"
         ],
         "owns": [
-          "platform/python-sidecar/services/ka_kshetra/stage4_field.py"
+          "platform/python-sidecar/services/ka_kshetra/stage4_field.py",
+          "platform/python-sidecar/services/ka_kshetra/g1_inputs.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/test_g1a_contract.py"
         ],
         "tests": [
           "Preserve the unavailable mūrti interval as a neutral mask with its source reference, retaining the gap and no numeric testimony bridge. Add a mandatory null-entry breakpoint and circular-shift test.",
@@ -28313,7 +28442,8 @@
         "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
         "notes": [
           "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
-          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION (SR-DETECTOR-REFS-2): the accepted pre-build PR #3605 fixed R2 in g1_inputs.py (suppression_primitives, where the interval was lost) and covered it in test_g1a_contract.py, both listed under that job's out_of_owns; stage4_field.py already preserved the masked interval. They are added to owns so the merged PR is recognised as carrying the item (SR-BUNDLE-VERDICT)."
         ],
         "contract": "For a stored mūrti entry with null_reason or no quality_tier, suppression_primitives adds a disclosure then continues, emitting no neutral input_mask. KA-3b actually emits these leading unavailable intervals. Their endpoints disappear from EnvelopeIndex.breakpoints(), unlike unavailable vedha/K3 intervals. This also contradicts the helper promise that all referenced interval edges survive."
       },
@@ -28505,7 +28635,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/j6m-r1"
+        "ref": "5aa1af46fedabee8350f14eb619706a5695016a9",
+        "packet_pr": 3636,
+        "measures": "W4N pre-build (job X-20261016T143037Z-pb-w4n): PR #3636 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -29375,6 +29507,12 @@
       "title": "Not applicable (V-K3b, V-K5, V-K6, V-KA, V-VC): satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)",
       "owner": "native — owner-authorised by Amendment A9 (D-51, D-53, D-54)",
       "default": "refused — satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)"
+    },
+    {
+      "id": "SR-OP-STEPS",
+      "title": "Operation-item steps: lease row as evidence, restore proof not applicable for J-3c, one verifier at most",
+      "owner": "ADHIKĀRIN (N); surrogate madhav-6d, 2026-10-19T03:20:12Z",
+      "default": "Approved — /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:229 (SR-OP-STEPS) and :230 (SR-OP-STEPS-2). Item 2: a lease_held step is evidenced by the lease row on origin/campaign-coordination (commit sha + row id), read mechanically by the tracker. Item 3: J-3c backup_restore_verified is not applicable (OWNER-MINIMAL-PROTECTION-NOW-20261018), not a gap. SR-OP-STEPS-2: the executor's own recorded acceptance is the accepted verdict at the receipt's digest. Recording this decision (ky decide SR-OP-STEPS --as steward --delegated) is what makes a cited not-applicable step count as satisfied."
     }
   ],
   "coordination": {

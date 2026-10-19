@@ -17,11 +17,21 @@ record — status REFUSED, exit 1 — so a partial record can never be mistaken 
              cancelled counts, task count, image and args the execution carried, log URI (the URI only);
   · logs     (only when `--logs true` is given WITH `--execution`; SR-J3-READ-KINDS) ONE more fixed call, `gcloud logging read`, whose filter
              is built from constants plus the regex-validated execution name: Cloud Run job `brahma-build-pipeline-job`, location
-             `asia-south1`, label run.googleapis.com/execution_name, newest LOG_PAGE_SIZE entries. Parsed: `STRETCH_SINK/1` records (counted
-             by kind/reason, de-duplicated by record_id), `STRETCH_SINK_SUMMARY/1` lines (reconciled against the records), and `asset.substep`
+             `asia-south1`, label run.googleapis.com/execution_name. It is read PAGE BY PAGE (newest first, LOG_PAGE_SIZE entries per call, at most
+             LOG_MAX_PAGES calls and LOG_BUDGET_S seconds): each next call adds only `timestamp<="<oldest entry time seen>"` (a time that
+             matched a strict RFC 3339 shape, never raw gcloud text) to the same filter, and entries are de-duplicated by insertId. If the
+             cap, the time budget, an unpageable time or a stuck cursor stops the reading before the oldest entry, `truncated` is true and
+             every count reads NULL (lower bounds are still given); a short page is the proof the read is complete. Parsed: `STRETCH_SINK/1` records (counted
+             by kind/reason, de-duplicated by (event_class, record_id)), `STRETCH_SINK_SUMMARY/1` lines (reconciled against the records), and `asset.substep`
              events (log-entry times between consecutive sub-steps, last index/total). A line that cannot be read as the thing it claims to
              be (truncated, wrong shape) reads NULL in every field that depended on it and is counted in `unreadable_lines`; it is never
              zero and is never skipped silently (CLAUDE.md §N.8).
+  · metrics  (only when `--metrics true` is given WITH `--execution`; SR-BOLD-09) TWO more fixed `gcloud monitoring time-series list` calls on
+             the same gcloud identity: the Cloud Run job container CPU and memory utilisation distributions, scoped to the job and to the
+             execution's own start..completion window (now, while it still runs). Reported: mean, p95 (interpolated inside its bucket) and
+             the highest non-empty bucket's upper bound (a bound, not a sample maximum) for each, the CPU expressed in vCPUs against the
+             job's allocated cpu, and a `shape` (SINGLE_THREAD_BOUND when p95 sits at ~1 vCPU with more allocated). A series that is absent,
+             unreadable or whose query failed reads NULL with its `status`, never zero. No Cloud Run metric exposes DB wait: `wait` says so.
 Honest nulls (CLAUDE.md §N.7.6 / §N.8): the corpus (Swiss Ephemeris files) cannot be measured without running the image, so the record
 says so in `corpus.status` rather than carrying a green; `provenance.image_attests_commit` is false because the image itself carries no
 revision label. Shapes follow the Cloud Run v1 Job/Execution resources (`spec.template.spec.template.spec` for the job, the path
@@ -37,6 +47,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 
 SCHEMA = "ky.cloudrun_readback/1"
 PROJECT = "madhav-astrology"
@@ -50,10 +61,21 @@ ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
 # Plain values that may be shown. Everything else is a name only; a new key needs a reviewed edit here.
 ENV_VALUE_ALLOWLIST = frozenset({"GCP_PROJECT", "PUBSUB_TOPIC", "KA_KSHETRA_HASH_SPILL_DIR", "SE_EPHE_PATH", "SWE_EPHE_PATH", "PYTHONPATH"})
 GCLOUD_TIMEOUT_S = 120
-LOG_PAGE_SIZE = 1000                                                     # the one page `logs` reads; a full page is reported, never assumed complete
+LOG_PAGE_SIZE = 1000                                                     # entries per `gcloud logging read` call; a short page proves the read reached the oldest entry
+LOG_MAX_PAGES = 60                                                       # hard cap: 60,000 entries, far above a 26-class measuring build; beyond it `truncated` is true and counts read null
+LOG_BUDGET_S = 420                                                       # wall-clock budget for all pages, under the executor's timeout_s (600) for this kind
+CURSOR_TIME = re.compile(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,9}))?Z")      # the only time text that is ever put back into a filter
 SINK_MARK, SINK_SUMMARY_MARK = "STRETCH_SINK/1", "STRETCH_SINK_SUMMARY/1"   # stretch_sink.LOG_PREFIX / SUMMARY_PREFIX without the trailing space
 SINK_SCHEMA, SINK_SUMMARY_SCHEMA = "stretch_sink/1", "stretch_sink_summary/1"
 SUBSTEP_MARK = '"asset.substep"'                                         # asset_runner.run_substeps emits {"type": "asset.substep", ...}
+METRICS_RESOURCE_TYPE = "cloud_run_job"
+CPU_METRIC = "run.googleapis.com/container/cpu/utilizations"             # distribution; fraction of the container's CPU limit
+MEMORY_METRIC = "run.googleapis.com/container/memory/utilizations"       # distribution; fraction of the container's memory limit
+METRIC_TIME = "%Y-%m-%dT%H:%M:%SZ"
+SATURATION_FRACTION = 0.85                                               # p95 at or above this share of the allocated vCPUs = saturated
+SINGLE_THREAD_BAND = (0.8, 1.25)                                         # p95 in vCPUs that reads as "one thread's worth"
+SUSTAINED_MEAN_VCPU = 0.5                                                # a single-thread verdict also needs the MEAN this high (a burst is not a bound)
+P95 = 0.95
 SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 LOG_TIME = re.compile(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d+))?(Z|[+-]\d\d:\d\d)")
 
@@ -74,10 +96,20 @@ def execution_describe_argv(name: str) -> list[str]:
     return ["gcloud", "run", "jobs", "executions", "describe", name, f"--project={PROJECT}", f"--region={REGION}", "--format=json"]
 
 
-def logs_read_argv(name: str) -> list[str]:
+def logs_filter(name: str, not_after: str | None = None) -> str:
+    """The one fixed filter; `not_after` (page 2 onward) is a CURSOR_TIME-validated entry time, the only thing that ever varies."""
     flt = (f'resource.type="cloud_run_job" AND resource.labels.job_name="{JOB}" AND resource.labels.location="{REGION}" '
            f'AND labels."run.googleapis.com/execution_name"="{name}" '
            f'AND (textPayload:"STRETCH_SINK" OR textPayload:"asset.substep")')
+    if not_after is not None:
+        if not CURSOR_TIME.fullmatch(not_after):
+            raise Refused("logs: a paging cursor is not a strict RFC 3339 UTC time")
+        flt += f' AND timestamp<="{not_after}"'
+    return flt
+
+
+def logs_read_argv(name: str, not_after: str | None = None) -> list[str]:
+    flt = logs_filter(name, not_after)
     return ["gcloud", "logging", "read", flt, f"--project={PROJECT}", f"--limit={LOG_PAGE_SIZE}", "--order=desc", "--format=json"]
 
 
@@ -392,35 +424,88 @@ def _substep_report(rows):
     return assets, newest
 
 
-def _sink_report(records, summaries, unreadable, duplicates, page_full, entries_returned):
+def _sink_report(records, summaries, unreadable, duplicates, truncated, entries_returned):
     by_kind: dict[str, int] = {}
     by_class: dict[str, list] = {}
-    for record in records.values():
+    kinds_by_class: dict[str, dict[str, int]] = {}
+    for record in records.values():                                   # records is keyed (event_class, record_id): one row per class per id
         key = f"{record['kind']}/{record['reason']}"
         by_kind[key] = by_kind.get(key, 0) + 1
         by_class.setdefault(record["event_class"], []).append(record["record_id"])
-    # A total is a COUNT only when nothing could have been missed or misread: a full page, an unreadable line or an empty page makes
-    # it a lower bound, and the count itself reads null (N.8: never the readable-part total standing in for the whole).
-    exact = not page_full and not unreadable and entries_returned > 0
+        per_class = kinds_by_class.setdefault(record["event_class"], {})
+        per_class[key] = per_class.get(key, 0) + 1
+    # A total is a COUNT only when nothing could have been missed or misread: a truncated read, an unreadable line or an empty read
+    # makes it a lower bound, and the count itself reads null (N.8: never the readable-part total standing in for the whole).
+    exact = not truncated and not unreadable and entries_returned > 0
     shown = []
     for summary in summaries:
         ids = by_class.get(summary["event_class"], [])
+        read_kinds = dict(sorted(kinds_by_class.get(summary["event_class"], {}).items()))
         shown.append({**summary,
+                      "read_counts_by_kind_reason": read_kinds if exact else None,
+                      "read_counts_by_kind_reason_lower_bound": read_kinds,
                       "records_match_summary": (len(ids) == summary["records"]) if exact and summary["records"] is not None else None,
+                      "counts_by_kind_match_summary": (read_kinds == summary["counts_by_kind_reason"]) if exact and summary["counts_by_kind_reason"] is not None else None,
                       "digest_matches_records": (hashlib.sha256("\n".join(sorted(ids)).encode("utf-8")).hexdigest() == summary["record_ids_digest"])
                       if exact and summary["record_ids_digest"] is not None else None})
     return {"record_count": len(records) if exact else None, "record_count_lower_bound": len(records),
             "counts_by_kind_reason": dict(sorted(by_kind.items())) if exact else None,
             "counts_by_kind_reason_lower_bound": dict(sorted(by_kind.items())),
             "records_by_event_class": {key: len(ids) for key, ids in sorted(by_class.items())} if exact else None,
+            "counts_by_kind_reason_by_event_class": {key: dict(sorted(v.items())) for key, v in sorted(kinds_by_class.items())} if exact else None,
             "duplicate_record_lines": duplicates, "summaries": shown}
 
 
-def measure_logs(name: str, runner) -> dict:
-    entries = gcloud_json(logs_read_argv(name), runner, "logs", shape=list)
-    if any(not isinstance(entry, dict) for entry in entries):
-        raise Refused("logs: an entry is not a JSON object")
-    records: dict[str, dict] = {}
+def _cursor_key(text):
+    """(seconds text, 9-digit fraction) of a strict UTC entry time, orderable as text; None when it is not that shape."""
+    match = CURSOR_TIME.fullmatch(text) if isinstance(text, str) else None
+    return None if match is None else (match.group(1), (match.group(2) or "").ljust(9, "0"))
+
+
+def _entry_key(entry):
+    """Identity for de-duplicating overlapping pages: insertId, else the whole entry as canonical JSON (never a guess)."""
+    insert = entry.get("insertId")
+    return insert if isinstance(insert, str) and insert else json.dumps(entry, sort_keys=True, separators=(",", ":"))
+
+
+def _read_all_pages(name: str, runner, monotonic) -> tuple[list, int, str | None]:
+    """Newest-first pages until a short page (complete) or a stop condition. Returns (entries, pages_read, truncation_reason|None)."""
+    seen: dict[str, dict] = {}
+    cursor = None
+    started = monotonic()
+    pages = 0
+    while True:
+        if pages >= LOG_MAX_PAGES:
+            return list(seen.values()), pages, "page_cap"
+        if pages and monotonic() - started > LOG_BUDGET_S:
+            return list(seen.values()), pages, "time_budget"
+        page = gcloud_json(logs_read_argv(name, cursor), runner, "logs", shape=list)
+        if any(not isinstance(entry, dict) for entry in page):
+            raise Refused("logs: an entry is not a JSON object")
+        pages += 1
+        fresh = 0
+        for entry in page:
+            key = _entry_key(entry)
+            if key not in seen:
+                seen[key] = entry
+                fresh += 1
+        if len(page) < LOG_PAGE_SIZE:                                   # the server had nothing older than this page's oldest entry
+            return list(seen.values()), pages, None
+        keys = [_cursor_key(entry.get("timestamp")) for entry in page]
+        if any(key is None for key in keys):
+            return list(seen.values()), pages, "unpageable_time"        # a full page whose oldest time cannot be told: do not guess a cursor
+        oldest = min(keys)
+        if not fresh or (cursor is not None and _cursor_key(cursor) <= oldest):
+            return list(seen.values()), pages, "stuck_cursor"           # a full page of one instant (or no progress): paging cannot move on
+        cursor = f"{oldest[0]}.{oldest[1]}Z"
+
+
+def measure_logs(name: str, runner, monotonic=time.monotonic) -> dict:
+    entries, pages, reason = _read_all_pages(name, runner, monotonic)
+    # a total order, so equal inputs give equal output whatever order gcloud broke time ties in: newest first, then insertId/JSON
+    floor = dt.datetime.min.replace(tzinfo=dt.timezone.utc)
+    entries.sort(key=lambda e: (_log_time(e.get("timestamp")) or floor, _entry_key(e)), reverse=True)
+    records: dict[tuple[str, str], dict] = {}                          # (event_class, record_id): the id has no event_class in it (stretch_sink.record_id), so classes share ids
     summaries, rows = [], []
     unreadable = duplicates = 0
     for entry in entries:
@@ -437,37 +522,216 @@ def measure_logs(name: str, runner) -> dict:
                 record = _read_sink_record(_object_from(line[line.index(SINK_MARK) + len(SINK_MARK):]))
                 if record is None:
                     unreadable += 1
-                elif record["record_id"] in records:
+                elif (record["event_class"], record["record_id"]) in records:
                     duplicates += 1
                 else:
-                    records[record["record_id"]] = record
+                    records[(record["event_class"], record["record_id"])] = record
             elif SUBSTEP_MARK in line:
                 step = _read_substep(_object_from(line[line.index("{"):])) if "{" in line else None     # the "[event] " prefix is not part of the JSON
                 if step is None:
                     unreadable += 1
                 else:
                     rows.append((when, when_text, step))
-    page_full = len(entries) >= LOG_PAGE_SIZE
+    truncated = reason is not None
     assets, newest = _substep_report(rows)
     return {
         "execution": name,
-        "filter": logs_read_argv(name)[3],
+        "filter": logs_filter(name),
         "page_size": LOG_PAGE_SIZE,
-        "entries_returned": len(entries),
-        "page_full": page_full,                                         # True: older lines may exist beyond this page
+        "max_pages": LOG_MAX_PAGES,
+        "pages_read": pages,
+        "entries_returned": len(entries),                               # distinct entries over all pages
+        "truncated": truncated,                                         # True: older entries exist that were not read; every count below reads null
+        "truncation_reason": reason,
         "unreadable_lines": unreadable,
-        "sink": _sink_report(records, summaries, unreadable, duplicates, page_full, len(entries)),
-        "substeps": {"last_substep": newest, "assets": assets},
+        "sink": _sink_report(records, summaries, unreadable, duplicates, truncated, len(entries)),
+        "substeps": {"last_substep": newest, "assets": assets},      # newest-first reading: the last sub-step is known even when older pages were not read
     }
 
 
-def measure(execution: str | None, runner=default_runner, clock=lambda: dt.datetime.now(dt.timezone.utc), *, logs: bool = False) -> dict:
+# ───────────── metrics (SR-BOLD-09): CPU / memory utilisation of one execution from Cloud Monitoring ─────────────
+
+def metrics_filter(metric_type: str) -> str:
+    """Constants only; the execution is scoped by the time window (the metric label that would name it is not relied on)."""
+    return (f'metric.type="{metric_type}" AND resource.type="{METRICS_RESOURCE_TYPE}" '
+            f'AND resource.labels.job_name="{JOB}" AND resource.labels.location="{REGION}"')
+
+
+def metrics_read_argv(metric_type: str, start: str, end: str) -> list[str]:
+    # (I) INTERPRETATION: `gcloud monitoring time-series list` with these flags is the read route; no live call was made for this build.
+    return ["gcloud", "monitoring", "time-series", "list", f"--filter={metrics_filter(metric_type)}", f"--interval-start-time={start}",
+            f"--interval-end-time={end}", f"--project={PROJECT}", "--format=json"]
+
+
+def _utc(value):
+    """An ISO-8601 time that carries a zone -> aware UTC datetime; None when absent, naive or unreadable."""
+    try:
+        moment = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except (ValueError, AttributeError):
+        return None
+    return moment.astimezone(dt.timezone.utc) if moment.tzinfo is not None else None
+
+
+def _number(value):
+    return value if isinstance(value, (int, float)) and not isinstance(value, bool) and value == value and abs(value) != float("inf") else None
+
+
+def _buckets(options):
+    """Distribution.bucketOptions -> [(lower|None, upper|None)] with None marking the open under/overflow ends; None when unreadable."""
+    if not isinstance(options, dict) or len(options) != 1:
+        return None
+    kind, spec = next(iter(options.items()))
+    if not isinstance(spec, dict):
+        return None
+    if kind == "explicitBuckets":
+        bounds = spec.get("bounds")
+        edges = bounds if isinstance(bounds, list) and bounds and all(_number(b) is not None for b in bounds) else None
+        if edges is None or any(b >= c for b, c in zip(edges, edges[1:])):
+            return None
+    else:
+        count = spec.get("numFiniteBuckets")
+        if not isinstance(count, int) or isinstance(count, bool) or not 1 <= count <= 10000:
+            return None
+        if kind == "linearBuckets":
+            width, offset = _number(spec.get("width")), _number(spec.get("offset", 0))
+            if width is None or width <= 0 or offset is None:
+                return None
+            edges = [offset + i * width for i in range(count + 1)]
+        elif kind == "exponentialBuckets":
+            factor, scale = _number(spec.get("growthFactor")), _number(spec.get("scale"))
+            if factor is None or factor <= 1 or scale is None or scale <= 0:
+                return None
+            edges = [scale * factor ** i for i in range(count + 1)]
+        else:
+            return None
+    return [(None, edges[0])] + list(zip(edges, edges[1:])) + [(edges[-1], None)]
+
+
+def _distribution(value):
+    """One point's distribution -> (count, mean, buckets, bucket_counts); None when any part is unreadable (never a partial point)."""
+    body = value.get("distributionValue") if isinstance(value, dict) else None
+    if not isinstance(body, dict):
+        return None
+    count, mean, buckets = parse_int64(body.get("count")), _number(body.get("mean")), _buckets(body.get("bucketOptions"))
+    raw = body.get("bucketCounts")
+    if count is None or buckets is None or not isinstance(raw, list) or len(raw) != len(buckets):
+        return None
+    counts = [parse_int64(c) for c in raw]
+    if any(c is None for c in counts) or sum(counts) != count or (count and mean is None):
+        return None
+    return count, mean, buckets, counts
+
+
+def _series_report(series, metric_type):
+    """Pool every point of every returned series. status: OK | ABSENT (nothing in the window) | UNREADABLE (a shape that is not a distribution)."""
+    empty = {"metric_type": metric_type, "status": "ABSENT", "series": 0, "points": 0, "samples": 0, "mean": None, "p95": None, "max_upper_bound": None}
+    points = []
+    for one in series:
+        kind = (one.get("metric") or {}).get("type") if isinstance(one, dict) and isinstance(one.get("metric"), dict) else None
+        if kind != metric_type:
+            return {**empty, "status": "UNREADABLE", "reason": "a series is not the requested metric type"}
+        raw = one.get("points")
+        if not isinstance(raw, list):
+            return {**empty, "status": "UNREADABLE", "reason": "a series carries no points list"}
+        for point in raw:
+            read = _distribution(point.get("value") if isinstance(point, dict) else None)
+            if read is None:
+                return {**empty, "status": "UNREADABLE", "reason": "a point is not a well-formed distribution"}
+            points.append(read)
+    live = [p for p in points if p[0]]
+    report = {**empty, "series": len(series), "points": len(points)}
+    if not live:
+        return report                                               # nothing sampled: ABSENT, and no number is invented for it
+    total = sum(p[0] for p in live)
+    report.update(status="OK", samples=total, mean=sum(p[0] * p[1] for p in live) / total)
+    tops = []
+    for _, _, buckets, counts in live:
+        top = max(i for i, c in enumerate(counts) if c)
+        tops.append(buckets[top][1])
+    report["max_upper_bound"] = None if any(t is None for t in tops) else max(tops)       # an open overflow bucket has no upper bound
+    shapes = {tuple(p[2]) for p in live}
+    if len(shapes) == 1:                                            # percentile only across one bucket layout; mixed layouts read null
+        buckets, pooled = live[0][2], [sum(col) for col in zip(*[p[3] for p in live])]
+        target, running = P95 * total, 0
+        for (low, high), count in zip(buckets, pooled):
+            if running + count >= target and count:
+                report["p95"] = None if low is None or high is None else low + (high - low) * ((target - running) / count)
+                break
+            running += count
+    return report
+
+
+def _vcpus(text):
+    match = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)(m?)", text) if isinstance(text, str) else None
+    if not match:
+        return None
+    value = float(match.group(1)) / (1000 if match.group(2) else 1)
+    return value if value > 0 else None
+
+
+def _bytes(text):
+    match = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)(Mi|Gi)", text) if isinstance(text, str) else None
+    return None if not match else float(match.group(1)) * (1024 ** 2 if match.group(2) == "Mi" else 1024 ** 3)
+
+
+def _cpu_shape(report, vcpus):
+    """Where the CPU sits against what was allocated. None when the numbers it needs are absent (N.8: no verdict without a measurement)."""
+    mean, p95 = report["mean"], report["p95"]
+    if report["status"] != "OK" or vcpus is None or mean is None or p95 is None:
+        return {"allocated_vcpus": vcpus, "mean_vcpus": None, "p95_vcpus": None, "shape": None}
+    mean_v, p95_v = mean * vcpus, p95 * vcpus
+    low, high = SINGLE_THREAD_BAND
+    if p95_v >= SATURATION_FRACTION * vcpus:
+        shape = "SATURATES_ALLOCATION_ONE_VCPU" if vcpus <= high else "SATURATES_ALL_VCPUS"
+    elif low <= p95_v <= high:
+        shape = "SINGLE_THREAD_BOUND" if mean_v >= SUSTAINED_MEAN_VCPU else "BURSTY_AT_ONE_VCPU"      # a burst is not a bound
+    elif p95_v < low:
+        shape = "BELOW_ONE_VCPU"
+    else:
+        shape = "MULTI_THREAD_PARTIAL"
+    return {"allocated_vcpus": vcpus, "mean_vcpus": mean_v, "p95_vcpus": p95_v, "shape": shape}
+
+
+def _metric_leg(metric_type, start, end, runner):
+    try:
+        series = gcloud_json(metrics_read_argv(metric_type, start, end), runner, f"metrics {metric_type}", shape=list)
+    except Refused as exc:
+        return {"metric_type": metric_type, "status": "QUERY_FAILED", "reason": str(exc), "series": 0, "points": 0, "samples": 0,
+                "mean": None, "p95": None, "max_upper_bound": None}
+    return _series_report(series, metric_type)
+
+
+def measure_metrics(execution: dict, job: dict, runner, clock) -> dict:
+    start, finish = _utc(execution.get("start_time")), _utc(execution.get("completion_time"))
+    end = finish or clock()
+    allocated = {"cpu_vcpus": _vcpus(job.get("cpu")), "memory_bytes": _bytes(job.get("memory"))}
+    out = {"execution": execution["name"], "scoping": "job_name + location + the execution's own time window (a concurrent execution of the job would be pooled in)",
+           "metric_types": {"cpu": CPU_METRIC, "memory": MEMORY_METRIC},
+           "wait": {"status": "NOT_EXPOSED", "reason": "Cloud Run exposes no database or container wait metric; DB wait lives in the database's own metrics for a named instance this reader does not hold"},
+           "allocated": allocated}
+    if start is None or end <= start:
+        why = "the execution has no readable start time" if start is None else "the window is empty"
+        gone = {"status": "NOT_QUERIED", "reason": why, "mean": None, "p95": None, "max_upper_bound": None}
+        return {**out, "window": None, "cpu": {**gone, "allocated_vcpus": allocated["cpu_vcpus"], "mean_vcpus": None, "p95_vcpus": None, "shape": None},
+                "memory": {**gone, "peak_bytes_upper_bound": None}}
+    begin, stop = start.strftime(METRIC_TIME), end.strftime(METRIC_TIME)
+    cpu, memory = _metric_leg(CPU_METRIC, begin, stop, runner), _metric_leg(MEMORY_METRIC, begin, stop, runner)
+    limit = allocated["memory_bytes"]
+    memory["peak_bytes_upper_bound"] = None if limit is None or memory["max_upper_bound"] is None else memory["max_upper_bound"] * limit
+    return {**out, "window": {"start": begin, "end": stop, "end_is_now": finish is None},
+            "filters": {"cpu": metrics_filter(CPU_METRIC), "memory": metrics_filter(MEMORY_METRIC)},
+            "cpu": {**cpu, **_cpu_shape(cpu, allocated["cpu_vcpus"])}, "memory": memory}
+
+
+def measure(execution: str | None, runner=default_runner, clock=lambda: dt.datetime.now(dt.timezone.utc), *, logs: bool = False, metrics: bool = False) -> dict:
     if execution is not None and not EXECUTION.fullmatch(execution):
         raise Refused("the execution name is not brahma-build-pipeline-job-<suffix>")
     if logs and execution is None:
         raise Refused("logs can only be read for one execution: --logs requires --execution")
+    if metrics and execution is None:
+        raise Refused("metrics can only be read for one execution: --metrics requires --execution")
     job, commit = measure_job(runner)
-    return {
+    record = {
         "schema": SCHEMA,
         "status": "MEASURED",
         "measured_at": clock().isoformat(timespec="seconds"),
@@ -488,15 +752,19 @@ def measure(execution: str | None, runner=default_runner, clock=lambda: dt.datet
         "execution": measure_execution(execution, job["image"]["reference"], runner) if execution is not None else None,
         "logs": measure_logs(execution, runner) if logs else None,
     }
+    if metrics:                                                          # the key exists only when asked: a run without --metrics prints what it always printed
+        record["metrics"] = measure_metrics(record["execution"], job, runner, clock)
+    return record
 
 
 def cli(argv=None, runner=default_runner) -> int:
     parser = argparse.ArgumentParser(description="Read-only measurement of the pipeline Cloud Run job.", allow_abbrev=False)
     parser.add_argument("--execution", default=None)
     parser.add_argument("--logs", nargs="?", const="true", default=None, choices=("true", "True"))      # the executor appends `--logs true`
+    parser.add_argument("--metrics", nargs="?", const="true", default=None, choices=("true", "True"))      # SR-BOLD-09
     args = parser.parse_args(argv)                                       # any other argument exits 2 before a cloud call
     try:
-        record = measure(args.execution, runner, logs=args.logs is not None)
+        record = measure(args.execution, runner, logs=args.logs is not None, metrics=args.metrics is not None)
         code = 0
     except Refused as exc:
         record, code = {"schema": SCHEMA, "status": "REFUSED", "reason": str(exc)}, 1

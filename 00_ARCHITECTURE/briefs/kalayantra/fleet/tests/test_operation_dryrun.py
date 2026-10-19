@@ -30,7 +30,7 @@ def test_existing_kind_has_disabled_bounded_preparation(kind, args, cap):
     assert result["status"] == "PREPARATION_ONLY" and result["dry_run_passed"] is False
     assert result["executor_capabilities"] == cap and result["blockers"]
     op = json.loads((FLEET / "executor_ops.json").read_text())["ops"][kind]
-    assert op["enabled"] is False
+    assert op["enabled"] is (kind == "measuring_dispatch")      # J-3a enabled the kind; the prepared surface stays disabled review metadata
     surface = op["prepared_dry_run"]
     assert surface["enabled"] is False and surface["script"].endswith("/operation_dryrun.py")
     assert surface["fixed_args"] == ["--dry-run", "--kind", kind]
@@ -70,7 +70,8 @@ def test_cli_requires_explicit_dry_run_and_rejects_extra_flags(capsys):
 def test_measuring_preparation_binds_the_real_rollback_path_without_overrides():
     entry = json.loads((FLEET / "executor_ops.json").read_text())["ops"]["measuring_dispatch_dryrun"]
     surface = entry
-    assert surface["enabled"] is False and surface["needs"] == "builder"
+    assert surface["enabled"] is True and surface["needs"] == "builder"       # J-3a: the real rollback kind is enabled, production:false
+    assert surface["production"] is False
     assert surface["script"] == "platform/scripts/dispatch_v5_measuring_job.py"
     assert surface["fixed_args"] == ["--i-am-steward", "--after-settled-1", "--dry-run"]
     assert surface["allowed_args"] == ["run", "classes"]
@@ -81,3 +82,16 @@ def test_rollback_never_invents_the_retained_generation():
     assert result["generation"] is None
     with pytest.raises(ValueError):
         load().prepare("rollback_head", {"generation": "5.0"})
+
+
+def test_j5s_preparation_points_to_disabled_strict_definition_planner():
+    result = load().prepare('verification_job', {'generation': '5.0'})
+    assert result['prepared_launcher'] == {
+        'script': 'platform/scripts/prepare_gochara_verifier_launch.py',
+        'enabled': False, 'production_allocation': None,
+        'input': 'supplied immutable verifier job definition readbacks',
+        'output': 'ky.j5s_verifier_launch_preparation/1',
+    }
+    # The executor kind and canonical future receipt stay unactivated.
+    op = json.loads((FLEET / 'executor_ops.json').read_text())['ops']['verification_job']
+    assert op['enabled'] is False and op['script'].startswith('TO_BE_SET_BY_J-4b')

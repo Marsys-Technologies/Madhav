@@ -13,6 +13,10 @@ import uuid
 
 import pytest
 
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises P1 independence (duplicate or wrong-person records refused) on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from services.gochara_rules import permission as builder_permission
 from services.gochara_kernel import inventory_verifier as inv_v
 from services.gochara_kernel import record_derivation as rd
@@ -108,10 +112,10 @@ def test_a_record_with_the_wrong_object_role_or_a_missing_prerequisite_row_is_re
     assert (status, stage) == ("DISAGREE", "p1_results") and "exactly the declared" in detail
 
 
-def _defective_relation(lord, event_class, chart):
+def _defective_relation(lord, event_class, chart, **kwargs):
     """A defect in the shared permission computation: it calls Saturn a TESTIMONY lord, so the builder's own rule omits every
     Saturn-anchored P1 record ('unwritable testimony')."""
-    real = _REAL(lord, event_class, chart)
+    real = _REAL(lord, event_class, chart, **kwargs)
     return dict(real, licence="testimony") if lord == "Saturn" else real
 
 

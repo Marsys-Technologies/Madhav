@@ -34,6 +34,7 @@ from pipeline.orchestrator.writers import ContextSpec, SubStep
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 
 from .conftest import EPHE_PATH
+from .test_a53_inventory import apply_near_miss_storage
 from .test_a55_replace_chain import CHART_ID, CLASSES, GEN, PATHS, SHORT, _World, template  # noqa: F401
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "platform" / "scripts"))
@@ -73,6 +74,7 @@ def tworld(template):
     try:
         for ddl in STUB_DDL:
             w.conn.execute(ddl)
+        apply_near_miss_storage(w.conn)             # the teardown's closed list covers the migration-1308 generation tables
         e = td.EXPECTED_REGISTRY_ROW
         w.conn.execute(
             "INSERT INTO public.asset_registry VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
@@ -263,7 +265,47 @@ def test_the_teardown_removes_the_whole_small_test_and_keeps_everything_else(two
     assert c.execute("SELECT count(*) FROM public.ka_gochara_sky_event").fetchone()[0] == sky_before
     row = c.execute("SELECT is_active, has_substeps, writer_timeout_seconds, depends_on FROM public.asset_registry"
                     " WHERE asset_id = %s", (ASSET,)).fetchone()
-    assert row == (False, True, 28800, ["ga_positions", "ga_dashas"])
+    assert row == (False, True, 72000, ["ga_positions", "ga_dashas"])
+
+
+def _seed_near_miss(w, generation, obj):
+    """One near-miss occurrence + its search row of `generation` (migration 1308), behind the tables' own guards (chart lock, as the writer takes it)."""
+    c = w.conn
+    conv = c.execute("SELECT convention_id FROM public.ka_gochara_sky_convention LIMIT 1").fetchone()[0]
+    with c.transaction():
+        c.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (CHART_ID,))
+        c.execute("INSERT INTO public.ka_gochara_near_miss_object (near_miss_object_id, body, relation_kind, canonical_target, orb_policy_id,"
+                  " convention_id) VALUES (%s, 'saturn', 'conjunction', 'point:100', 'fixture:1.000000', %s) ON CONFLICT DO NOTHING",
+                  (obj, conv))
+        c.execute("INSERT INTO public.ka_gochara_near_miss_search (chart_id, generation, near_miss_object_id, layer_version, searched_complete,"
+                  " horizon, near_miss_count) VALUES (%s, %s, %s, 1, true, tstzrange('2025-01-01 UTC', '2025-02-01 UTC', '[)'), 1)",
+                  (CHART_ID, generation, obj))
+        c.execute("INSERT INTO public.ka_gochara_near_miss (chart_id, generation, near_miss_id, near_miss_object_id, ordinal, level_deg, t_in,"
+                  " t_out, t_closest, closest_state, clearance_deg, orb_deg, proximity, junction, junction_complete, coverage, solver_method,"
+                  " precision_regime) VALUES (%s, %s, %s, %s, 1, 100, '2025-01-10 UTC', '2025-01-12 UTC', '2025-01-11 UTC', 'placed', 0.5, 1.0,"
+                  " 0.5, '{\"contains_junction\": false}'::jsonb, false, '{}'::jsonb, 'arc_index_extremum', 'fixture')",
+                  (CHART_ID, generation, uuid.uuid4(), obj))
+
+
+def test_the_teardown_deletes_the_generation_near_miss_rows_and_keeps_the_global_object_and_other_generations(tworld):
+    """Migration 1308 / the owner-surrogate ruling (madhav-6d, 2026-10-19): the closed list covers ka_gochara_near_miss and
+    ka_gochara_near_miss_search of the generation (the layer's own whole-generation REPLACE deletes exactly these, near_miss.py
+    NearMissStore.delete_generation) and the absence proof counts them; the GLOBAL insert-only object table is neither deleted (its trigger
+    refuses DELETE; it is shared) nor counted."""
+    w = tworld
+    _built_stamped_with_test_run(w)
+    obj = uuid.uuid4()
+    _seed_near_miss(w, GEN, obj)
+    _seed_near_miss(w, OTHER_GEN, obj)                               # same object: shared by another generation
+    assert _counts(w)["ka_gochara_near_miss"] == 1 and _counts(w)["ka_gochara_near_miss_search"] == 1
+
+    _teardown(w)
+
+    after = _counts(w)
+    assert all(n == 0 for n in after.values()), {t: n for t, n in after.items() if n}
+    for table in ("ka_gochara_near_miss", "ka_gochara_near_miss_search"):
+        assert w.conn.execute(f"SELECT count(*) FROM public.{table} WHERE generation = %s", (OTHER_GEN,)).fetchone()[0] == 1
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_near_miss_object WHERE near_miss_object_id = %s", (obj,)).fetchone()[0] == 1
 
 
 def test_a_second_execution_is_a_clean_noop(tworld):

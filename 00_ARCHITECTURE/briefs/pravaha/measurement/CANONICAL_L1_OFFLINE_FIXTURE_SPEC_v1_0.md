@@ -4,6 +4,7 @@ version: "1.1"
 status: PREPARATION_ONLY — no canonical bundle inspected by this job
 produced_on: 2026-10-16
 changelog:
+  - "1.1 clarification (2026-10-16): ruling (4) permits empty profiles catalog/DDL work; ruling (2)(b) adds a gated, connection-local synthetic rehearsal settlement with explicit receipt qualification."
   - "1.1 (2026-10-16): madhav-6d ruling — profiles excluded, transactional replica-mode row load, exhaustive post-restore FK audit, exact schema/grants coverage and exclusion provenance."
   - "1.0 (2026-10-16): Initial J3C-BINDINGS offline rehearsal input contract."
 ---
@@ -144,7 +145,9 @@ The suite must require `passed is True`, retain the verdict through independent
 review/teardown, and refuse to continue on failure. No row values are emitted;
 `production_acceptance` remains false. A pass proves the FK condition only.
 
-**If any rehearsal step reads `public.profiles`, report a scope defect.**
+**No profile read means no profile ROW data is required, loaded or queried; catalog/DDL work on the empty profiles table (for example FK definition validation during schema restore) is permitted (madhav-6d ruling (4)).**
+
+If any rehearsal step queries profile rows, even if it returns zero rows, report a scope defect.
 Do not satisfy such a dependency by exporting, seeding, synthesizing or granting
 access to personal parent rows. A need for profiles is not canonical-fixture
 readiness, even if every other check passes.
@@ -155,6 +158,49 @@ writer digest. Pin `SE_EPHE_PATH=/Users/Dev/kalayantra/ephe`; verify the corpus
 manifest, use one worker, and route all temp/cache output under JOB_SCRATCH.
 The offline bundle must retain its approval and manifest through teardown and
 independent absence. The suite drops its own database in `finally`.
+
+### Rehearsal-only synthetic settlement (madhav-6d ruling (2)(b))
+
+After approved restore/parity and the FK audit, the J-4e/J-3c harness may call
+`services.gochara_kernel.rehearsal_settlement.synthetic_settlement_connection`
+with its open connection, `chart_id`, approved `manifest_sha256`, retained
+`receipt` dictionary and **explicit `enabled=True`**. Use the returned wrapper
+as the measured writer's `ctx.db_conn` (and for subsequent rehearsal readers).
+Within the harness's existing transaction call
+`wrapped_conn.run_substep(writer, ctx, step)` instead of invoking the writer
+directly; it delegates to that same writer and records the snapshot outcome.
+No environment setting changes the production loader. The wrapper verifies the
+local lane endpoint, the actual server address/port and database OID, and the
+harness's `ky.job=<JOB_SCRATCH basename>` database ownership comment, rechecking
+custody on every settlement use. Database name alone is insufficient. The suite
+still owns creation, tagging and finally teardown; the adapter changes no rows,
+roles or transactions. Ordinary connections, including other connections to the
+same database, still require the governed settlement.
+
+The record uses its own synthetic schema, `synthetic=true` and
+`provenance.source="SYNTHETIC-REHEARSAL-ONLY"`; it binds only the restored single
+non-NULL Vimśottarī build, never fabricates an `L1_SETTLED` line or replaces the
+governed receipt. The retained receipt records **"snapshot stage rehearsed on
+synthetic settlement"** only when the actual snapshot invocation consumes synthetic authority, with
+`snapshot_stage_outcome=completed|failed` and `production_acceptance=false`.
+A dry-run/no-op does not qualify. This qualifies the attempt; its separate
+outcome determines stage success and supplies no complete-rehearsal claim.
+Neither this record nor a passing rehearsal supplies production settlement.
+
+The harness's `profiles_scope` check uses
+`services.gochara_kernel.rehearsal_settlement.profiles_scope`, with explicit
+`profile_rows_loaded` and `profile_row_queries` counts from the loader/query
+census across **all** restore/build/observer sessions. Include zero-result row
+queries; omit catalog queries and schema DDL. After flushing the contributing
+sessions' statistics, the helper also checks catalog tuple-read counters, without
+querying `profiles` rows. Empty DDL scans alone do not fail. Missing query/load
+census yields an honest unmeasured result, never inferred zeros from counters.
+Keep this verdict and require `passed is True` for the scope claim.
+
+**(I) INTERPRETATION:** pass a connection wrapper explicitly rather than use a
+process-wide loader override. Alternative: an environment-driven global override,
+which could affect another connection. A manifest digest here binds custody; the
+existing independent approval and typed restored-row parity remain prerequisites.
 
 ## Validation and limits
 

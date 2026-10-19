@@ -19,14 +19,20 @@ and one end-to-end test runs the script as a subprocess against a stub `gcloud` 
 
 SR-J3-READ-KINDS (optional `logs` argument; fixtures/cloudrun_readback/logs_run.json is INVENTED, shaped from the log lines the repo's own code
 prints: stretch_sink.log_line / summary_line, and events.emit_event's "[event] <json>" for asset_runner's `asset.substep`):
-  L1  the fourth call is one fixed `gcloud logging read` scoped to the job, region, execution and a bounded page; no logs argument = no fourth call
+  L1  the logs call is one fixed `gcloud logging read` scoped to the job, region, execution and a bounded page; no logs argument = no fourth call
   L2  `logs` needs a well-formed execution; refused before any cloud call otherwise
-  L3  STRETCH_SINK/1 records are counted by kind/reason, de-duplicated by record_id, and reconciled to the STRETCH_SINK_SUMMARY/1 digest
+  L3  STRETCH_SINK/1 records are counted by kind/reason, de-duplicated by (event_class, record_id), and reconciled to the STRETCH_SINK_SUMMARY/1 digest
+  L3b classes share record_ids (record_id has no event_class: stretch_sink.record_id), so read counts by kind are kept PER CLASS and equal the
+      per-class STRETCH_SINK_SUMMARY/1 counts (SR-STRETCH-SINK-COUNTS; shape of execution brahma-build-pipeline-job-lzl87: 13,140 = 13,140)
   L4  a truncated or malformed sink line reads NULL (never zero, never the readable part standing in for the whole)
   L5  asset.substep: seconds between sub-steps, per-asset elapsed, last index/total; an unreadable time reads null
-  L6  a full or empty page is not reported as a complete count
+  L6  an empty read is not reported as a zero count
   L7  a gcloud logging failure refuses the whole record; nothing but parsed fields reaches the output
   L8  the executor table and the CLI carry `logs` end to end
+  P1  every entry of the execution is read across pages: exact counts, last index/total, elapsed from the OLDEST page, no double count at a page seam
+  P2  the cap / time budget / stuck cursor / unpageable time stop the read with truncated=true and every count NULL (lower bound given), never zero
+  P3  paging varies only a validated timestamp cursor in the one fixed filter; gcloud text never reaches the argv unchecked
+  P4  equal entries give equal output whatever order gcloud returned time ties in
 """
 import copy
 import importlib.util
@@ -412,7 +418,7 @@ def test_l3_sink_records_are_counted_deduplicated_and_reconciled_to_the_summary_
     entries = fixture("logs_run")
     duplicate = next(e for e in entries if e["textPayload"].startswith("STRETCH_SINK/1 ") and '"stretch_ordinal": 2' in e["textPayload"] or
                      e["textPayload"].startswith("STRETCH_SINK/1 ") and '"stretch_ordinal":2' in e["textPayload"])
-    sink, _ = read_logs(entries + [duplicate])
+    sink, _ = read_logs(entries + [{**duplicate, "insertId": "x-second-emission"}])      # the same record logged twice, as two log entries
     sink = sink["sink"]
     assert sink["record_count"] == 4 and sink["duplicate_record_lines"] == 1
     assert sink["counts_by_kind_reason"] == {"near_miss/certified_positive_clearance": 1, "omission/crossing_detected": 1, "wrap/ray_band_contains_wrap_cut": 2}
@@ -501,16 +507,13 @@ def test_l5_a_malformed_substep_is_counted_unreadable_and_a_run_with_no_substep_
     assert sub == {"last_substep": None, "assets": []}
 
 
-def test_l6_a_full_page_is_a_lower_bound_and_an_empty_page_is_not_a_zero_count():
-    entries = fixture("logs_run")
-    filler = [{"timestamp": "2026-10-17T09:00:00Z", "textPayload": "noise"}] * (CR.LOG_PAGE_SIZE - len(entries))
-    full, _ = read_logs(entries + filler)
-    assert full["page_full"] is True and full["entries_returned"] == CR.LOG_PAGE_SIZE
-    assert full["sink"]["record_count"] is None and full["sink"]["record_count_lower_bound"] == 4
+def test_l6_an_empty_read_is_not_a_zero_count_and_a_short_read_is_complete():
     empty, _ = read_logs([])
     assert empty["entries_returned"] == 0 and empty["sink"]["record_count"] is None and empty["sink"]["record_count_lower_bound"] == 0
     assert empty["substeps"]["last_substep"] is None
-    assert read_logs(entries)[0]["page_full"] is False
+    short, cloud = read_logs(fixture("logs_run"))
+    assert short["truncated"] is False and short["truncation_reason"] is None and short["pages_read"] == 1 and short["sink"]["record_count"] == 4
+    assert len([c for c in cloud.calls if c[2] == "read"]) == 1             # a short page proves the oldest entry was reached: no second call
 
 
 def test_l7_a_logging_failure_refuses_the_whole_record_and_stderr_is_not_relayed():
@@ -551,3 +554,228 @@ def test_l8_table_and_validate_carry_logs_and_the_cli_runs_end_to_end(tmp_path, 
     assert no_exec.returncode == 1 and json.loads(no_exec.stdout)["status"] == "REFUSED"
     assert run("--execution", EXEC, "--logs", "false").returncode == 2
     assert len(calls.read_text().splitlines()) == before                     # neither the refusal nor the bad flag reached gcloud
+
+
+# ───────────── paging: every entry of one execution, bounded, truncation never a zero ─────────────
+
+CURSOR = re.compile(r'AND timestamp<="([^"]+)"$')
+
+
+def _ns(text):
+    return CR._cursor_key(text) or ("", "")                      # an unreadable time sorts as the oldest
+
+
+class PagedCloud(Cloud):
+    """Doubles `gcloud logging read` faithfully enough to page: honours --limit, --order=desc and the filter's `timestamp<=` clause
+    (inclusive, nanosecond), so the entries at a page seam come back again, exactly as the real service returns them."""
+
+    def __init__(self, entries, tie_reverse=False, **kw):
+        super().__init__(**kw)
+        self.entries, self.tie_reverse = entries, tie_reverse
+
+    def __call__(self, argv):
+        if "logging" not in argv:
+            return super().__call__(argv)
+        self.calls.append(list(argv))
+        limit = int(next(a for a in argv if a.startswith("--limit=")).split("=")[1])
+        match = CURSOR.search(argv[3])
+        chosen = [e for e in self.entries if match is None or _ns(e["timestamp"]) <= _ns(match.group(1))]
+        chosen.sort(key=lambda e: e["insertId"], reverse=self.tie_reverse)           # the order of ties is the service's to choose
+        chosen.sort(key=lambda e: _ns(e["timestamp"]), reverse=True)                  # newest first (stable: ties keep that order)
+        return SimpleNamespace(returncode=0, stdout=json.dumps(chosen[:limit]), stderr="")
+
+
+def _stamp(second, nano=0):
+    return f"2026-10-17T{second // 3600 + 10:02d}:{second % 3600 // 60:02d}:{second % 60:02d}.{nano:09d}Z"
+
+
+def _sink_entry(n, when):
+    kind, reason = ("wrap", "ray_band_contains_wrap_cut") if n % 3 else ("near_miss", "certified_positive_clearance")
+    body = {"schema": "stretch_sink/1", "kind": kind, "reason": reason, "event_class": "conjunction", "record_id": f"00000000-0000-8000-8000-{n:012d}"}
+    return {"insertId": f"s{n:06d}", "timestamp": when, "textPayload": "STRETCH_SINK/1 " + json.dumps(body, sort_keys=True)}
+
+
+def _substep_entry(index, when):
+    body = {"type": "asset.substep", "asset_id": "ka_gochara_v5", "substep_key": f"chunk_{index}", "index": index, "total": 3, "skipped": False}
+    return {"insertId": f"u{index}", "timestamp": when, "textPayload": "[event] " + json.dumps(body)}
+
+
+SINKS = 2300
+
+
+def long_run():
+    """2,300 sink records over three pages. Record n is logged at second n (oldest first); records 1290..1310 share one instant (a tie block
+    across the page 1/2 seam) and records 1..21 share another (across the page 2/3 seam), so a seam entry comes back on both sides."""
+    entries = []
+    for n in range(1, SINKS + 1):
+        second = n
+        if 1290 <= n <= 1310:
+            second = 1300
+        if 1 <= n <= 21:
+            second = 1
+        entries.append(_sink_entry(n, _stamp(second, 7 if n % 2 else 0)))
+    entries += [_substep_entry(1, _stamp(0, 123456789)), _substep_entry(2, _stamp(0, 623456789)), _substep_entry(3, _stamp(SINKS + 5))]
+    digest = __import__("hashlib").sha256("\n".join(sorted(f"00000000-0000-8000-8000-{n:012d}" for n in range(1, SINKS + 1))).encode()).hexdigest()
+    summary = {"schema": "stretch_sink_summary/1", "event_class": "conjunction", "records": SINKS, "record_ids_digest": digest,
+               "counts_by_kind_reason": {"near_miss/certified_positive_clearance": SINKS // 3, "wrap/ray_band_contains_wrap_cut": SINKS - SINKS // 3}}
+    entries.append({"insertId": "z-summary", "timestamp": _stamp(SINKS + 6), "textPayload": "STRETCH_SINK_SUMMARY/1 " + json.dumps(summary)})
+    return entries
+
+
+def test_p1_every_entry_is_read_across_pages_with_exact_counts_and_oldest_page_substeps():
+    entries = long_run()
+    assert len(entries) == SINKS + 4 and len(entries) > 2 * CR.LOG_PAGE_SIZE
+    cloud = PagedCloud(entries)
+    logs = CR.measure(EXEC, cloud, logs=True)["logs"]
+    reads = [c for c in cloud.calls if c[2] == "read"]
+    assert logs["pages_read"] == len(reads) == 3 and logs["truncated"] is False and logs["truncation_reason"] is None
+    assert logs["entries_returned"] == SINKS + 4
+    sink = logs["sink"]
+    assert sink["duplicate_record_lines"] == 0                       # seam entries returned twice are one entry, not two records
+    assert sink["record_count"] == SINKS
+    assert sink["counts_by_kind_reason"] == {"near_miss/certified_positive_clearance": SINKS // 3, "wrap/ray_band_contains_wrap_cut": SINKS - SINKS // 3}
+    assert sink["records_by_event_class"] == {"conjunction": SINKS}
+    assert [(s["records"], s["records_match_summary"], s["digest_matches_records"]) for s in sink["summaries"]] == [(SINKS, True, True)]
+    run = logs["substeps"]["assets"][0]
+    assert (run["substeps_seen"], run["total"], run["last_index"]) == (3, 3, 3)       # sub-step 1 lives on the OLDEST page
+    assert logs["substeps"]["last_substep"]["index"] == 3 and logs["substeps"]["last_substep"]["total"] == 3
+    assert run["first_at"] == _stamp(0, 123456789) and run["elapsed_seconds"] == 2304.877            # 2305 s minus 0.123456789 s, read from page 3
+
+
+def test_p2_the_page_cap_the_time_budget_and_a_stuck_cursor_truncate_and_null_every_count(monkeypatch):
+    entries = long_run()
+    monkeypatch.setattr(CR, "LOG_MAX_PAGES", 2)
+    capped = CR.measure(EXEC, PagedCloud(entries), logs=True)["logs"]
+    assert capped["truncated"] is True and capped["truncation_reason"] == "page_cap" and capped["pages_read"] == 2
+    assert capped["sink"]["record_count"] is None and capped["sink"]["counts_by_kind_reason"] is None and capped["sink"]["records_by_event_class"] is None
+    assert all(s["records_match_summary"] is None and s["digest_matches_records"] is None for s in capped["sink"]["summaries"])
+    assert 0 < capped["sink"]["record_count_lower_bound"] < SINKS            # the readable part is labelled a lower bound, not a count
+    monkeypatch.setattr(CR, "LOG_MAX_PAGES", 60)
+    ticks = iter([0, CR.LOG_BUDGET_S + 1])
+    slow = CR.measure_logs(EXEC, PagedCloud(entries), monotonic=lambda: next(ticks))
+    assert slow["truncated"] is True and slow["truncation_reason"] == "time_budget" and slow["pages_read"] == 1 and slow["sink"]["record_count"] is None
+    one_instant = [_sink_entry(n, _stamp(5)) for n in range(1, CR.LOG_PAGE_SIZE + 500)]
+    stuck = CR.measure(EXEC, PagedCloud(one_instant), logs=True)["logs"]
+    assert stuck["truncated"] is True and stuck["truncation_reason"] == "stuck_cursor" and stuck["sink"]["record_count"] is None
+    assert stuck["pages_read"] == 2                                          # it tried once more, saw nothing new, and said so
+
+
+def test_p3_paging_varies_only_a_validated_timestamp_in_the_one_fixed_filter():
+    cloud = PagedCloud(long_run())
+    CR.measure(EXEC, cloud, logs=True)
+    reads = [c for c in cloud.calls if c[2] == "read"]
+    base = CR.logs_filter(EXEC)
+    assert reads[0][3] == base and base == CR.logs_read_argv(EXEC)[3]
+    for argv in reads[1:]:
+        assert argv[:3] == ["gcloud", "logging", "read"] and argv[4:] == [f"--project={CR.PROJECT}", "--limit=1000", "--order=desc", "--format=json"]
+        assert re.fullmatch(re.escape(base) + r' AND timestamp<="\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{9}Z"', argv[3])
+    assert len({a[3] for a in reads}) == len(reads)                          # the cursor moved on every page
+    # gcloud's own text is never put into the filter unchecked: a full page whose oldest time is not strict RFC 3339 UTC stops, with no second call
+    poisoned = [_sink_entry(n, _stamp(n + 1)) for n in range(CR.LOG_PAGE_SIZE)]
+    poisoned[-1]["timestamp"] = '2026-10-17T10:00:00Z" OR textPayload:"x'
+    guarded = PagedCloud(poisoned)
+    out = CR.measure(EXEC, guarded, logs=True)["logs"]
+    assert out["truncated"] is True and out["truncation_reason"] == "unpageable_time" and out["sink"]["record_count"] is None
+    assert len([c for c in guarded.calls if c[2] == "read"]) == 1
+    with pytest.raises(CR.Refused):
+        CR.logs_filter(EXEC, '2026-10-17T10:00:00Z" OR true OR "x')
+    with pytest.raises(CR.Refused):
+        CR.logs_filter(EXEC, "2026-10-17T10:00:00+05:30")
+
+
+def test_p4_output_does_not_depend_on_the_order_gcloud_returned_time_ties_in():
+    entries = long_run()
+    first = CR.measure_logs(EXEC, PagedCloud(entries))
+    second = CR.measure_logs(EXEC, PagedCloud(list(reversed(entries)), tie_reverse=True))
+    assert json.dumps(first, sort_keys=True) == json.dumps(second, sort_keys=True)
+    assert first["sink"]["record_count"] == SINKS
+
+
+def test_p5_a_paging_failure_on_a_later_page_refuses_the_whole_record():
+    cloud = PagedCloud(long_run())
+    real, reads = cloud.__call__, []
+
+    def flaky(argv):
+        if "logging" in argv:
+            reads.append(argv)
+            if len(reads) > 1:
+                return SimpleNamespace(returncode=1, stdout="", stderr="token ya29.LEAK")
+        return real(argv)
+    with pytest.raises(CR.Refused) as caught:
+        CR.measure(EXEC, flaky, logs=True)
+    assert str(caught.value) == "logs: gcloud exited 1" and "ya29" not in str(caught.value)       # never a partial record from page 1 alone
+
+
+# --- SR-STRETCH-SINK-COUNTS: records of different event classes may share a record_id -------------------------------------------------------
+# Counts per class and kind are the 26 STRETCH_SINK_SUMMARY/1 lines of execution brahma-build-pipeline-job-lzl87 (the J-3d logs receipt; counts
+# only). The raw record lines are not in that receipt, so the ids are INVENTED: the n-th record of a kind carries the same id in every class
+# that has one, which reproduces the shape (same-count classes share their whole id set; others overlap) without claiming the real ids.
+_K = ("anomaly/boundary_pairing_mismatch", "horizon_clipped/clipped_at_end", "horizon_clipped/clipped_at_start", "invented/ledger_contact_not_reconstructed",
+      "multi_episode_stretch/multiple_ledger_episodes", "near_miss/certified_positive_clearance", "station_seam/arc_index_station_inside",
+      "wrap/ray_band_contains_wrap_cut")
+_RECEIPT_SUMMARIES = {                     # event_class -> counts per _K, in order (0 = key absent)
+    "travel_event": (0, 9, 9, 0, 15, 14, 698, 0), "relocation": (0, 9, 9, 0, 15, 14, 698, 0),
+    "surgery": (2, 9, 6, 2, 27, 16, 565, 18), "illness_acute": (2, 9, 6, 2, 27, 16, 565, 18), "chronic_onset": (2, 9, 6, 2, 27, 16, 565, 18),
+    "separation": (1, 7, 6, 1, 25, 21, 557, 18),
+    "romantic_start": (1, 5, 5, 1, 8, 11, 515, 0), "marriage": (1, 5, 5, 1, 8, 11, 515, 0),
+    "property_acquisition": (0, 3, 3, 0, 0, 0, 335, 0), "foreign_settlement": (0, 3, 3, 0, 0, 0, 335, 0),
+    "business_launch": (0, 3, 3, 0, 0, 0, 335, 0), "achievement_recognition": (0, 3, 3, 0, 0, 0, 335, 0),
+    "parental_event": (0, 2, 3, 0, 0, 0, 61, 0), "financial_deception": (0, 2, 3, 0, 0, 0, 61, 0),
+    "major_loss": (2, 7, 4, 2, 18, 10, 416, 0), "major_gain": (1, 6, 9, 1, 12, 22, 638, 0),
+    "exam_outcome": (0, 10, 9, 0, 13, 21, 644, 0), "education_milestone": (0, 10, 9, 0, 13, 21, 644, 0),
+    "childbirth": (0, 7, 6, 0, 6, 11, 522, 0), "career_setback": (0, 8, 6, 0, 13, 17, 393, 18),
+    "career_entry": (0, 10, 7, 0, 13, 17, 639, 18), "career_change": (0, 10, 7, 0, 13, 17, 639, 18), "career_advancement": (0, 10, 7, 0, 13, 17, 639, 18),
+    "bereavement": (0, 12, 10, 0, 28, 31, 731, 18),
+    "spiritual_turn": (0,) * 8, "psychological_arc": (0,) * 8,
+}
+SHARED_ID_SETS = 7                         # 18 of the 24 non-empty classes share their full id set with another class, in 7 sets (SR-STRETCH-SINK-COUNTS item 3)
+
+
+def _shared_id_run():
+    import hashlib
+    entries, expected, ids_by_class, second = [], {}, {}, 0
+    for event_class, counts in _RECEIPT_SUMMARIES.items():
+        ids_by_class[event_class], expected[event_class] = [], {}
+        for key, count in zip(_K, counts):
+            kind, reason = key.split("/")
+            for n in range(1, count + 1):
+                rid = f"{_K.index(key):08x}-0000-8000-8000-{n:012d}"
+                ids_by_class[event_class].append(rid)
+                expected[event_class][key] = expected[event_class].get(key, 0) + 1
+                second += 1
+                body = {"schema": "stretch_sink/1", "kind": kind, "reason": reason, "event_class": event_class, "record_id": rid}
+                entries.append({"insertId": f"r{second:06d}", "timestamp": _stamp(second), "textPayload": "STRETCH_SINK/1 " + json.dumps(body, sort_keys=True)})
+    for event_class, ids in ids_by_class.items():
+        second += 1
+        summary = {"schema": "stretch_sink_summary/1", "event_class": event_class, "records": len(ids), "counts_by_kind_reason": expected[event_class],
+                   "record_ids_digest": hashlib.sha256("\n".join(sorted(ids)).encode()).hexdigest()}
+        entries.append({"insertId": f"z{second:06d}", "timestamp": _stamp(second), "textPayload": "STRETCH_SINK_SUMMARY/1 " + json.dumps(summary)})
+    return entries, expected, ids_by_class
+
+
+def test_l3b_classes_that_share_record_ids_are_counted_per_class_and_equal_their_summaries():
+    entries, expected, ids_by_class = _shared_id_run()
+    emitted = sum(len(ids) for ids in ids_by_class.values())
+    id_sets = {frozenset(ids) for ids in ids_by_class.values() if ids}
+    assert emitted == 13140 and len(id_sets) == 13 and len({i for ids in ids_by_class.values() for i in ids}) < emitted      # the fixture does share ids
+    assert sum(1 for ids in id_sets if sum(frozenset(v) == ids for v in ids_by_class.values()) > 1) == SHARED_ID_SETS
+    logs = CR.measure(EXEC, PagedCloud(entries), logs=True)["logs"]
+    sink = logs["sink"]
+    assert logs["truncated"] is False and logs["unreadable_lines"] == 0 and logs["pages_read"] > 1
+    assert sink["record_count"] == 13140 and sink["duplicate_record_lines"] == 0         # a shared id across classes is not a duplicate line
+    assert sink["records_by_event_class"] == {c: len(ids) for c, ids in sorted(ids_by_class.items()) if ids}
+    assert sink["counts_by_kind_reason_by_event_class"] == {c: dict(sorted(k.items())) for c, k in sorted(expected.items()) if k}
+    assert sum(sum(k.values()) for k in sink["counts_by_kind_reason_by_event_class"].values()) == sum(s["records"] for s in sink["summaries"]) == 13140
+    assert len(sink["summaries"]) == 26
+    for row in sink["summaries"]:                                                         # per class: read == summary, by kind, count and digest
+        assert row["read_counts_by_kind_reason"] == dict(sorted(expected[row["event_class"]].items())), row["event_class"]
+        assert row["records_match_summary"] is True and row["counts_by_kind_match_summary"] is True and row["digest_matches_records"] is True, row["event_class"]
+
+
+def test_l3b_a_class_short_of_its_summary_by_kind_reads_false_for_that_class_only():
+    entries, _, _ = _shared_id_run()
+    dropped = next(e for e in entries if e["textPayload"].startswith("STRETCH_SINK/1 ") and '"event_class": "marriage"' in e["textPayload"]
+                   and '"near_miss"' in e["textPayload"])
+    sink = CR.measure(EXEC, PagedCloud([e for e in entries if e is not dropped]), logs=True)["logs"]["sink"]
+    flags = {s["event_class"]: (s["records_match_summary"], s["counts_by_kind_match_summary"], s["digest_matches_records"]) for s in sink["summaries"]}
+    assert flags["marriage"] == (False, False, False) and flags["romantic_start"] == (True, True, True)       # same ids, other class: untouched

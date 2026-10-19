@@ -34,7 +34,7 @@ def test_enabled_table_argv_agrees_with_script(kind):
     op = json.loads(TABLE.read_text())['ops'][kind]
     assert op['enabled'] is True
     assert (ROOT / op['script']).is_file(), op['script']
-    assert op['production'] is True
+    assert op['production'] is (not kind.endswith('_dryrun'))     # A8 §3.8: a dry run is read-only with a credential
     assert op['enabled_by'] == 'J-1a'
     assert op['allowed_args'] == (['label', 'scope'] if kind.startswith('backup_') else
                                  ['run', 'classes', 'horizon-start', 'horizon-end'] if 'dispatch' in kind else [])
@@ -140,11 +140,31 @@ def test_absence_proof_measures_every_deleted_scope_and_run_ids():
 
 
 @pytest.mark.parametrize('table', ['build_runs', 'build_run_assets', 'asset_provenance_receipts',
-                                 'ka_gochara_contact', 'ka_gochara_search_input_snapshot', 'kala_gochara_publication'])
+                                 'ka_gochara_contact', 'ka_gochara_search_input_snapshot', 'kala_gochara_publication',
+                                 'ka_gochara_near_miss', 'ka_gochara_near_miss_search'])
 def test_absence_refuses_surviving_rows(table):
     cur = Counts({table: 1})
     with pytest.raises(teardown.TeardownRefused, match=table):
         teardown._prove_absence(cur, [])
+
+
+def test_teardown_closed_list_holds_the_generation_near_miss_tables_and_never_the_global_object():
+    """Migration 1308 (NearMissStore.delete_generation deletes exactly ka_gochara_near_miss and ka_gochara_near_miss_search by chart x
+    generation, near_miss.py). The backup scope declares them written, so the teardown's closed list, its absence proof and the independent
+    readback must move with it. ka_gochara_near_miss_object is GLOBAL and insert-only (a DELETE trigger refuses it; any chart or generation
+    may reference an object): the teardown never deletes nor counts it, in any of the four places."""
+    nm = ('ka_gochara_near_miss', 'ka_gochara_near_miss_search')
+    obj = 'ka_gochara_near_miss_object'
+    closed = [t for t, _ in teardown.GENERATION_TABLES]
+    assert all(t in closed for t in nm) and obj not in closed
+    assert closed.index('ka_gochara_search_input_snapshot') < min(map(closed.index, nm)) < closed.index('kala_gochara_publication')
+    scoped = [t for t, _, _, _ in teardown._scope_statements([])]
+    assert all(t in scoped for t in nm) and obj not in scoped
+    assert all(t in teardown._absence_counts(Counts(), []) for t in nm)
+    assert obj not in teardown._absence_counts(Counts(), [])
+    assert all(t in teardown.REQUIRED_PRIVILEGES['select_delete'] for t in nm) and obj not in teardown.REQUIRED_PRIVILEGES['select_delete']
+    readback = teardown.shared.absence_readback_sql()
+    assert all(f'FROM {t} WHERE chart_id' in readback for t in nm) and obj not in readback
 
 
 def test_failed_absence_detector_rolls_back_before_commit(monkeypatch):
@@ -182,35 +202,50 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     import datetime as dt
     import types
     source = ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py'
-    function = next(n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef) and n.name == 'validate')
+    # validate's signed route is signer_acceptance_problem (the A8 §3.9 block, moved out unchanged by OWNER-MINIMAL-PROTECTION-NOW)
+    functions = [n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef) and n.name in ('signer_acceptance_problem', 'validate')]
+    assert len(functions) == 2
     accepted_dir = tmp_path / 'acceptance'; accepted_dir.mkdir()
     globals_ = {'pathlib': importlib.import_module('pathlib'), 'SAFE_ID': importlib.import_module('re').compile(r'^[a-z0-9_-]+$'),
                 'SAFE_ARG': importlib.import_module('re').compile(r'^[A-Za-z0-9_.:+,/-]+$'),
                 'SHA': importlib.import_module('re').compile(r'^[0-9a-f]{40}$'),
                 'CANONICAL_CHART': '482012f1-710e-4a25-994a-93821f5871aa', 'ACC': accepted_dir,
                 'lease_live': lambda lease: True, 'git': lambda *args: types.SimpleNamespace(returncode=0),
-                'dt': dt, 'json': json, 'APPROVAL_MAX_AGE_S': 10800, 'seen': lambda key: False,
+                'dt': dt, 'json': json, 'seen': lambda key: False,
                 'utc_time': lambda value: dt.datetime.fromisoformat(value),
-                'smalltest_policy_problem': lambda req: None, 'request_digest': lambda req: 'synthetic_bound_digest'}
-    exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), 'exec'), globals_)
+                'smalltest_policy_problem': lambda req: None, 'head_policy_problem': lambda req: None, 'request_digest': lambda req: 'synthetic_bound_digest',
+                # validate() ends with the scheduler and measuring-cancel admission rules; neither applies to a small-test kind
+                # (each has its own suite), so they are transport doubles here like smalltest_policy_problem.
+                'scheduler_policy_problem': lambda req: None, 'measuring_cancel_problem': lambda req: None,
+                # the mechanical route needs a pack fill, which none of these requests carries (its own suite: fleet/tests/test_executor_mechanical_production.py)
+                'mechanical_pre_acceptance': lambda req, table: 'the mechanical route is not under test here'}
+    exec(compile(ast.Module(body=functions, type_ignores=[]), str(source), 'exec'), globals_)
     validate = globals_['validate']
     table = json.loads(TABLE.read_text())['ops']
     request = {'operation_id': 'p01_fixture', 'kind': kind, 'item_id': 'J-1a', 'idempotency_key': 'p01_fixture',
                'requested_by': 'adhikarin', 'kyd': 'synthetic', 'chart_id': globals_['CANONICAL_CHART'], 'lease_id': 'synthetic'}
     caps = {'owner': True, 'builder': True, 'gcloud': True}
-    assert 'pre-acceptance receipt missing' in validate(request, table, caps)
+    dry_run = kind.endswith('_dryrun')
+    if dry_run:      # A8 §3.8: production:false — no lease or acceptance, but only a merged reviewed tree may run with the credential
+        assert validate(request, table, caps) == 'reviewed_commit required for a dry-run operation'
+    else:
+        assert 'pre-acceptance receipt missing' in validate(request, table, caps)
     assert 'disallowed args' in validate(dict(request, args={'run-id': 'synthetic'}), table, caps)
     assert 'may not request' in validate(dict(request, requested_by='v1'), table, caps)
     request.update(reviewed_commit='a'*40, expires_at=(dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1)).isoformat())
+    if dry_run:
+        assert validate(request, table, caps) is None
+        return
     receipt = {'result': 'ACCEPTED', 'operation_id': request['operation_id'], 'by': 'v1',
                'reviewed_commit': request['reviewed_commit'], 'request_sha256': 'synthetic_bound_digest',
                'ts': dt.datetime.now(dt.timezone.utc).isoformat(), 'checks': {}, 'rows': {}}
     path = accepted_dir / 'receipt.json'
     request['acceptance_receipt'] = str(path)
     path.write_text(json.dumps(receipt))
-    if kind != 'backup_snapshot':
-        assert 'attestation missing' in validate(request, table, caps) or 'rows are not all true' in validate(request, table, caps)
-    receipt.update(checks={'backup_taken': True, 'restore_verified': True, 'dry_run_passed': True},
-                   rows={key: True for key in table[kind]['required_rows']})
+    if kind in ('smalltest_dispatch', 'smalltest_teardown'):    # A8 §5: dry_run_passed for a mutating kind, backup_taken for a teardown; nothing else
+        assert 'attestation missing' in validate(request, table, caps)
+    else:
+        assert validate(request, table, caps) is None
+    receipt.update(checks={'backup_taken': True, 'dry_run_passed': True})
     path.write_text(json.dumps(receipt))
     assert validate(request, table, caps) is None

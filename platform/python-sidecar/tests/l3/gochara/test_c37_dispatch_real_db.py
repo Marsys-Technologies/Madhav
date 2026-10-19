@@ -37,6 +37,7 @@ from pipeline.orchestrator.writers import WRITER_REGISTRY, discover_all
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 
 from . import _runner_world as rw
+from .test_a53_inventory import apply_near_miss_storage
 from .test_a55_replace_chain import CHART_ID, SHORT, _World, template  # noqa: F401
 
 SCRIPTS = Path(__file__).resolve().parents[5] / "platform" / "scripts"
@@ -62,6 +63,7 @@ def dtemplate(template):  # noqa: F811
     conn = psycopg.connect(make_conninfo(dsn, dbname=name), autocommit=True, connect_timeout=3)
     try:
         rw.apply_orchestrator_schema(conn)
+        apply_near_miss_storage(conn)       # c37's teardown legs run the script, whose closed list covers the migration-1308 generation tables
         # the resumption ledger the pre-dispatch readback counts (no v5 path writes it; the readback must still run)
         conn.execute((rw.REPO / "platform/migrations/436_build_substep_progress.sql").read_text(encoding="utf-8"))
         conn.execute("CREATE TABLE IF NOT EXISTS public.kala_gochara_authority (chart_id uuid PRIMARY KEY, authoritative_generation text)")
@@ -74,7 +76,7 @@ def dtemplate(template):  # noqa: F811
 
 
 @pytest.fixture()
-def dw(dtemplate):
+def dw(dtemplate, digest_overlay_applied):   # SR-HYG-LOCAL-OVERLAY: the dispatch reads the CI-style regenerated digest inventory
     w = _World(dtemplate)
     try:
         yield w

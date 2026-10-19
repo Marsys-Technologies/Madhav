@@ -59,7 +59,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
-import { kalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias, publishedRequestSchema } from './registry_alias.js'
 import { handleMuhurtaFinder, MuhurtaFinderInputSchema, type MuhurtaFinderResult, type MuhurtaWindow, type HoraSlot } from '../muhurta_finder.js'
 import {
   makeKalaEnvelope,
@@ -120,6 +120,7 @@ import { nakshatraNumber } from '../muhurta_finder.js'
 const UNDERTAKING_ENUM = MuhurtaFinderInputSchema.shape.action_type
 
 export const KalaElectInputShape = {
+  published_request: publishedRequestSchema,
   chart_id: z.string().uuid().describe('Chart UUID. Required — no default chart.'),
   undertaking: UNDERTAKING_ENUM.default('general').describe(
     'The undertaking to elect a time for. This is the Mode-3 (ACTIVITY ELECTION) subject — ' +

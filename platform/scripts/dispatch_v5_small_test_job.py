@@ -10,7 +10,7 @@ before touching anything.
 
 PRECONDITION: migration 1304 (PR 3101) has been applied — it is the ONLY source
 of the ka_gochara_v5 registry row's small-test shape (has_substeps true,
-writer_timeout_seconds 28800, depends_on [ga_positions, ga_dashas], the
+writer_timeout_seconds 72000 (28800 from 1304, raised by 1395), depends_on [ga_positions, ga_dashas], the
 ka_gochara_eval_window counter). This script does NOT insert or alter that row;
 it VALIDATES it field by field and refuses on any difference or if the row is
 absent (A2 review: the old INSERT carried the pre-1304 shape and could never
@@ -178,7 +178,7 @@ EXPECTED_REGISTRY_ROW = {
     "is_active": False,
     "has_writer": True,
     "has_substeps": True,
-    "writer_timeout_seconds": 28800,
+    "writer_timeout_seconds": 72000,                       # 28800 from migration 1304, raised by migration 1395 (J-3c cap, SR-J3-CAP-LIVE)
     "depends_on": ["ga_positions", "ga_dashas"],
     "target_table": "ka_gochara_eval_window",
     "count_sql": EXPECTED_COUNT_SQL,

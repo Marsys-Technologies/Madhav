@@ -35,12 +35,32 @@ def test_prebuild_preserves_disabled_authority_operations_and_deferred_helper():
     ops = json.loads((ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json').read_text())['ops']
     for name in ('publish_head', 'rollback_head'):
         assert ops[name]['enabled'] is False
-        assert ops[name]['script'].startswith('TO_BE_SET_')
+        assert ops[name]['script'] == '00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py'
+        assert ops[name + '_dryrun']['enabled'] is False
     # The rejected P09 helper was deferred on main. Do not recreate the B1
     # readiness-only mutation path during this admission-only prebuild.
     assert not (ROOT / 'platform/python-sidecar/services/gochara_kernel/authority_head.py').exists()
+
 
 from pathlib import Path as _CiPath
 import sys as _ci_sys
 _ci_sys.path.insert(0, str(_CiPath(__file__).resolve().parents[5] / 'platform/scripts/governance'))
 from ci_discovery import expanded_workflow_text as _ci_text
+
+
+def test_j6mr1_specifies_runner_idempotency_without_changing_applied_sql_or_activation():
+    import hashlib
+    import yaml
+
+    contract = ROOT / '00_ARCHITECTURE/briefs/kalayantra/J6M_R1_REPLAY_CONTRACT_v1_0.md'
+    assert contract.is_file(), 'J6M-R1 needs an explicit replay contract, not an inferred runner exemption'
+    metadata = yaml.safe_load(contract.read_text().split('---', 2)[1])
+    assert metadata['version'] == '1.0'
+    assert metadata['status'] == 'PREBUILD_WAITING_ON_GATE'
+    assert metadata['item'] == 'J6M-R1'
+    assert metadata['idempotency'] == 'runner_ledger'
+    assert metadata['raw_replay_sqlstate'] == '42710'
+    assert metadata['requires_catalog_readback'] is True
+    assert metadata['activation'] is False
+    assert metadata['migration'] == MIGRATION
+    assert metadata['migration_sha256'] == hashlib.sha256((ROOT / 'platform/migrations' / MIGRATION).read_bytes()).hexdigest()

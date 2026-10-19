@@ -154,7 +154,7 @@ describe('deploy.yml wiring', () => {
     if (!on) throw new Error('deploy workflow is missing its event configuration')
     const inputs = on.workflow_dispatch.inputs
     expect(Object.keys(inputs).sort()).toEqual(
-      ['ci_gate', 'emergency_reason', 'force_all_services', 'data_plane_cutover', 'jataka_schema_migration', 'ai_console_schema_migration', 'ai_metering_schema_migration', 'gochara_schema_migration', 'gochara_contracts_schema_migration', 'kala_schema_migration'].sort()
+      ['ci_gate', 'emergency_reason', 'force_all_services', 'data_plane_cutover', 'jataka_schema_migration', 'ai_console_schema_migration', 'ai_metering_schema_migration', 'gochara_schema_migration', 'gochara_contracts_schema_migration', 'kala_schema_migration', 'window_lease_id'].sort()
     )
     expect(inputs.ci_gate.default).toBe(REQUIRE_CI_GREEN)
     expect(inputs.ci_gate.options).toContain(EMERGENCY_OVERRIDE_TOKEN)
@@ -168,6 +168,8 @@ describe('deploy.yml wiring', () => {
     expect(inputs.gochara_contracts_schema_migration.default).toBe(false)
     // Kāla protected window (platform/scripts/kala_protected_migrations.txt).
     expect(inputs.kala_schema_migration.default).toBe(false)
+    // W2-M-08: the protected window's own coordination lease; empty = the window holds none, so any ACTIVE lease refuses it.
+    expect(inputs.window_lease_id.default).toBe('')
   })
 
   it('the changes job runs the dispatch gate', () => {

@@ -30,6 +30,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Pool } from 'pg'
+import { acquireClusterRoleLock, ensureRole } from './builder_role_fixture'
 import fs from 'fs'
 import path from 'path'
 
@@ -52,6 +53,7 @@ const ASSET_ID = '_t_m1211_asset'
 const BUILDER_ROLE = 'data_plane_builder'
 
 let pool: Pool
+let releaseRoleLock: (() => Promise<void>) | undefined
 
 async function builderUpdateState(state: string) {
   // A connection AS the builder-mirror role, so the trigger's insert runs with
@@ -84,6 +86,8 @@ describe.skipIf(!TEST_DB_URL)('migration 1211 — asset_throughput_state_audit b
     }
 
     pool = new Pool({ connectionString: TEST_DB_URL })
+    // Cluster-wide role: serialise against every other suite that mirrors data_plane_builder.
+    releaseRoleLock = await acquireClusterRoleLock(TEST_DB_URL!)
 
     await pool.query(`
       DROP TABLE IF EXISTS asset_throughput_state_audit, asset_throughput CASCADE;
@@ -112,8 +116,8 @@ describe.skipIf(!TEST_DB_URL)('migration 1211 — asset_throughput_state_audit b
     // verified read-only against production before this migration was authored:
     // UPDATE on asset_throughput = true, INSERT/SELECT on the audit table =
     // false, USAGE on the audit sequence = false.
+    await ensureRole(pool, BUILDER_ROLE)
     await pool.query(`
-      CREATE ROLE ${BUILDER_ROLE} NOLOGIN;
       GRANT USAGE ON SCHEMA public TO ${BUILDER_ROLE};
       GRANT SELECT, INSERT, UPDATE, DELETE ON asset_throughput TO ${BUILDER_ROLE};
     `)
@@ -122,7 +126,7 @@ describe.skipIf(!TEST_DB_URL)('migration 1211 — asset_throughput_state_audit b
       `INSERT INTO asset_throughput (chart_id, asset_id, state) VALUES ($1, $2, 'lit')`,
       [CHART, ASSET_ID]
     )
-  })
+  }, 120_000)
 
   afterAll(async () => {
     if (!pool) return
@@ -133,6 +137,7 @@ describe.skipIf(!TEST_DB_URL)('migration 1211 — asset_throughput_state_audit b
       DROP ROLE IF EXISTS ${BUILDER_ROLE};
     `)
     await pool.end()
+    await releaseRoleLock?.()
   })
 
   it('FAILS BEFORE: a state change under the builder-mirror role is denied on the audit table', async () => {

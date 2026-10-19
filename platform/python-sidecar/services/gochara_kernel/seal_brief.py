@@ -27,7 +27,7 @@ from typing import Any
 SCHEMA = "seal_approval_payload/1"
 SEAL_IS_NOT_A_FLIP = "A seal is not a flip: sealing a generation publishes it for replay and serves nothing."
 #: the migrations whose ledger evidence the payload carries (filename prefix)
-LEDGER_MIGRATIONS = ("1204", "1206", "1232", "1233", "1240", "1378")
+LEDGER_MIGRATIONS = ("1204", "1206", "1232", "1233", "1240", "1241", "1305", "1306", "1308", "1378")
 _DIGEST = re.compile(r"^[0-9a-f]{64}\Z")
 
 #: the generation-scoped output tables the identity digest covers, with a stable per-table ordering
@@ -237,6 +237,14 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
     from decimal import Decimal
     vector = json.loads(vector_text, parse_float=Decimal)
     backend = json.loads(backend_text, parse_float=Decimal)
+    # G12 (Codex round 1, finding 6): a FIRST seal requires the snapshot's COPY of the L1 inputs (migration 1305). A legacy snapshot points at rows an L1 rebuild
+    # re-issues, so a generation sealed on it could never be re-verified; the replay of an ALREADY sealed generation is unaffected.
+    from .inventory_verifier import snapshot_copies
+    copies = snapshot_copies(conn, chart_id, generation)
+    already_sealed = bool(_rows(conn, "SELECT 1 FROM public.ka_gochara_generation_seal WHERE chart_id = %s AND generation = %s", (chart_id, generation)))
+    if copies is not None and copies["facts"] is None and not already_sealed:
+        raise BriefRefused("snapshot_without_copy", "the search-input snapshot is the LEGACY shape (ids only, no copy of the L1 rows it consumed): apply "
+                           "migration 1305 and rebuild; a first seal needs a self-contained snapshot (an L1 rebuild would otherwise leave it unverifiable)")
     violations = vj.candidate_gate_on_candidate_manifest(conn, chart_id, generation)
     classes = []
     for cls, inv_digest, led_digest in _rows(conn, "SELECT event_class, inventory_digest, ledger_digest FROM"
@@ -261,6 +269,8 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
                      "convention_id": convention, "writer_asset_id": writer_asset,
                      "ephemeris_backend": backend,
                      "input_generation_vector_digest": hashlib.sha256(_canon(vector).encode("utf-8")).hexdigest()},
+        "near_miss_layer": near_miss_layer_status(vector),
+        "near_miss_output_identity": "vacuous_under_policy" if manifest_policy(conn, chart_id, generation) == "all_null_candidate/1" else None,
         "result_policy": manifest_policy(conn, chart_id, generation),
         "candidate_gate": {"source": "candidate_adapter/1 over ka_gochara_candidate_gate_violations",
                            "violations": sorted((f"{v['event_class']}/{v['path_id']}@{v['rule_version']}:{v['violation']}"
@@ -292,6 +302,14 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
     }
 
 
+def near_miss_layer_status(vector):
+    """Ruling 18 §8: absence of the FB-8 pin means stored but NOT seal-covered.
+
+    Even a present pin alone earns no verification; P06b must supply the stage.
+    """
+    return 'stored_uncovered' if not vector.get('near_miss_layer_version') else 'unverified'
+
+
 ALL_NULL_POLICY = "all_null_candidate/1"
 #: R15-6 (ii): what binds the ephemeris, said plainly — the sealing job cannot re-derive it
 EPHEMERIS_BINDING_DISCLOSURE = (
@@ -308,8 +326,15 @@ NATAL_SINGLE_TIER_DISCLOSURE = (
 
 
 def natal_input_tiers(conn, chart_id: str, generation: str) -> dict[str, list[str]]:
-    """{subject: sorted distinct verification_pass_status} of the L1 rows the generation's search-input snapshot CONSUMED — read, never assumed."""
+    """{subject: sorted distinct verification_pass_status} of the L1 rows the generation's search-input snapshot CONSUMED — read, never assumed.
+    From the snapshot's own COPY (metadata block) when it has one (G12): the tier the rows carried WHEN CONSUMED, not whatever live L1 says today."""
     out: dict[str, set[str]] = {}
+    from .inventory_verifier import snapshot_copies
+    copies = snapshot_copies(conn, chart_id, generation)
+    if copies is not None and copies["facts"] is not None:
+        for e in copies["facts"]:
+            out.setdefault(str(e["key"]["fact_subject"]), set()).add(str(e["metadata"]["verification_pass_status"]))
+        return {k: sorted(v) for k, v in sorted(out.items())}
     for subject, tier in _rows(
             conn, "SELECT f.fact_subject, f.verification_pass_status FROM public.chart_facts f"
                   " JOIN public.ka_gochara_search_input_snapshot s ON s.chart_id = f.chart_id AND f.fact_id = ANY (s.consumed_fact_ids)"
@@ -347,6 +372,26 @@ def _policy_disclosure(policy: str) -> str:
     return f"{policy} — this brief makes no all-NULL claim; the result policy above governs what this generation may contain"
 
 
+def _inventory_attests_class(payload: dict, cls: dict) -> bool:
+    """An empty window-grain set still requires the matching independent inventory.
+
+    The combined candidate gate checks that every INCLUDED grain is verified;
+    excluded/computed-empty paths require no invented window attestation.
+    """
+    digest = cls.get("inventory_digest")
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        return False
+    try:
+        rows = [json.loads(raw) for raw in
+                (payload.get("attestations") or {}).get("ka_gochara_search_inventory_verification", [])]
+    except (ValueError, TypeError):
+        return False
+    mine = [row for row in rows if isinstance(row, dict) and
+            (row.get("chart_id"), row.get("generation"), row.get("event_class")) ==
+            (payload.get("chart_id"), payload.get("generation"), cls.get("event_class"))]
+    return bool(mine) and all(row.get("rederived_inventory_digest") == digest for row in mine)
+
+
 def _current_and_complete(payload: dict) -> list[str]:
     """Why this candidate cannot be briefed (empty = it can): a gate violation, a grain that is not VERIFIED, a class with no
     attestation at all, a runner that is not the manifest's pinned code."""
@@ -354,7 +399,7 @@ def _current_and_complete(payload: dict) -> list[str]:
     if not payload["classes"]:
         problems.append("the generation has no search inventory")
     for c in payload["classes"]:
-        if not c["grains"]:
+        if not c["grains"] and not _inventory_attests_class(payload, c):
             problems.append(f"{c['event_class']}: no window verification persisted")
         for g in c["grains"]:
             if g["status"] != "VERIFIED":

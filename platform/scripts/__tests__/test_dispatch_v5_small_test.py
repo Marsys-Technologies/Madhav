@@ -180,10 +180,10 @@ def test_manifest_carries_the_slice_marker_and_digests_it_and_the_registry_depen
     assert digest == hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def test_expected_registry_row_is_the_1304_values():
+def test_expected_registry_row_is_the_1304_values_with_the_1395_timeout():
     e = dispatch.EXPECTED_REGISTRY_ROW
     assert (e["has_substeps"], e["writer_timeout_seconds"], e["depends_on"], e["target_table"], e["is_active"]) == (
-        True, 28800, ["ga_positions", "ga_dashas"], "ka_gochara_eval_window", False)
+        True, 72000, ["ga_positions", "ga_dashas"], "ka_gochara_eval_window", False)
 
 
 import re as _re  # noqa: E402
@@ -229,9 +229,14 @@ def test_the_1304_parity_covers_every_admission_field_when_the_migration_is_in_t
     landed = parse_1304(MIGRATION_1304.read_text(encoding="utf-8"))
     expected = dispatch.EXPECTED_REGISTRY_ROW
     assert REQUIRED_PARITY_FIELDS <= set(landed)
-    for field in REQUIRED_PARITY_FIELDS:
+    for field in REQUIRED_PARITY_FIELDS - {"writer_timeout_seconds"}:
         assert landed[field] is not None or field in ("health_probe", "integrity_check_sql", "estimated_seconds"), f"{field}: not found in 1304"
         assert expected[field] == landed[field], f"{field}: the dispatch expects {expected[field]!r}, migration 1304 lands/checks {landed[field]!r}"
+    # writer_timeout_seconds: 1304 landed 28800, migration 1395 (J-3c cap, SR-J3-CAP-LIVE) raised it; the deployed row, which the dispatch validates, holds 1395's value.
+    assert landed["writer_timeout_seconds"] == 28800, "1304 changed: the 1395 guard (prior value exactly 28800) must be re-derived"
+    m1395 = (REPO / "platform/migrations/1395_ka_gochara_v5_writer_timeout_72000.sql").read_text(encoding="utf-8")
+    raised = int(_re.search(r"^\s+SET writer_timeout_seconds = (\d+)\s*$", m1395, _re.M).group(1))
+    assert expected["writer_timeout_seconds"] == raised, f"the dispatch expects {expected['writer_timeout_seconds']!r}, migration 1395 lands {raised!r}"
     assert set(expected) == REQUIRED_PARITY_FIELDS | {"scope"}                 # every expected field is covered (scope: 1243's, untouched by 1304)
 
 

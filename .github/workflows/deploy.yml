@@ -74,6 +74,11 @@ on:
         type: boolean
         required: false
         default: false
+      window_lease_id:
+        description: 'W2-M-08: the coordination lease this protected window runs under (leave empty when the window holds none). The window refuses while any other lease is ACTIVE.'
+        type: string
+        required: false
+        default: ''
 
 # CI efficiency audit (2026-07-31). Two different behaviours in one workflow:
 #   - pull_request  -> the `build-check` job only, which builds with `push: false`
@@ -1075,6 +1080,13 @@ jobs:
           fi
           echo "Applying protected public-schema migrations from immutable source SHA $ACTUAL_SHA"
 
+      # W2-M-08: the prime rule of the shared lease table (one campaign deploys at a time) holds for a protected window too. Refuses, before any
+      # credential is used, while a lease other than this window's own is ACTIVE on origin/campaign-coordination, or the table cannot be read.
+      - name: Refuse while a foreign production lease is active
+        env:
+          WINDOW_LEASE_ID: ${{ inputs.window_lease_id }}
+        run: python3 00_ARCHITECTURE/briefs/kalayantra/fleet/window_lease_gate.py --repo . --own-lease "$WINDOW_LEASE_ID"
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -1181,6 +1193,10 @@ jobs:
             # migration numbered below 1240 (1234 builder grants, and 1236 if present) must ALREADY be applied by an
             # ordinary deploy BEFORE this window is dispatched.
             migrations+=(1240_gochara_window_verification_gate.sql)
+            # P06: snapshot copy precedes the census; near-miss storage follows both.
+            migrations+=(1305_gochara_snapshot_owns_l1_copy.sql)
+            migrations+=(1306_gochara_expected_class_census.sql)
+            migrations+=(1308_gochara_near_miss_storage.sql)
           fi
           if [ "$APPLY_AI_METERING_SCHEMA_MIGRATION" = "true" ]; then
             migrations+=(1202_ai_metering_ledger.sql)

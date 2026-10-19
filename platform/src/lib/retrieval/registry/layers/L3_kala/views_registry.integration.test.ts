@@ -325,3 +325,72 @@ it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')('real SQL does not give contact
       verification: { status: 'two_pass_verified', manifest_id: null },
     }] } })
 })
+
+// K9-6: the installed MCP public name -> public registry -> actual SQL path.
+// No HTTP server or production endpoint is used; fetch is the local wire harness.
+vi.mock('../../../../../../../platform-mcp/src/lib/authz.js', () => ({ remoteAuthorize: async () => true }))
+it.runIf(process.env.KALA_VIEW_DB_TESTS === '1').each(['now', 'ahead', 'priority', 'elect', 'story', 'ritual', 'explain'])
+  ('K9-6 installed public %s carries the SQL-published manifest through the Vidhi identity', async view => {
+    const { registerAllKalaViews } = await import('../../../../../../../platform-mcp/src/tools/kala_views/register_all')
+    const { getCapability, getCatalog } = await import('../../index')
+    const { resolveWebToolBridge } = await import('../../../../../../scripts/manifest/web_tool_bridge_builder')
+    const name = `kala_${view}_get`, uri = `marsys://tool/L3/${name}`
+    await import('./index')
+    expect(resolveWebToolBridge([name], getCatalog(), {}, {}, { canonical_faces: [], deprecated_aliases: {} }))
+      .toEqual([{ name, uri, resolution_kind: 'catalog_name_direct', via: [] }])
+    db.mockReset().mockImplementation(postgresQuery)
+    const fetcher = vi.fn(async (_url: unknown, init: RequestInit) => {
+      const request = JSON.parse(String(init.body))
+      expect(request.uri).toBe(uri)
+      return { ok: true, json: async () => ({ ok: true, content: await getCapability(uri)!.handler!(request.args, {}) }) }
+    })
+    vi.stubGlobal('fetch', fetcher)
+    const tools = new Map<string, (args: Record<string, unknown>) => Promise<unknown>>()
+    registerAllKalaViews({ tool(tool: string, _description: unknown, _shape: unknown,
+      callback: (args: Record<string, unknown>) => Promise<unknown>) { tools.set(tool, callback) },
+    } as unknown as Parameters<typeof registerAllKalaViews>[0], { user_uid: 'fixture', key_id: 'fixture', role: 'guest' })
+    try {
+      const response = await tools.get(name)!({ chart_id: fixtureChart, published_request: {
+        at: '2026-10-09T12:00:00Z', date_from: '2026-10-09T00:00:00Z', date_to: '2026-10-10T00:00:00Z',
+        event_class: 'travel', assertion_id: 'a1',
+      } }) as { structuredContent: { object: Record<string, unknown> } }
+      const content = response.structuredContent.object
+      expect(content).toMatchObject({ view, chart_id: fixtureChart, manifest_id: '22222222-2222-4222-8222-222222222222',
+        generation: '4.1', empty_reason: null })
+      expect(fetcher).toHaveBeenCalledTimes(1)
+      expect(JSON.stringify(content)).not.toContain('9.9')
+      if (process.env.K9_CAPTURE_DIR) {
+        const { writeFileSync } = await import('node:fs')
+        writeFileSync(`${process.env.K9_CAPTURE_DIR}/${view}.json`, JSON.stringify({ source: 'local_guarded_fixture', name, uri, content }, null, 2))
+      }
+    } finally { vi.unstubAllGlobals() }
+  })
+it.runIf(process.env.KALA_VIEW_DB_TESTS === '1').each(['information_unavailable', 'evaluated_silent'])
+  ('K9-6 public NOW preserves planted %s with its null release', async state => {
+    await import('./index')
+    const { getCapability } = await import('../../index')
+    db.mockReset().mockImplementation((sql, params) => postgresQuery(sql, params,
+      `UPDATE kala_obstruction SET assertion = jsonb_set(assertion, '{payload,effective_state}', '"${state}"'::jsonb);`))
+    const result = await getCapability('marsys://tool/L3/kala_now_get')!.handler!({ chart_id: fixtureChart,
+      published_request: { at: '2026-10-09T12:00:00Z' } }, {})
+    expect(result.is_error).toBe(false)
+    expect(result.content).toMatchObject({ rows: expect.arrayContaining([expect.objectContaining({ source_table: 'kala_obstruction',
+      data: expect.objectContaining({ assertion: expect.objectContaining({ payload: expect.objectContaining({
+        effective_state: state, release: { kind: 'unknown', instant: null },
+      }) }) }),
+    })]) })
+    const { arrivalFromPublishedNow } = await import('./arrival_state')
+    const { ArrivalLine } = await import('@/components/pariprashna/ArrivalLine')
+    const { createElement } = await import('react')
+    const { renderToStaticMarkup } = await import('react-dom/server')
+    const arrival = arrivalFromPublishedNow(fixtureChart, result.content)
+    expect(arrival?.effective_states).toContain(state)
+    const html = renderToStaticMarkup(createElement(ArrivalLine, { arrival }))
+    expect(html).toContain(state === 'information_unavailable' ? 'information unavailable' : 'evaluated silence')
+    if (process.env.K9_CAPTURE_DIR) {
+      const { writeFileSync } = await import('node:fs')
+      writeFileSync(`${process.env.K9_CAPTURE_DIR}/now-${state}.json`, JSON.stringify({
+        source: 'local_guarded_fixture', content: result.content, arrival, rendered_html: html,
+      }, null, 2))
+    }
+  })
