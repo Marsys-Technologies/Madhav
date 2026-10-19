@@ -27,7 +27,7 @@ from psycopg.conninfo import make_conninfo
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from .test_a53_inventory import ADMIN_DSN, CHART_ID, create_am5_database, drop_am5_database
+from .test_a53_inventory import ADMIN_DSN, CHART_ID, apply_near_miss_storage, create_am5_database, drop_am5_database
 
 ROOT = Path(__file__).resolve().parents[5]
 MIGRATIONS = ROOT / 'platform/migrations'
@@ -67,6 +67,7 @@ def lock_db():
         conn = psycopg.connect(dsn, autocommit=True)
         for ddl in STUB_ORCHESTRATOR_DDL:
             conn.execute(ddl)
+        apply_near_miss_storage(conn)       # the teardown's closed list covers the migration-1308 generation tables
         conn.execute('CREATE TABLE public.kala_gochara_windows (chart_id uuid)')
         conn.execute((ROOT / 'platform/supabase/migrations/527_kala_gochara_generation_authority.sql').read_text())
         conn.execute((MIGRATIONS / '1236_gochara_authority_refuses_governed_generation.sql').read_text())

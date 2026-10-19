@@ -67,8 +67,8 @@ from services.gochara_kernel import stretch_sink as gk_stretch_sink
 from services.gochara_kernel import ephemeris_pins as gk_ephemeris_pins
 from services.gochara_kernel.native_conn import native_connection
 from services.gochara_kernel import arcs as gk_arcs
-from services.gochara_kernel.dasha_read import make_period_rows_for
-from services.gochara_kernel.chart_context import (fetch_chart_context,
+from services.gochara_kernel.dasha_read import make_period_rows_for, make_period_rows_for_snapshot
+from services.gochara_kernel.chart_context import (fetch_chart_context, fetch_chart_context_from_snapshot,
                                                    require_complete)
 from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots
 from services.gochara_kernel.record_store import (RecordStore,
@@ -80,6 +80,8 @@ from services.gochara_kernel import input_vector_verifier as gk_input_vector_ver
 from services.gochara_kernel import window_sweep as gk_window_sweep
 from services.gochara_kernel import result_policy as gk_result_policy
 from services.gochara_kernel import contact_certify as gk_contact_certify
+from services.gochara_kernel import near_miss as gk_near_miss
+from services.gochara_kernel import record_store as gk_record_store
 from services.gochara_kernel.record_verifier import (verify_p1_anchors, verify_p1_house_descriptor,
                                                     verify_p1_support)
 from services.gochara_kernel import window_gate as gk_window_gate
@@ -863,7 +865,8 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     # proof and belongs to the verification job — the build still proves the real image (R1).
     gk_input_vector_verifier.verify_inputs(
         ctx.db_conn, _scope_normalised(stored, slice_), ephe_path=_ephe_path(ctx),
-        modules=gk_input_vector.IMPLEMENTATION_MODULES, path_refs=gk_rule_registry.bound_path_refs())
+        modules=gk_input_vector.IMPLEMENTATION_MODULES, path_refs=gk_rule_registry.bound_path_refs(),
+        require_scored_classes=True)
 
 
 def _l0_consumed() -> tuple[str, ...]:
@@ -1176,6 +1179,10 @@ class GocharaV5Writer(WriterBase):
                 # R9-1: the policy is an INPUT of the build, chosen here and bound into the manifest; every later
                 # stage reads it back FROM the manifest — nothing downstream holds its own constant
                 result_policy=ctx.config.get("result_policy", gk_input_vector.DEFAULT_RESULT_POLICY),
+                # G8: the EXPECTED class census this generation is built for, pinned in the manifest vector; the verification job
+                # re-derives it from the verifier's own universe and the seal-time completeness function (migration 1306) compares
+                # the claimed classes with it
+                scored_classes=SCORED_CLASSES,
                 # C46: a sliced build is unsealable by construction — stored_scope no verifier
                 # vocabulary knows, plus the marker digest; absent marker = the default, unchanged
                 stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
@@ -1188,7 +1195,7 @@ class GocharaV5Writer(WriterBase):
             gk_input_vector_verifier.verify_inputs(
                 ctx.db_conn, _scope_normalised(vector, slice_), ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
                 path_refs=gk_rule_registry.bound_path_refs(),
-                jd_range=gk_input_vector.consumed_jd_range(horizon))
+                jd_range=gk_input_vector.consumed_jd_range(horizon), require_scored_classes=True)
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
             _lon, retflag = calc_sidereal_lon("Sun", jd, ephe_path)
             if not (retflag & 2):
@@ -1221,7 +1228,10 @@ class GocharaV5Writer(WriterBase):
             # wherever it lies — a 'false' is a measured negative from rows wholly outside the horizon. Those consulted
             # rows are consumed inputs, so the ledger lists them too (only while P1 minting is open: otherwise nothing
             # consults a row). An anchor with no pinned row at all has nothing to list and stays 'unknown' (N.7.6).
-            if p1_minting_closed_reason(ctx.db_conn) is None:
+            # (I) INTERPRETATION (merge of main's J-2a-P1L with this PR's G12 copy): this ledger is for a LEGACY snapshot (ids, no copy). A snapshot WITH a
+            # copy (1305) stores only the rows OVERLAPPING the horizon — the database refuses a copy row outside it (period_outside_horizon) — and its
+            # builder and verifier both read `held` from that copy, so an anchor wholly outside the horizon is the honest 'unknown' there, never a stored 'false'.
+            if p1_minting_closed_reason(ctx.db_conn) is None and not inv_store.snapshot_copy_available():
                 consulted = _p1_consulted_dasha_keys(
                     {"lagna_deg": context["lagna_deg"], "natal": context["natal"]},
                     slice_.classes if slice_ is not None else SCORED_CLASSES)
@@ -1242,18 +1252,33 @@ class GocharaV5Writer(WriterBase):
             # guard in _verify_live_inputs refuses one that would mix horizons. A sealed generation, and a manifest
             # that is not a candidate, are refused by name before any delete.
             replaced = rstore.delete_generation_chain(chart_id=chart_id, generation=GENERATION)
+            # ND-P2 (migration 1308): the near-miss layer is part of the SAME whole-generation replace. It runs after the chain delete, which has
+            # already refused a sealed generation and a manifest that is not a candidate, and it runs under a test slice too (a slice stores no
+            # near-miss, so a slice that replaces a full candidate must not leave that candidate's near-miss rows behind). Layer absent = nothing to do.
+            nm_store = gk_near_miss.NearMissStore(ctx.db_conn)
+            nm_replaced = (nm_store.delete_generation(chart_id=chart_id, generation=GENERATION)
+                           if nm_store.layer_present() else None)
             inv_store.delete_generation_inventory(chart_id, GENERATION)
             digest = inv_store.insert_snapshot(
                 chart_id=chart_id, generation=GENERATION, convention_id=sky_cid,
                 consumed_fact_ids=context["source_fact_ids"],
                 consumed_dasha_row_ids=dasha_ids)
+            if inv_store.snapshot_copy_available():
+                gk_verifier.validate_consumed_dasha_population(
+                    ctx.db_conn, chart_id=chart_id, generation=GENERATION, against_live=True)
+                identity = "SELF-CONTAINED: stored L1 copy independently checked at capture (G12)"
+            else:
+                identity = "LEGACY: no L1 copy; apply snapshot-copy migration before any seal"
+                logger.warning("%s: %s", ASSET_ID, identity)
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=1,
                 notes=(f"search-input snapshot {digest[:12]}…: {len(context['source_fact_ids'])} "
                        f"L1 facts, {len(dasha_ids)} daśā rows (build "
-                       f"{contract.get('build_id')}); no AV declarations (P5 held); chain replaced "
+                       f"{contract.get('build_id')}); {identity}; no AV declarations (P5 held); chain replaced "
                        f"(windows {replaced['windows']}, records {replaced['records']}, contacts "
-                       f"{replaced['contacts']}, coverage {replaced['coverage']})"))
+                       f"{replaced['contacts']}, coverage {replaced['coverage']})"
+                       + (f"; near-miss layer replaced (near-misses {nm_replaced['near_misses']}, searches {nm_replaced['searches']})"
+                          if nm_replaced is not None else "")))
 
         event_class = step.key.split(":", 1)[1]
         if event_class not in SCORED_CLASSES:
@@ -1261,7 +1286,8 @@ class GocharaV5Writer(WriterBase):
                                 notes=f"unknown class {event_class!r}")
 
         if step.key.startswith(INVENTORY_SUBSTEP_PREFIX):
-            context = fetch_chart_context(ctx.db_conn, chart_id)
+            # G12 (Codex round 1, ruling 3): the ONE capture is the snapshot substep; from here on the build computes from the snapshot's COPY only
+            context = fetch_chart_context_from_snapshot(ctx.db_conn, chart_id, GENERATION)
             require_complete(context)
             chart = {"lagna_deg": context["lagna_deg"], "natal": context["natal"]}
             digest = inv_store.snapshot_input_digest(chart_id, GENERATION)
@@ -1351,10 +1377,17 @@ class GocharaV5Writer(WriterBase):
         # R9-3: the COMPLETE contact geometry of every concrete transit obligation, reconstructed from the ephemeris
         # and compared with the ledger both ways (interior exits/re-entries, bridged and omitted contacts all fail);
         # incomplete evidence raises GeometryUnavailable — no complete-search claim without it
-        # INTERIM (steward GRAZE-INTERIM), a VALIDATED test slice ONLY: in-band intervals that contain no exact crossing (grazes: this builder mints a
-        # point contact only around an exact root) are REPORTED in the notes below, not raised; every other certification failure still raises. Without a
-        # slice marker (any full build) nothing changes, so a full build keeps failing on a graze until the owner's decision on grazes is implemented.
-        graze_sink: list | None = [] if slice_ is not None else None
+        # NEAR-MISSES (ND-P2-20261005 rules 1-2). An in-band interval with no exact crossing (this builder mints a point contact only around an exact
+        # root) is a NEAR-MISS: a separate kind with its own storage, never a contact. Three cases, decided from what the run and the schema ARE:
+        #   * a VALIDATED test slice (GRAZE-INTERIM, unchanged): reported in the notes, not raised, NOT stored — a slice is unsealable, torn down by a
+        #     tool that knows a closed table list, and must not depend on a migration of the second window;
+        #   * a full build WITH the near-miss storage (migration 1308): the builder stored its own near-misses at the record substeps; the certifier
+        #     classifies independently, from the ephemeris alone, and the two sets must agree object for object or the build refuses BY NAME;
+        #   * a full build WITHOUT the storage: no sink, exactly as before ND-P2 — the first near-miss is refused (there is nowhere to keep it).
+        # Every other certification failure raises in all three.
+        nm_store = gk_near_miss.NearMissStore(ctx.db_conn)
+        nm_layer = slice_ is None and nm_store.layer_present()
+        graze_sink: list | None = [] if (slice_ is not None or nm_layer) else None
         # MEASURING_BUILD_CONTRACT MB-2: under a slice every reconstructed stretch is ALSO handed to the structured STRETCH_SINK/1 (one log line per record and one
         # summary line per class, emitted even when the certification then raises: the finally). POLICY: the MEASURING build (all_classes_full) exists to COUNT
         # defects in one run, so there near-misses, unresolved stretches and omissions are sunk with their reason and the class CONTINUES (steward ruling 4(f) /
@@ -1370,7 +1403,18 @@ class GocharaV5Writer(WriterBase):
             if stretch_sink is not None:
                 sink_summary = _emit_stretch_sink(event_class, horizon, stretch_sink, position_at, ephe_path)
         graze_note = ""
-        if graze_sink:
+        if nm_layer:
+            keys = self._near_miss_obligation_keys(ctx, chart_id, event_class)
+            stored_nm = nm_store.stored_for_keys(chart_id=chart_id, generation=GENERATION, keys=keys)
+            nm_problems = gk_near_miss.reconcile_with_certifier(
+                reported=graze_sink, stored=stored_nm, searched=nm_store.searched_keys(chart_id=chart_id, generation=GENERATION),
+                obligations=keys, horizon=horizon)
+            if nm_problems:
+                raise RuntimeError(f"near-miss certification failed {event_class}: " + "; ".join(nm_problems))
+            graze_note = (f"; NEAR-MISSES: {len(graze_sink)} certified and stored for this class's {len(keys)} point obligation(s), each its own "
+                          f"standalone UNSCORED interval (standing {gk_near_miss.STANDING}, {gk_near_miss.SCORE_REASON}); none is a contact, a "
+                          "record or a window member")
+        elif graze_sink:
             graze_note = (f"; GRAZES REPORTED, NOT RAISED (validated test slice; {len(graze_sink)}): " + " | ".join(
                 f"{g['body']} {g['relation']} {g['target']} level {g['level_deg']} in band {g['interval'][0]} to {g['interval'][1]}, closest "
                 f"{g['closest_approach_deg']} deg at {g['closest_approach_at']}, peak activity {g['peak_activity']}"
@@ -1404,7 +1448,7 @@ class GocharaV5Writer(WriterBase):
         partition (pin 7), `record:<class>:<path>` materialises the grain.
         The chart context comes from L1 chart_facts — conflicts/missing are
         NAMED by require_complete, never defaulted."""
-        context = fetch_chart_context(ctx.db_conn, chart_id)
+        context = fetch_chart_context_from_snapshot(ctx.db_conn, chart_id, GENERATION)     # the snapshot's COPY, never live L1 (G12)
         require_complete(context)
         horizon = _effective_horizon(ctx, slice_)
         ephe_path = _ephe_path(ctx)
@@ -1484,11 +1528,11 @@ class GocharaV5Writer(WriterBase):
         path_version = gk_rule_registry.selected_path_version(event_class, path_id)
         edges = gk_evaluator.enumerate_edges(event_class, path_id, chart,
                                              rule_version=path_version)
-        # P1's period_running_at reads L1 chart_dashas under the §4.0 pin; the
+        # P1's period_running_at reads the snapshot's COPY of the §4.0-pinned daśā rows; the
         # read is lazy (only P1 grains with a period_running_at prerequisite
         # ever trigger it) and its build is recorded in the notes below.
-        dasha_rows_for, dasha_contract = make_period_rows_for(
-            ctx.db_conn, chart_id)
+        dasha_rows_for, dasha_contract = make_period_rows_for_snapshot(
+            ctx.db_conn, chart_id, GENERATION)                                        # the snapshot's COPY, never live L1 (G12)
         counts = materialise_record_grain(
             store, chart_id=chart_id, generation=GENERATION,
             event_class=event_class, path_id=path_id, edges=edges,
@@ -1499,6 +1543,9 @@ class GocharaV5Writer(WriterBase):
             dasha_rows_for=dasha_rows_for, chart=chart,
             rule_version=path_version)
         inserted = counts["contacts"] + counts["records"] + counts["natal_records"]
+        nm_note, nm_rows = self._store_near_misses(
+            ctx, chart_id=chart_id, edges=edges, arc_index_for=arc_index_for, horizon=horizon, position_at=position_at, slice_=slice_)
+        inserted += nm_rows
         if path_id == "P1":
             # R7 [3]: the restriction to the running periods is re-derived independently (SQL, from the
             # snapshot-bound daśā rows) and must equal what was stored
@@ -1509,7 +1556,8 @@ class GocharaV5Writer(WriterBase):
             # closed nothing was minted, the class makes no P1 completeness claim, and the notes say so
             if not p1_closed:
                 verify_p1_anchors(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
-                                  position_at=position_at, excluded_agents=_slice_excluded_agents(slice_))
+                                  position_at=position_at, excluded_agents=_slice_excluded_agents(slice_),
+                                  rule_version=gk_rule_registry.selected_path_version(event_class, "P1"))
             # AM-20 (revised): the stored house descriptor is the count from the lagna
             verify_p1_house_descriptor(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                                        event_class=event_class)
@@ -1528,7 +1576,63 @@ class GocharaV5Writer(WriterBase):
                    f"{counts['prereq_evaluated']} prerequisite results "
                    f"evaluated; dasha_build="
                    f"{dasha_contract['build_id'] if dasha_contract['read'] else 'not_read'}"
-                   f"{gate_note}"))
+                   f"{gate_note}{nm_note}"))
+
+    @staticmethod
+    def _store_near_misses(ctx: ContextSpec, *, chart_id: str, edges, arc_index_for, horizon, position_at,
+                           slice_: "TestSlice | None") -> tuple[str, int]:
+        """ND-P2-20261005 rules 1-2 (migration 1308): for every transit POINT edge of the grain (the same edges `solve_point_edges` solves),
+        find the object's near-misses on the body's full-domain arc index, and store each with the standalone UNSCORED interval it opens, plus
+        one search row per object (an object with none is a verified-empty result). Returns (note, rows inserted).
+
+        Nothing here reads or writes a contact, a record, a window or a coverage partition, and nothing on the scored path reads what is
+        written. Not run under a test slice (the slice interim reports, see `verify:<class>`), and not when the storage is absent (the layer
+        is OFF and a near-miss is refused at verify as before). An object several classes share is stored once; a later grain must derive
+        the same rows. Unresolved geometry raises `NearMissUnresolved` — it is never stored as a near-miss."""
+        store = gk_near_miss.NearMissStore(ctx.db_conn)
+        if slice_ is not None or not store.layer_present():
+            return "", 0
+        dasha_rows = InventoryStore(ctx.db_conn).consumed_dasha_rows(chart_id, GENERATION)
+        seen: set = set()
+        objects = stored = reused = rows = 0
+        for edge in edges:
+            if (not edge.transit or edge.relation not in gk_record_store.POINT_KERNEL_RELATION
+                    or not edge.obj.canonical_target.startswith("point:")):
+                continue                                   # an aspect to a SPAN is a residence-like contact: no ray level, no near-miss
+            source = gk_record_store.POINT_ORB_SOURCE[edge.relation]
+            orb = float(gk_record_store.ORB_TABLE[source]["orb_max_deg"])
+            obj = gk_near_miss.NearMissObject(
+                body=edge.obj.body, relation_kind=edge.obj.relation_kind, canonical_target=edge.obj.canonical_target,
+                orb_policy_id=gk_near_miss.orb_policy_id(source, orb), convention_id=edge.obj.convention_id)
+            if obj.uuid in seen:
+                continue
+            seen.add(obj.uuid)
+            found = gk_near_miss.solve_object_near_misses(
+                obj=obj, index=arc_index_for(edge.agent.title()), orb_deg=orb, horizon=horizon, position_at=position_at)
+            out = store.write_object(chart_id=chart_id, generation=GENERATION, obj=obj, horizon=horizon, near_misses=found,
+                                     dasha_rows=dasha_rows)
+            objects += 1
+            stored += out["near_misses"]
+            reused += out["reused"]
+            rows += out["near_misses"] + out["searches"]
+        if not objects:
+            return "", 0
+        return (f"; near-miss layer: {objects} point object(s) searched ({reused} already stored by another grain), {stored} near-miss(es) "
+                f"stored as standalone unscored intervals"), rows
+
+    @staticmethod
+    def _near_miss_obligation_keys(ctx: ContextSpec, chart_id: str, event_class: str) -> list[tuple]:
+        """The class's concrete POINT obligations (body, relation, target) under its included path pins — the objects a near-miss can exist
+        for. The same obligation set the contact-geometry certification walks (period-lord role tokens and the Moon are not concrete transit
+        agents here), read from the stored inventory."""
+        rows = ctx.db_conn.execute(
+            "SELECT DISTINCT o.agent, o.relation, o.target FROM public.ka_gochara_search_obligation o"
+            " JOIN public.ka_gochara_search_path_pin p ON (p.chart_id, p.generation, p.event_class, p.path_id, p.rule_version)"
+            "   = (o.chart_id, o.generation, o.event_class, o.path_id, o.rule_version) AND p.disposition = 'included'"
+            " WHERE o.chart_id = %s AND o.generation = %s AND o.event_class = %s AND o.relation IN ('conjunction', 'aspect')"
+            "   AND o.target LIKE 'point:%%' AND o.agent <> 'moon' AND o.agent NOT LIKE 'period_lord:%%'"
+            " ORDER BY 1, 2, 3", (chart_id, GENERATION, event_class)).fetchall()
+        return [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in rows]
 
     # ------------------------------------------------------------------
 

@@ -358,6 +358,11 @@ jobs:
         run: npm run guard:migration-numbers
 
 
+      - name: AI Console — failed/aborted prepare recovery attempt window (P06 R1)
+        # Also collected by npm test; keep the 15-minute failure/abort regression
+        # explicit in the required Unit Tests job.
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-p06 -- --reporter=verbose
+
       - run: npm test -- --reporter=verbose
 
       - name: WP-1.7 — MCP surgical whitelist resolution invariant (LCA-1/LCA-13)
@@ -2134,6 +2139,173 @@ jobs:
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-dispatch-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
+  gochara-a55-g12-mutations:
+    # P06 G12 snapshot-copy baseline and SQL mutations (four isolated slices).
+    # See the split note on gochara-a55-replace-chain.
+    needs: [changes, generated-artifacts]
+    if: ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-g12-mutations'))) }}
+    name: Gochara P06 - G12 mutations (throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        slice: [0, 1, 2, 3]
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/restore-generated
+      - name: P06 G12 snapshot-copy baseline and mutation slice (REQUIRED, never skipped)
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-g12-mutations-p06'))) }}
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-g12-mutations-p06 -- -q --tb=short -rs -p no:cacheprovider
+          cd ..
+          python scripts/gochara/mutation_check_1305.py --slice "${{ matrix.slice }}/4"
+
+  gochara-a55-final-rules:
+    # P06 final rules, expected-class census, near-miss storage and verifier mutations.
+    # See the split note on gochara-a55-replace-chain.
+    needs: [changes, generated-artifacts]
+    if: ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-final-rules'))) }}
+    name: Gochara P06 - final rules, census, snapshot and storage (real runner, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/restore-generated
+      - name: P06 final-rule, census, storage and verifier suites (REQUIRED, never skipped)
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-final-rules-p06'))) }}
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+          GOCHARA_A25_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A25_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          export GOCHARA_A25_DISPOSABLE_CLUSTER_ID="$(python -c 'import os; from tests.l3.gochara._disposable_db_guard import guarded_admin_connect; c=guarded_admin_connect(os.environ["GOCHARA_A25_ADMIN_DSN"], autocommit=True); print(c.execute("SELECT system_identifier FROM pg_control_system()").fetchone()[0]); c.close()')"
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-final-rules-p06 -- -q --tb=short -rs -p no:cacheprovider
+          mutation_scratch="$(mktemp -d "$RUNNER_TEMP/ky-p06-XXXXXX")"
+          python ../scripts/gochara/mutation_check_verifier_side.py --scratch "$mutation_scratch"
+
+  gochara-a55-p06-legacy:
+    # P06 inherited WP6 ports on a dedicated guarded disposable database.
+    # See the split note on gochara-a55-replace-chain.
+    needs: [changes, generated-artifacts]
+    if: ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-p06-legacy'))) }}
+    name: Gochara P06 - legacy ports (real runner, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: local
+          POSTGRES_USER: wp6
+          POSTGRES_DB: wp6
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/restore-generated
+      - name: P06 inherited WP6 integration suites (REQUIRED, never skipped)
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-p06-legacy-p06'))) }}
+        env:
+          WP6_LEDGER_DSN: postgresql://wp6:local@localhost:5432/wp6
+          GOCHARA_P06_LEGACY_REQUIRE_DB: '1'
+          GOCHARA_A53_ADMIN_DSN: postgresql://wp6:local@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          # File-launched cutover scripts import sidecar packages through this path.
+          export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-p06-legacy-p06 -- -q --tb=short -rs -p no:cacheprovider
+
   gochara-a55-round2-runner:
     # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).
     needs: [changes, generated-artifacts, db-runner-probe]
@@ -3838,7 +4010,7 @@ jobs:
 
   full-suite:
     name: Full suite event contract
-    needs: [changes, db-integration-tests, gochara-j5s-full-class-seal, gochara-a55-dispatch, gochara-a55-measuring-build, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, replace-chain-substrate, required-db-integration-tests, required-gochara-a55-replace-chain, required-gochara-a55-round2-runner, required-gochara-a55-teardown, required-gochara-a55-teardown-round3, required-gochara-a55-verifier-fixes, unit-db-tests]
+    needs: [changes, db-integration-tests, gochara-j5s-full-class-seal, gochara-a55-dispatch, gochara-a55-final-rules, gochara-a55-g12-mutations, gochara-a55-measuring-build, gochara-a55-p06-legacy, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, replace-chain-substrate, required-db-integration-tests, required-gochara-a55-replace-chain, required-gochara-a55-round2-runner, required-gochara-a55-teardown, required-gochara-a55-teardown-round3, required-gochara-a55-verifier-fixes, unit-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -1,10 +1,21 @@
-"""An ordinary (markerless) build preserves the pre-B4 J-4p observations.
+"""An ordinary (markerless) P06 build preserves its accepted final-rule observations.
+
+(I) INTERPRETATION: keep main's J-4p historical captures and their regression
+unchanged, and use the accepted P06 capture (adc6b81ea) for P06 final rules.
+This is the branch's existing settlement-amended copy: its snapshot note and
+inventory/verify transcripts already include the accepted J-4p/J4P-B1 reads.
+No capture is regenerated from the merged implementation.
+The only SQL adaptation reverses B4's removed positive-bounds predicate when
+comparing the accepted transcript; B5's replacement guard remains checked exactly.
+All outcomes, counts, SQL order and non-implementation inputs remain pinned.
+
+Main's historical baseline rationale follows:
 
 The historical measuring-build golden, `fixtures/mb_ordinary_golden_main.json`
 at 75eeda4c9, remains unchanged. It predates J-4p's governed reads and settled
 build identity. Both comparisons already fail on the unmodified pre-B4 head.
 (I) INTERPRETATION I6: use the pre-B4 J-4p head as the valid-data baseline.
-The active golden, `fixtures/mb_ordinary_golden_j4p.json`, was captured from
+Main's J-4p golden, `fixtures/mb_ordinary_golden_j4p.json`, was captured from
 unmodified production sources at 2d75833d3963a61544deaa4c36cc8322cb2cdcb5.
 Its provenance records the source hashes and the only SQL adaptation for B4:
 remove the governed CTE's positive-bounds pre-filter. All other ordered SQL,
@@ -16,9 +27,16 @@ It holds, for a markerless run driven through the writer's REAL substeps on the 
     and notes, or the refusal's type and message), the SQL statements it issued through the connection (whitespace-normalised text and parameter count, kept as a count
     per distinct statement shape plus the sha256 of the ordered sequence), and the row count of every ka_gochara_* / kala_gochara_* table after it;
   * the candidate manifest's input vector, every component.
-HEAD must equal it except the evaluation, geometry and window implementation
-identities changed by B4/P06b, over the pinned J4C-A geometry/window source updates below.
-P06b adds exactly one manifest catalogue probe. Exactly one state-guard SELECT is checked
+For the P06 capture, the evaluation, geometry and window implementation identities
+differ from the capture because the merged tree carries main's later source changes
+(J4C-A/J4C-B, J-2a, the P1 testimony-contact fix); all three are pinned below as literals
+re-derived from the merged tree's real bytes.
+(I) INTERPRETATION: main made the final rules an explicit opt-in (`gochara_v5_final_rules`, rule_registry.rule_profile), so the
+capture is driven with that flag True: the accepted P06 capture is, by definition, the final-rule build. The default (legacy) profile's
+isolation is main's own claim, held by test_a53_gochara_v5_writer.py / test_nd_h_builder_tiers.py, not by this golden.
+(I) INTERPRETATION: main's J4C-A (#3596) graha-mapping source updates are part of the
+merged tree whose digests are pinned below, so no separate J4C pin is applied to this capture.
+P06b adds exactly one manifest catalogue probe (LAYER_SELECT) and the near-miss verifier module to the geometry identity. Exactly one state-guard SELECT is checked
 per non-dry-run substep and excluded from both SQL summaries. B5 adds exactly
 one invalid-period guard SELECT to inventory:marriage; its complete shape and
 parameter count are checked separately, preserving the stored baseline.
@@ -39,10 +57,11 @@ from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 
 from .conftest import EPHE_PATH
 from .test_a53_inventory import CHART_ID
-from .test_a55_replace_chain import SHORT, _World, template  # noqa: F401
+from .test_a55_replace_chain import SHORT, _World, template as _a55_template
 
-GOLDEN = Path(__file__).resolve().parent / "fixtures" / "mb_ordinary_golden_j4p.json"
-GOLDEN_COMMIT = "2d75833d3963a61544deaa4c36cc8322cb2cdcb5"
+J4P_GOLDEN = Path(__file__).resolve().parent / "fixtures" / "mb_ordinary_golden_j4p.json"
+GOLDEN = J4P_GOLDEN.with_name("mb_ordinary_golden_p06.json")
+GOLDEN_COMMIT = "adc6b81ea"
 # The immutable capture recorded the dasha build then settled (L1_SETTLED v1, ca17639b); the snapshot notes name it as
 # "build <uuid first four groups>-<hex>", and the final group is normalised away by `_norm`. A settlement move
 # (dasha_settlement.json) changes only this identity, so the comparison re-points it at the governed record instead of
@@ -55,23 +74,18 @@ GOLDEN_SETTLED_BUILD_PREFIX = "ca17639b-f3cf-42c7-9866-"
 # other 2 (rows 3 and 6, wholly after the horizon): 4 + 2 = 6. The immutable fixture is not re-captured; only this one count moves.
 GOLDEN_SNAPSHOT_DASHA_ROWS = "10 L1 facts, 4 daśā rows"
 P1L_SNAPSHOT_DASHA_ROWS = "10 L1 facts, 6 daśā rows"
-# PR #3596 (ci-kalayantra-pb-j4c-a), J4C-A: substrate.DB_BODY and
-# window_sweep.GRAHA_TITLE now derive the same graha mapping from the SSoT.
-# Computed from this tree with implementation_registry.compute(); pin these
-# source identities without changing the historical capture or other components.
-# (I) INTERPRETATION: apply the stage update here, preserving the immutable fixture.
-J4C_IMPLEMENTATION = {
-    "geometry": "22f14a9c648a497b7702ab4ee3263fc37100ab5d352e01d60bd254c9384efc43",
-    "window": "3afc40476aec141bc635309b09f32084c475ad3bd03e6f100101d52475d2c507",
-}
-# PR #3693 (kalayantra/p1-anchor-fix): record_store.materialise_record_grain now WRITES the contact of a P1 transit whose every anchor is a
-# testimony lord (it wrote nothing before; the record stays unminted, kgrr_ruling_ck). That edit to `record_store` (a geometry-stage module) is the ONLY
-# source change to the geometry stage: with main's record_store.py restored the geometry digest is exactly J4C_IMPLEMENTATION["geometry"] above.
-# Computed from this tree with implementation_registry.compute(). The golden fixture itself is not re-captured; every non-implementation
-# component, outcome, row count and SQL shape is still compared to it unchanged.
-P1_ANCHOR_IMPLEMENTATION = {
-    "geometry": "b47f2fb901d42c8a44625da1b1a05774f1e265350b4816cc43dbed081563a6f8",
-}
+
+
+@pytest.fixture(scope="module")
+def template():
+    """The a55 template (real migrations + sky-event substrate), seeded with the FINAL-rule registry: the capture below is the final-rule build, so its
+    rule-registry rows (8 paths, the 1.2.0 factors) must be present in the template exactly as in the accepted P06 capture. The template's own seed runs
+    outside any writer substep, so the explicit profile is what selects them."""
+    from services.gochara_kernel import rule_registry
+    with rule_registry.rule_profile(final_rules=True):
+        yield from _a55_template.__wrapped__()
+
+
 # the REAL runner's birth parameters shape (birth_params._to_birth_params): main ignores them, an ordinary HEAD build must too
 BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, "longitude_deg": 85.8245, "tz_offset_hours": 5.5, "place_name": "Bhubaneswar",
                 "subject_label": "native"}
@@ -86,6 +100,12 @@ LAYER_SELECT = ("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL A
 # the statement summary before it is compared with the golden.
 P1_GATE_SELECT = ("SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_relationship_record'::regclass"
                   " AND attname = ANY(%s) AND NOT attisdropped AND attnum > 0")
+# #3516 CI repair: the snapshot substep asks the applied schema whether a G12 copy exists (InventoryStore.snapshot_copy_available) one extra time — before the
+# P1L ledger decision, because a copy holds horizon-overlapping rows only. Like P1_GATE_SELECT it is checked separately (exact text, no parameter, exactly
+# three times in the snapshot substep: the golden already carries two, inside the insert and after it) and one occurrence is excluded from the summary
+# before the comparison.
+COPY_PROBE_SELECT = ("SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ka_gochara_search_input_snapshot'"
+                     " AND column_name IN ('consumed_fact_rows', 'consumed_dasha_rows', 'l1_facts_metadata_digest', 'dasha_metadata_digest')")
 PERIOD_GUARD_SELECT = " ".join("""
     WITH governed_chart_dashas AS (
         SELECT * FROM public.chart_dashas
@@ -162,7 +182,8 @@ def capture(template_db, raw: dict | None = None) -> dict:
         def run(key, dry_run=False):
             rec.statements.clear()
             ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-golden", db_conn=rec, dry_run=dry_run,
-                              config={"chart_id": CHART_ID, "birth_params": BIRTH_PARAMS, "horizon": SHORT, "ephe_path": EPHE_PATH})
+                              config={"chart_id": CHART_ID, "birth_params": BIRTH_PARAMS, "horizon": SHORT, "ephe_path": EPHE_PATH,
+                                    "gochara_v5_final_rules": True})   # (I) INTERPRETATION: main made the final rules opt-in; the accepted P06 capture IS the final-rule build
             try:
                 with w.conn.transaction():
                     res = writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=key, label=key))
@@ -194,12 +215,14 @@ def test_capture_the_markerless_run(template):
     assert got["substeps"] and "manifest_vector" in got
 
 
-# ── the comparison (HEAD against the pre-B4 J-4p golden) ───────────────────────────────────────────────────────────────────────
+# ── the comparison (merged P06 against the accepted final-rule golden) ───────────────────────────────────────────────────────────────────────
 
-def _load():
-    assert GOLDEN.exists(), f"the pre-B4 golden ({GOLDEN_COMMIT}) is missing: {GOLDEN}"
-    golden = json.loads(GOLDEN.read_text(encoding="utf-8"))
-    assert golden["golden_commit"] == GOLDEN_COMMIT
+def _load(path=GOLDEN):
+    assert path.exists(), f"the pinned golden is missing: {path}"
+    golden = json.loads(path.read_text(encoding="utf-8"))
+    assert golden["golden_commit"] == (GOLDEN_COMMIT if path == GOLDEN else "2d75833d3963a61544deaa4c36cc8322cb2cdcb5")
+    if path == GOLDEN:
+        return golden
     assert golden["provenance"]["sql_adaptations"] == {
         "state_guard_selects_removed": 12,
         "b4_cte_positive_bounds_predicates_removed": 1,
@@ -239,7 +262,7 @@ def test_b4_baseline_preserves_final_main_settlement_amendments():
     guard is counted separately below. No other main SQL shape may change.
     """
     main = json.loads(GOLDEN.with_name("mb_ordinary_golden_main.json").read_text())
-    b4 = _load()
+    b4 = _load(J4P_GOLDEN)
     assert [s["key"] for s in b4["substeps"]] == [s["key"] for s in main["substeps"]]
     for got, want in zip(b4["substeps"], main["substeps"]):
         assert got["outcome"] == want["outcome"], want["key"]
@@ -285,8 +308,8 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
     assert kinds >= {"rules", "convention", "body", "manifest", "snapshot", "inventory", "coverage", "record", "window", "verify"}, kinds
     for g, m in zip(got["substeps"], want["substeps"]):
         key = m["key"]
-        assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from the pre-B4 baseline"
-        assert g["counts"] == m["counts"], f"{key}: the table row counts differ from the pre-B4 baseline"
+        assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from the accepted P06 baseline"
+        assert g["counts"] == m["counts"], f"{key}: the table row counts differ from the accepted P06 baseline"
         guard = [s for s in raw[key] if s == [GUARD_SELECT, 2]]
         layer = [s for s in raw[key] if s == [LAYER_SELECT, 0]]
         assert len(layer) == (1 if key == "manifest" else 0), (key, layer)
@@ -296,17 +319,26 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
         if key == writer_mod.SNAPSHOT_SUBSTEP:       # every other substep keeps its own P1 gate reads, compared with the golden unchanged
             assert rest.count([P1_GATE_SELECT, 1]) == 1, f"{key}: expected the new P1-minting schema read exactly once"
             rest.remove([P1_GATE_SELECT, 1])
+            assert rest.count([COPY_PROBE_SELECT, 0]) == 3, f"{key}: expected the G12 copy probe exactly three times (before the ledger decision, inside the insert, and after it)"
+            rest.remove([COPY_PROBE_SELECT, 0])
         assert len(guard) == (0 if "[dry_run]" in key else 1), f"{key}: expected exactly one state-guard SELECT per non-dry-run substep, saw {len(guard)}"
-        assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards and layer probe differ from the pre-B4 baseline"
+        if key == "inventory:marriage":
+            old_shapes = m["statements"]["shapes"]
+            old = [sql.split("|", 1)[1] for sql in old_shapes
+                   if "AND start_iso < end_iso AND" in sql]
+            assert len(old) == 1
+            new = old[0].replace("AND start_iso < end_iso AND", "AND")
+            assert rest.count([new, 13]) == 1
+            rest = [[old[0], n] if sql == new else [sql, n] for sql, n in rest]
+        assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards and layer probe differ from the accepted P06 baseline"
 
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
-    """Preserve valid-data inputs; B4/P06b change exactly the three governed implementations over the J4C-A geometry/window source pins.
+    """Preserve P06 inputs with main's evaluation/geometry implementation updates; P06b adds its near-miss verifier to the geometry identity.
 
     No `horizon_basis` or `test_slice` component may appear in an ordinary run.
     """
     got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
-    want["implementation"] = {**want["implementation"], **J4C_IMPLEMENTATION, **P1_ANCHOR_IMPLEMENTATION}
     assert "horizon_basis" not in got and "test_slice" not in got
 
     same_host = got["ephemeris"]["platform"] == want["ephemeris"]["platform"]
@@ -318,12 +350,18 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
         out = {k: x for k, x in v.items() if k != "implementation"}
         out["ephemeris"] = {k: x for k, x in v["ephemeris"].items() if k not in host_bound}
         return out
-    assert comparable(got) == comparable(want), "non-implementation components equal the pre-B4 baseline (excluding another host's library identity)"
+    assert comparable(got) == comparable(want), "non-implementation components equal the accepted P06 baseline (excluding another host's library identity)"
     assert set(got["implementation"]) == set(want["implementation"])
     differing = sorted(st for st in got["implementation"] if got["implementation"][st] != want["implementation"][st])
     assert differing == ["evaluation", "geometry", "window"], differing
-    # J4C-B (and P06b's near-miss geometry) change the version-aware record store (geometry), independent
-    # derivation (evaluation), and rank-only factor support / job (window).
-    # All SQL, row counts, outcomes and non-implementation inputs stay pinned.
-    from services.gochara_kernel import input_vector as iv, input_vector_verifier as ivv
-    assert got["implementation"] == ivv.module_digests(iv.IMPLEMENTATION_MODULES)
+    # ci-kalayantra-w4-p06 (#3516), merge of origin/main (J4C-A/J4C-B, J-2a, the P1 testimony-contact fix): every governed stage now carries main's
+    # source changes on top of the accepted P06 capture. The three digests below are re-derived from this merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the function the manifest vector itself is built by); the golden
+    # fixture is not re-captured and every other component, outcome, row count and SQL shape is still compared to it unchanged.
+    # P06b (this PR) merged on top: its input-vector/verifier changes move the evaluation pin and its near_miss_verifier enters the geometry identity; the pins below are
+    # re-derived the same way from the merged tree's real bytes (never relaxed).
+    # Evaluation re-pinned again for the snapshot-substep fix (#3516 CI repair): the J-2a-P1L out-of-horizon anchor ledger is kept for a LEGACY snapshot
+    # only, because a G12 copy (1305) holds horizon-overlapping rows alone. Re-derived the same way; no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "42d515ed5b1fa3f09fdd0f615448d472bac3aed0d390c1a7ac134dbaed16f1b0"
+    assert got["implementation"]["geometry"] == "e89a19ed6647f7b1ed1bb34d13d53e45600eb0b40d892d8ee777f82f076748b0"
+    assert got["implementation"]["window"] == "d886cc893d597c170a83dbce91f2f89be2c302def6d949e935e1ca859bfa62d5"

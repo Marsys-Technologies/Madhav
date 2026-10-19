@@ -561,7 +561,8 @@
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_overlay*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table*.py",
-        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor*.py"
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_github_run_readback*.py"
       ]
     },
     "governance-tool-tests-shard-6-0": {
@@ -582,7 +583,8 @@
         "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_decision*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_tracker_reconcil*.py",
-        "platform/scripts/governance/pravaha_tracker/tests/test_merged_deployed*.py"
+        "platform/scripts/governance/pravaha_tracker/tests/test_merged_deployed*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_done_dependency*.py"
       ]
     },
     "governance-readback-tests-3-0": {
@@ -590,6 +592,7 @@
       "engine": "pytest",
       "include": [
         "platform/scripts/__tests__/test_gochara_window_readbacks*.py",
+        "platform/scripts/__tests__/test_gochara_readback_sql*.py",
         "platform/scripts/__tests__/test_gochara_sitting_evidence*.py",
         "platform/scripts/__tests__/test_fn*.py",
         "platform/scripts/__tests__/test_gochara_rehearsal*.py"
@@ -800,6 +803,45 @@
       "engine": "pytest",
       "include": [
         "tests/test_migration_1235_evidence*.py"
+      ]
+    },
+    "unit-tests-p06": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "src/lib/ai-console/__tests__/cli-prepare-revalidation*.test.ts"
+      ]
+    },
+    "gochara-a55-g12-mutations-p06": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_g12_snapshot_copy*.py"
+      ]
+    },
+    "gochara-a55-final-rules-p06": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_a25_v41_candidate_writer_pg*.py",
+        "tests/l3/gochara/test_d1_near_miss_storage*.py",
+        "tests/l3/gochara/test_g8_class_census*.py",
+        "tests/l3/gochara/test_measuring_report_db*.py",
+        "tests/l3/gochara/test_nd_h_builder_registry_pg*.py",
+        "tests/l3/gochara/test_nd_h_density_extract*.py",
+        "tests/l3/gochara/test_p06_final_rule_verification*.py"
+      ]
+    },
+    "gochara-a55-p06-legacy-p06": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_step06_enumeration*.py",
+        "tests/l3/gochara/test_step06a_class_context*.py",
+        "tests/l3/gochara/test_step06b_windows_projection*.py",
+        "tests/l3/gochara/test_step3_overlay_fingerprint*.py",
+        "tests/l3/gochara/test_wp12_vedha_fingerprint*.py",
+        "tests/l3/gochara/test_wp9_stamp_columns*.py"
       ]
     },
     "k5-g1a-oracles": {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Pool } from 'pg'
 import * as repository from '../repository'
 import { AI_ROLES } from '../types'
@@ -26,6 +26,10 @@ beforeEach(() => {
   storedState = 'reachable'
   lastCheckedAt = null
   globalPool.__pgPool = { connect, query: execute } as unknown as Pool
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 function respond() {
@@ -109,6 +113,44 @@ describe('prepare-time revalidation of a latched CLI installation', () => {
     await expect(repository.loadRoutingResolution('alice', selection))
       .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
     expect(validateCli).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    { failure: 'exception', previousCheck: null },
+    { failure: 'exception', previousCheck: new Date('2026-10-15T09:00:00Z') },
+    { failure: 'abort', previousCheck: null },
+    { failure: 'abort', previousCheck: new Date('2026-10-15T09:00:00Z') },
+  ])('limits prepares after $failure with previous check $previousCheck until 15 minutes elapse', async ({ failure, previousCheck }) => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const startedAt = new Date('2026-10-15T10:00:00Z')
+    vi.setSystemTime(startedAt)
+    respond()
+    storedState = 'unreachable'
+    lastCheckedAt = previousCheck
+    validateCli.mockImplementation(async () => {
+      // The bounded attempt elapses before it rejects; the interval was claimed
+      // at its start, so the claim (not the rejection time) opens the window.
+      vi.setSystemTime(Date.now() + 20_000)
+      throw failure === 'abort' ? new DOMException('validation aborted', 'AbortError') : new Error('bridge refused')
+    })
+
+    await expect(repository.loadRoutingResolution('alice', selection))
+      .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+    await expect(repository.loadRoutingResolution('alice', selection))
+      .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+    expect(validateCli).toHaveBeenCalledTimes(1)
+    expect(lastCheckedAt).toEqual(startedAt)
+    expect(storedState).toBe('unreachable')
+
+    vi.setSystemTime(new Date('2026-10-15T10:14:59.999Z'))
+    await expect(repository.loadRoutingResolution('alice', selection))
+      .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+    expect(validateCli).toHaveBeenCalledTimes(1)
+
+    vi.setSystemTime(new Date('2026-10-15T10:15:00Z'))
+    await expect(repository.loadRoutingResolution('alice', selection))
+      .rejects.toMatchObject({ code: 'AI_CLI_UNREACHABLE' })
+    expect(validateCli).toHaveBeenCalledTimes(2)
   })
 
   it('does not revalidate inside the user transaction', async () => {

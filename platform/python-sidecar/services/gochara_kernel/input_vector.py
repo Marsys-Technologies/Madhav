@@ -53,7 +53,7 @@ _K, _R = "services.gochara_kernel.", "services.gochara_rules."
 # the vector). Verifiers sit with the stage they verify; nothing here is "optional".
 IMPLEMENTATION_MODULES = {
     "geometry": tuple(_K + m for m in (
-        "arcs", "boundary_match", "contact_certify", "contact_reconstruct", "contacts", "convention", "episodes", "ids", "knots", "materialise", "near_miss_verifier", "record_store", "stretch_sink",
+        "arcs", "boundary_match", "contact_certify", "contact_reconstruct", "contacts", "convention", "episodes", "ids", "knots", "materialise", "near_miss", "near_miss_verifier", "record_store", "stretch_sink",
         "substrate", "targets")),
     "evaluation": tuple(_K + m for m in (
         "chart_context", "coverage", "dasha_read", "rehearsal_settlement", "ephemeris_pins", "evaluator", "horizon", "input_vector", "input_vector_verifier",
@@ -202,6 +202,18 @@ def _near_miss_layer_component(version):
     return version
 
 
+def _scored_classes_component(classes) -> list:
+    """G8 (steward GAPS-G8-G9): the EXPECTED class census the generation is built for — the scored event classes, sorted, pinned in the
+    manifest vector so the verification job and the seal-time completeness function (migration 1306) can refuse a candidate that
+    claims more or fewer classes. ADDITIVE and optional at the serializer (the frozen test vectors, which never carried it, keep their
+    literal preimages and digests); REQUIRED at verify and at seal. A non-list, an empty list, a non-string, a blank, an untrimmed or a
+    duplicated name is refused here, never normalised."""
+    if (not isinstance(classes, (list, tuple)) or not classes or any(not isinstance(c, str) or not c.strip() or c != c.strip() for c in classes)
+            or len(set(classes)) != len(classes)):
+        raise InputDrift(f"scored_classes {classes!r} is not a non-empty list of distinct, trimmed class names")
+    return sorted(classes)
+
+
 def assemble_vector(inp: dict) -> dict:
     """The vector from already-obtained inputs, PURE — the single serializer `build_input_vector` and the
     frozen test vectors (`am16_vectors_frozen_v1.json`, literal preimages + expected sha256) both use."""
@@ -226,7 +238,8 @@ def assemble_vector(inp: dict) -> dict:
                        "activity": inp["activity_orb"]},
         "rulings_digest": _sha(canonical_json(sorted(inp["rulings"], key=canonical_json))),
         "implementation": {st: _sha(canonical_json(m)) for st, m in sorted(inp["impl_modules"].items())},
-    } | ({"test_slice": inp["test_slice"]} if inp.get("test_slice") is not None else {}) \
+    } | ({"scored_classes": _scored_classes_component(inp["scored_classes"])} if inp.get("scored_classes") is not None else {}) \
+      | ({"test_slice": inp["test_slice"]} if inp.get("test_slice") is not None else {}) \
       | ({"horizon_basis": inp["horizon_basis"]} if inp.get("horizon_basis") is not None else {}) \
       | ({"near_miss_layer_version": _near_miss_layer_component(inp["near_miss_layer_version"])} if inp.get("near_miss_layer_version") is not None else {})
 
@@ -461,6 +474,7 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
                        l0_consumed: Iterable[str] = (), census_override=None,
                        result_policy: str = DEFAULT_RESULT_POLICY,
                        near_miss_layer_version: int | None | str = "auto",
+                       scored_classes: Iterable[str] | None = None,
                        stored_scope: str = STORED_SCOPE, test_slice: dict | None = None, horizon_basis: dict | None = None) -> dict:
     """The vector of what this build CONSUMES. `l0_consumed` names the L0 authorities actually read (none ⇒
     none is a dependency); `census_override` (historical replay) restates the ORIGINAL sealed-version census.
@@ -491,6 +505,7 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
         "activity_orb": activity_orb_states(conn, refs, census_override=census_override),
         "rulings": list(rulings),
         "impl_modules": _implementation_modules(modules),
+        "scored_classes": None if scored_classes is None else list(scored_classes),
         "test_slice": test_slice,
         "horizon_basis": horizon_basis,
         "near_miss_layer_version": near_miss_layer_version if near_miss_layer_version != "auto" else (
@@ -532,6 +547,7 @@ def verify_replay(conn, stored: dict, path_refs: Iterable[tuple[str, str]], **kw
         raise InputDrift(f"manifest vector schema {stored.get('schema')!r} != {VECTOR_SCHEMA!r}")
     kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
     kw.setdefault("result_policy", stored.get("result_policy"))
+    kw.setdefault("scored_classes", stored.get("scored_classes"))
     kw.setdefault("stored_scope", stored.get("stored_scope", STORED_SCOPE))
     kw.setdefault("test_slice", stored.get("test_slice"))
     kw.setdefault("horizon_basis", stored.get("horizon_basis"))
@@ -552,6 +568,7 @@ def verify_live(conn, stored: dict, **kw) -> None:
         raise InputDrift(f"manifest vector schema {stored.get('schema')!r} != {VECTOR_SCHEMA!r}")
     kw.setdefault("l0_consumed", tuple(stored.get("l0", {})))
     kw.setdefault("result_policy", stored.get("result_policy"))
+    kw.setdefault("scored_classes", stored.get("scored_classes"))
     kw.setdefault("stored_scope", stored.get("stored_scope", STORED_SCOPE))
     kw.setdefault("test_slice", stored.get("test_slice"))
     kw.setdefault("horizon_basis", stored.get("horizon_basis"))

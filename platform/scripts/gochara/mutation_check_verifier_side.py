@@ -557,6 +557,34 @@ MUTANTS.update({'fixture.setup-cleanup': ('../../tests/l3/gochara/test_a55_repla
                            '        conn.close()\n'
                            '        raise\n')})
 
+
+# P02 merge adapter: same 29 mr.* claims, rebased onto the real current API.
+MUTANTS.update({
+    'mr.excluded-path': ("measuring_report.py", "test_measuring_report.py", 'any(c in EXCLUDED_EIGHT and p in ("P1", "P3", "P4") for c, p in view.class_paths_with_rows)', 'any(c in EXCLUDED_EIGHT for c, p in view.class_paths_with_rows)'),
+    'mr.scorer-numerator': ("measuring_report.py", "test_measuring_report.py", 'int(grid.date_inclusive or local_hi.time() != time())', 'int(local_hi.time() != time())'),
+    'mr.underivable-log': ("measuring_report.py", "test_measuring_report.py", 'if rows and not info["dates"]:', 'if False:'),
+    'mr.digest-shape': ("measuring_report.py", "test_measuring_report.py", 'elif not isinstance(view.marker_digest, str) or re.fullmatch(r"[0-9a-f]{64}", view.marker_digest) is None:', 'elif False:'),
+    'mr.lel-id-fallback': ("measuring_report.py", "test_measuring_report.py", 'lel_id = provenance.get("lel_id") if isinstance(provenance, dict) else None', 'lel_id = provenance.get("lel_id") if isinstance(provenance, dict) else None\n        lel_id = lel_id or row.get("event_id")'),
+    'mr.report-only-exact': ("measuring_report.py", "test_measuring_report.py", 'if not lel_id:\n            result["rows_without_lel_id"].append(report)', 'if confidence == "exact" and not lel_id:\n            result["rows_without_lel_id"].append(report)'),
+    'mr.no-lel-id-reported': ("measuring_report.py", "test_measuring_report.py", 'if not lel_id:\n            result["rows_without_lel_id"].append(report)', 'if False:\n            result["rows_without_lel_id"].append(report)'),
+    'mr.digest-fullmatch': ("measuring_report.py", "test_measuring_report.py", 're.fullmatch(r"[0-9a-f]{64}", view.marker_digest)', 're.match(r"[0-9a-f]{64}", view.marker_digest)'),
+    'mr.vs-class-removal': ("measuring_report.py", "test_measuring_report.py", '_class_supports([r for r in rs if r.agent != agent])', '_class_supports(rs)'),
+    'mr.midnight': ("measuring_report.py", "test_measuring_report.py", 'if value.time() != time():', 'if False:'),
+    'mr.unknown-agent': ("measuring_report.py", "test_measuring_report.py", '(r.agent not in ALL_AGENTS, "unknown_agent")', '(False, "unknown_agent")'),
+    'mr.blacklist': ("measuring_report.py", "test_measuring_report.py", 'bool(view.rule_versions - ALLOWED_RULE_VERSIONS)', 'bool(view.rule_versions & {"1.2.0"})'),
+    'mr.census': ("measuring_report.py", "test_measuring_report.py", 'set(view.marker_classes) != SCORED_CLASSES', 'False'),
+    'mr.year-trunc': ("measuring_report.py", "test_measuring_report.py", 'start = date(min(info["dates"]).year, 1, 1) if rows else today', 'start = min(info["dates"]) if rows else today'),
+    'mr.no-future-refusal': ("measuring_report.py", "test_measuring_report.py", 'if start > today:', 'if False:'),
+    'mr.empty-generation': ("measuring_report.py", "test_measuring_report.py", 'not view.class_paths_with_rows, "measuring_build_holds_no_rows"', 'False, "measuring_build_holds_no_rows"'),
+    'mr.status': ("measuring_report.py", "test_measuring_report.py", 'view.status not in (None, "candidate", "published")', 'False'),
+    'mr.birth-row': ("measuring_report.py", "test_measuring_report.py", 'if rows and (len(births) != 1 or _event_date(births[0].get("event_date")) != birth_date):', 'if False:'),
+})
+EQUIVALENT["mr.merge-touching"] = ("measuring_report.py", "test_measuring_report.py", "        if merged and lo <= merged[-1][1]:", "        if merged and lo < merged[-1][1]:", "merging touching intervals does not change any admitted-day count")
+
+MUTANTS["mr.p4-union"] = ("measuring_report.py", "test_measuring_report.py", 'return _intersection(\n        _supports(records, lambda r: r.path == "P4" and r.agent == "jupiter" and r.via in vias),\n        _supports(records, lambda r: r.path == "P4" and r.agent == "saturn" and r.via in vias))', 'return _merge([\n        *_supports(records, lambda r: r.path == "P4" and r.agent == "jupiter" and r.via in vias),\n        *_supports(records, lambda r: r.path == "P4" and r.agent == "saturn" and r.via in vias)])')
+MUTANTS["mr.role"] = ("measuring_report.py", "test_measuring_report.py", '(r.role != "scored", "testimony_record_in_scored_share")', '(False, "testimony_record_in_scored_share")')
+
+
 def classify(returncode, xml_path):
     try:
         root = ET.parse(xml_path).getroot()
