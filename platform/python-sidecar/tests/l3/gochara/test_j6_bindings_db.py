@@ -5,6 +5,7 @@ No sky calculation or substituted ephemeris; no production connection.
 """
 import copy
 import importlib.util
+import json
 from pathlib import Path
 import sys
 
@@ -142,3 +143,57 @@ def test_readback_target_matches_only_the_exact_published_non_slice_manifest(db)
     other['args']['manifest-id'] = mids['5.1']
     got = head.observe(conn, other)
     assert got['head']['generation'] == '5.0' and got['target_matches'] is False
+
+
+# ── SR-HEAD-POLICY-KEEP: the executor's own entry point (the enabled ops-table script) on the guarded fixture ──────────────────────────
+def _decision(outcome='approved'):
+    return dict(kind='decision', decision='D-FLIP', state='delegated', actor='steward', ts='2026-10-16T00:00:00+00:00',
+                outcome=outcome, detail='fixture controller decision')
+
+
+def _cli(conn, mids, tmp_path, monkeypatch, *, events, mutate=lambda r: None, cli_args=None):
+    """Run head_operation.main exactly as the executor does (argv from the table's fixed_args + the request's args, the request in
+    KY_OPERATION_REQUEST, KY_ROOT, DATABASE_URL), counting connections. Returns (exit code, connection count)."""
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+    request = req(conn, mids, 'publish_head_dryrun')
+    request['decision_event_sha256'] = head.sha(_decision())
+    mutate(request)
+    (tmp_path/'run/ops/receipts').mkdir(parents=True, exist_ok=True)
+    (tmp_path/'run/EVENTS.jsonl').write_text(''.join(json.dumps(e)+'\n' for e in events))
+    password = conninfo_to_dict(ADMIN_DSN).get('password')
+    monkeypatch.setenv('KY_ROOT', str(tmp_path))
+    monkeypatch.setenv('KY_OPERATION_REQUEST', json.dumps(request, sort_keys=True, separators=(',', ':')))
+    monkeypatch.setenv('DATABASE_URL', make_conninfo(conn.info.dsn, **({'password': password} if password else {})))
+    connects = []
+    real = psycopg.connect
+    monkeypatch.setattr(psycopg, 'connect', lambda *a, **kw: connects.append(1) or real(*a, **kw))
+    args = cli_args or request['args']
+    argv = ['--kind', 'publish_head', '--dry-run'] + [x for k in ('generation', 'manifest-id', 'expected-head-sha256') for x in ('--'+k, args[k])]
+    return head.main(argv), len(connects)
+
+
+def test_cli_dry_run_passes_the_policy_gate_and_leaves_the_head_untouched(rehearsal_database, tmp_path, monkeypatch, capsys):
+    conn, mids = rehearsal_database
+    before = _heads(conn)
+    code, connects = _cli(conn, mids, tmp_path, monkeypatch, events=[_decision()])
+    proof = json.loads(capsys.readouterr().out)
+    assert (code, connects) == (0, 1)
+    assert proof['status'] == 'ROLLED_BACK' and proof['rollback_confirmed'] is True and proof['after']['generation'] == '5.0'
+    assert _heads(conn) == before
+
+
+@pytest.mark.parametrize('name', ['no_decision', 'refused_decision', 'deferred_decision', 'scope_missing', 'args_do_not_bind_scope', 'cli_args_differ_from_request'])
+def test_cli_refuses_before_connecting_when_the_policy_refuses(rehearsal_database, tmp_path, monkeypatch, capsys, name):
+    # Claim: a refused request never reaches the database; the policy runs before the connection is opened. Revert = drop the policy call from main().
+    conn, mids = rehearsal_database
+    before = _heads(conn)
+    events = {'no_decision': [], 'refused_decision': [_decision('refused')], 'deferred_decision': [_decision('deferred')]}.get(name, [_decision()])
+    mutate = {'scope_missing': lambda r: r.pop('head_change'),
+              'args_do_not_bind_scope': lambda r: r['args'].update({'expected-head-sha256': '0'*64})}.get(name, lambda r: None)
+    cli_args = None
+    if name == 'cli_args_differ_from_request':
+        cli_args = dict(req(conn, mids)['args'], generation='5.1')
+    code, connects = _cli(conn, mids, tmp_path, monkeypatch, events=events, mutate=mutate, cli_args=cli_args)
+    out = capsys.readouterr()
+    assert (code, connects, out.out) == (8, 0, '')
+    assert _heads(conn) == before
