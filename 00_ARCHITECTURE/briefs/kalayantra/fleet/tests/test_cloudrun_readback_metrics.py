@@ -17,6 +17,7 @@ API's own definitions (the oracle never calls the code under test to compute its
   M6  DB wait is reported as not exposed, not as zero
   M7  percentile across different bucket layouts is NULL (not a pooled guess); mean and max bound are still given
   M8  the CLI carries --metrics end to end and `--metrics` without --execution is refused before any cloud call
+  M9  the executor's real `validate` admits {execution, metrics} against the real executor_ops.json table and still refuses any other argument
 """
 import importlib.util
 import json
@@ -251,3 +252,19 @@ def test_m8_the_cli_carries_metrics_end_to_end(tmp_path):
     assert before == 5
     assert go("--metrics", "true").returncode == 1 and go("--execution", EXEC, "--metrics", "false").returncode == 2
     assert len((tmp_path / "calls.log").read_text().splitlines()) == before
+
+
+# ───────────── M9 ─────────────
+
+def test_m9_the_executor_admits_the_metrics_argument_and_refuses_an_unknown_one(tmp_path, monkeypatch):
+    monkeypatch.setenv("KY_ROOT", str(tmp_path / "ky"))
+    spec = importlib.util.spec_from_file_location("ky_exec_cr_metrics", FLEET / "executor.py")
+    ex = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ex)
+    table = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
+
+    def req(args):
+        return {"operation_id": "op-cr-m", "kind": "cloudrun_job_readback", "item_id": "BOLD-09", "idempotency_key": "key-cr-m",
+                "requested_by": "v1", "kyd": "kyd-1", "args": args}
+    assert ex.validate(req({"execution": EXEC, "metrics": "true"}), table, {"gcloud": True}) is None
+    assert "disallowed args" in ex.validate(req({"execution": EXEC, "metrics": "true", "limit": "9"}), table, {"gcloud": True})
