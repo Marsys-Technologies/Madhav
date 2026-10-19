@@ -134,7 +134,8 @@ def launch_argv(entry, request, *, py, script_path):
     args = list(entry.get("fixed_args", []))
     for key, value in (request.get("args") or {}).items():
         args += ["--" + key, str(value)]
-    if entry.get("production") and entry.get("python_module"):
+    in_worktree = entry.get("production") or str(request.get("kind", "")).endswith("_dryrun")   # executor.execute: both run in the reviewed tree
+    if in_worktree and entry.get("python_module"):
         return [py, "-m", entry["python_module"]] + args
     return ([py, script_path] if entry["script"].endswith(".py") else ["bash", script_path]) + args
 
