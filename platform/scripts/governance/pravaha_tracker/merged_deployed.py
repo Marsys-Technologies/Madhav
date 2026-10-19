@@ -27,6 +27,12 @@ import time
 from . import detectors as D
 
 DEPLOY_WORKFLOW = "Deploy to Cloud Run"
+# SR-BOLD-07 (owner surrogate, 2026-10-19): any successful run counts, whatever triggered it. A `workflow_run` run is
+# trusted as before; a `workflow_dispatch` run can succeed having only migrated (deploy.yml skips the deploy jobs and
+# GitHub still calls the run green), so it counts only when its own jobs show a deploy was earned and made.
+DEPLOY_EVENTS = ("workflow_run", "workflow_dispatch")
+OUTCOME_JOB = "Require earned deployment outcome"        # deploy.yml `deployment-outcome`
+DEPLOY_JOBS = ("Build & Deploy Web", "Build & Deploy Sidecar", "Build & Deploy MCP", "Build & Deploy Pipeline Job Image")
 SOURCE = "derived:merged+deployed"
 REFRESH_S = 60.0           # how often the background refresh re-reads GitHub and git
 MERGED_LIST_LIMIT = 300    # one `gh pr list` call maps head branches of the newest merged PRs
@@ -179,6 +185,7 @@ class GitHubSource:
         self._contained: dict[str, dict] = {}
         self._not_contained: dict[str, float] = {}
         self._runs: tuple[float, list[dict]] | None = None
+        self._earned_runs: dict[int, bool] = {}      # a finished run's jobs never change
         self._main: str | None = None
 
     def _call(self, cmd: list[str]) -> tuple[int, str]:
@@ -268,7 +275,8 @@ class GitHubSource:
         return rc == 0
 
     def deployed(self, merge: str) -> dict:
-        """A successful `workflow_run` deploy of main whose sha contains `merge` (cli.observe_containment's rule)."""
+        """A successful deploy run of main (`workflow_run`, or `workflow_dispatch` that earned its deploy) whose sha
+        contains `merge` (cli.observe_containment's rule)."""
         none = {"deployed_sha": None, "run_id": None, "contains_merge": False}
         with self._lock:
             if merge in self._contained:
@@ -279,10 +287,10 @@ class GitHubSource:
         if runs is None:
             return none
         for run in runs:
-            if not isinstance(run, dict) or run.get("event") != "workflow_run" or not _sha(run.get("headSha")):
+            if not isinstance(run, dict) or run.get("event") not in DEPLOY_EVENTS or not _sha(run.get("headSha")):
                 continue
             rc, _ = D._run(["git", "merge-base", "--is-ancestor", merge, run["headSha"]], cwd=self.repo)
-            if rc == 0:
+            if rc == 0 and (run["event"] == "workflow_run" or self._earned(run.get("databaseId"))):
                 found = {"deployed_sha": run["headSha"], "run_id": run.get("databaseId"), "contains_merge": True}
                 with self._lock:
                     self._contained[merge] = found
@@ -290,6 +298,25 @@ class GitHubSource:
         with self._lock:
             self._not_contained[merge] = time.time()
         return none
+
+    def _earned(self, run_id) -> bool:
+        """A dispatch run's jobs show an earned deploy (`earned_deploy`); only a read job list is cached."""
+        if not isinstance(run_id, int) or isinstance(run_id, bool):
+            return False
+        with self._lock:
+            if run_id in self._earned_runs:
+                return self._earned_runs[run_id]
+        rc, out = D._run(["gh", "run", "view", str(run_id), "--json", "jobs"], cwd=self.repo)
+        if rc != 0:
+            return False
+        try:
+            jobs = json.loads(out or "{}").get("jobs")
+        except (ValueError, AttributeError):
+            return False
+        earned = earned_deploy(jobs)
+        with self._lock:
+            self._earned_runs[run_id] = earned
+        return earned
 
     def _deploy_runs(self) -> list[dict] | None:
         with self._lock:
@@ -303,6 +330,19 @@ class GitHubSource:
         with self._lock:
             self._runs = (time.time(), runs)
         return runs
+
+
+def earned_deploy(jobs) -> bool:
+    """True when a run's jobs show an earned deployment: the outcome job passed AND a deploy job really succeeded.
+
+    The outcome job alone is not enough: it also passes (mode `no-deployable-change`) when nothing was deployed, and a
+    dispatch run that only migrated has every deploy job skipped. An unreadable job list is not an earned deploy.
+    """
+    results = {}
+    for job in jobs if isinstance(jobs, list) else []:
+        if isinstance(job, dict) and isinstance(job.get("name"), str):
+            results[job["name"]] = job.get("conclusion")
+    return results.get(OUTCOME_JOB) == "success" and any(results.get(name) == "success" for name in DEPLOY_JOBS)
 
 
 def _json_list(text: str) -> list[dict]:
