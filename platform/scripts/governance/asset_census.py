@@ -2772,7 +2772,7 @@ def validate_lint_none_declaration(where: str, e: dict) -> None:
 
 _DECL_ENTRY_KEYS = ("kind", "carriage", "prose_fields", "terminal_by_construction", "cross_asset_writes",
                     "read_evidence", "read_table", "read_kind", "evidence", "evidence_kind", "vocab_alias", "ldgr_source", "null_convention",
-                    "prose_coupling", "density_tier_columns", "source", "prose_none", "produced_tables", "density_facet", "uniform_authority", "dens_not_served", "service_probe", "zero_row_convention", "lint_none", "has_writer", "update_only", "no_table", "static_data", "probe_attempts")
+                    "prose_coupling", "density_tier_columns", "source", "prose_none", "produced_tables", "density_facet", "uniform_authority", "dens_not_served", "service_probe", "zero_row_convention", "lint_none", "has_writer", "update_only", "no_table", "static_data", "probe_attempts", "fingerprint")
 _DECL_EVIDENCE_KEYS = ("kind", "carriage", "prose_fields", "cross_asset_writes")
 # E5.7 (Worker E, SS N-150 R7): `fidelity_tests` declares the golden-value test(s) of the asset's narration builder: [{test: "platform/python-sidecar/<...>/test_x.py::[Class::]test_name",
 # covers: [<declared prose entries>]}]. The census VERIFIES each from the test's source (golden_test_scan.py); the declaration names, it never decides.
@@ -3365,6 +3365,15 @@ def validate_declarations(doc, registry_ids=None) -> dict:
         extra = sorted(set(e) - set(_DECL_ENTRY_KEYS) - set(DECL_FIDELITY_KEYS) - set(DECL_E57_KEYS) - set(DECL_FORMGAP_KEYS) - set(DECL_N189_KEYS) - set(DECL_N431_ES_KEYS))
         if extra:
             raise DeclarationsError(f"{where}: unknown field(s) {extra}")
+        # K8 opt-in metadata only; no criterion or verdict is changed by this field.
+        if e.get("fingerprint") is not None:
+            if e.get("kind") != "data":
+                raise DeclarationsError(f"{where}.fingerprint requires kind=data")
+            from kala_fingerprint_declarations import validate as validate_kala_fingerprint
+            try:
+                validate_kala_fingerprint(aid, e["fingerprint"])
+            except ValueError as exc:
+                raise DeclarationsError(f"{where}.fingerprint: {exc}") from exc
         k = e.get("kind")
         if k is not None and (not isinstance(k, str) or k not in DECLARED_KINDS):
             raise DeclarationsError(f"{where}.kind {k!r} is not one of {list(DECLARED_KINDS)} (or null = unknown)")
