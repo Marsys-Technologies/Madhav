@@ -212,12 +212,17 @@ jobs:
           fi
           python3 platform/scripts/governance/ci_gate.py --event "$GITHUB_EVENT_NAME" --base "$base" --head HEAD >> "$GITHUB_OUTPUT"
 
-  # SR-SELFHOSTED-SPLIT (OWNER-SELFHOSTED-SPLIT-20261018): the DB-heavy jobs (Kāla DB tests, the DB Integration
-  # shards and the Gochara A5.5f / C37 / C38 DB jobs) run on the owner's own ephemeral `madhav-db` runners when
-  # one is online, and on ubuntu-latest otherwise. Nothing waits on a sleeping machine: this probe runs on a
-  # GitHub-hosted runner, asks GitHub which self-hosted runners are online, and publishes the `runs-on` value
-  # those jobs use. Every failure path (no token, API error, bad answer, kill switch, fork PR) answers
-  # ubuntu-latest, and the step always exits 0, so a broken probe can never skip or fail a DB job.
+  # SR-SELFHOSTED-SPLIT (OWNER-SELFHOSTED-SPLIT-20261018) + SR-RUNNER-PROBE-NOSECRET: the DB-heavy jobs (Kāla DB
+  # tests, the DB Integration shards and the Gochara A5.5f / C37 / C38 DB jobs) run on the owner's own ephemeral
+  # `madhav-db` runners when one is online, and on ubuntu-latest otherwise. Nothing waits on a sleeping machine: this
+  # probe runs on a GitHub-hosted runner, reads a heartbeat and publishes the `runs-on` value those jobs use.
+  #
+  # Heartbeat: a launchd job on the owner's Mac sets the repository VARIABLE MADHAV_DB_ONLINE to the current UTC time
+  # (ISO 8601, e.g. 2026-10-19T16:00:00Z) every 60 s while at least one madhav-db runner is online and idle-capable,
+  # and never writes otherwise. No secret and no GitHub API call are involved here. The DB jobs move to madhav-db only
+  # when the timestamp parses AND is at most 180 s older than this job's own clock (a value more than 60 s in the
+  # future is clock skew or garbage, not a heartbeat). Missing, unparsable, future-dated, stale, kill switch or fork
+  # PR all answer ubuntu-latest, and the step always exits 0, so a broken probe can never skip or fail a DB job.
   #
   # Same job, same `name:` -- there is no second "mirror" job, so no required or aggregate check changes name,
   # none can report twice, and none is skipped on a full event (full-suite reads a skip there as a failure).
@@ -225,10 +230,9 @@ jobs:
   # platform/scripts/governance/check_selfhosted_fork_guard.py): a fork PR gets ubuntu-latest and never a
   # self-hosted label. No workflow uses pull_request_target on a self-hosted label.
   #
-  # Operation: secret MADHAV_RUNNER_PROBE_TOKEN = a fine-grained token with repository "Administration: read"
-  # only (lists runners; no other scope). Unset = always ubuntu-latest. Kill switch without a PR: set the
-  # repository variable MADHAV_DB_ENABLED=false. Optional MADHAV_DB_MIN_ONLINE (default 1) = runners that must be
-  # online before the DB jobs move.
+  # Operation (runbook: 00_ARCHITECTURE/briefs/kalayantra/fleet/SELFHOSTED_RUNNERS_v1_1.md): variable not written or
+  # older than 180 s = always ubuntu-latest. Kill switch without a PR: set the repository variable
+  # MADHAV_DB_ENABLED=false.
   db-runner-probe:
     name: DB runner probe (is a madhav-db runner online?)
     runs-on: ubuntu-latest
@@ -241,26 +245,27 @@ jobs:
       - name: Probe
         id: probe
         env:
-          GH_TOKEN: ${{ secrets.MADHAV_RUNNER_PROBE_TOKEN }}
-          REPO: ${{ github.repository }}
           DB_ENABLED: ${{ vars.MADHAV_DB_ENABLED }}
-          MIN_ONLINE: ${{ vars.MADHAV_DB_MIN_ONLINE }}
+          HEARTBEAT: ${{ vars.MADHAV_DB_ONLINE }}
         run: |
           set -u
           choose() { echo "runs_on=$1" >> "$GITHUB_OUTPUT"; echo "::notice title=db-runner-probe::$2"; exit 0; }
           fallback='"ubuntu-latest"'
+          max_age=180
+          max_skew=60
           [ "${DB_ENABLED:-true}" = "false" ] && choose "$fallback" "MADHAV_DB_ENABLED=false: DB jobs use ubuntu-latest"
-          [ -n "${GH_TOKEN:-}" ] || choose "$fallback" "no probe token: DB jobs use ubuntu-latest"
-          online="$(timeout 30 gh api "repos/${REPO}/actions/runners?per_page=100" \
-            --jq '[.runners[] | select(.status == "online") | select(any(.labels[]; .name == "madhav-db"))] | length' 2>/dev/null)" || online=""
-          case "$online" in ''|*[!0-9]*) choose "$fallback" "probe call failed: DB jobs use ubuntu-latest" ;; esac
-          min="${MIN_ONLINE:-1}"
-          case "$min" in ''|*[!0-9]*) min=1 ;; esac
-          [ "$min" -ge 1 ] || min=1
-          if [ "$online" -ge "$min" ]; then
-            choose '["self-hosted","madhav-db"]' "${online} madhav-db runner(s) online: DB jobs use madhav-db"
-          fi
-          choose "$fallback" "${online} madhav-db runner(s) online (need ${min}): DB jobs use ubuntu-latest"
+          hb="${HEARTBEAT:-}"
+          [ -n "$hb" ] || choose "$fallback" "no MADHAV_DB_ONLINE heartbeat: DB jobs use ubuntu-latest"
+          case "$hb" in
+            [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;;
+            *) choose "$fallback" "MADHAV_DB_ONLINE is not an ISO 8601 UTC timestamp: DB jobs use ubuntu-latest" ;;
+          esac
+          beat="$(python3 -c 'import calendar, sys, time; print(calendar.timegm(time.strptime(sys.argv[1], "%Y-%m-%dT%H:%M:%SZ")))' "$hb" 2>/dev/null)" || beat=""
+          case "$beat" in ''|*[!0-9]*) choose "$fallback" "MADHAV_DB_ONLINE does not parse as a date: DB jobs use ubuntu-latest" ;; esac
+          age=$(( $(date -u +%s) - beat ))
+          [ "$age" -ge $(( -max_skew )) ] || choose "$fallback" "heartbeat is ${age}s in the future (> ${max_skew}s skew): DB jobs use ubuntu-latest"
+          [ "$age" -le "$max_age" ] || choose "$fallback" "heartbeat is ${age}s old (> ${max_age}s): DB jobs use ubuntu-latest"
+          choose '["self-hosted","madhav-db"]' "heartbeat ${age}s old: DB jobs use madhav-db"
 
   typecheck:
     needs: [changes, generated-artifacts]
