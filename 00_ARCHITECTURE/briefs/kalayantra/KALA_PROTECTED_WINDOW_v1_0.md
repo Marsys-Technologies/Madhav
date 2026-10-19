@@ -1,10 +1,11 @@
 ---
 artifact: KALA_PROTECTED_WINDOW
-version: "1.0"
+version: "1.1"
 status: CURRENT
 produced_on: 2026-10-08
 produced_in: Claude Code, owner-approved change after the 2026-10-08 deploy outage (migration 1330)
 changelog:
+  - "1.1 (2026-10-18): W2-M-08: every dispatcher of the window refuses while a foreign production lease is ACTIVE (section 'Lease gate')."
   - "1.0 (2026-10-08): first version: Kāla protected public-schema window, routine-runner skip, CI guard."
 ---
 
@@ -43,6 +44,18 @@ gh workflow run deploy.yml -f kala_schema_migration=true
 
 The usual `ci_gate=require-ci-green` default applies. A required reviewer on the protected environment must
 approve the run.
+
+## Lease gate (W2-M-08)
+
+The window changes production, so it obeys the prime rule of the shared lease table (§1 of `CAMPAIGN_COORDINATION.md` on `origin/campaign-coordination`):
+one campaign deploys at a time. `fleet/window_lease_gate.py` reads that table exactly as `executor.lease_live` does and refuses (exit 1) while an
+ACTIVE, unexpired lease other than the window's own is held. It also refuses when the table cannot be read (fail closed).
+
+- The deploy job **Apply Protected Public-Schema Migrations** runs it as its first step after the provenance check, before any credential is used. Pass the lease
+  the window runs under in the optional dispatch input `window_lease_id`; leave it empty when the window holds none (then any ACTIVE lease refuses).
+- The auto-dispatcher (`fleet/ops_guard/kala_window_auto.sh`, the repo source of `/Users/Dev/kalayantra/ops-guard/kala_window_auto.sh`) runs it just before
+  `gh workflow run` and holds, logging `HOLD lease gate: ...`, until the lease is released. `KY_KWA_OWN_LEASE` names its own lease (none by default).
+  The installed copy and `window_lease_gate.py` are copied into `ops-guard/` by the cockpit; until then the installed copy still dispatches unguarded.
 
 ## Precondition
 
