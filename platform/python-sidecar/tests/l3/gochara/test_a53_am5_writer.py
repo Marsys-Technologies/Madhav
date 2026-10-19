@@ -58,9 +58,11 @@ def run(am5, monkeypatch, tmp_path):
     RuleRegistryStore(am5).seed()
     w = writer_mod.GocharaV5Writer()
 
-    def step(key):
-        ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-1", db_conn=am5,
-                          config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe},
+    def step(key, final_rules=False):
+        config = {"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}
+        if final_rules:                 # main made the final (ND-H 1.2.0) rules an explicit opt-in
+            config["gochara_v5_final_rules"] = True
+        ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-1", db_conn=am5, config=config,
                           dry_run=False)
         with am5.transaction():
             return w.run_substep(ctx, SubStep(key=key, label=key))
@@ -153,6 +155,33 @@ def test_an_h_unknown_class_plans_under_the_standing_ruling(run):
                     ("P3", "inputs_unavailable", "ST-H-UNKNOWN-20261002"),
                     ("P4", "inputs_unavailable", "ST-H-UNKNOWN-20261002"),
                     ("P5", "tier_withheld_by_ruling", "ST-P5-HOLD-20261001")]
+
+
+def test_an_h_unknown_class_selects_final_rows_under_the_final_rules_and_its_legacy_rows_are_superseded(run):
+    """Under the explicit final-rule opt-in the formerly unknown class selects final rows; its legacy rows are superseded."""
+    from services.gochara_kernel import rule_registry
+    step, conn = run
+    with rule_registry.rule_profile(final_rules=True):
+        RuleRegistryStore(conn).seed()          # the 1.2.0 rows are part of the bound catalogue only under the final profile
+    for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP,
+              writer_mod.SNAPSHOT_SUBSTEP):
+        step(k, final_rules=True)
+    res = step("inventory:spiritual_turn", final_rules=True)
+    assert "P1:excluded" in res.notes and "P3:excluded" in res.notes and "P4:excluded" in res.notes
+    rows = conn.execute(
+        "SELECT path_id, exclusion_reason, ruling_ref FROM public.ka_gochara_search_path_pin"
+        " WHERE generation = %s AND event_class = 'spiritual_turn' AND disposition = 'excluded'"
+        " ORDER BY path_id", (GEN,)).fetchall()
+    assert rows == [("P1", "superseded_by_version", None),
+                    ("P3", "superseded_by_version", None),
+                    ("P4", "superseded_by_version", None),
+                    ("P5", "tier_withheld_by_ruling", "ST-P5-HOLD-20261001")]
+    selected = conn.execute(
+        "SELECT path_id, disposition FROM public.ka_gochara_search_path_pin"
+        " WHERE generation = %s AND event_class = 'spiritual_turn' AND rule_version = '1.2.0'"
+        " ORDER BY path_id", (GEN,)).fetchall()
+    assert [p for p, _d in selected] == ["P1", "P3", "P4"]
+    assert all(d in ("included", "computed_empty") for _p, d in selected)
 
 
 def test_coverage_refuses_when_the_inventory_has_not_run(run):

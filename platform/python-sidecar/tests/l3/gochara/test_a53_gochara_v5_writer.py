@@ -239,6 +239,10 @@ def _record_phase_fakes(monkeypatch):
     calls: dict[str, list] = {"coverage": [], "grain": []}
     monkeypatch.setattr(writer_mod, "fetch_chart_context",
                         lambda conn, cid: dict(_CHART_CONTEXT))
+    monkeypatch.setattr(writer_mod, "fetch_chart_context_from_snapshot",          # G12: the record phases read the snapshot's copy
+                        lambda conn, cid, generation: dict(_CHART_CONTEXT))
+    monkeypatch.setattr(writer_mod, "make_period_rows_for_snapshot",
+                        lambda conn, cid, generation: (lambda agent: [], {"build_id": None, "read": False}))
     class _FakeRecordStore:
         def __init__(self, conn):
             self.conn = conn
@@ -318,8 +322,8 @@ def test_record_grain_records_the_dasha_build_the_read_actually_used(
         contract.update(build_id="build-xyz", read=True)   # the lazy read happens
         return []
 
-    monkeypatch.setattr(writer_mod, "make_period_rows_for",
-                        lambda conn, chart_id: (rows_for, contract))
+    monkeypatch.setattr(writer_mod, "make_period_rows_for_snapshot",
+                        lambda conn, chart_id, generation: (rows_for, contract))
     # the grain (faked) triggers the read through the injected callable
     def _grain(store, **kw):
         _record_phase_fakes["grain"].append(kw)
@@ -453,6 +457,49 @@ def test_writer_module_source_has_no_connection_lifecycle_or_throughput():
     rest = src.replace(guard, "").replace(inspect.getsource(writer_mod.AssetNotBuilding), "")
     assert "asset_throughput" not in rest, "asset_throughput may appear only inside the state guard (_require_building / AssetNotBuilding)"
     assert "SELECT state FROM public.asset_throughput" in guard and "INSERT" not in guard.upper().replace("INSERT_", "")
+
+
+def _final_ctx():
+    """A context that opts in to the final (ND-H 1.2.0) rules: main made them opt-in (`gochara_v5_final_rules`), so the P06 ND-H
+    writer tests below run under the explicit candidate profile."""
+    ctx = _ctx()
+    ctx.config['gochara_v5_final_rules'] = True
+    return ctx
+
+
+# ── ND-H-20261005 item 5: the WRITER mints no P2 record for parental_event under its ND-H selection ──────────
+
+def test_the_writer_hands_the_materialiser_no_p2_edge_for_parental_event(_record_phase_fakes):
+    """Not the inventory pin: the record substep itself. The writer enumerates each (class, path) grain directly, so
+    the suppression must hold in the enumerator it calls — zero edges reach the materialiser, so nothing is minted."""
+    w = writer_mod.GocharaV5Writer()
+    w.run_substep(_final_ctx(), SubStep(key="record:parental_event:P2", label=""))
+    (kw,) = _record_phase_fakes["grain"]
+    assert (kw["event_class"], kw["path_id"]) == ("parental_event", "P2")
+    assert kw["edges"] == []
+
+
+def test_the_coverage_partition_of_parental_event_declares_no_p2_edge(_record_phase_fakes):
+    w = writer_mod.GocharaV5Writer()
+    w.run_substep(_final_ctx(), SubStep(key="coverage:parental_event", label=""))
+    (kw,) = _record_phase_fakes["coverage"]
+    assert kw["class_edges"] and not [e for e in kw["class_edges"] if e.path_id == "P2"]
+    assert {e.path_id for e in kw["class_edges"]} == {"P1", "P3", "P4"}
+    assert {e.rule_version for e in kw["class_edges"]} == {"1.2.0"}
+
+
+def test_the_p2_suppression_is_parental_event_only_and_lifts_with_the_selection(_record_phase_fakes, monkeypatch):
+    """Controls: (a) another adverse ND-H class keeps its P2 records; (b) with parental_event back on its pre-ND-H
+    selection the writer mints the P2 rows it used to (so the suppression is the ruling's, not a blanket edit)."""
+    from services.gochara_kernel import rule_registry as rr
+    w = writer_mod.GocharaV5Writer()
+    w.run_substep(_final_ctx(), SubStep(key="record:financial_deception:P2", label=""))
+    assert _record_phase_fakes["grain"][-1]["edges"]
+    monkeypatch.setattr(rr, "CLASS_SELECTION_OVERRIDES",
+                        {k: v for k, v in rr.CLASS_SELECTION_OVERRIDES.items() if k[0] != "parental_event"})
+    w.run_substep(_final_ctx(), SubStep(key="record:parental_event:P2", label=""))
+    edges = _record_phase_fakes["grain"][-1]["edges"]
+    assert edges and {(e.path_id, e.rule_version, e.affected_person) for e in edges} == {("P2", "1.0.0", "native")}
 
 
 def test_final_rules_are_opt_in_and_do_not_change_the_default_writer(_record_phase_fakes):

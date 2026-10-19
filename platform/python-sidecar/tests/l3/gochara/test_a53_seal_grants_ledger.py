@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pytest
+
 from services.gochara_kernel import seal_brief as sb
 
 
@@ -48,4 +50,23 @@ def test_archived_1241_alone_does_not_supply_landed_grants_evidence():
     ]))
 
     assert [entry for entry in ledger if entry["migration"] == "1378"] == [{"migration": "1378", "applied": []}]
-    assert all(not entry["applied"] for entry in ledger)
+    assert [entry for entry in ledger if entry["migration"] == "1241"] == [{
+        "migration": "1241",
+        "applied": [{"filename": "1241_gochara_verifier_sealer_inventory_grants.sql", "sha256": "a" * 64,
+                     "applied_at": "2026-10-14T20:00:00+00:00"}],
+    }]
+    assert all(not entry["applied"] for entry in ledger if entry["migration"] != "1241")
+
+
+@pytest.mark.parametrize("filename", [
+    "1241_gochara_verifier_sealer_inventory_grants.sql",
+    "1305_gochara_snapshot_owns_l1_copy.sql",
+    "1306_gochara_expected_class_census.sql",
+    "1308_gochara_near_miss_storage.sql",
+    LANDED_FILENAME,
+])
+def test_required_migration_hash_changes_invalidate_the_approval_evidence(filename):
+    before = sb._ledger_evidence(LedgerConnection([(filename, "a" * 64, APPLIED_AT)]))
+    after = sb._ledger_evidence(LedgerConnection([(filename, "b" * 64, APPLIED_AT)]))
+
+    assert sb.payload_digest({"ledger": before}) != sb.payload_digest({"ledger": after})
