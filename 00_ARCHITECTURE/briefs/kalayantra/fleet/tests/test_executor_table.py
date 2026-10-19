@@ -35,6 +35,10 @@ PY_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py"
 SH_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh"
 COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 
+sys.path.insert(0, str(FLEET))
+import executor_pin_shards  # noqa: E402  (SR-CHURN-CUT 3: append-only pin shards; edits after this one are new files, not edits here)
+SHARDS = executor_pin_shards.load_shards()
+
 PLAN_PIN = "e709f60d7fcd4559227a25a4d5d83d6431c396b6"
 MODEL_PIN = "cf9831bceff36abd5a50e95328b83d16a4c1ce24"  # final J-4p/main integration target
 PINNED_EXECUTOR_SHA256 = "8b9a164f52b307514d7b42f87019070689b1533f624b871a2e1d113408ebdcf7"
@@ -178,7 +182,7 @@ PROVISIONING_BINDINGS = {
     "gochara_role_provisioning_dispatch": {"enabled": False, "needs": "none", "script": PROVISIONING_SCRIPT, "fixed_args": ["--execute"],
                                            "allowed_args": ["stage", "dsn_tail", "confirm", "window_lease_id"], "production": True, "timeout_s": 300, "enabled_by": "J-4b"},
 }
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(K9_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]}   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; K9-23: the eight layer/rebuild kinds; J-4d: the three enabled century kinds
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(K9_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]} | executor_pin_shards.enabled_kinds(SHARDS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; K9-23: the eight layer/rebuild kinds; J-4d: the three enabled century kinds
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
@@ -259,7 +263,8 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
     assert_table_matches_pin(load_ops(OPS_FILE.read_text()))
 
 
-def assert_table_matches_pin(now):
+def assert_table_matches_pin(now, shards=None):
+    shards = SHARDS if shards is None else shards
     base = load_ops(base_text(OPS_REL))
     expected_order = list(base["ops"])
     pos = expected_order.index("measuring_dispatch") + 1
@@ -277,6 +282,7 @@ def assert_table_matches_pin(now):
     expected_order.append("github_run_readback")                    # U-M-12: appended after the scheduler kinds
     expected_order += list(PROTECTED_WINDOW_BINDINGS)               # U-M-01: appended after the scheduler kinds
     expected_order += list(PROVISIONING_BINDINGS)                   # U-M-03: appended after the github_run_readback kind
+    _, expected_order = executor_pin_shards.apply_shards(dict.fromkeys(expected_order), expected_order, shards)   # reviewed shards, in file-name order
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
@@ -335,6 +341,7 @@ def assert_table_matches_pin(now):
         entry.pop("required_rows", None)
         if kind.endswith("_dryrun"): entry["production"] = False
         if kind in REMOTE_ASYNC_KINDS: entry["remote_async"] = True
+    expected, _ = executor_pin_shards.apply_shards(expected, expected_order, shards)   # shard entries are the exact table entries: no A8 normalisation applies on top
     for kind, entry in now["ops"].items():
         assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
         assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
