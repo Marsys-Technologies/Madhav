@@ -26,6 +26,7 @@ DEFERRED = ["J-7a", "J-7a-a62", "J-7a-pr3099", "KR-1", "KR-2", "J-8", "J-8-b63",
             "K9-5-NB-01"]
 DEFERRED_NB04 = ["J-4a-a25", "J-4a-a26", "J-3a-b44"]   # SR-A9-INTERP A9-NB-04: no phase brief reads their output;
                                                          # J-3a-b44 added by SR-A9-NB-04-B44 (its 4.1 baseline needs a25)
+DEFERRED_PREP = ["D-T2", "L0-K", "D-GOCHARA-TIMEOUT"]    # SR-W34-PREP-RULINGS 5b/5f: deferred with re-entry, outside C-1 and the closure
 
 
 def _rows(snap):
@@ -108,8 +109,8 @@ def test_not_applicable_does_not_spread_into_the_closure(decided):
 def test_the_headline_denominator_is_the_closure_and_every_deferred_item_is_listed(decided):
     _, snap = decided
     o = snap["overall"]
-    assert o["total"] == 187 and o["plan_wide"]["total"] == 273
+    assert o["total"] == 184 and o["plan_wide"]["total"] == 273
     listed = {d["id"]: d for d in o["deferred"]}
-    assert set(DEFERRED + DEFERRED_NB04) <= set(listed)
-    assert all(listed[i]["re_entry"] for i in DEFERRED + DEFERRED_NB04)
-    assert not set(listed) & {"D-T2", "J-7", "J-7b", "L0-K"}   # D-52: the post-flip phase is not deferred
+    assert set(DEFERRED + DEFERRED_NB04 + DEFERRED_PREP) <= set(listed)
+    assert all(listed[i]["re_entry"] for i in DEFERRED + DEFERRED_NB04 + DEFERRED_PREP)
+    assert not set(listed) & {"J-7", "J-7b"}   # D-52: the rest of the post-flip phase is not deferred (D-T2, L0-K are: SR-W34-PREP-RULINGS 5b)

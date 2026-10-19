@@ -12,8 +12,10 @@ Edits to plan_model.json (nothing else is touched):
   K6-N1..N3.depends_on    V-K6 (retired by D-54) replaced by the K6 items it reviewed, so the retirement does not
                           propagate not_applicable into three live follow-ups
   V-K9.depends_on         K9-5, KR-1, KR-2 (deferred by D-53) removed, so a deferred item never gates the final review
-  D-T2, J-7, J-7-a63, J-7-b61, J-7-n-t2, L0-K, J-7b, J-7b-b62
+  J-7, J-7-a63, J-7-b61, J-7-n-t2, J-7b, J-7b-b62
                           depends_on J-6l where missing (D-52.1); triage class a (was b: deferred) — not deferred
+  D-T2, L0-K              (SR-W34-PREP-RULINGS 5b, applied by the close-prep PR, not by this script) deferred with re-entry
+                          'post-flip'; not C-1 dependencies; the J-7 family no longer depends on D-T2
   JOIN-ALL, K-CERT-2, W4-SAFETY-N01/N02, KA3B-N1/N2, OPS-NB-03, V-K3b/V-K5/V-K6/V-KA/V-VC
                           not_applicable, the way the tracker records it (CONTROL_PLANE.md: a final decision outcome
                           that contradicts requires_outcome): one retirement decision per reason, requires_outcome
@@ -110,7 +112,14 @@ NOT_APPLICABLE = [
      ["V-K3b", "V-K5", "V-K6", "V-KA", "V-VC"]),
 ]
 RETIRED_PACKET_EXITS = ["V-K3b", "V-K5", "V-K6", "V-KA", "V-VC"]
-POST_FLIP = ["D-T2", "J-7", "J-7-a63", "J-7-b61", "J-7-n-t2", "L0-K", "J-7b", "J-7b-b62"]
+POST_FLIP = ["J-7", "J-7-a63", "J-7-b61", "J-7-n-t2", "J-7b", "J-7b-b62"]
+# SR-W34-PREP-RULINGS item 5b (2026-10-19) overrides A9 D-52 for these two: deferred with re-entry, outside C-1's dependencies.
+# The J-7 family no longer waits on D-T2 (a closure member must not wait on a deferred item).
+PREP_DEFERRED = {
+    "D-T2": "post-flip: after V-J6 is accepted and the served layer has run one week on 5.0 (as the J-7a family)",
+    "L0-K": "post-flip: after V-J6 is accepted and the served layer has run one week on 5.0 (as the J-7a family)",
+}
+PREP_CUT_EDGES = {iid: ["D-T2"] for iid in ("J-7", "J-7-a63", "J-7-b61", "J-7-n-t2")}
 
 
 def _dedupe(seq):

@@ -76,7 +76,8 @@ def test_k_avadhi_c_is_in_the_closure(closure):  # §3.2
 
 
 def test_no_closure_member_waits_on_a_deferred_or_retired_item(items, closure):  # §4
-    gone = set(kya9plan.DEFERRED) | set(kya9plan.A9_NB04_DEFERRED) | {t for _, _, ts in kya9plan.NOT_APPLICABLE for t in ts}
+    gone = (set(kya9plan.DEFERRED) | set(kya9plan.A9_NB04_DEFERRED) | set(kya9plan.PREP_DEFERRED)
+            | {t for _, _, ts in kya9plan.NOT_APPLICABLE for t in ts})
     assert not gone & set(closure["closure"])
     assert [(i, d) for i in closure["closure"] for d in items[i]["depends_on"] if d in gone] == []
 
@@ -123,3 +124,14 @@ def test_every_not_applicable_item_has_a_decision_item_and_entry(model, items): 
         assert did in decisions and items[did]["done_by"] == "decision"
         for t in targets:
             assert items[t]["requires_outcome"] == {did: "approved"} and did in items[t]["depends_on"]
+
+
+def test_prep_deferred_items_are_deferred_outside_c1_and_the_closure(items, closure):  # SR-W34-PREP-RULINGS 5b
+    # D-T2 and L0-K (L0-K has no branch yet, D-T2 is parked) would keep C-1 from ever starting; the surrogate deferred both
+    # with re-entry 'post-flip'. Fail-on-revert: put either back in C-1.depends_on, or class a, and this reads false.
+    for iid in kya9plan.PREP_DEFERRED:
+        assert iid not in items["C-1"]["depends_on"], iid
+        assert iid not in closure["closure"], iid
+        assert items[iid]["triage"]["class"] == "b" and items[iid]["triage"]["re_entry"].startswith("post-flip"), iid
+    for iid, cut in kya9plan.PREP_CUT_EDGES.items():
+        assert not set(cut) & set(items[iid]["depends_on"]) and not set(cut) & set(items[iid].get("requires_outcome") or {}), iid
