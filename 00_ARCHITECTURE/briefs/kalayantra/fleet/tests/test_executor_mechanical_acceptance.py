@@ -434,6 +434,10 @@ MARKER_ROUTE = {
     "scheduler_pause": "no_database",       # SR-J3-REAPER-PAUSE: needs gcloud only, no DATABASE_URL, no connection at all (test_executor_scheduler_reaper pins that); synchronous, never fenced
     "scheduler_resume": "no_database",
     "measuring_cancel": "no_database",      # SR-J3-CANCEL-NULL: gcloud only, no DATABASE_URL; synchronous, never fenced
+    "orchestrator_rebuild": "in_process",   # K9-23: publication_admission -> publication -> pipeline.orchestrator.db.connect, psycopg from DATABASE_URL; the package-level proof is test_executor_k9_layer_bindings.py
+    "layer_verify": "in_process",
+    "layer_publish": "in_process",
+    "layer_rollback": "in_process",
     "measuring_dispatch": "in_process",     # J-3a: measuring_launch.py opens only psycopg connections from DATABASE_URL (no PGAPPNAME/application_name in its closure — the next test)
     "century_dispatch": "in_process",       # SR-PREBUILD-ALL: century_launch.py is the same bridge (smalltest_launch.launch_staged) over the same staging closure — the next test scans it
 }
@@ -471,7 +475,9 @@ def marker_violations(kind, overrides=None):
         words = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)} | {
             k.arg for n in ast.walk(tree) if isinstance(n, ast.Call) for k in n.keywords if k.arg}       # code, not comments
         if any("application_name" in w for w in words): problems.append(f"{path.name} names its own application_name")
-        if any("PGAPPNAME" in w for w in words) and not (path.name == "backup_v5_small_test_job.py" and MARKER_ROUTE[kind] == "client_env"):
+        # The backup module's one sanctioned PGAPPNAME use is the carry in client_env() (a forward, never a strip; BACKUP_CARRY, pinned once below). It is
+        # in the closure of every dispatch that lazily imports measure_scope_now (SR-BACKUP-VALIDITY-A8), whose connection is a psycopg one that libpq marks.
+        if any("PGAPPNAME" in w for w in words) and not (path.name == "backup_v5_small_test_job.py" and text.count(BACKUP_CARRY) == 1):
             problems.append(f"{path.name} touches PGAPPNAME")
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in SUBPROCESS_CALLS:
