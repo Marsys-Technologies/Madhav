@@ -22,7 +22,7 @@ from pipeline.orchestrator import verification_job as entry, seal_job as seal_en
 from pipeline.orchestrator.writers import ContextSpec
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 from services.gochara_kernel import seal_brief as sb, seal_flow as sf, verification_job as vj
-from .test_a53_inventory import CHART_ID, create_am5_database, drop_am5_database
+from .test_a53_inventory import CHART_ID, MIGRATIONS, create_am5_database, drop_am5_database
 from .test_a53_verification_job import login, PASSWORD
 from .conftest import EPHE_PATH, _PROBLEMS
 
@@ -44,7 +44,11 @@ def candidate(tmp_path_factory):
     from functools import lru_cache
     if _PROBLEMS:
         pytest.skip('NOT_RUN: pinned Swiss corpus unavailable: ' + '; '.join(_PROBLEMS))
-    admin, name, dsn = create_am5_database('j5s_full', faithful=True)
+    # Migration 1305 makes the search-input snapshot self-contained (seal_brief refuses a first seal on the legacy ids-only shape), and
+    # P06b's chain (1306 class census, 1308 near-miss storage, 1381 near-miss seal integration) adds the verifier-written near-miss table
+    # that VERIFIER_WRITE_TABLES names and the verification job's independent near-miss stage persists into: the candidate is built on the
+    # post-P06b database, as production is.
+    admin, name, dsn = create_am5_database('j5s_full', faithful=True, apply_1305=True)
     conn = None
     started = time.monotonic()
     from services.gochara_kernel import implementation_registry as registry
@@ -56,6 +60,16 @@ def candidate(tmp_path_factory):
         registry.LOCK_PATH = tmp_path_factory.mktemp('j5s-generated') / old_lock.name
         registry.write(registry.LOCK_PATH)
         conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+        for filename in ('1306_gochara_expected_class_census.sql', '1308_gochara_near_miss_storage.sql',
+                         '1381_gochara_near_miss_seal_integration.sql'):
+            with conn.transaction():
+                conn.execute((MIGRATIONS / filename).read_text())
+                conn.execute('INSERT INTO public._migrations_applied(filename) VALUES (%s)', (filename,))
+        horizon = (datetime(2025, 1, 1, tzinfo=timezone.utc), datetime(2025, 1, 3, tzinfo=timezone.utc))
+        # 1305's capture contract admits only the pinned daśā rows that overlap the horizon (it refuses a copy holding rows wholly after it:
+        # period_copy_row_not_in_upstream_scope / period_outside_horizon). The shared stub also pins rows after this two-day horizon; set those
+        # aside so L1 satisfies the contract (MD Saturn, AD Venus, PD Mars each cover the whole horizon, with their parents).
+        conn.execute('DELETE FROM public.chart_dashas WHERE start_iso >= %s OR end_iso <= %s', (horizon[1], horizon[0]))
         w = SimpleNamespace(conn=conn, dsn=dsn)
         # Memoize exact real probes only; every cached value is computed by the
         # production Swiss function against the pinned corpus. No sky stand-in.
@@ -71,11 +85,15 @@ def candidate(tmp_path_factory):
             assert old_vector['implementation']['geometry'] == ivv.module_digests(iv.IMPLEMENTATION_MODULES)['geometry']
         # The fixture's explicit L1 read stand-ins; no source asset is changed.
         conn.execute((HERE / 'fixtures/l1_read_stand_in_grants.sql').read_text())
+        # STAND-IN (open point for the cockpit, see the job notes): migration 1381's ka_gochara_near_miss_digest() and near_miss_verifier read
+        # ka_gochara_sky_event AS the verifier, but no migration grants gochara_verifier SELECT on it (1378's closed verifier ACL does not name it,
+        # 1216 grants only the builder). Without this stand-in the verification job ends 'permission denied for table ka_gochara_sky_event'.
+        # It lets the rest of the full-class seal flow be exercised; it is NOT evidence that production's verifier holds the grant.
+        conn.execute('GRANT SELECT ON public.ka_gochara_sky_event TO gochara_verifier')
         conn.execute('GRANT SELECT ON public.chart_facts, public.chart_dashas, public.bg_transit_rules, '
                      'public.charts, public._migrations_applied TO data_plane_builder, gochara_sealer')
         writer_mod.RuleRegistryStore(conn).seed()
         writer = writer_mod.GocharaV5Writer()
-        horizon = (datetime(2025, 1, 1, tzinfo=timezone.utc), datetime(2025, 1, 3, tzinfo=timezone.utc))
         with login(w, 'data_plane_builder') as builder:
             ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id='j5s-full-class-local', db_conn=builder,
                               dry_run=False, config={'chart_id': CHART_ID, 'horizon': horizon, 'ephe_path': EPHE_PATH})
