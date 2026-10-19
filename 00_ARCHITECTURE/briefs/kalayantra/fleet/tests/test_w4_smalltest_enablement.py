@@ -28,7 +28,7 @@ MEASURING = {
     "measuring_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], [], "J-3d"),
 }
 DISABLED = {"verification_job", "century_dispatch", "publish_head", "rollback_head",
-            "publish_head_dryrun", "rollback_head_dryrun",  # J6B-NB-01: disabled dry-run twins of the head operations
+            "publish_head_dryrun", "rollback_head_dryrun",
             "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"}
 
 

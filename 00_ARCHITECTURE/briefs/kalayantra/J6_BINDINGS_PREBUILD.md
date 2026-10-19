@@ -156,5 +156,5 @@ Tests use guarded disposable admission-metadata fixtures on the suite's own
 cluster; synthetic seal setup is deliberately **not** verification/seal evidence
 (`platform/python-sidecar/tests/l3/gochara/test_j6r_rehearsal_db.py:1`). No sky
 stand-in or computation was introduced. No migration, frozen writer, L0–L2 asset,
-generated aggregate or implementation-digest input changed. Current CI uses
-explicit test paths, so the new suites are registered there.
+generated aggregate or implementation-digest input changed. CI discovers the new suites through the matching DB integration and
+J6-BINDINGS governance profiles in `platform/scripts/governance/ci_test_suites.json`.

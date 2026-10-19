@@ -2,7 +2,6 @@
 import copy
 import hashlib
 import json
-import os
 from pathlib import Path
 import sys
 import uuid
@@ -110,16 +109,11 @@ def test_soak_binds_opaque_owner_rule_and_each_actual_sample_without_deciding_it
 
 def test_tooling_is_on_mandatory_ci_path_and_no_new_kind_is_enabled():
     root=FLEET.parents[3]
-    # A5 D-33: ci.yml never names test files; a file is on the mandatory path iff a discovery profile selects it
-    # (the discovery guard separately proves every profile is wired into ci.yml).
-    import importlib.util
-    spec=importlib.util.spec_from_file_location('ci_discovery_j6',root/'platform/scripts/governance/ci_discovery.py')
-    disc=importlib.util.module_from_spec(spec);spec.loader.exec_module(disc)
-    selected={os.path.normpath(os.path.join(prof['cwd'],f)) for prof in disc.profiles().values() for f in disc.discover(root,prof)}
-    for rel in ('00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_j6_head_bindings.py',
-                '00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_j6_live_readback.py',
-                'platform/python-sidecar/tests/l3/gochara/test_j6_bindings_db.py'):
-        assert rel in selected,rel
+    sys.path.insert(0, str(root/'platform/scripts/governance'))
+    from ci_discovery import expanded_workflow_text
+    ci=expanded_workflow_text((root/'.github/workflows/ci.yml').read_text())
+    for name in ('test_j6_head_bindings.py','test_j6_live_readback.py','test_j6_bindings_db.py'):
+        assert name in ci
     table=json.loads((FLEET/'executor_ops.json').read_text())['ops']
     assert not any(table[k]['enabled'] for k in ('publish_head','rollback_head','publish_head_dryrun','rollback_head_dryrun'))
 

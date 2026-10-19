@@ -9,11 +9,11 @@ from pathlib import Path
 import sys
 
 import psycopg
-from psycopg.conninfo import make_conninfo
 import pytest
 
 from .test_j6r_rehearsal_db import rehearsal_database, db, _heads
 from .test_a53_inventory import CHART_ID
+from .test_a53_record_store import ADMIN_DSN
 
 ROOT = Path(__file__).resolve().parents[5]
 FLEET = ROOT/'00_ARCHITECTURE/briefs/kalayantra/fleet'
@@ -21,9 +21,12 @@ sys.path.insert(0, str(FLEET))
 import head_operation as head
 
 
-def fresh(conn):
-    # conn.info.dsn omits the password that CI's disposable Postgres requires (see test_j6r_rehearsal_db).
-    return psycopg.connect(make_conninfo(conn.info.dsn, password=conn.info.password), autocommit=True)
+def fresh_connection(conn):
+    """A separate autocommit session on the same database. conn.info.dsn omits the password, which CI's disposable
+    Postgres requires, so the admin DSN's password is carried over (none locally: trust auth)."""
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+    password = conninfo_to_dict(ADMIN_DSN).get('password')
+    return psycopg.connect(make_conninfo(conn.info.dsn, **({'password': password} if password else {})), autocommit=True)
 
 
 def req(conn, mids, kind='publish_head_dryrun'):
@@ -52,7 +55,7 @@ def test_committed_flip_then_explicit_rollback_across_fresh_connections(rehearsa
     try:
         proof = head.change_head(conn, request, dry_run=False)
         assert proof['status'] == 'COMMITTED_AWAITING_READBACK' and proof['rollback_confirmed'] is False
-        with fresh(conn) as observer:
+        with fresh_connection(conn) as observer:
             assert head.read_head(observer, CHART_ID) == proof['after']
             assert head.observe(observer, request) == head.expected_readback(request)
         rb = copy.deepcopy(request)
@@ -62,7 +65,7 @@ def test_committed_flip_then_explicit_rollback_across_fresh_connections(rehearsa
         rb['args'] = {'generation':'3.0','manifest-id':'none','expected-head-sha256':head.sha(proof['after'])}
         rolled = head.change_head(conn, rb, dry_run=False)
         assert rolled['retained_rows_equal'] is True
-        with fresh(conn) as observer:
+        with fresh_connection(conn) as observer:
             assert _heads(observer) == before
             assert head.observe(observer, rb) == head.expected_readback(rb)
     finally:
@@ -125,3 +128,17 @@ def test_failure_after_update_rolls_back_and_preserves_caller_scope(db, monkeypa
     with pytest.raises(head.Refused, match='retained_rows_changed'):
         head.change_head(conn,req(conn,mids),dry_run=True)
     assert len(calls) == 2 and _heads(conn) == before
+
+
+def test_readback_target_matches_only_the_exact_published_non_slice_manifest(db):
+    # Head at 5.0 with the right generation but another manifest must read target_matches=false.
+    conn, mids = db
+    request = req(conn, mids, 'publish_head')
+    conn.execute('UPDATE public.kala_gochara_authority SET authoritative_generation=%s WHERE chart_id=%s',
+                 ('5.0', CHART_ID))
+    assert head.observe(conn, request)['target_matches'] is True
+    other = copy.deepcopy(request)
+    other['head_change']['target']['manifest_id'] = mids['5.1']
+    other['args']['manifest-id'] = mids['5.1']
+    got = head.observe(conn, other)
+    assert got['head']['generation'] == '5.0' and got['target_matches'] is False

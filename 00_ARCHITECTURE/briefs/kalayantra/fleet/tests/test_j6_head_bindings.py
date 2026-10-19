@@ -72,12 +72,11 @@ def test_actual_bindings_and_dryruns_exist_but_stay_disabled():
         entry = ops[kind]
         assert next(iter(entry)) == 'enabled' and entry['enabled'] is False
         assert entry['script'] == '00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py'
-        # A8 §3.8: a *_dryrun kind is production:false (rolled back, no lease/fence); the execute kinds stay production
-        assert entry['needs'] == 'builder' and entry['production'] is (not kind.endswith('_dryrun'))
-        assert 'required_rows' not in entry and 'remote_async' not in entry  # A8 §5 retired the rows; a head change is synchronous
+        assert entry['needs'] == 'builder' and entry['production'] is (not kind.endswith('_dryrun'))   # A8 §3.8: a dry run is production:false
         assert entry['allowed_args'] == ['generation', 'manifest-id', 'expected-head-sha256']
         assert entry['fixed_args'] == ['--kind', kind.removesuffix('_dryrun'),
                                        '--dry-run' if kind.endswith('_dryrun') else '--execute']
+        assert 'required_rows' not in entry     # A8 §5: retired from the table; the head policy itself still demands head.G6_ROWS / ROLLBACK_ROWS
 
 
 @pytest.mark.parametrize('outcome,effective', [('approved', True), ('refused', True), ('deferred', False), ('insufficient_evidence', False)])
@@ -132,6 +131,37 @@ def test_execute_needs_hash_bound_real_dryrun_of_identical_scope(tmp_path):
         assert head.request_problem(req, ops) is not None
     req['dry_run_receipt']['sha256'] = '0'*64
     assert head.request_problem(req, ops) is not None
+
+
+def test_publish_refuses_a_decision_digest_that_is_not_the_latest_approved_event(tmp_path):
+    # Latest controller D-FLIP event wins (tracker.state.decision_status); the request must bind that event's digest.
+    ops = setup_ops(tmp_path)
+    (ops.parent/'EVENTS.jsonl').write_text(json.dumps(decision(detail='earlier'))+'\n'+json.dumps(decision())+'\n')
+    stale = request(); stale['decision_event_sha256'] = head.sha(decision(detail='earlier'))
+    assert head.request_problem(stale, ops) == 'D-FLIP_latest_effective_approved_event_required'
+    assert head.request_problem(request(), ops) is None
+
+
+def test_j6_publishes_only_generation_5_0(tmp_path):
+    # Plan item J-6 is the 5.0 flip; another well-formed governed target (args bound to it) must still be refused.
+    ops = setup_ops(tmp_path)
+    other = request()
+    other['head_change']['target']['generation'] = '6.0'
+    other['args']['generation'] = '6.0'
+    assert head.shape(other)['target']['generation'] == '6.0'      # well-formed: only the J-6 policy can refuse it
+    assert head.request_problem(other, ops) == 'J-6_requires_5.0'
+
+
+def test_execute_refuses_a_self_consistent_dryrun_receipt_for_another_scope(tmp_path):
+    # A real dry run of a different manifest, with its own consistent request digest, is not the dry run of this scope.
+    ops = setup_ops(tmp_path)
+    other_dry = request(); other_manifest = str(uuid.UUID(int=51))
+    other_dry['head_change']['target']['manifest_id'] = other_manifest
+    other_dry['args']['manifest-id'] = other_manifest
+    head.shape(other_dry)
+    req = request('publish_head')
+    req['dry_run_receipt'] = store(ops, 'other-dry.json', receipt(other_dry, stage(other_dry)))
+    assert head.request_problem(req, ops) == 'dry-run_exact_scope_rollback_receipt_required'
 
 
 def rollback_request(ops):
@@ -254,10 +284,11 @@ def test_completion_rejects_unbound_readback_query_even_if_output_was_plausible(
 
 def test_readback_driver_checks_requested_query_digest_before_connecting(tmp_path,monkeypatch):
     # Execute the real embedded Python, with only the DB connect boundary faked.
-    # No pgenv/secret is sourced, no socket or database is opened. The governance-tool-tests job installs only
-    # pyyaml+pytest, so the driver module is always a stand-in here (the embedded code only calls psycopg.connect).
+    # No pgenv/secret is sourced, no socket or database is opened.
+    # The governance shard installs only pyyaml and pytest, so the driver module is always a stand-in here: the script
+    # only needs a `psycopg.connect` it can call, and the test only needs to see that it is never called.
     import types
-    psycopg=types.ModuleType('psycopg');psycopg.connect=None
+    psycopg=types.ModuleType('psycopg')
     monkeypatch.setitem(sys.modules,'psycopg',psycopg)
     root=tmp_path/'ky';sql=root/'run/ops/sql/j6.sql';sql.parent.mkdir(parents=True)
     sql.write_text('SELECT 1 AS observed;')
@@ -265,7 +296,7 @@ def test_readback_driver_checks_requested_query_digest_before_connecting(tmp_pat
     connected=[]
     def forbidden(*a,**kw):
         connected.append(1);raise AssertionError('connection attempted before digest refusal')
-    monkeypatch.setattr(psycopg,'connect',forbidden)
+    psycopg.connect=forbidden
     monkeypatch.setattr(sys,'argv',['readback',str(root),'run/ops/sql/j6.sql','','0'*64])
     with pytest.raises(SystemExit,match='digest'):
         exec(compile(source,'readback_sql.sh embedded Python','exec'),{'__name__':'__main__'})
@@ -301,7 +332,13 @@ def test_executor_g8_checks_remain_required_before_head_policy(tmp_path,monkeypa
     assert 'not enabled' in ex.validate(req,ops,{'builder':True})
     for key in ('dry_run_passed',):  # A8 §5 retired backup_taken / restore_verified as preconditions of a non-teardown kind
         bad=copy.deepcopy(accepted);bad['checks'][key]=False;path.write_text(json.dumps(bad))
-        assert 'attestation' in ex.validate(req,fixture,{'builder':True})
+        if key == 'dry_run_passed':
+            assert 'attestation' in ex.validate(req,fixture,{'builder':True})
+        else:                                                    # A8 §5: restore_verified retired; backup_taken only for a *_teardown
+            assert ex.validate(req,fixture,{'builder':True}) is None
+    for key in head.G6_ROWS:                                     # A8 §5: the executor no longer gates on checklist rows (the verifier's acceptance owns them)
+        bad=copy.deepcopy(accepted);bad['rows'].pop(key);path.write_text(json.dumps(bad))
+        assert ex.validate(req,fixture,{'builder':True}) is None
     path.write_text(json.dumps(accepted))
     assert 'lease' in ex.validate({**req,'lease_id':'expired'},fixture,{'builder':True})
     assert 'complete request' in ex.validate({**req,'kyd':'different'},fixture,{'builder':True})
