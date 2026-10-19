@@ -120,6 +120,16 @@ GITHUB_RUN_READBACK = {
     "fixed_args": [], "allowed_args": ["run"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
     "read_only": True, "timeout_s": 300, "enabled_by": "J-4b",
 }
+# U-M-01 (SR-PREBUILD-ALL; surrogate ruling SR-W2-ROUTE): the protected-window dispatch family, appended after the scheduler kinds and shipped DISABLED (not used in W2).
+# Exact bindings; the enabling PR flips `enabled` here and in the table together. `needs: none`: the child needs only the GitHub CLI session of the executor's own HOME.
+PROTECTED_WINDOW_SCRIPT = "00_ARCHITECTURE/briefs/kalayantra/fleet/protected_window_launch.py"
+PROTECTED_WINDOW_ARGS = ["flag", "ref", "head", "window_lease_id"]
+PROTECTED_WINDOW_BINDINGS = {
+    "protected_window_dispatch_dryrun": {"enabled": False, "needs": "none", "script": PROTECTED_WINDOW_SCRIPT, "fixed_args": ["--dry-run"],
+                                         "allowed_args": PROTECTED_WINDOW_ARGS, "production": False, "timeout_s": 300, "enabled_by": "J-4b"},
+    "protected_window_dispatch": {"enabled": False, "needs": "none", "script": PROTECTED_WINDOW_SCRIPT, "fixed_args": [],
+                                  "allowed_args": PROTECTED_WINDOW_ARGS, "production": True, "remote_async": True, "timeout_s": 600, "enabled_by": "J-4b"},
+}
 # SR-TEARDOWN-AUTHORITY-GATE item 3 (enabled_by J-6l): the read-only served_probe kind, appended after every earlier kind. Exact binding, including the fixed endpoint set.
 SERVED_PROBE_BINDINGS = {
     "served_probe": {"enabled": True, "needs": "none", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/served_probe.py", "fixed_args": [], "allowed_args": ["endpoint"],
@@ -217,6 +227,7 @@ def assert_table_matches_pin(now):
         expected_order.insert(expected_order.index(head_kind) + 1, head_kind + "_dryrun")
     expected_order += list(SCHEDULER_BINDINGS)                      # SR-J3-REAPER-PAUSE: appended last
     expected_order.append("github_run_readback")                    # U-M-12: appended after the scheduler kinds
+    expected_order += list(PROTECTED_WINDOW_BINDINGS)               # U-M-01: appended after the scheduler kinds
     expected_order += list(SERVED_PROBE_BINDINGS)                   # SR-TEARDOWN-AUTHORITY-GATE item 3: after them
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
@@ -236,6 +247,7 @@ def assert_table_matches_pin(now):
     expected["quiescence_check"] = json.loads(json.dumps(QUIESCENCE_CHECK))
     expected.update(json.loads(json.dumps(SCHEDULER_BINDINGS)))
     expected["github_run_readback"] = json.loads(json.dumps(GITHUB_RUN_READBACK))
+    expected.update(json.loads(json.dumps(PROTECTED_WINDOW_BINDINGS)))
     expected.update(json.loads(json.dumps(SERVED_PROBE_BINDINGS)))
     for kind in READ_ONLY_KINDS[:3]:
         expected[kind]["read_only"] = True
@@ -696,7 +708,7 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head", *K9_KINDS])
+@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head", *K9_KINDS, *PROTECTED_WINDOW_BINDINGS])
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)
