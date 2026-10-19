@@ -297,7 +297,7 @@ def test_ci_gate_selects_changed_profiles_on_merge_group_and_nothing_on_main(mon
     for key in ('db_jobs', 'db_profiles'):
         assert set(json.loads(parsed['pull_request'][key])) <= set(json.loads(parsed['merge_group'][key]))
     assert {j for j in json.loads(parsed['merge_group']['db_jobs'])} - set(json.loads(parsed['pull_request']['db_jobs'])) \
-        <= ci_gate.QUEUE_ALWAYS_JOBS
+        <= ci_gate.QUEUE_ALWAYS_JOBS | ci_gate.QUEUE_PATH_SCOPED_JOBS
     assert out['push'] == out['workflow_dispatch'] == 'db_jobs=[]\ndb_profiles=[]\nrun_combination_suites=true\n'
     monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: None)
     with pytest.raises(ValueError):
@@ -332,6 +332,51 @@ def test_combination_sensitive_suites_run_on_every_merge_group_even_for_an_unrel
     for n in ('required-db-integration-tests', 'required-gochara-a55-teardown', 'required-gochara-a55-teardown-round3'):
         assert evaluate(jobs[n].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles), n
     assert not evaluate(jobs['gochara-a55-replace-chain'].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles)
+
+
+C37_C38_JOBS = {'gochara-a55-dispatch', 'gochara-a55-teardown', 'gochara-a55-teardown-round2', 'gochara-a55-teardown-round3'}
+C37_PROFILE = 'gochara-a55-dispatch-1-9'
+
+
+@pytest.mark.parametrize('changed', [
+    '00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py',
+    '00_ARCHITECTURE/briefs/kalayantra/fleet/J2A_SCOPED_BACKUP_v1_0.md',
+    'platform/scripts/v5_small_test_shared.py',
+    'platform/scripts/backup_v5_small_test_job.py',
+    'platform/scripts/dispatch_v5_century_job.py',
+    'platform/scripts/teardown_v5_small_test_job.py',
+    'platform/python-sidecar/tests/l3/gochara/_smalltest_executor_evidence.py',
+])
+def test_sr_scope_c37_queue_runs_c37_and_c38_for_each_small_test_backup_dispatch_teardown_executor_path(monkeypatch, capsys, changed):
+    """SR-SCOPE-C37 (incident #3715): a merge_group touching any listed path family runs C37 (dispatch) and the C38 teardown jobs
+    and the C37 profile; the same diff on a pull_request stays path-scoped. Required check names are not touched."""
+    import ci_changes
+    import ci_gate
+    monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: [changed])
+    out = {}
+    for event in ('pull_request', 'merge_group'):
+        assert ci_gate.main(['--event', event, '--base', 'B', '--head', 'H']) == 0
+        out[event] = dict(line.split('=', 1) for line in capsys.readouterr().out.splitlines())
+    assert C37_C38_JOBS <= set(json.loads(out['merge_group']['db_jobs'])), changed
+    assert C37_PROFILE in json.loads(out['merge_group']['db_profiles']), changed
+    assert not C37_C38_JOBS & set(json.loads(out['pull_request']['db_jobs'])), 'a pull_request stays path-scoped'
+    jobs = workflow()['jobs']
+    for n in C37_C38_JOBS:
+        assert evaluate(jobs[n].get('if'), event='merge_group', selected=json.loads(out['merge_group']['db_jobs']),
+                        profiles=json.loads(out['merge_group']['db_profiles'])), n
+
+
+def test_sr_scope_c37_queue_does_not_run_c37_for_an_unrelated_docs_only_change(monkeypatch, capsys):
+    """SR-SCOPE-C37: a docs-only diff adds no C37 job or profile on the queue (C38 stays only via SR-CI-SCOPED-SAFEGUARD)."""
+    import ci_changes
+    import ci_gate
+    monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: ['docs/README.md', '00_ARCHITECTURE/briefs/kalayantra/NOTES.md'])
+    assert ci_gate.main(['--event', 'merge_group', '--base', 'B', '--head', 'H']) == 0
+    out = dict(line.split('=', 1) for line in capsys.readouterr().out.splitlines())
+    assert 'gochara-a55-dispatch' not in json.loads(out['db_jobs'])
+    assert C37_PROFILE not in json.loads(out['db_profiles'])
+    assert not ci_gate.queue_always_jobs('pull_request', ['platform/scripts/backup_v5_small_test_job.py'])
+    assert ci_gate.queue_always_jobs('merge_group', ['docs/README.md']) == ci_gate.QUEUE_ALWAYS_JOBS
 
 
 def test_merge_queue_diffs_against_the_group_base_and_every_required_check_reports():
