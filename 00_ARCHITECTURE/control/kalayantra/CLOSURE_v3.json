@@ -1273,11 +1273,11 @@
   "VC-2"
  ],
  "closure_count": 187,
- "closure_sha256": "1c6ccf7b3fd468a5c7e12a21203ff513dee84ed31f8e6078f3c640196877ed35",
+ "closure_sha256": "d2f9ed5a04f221ed6cfd587a6f6336b30354fa9034c9e2fbccb57b5559d945cd",
  "inputs": {
-  "model_canonical_sha256": "3f6751b345a609e84f35bff825a5232f2895c787664ad8a520ba3e1a9a6e6d7f",
+  "model_canonical_sha256": "91537e2566858c0da91104dff84bb46f35838d6fa2b78b5209617780ac514865",
   "model_items": 273,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019",
   "roots_canonical_sha256": "9ff3dc766089b23e2ed22c5b70fe3aea7d3ef82b16083c2b655df1b1f41b63f9"
  },
  "mechanical_close_chain_excluded_as_roots": [],
