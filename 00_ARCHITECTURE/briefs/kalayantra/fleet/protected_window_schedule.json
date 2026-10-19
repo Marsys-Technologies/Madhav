@@ -1,4 +1,6 @@
 {
   "schema": "ky.protected_window_schedule/1",
-  "windows": []
+  "windows": [
+    {"migration": "1381_gochara_near_miss_seal_integration.sql", "window_input": "kala_schema_migration", "lease": "L-KALAYANTRA-P06B-20261019"}
+  ]
 }
