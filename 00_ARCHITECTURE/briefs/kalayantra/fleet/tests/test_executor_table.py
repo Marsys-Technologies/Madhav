@@ -122,6 +122,12 @@ VERIFICATION_BINDINGS = {
                                 "allowed_args": ["generation"], "production": False, "timeout_s": 600, "enabled_by": "J-4b"},
 }
 ENABLED_P10_ITEMS = {"J-1a", "J-4b"}      # the P10 items whose kind is enabled: J-1a (smalltest_dispatch) and J-4b (verification_job)
+# U-M-12 (enabled_by J-4b, the protected-window item): the read-only GitHub run readback for the window watch; prepared for W3/W4 and SHIPPED DISABLED, so it is in no ENABLED_KINDS set below.
+GITHUB_RUN_READBACK = {
+    "enabled": False, "needs": "none", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/github_run_readback.py",
+    "fixed_args": [], "allowed_args": ["run"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
+    "read_only": True, "timeout_s": 300, "enabled_by": "J-4b",
+}
 ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(VERIFICATION_BINDINGS)   # J-4b: the two verification kinds; J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
@@ -213,6 +219,7 @@ def assert_table_matches_pin(now):
     for head_kind in ("publish_head", "rollback_head"):
         expected_order.insert(expected_order.index(head_kind) + 1, head_kind + "_dryrun")
     expected_order += list(SCHEDULER_BINDINGS)                      # SR-J3-REAPER-PAUSE: appended last
+    expected_order.append("github_run_readback")                    # U-M-12: appended after the scheduler kinds
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
@@ -231,6 +238,7 @@ def assert_table_matches_pin(now):
     expected["cloudrun_job_readback"] = json.loads(json.dumps(CLOUDRUN_READBACK))
     expected["quiescence_check"] = json.loads(json.dumps(QUIESCENCE_CHECK))
     expected.update(json.loads(json.dumps(SCHEDULER_BINDINGS)))
+    expected["github_run_readback"] = json.loads(json.dumps(GITHUB_RUN_READBACK))
     for kind in READ_ONLY_KINDS[:3]:
         expected[kind]["read_only"] = True
     for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
