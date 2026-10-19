@@ -46,6 +46,16 @@ INVENTORY_TABLES = (
     ("ka_gochara_search_input_snapshot", ""),
 )
 OUTPUT_TABLES = CHAIN_TABLES + INVENTORY_TABLES     # what "generation output exists" means (the manifest is judged on its own)
+# Migration 1308's chart x generation near-miss tables (NearMissStore.delete_generation deletes exactly these two, by chart_id AND generation).
+# Neither references the other and nothing references them, so their order is free. They are the teardown's to delete and the absence proof's
+# to count, but they are NOT in OUTPUT_TABLES: the dispatch's "generation output exists" test is unchanged. ka_gochara_near_miss_object is GLOBAL
+# and insert-only (its trigger refuses DELETE; other charts and generations share an object): it is deliberately in none of these lists, so no
+# teardown deletes it and no absence proof counts it. The scoped backup (backup_v5_small_test_scope.json) records it instead.
+NEAR_MISS_TABLES = (
+    ("ka_gochara_near_miss", ""),
+    ("ka_gochara_near_miss_search", ""),
+)
+ABSENCE_TABLES = OUTPUT_TABLES + NEAR_MISS_TABLES   # the generation-scoped tables the absence census must count (the manifest and the cascade children are added where it is built)
 
 
 class Refused(RuntimeError):
@@ -662,7 +672,7 @@ def absence_evidence(req, root, *, teardown_receipt=None):
             or not isinstance(p.get('counts'), dict) or not p['counts']
             or any(type(n) is not int or n != 0 for n in p['counts'].values())):
         raise Refused('measured, scope-bound independent absence required')
-    required = {t for t, _ in OUTPUT_TABLES} | {'kala_gochara_publication', 'build_runs', 'build_run_assets',
+    required = {t for t, _ in ABSENCE_TABLES} | {'kala_gochara_publication', 'build_runs', 'build_run_assets',
                 'asset_provenance_receipts', 'asset_freshness', 'asset_throughput',
                 'ka_gochara_eval_window_record', 'ka_gochara_record_prerequisite',
                 'ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification', 'owned_test_runs'}
@@ -726,7 +736,7 @@ def absence_evidence(req, root, *, teardown_receipt=None):
 # The digest is the reviewed scope file's (backup_v5_small_test_scope.json) and is pinned HERE because the executor
 # loads this module alone, from the reviewed commit; a test ties the pin to the file. The window is how long a scoped
 # backup stays a valid pre-test record: outside it the dispatch requires a fresh backup + restore proof.
-SCOPED_BACKUP_SCOPE_SHA256 = "489330948aecf7b6fdaa52d00a8f8fa8735e4ed1dcd27a14ee957bd43c07b528"
+SCOPED_BACKUP_SCOPE_SHA256 = "1daf69d6e31279592947aa25e2b4f9a5c1c8137d6663ba039c27e7331ac7335a"
 SCOPED_BACKUP_VALIDITY_S = 4 * 3600
 
 
@@ -860,7 +870,7 @@ def absence_readback_sql(committed=None):
     trigger = CENTURY_TRIGGERED_BY if committed and committed.get('kind') == 'century_teardown' else TRIGGERED_BY
     run_where = f"id = {run}" if run else f"chart_id = {chart} AND triggered_by = '{trigger}'"
     queries = {t: f"SELECT count(*) FROM {t} WHERE chart_id = {chart} AND generation = {gen}{extra}"
-               for t, extra in OUTPUT_TABLES + (("kala_gochara_publication", ""),)}
+               for t, extra in ABSENCE_TABLES + (("kala_gochara_publication", ""),)}
     for t in ('ka_gochara_eval_window_record', 'ka_gochara_record_prerequisite',
               'ka_gochara_eval_window_verification', 'ka_gochara_search_inventory_verification'):
         queries[t] = f"SELECT count(*) FROM {t} WHERE chart_id = {chart} AND generation = {gen}"
