@@ -38,6 +38,11 @@ overwrites and the teardown deletes, and the insert-only global Gochara tables n
   Currently 37 written + 1 context = 38 tables (the three migration-1308 near-miss tables were added on top of the 34 + 1 first
   derived at `4c43d2281`, by the p06 near-miss storage PR); the **digest** (`sha256` of the canonical JSON of `{schema, name, sorted tables}`)
   is `1daf69d6e31279592947aa25e2b4f9a5c1c8137d6663ba039c27e7331ac7335a`. Prose and `sites` do not enter the digest.
+  The teardown's closed deletion list moves with the scope (owner-surrogate ruling madhav-6d, 2026-10-19): `GENERATION_TABLES` in
+  `teardown_v5_small_test_job.py` holds the two generation-scoped near-miss tables (`ka_gochara_near_miss`,
+  `ka_gochara_near_miss_search`; `NEAR_MISS_TABLES` in `v5_small_test_shared.py`, so the absence proof and the independent readback count
+  them too). The GLOBAL insert-only `ka_gochara_near_miss_object` is backed up but never deleted or counted by the teardown: its trigger
+  refuses DELETE and other charts and generations share an object. The table list, hence the digest, did not change.
 * **Independently re-derived** at head `4c43d2281` (not copied from the draft). Differences from the draft, all verified:
   `public.asset_throughput_state_audit` is **added** — a trigger (`586_f152_asset_throughput_state_audit.sql:96-117`) writes it on
   every `UPDATE OF state` of `asset_throughput`, which the dispatch upsert and the runner perform. Legacy

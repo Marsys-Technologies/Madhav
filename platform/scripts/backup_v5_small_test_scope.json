@@ -519,7 +519,8 @@
      "line": 420,
      "via": "dynamic"
     }
-   ]
+   ],
+   "note": "migration 1308 near-miss layer; GLOBAL and insert-only (its trigger refuses DELETE; objects are shared by every chart and generation): backed up, but deliberately NOT in the teardown's closed list or its absence proof"
   },
   {
    "table": "public.kala_gochara_publication",
@@ -1008,9 +1009,16 @@
      "kind": "INSERT",
      "line": 469,
      "via": "dynamic"
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 480,
+     "via": "dynamic"
     }
    ],
-   "note": "migration 1308 near-miss layer; the small test is a slice, which stores no near-miss (write_object returns early) but still runs the layer's whole-generation REPLACE (delete_generation) on chart x 5.0, so a pre-existing near-miss row of a full candidate is deleted: the backup is the only record of it"
+   "note": "migration 1308 near-miss layer; the small test is a slice, which stores no near-miss (write_object returns early) but still runs the layer's whole-generation REPLACE (delete_generation) on chart x 5.0, so a pre-existing near-miss row of a full candidate is deleted: the backup is the only record of it; the teardown's closed list (GENERATION_TABLES) deletes it and its absence proof counts it"
   },
   {
    "table": "public.ka_gochara_near_miss_search",
@@ -1029,9 +1037,16 @@
      "kind": "INSERT",
      "line": 472,
      "via": "dynamic"
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 480,
+     "via": "dynamic"
     }
    ],
-   "note": "migration 1308 near-miss layer; same reach as ka_gochara_near_miss"
+   "note": "migration 1308 near-miss layer; same reach as ka_gochara_near_miss, and the teardown deletes and counts it the same way"
   }
  ],
  "context": [
@@ -1157,6 +1172,8 @@
    "tables": [
     "ka_gochara_contact",
     "ka_gochara_eval_window",
+    "ka_gochara_near_miss",
+    "ka_gochara_near_miss_search",
     "ka_gochara_relationship_record",
     "ka_gochara_search_input_snapshot",
     "ka_gochara_search_interval",
