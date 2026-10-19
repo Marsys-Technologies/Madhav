@@ -179,6 +179,44 @@ def test_accepts_artifact_hash_alternative(receipt_step):
     run(expected=0)
 
 
+def _artifact_item(root, receipt_path, receipt):
+    """Make K-C an artifact item as in plan_model.json J-3d-a54: the step receipt is the artifact_section shape
+    (no artifact_path) and the item's own file_exists detector names the artifact."""
+    declared = root / "residuals" / "K-C.json"
+    declared.parent.mkdir()
+    declared.write_bytes(b"reviewed residual evidence")
+    model = cli.load_model()
+    model["items"][0].update(completion_kind="artifact", detector={"type": "file_exists", "path": str(declared)})
+    receipt.update(artifact_sha256=hashlib.sha256(declared.read_bytes()).hexdigest())
+    receipt_path.write_text(canonical(receipt))
+    return declared
+
+
+def test_artifact_section_receipt_binds_to_the_items_declared_artifact(receipt_step):
+    root, path, receipt, _, _, _, run = receipt_step
+    _artifact_item(root, path, receipt)
+    run(expected=0)
+
+
+def test_artifact_section_receipt_refuses_wrong_digest(receipt_step):
+    root, path, receipt, _, _, _, run = receipt_step
+    declared = _artifact_item(root, path, receipt)
+    declared.write_bytes(b"residual evidence edited after review")
+    run()
+
+
+@pytest.mark.parametrize("explicit", ["elsewhere", "declared"])
+def test_artifact_section_receipt_explicit_path_must_be_the_declared_artifact(receipt_step, explicit):
+    root, path, receipt, _, _, _, run = receipt_step
+    declared = _artifact_item(root, path, receipt)
+    other = root / "elsewhere.txt"
+    other.write_bytes(b"some other file")
+    receipt["artifact_path"] = str(declared if explicit == "declared" else other)
+    receipt["artifact_sha256"] = hashlib.sha256(Path(receipt["artifact_path"]).read_bytes()).hexdigest()
+    path.write_text(canonical(receipt))
+    run(expected=0 if explicit == "declared" else 2)
+
+
 def test_file_exists_steps_keep_existing_behavior(receipt_step):
     root, _, _, _, _, spec, run = receipt_step
     spec["type"] = "file_exists"
@@ -722,3 +760,104 @@ def test_done_refuses_composed_receipt_without_the_accepted_verdict_at_its_diges
     code = cli.main(["done", w.item["id"], "--stream", "S", "--operation-receipt", str(w.executor_path),
                      "--operation-id", w.item["id"]])
     assert code == 2 and w.events.read_bytes() == before
+
+
+# SR-J3D-REPORT-STEP: a step whose evidence is a repository file is an artifact_section step, never an executor
+# receipt; the receipt's artifact_sha256 is checked against the step's pinned git blob (plan_model.json J-3d).
+REPORT = b"# MEASURING BUILD REPORT\nthe reviewed report bytes\n"
+
+
+def _repo_file_step(root, path, receipt, monkeypatch, model_item):
+    import subprocess
+    repo = root / "repo"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True, timeout=60)
+    blob = subprocess.run(["git", "-C", str(repo), "hash-object", "-w", "--stdin"], input=REPORT, check=True,
+                          capture_output=True, timeout=60).stdout.decode().strip()
+    pin = {"repo_path": "briefs/REPORT.md", "blob": blob, "sha256": hashlib.sha256(REPORT).hexdigest()}
+    model_item["step_evidence"]["tests"].update(evidence="artifact_section", artifact=pin)
+    model_item["completion_kind"] = "operation"
+    monkeypatch.setenv("PRAVAHA_REPO", str(repo))
+    receipt["artifact_sha256"] = pin["sha256"]
+    path.write_text(canonical(receipt))
+    return pin
+
+
+@pytest.fixture
+def repo_file_step(receipt_step, monkeypatch):
+    root, path, receipt, _, _, _, run = receipt_step
+    pin = _repo_file_step(root, path, receipt, monkeypatch, cli.load_model()["items"][0])
+    return root, path, receipt, pin, run
+
+
+def test_repo_file_artifact_step_passes_with_the_right_digest(repo_file_step):
+    _, _, _, _, run = repo_file_step
+    run(expected=0)
+
+
+def test_repo_file_artifact_step_refuses_a_wrong_digest(repo_file_step):
+    _, path, receipt, _, run = repo_file_step
+    receipt["artifact_sha256"] = hashlib.sha256(b"some other report").hexdigest()
+    path.write_text(canonical(receipt))
+    run()
+
+
+def test_repo_file_artifact_step_refuses_a_receipt_without_a_digest(repo_file_step):
+    _, path, receipt, _, run = repo_file_step
+    del receipt["artifact_sha256"]
+    path.write_text(canonical(receipt))
+    run()
+
+
+def test_repo_file_artifact_step_refuses_an_artifact_path(repo_file_step):
+    root, path, receipt, _, run = repo_file_step
+    elsewhere = root / "report.md"
+    elsewhere.write_bytes(REPORT)
+    receipt["artifact_path"] = str(elsewhere)
+    path.write_text(canonical(receipt))
+    run()
+
+
+def test_repo_file_artifact_step_refuses_a_pin_that_does_not_match_its_blob(repo_file_step):
+    _, path, receipt, pin, run = repo_file_step
+    # the receipt honestly carries the blob's own digest; only the pin was edited away from the blob
+    pin["sha256"] = hashlib.sha256(b"a pin edited away from the blob").hexdigest()
+    assert receipt["artifact_sha256"] == hashlib.sha256(REPORT).hexdigest()
+    run()
+
+
+def test_repo_file_artifact_step_refuses_a_blob_not_in_the_repository(repo_file_step):
+    _, _, _, pin, run = repo_file_step
+    pin["blob"] = "0" * 40
+    run()
+
+
+def test_plan_model_pin_of_the_j3d_report_names_the_blob_on_main():
+    """The shipped pin: J-3d report_written is an artifact_section step whose pinned blob holds the pinned sha256,
+    whose detector pattern pins the same sha256, and whose model passes the declaration check."""
+    import re
+    import subprocess
+    from pravaha_tracker import server
+    model = json.loads((Path(cli.REPO_ROOT) / "00_ARCHITECTURE/control/kalayantra/plan_model.json").read_text())
+    step = next(i for i in model["items"] if i["id"] == "J-3d")["step_evidence"]["report_written"]
+    pin = step["artifact"]
+    assert step["evidence"] == "artifact_section"
+    assert f'"artifact_sha256":"{pin["sha256"]}"' in step["detector"]["pattern"]
+    assert re.search(step["detector"]["pattern"], '{"artifact_sha256":"%s","item":"J-3d","review_job":'
+                     '"X-20261019T000000Z-a","step":"report_written","verdict":"MET"}' % pin["sha256"])
+    blob = subprocess.run(["git", "-C", cli.REPO_ROOT, "cat-file", "blob", pin["blob"]], capture_output=True,
+                          timeout=60)
+    assert blob.returncode == 0 and hashlib.sha256(blob.stdout).hexdigest() == pin["sha256"]
+    assert not [p for p in server._check_declarations(model) if "artifact pin" in p]
+
+
+def test_declaration_check_flags_a_pin_the_pattern_does_not_repeat():
+    from pravaha_tracker import server
+    model = declared_model()
+    sha = "a" * 64
+    pin = {"repo_path": "briefs/REPORT.md", "blob": "b" * 40, "sha256": sha}
+    model["items"][0].update(steps=["tests"], step_evidence={"tests": {
+        "evidence": "artifact_section", "artifact": pin,
+        "detector": {"type": "file_contains", "path": "/x", "pattern": '"artifact_sha256":"[0-9a-f]{64}"'}}})
+    assert any("artifact pin" in p for p in server._check_declarations(model))
+    model["items"][0]["step_evidence"]["tests"]["detector"]["pattern"] = f'"artifact_sha256":"{sha}"'
+    assert not any("artifact pin" in p for p in server._check_declarations(model))
