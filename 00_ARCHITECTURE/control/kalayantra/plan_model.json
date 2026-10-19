@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -4628,7 +4628,7 @@
       "detector": {
         "type": "branch_merged",
         "ref": "origin/kalayantra/vc-2",
-        "measures": "UNMEASURED until origin/kalayantra/vc-2 exists (no branch yet; SR-DETECTOR-REFS 2026-10-18): this is not a pass and not a failure of the item; it is read as not yet measured. Once the branch exists it measures that its PR is contained in origin/main; guarded completion additionally requires exact-head acceptance."
+        "measures": "UNMEASURED until origin/kalayantra/vc-2 exists (no such branch; SR-DETECTOR-REFS 2026-10-18): this is not a pass and not a failure of the item; it is read as not yet measured. The arm generator and readiness gate merged as PR #3732 (branch vc-2-build) but no real outputs were committed (the G1 baseline and binding receipt do not exist), so that merge does not satisfy the item's byte-identical-outputs claim and is not used as its detector."
       },
       "brief": {
         "spec": [
@@ -5197,7 +5197,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k6-n1"
+        "ref": "93544cd759bdf8024e6bd8930239650b737f2d53",
+        "packet_pr": 3635,
+        "measures": "K6N pre-build (job X-20261016T142607Z-pb-k6n): PR #3635 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -5240,7 +5242,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k6-n2"
+        "ref": "93544cd759bdf8024e6bd8930239650b737f2d53",
+        "packet_pr": 3635,
+        "measures": "K6N pre-build (job X-20261016T142607Z-pb-k6n): PR #3635 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -5285,7 +5289,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k6-n3"
+        "ref": "93544cd759bdf8024e6bd8930239650b737f2d53",
+        "packet_pr": 3635,
+        "measures": "K6N pre-build (job X-20261016T142607Z-pb-k6n): PR #3635 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -23117,10 +23123,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -23406,10 +23412,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -23646,10 +23652,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -23795,10 +23801,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -23936,10 +23942,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -24350,10 +24356,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "a67fc03bf99a20c14c7b48f37133929f3f0f9bf2",
+        "packet_pr": 3596,
+        "measures": "J4C-A pre-build (job X-20261016T073605Z-pb-j4c-a): PR #3596 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -25040,10 +25046,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "2fa1cafdf207d9243f8f89b34b42e15b580a3830",
+        "packet_pr": 3604,
+        "measures": "J4C-B pre-build (job X-20261016T074630Z-pb-j4c-b): PR #3604 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -25115,10 +25121,10 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "pr_merged",
-        "pr": 3516,
-        "packet_pr": 3516,
-        "measures": "P06 carrying PR merged; typed exact-head child acceptance, ported-oracle CI and deployed-source containment remain required. No archived PR completion is inferred."
+        "type": "branch_merged",
+        "ref": "2fa1cafdf207d9243f8f89b34b42e15b580a3830",
+        "packet_pr": 3604,
+        "measures": "J4C-B pre-build (job X-20261016T074630Z-pb-j4c-b): PR #3604 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -27531,7 +27537,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k9-23-n2"
+        "ref": "ee51abe09bd5e62d8bba6999515ef160fe688cbc",
+        "packet_pr": 3606,
+        "measures": "K9-23-N2 pre-build (job X-20261016T091430Z-pb-k9-23-n2): PR #3606 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -28264,7 +28272,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k5-g1b-n1"
+        "ref": "f525f7280495da24cb85d79d342c49916ad4bf3b",
+        "packet_pr": 3640,
+        "measures": "KN-B pre-build (job X-20261016T142635Z-pb-kn-b): PR #3640 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -28307,7 +28317,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k5g1a-r1"
+        "ref": "415bc19609b4838759c0873bb1242c02aa778b8d",
+        "packet_pr": 3605,
+        "measures": "K5G1A-CHILDREN pre-build (job X-20261016T085438Z-pb-k5g1a-children): PR #3605 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -28349,7 +28361,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/k5g1a-r2"
+        "ref": "415bc19609b4838759c0873bb1242c02aa778b8d",
+        "packet_pr": 3605,
+        "measures": "K5G1A-CHILDREN pre-build (job X-20261016T085438Z-pb-k5g1a-children): PR #3605 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -28357,7 +28371,9 @@
           "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261015T204858Z-review-k5-g1a/result.json:38 (K5G1A-R2)"
         ],
         "owns": [
-          "platform/python-sidecar/services/ka_kshetra/stage4_field.py"
+          "platform/python-sidecar/services/ka_kshetra/stage4_field.py",
+          "platform/python-sidecar/services/ka_kshetra/g1_inputs.py",
+          "platform/python-sidecar/tests/l3/ka_kshetra/test_g1a_contract.py"
         ],
         "tests": [
           "Preserve the unavailable mūrti interval as a neutral mask with its source reference, retaining the gap and no numeric testimony bridge. Add a mandatory null-entry breakpoint and circular-shift test.",
@@ -28367,7 +28383,8 @@
         "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
         "notes": [
           "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
-          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION (SR-DETECTOR-REFS-2): the accepted pre-build PR #3605 fixed R2 in g1_inputs.py (suppression_primitives, where the interval was lost) and covered it in test_g1a_contract.py, both listed under that job's out_of_owns; stage4_field.py already preserved the masked interval. They are added to owns so the merged PR is recognised as carrying the item (SR-BUNDLE-VERDICT)."
         ],
         "contract": "For a stored mūrti entry with null_reason or no quality_tier, suppression_primitives adds a disclosure then continues, emitting no neutral input_mask. KA-3b actually emits these leading unavailable intervals. Their endpoints disappear from EnvelopeIndex.breakpoints(), unlike unavailable vedha/K3 intervals. This also contradicts the helper promise that all referenced interval edges survive."
       },
@@ -28559,7 +28576,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/j6m-r1"
+        "ref": "5aa1af46fedabee8350f14eb619706a5695016a9",
+        "packet_pr": 3636,
+        "measures": "W4N pre-build (job X-20261016T143037Z-pb-w4n): PR #3636 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
