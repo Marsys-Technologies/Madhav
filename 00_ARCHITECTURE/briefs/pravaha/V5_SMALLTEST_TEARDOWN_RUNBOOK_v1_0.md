@@ -64,7 +64,7 @@ Run `platform/scripts/v5_small_test_incoming_fks_readback.sql` (read only) and s
 | Object (schema `public`) | Privilege |
 |---|---|
 | `asset_provenance_receipts`, `asset_freshness`, `build_run_assets`, `build_runs`, `asset_throughput` | SELECT, DELETE |
-| `ka_gochara_eval_window`, `ka_gochara_relationship_record`, `ka_gochara_contact`, `kala_gochara_coverage`, `ka_gochara_search_interval`, `ka_gochara_search_obligation`, `ka_gochara_search_path_pin`, `ka_gochara_search_inventory`, `ka_gochara_search_input_snapshot`, `kala_gochara_publication` | SELECT, DELETE |
+| `ka_gochara_eval_window`, `ka_gochara_relationship_record`, `ka_gochara_contact`, `kala_gochara_coverage`, `ka_gochara_search_interval`, `ka_gochara_search_obligation`, `ka_gochara_search_path_pin`, `ka_gochara_search_inventory`, `ka_gochara_search_input_snapshot`, `ka_gochara_near_miss`, `ka_gochara_near_miss_search`, `kala_gochara_publication` | SELECT, DELETE |
 | `build_runs` and `kala_gochara_publication` (additionally) | UPDATE: the rows are locked `FOR UPDATE` before validation and held through the delete (Codex round 4 T1), and `FOR UPDATE` needs UPDATE on the table |
 | `ka_gochara_generation_seal`, `kala_gochara_authority`, `kala_gochara_windows`, `kala_gochara_contacts` | SELECT |
 | `asset_registry` | SELECT always; UPDATE(`is_active`) **only if the row is found active** — an already-inert row is not updated (production's is inert) |
@@ -72,6 +72,8 @@ Run `platform/scripts/v5_small_test_incoming_fks_readback.sql` (read only) and s
 | every table the catalog shows referencing an owned `build_runs` row or the manifest: `conversations`, `event_chart_state_index`, `mimamsa_predictions`, `mimamsa_calibration_snapshot`, `brahma_prospective_ledger`, `brahma_mimamsa_prediction_ledger` | SELECT, to count the rows that reference them (the script refuses by name if any do) |
 | `ka_gochara_lock_chart(uuid)` and `ka_gochara_generation_is_sealed(uuid, text)` (the DELETE guards on the chain tables call it as the invoker; a real-database test with PUBLIC EXECUTE revoked, as production has it, found it missing from the first draft of this table) | EXECUTE |
 | cascade children `ka_gochara_eval_window_record`, `ka_gochara_record_prerequisite`, `ka_gochara_eval_window_verification`, `ka_gochara_search_inventory_verification` | SELECT and UPDATE: measure absence and permit the bounded table lock; DELETE is still by foreign-key cascade (the cascade runs as the child's owner; the 1240 write guard refuses a sealed generation) |
+
+The global, insert-only `ka_gochara_near_miss_object` (migration 1308) is deliberately not in this list: the teardown neither deletes nor counts it (its trigger refuses DELETE and other charts and generations share an object). It is backed up by the scoped backup only.
 
 Historical role observations below do not certify the new cascade-child lock privileges; reconcile REQUIRED_PRIVILEGES before activation. No grant is made here.
 

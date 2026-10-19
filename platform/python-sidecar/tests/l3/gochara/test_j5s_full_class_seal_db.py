@@ -44,7 +44,10 @@ def candidate(tmp_path_factory):
     from functools import lru_cache
     if _PROBLEMS:
         pytest.skip('NOT_RUN: pinned Swiss corpus unavailable: ' + '; '.join(_PROBLEMS))
-    admin, name, dsn = create_am5_database('j5s_full', faithful=True)
+    # Migration 1305 makes the search-input snapshot self-contained (it copies the L1 rows it consumed);
+    # seal_brief refuses a first seal on the legacy ids-only shape (snapshot_without_copy), so the
+    # candidate must be built on the post-1305 database, as production is.
+    admin, name, dsn = create_am5_database('j5s_full', faithful=True, apply_1305=True)
     conn = None
     started = time.monotonic()
     from services.gochara_kernel import implementation_registry as registry
