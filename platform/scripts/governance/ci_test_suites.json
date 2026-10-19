@@ -109,6 +109,7 @@
         "tests/l3/gochara/test_w2*.py",
         "tests/l3/gochara/test_p09*.py",
         "tests/l3/gochara/test_j7b*.py",
+        "tests/l3/gochara/test_j4ops_*.py",
         "tests/l3/gochara/test_j6m*.py",
         "tests/l3/gochara/test_horizon*.py",
         "tests/l3/gochara/test_mb_horizon*.py",
@@ -117,7 +118,8 @@
         "tests/l3/gochara/test_n18*.py",
         "tests/l3/gochara/test_nd_h*.py",
         "tests/l3/gochara/test_near_miss*.py",
-        "tests/l3/gochara/test_p06*.py"
+        "tests/l3/gochara/test_p06*.py",
+        "tests/l3/gochara/test_j6_bindings*.py"
       ],
       "discover_db": true
     },
@@ -875,6 +877,14 @@
       "engine": "vitest",
       "include": [
         "scripts/__tests__/protected_window*.db.test.ts"
+      ]
+    },
+    "governance-tool-tests-j6-bindings": {
+      "cwd": "platform",
+      "engine": "pytest",
+      "include": [
+        "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_j6_head_bindings*.py",
+        "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_j6_live_readback*.py"
       ]
     },
     "governance-tool-tests-k9-publication": {

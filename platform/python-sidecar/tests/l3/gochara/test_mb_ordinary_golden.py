@@ -47,6 +47,13 @@ GOLDEN_COMMIT = "2d75833d3963a61544deaa4c36cc8322cb2cdcb5"
 # (dasha_settlement.json) changes only this identity, so the comparison re-points it at the governed record instead of
 # re-capturing the golden or pinning a second literal.
 GOLDEN_SETTLED_BUILD_PREFIX = "ca17639b-f3cf-42c7-9866-"
+# J-2a-P1L (SR-J2A-P1L-NOW, B.3): the snapshot now ledgers every pinned daśā row the P1 builder CONSULTS for a record's
+# period_running_at (all rows of an anchor (lord, level), wherever they lie), not only the rows overlapping the horizon. The a55
+# template chart holds 6 pinned rows (test_a53_inventory.DASHA); the horizon [2025-01-01, 2025-01-20) overlaps 4 of them
+# (Saturn MD, Venus AD, Mars PD, Rahu PD) — the golden's "4 daśā rows" — and the marriage P1 anchors (Sun AD, Jupiter PD) consult the
+# other 2 (rows 3 and 6, wholly after the horizon): 4 + 2 = 6. The immutable fixture is not re-captured; only this one count moves.
+GOLDEN_SNAPSHOT_DASHA_ROWS = "10 L1 facts, 4 daśā rows"
+P1L_SNAPSHOT_DASHA_ROWS = "10 L1 facts, 6 daśā rows"
 # PR #3596 (ci-kalayantra-pb-j4c-a), J4C-A: substrate.DB_BODY and
 # window_sweep.GRAHA_TITLE now derive the same graha mapping from the SSoT.
 # Computed from this tree with implementation_registry.compute(); pin these
@@ -69,6 +76,12 @@ BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, 
                 "subject_label": "native"}
 CLASS = "marriage"
 GUARD_SELECT = "SELECT state FROM public.asset_throughput WHERE chart_id = %s AND asset_id = %s"
+# J-2a-P1L: the snapshot substep reads the applied schema ONCE through p1_minting_closed_reason (RecordStore.p1_anchor_columns_available) to
+# decide whether the P1 anchor rows are consulted (and so ledgered). Like the state guard it is checked separately — its exact text, one
+# parameter, exactly once — and, in the snapshot substep only (the golden's snapshot never issued it; coverage already did), excluded from
+# the statement summary before it is compared with the golden.
+P1_GATE_SELECT = ("SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_relationship_record'::regclass"
+                  " AND attname = ANY(%s) AND NOT attisdropped AND attnum > 0")
 PERIOD_GUARD_SELECT = " ".join("""
     WITH governed_chart_dashas AS (
         SELECT * FROM public.chart_dashas
@@ -205,6 +218,16 @@ def _follow_settlement(golden: dict) -> dict:
     return json.loads(text.replace(GOLDEN_SETTLED_BUILD_PREFIX, settled_prefix))
 
 
+def _follow_p1_ledger(golden: dict) -> dict:
+    """The golden with its one snapshot daśā-row count moved to the J-2a-P1L ledger (see P1L_SNAPSHOT_DASHA_ROWS).
+
+    The golden must carry the old count exactly once (the adaptation is never silent or vacuous); everything else stays strictly compared.
+    """
+    text = json.dumps(golden, sort_keys=True, ensure_ascii=False)
+    assert text.count(GOLDEN_SNAPSHOT_DASHA_ROWS) == 1, "the golden names its snapshot daśā-row count exactly once"
+    return json.loads(text.replace(GOLDEN_SNAPSHOT_DASHA_ROWS, P1L_SNAPSHOT_DASHA_ROWS))
+
+
 def test_b4_baseline_preserves_final_main_settlement_amendments():
     """Keep final J-4p's outcomes and transcript alongside B4's baseline.
 
@@ -252,7 +275,7 @@ def head(template):
 
 def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read_only_state_guard_select(head):
     got, raw = head
-    want = _follow_settlement(_load())
+    want = _follow_p1_ledger(_follow_settlement(_load()))
     assert [s["key"] for s in got["substeps"]] == [s["key"] for s in want["substeps"]]
     kinds = {s["key"].split(":")[0].split(" ")[0] for s in want["substeps"]}
     assert kinds >= {"rules", "convention", "body", "manifest", "snapshot", "inventory", "coverage", "record", "window", "verify"}, kinds
@@ -264,6 +287,9 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
         period_guard = [s for s in raw[key] if s == [PERIOD_GUARD_SELECT, 11]]
         assert len(period_guard) == (1 if key == "inventory:marriage" else 0), f"{key}: expected the B5 period guard exactly once before the inventory projection"
         rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11])]
+        if key == writer_mod.SNAPSHOT_SUBSTEP:       # every other substep keeps its own P1 gate reads, compared with the golden unchanged
+            assert rest.count([P1_GATE_SELECT, 1]) == 1, f"{key}: expected the new P1-minting schema read exactly once"
+            rest.remove([P1_GATE_SELECT, 1])
         assert len(guard) == (0 if "[dry_run]" in key else 1), f"{key}: expected exactly one state-guard SELECT per non-dry-run substep, saw {len(guard)}"
         assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards differ from the pre-B4 baseline"
 

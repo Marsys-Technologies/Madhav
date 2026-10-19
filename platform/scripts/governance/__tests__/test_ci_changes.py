@@ -819,3 +819,9 @@ def test_j5s_skip_is_accepted_only_when_the_light_gate_did_not_expect_it(jobs, e
                                  'J5S_RESULT': j5s, 'DOCS_ONLY': 'false',
                                  'KALA_DB_RESULT': 'success', 'KALA_DB_EXPECTED': 'true'})   # K9-23: the Kāla DB input is not under test here
     assert result.returncode == code, result.stdout
+
+
+def test_j5s_job_follows_the_light_pr_gate_and_is_a_full_suite_member(jobs):
+    job = jobs['gochara-j5s-full-class-seal']
+    assert "contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-j5s-full-class-seal')" in job['if']
+    assert 'gochara-j5s-full-class-seal' in jobs['full-suite']['needs']
