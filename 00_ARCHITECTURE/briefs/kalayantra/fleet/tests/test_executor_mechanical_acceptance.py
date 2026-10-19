@@ -471,7 +471,9 @@ def marker_violations(kind, overrides=None):
         words = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)} | {
             k.arg for n in ast.walk(tree) if isinstance(n, ast.Call) for k in n.keywords if k.arg}       # code, not comments
         if any("application_name" in w for w in words): problems.append(f"{path.name} names its own application_name")
-        if any("PGAPPNAME" in w for w in words) and not (path.name == "backup_v5_small_test_job.py" and MARKER_ROUTE[kind] == "client_env"):
+        # The backup module's one sanctioned PGAPPNAME use is the carry in client_env() (a forward, never a strip; BACKUP_CARRY, pinned once below). It is
+        # in the closure of every dispatch that lazily imports measure_scope_now (SR-BACKUP-VALIDITY-A8), whose connection is a psycopg one that libpq marks.
+        if any("PGAPPNAME" in w for w in words) and not (path.name == "backup_v5_small_test_job.py" and text.count(BACKUP_CARRY) == 1):
             problems.append(f"{path.name} touches PGAPPNAME")
         for node in ast.walk(tree):
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in SUBPROCESS_CALLS:
