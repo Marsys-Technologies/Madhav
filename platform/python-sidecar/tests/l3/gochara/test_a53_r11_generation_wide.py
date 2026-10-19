@@ -15,6 +15,10 @@ import uuid
 
 import pytest
 
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises generation-wide record refusal at the gate, the job and the seal on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from services.gochara_kernel import verification_job as vj
 
 from .test_a53_inventory import CHART_ID
