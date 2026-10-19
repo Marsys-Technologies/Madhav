@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -5577,8 +5577,9 @@
         }
       },
       "triage": {
-        "class": "a",
-        "reason": "post-flip phase of the campaign, not deferred (A9 D-52; 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)"
+        "class": "b",
+        "reason": "deferred with re-entry by SR-W34-PREP-RULINGS (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl, 2026-10-19T12:20Z) item 5b (overrides A9 D-52 for these two items; the rest of the post-flip phase stays in the campaign)",
+        "re_entry": "post-flip: after V-J6 is accepted and the served layer has run one week on 5.0 (as the J-7a family)"
       }
     },
     {
@@ -20321,8 +20322,9 @@
       "done_by": "decision",
       "decision": "D-T2",
       "triage": {
-        "class": "a",
-        "reason": "post-flip phase of the campaign, not deferred (A9 D-52; 00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)"
+        "class": "b",
+        "reason": "deferred with re-entry by SR-W34-PREP-RULINGS (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl, 2026-10-19T12:20Z) item 5b (overrides A9 D-52 for these two items; the rest of the post-flip phase stays in the campaign)",
+        "re_entry": "post-flip: after V-J6 is accepted and the served layer has run one week on 5.0 (as the J-7a family)"
       }
     },
     {
@@ -20332,7 +20334,6 @@
       "title": "Tier-2 — Sudarśana as a judge method: the full BPHS 74 method, the coincident-frame rule, nested periods as F2 rows; proven on the lane database as a candidate method, not part of the sealed '5.0'",
       "owner": "K",
       "depends_on": [
-        "D-T2",
         "K1-1b",
         "KA-3b",
         "J-7-a63",
@@ -20367,9 +20368,6 @@
         ],
         "compat": "no change to the sealed generation; the method is not admitted to a served generation in this campaign",
         "notes": "S splits this into children before anyone claims it."
-      },
-      "requires_outcome": {
-        "D-T2": "approved"
       },
       "completion_kind": "code",
       "producer": "K",
@@ -21183,7 +21181,7 @@
       "id": "C-1",
       "track": "C",
       "lane": "C · close",
-      "title": "Close report: the five definition-of-done lines, each MET or NOT MET with its detector evidence; decisions ledger; gaps; measured costs; lessons",
+      "title": "Close report: the A9 acceptance set (ACCEPTANCE_ROOTS_v3) attested as of C-1 — the five definition-of-done lines read as amended by A9 D-53, each MET or NOT MET with its detector evidence; decisions ledger; gaps; deferred items with re-entry; measured costs; lessons",
       "owner": "S",
       "depends_on": [
         "K9-4b",
@@ -21195,12 +21193,10 @@
         "K-CERT",
         "V-K9",
         "K-AVADHI-C",
-        "D-T2",
         "J-7",
         "J-7-a63",
         "J-7-b61",
         "J-7-n-t2",
-        "L0-K",
         "J-7b",
         "J-7b-b62"
       ],
@@ -21212,16 +21208,28 @@
       },
       "brief": {
         "spec": [
-          "CHARTER §0, §14"
+          "CHARTER §0 (lines 2 and 4 read as amended by A9 D-53), §14",
+          "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v3.json (A9 D-51)",
+          "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md §2 (D-51), §4 (D-53)",
+          "SR-W34-PREP-RULINGS (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl, 2026-10-19T12:20Z) item 5"
         ],
         "owns": [
           "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CLOSE_REPORT_v1_0.md"
         ],
         "tests": [
-          "a line with a mandatory gap reads NOT MET; the report's status is CLOSED or CLOSED-PARTIAL accordingly",
-          "the deferred (class b) list with re-entry conditions is attached; a deferred item is never reported closed"
+          "the report attests the ACCEPTANCE_ROOTS_v3 set as of C-1: every root's detector is re-read at C-1 time and a root that is not met reads NOT MET with its evidence",
+          "a line with a mandatory gap reads NOT MET; the report's status is CLOSED when every acceptance root is met and CLOSED-PARTIAL only when a root is NOT MET",
+          "CHARTER §0 line 2 (Pravāha tracker closed read-only with its close report: J-8 family) and line 4 (rehearsal census: K9-5 family) are read as amended by A9 D-53: both families are listed as 'deferred with re-entry' and a deferral alone never makes the status CLOSED-PARTIAL",
+          "the deferred (class b) list with re-entry conditions is attached; a deferred item is never reported closed",
+          "line 5 names C-2, C-3 and C-4 and run/FINAL_RECEIPT.json as the record of the close chain's outcome; the report claims nothing about steps that run after it"
         ],
-        "compat": "documentation/declaration only — no runtime effect"
+        "compat": "documentation/declaration only — no runtime effect",
+        "notes": [
+          "C-1 attests its inputs as of C-1 (the acceptance roots and the closure at the time it is written). The close chain after it — C-2 merge, C-3 drain, C-4 final acceptance — is attested by those items and by run/FINAL_RECEIPT.json, not by this report. The finalizer freezes this report by its C-1 completion digest and re-hashes it; any later edit fails the final receipt.",
+          "C-1 accepts not_applicable dependencies (accepts_not_applicable_dependencies): a dependency that ended not_applicable is a reported gap, never a closed item.",
+          "Deferred with re-entry, outside C-1's dependencies (SR-W34-PREP-RULINGS (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl, 2026-10-19T12:20Z) item 5): D-T2 and L0-K (re-entry: post-flip). D-GOCHARA-TIMEOUT is outside the closure per A9 D-53.",
+          "Status vocabulary (SR-W34-PREP-RULINGS (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl, 2026-10-19T12:20Z) item 5): CLOSED when every acceptance root is met; CLOSED-PARTIAL when a root is NOT MET (an honest gate failure). Deferral with re-entry is not a failure."
+        ]
       },
       "accepts_not_applicable_dependencies": true,
       "completion_kind": "artifact",
@@ -21296,7 +21304,7 @@
           "/Users/Dev/kalayantra/run/DRAIN_RECEIPT.json"
         ],
         "compat": "documentation/declaration only — no runtime effect",
-        "notes": "Lane v1 inspects the drain receipt independently and records its acceptance; the finalizer then records completion (it retries until that acceptance exists). Finalisation has two phases (fleet/finalize.sh, run by the executor on SŪTRADHĀRA's finalize request). Phase 1 drains every lane except v1, proves their locks released, refuses to remove any busy or dirty worktree and writes the drain receipt; a timeout or a removal failure is a FAILED drain, never an accepted receipt. The finalizer records this item's completion, because the conductor is stopped by then."
+        "notes": "DEVIATION from CHARTER §12 (recorded under SR-W34-PREP-RULINGS (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl, 2026-10-19T12:20Z) item 5d): the executor's finalize kind is the finalizer (fleet/finalize.sh v3.3), not the charter's v1-lane flow. There is no lane v1: the finalizer drains the lanes, removes only clean and pushed worktrees (git worktree remove, never --force), closes session databases, writes the receipts from what it measures, claims the item for a V slot and launches one bounded reviewer outside ordinary dispatch. C-3: the finalizer writes the drain receipt (a timeout or a removal failure is a FAILED drain, never an accepted receipt); an independent reviewer inspects it and records its acceptance at the receipt's digest; the finalizer then records this item's completion (it retries until that acceptance exists), because the conductor is stopped by then."
       },
       "accepts_not_applicable_dependencies": true,
       "completion_kind": "artifact",
@@ -21327,14 +21335,13 @@
           "PARIKSAKA final acceptance"
         ],
         "owns": [
-          "/Users/Dev/kalayantra/run/reviews/FINAL_REVIEW.json",
-          "/Users/Dev/kalayantra/run/FINAL_MESSAGE_DRAFT.md",
+          "/Users/Dev/kalayantra/run/FINAL_MESSAGE_DRAFT.md (must exist and be non-empty before finalize is requested; narrative, no personal data, no chart data; source copy in the repository at 00_ARCHITECTURE/briefs/kalayantra/FINAL_MESSAGE_DRAFT.md)",
           "/Users/Dev/kalayantra/run/FINAL_RECEIPT.json and /Users/Dev/kalayantra/run/FINAL_MESSAGE.md (written by the finalizer)"
         ],
         "tests": [
-          "one read-only Astra review of the close report against the tracker, the receipts and the live detectors; each of the five lines MET or NOT MET"
+          "one read-only review of the close report against the tracker, the receipts and the live detectors; each of the five lines MET or NOT MET; the proposed verdict travels in the reviewer's result.json and the published verdict is the tracker's event"
         ],
-        "notes": "Lane v1 reviews the close report against the drain receipt, the tracker, the receipts and the live detectors; writes FINAL_REVIEW.json (each of the five lines MET or NOT MET; it does not claim the physical-shutdown line MET while it is itself still running) and FINAL_MESSAGE_DRAFT.md; then touches STOP_v1 and exits. Phase 2 of the finalizer waits for v1's lock to release, removes its clean worktree, verifies all ten lanes stopped and all ten worktrees absent, and only then writes FINAL_RECEIPT.json (result, every lane's state, worktrees remaining) and FINAL_MESSAGE.md — the one message to the native — from the reviewed draft plus the measured shutdown facts. Dirty or busy state is preserved and reported as failure. Guarded completion requires BOTH the independently accepted final review bound to the current drain receipt (drain_sha256) and the accepted physical shutdown receipt; a pattern match in the physical receipt alone cannot complete C-4."
+        "notes": "DEVIATION from CHARTER §12 (recorded under SR-W34-PREP-RULINGS (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl, 2026-10-19T12:20Z) item 5d): the executor's finalize kind is the finalizer (fleet/finalize.sh v3.3), not the charter's v1-lane flow. There is no lane v1: the finalizer drains the lanes, removes only clean and pushed worktrees (git worktree remove, never --force), closes session databases, writes the receipts from what it measures, claims the item for a V slot and launches one bounded reviewer outside ordinary dispatch. C-4 attests the frozen close report: the receipt's close_report.sha256 must equal the digest recorded when C-1 completed, and the reviewer judges the five lines against the evidence, as finally measured (sequence C-1 → C-2 → C-3 → C-4 unchanged). The reviewer does not claim the physical-shutdown clause of line 5 MET while it is itself still running; the finalizer's absence re-measurement after the reviewer exits decides it. FINAL_REVIEW.json named by the earlier text is not produced by finalize.sh v3.3 and is no longer an owned artifact. Guarded completion requires BOTH the independently accepted review bound to the current drain digest and the accepted physical-shutdown receipt; a pattern match in the receipt alone cannot complete C-4."
       },
       "accepts_not_applicable_dependencies": true,
       "completion_kind": "artifact",
@@ -22033,8 +22040,8 @@
       },
       "triage": {
         "class": "b",
-        "reason": "rules one legacy materializer timeout; no retained item consumes it",
-        "re_entry": "if J-4e/J-4f show that timeout binding"
+        "reason": "outside the closure per A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md); classification fixed by SR-W34-PREP-RULINGS (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl, 2026-10-19T12:20Z) item 5f",
+        "re_entry": "ruled when the century build's measured duration exists"
       }
     },
     {
@@ -26627,7 +26634,6 @@
       "owner": "K",
       "depends_on": [
         "J-0m",
-        "D-T2",
         "K1-1b",
         "KA-3b",
         "J-6l"
@@ -26808,7 +26814,6 @@
       "owner": "K",
       "depends_on": [
         "J-0m",
-        "D-T2",
         "K1-1b",
         "KA-3b",
         "J-6l"
@@ -27168,7 +27173,6 @@
       "owner": "N",
       "depends_on": [
         "J-0m",
-        "D-T2",
         "K1-1b",
         "KA-3b",
         "J-6l"
