@@ -135,6 +135,35 @@ def derive(model: dict, source, *, skip=frozenset()) -> dict[str, dict]:
     return out
 
 
+def completed_by_event(events: list[dict]) -> set:
+    """Items a guarded done event already closed: the derivation need not look at them (they win in item_status)."""
+    return {e.get("item") for e in events
+            if e.get("kind") == "item" and e.get("state") == "done" and not e.get("step") and e.get("guarded") is True}
+
+
+def upstream_ids(model: dict, item_id: str) -> set:
+    """`item_id` and every item it transitively depends on."""
+    by_id = {i.get("id"): i for i in model.get("items", [])}
+    seen, todo = set(), [item_id]
+    while todo:
+        iid = todo.pop()
+        if iid in seen:
+            continue
+        seen.add(iid)
+        todo.extend(by_id.get(iid, {}).get("depends_on", []))
+    return seen
+
+
+def derive_for_events(model: dict, events: list[dict], source, *, only=None) -> dict[str, dict]:
+    """The merged+deployed `derived_done` map exactly as the display computes it (server.py): the one derivation
+    every completion predicate shares. `only` limits the work to those item ids (a completion needs just the
+    item and its upstream); the proofs are the same ones the full pass would give."""
+    skip = completed_by_event(events)
+    if only is not None:
+        skip |= {i.get("id") for i in model.get("items", []) if i.get("id") not in only}
+    return derive(model, source, skip=skip)
+
+
 class GitHubSource:
     """Observations from `gh` and local git, cached: git facts about a commit never change, a merged PR stays
     merged, and a deploy that contains a commit keeps containing it. Everything else is re-read after REFRESH_S."""

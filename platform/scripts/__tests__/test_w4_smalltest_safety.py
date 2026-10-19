@@ -303,6 +303,7 @@ def test_generated_independent_readback_measures_counts_and_binds_commit():
     assert sql.startswith('SELECT ') and sql.endswith('AS absence_proof')
     assert 'count(*) FROM build_runs WHERE id =' in sql
     assert 'count(*) FROM ka_gochara_contact WHERE chart_id =' in sql
+    assert 'count(*) FROM ka_gochara_near_miss WHERE chart_id =' in sql and 'count(*) FROM ka_gochara_near_miss_search WHERE chart_id =' in sql
     assert "partition_kind = 'event_class'" in sql
     assert shared.evidence_digest(committed) in sql
     assert 'registry_inert' in sql and 'is_active IS FALSE' in sql

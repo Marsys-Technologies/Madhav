@@ -145,3 +145,64 @@ def test_full_reference_field_blocks_preserve_class_specific_null_statistics():
         results.append(actual)
     assert results[0].preparation_digest != results[1].preparation_digest
     assert results[0].max_stats[1] != results[1].max_stats[1]
+
+
+# ── K5-G1b-N1: one shift schedule per candidate, consumed by jury and field ──
+# PLAN §6.2(5): "The shift schedule ... run once per candidate"; separate
+# estimands stay separate (ALGO 3.20). Geometry stays per class and draw.
+
+def test_schedule_is_prepared_once_and_consumed_by_jury_and_field():
+    from services.kala_core.measure import Interval, Witness, prepare_draws, prepare_schedule
+    from services.kala_core.measure.field import prepare_field
+    schedule = prepare_schedule(Interval(0, 40), 3)
+    jury = prepare_draws(Interval(0, 40), (Witness('a', (Interval(1, 5),)),),
+                         anchor_id='a', exchangeable=False, schedule=schedule)
+    field = prepare_field('e', 40, schedule=schedule)
+    assert jury.schedule is schedule and jury.schedule.digest == schedule.digest
+    assert tuple(d.offset for d in jury.null_draws) == schedule.offsets == field.offsets
+    assert field.schedule_digest == schedule.digest
+    # A different shift count is a different schedule, not a relabelled one.
+    assert prepare_schedule(Interval(0, 40), 4).digest != schedule.digest
+
+
+def test_field_and_jury_refuse_a_schedule_for_another_horizon_or_shift_count():
+    from services.kala_core.measure import Interval, Witness, prepare_draws, prepare_schedule
+    from services.kala_core.measure.field import prepare_field
+    schedule = prepare_schedule(Interval(0, 40), 3)
+    with pytest.raises(ValueError, match='schedule'):
+        prepare_field('e', 50, schedule=schedule)
+    with pytest.raises(ValueError, match='schedule'):
+        prepare_field('e', 40, non_identity_shifts=4, schedule=schedule)
+    with pytest.raises(ValueError, match='schedule'):
+        prepare_draws(Interval(0, 50), (Witness('a', (Interval(1, 5),)),),
+                      anchor_id='a', exchangeable=False, schedule=schedule)
+
+
+def test_writer_prepares_one_schedule_for_every_class_of_a_candidate(monkeypatch):
+    from services.ka_kshetra import writer as W
+    from services.kala_core import measure
+    calls = []
+    real = measure.prepare_schedule
+    monkeypatch.setattr(measure, 'prepare_schedule', lambda *a, **k: calls.append(a) or real(*a, **k))
+    monkeypatch.setattr(W, 'candidate_null_shifts', lambda: 3)
+    writer = W.KaKshetraWriter(); writer._generation = 'candidate:g1'
+    first = writer._new_null_accumulator('career')
+    second = writer._new_null_accumulator('wealth')
+    assert len(calls) == 1
+    assert first.preparation.schedule_digest == second.preparation.schedule_digest != ''
+    assert first.preparation.offsets == second.preparation.offsets
+    # Experiments stay class-specific even though the schedule is shared.
+    assert first.preparation.digest != second.preparation.digest
+    assert first.preparation.experiment.estimand != second.preparation.experiment.estimand
+
+
+def test_shared_schedule_path_keeps_full_reference_statistics():
+    from services.kala_core.measure import Interval, prepare_schedule
+    from services.kala_core.measure.field import prepare_field, FieldAccumulator
+    from tests.l3.ka_kshetra.test_stage5_null import _evaluator
+    ev = _evaluator(horizon=40, hump_at=20)
+    acc = FieldAccumulator(prepare_field('e', 40, schedule=prepare_schedule(Interval(0, 40), 3)), buckets=(1, 3))
+    S5.run_field_block(ev, acc, start=0, end=3)
+    actual, reference = acc.finalize(), S5.run_null(ev, 40, replicates=4, buckets=(1, 3))
+    assert actual.max_stats == reference.max_stats
+    assert actual.q_threshold.hex() == reference.q_threshold.hex()

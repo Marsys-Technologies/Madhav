@@ -1,12 +1,16 @@
-"""J-3c blocker (2026-10-18): the measuring dry-run rollback proof is read from the child's STDOUT only.
+"""SR-EXECUTOR-FRAMING (supersedes the J-3c #3738 stdout special case): the executor stores a child's stdout and stderr separately.
 
 Production evidence: dispatch_v5_measuring_job.py --dry-run printed one valid ky.measuring_staging/1 line on stdout while the staging
-code printed advisory lines on stderr; the executor parsed stdout+"\\n"+stderr as one JSON document and refused a valid proof.
+code printed advisory lines on stderr; the executor stored stdout+"\\n"+stderr as the receipt output, so the proof did not parse as one
+document (fixed narrowly in #3738) and every golden capture gained a framing newline.
 
 One oracle per distinct claim, each through the real run_one() -> execute() (a throwaway git repository and a real child process):
-  1. valid proof on stdout + advisory text on stderr  -> COMPLETED with the proof bound as `staging`; the evidence file keeps both streams;
+  1. valid proof on stdout + advisory text on stderr  -> COMPLETED with the proof bound as `staging`;
   2. a corrupted proof on stdout                      -> FAILED (the validation is unchanged);
-  3. the same valid proof on stderr only              -> FAILED (the proof must come from stdout).
+  3. the same valid proof on stderr only              -> FAILED (the proof must come from stdout);
+  4. a child with stdout and stderr                   -> output_file == stdout byte for byte (no framing byte), stderr file == stderr,
+                                                         each with its own sha256/bytes in the receipt, which still binds output_sha256;
+  5. a receipt made before this change (one combined output file, no stderr_* fields) -> still verifies mechanically.
 """
 import json
 import subprocess
@@ -66,8 +70,7 @@ def test_valid_proof_on_stdout_with_advisory_stderr_completes_with_staging_bound
     record = run(mod, req, path)
     assert record["status"] == "COMPLETED", record
     assert record["staging"] == proof
-    evidence = (mod.REC / "rollback-1.output.txt").read_text()                 # the complete combined output stays the evidence
-    assert json.dumps(proof, sort_keys=True, separators=(",", ":")) in evidence and "[dispatch] READ THE RESULT" in evidence
+    assert json.loads((mod.REC / "rollback-1.output.txt").read_text()) == proof  # the output file is the proof document and nothing else
 
 
 def test_corrupted_proof_on_stdout_fails(tmp_path, monkeypatch):
@@ -81,3 +84,46 @@ def test_proof_printed_on_stderr_only_fails(tmp_path, monkeypatch):
     mod, req, proof, path = rig(tmp_path, monkeypatch, "stderr")
     record = run(mod, req, path)
     assert record["status"] == "FAILED" and "staging" not in record
+
+
+ADVISORY = "[dry-run] staged plan for ka_gochara_v5\n[dispatch] JOB IMAGE MUST MATCH the reviewed commit\n[dispatch] READ THE RESULT\n"
+
+
+def test_output_file_is_stdout_exactly_and_stderr_is_its_own_file(tmp_path, monkeypatch):
+    mod, req, proof, path = rig(tmp_path, monkeypatch, "stdout")
+    record = run(mod, req, path)
+    stdout_bytes = (json.dumps(proof, sort_keys=True, separators=(",", ":")) + "\n").encode()     # what print(proof) wrote, and nothing else
+    assert (mod.REC / "rollback-1.output.txt").read_bytes() == stdout_bytes
+    assert (mod.REC / "rollback-1.stderr.txt").read_bytes() == ADVISORY.encode()
+    assert record["output_file"] == str(mod.REC / "rollback-1.output.txt") and record["stderr_file"] == str(mod.REC / "rollback-1.stderr.txt")
+    assert (record["output_sha256"], record["output_bytes"]) == (mod.digest_bytes(stdout_bytes), len(stdout_bytes))
+    assert (record["stderr_sha256"], record["stderr_bytes"]) == (mod.digest_bytes(ADVISORY.encode()), len(ADVISORY.encode()))
+
+
+def test_a_child_with_no_stderr_leaves_no_stderr_file(tmp_path, monkeypatch):
+    mod, req, proof, path = rig(tmp_path, monkeypatch, "stdout")
+    (mod.KY_ROOT / "quiet").write_text("1")
+    src = tmp_path / "src"
+    (src / SCRIPT).write_text(CHILD.replace('sys.stderr.write("[dry-run]', 'quiet = (root / "quiet").exists()\nif not quiet: sys.stderr.write("[dry-run]'))
+    git(src, "add", "-A"); git(src, "commit", "-q", "-m", "quiet child")
+    req["reviewed_commit"] = git(src, "rev-parse", "HEAD"); path.write_text(json.dumps(req))
+    record = run(mod, req, path)
+    assert "stderr_file" not in record and not (mod.REC / "rollback-1.stderr.txt").exists()
+
+
+def test_a_receipt_made_before_the_change_still_verifies(tmp_path):
+    from test_executor_mechanical_acceptance import World, sha
+    w = World(tmp_path)
+    req = w.request("old-1")
+    w.run(req, out="rows=3\n")
+    # rewrite the new-format artefacts as the pre-change executor wrote them: one combined output file, no stderr_* fields
+    combined = "rows=3\n" + "\n" + "advisory on stderr\n"
+    (w.mod.REC / "old-1.output.txt").write_text(combined)
+    record = json.loads((w.mod.REC / "old-1.json").read_text())
+    for key in ("stderr_file", "stderr_sha256", "stderr_bytes", "stderr_tail"):
+        record.pop(key, None)
+    record.update(output_sha256=sha(combined), output_bytes=len(combined))
+    (w.mod.REC / "old-1.json").write_text(json.dumps(record, indent=1))
+    post = w.mod.ACC / "old-1.post.json"; post.unlink()
+    assert w.mod.mechanical_post_acceptance(req, w.mod.DONE / "old-1.json") is None
+    assert json.loads(post.read_text())["output_sha256"] == sha(combined)

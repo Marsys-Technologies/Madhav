@@ -49,7 +49,8 @@ PROJECTIONS = [
 def test_non_vim_malformed_period_refuses_before_selection_or_aggregation(db, name, params, end):
     # The valid Vimśottarī anchor must not hide bad operands in another system.
     add_period(db, end)
-    db.execute("ALTER TABLE chart_dashas ADD COLUMN kp_sublevel text, ADD COLUMN kp_sub_lord text")
+    # P06: the shared settled-period fixture already declares kp_sublevel.
+    db.execute("ALTER TABLE chart_dashas ADD COLUMN kp_sub_lord text")
     with pytest.raises(reader.DashaBuildRefused, match='dasha_period_malformed'):
         reader.execute_governed_dasha_query(db, CHART, reader.dasha_query(name), params)
 
