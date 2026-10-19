@@ -18905,12 +18905,12 @@
           }
         },
         "pre_acceptance": {
-          "evidence": "executor_receipt",
+          "evidence": "acceptance_file",
           "detector": {
             "type": "file_contains",
-            "path": "/Users/Dev/kalayantra/run/reviews/steps/J-3c.pre_acceptance.json",
-            "pattern": "\\A\\{\"evidence_sha256\":\"[0-9a-f]{64}\",\"item\":\"J\\-3c\",\"operation_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"request_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"pre_acceptance\",\"verdict\":\"MET\"\\}\\n?\\Z",
-            "measures": "Canonical whole-file independent acceptance receipt, no extra/duplicate/conflicting fields. Controller verifies the cited evidence digest and item/step identity; operation steps bind the SAME request and operation as the executor receipt and its independent readback. A marker alone is not operational acceptance."
+            "path": "/Users/Dev/kalayantra/run/ops/acceptance/J-3c.dispatch.post.json",
+            "pattern": "\\A(?=[\\s\\S]*\"result\": \"ACCEPTED\")(?=[\\s\\S]*\"operation_id\": \"J\\-3c\\.dispatch\")",
+            "measures": "The executor's own recorded acceptance of the dispatch, run/ops/acceptance/J-3c.dispatch.post.json (SR-OP-STEPS-2, SR-TEARDOWN-COMPLETION). The tracker reads it mechanically: it names the dispatch operation of J-3c and the digest of the archived request, is signed by a verifier lane v1-v4 or executor-mechanical with every check true, and the signer is not the requester. No verifier verdict event is involved or synthesised."
           }
         },
         "dispatched": {
