@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import swisseph as swe
 
+from panchang_engine.swiss_state import swiss_state_scope     # the process-wide Swiss-state lock (DP-SD-010), not solver code
+
 FLAGS = swe.FLG_SWIEPH | swe.FLG_SIDEREAL            # the kernel's EPHE_FLAGS (knots.py): SWIEPH backend, sidereal; Lahiri is set in `Sky`
 BISECT_STEPS = 60                                    # to ~1e-9 day on a 4-day bracket, the precision of the kernel's own refinement
 EDGE_WINDOWS_DAYS = (0.05, 0.5, 2.0)                 # the scan widens only when the narrower one finds no sign change
@@ -32,11 +34,12 @@ class Sky:
         self.ephe_path = ephe_path
 
     def state(self, body: str, jd: float) -> tuple[float, float]:
-        swe.set_ephe_path(self.ephe_path)
-        swe.set_sid_mode(swe.SIDM_LAHIRI)
         if body not in _SWE_BODY:
             raise EphemerisUnavailable(f"unknown body {body!r}")
-        xx, retflag = swe.calc_ut(jd, _SWE_BODY[body], FLAGS | swe.FLG_SPEED)
+        with swiss_state_scope():                                        # path + mode + calc are one span: Swiss state is process-global
+            swe.set_ephe_path(self.ephe_path)
+            swe.set_sid_mode(swe.SIDM_LAHIRI)
+            xx, retflag = swe.calc_ut(jd, _SWE_BODY[body], FLAGS | swe.FLG_SPEED)
         if retflag & 4 or not retflag & 2:
             raise EphemerisUnavailable(f"{body} @ {jd}: ephemeris backend {retflag}")
         lon = xx[0]

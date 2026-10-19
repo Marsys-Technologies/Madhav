@@ -94,7 +94,7 @@ def test_T4_the_independent_root_imports_nothing_from_the_kernel_or_the_harness(
     tree = ast.parse(Path(er.__file__).read_text(encoding="utf-8"))
     imported = {n.module if isinstance(n, ast.ImportFrom) else a.name for n in ast.walk(tree) if isinstance(n, (ast.Import, ast.ImportFrom))
                 for a in (n.names if isinstance(n, ast.Import) else [n])}
-    assert {m for m in imported if m} <= {"__future__", "swisseph"}, imported
+    assert {m for m in imported if m} <= {"__future__", "swisseph", "panchang_engine.swiss_state"}, imported     # the last is the process lock (DP-SD-010), not solver code
 
 
 # ── solver isolation ────────────────────────────────────────────────────────────────────────────────────────────────
