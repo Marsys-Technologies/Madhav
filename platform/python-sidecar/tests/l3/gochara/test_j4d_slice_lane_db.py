@@ -27,17 +27,20 @@ RECEIPT = ('{"head":"' + "a" * 40 + '","item":"P06b","merged_on_main":true,"muta
            '"review_job":"X-20261018T000000Z-test","step":"ephemeris_verifier_stage","verdict":"MET"}\n')
 
 
-@pytest.fixture(autouse=True)
-def _lane_guard_is_proven_elsewhere(monkeypatch):
+@pytest.fixture(scope="module", autouse=True)
+def _lane_guard_is_proven_elsewhere():
     """The lane guard is exercised against fake connections in kala_db/test_j4d_slice_qualification.py; a CI service container is not
-    the 127.0.0.1:55433 lane, so here it only insists on a disposable database name."""
+    the 127.0.0.1:55433 lane (its address is a bridge IP), so here it only insists on a disposable database name. Module-scoped: the
+    module-scoped `measuring_dir` build calls `read_slice` before any function-scoped patch would be in place."""
     def disposable_only(conn):
         assert re.fullmatch(r"a53t_[a-z0-9_]+", conn.execute("SELECT current_database()").fetchone()[0])
-    monkeypatch.setattr(q, "require_lane", disposable_only)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(q, "require_lane", disposable_only)
+        yield
 
 
 @pytest.fixture(scope="module")
-def measuring_dir(template, tmp_path_factory):                                          # noqa: F811
+def measuring_dir(_lane_guard_is_proven_elsewhere, template, tmp_path_factory):                                          # noqa: F811
     """The measuring build of the slice classes, exported in the J-3 golden format; yields the bundle directory."""
     world = _World(template)
     try:
