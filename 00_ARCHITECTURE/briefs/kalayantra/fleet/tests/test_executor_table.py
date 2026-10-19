@@ -114,6 +114,12 @@ SCHEDULER_BINDINGS = {
     "measuring_cancel": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_cancel.py", "fixed_args": [],   # SR-J3-CANCEL-NULL
                          "allowed_args": ["execution"], "production": True, "timeout_s": 900, "enabled_by": "J-3c"},
 }
+# U-M-12 (enabled_by J-4b, the protected-window item): the read-only GitHub run readback for the window watch; prepared for W3/W4 and SHIPPED DISABLED, so it is in no ENABLED_KINDS set below.
+GITHUB_RUN_READBACK = {
+    "enabled": False, "needs": "none", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/github_run_readback.py",
+    "fixed_args": [], "allowed_args": ["run"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
+    "read_only": True, "timeout_s": 300, "enabled_by": "J-4b",
+}
 # U-M-03 (enabled_by J-4b): the two role-provisioning dispatch kinds, appended after the scheduler/cancel kinds, DISABLED. Exact bindings.
 PROVISIONING_SCRIPT = "00_ARCHITECTURE/briefs/kalayantra/fleet/role_provisioning_dispatch.py"
 PROVISIONING_BINDINGS = {
@@ -212,7 +218,8 @@ def assert_table_matches_pin(now):
     for head_kind in ("publish_head", "rollback_head"):
         expected_order.insert(expected_order.index(head_kind) + 1, head_kind + "_dryrun")
     expected_order += list(SCHEDULER_BINDINGS)                      # SR-J3-REAPER-PAUSE: appended last
-    expected_order += list(PROVISIONING_BINDINGS)                   # U-M-03: appended after the scheduler/cancel kinds
+    expected_order.append("github_run_readback")                    # U-M-12: appended after the scheduler kinds
+    expected_order += list(PROVISIONING_BINDINGS)                   # U-M-03: appended after the github_run_readback kind
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
@@ -230,6 +237,7 @@ def assert_table_matches_pin(now):
     expected["cloudrun_job_readback"] = json.loads(json.dumps(CLOUDRUN_READBACK))
     expected["quiescence_check"] = json.loads(json.dumps(QUIESCENCE_CHECK))
     expected.update(json.loads(json.dumps(SCHEDULER_BINDINGS)))
+    expected["github_run_readback"] = json.loads(json.dumps(GITHUB_RUN_READBACK))
     expected.update(json.loads(json.dumps(PROVISIONING_BINDINGS)))
     for kind in READ_ONLY_KINDS[:3]:
         expected[kind]["read_only"] = True

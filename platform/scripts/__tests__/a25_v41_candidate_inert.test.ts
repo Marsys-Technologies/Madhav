@@ -20,11 +20,12 @@ import { ASSETS } from '../seed/asset_registry_seed'
 const A25_ASSET_ID = 'ka_gochara_v4_41_candidate'
 
 describe('A2.5 candidate asset planner inertness', () => {
-  it('the seed row exists, is inactive, and is dependency-free', () => {
+  it('the seed row exists, is inactive, and carries the K8-REG read dependencies', () => {
     const row = ASSETS.find((a) => a.asset_id === A25_ASSET_ID)
     expect(row, 'seed row missing').toBeDefined()
     expect(row!.is_active).toBe(false)
-    expect(row!.depends_on ?? []).toEqual([])
+    // K8-REG / migration 1392 declares direct reads without activating the row.
+    expect(row!.depends_on ?? []).toEqual(['ka_moorti_nirnaya', 'ka_vedha_gochara', 'bg_transit_rules', 'bg_vedha_malefic_scale', 'bg_ephemeris', 'ga_positions'])
     expect(row!.has_writer).toBe(true)
     // ASTRA A2.5 A10: the seed must carry the same timeout the dispatch stages
     // (7200s) — ON CONFLICT DO NOTHING preserves the seeded value, and the
