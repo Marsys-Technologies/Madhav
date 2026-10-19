@@ -31,7 +31,7 @@ from .test_a53_inventory import CHART, CHART_ID, H0, H1, create_am5_database, dr
 
 UTC = timezone.utc
 GEN = writer_mod.GENERATION
-PENDING_HELD_SQL = Path(__file__).with_name("pending_snapshot_dasha_held.sql")
+HELD_MIGRATION_SQL = Path(__file__).resolve().parents[4] / "migrations" / "1398_gochara_snapshot_dasha_held.sql"
 P1_PREREQS = [["period_running_at", "1.0.0"], ["natal_bhava_relationship", "1.0.0"],
               ["transit_relation", "1.0.0"]]
 
@@ -62,7 +62,7 @@ def legacy_world(monkeypatch, tmp_path):
 
 @pytest.fixture()
 def held_world(monkeypatch, tmp_path):
-    """The copy world with the snapshot's `consumed_dasha_held` record (the pending migration, applied as a stand-in): which (lord, level) pairs the pinned build
+    """The copy world with the snapshot's `consumed_dasha_held` record (migration 1398, the real file): which (lord, level) pairs the pinned build
     HOLDS, whether or not their rows overlap the horizon."""
     yield from _world(monkeypatch, tmp_path, faithful=False, apply_held=True)
 
@@ -72,7 +72,7 @@ def _world(monkeypatch, tmp_path, faithful, apply_1305=True, apply_held=False):
     admin, name, dsn = create_am5_database("p1s", faithful=faithful, apply_1305=apply_1305)
     conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
     if apply_held:
-        conn.execute(PENDING_HELD_SQL.read_text())
+        conn.execute(HELD_MIGRATION_SQL.read_text())
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
     RuleRegistryStore(conn).seed()
     ephe = make_ephe(tmp_path, monkeypatch)
@@ -364,7 +364,7 @@ def test_the_snapshot_path_keeps_absent_unknown_and_running_true_and_matches_liv
 
 
 def test_a_snapshot_captured_before_the_held_record_existed_reads_the_copy_alone(world):
-    """`consumed_dasha_held` absent (1305 without the pending migration): `held_recorded` is False and the reader gives the pre-record answer — it never claims to
+    """`consumed_dasha_held` absent (1305 without 1398): `held_recorded` is False and the reader gives the pre-record answer — it never claims to
     have measured a held-but-outside lord it cannot see (§N.8). The contract says so."""
     w = world
     _outside_horizon_only(w)
@@ -374,7 +374,7 @@ def test_a_snapshot_captured_before_the_held_record_existed_reads_the_copy_alone
 
 
 def test_the_held_record_is_computed_by_the_database_from_the_consumed_ids(held_world):
-    """Not what the builder submits: the stand-in trigger overwrites it from the pinned build's rows, so a submitted lie cannot reach the reader."""
+    """Not what the builder submits: the 1398 trigger overwrites it from the pinned build's rows, so a submitted lie cannot reach the reader."""
     w = held_world
     _outside_horizon_only(w)
     w.boot()
@@ -384,6 +384,37 @@ def test_the_held_record_is_computed_by_the_database_from_the_consumed_ids(held_
     rows_for, contract = make_period_rows_for_snapshot(w.conn, CHART_ID, GEN)
     assert contract["held_recorded"] is True
     assert rows_for("venus", "ad") == [] and rows_for.holds("venus", "ad") is True and rows_for.holds("venus", "md") is False
+
+
+def test_1398_refuses_a_schema_without_1305():
+    """The gate: 1398 is additive on 1305's copy-build trigger and copy columns; applying it first is refused by name, never half-applied."""
+    import psycopg
+    admin, name, dsn = create_am5_database("h1398gate")                 # 1206 only: no 1305
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        with pytest.raises(Exception, match="migration_1305_not_applied"):
+            with conn.transaction():
+                conn.execute(HELD_MIGRATION_SQL.read_text())
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+
+
+def test_1398_grants_the_builder_execute_where_production_revokes_public_execute():
+    """Production revokes PUBLIC EXECUTE on functions amjis_app creates (1220), and the builder fires the trigger as the invoker: without the grant the first
+    snapshot insert after 1398 would fail with permission denied. The faithful mirror revokes PUBLIC EXECUTE exactly so; the grant must be the only way in."""
+    import psycopg
+    admin, name, dsn = create_am5_database("h1398grant", faithful=True, apply_1305=True)
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        conn.execute(HELD_MIGRATION_SQL.read_text())
+        fn = "public.ka_gochara_search_dasha_held(uuid,uuid[])"
+        can = lambda role: conn.execute("SELECT has_function_privilege(%s, %s::regprocedure, 'EXECUTE')", (role, fn)).fetchone()[0]    # noqa: E731
+        assert can("data_plane_builder") is True
+        assert can("gochara_verifier") is False and can("gochara_sealer") is False            # nothing wider: they only READ the column
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
 
 
 def test_a_failed_support_check_names_which_case_it_is_in():
