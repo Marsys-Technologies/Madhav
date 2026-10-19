@@ -88,15 +88,7 @@ def test_no_row_is_selected_by_the_global_version_constant(monkeypatch):
 
 
 def test_the_default_binding_stays_at_1_0_0_until_the_successors_are_accepted():
-    # the 1.1.0 successors (AM-13 / AM-18) are still NOT bound, and the DEFAULT selection is still 1.0.0. What IS bound
-    # beside it since ND-H-20261005 is the P1/P3/P4 @ 1.2.0 set, selected per class only (test_nd_h_builder_tiers).
-    # The static catalogue and the default (legacy) profile are the 1.0.0 set; the 1.2.0 rows are bound only under the
-    # explicit final-rules candidate profile (rr.rule_profile), so the measuring build's catalogue never moves.
-    legacy = tuple((p, "1.0.0") for p in ("P1", "P2", "P3", "P4", "P5"))
-    assert rr.BOUND_PATH_REFS == legacy and rr.bound_path_refs() == legacy
-    with rr.rule_profile(final_rules=True):
-        assert rr.bound_path_refs() == legacy + tuple((p, "1.2.0") for p in ("P1", "P3", "P4"))
-    assert rr.SELECTED_PATH_REFS == legacy
+    assert rr.BOUND_PATH_REFS == tuple((p, "1.0.0") for p in ("P1", "P2", "P3", "P4", "P5"))
     assert all(isinstance(r, tuple) and len(r) == 2 for r in
                rr.BOUND_PATH_REFS + rr.BOUND_FACTOR_REFS + rr.BOUND_PREDICATE_REFS)
     assert not set(SUCCESSOR_PATHS) & set(rr.BOUND_PATH_REFS)
@@ -190,19 +182,11 @@ def test_an_insert_that_reads_back_differently_is_a_divergence_not_a_success():
 
 # ── on the REAL 1154 schema, with the ACTUAL rows ────────────────────────────────────────────────────
 
-@pytest.fixture(params=[False, True], ids=["legacy_profile", "final_rules_profile"])
-def profile(request):
-    with rr.rule_profile(final_rules=request.param):
-        yield request.param
-
-
-def test_the_real_schema_admits_the_actual_flat_rows_and_the_binder_reads_them_back(pg, monkeypatch, profile):
+def test_the_real_schema_admits_the_actual_flat_rows_and_the_binder_reads_them_back(pg, monkeypatch):
     bind_successors(monkeypatch)
     store = rr.RuleRegistryStore(pg)
     counts = store.seed()
-    # P1..P5 @1.0.0 + P2..P5 @1.1.0 (bound by this test only); the final-rules profile adds P1/P3/P4 @1.2.0 (ND-H-20261005)
-    expected = 9 + (3 if profile else 0)
-    assert counts["paths"] == expected and counts["seals"] == expected
+    assert counts["paths"] == 9 and counts["seals"] == 9                # P1..P5 @1.0.0 + P2..P5 @1.1.0
     rows = store.bound_factor_rows("P3", "1.1.0")
     by_id = {r["factor_id"]: r for r in rows}
     assert set(by_id) == {"activity_kernel", "graduated_drishti"}

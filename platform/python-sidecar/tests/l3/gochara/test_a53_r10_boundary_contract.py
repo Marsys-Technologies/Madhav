@@ -14,9 +14,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-# (I) INTERPRETATION: this boundary-only suite uses the same named G8 exemption
-# as its imported one-class fixture; module marks do not transfer with imports.
-G8_CENSUS_OPT_OUT_REASON = "exercises derived contact-boundary tolerance through the complete job on the imported deliberate one-class marriage world"
+# G8: this boundary suite uses the same one-class world as complete-record tests.
+G8_CENSUS_OPT_OUT_REASON = "exercises speed-derived boundary tolerances on the deliberate one-class marriage world, independently of the class census"
 pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
 
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod

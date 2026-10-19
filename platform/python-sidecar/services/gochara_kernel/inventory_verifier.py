@@ -1139,6 +1139,14 @@ def _manifest_horizon(conn: Any, chart_id: str, generation: str) -> tuple:
     return row[0], row[1]
 
 
+def _dasha_settlement_of(conn: Any, chart_id: str) -> dict:
+    # The verifier imports nothing from the builder (test_the_verifier_imports_nothing_from_the_builder), so the rehearsal
+    # connection is recognised by a marker on its CLASS, not by an import; a raw or mocked connection never carries it.
+    if getattr(type(conn), "synthetic_settlement_authority", False) is True:
+        return conn.settlement(chart_id)
+    return _load_dasha_settlement(chart_id)
+
+
 def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: str, against_live: bool = False) -> dict:
     """The §4.0 population contract.
 
@@ -1148,14 +1156,9 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
 
     `against_live=True` is the CAPTURE-TIME check the writer runs once, right after the snapshot is taken: in addition to the above, this verifier derives the
     upstream scope ITSELF from live `chart_dashas` (every Vimśottarī / lahiri MD, AD, PD row overlapping the horizon, EVERY tier and build), judges it by the
-    same contract, and requires the stored copy to be exactly that scope, row for row and field for field. The frozen-build pin is enforced there, at build
-    time, where it belongs. A LEGACY snapshot (no copy) keeps the 1206-era check against live L1."""
-    # The verifier imports nothing from the builder (test_the_verifier_imports_nothing_from_the_builder), so the rehearsal
-    # connection is recognised by a marker on its CLASS, not by an import; a raw or mocked connection never carries it.
-    if getattr(type(conn), "synthetic_settlement_authority", False) is True:
-        settlement = conn.settlement(chart_id)
-    else:
-        settlement = _load_dasha_settlement(chart_id)
+    same contract, and requires the stored copy to be exactly that scope, row for row and field for field. The governed settlement pin is enforced there, at capture
+    time, where it belongs. (I) INTERPRETATION: settlement governs capture and legacy reads; an owned copy remains verifiable after a later rebuild. A LEGACY snapshot (no copy) keeps the 1206-era check against live L1."""
+    settlement = _dasha_settlement_of(conn, chart_id) if against_live else None
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot"
         " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
@@ -1185,6 +1188,7 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
             " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
         if horizon is None or horizon[0] is None:
             raise Unverifiable("no inventory horizon to validate the consumed daśā population against")
+    settlement = settlement or _dasha_settlement_of(conn, chart_id)
     # G6 (verifier's OWN query, builder code not imported): every Vimśottarī / lahiri row of the chart — all tiers, all levels — is ONE build,
     # the governed settled-build rule is independent of the builder's contract code
     builds = sorted(str(r[0]) for r in conn.execute(
@@ -1221,7 +1225,10 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
                 problems.append(f"copy_row_differs_from_upstream (row {rid} {mine[rid]['key']}: {fields})")
         if problems:
             raise Unverifiable("consumed daśā population violates the capture contract against live L1: " + "; ".join(problems))
-        return {"consumed": len(stored), "pinned_overlapping": len(scope), "source": "snapshot_copy_and_live"}
+        result = {"consumed": len(stored), "pinned_overlapping": len(scope), "source": "snapshot_copy_and_live"}
+        if settlement.get("synthetic") is True:
+            result.update(synthetic_settlement=True, production_acceptance=False)
+        return result
     consumed = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s"
                     " AND dasha_row_id = ANY(%s::uuid[])", (chart_id, ids))
     pinned = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s"
@@ -1251,24 +1258,26 @@ RECORD_SUPPORT_PINS = {"ayan": _C_AYANAMSHA, "system": _C_SYSTEM, "tier": _C_TIE
 # row for an anchor (lord, level) at all. "No rows" (⇒ unrestricted + `unknown`, A5_3 brief v1.27) means no pinned row
 # for that (lord, level) ANYWHERE in the settled build — `held` probes exactly that; a lord that is held but not running
 # in the horizon has an empty running set (`false`), never `unknown` (§N.8: has_rows must measure its own claim).
-RECORD_SUPPORT_SQL = """
+# (I) INTERPRETATION (merge of main's J-2a with this PR's G12 copy): the `held` probe of a LEGACY snapshot (ids, no copy)
+# is main's live probe; for a snapshot WITH a copy the statement must not even NAME the live relation (the G12 claim), so
+# `held` there is read from the copy — the same rows the copy-reading builder (`make_period_rows_for_snapshot`) sees, so
+# builder and verifier agree on what "no rows" means for a copy snapshot.
+RECORD_SUPPORT_SQL_TEMPLATE = """
 WITH snap AS (
-  SELECT s.consumed_dasha_row_ids AS ids FROM public.ka_gochara_search_input_snapshot s
+  SELECT s.consumed_dasha_row_ids AS ids,
+         (to_jsonb(s) -> 'consumed_dasha_rows') AS copy      -- the snapshot's COPY (1305, G12); JSON null / absent for a legacy snapshot
+  FROM public.ka_gochara_search_input_snapshot s
   WHERE s.chart_id = %(chart)s AND s.generation = %(gen)s),
+src AS (
+  SELECT lower(e.value #>> '{content,lord_graha}') AS lord, (e.value #>> '{key,level_n}')::int AS level_n,
+         (e.value #>> '{key,start_iso}')::timestamptz AS s, (e.value #>> '{content,end_iso}')::timestamptz AS e
+  FROM snap, jsonb_array_elements(snap.copy) AS e(value)
+  WHERE jsonb_typeof(snap.copy) = 'array'@@LEGACY_ARM@@),
 runs AS (
-  SELECT lower(d.lord_graha) AS lord, d.level_n,
-         range_agg(tstzrange(d.start_iso, d.end_iso, '[)')) AS m
-  FROM public.chart_dashas d, snap
-  WHERE d.chart_id = %(chart)s AND d.dasha_row_id = ANY (snap.ids) AND d.level_n IN (1, 2, 3)
+  SELECT lord, level_n, range_agg(tstzrange(s, e, '[)')) AS m
+  FROM src WHERE level_n IN (1, 2, 3)
   GROUP BY 1, 2),
-held AS (
-  SELECT DISTINCT lower(d.lord_graha) AS lord, d.level_n
-  FROM public.chart_dashas d
-  WHERE d.chart_id = %(chart)s AND d.ayanamsha_id = %(ayan)s AND d.system_id = %(system)s
-    AND d.verification_pass_status = %(tier)s AND d.level_n IN (1, 2, 3)
-    AND d.build_id IN (SELECT x.build_id FROM public.chart_dashas x, snap WHERE x.chart_id = %(chart)s
-                       AND x.dasha_row_id = ANY (snap.ids))),
-rec AS (
+@@HELD@@rec AS (
   SELECT r.record_id, r.period_anchor_lord AS lord,
          CASE r.period_anchor_level WHEN 'md' THEN 1 WHEN 'ad' THEN 2 WHEN 'pd' THEN 3 END AS level_n,
          r.temporal_support_state AS state,
@@ -1292,3 +1301,25 @@ SELECT rec.record_id::text, rec.stored::text,
 FROM rec LEFT JOIN held ON (held.lord, held.level_n) = (rec.lord, rec.level_n)
          LEFT JOIN runs ON (runs.lord, runs.level_n) = (rec.lord, rec.level_n)
 """
+
+# A snapshot WITH a copy (1305, G12) is read from the copy ALONE: the statement must not even NAME the live relation (so it runs with live L1 gone, and
+# without privileges on it). Only a LEGACY snapshot (ids, no copy) keeps the live arm, as before.
+RECORD_SUPPORT_LEGACY_ARM = """
+  UNION ALL
+  SELECT lower(d.lord_graha), d.level_n, d.start_iso, d.end_iso
+  FROM public.chart_dashas d, snap
+  WHERE (snap.copy IS NULL OR jsonb_typeof(snap.copy) <> 'array')                -- LEGACY snapshot: read by id from live L1, as before
+    AND d.chart_id = %(chart)s AND d.dasha_row_id = ANY (snap.ids)"""
+RECORD_SUPPORT_HELD_LIVE = """held AS (
+  SELECT DISTINCT lower(d.lord_graha) AS lord, d.level_n
+  FROM public.chart_dashas d
+  WHERE d.chart_id = %(chart)s AND d.ayanamsha_id = %(ayan)s AND d.system_id = %(system)s
+    AND d.verification_pass_status = %(tier)s AND d.level_n IN (1, 2, 3)
+    AND d.build_id IN (SELECT x.build_id FROM public.chart_dashas x, snap WHERE x.chart_id = %(chart)s
+                       AND x.dasha_row_id = ANY (snap.ids))),
+"""
+RECORD_SUPPORT_HELD_COPY = """held AS (
+  SELECT DISTINCT lord, level_n FROM src),
+"""
+RECORD_SUPPORT_SQL_COPY = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", "").replace("@@HELD@@", RECORD_SUPPORT_HELD_COPY)
+RECORD_SUPPORT_SQL = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", RECORD_SUPPORT_LEGACY_ARM).replace("@@HELD@@", RECORD_SUPPORT_HELD_LIVE)

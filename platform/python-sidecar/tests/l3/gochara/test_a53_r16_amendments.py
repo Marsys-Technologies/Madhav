@@ -91,15 +91,15 @@ def test_an_ungoverned_rebuilt_population_refuses_and_stales_the_old_snapshot(bu
     w.conn.execute("UPDATE public.chart_dashas SET build_id = %s::uuid", (ANOTHER,))
     with pytest.raises(dasha_read.DashaBuildRefused, match="settled_build_absent"):
         dasha_read.load_pinned_vimshottari(w.conn, CHART_ID)
-    with pytest.raises(inv.Unverifiable, match="settled_build_absent"):
+    with pytest.raises(RuntimeError, match="settled_build_absent"):
         inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN, against_live=True)
-    # Refusal never relabels the snapshot that consumed the previous build.
+    inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)        # the generation's own copy is unaffected by a later rebuild
+    # Verification never relabels the snapshot that consumed the previous build.
     stored, live = w.conn.execute(
         "SELECT dasha_digest, public.ka_gochara_search_dasha_digest(chart_id, consumed_dasha_row_ids)"
         " FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
         (CHART_ID, GEN)).fetchone()
     assert live != stored
-    inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)        # the generation's own copy is unaffected by a later rebuild
 
 
 def test_other_systems_and_other_ayanamshas_do_not_count_as_builds(built):

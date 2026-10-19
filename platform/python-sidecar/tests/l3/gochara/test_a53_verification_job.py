@@ -423,18 +423,12 @@ def test_a_conflicting_second_row_at_a_consumed_natural_key_is_hard_drift_the_ga
     assert code != 0 and "gate CLOSED" in out["cockpit"], out
 
 
-def test_a_later_rebuild_under_another_build_id_does_not_unverify_a_generation_that_owns_its_copy(built, monkeypatch, capsys):
+@pytest.mark.parametrize("build_id", [ANOTHER_BUILD, None])
+def test_later_dasha_build_metadata_changes_do_not_unverify_a_generation_that_owns_its_copy(built, monkeypatch, capsys, build_id):
     w = built
-    w.conn.execute("UPDATE public.chart_dashas SET build_id = %s::uuid", (ANOTHER_BUILD,))
+    w.conn.execute("UPDATE public.chart_dashas SET build_id = %s::uuid", (build_id,))
     code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
     assert code == 0, out                  # G12: a later rebuild under another build id is metadata-only drift; the generation's copy still verifies
-
-
-def test_a_single_null_dasha_build_after_the_build_does_not_unverify_a_generation_that_owns_its_copy(built, monkeypatch, capsys):
-    w = built
-    w.conn.execute("UPDATE public.chart_dashas SET build_id = NULL")
-    code, out = _run_entry_as_verifier(w, monkeypatch, capsys)
-    assert code == 0, out                  # G12: the NULL build is live-L1 drift; the copy owns its build, and the NULL is refused at CAPTURE (against live L1)
 
 
 def test_an_absolute_ephemeris_probe_mismatch_ends_the_job_in_refused_not_error(built, monkeypatch, capsys):

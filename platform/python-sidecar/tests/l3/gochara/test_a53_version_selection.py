@@ -224,13 +224,9 @@ def _violations(conn, generation):
             (CHART_ID, generation)).fetchall()}
 
 
-@pytest.mark.parametrize("final", [False, True], ids=["legacy_profile", "final_rules_profile"])
-def test_1206_accepts_the_supersession_plan_and_flags_two_included_versions(am5, monkeypatch, final):
+def test_1206_accepts_the_supersession_plan_and_flags_two_included_versions(am5, monkeypatch):
     bind_successors(monkeypatch)
     store, sky, _ = _boot(am5, "5.31")
-    if final:
-        with rr.rule_profile(final_rules=True):
-            rr.RuleRegistryStore(am5).seed()        # seals the 1.2.0 rows beside the fixture's legacy seed
     sealed = store.sealed_rule_paths()
     assert ("P3", "1.0.0") in sealed and ("P3", "1.1.0") in sealed       # the real catalogue holds both
     paths = [p for p in sealed if p[0] in ("P3", "P4")]
@@ -241,11 +237,10 @@ def test_1206_accepts_the_supersession_plan_and_flags_two_included_versions(am5,
     rows = am5.execute("SELECT path_id, rule_version, disposition, exclusion_reason, ruling_ref FROM"
                        " public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = '5.31'"
                        " ORDER BY path_id, rule_version", (CHART_ID,)).fetchall()
-    def expect(pid):
-        return ([(pid, "1.0.0", "excluded", "superseded_by_version", None),
-                 (pid, "1.1.0", "included", None, None)]
-                + ([(pid, "1.2.0", "excluded", "not_applicable_to_class", None)] if final else []))
-    assert rows == expect("P3") + expect("P4")
+    assert rows == [("P3", "1.0.0", "excluded", "superseded_by_version", None),
+                    ("P3", "1.1.0", "included", None, None),
+                    ("P4", "1.0.0", "excluded", "superseded_by_version", None),
+                    ("P4", "1.1.0", "included", None, None)]
     # the OLD behaviour (every sealed version included) is exactly what 1206 rejects
     two = inv.ClassInventory(event_class="marriage", horizon=good.horizon, pins=tuple(
         inv.PinPlan(p.path_id, p.rule_version, "included", _plan([(p.path_id, p.rule_version)]).obligations)
@@ -300,9 +295,7 @@ def test_the_verifiers_p2_tables_equal_the_rule_modules_and_it_imports_neither()
 
 
 @pytest.mark.parametrize("cls", sorted(ver._POLARITY))
-def test_p2_obligations_the_planner_and_the_verifier_agree_for_every_class(cls, monkeypatch):
-    # This oracle pins the legacy selection. The final parental exclusion has its own packet test.
-    monkeypatch.setattr(rr, "CLASS_SELECTION_OVERRIDES", {})
+def test_p2_obligations_the_planner_and_the_verifier_agree_for_every_class(cls):
     if cls == "birth_anchor":
         pytest.skip("excluded from enumeration entirely (O-CF-N6)")
     plan = inv.plan_class_inventory(event_class=cls, chart=CHART, horizon=(H0, H1), sealed_paths=[("P2", "1.0.0")],

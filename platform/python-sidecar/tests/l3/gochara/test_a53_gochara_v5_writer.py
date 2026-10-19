@@ -459,14 +459,15 @@ def test_writer_module_source_has_no_connection_lifecycle_or_throughput():
     assert "SELECT state FROM public.asset_throughput" in guard and "INSERT" not in guard.upper().replace("INSERT_", "")
 
 
-# ── ND-H-20261005 item 5: the WRITER mints no P2 record for parental_event under its ND-H selection ──────────
-# (final rules are opt-in on main: these run under the explicit candidate profile)
-
 def _final_ctx():
+    """A context that opts in to the final (ND-H 1.2.0) rules: main made them opt-in (`gochara_v5_final_rules`), so the P06 ND-H
+    writer tests below run under the explicit candidate profile."""
     ctx = _ctx()
     ctx.config['gochara_v5_final_rules'] = True
     return ctx
 
+
+# ── ND-H-20261005 item 5: the WRITER mints no P2 record for parental_event under its ND-H selection ──────────
 
 def test_the_writer_hands_the_materialiser_no_p2_edge_for_parental_event(_record_phase_fakes):
     """Not the inventory pin: the record substep itself. The writer enumerates each (class, path) grain directly, so
@@ -499,6 +500,8 @@ def test_the_p2_suppression_is_parental_event_only_and_lifts_with_the_selection(
     w.run_substep(_final_ctx(), SubStep(key="record:parental_event:P2", label=""))
     edges = _record_phase_fakes["grain"][-1]["edges"]
     assert edges and {(e.path_id, e.rule_version, e.affected_person) for e in edges} == {("P2", "1.0.0", "native")}
+
+
 def test_final_rules_are_opt_in_and_do_not_change_the_default_writer(_record_phase_fakes):
     w = writer_mod.GocharaV5Writer()
     ctx = _ctx()

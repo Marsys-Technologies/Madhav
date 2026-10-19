@@ -121,7 +121,7 @@ def test_unresolved_targets_omit_never_fabricate(monkeypatch):
     monkeypatch.setattr(s6a.enrichment, "enrich_targets",
                         lambda conn, targets: targets)
     assert s6a.build_class_context(
-        None, None, "chart-x", "career", [100.0], []) is None
+        None, None, "chart-x", "career_advancement", [100.0], []) is None
 
 
 # ── disposable-DB integration ────────────────────────────────────────────────
@@ -294,8 +294,32 @@ def built(s6a_schema, tmp_path):
         # identity and the L0-owned node-series digest — seed the one MOON fact
         # and a minimal pinned ('true') Rahu/Ketu series (the gate's recompute
         # raises on either being absent).
-        # Preserve the current v2 evaluator's full chart operands above.
-        cur.execute("UPDATE chart_facts SET build_id='s6a-l1-build' WHERE chart_id=%s", (S6A_CHART,))
+        cur.execute("DELETE FROM chart_facts WHERE chart_id = %s", (S6A_CHART,))
+        cur.execute(
+            "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id,"
+            " fact_category, fact_subject, fact_key, fact_value_num, build_id)"
+            " VALUES ('s6a-moon-fact', %s, 'lahiri_chitrapaksha',"
+            " 'graha_position', 'MOON', 'longitude_sidereal', 5.0,"
+            " 's6a-l1-build')", (S6A_CHART,))
+        # v2 evaluates frozen C5 at each instant, requiring actual chart
+        # operands even in this synthetic integration world. Venus owns the
+        # Aries-lagna marriage house and has no scored career relation.
+        cur.executemany(
+            "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id,"
+            " fact_category, fact_subject, fact_key, fact_value_num, build_id)"
+            " VALUES (%s,%s,'lahiri_chitrapaksha','graha_position',%s,"
+            " 'longitude_sidereal',%s,'s6a-l1-build')",
+            [(f"s6a-{subject}", S6A_CHART, subject, lon) for subject, lon in {
+                "LAGNA": 0.0, "SUN": 20.0, "MAR": 40.0, "MER": 65.0,
+                "JUP": 100.0, "VEN": 35.0, "SAT": 200.0,
+                "RAH_MEAN": 280.0, "KET_MEAN": 100.0,
+            }.items()])
+        cur.executemany(
+            "INSERT INTO chart_facts (fact_id, chart_id, ayanamsha_id,"
+            " fact_category, fact_subject, fact_key, fact_value_text, build_id)"
+            " VALUES (%s,%s,'lahiri_chitrapaksha',%s,'fixture',%s,%s,'s6a-l1-build')",
+            [("s6a-paksha", S6A_CHART, "panchanga_tithi", "paksha", "Shukla"),
+             ("s6a-day", S6A_CHART, "saham_position", "day_birth", "true")])
         cur.execute("DELETE FROM ephemeris_daily")
         cur.executemany(
             "INSERT INTO ephemeris_daily (date, body, ayanamsha_id,"

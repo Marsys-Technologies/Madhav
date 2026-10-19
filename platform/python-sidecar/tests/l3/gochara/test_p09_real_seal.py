@@ -1,6 +1,9 @@
 """P09 positive integration oracle: actual approval-bound seal flow and HTTP read."""
 import pytest
 
+G8_CENSUS_OPT_OUT_REASON = "exercises approval-bound seal and HTTP readback on the deliberate one-class marriage world, independently of the class census"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from services.gochara_kernel import seal_flow
 from services.gochara_kernel import scope_response as sr
 from routers import gochara_v5 as route
@@ -11,10 +14,6 @@ from .test_a53_verification_job import built, login, rworld  # noqa: F401
 from .test_a53_window_verification_roles import _consistent_sky  # noqa: F401
 from .test_a53_window_verification_gate import CLS
 from .test_w1_serving_reader import _read
-
-# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
-G8_CENSUS_OPT_OUT_REASON = "reads an approved seal back through the reader and HTTP on a deliberate one-class marriage world"
-pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
 
 def test_real_approved_seal_is_read_through_reader_and_http_without_request_time_replay(built, monkeypatch):
     from fastapi import FastAPI

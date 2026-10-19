@@ -218,6 +218,15 @@ BUILDER_GRANT_MIGRATIONS = ("1216_gochara_contract_builder_grants.sql",
                             M1241_NAME)
 
 
+def apply_near_miss_storage(conn):
+    """Migration 1308 (the near-miss tables) on a world that lacks it, idempotently (CREATE ... IF NOT EXISTS). The small-test teardown's closed
+    list and absence proof now cover ka_gochara_near_miss / ka_gochara_near_miss_search, exactly as the scoped backup scope does, so a world
+    the teardown runs on holds them; the script refuses a database that lacks them, as the backup refuses a source missing a scope table.
+    Applied AFTER a world's writer build, so the near-miss layer stays OFF for that build."""
+    if conn.execute("SELECT to_regclass('public.ka_gochara_near_miss_search')").fetchone()[0] is None:
+        conn.execute((MIGRATIONS / "1308_gochara_near_miss_storage.sql").read_text())
+
+
 def create_am5_database(tag="am5", faithful=False, apply_1240=True, apply_1305=False):
     """A throwaway database with the real chain + 1206 applied and the L1 tables stubbed.
     Returns (admin_conn, name, dsn); the caller drops it (refusing non-prefixed names)."""

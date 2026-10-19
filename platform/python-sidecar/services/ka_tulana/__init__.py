@@ -129,7 +129,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
         "kala_darshana",
         "kala_obstruction"
       ],
-      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:266",
+      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:281",
       "density_contract": {
         "paginated": true,
         "facets": [
@@ -161,7 +161,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
         "kala_bhavishya",
         "kala_gochara_contacts"
       ],
-      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:266",
+      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:281",
       "density_contract": {
         "paginated": true,
         "facets": [
@@ -193,7 +193,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
         "kala_darshana",
         "kala_convergence"
       ],
-      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:266",
+      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:281",
       "density_contract": {
         "paginated": true,
         "facets": [
@@ -227,7 +227,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
         "kala_obstruction",
         "kala_gochara_contacts"
       ],
-      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:266",
+      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:281",
       "density_contract": {
         "paginated": true,
         "facets": [
@@ -259,7 +259,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
         "kala_darshana",
         "kala_jivana_parva"
       ],
-      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:266",
+      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:281",
       "density_contract": {
         "paginated": true,
         "facets": [
@@ -290,7 +290,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
         "kala_darshana",
         "kala_obstruction"
       ],
-      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:266",
+      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:281",
       "density_contract": {
         "paginated": true,
         "facets": [
@@ -325,7 +325,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
         "kala_convergence",
         "kala_jivana_parva"
       ],
-      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:266",
+      "tier_select": "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts:281",
       "density_contract": {
         "paginated": true,
         "facets": [
@@ -354,7 +354,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
   },
   "hashes": {
     "platform-mcp/src/tools/kala_views/f171_disclosure_receipt_regression.test.ts": "2e3fde81dc47666e7aca58e9498f9be9fef1173a4d0f7d945fc14a9838855f96",
-    "platform-mcp/src/tools/kala_views/priority.ts": "56566475ec12548b19e2bc1984ef87428630c1c05e1f8391d9514290a1a958c9",
+    "platform-mcp/src/tools/kala_views/priority.ts": "fb5025fd58d4db4dfa7df66d4ff87114e713cea11d1a157b1c45477bf4bd9d47",
     "platform-mcp/src/tools/register_p1_aliases.ts": "9d2c038d3a5ef27343b7fb322e827a509abc41cc6360ecffbba25e3d37079128",
     "platform/migrations/1377_k7_4_tulana_pareto_health_probe.sql": "b978e1b088631aadad198cc8080576575d06f706d3a8ffb50e36979dbfa39e76",
     "platform/python-sidecar/services/ka_tulana/ranker.py": "656aa4902d38168773a109202db62d3f700b6d4ac3da7c076d839c01f32703f0",
@@ -363,14 +363,14 @@ CERTIFICATION_MAPPING = json.loads(r'''
     "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts": "73b4ea74e3b3e57ea3a6a1992df6cfa6842301087472f797f147d448e73c8635",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.ts": "8b86d0fea6b3a802dab0dbbd40313e660fae360841c34b0561b7718aac515938",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.test.ts": "af171fd981ca01a3f4f6322968499da6a3cf419abff67307db3eed2afcbcf2e3",
-    "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts": "89f21cf3247c95bb1d0dcafcbf2cd8585ce764b545d4d3936fb349b47a8f101e",
+    "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts": "5e5aad6f57d52d3c9dbbb38582f8c99db4aba8b4b72b37dff6341a3410c8d530",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts": "33a4c14a7a66b27c6757188bd886d9a114a4c7711e2e085ad90061afc4a95589",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_explain.ts": "f561265b6c922fac0084f5317ebd3af1851c4b58926563bf948bb4a9c25a3c33",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_now.ts": "4c8266893b1cd10b5b687b8cfe1344460b23d841ad6bcbf77954c2e63af75bcd",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_priority.ts": "e593c623cdd70ff65e09f1283264354c7b527d82f743d53b522fa76cd11bb66a",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ritual.ts": "602628753eae5b79a8969e507965f8252a6cd4b4d814bae87e6fef83a503096b",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_story.ts": "c1d75b5a097bc4b315bbad19c2c1059aeba20a65ce8b653736382b4e25fc2c23",
-    "platform/src/lib/retrieval/registry/layers/L3_kala/views_registry.integration.test.ts": "478819f55b0a946116b1f62bd686fada30f77b9c8f6226e3f0d3a89f2eeb4ce8"
+    "platform/src/lib/retrieval/registry/layers/L3_kala/views_registry.integration.test.ts": "dcb6f6f7f2a4ff36c5d0ce62331669b34f47404a45c032ecf075f272f6fe2318"
   },
   "declaration_sha256": "45538005b9d0c2074744f80c1924f64edbf4fb8719f70503332d7c36494ba340",
   "interpretations": [

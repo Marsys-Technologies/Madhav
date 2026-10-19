@@ -51,10 +51,11 @@ class Conn:
 
     def execute(self, sql, params=()):
         if "information_schema.columns" in sql:
-            self.result = [(0,)]                    # a snapshot with no copy columns: the verifier's legacy (ids-only) path
+            self.result = [(0,)]  # This settlement fixture models a legacy (ids-only) snapshot.
+        elif "SELECT consumed_fact_ids, consumed_dasha_row_ids" in sql:
+            self.result = [([], [row(BUILD)["dasha_row_id"]])]
         elif "search_input_snapshot" in sql:
-            ids = [row(BUILD)["dasha_row_id"]]
-            self.result = [([], ids)] if "consumed_fact_ids" in sql else [(ids,)]
+            self.result = [([row(BUILD)["dasha_row_id"]],)]
         elif "search_inventory" in sql:
             self.result = [(LO, HI)]
         elif "SELECT DISTINCT" in sql:

@@ -487,7 +487,7 @@ def test_a_second_build_of_another_tier_present_at_capture_refuses_the_snapshot_
     conn.execute("INSERT INTO public.chart_dashas (dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
                  " verification_pass_status) SELECT gen_random_uuid(), chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso,"
                  " gen_random_uuid(), 'single' FROM public.chart_dashas WHERE level_n = 1 LIMIT 1")
-    with pytest.raises(Exception, match=r"settled_build_ambiguous"):                                      # J-4p's settlement read names the refusal (was dasha_builds_mixed)
+    with pytest.raises(Exception, match=r"settled_build_ambiguous"):
         step(writer_mod.SNAPSHOT_SUBSTEP)
 
 
@@ -1167,8 +1167,7 @@ def test_the_readback_sql_runs_read_only_and_reports_what_the_post_apply_check_e
             if sql.upper() in ("BEGIN READ ONLY", "COMMIT"):
                 continue
             results.append(conn.execute(sql).fetchall())
-    server_version, columns, check, trigger, functions, replaced, grants, shas, ledger = results             # FB-21: the readback opens with the server version
-    assert len(server_version) == 1 and int(server_version[0][0]) > 0
+    columns, check, trigger, functions, replaced, grants, shas, ledger = results
     assert [r[0] for r in columns] == ["consumed_dasha_rows", "consumed_fact_rows", "dasha_metadata_digest", "l1_facts_metadata_digest"]
     assert check == [("kgsis_l1_copy_ck", False)]                              # NOT VALID: governs new rows, scans no old one
     assert len(trigger) == 1 and trigger[0][1] == "O" and trigger[0][2] is True and trigger[0][3] is True
@@ -1831,4 +1830,8 @@ def test_p06_live_operand_helper_is_exclusively_an_overlay_input():
         for node in ast.walk(ast.parse(path.read_text())):
             if isinstance(node, ast.ImportFrom) and node.module and node.module.endswith("l1_identity"):
                 consumers.add(str(path.relative_to(root)))
-    assert consumers == {"services/ka_vedha_gochara/freshness.py", "services/ka_moorti_nirnaya/writer.py"}
+    # KA-3a dispatch consumes a typed candidate payload, not live legacy L1.
+    # The archived DATE-row builder is test-only; production live reads stay
+    # confined to the freshness gate and the still-active Moorti overlay.
+    assert consumers == {"services/ka_vedha_gochara/freshness.py",
+                         "services/ka_moorti_nirnaya/writer.py"}

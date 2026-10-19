@@ -181,8 +181,7 @@ class InventoryStore:
 
     def consumed_dasha_rows(self, chart_id: str, generation: str) -> list[DashaRow]:
         """The pinned daśā rows the snapshot CONSUMED (the inventory is cut at exactly the rows the snapshot's digest covers, never a fresh read).
-        With 1305 they come from the snapshot's own COPY (so they exist after any later L1 rebuild); a legacy snapshot is read by id through the
-        governed daśā query."""
+        With 1305 they come from the snapshot's own COPY (so they exist after any later L1 rebuild); a legacy snapshot is read by id."""
         copy = None
         if self.snapshot_copy_available():
             r = self.conn.execute(

@@ -33,7 +33,7 @@ def db(kala_db_dsn):
             verification_pass_status text, applies_to_this_chart_flag bool,
             is_truncated_at_window_start bool, is_truncated_at_window_end bool,
             start_date date, end_date date, lord_to_parent_relationship text,
-            kp_sublevel text)""")   # the real column the verifier's population read selects
+            kp_sublevel text)""")
         for system in ("vimshottari", "yogini"):
             conn.execute("""INSERT INTO chart_dashas
                 (dasha_row_id, chart_id, build_id, system_id, ayanamsha_id,
@@ -127,7 +127,8 @@ def test_live_independent_verifier_refuses_before_ledger_and_record_range_cuts(d
     from services.gochara_kernel import inventory_verifier as verifier
 
     db.execute("""CREATE TABLE ka_gochara_search_input_snapshot (
-        chart_id uuid, generation text, consumed_fact_ids text[], consumed_dasha_row_ids uuid[])""")   # the 1206 columns the verifier reads (snapshot_copies)
+        chart_id uuid, generation text, consumed_fact_ids text[] NOT NULL DEFAULT '{}',
+        consumed_dasha_row_ids uuid[])""")
     db.execute("""CREATE TABLE ka_gochara_search_inventory (
         chart_id uuid, generation text, horizon tstzrange)""")
     # A corrupt pinned row omitted from the snapshot must still refuse.
@@ -137,7 +138,8 @@ def test_live_independent_verifier_refuses_before_ledger_and_record_range_cuts(d
         VALUES (gen_random_uuid(), %s, %s, 'vimshottari', %s, 1,
                 'Mars', %s, %s, 'two_pass_verified')""", (CHART, BUILD, AYA, START, end))
     db.execute("""INSERT INTO ka_gochara_search_input_snapshot
-        SELECT %s, '5.0', ARRAY[]::text[], array_agg(dasha_row_id) FROM chart_dashas
+        (chart_id, generation, consumed_dasha_row_ids)
+        SELECT %s, '5.0', array_agg(dasha_row_id) FROM chart_dashas
         WHERE system_id = 'vimshottari' AND lord_graha = 'Saturn'""", (CHART,))
     db.execute("""INSERT INTO ka_gochara_search_inventory
         VALUES (%s, '5.0', tstzrange(%s, %s, '[)'))""", (CHART, START, END))

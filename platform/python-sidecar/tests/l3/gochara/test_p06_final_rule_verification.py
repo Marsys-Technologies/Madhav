@@ -148,6 +148,8 @@ def test_fb38_fb70_builder_fixture_verifier_three_way_equality():
         assert sorted(k['karaka'].lower() for k in b['karakas'] if 'K-B' in k['roles']) == row['karaka_b']
 
 
+
+
 def test_near_miss_seal_status_is_computed_from_the_absent_version_pin():
     from services.gochara_kernel import seal_brief as sb
     assert sb.near_miss_layer_status({}) == 'stored_uncovered'
@@ -395,7 +397,8 @@ def test_verification_job_refuses_final_metadata_before_window_verification(monk
     monkeypatch.setattr(verifier, 'stored_selection', lambda *a, **k: {'p3': '1.2.0'})
     monkeypatch.setattr(verifier, 'rederive_inventory_digest', lambda *a, **k: {'digest': 'inventory', 'obligations': []})
     monkeypatch.setattr(verifier, 'rederive_ledger_digest', lambda *a, **k: 'ledger')
-    monkeypatch.setattr(verifier, 'read_chart_snapshot', lambda *a: VCHART)      # the snapshot's copy (G12), the job's only natal read
+    monkeypatch.setattr(verifier, 'read_chart', lambda *a: VCHART)
+    monkeypatch.setattr(verifier, 'read_chart_snapshot', lambda *a: VCHART)      # G12: the job reads the snapshot's COPY of the natal rows
     monkeypatch.setattr(contact_certify, 'certify_contact_geometry', lambda *a, **k: {})
     def refuse(conn, **kw):
         assert kw['chart'] == VCHART and kw['rule_version'] == '1.2.0'

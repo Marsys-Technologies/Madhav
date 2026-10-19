@@ -358,6 +358,11 @@ jobs:
         run: npm run guard:migration-numbers
 
 
+      - name: AI Console — failed/aborted prepare recovery attempt window (P06 R1)
+        # Also collected by npm test; keep the 15-minute failure/abort regression
+        # explicit in the required Unit Tests job.
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-p06 -- --reporter=verbose
+
       - run: npm test -- --reporter=verbose
 
       - name: WP-1.7 — MCP surgical whitelist resolution invariant (LCA-1/LCA-13)
@@ -2164,10 +2169,9 @@ jobs:
       CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Restore source-bound generated files
-        uses: ./.github/actions/restore-generated
+      - uses: ./.github/actions/restore-generated
       - name: P06 G12 snapshot-copy baseline and mutation slice (REQUIRED, never skipped)
-        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-g12-mutations-1-9'))) }}
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-g12-mutations-p06'))) }}
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           GOCHARA_A53_REQUIRE_DB: '1'
@@ -2186,7 +2190,7 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-g12-mutations-1-9 -- -q --tb=short -rs -p no:cacheprovider
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-g12-mutations-p06 -- -q --tb=short -rs -p no:cacheprovider
           cd ..
           python scripts/gochara/mutation_check_1305.py --slice "${{ matrix.slice }}/4"
 
@@ -2195,7 +2199,7 @@ jobs:
     # See the split note on gochara-a55-replace-chain.
     needs: [changes, generated-artifacts]
     if: ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-final-rules'))) }}
-    name: Gochara P06/P06b - final rules, near-miss verifier and seal (real runner, throwaway Postgres)
+    name: Gochara P06 - final rules, census, snapshot and storage (real runner, throwaway Postgres)
     runs-on: ubuntu-latest
     timeout-minutes: 40
     defaults:
@@ -2217,10 +2221,9 @@ jobs:
       CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Restore source-bound generated files
-        uses: ./.github/actions/restore-generated
+      - uses: ./.github/actions/restore-generated
       - name: P06 final-rule, census, storage and verifier suites (REQUIRED, never skipped)
-        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-final-rules-1-9'))) }}
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-final-rules-p06'))) }}
         env:
           GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
           GOCHARA_A53_REQUIRE_DB: '1'
@@ -2242,8 +2245,8 @@ jobs:
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
           export GOCHARA_A25_DISPOSABLE_CLUSTER_ID="$(python -c 'import os; from tests.l3.gochara._disposable_db_guard import guarded_admin_connect; c=guarded_admin_connect(os.environ["GOCHARA_A25_ADMIN_DSN"], autocommit=True); print(c.execute("SELECT system_identifier FROM pg_control_system()").fetchone()[0]); c.close()')"
-          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-final-rules-1-9 -- -q --tb=short -rs -p no:cacheprovider
-          mutation_scratch="$(mktemp -d "$RUNNER_TEMP/ky-p06b-XXXXXX")"
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-final-rules-p06 -- -q --tb=short -rs -p no:cacheprovider
+          mutation_scratch="$(mktemp -d "$RUNNER_TEMP/ky-p06-XXXXXX")"
           python ../scripts/gochara/mutation_check_verifier_side.py --scratch "$mutation_scratch"
 
   gochara-a55-p06-legacy:
@@ -2275,10 +2278,9 @@ jobs:
       CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Restore source-bound generated files
-        uses: ./.github/actions/restore-generated
+      - uses: ./.github/actions/restore-generated
       - name: P06 inherited WP6 integration suites (REQUIRED, never skipped)
-        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-p06-legacy-1-9'))) }}
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-p06-legacy-p06'))) }}
         env:
           WP6_LEDGER_DSN: postgresql://wp6:local@localhost:5432/wp6
           GOCHARA_P06_LEGACY_REQUIRE_DB: '1'
@@ -2299,7 +2301,9 @@ jobs:
           export SE_EPHE_PATH="$se1_dir"
           export GOCHARA_SE1_REQUIRE=1
           cd python-sidecar
-          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-p06-legacy-1-9 -- -q --tb=short -rs -p no:cacheprovider
+          # File-launched cutover scripts import sidecar packages through this path.
+          export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-p06-legacy-p06 -- -q --tb=short -rs -p no:cacheprovider
 
   gochara-a55-round2-runner:
     # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).
@@ -4001,7 +4005,7 @@ jobs:
 
   full-suite:
     name: Full suite event contract
-    needs: [changes, db-integration-tests, gochara-a55-dispatch, gochara-a55-final-rules, gochara-a55-g12-mutations, gochara-a55-measuring-build, gochara-a55-p06-legacy, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, gochara-j5s-full-class-seal, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, replace-chain-substrate, required-db-integration-tests, required-gochara-a55-replace-chain, required-gochara-a55-round2-runner, required-gochara-a55-teardown, required-gochara-a55-teardown-round3, required-gochara-a55-verifier-fixes, unit-db-tests]
+    needs: [changes, db-integration-tests, gochara-j5s-full-class-seal, gochara-a55-dispatch, gochara-a55-final-rules, gochara-a55-g12-mutations, gochara-a55-measuring-build, gochara-a55-p06-legacy, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, replace-chain-substrate, required-db-integration-tests, required-gochara-a55-replace-chain, required-gochara-a55-round2-runner, required-gochara-a55-teardown, required-gochara-a55-teardown-round3, required-gochara-a55-verifier-fixes, unit-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

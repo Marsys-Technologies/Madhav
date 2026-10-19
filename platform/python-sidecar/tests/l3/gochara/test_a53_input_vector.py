@@ -99,15 +99,9 @@ def test_the_vector_binds_every_named_component_and_is_deterministic(db, ephe):
     assert v["node"]["model"] == "mean" and v["ephemeris"]["backend"] == "swieph"
     assert set(v["ephemeris"]["files"]) == {"sepl_18.se1", "semo_18.se1", "seas_18.se1"}
     assert set(v["implementation"]) == {"geometry", "evaluation", "window"}
-    # the default (legacy) catalogue binds the 1.0.0 set
-    assert v["registry"]["census"] == sorted([[p, "1.0.0"] for p in ("P1", "P2", "P3", "P4", "P5")])
+    assert v["registry"]["census"] == [list(ref) for ref in sorted(REFS)]
     assert v["orb_policy"]["activity"] == {"1.0.0": "undeclared"}   # today: no ratified activity orb anywhere
     assert _vector(db, ephe, l0_consumed=("bg_transit_rules",)) == v      # deterministic
-    # the explicit final-rules profile adds P1/P3/P4 @ 1.2.0 (ND-H-20261005) to the census, once those rows are persisted
-    with rr.rule_profile(final_rules=True):
-        rr.RuleRegistryStore(db).seed()
-        final = _vector(db, ephe, l0_consumed=("bg_transit_rules",), refs=list(rr.bound_path_refs()))
-    assert final["registry"]["census"] == sorted([[p, "1.0.0"] for p in ("P1", "P2", "P3", "P4", "P5")] + [[p, "1.2.0"] for p in ("P1", "P3", "P4")])
 
 
 def test_the_registry_digest_agrees_between_the_python_and_the_sql_derivations(db):

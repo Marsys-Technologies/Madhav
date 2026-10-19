@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Reproducible mutation evidence for migration 1305 and the G12 kernel changes (the same discipline as mutation_check_1206.py).
 
-Neuters ONE guard at a time (in the migration or in the sidecar code), runs the WHOLE G12 live suite (tests/l3/gochara/test_g12_snapshot_copy.py) against a
-THROWAWAY database server, and requires every mutation to be caught by an ASSERTION of a test that ran. Files are restored in a `finally` block. It REWRITES
+Neuters ONE guard at a time (in the migration or in the sidecar code), runs the WHOLE G12 live suite (tests/l3/gochara/test_g12_snapshot_copy.py) as its baseline against a
+THROWAWAY database server, and requires every mutation to be caught by an ASSERTION of a test that ran. Mutants collect the same suite but stop at the first
+assertion failure; baseline JUnit timings put inexpensive assertions first. Non-assertion failures do not stop the search for a detecting assertion and never count as a catch. Files are restored in a `finally` block. It REWRITES
 REPOSITORY FILES IN PLACE while it runs: run it only in a checkout of your own that nothing else is using.
 
 Classification (see `classify`): only an ASSERTION failure of a test's call phase counts as CAUGHT (AssertionError, a rewritten `assert`, pytest's `Failed:` such as
@@ -130,15 +131,54 @@ MUTATIONS = [
 ]
 
 
-def _run(extra=()):
+def _baseline_timings(xml):
+    """Observed setup/call/teardown costs of the complete baseline; never a test filter."""
+    import xml.etree.ElementTree as ET
+    if not xml:
+        return {}
+    return {case.get("name"): float(case.get("time", "0"))
+            for case in ET.fromstring(xml).iter("testcase")}
+
+
+def pytest_collection_modifyitems(items):
+    """Harness-only pytest plugin: order the same candidates by measured baseline cost."""
+    import json
+    import os
+    timings = json.loads(os.environ.get("G12_BASELINE_DURATIONS", "{}"))
+    if timings:
+        items.sort(key=lambda item: timings.get(item.name, 0.0))
+
+
+def pytest_addoption(parser):
+    parser.addoption("--g12-stop-on-assertion", action="store_true", default=False)
+
+
+def pytest_runtest_makereport(item, call):
+    """Stop only after an actual call-phase assertion; infrastructure alone is not detection."""
+    import pytest
+    if (item.config.getoption("g12_stop_on_assertion") and call.when == "call"
+            and call.excinfo is not None
+            and call.excinfo.errisinstance((AssertionError, pytest.fail.Exception))):
+        item.session.shouldstop = "G12 mutation detected by an assertion"
+
+
+def _run(extra=(), *, timings=None):
     """One pytest run of the suite; returns (exit code, combined output, junit XML text or None). The XML is the STRUCTURED report `classify` reads."""
     import os
     import tempfile
     fd, xml_path = tempfile.mkstemp(suffix=".xml")
     os.close(fd)
+    env = dict(os.environ)
+    env.pop("G12_BASELINE_DURATIONS", None)
+    if timings:
+        import json
+        env["G12_BASELINE_DURATIONS"] = json.dumps(timings)
+    # Import THIS file as the child pytest plugin without changing the parent
+    # process's import path or any other suite's execution order.
+    env["PYTHONPATH"] = os.path.dirname(os.path.abspath(__file__)) + os.pathsep + env.get("PYTHONPATH", "")
     try:
-        r = subprocess.run([sys.executable, "-m", "pytest", TEST, "-q", "-p", "no:cacheprovider", "-rfEs", f"--junitxml={xml_path}", *extra], cwd="python-sidecar",
-                           capture_output=True, text=True, timeout=1800)
+        r = subprocess.run([sys.executable, "-m", "pytest", TEST, "-q", "-p", "no:cacheprovider", "-p", "mutation_check_1305", "-rfEs", f"--junitxml={xml_path}", *extra], cwd="python-sidecar",
+                           capture_output=True, text=True, timeout=1800, env=env)
         xml = open(xml_path, encoding="utf-8").read() if os.path.getsize(xml_path) else None
     finally:
         os.unlink(xml_path)
@@ -196,6 +236,7 @@ def main() -> int:
         print(f"BASELINE NOT GREEN (exit {code}): {last[-1] if last else out[-300:]!r} — no mutation is meaningful; refusing to run")
         return 2
     print(f"BASELINE green: {last[-1]}")
+    timings = _baseline_timings(xml)
     survivors = []
     ran = [m for m in MUTATIONS if not only or only in m[0]]
     if "--slice" in sys.argv:                 # --slice i/n: every n-th mutation starting at i (to spread the list over several private checkouts, one run each)
@@ -209,7 +250,7 @@ def main() -> int:
             continue
         try:
             open(path, "w", encoding="utf-8").write(text.replace(old, new, 1))
-            code, out, xml = _run()                       # the WHOLE suite (no -x): the report must hold every failing test so an assertion anywhere is seen
+            code, out, xml = _run(("--g12-stop-on-assertion",), timings=timings)                 # infrastructure never counts; stop once an assertion detects this mutant
         finally:
             open(path, "w", encoding="utf-8").write(text)
         verdict = classify(code, out, xml)

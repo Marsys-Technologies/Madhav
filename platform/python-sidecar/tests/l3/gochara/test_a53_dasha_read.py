@@ -190,10 +190,10 @@ class _PopulationConn:
 
     def execute(self, sql, params=()):
         self.sql.append((sql, params))
-        if "information_schema" in sql:
-            self.result = [(0,)]          # a LEGACY snapshot (no copy columns): the 1206-era check against live L1 is the one under test
-        elif "consumed_fact_ids" in sql:  # P06b: the verifier reads the snapshot's copies first (snapshot_copies); ids only here
-            self.result = [(["22222222-2222-4222-8222-222222222222"], ["11111111-1111-4111-8111-111111111111"])]
+        if "information_schema.columns" in sql:
+            self.result = [(0,)]  # Legacy ids-only snapshot: migration 1305 is absent.
+        elif "SELECT consumed_fact_ids, consumed_dasha_row_ids" in sql:
+            self.result = [([], ["11111111-1111-4111-8111-111111111111"])]
         elif "search_input_snapshot" in sql:
             self.result = [(["11111111-1111-4111-8111-111111111111"],)]
         elif "search_inventory" in sql:
