@@ -200,10 +200,10 @@ def test_post_acceptance_oracle_fails_on_its_planted_reversion(tmp_path, claim):
 
 # ───────────────────────────── quiescence ─────────────────────────────
 
-def scenario(w, flaw=None, dispatch=False):
+def scenario(w, flaw=None, dispatch=False, kind=None):
     """A fenced, finished production operation plus a completed quiescence_check; `flaw` breaks exactly one thing."""
     m = w.mod; target = "op-t"
-    kind = {"teardown": "smalltest_teardown", "readonly_target": "readback_sql"}.get(flaw, "smalltest_dispatch" if dispatch else "backup_snapshot")
+    kind = kind or {"teardown": "smalltest_teardown", "readonly_target": "readback_sql"}.get(flaw, "smalltest_dispatch" if dispatch else "backup_snapshot")
     done = {"operation_id": target, "kind": kind, "status": "RUNNING" if flaw == "not_terminal" else "COMPLETED", "exit_code": 0,
             "request_sha256": "a" * 64, "reviewed_commit": w.commit, "ts": iso(-120), "session_marker": m.session_marker(target)}
     if flaw == "no_marker": del done["session_marker"]
@@ -245,9 +245,10 @@ def oracle_q1(w):
         assert (w.mod.ACC / "chk-1.post.json").exists(), "the read-only check itself is accepted mechanically"
 
 
-def blocked(flaw, dispatch=False):
+def blocked(flaw, dispatch=False, kind=None):
     def oracle(w):
-        assert not scenario(w, flaw, dispatch).exists(), f"quiescence written despite: {flaw}"
+        for f in list(w.mod.ACC.glob("op-t.*")) + list(w.mod.REC.glob("*")) + list(w.mod.DONE.glob("*")): f.unlink()
+        assert not scenario(w, flaw, dispatch, kind).exists(), f"quiescence written despite: {flaw or kind}"
         assert not w.mod.fence_quiescent()
     return oracle
 
@@ -269,6 +270,9 @@ QUIESCENCE = {
                                       '                 or (accepted.get("schema") == "ky.mechanical_acceptance/1" and isinstance(accepted.get("checks"), dict)\n'
                                       '                     and bool(accepted["checks"]) and all(value is True for value in accepted["checks"].values())))',
                                       '(accepted.get("by") != "executor-mechanical" or all(value is True for value in (accepted.get("checks") or {}).values()))')),
+    "q14_async_verification_unmeasured": (lambda w: [blocked(None, False, kind)(w) for kind in ("verification_job", "century_dispatch")],
+                                          ('needs_remote = remote_async(str(done.get("kind")), entry) or isinstance(done.get("launch"), dict)',
+                                           'needs_remote = done.get("kind") in ("smalltest_dispatch", "measuring_dispatch") or isinstance(done.get("launch"), dict)')),
     "q12_check_failed": (blocked("check_failed"), ("checks = dict(own_checks,", "checks = dict(")),
 }
 # Q1's reversion removes the whole writer: nothing may then be written.
@@ -283,6 +287,39 @@ def test_quiescence_oracle_passes_on_the_real_executor(tmp_path, claim):
 @pytest.mark.parametrize("claim", sorted(QUIESCENCE))
 def test_quiescence_oracle_fails_on_its_planted_reversion(tmp_path, claim):
     oracle, mutation = QUIESCENCE[claim]
+    with pytest.raises(AssertionError):
+        oracle(World(tmp_path, [mutation]))
+
+
+def oracle_l1(w):
+    """J-4b / PR #3747 B-1: a COMPLETED verification_job receipt carries the launcher's ky.verification_launch/1 record only when it binds this operation,
+    this request and a gochara-verification-job execution (verification_launch.py V6); anything else is FAILED, never a launch."""
+    m = w.mod; good = lambda req: {"schema": "ky.verification_launch/1", "status": "LAUNCHED", "operation_id": req["operation_id"], "request_sha256": m.request_digest(req),
+                                   "chart_id": m.CANONICAL_CHART, "execution_name": "gochara-verification-job-abc12", "executed_check": {"status": "CONFORMS"}}
+    flaws = {"ok": {}, "other_operation": {"operation_id": "op-other"}, "other_request": {"request_sha256": "c" * 64},
+             "build_job_execution": {"execution_name": "brahma-build-pipeline-job-abc12"}, "unchecked": {"executed_check": None}, "missing": None}
+    for number, (flaw, change) in enumerate(flaws.items()):
+        req = w.request(f"vj-{number}", "verification_job", args={"generation": "5.0"}, chart_id=m.CANONICAL_CHART)
+        record = None if change is None else {**good(req), **change}
+        w.run(req, out="" if record is None else json.dumps(record) + "\n")
+        receipt = json.loads((m.REC / f"vj-{number}.json").read_text())
+        if flaw == "ok":
+            assert receipt["status"] == "COMPLETED" and (receipt.get("launch") or {}).get("execution_name") == "gochara-verification-job-abc12", "a bound launch record is the receipt's launch"
+        else:
+            assert receipt["status"] == "FAILED" and "launch" not in receipt, f"launch accepted despite: {flaw}"
+
+
+LAUNCH = {"l1": (oracle_l1, ('if not lane_selected(req) and req.get("kind") == "verification_job" and status == "COMPLETED":', "if False:"))}
+
+
+@pytest.mark.parametrize("claim", sorted(LAUNCH))
+def test_launch_oracle_passes_on_the_real_executor(tmp_path, claim):
+    LAUNCH[claim][0](World(tmp_path))
+
+
+@pytest.mark.parametrize("claim", sorted(LAUNCH))
+def test_launch_oracle_fails_on_its_planted_reversion(tmp_path, claim):
+    oracle, mutation = LAUNCH[claim]
     with pytest.raises(AssertionError):
         oracle(World(tmp_path, [mutation]))
 
@@ -434,7 +471,7 @@ MARKER_ROUTE = {
     "scheduler_pause": "no_database",       # SR-J3-REAPER-PAUSE: needs gcloud only, no DATABASE_URL, no connection at all (test_executor_scheduler_reaper pins that); synchronous, never fenced
     "scheduler_resume": "no_database",
     "measuring_cancel": "no_database",      # SR-J3-CANCEL-NULL: gcloud only, no DATABASE_URL; synchronous, never fenced
-    "verification_job": "no_database",      # J-4b: verification_launch.py needs gcloud only (no DATABASE_URL, no connection; the verifier's own task holds its credential). Its REMOTE execution is NOT measured by the mechanical quiescence (executor.py needs_remote and cloudrun_job_readback cover the build job only): see the J-4b notes
+    "verification_job": "no_database",      # J-4b: verification_launch.py needs gcloud only (no DATABASE_URL, no connection; the verifier's own task holds its credential). Its REMOTE execution is never released mechanically: executor.py needs_remote fails closed without an accepted cloudrun_job_readback of its execution, which covers the build job only (q14)
     "measuring_dispatch": "in_process",     # J-3a: measuring_launch.py opens only psycopg connections from DATABASE_URL (no PGAPPNAME/application_name in its closure — the next test)
 }
 # A8 §3 fences only remote_async kinds; the *_dryrun kinds are production:false in executor_ops.json, so they are not eligible and carry no row.

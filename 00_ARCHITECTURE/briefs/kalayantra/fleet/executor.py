@@ -690,6 +690,24 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             r["launch"] = launch
         else:
             r.update(status="FAILED", reason="small-test launch identity missing or invalid; reconcile remote outcome")
+    if not lane_selected(req) and req.get("kind") == "verification_job" and status == "COMPLETED":
+        # J-4b / PR #3747 B-1: exit zero is not launch evidence. Only the launcher's own machine record binds this operation, this request and the remote execution.
+        records = []
+        for line in out.splitlines():
+            try:
+                value = json.loads(line)
+            except (ValueError, TypeError):
+                continue
+            if isinstance(value, dict) and value.get("schema") == "ky.verification_launch/1":
+                records.append(value)
+        launch = records[0] if len(records) == 1 else {}
+        if (rc == 0 and launch.get("status") == "LAUNCHED" and launch.get("operation_id") == req.get("operation_id")
+                and launch.get("request_sha256") == request_digest(req) and launch.get("chart_id") == CANONICAL_CHART
+                and re.fullmatch(r"gochara-verification-job-[a-z0-9]+(?:-[a-z0-9]+)*", str(launch.get("execution_name", "")))
+                and (launch.get("executed_check") or {}).get("status") == "CONFORMS"):
+            r["launch"] = launch
+        else:
+            r.update(status="FAILED", reason="verification launch identity missing or invalid; reconcile remote outcome")
     if not lane_selected(req) and req.get("kind") in ("smalltest_teardown", "smalltest_teardown_dryrun", "measuring_teardown", "measuring_teardown_dryrun") and status == "COMPLETED":
         records = []
         for line in out.splitlines():
@@ -1218,7 +1236,7 @@ def mechanical_quiescence(req: dict, archived: pathlib.Path) -> str | None:
         if isinstance(value, dict) and value.get("schema") == "ky.session_readback/1": found.append(value)
     sessions = found[0] if len(found) == 1 else {}
     marker = session_marker(target)
-    needs_remote = done.get("kind") in ("smalltest_dispatch", "measuring_dispatch") or isinstance(done.get("launch"), dict)
+    needs_remote = remote_async(str(done.get("kind")), entry) or isinstance(done.get("launch"), dict)       # every remote_async kind (A8 §3.11): fail closed without an accepted readback of its execution
     remote = None
     if needs_remote:
         try: remote = accepted_cloudrun_execution(str(args.get("execution_readback", "")), str((done.get("launch") or {}).get("execution_name", "")))
