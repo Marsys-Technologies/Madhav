@@ -182,7 +182,9 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     import datetime as dt
     import types
     source = ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py'
-    function = next(n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef) and n.name == 'validate')
+    # validate's signed route is signer_acceptance_problem (the A8 §3.9 block, moved out unchanged by OWNER-MINIMAL-PROTECTION-NOW)
+    functions = [n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef) and n.name in ('signer_acceptance_problem', 'validate')]
+    assert len(functions) == 2
     accepted_dir = tmp_path / 'acceptance'; accepted_dir.mkdir()
     globals_ = {'pathlib': importlib.import_module('pathlib'), 'SAFE_ID': importlib.import_module('re').compile(r'^[a-z0-9_-]+$'),
                 'SAFE_ARG': importlib.import_module('re').compile(r'^[A-Za-z0-9_.:+,/-]+$'),
@@ -195,8 +197,10 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
                 # validate() ends with the scheduler, measuring-cancel and served-probe admission rules; neither applies to a small-test kind
                 # (each has its own suite), so they are transport doubles here like smalltest_policy_problem.
                 'scheduler_policy_problem': lambda req: None, 'measuring_cancel_problem': lambda req: None,
+                # the mechanical route needs a pack fill, which none of these requests carries (its own suite: fleet/tests/test_executor_mechanical_production.py)
+                'mechanical_pre_acceptance': lambda req, table: 'the mechanical route is not under test here',
                 'served_probe_problem': lambda req, op: None}
-    exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), 'exec'), globals_)
+    exec(compile(ast.Module(body=functions, type_ignores=[]), str(source), 'exec'), globals_)
     validate = globals_['validate']
     table = json.loads(TABLE.read_text())['ops']
     request = {'operation_id': 'p01_fixture', 'kind': kind, 'item_id': 'J-1a', 'idempotency_key': 'p01_fixture',
