@@ -642,17 +642,27 @@ def measuring_cancel_proof(req: dict, rc: int | None, out: str) -> tuple[dict | 
     return rec, None
 
 
-def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str = "", extra: dict | None = None, stdout: str | None = None) -> None:
+def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str = "", extra: dict | None = None, stdout: str | None = None, *, preserve_existing: bool = False) -> None:
     """`out` is the complete evidence (stdout, then stderr). `stdout` is the child's stdout alone: the one stream a whole-document proof is parsed from,
     because a child may lawfully print advisory lines on stderr. A caller that does not pass it supplies no proof stream, so such a proof reads as missing."""
     name = req.get("operation_id") if SAFE_ID.match(str(req.get("operation_id", ""))) else "unknown"
     r = {"operation_id": req.get("operation_id"), "kind": req.get("kind"), "item_id": req.get("item_id"), "status": status, "reason": reason,
          "exit_code": rc, "stdout_tail": redact(out[-20000:]), "ts": now(), "reviewed_commit": req.get("reviewed_commit"),
          "requested_by": req.get("requested_by"), "kyd": req.get("kyd"), "request_sha256": request_digest(req) if req.get("kind") else None}
+    receipt_path = REC / f"{name}.json"
+    separate_refusal = preserve_existing and status == "REFUSED" and receipt_path.exists()
+    if separate_refusal:
+        import uuid
+        # A rejected request must not replace evidence retained for readback or rollback,
+        # even when it is refused before the enabled-kind / request-policy checks.
+        r["preserved_receipt"] = {"path": str(receipt_path), "sha256": digest_bytes(receipt_path.read_bytes())}
+        refusal_dir = REC / "refusals"
+        refusal_dir.mkdir(exist_ok=True)
+        receipt_path = refusal_dir / f"{name}.{uuid.uuid4().hex}.json"
     if lane_selected(req):
         receipt_lane(req, r, status, rc, out)
     if out:                                           # the complete output is evidence; the tail alone must never be mistaken for it
-        body = redact(out); output_path = REC / f"{name}.output.txt"; output_path.write_text(body)
+        body = redact(out); output_path = receipt_path.with_suffix(".output.txt"); output_path.write_text(body)
         r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body.encode()).hexdigest(); r["output_bytes"] = len(body.encode())
     if req.get("kind") == "measuring_dispatch_dryrun" and status == "COMPLETED":
         try:
@@ -724,7 +734,8 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
     overlay = overlay_proofs().pop(str(req.get("operation_id")), None)
     if overlay: r["generated_overlay"] = overlay                 # the proof the executor itself measured, never the child's words
     if extra: r.update(extra)
-    with _lock: (REC / f"{name}.json").write_text(json.dumps(r, indent=1))
+    with _lock, receipt_path.open("x" if separate_refusal else "w") as f:
+        f.write(json.dumps(r, indent=1))
     log(f"{name} {status} {reason}")
 
 
@@ -1376,7 +1387,7 @@ def main() -> int:
             if production and FENCE.exists() and req.get("kind") not in ("scheduler_resume", "measuring_cancel"): continue      # the single production slot is taken; the request waits where it is (a resume of the watchdog is the safe direction and a cancel stops the very dispatch that holds the fence: neither waits)
             why = validate(req, table, caps)
             if why:
-                receipt(req, "REFUSED", why); shutil.move(str(f), DONE / f.name); continue
+                receipt(req, "REFUSED", why, preserve_existing=True); shutil.move(str(f), DONE / f.name); continue
             if production and remote_async(req["kind"], table[req["kind"]]):     # A8 §3.11: a synchronous kind takes no fence
                 FENCE.write_text(json.dumps({"operation_id": req["operation_id"], "request_sha256": request_digest(req), "ts": now()}))
             mark_seen(req["idempotency_key"], req["operation_id"])
