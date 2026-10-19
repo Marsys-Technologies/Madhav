@@ -96,6 +96,14 @@ def prepare_report(*, dry_run, run_id, manifest, manifest_digest, existing, note
             "stdout": [run_id]}
 
 
+def _century_request_policy(req, root):
+    """The century evidence policy with its fresh, read-only scoped-content measurement (SR-BACKUP-VALIDITY-A8): the named scoped backup
+    admits this dispatch only while the database's scoped content still has the digest the backup recorded. The executor's admission has
+    no database; this is the check that reads it, at --execute and before anything is staged."""
+    import backup_v5_small_test_job as backup
+    return shared.century_request_problem(req, root, measure=backup.measure_scope_now)
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     args = parse_args(argv)
@@ -104,7 +112,7 @@ def main(argv=None):
     expected = "century_dispatch" if args.execute else "century_dispatch_dryrun"
     if req.get("kind") != expected:
         raise shared.Refused("executor operation kind and century mode differ")
-    problem = shared.century_request_problem(req, shared.evidence_root())
+    problem = _century_request_policy(req, shared.evidence_root())
     if problem:
         raise shared.Refused(problem)
     shape = century_shape(classes=args.classes)
@@ -119,7 +127,7 @@ def main(argv=None):
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
         staging._main(argv, parse_args=parse_args, marker_builder=century_shape, operation_kind="century_dispatch",
-                      request_policy=shared.century_request_problem, manifest_check=check_manifest,
+                      request_policy=_century_request_policy, manifest_check=check_manifest,
                       manifest_builder=build_century_manifest, triggered_by=TRIGGERED_BY, report_builder=prepare_report)
     if args.execute:
         print(output.getvalue().strip(), flush=True)          # exactly one staging UUID; the durable bridge owns the remote launch
