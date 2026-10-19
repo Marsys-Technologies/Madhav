@@ -1,16 +1,17 @@
 ---
 artifact: MECHANICAL_ACCEPTANCE
-version: "1.0"
+version: "1.1"
 status: REVIEW_CANDIDATE
 produced_on: 2026-10-17
-authority: owner direction A7 D-44 (DECISIONS_SURROGATE.jsonl id D-44)
+authority: owner direction A7 D-44 (DECISIONS_SURROGATE.jsonl id D-44); OWNER-MINIMAL-PROTECTION-NOW-20261018 / SR-MINIMAL-PROTECTION / OWNER-MINIMAL-PROTECTION-20261018 for §4
 changelog:
+  - "1.1: §4 — mechanical PRE-acceptance of a production write (every kind except deletions and serving changes): pack fill + the kind's own dry run + live lease; §3 now says the signed route is unchanged for exempt kinds."
   - "1.0: executor-written post-acceptance for read-only kinds, mechanical quiescence for a fenced production op (new read-only kind `quiescence_check`), PGAPPNAME session marker."
 ---
 
 # Mechanical acceptance and quiescence (A7 D-44)
 
-Read-only readbacks need no reviewer; writing operations keep exactly ONE V-lane (v1..v4) pre-acceptance; post-acceptance and quiescence are measured by the executor.
+Read-only readbacks need no reviewer; writing operations keep exactly ONE V-lane (v1..v4) pre-acceptance — except, since OWNER-MINIMAL-PROTECTION-NOW (§4), a production write that is a verified pack fill with a completed dry run and a live lease, which the executor accepts itself; post-acceptance and quiescence are measured by the executor.
 
 ## 1. Post-acceptance of a read-only kind
 
@@ -27,4 +28,30 @@ Request the read-only kind `quiescence_check` with `args.operation = <fenced pro
 
 ## 3. Admission
 
-`validate()` is unchanged: a writing operation's pre-acceptance must be `by` v1..v4. `executor-mechanical` is refused there (tested).
+A writing operation's SIGNED pre-acceptance must be `by` v1..v4 (`signer_acceptance_problem`, the A8 §3.9 block, moved out of `validate()` unchanged). `executor-mechanical` is refused there as an `acceptance_receipt` (tested). The mechanical route of §4 is a different route, chosen only by the request's shape.
+
+## 4. Mechanical acceptance of a production write (OWNER-MINIMAL-PROTECTION-NOW-20261018)
+
+Owner direction: the data is calculated, not sensitive; protection is minimal; correctness gates stay. A production write needs no V signer when the executor can itself measure that it is the pre-verified, rehearsed thing. **Never mechanical (a V1 signer exactly as before):** every `*_teardown` kind (deletions), `publish_head`, `layer_publish`, `rollback_head`, `layer_rollback` (serving changes) and — (I) INTERPRETATION — `measuring_cancel` (it deletes no data, but it is the first step of the cancel-then-teardown path the owner named and cannot be undone; alternative: let it go mechanical, a one-word change to `SIGNED_ONLY_KINDS`). `test_x3_...` fails when a production kind is added to the table without being classified.
+
+**Route.** A request with NO `acceptance_receipt` and a `pack_fill` takes the mechanical route; a request that carries an `acceptance_receipt` is judged by that signer, whatever else it carries (so requests filed before the executor refresh keep their signer).
+
+**(1) The request bytes equal a verified pack fill** (`pack_fill_check`). The request carries `pack_fill = {pack_manifest_sha256, template: {kind, fixed: {field: value}, fill: [field names]}, fill_sha256}`.
+- The executor reads `run/ops/PACK_ALLOWLIST.json` (written by the cockpit ONLY from an ACCEPTED verify job; the executor never writes it; absent or unreadable = nothing is verified):
+  `{"schema": "ky.pack_allowlist/1", "packs": [{"pack_manifest_sha256": <64 hex>, "verify_job": <id>, "verdict": "ACCEPTED", "accepted_at": <utc>, "templates": {"<sha256 of the canonical template>": "<kind>"}}]}`.
+  The cockpit lists, per verified pack manifest, the digest of each template the manifest covers and the kind it is for. The pack manifest itself is not in the repository, so it is the cockpit that binds manifest to template digests; the executor pins what it is given.
+- The request's own template must hash (sorted compact JSON) to a digest the allow-list lists for exactly this kind — a requester cannot bring a template of their own (P3).
+- Every `fixed` field equals the request's field (type-strict, by digest); the request has NO field the template does not define (`expires_at` and any `*_expires_at` are the only clocks excepted); a template never fills `kind`, `chart_id`, `reviewed_commit`, `requested_by`, `acceptance_receipt`, `pack_fill`.
+- `fill_sha256` equals the sha256 of the request's filled fields (sorted compact JSON of `{field: value}` for the template's `fill` names present in the request, clocks excluded) re-derived by the executor from the request bytes. Because the template digest is allow-listed and the key set is closed, the request is exactly `fixed ∪ fill`; `fill_sha256` is the tamper evidence for what was filled.
+
+**(2) The kind's dry run completed OK for the same request identity** (`dry_run_check`). The request cites the receipt as `dryrun_receipt {name, sha256}` (the same field the measuring and teardown policies already read). The executor reads ITS OWN `run/ops/receipts/<dry-op>.json` (bytes equal the cited sha256), the complete output (digest equals the receipt's `output_sha256`) and the archived `done/<dry-op>.json` (digest equals the receipt's `request_sha256`), and requires: kind `<kind>_dryrun` (enabled, `production: false` in the table), `COMPLETED`, exit code 0, no lane rehearsal, `reviewed_commit` equal to the request's, and the dry-run request equal to this one in `item_id`, `chart_id`, `reviewed_commit` and `args` (that is the "same request identity"). A signer's `dry_run_passed` attestation is never read. `backup_snapshot` and `backup_restore_verify` have no dry-run kind and (as today) no `dry_run_passed` attestation; they need none (I).
+
+**(3) The lease is live** (`lease_live`, the existing rule: the one unexpired ACTIVE row), checked by `validate` and again inside `mechanical_pre_acceptance`.
+
+Also, as for a signed request: chart_id canonical, `reviewed_commit` merged to `origin/main`, `expires_at` in the future, args allow-listed, the idempotency key unused, and the kind's own admission policy (small-test / scheduler / measuring-cancel) at the tail of `validate`.
+
+**Record.** `acceptance/<operation_id>.json`: `schema ky.mechanical_acceptance/1`, `phase pre`, `by executor-mechanical`, `result ACCEPTED`, `operation_id`, `kind`, `request_sha256` (the executor's `request_digest`, so `pack_fill` is bound), `reviewed_commit`, `lease_id`, `checks` (all true), `evidence` (`pack`: manifest digest, template digest, fill digest, verify job; `dry_run`: dry-run operation, receipt / request / output digests, or `null` for the two backup kinds), `ts`. Written once (`write_new_json`); a second validation finds its own record; a record for the operation that does not bind this request refuses. `validate` re-measures everything immediately before execution (`run_one`), so the record is evidence, never the authority.
+
+**Consumers that read "an independent acceptance"** accept this record only when it is complete: `v5_small_test_shared.independent_acceptance` (the children's `operation_request`, a dispatch's acceptance cited by a teardown scope, the dry-run-precedes-acceptance check) and `pravaha_tracker/audit.py` (`unbound_production_operation`) — schema `ky.mechanical_acceptance/1`, phase `pre`, non-empty `checks` all true, bound to the request. A `post`-phase record (a read-only readback) never stands in for it.
+
+**Open.** (a) The cockpit side — writing `PACK_ALLOWLIST.json` from an ACCEPTED verify job and emitting `pack_fill` / `dryrun_receipt` in the pack's request fill — is not part of this change. (b) `v5_small_test_shared.absence_evidence` still reads an absence readback's `absence` field from a V acceptance (`accepted_receipt`): a mechanical `post` record carries no such judgment, so that one signer (a content judgment, not a write acceptance) is unchanged.

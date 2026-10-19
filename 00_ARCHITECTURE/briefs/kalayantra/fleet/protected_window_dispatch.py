@@ -179,7 +179,8 @@ def _tick(source, state_path, lease, gh, readback, dry_run):
     # Recheck lease immediately before crossing the external mutation boundary.
     require_lease(source, lease)
     # workflow run emits human-readable output, so do not use the JSON command helper.
-    args = [gh, 'workflow', 'run', 'deploy.yml', '--ref', 'main', '-f', 'ci_gate=require-ci-green']
+    # W2-M-08: deploy.yml's lease gate reads any ACTIVE lease other than window_lease_id as foreign, so name this dispatcher's own.
+    args = [gh, 'workflow', 'run', 'deploy.yml', '--ref', 'main', '-f', 'ci_gate=require-ci-green', '-f', f'window_lease_id={lease}']
     for name in inputs:
         args.extend(['-f', f'{name}=true'])
     result = subprocess.run(args, capture_output=True, text=True, timeout=60)
