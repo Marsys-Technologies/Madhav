@@ -3,7 +3,7 @@ artifact: CENTURY_BINDINGS
 version: "1.0"
 status: ENABLED_WAITING_ON_GATE — no century operation executed or accepted
 produced_on: 2026-10-18
-changelog: Initial. SR-PREBUILD-ALL enablement of the century family (enabled_by J-4d, request item J-4e); SR-TEARDOWN-AUTHORITY-GATE items 2 and 3.
+changelog: Initial. SR-PREBUILD-ALL enablement of the century family (enabled_by J-4d, request item J-4e); SR-TEARDOWN-AUTHORITY-GATE items 2 and 3. 2026-10-19 (SR-EDGES-PROOF 2, SR-HORIZON-PUBLIC): `century_contract.json` + its generator `century_contract.py`; a century dispatch and its dry run carry `century_contract_sha256` and the executor binds it (`century_contract_problem`).
 ---
 
 # Century bindings (SR-PREBUILD-ALL)
@@ -44,6 +44,22 @@ set or rule version** — what generation '5.0' answers after 2026-04-17 is the 
   digest rollback proof, absence census) and swaps two things: the owned trigger, and an ordinary-candidate proof
   (`century_generation_ownership`: status `candidate`, default `stored_scope`, no `test_slice` component, unmarked staged manifest, snapshot / inventory /
   coverage tied to the one run). It refuses a stamped test-slice candidate, and a test-slice teardown refuses a century one.
+
+## The launch contract (`century_contract.json`; SR-EDGES-PROOF 2, SR-HORIZON-PUBLIC, SR-W34-LEASE)
+
+`fleet/century_contract.json` (schema `ky.century_contract/1`) is the one committed statement of the century launch's facts: `horizon` (ISO 8601 UTC strings, half-open
+`[start, end)`; start = `DEFAULT_HORIZON[0]` of the writer, end = the §B birth date + 100 years, committed verbatim — both bounds are public), `classes`, `policy` (STRICT contact
+certification = the writer's unmarked-run `raise` policy; final rules and the in-build-verify deferral from the pack's VERIFY_DEFERRAL.json carrier), `cap` (migration 1395's
+72,000 s watchdog), `timeout` (the pipeline job's Cloud Run task timeout), `image` (job, project, region, repository, the writer-source digest the deployed image must carry), and the
+facts `century/rebind_pins.py` binds into CENTURY_BINDINGS.json (`generation`, `triggered_by`, `stored_scope`, `launch_args`, `output_tables`, `cancel_schema`). **Nothing in it is typed**:
+`fleet/century_contract.py --write --pack <PACK>` derives every value from its owning source, and `--check` (and `tests/test_executor_century_contract.py`, with
+`tests/test_century_contract_smalltest_image.py` for the writer-source digest) refuses a file that differs from what the sources give. A writer or deploy change that moves one of those
+sources makes the file stale by name until it is regenerated — the same discipline as `implementation_digest.lock.json`.
+
+**Binding.** A `century_dispatch` / `century_dispatch_dryrun` request carries `century_contract_sha256`; `executor.century_contract_problem` (at the tail of `validate`, so again right
+before execution) admits it only when it equals the sha256 of the contract file read with `git show <reviewed_commit>:…` — a fill built against any other contract is refused — and the
+file's `launch_args` are exactly the request's `args`. The pack's template pins the field (its fill is then bound to the same sha through its own digest). The horizon is not a launch
+argument in this table (`allowed_args` is still `classes`): the contract states it, and the carrier PR (`kalayantra/century-args`) is what would pass it to the writer.
 
 ## Interpretations (I) and what is left open
 

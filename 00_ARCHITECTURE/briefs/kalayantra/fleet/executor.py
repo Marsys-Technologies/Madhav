@@ -595,6 +595,26 @@ def scheduler_backstop_tick(at: dt.datetime | None = None) -> list[str]:
     return fired
 
 
+def century_contract_problem(req: dict) -> str | None:
+    """SR-EDGES-PROOF 2 / SR-HORIZON-PUBLIC: a century dispatch and its dry run are bound to the committed launch contract (fleet/century_contract.json: horizon, classes, policy,
+    cap, timeout, image binding). The request carries `century_contract_sha256`; it is admitted only when that equals the sha256 of the file's bytes AT the request's reviewed_commit
+    (read with git show, never from a working tree), the file is a ky.century_contract/1, and its launch_args are exactly the request's args. Run at the tail of validate, so again
+    immediately before execution. The pack fill pins the field in its template, so a fill bound to a different contract is refused here, whatever its other fields say."""
+    if req.get("kind") not in ("century_dispatch", "century_dispatch_dryrun"): return None
+    declared, rc = req.get("century_contract_sha256"), str(req.get("reviewed_commit", ""))
+    if not (isinstance(declared, str) and HEX64.fullmatch(declared)): return "century_contract_sha256 (64 lowercase hex) is required: a century dispatch binds to the committed century contract"
+    if not SHA.match(rc): return "reviewed_commit required to read the century contract"
+    shown = git("show", f"{rc}:00_ARCHITECTURE/briefs/kalayantra/fleet/century_contract.json")
+    if shown.returncode or not getattr(shown, "stdout", ""): return "the century contract is not at the reviewed commit"
+    body = shown.stdout.encode("utf-8")
+    if digest_bytes(body) != declared: return "century_contract_sha256 does not equal the sha256 of fleet/century_contract.json at the reviewed commit"
+    try: contract = json.loads(body)
+    except ValueError: return "the century contract at the reviewed commit is not JSON"
+    if not isinstance(contract, dict) or contract.get("schema") != "ky.century_contract/1": return "the century contract at the reviewed commit is not a ky.century_contract/1"
+    if contract.get("launch_args") != (req.get("args") or {}): return "the request args differ from the century contract's launch_args"
+    return None
+
+
 def measuring_cancel_problem(req: dict) -> str | None:
     """SR-J3-CANCEL-NULL 2(a) admission for a cancel kind (`measuring_cancel`, `century_cancel`, `verification_cancel` and their `*_dryrun` twins), run at the tail of
     validate (so again immediately before execution; the name is the J-3c one, the rule is family-aware since W3W4 verify E1): the target execution is the one the family's dispatch receipt named (measuring_dispatch J-3c, century_dispatch J-4e,
@@ -888,7 +908,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         else: why = signer_acceptance_problem(req)
         if why: return why
     if not reserved and seen(req["idempotency_key"]): return "idempotency key already used"
-    return smalltest_policy_problem(req) or scheduler_policy_problem(req) or measuring_cancel_problem(req) or head_policy_problem(req)
+    return century_contract_problem(req) or smalltest_policy_problem(req) or scheduler_policy_problem(req) or measuring_cancel_problem(req) or head_policy_problem(req)
 
 
 def lane_selected(req: dict) -> bool:
