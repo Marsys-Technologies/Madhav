@@ -66,11 +66,13 @@ def store(ops, name, doc):
     return dict(path=str(path), sha256=hashlib.sha256(raw).hexdigest())
 
 
-def test_actual_bindings_and_dryruns_exist_but_stay_disabled():
+def test_actual_bindings_and_dryruns_are_enabled_only_through_the_head_policy():
+    # SR-HEAD-POLICY-KEEP: was "stay_disabled" (J6-BINDINGS prebuild). Enabled now, and the script of every entry is the reviewed
+    # policy module itself, so there is no second flip path beside it; the gate tests below pin that the executor consults it.
     ops = json.loads((FLEET/'executor_ops.json').read_text())['ops']
     for kind in ('publish_head', 'rollback_head', 'publish_head_dryrun', 'rollback_head_dryrun'):
         entry = ops[kind]
-        assert next(iter(entry)) == 'enabled' and entry['enabled'] is False
+        assert next(iter(entry)) == 'enabled' and entry['enabled'] is True
         assert entry['script'] == '00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py'
         assert entry['needs'] == 'builder' and entry['production'] is (not kind.endswith('_dryrun'))   # A8 §3.8: a dry run is production:false
         assert entry['allowed_args'] == ['generation', 'manifest-id', 'expected-head-sha256']
@@ -329,7 +331,9 @@ def test_executor_g8_checks_remain_required_before_head_policy(tmp_path,monkeypa
     bound=copy.deepcopy(accepted);bound['request_sha256']=head.request_digest(no_dry);path.write_text(json.dumps(bound))
     assert 'dry-run' in ex.validate(no_dry,fixture,{'builder':True})
     path.write_text(json.dumps(accepted))
-    assert 'not enabled' in ex.validate(req,ops,{'builder':True})
+    assert ex.validate(req,ops,{'builder':True}) is None            # SR-HEAD-POLICY-KEEP: the real table now admits it (was: 'not enabled')
+    off=copy.deepcopy(ops);off['publish_head']['enabled']=False
+    assert 'not enabled' in ex.validate(req,off,{'builder':True})   # the table's enabled flag stays the kill switch
     for key in ('dry_run_passed',):  # A8 §5 retired backup_taken / restore_verified as preconditions of a non-teardown kind
         bad=copy.deepcopy(accepted);bad['checks'][key]=False;path.write_text(json.dumps(bad))
         if key == 'dry_run_passed':
@@ -345,6 +349,149 @@ def test_executor_g8_checks_remain_required_before_head_policy(tmp_path,monkeypa
     ex.receipt(req,'RUNNING')
     assert ex.validate(req,fixture,{'builder':True},reserved=True) is None
     assert 'already has a receipt' in ex.validate(req,fixture,{'builder':True})
+
+
+# ── SR-HEAD-POLICY-KEEP: the enabled kinds are admitted only through the head policy ─────────────────────────────────────────────────
+# Each test validates against the REAL executor_ops.json (the kinds are enabled in it) with the reviewed policy loaded exactly as production loads it
+# (`git show <reviewed_commit>:…/head_operation.py`). A valid request is the positive control in every test, so a refusal cannot be a G8 refusal.
+HEAD_TABLE = lambda: json.loads((FLEET/'executor_ops.json').read_text())['ops']
+CAPS = {'builder': True}
+
+
+def admitting_executor(tmp_path, monkeypatch):
+    """executor() plus what G8 needs before it reaches the head policy: a live lease, a merged reviewed commit, an acceptance directory."""
+    import subprocess
+    ex = executor(tmp_path, monkeypatch)
+    acc = ex.OPS/'acceptance'; acc.mkdir(); monkeypatch.setattr(ex, 'ACC', acc)
+    monkeypatch.setattr(ex, 'SEEN', ex.OPS/'idempotency.jsonl')
+    monkeypatch.setattr(ex, 'lease_live', lambda lease: lease == 'fixture-live')
+    show = ex.git
+    monkeypatch.setattr(ex, 'git', lambda *a, **kw: subprocess.CompletedProcess(a, 0, '', '') if a[0] == 'merge-base' else show(*a, **kw))
+    return ex
+
+
+def signed(ex, req):
+    """The signed route a serving change always takes: a V-lane ACCEPTED receipt bound to the complete request."""
+    req = copy.deepcopy(req)
+    req.update(lease_id='fixture-live', expires_at=(dt.datetime.now(dt.timezone.utc)+dt.timedelta(hours=1)).isoformat())
+    path = ex.ACC/(req['operation_id']+'.json')
+    path.write_text(json.dumps(dict(result='ACCEPTED', operation_id=req['operation_id'], by='v1', reviewed_commit=req['reviewed_commit'],
+                                    ts=dt.datetime.now(dt.timezone.utc).isoformat(), checks=dict(dry_run_passed=True),
+                                    request_sha256=head.request_digest(req))))
+    req['acceptance_receipt'] = str(path)
+    return req
+
+
+def executable(ex):
+    dry = request()
+    req = request('publish_head')
+    req['dry_run_receipt'] = store(ex.OPS, 'dry.json', receipt(dry, stage(dry)))
+    return signed(ex, req)
+
+
+@pytest.mark.parametrize('route', ['dryrun', 'execute'])
+def test_a_valid_head_request_is_admitted_by_the_real_table_and_policy(tmp_path, monkeypatch, route):
+    ex = admitting_executor(tmp_path, monkeypatch)
+    req = request() if route == 'dryrun' else executable(ex)
+    assert ex.validate(req, HEAD_TABLE(), CAPS) is None
+
+
+@pytest.mark.parametrize('route', ['dryrun', 'execute'])
+@pytest.mark.parametrize('name,mutate', [
+    ('scope_missing', lambda r: r.pop('head_change')),
+    ('scope_widened', lambda r: r['head_change'].update(sql='UPDATE kala_gochara_authority SET authoritative_generation=$1')),
+    ('scope_missing_expected_head', lambda r: r['head_change'].pop('expected_head')),
+    ('scope_partial_expected_head', lambda r: r['head_change']['expected_head'].pop('evidence_ref')),
+    ('scope_target_without_manifest', lambda r: r['head_change']['target'].pop('manifest_id')),
+])
+def test_a_head_request_without_the_exact_head_change_scope_is_refused(tmp_path, monkeypatch, route, name, mutate):
+    # Claim: the request carries the head_change scope, exactly (head_operation.shape). Revert = drop the policy hook from validate().
+    ex = admitting_executor(tmp_path, monkeypatch)
+    req = request() if route == 'dryrun' else executable(ex)
+    bad = copy.deepcopy(req); mutate(bad)
+    if route == 'execute':
+        bad = signed(ex, {k: v for k, v in bad.items() if k not in ('acceptance_receipt', 'lease_id', 'expires_at')})   # re-sign: G8 must pass, so only the policy can refuse
+    why = ex.validate(bad, HEAD_TABLE(), CAPS)
+    assert why is not None, name
+    if route == 'dryrun':
+        assert why in ('head_policy_input_missing_or_invalid', 'exact_head_change_scope_required', 'full_previous_head_required', 'exact_target_required'), (name, why)
+
+
+@pytest.mark.parametrize('route', ['dryrun', 'execute'])
+@pytest.mark.parametrize('name,mutate,expected', [
+    ('generation', lambda r: r['args'].update(generation='5.1'), 'args_do_not_bind_exact_head_change'),
+    ('manifest', lambda r: r['args'].update({'manifest-id': str(uuid.UUID(int=51))}), 'args_do_not_bind_exact_head_change'),
+    ('expected_head_digest', lambda r: r['args'].update({'expected-head-sha256': '0'*64}), 'args_do_not_bind_exact_head_change'),
+    ('arg_missing', lambda r: r['args'].pop('manifest-id'), 'args_do_not_bind_exact_head_change'),
+    ('arg_renamed', lambda r: r['args'].update({'expected-head': r['args'].pop('expected-head-sha256')}), "disallowed args ['expected-head']"),
+])
+def test_a_head_request_whose_args_do_not_bind_the_scope_exactly_is_refused(tmp_path, monkeypatch, route, name, mutate, expected):
+    # Claim: args are exactly (generation, manifest-id, expected-head-sha256) and bind the scope. Revert = drop the policy hook (or widen allowed_args).
+    ex = admitting_executor(tmp_path, monkeypatch)
+    req = request() if route == 'dryrun' else executable(ex)
+    bad = copy.deepcopy(req); mutate(bad)
+    if route == 'execute':
+        bad = signed(ex, {k: v for k, v in bad.items() if k not in ('acceptance_receipt', 'lease_id', 'expires_at')})
+    assert ex.validate(bad, HEAD_TABLE(), CAPS) == expected
+
+
+@pytest.mark.parametrize('route', ['dryrun', 'execute'])
+@pytest.mark.parametrize('events', ['absent', 'refused', 'deferred', 'insufficient_evidence', 'unauthorised_actor', 'earlier_approved_then_refused'])
+def test_a_publish_without_the_effective_approved_d_flip_decision_is_refused(tmp_path, monkeypatch, route, events):
+    # Claim: the D-FLIP decision event is the gate for a publish (dry run included). Revert = drop the policy hook, or let a non-approved event authorize.
+    ex = admitting_executor(tmp_path, monkeypatch)
+    req = request() if route == 'dryrun' else executable(ex)
+    assert ex.validate(req, HEAD_TABLE(), CAPS) is None                                    # control: the approved decision admits it
+    log = {'absent': [],
+           'refused': [decision('refused')],
+           'deferred': [decision('deferred')],
+           'insufficient_evidence': [decision('insufficient_evidence')],
+           'unauthorised_actor': [decision(actor='builder')],
+           'earlier_approved_then_refused': [decision(), decision('refused')]}[events]
+    (ex.OPS.parent/'EVENTS.jsonl').write_text(''.join(json.dumps(e)+'\n' for e in log))
+    assert ex.validate(req, HEAD_TABLE(), CAPS) == 'D-FLIP_latest_effective_approved_event_required'
+
+
+@pytest.mark.parametrize('route', ['dryrun', 'execute'])
+def test_a_publish_must_bind_the_decision_event_digest(tmp_path, monkeypatch, route):
+    ex = admitting_executor(tmp_path, monkeypatch)
+    req = request() if route == 'dryrun' else executable(ex)
+    for bad in (lambda r: r.pop('decision_event_sha256'), lambda r: r.update(decision_event_sha256=head.sha(decision(detail='another event')))):
+        mutated = copy.deepcopy(req); bad(mutated)
+        if route == 'execute':
+            mutated = signed(ex, {k: v for k, v in mutated.items() if k not in ('acceptance_receipt', 'lease_id', 'expires_at')})
+        assert ex.validate(mutated, HEAD_TABLE(), CAPS) == 'D-FLIP_latest_effective_approved_event_required'
+
+
+@pytest.mark.parametrize('name,mutate', [
+    ('scope_missing', lambda r: r.pop('head_change')),
+    ('restore_head_missing', lambda r: r['head_change'].pop('restore_head')),
+    ('restore_head_invented', lambda r: r['head_change']['restore_head'].update(flipped_by='invented')),
+    ('arg_digest', lambda r: r['args'].update({'expected-head-sha256': '0'*64})),
+    ('arg_generation', lambda r: r['args'].update(generation='5.0')),
+    ('not_the_original_publish', lambda r: r.pop('rollback_of')),
+])
+def test_rollback_dry_run_is_admitted_only_with_the_exact_scope_args_and_original_publish(tmp_path, monkeypatch, name, mutate):
+    # The rollback kind goes through the same policy: its valid request is admitted, each planted deviation is refused.
+    ex = admitting_executor(tmp_path, monkeypatch)
+    req = rollback_request(ex.OPS)
+    assert ex.validate(req, HEAD_TABLE(), CAPS) is None
+    bad = copy.deepcopy(req); mutate(bad)
+    assert ex.validate(bad, HEAD_TABLE(), CAPS) is not None, name
+
+
+def test_an_execute_without_its_own_completed_dry_run_receipt_is_refused_even_with_a_signer(tmp_path, monkeypatch):
+    ex = admitting_executor(tmp_path, monkeypatch)
+    req = executable(ex)
+    bare = signed(ex, {k: v for k, v in req.items() if k not in ('acceptance_receipt', 'lease_id', 'expires_at', 'dry_run_receipt')})
+    assert 'dry-run' in ex.validate(bare, HEAD_TABLE(), CAPS)
+
+
+def test_every_head_kind_is_off_when_the_table_flag_is_off(tmp_path, monkeypatch):
+    ex = admitting_executor(tmp_path, monkeypatch)
+    for kind in ('publish_head', 'rollback_head', 'publish_head_dryrun', 'rollback_head_dryrun'):
+        off = HEAD_TABLE(); off[kind]['enabled'] = False
+        assert 'not enabled' in ex.validate(request(kind), off, CAPS), kind
 
 
 def test_head_proof_requires_measured_equal_relation_fingerprints(tmp_path,monkeypatch):
@@ -425,7 +572,7 @@ def test_main_duplicate_refusal_preserves_receipt_and_retained_head_bytes(tmp_pa
     output_path = ex.REC/(req['operation_id']+'.output.txt')
     output_path.write_bytes(b'original adapter output evidence\n')
     table = json.loads((FLEET/'executor_ops.json').read_text())['ops']
-    table[kind]['enabled'] = enabled  # fixture only; authority stays disabled in source
+    table[kind]['enabled'] = enabled  # both states are exercised: duplicate refusal must hold whether or not the kind is enabled
     monkeypatch.setattr(ex, 'sync', lambda: None)
     monkeypatch.setattr(ex, 'load_table', lambda: table)
     monkeypatch.setattr(ex, 'refresh_from_main_or_fail_closed', lambda: True)
