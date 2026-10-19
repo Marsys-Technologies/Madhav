@@ -33,24 +33,19 @@ QUEUE_ALWAYS_JOBS = frozenset({
     'db-integration-tests', 'gochara-a55-measuring-build',
     'gochara-a55-teardown', 'gochara-a55-teardown-round2', 'gochara-a55-teardown-round3',
 })
-# SR-SCOPE-C37 (owner surrogate, 2026-10-19; incident #3715 -- a backup-validity change merged green and turned push-main red
-# because C37 was path-scoped out of the queue): a merge_group whose diff touches the small-test / backup / dispatch / teardown /
-# executor paths below also runs the C37 dispatch job and the C38 teardown jobs (base + rounds 2 and 3), whatever else changed.
-# Repo-relative globs (ci_gate._glob_matches: `*` within a segment, `**` across segments); job ids in ci.yml. Required check
-# names are unchanged: the jobs are only selected, never renamed.
-QUEUE_PATH_SCOPED_PATTERNS = (
-    '00_ARCHITECTURE/briefs/kalayantra/fleet/**',
-    'platform/scripts/*small_test*',
-    'platform/scripts/backup_v5_*',
-    'platform/scripts/dispatch_v5_*',
-    'platform/scripts/teardown_v5_*',
-    'platform/scripts/*executor*',
-    'platform/python-sidecar/tests/l3/gochara/_smalltest_executor*',
-)
-QUEUE_PATH_SCOPED_JOBS = frozenset({
-    'gochara-a55-dispatch',
-    'gochara-a55-teardown', 'gochara-a55-teardown-round2', 'gochara-a55-teardown-round3',
-})
+# OWNER-MERGE-GROUP-FULL-20261019 (supersedes the merge_group clause of OWNER-CI-SCOPED-QUEUE-20261017): from now until the
+# campaign closes, a merge_group runs the FULL "CI -- Ganga Quality Gate" -- every DB job and profile, unscoped; a pull_request
+# stays path-scoped. Reason: two red mains in 24 h (K7 certification; C37 and A5.5f), each from a suite scoped out of the queue.
+# THE SINGLE SWITCH: set MERGE_GROUP_FULL = False at campaign close to return the queue to the scoped path (QUEUE_ALWAYS_JOBS).
+MERGE_GROUP_FULL = True
+# Record of SR-SCOPE-C37 (owner surrogate, 2026-10-19; incident #3715 -- a backup-validity change merged green and turned
+# push-main red because C37 was path-scoped out of the queue). That ruling selected the C37 dispatch job and the C38 teardown
+# jobs on a merge_group whose diff touched these repo-relative globs; MERGE_GROUP_FULL makes it moot, the list is kept as the
+# record of why (re-add as a path-scoped queue rule if the switch is turned off):
+#   00_ARCHITECTURE/briefs/kalayantra/fleet/**   platform/scripts/*small_test*   platform/scripts/backup_v5_*
+#   platform/scripts/dispatch_v5_*   platform/scripts/teardown_v5_*   platform/scripts/*executor*
+#   platform/python-sidecar/tests/l3/gochara/_smalltest_executor*
+#   -> jobs gochara-a55-dispatch, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3
 # SR-BOLD-08(a) (owner-confirmed 2026-10-18): the same combination-sensitive family is MERGE_GROUP-ONLY. A pull_request does not
 # run DB Integration Tests (SAMIKSHA, all shards, even when its diff touches their tests) nor the Governance Tool Tests shards; the
 # queue runs both on the PR merged with current main -- the only place "green alone, red combined" can be measured -- and the
@@ -123,23 +118,18 @@ def _matches(root: Path, spec: dict, paths: list[str], discovered: list[str]) ->
     return False
 
 
-def queue_always_jobs(event: str, paths: list[str]) -> frozenset:
-    """Jobs a merge_group runs beyond the PR selection: the SR-CI-SCOPED-SAFEGUARD set always, plus the C37/C38 set (SR-SCOPE-C37)
-    when the diff touches a QUEUE_PATH_SCOPED_PATTERNS path. A pull_request and every other event add nothing here."""
-    if event != 'merge_group':
-        return frozenset()
-    if any(_glob_matches(path, pattern) for path in paths for pattern in QUEUE_PATH_SCOPED_PATTERNS):
-        return QUEUE_ALWAYS_JOBS | QUEUE_PATH_SCOPED_JOBS
-    return QUEUE_ALWAYS_JOBS
-
-
 def combination_suites_run(event: str, paths: list[str]) -> bool:
     """True when the combination-sensitive family runs in THIS event. Only a pull_request defers it, and only when its diff
     is non-empty and touches none of SCOPER_PATHS; every other event (queue, main, dispatch) runs it."""
     return event != 'pull_request' or any(path in SCOPER_PATHS for path in paths)
 
 
-def select_db(root: Path, jobs: dict, paths: list[str], always_jobs=frozenset(), deferred_jobs=frozenset()) -> tuple[list[str], list[str]]:
+def merge_group_full(event: str) -> bool:
+    """True when this event runs every DB job and profile unscoped: a merge_group while MERGE_GROUP_FULL is on."""
+    return MERGE_GROUP_FULL and event == 'merge_group'
+
+
+def select_db(root: Path, jobs: dict, paths: list[str], always_jobs=frozenset(), deferred_jobs=frozenset(), select_all=False) -> tuple[list[str], list[str]]:
     specs = ci_discovery.profiles()
     selected_jobs: set[str] = set()
     selected_profiles: list[str] = []
@@ -148,7 +138,7 @@ def select_db(root: Path, jobs: dict, paths: list[str], always_jobs=frozenset(),
         owners = [owner for owner in owners if owner not in deferred_jobs]
         if not owners:
             continue
-        if any(owner in always_jobs for owner in owners) or _matches(root, spec, paths, ci_discovery.discover(root, spec)):
+        if select_all or any(owner in always_jobs for owner in owners) or _matches(root, spec, paths, ci_discovery.discover(root, spec)):
             selected_profiles.append(profile)
             selected_jobs.update(owners)
     # Accepted #3618 fixture producers are prerequisites, not a second profile list.
@@ -175,10 +165,10 @@ def main(argv=None):
     paths = ci_changes.changed_files(ns.base, ns.head) if scoped else []
     if paths is None or (scoped and not paths):
         raise ValueError('cannot establish the PR/queue diff; refusing a green light gate')
-    always = queue_always_jobs(ns.event, paths)
+    always = QUEUE_ALWAYS_JOBS if ns.event == 'merge_group' else frozenset()
     run_combination = combination_suites_run(ns.event, paths)
     deferred = frozenset() if run_combination else PR_DEFERRED_DB_JOBS
-    selected_jobs, selected_profiles = select_db(ROOT, jobs, paths, always, deferred) if scoped else ([], [])
+    selected_jobs, selected_profiles = select_db(ROOT, jobs, paths, always, deferred, merge_group_full(ns.event)) if scoped else ([], [])
     print('db_jobs=' + json.dumps(selected_jobs, separators=(',', ':')))
     print('db_profiles=' + json.dumps(selected_profiles, separators=(',', ':')))
     print('run_combination_suites=' + ('true' if run_combination else 'false'))

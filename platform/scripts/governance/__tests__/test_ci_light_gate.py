@@ -293,11 +293,9 @@ def test_ci_gate_selects_changed_profiles_on_merge_group_and_nothing_on_main(mon
         out[event] = capsys.readouterr().out
     assert 'gochara-a55-replace-chain' in out['merge_group']
     parsed = {e: dict(l.split('=', 1) for l in out[e].splitlines()) for e in ('pull_request', 'merge_group')}
-    # the queue = the PR selection plus the SR-CI-SCOPED-SAFEGUARD suites (own oracle below), nothing else
+    # OWNER-MERGE-GROUP-FULL-20261019: the queue = the PR selection plus everything else (own oracle below)
     for key in ('db_jobs', 'db_profiles'):
         assert set(json.loads(parsed['pull_request'][key])) <= set(json.loads(parsed['merge_group'][key]))
-    assert {j for j in json.loads(parsed['merge_group']['db_jobs'])} - set(json.loads(parsed['pull_request']['db_jobs'])) \
-        <= ci_gate.QUEUE_ALWAYS_JOBS | ci_gate.QUEUE_PATH_SCOPED_JOBS
     assert out['push'] == out['workflow_dispatch'] == 'db_jobs=[]\ndb_profiles=[]\nrun_combination_suites=true\n'
     monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: None)
     with pytest.raises(ValueError):
@@ -326,57 +324,58 @@ def test_combination_sensitive_suites_run_on_every_merge_group_even_for_an_unrel
     import ci_discovery
     shards = {p for p in ci_discovery.profiles() if p.startswith(('db-integration-tests-', 'gochara-a55-measuring-build-', 'gochara-a55-teardown'))}
     assert shards and shards <= set(queue_profiles)
-    assert set(queue_jobs) == must, 'every other DB job stays path-scoped'
     for n in sorted(must):
         assert evaluate(jobs[n].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles), n
     for n in ('required-db-integration-tests', 'required-gochara-a55-teardown', 'required-gochara-a55-teardown-round3'):
         assert evaluate(jobs[n].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles), n
-    assert not evaluate(jobs['gochara-a55-replace-chain'].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles)
 
 
-C37_C38_JOBS = {'gochara-a55-dispatch', 'gochara-a55-teardown', 'gochara-a55-teardown-round2', 'gochara-a55-teardown-round3'}
-C37_PROFILE = 'gochara-a55-dispatch-1-9'
+def _gate_output(monkeypatch, capsys, event, changed):
+    import ci_changes
+    import ci_gate
+    monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: changed)
+    assert ci_gate.main(['--event', event, '--base', 'B', '--head', 'H']) == 0
+    return dict(line.split('=', 1) for line in capsys.readouterr().out.splitlines())
+
+
+def _all_db_jobs_and_profiles():
+    import ci_discovery
+    import ci_gate
+    jobs = workflow()['jobs']
+    return ({n for n, j in jobs.items() if j.get('services')}, set(ci_gate.db_profile_owners(jobs)) & set(ci_discovery.profiles()))
 
 
 @pytest.mark.parametrize('changed', [
-    '00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py',
-    '00_ARCHITECTURE/briefs/kalayantra/fleet/J2A_SCOPED_BACKUP_v1_0.md',
-    'platform/scripts/v5_small_test_shared.py',
-    'platform/scripts/backup_v5_small_test_job.py',
-    'platform/scripts/dispatch_v5_century_job.py',
-    'platform/scripts/teardown_v5_small_test_job.py',
-    'platform/python-sidecar/tests/l3/gochara/_smalltest_executor_evidence.py',
+    ['00_ARCHITECTURE/briefs/kalayantra/NOTES.md', 'docs/README.md'],
+    ['platform/scripts/backup_v5_small_test_job.py'],
 ])
-def test_sr_scope_c37_queue_runs_c37_and_c38_for_each_small_test_backup_dispatch_teardown_executor_path(monkeypatch, capsys, changed):
-    """SR-SCOPE-C37 (incident #3715): a merge_group touching any listed path family runs C37 (dispatch) and the C38 teardown jobs
-    and the C37 profile; the same diff on a pull_request stays path-scoped. Required check names are not touched."""
-    import ci_changes
-    import ci_gate
-    monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: [changed])
-    out = {}
-    for event in ('pull_request', 'merge_group'):
-        assert ci_gate.main(['--event', event, '--base', 'B', '--head', 'H']) == 0
-        out[event] = dict(line.split('=', 1) for line in capsys.readouterr().out.splitlines())
-    assert C37_C38_JOBS <= set(json.loads(out['merge_group']['db_jobs'])), changed
-    assert C37_PROFILE in json.loads(out['merge_group']['db_profiles']), changed
-    assert not C37_C38_JOBS & set(json.loads(out['pull_request']['db_jobs'])), 'a pull_request stays path-scoped'
+def test_owner_merge_group_full_queue_selects_every_suite_whatever_the_diff(monkeypatch, capsys, changed):
+    """OWNER-MERGE-GROUP-FULL-20261019 (supersedes the merge_group clause of OWNER-CI-SCOPED-QUEUE-20261017; two red mains in 24 h,
+    each from a suite scoped out of the queue): a merge_group selects EVERY DB job (incl. the C37 dispatch, the C38 teardowns, the A5.5f
+    replace-chain and its fixture producer) and EVERY DB profile, for a docs-only diff and a code diff alike, and each job's `if` runs."""
+    all_jobs, all_profiles = _all_db_jobs_and_profiles()
+    assert {'gochara-a55-dispatch', 'gochara-a55-replace-chain', 'replace-chain-substrate', 'kala-db-tests'} <= all_jobs
+    out = _gate_output(monkeypatch, capsys, 'merge_group', changed)
+    queue_jobs, queue_profiles = json.loads(out['db_jobs']), json.loads(out['db_profiles'])
+    assert set(queue_jobs) == all_jobs
+    assert set(queue_profiles) == all_profiles and len(all_profiles) > 50
+    assert out['run_combination_suites'] == 'true'
     jobs = workflow()['jobs']
-    for n in C37_C38_JOBS:
-        assert evaluate(jobs[n].get('if'), event='merge_group', selected=json.loads(out['merge_group']['db_jobs']),
-                        profiles=json.loads(out['merge_group']['db_profiles'])), n
+    for n in sorted(all_jobs - {'replace-chain-substrate'}):
+        assert evaluate(jobs[n].get('if'), event='merge_group', selected=queue_jobs, profiles=queue_profiles), n
 
 
-def test_sr_scope_c37_queue_does_not_run_c37_for_an_unrelated_docs_only_change(monkeypatch, capsys):
-    """SR-SCOPE-C37: a docs-only diff adds no C37 job or profile on the queue (C38 stays only via SR-CI-SCOPED-SAFEGUARD)."""
-    import ci_changes
+def test_owner_merge_group_full_leaves_a_docs_only_pull_request_path_scoped(monkeypatch, capsys):
+    """The same docs-only diff on a pull_request selects no DB job or profile (path-scoped, unchanged), and the queue switch is a
+    single module constant: a merge_group with it off falls back to the scoped SR-CI-SCOPED-SAFEGUARD selection."""
     import ci_gate
-    monkeypatch.setattr(ci_changes, 'changed_files', lambda base, head: ['docs/README.md', '00_ARCHITECTURE/briefs/kalayantra/NOTES.md'])
-    assert ci_gate.main(['--event', 'merge_group', '--base', 'B', '--head', 'H']) == 0
-    out = dict(line.split('=', 1) for line in capsys.readouterr().out.splitlines())
-    assert 'gochara-a55-dispatch' not in json.loads(out['db_jobs'])
-    assert C37_PROFILE not in json.loads(out['db_profiles'])
-    assert not ci_gate.queue_always_jobs('pull_request', ['platform/scripts/backup_v5_small_test_job.py'])
-    assert ci_gate.queue_always_jobs('merge_group', ['docs/README.md']) == ci_gate.QUEUE_ALWAYS_JOBS
+    docs = ['docs/README.md', '00_ARCHITECTURE/briefs/kalayantra/NOTES.md']
+    assert _gate_output(monkeypatch, capsys, 'pull_request', docs) == {'db_jobs': '[]', 'db_profiles': '[]', 'run_combination_suites': 'false'}
+    assert ci_gate.merge_group_full('merge_group') and not ci_gate.merge_group_full('pull_request')
+    assert not ci_gate.merge_group_full('push') and not ci_gate.merge_group_full('workflow_dispatch')
+    monkeypatch.setattr(ci_gate, 'MERGE_GROUP_FULL', False)
+    scoped = json.loads(_gate_output(monkeypatch, capsys, 'merge_group', docs)['db_jobs'])
+    assert set(scoped) == set(ci_gate.QUEUE_ALWAYS_JOBS) and 'gochara-a55-dispatch' not in scoped
 
 
 def test_merge_queue_diffs_against_the_group_base_and_every_required_check_reports():
