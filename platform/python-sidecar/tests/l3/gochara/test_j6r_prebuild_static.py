@@ -21,7 +21,8 @@ def test_prebuild_never_enables_executor_or_forges_real_rehearsal_acceptance():
     ops = json.loads((ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json').read_text())['ops']
     for name in ('publish_head', 'rollback_head'):
         assert ops[name]['enabled'] is False
-        assert ops[name]['script'].startswith('TO_BE_SET_')
+        assert ops[name]['script'] == '00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py'
+        assert ops[name + '_dryrun']['enabled'] is False
     model = json.loads((ROOT / '00_ARCHITECTURE/control/kalayantra/plan_model.json').read_text())
     item = next(row for row in model['items'] if row['id'] == 'J-6r')
     assert item['completion_kind'] == 'artifact'
