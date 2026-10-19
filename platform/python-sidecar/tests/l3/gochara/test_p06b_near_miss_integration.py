@@ -338,8 +338,11 @@ def test_final_rules_grain_requires_layer_pin_even_before_search_rows_exist(chai
     from services.gochara_kernel.inventory_store import InventoryStore
     from .test_a53_inventory import CHART_ID, FACT_IDS, DASHA_IDS, H0, H1
     from .conftest import EPHE_PATH
+    from services.gochara_kernel import rule_registry
     c=chain
     _apply(c)
+    with rule_registry.rule_profile(final_rules=True):   # main made the final (1.2.0) rules opt-in: a record on P3@1.2.0 needs that sealed row
+        rule_registry.RuleRegistryStore(c).seed()
     sky=c.execute('SELECT sky_convention_id FROM ka_gochara_convention_bridge').fetchone()[0]
     with c.transaction():
         vj.take_locks(c,CHART_ID)
