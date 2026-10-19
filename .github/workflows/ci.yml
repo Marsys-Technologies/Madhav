@@ -108,6 +108,9 @@ permissions:
 # SR-CI-SCOPED-SAFEGUARD: three combination-sensitive suites run on EVERY merge_group whatever
 # paths changed (QUEUE_ALWAYS_JOBS in ci_gate.py): DB Integration Tests (SAMIKSHA, all shards),
 # the Gochara measuring build, and the C38 small-test teardown jobs. Everything else stays scoped.
+# OWNER-MERGE-GROUP-FULL-20261019 (supersedes the merge_group clause above, until the campaign closes): a merge_group runs the FULL
+# gate -- every DB job and profile, unscoped (MERGE_GROUP_FULL in ci_gate.py, the single switch); a pull_request stays path-scoped.
+# The SR-SCOPE-C37 path list that preceded it is kept as a record in ci_gate.py. Required check names are unchanged.
 # Full events (push/main, full_gate dispatch) run EVERY heavy job -- the safety net:
 # a red main is fixed forward.
 # The required Governance Gates aggregate depends on full-suite, so a failure,
