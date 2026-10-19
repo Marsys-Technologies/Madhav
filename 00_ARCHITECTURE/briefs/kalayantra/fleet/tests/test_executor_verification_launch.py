@@ -60,7 +60,7 @@ def container(args):
 
 
 def task(args):
-    return {"serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": "7200", "containers": [container(args)]}
+    return {"serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": "28800", "containers": [container(args)]}
 
 
 def job_v1():

@@ -23,7 +23,7 @@ def job():
     return {"metadata": {"name": "gochara-verification-job"},
             "spec": {"template": {"metadata": {"annotations": {"run.googleapis.com/cloudsql-instances": INST}},
                                   "spec": {"taskCount": 1, "template": {"spec": {
-                                      "serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": "7200",     # int64 arrives as a decimal STRING (API/SDK shape)
+                                      "serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": "28800",     # int64 arrives as a decimal STRING (API/SDK shape)
                                       "containers": [{"image": f"{REPO}@{DIG}", "command": list(vjc.ENTRYPOINT),
                                                       "resources": {"limits": {"memory": "8Gi", "cpu": "2"}},
                                                       "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": DIG},
@@ -32,7 +32,7 @@ def job():
 
 def run(j=None):
     return rb.check(job() if j is None else j, image_repo=REPO, image_digest=DIG, service_account=SA, runner_commit=SHA, secret_name="gochara-verifier-db-url",
-                    cloudsql_instance=INST, timeout_seconds=7200, memory="8Gi", cpu="2")
+                    cloudsql_instance=INST, timeout_seconds=28800, memory="8Gi", cpu="2")
 
 
 def edit(fn):
@@ -59,7 +59,7 @@ def test_j5s_definition_cli_refuses_an_unnamed_or_differently_named_job(tmp_path
     path.write_text(json.dumps(j))
     assert rb.main(["--job-file", str(path), "--image-repo", REPO, "--image-digest", DIG,
                     "--service-account", SA, "--runner-commit", SHA, "--secret-name", "gochara-verifier-db-url",
-                    "--cloudsql-instance", INST, "--timeout-seconds", "7200", "--memory", "8Gi", "--cpu", "2"]) == 2
+                    "--cloudsql-instance", INST, "--timeout-seconds", "28800", "--memory", "8Gi", "--cpu", "2"]) == 2
     result = capsys.readouterr()
     assert "named verification job" in result.err
     assert "definition verified" not in result.out
@@ -103,12 +103,12 @@ def test_an_unexpected_shape_is_refused_never_passed():
         rb.check(job(), image_repo=REPO, image_digest="latest", service_account=SA, runner_commit=SHA, secret_name="s", cloudsql_instance=INST, timeout_seconds=1, memory="1", cpu="1")
 
 
-@pytest.mark.parametrize("ok", ["7200", 7200])
+@pytest.mark.parametrize("ok", ["28800", 28800])
 def test_a_documented_int64_string_or_integer_timeout_is_accepted(ok):
     assert run(edit(lambda j: task(j).update(timeoutSeconds=ok))) == []
 
 
-@pytest.mark.parametrize("bad", [True, "7200.0", 7200.5, float("inf"), float("nan"), " 7200", "+7200", "07200", "7200s", "", None, "7e3", 60, "60"])
+@pytest.mark.parametrize("bad", [True, "28800.0", 28800.5, float("inf"), float("nan"), " 28800", "+28800", "028800", "28800s", "", None, "28.8e3", 7200, "7200", 60, "60"])
 def test_a_timeout_that_is_not_exactly_the_deployed_value_is_refused(bad):
     assert any("timeoutSeconds" in b for b in run(edit(lambda j: task(j).update(timeoutSeconds=bad))))
 
@@ -140,7 +140,7 @@ def test_taskcount_as_a_decimal_string_is_normalised_and_a_malformed_one_is_refu
 def test_the_secret_remapping_annotation_is_refused_on_the_definition_and_on_the_v2_read(value):
     ann = "run.googleapis.com/secrets"
     assert any("secrets-mapping annotation" in b for b in run(edit(lambda j: j["spec"]["template"]["metadata"]["annotations"].update({ann: value}))))
-    kw = dict(image_repo=REPO, image_digest=DIG, service_account=SA, runner_commit=SHA, secret_name="gochara-verifier-db-url", cloudsql_instance=INST, timeout_seconds=7200, memory="8Gi", cpu="2")
+    kw = dict(image_repo=REPO, image_digest=DIG, service_account=SA, runner_commit=SHA, secret_name="gochara-verifier-db-url", cloudsql_instance=INST, timeout_seconds=28800, memory="8Gi", cpu="2")
     assert any("secrets-mapping annotation" in b for b in rb.check(job(), v2_job={"template": {"template": {"maxRetries": 0}}, "annotations": {ann: value}}, **kw))
 
 
@@ -153,7 +153,7 @@ def test_the_secret_selector_must_be_exactly_name_and_latest(ref):
 
 @pytest.mark.parametrize("bad", [False, True, "garbage", "07", "-1", -1, 2**63, "9223372036854775808", 1.5, [], {}])
 def test_an_invalid_present_v2_retries_value_refuses_even_when_v1_is_a_valid_zero(bad):
-    kw = dict(image_repo=REPO, image_digest=DIG, service_account=SA, runner_commit=SHA, secret_name="gochara-verifier-db-url", cloudsql_instance=INST, timeout_seconds=7200, memory="8Gi", cpu="2")
+    kw = dict(image_repo=REPO, image_digest=DIG, service_account=SA, runner_commit=SHA, secret_name="gochara-verifier-db-url", cloudsql_instance=INST, timeout_seconds=28800, memory="8Gi", cpu="2")
     assert vjc.retries_from_v2({"template": {"template": {"maxRetries": bad}}}, "job") is vjc.INVALID
     assert any("not a valid non-negative integer" in b for b in rb.check(job(), v2_job={"template": {"template": {"maxRetries": bad}}}, **kw))
 
@@ -185,7 +185,7 @@ def test_maxretries_absent_in_v1_is_accepted_only_when_the_v2_representation_car
         j = copy.deepcopy(job())
         task(j).pop("maxRetries")
         return j
-    kw = dict(image_repo=REPO, image_digest=DIG, service_account=SA, runner_commit=SHA, secret_name="gochara-verifier-db-url", cloudsql_instance=INST, timeout_seconds=7200, memory="8Gi", cpu="2")
+    kw = dict(image_repo=REPO, image_digest=DIG, service_account=SA, runner_commit=SHA, secret_name="gochara-verifier-db-url", cloudsql_instance=INST, timeout_seconds=28800, memory="8Gi", cpu="2")
     assert rb.check(v1_absent(), v2_job={"template": {"template": {"maxRetries": 0}}}, **kw) == []
     assert any("maxRetries" in b for b in rb.check(v1_absent(), v2_job={"template": {"template": {}}}, **kw))               # absent in BOTH
     assert any("maxRetries" in b for b in rb.check(v1_absent(), v2_job={"template": {"template": {"maxRetries": 3}}}, **kw))
@@ -195,7 +195,7 @@ def test_maxretries_absent_in_v1_is_accepted_only_when_the_v2_representation_car
 
 @pytest.mark.parametrize('document', [{'template': None}, {'template': {'template': None}}, {'template': {'template': {'maxRetries': None}}}])
 def test_p08_present_null_v2_fields_are_invalid_even_when_v1_has_zero(document):
-    kw = dict(image_repo=REPO, image_digest=DIG, service_account=SA, runner_commit=SHA, secret_name='gochara-verifier-db-url', cloudsql_instance=INST, timeout_seconds=7200, memory='8Gi', cpu='2')
+    kw = dict(image_repo=REPO, image_digest=DIG, service_account=SA, runner_commit=SHA, secret_name='gochara-verifier-db-url', cloudsql_instance=INST, timeout_seconds=28800, memory='8Gi', cpu='2')
     assert any('not a valid non-negative integer' in b for b in rb.check(job(), v2_job=document, **kw))
 
 
@@ -211,4 +211,4 @@ def test_p08_a_supplied_v2_file_containing_null_is_not_an_absent_read(tmp_path):
     jf.write_text(json.dumps(job()))
     vf.write_text('null')
     assert rb.main(['--job-file', str(jf), '--v2-job-file', str(vf), '--image-repo', REPO, '--image-digest', DIG, '--service-account', SA,
-                    '--runner-commit', SHA, '--secret-name', 'gochara-verifier-db-url', '--cloudsql-instance', INST, '--timeout-seconds', '7200', '--memory', '8Gi', '--cpu', '2']) == 2
+                    '--runner-commit', SHA, '--secret-name', 'gochara-verifier-db-url', '--cloudsql-instance', INST, '--timeout-seconds', '28800', '--memory', '8Gi', '--cpu', '2']) == 2
