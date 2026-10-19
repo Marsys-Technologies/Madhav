@@ -17,6 +17,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[5] / 'platform/scripts'))
 import backup_v5_small_test_job as backup
+import v5_small_test_shared as shared
 
 SCHEMA_SQL = """
 DROP SCHEMA IF EXISTS p02 CASCADE;
@@ -439,3 +440,56 @@ def test_restore_refuses_when_the_restored_targets_ledger_is_not_the_one_the_bas
         backup.restore_verify(folder, label, 'small_test')
     assert not (folder / 'restore.json').exists()
     assert_target_removed(dsn, label)
+
+
+# ---- SR-BACKUP-VALIDITY-A8: a scoped backup is valid while its scoped-content digest is unchanged ---------------------------
+
+@pytest.fixture
+def proven(scoped, monkeypatch):
+    """A real capture and restore proof, laid out as the dispatch policy reads it (<root>/backups/<label>/)."""
+    dsn, tmp_path, _ = scoped
+    folder, label, receipt = capture(dsn, tmp_path)
+    backup.restore_verify(folder, label, 'small_test')
+    root = tmp_path / 'evidence'
+    (root / 'backups' / label).mkdir(parents=True)
+    for name in ('capture.json', 'restore.json'):
+        (root / 'backups' / label / name).write_bytes((folder / name).read_bytes())
+    monkeypatch.setattr(shared, 'SCOPED_BACKUP_SCOPE_SHA256', receipt['scope']['sha256'])     # the synthetic scope stands in for the pinned one
+    ref = {'backup_label': label, 'backup_restore_sha256': hashlib.sha256((root / 'backups' / label / 'restore.json').read_bytes()).hexdigest()}
+    return dsn, root, ref, receipt
+
+
+def test_an_unchanged_scope_is_valid_when_read_back_hours_later_by_the_real_measurement(proven):
+    """Claim: valid while the scoped content is unchanged, whatever the clock says (A8 §3). The capture's recorded digest
+    is the one a fresh read-only measurement of the same relations produces (one digest function)."""
+    from datetime import datetime, timedelta, timezone
+    dsn, root, ref, receipt = proven
+    assert receipt['scoped_content_digest'] == shared.scoped_content_digest(receipt['measurements'])
+    hours_later = datetime.now(timezone.utc) + timedelta(hours=9)
+    shared.scoped_backup_problem(ref, root, now=hours_later, measure=backup.measure_scope_now)
+
+
+def test_one_changed_row_in_scope_invalidates_the_backup_by_the_real_measurement(proven):
+    dsn, root, ref, _ = proven
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute("ALTER TABLE p02.written DISABLE TRIGGER ALL")        # the trigger would also write p02.audit: change exactly one row
+        conn.execute("UPDATE p02.written SET value = 'changed after the backup' WHERE id = 1")
+    with pytest.raises(shared.Refused, match='content has changed since the backup'):
+        shared.scoped_backup_problem(ref, root, measure=backup.measure_scope_now)
+
+
+def test_the_fresh_measurement_is_read_only(scoped, monkeypatch):
+    dsn, _, _ = scoped
+    seen = []
+
+    def writes(conn, tables, sequences):
+        try:
+            conn.execute("INSERT INTO p02.audit (note) VALUES ('written by a measurement')")
+        except psycopg.errors.ReadOnlySqlTransaction as exc:
+            seen.append(exc)
+        return {'tables': {'p02.audit': {'rows': 0, 'sha256': 'a' * 64}}, 'sequences': {}}
+    monkeypatch.setattr(backup, 'scoped_measurements', writes)
+    backup.measure_scope_now(['p02.audit'], [])
+    assert len(seen) == 1
+    with psycopg.connect(dsn) as conn:
+        assert conn.execute("SELECT count(*) FROM p02.audit WHERE note = 'written by a measurement'").fetchone()[0] == 0

@@ -41,6 +41,15 @@ import datetime as _dt
 STORED_CREATED_AT = _dt.datetime(2031, 3, 4, 12, 0, 0, tzinfo=_dt.timezone.utc)   # the DATABASE's clock, deliberately years from the client's
 
 
+@pytest.fixture(autouse=True)
+def _scoped_content_unchanged(monkeypatch):
+    """These tests stage a dispatch against a fake database; the fresh scoped-content measurement is not their subject
+    (it is proved in test_backup_v5_small_test_scoped.py and the kala_db suite)."""
+    import backup_v5_small_test_job
+    import smalltest_safety_support as S
+    monkeypatch.setattr(backup_v5_small_test_job, 'measure_scope_now', S.fixture_measure)
+
+
 def _load_fresh():
     return importlib.reload(dispatch)
 
