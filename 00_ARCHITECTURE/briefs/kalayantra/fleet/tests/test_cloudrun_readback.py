@@ -334,7 +334,7 @@ def test_c11_table_entry_and_real_validate(tmp_path, monkeypatch):
     table = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
     entry = table["cloudrun_job_readback"]
     assert list(entry)[0] == "enabled" and entry["enabled"] is True and entry["production"] is False
-    assert (entry["needs"], entry["fixed_args"], entry["allowed_args"], entry["requesters"]) == ("gcloud", [], ["execution", "logs"], ["adhikarin", "v1", "v2"])
+    assert (entry["needs"], entry["fixed_args"], entry["allowed_args"], entry["requesters"]) == ("gcloud", [], ["execution", "logs", "metrics"], ["adhikarin", "v1", "v2"])
     assert entry["script"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py" and "also_needs" not in entry
     ex = _executor(tmp_path, monkeypatch)
     caps = {"gcloud": True}
