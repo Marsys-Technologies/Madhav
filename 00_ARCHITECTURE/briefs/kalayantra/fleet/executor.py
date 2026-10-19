@@ -641,7 +641,7 @@ def measuring_cancel_proof(req: dict, rc: int | None, out: str) -> tuple[dict | 
     return rec, None
 
 
-def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str | None = None, extra: dict | None = None, stderr: str = "") -> None:
+def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str | None = None, extra: dict | None = None, stderr: str = "", *, preserve_existing: bool = False) -> None:
     """SR-EXECUTOR-FRAMING: `out` is the child's stdout alone and `stderr` its stderr alone; the executor adds no byte of its own to either. A proof is
     parsed from `out` only (a child may lawfully print advisory lines on stderr). `<op>.output.txt` holds stdout exactly (after redaction) and
     `<op>.stderr.txt` stderr, each with its own sha256/bytes. A receipt made before this change has one combined `output_file` (stdout, "\\n", stderr)
@@ -652,13 +652,23 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
          "requested_by": req.get("requested_by"), "kyd": req.get("kyd"), "request_sha256": request_digest(req) if req.get("kind") else None}
     if stderr: r["stderr_tail"] = redact(stderr[-4000:])
     out = out or ""
+    receipt_path = REC / f"{name}.json"
+    separate_refusal = preserve_existing and status == "REFUSED" and receipt_path.exists()
+    if separate_refusal:
+        import uuid
+        # A rejected request must not replace evidence retained for readback or rollback,
+        # even when it is refused before the enabled-kind / request-policy checks.
+        r["preserved_receipt"] = {"path": str(receipt_path), "sha256": digest_bytes(receipt_path.read_bytes())}
+        refusal_dir = REC / "refusals"
+        refusal_dir.mkdir(exist_ok=True)
+        receipt_path = refusal_dir / f"{name}.{uuid.uuid4().hex}.json"
     if lane_selected(req):
         receipt_lane(req, r, status, rc, out)
     if out:                                           # the complete output is evidence; the tail alone must never be mistaken for it
-        body = redact(out).encode(); output_path = REC / f"{name}.output.txt"; output_path.write_bytes(body)
+        body = redact(out).encode(); output_path = receipt_path.with_suffix(".output.txt"); output_path.write_bytes(body)
         r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body).hexdigest(); r["output_bytes"] = len(body)
     if stderr:
-        body = redact(stderr).encode(); stderr_path = REC / f"{name}.stderr.txt"; stderr_path.write_bytes(body)
+        body = redact(stderr).encode(); stderr_path = receipt_path.with_suffix(".stderr.txt"); stderr_path.write_bytes(body)
         r["stderr_file"] = str(stderr_path); r["stderr_sha256"] = hashlib.sha256(body).hexdigest(); r["stderr_bytes"] = len(body)
     if req.get("kind") == "measuring_dispatch_dryrun" and status == "COMPLETED":
         try:
@@ -730,7 +740,8 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
     overlay = overlay_proofs().pop(str(req.get("operation_id")), None)
     if overlay: r["generated_overlay"] = overlay                 # the proof the executor itself measured, never the child's words
     if extra: r.update(extra)
-    with _lock: (REC / f"{name}.json").write_text(json.dumps(r, indent=1))
+    with _lock, receipt_path.open("x" if separate_refusal else "w") as f:
+        f.write(json.dumps(r, indent=1))
     log(f"{name} {status} {reason}")
 
 
@@ -1381,7 +1392,7 @@ def main() -> int:
             if production and FENCE.exists() and req.get("kind") not in ("scheduler_resume", "measuring_cancel"): continue      # the single production slot is taken; the request waits where it is (a resume of the watchdog is the safe direction and a cancel stops the very dispatch that holds the fence: neither waits)
             why = validate(req, table, caps)
             if why:
-                receipt(req, "REFUSED", why); shutil.move(str(f), DONE / f.name); continue
+                receipt(req, "REFUSED", why, preserve_existing=True); shutil.move(str(f), DONE / f.name); continue
             if production and remote_async(req["kind"], table[req["kind"]]):     # A8 §3.11: a synchronous kind takes no fence
                 FENCE.write_text(json.dumps({"operation_id": req["operation_id"], "request_sha256": request_digest(req), "ts": now()}))
             mark_seen(req["idempotency_key"], req["operation_id"])
