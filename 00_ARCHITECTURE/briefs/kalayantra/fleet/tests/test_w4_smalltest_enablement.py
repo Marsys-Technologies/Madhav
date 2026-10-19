@@ -37,7 +37,8 @@ CENTURY = {
 CENTURY_DISABLED = {"century_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], [], "J-4d")}
 DISABLED = {"verification_job", "publish_head", "rollback_head", *CENTURY_DISABLED,
             "publish_head_dryrun", "rollback_head_dryrun",
-            "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"}
+            "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback",
+            "github_run_readback"}   # U-M-12: prepared for W3/W4, shipped disabled; exact binding pinned in test_executor_table
 
 
 @pytest.fixture
