@@ -29,7 +29,8 @@ MEASURING = {
 }
 DISABLED = {"verification_job", "century_dispatch", "publish_head", "rollback_head",
             "publish_head_dryrun", "rollback_head_dryrun",
-            "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"}
+            "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback",
+            "protected_window_dispatch_dryrun", "protected_window_dispatch"}   # U-M-01: shipped disabled
 
 
 @pytest.fixture

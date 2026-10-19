@@ -114,6 +114,16 @@ SCHEDULER_BINDINGS = {
     "measuring_cancel": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_cancel.py", "fixed_args": [],   # SR-J3-CANCEL-NULL
                          "allowed_args": ["execution"], "production": True, "timeout_s": 900, "enabled_by": "J-3c"},
 }
+# U-M-01 (SR-PREBUILD-ALL; surrogate ruling SR-W2-ROUTE): the protected-window dispatch family, appended after the scheduler kinds and shipped DISABLED (not used in W2).
+# Exact bindings; the enabling PR flips `enabled` here and in the table together. `needs: none`: the child needs only the GitHub CLI session of the executor's own HOME.
+PROTECTED_WINDOW_SCRIPT = "00_ARCHITECTURE/briefs/kalayantra/fleet/protected_window_launch.py"
+PROTECTED_WINDOW_ARGS = ["flag", "ref", "head", "window_lease_id"]
+PROTECTED_WINDOW_BINDINGS = {
+    "protected_window_dispatch_dryrun": {"enabled": False, "needs": "none", "script": PROTECTED_WINDOW_SCRIPT, "fixed_args": ["--dry-run"],
+                                         "allowed_args": PROTECTED_WINDOW_ARGS, "production": False, "timeout_s": 300, "enabled_by": "J-4b"},
+    "protected_window_dispatch": {"enabled": False, "needs": "none", "script": PROTECTED_WINDOW_SCRIPT, "fixed_args": [],
+                                  "allowed_args": PROTECTED_WINDOW_ARGS, "production": True, "remote_async": True, "timeout_s": 600, "enabled_by": "J-4b"},
+}
 ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
@@ -204,6 +214,7 @@ def assert_table_matches_pin(now):
     for head_kind in ("publish_head", "rollback_head"):
         expected_order.insert(expected_order.index(head_kind) + 1, head_kind + "_dryrun")
     expected_order += list(SCHEDULER_BINDINGS)                      # SR-J3-REAPER-PAUSE: appended last
+    expected_order += list(PROTECTED_WINDOW_BINDINGS)               # U-M-01: appended after the scheduler kinds
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
@@ -221,6 +232,7 @@ def assert_table_matches_pin(now):
     expected["cloudrun_job_readback"] = json.loads(json.dumps(CLOUDRUN_READBACK))
     expected["quiescence_check"] = json.loads(json.dumps(QUIESCENCE_CHECK))
     expected.update(json.loads(json.dumps(SCHEDULER_BINDINGS)))
+    expected.update(json.loads(json.dumps(PROTECTED_WINDOW_BINDINGS)))
     for kind in READ_ONLY_KINDS[:3]:
         expected[kind]["read_only"] = True
     for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
@@ -679,7 +691,7 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head", *K9_KINDS])
+@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head", *K9_KINDS, *PROTECTED_WINDOW_BINDINGS])
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)
