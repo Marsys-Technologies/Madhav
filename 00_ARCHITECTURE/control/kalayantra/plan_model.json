@@ -25764,7 +25764,7 @@
       "track": "J",
       "lane": "J · Gochara 5.0 absorbed",
       "title": "Phase 5 — keep inherited Pravāha A5.3: Registered ka_gochara writer — three objects, per-path pruning, interval sweep with interior extrema, day tier on demand (closes Disclosure 3)",
-      "owner": "N",
+      "owner": "K",
       "depends_on": [
         "J-0m",
         "J-3c"
@@ -25772,7 +25772,7 @@
       "mandatory": true,
       "detector": {
         "type": "file_exists",
-        "path": "/Users/Dev/kalayantra/run/ops/receipts/J-3d-a53.json",
+        "path": "/Users/Dev/kalayantra/run/residuals/J-3d-a53.json",
         "min_bytes": 200,
         "measures": "Only the evidence bytes exist; typed SHA-256-bound independent acceptance and all dependencies/steps are separately mandatory. Not a code-merge proxy."
       },
@@ -25786,7 +25786,7 @@
           "/Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749"
         ],
         "owns": [
-          "/Users/Dev/kalayantra/run/ops/receipts/J-3d-a53.json"
+          "/Users/Dev/kalayantra/run/residuals/J-3d-a53.json"
         ],
         "tests": [
           "Accepted disposition evidence (observation, not completion): running event",
@@ -25794,11 +25794,11 @@
           "Measure this residual itself at its declared phase; a carrying packet code merge never satisfies it. Independent acceptance binds the evidence digest and every original dependency."
         ],
         "compat": "candidate-only production writes on the governed path; served output unchanged; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix). Its \"closes Disclosure 3\" clause is \"carried to J-7a-a62 (deferred)\" (GOCHARA_DESIGN_SPECS_v1_4.md:816; J-7a family deferred under A9 D-53; SR-J3-RESIDUALS)."
+        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class artifact; producer K. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix). Its \"closes Disclosure 3\" clause is \"carried to J-7a-a62 (deferred)\" (GOCHARA_DESIGN_SPECS_v1_4.md:816; J-7a family deferred under A9 D-53; SR-J3-RESIDUALS). Completion kind changed from operation to artifact: no executor op can produce a golden-measured bundle (SR-A53-ARTIFACT)."
       },
-      "completion_kind": "operation",
-      "producer": "N",
-      "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
+      "completion_kind": "artifact",
+      "producer": "K",
+      "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "a",
         "reason": "Re-entered at the original J phase by completion-path step 2; scope, producer and evidence class now bound; no independent assertion-child job."
@@ -25808,11 +25808,11 @@
       ],
       "step_evidence": {
         "writer_completion_readback": {
-          "evidence": "executor_receipt",
+          "evidence": "artifact_section",
           "detector": {
             "type": "file_contains",
             "path": "/Users/Dev/kalayantra/run/reviews/steps/J-3d-a53.writer_completion_readback.json",
-            "pattern": "\\A\\{\"evidence_sha256\":\"[0-9a-f]{64}\",\"item\":\"J\\-3d\\-a53\",\"operation_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"request_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"writer_completion_readback\",\"verdict\":\"MET\"\\}\\n?\\Z",
+            "pattern": "\\A\\{\"artifact_sha256\":\"[0-9a-f]{64}\",\"item\":\"J\\-3d\\-a53\",\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"writer_completion_readback\",\"verdict\":\"MET\"\\}\\n?\\Z",
             "measures": "Canonical whole-file independent acceptance receipt, no extra/duplicate/conflicting fields. Controller verifies the cited evidence digest and item/step identity; operation steps bind the SAME request and operation as the executor receipt and its independent readback. A marker alone is not operational acceptance."
           }
         }
