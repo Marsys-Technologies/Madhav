@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 
 from .events import actor_stream
-from .state import D46_KINDS, build_snapshot, open_dependencies, pending_gates
+from .state import D46_KINDS, build_snapshot, index_events, open_dependencies, pending_gates, recorded_na_steps
 from .verdicts import accepted_verdict
 
 
@@ -253,6 +253,9 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
     steps = item.get("steps", [])
     completed = {ev.get("step") for ev in events if ev.get("kind") == "item" and
                  ev.get("item") == item_id and ev.get("state") == "done" and ev.get("step")}
+    # a plan-declared not-applicable step is satisfied while its cited decision is recorded (SR-OP-STEPS item 3)
+    completed |= set(recorded_na_steps(item, index_events(events)["decisions"],
+                                       model.get("control_plane", {}).get("decision_outcomes")))
     if set(steps) - completed and relaxed != "code":
         raise CompletionError("steps remain open: " + ", ".join(sorted(set(steps) - completed)))
     if not item.get("detector") or detector.get("status") != "done":
