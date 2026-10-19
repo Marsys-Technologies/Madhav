@@ -28,26 +28,37 @@ def accepted(root, kind, name, **fields):
     return rref, aref
 
 
+FIXTURE_MEASURED = dict(tables={'public.a': dict(rows=1, sha256='a' * 64)}, sequences={})
+
+
+def fixture_measure(tables, sequences, dsn=None):
+    """Stands in for backup_v5_small_test_job.measure_scope_now in suites that stage a dispatch against a fake database:
+    the scoped content is unchanged since scoped_backup_for's capture. The measurement itself is proved in
+    test_backup_v5_small_test_scoped.py and tests/l3/kala_db/test_p01_smalltest_backup_scoped.py."""
+    return FIXTURE_MEASURED
+
+
 def scoped_backup_for(root, label='p02_fixture'):
     """A fresh, verified scoped backup + restore proof (what a dispatch must name; SR-J2A-BACKUP-SCOPE condition 4).
     One per root: a second call returns the fields of the first, so earlier approvals keep matching their bytes."""
     folder = Path(root) / 'run/ops/backups' / label
     if not (folder / 'restore.json').exists():
         started = dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=30)
-        window = dict(not_before=started.isoformat(), not_after=(started + dt.timedelta(seconds=shared.SCOPED_BACKUP_VALIDITY_S)).isoformat(),
-                      seconds=shared.SCOPED_BACKUP_VALIDITY_S)
+        window = dict(not_before=started.isoformat(), basis='scoped_content_digest_unchanged')
+        measured = FIXTURE_MEASURED
         folder.mkdir(parents=True)
         (folder / 'capture.json').write_text(json.dumps(dict(schema='ky.smalltest_backup/2', label=label, archive_sha256='b' * 64,
-            scope=dict(sha256=shared.SCOPED_BACKUP_SCOPE_SHA256), validity=window), sort_keys=True))
+            scope=dict(sha256=shared.SCOPED_BACKUP_SCOPE_SHA256), validity=window, measurements=measured,
+            measurement_method=shared.SCOPED_MEASUREMENT_METHOD, scoped_content_digest=shared.scoped_content_digest(measured)), sort_keys=True))
         (folder / 'restore.json').write_text(json.dumps(dict(schema='ky.smalltest_restore/2', label=label, status='verified',
             scoped=True, restore_verified=True, backup_taken=True, target_removed=True, archive_sha256='b' * 64,
-            scope_sha256=shared.SCOPED_BACKUP_SCOPE_SHA256, validity=window, ts=(started + dt.timedelta(minutes=10)).isoformat(),
+            scope_sha256=shared.SCOPED_BACKUP_SCOPE_SHA256, validity=window, measurements=measured, ts=(started + dt.timedelta(minutes=10)).isoformat(),
             capture_sha256=hashlib.sha256((folder / 'capture.json').read_bytes()).hexdigest()), sort_keys=True))
     return dict(backup_label=label, backup_restore_sha256=hashlib.sha256((folder / 'restore.json').read_bytes()).hexdigest())
 
 
 def authorize(root, req):
-    if req.get('kind') == 'smalltest_dispatch':
+    if req.get('kind') in ('smalltest_dispatch', 'century_dispatch'):      # a century dispatch names its scoped backup too (SR-PREBUILD-ALL: scoped backup by content hash)
         for key, value in scoped_backup_for(root).items():
             req.setdefault(key, value)
     req['chart_id'] = shared.CHART_ID

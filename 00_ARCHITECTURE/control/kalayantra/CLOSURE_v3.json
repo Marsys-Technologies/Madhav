@@ -674,7 +674,6 @@
     "D-R6",
     "D-R8",
     "D-RUN2",
-    "D-T2",
     "D-TEARDOWN",
     "D-VC",
     "J-0",
@@ -821,8 +820,6 @@
     "KA-3b",
     "KA-4",
     "KA-4b",
-    "L0-K",
-    "L0-K-RUNNER",
     "L0-M",
     "P06b",
     "V-J6",
@@ -835,16 +832,8 @@
     "VC-1",
     "VC-2"
    ],
-   "closure_count": 187,
+   "closure_count": 184,
    "gap_candidates": [
-    {
-     "absorbed_by": "C-1",
-     "input": "D-T2",
-     "reasons": [
-      "input:J-6l",
-      "input:L0-K"
-     ]
-    },
     {
      "absorbed_by": "C-1",
      "input": "J-5s",
@@ -867,8 +856,6 @@
      "absorbed_by": "C-1",
      "input": "J-7",
      "reasons": [
-      "decision:D-T2=approved",
-      "input:D-T2",
       "input:J-6l",
       "input:J-7-a63",
       "input:J-7-b61",
@@ -880,7 +867,6 @@
      "absorbed_by": "C-1",
      "input": "J-7-a63",
      "reasons": [
-      "input:D-T2",
       "input:J-6l",
       "optional"
      ]
@@ -889,7 +875,6 @@
      "absorbed_by": "C-1",
      "input": "J-7-b61",
      "reasons": [
-      "input:D-T2",
       "input:J-6l",
       "optional"
      ]
@@ -898,7 +883,6 @@
      "absorbed_by": "C-1",
      "input": "J-7-n-t2",
      "reasons": [
-      "input:D-T2",
       "input:J-6l",
       "optional"
      ]
@@ -939,13 +923,6 @@
      "input": "K9-6",
      "reasons": [
       "input:K9-4b"
-     ]
-    },
-    {
-     "absorbed_by": "C-1",
-     "input": "L0-K",
-     "reasons": [
-      "input:J-6l"
      ]
     },
     {
@@ -1111,7 +1088,6 @@
   "D-R6",
   "D-R8",
   "D-RUN2",
-  "D-T2",
   "D-TEARDOWN",
   "D-VC",
   "J-0",
@@ -1258,8 +1234,6 @@
   "KA-3b",
   "KA-4",
   "KA-4b",
-  "L0-K",
-  "L0-K-RUNNER",
   "L0-M",
   "P06b",
   "V-J6",
@@ -1272,13 +1246,13 @@
   "VC-1",
   "VC-2"
  ],
- "closure_count": 187,
- "closure_sha256": "d2f9ed5a04f221ed6cfd587a6f6336b30354fa9034c9e2fbccb57b5559d945cd",
+ "closure_count": 184,
+ "closure_sha256": "3bc61c5bc43c8815095c2e53898c23a951c2ca68f214b6e12ac3424813a63c10",
  "inputs": {
-  "model_canonical_sha256": "91537e2566858c0da91104dff84bb46f35838d6fa2b78b5209617780ac514865",
+  "model_canonical_sha256": "0794d50c0e16ffc707d69699285a48741608d4ad1ecf875bc51dbb03634e89a8",
   "model_items": 273,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019",
-  "roots_canonical_sha256": "9ff3dc766089b23e2ed22c5b70fe3aea7d3ef82b16083c2b655df1b1f41b63f9"
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019",
+  "roots_canonical_sha256": "3f3c10afe434afee563bbc436f5c7ad07578422d05b29149887b2fc526f54e77"
  },
  "mechanical_close_chain_excluded_as_roots": [],
  "members": {
@@ -1591,8 +1565,6 @@
     "K0a-0",
     "K0a-1a",
     "K0a-1b",
-    "L0-K",
-    "L0-K-RUNNER",
     "L0-M"
    ],
    "skip_capable": []
@@ -1602,9 +1574,6 @@
     "iv"
    ],
    "prerequisites": {
-    "D-T2": [
-     "item"
-    ],
     "J-5s": [
      "item"
     ],
@@ -1642,9 +1611,6 @@
      "item"
     ],
     "K9-6": [
-     "item"
-    ],
-    "L0-K": [
      "item"
     ],
     "V-J6": [
@@ -1871,30 +1837,6 @@
    ],
    "skip_capable": [
     "input:J-2b"
-   ]
-  },
-  "D-T2": {
-   "acceptances": [
-    "iv"
-   ],
-   "prerequisites": {
-    "J-6l": [
-     "item"
-    ],
-    "L0-K": [
-     "item"
-    ]
-   },
-   "required_by": [
-    "C-1",
-    "J-7",
-    "J-7-a63",
-    "J-7-b61",
-    "J-7-n-t2"
-   ],
-   "skip_capable": [
-    "input:J-6l",
-    "input:L0-K"
    ]
   },
   "D-TEARDOWN": {
@@ -3905,7 +3847,6 @@
    },
    "required_by": [
     "C-1",
-    "D-T2",
     "J-7",
     "J-7-a63",
     "J-7-b61",
@@ -3913,7 +3854,6 @@
     "J-7b",
     "J-7b-b62",
     "K9-4a",
-    "L0-K",
     "V-J6"
    ],
    "skip_capable": [
@@ -3983,10 +3923,6 @@
     "iv"
    ],
    "prerequisites": {
-    "D-T2": [
-     "decision",
-     "item"
-    ],
     "J-6l": [
      "item"
     ],
@@ -4010,8 +3946,6 @@
     "C-1"
    ],
    "skip_capable": [
-    "decision:D-T2=approved",
-    "input:D-T2",
     "input:J-6l",
     "input:J-7-a63",
     "input:J-7-b61",
@@ -4024,9 +3958,6 @@
     "iv"
    ],
    "prerequisites": {
-    "D-T2": [
-     "item"
-    ],
     "J-0m": [
      "item"
     ],
@@ -4045,7 +3976,6 @@
     "J-7"
    ],
    "skip_capable": [
-    "input:D-T2",
     "input:J-6l",
     "optional"
    ]
@@ -4055,9 +3985,6 @@
     "iv"
    ],
    "prerequisites": {
-    "D-T2": [
-     "item"
-    ],
     "J-0m": [
      "item"
     ],
@@ -4076,7 +4003,6 @@
     "J-7"
    ],
    "skip_capable": [
-    "input:D-T2",
     "input:J-6l",
     "optional"
    ]
@@ -4086,9 +4012,6 @@
     "iv"
    ],
    "prerequisites": {
-    "D-T2": [
-     "item"
-    ],
     "J-0m": [
      "item"
     ],
@@ -4107,7 +4030,6 @@
     "J-7"
    ],
    "skip_capable": [
-    "input:D-T2",
     "input:J-6l",
     "optional"
    ]
@@ -5548,43 +5470,6 @@
     "input:K7-1b"
    ]
   },
-  "L0-K": {
-   "acceptances": [
-    "iv"
-   ],
-   "prerequisites": {
-    "B-7": [
-     "item"
-    ],
-    "J-6l": [
-     "item"
-    ],
-    "L0-K-RUNNER": [
-     "item"
-    ]
-   },
-   "required_by": [
-    "C-1",
-    "D-T2"
-   ],
-   "skip_capable": [
-    "input:J-6l"
-   ]
-  },
-  "L0-K-RUNNER": {
-   "acceptances": [
-    "iv"
-   ],
-   "prerequisites": {
-    "B-7": [
-     "item"
-    ]
-   },
-   "required_by": [
-    "L0-K"
-   ],
-   "skip_capable": []
-  },
   "L0-M": {
    "acceptances": [
     "i",
@@ -5793,6 +5678,7 @@
   "D-RETIRE-B-CLAIM-RECOVERY",
   "D-RETIRE-B-DB-BASELINE",
   "D-RETIRE-B-K-INBOX",
+  "D-T2",
   "J-3a-b44",
   "J-4a-a25",
   "J-4a-a26",
@@ -5844,6 +5730,8 @@
   "KR-2",
   "KV3-B-OPS-CONTRACT",
   "KV3-SCHEMA-1",
+  "L0-K",
+  "L0-K-RUNNER",
   "OPS-NB-01",
   "OPS-NB-02",
   "OPS-NB-03",
@@ -5860,7 +5748,7 @@
   "W4-SAFETY-N01",
   "W4-SAFETY-N02"
  ],
- "outside_count": 86,
+ "outside_count": 89,
  "plan_version": "2.7+A9",
  "schema": "kalayantra.closure/1"
 }

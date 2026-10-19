@@ -1,4 +1,4 @@
-"""K9-23 disabled bindings and least-privilege child credential selection."""
+"""K9-23 bindings and least-privilege child credential selection."""
 import importlib.util
 import json
 from pathlib import Path
@@ -10,17 +10,18 @@ FLEET=Path(__file__).resolve().parents[1]
 REPO=FLEET.parents[3]
 
 
-def test_all_k9_bindings_are_real_disabled_distinct_commands():
+def test_all_k9_bindings_are_real_distinct_commands():
     ops=json.loads((FLEET/'executor_ops.json').read_text())['ops']
-    commands={'orchestrator_rebuild_dryrun':'rebuild-dryrun','orchestrator_rebuild':'rebuild',
-              'layer_verify':'verify','layer_publish':'publish','layer_rollback':'rollback'}
-    for kind,command in commands.items():
+    # main (#3746) enabled these kinds and routes the dry-run/rebuild subcommands through publication_admission.
+    commands={'orchestrator_rebuild_dryrun':('publication_admission','rebuild-dryrun'),'orchestrator_rebuild':('publication_admission','rebuild'),
+              'layer_verify':('publication','verify'),'layer_publish':('publication','publish'),'layer_rollback':('publication','rollback')}
+    for kind,(module,command) in commands.items():
         entry=ops[kind]
-        assert entry['enabled'] is False
-        assert entry['script']=='platform/python-sidecar/services/kala_core/publication.py'
+        assert entry['enabled'] is True
+        assert entry['script']==f'platform/python-sidecar/services/kala_core/{module}.py'
         assert (REPO/entry['script']).is_file()
         assert entry['fixed_args']==[command]
-        assert entry['python_module']=='services.kala_core.publication'
+        assert entry['python_module']==f'services.kala_core.{module}'
         assert entry['cwd']=='platform/python-sidecar'
         assert entry['needs']==('layer_verifier' if kind=='layer_verify' else 'builder')
     assert ops['layer_verify']['allowed_args']==['run-id','generation','independently-derived-digest']
@@ -51,7 +52,7 @@ def test_executor_passes_only_operation_specific_connection(tmp_path,monkeypatch
 
 
 @pytest.mark.parametrize('kind',['orchestrator_rebuild_dryrun','orchestrator_rebuild','layer_verify','layer_publish','layer_rollback'])
-def test_real_admission_refuses_disabled_and_planted_placeholder_before_any_git(tmp_path,monkeypatch,kind):
+def test_real_admission_refuses_a_planted_placeholder_script_before_any_git(tmp_path,monkeypatch,kind):
     monkeypatch.setenv('KY_ROOT',str(tmp_path))
     spec=importlib.util.spec_from_file_location('k923_admission',FLEET/'executor.py')
     executor=importlib.util.module_from_spec(spec);spec.loader.exec_module(executor)
@@ -60,7 +61,6 @@ def test_real_admission_refuses_disabled_and_planted_placeholder_before_any_git(
     monkeypatch.setattr(executor,'git',no_git)
     ops=json.loads((FLEET/'executor_ops.json').read_text())['ops']
     request=dict(operation_id='fixture',kind=kind,item_id='K9-23',idempotency_key='fixture',requested_by='adhikarin',kyd='fixture')
-    assert 'not enabled' in executor.validate(request,ops,{'builder':True,'layer_verifier':True})
     ops[kind]['enabled']=True
     ops[kind]['script']='TO_BE_SET_BY_FIXTURE'
     assert executor.validate(request,ops,{'builder':True,'layer_verifier':True})=='operation script not yet reviewed/landed'

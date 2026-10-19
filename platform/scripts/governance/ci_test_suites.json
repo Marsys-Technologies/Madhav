@@ -467,7 +467,8 @@
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
       "include": [
-        "tests/l3/gochara/test_a55*.py"
+        "tests/l3/gochara/test_a55*.py",
+        "tests/l3/gochara/test_j4d*.py"
       ]
     },
     "gochara-a55-slice-transitions-1-9": {
@@ -483,7 +484,8 @@
       "include": [
         "tests/l3/gochara/test_c38_teardown_real_db*.py",
         "tests/l3/gochara/test_c38_teardown_populated*.py",
-        "tests/l3/gochara/test_w4_smalltest*.py"
+        "tests/l3/gochara/test_w4_smalltest*.py",
+        "tests/l3/gochara/test_century_teardown_db*.py"
       ],
       "exclude": [
         "tests/l3/gochara/test_c38_teardown_real_db_round*.py"
@@ -525,7 +527,8 @@
       "engine": "pytest",
       "include": [
         "tests/l3/gochara/test_c37*.py",
-        "tests/l3/gochara/test_w4_launch*.py"
+        "tests/l3/gochara/test_w4_launch*.py",
+        "tests/l3/gochara/test_century_staging_db*.py"
       ]
     },
     "gochara-a55-round2-runner-1-9": {
