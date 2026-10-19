@@ -179,6 +179,44 @@ def test_accepts_artifact_hash_alternative(receipt_step):
     run(expected=0)
 
 
+def _artifact_item(root, receipt_path, receipt):
+    """Make K-C an artifact item as in plan_model.json J-3d-a54: the step receipt is the artifact_section shape
+    (no artifact_path) and the item's own file_exists detector names the artifact."""
+    declared = root / "residuals" / "K-C.json"
+    declared.parent.mkdir()
+    declared.write_bytes(b"reviewed residual evidence")
+    model = cli.load_model()
+    model["items"][0].update(completion_kind="artifact", detector={"type": "file_exists", "path": str(declared)})
+    receipt.update(artifact_sha256=hashlib.sha256(declared.read_bytes()).hexdigest())
+    receipt_path.write_text(canonical(receipt))
+    return declared
+
+
+def test_artifact_section_receipt_binds_to_the_items_declared_artifact(receipt_step):
+    root, path, receipt, _, _, _, run = receipt_step
+    _artifact_item(root, path, receipt)
+    run(expected=0)
+
+
+def test_artifact_section_receipt_refuses_wrong_digest(receipt_step):
+    root, path, receipt, _, _, _, run = receipt_step
+    declared = _artifact_item(root, path, receipt)
+    declared.write_bytes(b"residual evidence edited after review")
+    run()
+
+
+@pytest.mark.parametrize("explicit", ["elsewhere", "declared"])
+def test_artifact_section_receipt_explicit_path_must_be_the_declared_artifact(receipt_step, explicit):
+    root, path, receipt, _, _, _, run = receipt_step
+    declared = _artifact_item(root, path, receipt)
+    other = root / "elsewhere.txt"
+    other.write_bytes(b"some other file")
+    receipt["artifact_path"] = str(declared if explicit == "declared" else other)
+    receipt["artifact_sha256"] = hashlib.sha256(Path(receipt["artifact_path"]).read_bytes()).hexdigest()
+    path.write_text(canonical(receipt))
+    run(expected=0 if explicit == "declared" else 2)
+
+
 def test_file_exists_steps_keep_existing_behavior(receipt_step):
     root, _, _, _, _, spec, run = receipt_step
     spec["type"] = "file_exists"

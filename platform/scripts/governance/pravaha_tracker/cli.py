@@ -337,8 +337,22 @@ def cmd_guarded_done(a, actor: str) -> int:
         return 2
 
 
-def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str, *, operation: bool = False) -> dict:
-    """Bind a file_contains step to the canonical receipt and its source evidence."""
+def _declared_artifact(item_row: dict | None) -> str | None:
+    """The file an artifact item's own completion detector measures (a file_exists on run/residuals/...), else None."""
+    if not isinstance(item_row, dict) or item_row.get("completion_kind") != "artifact":
+        return None
+    detector = item_row.get("detector")
+    declared = detector.get("path") if isinstance(detector, dict) and detector.get("type") == "file_exists" else None
+    return declared if isinstance(declared, str) and declared else None
+
+
+def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str, *, operation: bool = False,
+                        declared_artifact: str | None = None) -> dict:
+    """Bind a file_contains step to the canonical receipt and its source evidence.
+
+    An artifact_section receipt carries no artifact_path (the plan model's pattern admits only artifact_sha256,
+    item, review_job, step, verdict): its artifact_sha256 is checked against `declared_artifact`, the very file
+    the item's own detector measures. An explicit artifact_path is accepted only when it is that same file."""
     declared_path = spec.get("path")
     if (not isinstance(declared_path, str) or not declared_path
             or os.path.realpath(path) != os.path.realpath(declared_path)):
@@ -357,10 +371,14 @@ def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str,
     artifact_bound = False
     if "artifact_sha256" in receipt:
         artifact = receipt.get("artifact_path")
-        if not isinstance(artifact, str) or not artifact:
+        if declared_artifact and artifact is None:
+            artifact = declared_artifact
+        elif not isinstance(artifact, str) or not artifact:
             raise CompletionError("step receipt artifact_sha256 needs an artifact_path")
-        if not os.path.isabs(artifact):
+        elif not os.path.isabs(artifact):
             artifact = os.path.join(os.path.dirname(os.path.realpath(path)), artifact)
+        if declared_artifact and os.path.realpath(artifact) != os.path.realpath(declared_artifact):
+            raise CompletionError("step receipt artifact_path is not the item's declared artifact")
         with open(artifact, "rb") as handle:
             digest = hashlib.file_digest(handle, "sha256").hexdigest()
         if receipt["artifact_sha256"] != digest:
@@ -659,7 +677,8 @@ def cmd_step(a, actor: str) -> int:
                 digest = hashlib.sha256(raw).hexdigest()
             elif spec.get("type") == "file_contains":
                 raw = handle.read()
-                receipt = _check_step_receipt(raw, path, spec, a.item, a.step_name, operation=operation)
+                receipt = _check_step_receipt(raw, path, spec, a.item, a.step_name, operation=operation,
+                                              declared_artifact=_declared_artifact(item))
                 digest = hashlib.sha256(raw).hexdigest()
             else:
                 digest = hashlib.file_digest(handle, "sha256").hexdigest()
