@@ -3,6 +3,7 @@
   "windows": [
     {"migration":"1305_gochara_snapshot_owns_l1_copy.sql","window_input":"gochara_contracts_schema_migration","lease":"L-KALAYANTRA-J3C-20261018"},
     {"migration":"1306_gochara_expected_class_census.sql","window_input":"gochara_contracts_schema_migration","lease":"L-KALAYANTRA-J3C-20261018"},
-    {"migration":"1308_gochara_near_miss_storage.sql","window_input":"gochara_contracts_schema_migration","lease":"L-KALAYANTRA-J3C-20261018"}
+    {"migration":"1308_gochara_near_miss_storage.sql","window_input":"gochara_contracts_schema_migration","lease":"L-KALAYANTRA-J3C-20261018"},
+    {"migration":"1381_gochara_near_miss_seal_integration.sql","window_input":"kala_schema_migration","lease":"L-KALAYANTRA-P06B-KALA-20261018"}
   ]
 }

@@ -31,6 +31,8 @@ For the P06 capture, the evaluation, geometry and window implementation identiti
 differ from the capture because the merged tree carries main's later source changes
 (J4C-A/J4C-B, J-2a, the P1 testimony-contact fix); all three are pinned below as literals
 re-derived from the merged tree's real bytes.
+P06b (ruling 18) edits governed sources of all three stages (input_vector / input_vector_verifier / near_miss_verifier feed geometry and evaluation; seal_brief.py and
+verification_job.py feed the window stage) and adds exactly one read-only layer-catalogue probe on the manifest substep; the saved golden bytes are unchanged.
 (I) INTERPRETATION: main made the final rules an explicit opt-in (`gochara_v5_final_rules`, rule_registry.rule_profile), so the
 capture is driven with that flag True: the accepted P06 capture is, by definition, the final-rule build. The default (legacy) profile's
 isolation is main's own claim, held by test_a53_gochara_v5_writer.py / test_nd_h_builder_tiers.py, not by this golden.
@@ -102,6 +104,11 @@ P1_GATE_SELECT = ("SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka
 # before the comparison.
 COPY_PROBE_SELECT = ("SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ka_gochara_search_input_snapshot'"
                      " AND column_name IN ('consumed_fact_rows', 'consumed_dasha_rows', 'l1_facts_metadata_digest', 'dasha_metadata_digest')")
+# P06b (ruling 18): while creating a NEW manifest the writer probes whether the near-miss layer's three tables exist (to pin near_miss_layer_version);
+# checked separately (exact text, no parameter, exactly once, on the manifest substep only; replay restates the stored pin without probing).
+LAYER_SELECT = ("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL AND "
+                "to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL AND "
+                "to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL")
 PERIOD_GUARD_SELECT = " ".join("""
     WITH governed_chart_dashas AS (
         SELECT * FROM public.chart_dashas
@@ -309,7 +316,9 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
         guard = [s for s in raw[key] if s == [GUARD_SELECT, 2]]
         period_guard = [s for s in raw[key] if s == [PERIOD_GUARD_SELECT, 11]]
         assert len(period_guard) == (1 if key == "inventory:marriage" else 0), f"{key}: expected the B5 period guard exactly once before the inventory projection"
-        rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11])]
+        layer = [s for s in raw[key] if s == [LAYER_SELECT, 0]]
+        assert len(layer) == (1 if key == "manifest" else 0), f"{key}: expected the P06b near-miss layer probe exactly once, on the manifest substep only"
+        rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11], [LAYER_SELECT, 0])]
         if key == writer_mod.SNAPSHOT_SUBSTEP:       # every other substep keeps its own P1 gate reads, compared with the golden unchanged
             assert rest.count([P1_GATE_SELECT, 1]) == 1, f"{key}: expected the new P1-minting schema read exactly once"
             rest.remove([P1_GATE_SELECT, 1])
@@ -354,6 +363,8 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # fixture is not re-captured and every other component, outcome, row count and SQL shape is still compared to it unchanged.
     # Evaluation re-pinned again for the snapshot-substep fix (#3516 CI repair): the J-2a-P1L out-of-horizon anchor ledger is kept for a LEGACY snapshot
     # only, because a G12 copy (1305) holds horizon-overlapping rows alone. Re-derived the same way; no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "6c86c3fbebf5b5202718062b3f8138a8f344cd85c77878ee3ce95e34d24c25a2"
-    assert got["implementation"]["geometry"] == "06825a43711d85cd82d6648f40b1d6ec99ef7f034b9dc53aed89b05cc33fa17a"
-    assert got["implementation"]["window"] == "78b4d0a1cc63047045710a873f76b87f90de4493c4960bb08fd97ef1ad13aea3"
+    # P06b (ruling 18, PR #3564): all three re-derived again from the tree that adds the near-miss verifier stage (input_vector near_miss_layer_version + near_miss_verifier
+    # in geometry, input_vector_verifier, seal_brief / verification_job in window), same function; the golden fixture is not re-captured.
+    assert got["implementation"]["evaluation"] == "6be390071cf16dc85f5126dc8db6ec824fa321e61fdd101a977cb055e178a1e7"
+    assert got["implementation"]["geometry"] == "63953d542bd925e938ea8f5f358c20b8a16850cace364076a9b0523148e4689d"
+    assert got["implementation"]["window"] == "d886cc893d597c170a83dbce91f2f89be2c302def6d949e935e1ca859bfa62d5"

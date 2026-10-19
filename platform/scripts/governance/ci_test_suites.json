@@ -826,6 +826,7 @@
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
       "include": [
+        "tests/l3/gochara/test_p06b_near_miss_integration*.py",
         "tests/l3/gochara/test_a25_v41_candidate_writer_pg*.py",
         "tests/l3/gochara/test_d1_near_miss_storage*.py",
         "tests/l3/gochara/test_g8_class_census*.py",

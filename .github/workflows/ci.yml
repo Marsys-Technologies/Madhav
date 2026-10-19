@@ -2201,7 +2201,7 @@ jobs:
     if: ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-final-rules'))) }}
     name: Gochara P06 - final rules, census, snapshot and storage (real runner, throwaway Postgres)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: platform

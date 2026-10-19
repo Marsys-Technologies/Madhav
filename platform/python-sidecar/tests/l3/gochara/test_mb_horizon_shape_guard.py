@@ -447,7 +447,8 @@ def test_the_modules_that_entered_the_implementation_identity_are_named():
     cur = iv.IMPLEMENTATION_MODULES
     assert {st: tuple(m for m in cur[st] if m not in MAIN_IMPLEMENTATION_MODULES[st]) for st in MAIN_IMPLEMENTATION_MODULES} == {
         # the ND-P2 near-miss module (this PR, #3516) enters the geometry identity beside the stretch sink
-        "geometry": ("services.gochara_kernel.near_miss", "services.gochara_kernel.stretch_sink"),
+        # P06b (ruling 18) also governs the independent near-miss verifier in the same stage
+        "geometry": ("services.gochara_kernel.near_miss", "services.gochara_kernel.near_miss_verifier", "services.gochara_kernel.stretch_sink"),
         # PR #3604 (J4C-B) binds the independent ND-H verifier tables too.
         "evaluation": ("services.gochara_kernel.rehearsal_settlement", "services.gochara_kernel.horizon", "services.gochara_kernel.nd_h_tables"),
     }, "the modules that ENTERED the identity"

@@ -833,6 +833,28 @@ async function backfillSqlIdentities(
  * Core migration logic — exported for unit tests.
  * Returns list of migration filenames that were (or would be) applied.
  */
+/** FB-21: run a separate read-only catalogue readback immediately after each protected apply. */
+export const GOCHARA_MIGRATION_READBACKS: Record<string, string> = {
+  '1305_gochara_snapshot_owns_l1_copy.sql': 'readback_1305_snapshot_copy.sql',
+  '1306_gochara_expected_class_census.sql': 'readback_1306_class_census.sql',
+  '1308_gochara_near_miss_storage.sql': 'readback_1308_near_miss_storage.sql',
+  '1381_gochara_near_miss_seal_integration.sql': 'readback_1381_near_miss_seal.sql',
+}
+
+export async function readBackGocharaMigration(client: PoolClient, filename: string): Promise<void> {
+  const script = GOCHARA_MIGRATION_READBACKS[filename]
+  if (!script) return
+  const sql = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), 'gochara', script), 'utf8')
+  try {
+    const result = await client.query(sql)
+    const results = Array.isArray(result) ? result : [result]
+    console.log(`[migration-readback] ${filename}: ${JSON.stringify(results.map(r => r.rows))}`)
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  }
+}
+
 export async function runMigrations(
   client: PoolClient,
   dirs: string[],
@@ -916,6 +938,7 @@ export async function runMigrations(
       // Never auto-re-apply, never silently continue past a mismatch (unless disclosed —
       // see assertAppliedHashMatches's own docstring for the exact, pinned exception).
       assertAppliedHashMatches(file, applied, sql, disclosures)
+      if (only !== undefined) await readBackGocharaMigration(client, file.name)
       continue
     }
 
@@ -976,6 +999,7 @@ export async function runMigrations(
       throw err
     }
 
+    if (only !== undefined) await readBackGocharaMigration(client, file.name)
     if (target && file.name === target) break
   }
 
