@@ -25,6 +25,7 @@ import glob
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 import threading
@@ -486,6 +487,20 @@ def _check_declarations(model: dict) -> list[str]:
             problems.append(f"{i['id']} step_evidence is not a mapping of its steps")
         elif set(evidence) - set(i.get("steps", [])):
             problems.append(f"{i['id']} step_evidence names undeclared steps: {sorted(set(evidence) - set(i.get('steps', [])))}")
+        for name, declared_step in (evidence.items() if isinstance(evidence, dict) else []):
+            pin = declared_step.get("artifact") if isinstance(declared_step, dict) else None
+            if pin is None:
+                continue
+            # SR-J3D-REPORT-STEP: a repository-file artifact step pins {repo_path, blob, sha256} and its detector
+            # pattern must pin that same sha256, so the receipt can only name the reviewed bytes.
+            pattern = (declared_step.get("detector") or {}).get("pattern", "")
+            if (declared_step.get("evidence") != "artifact_section" or not isinstance(pin, dict)
+                    or not isinstance(pin.get("repo_path"), str) or not pin["repo_path"]
+                    or os.path.isabs(pin["repo_path"]) or ".." in pin["repo_path"].split("/")
+                    or re.fullmatch(r"[0-9a-f]{40}", str(pin.get("blob"))) is None
+                    or re.fullmatch(r"[0-9a-f]{64}", str(pin.get("sha256"))) is None
+                    or f'"artifact_sha256":"{pin.get("sha256")}"' not in pattern):
+                problems.append(f"{i['id']} step {name} has a malformed repository-file artifact pin")
         na = i.get("not_applicable_steps", {})
         known = {d.get("id") for d in model.get("decisions", [])}
         if not isinstance(na, dict):

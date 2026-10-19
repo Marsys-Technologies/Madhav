@@ -346,9 +346,33 @@ def _declared_artifact(item_row: dict | None) -> str | None:
     return declared if isinstance(declared, str) and declared else None
 
 
+def _repo_artifact_bytes(repo: str, pinned: dict) -> bytes:
+    """The bytes of a step's pinned repository-file artifact (SR-J3D-REPORT-STEP).
+
+    The step spec pins {repo_path, blob, sha256}. The bytes are read from the git object store by blob id, never
+    from a working tree: a blob id is a content address, so a dirty or stale checkout (or a branch that has since
+    moved) can neither fake nor lose the reviewed bytes, and the sha256 is then checked against the pin."""
+    blob, pin = pinned.get("blob"), pinned.get("sha256")
+    if (not isinstance(blob, str) or re.fullmatch(r"[0-9a-f]{40}", blob) is None
+            or not isinstance(pin, str) or re.fullmatch(r"[0-9a-f]{64}", pin) is None
+            or not isinstance(pinned.get("repo_path"), str) or not pinned["repo_path"]):
+        raise CompletionError("step artifact pin needs repo_path, a 40-hex blob and a 64-hex sha256")
+    done = subprocess.run(["git", "-C", repo, "cat-file", "blob", blob], capture_output=True, timeout=60)
+    if done.returncode != 0:
+        raise CompletionError(f"pinned artifact blob {blob} is not in the repository")
+    if hashlib.sha256(done.stdout).hexdigest() != pin:
+        raise CompletionError("pinned artifact blob does not match its pinned sha256")
+    return done.stdout
+
+
 def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str, *, operation: bool = False,
-                        declared_artifact: str | None = None) -> dict:
+                        declared_artifact: str | None = None, repo_artifact: dict | None = None,
+                        repo: str | None = None) -> dict:
     """Bind a file_contains step to the canonical receipt and its source evidence.
+
+    A step whose evidence is a repository file (`repo_artifact`, the step's pinned {repo_path, blob, sha256}) takes
+    its artifact_sha256 from that pin alone: the receipt must carry it, must name no artifact_path, and the digest
+    is checked against the pinned blob's bytes.
 
     An artifact_section receipt carries no artifact_path (the plan model's pattern admits only artifact_sha256,
     item, review_job, step, verdict): its artifact_sha256 is checked against `declared_artifact`, the very file
@@ -369,7 +393,14 @@ def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str,
         raise CompletionError("operation step requires a named independent MET review")
 
     artifact_bound = False
-    if "artifact_sha256" in receipt:
+    if repo_artifact is not None:
+        if "artifact_path" in receipt or "artifact_sha256" not in receipt:
+            raise CompletionError("repository-file artifact step needs artifact_sha256 and no artifact_path")
+        digest = hashlib.sha256(_repo_artifact_bytes(repo or REPO_ROOT, repo_artifact)).hexdigest()
+        if receipt["artifact_sha256"] != digest:
+            raise CompletionError("step receipt artifact_sha256 does not match its artifact")
+        artifact_bound = True
+    elif "artifact_sha256" in receipt:
         artifact = receipt.get("artifact_path")
         if declared_artifact and artifact is None:
             artifact = declared_artifact
@@ -651,6 +682,11 @@ def cmd_step(a, actor: str) -> int:
         # Actual operation items still require independently bound receipts.
         operation = item.get("completion_kind") == "operation" or (
             declared.get("evidence") == "executor_receipt" and spec.get("type") != "db_query")
+        # SR-J3D-REPORT-STEP: a step whose evidence is a repository file is an artifact_section step even on an
+        # operation item; it carries no executor receipt, so the executor-receipt binding below does not apply.
+        repo_artifact = declared.get("artifact") if declared.get("evidence") == "artifact_section" else None
+        if repo_artifact is not None and not isinstance(repo_artifact, dict):
+            raise CompletionError("step artifact pin must be a mapping")
         lease_row = declared.get("evidence") == "lease_row"    # SR-OP-STEPS item 2: a ledger read, no verdict
         acceptance_file = declared.get("evidence") == "acceptance_file"    # pre_acceptance: the executor's acceptance record
         ledger = lease_row or acceptance_file
@@ -678,13 +714,15 @@ def cmd_step(a, actor: str) -> int:
             elif spec.get("type") == "file_contains":
                 raw = handle.read()
                 receipt = _check_step_receipt(raw, path, spec, a.item, a.step_name, operation=operation,
-                                              declared_artifact=_declared_artifact(item))
+                                              declared_artifact=_declared_artifact(item),
+                                              repo_artifact=repo_artifact,
+                                              repo=os.environ.get("PRAVAHA_REPO", REPO_ROOT))
                 digest = hashlib.sha256(raw).hexdigest()
             else:
                 digest = hashlib.file_digest(handle, "sha256").hexdigest()
         event = {"kind": "item", "actor": actor, "item": a.item, "state": "done", "step": a.step_name,
                  "detail": a.detail, "evidence": path, "evidence_sha256": digest}
-        if operation or ledger:
+        if (operation and repo_artifact is None) or ledger:
             # Check the current verdict and append under the same lock: a concurrent
             # rejection must not be lost between acceptance lookup and step recording.
             if not os.path.isfile(EVENTS):
