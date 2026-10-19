@@ -357,5 +357,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Evaluation re-pinned for SR-W3-SHAPE 3 (gochara_v5_defer_in_build_verify): the writer and input_vector sources changed, the ordinary
     # (flag-absent) run's every other component, outcome, row count and SQL shape is unchanged. Re-derived the same way (main's bytes give 6c86c3fb…).
     assert got["implementation"]["evaluation"] == "9f6c462e41ee255517dc9619e469ef8a77eab1acfccf40cabef03c6a18835bcf"
-    assert got["implementation"]["geometry"] == "06825a43711d85cd82d6648f40b1d6ec99ef7f034b9dc53aed89b05cc33fa17a"
+    # J-4c: the geometry stage moved ONLY by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root (06825a43... -> the digest below, re-derived the same
+    # way on the merged tree; evaluation and window are unchanged by J-4c). No golden component is re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
+    assert got["implementation"]["geometry"] == "e7634d7faf7df43521f5236d79a94c8a31192e62d78dc8eaa939160eaca0a6f7"
     assert got["implementation"]["window"] == "78b4d0a1cc63047045710a873f76b87f90de4493c4960bb08fd97ef1ad13aea3"
