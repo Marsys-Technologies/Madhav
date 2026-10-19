@@ -366,5 +366,8 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # (flag-absent) run's every other component, outcome, row count and SQL shape is unchanged. Merged with P06b (this PR) and re-derived from the
     # merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (never relaxed).
     assert got["implementation"]["evaluation"] == "50adad7a303ded4de992bd4edb150fae63704d8f31028b6c86429bd460c0ff6e"
-    assert got["implementation"]["geometry"] == "e89a19ed6647f7b1ed1bb34d13d53e45600eb0b40d892d8ee777f82f076748b0"
+    # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
+    # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives e7634d7f...; evaluation and window are unchanged by J-4c). No golden component is
+    # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
+    assert got["implementation"]["geometry"] == "388de67d9ccd5849f1232d686285d90989da48735ae547e9728c2eb0be454bd6"
     assert got["implementation"]["window"] == "d886cc893d597c170a83dbce91f2f89be2c302def6d949e935e1ca859bfa62d5"
