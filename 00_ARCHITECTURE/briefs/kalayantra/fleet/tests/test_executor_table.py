@@ -178,6 +178,21 @@ PROVISIONING_BINDINGS = {
     "gochara_role_provisioning_dispatch": {"enabled": False, "needs": "none", "script": PROVISIONING_SCRIPT, "fixed_args": ["--execute"],
                                            "allowed_args": ["stage", "dsn_tail", "confirm", "window_lease_id"], "production": True, "timeout_s": 300, "enabled_by": "J-4b"},
 }
+# SR-PREBUILD-ALL (W5/W6 union MISSING: KIND-http_probe, KIND-orchestrator_rebuild_cancel/_teardown), appended after the provisioning kinds and SHIPPED DISABLED. Exact bindings.
+# http_probe: the read-only, credential-free probe of one fixed URL (SR-TEARDOWN-AUTHORITY-GATE 3). The two K9 control families run publication_admission.py (rebuild_control).
+HTTP_PROBE = {
+    "enabled": False, "needs": "none", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/http_probe.py", "fixed_args": [], "allowed_args": ["probe"],
+    "requesters": ["adhikarin", "v1", "v2"], "production": False, "read_only": True, "timeout_s": 300, "enabled_by": "J-6l",
+}
+def _k9_control(operation, production, timeout):
+    return {"enabled": False, "needs": "builder", "script": K9_ADMISSION, "fixed_args": [operation], "allowed_args": ["run-id"], "production": production,
+            "enabled_by": "K9-23", "cwd": "platform/python-sidecar", "python_module": "services.kala_core.publication_admission", "timeout_s": timeout}
+REBUILD_CONTROL_BINDINGS = {
+    "orchestrator_rebuild_cancel_dryrun": _k9_control("cancel-dryrun", False, 300),
+    "orchestrator_rebuild_cancel": _k9_control("cancel", True, 300),
+    "orchestrator_rebuild_teardown_dryrun": _k9_control("teardown-dryrun", False, 300),
+    "orchestrator_rebuild_teardown": _k9_control("teardown", True, 600),
+}
 HEAD_KINDS = ("publish_head", "publish_head_dryrun", "rollback_head", "rollback_head_dryrun")   # J-6m / J-6r: enabled only through head_operation.py's reviewed policy (SR-HEAD-POLICY-KEEP)
 ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(HEAD_KINDS) | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(K9_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]}   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; K9-23: the eight layer/rebuild kinds; J-4d: the three enabled century kinds
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
@@ -278,6 +293,8 @@ def assert_table_matches_pin(now):
     expected_order.append("github_run_readback")                    # U-M-12: appended after the scheduler kinds
     expected_order += list(PROTECTED_WINDOW_BINDINGS)               # U-M-01: appended after the scheduler kinds
     expected_order += list(PROVISIONING_BINDINGS)                   # U-M-03: appended after the github_run_readback kind
+    expected_order.append("http_probe")                             # SR-PREBUILD-ALL: appended after the provisioning kinds
+    expected_order += list(REBUILD_CONTROL_BINDINGS)                # SR-PREBUILD-ALL: cancel and teardown, each dry run directly before its operation
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
@@ -300,6 +317,8 @@ def assert_table_matches_pin(now):
     expected["github_run_readback"] = json.loads(json.dumps(GITHUB_RUN_READBACK))
     expected.update(json.loads(json.dumps(PROTECTED_WINDOW_BINDINGS)))
     expected.update(json.loads(json.dumps(PROVISIONING_BINDINGS)))
+    expected["http_probe"] = json.loads(json.dumps(HTTP_PROBE))
+    expected.update(json.loads(json.dumps(REBUILD_CONTROL_BINDINGS)))
     for kind in READ_ONLY_KINDS[:3]:
         expected[kind]["read_only"] = True
     for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
@@ -766,7 +785,7 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["verification_job", "century_teardown", *PROTECTED_WINDOW_BINDINGS, *PROVISIONING_BINDINGS])   # K9 kinds are enabled here (K9-23), not disabled
+@pytest.mark.parametrize("kind", ["verification_job", "century_teardown", *PROTECTED_WINDOW_BINDINGS, *PROVISIONING_BINDINGS, "http_probe", *REBUILD_CONTROL_BINDINGS])   # K9 kinds are enabled here (K9-23), not disabled
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)

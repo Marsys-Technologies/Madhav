@@ -38,7 +38,9 @@ CENTURY_DISABLED = {"century_teardown": ("owner", "platform/scripts/teardown_v5_
 DISABLED = {"verification_job", *CENTURY_DISABLED,
             "gochara_role_provisioning_dispatch", "gochara_role_provisioning_dispatch_dryrun",      # U-M-03: shipped disabled
             "github_run_readback",   # U-M-12: prepared for W3/W4, shipped disabled; exact binding pinned in test_executor_table
-            "protected_window_dispatch_dryrun", "protected_window_dispatch"}   # U-M-01: shipped disabled
+            "protected_window_dispatch_dryrun", "protected_window_dispatch",   # U-M-01: shipped disabled
+            "http_probe", "orchestrator_rebuild_cancel_dryrun", "orchestrator_rebuild_cancel",      # SR-PREBUILD-ALL: shipped disabled; exact bindings pinned in test_executor_table
+            "orchestrator_rebuild_teardown_dryrun", "orchestrator_rebuild_teardown"}
 # SR-HEAD-POLICY-KEEP: the four head kinds are enabled, but only through head_operation.py's reviewed policy (the executor refuses a request the policy refuses);
 # their exact binding is pinned in test_executor_table.py and the policy gate in test_j6_head_bindings.py. They were in DISABLED until this change.
 HEAD = {"publish_head", "publish_head_dryrun", "rollback_head", "rollback_head_dryrun"}
