@@ -288,7 +288,10 @@ def test_a_wrong_system_or_ayanamsha_or_tier_moon_row_is_refused():
 
 def test_an_extra_row_outside_the_horizon_and_an_omitted_pinned_row_are_refused():
     outside = _row(8, 2, "Moon", base._dt(2023, 1, 1), base._dt(2023, 6, 1))
-    assert any("extra" in p for p in _check(POP + [outside], pinned=POP + [outside]))
+    unconsumed = _row(10, 2, "Moon", base._dt(2022, 1, 1), base._dt(2022, 6, 1))
+    # J-2a-P1L: an out-of-horizon row is an extra unless its WHOLE (lord, level) group is consumed (a consulted anchor ledger)
+    assert any("extra" in p for p in _check(POP + [outside], pinned=POP + [outside, unconsumed]))
+    assert _check(POP + [outside, unconsumed], pinned=POP + [outside, unconsumed]) == []
     assert any("omitted" in p for p in _check(POP[:2], pinned=POP))                 # row 3 not consumed
 
 

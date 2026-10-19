@@ -175,3 +175,29 @@ def test_merged_g1_candidate_suites_keep_the_required_kala_db_context():
     jobs = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs']
     assert any('ci_discovery.py" pytest kala-db-tests-5-0 --' in step.get('run', '')
                for step in jobs['kala-db-tests']['steps'])
+
+
+def test_j5s_mandatory_job_discovers_and_runs_future_full_class_suites(tmp_path):
+    """J5S-N1: a new family member must run in the existing required DB context."""
+    mod = module()
+    profile = mod.profiles()['gochara-j5s-full-class-seal']
+    assert profile['cwd'] == 'platform/python-sidecar'
+    assert profile['engine'] == 'pytest'
+    assert 'tests/l3/gochara/test_j5s_full_class_seal_db.py' in mod.discover(ROOT, profile)
+
+    jobs = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())['jobs']
+    job = jobs['gochara-j5s-full-class-seal']
+    command = next(step['run'] for step in job['steps']
+                   if 'ci_discovery.py' in step.get('run', ''))
+    assert 'pytest gochara-j5s-full-class-seal --' in command
+    expanded = mod.expanded_workflow({'j5s': job})['j5s']
+    assert any('python -m pytest tests/l3/gochara/test_j5s_full_class_seal_db.py' in step.get('run', '')
+               for step in expanded['steps'])
+
+    future = tmp_path / profile['cwd'] / 'tests/l3/gochara/test_j5s_future_db.py'
+    future.parent.mkdir(parents=True)
+    future.write_text('def test_future(): assert False\n')
+    assert mod.discover(tmp_path, profile) == ['tests/l3/gochara/test_j5s_future_db.py']
+    assert mod.run(tmp_path, profile, ['-q', '-p', 'no:cacheprovider']) == 1
+    future.write_text('def test_future(): assert True\n')
+    assert mod.run(tmp_path, profile, ['-q', '-p', 'no:cacheprovider']) == 0
