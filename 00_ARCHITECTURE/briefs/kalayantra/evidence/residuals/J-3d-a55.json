@@ -1,0 +1,649 @@
+{
+ "claim": "Phase 5 keep inherited Pravāha A5.5: disposable-DB rehearsal, full oracle battery, K3/O-2 review — and, for the J-3d window, the real report/readback, terminal execution, guarded teardown and independent absence",
+ "claims": [
+  {
+   "claim": "The measuring run reached its terminal success state (MB-4.7)",
+   "id": "R1",
+   "measurement": "J-3d.terminal readback (run row, asset row, substep log) as read into J3D_REPORT.json run_verdict",
+   "note": "acceptance of the terminal readback is executor-mechanical only",
+   "status": "measured",
+   "values": {
+    "asset_error_is_null": true,
+    "asset_state": "complete",
+    "disposition": "build",
+    "last_error_is_null": true,
+    "last_substep": {
+     "index": 298,
+     "total": 298
+    },
+    "mb_4_7_success": true,
+    "run_state": "completed",
+    "terminal_receipt": {
+     "acceptance": [
+      {
+       "by": "executor-mechanical",
+       "name": "J-3d.terminal-20261018T061409Z.post.json",
+       "result": "ACCEPTED",
+       "sha256": "d56f96292e3bd254cb8af47feed222fd4ee437ad83164a35f4c1b5f8b8e10063",
+       "ts": "2026-10-18T22:36:32+00:00"
+      }
+     ],
+     "exit_code": 0,
+     "operation_id": "J-3d.terminal-20261018T061409Z",
+     "output_sha256": "95adc9e49a960099c0b997a6db48a9439448256a9e1e599c78a9635460b37d4d",
+     "receipt": {
+      "name": "J-3d.terminal-20261018T061409Z.json",
+      "sha256": "624101e817a1d5f560eee4d4fd108d3b46d46eea95e85b05d01bce62d49400d6"
+     },
+     "reviewed_commit": "1078dd1cfea606cf913d3a9f9258c46aafa232fa",
+     "status": "COMPLETED"
+    }
+   }
+  },
+  {
+   "claim": "A real report and readback exist for the run (not a fixture)",
+   "id": "R2",
+   "measurement": "sha256 of the generated report and of the report-fill output; counts of NULL figures declared in each",
+   "note": "the report is a draft for independent acceptance; its NULL figures (stretch-sink reconciliation in the original, BOLD-09 utilisation, leanness for 2 classes) are explicit nulls, not zeros",
+   "status": "measured",
+   "values": {
+    "null_register_entries_filled": 14,
+    "null_register_entries_original": 29,
+    "report": {
+     "json": {
+      "path": "/Users/Dev/kalayantra/run/J3D_REPORT_20261018/J3D_REPORT.json",
+      "sha256": "f0fc2a3fb1f80574c42a0a7bdab096f38bb310c4af223fc6bd0d54c40a2980d4"
+     },
+     "md": {
+      "path": "/Users/Dev/kalayantra/run/J3D_REPORT_20261018/J3D_REPORT.md",
+      "sha256": "1853430672695225864481d739fbc2a40055a2b45a26aca932f4889b43b5f184"
+     }
+    },
+    "report_fill": {
+     "json": {
+      "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261018T231001Z-report-fill/out/J3D_REPORT.json",
+      "sha256": "3bb1b145f6fdbeef18c3e70a97904bfb38396328f558333ee50b87af8e987f9b"
+     },
+     "md": {
+      "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261018T231001Z-report-fill/out/J3D_REPORT.md",
+      "sha256": "983a676700ee4ecec2b7459a081db7284e9421b0b1b64ead27b328f8a34afc3e"
+     }
+    },
+    "source_receipts_cited": 11
+   }
+  },
+  {
+   "claim": "Teardown was rehearsed (rolled back) and then executed under the same scope and the same row set",
+   "id": "R3",
+   "measurement": "teardown dry-run and execute receipts: rollback_confirmed flags, rowset_sha256, scope_sha256 (read from the receipts' output files)",
+   "note": "executed receipt status is COMMITTED_AWAITING_ABSENCE (not acceptance by itself); the v1 post-acceptance of the teardown is ACCEPTED at 2026-10-19T00:37:57+00:00",
+   "status": "measured",
+   "values": {
+    "dry_run": {
+     "acceptance": [],
+     "exit_code": 0,
+     "operation_id": "J-3d.teardown-dryrun-20261018T061409Z",
+     "output_sha256": "290b2967ec022cb337cd09bba25b7e926f0b49aeabc072dd990d4f8e4d3bc4a9",
+     "receipt": {
+      "name": "J-3d.teardown-dryrun-20261018T061409Z.json",
+      "sha256": "1cd1a71e49abaee6e15c4411cd6a982faacd4beb2fa817e255b68ac3a5dfd666"
+     },
+     "reviewed_commit": "b08c359f1749d6f157c2436053945bedd33b5565",
+     "status": "COMPLETED"
+    },
+    "dry_run_rolled_back": true,
+    "execute_committed": true,
+    "executed": {
+     "acceptance": [
+      {
+       "by": "v1",
+       "name": "J-3d.teardown-20261018T061409Z.post.json",
+       "result": "ACCEPTED",
+       "sha256": "ffe09597f76ea356b3cc529531fef24570eeba00f231250b22ed52417c44fec8",
+       "ts": "2026-10-19T00:37:57+00:00"
+      }
+     ],
+     "exit_code": 0,
+     "operation_id": "J-3d.teardown-20261018T061409Z",
+     "output_sha256": "350ccb13194bd366b87f1fe61bd7d0d1235defa2f88464cd7ffcef3400ffcffb",
+     "receipt": {
+      "name": "J-3d.teardown-20261018T061409Z.json",
+      "sha256": "294cb9064aecb84144a569f40bf1cb61de903e95199c1f4f1477268d8a13ed77"
+     },
+     "reviewed_commit": "b08c359f1749d6f157c2436053945bedd33b5565",
+     "status": "AWAITING_ABSENCE"
+    },
+    "rowset_sha256": "07db02591880075cc0cacf6b358b21f0c7c9d2e2211de1aea31dddff01bdc051",
+    "rowset_sha256_equal_dryrun_vs_execute": true,
+    "scope_sha256": "8223f5861109625dbfa0a194e7f58be6e3d6eb6353ebca1d25031afca876e340"
+   }
+  },
+  {
+   "claim": "Independent absence: every candidate table is empty after teardown, and the global substrate is intact",
+   "id": "R4",
+   "measurement": "J-3d.absence readback (20 tables) accepted by v1; J-3d.global-after sky-event count",
+   "note": "teardown_receipt_sha256 inside the absence acceptance is the repo's evidence_digest of the committed proof, a different function from a file sha256; not re-derived here",
+   "status": "measured",
+   "values": {
+    "absence_receipt": {
+     "acceptance": [
+      {
+       "by": "executor-mechanical",
+       "name": "J-3d.absence.post.json",
+       "result": "ACCEPTED",
+       "sha256": "3d27eb57409db39302d6065c18ea45a82c835581c30489bc28153f2bb10a9189",
+       "ts": "2026-10-19T00:42:20+00:00"
+      }
+     ],
+     "exit_code": 0,
+     "operation_id": "J-3d.absence",
+     "output_sha256": "0729a07b6378699fb03697812c87017e62196cbc7afbbe297e024c1d19effdc6",
+     "receipt": {
+      "name": "J-3d.absence.json",
+      "sha256": "05f766da015cc4ecb7e8abb48e712523dd03432a0fa1b3bb46d204b9b34e2f61"
+     },
+     "reviewed_commit": "b08c359f1749d6f157c2436053945bedd33b5565",
+     "status": "COMPLETED"
+    },
+    "global_substrate_after": {
+     "acceptance": [],
+     "exit_code": 0,
+     "operation_id": "J-3d.global-after-20261018T061409Z",
+     "output_sha256": "8c0fb99e99777790a307869ac290573d1ff23a744ab163242d736e974ddcd45b",
+     "receipt": {
+      "name": "J-3d.global-after-20261018T061409Z.json",
+      "sha256": "8a946886132eeacb7fa8f7a14138bf6afcfdfc5ce797aeac88bea0556afa1127"
+     },
+     "reviewed_commit": "b08c359f1749d6f157c2436053945bedd33b5565",
+     "status": "COMPLETED"
+    },
+    "independent_absence_acceptance": {
+     "by": "v1",
+     "name": "J-3d.absence.absence.json",
+     "result": "ACCEPTED",
+     "sha256": "79be79dadaaa86a9f26ed7f43d415cccb324d5470bf77a5d40bb7eed520cf2ac",
+     "ts": "2026-10-19T00:44:19+00:00"
+    },
+    "ka_gochara_sky_event_rows_after": 50124,
+    "registry_inert": true,
+    "rows_remaining_total": 0,
+    "tables_checked": 20
+   }
+  },
+  {
+   "claim": "The inherited A5.5 oracle battery (36 executable_at_A5.5 oracles) runs at current main",
+   "id": "R5",
+   "limits": [
+    "expected failures are the strict-xfail FINDING and NOT-BUILT oracles of ORACLE_EXECUTION_MAP_v1_0.md; their current state is reported as measured (xfailed counts), not asserted from the map",
+    "the prebuild head's '495 passed and 16 expected failures' selection is not named anywhere in the repo, so it is NOT claimed as reproduced; today's real numbers on the named oracle files are reported (the expected-failure count, 16, is equal to the doc's; the pass count is not comparable because the selections differ)"
+   ],
+   "measurement": "pytest tests/l3/gochara_rules and the three tests/l3/gochara a55 oracle files with junit output, local disposable cluster, pinned ephemeris, interpreter /Users/Dev/kalayantra/venv; per-oracle outcomes parsed from the junit by test-name prefix",
+   "status": "measured",
+   "values": {
+    "gochara_oracle_files_result_line": "18 passed, 8 xfailed, 2 warnings in 2.99s",
+    "oracle_files": [
+     "tests/l3/gochara_rules (whole directory)",
+     "tests/l3/gochara/test_a55_substrate_oracles.py",
+     "tests/l3/gochara/test_a55_conformance_oracles.py",
+     "tests/l3/gochara/test_a55_writer_oracles.py"
+    ],
+    "oracle_tests_total": {
+     "failed": 0,
+     "passed": 509,
+     "skipped": 2,
+     "xfailed": 16
+    },
+    "oracles_in_execution_map": 36,
+    "oracles_with_a_matching_test": 36,
+    "oracles_without_a_matching_test": [],
+    "per_oracle": {
+     "O-AO-1": {
+      "failed": 0,
+      "files": [
+       "test_a55_conformance_oracles"
+      ],
+      "passed": 0,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 1
+     },
+     "O-AO-2": {
+      "failed": 0,
+      "files": [
+       "test_a55_conformance_oracles"
+      ],
+      "passed": 0,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 1
+     },
+     "O-AO-3": {
+      "failed": 0,
+      "files": [
+       "test_a55_conformance_oracles"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-BP-2": {
+      "failed": 0,
+      "files": [
+       "test_oracles_a55_bp_p6"
+      ],
+      "passed": 3,
+      "skipped": 0,
+      "tests": 3,
+      "xfailed": 0
+     },
+     "O-BP-3": {
+      "failed": 0,
+      "files": [
+       "test_oracles_a55_bp_p6"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-BP-4": {
+      "failed": 0,
+      "files": [
+       "test_oracles_a55_bp_p6"
+      ],
+      "passed": 2,
+      "skipped": 0,
+      "tests": 3,
+      "xfailed": 1
+     },
+     "O-CF-N5": {
+      "failed": 0,
+      "files": [
+       "test_a55_conformance_oracles"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-CF-N6": {
+      "failed": 0,
+      "files": [
+       "test_a55_conformance_oracles"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-CF-N7": {
+      "failed": 0,
+      "files": [
+       "test_a55_conformance_oracles"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 1
+     },
+     "O-GR-PLATEAU": {
+      "failed": 0,
+      "files": [
+       "test_a55_writer_oracles"
+      ],
+      "passed": 0,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 1
+     },
+     "O-P6-TARA": {
+      "failed": 0,
+      "files": [
+       "test_oracles_a55_bp_p6"
+      ],
+      "passed": 2,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 0
+     },
+     "O-RP-1": {
+      "failed": 0,
+      "files": [
+       "test_rp_oracles_a55"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-RP-3": {
+      "failed": 0,
+      "files": [
+       "test_rp_oracles_a55"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 1
+     },
+     "O-RP-5b": {
+      "failed": 0,
+      "files": [
+       "test_rp_oracles_a55"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-RP-6": {
+      "failed": 0,
+      "files": [
+       "test_rp_oracles_a55"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-RP-7": {
+      "failed": 0,
+      "files": [
+       "test_rp_oracles_a55"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 1
+     },
+     "O-RP-8": {
+      "failed": 0,
+      "files": [
+       "test_rp_oracles_a55"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 1
+     },
+     "O-RR-4": {
+      "failed": 0,
+      "files": [
+       "test_rr_oracles_a55"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 1
+     },
+     "O-RR-5": {
+      "failed": 0,
+      "files": [
+       "test_rr_oracles_a55"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 1
+     },
+     "O-RR-6": {
+      "failed": 0,
+      "files": [
+       "test_rr_oracles_a55"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 1
+     },
+     "O-RR-7": {
+      "failed": 0,
+      "files": [
+       "test_rr_oracles_a55"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 1
+     },
+     "O-RW-1": {
+      "failed": 0,
+      "files": [
+       "test_a55_writer_oracles"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 1
+     },
+     "O-RW-2": {
+      "failed": 0,
+      "files": [
+       "test_a55_writer_oracles"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 1
+     },
+     "O-RW-3": {
+      "failed": 0,
+      "files": [
+       "test_a55_writer_oracles"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-RX-1": {
+      "failed": 0,
+      "files": [
+       "TestORX1OccurrenceOrdinalIdentity"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-SM-3": {
+      "failed": 0,
+      "files": [
+       "TestOSM3StationSolverMethodAudit"
+      ],
+      "passed": 0,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 1
+     },
+     "O-SS-1": {
+      "failed": 0,
+      "files": [
+       "TestOSS1SunBoundaryCounts2025"
+      ],
+      "passed": 3,
+      "skipped": 0,
+      "tests": 3,
+      "xfailed": 0
+     },
+     "O-SS-2": {
+      "failed": 0,
+      "files": [
+       "TestOSS2SeamBoundarySearch"
+      ],
+      "passed": 3,
+      "skipped": 0,
+      "tests": 3,
+      "xfailed": 0
+     },
+     "O-SS-3": {
+      "failed": 0,
+      "files": [
+       "TestOSS3OffHorizonCentreTruncated"
+      ],
+      "passed": 2,
+      "skipped": 0,
+      "tests": 2,
+      "xfailed": 0
+     },
+     "O-SS-4": {
+      "failed": 0,
+      "files": [
+       "TestOSS4MoonOnDemand"
+      ],
+      "passed": 2,
+      "skipped": 0,
+      "tests": 3,
+      "xfailed": 1
+     },
+     "O-TV-1": {
+      "failed": 0,
+      "files": [
+       "test_oracles_a55_tv_vi"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-TV-2": {
+      "failed": 0,
+      "files": [
+       "test_oracles_a55_tv_vi"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-TV-3": {
+      "failed": 0,
+      "files": [
+       "test_oracles_a55_tv_vi"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-VI-1": {
+      "failed": 0,
+      "files": [
+       "test_oracles_a55_tv_vi"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-VI-3": {
+      "failed": 0,
+      "files": [
+       "test_oracles_a55_tv_vi"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     },
+     "O-VI-5": {
+      "failed": 0,
+      "files": [
+       "test_oracles_a55_tv_vi"
+      ],
+      "passed": 1,
+      "skipped": 0,
+      "tests": 1,
+      "xfailed": 0
+     }
+    },
+    "rules_dir_result_line": "491 passed, 2 skipped, 8 xfailed in 11.02s"
+   }
+  },
+  {
+   "claim": "Wider projection/measuring test directories pass at current main",
+   "id": "R6",
+   "measurement": "pytest tests/l3/gochara (whole directory) and the two measuring modules in tests/l3/kala_db",
+   "status": "measured",
+   "values": {
+    "kala_db_interpreter": "/opt/homebrew/bin/python3.13 (the prebuild doc's command)",
+    "kala_db_measuring_modules_result_line": "61 passed in 948.03s (0:15:48)",
+    "kala_db_modules": [
+     "tests/l3/kala_db/test_j3_measuring_capture.py",
+     "tests/l3/kala_db/test_j3_measuring_delivery.py"
+    ],
+    "tests_l3_gochara_result_line": "NOT COMPLETED: the whole-directory run was stopped by this job after more than 20 minutes at about 85% progress under heavy shared-database load (progress output only: no F/E characters, passes/skips/xfails not totalled); no pass count is claimed for tests/l3/gochara as a whole. Its three a55 oracle files and ten repair modules were run separately (R5, a54 C7)"
+   }
+  },
+  {
+   "cause": "This job re-ran the oracles; it planted no reversions. The map cites mutation evidence from the B5.5 steward reports (M20260930T180408-0d78 … M20260930T184018-b1fc), which are not re-verified here. Per the testing standard the REVIEWER enumerates distinct claims and plants at most one reversion each.",
+   "claim": "Every oracle has a literal fixture and a FAILING mutation (planted reversion fails at head)",
+   "id": "R7",
+   "status": "null",
+   "values": null
+  },
+  {
+   "cause": "no review receipt exists; the independent reviewer is to digest-bind this file. Nothing here asserts the review.",
+   "claim": "Independent K3/O-2 review of writer + repairs + rule paths + tests",
+   "id": "R8",
+   "status": "null",
+   "values": {
+    "exists": false
+   }
+  },
+  {
+   "claim": "G9-0.3 sink invariants hold (omission/invented/anomaly all zero)",
+   "id": "R9",
+   "note": "reported as a FAILING input to the gate, not a pass: 12 invented + 12 anomaly emissions = 3 obligations; the gate stays at zero; the fix is the builder's before the final-rules candidate (J-4c findings F-INVENTED / F-ANOMALY, preconditions of D-CLOUD)",
+   "status": "measured",
+   "values": {
+    "anomaly": 12,
+    "d_g9_posted": {
+     "id": "EXEC-D-G9-POSTED",
+     "line": 224,
+     "outcome": "APPROVED",
+     "path": "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl",
+     "ts": "2026-10-19T01:49:04Z"
+    },
+    "distinct_ids_each": 3,
+    "invented": 12,
+    "omission": 0,
+    "trace": {
+     "TRACE.md": {
+      "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261019T005038Z-g903-trace/TRACE.md",
+      "sha256": "e5b2bd1ad0c6b0213d4383680d64b939b5d4e4d02fe2edbff98f2bf998a7f1d9"
+     },
+     "trace.json": {
+      "path": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261019T005038Z-g903-trace/trace.json",
+      "sha256": "c3c7f1f7e1bd003e09d0281c35945415900090b4b0e7049bbada1649185feb6c"
+     }
+    }
+   }
+  }
+ ],
+ "interpretations": [
+  {
+   "alternative": "the unnamed 'selected battery' behind the prebuild doc's 495+16, which cannot be located",
+   "choice": "the 'full inherited oracle battery' is the 36 executable_at_A5.5 oracles of ORACLE_EXECUTION_MAP_v1_0.md (tests/l3/gochara_rules + the three a55 files in tests/l3/gochara)"
+  },
+  {
+   "alternative": "treat only reviews/steps/J-3d-a55.* as acceptance (it does not exist, so R8 is null either way)",
+   "choice": "the existing v1 post-acceptances of J-3d.teardown and J-3d.absence count as the independent absence acceptance the step names; the item-level step receipt is still the reviewer's to write"
+  }
+ ],
+ "item": "J-3d-a55",
+ "measured_at": "2026-10-19T03:23:47+00:00",
+ "measured_at_head": "28c2772483909c3b14e5ee8b1359887554a9b450",
+ "not_claimed": [
+  "K3/O-2 independent review",
+  "planted-reversion proof for any oracle",
+  "reproduction of the prebuild's 495 + 16 figure",
+  "that the 3 invented/anomaly obligations are fixed",
+  "J-3c item completion",
+  "the independent step receipt for this item"
+ ],
+ "personal_data": "none: counts, digests, hashes, file and test names, receipt names, commit ids and timestamps of operations only; no life-event rows, event dates or chart-binding content",
+ "schema": "ky.job_evidence/1",
+ "step": "rehearsal_oracles_and_absence_accepted"
+}
