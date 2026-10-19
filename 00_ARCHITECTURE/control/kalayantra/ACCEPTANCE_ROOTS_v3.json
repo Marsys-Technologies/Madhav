@@ -105,8 +105,11 @@
       "CLAUDE §N.4 cockpit truth"
      ],
      "detector": {
-      "ref": "origin/kalayantra/k8-reg",
-      "type": "branch_merged"
+      "measures": "The whole-item oracle for K8-REG is on main: the five-element line names engine-form integrity, produced_tables disposition, lifecycle ledger, writer-digest membership and the further fingerprint declarations, and CI runs the file. #3557 alone (the former branch_merged reading) no longer satisfies it.",
+      "path": "platform/scripts/governance/__tests__/test_k8_remainder.py",
+      "pattern": "^K8_REG_ELEMENTS = \\(\"integrity_engine_form\", \"produced_tables\", \"lifecycle\", \"writer_digest\", \"fingerprint\"\\)$",
+      "ref": "origin/main",
+      "type": "branch_file_contains"
      },
      "item": "K8-REG",
      "role": "the registry carries a certification mapping for every served Kāla asset",

@@ -1247,12 +1247,12 @@
   "VC-2"
  ],
  "closure_count": 184,
- "closure_sha256": "3bc61c5bc43c8815095c2e53898c23a951c2ca68f214b6e12ac3424813a63c10",
+ "closure_sha256": "b1f02f2bff4b0bc007e4540c8a8e89b3560d7e146bdc9da32d3d27f4e56558f2",
  "inputs": {
-  "model_canonical_sha256": "0794d50c0e16ffc707d69699285a48741608d4ad1ecf875bc51dbb03634e89a8",
+  "model_canonical_sha256": "21c4ff84c0d334908c2dce524566fa991645ac49a9679a2d07aa15201ea33617",
   "model_items": 273,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019",
-  "roots_canonical_sha256": "3f3c10afe434afee563bbc436f5c7ad07578422d05b29149887b2fc526f54e77"
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+k8-reg-rest-20261019",
+  "roots_canonical_sha256": "a75dd3a1d0c37a035ff46cee4612fa23a6e368d58a9ec6bb71da49beada214c8"
  },
  "mechanical_close_chain_excluded_as_roots": [],
  "members": {
