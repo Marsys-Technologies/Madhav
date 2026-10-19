@@ -208,8 +208,11 @@ def unmet_evidence(model: dict, item: dict, events: list[dict], completion: dict
 
 
 def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str,
-                       detector: dict, proof: dict) -> dict:
+                       detector: dict, proof: dict, *, derived_done: dict | None = None) -> dict:
     """Validate an item against current observations and return its durable event.
+
+    ``derived_done`` is the merged+deployed map the display uses (merged_deployed.derive_for_events): a dependency
+    the tracker shows as done by that derivation counts as done here too (SR-BOLD-07).
 
     ``proof['pr']`` is the caller's live GitHub observation, not an assertion from
     the worker.  The write path must obtain it itself and re-read the event log
@@ -226,7 +229,9 @@ def guarded_done_event(model: dict, events: list[dict], item_id: str, actor: str
         raise CompletionError("S must complete independently accepted N/V work")
     if stream != owner and not (stream == "S" and owner in ("N", "V")):
         raise CompletionError("only the owner or S for independently accepted N/V work may complete")
-    snapshot = build_snapshot(model, events, {}, {}, {})
+    # the item's own completion still writes its durable event: only what it depends on is read through the derivation
+    upstream = {k: v for k, v in (derived_done or {}).items() if k != item_id}
+    snapshot = build_snapshot(model, events, {}, {}, {}, derived_done=upstream)
     rows = {row["id"]: row for track in snapshot["tracks"] for row in track["items"]}
     if rows[item_id]["status"] == "done":
         raise CompletionError("item is already done")
