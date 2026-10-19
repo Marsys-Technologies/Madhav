@@ -53,6 +53,7 @@ from pravaha_tracker.claims import ClaimError, claim_item, renew_claim, release_
 from pravaha_tracker.audit import audit  # noqa: E402
 from pravaha_tracker.state import build_snapshot, load_closure, reconciliation_line  # noqa: E402
 from pravaha_tracker.detectors import git_activity  # noqa: E402
+from pravaha_tracker import merged_deployed  # noqa: E402
 from pravaha_tracker.completion import COMPOSED_RECEIPT_SCHEMA, CompletionError, guarded_done_event  # noqa: E402
 from pravaha_tracker.claims import _locked, _read, _append, _close  # noqa: E402
 from pravaha_tracker.events import validate_against_model  # noqa: E402
@@ -227,6 +228,14 @@ def cmd_transition(a, actor: str) -> int:
         return 2
 
 
+def observe_derived_done(model: dict, events: list[dict], item_id: str, repo: str) -> dict:
+    """The display's merged+deployed derivation for `item_id` and its upstream, read live (SR-BOLD-07).
+    Read before the event-log lock is taken: it calls GitHub. A failed read derives fewer items, never more."""
+    src = merged_deployed.GitHubSource(repo)
+    src.refresh()
+    return merged_deployed.derive_for_events(model, events, src, only=merged_deployed.upstream_ids(model, item_id) - {item_id})
+
+
 def cmd_guarded_done(a, actor: str) -> int:
     """Obtain live observations, then check and append under the event-log lock."""
     try:
@@ -309,9 +318,10 @@ def cmd_guarded_done(a, actor: str) -> int:
                      "path": os.path.realpath(a.packet_verdict)}
         else:
             raise CompletionError("typed evidence is required")
+        derived = observe_derived_done(model, _read_events(), a.item, os.environ.get("PRAVAHA_REPO", REPO_ROOT))
         fd = _locked(EVENTS)
         try:
-            event = guarded_done_event(model, _read(fd), a.item, actor, detector, proof)
+            event = guarded_done_event(model, _read(fd), a.item, actor, detector, proof, derived_done=derived)
             validate_against_model(event, model)
             written = _append(fd, event)
         finally:
