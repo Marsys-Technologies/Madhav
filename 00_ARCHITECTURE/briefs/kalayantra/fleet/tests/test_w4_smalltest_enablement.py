@@ -43,9 +43,10 @@ CENTURY_DISABLED = {"century_teardown": ("owner", "platform/scripts/teardown_v5_
 DISABLED = {"publish_head", "rollback_head", *CENTURY_DISABLED,
             "publish_head_dryrun", "rollback_head_dryrun",
             "gochara_role_provisioning_dispatch", "gochara_role_provisioning_dispatch_dryrun",      # U-M-03: shipped disabled
-            "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback",
             "github_run_readback",   # U-M-12: prepared for W3/W4, shipped disabled; exact binding pinned in test_executor_table
             "protected_window_dispatch_dryrun", "protected_window_dispatch"}   # U-M-01: shipped disabled
+K9 = {"orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify_dryrun", "layer_verify", "layer_publish_dryrun", "layer_publish",
+      "layer_rollback_dryrun", "layer_rollback"}   # K9-23 (SR-PREBUILD-ALL): bound and enabled; their exact bindings are pinned in test_executor_table.py
 
 
 @pytest.fixture
@@ -58,9 +59,9 @@ def executor(tmp_path, monkeypatch):
     return load_executor(tmp_path, monkeypatch)
 
 
-def test_only_wave4_measuring_scheduler_verification_and_century_ops_are_newly_enabled(table):
-    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION) | set(CENTURY) | DISABLED
-    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION) | set(CENTURY)
+def test_only_wave4_measuring_scheduler_verification_century_and_k9_ops_are_newly_enabled(table):
+    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION) | set(CENTURY) | DISABLED | K9
+    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION) | set(CENTURY) | K9
     for kind in DISABLED:
         assert table[kind]["enabled"] is False
         if "prepared_dry_run" in table[kind]:

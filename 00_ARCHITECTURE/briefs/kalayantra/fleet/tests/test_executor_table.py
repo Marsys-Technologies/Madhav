@@ -144,6 +144,23 @@ SCHEDULER_BINDINGS = {
     "measuring_cancel": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_cancel.py", "fixed_args": [],   # SR-J3-CANCEL-NULL
                          "allowed_args": ["execution"], "production": True, "timeout_s": 900, "enabled_by": "J-3c"},
 }
+# K9-23 (SR-PREBUILD-ALL): the five layer/rebuild kinds bound to kala_core.publication, plus the three dry-run siblings SR-TEARDOWN-AUTHORITY-GATE 2 requires.
+# layer_verify/layer_publish/layer_rollback run publication.py itself; the rebuild kinds and every layer dry-run go through publication_admission.py.
+K9_MODULE = "platform/python-sidecar/services/kala_core/publication.py"
+K9_ADMISSION = "platform/python-sidecar/services/kala_core/publication_admission.py"
+def _k9(needs, script, fixed, allowed, production, module, **more):
+    return {"enabled": True, "needs": needs, "script": script, "fixed_args": [fixed], "allowed_args": allowed, "production": production,
+            "enabled_by": "K9-23", "cwd": "platform/python-sidecar", "python_module": module, **more}
+K9_BINDINGS = {
+    "orchestrator_rebuild_dryrun": _k9("builder", K9_ADMISSION, "rebuild-dryrun", ["assets", "run-id", "phase"], False, "services.kala_core.publication_admission"),
+    "orchestrator_rebuild": _k9("builder", K9_ADMISSION, "rebuild", ["assets", "run-id", "phase"], True, "services.kala_core.publication_admission", timeout_s=21600),
+    "layer_verify_dryrun": _k9("layer_verifier", K9_ADMISSION, "verify-dryrun", ["run-id", "generation", "independently-derived-digest"], False, "services.kala_core.publication_admission"),
+    "layer_verify": _k9("layer_verifier", K9_MODULE, "verify", ["run-id", "generation", "independently-derived-digest"], True, "services.kala_core.publication"),
+    "layer_publish_dryrun": _k9("builder", K9_ADMISSION, "publish-dryrun", ["run-id", "generation", "expected-head"], False, "services.kala_core.publication_admission"),
+    "layer_publish": _k9("builder", K9_MODULE, "publish", ["run-id", "generation", "expected-head"], True, "services.kala_core.publication"),
+    "layer_rollback_dryrun": _k9("builder", K9_ADMISSION, "rollback-dryrun", ["generation", "expected-head"], False, "services.kala_core.publication_admission"),
+    "layer_rollback": _k9("builder", K9_MODULE, "rollback", ["generation", "expected-head"], True, "services.kala_core.publication"),
+}
 # U-M-12 (enabled_by J-4b, the protected-window item): the read-only GitHub run readback for the window watch; prepared for W3/W4 and SHIPPED DISABLED, so it is in no ENABLED_KINDS set below.
 GITHUB_RUN_READBACK = {
     "enabled": False, "needs": "none", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/github_run_readback.py",
@@ -168,7 +185,7 @@ PROVISIONING_BINDINGS = {
     "gochara_role_provisioning_dispatch": {"enabled": False, "needs": "none", "script": PROVISIONING_SCRIPT, "fixed_args": ["--execute"],
                                            "allowed_args": ["stage", "dsn_tail", "confirm", "window_lease_id"], "production": True, "timeout_s": 300, "enabled_by": "J-4b"},
 }
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]} | set(VERIFICATION_BINDINGS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; J-4d: the three enabled century kinds; J-4b: the two verification kinds
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(K9_BINDINGS) | set(VERIFICATION_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]}   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; K9-23: the eight layer/rebuild kinds; J-4d: the three enabled century kinds
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
@@ -256,6 +273,8 @@ def assert_table_matches_pin(now):
     expected_order[pos:pos] = ["measuring_dispatch_dryrun", "measuring_teardown_dryrun", "measuring_teardown"]
     expected_order.insert(expected_order.index("migration_readback") + 1, "cloudrun_job_readback")
     expected_order.insert(expected_order.index("cloudrun_job_readback") + 1, "quiescence_check")
+    for sibling, real in (("layer_verify_dryrun", "layer_verify"), ("layer_publish_dryrun", "layer_publish"), ("layer_rollback_dryrun", "layer_rollback")):
+        expected_order.insert(expected_order.index(real), sibling)   # K9-23: each layer dry-run sits directly before its operation
     expected_order.insert(expected_order.index("verification_job") + 1, "verification_job_dryrun")      # J-4b: the sibling sits right after its kind
     pos = expected_order.index("century_dispatch") + 1
     expected_order[pos:pos] = ["century_dispatch_dryrun", "century_teardown_dryrun", "century_teardown"]
@@ -275,6 +294,7 @@ def assert_table_matches_pin(now):
         expected[kind]["enabled_by"] = "K9-23"
         assert "TO_BE_SET_BY_K9-3" in expected[kind]["script"]
         expected[kind]["script"] = expected[kind]["script"].replace("TO_BE_SET_BY_K9-3", "TO_BE_SET_BY_K9-23", 1)
+    expected.update(json.loads(json.dumps(K9_BINDINGS)))              # K9-23: the exact enabled bindings (the pin's five placeholders are replaced, three siblings added)
     expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
     expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
     expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
@@ -367,12 +387,12 @@ def test_table_pin_refuses_unreviewed_verification_changes(kind, field, value):
         assert_table_matches_pin(now)
 
 
-def test_k9_placeholders_name_k9_23_and_none_is_filled():
+def test_k9_kinds_name_k9_23_and_no_placeholder_remains():
     ops = load_ops(OPS_FILE.read_text())["ops"]
-    for kind in K9_KINDS:
+    for kind in K9_BINDINGS:
         assert ops[kind]["enabled_by"] == "K9-23"
-        assert ops[kind]["script"].startswith("TO_BE_SET_BY_K9-23"), kind
-        assert "K9-3" not in ops[kind]["script"].replace("K9-23", ""), kind
+        assert "TO_BE_SET" not in json.dumps(ops[kind]), kind
+        assert (REPO / ops[kind]["script"]).is_file(), kind
     assert ops["local_schema_seed"]["script"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh"
     assert ops["local_schema_seed"]["fixed_args"] == ["seed"]
 
@@ -462,9 +482,13 @@ def _module_docstring(src):
     return None
 
 
+# Exact K9-23 additions: a distinct verifier capability and its one-connection injection (`capabilities` and `execute` = the reviewed function plus two lines).
+K9_FUNCTION_HASHES = {'capabilities': '5ebe1c302e6b797c2af0da3bb72b7a9aadca4b40663645396aab217a27b9b675', 'execute': 'e5d8fb05c31874578aee3e301a01dfc520d9c19b06998918306e9298a1fc9c52'}
+
+
 def normalize_wave4(base_src, work_src):
     base_seg, work_seg = _segments(base_src), _segments(work_src)
-    for name, digest in W4_FUNCTION_HASHES.items():
+    for name, digest in (W4_FUNCTION_HASHES | K9_FUNCTION_HASHES).items():
         segment = work_seg.get(name, "")
         if hashlib.sha256(segment.encode()).hexdigest() == digest:
             if name in base_seg:
@@ -620,7 +644,7 @@ def test_executor_sh_differs_from_the_pin_only_in_the_git_assignment():
 GIT_ENV = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
            "GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
            "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}
-ALL_CAPS = {"builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
+ALL_CAPS = {"layer_verifier": True, "builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
 # 2026-10-17 incident: an inherited GIT_DIR beats `-C`, so `git init --bare` re-initialised the SHARED repository. A fixture's git must only see what it made.
 REPO_LOCATING_VARS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE",
                       "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE")
@@ -763,17 +787,17 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["century_teardown", "publish_head", "rollback_head", *K9_KINDS, *PROTECTED_WINDOW_BINDINGS, *PROVISIONING_BINDINGS])
+@pytest.mark.parametrize("kind", ["century_teardown", "publish_head", "rollback_head", *PROTECTED_WINDOW_BINDINGS, *PROVISIONING_BINDINGS])   # K9 kinds are enabled here (K9-23), not disabled
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)
     assert why is not None and "not enabled" in why, why
 
 
-@pytest.mark.parametrize("kind", K9_KINDS)
+@pytest.mark.parametrize("kind", K9_BINDINGS)
 def test_entry_enabled_in_a_copy_with_a_placeholder_script_is_refused(tmp_path, monkeypatch, kind):
     text = OPS_FILE.read_text()
-    w = World(tmp_path, monkeypatch, copy_with(text, kind))
+    w = World(tmp_path, monkeypatch, copy_with(text, kind, script="TO_BE_SET_BY_FIXTURE"))
     table = w.table()
     assert enabled_state(kind, table[kind]) is True and "TO_BE_SET" in table[kind]["script"]
     assert w.mod.validate(w.production_request(kind), table, ALL_CAPS) == "operation script not yet reviewed/landed"
@@ -970,3 +994,68 @@ def test_nonseed_child_does_not_inherit_caller_scratch_or_connections(tmp_path, 
                              {"script": "fixture.py", "needs": "none", "production": False})
     assert rc == 0, output
     assert not list(mod.EXEC.iterdir()) and not list(mod.TMP.iterdir())
+
+
+# ───────────────────────────── K9-23: the enabled layer / rebuild kinds are admitted only on their gates ─────────────────────────────
+
+K9_PRODUCTION = [k for k, e in K9_BINDINGS.items() if e["production"]]
+K9_ARGS = {"run-id": "6f1d3c1e-0000-4000-8000-000000000001", "generation": "g-1", "expected-head": "g-0", "assets": "ka_yojaka", "phase": "pre",
+           "independently-derived-digest": "0" * 64}
+
+
+def k9_args(kind):
+    return {name: K9_ARGS[name] for name in K9_BINDINGS[kind]["allowed_args"]}
+
+
+@pytest.mark.parametrize("kind", K9_PRODUCTION)
+def test_k9_production_kind_is_admitted_with_a_dry_run_attestation_and_refused_without(tmp_path, monkeypatch, kind):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    table = w.table()
+    req = w.production_request(kind, args=k9_args(kind))
+    assert w.mod.validate(w.accept(req), table, ALL_CAPS) is None, "control failed — the refusal below would be vacuous"
+    checks = {"backup_taken": True, "restore_verified": True}
+    assert w.mod.validate(w.accept(req, checks=checks), table, ALL_CAPS) == "required backup/restore/dry-run attestation missing"
+    assert w.mod.validate(w.accept(req, checks={**checks, "dry_run_passed": False}), table, ALL_CAPS) == "required backup/restore/dry-run attestation missing"
+
+
+@pytest.mark.parametrize("kind", K9_PRODUCTION)
+def test_k9_production_kind_without_a_live_lease_is_refused(tmp_path, monkeypatch, kind):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    req = w.production_request(kind, args=k9_args(kind), lease_id="no-such-lease")
+    assert "lease is not the single unexpired ACTIVE row" in w.mod.validate(w.accept(req), w.table(), ALL_CAPS)
+
+
+@pytest.mark.parametrize("kind", [k for k in K9_BINDINGS if not K9_BINDINGS[k]["production"]])
+def test_k9_dry_run_needs_no_lease_or_acceptance_but_a_merged_commit(tmp_path, monkeypatch, kind):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    table = w.table()
+    req = simple_request(kind, args=k9_args(kind), reviewed_commit=w.reviewed)
+    assert w.mod.validate(req, table, ALL_CAPS) is None
+    assert w.mod.validate({**req, "reviewed_commit": "a" * 40}, table, ALL_CAPS) == "reviewed_commit is not merged to main"
+    assert w.mod.validate({k: v for k, v in req.items() if k != "reviewed_commit"}, table, ALL_CAPS) == "reviewed_commit required for a dry-run operation"
+
+
+@pytest.mark.parametrize("kind", K9_BINDINGS)
+def test_k9_kind_refuses_an_argument_it_was_not_bound_for(tmp_path, monkeypatch, kind):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    req = simple_request(kind, args={**k9_args(kind), "force": "1"}, reviewed_commit=w.reviewed)
+    assert w.mod.validate(req, w.table(), ALL_CAPS) == "disallowed args ['force']"
+
+
+@pytest.mark.parametrize("kind,missing", [("layer_verify", "layer_verifier"), ("layer_verify_dryrun", "layer_verifier"),
+                                          ("layer_publish", "builder"), ("layer_publish_dryrun", "builder"),
+                                          ("layer_rollback", "builder"), ("orchestrator_rebuild", "builder")])
+def test_k9_kind_waits_on_exactly_its_own_capability(tmp_path, monkeypatch, kind, missing):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    req = simple_request(kind, args=k9_args(kind), reviewed_commit=w.reviewed)
+    assert w.mod.validate(req, w.table(), {**ALL_CAPS, missing: False}) == f"capability_missing: {missing}"
+    other = "builder" if missing == "layer_verifier" else "layer_verifier"
+    assert (w.mod.validate(req, w.table(), {**ALL_CAPS, other: False}) or "").startswith("capability_missing") is False
+
+
+@pytest.mark.parametrize("kind", K9_PRODUCTION)
+def test_every_mutating_k9_kind_has_a_dry_run_sibling_that_accepts_the_same_arguments(kind):
+    ops = load_ops(OPS_FILE.read_text())["ops"]
+    sibling = ops[kind + "_dryrun"] if kind != "orchestrator_rebuild" else ops["orchestrator_rebuild_dryrun"]
+    assert sibling["production"] is False and sibling["enabled"] is True and sibling["needs"] == ops[kind]["needs"]
+    assert set(sibling["allowed_args"]) == set(ops[kind]["allowed_args"])

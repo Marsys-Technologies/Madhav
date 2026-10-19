@@ -31,8 +31,9 @@ parallel under the exported snapshot. No other relation is locked or dumped, so
 a table the backup login cannot read (SR-J2A-BACKUP-POSITIVE) cannot break it.
 Row content is measured by bounded SQL aggregates (count and an
 order-independent sum of per-row SHA-256), never by streaming sorted row JSON.
-Its receipts carry the scope digest and a validity window; they never claim a
-"complete database". Restore proof: the scoped definitions cannot recreate the
+Its receipts carry the scope digest and the scoped-content digest, which is what keeps them
+valid (SR-BACKUP-VALIDITY-A8: valid while a fresh measurement of the same relations equals it,
+no clock); they never claim a "complete database". Restore proof: the scoped definitions cannot recreate the
 functions, types and extensions the tables depend on, so the scratch target is
 first built from the governed L1 bundle schema (never from production's
 catalog) PLUS every migration the archive's own _migrations_applied ledger
@@ -55,7 +56,8 @@ from pathlib import Path
 import re
 import subprocess
 import sys
-from datetime import timedelta
+
+import v5_small_test_shared as shared_policy   # the scoped-content digest and measurement method the dispatch check also uses
 
 
 class BackupRefused(RuntimeError):
@@ -190,7 +192,7 @@ def compare_restore(expected: dict, actual: dict) -> None:
 SCOPE_FILE = Path(__file__).with_name('backup_v5_small_test_scope.json')
 SCOPED_BACKUP_SCHEMA = 'ky.smalltest_backup/2'
 SCOPED_RESTORE_SCHEMA = 'ky.smalltest_restore/2'
-SCOPED_MEASUREMENT_METHOD = 'sql_sum_sha256_rowjson/1'
+SCOPED_MEASUREMENT_METHOD = shared_policy.SCOPED_MEASUREMENT_METHOD   # pinned in the shared policy: one definition for capture and check
 SCOPED_DUMP_JOBS = 4
 # Condition (5): the whole step must finish in 30 minutes at the observed
 # 1.2 MB/s proxy rate. 500 MB of on-disk table data streams as at most ~1 GB of
@@ -226,11 +228,6 @@ SCOPED_LEGACY_CAPTURE_SCRIPTS = {
     '3f967bf9cd99abe725db9983b50f99d4263e96336c44ee4b2ce3a707022aeb29': 'seedless capture w4r1_20261017t090403z',
 }
 MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / 'migrations'
-
-
-def scoped_validity_seconds() -> int:
-    from v5_small_test_shared import SCOPED_BACKUP_VALIDITY_S
-    return SCOPED_BACKUP_VALIDITY_S
 
 
 def scope_digest(name: str, tables: list[str]) -> str:
@@ -408,6 +405,22 @@ def scoped_measurements(conn, tables: list[str], sequences: list[str]) -> dict:
     if not out:
         raise BackupRefused('no measured tables; refusing empty coverage')
     return {'tables': out, 'sequences': measure_sequences(conn, sequences)}
+
+
+def measure_scope_now(tables: list[str], sequences: list[str], dsn: str | None = None) -> dict:
+    """A fresh, strictly read-only measurement of the relations a scoped capture measured, by the same function the
+    capture used (scoped_measurements): the check-time side of the scoped-content digest (SR-BACKUP-VALIDITY-A8).
+    Opens its own READ ONLY transaction, never writes and always rolls back."""
+    import psycopg
+    source = dsn or os.environ.get('DATABASE_URL')
+    if not source:
+        raise BackupRefused('no database connection to measure the scoped content')
+    with psycopg.connect(source, autocommit=True) as conn:
+        conn.execute('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
+        try:
+            return scoped_measurements(conn, tables, sequences)
+        finally:
+            conn.rollback()
 
 
 def archive_manifest(archive: Path) -> dict:
@@ -589,19 +602,21 @@ def validate_scoped_capture(receipt: dict, archive: Path, label: str) -> dict:
         raise BackupRefused('archive missing, empty or file hashes differ')
     if receipt.get('measurement_method') != SCOPED_MEASUREMENT_METHOD:
         raise BackupRefused('capture measurement method differs')
+    # SR-BACKUP-VALIDITY-A8: a capture is valid while its scoped-content digest is unchanged, not for a time. Only the
+    # capture instant is required; an older capture's `not_after` / `seconds` stay readable and are never a gate.
     validity = receipt.get('validity')
     try:
         start = datetime.fromisoformat(validity['not_before'])
-        end = datetime.fromisoformat(validity['not_after'])
-        stated = timedelta(seconds=validity['seconds'])
     except (KeyError, TypeError, ValueError):
-        raise BackupRefused('capture validity window is missing or malformed') from None
-    if start.tzinfo is None or end - start != stated or stated != timedelta(seconds=scoped_validity_seconds()):
-        raise BackupRefused('capture validity window is missing or malformed')
+        raise BackupRefused('capture instant is missing or malformed') from None
+    if start.tzinfo is None:
+        raise BackupRefused('capture instant is missing or malformed')
     values = _check_provenance(receipt)
     _check_measurement_shapes(values)
     if set(values['tables']) != set(scope['tables']) or set(values['sequences']) != set(scope['sequences']):
         raise BackupRefused('measured relations differ from the scope')
+    if 'scoped_content_digest' in receipt and receipt['scoped_content_digest'] != shared_policy.scoped_content_digest(values):
+        raise BackupRefused('capture scoped-content digest differs from its measurements')
     return values
 
 
@@ -793,20 +808,19 @@ def snapshot_scoped(folder: Path, label: str) -> dict:
     manifest = archive_manifest(archive)
     if not manifest['files']:
         raise BackupRefused('empty archive')
-    window = timedelta(seconds=scoped_validity_seconds())
     receipt = {'schema': SCOPED_BACKUP_SCHEMA, 'label': label, 'status': 'captured',
                'ts': datetime.now(timezone.utc).isoformat(), 'snapshot': snapshot_id, 'snapshot_ts': snapshot_ts.isoformat(),
                'source': {'database': db, 'address': address, 'port': port},
                'archive_sha256': manifest['sha256'], 'archive': {'format': 'directory', 'files': manifest['files']},
                'measurements': measured, 'measurement_method': SCOPED_MEASUREMENT_METHOD,
+               'scoped_content_digest': shared_policy.scoped_content_digest(measured),
                'script_sha256': sha256(Path(__file__)),
                'migrations_ledger': ledger,
                'restore_base': {'bundle': SCOPED_RESTORE_BASE_PATH, 'sha256': SCOPED_RESTORE_BASE_SHA256},
                'scope': {'name': scope['name'], 'sha256': scope['sha256'], 'tables': catalog['tables'],
                          'closure': catalog['closure'], 'sequences': catalog['sequences'], 'data_bytes': catalog['data_bytes'],
                          'dump_excludes': catalog['dump_excludes']},
-               'validity': {'not_before': snapshot_ts.isoformat(), 'not_after': (snapshot_ts + window).isoformat(),
-                            'seconds': int(window.total_seconds())},
+               'validity': {'not_before': snapshot_ts.isoformat(), 'basis': 'scoped_content_digest_unchanged'},
                'coverage': 'SCOPED logical backup, not a complete database: definitions, data, sequences and content '
                            'measurements of the listed scope tables and their foreign-key parents only; every other '
                            "relation's definition and data, functions, types, roles and grants excluded",
@@ -892,7 +906,7 @@ def main(argv: list[str] | None = None) -> int:
                 'backup_taken': None, 'restore_verified': None}
         if args.scope == 'small_test':
             try:
-                plan.update(scope=args.scope, scope_sha256=load_scope()['sha256'], validity_seconds=scoped_validity_seconds())
+                plan.update(scope=args.scope, scope_sha256=load_scope()['sha256'], validity_basis='scoped_content_digest_unchanged')
             except BackupRefused as exc:
                 print(f'backup refused: {exc}', file=sys.stderr)
                 return 1
