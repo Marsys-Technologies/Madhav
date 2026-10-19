@@ -486,6 +486,19 @@ def _check_declarations(model: dict) -> list[str]:
             problems.append(f"{i['id']} step_evidence is not a mapping of its steps")
         elif set(evidence) - set(i.get("steps", [])):
             problems.append(f"{i['id']} step_evidence names undeclared steps: {sorted(set(evidence) - set(i.get('steps', [])))}")
+        na = i.get("not_applicable_steps", {})
+        known = {d.get("id") for d in model.get("decisions", [])}
+        if not isinstance(na, dict):
+            problems.append(f"{i['id']} not_applicable_steps is not a mapping of its steps")
+        for name, spec in (na.items() if isinstance(na, dict) else []):
+            spec = spec if isinstance(spec, dict) else {}
+            reason = spec.get("reason")
+            if name not in i.get("steps", []):
+                problems.append(f"{i['id']} not_applicable_steps names an undeclared step: {name}")
+            if spec.get("decision") not in known:
+                problems.append(f"{i['id']} not_applicable step {name} cites decision {spec.get('decision')!r}, which the plan does not declare")
+            if not isinstance(reason, str) or not reason.strip() or "\n" in reason:
+                problems.append(f"{i['id']} not_applicable step {name} needs a one-line reason")
     return problems
 
 
