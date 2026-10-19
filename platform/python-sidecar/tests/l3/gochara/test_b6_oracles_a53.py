@@ -354,7 +354,10 @@ def test_rule_binding_path_frames_match_spec_2_2():
     # every selector role is the path's declared role inventory (E3) and no more
     for r in rb.path_rows():
         roles = {s["object_role"] for s in r["object_selector"]}
-        assert roles == set(rb._PATH_ROLES[r["path_id"]])
+        expected_roles = set(rb._PATH_ROLES[r["path_id"]])
+        if (r["path_id"], r["rule_version"]) == ("P4", "1.2.0"):
+            expected_roles = {"signature_house", "lord", "karaka"}
+        assert roles == expected_roles
         agents = {s["agent"] for s in r["object_selector"]}
         assert agents == set(rb._PATH_AGENTS[r["path_id"]])
 

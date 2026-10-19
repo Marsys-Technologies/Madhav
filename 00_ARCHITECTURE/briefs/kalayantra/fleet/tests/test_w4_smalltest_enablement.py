@@ -32,7 +32,15 @@ VERIFICATION = {
     "verification_job_dryrun": ("gcloud", "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", ["--dry-run"], ["generation"], False, 600),
     "verification_job": ("gcloud", "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", [], ["generation"], True, 900),
 }
-DISABLED = {"century_dispatch", "publish_head", "rollback_head",
+# SR-PREBUILD-ALL (enabled_by J-4d, request item J-4e): the century family. century_dispatch = the measuring launch without the test slice (builder: it stages the
+# run; gcloud: it launches it). century_teardown (the REAL deletion) stays disabled until the owner's teardown authority is recorded (SR-TEARDOWN-AUTHORITY-GATE).
+CENTURY = {
+    "century_dispatch_dryrun": ("builder", "platform/scripts/dispatch_v5_century_job.py", ["--i-am-steward", "--after-settled-1", "--dry-run"], ["classes"], "J-4d"),
+    "century_dispatch": ("builder", "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py", [], ["classes"], "J-4d"),
+    "century_teardown_dryrun": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--dry-run"], [], "J-4d"),
+}
+CENTURY_DISABLED = {"century_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], [], "J-4d")}
+DISABLED = {"publish_head", "rollback_head", *CENTURY_DISABLED,
             "publish_head_dryrun", "rollback_head_dryrun",
             "gochara_role_provisioning_dispatch", "gochara_role_provisioning_dispatch_dryrun",      # U-M-03: shipped disabled
             "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback",
@@ -50,9 +58,9 @@ def executor(tmp_path, monkeypatch):
     return load_executor(tmp_path, monkeypatch)
 
 
-def test_only_six_wave4_measuring_and_scheduler_ops_are_newly_enabled(table):
-    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION) | DISABLED
-    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION)
+def test_only_wave4_measuring_scheduler_verification_and_century_ops_are_newly_enabled(table):
+    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION) | set(CENTURY) | DISABLED
+    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION) | set(CENTURY)
     for kind in DISABLED:
         assert table[kind]["enabled"] is False
         if "prepared_dry_run" in table[kind]:
@@ -221,3 +229,44 @@ def test_the_launch_needs_a_dry_run_attestation_and_the_dry_run_does_not(table, 
     assert executor.validate(launch, table, caps()) == "required backup/restore/dry-run attestation missing"
     dry = request(executor, "verification_job_dryrun", {"generation": "5.0"})
     assert executor.validate(dry, table, caps()) is None
+
+
+# ───────────── SR-PREBUILD-ALL: the century family (item J-4e, enabled_by J-4d) ─────────────
+@pytest.mark.parametrize("kind", [*CENTURY, *CENTURY_DISABLED])
+def test_century_exact_script_capability_and_argv(table, kind):
+    op = table[kind]
+    needs, script, fixed, allowed, item = {**CENTURY, **CENTURY_DISABLED}[kind]
+    assert op["enabled"] is (kind in CENTURY) and next(iter(op)) == "enabled"
+    assert op["needs"] == needs and op["script"] == script and (FLEET.parents[3] / script).is_file()       # never TO_BE_SET
+    assert op["fixed_args"] == fixed and op["allowed_args"] == allowed and op["enabled_by"] == item
+    assert op["production"] is (not kind.endswith("_dryrun"))                                              # A8 §3.8 / SR-TEARDOWN-AUTHORITY-GATE 2: every dryrun sibling is production:false
+    assert op.get("requesters", ["adhikarin"]) == ["adhikarin"]
+    assert op.get("also_needs", []) == (["gcloud"] if kind == "century_dispatch" else [])
+    assert "required_rows" not in op and "timeout_s" not in op
+    assert op.get("remote_async", False) is (kind == "century_dispatch")                                  # A8 §3.11: only the remote launch takes the fence
+
+
+@pytest.mark.parametrize("kind", ["century_dispatch", "century_dispatch_dryrun", "century_teardown_dryrun"])
+def test_century_missing_each_required_capability_is_refused(table, executor, kind):
+    req = request(executor, kind)
+    for required in [table[kind]["needs"], *table[kind].get("also_needs", [])]:
+        assert executor.validate(req, table, {**caps(), required: False}) == f"capability_missing: {required}"
+
+
+@pytest.mark.parametrize("kind", ["century_dispatch", "century_dispatch_dryrun"])
+def test_century_validate_refuses_unlisted_arguments_run_names_and_any_horizon(table, executor, kind):
+    # the century takes only `classes`: no run name (it is not a slice) and no horizon (the writer decides it, N-G9)
+    for name in ["execute", "run", "run-id", "operation", "i-am-steward", "sql", "generation", "horizon-start", "horizon-end"]:
+        assert executor.validate(request(executor, kind, {name: "fixture"}), table, caps()) == f"disallowed args ['{name}']"
+
+
+@pytest.mark.parametrize("kind", ["century_dispatch", "century_dispatch_dryrun", "century_teardown_dryrun"])
+def test_century_requests_reach_the_reviewed_century_policy_not_the_enablement_refusal(table, executor, kind):
+    # the fixture's item is J-2a; the real century policy (loaded from the reviewed commit) must be what answers
+    args = {"classes": "all"} if "dispatch" in kind else {}
+    why = executor.validate(request(executor, kind, args), table, caps())
+    assert why == ("century dispatch belongs to J-4e" if "dispatch" in kind else "century teardown belongs to J-4e")
+
+
+def test_century_teardown_stays_disabled_until_the_owner_authority_is_recorded(table, executor):
+    assert executor.validate(request(executor, "century_teardown"), table, caps()).startswith("kind century_teardown is not enabled")

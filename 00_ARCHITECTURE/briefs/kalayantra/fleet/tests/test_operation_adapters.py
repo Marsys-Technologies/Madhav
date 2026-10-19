@@ -35,7 +35,8 @@ P01_KINDS = {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch_dry
 SCHEDULER_KINDS = {"scheduler_readback", "scheduler_pause_dryrun", "scheduler_pause", "scheduler_resume_dryrun", "scheduler_resume", "measuring_cancel_dryrun", "measuring_cancel"}   # SR-J3-REAPER-PAUSE (+ SR-J3-CANCEL-NULL)
 VERIFICATION_KINDS = {"verification_job", "verification_job_dryrun"}   # J-4b (SR-PREBUILD-ALL)
 MEASURING_KINDS = {"measuring_dispatch_dryrun", "measuring_dispatch", "measuring_teardown_dryrun", "measuring_teardown"}   # J-3a
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS | MEASURING_KINDS | SCHEDULER_KINDS | VERIFICATION_KINDS
+CENTURY_KINDS = {"century_dispatch_dryrun", "century_dispatch", "century_teardown_dryrun"}   # SR-PREBUILD-ALL (century_teardown stays disabled)
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS | MEASURING_KINDS | SCHEDULER_KINDS | VERIFICATION_KINDS | CENTURY_KINDS
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 ITEM = "K9-FIXTURE"
 LEASE = "LEASE-KY-FIXTURE"
@@ -840,7 +841,7 @@ def test_remote_plan_matches_the_current_wave4_launcher(monkeypatch):
 def test_only_p01_production_kinds_are_enabled_and_wave4_launch_stays_bound(bench):
     table = real_table()
     assert {k for k, v in table.items() if v["enabled"]} == ENABLED_KINDS
-    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == {k for k in P01_KINDS | MEASURING_KINDS | {"scheduler_pause", "scheduler_resume", "measuring_cancel", "verification_job"} if not k.endswith("_dryrun")}   # A8 §3.8
+    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == {k for k in P01_KINDS | MEASURING_KINDS | CENTURY_KINDS | {"scheduler_pause", "scheduler_resume", "measuring_cancel", "verification_job"} if not k.endswith("_dryrun")}   # A8 §3.8
     entry = table["smalltest_dispatch"]
     assert entry["script"].endswith("/smalltest_launch.py") and entry["also_needs"] == ["gcloud"]
     for kind in ("smalltest_dispatch",):

@@ -47,7 +47,7 @@ def scoped_backup_for(root, label='p02_fixture'):
 
 
 def authorize(root, req):
-    if req.get('kind') == 'smalltest_dispatch':
+    if req.get('kind') in ('smalltest_dispatch', 'century_dispatch'):      # a century dispatch names its scoped backup too (SR-PREBUILD-ALL: scoped backup by content hash)
         for key, value in scoped_backup_for(root).items():
             req.setdefault(key, value)
     req['chart_id'] = shared.CHART_ID
@@ -84,7 +84,7 @@ def request_for(root, scope, *, dry_run=False, rowset_sha256=None):
 def absence_for(root, *, committed=None):
     import csv
     import io
-    counts = {t: 0 for t, _ in shared.OUTPUT_TABLES}
+    counts = {t: 0 for t, _ in shared.ABSENCE_TABLES}
     counts.update({t: 0 for t in ('kala_gochara_publication', 'build_runs', 'build_run_assets',
         'asset_provenance_receipts', 'asset_freshness', 'asset_throughput', 'owned_test_runs',
         'ka_gochara_eval_window_record', 'ka_gochara_record_prerequisite',
