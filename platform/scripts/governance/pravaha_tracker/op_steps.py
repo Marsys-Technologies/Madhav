@@ -212,12 +212,13 @@ def check_acceptance_file_evidence(raw: bytes, path: str, spec: dict, item: str,
     return record
 
 
-# Mirrors v5_small_test_shared.absence_evidence's census (a test ties it to OUTPUT_TABLES in that module); the
+# Mirrors v5_small_test_shared.absence_evidence's census (a test ties it to ABSENCE_TABLES in that module); the
 # tracker never imports the pinned executor or its reviewed policy.
 ABSENCE_CENSUS = frozenset({
     "asset_freshness", "asset_provenance_receipts", "asset_throughput", "build_run_assets", "build_runs",
     "ka_gochara_contact", "ka_gochara_eval_window", "ka_gochara_eval_window_record",
-    "ka_gochara_eval_window_verification", "ka_gochara_record_prerequisite", "ka_gochara_relationship_record",
+    "ka_gochara_eval_window_verification", "ka_gochara_near_miss", "ka_gochara_near_miss_search",
+    "ka_gochara_record_prerequisite", "ka_gochara_relationship_record",
     "ka_gochara_search_input_snapshot", "ka_gochara_search_interval", "ka_gochara_search_inventory",
     "ka_gochara_search_inventory_verification", "ka_gochara_search_obligation", "ka_gochara_search_path_pin",
     "kala_gochara_coverage", "kala_gochara_publication", "owned_test_runs"})

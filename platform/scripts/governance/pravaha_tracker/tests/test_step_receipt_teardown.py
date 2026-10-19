@@ -279,7 +279,7 @@ def test_the_tracker_census_equals_the_reviewed_policys():
     spec = importlib.util.spec_from_file_location("reviewed_policy", POLICY)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    required = {table for table, _ in module.OUTPUT_TABLES} | {
+    required = {table for table, _ in module.ABSENCE_TABLES} | {
         "kala_gochara_publication", "build_runs", "build_run_assets", "asset_provenance_receipts", "asset_freshness",
         "asset_throughput", "ka_gochara_eval_window_record", "ka_gochara_record_prerequisite",
         "ka_gochara_eval_window_verification", "ka_gochara_search_inventory_verification", "owned_test_runs"}

@@ -45,7 +45,7 @@ def restored(isolated_kala_db_dsn, job_scratch):
                 dasha_row_id uuid, chart_id uuid, system_id text, ayanamsha_id text,
                 level_n integer, parent_row_id uuid, lord_graha text,
                 start_iso timestamptz, end_iso timestamptz, build_id uuid,
-                verification_pass_status text);
+                verification_pass_status text, kp_sublevel text);
             CREATE TABLE profiles(id integer PRIMARY KEY);
             CREATE TABLE charts(id integer PRIMARY KEY, client_id integer);
         ''')
@@ -96,9 +96,9 @@ def test_synthetic_binding_reaches_real_reader_and_independent_verifier(restored
     assert receipt['snapshot_stage_outcome'] == 'failed'
     # Exercise the verifier's own SQL, not the reader's population check.
     restored.execute('''CREATE TABLE ka_gochara_search_input_snapshot
-        (chart_id uuid,generation text,consumed_dasha_row_ids uuid[]);
+        (chart_id uuid,generation text,consumed_fact_ids text[],consumed_dasha_row_ids uuid[]);
         CREATE TABLE ka_gochara_search_inventory(chart_id uuid,generation text,horizon tstzrange)''')
-    restored.execute('INSERT INTO ka_gochara_search_input_snapshot VALUES (%s,\'5.0\',ARRAY[%s::uuid])',
+    restored.execute('INSERT INTO ka_gochara_search_input_snapshot VALUES (%s,\'5.0\',ARRAY[]::text[],ARRAY[%s::uuid])',
                      (CHART, rows[0]['dasha_row_id']))
     restored.execute("INSERT INTO ka_gochara_search_inventory VALUES (%s,'5.0',tstzrange('2026-01-01Z','2026-01-09Z'))", (CHART,))
     verified = verifier.validate_consumed_dasha_population(conn, chart_id=CHART, generation='5.0')
