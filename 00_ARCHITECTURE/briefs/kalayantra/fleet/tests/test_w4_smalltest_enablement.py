@@ -33,6 +33,7 @@ VERIFICATION = {
     "verification_job": ("gcloud", "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", [], ["generation"], True, 900),
 }
 DISABLED = {"century_dispatch", "publish_head", "rollback_head",
+            "publish_head_dryrun", "rollback_head_dryrun",
             "orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"}
 
 
