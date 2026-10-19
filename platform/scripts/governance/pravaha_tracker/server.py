@@ -40,6 +40,7 @@ if __package__ in (None, ""):
     __package__ = "pravaha_tracker"
 
 from pravaha_tracker import detectors as D  # noqa: E402
+from pravaha_tracker import merged_deployed  # noqa: E402
 from pravaha_tracker.merged_deployed import CodeDone  # noqa: E402
 from pravaha_tracker.events import EventLog  # noqa: E402
 from pravaha_tracker.state import build_snapshot, load_closure  # noqa: E402
@@ -236,8 +237,7 @@ class Engine:
 
     def _completed_by_event(self) -> set:
         """Items a guarded done event already closed: the merged+deployed derivation need not look at them."""
-        return {e.get("item") for e in self.log.events
-                if e.get("kind") == "item" and e.get("state") == "done" and not e.get("step") and e.get("guarded") is True}
+        return merged_deployed.completed_by_event(self.log.events)
 
     def _recheck_touched(self) -> None:
         """An item event just arrived: re-measure that item's detector now, not at its next TTL."""
