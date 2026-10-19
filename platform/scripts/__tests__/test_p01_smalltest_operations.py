@@ -140,11 +140,31 @@ def test_absence_proof_measures_every_deleted_scope_and_run_ids():
 
 
 @pytest.mark.parametrize('table', ['build_runs', 'build_run_assets', 'asset_provenance_receipts',
-                                 'ka_gochara_contact', 'ka_gochara_search_input_snapshot', 'kala_gochara_publication'])
+                                 'ka_gochara_contact', 'ka_gochara_search_input_snapshot', 'kala_gochara_publication',
+                                 'ka_gochara_near_miss', 'ka_gochara_near_miss_search'])
 def test_absence_refuses_surviving_rows(table):
     cur = Counts({table: 1})
     with pytest.raises(teardown.TeardownRefused, match=table):
         teardown._prove_absence(cur, [])
+
+
+def test_teardown_closed_list_holds_the_generation_near_miss_tables_and_never_the_global_object():
+    """Migration 1308 (NearMissStore.delete_generation deletes exactly ka_gochara_near_miss and ka_gochara_near_miss_search by chart x
+    generation, near_miss.py). The backup scope declares them written, so the teardown's closed list, its absence proof and the independent
+    readback must move with it. ka_gochara_near_miss_object is GLOBAL and insert-only (a DELETE trigger refuses it; any chart or generation
+    may reference an object): the teardown never deletes nor counts it, in any of the four places."""
+    nm = ('ka_gochara_near_miss', 'ka_gochara_near_miss_search')
+    obj = 'ka_gochara_near_miss_object'
+    closed = [t for t, _ in teardown.GENERATION_TABLES]
+    assert all(t in closed for t in nm) and obj not in closed
+    assert closed.index('ka_gochara_search_input_snapshot') < min(map(closed.index, nm)) < closed.index('kala_gochara_publication')
+    scoped = [t for t, _, _, _ in teardown._scope_statements([])]
+    assert all(t in scoped for t in nm) and obj not in scoped
+    assert all(t in teardown._absence_counts(Counts(), []) for t in nm)
+    assert obj not in teardown._absence_counts(Counts(), [])
+    assert all(t in teardown.REQUIRED_PRIVILEGES['select_delete'] for t in nm) and obj not in teardown.REQUIRED_PRIVILEGES['select_delete']
+    readback = teardown.shared.absence_readback_sql()
+    assert all(f'FROM {t} WHERE chart_id' in readback for t in nm) and obj not in readback
 
 
 def test_failed_absence_detector_rolls_back_before_commit(monkeypatch):

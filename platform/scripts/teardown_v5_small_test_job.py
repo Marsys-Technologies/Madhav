@@ -117,7 +117,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))     # the shared proof module sits next to this script
 import v5_small_test_shared as shared  # noqa: E402
 from v5_small_test_shared import (  # noqa: E402,F401  (re-exported: the tests and the runbook read these names here)
-    ASSET_ID, CHAIN_TABLES, CHART_ID, GENERATION, INVENTORY_TABLES, OUTPUT_TABLES, TRIGGERED_BY, Refused)
+    ASSET_ID, CHAIN_TABLES, CHART_ID, GENERATION, INVENTORY_TABLES, NEAR_MISS_TABLES, OUTPUT_TABLES, TRIGGERED_BY, Refused)
 
 TeardownRefused = Refused
 _writer, _count, _table_exists = shared.writer, shared.count, shared.table_exists
@@ -152,7 +152,7 @@ EXPECTED_REGISTRY_ROW = {
 }
 
 MANIFEST_TABLE = ("kala_gochara_publication", "")   # the candidate manifest: last, and only once proven to be the slice's
-GENERATION_TABLES = CHAIN_TABLES + INVENTORY_TABLES + (MANIFEST_TABLE,)
+GENERATION_TABLES = CHAIN_TABLES + INVENTORY_TABLES + NEAR_MISS_TABLES + (MANIFEST_TABLE,)
 # The legacy v4 ledger tables are NOT written by the v5 writer: GUARD-ONLY. A table that does not exist is skipped (named `absent`
 # in the listing); rows of '5.0' in one are not this test's, and the teardown refuses and names them.
 LEGACY_GUARD_TABLES = ("kala_gochara_windows", "kala_gochara_contacts")

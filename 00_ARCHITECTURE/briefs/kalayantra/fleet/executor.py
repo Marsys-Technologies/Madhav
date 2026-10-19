@@ -10,7 +10,7 @@ What it trusts: nothing an agent can edit in a working tree. The operations tabl
 
 Loop: read run/ops/requests/*.json → validate → (production: take the single production slot) → validate AGAIN immediately
 before execution → run in its own process group → write run/ops/receipts/<operation_id>.json (redacted; the complete output
-goes to <operation_id>.output.txt with its sha256) → move the request to run/ops/done/.
+is the child's stdout alone, in <operation_id>.output.txt, and its stderr alone in <operation_id>.stderr.txt, each with its own sha256) → move the request to run/ops/done/.
 
 Production approval binds the request (A8 §3.9): ONE verifier lane's acceptance receipt carries the sha256 of the request as
 sorted compact JSON without the fields that may lawfully change after signing — `acceptance_receipt`, `expires_at` and any
@@ -550,7 +550,7 @@ def scheduler_backstop_fire(path: pathlib.Path, record: dict, at: dt.datetime) -
     req = {"operation_id": oid, "kind": "scheduler_resume", "item_id": str(record.get("item_id") or "unknown"), "idempotency_key": oid,
            "requested_by": "executor-backstop", "kyd": str(record.get("kyd") or "backstop"), "reviewed_commit": commit,
            "args": {"job": SCHEDULER_JOB}, "backstop_for": record.get("operation_id")}
-    rc, out = 127, ""
+    rc, out, err = 127, "", ""
     try:
         if not SHA.fullmatch(commit) or git("merge-base", "--is-ancestor", commit, "origin/main").returncode: raise ValueError("reviewed commit is not merged")
         source = git("show", f"{commit}:{SCHEDULER_SCRIPT}")
@@ -558,13 +558,13 @@ def scheduler_backstop_fire(path: pathlib.Path, record: dict, at: dt.datetime) -
         script = TMP / f"{oid}.scheduler_reaper.py"; script.write_text(source.stdout)
         env = {k: v for k, v in os.environ.items() if k in CHILD_ENV_ALLOW}
         env["KY_OPERATION_REQUEST"] = json.dumps(req, sort_keys=True, separators=(",", ":")); env["KY_ROOT"] = str(KY_ROOT)
-        try: p = run_group([PY, str(script), "--action", "resume", "--job", SCHEDULER_JOB], KY_ROOT, env, 600); rc, out = p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
+        try: p = run_group([PY, str(script), "--action", "resume", "--job", SCHEDULER_JOB], KY_ROOT, env, 600); rc, out, err = p.returncode, p.stdout or "", p.stderr or ""
         finally: script.unlink(missing_ok=True)
     except Exception as e: out = f"backstop could not run: {type(e).__name__}: {redact(str(e))}"
     proof, problem = scheduler_proof(req, rc, out)
     ok = rc == 0 and problem is None and proof is not None and proof.get("state") == "ENABLED"
     receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or "backstop resume did not read back ENABLED"), rc, out,
-            {"scheduler": proof, "backstop_for": record.get("operation_id"), "attempt": attempt})
+            {"scheduler": proof, "backstop_for": record.get("operation_id"), "attempt": attempt}, err)
     update = dict(record, attempts=attempt, last_attempt_at=now(), last_receipt=oid)
     if ok: update.update(status="FIRED", fired_at=now())
     else: update["next_attempt_at"] = (at + dt.timedelta(seconds=min(900, 30 * 2 ** (attempt - 1)))).isoformat(timespec="seconds")
@@ -642,21 +642,38 @@ def measuring_cancel_proof(req: dict, rc: int | None, out: str) -> tuple[dict | 
     return rec, None
 
 
-def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str = "", extra: dict | None = None, stdout: str | None = None) -> None:
-    """`out` is the complete evidence (stdout, then stderr). `stdout` is the child's stdout alone: the one stream a whole-document proof is parsed from,
-    because a child may lawfully print advisory lines on stderr. A caller that does not pass it supplies no proof stream, so such a proof reads as missing."""
+def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str | None = None, extra: dict | None = None, stderr: str = "", *, preserve_existing: bool = False) -> None:
+    """SR-EXECUTOR-FRAMING: `out` is the child's stdout alone and `stderr` its stderr alone; the executor adds no byte of its own to either. A proof is
+    parsed from `out` only (a child may lawfully print advisory lines on stderr). `<op>.output.txt` holds stdout exactly (after redaction) and
+    `<op>.stderr.txt` stderr, each with its own sha256/bytes. A receipt made before this change has one combined `output_file` (stdout, "\\n", stderr)
+    and no stderr_* fields; it still verifies, because every reader checks the file against `output_sha256` only. `out=None` means nothing ran."""
     name = req.get("operation_id") if SAFE_ID.match(str(req.get("operation_id", ""))) else "unknown"
     r = {"operation_id": req.get("operation_id"), "kind": req.get("kind"), "item_id": req.get("item_id"), "status": status, "reason": reason,
-         "exit_code": rc, "stdout_tail": redact(out[-20000:]), "ts": now(), "reviewed_commit": req.get("reviewed_commit"),
+         "exit_code": rc, "stdout_tail": redact((out or "")[-20000:]), "ts": now(), "reviewed_commit": req.get("reviewed_commit"),
          "requested_by": req.get("requested_by"), "kyd": req.get("kyd"), "request_sha256": request_digest(req) if req.get("kind") else None}
+    if stderr: r["stderr_tail"] = redact(stderr[-4000:])
+    out = out or ""
+    receipt_path = REC / f"{name}.json"
+    separate_refusal = preserve_existing and status == "REFUSED" and receipt_path.exists()
+    if separate_refusal:
+        import uuid
+        # A rejected request must not replace evidence retained for readback or rollback,
+        # even when it is refused before the enabled-kind / request-policy checks.
+        r["preserved_receipt"] = {"path": str(receipt_path), "sha256": digest_bytes(receipt_path.read_bytes())}
+        refusal_dir = REC / "refusals"
+        refusal_dir.mkdir(exist_ok=True)
+        receipt_path = refusal_dir / f"{name}.{uuid.uuid4().hex}.json"
     if lane_selected(req):
         receipt_lane(req, r, status, rc, out)
     if out:                                           # the complete output is evidence; the tail alone must never be mistaken for it
-        body = redact(out); output_path = REC / f"{name}.output.txt"; output_path.write_text(body)
-        r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body.encode()).hexdigest(); r["output_bytes"] = len(body.encode())
+        body = redact(out).encode(); output_path = receipt_path.with_suffix(".output.txt"); output_path.write_bytes(body)
+        r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body).hexdigest(); r["output_bytes"] = len(body)
+    if stderr:
+        body = redact(stderr).encode(); stderr_path = receipt_path.with_suffix(".stderr.txt"); stderr_path.write_bytes(body)
+        r["stderr_file"] = str(stderr_path); r["stderr_sha256"] = hashlib.sha256(body).hexdigest(); r["stderr_bytes"] = len(body)
     if req.get("kind") == "measuring_dispatch_dryrun" and status == "COMPLETED":
         try:
-            proof = json.loads(stdout or "")                      # stdout only: the advisory lines on stderr are evidence, never part of the proof
+            proof = json.loads(out)                               # `out` is stdout alone: the advisory lines on stderr are evidence, never part of the proof
             manifest = proof.get("plan_manifest") or {}
             valid = (rc == 0 and proof.get("schema") == "ky.measuring_staging/1"
                 and proof.get("status") == "ROLLED_BACK" and proof.get("rollback_confirmed") is True
@@ -724,7 +741,8 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
     overlay = overlay_proofs().pop(str(req.get("operation_id")), None)
     if overlay: r["generated_overlay"] = overlay                 # the proof the executor itself measured, never the child's words
     if extra: r.update(extra)
-    with _lock: (REC / f"{name}.json").write_text(json.dumps(r, indent=1))
+    with _lock, receipt_path.open("x" if separate_refusal else "w") as f:
+        f.write(json.dumps(r, indent=1))
     log(f"{name} {status} {reason}")
 
 
@@ -975,9 +993,8 @@ def lane_qualification(req: dict) -> list[dict]:
     return bound
 
 
-def child_stdouts(_store: dict = {}) -> dict:
-    """In-memory hand-off of each operation's child stdout (alone, without stderr) from execute() to receipt(); execute() keeps returning the
-    combined output that is the evidence file."""
+def child_stderrs(_store: dict = {}) -> dict:
+    """In-memory hand-off of each operation's child stderr from execute()/execute_lane() to receipt(); execute() returns the child's stdout alone."""
     return _store
 
 
@@ -1049,7 +1066,8 @@ def execute_lane(req: dict, op: dict) -> tuple[int, str]:
         adapter = op.get("lane_readback", op.get("lane_dry_run"))["script"]
         p = run_group([PY, str(source / adapter), "--dry-run", "--lane-target", json.dumps(req["lane_target"], sort_keys=True)],
                       source, env, min(int(req.get("timeout_s", 900)), MAX_TIMEOUT))
-        return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
+        child_stderrs()[req["operation_id"]] = p.stderr or ""
+        return p.returncode, p.stdout or ""
 
 
 def receipt_lane(req: dict, record: dict, status: str, rc: int | None, out: str) -> None:
@@ -1135,8 +1153,8 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
                 p = run_group(argv, KY_ROOT, env, timeout)
         finally:
             tmp.unlink(missing_ok=True)
-        child_stdouts()[oid] = p.stdout or ""
-        return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
+        child_stderrs()[oid] = p.stderr or ""
+        return p.returncode, p.stdout or ""
     wt = EXEC / f"op-{oid}"
     a = git("worktree", "add", "--detach", str(wt), req["reviewed_commit"], timeout=600)
     if a.returncode != 0: return 126, "cannot create the operation worktree: " + a.stderr[-400:]
@@ -1150,8 +1168,8 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
         if overlay is None: return 126, "generated overlay refused: " + why
         overlay_proofs()[oid] = overlay
         p = run_group(argv, cwd, env, timeout)
-        child_stdouts()[oid] = p.stdout or ""
-        return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
+        child_stderrs()[oid] = p.stderr or ""
+        return p.returncode, p.stdout or ""
     finally:
         git("worktree", "remove", "--force", str(wt), timeout=300)
 
@@ -1317,14 +1335,14 @@ def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
             receipt(req, "REFUSED", why); return
         if req["kind"] == "scheduler_pause": arm_scheduler_backstop(req)      # SR-J3-REAPER-PAUSE: armed BEFORE the pause runs; a refusal to arm stops the pause
         rc, out = execute(req, op)
-        stdout = child_stdouts().pop(req["operation_id"], None)
+        stderr = child_stderrs().pop(req["operation_id"], "")
         extra = None if lane_selected(req) else {"session_marker": session_marker(req["operation_id"])}
         proof, problem = scheduler_proof(req, rc, out) if extra is not None and req["kind"] in SCHEDULER_ACTION else (None, None)
         if proof is not None: extra["scheduler"] = proof        # the state read back AFTER the action, as the reviewed script measured it
         cancelled, cancel_problem = measuring_cancel_proof(req, rc, out) if extra is not None and req["kind"] in ("measuring_cancel", "measuring_cancel_dryrun") else (None, None)
         if cancelled is not None: extra["cancel"] = cancelled   # likewise: the execution state read back after the cancel (CANCELLED, or the observed state beside a FAILED receipt)
         ok = rc == 0 and problem is None and cancel_problem is None
-        receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra, stdout)
+        receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra, stderr)
         if ok and req["kind"] == "scheduler_resume": scheduler_backstop_satisfy(req)
     except subprocess.TimeoutExpired as e:
         receipt(req, "FAILED", "timeout — the local process group was killed; a remote job may still be running: read the postconditions", 124, str(e))
@@ -1378,7 +1396,7 @@ def main() -> int:
             if production and FENCE.exists() and req.get("kind") not in ("scheduler_resume", "measuring_cancel"): continue      # the single production slot is taken; the request waits where it is (a resume of the watchdog is the safe direction and a cancel stops the very dispatch that holds the fence: neither waits)
             why = validate(req, table, caps)
             if why:
-                receipt(req, "REFUSED", why); shutil.move(str(f), DONE / f.name); continue
+                receipt(req, "REFUSED", why, preserve_existing=True); shutil.move(str(f), DONE / f.name); continue
             if production and remote_async(req["kind"], table[req["kind"]]):     # A8 §3.11: a synchronous kind takes no fence
                 FENCE.write_text(json.dumps({"operation_id": req["operation_id"], "request_sha256": request_digest(req), "ts": now()}))
             mark_seen(req["idempotency_key"], req["operation_id"])
