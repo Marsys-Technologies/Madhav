@@ -3141,7 +3141,7 @@ jobs:
     # required check 'Governance Tool Tests (pytest)' of ruleset 20141220 since 2026-10-05; no per-shard context is required, so the shard
     # count can change without touching the ruleset.)
     name: Governance Tool Tests (pytest)
-    needs: [changes, governance-tool-tests-shard, governance-readback-tests, gochara-j5s-full-class-seal]
+    needs: [changes, governance-tool-tests-shard, governance-readback-tests, kala-db-tests, gochara-j5s-full-class-seal]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -3155,12 +3155,18 @@ jobs:
           READBACK_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'governance-readback-tests')) }}
           SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
           READBACK_RESULT: ${{ needs.governance-readback-tests.result }}
+          KALA_DB_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'kala-db-tests')) }}
+          KALA_DB_RESULT: ${{ needs.kala-db-tests.result }}
           J5S_RESULT: ${{ needs.gochara-j5s-full-class-seal.result }}
           J5S_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-j5s-full-class-seal')) }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           RUN_COMBINATION: ${{ needs.changes.outputs.run_combination_suites }}
           CHANGES_RESULT: ${{ needs.changes.result }}
         run: |
+          # kala-db-tests runs only when the change selector picks it (see its own `if`), so a skip is green when it was not expected.
+          if [ "$KALA_DB_RESULT" != "success" ] && ! { [ "$KALA_DB_RESULT" = "skipped" ] && { [ "$DOCS_ONLY" = "true" ] || [ "$KALA_DB_EXPECTED" = "false" ]; }; }; then
+            echo "::error::Kāla DB Tests must pass when expected (got '$KALA_DB_RESULT', expected='$KALA_DB_EXPECTED')"; exit 1
+          fi
           # J5S rehearsal (PR #3646) obeys the same light-gate event policy as every other heavy DB job: it must succeed on a full event or a
           # PR that selected it, and may be skipped only when it was not expected. The shard/readback decision below is main's, unchanged.
           if [ "$J5S_RESULT" != "success" ] && { [ "$J5S_RESULT" != "skipped" ] || [ "$J5S_EXPECTED" != "false" ]; }; then

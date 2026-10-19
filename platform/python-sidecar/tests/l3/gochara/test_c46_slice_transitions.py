@@ -62,13 +62,13 @@ class _SliceWorld(_World):
         return v.get("stored_scope"), v.get("test_slice"), (lo, hi)
 
     def ctx_of(self, build_id, horizon=None):
-        cfg = {"chart_id": CHART_ID, "ephe_path": EPHE_PATH}
+        cfg = {"chart_id": CHART_ID, "ephe_path": EPHE_PATH, "gochara_v5_final_rules": False}      # F-CHANNEL: the measuring profile, named
         if horizon is not None:
             cfg["horizon"] = horizon
         return ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=build_id, db_conn=self.conn, dry_run=False, config=cfg)
 
     def step_as(self, key, build_id, horizon=None):
-        cfg = {"chart_id": CHART_ID, "ephe_path": EPHE_PATH}
+        cfg = {"chart_id": CHART_ID, "ephe_path": EPHE_PATH, "gochara_v5_final_rules": False}      # F-CHANNEL: the measuring profile, named
         if horizon is not None:
             cfg["horizon"] = horizon
         ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=build_id, db_conn=self.conn, dry_run=False, config=cfg)

@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / 'platform/scripts/__tests__'))
 import smalltest_safety_support as evidence
 from test_teardown_v5_small_test import _Harness, RUN_1
 
-ARG_VALUES = {'label': 'fixture', 'scope': 'small_test', 'sql_file': 'fixture.sql', 'sql_sha256': '0' * 64, 'migration': '1304',
+ARG_VALUES = {'label': 'fixture', 'scope': 'small_test', 'sql_file': 'fixture.sql', 'sql_sha256': '0' * 64, 'sql-sha256': '0' * 64, 'migration': '1304',
               'run': 'all_classes_1y', 'classes': 'all',
               'horizon-start': '2025-04-17T00:00:00+00:00',
               'horizon-end': '2026-04-17T00:00:00+00:00'}

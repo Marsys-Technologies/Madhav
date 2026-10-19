@@ -202,6 +202,7 @@
 00_ARCHITECTURE/briefs/kalayantra/fleet/precheck.sh
 00_ARCHITECTURE/briefs/kalayantra/fleet/precheck_bg.sh
 00_ARCHITECTURE/briefs/kalayantra/fleet/preflight.sh
+00_ARCHITECTURE/briefs/kalayantra/fleet/k9_readback.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/readback_sql.sh
 00_ARCHITECTURE/briefs/kalayantra/fleet/regroup_model_v2.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/dispatch/admit.json
@@ -302,13 +303,25 @@ platform/scripts/governance/pravaha_tracker/verdicts.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/SCHEDULER_REAPER_v1_0.md
 00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_cancel.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/century_cancel.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/century_contract.json
+00_ARCHITECTURE/briefs/kalayantra/fleet/century_contract.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/verification_cancel.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/scheduler_reaper.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/served_probe.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_dryrun.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cloudrun_readback.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_scheduler_reaper.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_measuring_cancel.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_served_probe.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_verification_launch.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_century_contract.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_century_contract_smalltest_image.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_family_cancel.py
+00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_cloudrun_job_arg.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_smalltest_launch.py
 00_ARCHITECTURE/briefs/kalayantra/fleet/tests/conftest.py
 

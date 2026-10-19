@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[4]
 VC = ROOT / "00_ARCHITECTURE/briefs/l3_families/value_checkpoint"
@@ -229,7 +230,9 @@ def test_suite_is_in_existing_mandatory_ci_without_dropping_any_paths():
     assert ci_shard.verify(ci_shard.test_files(), shards) == []
     ci = (ROOT / ".github/workflows/ci.yml").read_text()
     assert 'python -m pytest "${FILES[@]}"' in ci
-    assert "needs: [changes, governance-tool-tests-shard, governance-readback-tests, gochara-j5s-full-class-seal]" in ci
+    # K9-23 adds the required Kāla DB gate and PR #3646 the J5S rehearsal; the aggregate needs exactly these.
+    needs = yaml.safe_load(ci)["jobs"]["governance-tool-tests"]["needs"]
+    assert set(needs) == {"changes", "governance-tool-tests-shard", "governance-readback-tests", "kala-db-tests", "gochara-j5s-full-class-seal"}
 
 
 def test_seal_generator_is_deterministic_and_check_rejects_tampering(tmp_path):

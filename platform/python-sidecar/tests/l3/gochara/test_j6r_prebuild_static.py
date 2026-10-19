@@ -17,12 +17,14 @@ def test_j6r_suites_are_mandatory_fail_closed_and_keep_existing_j6m_paths():
     assert '-p no:cacheprovider' in command
 
 
-def test_prebuild_never_enables_executor_or_forges_real_rehearsal_acceptance():
+def test_enabled_head_kinds_run_only_the_policy_and_nothing_forges_real_rehearsal_acceptance():
+    # SR-HEAD-POLICY-KEEP: was "never_enables_executor". Enabled through head_operation.py's policy; the J-6r artifact below is still
+    # produced by the real rehearsal, never by this change.
     ops = json.loads((ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json').read_text())['ops']
     for name in ('publish_head', 'rollback_head'):
-        assert ops[name]['enabled'] is False
+        assert ops[name]['enabled'] is True
         assert ops[name]['script'] == '00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py'
-        assert ops[name + '_dryrun']['enabled'] is False
+        assert ops[name + '_dryrun']['enabled'] is True
     model = json.loads((ROOT / '00_ARCHITECTURE/control/kalayantra/plan_model.json').read_text())
     item = next(row for row in model['items'] if row['id'] == 'J-6r')
     assert item['completion_kind'] == 'artifact'

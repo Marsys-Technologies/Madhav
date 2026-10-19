@@ -197,7 +197,7 @@ def _stage_manifest(w, status):
     """A real candidate manifest of generation 5.0 through the writer's own manifest substep (a stand-in run id: no marker, default stamp)."""
     from pipeline.orchestrator.writers import ContextSpec, SubStep
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=str(uuid.uuid4()), db_conn=w.conn, dry_run=False,
-                      config={"chart_id": CHART_ID, "ephe_path": os.environ["SE_EPHE_PATH"], "horizon": SHORT})
+                      config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "ephe_path": os.environ["SE_EPHE_PATH"], "horizon": SHORT})
     with w.conn.transaction():
         writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
     if status == "published":

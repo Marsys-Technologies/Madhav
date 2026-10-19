@@ -90,6 +90,10 @@ BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, 
                 "subject_label": "native"}
 CLASS = "marriage"
 GUARD_SELECT = "SELECT state FROM public.asset_throughput WHERE chart_id = %s AND asset_id = %s"
+# F-CHANNEL (SR-W34-PREP-RULINGS 1): `run_substep` resolves the run's century config (_resolve_run_config) after its configuration checks and before the state guard,
+# which reads build_runs.plan_manifest once more, through the same digest-verifying `_plan_manifest`. One extra read-only SELECT per non-dry-run substep, checked
+# separately (exact text, one parameter, exactly one more than the golden's own manifest reads) and excluded from the statement summary like the state guard.
+MANIFEST_READ_SELECT = "SELECT plan_manifest, plan_manifest_digest FROM public.build_runs WHERE id = %s"
 # J-2a-P1L: the snapshot substep reads the applied schema ONCE through p1_minting_closed_reason (RecordStore.p1_anchor_columns_available) to
 # decide whether the P1 anchor rows are consulted (and so ledgered). Like the state guard it is checked separately — its exact text, one
 # parameter, exactly once — and, in the snapshot substep only (the golden's snapshot never issued it; coverage already did), excluded from
@@ -310,6 +314,10 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
         period_guard = [s for s in raw[key] if s == [PERIOD_GUARD_SELECT, 11]]
         assert len(period_guard) == (1 if key == "inventory:marriage" else 0), f"{key}: expected the B5 period guard exactly once before the inventory projection"
         rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11])]
+        golden_reads = m["statements"]["shapes"].get(f"1|{MANIFEST_READ_SELECT}", 0)
+        if "[dry_run]" not in key:
+            assert rest.count([MANIFEST_READ_SELECT, 1]) == golden_reads + 1, f"{key}: expected exactly one extra plan_manifest read (the century-config resolution)"
+            rest.remove([MANIFEST_READ_SELECT, 1])         # the first one is the resolution's: it precedes the substep's own reads (the golden's sequence is order-sensitive)
         if key == writer_mod.SNAPSHOT_SUBSTEP:       # every other substep keeps its own P1 gate reads, compared with the golden unchanged
             assert rest.count([P1_GATE_SELECT, 1]) == 1, f"{key}: expected the new P1-minting schema read exactly once"
             rest.remove([P1_GATE_SELECT, 1])
@@ -357,5 +365,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Evaluation re-pinned for SR-W3-SHAPE 3 (gochara_v5_defer_in_build_verify): the writer and input_vector sources changed, the ordinary
     # (flag-absent) run's every other component, outcome, row count and SQL shape is unchanged. Re-derived the same way (main's bytes give 6c86c3fb…).
     assert got["implementation"]["evaluation"] == "9f6c462e41ee255517dc9619e469ef8a77eab1acfccf40cabef03c6a18835bcf"
-    assert got["implementation"]["geometry"] == "06825a43711d85cd82d6648f40b1d6ec99ef7f034b9dc53aed89b05cc33fa17a"
+    # J-4c: the geometry stage moved ONLY by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root (06825a43... -> the digest below, re-derived the same
+    # way on the merged tree; evaluation and window are unchanged by J-4c). No golden component is re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
+    assert got["implementation"]["geometry"] == "e7634d7faf7df43521f5236d79a94c8a31192e62d78dc8eaa939160eaca0a6f7"
     assert got["implementation"]["window"] == "78b4d0a1cc63047045710a873f76b87f90de4493c4960bb08fd97ef1ad13aea3"

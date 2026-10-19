@@ -92,7 +92,7 @@ def build(output, body):
     try:
         with psycopg.connect(dsn, autocommit=True, connect_timeout=3) as conn:
             ctx = ContextSpec(asset_id=writer.ASSET_ID, build_id='ci-substrate', db_conn=conn,
-                              dry_run=False, config={'chart_id': CHART_ID, 'horizon': (H0, H1), 'ephe_path': EPHE_PATH})
+                              dry_run=False, config={'chart_id': CHART_ID, 'horizon': (H0, H1), 'ephe_path': EPHE_PATH, 'gochara_v5_final_rules': False})   # F-CHANNEL: the measuring profile, named
             w = writer.GocharaV5Writer()
             for key in (writer.CONVENTION_SUBSTEP, writer.BODY_SUBSTEP_PREFIX + body):
                 with conn.transaction():

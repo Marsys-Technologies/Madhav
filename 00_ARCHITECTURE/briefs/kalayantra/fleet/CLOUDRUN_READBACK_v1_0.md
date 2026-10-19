@@ -5,6 +5,7 @@ status: REVIEW_CANDIDATE
 produced_on: 2026-10-17
 authority: J-2a run-1 dispatch V1 REJECTED (X-20261017T124945Z-review-j2a-13-dispatch-v1); pack MISSING M6/M7 ("no enabled fixed op reads Cloud Run job configuration/image/corpus or execution completion")
 changelog:
+  - "1.4: optional `job` argument (W3W4 pack verify E2): `gochara-verification-job` measures the VERIFICATION Cloud Run job instead of the pipeline job (same record schema; the definition by immutable digest, `GOCHARA_RUNNER_COMMIT` / `GOCHARA_RUNNER_IMAGE_DIGEST` shown in their public shape, `logs true` reads the job's one final report). No `job` = the pipeline job, byte for byte as before."
   - "1.3: optional `metrics` argument (SR-BOLD-09, BOLD-09-METRICS): two more fixed read-only `gcloud monitoring time-series list` calls (Cloud Run job container CPU and memory utilisation) for ONE execution, summarised as mean / p95 / highest-bucket bound, with the CPU read against the allocated vCPUs as a `shape` (SINGLE_THREAD_BOUND when p95 sits at ~1 vCPU of several). Additive: the `metrics` key exists only when asked, so a run without it prints exactly what 1.2 printed. NOT yet in the executor table's `allowed_args` (see Metrics, below)."
   - "1.2: `logs` reads EVERY entry of the execution (J3C-v2 blocking M-J3-6/7: a 26-class build overflowed the single newest-1000 page, so STRETCH_SINK counts read null). Same fixed filter, paged newest-first by an added `timestamp<=` cursor; hard caps (60 pages, 420 s); `page_full` is replaced by `truncated` + `truncation_reason` + `pages_read` + `max_pages`. Still additive to ky.cloudrun_readback/1 (key removed from the `logs` object: nothing in the repo read `page_full`)."
   - "1.1: optional `logs` argument (SR-J3-READ-KINDS): one fixed `gcloud logging read` of the execution's job log, parsed for STRETCH_SINK/1 lines and asset.substep progress. Additive; the schema stays ky.cloudrun_readback/1 (the new `logs` key is null unless asked)."
@@ -45,6 +46,15 @@ Minimal request:
 * `corpus.status: UNMEASURED_IN_DEPLOYED_IMAGE` — see below.
 
 A required field that is missing or malformed refuses the **whole** record. A refused record is never evidence of anything but the refusal.
+
+## Second job (`job: "gochara-verification-job"`; W3W4 pack verify E2)
+
+The only other job this reader will name. Same project/region, same record schema, same refusal rules; an unlisted `job` exits 2 before any cloud call, and an `execution` must be `gochara-verification-job-<suffix>` and carry that job's label.
+
+* **Definition** (no `execution`): the job is deployed by `gochara-verification-job-deploy.yml` from the pipeline repository **by immutable digest** (`<repository>@sha256:<64-hex>`; no commit tag, no registry call). `job.image` is `{reference, tag: null, digest}`; a tag or another repository is refused. `job.timeout_seconds`, `job.max_retries` (absent reads **null**, never 0: Cloud Run's default is 3), `job.service_account`, `cpu`, `memory` and `environment` are read as for the pipeline job; the credential `GOCHARA_VERIFIER_DB_URL` shows its secret NAME only.
+* **Runner identity**: `GOCHARA_RUNNER_COMMIT` (40 lowercase hex) and `GOCHARA_RUNNER_IMAGE_DIGEST` (`sha256:<64-hex>`) are shown ONLY in those shapes (any other value is withheld); `provenance.image_commit` is the runner commit when shown, else null.
+* **Logs** (`logs: "true"` with `execution`): the same paged reader with a fixed filter for the job's log lines carrying `"classes"`. `logs.report` is the parsed final report **only** when exactly one well-formed report object (a `classes` object and a `generation`) was read and the read was complete; zero, several, an unreadable candidate line or a truncated read leave it null beside `reports_found` / `unreadable_lines` / `truncated`.
+* Request example: `{"kind": "cloudrun_job_readback", "args": {"job": "gochara-verification-job", "execution": "gochara-verification-job-abc12", "logs": "true"}}`. Read-only, so there is no dry-run twin.
 
 ## Logs (`logs: "true"`, only with `execution`)
 

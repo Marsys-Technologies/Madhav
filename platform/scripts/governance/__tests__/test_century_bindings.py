@@ -23,7 +23,10 @@ sys.path.insert(0, str(FLEET))
 import v5_small_test_shared as shared
 import smalltest_safety_support as S
 
-ARGS = {'classes': 'all'}
+# F-CHANNEL (SR-W34-PREP-RULINGS 1): the century request carries the rule profile, the verify-deferral switch and the horizon. SYNTHETIC bounds only —
+# the real D-G9 horizon is life-event derived and appears in no code, test or commit text.
+HORIZON = '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00'
+ARGS = {'classes': 'all', 'final_rules': 'true', 'defer_in_build_verify': 'false', 'horizon': HORIZON}
 
 
 def load(name):
@@ -97,7 +100,7 @@ def test_century_policy_is_routed_from_reviewed_source_and_demands_every_gate(tm
     assert executor.smalltest_policy_problem(signed(kind='century_dispatch_dryrun', absence_receipt=None, absence_acceptance=None, backup_label=None,
                                                     backup_restore_sha256=None, dryrun_receipt=None, dryrun_acceptance=None))      # ...but it does need that
     for args in ({'classes': 'marriage'}, {'classes': 'all', 'horizon-start': '2025-01-01'}, {'run': 'all_classes_full', 'classes': 'all'}, {}):
-        assert executor.smalltest_policy_problem(signed(args=args)) == 'century request requires only all classes'
+        assert executor.smalltest_policy_problem(signed(args=args)).startswith('century request requires'), args
     assert executor.smalltest_policy_problem(signed(item_id='J-3c')) == 'century dispatch belongs to J-4e'
 
 
@@ -110,7 +113,8 @@ def test_century_launch_refuses_a_measuring_or_markerd_staging_rollback(tmp_path
         'small-test trigger': dict(proof=staging_proof(triggered_by=shared.TRIGGERED_BY)),
         'measuring schema': dict(proof=staging_proof(schema='ky.measuring_staging/1')),
         'rollback not confirmed': dict(proof=staging_proof(rollback_confirmed=False)),
-        'different args': dict(proof=staging_proof(args={'classes': 'marriage'})),
+        'different args': dict(proof=staging_proof(args={**ARGS, 'classes': 'marriage'})),
+        'different horizon': dict(proof=staging_proof(args={**ARGS, 'horizon': '2002-01-01T00:00:00+00:00,2052-01-01T00:00:00+00:00'})),
     }
     for name, kwargs in cases.items():
         req = dispatch_request(tmp_path / name.replace(' ', '_'), **kwargs)
@@ -180,7 +184,120 @@ def test_century_chooses_no_run_name_horizon_or_class_subset(kwargs):
     import dispatch_v5_century_job as dry
     with pytest.raises(shared.Refused):
         dry.century_shape(**kwargs)
-    assert dry.century_shape(classes='all') == {'classes': 'all'} == dry.century_shape()
+    assert dry.century_shape(classes='all') == {'classes': 'all'} == dry.century_shape()      # with no config given the shape is the classes-only one
+
+
+# ───────────────────────────── F-CHANNEL: the profile, the deferral switch and the horizon reach the writer ─────────────────────────────
+# Claims (SR-W34-PREP-RULINGS 1, option a): (1) the century request takes exactly classes + final_rules + defer_in_build_verify + horizon and refuses
+# anything else; (2) the three new values are validated strictly; (3) they are STAGED in plan_manifest under the writer's key, inside plan_manifest_digest
+# (so the writer's every read verifies them), in the writer's canonical form; (4) the launcher stages and expects exactly that manifest; (5) the dispatch refuses
+# CLI values that differ from the accepted request. The request digest covers `args` (executor.request_digest), so the acceptance and the pack fill bind all four.
+CANDIDATE = dict(asset_id=shared.ASSET_ID, scope='per_chart', depends_on=[], natural_key_partition=None, has_cowriters=False)
+
+
+def century_dispatch_module(monkeypatch):
+    import dispatch_v5_century_job as dry
+    monkeypatch.setattr(dry.staging, '_load_writer_digest', lambda asset_id: 'd' * 64)        # the generated digest file is CI-owned; the manifest shape is what is under test
+    return dry
+
+
+@pytest.mark.parametrize('name,args', [
+    ('an unknown argument', {**ARGS, 'horizon-start': '2025-01-01T00:00:00+00:00'}),
+    ('no final_rules', {k: v for k, v in ARGS.items() if k != 'final_rules'}),
+    ('no defer_in_build_verify', {k: v for k, v in ARGS.items() if k != 'defer_in_build_verify'}),
+    ('no horizon', {k: v for k, v in ARGS.items() if k != 'horizon'}),
+    ('a boolean spelled True', {**ARGS, 'final_rules': 'True'}),
+    ('a JSON boolean', {**ARGS, 'defer_in_build_verify': False}),
+    ('deferral without the final rules', {**ARGS, 'final_rules': 'false', 'defer_in_build_verify': 'true'}),
+    ('a naive horizon', {**ARGS, 'horizon': '2001-01-01T00:00:00,2051-01-01T00:00:00'}),
+    ('an inverted horizon', {**ARGS, 'horizon': '2051-01-01T00:00:00+00:00,2001-01-01T00:00:00+00:00'}),
+    ('one horizon bound', {**ARGS, 'horizon': '2001-01-01T00:00:00+00:00'}),
+    ('three horizon bounds', {**ARGS, 'horizon': HORIZON + ',2052-01-01T00:00:00+00:00'}),
+])
+def test_century_request_args_are_exactly_the_four_and_strictly_valued(name, args):
+    """Claims 1-2: the exact argument contract; a value that is not spelled exactly, or a horizon that is not two tz-aware ISO bounds in order, is refused by name."""
+    assert shared.century_args_problem(dict(ARGS)) is None
+    with pytest.raises(shared.Refused):
+        shared.century_args_problem(args)
+
+
+def test_century_staging_carries_the_three_values_inside_the_manifest_digest(monkeypatch):
+    """Claim 3: what the request says is what the manifest (and so plan_manifest_digest) holds, in the writer's canonical form (UTC), and any change of any of the
+    three changes the digest — the writer reads them from there because the orchestrator hands it chart_id and birth_params only."""
+    dry = century_dispatch_module(monkeypatch)
+    writer = shared.writer()
+    assert shared.CENTURY_CONFIG_KEY == writer.CENTURY_CONFIG_KEY            # the staged key IS the key the writer reads
+    shape = dry.century_shape(classes='all', final_rules='true', defer_in_build_verify='false', horizon='2001-01-01T05:30:00+05:30,2051-01-01T00:00:00+00:00')
+    manifest, digest = dry.build_century_manifest(candidate=CANDIDATE, slice_marker=shape)
+    assert manifest[shared.CENTURY_CONFIG_KEY] == dict(schema='gochara_v5_century_config/1', final_rules=True, defer_in_build_verify=False,
+                                                        horizon=['2001-01-01T00:00:00+00:00', '2051-01-01T00:00:00+00:00'])
+    assert digest == shared.evidence_digest(manifest) == writer._manifest_digest(manifest)         # the digest the writer verifies on every read
+    assert writer.validate_century_config(manifest[shared.CENTURY_CONFIG_KEY]) == manifest[shared.CENTURY_CONFIG_KEY]
+    seen = {digest}
+    for changed in (dict(final_rules='false'), dict(defer_in_build_verify='true'), dict(horizon='2002-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00')):
+        other = dry.century_shape(classes='all', **{**dict(final_rules='true', defer_in_build_verify='false', horizon=HORIZON), **changed})
+        seen.add(dry.build_century_manifest(candidate=CANDIDATE, slice_marker=other)[1])
+    assert len(seen) == 4
+    plain, plain_digest = dry.build_century_manifest(candidate=CANDIDATE)                 # no shape: the manifest is build_manifest's own, as before
+    assert shared.CENTURY_CONFIG_KEY not in plain and plain_digest == shared.evidence_digest(plain)
+
+
+def test_century_shape_takes_the_three_values_together_or_not_at_all(monkeypatch):
+    dry = century_dispatch_module(monkeypatch)
+    with pytest.raises(shared.Refused, match='together'):
+        dry.century_shape(classes='all', final_rules='true')
+    with pytest.raises(shared.Refused):
+        dry.century_shape(classes='all', final_rules='true', defer_in_build_verify='false', horizon='2051-01-01T00:00:00+00:00,2001-01-01T00:00:00+00:00')
+    with pytest.raises(shared.Refused):                                     # inside the form but outside the writer's substrate domain: the WRITER's validator refuses
+        dry.century_shape(classes='all', final_rules='true', defer_in_build_verify='false', horizon='1900-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00')
+
+
+def test_century_launch_stages_and_expects_the_requests_three_values(monkeypatch, tmp_path):
+    """Claim 4: the launcher hands the staging binding the three values and expects, from the staged run, the manifest that carries them."""
+    dry = century_dispatch_module(monkeypatch)
+    century_launch = load('century_launch')
+    staging_argv, expected = [], []
+
+    class Dispatcher:
+        century_shape = staticmethod(dry.century_shape)
+        build_century_manifest = staticmethod(dry.build_century_manifest)
+        _load_inactive_candidate = staticmethod(lambda cur: CANDIDATE)
+
+        @staticmethod
+        def main(argv):
+            staging_argv.extend(argv)
+            print(S.RUN)
+
+    class Conn:
+        def execute(self, *a): return None
+        def cursor(self): return None
+        def rollback(self): return None
+        def close(self): return None
+
+    monkeypatch.setattr(century_launch.bridge, 'launch_staged', lambda **kw: expected.append(kw['expected_manifest']) or {'status': 'LAUNCHED'})
+    century_launch.run(['--classes', 'all', '--final_rules', 'true', '--defer_in_build_verify', 'true', '--horizon', HORIZON], dispatcher=Dispatcher, connect=Conn, claim_dir=tmp_path)
+    assert staging_argv[-6:] == ['--final_rules', 'true', '--defer_in_build_verify', 'true', '--horizon', HORIZON]
+    assert expected[0][shared.CENTURY_CONFIG_KEY]['defer_in_build_verify'] is True and expected[0][shared.CENTURY_CONFIG_KEY]['final_rules'] is True
+    for missing in ('--final_rules', '--defer_in_build_verify', '--horizon'):        # all three are required: a launch without one would stage a run the writer refuses
+        argv = ['--classes', 'all', '--final_rules', 'true', '--defer_in_build_verify', 'false', '--horizon', HORIZON]
+        at = argv.index(missing)
+        with pytest.raises(SystemExit):
+            century_launch.run(argv[:at] + argv[at + 2:], dispatcher=Dispatcher, connect=Conn)
+
+
+def test_century_dispatch_refuses_cli_values_that_differ_from_the_accepted_request(monkeypatch):
+    """Claim 5: --final_rules/--defer_in_build_verify/--horizon must equal the bound request's args, exactly as --classes always had to."""
+    dry = century_dispatch_module(monkeypatch)
+    monkeypatch.setattr(shared, 'operation_request', lambda: dict(kind='century_dispatch_dryrun', args=dict(ARGS)))
+    monkeypatch.setattr(shared, 'century_request_problem', lambda req, root, measure=None: None)
+    monkeypatch.setattr(shared, 'evidence_root', lambda: Path('.'))
+    base = ['--i-am-steward', '--after-settled-1', '--dry-run', '--classes', 'all']
+    other = ARGS['horizon'].replace('2001', '2002')
+    for changed in (['--final_rules', 'false', '--defer_in_build_verify', 'false', '--horizon', HORIZON],
+                    ['--final_rules', 'true', '--defer_in_build_verify', 'true', '--horizon', HORIZON],
+                    ['--final_rules', 'true', '--defer_in_build_verify', 'false', '--horizon', other]):
+        with pytest.raises(shared.Refused, match='differ from the accepted request'):
+            dry.main(base + changed)
 
 
 # ───────────────────────────── the century teardown scope ─────────────────────────────
