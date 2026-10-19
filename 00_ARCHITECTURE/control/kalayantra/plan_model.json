@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -28264,7 +28264,7 @@
       "id": "K5-G1b-N1",
       "track": "K",
       "lane": "K · K5 forecaster",
-      "title": "Once-per-candidate preparation shared with the jury remains unfinished",
+      "title": "One shift schedule per candidate, shared by the field classes and accepted by the jury preparation (schedule object only)",
       "owner": "K",
       "depends_on": [
         "K5-G1b"
@@ -28294,9 +28294,57 @@
         "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates.",
         "notes": [
           "D-17 carry-forward registration only; no finding is claimed fixed and no accepted parent is reopened or made dependent on its child.",
-          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment."
+          "(I) INTERPRETATION: mirror J-4p-B4/P06-N1/KA4B-NB-01: no stored status or new steps; depends_on derives waiting/ready, with code review at exact head then deploy containment.",
+          "(I) INTERPRETATION: PR #3758 lands only the schedule object; the remainder is registered as K5-G1b-N2 (D-17 form), so an accepted verdict on this item no longer reads as full closure of the original contract. Alternative: finish the contract here, which needs cross-writer sharing and a content-bound resume design that is the native's decision (CLAUDE.md §N.2)."
         ],
-        "contract": "Once-per-candidate preparation shared with the jury remains unfinished. The field shares the schedule and numerical reducers, but prepare_field builds a separate per-class preparation and run_field_block rebuilds field geometry per draw; it does not consume the jury prepare_draws Preparation."
+        "contract": "Narrowed (PR #3758 review K5-G1b-N1-R-B1): the candidate's one shift schedule is prepared once (measure.prepare_schedule), every class's field null consumes it (ka_kshetra writer), and the jury preparation (prepare_draws) accepts it with a horizon/shift-count refusal; preparation digests and full-reference null statistics are unchanged. The jury-shared once-per-candidate preparation is NOT claimed here: the production jury caller (ka_sangam/jury/agreement.py) does not receive the schedule, field geometry is rebuilt per class and per draw, and the field does not consume the jury Preparation. That remainder is the child K5-G1b-N2."
+      },
+      "completion_kind": "code",
+      "producer": "K",
+      "reviewer_rule": "v_exact_head_then_deploy_containment",
+      "triage": {
+        "class": "a"
+      }
+    },
+    {
+      "id": "K5-G1b-N2",
+      "track": "K",
+      "lane": "K · K5 forecaster",
+      "title": "Once-per-candidate preparation shared with the jury: production jury binding, shared geometry, content-bound resume",
+      "owner": "K",
+      "depends_on": [
+        "K5-G1b-N1"
+      ],
+      "mandatory": true,
+      "detector": {
+        "type": "branch_merged",
+        "ref": "origin/kalayantra/k5-g1b-n2"
+      },
+      "brief": {
+        "spec": [
+          "00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md §6.2(2) (no per-class re-preparation), §6.2(5) (schedule, segment preparation and draw machinery run once per candidate), §6.2(7) (content-bound resume)",
+          "00_ARCHITECTURE/briefs/kalayantra/evidence/KN_B_PREBUILD_v1.md \"K5-G1b-N1: reproduced unfinished integration\" (the three gaps, with the separate-estimand constraint)",
+          "platform/python-sidecar/services/ka_sangam/jury/agreement.py:79,85 (prepare_draws called without a schedule), platform/python-sidecar/services/ka_kshetra/stage5_null.py (field geometry rebuilt per draw)",
+          "PR #3758 review X-20261019T022058Z-review-3758 (finding K5-G1b-N1-R-B1)"
+        ],
+        "owns": [
+          "platform/python-sidecar/services/ka_kshetra/stage5_null.py",
+          "platform/python-sidecar/services/ka_kshetra/writer.py",
+          "platform/python-sidecar/services/kala_core/measure/**",
+          "platform/python-sidecar/services/ka_sangam/jury/**"
+        ],
+        "tests": [
+          "Production jury (ka_sangam jury candidate/agreement) receives the candidate schedule, the field consumes the shared candidate-bound preparation and no class or draw rebuilds shared geometry; the distinguishing negative case is the separate field estimand: substituting jury draws for the field transit/obstruction geometry must fail.",
+          "Resume is bound to the preparation content digest (a changed schedule or witness set refuses resume).",
+          "For any implementation finding fixed, record per-finding fail-on-revert evidence on a job-local copy (Amendment A2 §2.4)."
+        ],
+        "compat": "Preparation/custody only; retain independent acceptance and all live-admission, protected-operation and parent-completion gates. No orchestrator contract change: a writer-to-writer sharing design that needs one is a STOP for the native (CLAUDE.md §N.2).",
+        "notes": [
+          "D-17 carry-forward registration of the remainder of K5-G1b-N1; no part of it is claimed done.",
+          "DECISION NEEDED BEFORE BUILD: how the candidate preparation is shared between the ka_sangam and ka_kshetra writers (substep order, content-bound persistence) without a FROZEN-contract change; raise with the native.",
+          "(I) INTERPRETATION: id K5-G1b-N2 follows the K5-G1b-N1 numbering; depends_on is the narrowed parent K5-G1b-N1 so the tracker derives waiting/ready without a stored status."
+        ],
+        "contract": "Once-per-candidate preparation shared with the jury: the production jury caller receives the candidate's schedule and the shared preparation, the field consumes it with its own estimand, no class or draw rebuilds shared geometry, and resume is content-bound (PLAN §6.2(2,5,7))."
       },
       "completion_kind": "code",
       "producer": "K",
