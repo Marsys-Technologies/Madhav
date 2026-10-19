@@ -2807,7 +2807,9 @@ jobs:
     # The aggregate job below keeps the original job name; this one is test steps only.
     name: Governance Tool Tests shard ${{ matrix.shard }}/5
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Shard 1 also runs the J-1a lane step (apt + pip installs, a throwaway cluster, ~5-8 min of DB tests) after the shard pytest and the
+    # four discovery steps, which the old 20-minute ceiling did not budget for.
+    timeout-minutes: 35
     permissions:
       actions: read
       contents: read
