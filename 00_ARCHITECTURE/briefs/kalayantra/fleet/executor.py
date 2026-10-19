@@ -711,6 +711,16 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             if expected == "COMMITTED_AWAITING_ABSENCE": r["status"] = "AWAITING_ABSENCE"
         else:
             r.update(status="FAILED", reason="bound teardown proof missing; reconcile transaction outcome")
+    if req.get("kind") in ("publish_head", "rollback_head", "publish_head_dryrun", "rollback_head_dryrun") and status == "COMPLETED":
+        try:
+            if rc != 0:
+                raise ValueError("non-zero head adapter exit")
+            proof = head_policy(req)["child_proof"](req, out)
+            r["head_change"] = proof
+            if not req["kind"].endswith("_dryrun"):
+                r["status"] = "AWAITING_READBACK"
+        except Exception:
+            r.update(status="FAILED", reason="bound head-change proof missing; reconcile through independent readback")
     overlay = overlay_proofs().pop(str(req.get("operation_id")), None)
     if overlay: r["generated_overlay"] = overlay                 # the proof the executor itself measured, never the child's words
     if extra: r.update(extra)
@@ -741,6 +751,25 @@ def smalltest_policy_problem(req: dict) -> str | None:
         return smalltest_policy(req)[policy_name](req, OPS)
     except Exception:
         return "reviewed small-test evidence policy unavailable or invalid"
+
+
+def head_policy(req: dict):
+    """Load the authority policy from the operation's exact reviewed source."""
+    source = git("show", f"{req['reviewed_commit']}:00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py")
+    if source.returncode or not getattr(source, "stdout", ""):
+        raise ValueError("reviewed head policy unavailable")
+    namespace = {"__name__": "reviewed_head_policy", "__file__": "reviewed_head_policy.py"}
+    exec(compile(source.stdout, "reviewed head evidence policy", "exec"), namespace)
+    return namespace
+
+
+def head_policy_problem(req: dict) -> str | None:
+    if req.get("kind") not in ("publish_head", "rollback_head", "publish_head_dryrun", "rollback_head_dryrun"):
+        return None
+    try:
+        return head_policy(req)["request_problem"](req, OPS)
+    except Exception:
+        return "reviewed head evidence policy unavailable or invalid"
 
 
 def signer_acceptance_problem(req: dict) -> str | None:
@@ -776,6 +805,17 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
     op = table.get(req["kind"])
     if not op: return f"unknown kind {req['kind']}"
     if not op.get("enabled"): return f"kind {req['kind']} is not enabled (enabled_by {op.get('enabled_by')})"
+    if req["kind"] in ("publish_head", "rollback_head", "publish_head_dryrun", "rollback_head_dryrun"):
+        prior_path = REC / f"{req['operation_id']}.json"
+        if prior_path.exists():
+            if not reserved:
+                return "head operation_id already has a receipt; reconcile instead of re-requesting"
+            try:
+                prior = json.loads(prior_path.read_text())
+                if prior.get("status") != "RUNNING" or prior.get("request_sha256") != request_digest(req):
+                    return "reserved head operation no longer matches its RUNNING receipt"
+            except Exception:
+                return "reserved head operation receipt unreadable"
     if "TO_BE_SET" in op.get("script", "") or "TO_BE_SET" in str(op.get("needs", "")): return "operation script not yet reviewed/landed"
     if req["requested_by"] not in op.get("requesters", ["adhikarin"]): return f"requested_by {req['requested_by']} may not request {req['kind']}"
     if "dry_run" in req and "lane_target" not in req:
@@ -802,7 +842,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         else: why = signer_acceptance_problem(req)
         if why: return why
     if not reserved and seen(req["idempotency_key"]): return "idempotency key already used"
-    return smalltest_policy_problem(req) or scheduler_policy_problem(req) or measuring_cancel_problem(req)
+    return smalltest_policy_problem(req) or scheduler_policy_problem(req) or measuring_cancel_problem(req) or head_policy_problem(req)
 
 
 def lane_selected(req: dict) -> bool:
