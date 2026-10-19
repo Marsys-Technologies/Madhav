@@ -47,7 +47,7 @@ def scoped_backup_for(root, label='p02_fixture'):
 
 
 def authorize(root, req):
-    if req.get('kind') == 'smalltest_dispatch':
+    if req.get('kind') in ('smalltest_dispatch', 'century_dispatch'):      # a century dispatch names its scoped backup too (SR-PREBUILD-ALL: scoped backup by content hash)
         for key, value in scoped_backup_for(root).items():
             req.setdefault(key, value)
     req['chart_id'] = shared.CHART_ID

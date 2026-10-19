@@ -26,6 +26,7 @@ import uuid
 CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 ASSET = "ka_gochara_v5"
 JOB = "brahma-build-pipeline-job"
+SMALLTEST_TRIGGERED_BY = "gochara-v5-small-test"
 EXECUTION = re.compile(r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*")
 
 
@@ -86,11 +87,15 @@ def _write_claim(path, value, *, exclusive=False):
         os.close(directory)
 
 
-def launch_staged(*, run_id, expected_manifest, connection, claim_dir, launcher=cloud_launcher, launch_schema="ky.smalltest_launch/1"):
+def launch_staged(*, run_id, expected_manifest, connection, claim_dir, launcher=cloud_launcher, launch_schema="ky.smalltest_launch/1",
+                  triggered_by=SMALLTEST_TRIGGERED_BY, test_slice=True):
     """Caller owns transaction; hold run/asset row locks until launch returns.
 
     `launcher(run_id, timeout_s)` is injectable. All identity and age checks run
     against the locked DB row, not stdout or the client clock.
+
+    `triggered_by` / `test_slice` default to the small-test and measuring runs (a slice marker is required). The century
+    launch (century_launch.py) passes its own trigger and `test_slice=False`: a century run must carry NO slice marker.
     """
     try:
         if str(uuid.UUID(run_id)) != run_id:
@@ -102,13 +107,13 @@ def launch_staged(*, run_id, expected_manifest, connection, claim_dir, launcher=
         "plan_manifest, plan_manifest_digest, created_at, started_at FROM build_runs WHERE id = %s FOR UPDATE",
         (run_id,)).fetchone()
     expected = dict(id=run_id, chart_id=CHART, state="planned", scope="asset_set", scope_target=ASSET,
-                    action="rebuild", plan=[ASSET], triggered_by="gochara-v5-small-test", started_at=None)
+                    action="rebuild", plan=[ASSET], triggered_by=triggered_by, started_at=None)
     if not row or any((str(row.get(k)) if k in ("id", "chart_id") else row.get(k)) != v for k, v in expected.items()):
         raise Refused("staged run identity/state mismatch or already started")
     digest = hashlib.sha256(canonical(expected_manifest).encode()).hexdigest()
     if (row["plan_manifest"] != expected_manifest or row["plan_manifest_digest"] != digest
             or expected_manifest.get("chart_id") != CHART or expected_manifest.get("scope_target") != ASSET
-            or not expected_manifest.get("gochara_v5_test_slice")):
+            or (not expected_manifest.get("gochara_v5_test_slice") if test_slice else "gochara_v5_test_slice" in expected_manifest)):
         raise Refused("staged manifest differs from the reviewed checkout/request")
     assets = connection.execute("SELECT asset_id, state, position FROM build_run_assets WHERE run_id = %s FOR UPDATE", (run_id,)).fetchall()
     if [dict(a) for a in assets] != [dict(asset_id=ASSET, state="queued", position=0)]:
