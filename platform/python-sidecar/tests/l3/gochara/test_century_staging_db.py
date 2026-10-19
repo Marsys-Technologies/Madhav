@@ -14,12 +14,18 @@ import psycopg.rows
 import pytest
 
 from ._measuring_binding_world import measuring_world  # noqa: F401
+from ._smalltest_executor_evidence import scoped_content_unchanged
 
 FLEET = Path(__file__).resolve().parents[5] / '00_ARCHITECTURE/briefs/kalayantra/fleet'
 SCRIPTS = Path(__file__).resolve().parents[5] / 'platform/scripts'
 for path in (str(FLEET), str(SCRIPTS), str(SCRIPTS / '__tests__')):
     if path not in sys.path:
         sys.path.insert(0, path)
+
+
+@pytest.fixture(autouse=True)
+def _scoped_content_unchanged(monkeypatch):
+    scoped_content_unchanged(monkeypatch)
 
 
 def runs(dw):
