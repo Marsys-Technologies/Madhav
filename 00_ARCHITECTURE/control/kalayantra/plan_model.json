@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -19403,7 +19403,6 @@
       "owner": "K",
       "depends_on": [
         "J-4b",
-        "J-4c-pr2907",
         "J-4c-pr2953",
         "J-4c-pr2988",
         "J-4c-pr3082",
@@ -23143,7 +23142,8 @@
       "owner": "K",
       "depends_on": [
         "J-0m",
-        "J-4b"
+        "J-4b",
+        "D-J4C-PR2907-NA"
       ],
       "mandatory": true,
       "detector": {
@@ -23183,8 +23183,9 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a",
-        "reason": "Re-entered code child carried by P06; original dependencies preserved; one enumerating independent packet review, no child review job."
+        "class": "retired",
+        "decision": "D-J4C-PR2907-NA",
+        "reason": "#2907's content already landed through #2901 (squash 2e16dbdab, 2026-10-02); its owned files (drishti.py, test_drishti.py) are byte-identical to the #2907 head b598ee302; review X-20261019T150725Z-review-3596-pr2907 concluded NOT_APPLICABLE"
       },
       "packet_code_coverage": "P06",
       "steps": [
@@ -23200,6 +23201,9 @@
             "measures": "one canonical receipt per step (whole file must match exactly: no extra, duplicate or conflicting fields), written only from an independent review that executed the step's oracles at the pinned merged head; the reviewer, not the author, enumerated every distinct production claim from the brief, packet and cited classical rules in the verdict, showed each claim has at least one doctrine-grounded oracle (classical source cited; B.3/B.10) whose single planted reversion failed at that head, and verified every real defect was fixed with fail-on-revert evidence (D-OWNER-TESTS-20261016; CLAUDE.md N.8; same earned-signal class as the V-* packet verdicts) Q3: independent reviewer differs from every packet builder; review enumerates this exact child id; all its PORT_MANIFEST oracles present and green in exact-head CI. Controller derives child receipt and child verdict envelope from the authentic hash-bound review; never reuse a packet-id envelope."
           }
         }
+      },
+      "requires_outcome": {
+        "D-J4C-PR2907-NA": "approved"
       }
     },
     {
@@ -27558,9 +27562,8 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "ee51abe09bd5e62d8bba6999515ef160fe688cbc",
-        "packet_pr": 3606,
-        "measures": "K9-23-N2 pre-build (job X-20261016T091430Z-pb-k9-23-n2): PR #3606 squash commit is contained in origin/main; the source branch was deleted after the merge (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
+        "ref": "origin/kalayantra/k9-23",
+        "measures": "K9-23-N2 is fixed only together with K9-23 (PR #3556): its branch origin/kalayantra/k9-23 is contained in origin/main. Re-pointed from the custody commit ee51abe09 (PR #3606, a pre-build that registered the finding and fixed nothing), which made the tracker show 'detector matched' (CLOSE_PLAN fast/jobs/X-20261019T141349Z-close-plan-six)."
       },
       "brief": {
         "spec": [
@@ -29353,6 +29356,23 @@
           "V-VC"
         ]
       }
+    },
+    {
+      "id": "D-J4C-PR2907-NA",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Not applicable: J-4c-pr2907 — content already landed through #2901",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "done_by": "decision",
+      "decision": "D-J4C-PR2907-NA",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "J-4c-pr2907"
+      }
     }
   ],
   "decisions": [
@@ -29523,6 +29543,12 @@
       "title": "Operation-item steps: lease row as evidence, restore proof not applicable for J-3c, one verifier at most",
       "owner": "ADHIKĀRIN (N); surrogate madhav-6d, 2026-10-19T03:20:12Z",
       "default": "Approved — /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:229 (SR-OP-STEPS) and :230 (SR-OP-STEPS-2). Item 2: a lease_held step is evidenced by the lease row on origin/campaign-coordination (commit sha + row id), read mechanically by the tracker. Item 3: J-3c backup_restore_verified is not applicable (OWNER-MINIMAL-PROTECTION-NOW-20261018), not a gap. SR-OP-STEPS-2: the executor's own recorded acceptance is the accepted verdict at the receipt's digest. Recording this decision (ky decide SR-OP-STEPS --as steward --delegated) is what makes a cited not-applicable step count as satisfied."
+    },
+    {
+      "id": "D-J4C-PR2907-NA",
+      "title": "Not applicable (J-4c-pr2907): content already landed through #2901",
+      "owner": "ADHIKĀRIN (N); the cockpit records the outcome (`ky decide D-J4C-PR2907-NA --outcome refused`) on the evidence of independent review X-20261019T150725Z-review-3596-pr2907 (NOT_APPLICABLE)",
+      "default": "refused — #2907's content already landed through #2901 (squash 2e16dbdab, 2026-10-02); its owned files (drishti.py, test_drishti.py) are byte-identical to the #2907 head b598ee302; review X-20261019T150725Z-review-3596-pr2907 concluded NOT_APPLICABLE"
     }
   ],
   "coordination": {
