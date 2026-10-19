@@ -446,6 +446,51 @@ def _slice_excluded_agents(slice_: "TestSlice | None"):
     return gk_verifier.excluded_agents_of_scope(gk_input_vector.STORED_SCOPE)
 
 
+# ── gochara_v5_defer_in_build_verify (SR-W3-SHAPE item 3; DESIGN_NOTE_W3 §C) ──
+# The in-build `verify:<class>` is a report-only SELF-CHECK: it persists no verification row, and the separate verification job
+# (`services/gochara_kernel/verification_job.py:_verify_class`) re-derives the same inventory, ledger and contact-geometry digests before it
+# writes the rows the gate and the seal read. A FINAL build may therefore defer it under this strict-boolean config key: the substep stays in
+# the plan (the plan's length and order are unchanged) and returns the NAMED no-op `VERIFY_DEFERRED_STATUS`. The choice is an input of the
+# build, bound into the manifest vector (`in_build_verify`), so a build that skipped the self-check is distinguishable from one that ran it
+# (§N.8) and a run whose flag differs from its manifest drifts by name. REFUSED under any test-slice marker (the measuring build included: there
+# the in-build verify is the ONLY producer of the STRETCH_SINK/1 records) and for a build that is not on the final rules. Absent or False =
+# today's behaviour, byte-identical vector.
+DEFER_VERIFY_KEY = "gochara_v5_defer_in_build_verify"
+DEFER_VERIFY_SCHEMA = "gochara_v5_in_build_verify/1"
+VERIFY_DEFERRED_STATUS = "deferred_to_independent_verification"
+
+
+class DeferVerifyRefusal(ValueError):
+    """`gochara_v5_defer_in_build_verify` is not a boolean, or is set on a run shape that must run its in-build verify — refused by
+    name, never coerced, never ignored."""
+
+
+def _defer_in_build_verify(ctx: ContextSpec, slice_: "TestSlice | None") -> bool:
+    """True when this run defers its in-build `verify:<class>` (validated); False when the key is absent or False."""
+    if DEFER_VERIFY_KEY not in ctx.config:
+        return False
+    value = ctx.config[DEFER_VERIFY_KEY]
+    if type(value) is not bool:
+        raise DeferVerifyRefusal(f"{ASSET_ID}: {DEFER_VERIFY_KEY} must be a boolean, got {value!r} — refused, never coerced")
+    if not value:
+        return False
+    if slice_ is not None:
+        raise DeferVerifyRefusal(
+            f"{ASSET_ID}: {DEFER_VERIFY_KEY}: defer_verify_refused_for_test_slice — run {slice_.run!r} carries a "
+            f"{TEST_SLICE_KEY} marker; a test slice or measuring build must run its in-build verify (the only producer of "
+            f"{gk_stretch_sink.SCHEMA}); final builds only")
+    if ctx.config.get("gochara_v5_final_rules") is not True:
+        raise DeferVerifyRefusal(
+            f"{ASSET_ID}: {DEFER_VERIFY_KEY}: defer_verify_requires_final_rules — only a final build (gochara_v5_final_rules "
+            "true, no test-slice marker) may defer its in-build verify")
+    return True
+
+
+def _verify_component(defer: bool) -> dict | None:
+    """The manifest-vector component recording a deferred in-build verify; None (no component) when the self-check runs."""
+    return {"schema": DEFER_VERIFY_SCHEMA, "status": VERIFY_DEFERRED_STATUS} if defer else None
+
+
 def _scope_normalised(vector: dict, slice_: TestSlice | None) -> dict:
     """The vector the in-build independent derivation check sees (Stream A C46 review R1/R1b, Codex P1-2):
     identical in EVERY component, with only the slice's identity removed — stored_scope back to the default and the
@@ -857,6 +902,8 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
         ephe_path=_ephe_path(ctx), path_refs=gk_rule_registry.bound_path_refs(),
         rulings=_applicable_rulings(),
         stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
+        # SR-W3-SHAPE 3: the expected deferral comes from the run's VALIDATED config, never from the stored vector (Codex P1-2)
+        in_build_verify=_verify_component(_defer_in_build_verify(ctx, slice_)),
         test_slice=_slice_component(slice_) if slice_ is not None else None,
         horizon_basis=_live_basis_for_check(ctx, slice_, stored))
     # ... and every component that can be derived WITHOUT the builder's code is (registry + L0 + sky in
@@ -1013,6 +1060,7 @@ class GocharaV5Writer(WriterBase):
         ctx = _native_ctx(ctx)
         _require_pinned_chart(ctx.config["chart_id"])
         slice_ = _test_slice(ctx)
+        _defer_in_build_verify(ctx, slice_)         # SR-W3-SHAPE 3: a refused flag is refused at PLAN time; the plan itself never changes
         classes = slice_.classes if slice_ is not None else SCORED_CLASSES
         steps = [
             SubStep(key=RULES_SUBSTEP,
@@ -1186,6 +1234,8 @@ class GocharaV5Writer(WriterBase):
                 # C46: a sliced build is unsealable by construction — stored_scope no verifier
                 # vocabulary knows, plus the marker digest; absent marker = the default, unchanged
                 stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
+                # SR-W3-SHAPE 3: a deferred in-build verify is an input of the build (§N.8); absent flag = no component
+                in_build_verify=_verify_component(_defer_in_build_verify(ctx, slice_)),
                 test_slice=_slice_component(slice_) if slice_ is not None else None,
                 horizon_basis=_horizon_basis(ctx, slice_))
             # every component that can be derived without the builder's code is derived a SECOND way and the two
@@ -1315,6 +1365,14 @@ class GocharaV5Writer(WriterBase):
                        f"inventory_digest={out['inventory_digest'][:12]}…"))
 
         # verify:<class> — the INDEPENDENT verifier (shares no code with the builder)
+        if _defer_in_build_verify(ctx, slice_):
+            # SR-W3-SHAPE 3: _verify_live_inputs (run before this phase) has already proved the manifest records the deferral
+            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                                notes=f"verify {event_class}: {VERIFY_DEFERRED_STATUS} — in-build self-check deferred by "
+                                      f"{DEFER_VERIFY_KEY} (bound in the manifest vector as in_build_verify); nothing derived, "
+                                      "nothing persisted; the separate verification job re-derives the inventory, ledger and "
+                                      "contact-geometry digests and persists the 1206 and 1240 rows; the candidate gate stays "
+                                      "CLOSED until it has run")
         sealed = inv_store.sealed_rule_paths()
         # R8-2: the verifier re-derives under the ORIGINAL selection stored with the inventory (never today's
         # configuration — historical replay), and the writer separately requires that stored selection to equal
