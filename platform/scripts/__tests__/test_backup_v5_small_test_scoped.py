@@ -522,3 +522,20 @@ def test_the_dispatch_execute_policy_measures_the_scope_and_refuses_a_backup_who
     assert unchanged.seen == [(['public.a', 'public.b'], ['public.a_id_seq'])]       # it really measured the recorded relations
     monkeypatch.setattr(backup, 'measure_scope_now', now_measure(changed='public.a'))
     assert 'content has changed' in dispatch._smalltest_request_policy(req, tmp_path)
+
+
+def test_the_century_execute_policy_measures_the_scope_and_refuses_a_backup_whose_content_changed(backup, shared, tmp_path, monkeypatch):
+    """SR-BACKUP-VALIDITY-A8 §3.10 (J-4e/f): the century launch stages the production candidate, so the same rule holds for it: a 30-day-old
+    scoped backup is admitted only while a fresh measurement at dispatch equals the recorded digest, and refused as soon as it differs.
+    `_century_request_policy` (what `--execute` runs before staging) must hand backup.measure_scope_now to the evidence policy."""
+    century = importlib.import_module('dispatch_v5_century_job')
+    old = write_evidence(tmp_path, shared, started=datetime.now(timezone.utc) - timedelta(days=30))
+    monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)
+    monkeypatch.setattr(shared, 'century_dryrun_evidence', lambda req, root, digest=None: None)
+    req = {'kind': 'century_dispatch', 'item_id': shared.CENTURY_ITEM, 'args': dict(shared.CENTURY_ARGS), **old}
+    unchanged = now_measure()
+    monkeypatch.setattr(backup, 'measure_scope_now', unchanged)
+    assert century._century_request_policy(req, tmp_path) is None
+    assert unchanged.seen == [(['public.a', 'public.b'], ['public.a_id_seq'])]       # it really measured the recorded relations
+    monkeypatch.setattr(backup, 'measure_scope_now', now_measure(changed='public.a'))
+    assert 'content has changed' in century._century_request_policy(req, tmp_path)

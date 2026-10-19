@@ -983,8 +983,10 @@ CENTURY_ARGS = {'classes': 'all'}
 CENTURY_EXECUTION_ENV = 'PUBSUB_DISABLED=1'      # J-3 gate: Pub/Sub on would publish asset.substep and print nothing the log read could see
 
 
-def century_request_problem(req, root):
-    """Century-only file evidence admission, loaded from reviewed source (the executor loads this module alone, from the reviewed commit)."""
+def century_request_problem(req, root, measure=None):
+    """Century-only file evidence admission, loaded from reviewed source (the executor loads this module alone, from the reviewed commit).
+    `measure` is the fresh read-only scoped-content measurement (see scoped_backup_problem): the executor's admission has none; the century
+    dispatch script supplies it at --execute, so a backup whose scoped content has changed since capture is refused (SR-BACKUP-VALIDITY-A8 §3.10)."""
     try:
         kind = req.get('kind')
         if kind in ('century_dispatch', 'century_dispatch_dryrun'):
@@ -995,7 +997,7 @@ def century_request_problem(req, root):
             # Even a staging rollback may not bypass the previous lifecycle: generation '5.0' must be independently absent.
             absence_evidence(req, root)
             if kind == 'century_dispatch':
-                scoped_backup_problem(req, root)
+                scoped_backup_problem(req, root, measure=measure)
                 century_dryrun_evidence(req, root)
         elif kind in ('century_teardown', 'century_teardown_dryrun'):
             scope = staged_scope(req, root)
