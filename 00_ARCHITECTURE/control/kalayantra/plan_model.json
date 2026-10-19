@@ -18878,12 +18878,12 @@
       "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
       "step_evidence": {
         "lease_held": {
-          "evidence": "executor_receipt",
+          "evidence": "lease_row",
           "detector": {
             "type": "file_contains",
             "path": "/Users/Dev/kalayantra/run/reviews/steps/J-3c.lease_held.json",
-            "pattern": "\\A\\{\"evidence_sha256\":\"[0-9a-f]{64}\",\"item\":\"J\\-3c\",\"operation_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"request_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"lease_held\",\"verdict\":\"MET\"\\}\\n?\\Z",
-            "measures": "Canonical whole-file independent acceptance receipt, no extra/duplicate/conflicting fields. Controller verifies the cited evidence digest and item/step identity; operation steps bind the SAME request and operation as the executor receipt and its independent readback. A marker alone is not operational acceptance."
+            "pattern": "\\A\\{\"coordination_commit\":\"[0-9a-f]{40}\",\"expires\":\"[^\"\\\\]+\",\"item\":\"J\\-3c\",\"lease_id\":\"L\\-(?:KALAYANTRA|KY)\\-[A-Za-z0-9_.\\-]+\",\"row\":\".+\",\"schema\":\"ky\\.lease_row_evidence/1\",\"step\":\"lease_held\",\"taken\":\"[^\"\\\\]+\"\\}\\n?\\Z",
+            "measures": "Canonical whole-file lease evidence {coordination_commit, expires, item, lease_id, row, schema, step, taken}, no extra/duplicate/conflicting fields. The tracker mechanically reads the coordination ledger: the commit must be an ancestor of origin/campaign-coordination and CAMPAIGN_COORDINATION.md at that commit must hold exactly this row, status ACTIVE (SR-OP-STEPS item 2). No verifier verdict is involved."
           }
         },
         "backup_restore_verified": {
@@ -18905,12 +18905,12 @@
           }
         },
         "pre_acceptance": {
-          "evidence": "executor_receipt",
+          "evidence": "acceptance_file",
           "detector": {
             "type": "file_contains",
-            "path": "/Users/Dev/kalayantra/run/reviews/steps/J-3c.pre_acceptance.json",
-            "pattern": "\\A\\{\"evidence_sha256\":\"[0-9a-f]{64}\",\"item\":\"J\\-3c\",\"operation_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"request_id\":\"[A-Za-z0-9][A-Za-z0-9_.:-]*\",\"review_job\":\"X-[0-9]{8}T[0-9]{6}Z-[a-z0-9-]+\",\"step\":\"pre_acceptance\",\"verdict\":\"MET\"\\}\\n?\\Z",
-            "measures": "Canonical whole-file independent acceptance receipt, no extra/duplicate/conflicting fields. Controller verifies the cited evidence digest and item/step identity; operation steps bind the SAME request and operation as the executor receipt and its independent readback. A marker alone is not operational acceptance."
+            "path": "/Users/Dev/kalayantra/run/ops/acceptance/J-3c.dispatch.post.json",
+            "pattern": "\\A(?=[\\s\\S]*\"result\": \"ACCEPTED\")(?=[\\s\\S]*\"operation_id\": \"J\\-3c\\.dispatch\")",
+            "measures": "The executor's own recorded acceptance of the dispatch, run/ops/acceptance/J-3c.dispatch.post.json (SR-OP-STEPS-2, SR-TEARDOWN-COMPLETION). The tracker reads it mechanically: it names the dispatch operation of J-3c and the digest of the archived request, is signed by a verifier lane v1-v4 or executor-mechanical with every check true, and the signer is not the requester. No verifier verdict event is involved or synthesised."
           }
         },
         "dispatched": {
@@ -18925,6 +18925,12 @@
       },
       "triage": {
         "class": "a"
+      },
+      "not_applicable_steps": {
+        "backup_restore_verified": {
+          "decision": "SR-OP-STEPS",
+          "reason": "not applicable: restore proof dropped by OWNER-MINIMAL-PROTECTION-NOW-20261018; backup taken per receipt J-3c.backup (label j3c_20261018t130045z)"
+        }
       }
     },
     {
@@ -29496,6 +29502,12 @@
       "title": "Not applicable (V-K3b, V-K5, V-K6, V-KA, V-VC): satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)",
       "owner": "native — owner-authorised by Amendment A9 (D-51, D-53, D-54)",
       "default": "refused — satisfied by the per-change independent reviews under D-OWNER-TESTS-20261016 (A8 §4, A9 D-54)"
+    },
+    {
+      "id": "SR-OP-STEPS",
+      "title": "Operation-item steps: lease row as evidence, restore proof not applicable for J-3c, one verifier at most",
+      "owner": "ADHIKĀRIN (N); surrogate madhav-6d, 2026-10-19T03:20:12Z",
+      "default": "Approved — /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:229 (SR-OP-STEPS) and :230 (SR-OP-STEPS-2). Item 2: a lease_held step is evidenced by the lease row on origin/campaign-coordination (commit sha + row id), read mechanically by the tracker. Item 3: J-3c backup_restore_verified is not applicable (OWNER-MINIMAL-PROTECTION-NOW-20261018), not a gap. SR-OP-STEPS-2: the executor's own recorded acceptance is the accepted verdict at the receipt's digest. Recording this decision (ky decide SR-OP-STEPS --as steward --delegated) is what makes a cited not-applicable step count as satisfied."
     }
   ],
   "coordination": {
