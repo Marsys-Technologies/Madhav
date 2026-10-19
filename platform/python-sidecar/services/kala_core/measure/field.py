@@ -11,7 +11,7 @@ import heapq
 import json
 import math
 from typing import Iterable, Optional, Sequence
-from . import DEFAULT_NON_IDENTITY_SHIFTS, Experiment, Interval, shift_schedule
+from . import DEFAULT_NON_IDENTITY_SHIFTS, Experiment, Interval, bind_schedule, prepare_schedule
 
 DURATION_BUCKETS = (1, 3, 7, 15, 30, 60, 90, 180, 365, 730)
 ALPHA = 0.05
@@ -136,18 +136,23 @@ class FieldPreparation:
     offsets: tuple[float, ...]
     experiment: Experiment
     digest: str
+    schedule_digest: str = ''
 
 
-def prepare_field(event_class, horizon_days, *, non_identity_shifts=DEFAULT_NON_IDENTITY_SHIFTS):
+def prepare_field(event_class, horizon_days, *, non_identity_shifts=None, schedule=None):
     if not event_class:
         raise ValueError('event class is required')
     horizon = Interval(0, horizon_days)
-    offsets = shift_schedule(horizon, non_identity_shifts)
+    # One candidate-level schedule is consumed by every experiment; a caller
+    # without one gets an equivalent private schedule (same offsets and digest).
+    schedule = (prepare_schedule(horizon, DEFAULT_NON_IDENTITY_SHIFTS if non_identity_shifts is None else non_identity_shifts)
+                if schedule is None else bind_schedule(schedule, horizon_days, non_identity_shifts))
+    offsets = schedule.offsets
     experiment = Experiment('class_specific_field_maximum:' + event_class,
         'natal promise, baseline and clocks fixed; all stage-1 transit and obstruction envelopes circularly shifted; full reference rebuilt per draw')
     material = [experiment.estimand, experiment.conditioning, horizon_days, offsets]
     digest = hashlib.sha256(json.dumps(material, separators=(',', ':')).encode()).hexdigest()
-    return FieldPreparation(event_class, horizon_days, offsets, experiment, digest)
+    return FieldPreparation(event_class, horizon_days, offsets, experiment, digest, schedule.digest)
 
 
 @dataclass(frozen=True)

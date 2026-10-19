@@ -58,6 +58,9 @@ from pravaha_tracker.completion import COMPOSED_RECEIPT_SCHEMA, CompletionError,
 from pravaha_tracker.claims import _locked, _read, _append, _close  # noqa: E402
 from pravaha_tracker.events import validate_against_model  # noqa: E402
 from pravaha_tracker.verdicts import accepted_verdict  # noqa: E402
+from pravaha_tracker.op_steps import (check_acceptance_file_evidence, check_lease_row_evidence,  # noqa: E402
+                                      committed_teardown_absence_accepted, executor_acceptance)
+from pravaha_tracker.op_steps import request_digest as _request_digest  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
@@ -397,9 +400,19 @@ def _check_step_receipt(raw: bytes, path: str, spec: dict, item: str, step: str,
 
 def _teardown_completed(executor: dict, receipts: str, digest: str) -> bool:
     """A committed production teardown stays AWAITING_ABSENCE by design (fleet/executor.py: the
-    COMMITTED_AWAITING_ABSENCE proof sets that status). It counts as complete only once the executor has
-    published <op>.completion.json after the separate absence readback was accepted: status COMPLETED, the
-    same operation and request, the digest of this very receipt, and the digest of the named absence receipt.
+    COMMITTED_AWAITING_ABSENCE proof sets that status). It counts as complete when the executor has published
+    <op>.completion.json (_teardown_completion_published), or (SR-TEARDOWN-COMPLETION) while that is not yet
+    published, when the receipt is COMMITTED (exit 0, teardown proof COMMITTED_AWAITING_ABSENCE) and an ACCEPTED
+    absence receipt binds its evidence_digest (op_steps.committed_teardown_absence_accepted mirrors the executor's
+    own absence_evidence check)."""
+    return (_teardown_completion_published(executor, receipts, digest)
+            or committed_teardown_absence_accepted(executor, receipts))
+
+
+def _teardown_completion_published(executor: dict, receipts: str, digest: str) -> bool:
+    """The executor published <op>.completion.json after the separate absence readback was accepted: status
+    COMPLETED, the same operation and request, the digest of this very receipt, and the digest of the named
+    absence receipt.
 
     (I) INTERPRETATION: commit_receipt_sha256 is also bound to this receipt's bytes (the executor writes
     digest_bytes of the commit receipt there); the alternative of checking only the fields named in the
@@ -515,6 +528,9 @@ def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[d
     acceptance_receipt, expires_at and *_expires_at fields (fleet/executor.py:request_digest, A8 §3.9).
     Acceptance is the latest artifact verdict at the executor receipt's digest, as in
     guarded operation completion; a review job's MET marker alone has no signer identity.
+    Failing that (SR-OP-STEPS-2), the executor's OWN recorded acceptance for this operation is read directly
+    (op_steps.executor_acceptance); no verdict event is ever synthesised. (I) INTERPRETATION: a composed
+    receipt has no request digest of its own, so only the verdict path applies to it.
     """
     opid, request_id = receipt.get("operation_id"), receipt.get("request_id")
     if (not isinstance(opid, str) or re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", opid) is None
@@ -550,9 +566,7 @@ def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[d
             request = json.load(handle)
         if not isinstance(request, dict):
             raise CompletionError("operation request must be a JSON object")
-        bound = {key: value for key, value in request.items() if key not in ("acceptance_receipt", "expires_at") and not key.endswith("_expires_at")}   # executor.request_digest, A8 §3.9
-        request_digest = hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":"),
-                                                 allow_nan=False).encode("utf-8")).hexdigest()
+        request_digest = _request_digest(request)    # executor.request_digest, A8 §3.9
         requester = request.get("requested_by")
         if (not isinstance(requester, str) or not requester.strip()
                 or any(request.get(key) != executor.get(key)
@@ -583,7 +597,15 @@ def _check_operation_step(receipt: dict, item: dict, model: dict, events: list[d
             or not slot or any(signer.strip().casefold() == requester.strip().casefold()
                                or slot.casefold() == (actor_slot(requester) or requester.strip()).casefold()
                                for requester in requesters)):
-        raise CompletionError("operation step needs independent acceptance at the executor receipt digest")
+        if composed:
+            raise CompletionError("operation step needs independent acceptance at the executor receipt digest")
+        latest = next((ev for ev in reversed(events) if ev.get("kind") == "verdict" and ev.get("item") == item["id"]
+                       and ev.get("phase") == "artifact" and ev.get("head") is None
+                       and ev.get("artifact_digest") == digest), None)
+        if latest and latest.get("result") != "ACCEPTED":    # a recorded rejection at this digest revokes acceptance
+            raise CompletionError(f"the independent verdict at the executor receipt digest is {latest.get('result')!r}")
+        executor_acceptance(ops, opid, request_digest, digest, executor, requesters)
+        return
     validate_against_model(verdict, model, events)
 
 
@@ -611,7 +633,10 @@ def cmd_step(a, actor: str) -> int:
         # Actual operation items still require independently bound receipts.
         operation = item.get("completion_kind") == "operation" or (
             declared.get("evidence") == "executor_receipt" and spec.get("type") != "db_query")
-        if operation and spec.get("type") != "file_contains":
+        lease_row = declared.get("evidence") == "lease_row"    # SR-OP-STEPS item 2: a ledger read, no verdict
+        acceptance_file = declared.get("evidence") == "acceptance_file"    # pre_acceptance: the executor's acceptance record
+        ledger = lease_row or acceptance_file
+        if (operation or ledger) and spec.get("type") != "file_contains":
             raise CompletionError("operation step requires a canonical file_contains acceptance receipt")
         if not a.evidence or not os.path.isfile(a.evidence):
             raise CompletionError("step evidence must be an existing file (--evidence <path>)")
@@ -624,7 +649,15 @@ def cmd_step(a, actor: str) -> int:
             raise CompletionError(f"the detector of step {a.step_name} has not passed")
         path = os.path.abspath(a.evidence)
         with open(path, "rb") as handle:
-            if spec.get("type") == "file_contains":
+            if ledger:
+                raw = handle.read()
+                if lease_row:
+                    check_lease_row_evidence(raw, path, spec, a.item, a.step_name,
+                                             os.environ.get("PRAVAHA_REPO", REPO_ROOT))
+                else:
+                    check_acceptance_file_evidence(raw, path, spec, a.item, a.step_name, _ops_dir())
+                digest = hashlib.sha256(raw).hexdigest()
+            elif spec.get("type") == "file_contains":
                 raw = handle.read()
                 receipt = _check_step_receipt(raw, path, spec, a.item, a.step_name, operation=operation)
                 digest = hashlib.sha256(raw).hexdigest()
@@ -632,7 +665,7 @@ def cmd_step(a, actor: str) -> int:
                 digest = hashlib.file_digest(handle, "sha256").hexdigest()
         event = {"kind": "item", "actor": actor, "item": a.item, "state": "done", "step": a.step_name,
                  "detail": a.detail, "evidence": path, "evidence_sha256": digest}
-        if operation:
+        if operation or ledger:
             # Check the current verdict and append under the same lock: a concurrent
             # rejection must not be lost between acceptance lookup and step recording.
             if not os.path.isfile(EVENTS):
@@ -640,7 +673,8 @@ def cmd_step(a, actor: str) -> int:
             fd = _locked(EVENTS)
             try:
                 events = _read(fd)
-                _check_operation_step(receipt, item, model, events)
+                if not ledger:    # the lease row / acceptance record was read from its ledger above
+                    _check_operation_step(receipt, item, model, events)
                 lane = os.environ.get("KY_LANE", "").strip()
                 if (model.get("control_plane", {}).get("verdict_stream") and lane
                         and actor.startswith("stream-") and ":" not in actor):
