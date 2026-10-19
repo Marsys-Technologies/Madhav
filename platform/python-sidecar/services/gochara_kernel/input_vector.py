@@ -239,6 +239,7 @@ def assemble_vector(inp: dict) -> dict:
         "rulings_digest": _sha(canonical_json(sorted(inp["rulings"], key=canonical_json))),
         "implementation": {st: _sha(canonical_json(m)) for st, m in sorted(inp["impl_modules"].items())},
     } | ({"scored_classes": _scored_classes_component(inp["scored_classes"])} if inp.get("scored_classes") is not None else {}) \
+      | ({"in_build_verify": inp["in_build_verify"]} if inp.get("in_build_verify") is not None else {}) \
       | ({"test_slice": inp["test_slice"]} if inp.get("test_slice") is not None else {}) \
       | ({"horizon_basis": inp["horizon_basis"]} if inp.get("horizon_basis") is not None else {}) \
       | ({"near_miss_layer_version": _near_miss_layer_component(inp["near_miss_layer_version"])} if inp.get("near_miss_layer_version") is not None else {})
@@ -475,14 +476,18 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
                        result_policy: str = DEFAULT_RESULT_POLICY,
                        near_miss_layer_version: int | None | str = "auto",
                        scored_classes: Iterable[str] | None = None,
-                       stored_scope: str = STORED_SCOPE, test_slice: dict | None = None, horizon_basis: dict | None = None) -> dict:
+                       stored_scope: str = STORED_SCOPE, test_slice: dict | None = None, horizon_basis: dict | None = None,
+                       in_build_verify: dict | None = None) -> dict:
     """The vector of what this build CONSUMES. `l0_consumed` names the L0 authorities actually read (none ⇒
     none is a dependency); `census_override` (historical replay) restates the ORIGINAL sealed-version census.
     `stored_scope`/`test_slice` are the writer's scope declaration: anything but the default is a scope no
     verifier vocabulary knows, so the manifest is unsealable by construction (C46 test slice). `horizon_basis` (MB-ADDITIONS 3) is the record of HOW the
     build's horizon was derived (`horizon.ChartHorizon.basis_record`: kind, the first dated event with its date and confidence, the build date as a UTC
     date, the row counts); it is pinned beside the horizon so a sealed generation stays explainable after the life-event log is revised, and a later
-    substep that re-derives a DIFFERENT basis drifts by name. Absent (None) for a horizon that was configured, not derived."""
+    substep that re-derives a DIFFERENT basis drifts by name. Absent (None) for a horizon that was configured, not derived. `in_build_verify`
+    (SR-W3-SHAPE 3) is the record that a FINAL build deferred its in-build `verify:<class>` self-check to the independent verification job; absent
+    (None) when the self-check runs, so such a build's vector is byte-identical to one built before the flag existed (§N.8: a build that skipped the
+    self-check is distinguishable by its manifest alone)."""
     from .substrate import SUBSTRATE_BODIES, SUBSTRATE_DOMAIN_END, SUBSTRATE_DOMAIN_START
     from .convention import ORB_TABLE
     from .record_store import POINT_ORB_SOURCE
@@ -512,6 +517,7 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
             1 if conn.execute("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL AND "
                 "to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL AND "
                 "to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL").fetchone()[0] else None),
+        "in_build_verify": in_build_verify,
     })
 
 
@@ -552,6 +558,7 @@ def verify_replay(conn, stored: dict, path_refs: Iterable[tuple[str, str]], **kw
     kw.setdefault("test_slice", stored.get("test_slice"))
     kw.setdefault("horizon_basis", stored.get("horizon_basis"))
     kw.setdefault("near_miss_layer_version", stored.get("near_miss_layer_version"))
+    kw.setdefault("in_build_verify", stored.get("in_build_verify"))
     replayed = build_input_vector(conn, path_refs=path_refs, census_override=stored["registry"]["census"], **kw)
     diff = diff_vectors(stored, replayed)
     if diff:
@@ -573,6 +580,7 @@ def verify_live(conn, stored: dict, **kw) -> None:
     kw.setdefault("test_slice", stored.get("test_slice"))
     kw.setdefault("horizon_basis", stored.get("horizon_basis"))
     kw.setdefault("near_miss_layer_version", stored.get("near_miss_layer_version"))
+    kw.setdefault("in_build_verify", stored.get("in_build_verify"))
     live = build_input_vector(conn, **kw)
     diff = diff_vectors(stored, live)
     if diff:

@@ -362,6 +362,9 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # re-derived the same way from the merged tree's real bytes (never relaxed).
     # Evaluation re-pinned again for the snapshot-substep fix (#3516 CI repair): the J-2a-P1L out-of-horizon anchor ledger is kept for a LEGACY snapshot
     # only, because a G12 copy (1305) holds horizon-overlapping rows alone. Re-derived the same way; no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "42d515ed5b1fa3f09fdd0f615448d472bac3aed0d390c1a7ac134dbaed16f1b0"
+    # Evaluation re-pinned for SR-W3-SHAPE 3 (gochara_v5_defer_in_build_verify): the writer and input_vector sources changed, the ordinary
+    # (flag-absent) run's every other component, outcome, row count and SQL shape is unchanged. Merged with P06b (this PR) and re-derived from the
+    # merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (never relaxed).
+    assert got["implementation"]["evaluation"] == "50adad7a303ded4de992bd4edb150fae63704d8f31028b6c86429bd460c0ff6e"
     assert got["implementation"]["geometry"] == "e89a19ed6647f7b1ed1bb34d13d53e45600eb0b40d892d8ee777f82f076748b0"
     assert got["implementation"]["window"] == "d886cc893d597c170a83dbce91f2f89be2c302def6d949e935e1ca859bfa62d5"
