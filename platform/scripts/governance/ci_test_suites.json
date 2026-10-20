@@ -939,6 +939,22 @@
       "include": [
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_k9_publication*.py"
       ]
+    },
+    "p06b-python": {
+      "cwd": "platform/python-sidecar",
+      "engine": "pytest",
+      "include": [
+        "tests/l3/gochara/test_p06b*.py",
+        "tests/l3/gochara/test_near_miss*.py"
+      ],
+      "shard_job": "db-integration-tests"
+    },
+    "p06b-typescript": {
+      "cwd": "platform",
+      "engine": "vitest",
+      "include": [
+        "scripts/__tests__/p06b_*.test.ts"
+      ]
     }
   }
 }
