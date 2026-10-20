@@ -153,7 +153,7 @@ describe('queryPariharaGraphCapability', () => {
     expect(mockQuery.mock.calls[1][0] as string).toContain('FROM brahma_dosha_catalog')
   })
 
-  it('states the scope=natal corpus gap explicitly when zero muhūrta-scope rules exist', async () => {
+  it('serves live per-scope counts, never the "ZERO … uncancelled" narration (U:25 item 4)', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [pariharaRow(), pariharaRow({ dosha_canonical_id: 'kala_sarpa', cancellation_index: 1 })] })
       .mockResolvedValueOnce({ rows: [{ real_cited: '26', placeholder_only: '53' }] })
@@ -161,7 +161,9 @@ describe('queryPariharaGraphCapability', () => {
     const section = (result.content as Record<string, unknown>)['parihara_rules'] as Record<string, unknown>
 
     expect(section['muhurta_scope_rule_count']).toBe(0)
-    expect(String(section['scope_note'])).toContain('ZERO muhūrta-scope')
+    expect(section['rules_by_scope']).toEqual({ natal: 2 })
+    expect(String(section['scope_note'])).toContain('natal=2')
+    expect(String(section['scope_note'])).not.toMatch(/ZERO|uncancelled/i)
   })
 
   it('counts muhūrta-scope rules honestly when they do exist', async () => {
@@ -171,7 +173,8 @@ describe('queryPariharaGraphCapability', () => {
     const result = await queryPariharaGraphCapability.handler({ section: 'parihara_rules' }, undefined)
     const section = (result.content as Record<string, unknown>)['parihara_rules'] as Record<string, unknown>
     expect(section['muhurta_scope_rule_count']).toBe(1)
-    expect(String(section['scope_note'])).not.toContain('ZERO')
+    expect(section['rules_by_scope']).toEqual({ muhurta: 1 })
+    expect(String(section['scope_note'])).toContain('muhurta=1')
   })
 
   it('ADJUDICATION-10: serves the real seeded Abhijit row with extraction_context intact', async () => {

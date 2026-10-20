@@ -52,19 +52,14 @@
  *    A factor's polarity comes from the substrate row's own `detail`
  *    (`kalam.category`, `combination_yoga.strength`) — nowhere else. A family the
  *    substrate ships without polarity (`agnivasa`, `ghati_muhurta`) is a NEUTRAL
- *    ANNOTATION, not a silently-assigned doṣa. And a doṣa is cancelled only by a
- *    parihāra row that genuinely exists with `scope='muhurta'`. As of the
- *    substrate PR #930, ZERO such rows existed — every row in `bg_parihara_rules`
- *    was `scope='natal'` (Manglik/Kāla-Sarpa-class bhaṅga), because the ingested
- *    corpus held no muhūrta-specific cancellation content at chapter/verse
- *    grain. ADJUDICATION-10 Part 1 (SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md)
- *    later found ONE genuine exception already in the corpus (bphs_jaimini
- *    PG213's Abhijit sarva-doṣaghna gloss) and seeded it as the corpus's first
- *    `scope='muhurta'` row (migration 524, `dosha_canonical_id='rahu_kalam'`).
- *    For any OTHER doṣa this one row does not key-match, the engine still
- *    reports residual doṣas uncancelled and NAMES the gap — it never reaches
- *    for a natal bhaṅga rule to rescue a Tuesday, and it never invents a
- *    wildcard/all-doṣa match the schema does not support.
+ *    ANNOTATION, not a silently-assigned doṣa. And NO cancellation is derived in
+ *    TypeScript (KA-4b, U:25 item 4; ALGO 3.17 step 3): the old `dosha_canonical_id`
+ *    key-match is removed, so a doṣa-bearing candidate reads `cancellation_unassessed`
+ *    — never "uncancelled" — until the scoped evaluator (served per doṣa on the
+ *    registry ELECT face as `scoped_cancellation`) has assessed it. The per-scope rule
+ *    counts are disclosed in `density.parihara_rules_by_scope`; a count is not an
+ *    assessment. The lattice also does not emit the vivāha chapter's doṣas
+ *    (`vivaha_chapter_dosas: 'not_detected'`), so "no cited doṣa" is not a clearance.
  *
  * 3. 3-STATE COVERAGE HONESTY. A null or empty substrate payload yields
  *    `honest_empty` (or `not_in_corpus` for the census), never `computed`. An
@@ -169,13 +164,24 @@ export interface AppliedParihara {
   extraction_context?: string | null
 }
 
-export type NetStanding = 'clean' | 'fully_cancelled' | 'residual_dosas_present' | 'not_adjudicated'
+/**
+ * ALGO 3.17 step 3 / U:25 item 4: this engine never derives a cancellation, so a doṣa-bearing
+ * candidate reads `cancellation_unassessed` — never "uncancelled". `no_cited_dosa_detected` is a
+ * statement about what the lattice DETECTS (it does not emit the vivāha chapter's doṣas — see
+ * `vivaha_chapter_dosas`), never "checked and clean". The scoped evaluator's per-doṣa
+ * cancelled / cancellation_unassessed states are served on the registry ELECT face
+ * (`scoped_cancellation`), not here.
+ */
+export type NetStanding = 'no_cited_dosa_detected' | 'cancellation_unassessed' | 'not_adjudicated'
 
 /** Elevation §9 stage 3: `doṣas_present → parihāras_applied → residual_doṣas → net standing`. */
 export interface JudgmentLedger {
   candidate_id: string
   dosas_present: LedgerFactor[]
+  /** Always empty here: no cancellation is derived in TypeScript (U:25 item 4). */
   pariharas_applied: AppliedParihara[]
+  /** Doṣas whose cancellation was NOT assessed by this engine (kept under the old field name for the
+   *  budget/alias consumers); presence here is not a finding that they are "uncancelled". */
   residual_dosas: LedgerFactor[]
   supporting_factors: LedgerFactor[]
   neutral_annotations: LedgerFactor[]
@@ -234,7 +240,13 @@ export interface LatticeAdjudication {
     convention_only_rows_in_horizon: number
     parihara_rules_total: number
     parihara_rules_muhurta_scope: number
+    /** Live per-scope rule counts (natal / muhurta / marriage / upanayana / general, as present).
+     *  A count of rules is not an assessment of any candidate. */
+    parihara_rules_by_scope: Record<string, number>
   }
+  /** The lattice emits kālams, yogas, ghaṭīs and tithi/nakṣatra/lagna spans — not the vivāha
+   *  chapter's doṣas — so "no doṣa present" is never "checked and clean" (U:25 item 4). */
+  vivaha_chapter_dosas: 'not_detected'
 }
 
 export interface AdjudicationOptions {
@@ -289,44 +301,34 @@ const CONVENTION_NOTE =
   'in full but are NOT cited classical findings, and are excluded from doṣa detection, ' +
   'parihāra adjudication and every Pareto axis. See the factor census for each gap.'
 
-const NO_MUHURTA_PARIHARA_NOTE =
-  'No muhūrta-scope parihāra rule exists in the corpus: every row of bg_parihara_rules is ' +
-  'scope=natal (Manglik/Kāla-Sarpa-class bhaṅga), because the ingested texts carry no ' +
-  'muhūrta-specific doṣa-cancellation content at chapter/verse grain — the classical ' +
-  '"Abhijit cancels most doṣas" / dāna-parihāra layer is an ingestion work item registered ' +
-  'in the Muhūrta Factor Census. Residual doṣas below are therefore reported UNCANCELLED. ' +
-  'The adjudication mechanism is live and will cancel the moment cited muhūrta-scope rows land; ' +
-  'applying a natal bhaṅga rule to a moment would be a fabricated cancellation, not a rescue.'
+/** Live per-scope counts, in a stable order. */
+function countByScope(rules: PariharaRuleRow[]): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const r of rules) counts[r.scope] = (counts[r.scope] ?? 0) + 1
+  return Object.fromEntries(Object.entries(counts).sort(([x], [y]) => x.localeCompare(y)))
+}
 
-// ADJUDICATION-10 Part 1 landed exactly ONE muhūrta-scope row (bphs_jaimini
-// PG213, dosha_canonical_id='rahu_kalam') — the corpus is therefore no longer
-// UNIVERSALLY empty of muhūrta-scope rules, so NO_MUHURTA_PARIHARA_NOTE's
-// blanket "no muhūrta-scope parihāra rule exists in the corpus" claim would be
-// false to attach to every response regardless of substrate content. This note
-// covers the narrower, still-true residual case: rule(s) exist, but none
-// matches THIS specific residual doṣa's dosha_canonical_id (the schema has no
-// wildcard/all-doṣa convention — see bg_parihara_rules.py's MUHURTA_PARIHARA_ROWS
-// docstring). Still named "no muhūrta-scope" (not "no muhūrta-scope RULE
-// MATCHES") to keep the phrase callers/tests already key on.
-const RESIDUAL_UNMATCHED_MUHURTA_NOTE =
-  'No muhūrta-scope parihāra rule in the corpus matches this specific residual doṣa by ' +
-  'dosha_canonical_id, though at least one muhūrta-scope rule exists for a different doṣa ' +
-  '(e.g. ADJUDICATION-10\'s Abhijit sarva-doṣaghna row, keyed to rahu_kalam). Residual doṣas ' +
-  'below are therefore reported UNCANCELLED for this candidate.'
-
-// ── Stage 3: adjudication ───────────────────────────────────────────────────
+function scopeCountText(counts: Record<string, number>): string {
+  const parts = Object.entries(counts).map(([scope, n]) => `${scope}=${n}`)
+  return parts.length > 0 ? parts.join(', ') : 'none'
+}
 
 /**
- * Join key between a lattice doṣa and a parihāra rule: the lattice row's
- * `factor_key` against the rule's `dosha_canonical_id`, case-insensitively.
- * Documented explicitly because it is the one place the two substrate tables
- * meet, and because it currently matches nothing (see NO_MUHURTA_PARIHARA_NOTE)
- * — a silent no-match would look identical to a bug.
+ * U:25 item 4 / ALGO 3.17 step 3: replaces the old "ZERO muhūrta-scope rules … reported
+ * UNCANCELLED" narration. States what was NOT done (cancellation not assessed here) and gives the
+ * live per-scope rule counts instead of asserting an outcome.
  */
-function matchingPariharas(doshaKey: string, rules: PariharaRuleRow[]): PariharaRuleRow[] {
-  const key = doshaKey.toLowerCase()
-  return rules.filter((r) => r.scope === 'muhurta' && r.dosha_canonical_id.toLowerCase() === key)
+function cancellationUnassessedNote(dosaCount: number, counts: Record<string, number>): string {
+  return (
+    `${dosaCount} doṣa(s) present; cancellation_unassessed — this lattice reading evaluates no ` +
+    'parihāra predicate, so it asserts no cancellation outcome for any doṣa. The scoped ' +
+    'evaluator states (cancelled with locator / cancellation_unassessed) are served per doṣa on ' +
+    `the registry ELECT face. Parihāra rules by scope in the corpus: ${scopeCountText(counts)} ` +
+    '(a rule count is not an assessment of this candidate).'
+  )
 }
+
+// ── Stage 3: adjudication ───────────────────────────────────────────────────
 
 function buildLedger(
   candidate: CandidateInterval,
@@ -350,53 +352,29 @@ function buildLedger(
     .sort((a, b) => a.factor_key.localeCompare(b.factor_key))
   const conventionKeys = Array.from(new Set(conventionFactors.map((f) => f.factor_key))).sort()
 
-  // Adjudication proper.
+  // Adjudication proper. No cancellation is derived here (U:25 item 4): a candidate with doṣas
+  // reads cancellation_unassessed; `not_adjudicated` covers an unreadable lattice or parihāra
+  // payload (an empty row set from a failed fetch is not "no doṣa").
   const pariharas_applied: AppliedParihara[] = []
   const residual_dosas: LedgerFactor[] = []
   let net_standing: NetStanding
   let adjudication_note: string
 
-  // Whether the corpus has ANY muhūrta-scope rule at all — computed live from
-  // the substrate, never assumed, since ADJUDICATION-10 Part 1 means this is
-  // no longer unconditionally false the way it was when this engine landed.
-  const hasMuhurtaRules = substrate.parihara_rules.some((r) => r.scope === 'muhurta')
-
-  if (!substrate.parihara_available) {
+  if (!substrate.lattice_available || !substrate.parihara_available) {
     net_standing = 'not_adjudicated'
     adjudication_note =
-      'The parihāra graph payload was unavailable for this call' +
+      'The muhūrta lattice or parihāra graph payload was unavailable for this call' +
       (substrate.unavailable_reason ? ` (${substrate.unavailable_reason})` : '') +
-      ', so no cancellation was adjudicated. Doṣas present are reported as detected; ' +
-      'residual standing is deliberately left uncomputed rather than assumed clean.'
+      ', so no doṣa detection or cancellation was assessed; nothing is read as clean.'
   } else if (dosas_present.length === 0) {
-    net_standing = 'clean'
-    adjudication_note = hasMuhurtaRules
-      ? 'No cited doṣa-bearing factor span overlaps this candidate.'
-      : 'No cited doṣa-bearing factor span overlaps this candidate. ' + NO_MUHURTA_PARIHARA_NOTE
-  } else {
-    for (const dosa of dosaRows) {
-      const matches = matchingPariharas(dosa.factor_key, substrate.parihara_rules)
-      if (matches.length === 0) {
-        residual_dosas.push(toLedgerFactor(dosa))
-        continue
-      }
-      for (const rule of matches) {
-        pariharas_applied.push({
-          dosha_key: dosa.factor_key,
-          dosha_name_en: rule.dosha_name_en,
-          cancellation_condition_text: rule.cancellation_condition_text,
-          net_standing: rule.net_standing,
-          source_citation: rule.source_citation,
-          extraction_context: rule.extraction_context ?? null,
-        })
-      }
-    }
-    net_standing = residual_dosas.length === 0 ? 'fully_cancelled' : 'residual_dosas_present'
+    net_standing = 'no_cited_dosa_detected'
     adjudication_note =
-      residual_dosas.length === 0
-        ? `Every doṣa on this candidate is cancelled by a cited muhūrta-scope parihāra rule (${pariharas_applied.length} applied).`
-        : `${residual_dosas.length} of ${dosas_present.length} doṣa(s) remain residual. ` +
-          (hasMuhurtaRules ? RESIDUAL_UNMATCHED_MUHURTA_NOTE : NO_MUHURTA_PARIHARA_NOTE)
+      'No cited doṣa overlaps this candidate; uncited convention spans are listed separately. ' +
+      'The lattice does not detect the vivāha chapter\'s doṣas, so this is not a clearance.'
+  } else {
+    residual_dosas.push(...dosas_present)
+    net_standing = 'cancellation_unassessed'
+    adjudication_note = cancellationUnassessedNote(dosas_present.length, countByScope(substrate.parihara_rules))
   }
 
   return {
@@ -532,11 +510,12 @@ function buildGapReport(
       ? 'computed'
       : 'honest_empty'
 
-  const muhurtaScopeRules = substrate.parihara_rules.filter((r) => r.scope === 'muhurta').length
+  const ruleCounts = countByScope(substrate.parihara_rules)
   const pariharaGap = !substrate.parihara_available
-    ? 'The parihāra graph payload was unavailable for this call, so no cancellation was adjudicated.'
-    : muhurtaScopeRules === 0
-      ? NO_MUHURTA_PARIHARA_NOTE
+    ? 'The parihāra graph payload was unavailable for this call, so no rule counts are available.'
+    : (ruleCounts['muhurta'] ?? 0) === 0
+      ? `No muhūrta-scope parihāra rule is present (rules by scope: ${scopeCountText(ruleCounts)}); ` +
+        'cancellation is assessed per doṣa by the scoped evaluator, not by this lattice reading.'
       : null
 
   const subject = subjectLabel ? ` for ${subjectLabel}` : ''
@@ -548,7 +527,7 @@ function buildGapReport(
       'build tier — the next-occurrence search is not built, and no date is invented here.'
     : `${pareto.frontier_candidate_ids.length} of ${candidates.length} candidate window(s)${subject} survive ` +
       `Pareto adjudication across ${pareto.axes_used.length} available factor group(s); ` +
-      `${residualTotal} residual doṣa annotation(s) remain across the slate. ` +
+      `${residualTotal} doṣa annotation(s) across the slate have cancellation_unassessed. ` +
       `${pareto.axes_excluded.length} factor group(s) could not be evaluated at this build tier and are ` +
       'named in axes_excluded. Whether a textbook-perfect configuration occurs beyond this horizon is ' +
       'not computed at this build tier — no next-occurrence date is asserted.'
@@ -633,7 +612,9 @@ export function adjudicateCandidates(
       parihara_rules_muhurta_scope: substrate.parihara_available
         ? substrate.parihara_rules.filter((r) => r.scope === 'muhurta').length
         : 0,
+      parihara_rules_by_scope: substrate.parihara_available ? countByScope(substrate.parihara_rules) : {},
     },
+    vivaha_chapter_dosas: 'not_detected',
   }
 }
 
