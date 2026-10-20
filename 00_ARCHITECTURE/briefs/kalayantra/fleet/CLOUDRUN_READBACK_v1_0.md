@@ -1,10 +1,11 @@
 ---
 artifact: CLOUDRUN_READBACK
-version: "1.3"
+version: "1.4"
 status: REVIEW_CANDIDATE
 produced_on: 2026-10-17
 authority: J-2a run-1 dispatch V1 REJECTED (X-20261017T124945Z-review-j2a-13-dispatch-v1); pack MISSING M6/M7 ("no enabled fixed op reads Cloud Run job configuration/image/corpus or execution completion")
 changelog:
+  - "1.4: optional `job` argument (J-4b-a55j, SR-A55J-A55M-RESCOPE: no new executor kind): `--job gochara-verification-job` measures the verification job's definition with ONE fixed describe call and prints named checks (see the section below). Additive; the pipeline-job record is unchanged."
   - "1.3: optional `metrics` argument (SR-BOLD-09, BOLD-09-METRICS): two more fixed read-only `gcloud monitoring time-series list` calls (Cloud Run job container CPU and memory utilisation) for ONE execution, summarised as mean / p95 / highest-bucket bound, with the CPU read against the allocated vCPUs as a `shape` (SINGLE_THREAD_BOUND when p95 sits at ~1 vCPU of several). Additive: the `metrics` key exists only when asked, so a run without it prints exactly what 1.2 printed. NOT yet in the executor table's `allowed_args` (see Metrics, below)."
   - "1.2: `logs` reads EVERY entry of the execution (J3C-v2 blocking M-J3-6/7: a 26-class build overflowed the single newest-1000 page, so STRETCH_SINK counts read null). Same fixed filter, paged newest-first by an added `timestamp<=` cursor; hard caps (60 pages, 420 s); `page_full` is replaced by `truncated` + `truncation_reason` + `pages_read` + `max_pages`. Still additive to ky.cloudrun_readback/1 (key removed from the `logs` object: nothing in the repo read `page_full`)."
   - "1.1: optional `logs` argument (SR-J3-READ-KINDS): one fixed `gcloud logging read` of the execution's job log, parsed for STRETCH_SINK/1 lines and asset.substep progress. Additive; the schema stays ky.cloudrun_readback/1 (the new `logs` key is null unless asked)."
@@ -79,3 +80,20 @@ The image digest at the moment an execution *started* (the execution record carr
 ## Shape caveat
 
 (I) INTERPRETATION — no live gcloud response was captured for this build. The parser reads the Cloud Run v1 shapes the repo already reads (`spec.template.spec.template.spec.containers[0].image`, `deploy.yml`; `status.conditions` / `succeededCount` / `taskCount` for an execution, `gochara_seal_execution_check.py`; `image_summary.digest`, `gochara-verification-job-deploy.yml`). A different shape **refuses**, never guesses. Fixtures under `tests/fixtures/cloudrun_readback/` are shaped from those paths, not captured. If the first real run refuses on shape, the receipt's `reason` names the field; fix the parser, do not hand-edit the receipt.
+
+## `--job gochara-verification-job` (J-4b-a55j)
+
+One fixed `gcloud run jobs describe gochara-verification-job` and nothing else; the argument takes only that name (any other value exits 2 before a cloud call) and refuses, before any call, to combine with `--execution`, `--logs` or `--metrics`. The output is `ky.cloudrun_readback/1` with `status MEASURED`, the job (image reference and digest, service account, command, environment by name with the one secret shown as name and version) and `checks`, each `{name, observed, ok}`; `all_checks_ok` is false if any check is false, null if none is false but one is unknown, otherwise true.
+
+| Check | True when (the deploy workflow `.github/workflows/gochara-verification-job-deploy.yml` sets it) |
+|---|---|
+| `image_by_digest_of_pipeline_repo` | the image is `<pipeline repository>@sha256:<64-hex>`; a tag reference REFUSES the whole record |
+| `service_account_is_the_verifier_runtime` | `gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com` |
+| `command_is_the_verifier_entry_point` | `python -m pipeline.orchestrator.verification_job` |
+| `environment_is_exactly_the_contract` | three variables only: `GOCHARA_VERIFIER_DB_URL` from secret `gochara-verifier-db-url:latest`, `GOCHARA_RUNNER_COMMIT`, `GOCHARA_RUNNER_IMAGE_DIGEST` |
+| `runner_digest_equals_image_digest` | the digest variable equals the digest in the image reference |
+| `runner_commit_is_a_full_commit` | the commit variable is 40-hex |
+| `task_count_is_one`, `cloudsql_instance_is_the_amjis_instance`, `resources_8Gi_2cpu_7200s` | as deployed |
+| `max_retries_is_zero` | `maxRetries` is 0; Cloud Run omits a zero, so an absent field reads null (not true) and the v2 REST read of the deploy workflow settles it |
+
+No variable value outside the contract is printed. What this does NOT prove: that the job is not executed by another principal or schedule, and that the executor table keeps `verification_job` disabled (a separate read of `executor_ops.json`; this kind starts, schedules and executes nothing). (I) INTERPRETATION: the shape is read from the deploy workflow's own flags, not from a captured live response; the first real run is the proof of the shape and a different shape REFUSES.

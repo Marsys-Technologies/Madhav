@@ -112,7 +112,7 @@ REMOTE_ASYNC_KINDS = {"smalltest_dispatch", "measuring_dispatch", "century_dispa
 # J-2a M6/M7: the one added read-only kind (fleet/CLOUDRUN_READBACK_v1_0.md). Exact binding, not permission for any other op.
 CLOUDRUN_READBACK = {
     "enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py",
-    "fixed_args": [], "allowed_args": ["execution", "logs", "metrics"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
+    "fixed_args": [], "allowed_args": ["execution", "logs", "metrics", "job"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
     "timeout_s": 600, "enabled_by": "J-2a",
 }
 # A7 D-44: `read_only` marks the kinds the executor accepts mechanically; `quiescence_check` is the one added read-only kind (session readback).

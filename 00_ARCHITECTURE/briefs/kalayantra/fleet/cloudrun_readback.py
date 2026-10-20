@@ -32,6 +32,13 @@ record — status REFUSED, exit 1 — so a partial record can never be mistaken 
              the highest non-empty bucket's upper bound (a bound, not a sample maximum) for each, the CPU expressed in vCPUs against the
              job's allocated cpu, and a `shape` (SINGLE_THREAD_BOUND when p95 sits at ~1 vCPU with more allocated). A series that is absent,
              unreadable or whose query failed reads NULL with its `status`, never zero. No Cloud Run metric exposes DB wait: `wait` says so.
+  · --job gochara-verification-job (J-4b-a55j, SR-A55J-A55M-RESCOPE: "the config is measured by cloudrun_job_readback; no new executor kind") ONE fixed describe of the
+             VERIFICATION job instead of the pipeline job, and nothing else (no registry, execution, logs or metrics call; combining it with --execution/--logs/--metrics
+             REFUSES before any cloud call). It reads the definition .github/workflows/gochara-verification-job-deploy.yml deploys and reports named `checks`, each
+             computed from the describe response and false when the field differs (§N.8): image BY DIGEST of the pipeline repository, the verifier's own runtime identity,
+             the verifier entry point as the container command, exactly the three contract environment variables (one secret, by name), GOCHARA_RUNNER_IMAGE_DIGEST equal to
+             the deployed digest, GOCHARA_RUNNER_COMMIT a 40-hex commit, one task, Cloud SQL instance, max-retries 0, 8Gi/2cpu/7200s. The "disabled" half of
+             "configured but disabled" is the executor table (`verification_job.enabled` false); this kind never starts, schedules or executes anything.
 Honest nulls (CLAUDE.md §N.7.6 / §N.8): the corpus (Swiss Ephemeris files) cannot be measured without running the image, so the record
 says so in `corpus.status` rather than carrying a green; `provenance.image_attests_commit` is false because the image itself carries no
 revision label. Shapes follow the Cloud Run v1 Job/Execution resources (`spec.template.spec.template.spec` for the job, the path
@@ -54,6 +61,13 @@ PROJECT = "madhav-astrology"
 REGION = "asia-south1"
 JOB = "brahma-build-pipeline-job"
 IMAGE_REPO = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
+VERIFICATION_JOB = "gochara-verification-job"                           # .github/workflows/gochara-verification-job-deploy.yml env VERIFICATION_JOB
+VERIFIER_SERVICE_ACCOUNT = "gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
+VERIFIER_COMMAND = ["python", "-m", "pipeline.orchestrator.verification_job"]
+VERIFIER_SECRET = ("GOCHARA_VERIFIER_DB_URL", "gochara-verifier-db-url", "latest")
+VERIFIER_PLAIN_ENV = frozenset({"GOCHARA_RUNNER_COMMIT", "GOCHARA_RUNNER_IMAGE_DIGEST"})
+CLOUDSQL_INSTANCE = "madhav-astrology:asia-south1:amjis-postgres"
+COMMIT_40 = re.compile(r"[0-9a-f]{40}")
 EXECUTION = re.compile(r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*")      # smalltest_launch.EXECUTION, byte for byte
 TAG_REF = re.compile(re.escape(IMAGE_REPO) + r":([0-9a-f]{40})")
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
@@ -84,8 +98,8 @@ class Refused(RuntimeError):
     pass
 
 
-def job_describe_argv() -> list[str]:
-    return ["gcloud", "run", "jobs", "describe", JOB, f"--project={PROJECT}", f"--region={REGION}", "--format=json"]
+def job_describe_argv(job: str = JOB) -> list[str]:
+    return ["gcloud", "run", "jobs", "describe", job, f"--project={PROJECT}", f"--region={REGION}", "--format=json"]
 
 
 def image_describe_argv(commit: str) -> list[str]:
@@ -723,6 +737,67 @@ def measure_metrics(execution: dict, job: dict, runner, clock) -> dict:
             "cpu": {**cpu, **_cpu_shape(cpu, allocated["cpu_vcpus"])}, "memory": memory}
 
 
+def _check(name: str, observed, ok) -> dict:
+    return {"name": name, "observed": observed, "ok": ok}
+
+
+def measure_verification(runner) -> dict:
+    """J-4b-a55j: the verification job's definition against the contract its deploy workflow sets. ONE describe call; every check is computed from it."""
+    job = gcloud_json(job_describe_argv(VERIFICATION_JOB), runner, "verification job")
+    name = (job.get("metadata") or {}).get("name") if isinstance(job.get("metadata"), dict) else None
+    if name != VERIFICATION_JOB:
+        raise Refused(f"verification job: the described resource is {name!r}, not {VERIFICATION_JOB!r}")
+    outer = job.get("spec", {}).get("template", {}) if isinstance(job.get("spec"), dict) else {}
+    task_count = parse_int64(outer.get("spec", {}).get("taskCount")) if isinstance(outer.get("spec"), dict) else None
+    template_annotations = ((outer.get("spec") or {}).get("template") or {}).get("metadata", {}).get("annotations", {}) if isinstance(outer.get("spec"), dict) else {}
+    task = job_task_spec(job)
+    container = only_container(task, "verification job")
+    reference = need(container, "image", "verification job")
+    if not reference.startswith(IMAGE_REPO + "@"):
+        raise Refused("verification job: the image is not referenced by digest of the pipeline repository (this job runs only code built from a commit, by digest)")
+    digest = reference[len(IMAGE_REPO) + 1:]
+    if not DIGEST.fullmatch(digest):
+        raise Refused("verification job: the image is not referenced by digest of the pipeline repository (the digest is not sha256:<64-hex>)")
+    shown = environment(container)
+    raw = {e["name"]: e for e in container["env"]}
+    limits = (container.get("resources") or {}).get("limits") if isinstance(container.get("resources"), dict) else None
+    limits = limits if isinstance(limits, dict) else {}
+    retries = _count(task.get("maxRetries"), "verification job.maxRetries", required=False)
+    timeout = parse_int64(task.get("timeoutSeconds"))
+    secret_row = {"name": VERIFIER_SECRET[0], "source": "secret", "secret": VERIFIER_SECRET[1], "version": VERIFIER_SECRET[2]}
+    contract_env = (len(shown) == 3 and secret_row in shown
+                    and {e["name"] for e in shown if e["source"] == "value"} == VERIFIER_PLAIN_ENV)
+    runner_digest = raw.get("GOCHARA_RUNNER_IMAGE_DIGEST", {}).get("value")
+    runner_commit = raw.get("GOCHARA_RUNNER_COMMIT", {}).get("value")
+    checks = [
+        _check("image_by_digest_of_pipeline_repo", reference, True),
+        _check("service_account_is_the_verifier_runtime", task.get("serviceAccountName"), task.get("serviceAccountName") == VERIFIER_SERVICE_ACCOUNT),
+        _check("command_is_the_verifier_entry_point", container.get("command"), container.get("command") == VERIFIER_COMMAND),
+        _check("environment_is_exactly_the_contract", [e["name"] for e in shown], contract_env),
+        _check("runner_digest_equals_image_digest", runner_digest == digest, runner_digest == digest),
+        _check("runner_commit_is_a_full_commit", isinstance(runner_commit, str) and bool(COMMIT_40.fullmatch(runner_commit)),
+               isinstance(runner_commit, str) and bool(COMMIT_40.fullmatch(runner_commit))),
+        _check("task_count_is_one", task_count, task_count == 1),
+        _check("cloudsql_instance_is_the_amjis_instance", template_annotations.get("run.googleapis.com/cloudsql-instances") if isinstance(template_annotations, dict) else None,
+               isinstance(template_annotations, dict) and template_annotations.get("run.googleapis.com/cloudsql-instances") == CLOUDSQL_INSTANCE),
+        _check("max_retries_is_zero", retries, None if retries is None else retries == 0),        # proto3 omits a zero: unknown here, settled by the v2 REST read (workflow F-R15-3)
+        _check("resources_8Gi_2cpu_7200s", {"memory": limits.get("memory"), "cpu": limits.get("cpu"), "timeout_seconds": timeout},
+               limits.get("memory") == "8Gi" and limits.get("cpu") == "2" and timeout == 7200),
+    ]
+    oks = [c["ok"] for c in checks]
+    return {
+        "schema": SCHEMA,
+        "status": "MEASURED",
+        "project": PROJECT,
+        "region": REGION,
+        "job": {"name": VERIFICATION_JOB, "image": {"reference": reference, "digest": digest}, "service_account": task.get("serviceAccountName"),
+                "command": container.get("command"), "environment": shown},
+        "checks": checks,
+        "all_checks_ok": False if any(o is False for o in oks) else (None if any(o is None for o in oks) else True),
+        "disabled_half": "the executor table entry verification_job (enabled false) — this kind starts, schedules and executes nothing",
+    }
+
+
 def measure(execution: str | None, runner=default_runner, clock=lambda: dt.datetime.now(dt.timezone.utc), *, logs: bool = False, metrics: bool = False) -> dict:
     if execution is not None and not EXECUTION.fullmatch(execution):
         raise Refused("the execution name is not brahma-build-pipeline-job-<suffix>")
@@ -760,10 +835,17 @@ def measure(execution: str | None, runner=default_runner, clock=lambda: dt.datet
 def cli(argv=None, runner=default_runner) -> int:
     parser = argparse.ArgumentParser(description="Read-only measurement of the pipeline Cloud Run job.", allow_abbrev=False)
     parser.add_argument("--execution", default=None)
+    parser.add_argument("--job", default=None, choices=(VERIFICATION_JOB,))      # J-4b-a55j: the pipeline job is the default and is not selectable
     parser.add_argument("--logs", nargs="?", const="true", default=None, choices=("true", "True"))      # the executor appends `--logs true`
     parser.add_argument("--metrics", nargs="?", const="true", default=None, choices=("true", "True"))      # SR-BOLD-09
     args = parser.parse_args(argv)                                       # any other argument exits 2 before a cloud call
     try:
+        if args.job is not None:
+            if args.execution is not None or args.logs is not None or args.metrics is not None:
+                raise Refused("--job reads the verification job's definition alone; it does not combine with --execution, --logs or --metrics")
+            record = measure_verification(runner)
+            print(json.dumps(record, sort_keys=True, separators=(",", ":")), flush=True)
+            return 0
         record = measure(args.execution, runner, logs=args.logs is not None, metrics=args.metrics is not None)
         code = 0
     except Refused as exc:

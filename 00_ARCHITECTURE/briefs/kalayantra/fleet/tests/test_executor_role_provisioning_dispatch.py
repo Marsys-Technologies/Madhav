@@ -6,7 +6,7 @@ is the same reading), and the runbook's no-credential rule (A1). A fake `gh` rec
 
 Claims, one oracle each (a single planted reversion of the named line fails it):
   P1 both kinds ship disabled with a real script (exact binding: test_executor_table.PROVISIONING_BINDINGS; refusal: its disabled-kind oracle)  (executor_ops.json `enabled`)
-  P2 only stage create-roles is served                                  (plan: `args.stage != STAGE`)
+  P2 only the stages create-roles, grant-l1-reads and sealer-credential are served; sealer-password (act 2b, staged) and anything else are refused  (plan: `args.stage not in STAGES`)
   P3 only the workflow's own confirm text dispatches                    (plan: `args.confirm != CONFIRM`)
   P4 a foreign ACTIVE lease refuses, and so does an unreadable table    (plan: `verdict(...)`)
   P5 window_lease_id is required and must be ACTIVE                     (plan: `not own`; verdict's own-lease test)
@@ -16,6 +16,10 @@ Claims, one oracle each (a single planted reversion of the named line fails it):
   P9 dsn_tail: `?` restored, no credential, no second @                 (dsn_tail)
   P10 no credential is read, forwarded or printed                       (gh_environment; main's prints)
   P11 a failing gh is a failed run, not a dispatch                      (main: `p.returncode`)
+J-4b-a55j (SR-GRANTS-MINIMAL: "any grant act goes the same way"; the workflow's `stage` choice list and the runbook's DSN_TAIL rule, runbook line 62):
+  N1 grant-l1-reads dispatches {stage, confirm} only: it has no tail, and a tail is refused rather than dropped    (plan: STAGES[...] needs_tail)
+  N2 sealer-credential needs the SEALER's TCP-loopback tail @127.0.0.1:5432/<db>; the verifier's socket form, another host or port, and no tail are refused   (plan: SEALER_TAIL)
+  N3 every stage the dispatcher serves is a choice the workflow offers, and sealer-password stays the one the workflow offers that the dispatcher does not   (STAGES vs the workflow's options)
 """
 import json
 import re
@@ -79,13 +83,16 @@ def test_p1_the_kinds_ship_disabled_with_a_script_that_exists(kind):
 
 
 # ── P2
-def test_p2_only_create_roles_is_served(tmp_path):
+@pytest.mark.parametrize("stage", ["sealer-password", "drop-roles", ""])
+def test_p2_only_the_served_stages_dispatch(tmp_path, stage):
     w = clean_world(tmp_path)
-    p, fake = run(tmp_path, w, stage="sealer-password")
-    assert p.returncode == 1 and "stage must be create-roles" in p.stdout and fake.calls() is None
-    (tmp_path / "ok").mkdir()
-    p, fake = run(tmp_path / "ok", w)
-    assert p.returncode == 0 and fake.calls() is not None, p.stdout                      # control: the same world dispatches with the served stage
+    p, fake = run(tmp_path, w, stage=stage)
+    assert p.returncode == 1 and "stage must be one of create-roles, grant-l1-reads, sealer-credential" in p.stdout and fake.calls() is None
+
+
+def test_p2_control_a_served_stage_dispatches(tmp_path):
+    p, fake = run(tmp_path, clean_world(tmp_path))
+    assert p.returncode == 0 and fake.calls() is not None, p.stdout
 
 
 # ── P3
@@ -181,3 +188,47 @@ def test_p10_no_credential_is_read_forwarded_or_printed(tmp_path):
 def test_p11_a_failing_gh_is_a_failed_run(tmp_path):
     p, fake = run(tmp_path, clean_world(tmp_path), gh_code=1)
     assert fake.calls() is not None and p.returncode == 1 and "FAILED" in p.stdout and "DISPATCHED" not in p.stdout
+
+
+# ── N1 – N3 (J-4b-a55j)
+SEALER_TAIL = "@127.0.0.1:5432/gochara"
+
+
+def given_inputs(fake):
+    argv = fake.calls()
+    return dict(a.split("=", 1) for a in argv[5:] if a != "-f")
+
+
+def test_n1_grant_l1_reads_dispatches_stage_and_confirm_only_and_refuses_a_tail(tmp_path):
+    p, fake = run(tmp_path, clean_world(tmp_path), stage="grant-l1-reads", tail="")
+    assert p.returncode == 0 and p.stdout.splitlines()[-1].startswith("DISPATCHED"), p.stdout
+    assert given_inputs(fake) == {"stage": "grant-l1-reads", "confirm": CONFIRM}
+    (tmp_path / "t").mkdir()
+    p, fake = run(tmp_path / "t", clean_world(tmp_path / "t"), stage="grant-l1-reads", tail=SEALER_TAIL)
+    assert p.returncode == 1 and "takes no dsn_tail" in p.stdout and fake.calls() is None
+    (tmp_path / "l").mkdir()
+    w = lg.World(tmp_path / "l" / "w", lg.table(("MINE", 5, "ACTIVE"), ("J-3", 5, "ACTIVE")))
+    p, fake = run(tmp_path / "l", w, stage="grant-l1-reads", tail="")           # the lease gate still guards the grant act
+    assert p.returncode == 1 and "J-3" in p.stdout and fake.calls() is None
+
+
+def test_n2_sealer_credential_needs_the_sealers_loopback_tail(tmp_path):
+    p, fake = run(tmp_path, clean_world(tmp_path), stage="sealer-credential", tail=SEALER_TAIL)
+    assert p.returncode == 0, p.stdout
+    assert given_inputs(fake) == {"stage": "sealer-credential", "dsn_tail": SEALER_TAIL, "confirm": CONFIRM}
+    for i, bad in enumerate(["", WIRE_TAIL, "@10.0.0.5:5432/gochara", "@127.0.0.1:6543/gochara", "@localhost:5432/gochara", "@127.0.0.1:5432/gochara,sslmode=disable"]):
+        d = tmp_path / f"bad{i}"
+        d.mkdir()
+        p, fake = run(d, clean_world(d), stage="sealer-credential", tail=bad)
+        assert p.returncode == 1 and fake.calls() is None, (bad, p.stdout)
+
+
+def test_n3_the_served_stages_are_workflow_choices_and_sealer_password_is_the_one_left_out():
+    m = re.search(r"options:\s*\[([^\]]+)\]", WORKFLOW.read_text())
+    offered = {x.strip() for x in m.group(1).split(",")}
+    sys.path.insert(0, str(FLEET))
+    try:
+        import role_provisioning_dispatch as rpd
+    finally:
+        sys.path.pop(0)
+    assert set(rpd.STAGES) <= offered and offered - set(rpd.STAGES) == {"sealer-password"}
