@@ -1,7 +1,7 @@
 ---
 version: "1.0"
 status: CURRENT
-changelog: "2026-10-15: initial wake-only cockpit watchdog (Amendment A2, D-19). Same day: an answered wake requires an assistant reply, not just a transcript write."
+changelog: "2026-10-20: a live but idle cockpit with work waiting gets a nudge file (SR-IDLE-NUDGE). 2026-10-15: initial wake-only cockpit watchdog (Amendment A2, D-19). Same day: an answered wake requires an assistant reply, not just a transcript write."
 ---
 
 # Cockpit watchdog (wake-only)
@@ -17,6 +17,8 @@ On 2026-10-14 the cockpit session ended at 21:06Z and nothing moved until the ow
 5. **Wakes** with `claude --bg --resume <session-id> "<fixed instruction>"`.
 
 Limits: a wake not followed by a reply from the model (an assistant message in the transcript) within 10 minutes counts as unanswered; after **3** unanswered wakes, or **12** wakes in 24 hours, it stops waking and posts a macOS notification. A live but idle session with finished jobs unread for 45 minutes gets a notification, never a wake.
+
+**Nudge for a live, idle cockpit (SR-IDLE-NUDGE, 2026-10-20).** Root cause of the 20:49Z-23:47Z stall on 2026-10-19: the cockpit was live but idle with 15 finished jobs unread, and the watchdog (which only resumes a dead session) did nothing. Now, when the session is **live**, its registry status is `idle`, it has been silent for 20 minutes or more (`KY_WD_NUDGE_IDLE_MIN`), and there are unread finished jobs or a non-empty `fast/BACKLOG.txt` or `fast/ARM_ORDER.txt` (non-blank lines that do not start with `#`; directory `KY_WD_FAST_DIR`, default the parent of the fast jobs folder), the watchdog leaves one nudge, at most every 30 minutes (`KY_WD_NUDGE_EVERY_MIN`): `<N> finished jobs unread; backlog <M>; arm-order <K>; act`. It logs action `nudge`. **Channel:** there is no script-callable way to send a message into a running session (the `SendMessage` tool belongs to the model; resuming a live session with a prompt starts a copy), so the nudge is written to `$KY_RUN/watchdog/NUDGE.txt` (one line, timestamped, overwritten); the cockpit's loop reads that file. No resume, no flags, no second session.
 
 **Why no other flags on the wake.** Resuming with any flag (for example `--permission-mode`) makes Claude Code start a *copy* of the session instead of continuing it. Verified on 2026-10-15 with Claude Code 2.1.296 on throwaway sessions: no flags continued the same session id, both for a background session and for a normal one; with a flag, a copy started and the watchdog's output check flagged it (`copy_started`). The session keeps its own saved options; the owner's global default permission mode applies.
 
@@ -52,4 +54,4 @@ python3 -B -m pytest -p no:cacheprovider --basetemp "$JOB_SCRATCH/pytest" \
   00_ARCHITECTURE/briefs/kalayantra/watchdog/test_watchdog.py
 ```
 
-They cover every stop condition, the pid-reuse case, an unknown process start, the UTC-versus-local start-time match, pending-work detection, the unanswered-wake count and its reset, the rule that the wake prompt alone is not an answer, the daily ceiling, dry run and logging. A mutation check (liveness forced to "absent") fails two of them.
+They cover every stop condition, the pid-reuse case, an unknown process start, the UTC-versus-local start-time match, pending-work detection, the unanswered-wake count and its reset, the rule that the wake prompt alone is not an answer, the daily ceiling, dry run and logging, and the nudge (once per 30 minutes under the condition; none when not idle, busy or nothing pending; none and an unchanged wake for a dead session). A mutation check (liveness forced to "absent") fails two of them.

@@ -1,0 +1,75 @@
+{
+  "schema": "ky.generated_paths/1",
+  "_doc": "SR-CHURN-CUT 3 (2026-10-19). Every machine-owned path: CI regenerates it from main and a PR never carries it (generated_paths.py check; ci_generated.py generate --base). `paths` are exact files, `prefixes` the generated trees minus `not_generated_prefixes` (governed receipts, not compiler output). The cockpit's patch-id computation (SR-CHURN-CUT 4) excludes these with `generated_paths.py filter`. Kept equal to ci_generated.OUTPUTS plus `derived` by test_generated_paths.py. `hand_authored_hotspots` are files many open PRs touch that are NOT generated and must stay hand-authored (measured 2026-10-19 over refs/remotes/origin/kalayantra/* touched in the last 2 days).",
+  "paths": [
+    "00_ARCHITECTURE/briefs/retrieval_impl/R1_PROJECTION_COMPILER_REPORT.md",
+    "00_ARCHITECTURE/control/kalayantra/CLOSURE_v3.json",
+    "00_ARCHITECTURE/control/registry_coverage_report.json",
+    "platform-mcp/src/generated/mcp_surface_profiles.generated.ts",
+    "platform-mcp/src/resources/vidhi/registry_data.ts",
+    "platform/python-sidecar/services/gochara_kernel/implementation_digest.lock.json",
+    "platform/src/generated/capability_estate_census.json",
+    "platform/src/generated/capability_knowledge.snapshot.json",
+    "platform/src/generated/muhurta_undertakings.generated.ts",
+    "platform/src/generated/nirmana-writer-digests.json",
+    "platform/src/generated/projections/chat_tool_defs.generated.json",
+    "platform/src/generated/projections/comparison_report.generated.json",
+    "platform/src/generated/projections/docs_resource_catalog.generated.json",
+    "platform/src/generated/projections/family_tool_defs.generated.json",
+    "platform/src/generated/projections/machine_census.generated.json",
+    "platform/src/generated/projections/mcp_surface_profiles.generated.json",
+    "platform/src/generated/projections/mcp_tool_registrations.generated.json",
+    "platform/src/generated/projections/tool_search_index.generated.json",
+    "platform/src/generated/projections/web_tool_bridge.generated.json",
+    "platform/src/lib/retrieval/signal_glossary.generated.ts"
+  ],
+  "prefixes": [
+    "platform/src/generated/"
+  ],
+  "not_generated_prefixes": [
+    "platform/src/generated/harvest/",
+    "platform/src/generated/census/",
+    "platform/src/generated/concept_census.json",
+    "platform/src/generated/nirmana-analysis-receipts.ts",
+    "platform/src/generated/nirmana-l0-analysis-receipts.ts",
+    "platform/src/generated/nirmana-analysis-layer-pins.json"
+  ],
+  "derived": [
+    {
+      "path": "00_ARCHITECTURE/control/kalayantra/CLOSURE_v3.json",
+      "generator": "00_ARCHITECTURE/briefs/kalayantra/fleet/kyclosure.py compute, via platform/scripts/governance/generated_paths.py closure_bytes",
+      "inputs": [
+        "00_ARCHITECTURE/control/kalayantra/plan_model.json",
+        "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v3.json"
+      ],
+      "mechanism": "ci_generated overlay (A5 D-33): generated-artifacts job computes it from the PR/queue source, restore-generated overlays it in every job; the committed copy on main is refreshed by `generated_paths.py refresh` (cockpit), never by a feature PR"
+    }
+  ],
+  "hand_authored_hotspots": [
+    {
+      "path": "00_ARCHITECTURE/control/kalayantra/plan_model.json",
+      "open_branches": 15,
+      "why": "the plan model itself: source of CLOSURE_v3.json, not derivable"
+    },
+    {
+      "path": "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
+      "open_branches": 20,
+      "why": "the fixed-operation table the executor reads from main: source of truth, hand-reviewed per kind"
+    },
+    {
+      "path": "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py",
+      "open_branches": 23,
+      "why": "independent oracle for the table: a pin regenerated from the table would be a tautology (N.8); new reviewed edits go in append-only executor_pin_shards/ instead of this file"
+    },
+    {
+      "path": "platform/scripts/governance/ci_test_suites.json",
+      "open_branches": 27,
+      "why": "suite globs, hand-authored; conflict cut is a separate item (per-suite files)"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "open_branches": 22,
+      "why": "workflow source"
+    }
+  ]
+}
