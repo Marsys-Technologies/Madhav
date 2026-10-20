@@ -314,8 +314,9 @@ class _LegacyKaVighnakaraWriter(WriterBase):
         already_covered = {
             str(r[1]) for r in convergence_rows if r[1] is not None  # signal_id column
         }
-        dasha_anchors = self._dasha_anchor_peaks(conn, chart_id, already_covered,
-                                                 generation=predicate_gen)
+        dasha_anchors = self._dasha_anchor_peaks(
+            conn, chart_id, already_covered,
+            candidate.generation if candidate is not None else None)
         for peak_date, signal_id in dasha_anchors:
             jd = _jd_from_date(peak_date)
             obstructions = _detect_all(
@@ -531,18 +532,31 @@ class _LegacyKaVighnakaraWriter(WriterBase):
             # against each predicate's OWN ayanamsha timeline (§8.4 fix).
             birth_date = resolve_birth_date(conn, chart_id)
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                cur.execute(
-                    """
-                    SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
-                    FROM kala_activation_predicates p
-                    WHERE p.chart_id = %s
-                      AND p.generation = %s
-                      AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
-                    ORDER BY signal_id
-                    """,
-                    (chart_id, generation if generation is not None
-                     else predicate_generation(conn, chart_id, None)),
-                )
+                if generation is None:
+                    cur.execute(
+                        """
+                        SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
+                        FROM kala_activation_predicates p
+                        WHERE p.chart_id = %s
+                          AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
+                          AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
+                        ORDER BY signal_id
+                        """,
+                        (chart_id,),
+                    )
+                else:
+                    # K9: a candidate-bound build reads its OWN candidate generation.
+                    cur.execute(
+                        """
+                        SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
+                        FROM kala_activation_predicates p
+                        WHERE p.chart_id = %s
+                          AND p.generation = %s
+                          AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
+                        ORDER BY signal_id
+                        """,
+                        (chart_id, generation),
+                    )
                 predicates = cur.fetchall()
 
             def _timeline_for(ayan):

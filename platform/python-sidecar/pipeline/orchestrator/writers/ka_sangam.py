@@ -284,41 +284,79 @@ class _LegacyKaSangamWriter(WriterBase):
         #     representation floor at BOTH the near (200) and lifetime (60)
         #     limits, decided independently per tier.
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute(
-                """
-                WITH scored AS (
-                    SELECT p.id, p.chart_id, p.ayanamsha_id, p.signal_id, p.signature_class,
-                           p.dasha_eligibility_rule_jsonb, p.transit_trigger_jsonb,
-                           p.strength_affliction_hook_jsonb, p.derivation_ledger_jsonb,
-                           s.dignity_score AS raw_dignity_score,
-                           md5(
-                               coalesce(p.signal_id::text, '') || '|' ||
-                               coalesce(p.signature_class, '') || '|' ||
-                               coalesce(p.dasha_eligibility_rule_jsonb::text, '')
-                           ) AS content_hash
-                    FROM kala_activation_predicates p
-                    LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
-                    WHERE p.chart_id = %s
-                      AND p.generation = %s
-                      AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
-                ),
-                ranked AS (
-                    SELECT *,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY signature_class
-                               ORDER BY raw_dignity_score DESC NULLS LAST, content_hash ASC
-                           ) AS class_rank
-                    FROM scored
+            if self._candidate is None:
+                cur.execute(
+                    """
+                    WITH scored AS (
+                        SELECT p.id, p.chart_id, p.ayanamsha_id, p.signal_id, p.signature_class,
+                               p.dasha_eligibility_rule_jsonb, p.transit_trigger_jsonb,
+                               p.strength_affliction_hook_jsonb, p.derivation_ledger_jsonb,
+                               s.dignity_score AS raw_dignity_score,
+                               md5(
+                                   coalesce(p.signal_id::text, '') || '|' ||
+                                   coalesce(p.signature_class, '') || '|' ||
+                                   coalesce(p.dasha_eligibility_rule_jsonb::text, '')
+                               ) AS content_hash
+                        FROM kala_activation_predicates p
+                        LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
+                        WHERE p.chart_id = %s
+                          AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
+                          AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
+                    ),
+                    ranked AS (
+                        SELECT *,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY signature_class
+                                   ORDER BY raw_dignity_score DESC NULLS LAST, content_hash ASC
+                               ) AS class_rank
+                        FROM scored
+                    )
+                    SELECT id, chart_id, ayanamsha_id, signal_id, signature_class,
+                           dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
+                           strength_affliction_hook_jsonb, derivation_ledger_jsonb,
+                           content_hash
+                    FROM ranked
+                    WHERE class_rank <= %s
+                    """,
+                    (chart_id, _MAX_PREDICATES),
                 )
-                SELECT id, chart_id, ayanamsha_id, signal_id, signature_class,
-                       dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
-                       strength_affliction_hook_jsonb, derivation_ledger_jsonb,
-                       content_hash
-                FROM ranked
-                WHERE class_rank <= %s
-                """,
-                (chart_id, predicate_gen, _MAX_PREDICATES),
-            )
+            else:
+                # K9: a candidate-bound build reads its OWN candidate generation.
+                cur.execute(
+                    """
+                    WITH scored AS (
+                        SELECT p.id, p.chart_id, p.ayanamsha_id, p.signal_id, p.signature_class,
+                               p.dasha_eligibility_rule_jsonb, p.transit_trigger_jsonb,
+                               p.strength_affliction_hook_jsonb, p.derivation_ledger_jsonb,
+                               s.dignity_score AS raw_dignity_score,
+                               md5(
+                                   coalesce(p.signal_id::text, '') || '|' ||
+                                   coalesce(p.signature_class, '') || '|' ||
+                                   coalesce(p.dasha_eligibility_rule_jsonb::text, '')
+                               ) AS content_hash
+                        FROM kala_activation_predicates p
+                        LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
+                        WHERE p.chart_id = %s
+                          AND p.generation = %s
+                          AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
+                    ),
+                    ranked AS (
+                        SELECT *,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY signature_class
+                                   ORDER BY raw_dignity_score DESC NULLS LAST, content_hash ASC
+                               ) AS class_rank
+                        FROM scored
+                    )
+                    SELECT id, chart_id, ayanamsha_id, signal_id, signature_class,
+                           dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
+                           strength_affliction_hook_jsonb, derivation_ledger_jsonb,
+                           content_hash
+                    FROM ranked
+                    WHERE class_rank <= %s
+                    """,
+                    (chart_id, predicate_gen, _MAX_PREDICATES),
+                )
             candidates = cur.fetchall()
         # The grain's input ledger: the predicate content this build consumed
         # (row ids are execution history, not content).
