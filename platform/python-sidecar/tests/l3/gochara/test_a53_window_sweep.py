@@ -641,6 +641,29 @@ def test_builder_and_verifier_agree_on_every_factor_state_of_every_swept_path_to
                 assert built == derived[1], (path, relation, built, derived)
 
 
+def test_verifier_derives_karaka_agent_as_the_sweep_does_omitted_rank_factor():
+    """K-A (ND-H-20261005, registry `karaka_agent` row: rank-only, null_state `omit`) is in the 1.2.0 P3/P4/P1 rows.
+    The sweep omits it from the product and from qualification; the verifier, from the row alone, must reach the
+    SAME state for the whole path — it used to RAISE ('no verifier derivation'), so no 1.2.0 window verified."""
+    from services.gochara_kernel import window_verifier as wv
+    for path in ("P3", "P4"):
+        rows = _rows_declared(path, reg.ND_H_VERSION)
+        assert "karaka_agent" in {r["factor_id"] for r in rows}
+        rec = _rec("a", path=path, version=reg.ND_H_VERSION, supports=((0, 10),))
+        prog = ws.build_program(rec, rows)
+        derived = wv._record_state(rows, {"kind": rec.object_kind, "relation": rec.relation}, False, False)
+        assert prog.qualified and derived == ("const", 1.0), (path, derived)      # omitted: never zeroes
+
+
+def test_verifier_karaka_agent_row_that_declares_a_value_mapping_is_refused_like_the_sweep():
+    from services.gochara_kernel import window_verifier as wv
+    row = dict(reg.FACTORS[("karaka_agent", reg.ND_H_VERSION)], value_mapping={"karaka": 1.0})
+    with pytest.raises(RuntimeError, match="value_mapping"):
+        wv._row_state(row, {"kind": "sign_span", "relation": "residence"}, False, False)
+    with pytest.raises(SweepRefusal, match="value_mapping"):
+        ws.categorical_factor(row)
+
+
 # ═══ Codex round 6, R3 — window construction and the optimised quantity ═════════════════════════════
 
 def test_intersect_components_never_bridges_and_keeps_half_open_ends():
