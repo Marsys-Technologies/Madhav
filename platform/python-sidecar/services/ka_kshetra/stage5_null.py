@@ -54,7 +54,9 @@ Authority: KALA_W2_FIELD_DESIGN_v1_0.md §5.5, §5.6.
 """
 from __future__ import annotations
 
+import hashlib
 import heapq
+import json
 import math
 from typing import Iterable, Mapping, Optional, Sequence
 
@@ -132,9 +134,31 @@ def null_resolution(replicates: int) -> float:
 
 # ── replicate machinery ──────────────────────────────────────────────────────
 
-def replicate_evaluator(ev: FieldEvaluator, delta: float) -> FieldEvaluator:
+def envelope_digest(envelopes: EnvelopeIndex) -> str:
+    """Content digest of the stage-1 transit/obstruction set a null shifts."""
+    material = [[p.primitive_kind, p.subject, p.object_ref, p.polarity, p.class_label,
+                 [list(k) for k in p.knots], p.source_pk, p.source_fact_id, p.source_table]
+                for p in (*envelopes.supportive, *envelopes.obstructive)]
+    return hashlib.sha256(json.dumps([envelopes.horizon_days, material], separators=(',', ':')).encode()).hexdigest()
+
+
+def shared_geometry(envelopes: EnvelopeIndex, schedule, *, capacity: int):
+    """The candidate's shifted envelope geometry, built once per offset.
+
+    Consumers of the same candidate (every event class) take shifted envelopes
+    from this store rather than shifting the index per class and draw.
+    """
+    from services.kala_core.measure.field import SharedGeometry
+    return SharedGeometry(schedule, envelopes, envelope_digest(envelopes), envelopes.circular_shift,
+                          EnvelopeIndex, capacity)
+
+
+def replicate_evaluator(ev: FieldEvaluator, delta: float, geometry=None) -> FieldEvaluator:
     """Build replicate r's evaluator: the SAME field with the transit stream
     circularly shifted by δ.
+
+    `geometry` (a candidate `SharedGeometry`) supplies the shifted envelopes
+    when several classes share a draw; without it the index is shifted here.
 
     Everything else is passed through by reference — the promise prior, the clock
     applicabilities, the daśā ladder, the weights, the baseline. That is not an
@@ -147,7 +171,8 @@ def replicate_evaluator(ev: FieldEvaluator, delta: float) -> FieldEvaluator:
         promise=ev.promise,
         clocks=ev.clocks,
         ladder=ev.ladder,
-        envelopes=ev.envelopes.circular_shift(delta),
+        envelopes=(ev.envelopes.circular_shift(delta) if geometry is None
+                   else geometry.shifted(delta, ev.envelopes)),
         weights=ev.weights,
         horizon_days=ev.horizon_days,
         baseline_source=ev.baseline_source,
@@ -345,11 +370,17 @@ class NullAccumulator:
         )
 
 
-def run_field_block(ev, accumulator, *, start, end):
-    """G1 candidate experiment: geometry retained, measurement owned by core."""
+def run_field_block(ev, accumulator, *, start, end, geometry=None):
+    """G1 candidate experiment: geometry retained, measurement owned by core.
+
+    With `geometry`, the shifted transit/obstruction envelopes come from the
+    candidate's shared store; the class's segments, statistics and quantile are
+    still its own (separate estimand).
+    """
     from services.kala_core.measure.field import collect_field_block
     def draw(delta):
-        segments = _null_build_segments(replicate_evaluator(ev, delta))
+        segments = _null_build_segments(
+            replicate_evaluator(ev, delta) if geometry is None else replicate_evaluator(ev, delta, geometry))
         horizon = accumulator.preparation.horizon_days
         return (replicate_stats(ev, 0., horizon, buckets=accumulator.buckets,
                                 segments=segments),
@@ -470,6 +501,7 @@ __all__ = [
     'shift_grid', 'null_configuration', 'select_bucket',
     'null_p', 'null_resolution', 'null_exceeding',
     'QuantilePool', 'NullResult', 'NullAccumulator',
+    'envelope_digest', 'shared_geometry',
     'replicate_evaluator', 'cumulative_on_grid', 'sliding_window_max',
     'replicate_stats', 'run_null',
     'system_concurrent', 'birth_time_robust', 'ayanamsha_robust', 'authority_clean',

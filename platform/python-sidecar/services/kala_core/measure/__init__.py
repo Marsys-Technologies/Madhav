@@ -16,6 +16,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import lru_cache
 import hashlib
 import json
 import math
@@ -83,13 +84,29 @@ class ExposureManifest:
 class ShiftSchedule:
     """The candidate's non-identity shifts, prepared once for every experiment.
 
-    Depends only on the horizon duration and the shift count, so the jury, the
-    selection null and each class's field-maximum null consume one object and
-    cannot drift apart. It carries no geometry and no estimand.
+    Depends only on the horizon duration and the shift count, so consumers that
+    ask for the same pair (every jury class; every Kshetra field class) consume
+    one object and cannot drift apart. Jury and field ask for different pairs
+    today (exposure seconds vs 36525 days), so they do not yet share it. It
+    carries no geometry and no estimand.
     """
     duration: float
     non_identity_shifts: int
     offsets: tuple[float, ...]
+    digest: str
+
+
+@dataclass(frozen=True)
+class CandidatePreparation:
+    """The content a candidate's experiments are all bound to (PLAN §6.2(2,5,7)).
+
+    `digest` covers the shift schedule and the digest of the geometry/witness
+    set the consumer shifts, so a resume ledger that recorded another digest
+    refuses to continue. Each experiment keeps its own estimand and geometry;
+    this object only names what they share.
+    """
+    schedule: ShiftSchedule
+    geometry_digest: str
     digest: str
 
 
@@ -231,6 +248,45 @@ def bind_schedule(schedule: ShiftSchedule, duration: float, non_identity_shifts:
     return schedule
 
 
+@lru_cache(maxsize=None)
+def _candidate_schedule(duration: float, non_identity_shifts: int) -> ShiftSchedule:
+    return prepare_schedule(Interval(0, duration), non_identity_shifts)
+
+
+def candidate_schedule(duration: float, non_identity_shifts: int = DEFAULT_NON_IDENTITY_SHIFTS) -> ShiftSchedule:
+    """The one schedule for a horizon duration and shift count in this process.
+
+    The schedule is a pure function of those two numbers, so callers that ask
+    for the same pair receive the same object (and across processes the same
+    digest, which the preparation digest binds). `candidate_schedule.cache_clear`
+    exists for tests that count preparations.
+    """
+    return _candidate_schedule(float(duration), non_identity_shifts)
+
+
+candidate_schedule.cache_clear = _candidate_schedule.cache_clear
+
+
+def prepare_candidate(schedule: ShiftSchedule, geometry_digest: str) -> CandidatePreparation:
+    if not geometry_digest:
+        raise ValueError('candidate preparation requires the digest of the geometry or witness set it shifts')
+    material = {'version': 'k4-1:candidate_preparation:v1', 'schedule': schedule.digest, 'geometry': geometry_digest}
+    digest = hashlib.sha256(json.dumps(material, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    return CandidatePreparation(schedule, geometry_digest, digest)
+
+
+def bind_preparation(recorded_digests: Iterable[str], preparation: CandidatePreparation) -> None:
+    """Refuse to resume against a ledger recorded for other preparation content.
+
+    An empty record means a fresh build. Any recorded digest other than this
+    preparation's (a changed schedule or witness/geometry set) is a refusal,
+    never a silent rebind.
+    """
+    recorded = set(recorded_digests)
+    if recorded and recorded != {preparation.digest}:
+        raise ValueError('preparation content changed since the resume ledger was recorded; open a new candidate')
+
+
 def prepare_draws(horizon: Interval, witnesses: Iterable[Witness], *, anchor_id: str,
                   non_identity_shifts: int | None = None,
                   exchangeable: bool, schedule: ShiftSchedule | None = None) -> Preparation:
@@ -283,4 +339,4 @@ def jury_agreement(preparation: Preparation, *, alpha: float) -> NullResult:
     return evaluate_experiment(preparation, experiment, joint_support, alpha=alpha)
 
 
-__all__ = ['DEFAULT_NON_IDENTITY_SHIFTS', 'Verdict', 'Interval', 'Witness', 'Segment', 'Draw', 'ExposureManifest', 'ShiftSchedule', 'Preparation', 'Experiment', 'NullResult', 'union_intervals', 'intersect_intervals', 'elementary_segments', 'circular_shift', 'shift_schedule', 'prepare_schedule', 'bind_schedule', 'prepare_draws', 'evaluate_experiment', 'jury_agreement']
+__all__ = ['DEFAULT_NON_IDENTITY_SHIFTS', 'Verdict', 'Interval', 'Witness', 'Segment', 'Draw', 'ExposureManifest', 'ShiftSchedule', 'CandidatePreparation', 'Preparation', 'Experiment', 'NullResult', 'union_intervals', 'intersect_intervals', 'elementary_segments', 'circular_shift', 'shift_schedule', 'prepare_schedule', 'bind_schedule', 'candidate_schedule', 'prepare_candidate', 'bind_preparation', 'prepare_draws', 'evaluate_experiment', 'jury_agreement']
