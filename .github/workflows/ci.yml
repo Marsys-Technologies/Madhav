@@ -3082,7 +3082,7 @@ jobs:
             rm -rf "$LANE_PG_ROOT"
           }
           trap cleanup_lane_pg EXIT
-          "$LANE_PG_BIN/initdb" -D "$LANE_PG_ROOT/data" -A trust -U postgres --no-locale
+          "$LANE_PG_BIN/initdb" -D "$LANE_PG_ROOT/data" -A trust -U postgres --no-locale --encoding=UTF8
           "$LANE_PG_BIN/pg_ctl" -D "$LANE_PG_ROOT/data" -l "$LANE_PG_ROOT/postgres.log" -o "-h 127.0.0.1 -p 55433 -k $LANE_PG_ROOT" -w start
           python -B "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-lane -- -q -rs -p no:cacheprovider --basetemp="$LANE_PG_ROOT/pytest" --junitxml=lane-smalltest.xml
           python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("lane-smalltest.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required lane oracles need executed cases and zero skips" if not cases or skipped else 0)'

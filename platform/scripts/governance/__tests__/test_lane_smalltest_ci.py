@@ -109,6 +109,8 @@ elif name == 'python' and 'pytest' in args:
     recorded = [json.loads(line) for line in calls.read_text().splitlines()]
     init = next(args for name, args in recorded if name == 'initdb')
     assert init[init.index('-A') + 1] == 'trust' and init[init.index('-U') + 1] == 'postgres'
+    # --no-locale alone leaves the cluster SQL_ASCII (client encoding 'ascii'), so a migration's em dash fails to encode (CI run 39383161799)
+    assert '--encoding=UTF8' in init
     controls = [args for name, args in recorded if name == 'pg_ctl']
     assert len(controls) == 2 and controls[0][-1] == 'start' and controls[1][-1] == 'stop'
     assert controls[0][controls[0].index('-o') + 1].startswith('-h 127.0.0.1 -p 55433 -k ')
