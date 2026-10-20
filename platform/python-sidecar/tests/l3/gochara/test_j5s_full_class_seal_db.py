@@ -22,7 +22,7 @@ from pipeline.orchestrator import verification_job as entry, seal_job as seal_en
 from pipeline.orchestrator.writers import ContextSpec
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 from services.gochara_kernel import seal_brief as sb, seal_flow as sf, verification_job as vj
-from .test_a53_inventory import CHART_ID, create_am5_database, drop_am5_database
+from .test_a53_inventory import CHART_ID, MIGRATIONS, create_am5_database, drop_am5_database
 from .test_a53_verification_job import login, PASSWORD
 from .conftest import EPHE_PATH, _PROBLEMS
 
@@ -90,6 +90,13 @@ def candidate(tmp_path_factory):
                 with builder.transaction():
                     writer.run_substep(ctx, step)
                 print(f'J5S build {step.key} ({time.monotonic() - started:.1f}s)', flush=True)
+        # Production's post-build chain: the verifier now writes ka_gochara_near_miss_verification (migration 1381, which needs 1306/1308
+        # first). Applied AFTER the build, so the near-miss layer stays OFF for this candidate (no manifest pin: 1381 requires nothing).
+        for fname in ('1306_gochara_expected_class_census.sql', '1308_gochara_near_miss_storage.sql',
+                      '1381_gochara_near_miss_seal_integration.sql'):
+            with conn.transaction():
+                conn.execute((MIGRATIONS / fname).read_text())
+                conn.execute('INSERT INTO public._migrations_applied(filename) VALUES (%s)', (fname,))
         assert _counts(conn) == {t: 0 for t in vj.VERIFICATION_TABLES}
         classes = [r[0] for r in conn.execute('SELECT event_class FROM public.ka_gochara_search_inventory ORDER BY 1')]
         assert classes == sorted(writer_mod.SCORED_CLASSES) and len(classes) == 26

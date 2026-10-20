@@ -1,36 +1,40 @@
 ---
 artifact: K9_BENCHMARKS
-version: "1.0"
+version: "1.1"
 status: PREBUILD — measurement protocol, no full-layer speed claim
-produced_on: 2026-10-16
+produced_on: 2026-10-20
 item: K9-23
 source_plan: KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md §6.1–§6.3, §10 Build
-changelog: "1.0: code-only SR-A4-01 preparation; identify unmeasured quantities and retain activation gates."
+changelog: "1.1: environment stated as labelled items (hardware, OS, tool versions, ephemeris path) with the corpus hashed; a claim-kind field makes a semantic correction and an optimisation separate records; the execution boundary now describes the enabled rebuild kinds (SR-PREBUILD-ALL, #3746) and keeps every full-layer measurement null. 1.0: code-only SR-A4-01 preparation; identify unmeasured quantities and retain activation gates."
 ---
 
 # Kāla rebuild measurement contract
 
-This is preparation under SR-A4-01. Full-candidate rebuild, prospective consumer
-qualification, invalidation and killed-substep measurements have **not** been
-performed here. Their values are null, not zero. No speedup or minutes-per-chart
-claim follows from the fixture tests.
+This is preparation under SR-A4-01 and SR-PREBUILD-ALL. Full-candidate rebuild,
+prospective consumer qualification, invalidation and killed-substep measurements
+have **not** been performed here. Their values are null, not zero. No speedup or
+minutes-per-chart claim follows from the fixture tests.
 
 ## Reproducible environment
 
-The pre-build starts at `ef14167bcc35a321b11d4d189a6b752bf3c658b8`.
-Inherited tooling was read at `origin/kalayantra/k9-23` commit
-`8021067f74e7e020d9bee7b0b4617d697cb2c6e5`; no fetch or Git mutation was
-performed. The local ref was already available. Before a real benchmark, record the landed source SHA, dirty patch
+The pre-build starts at `9f7be28a03dd35c1b359d5db01a7ba91269630e6`.
+Before a real benchmark, additionally record the landed source SHA, dirty patch
 SHA if applicable, dependency lock hashes, model digest, rule-registry version,
-candidate generation, build id and complete candidate conventions. The current
-machine is Apple M5 Max, arm64, 18 logical CPUs, 137438953472 bytes RAM,
-macOS 27.0.1. Local test tools: Python 3.14.6, pytest 9.1.1, psycopg 3.3.4,
-pyswisseph 2.10.3.2, PyYAML 6.0.3. The local server reports PostgreSQL
-15.17 (Homebrew), read through the suite's guarded throwaway fixture; CI uses
-PostgreSQL 16, so this is not qualification on an identical server version. CI's Python version is separately pinned in
-`.github/workflows/ci.yml`; do not merge results from different environments.
+candidate generation, build id and complete candidate conventions. CI's Python
+version is separately pinned in `.github/workflows/ci.yml`; do not merge results
+from different environments. The local machine that ran the K9-23 fixture tests
+(measured 2026-10-20):
 
-Pinned local corpus (`SE_EPHE_PATH=/Users/Dev/kalayantra/ephe`):
+- **Hardware:** Apple M5 Max, arm64, 18 logical CPUs, 137438953472 bytes RAM
+- **Operating system:** macOS 27.0.1
+- **Python:** 3.14.6
+- **pytest:** 9.1.1
+- **psycopg:** 3.3.4
+- **pyswisseph:** 2.10.3.2
+- **PyYAML:** 6.0.3
+- **Ephemeris path:** `SE_EPHE_PATH=/Users/Dev/kalayantra/ephe` (pinned local corpus, never a stand-in or a network fetch)
+
+Corpus files, hashed (`test_k9_publication_docs.py` re-hashes them wherever the corpus is present):
 
 | File | SHA-256 |
 |---|---|
@@ -39,7 +43,7 @@ Pinned local corpus (`SE_EPHE_PATH=/Users/Dev/kalayantra/ephe`):
 | seas_18.se1 | a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2 |
 
 The publication tests use guarded, uniquely named fixture databases on
-`127.0.0.1:55433`, 19 frozen-roster writer/service identities, one grain each, explicit input grains, and actual
+`127.0.0.1:55433`, two writer identities, explicit input grains, and actual
 PostgreSQL manifest/head rows. They exercise no astronomical workload and do not
 substitute for the layer benchmark. Tests do not read production or fetch corpus
 files. Ephemeris cache use: none in these publication fixtures; OS/PostgreSQL
@@ -51,6 +55,7 @@ Store the following alongside raw measurements; nulls require a named reason.
 
 | Dimension | Required observation | Pre-build value |
 |---|---|---|
+| Claim kind | exactly one of `semantic-correction` or `optimisation`; an optimisation record cites the corrected-model record it is measured against and its numerical-equivalence oracle | null — no record exists yet |
 | Workload | chart, horizon, classes, targets, knots, grains, shifts, selected writers, row counts, model/convention pins | null — full K9-1 candidate not operated |
 | Cache | cold/warm definition, process reuse, database buffers, prepared context reuse and ephemeris cache | null — full workload not run |
 | Whole run | wall seconds, CPU seconds, peak RSS bytes | null — full workload not run |
@@ -66,28 +71,27 @@ original workload, not comparable baselines: Kṣetra 22685 s, century materiali
 changes semantics. First benchmark the corrected model; only then benchmark an
 optimisation against that same corrected model with identical inputs and a
 numerical-equivalence oracle. A semantic correction and an optimisation must
-never share a “faster and equivalent” claim.
+never share a “faster and equivalent” claim: every record carries exactly one claim
+kind, and a change that is both is stored as two records that never combine.
 
 ## Execution boundary
 
-`services.kala_core.publication.inspect_rebuild` checks the frozen build plan;
-its `PLAN_ONLY`, `executed_assets=[]`, `dry_run_passed=null` result is a read-only
+All eight layer and rebuild kinds are enabled in `fleet/executor_ops.json`
+(`orchestrator_rebuild(_dryrun)`, `layer_verify(_dryrun)`, `layer_publish(_dryrun)`,
+`layer_rollback(_dryrun)`; see K9_DRILLS_v1_0.md). Enablement is a declaration, not a
+measurement: it carries no benchmark value.
+
+`orchestrator_rebuild_dryrun` runs `services.kala_core.publication_admission
+rebuild-dryrun`, which checks the SR-BOLD-04 phase split and then
+`services.kala_core.publication.inspect_rebuild` against the frozen build plan. Its
+`PLAN_ONLY`, `executed_assets=[]`, `dry_run_passed=false` result is a read-only
 inspection. The real orchestrator parser has only `--run-id`
 (`platform/python-sidecar/pipeline/orchestrator/main.py:52`).
 
-**(I) INTERPRETATION:** because no orchestrator dry-run flag exists, the prepared
-`orchestrator_rebuild_dryrun` binding means plan inspection. Alternative: invent a
-runner dry-run flag or label an inspection a successful execution rehearsal.
-Neither earns `dry_run_passed`. Before activating rebuild, obtain a real
-rehearsal/transaction rollback proof and J-1a's qualified backup/restore evidence.
-
-
-The environment and ephemeris hashes were measured anew for K923B and retained
-in the job's `environment.json`. Each test oracle compares fixture candidate
-outputs with independently recomputed `source × 3` values. No production
-Jyotish oracle is claimed: the production checker registry is empty and refuses.
-The local manifest test duration is test overhead, not build performance.
-
-Source anchors: PLAN §6.1 at
-`00_ARCHITECTURE/briefs/l3_families/KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md:265`,
-benchmark dimensions at `:289`, and the actual-run/restart requirement at `:469`.
+**(I) INTERPRETATION:** because no orchestrator dry-run flag exists, the rebuild dry
+run means plan inspection. Alternative: invent a runner dry-run flag or label an
+inspection a successful execution rehearsal. Neither earns `dry_run_passed` for a
+rebuild; only the three layer dry runs, which run the real operation in a
+rolled-back transaction, can. A real rebuild is measured only through the
+orchestrator in probe (delta-skip) mode, never with `NIRMANA_FORCE_EXECUTE`, and only
+after J-1a's qualified backup/restore evidence exists.

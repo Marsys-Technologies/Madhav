@@ -144,6 +144,9 @@ def _run(args):
     except vj.VerificationRefused as exc:
         print(json.dumps({"status": "REFUSED", "code": exc.code, "detail": exc.detail}))
         return exc.exit_code
+    except vj.VerificationDisagrees as exc:
+        print(json.dumps({"status": "DISAGREE", "stage": exc.stage, "detail": exc.detail}))
+        return vj.EXIT_DISAGREE
     except Exception as exc:  # noqa: BLE001 — the class transaction rolled back; say so, exit 5
         print(json.dumps({"status": "ERROR", "detail": f"{type(exc).__name__}: {exc}"}))
         return vj.EXIT_ERROR

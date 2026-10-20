@@ -229,7 +229,7 @@ def _nm(t_in, t_out, clearance=0.4):
     mid = t_in + (t_out - t_in) / 2
     return {"state": "near_miss", "reason": None, "t_in": t_in, "t_out": t_out, "clearance_deg": clearance, "t_closest": mid,
             "closest_candidates": [(mid - timedelta(minutes=5), mid + timedelta(minutes=5))], "closest_certified": True,
-            "orb_deg": 1.0, "vmax_dps": 1.0,
+            "orb_deg": 1.0, "vmax_dps": 1.0, "level_deg": CENTRE,
             # a stand-in geometry: |d| = the clearance inside [t_in, t_out) and outside the 1-degree band everywhere else
             "distance_at": (lambda t, c=clearance, a=t_in, b=t_out: c if a <= t < b else 2.0)}
 
@@ -238,7 +238,9 @@ def _stored(t_in, t_out, clearance=0.4, junction=(), complete=True, closest="mid
     mid = t_in + (t_out - t_in) / 2
     return {"t_in": t_in, "t_out": t_out, "clearance_deg": clearance, "closest_state": "placed", "t_closest": mid,
             "junction": None if junction is None else list(junction), "junction_complete": complete, "orb_deg": 1.0, "ordinal": ordinal,
-            "object_id": "obj-1"}
+            "object_id": "obj-1", "level_deg": CENTRE,
+            "near_miss_id": {1: '5d77d8fe-32ec-83ff-b0b4-f3e7763b6565',
+                             2: '436d7f2b-e50a-898b-bea8-ae61d7aa9f11'}[ordinal]}
 
 
 NO_JUNCTIONS = ([], True)
@@ -772,3 +774,33 @@ def test_a_path_that_starts_or_ends_outside_the_band_is_never_connected_whatever
     assert nm._connected(out_at_start, 1.0, a, a + timedelta(seconds=2), 1.0) is False
     out_at_end = lambda t: 0.0 if t == a else 1.0 + 1e-7
     assert nm._connected(out_at_end, 1.0, a, a + timedelta(seconds=2), 1.0) is False
+
+
+def test_occurrence_uuid_is_bound_to_the_reconstructed_full_domain_ordinal():
+    w = dict(_nm(utc(2000, 3, 1), utc(2000, 3, 3)), full_domain_ordinal=2)
+    good = dict(_stored(w['t_in'], w['t_out'], ordinal=2),
+                near_miss_id='436d7f2b-e50a-898b-bea8-ae61d7aa9f11', level_deg=CENTRE)
+    assert nm.compare_sets([w], [good], junction_source=NO_JUNCTIONS, **ID) == []
+    for value in ('00000000-0000-4000-8000-000000000001',
+                  '5d77d8fe-32ec-83ff-b0b4-f3e7763b6565', None):
+        problems=nm.compare_sets([w], [{**good,'near_miss_id':value}], junction_source=NO_JUNCTIONS, **ID)
+        assert any(p.startswith('near_miss_identity_mismatch:') for p in problems), problems
+
+
+def test_stored_ray_level_must_match_the_reconstructed_ray():
+    from decimal import Decimal
+    w = dict(_nm(utc(2000, 3, 1), utc(2000, 3, 3)), level_deg=CENTRE)
+    good = dict(_stored(w['t_in'],w['t_out']),
+                near_miss_id='5d77d8fe-32ec-83ff-b0b4-f3e7763b6565',level_deg=Decimal('100'))
+    assert nm.compare_sets([w], [good], junction_source=NO_JUNCTIONS, **ID) == []
+    for value in (0.0,160.0,360.0,-1.0,float('nan'),None):
+        problems=nm.compare_sets([w], [{**good,'level_deg':value}], junction_source=NO_JUNCTIONS, **ID)
+        assert any(p.startswith('near_miss_level_mismatch:') for p in problems), problems
+
+
+def test_ray_level_is_rederived_from_the_actual_ray_across_longitude_wrap():
+    centre=359.9
+    position=lambda body,t:(centre+parabola(0.5,0.3)(t))%360
+    found=nm.derive_near_misses(position,BODY,[100.0,centre],LO,HI,orb_deg=ORB)
+    assert len(found)==1 and found[0]['state']=='near_miss'
+    assert found[0]['level_deg']==pytest.approx(centre,abs=1e-9)

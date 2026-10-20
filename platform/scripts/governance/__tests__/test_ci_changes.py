@@ -799,8 +799,8 @@ def test_j5s_result_is_required_by_the_existing_protected_umbrella(jobs, j5s, do
     result = subprocess.run(['bash', '-c', step['run']], capture_output=True, text=True,
                             env={'SHARDS_RESULT': others, 'READBACK_RESULT': others, 'EVENT_NAME': 'pull_request',
                                  'READBACK_EXPECTED': 'false', 'J5S_EXPECTED': 'false' if docs == 'true' else 'true',
-                                 'KALA_DB_RESULT': 'success', 'KALA_DB_EXPECTED': 'true',   # kala-db-tests (#3645) green; not under test here
-                                 'J5S_RESULT': j5s, 'DOCS_ONLY': docs})
+                                 'J5S_RESULT': j5s, 'DOCS_ONLY': docs,
+                                 'KALA_DB_RESULT': 'success', 'KALA_DB_EXPECTED': 'true'})   # K9-23: the Kāla DB input is not under test here
     assert result.returncode == expected
 
 
@@ -816,8 +816,8 @@ def test_j5s_skip_is_accepted_only_when_the_light_gate_did_not_expect_it(jobs, e
     result = subprocess.run(['bash', '-c', step['run']], capture_output=True, text=True,
                             env={'SHARDS_RESULT': 'success', 'READBACK_RESULT': 'success', 'EVENT_NAME': event,
                                  'READBACK_EXPECTED': 'true', 'J5S_EXPECTED': expected_flag,
-                                 'KALA_DB_RESULT': 'success', 'KALA_DB_EXPECTED': 'true',   # kala-db-tests (#3645) green; not under test here
-                                 'J5S_RESULT': j5s, 'DOCS_ONLY': 'false'})
+                                 'J5S_RESULT': j5s, 'DOCS_ONLY': 'false',
+                                 'KALA_DB_RESULT': 'success', 'KALA_DB_EXPECTED': 'true'})   # K9-23: the Kāla DB input is not under test here
     assert result.returncode == code, result.stdout
 
 

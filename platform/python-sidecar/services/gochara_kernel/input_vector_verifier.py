@@ -354,6 +354,10 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
         else:
             check("scored_classes", sorted(SCORED_CLASS_UNIVERSE), stored["scored_classes"])
         derived.append("scored_classes")
+    if "near_miss_layer_version" in stored:
+        if type(stored["near_miss_layer_version"]) is not int or stored["near_miss_layer_version"] != 1:
+            problems.append("near_miss_layer_version: unsupported layer version")
+        derived.append("near_miss_layer_version")
     check("node", _NODE, stored["node"])
     derived.append("node")
     check("implementation", module_digests(modules), stored["implementation"])
