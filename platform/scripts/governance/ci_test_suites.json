@@ -955,6 +955,13 @@
       "include": [
         "scripts/__tests__/p06b_*.test.ts"
       ]
+    },
+    "governance-tool-tests-lane": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_lane_smalltest*.py"
+      ]
     }
   }
 }

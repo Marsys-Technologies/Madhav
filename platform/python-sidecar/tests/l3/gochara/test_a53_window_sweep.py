@@ -655,6 +655,30 @@ def test_verifier_derives_karaka_agent_as_the_sweep_does_omitted_rank_factor():
         assert prog.qualified and derived == ("const", 1.0), (path, derived)      # omitted: never zeroes
 
 
+@pytest.mark.parametrize("path", ["P3", "P4"])
+@pytest.mark.parametrize("policy", [ws.POLICY_ALL_NULL, ws.POLICY_QUALIFICATION])
+def test_window_unresolved_omits_the_omitted_karaka_rank_factor_and_equals_the_verifier(path, policy):
+    """W3W4 strict slice (bereavement P3/P4): a 1.2.0 member whose activity_kernel row declares no applicability is
+    unqualified for `applicability_undeclared` ONLY. `karaka_agent` (K-A, null_state `omit`: ND-H-20261005 — "never
+    admits, excludes or zeroes") is not an unresolved reason of the member, so the window's `unresolved` the writer
+    stores must equal the one the verifier re-derives from the row alone. The writer used to add
+    `value_mapping_undeclared` for the omitted rank factor and the verifier raised 'window semantic verification
+    failed'."""
+    from services.gochara_kernel import window_verifier as wv
+    rows = ws.registry_factor_rows(path, reg.ND_H_VERSION)
+    assert {r["factor_id"]: r["null_state"] for r in rows}["karaka_agent"] == "omit"
+    assert not next(r for r in rows if r["factor_id"] == "activity_kernel").get("applicability")
+    recs = [_rec("a", path=path, agent="jupiter", root="RJ", version=reg.ND_H_VERSION, supports=((0, 10),))]
+    if path == "P4":
+        recs.append(_rec("b", path=path, agent="saturn", root="RS", version=reg.ND_H_VERSION, supports=((0, 10),)))
+    (w,), _ = _draft(recs, lambda p, v: rows, policy=policy)
+    derived = wv._record_state(rows, {"kind": recs[0].object_kind, "relation": recs[0].relation}, False, False)
+    assert derived == ("unq", ["applicability_undeclared"])
+    assert w.unresolved == {"applicability_undeclared": len(recs)}
+    assert w.unresolved == {r: len(recs) for r in derived[1]}
+    assert w.qualified_members == 0
+
+
 def test_verifier_karaka_agent_row_that_declares_a_value_mapping_is_refused_like_the_sweep():
     from services.gochara_kernel import window_verifier as wv
     row = dict(reg.FACTORS[("karaka_agent", reg.ND_H_VERSION)], value_mapping={"karaka": 1.0})

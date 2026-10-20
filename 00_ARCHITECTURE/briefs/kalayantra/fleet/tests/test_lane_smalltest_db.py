@@ -118,7 +118,9 @@ def test_executor_export_six_receipts_and_final_independent_readback(lane_db, tm
     """Real export/CLI/receipts; only candidate Git-object lookup is overlaid.
 
     This candidate is uncommitted by job policy. The transport double overlays
-    these exact candidate files onto a read-only Git archive of HEAD. It never
+    these exact candidate files onto a read-only Git archive of origin/main.
+    The ancestor check stays real; this overlay is not operational qualification
+    of the candidate as a reviewed merged implementation. It never
     writes an object, branch, index, worktree, approval or campaign marker.
     """
     import hashlib
@@ -133,7 +135,7 @@ def test_executor_export_six_receipts_and_final_independent_readback(lane_db, tm
     monkeypatch.setattr(ex, 'log', lambda *a: None)
     monkeypatch.setattr(ex, 'seen', lambda _: False)
     read_git = ex.git
-    reviewed = read_git('rev-parse', 'HEAD').stdout.strip()
+    reviewed = read_git('rev-parse', 'origin/main').stdout.strip()
     def candidate_git(*args, **kwargs):
         if args[0] == 'cat-file':
             return SimpleNamespace(returncode=0 if (ROOT / args[2].split(':', 1)[1]).is_file() else 1)
