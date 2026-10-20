@@ -4,7 +4,7 @@ version: "1.1"
 status: ENABLED BINDINGS — local manifest protocol proven; full-layer drills pending
 produced_on: 2026-10-20
 item: K9-23
-changelog: "1.1: all eight layer/rebuild kinds are enabled (SR-PREBUILD-ALL, #3746) and described as bound; each drill names the runner record it must retain; backup bindings confirmed from the declaration; every full-layer result stays null; the Gochara separation statement follows main (publish_head / rollback_head enabled by #3786, verification_job still disabled). 1.0: separately bound disabled layer operations, local failure/rollback proofs and full-drill protocol."
+changelog: "1.1: all eight layer/rebuild kinds are enabled (SR-PREBUILD-ALL, #3746) and described as bound; each drill names the runner record it must retain; backup bindings confirmed from the declaration; every full-layer result stays null; the Gochara separation statement follows the declaration (publish_head / rollback_head enabled by #3786; verification_job enabled by J-4b through its own script fleet/verification_launch.py, on the kind-batch). 1.0: separately bound disabled layer operations, local failure/rollback proofs and full-drill protocol."
 ---
 
 # Layer publication and rebuild drills
@@ -13,7 +13,7 @@ The three layer operations are distinct from Gochara's `verification_job`,
 `publish_head`, and `rollback_head`. They operate only the `kala_layer_*` manifest
 and call the existing APIs. They neither switch Gochara authority nor delete
 candidate, published, issued-forecast or production rows. In the declaration
-`verification_job` is `enabled:false`, while `publish_head` and `rollback_head` are enabled
+`verification_job` is `enabled:true` (J-4b) and runs its own script `fleet/verification_launch.py`, while `publish_head` and `rollback_head` are enabled
 only through the reviewed head policy (J-6m / J-6r, #3786) and run `fleet/head_operation.py`;
 no Gochara kind shares a script with a layer kind. All eight layer and rebuild kinds below are enabled in
 `fleet/executor_ops.json` (SR-PREBUILD-ALL, #3746): `orchestrator_rebuild_dryrun`,
