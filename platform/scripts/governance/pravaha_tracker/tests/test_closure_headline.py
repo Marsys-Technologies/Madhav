@@ -21,12 +21,13 @@ REPO = Path(__file__).resolve().parents[5]
 MODEL_PATH = REPO / "00_ARCHITECTURE/control/kalayantra/plan_model.json"
 
 NOT_APPLICABLE = ["JOIN-ALL", "K-CERT-2", "W4-SAFETY-N01", "W4-SAFETY-N02", "KA3B-N1", "KA3B-N2", "OPS-NB-03",
-                  "V-K3b", "V-K5", "V-K6", "V-KA", "V-VC", "J-4c-pr2907"]
+                  "V-K3b", "V-K5", "V-K6", "V-KA", "V-VC", "J-4c-pr2907", "KA4B-NB-02"]
 DEFERRED = ["J-7a", "J-7a-a62", "J-7a-pr3099", "KR-1", "KR-2", "J-8", "J-8-b63", "J-8-j3", "J-8a", "K9-5",
             "K9-5-NB-01"]
 DEFERRED_NB04 = ["J-4a-a25", "J-4a-a26", "J-3a-b44"]   # SR-A9-INTERP A9-NB-04: no phase brief reads their output;
                                                          # J-3a-b44 added by SR-A9-NB-04-B44 (its 4.1 baseline needs a25)
-DEFERRED_PREP = ["D-T2", "L0-K", "D-GOCHARA-TIMEOUT"]    # SR-W34-PREP-RULINGS 5b/5f: deferred with re-entry, outside C-1 and the closure
+DEFERRED_PREP = ["D-T2", "L0-K", "D-GOCHARA-TIMEOUT", "J-GOCHARA-TIMEOUT"]    # SR-W34-PREP-RULINGS 5b/5f, SR-CLOSE-NOW 4: deferred with
+                                                                               # re-entry, outside C-1 and the closure (A9 D-53)
 
 
 def _rows(snap):
@@ -80,8 +81,10 @@ def decided(tmp_path_factory):
     saved = cli.EVENTS, cli.load_model
     cli.EVENTS, cli.load_model = str(log), lambda: model
     try:
-        # D-J4C-PR2907-NA: #2907's content landed through #2901 (review X-20261019T150725Z-review-3596-pr2907)
-        for dec in sorted(d["id"] for d in model["decisions"] if d["id"].startswith(("D-A9-NA-", "D-J4C-PR2907-NA"))):
+        # D-J4C-PR2907-NA: #2907's content landed through #2901 (review X-20261019T150725Z-review-3596-pr2907);
+        # D-KA4B-NB02-NA: KA-4b is parked (SR-CLOSE-NOW item 7)
+        for dec in sorted(d["id"] for d in model["decisions"]
+                          if d["id"].startswith(("D-A9-NA-", "D-J4C-PR2907-NA", "D-KA4B-NB02-NA"))):
             assert cli.main(["decide", dec, "--outcome", "refused", "--as", "steward", "--delegated",
                              "--detail", f"A9 {dec}"]) == 0
     finally:
@@ -110,8 +113,79 @@ def test_not_applicable_does_not_spread_into_the_closure(decided):
 def test_the_headline_denominator_is_the_closure_and_every_deferred_item_is_listed(decided):
     _, snap = decided
     o = snap["overall"]
-    assert o["total"] == 183 and o["plan_wide"]["total"] == 274
+    assert o["total"] == 183 and o["plan_wide"]["total"] == 275
     listed = {d["id"]: d for d in o["deferred"]}
     assert set(DEFERRED + DEFERRED_NB04 + DEFERRED_PREP) <= set(listed)
     assert all(listed[i]["re_entry"] for i in DEFERRED + DEFERRED_NB04 + DEFERRED_PREP)
     assert not set(listed) & {"J-7", "J-7b"}   # D-52: the rest of the post-flip phase is not deferred (D-T2, L0-K are: SR-W34-PREP-RULINGS 5b)
+
+
+# SR-CLOSE-NOW item 4 (PRE-D-VC default; SR-W34-PREP-RULINGS 4): no consenting evaluation population, so D-VC is
+# refused as not_evaluable and the K5-2 trial, the G2 work and the compact stage are not_applicable by the model's own
+# semantics. Source for the semantics: CONTROL_PLANE.md ("a final incompatible outcome makes dependent executable work
+# not_applicable"); PRE-D-VC / PRE-D-G2 / PRE-D-COMPACT in DECISIONS_SURROGATE.jsonl.
+VC_FAMILY = ["K5-2", "K5-2-qualify", "K5-2-representation", "K5-2-compiler", "K5-2-null", "K5-2-contract"]
+
+
+def _decide(model, tmp_path, outcomes):
+    log = tmp_path / "EVENTS.jsonl"
+    saved = cli.EVENTS, cli.load_model
+    cli.EVENTS, cli.load_model = str(log), lambda: model
+    try:
+        for dec, outcome in outcomes.items():
+            assert cli.main(["decide", dec, "--outcome", outcome, "--as", "steward", "--delegated",
+                             "--detail", f"SR-CLOSE-NOW {dec}"]) == 0
+    finally:
+        cli.EVENTS, cli.load_model = saved
+    events = [json.loads(line) for line in log.read_text().splitlines()]
+    return build_snapshot(model, events, {}, {}, {}, now=NOW, closure=load_closure(model))
+
+
+def test_refused_d_vc_makes_the_k5_2_trial_g2_and_compact_stage_not_applicable(tmp_path):
+    model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+    rows = _rows(_decide(model, tmp_path, {"D-VC": "refused", "D-COMPACT": "refused"}))
+    assert {i: rows[i]["status"] for i in VC_FAMILY + ["D-G2", "K5-3", "K5-2b"]} == {
+        i: "not_applicable" for i in VC_FAMILY + ["D-G2", "K5-3", "K5-2b"]}
+    # the decision itself is recorded; it stays "waiting" (not done) until VC-2, its input, is done: the four-way arm result
+    # is recorded either way (PRE-D-VC), so the VC-2 edge is kept (SR-CLOSE-NOW item 4, (I) INTERPRETATION)
+    assert rows["D-VC"]["outcome"] == "refused" and rows["D-VC"]["status"] != "not_applicable"
+
+
+def test_approved_d_vc_leaves_the_k5_2_trial_open(tmp_path):
+    # N.8: the not_applicable above is earned by the refused outcome, not by the family's mere presence
+    model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+    rows = _rows(_decide(model, tmp_path, {"D-VC": "approved"}))
+    assert all(rows[i]["status"] != "not_applicable" for i in VC_FAMILY)
+
+
+def test_the_d_vc_default_and_the_family_re_entry_are_declared():
+    model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+    items = {i["id"]: i for i in model["items"]}
+    decision = next(d for d in model["decisions"] if d["id"] == "D-VC")
+    assert decision["default"].startswith("refused") and "not_evaluable" in decision["default"]
+    assert "consenting evaluation population" in decision["default"]
+    for iid in VC_FAMILY:
+        triage = items[iid]["triage"]
+        assert (triage["class"], triage["decision"]) == ("retired", "D-VC") and triage["re_entry"] == (
+            "a consenting evaluation population exists"), iid
+    assert all(items[i]["requires_outcome"] == {"D-VC": "approved"} for i in ("K5-2", "K5-2-qualify", "K5-2-representation"))
+
+
+def test_ka4b_nb_02_is_retired_by_a_declared_decision_that_carries_ka_4bs_re_entry():
+    model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+    items = {i["id"]: i for i in model["items"]}
+    nb = items["KA4B-NB-02"]
+    assert nb["requires_outcome"] == {"D-KA4B-NB02-NA": "approved"} and "D-KA4B-NB02-NA" in nb["depends_on"]
+    assert nb["triage"]["class"] == "retired" and "sidecar producer" in nb["triage"]["re_entry"]
+    assert items["D-KA4B-NB02-NA"]["triage"] == {"class": "retire_decision", "retires": "KA4B-NB-02"}
+    assert "D-KA4B-NB02-NA" in {d["id"] for d in model["decisions"]}
+
+
+def test_k_cert_carries_no_deferral_so_its_real_artifact_acceptance_can_count():
+    # SR-DETECTOR-REFS / SR-W34-PREP-RULINGS 5b: K-CERT is an acceptance root (iii) and is never classed deferred; its park
+    # is a tracker event (`ky unblock`), not a model marker, so the model must stay clean of one.
+    model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+    kcert = next(i for i in model["items"] if i["id"] == "K-CERT")
+    assert (kcert.get("triage") or {}).get("class") == "a" and "re_entry" not in (kcert.get("triage") or {})
+    assert "K-CERT" in load_closure(model)["closure"]
+    assert kcert["detector"]["path"].endswith("K-CERT_ASSESSMENT_REVIEW.md")
