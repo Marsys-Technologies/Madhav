@@ -363,17 +363,21 @@ describe('handleKalaElectGet', () => {
       return response!
     }
 
-    it('attaches a judgment ledger to every candidate and reports residual doṣas uncancelled', async () => {
+    it('attaches a judgment ledger to every candidate and reads doṣas cancellation_unassessed', async () => {
       const response = await electWith({ ...emptySubstrate(), lattice_rows: [CITED_DOSA], census_rows: CENSUS })
 
       const ledger = response.candidates[0]!.judgment_ledger
       expect(ledger).not.toBeNull()
       expect(ledger!.dosas_present.map((d) => d.factor_key)).toEqual(['rahu_kalam'])
-      // The corpus carries no muhūrta-scope parihāra rule, so nothing is cancelled — and the
-      // response says so rather than presenting a clean verdict.
+      // No cancellation is derived on this face (U:25 item 4): the response says
+      // cancellation_unassessed rather than "uncancelled" or a clean verdict.
       expect(ledger!.pariharas_applied).toHaveLength(0)
       expect(ledger!.residual_dosas.map((d) => d.factor_key)).toEqual(['rahu_kalam'])
-      expect(ledger!.net_standing).toBe('residual_dosas_present')
+      expect(ledger!.net_standing).toBe('cancellation_unassessed')
+      expect(ledger!.adjudication_note).not.toMatch(/uncancelled/i)
+      // vivaha_chapter_dosas: not_detected (U:25 item 4) — "no doṣa present" is never "checked and clean".
+      expect(response.coverage.find((c) => c.concept === 'vivaha_chapter_dosas')?.reason).toMatch(/^not_detected/)
+      expect(response.lattice_adjudication!.vivaha_chapter_dosas).toBe('not_detected')
       const conceptNames = response.coverage.map((c) => c.concept)
       expect(conceptNames).toContain('muhurta_scope_parihara_rules')
       expect(response.coverage.find((c) => c.concept === 'muhurta_scope_parihara_rules')?.state).toBe('not_in_corpus')
@@ -413,7 +417,7 @@ describe('handleKalaElectGet', () => {
       const entry = response.coverage.find((c) => c.concept === 'contender_lattice_parihara_adjudication')
       expect(entry?.state).toBe('honest_empty')
       expect(entry?.reason).toContain('503')
-      expect(response.candidates[0]!.judgment_ledger!.net_standing).toBe('clean')
+      expect(response.candidates[0]!.judgment_ledger!.net_standing).toBe('not_adjudicated')
     })
 
     it('claims computed only when cited rows genuinely annotated a candidate', async () => {
