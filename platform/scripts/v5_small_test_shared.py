@@ -745,7 +745,7 @@ SCOPED_BACKUP_SCOPE_SHA256 = "1daf69d6e31279592947aa25e2b4f9a5c1c8137d6663ba039c
 # A dispatch names ITS scope (scoped_backup_problem(scope=...)); a proof of another scope never admits it (the digest covers the scope's name as well as its tables).
 SCOPED_BACKUP_SCOPE_SHA256S = {"small_test": SCOPED_BACKUP_SCOPE_SHA256,
                                "century": "eab44eef1ceb06604cab21fbcc464334a9253af1f320ca322b797cf3ff32b020",
-                               "verification_seal": "2c2c11d097fc8793e4d3eb0db9e09ef184f0294b3fdbc70b782ef8fdd2a287ca"}
+                               "verification_seal": "d20d37b36dad2c7707379415a3981dc434caf85bf952f2bb43546fe392fca7ad"}
 SCOPED_BACKUP_VALIDITY_S = 4 * 3600
 SCOPED_MEASUREMENT_METHOD = 'sql_sum_sha256_rowjson/1'
 

@@ -16,6 +16,11 @@
    "source": "platform/python-sidecar/services/gochara_kernel/seal_flow.py:SEALER_WRITE_ALLOWED (\"INSERT on ka_gochara_generation_seal\")"
   },
   {
+   "table": "public.ka_gochara_near_miss_verification",
+   "group": "verifier_write",
+   "source": "platform/python-sidecar/services/gochara_kernel/verification_job.py:VERIFIER_WRITE_TABLES (P06b, migration 1381; written by near_miss_verifier.verify_generation(persist=True))"
+  },
+  {
    "table": "public.ka_gochara_seal_approval",
    "group": "sealer_write",
    "source": "platform/python-sidecar/services/gochara_kernel/seal_flow.py:SEALER_WRITE_ALLOWED (\"INSERT on ka_gochara_seal_approval\")"

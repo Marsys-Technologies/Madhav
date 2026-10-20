@@ -32,7 +32,8 @@ SCRIPTS = support.SCRIPTS
 FLEET = support.ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet'
 KERNEL = support.SIDECAR / 'services/gochara_kernel'
 # the J5S pack's own derivation of the verification_seal digest (PACK/verify/derive_scope.py over the same constants): an independent computation of the same rule
-PACK_VERIFICATION_SEAL_DIGEST = '2c2c11d097fc8793e4d3eb0db9e09ef184f0294b3fdbc70b782ef8fdd2a287ca'
+# Re-derived after merging main (P06b added ka_gochara_near_miss_verification to VERIFIER_WRITE_TABLES): sha256 of the canonical JSON {schema, name, sorted tables} computed by hand, not by the repo's scope_digest.
+PACK_VERIFICATION_SEAL_DIGEST = 'd20d37b36dad2c7707379415a3981dc434caf85bf952f2bb43546fe392fca7ad'
 
 
 @pytest.fixture
@@ -89,7 +90,8 @@ def test_v1_the_verification_seal_scope_is_the_declared_write_surface_of_the_ver
     scope = scope_doc('verification_seal')
     assert derived == {e['table'] for e in scope['written']}
     assert derived == {'public.ka_gochara_eval_window_verification', 'public.ka_gochara_generation_seal', 'public.ka_gochara_seal_approval',
-                       'public.ka_gochara_seal_brief', 'public.ka_gochara_search_inventory_verification', 'public.kala_gochara_publication'}
+                       'public.ka_gochara_seal_brief', 'public.ka_gochara_search_inventory_verification', 'public.kala_gochara_publication',
+                       'public.ka_gochara_near_miss_verification'}    # P06b (main, migration 1381): VERIFIER_WRITE_TABLES gained the near-miss verification table
     assert [e['table'] for e in scope['context']] == ['public._migrations_applied']
     # separation: the verifier's tables and the builder's never overlap, except the publication row the SEALER (another login) updates
     builder = {f'public.{t}' for t in support.eval_constant([KERNEL / 'verification_job.py'], 'BUILDER_TABLES')}
@@ -102,7 +104,8 @@ def test_v1_detector_reads_false_when_a_declared_write_surface_gains_a_table(tmp
     seal = tmp_path / 'seal_flow.py'
     seal.write_text((KERNEL / 'seal_flow.py').read_text().replace('"INSERT on ka_gochara_seal_approval",', '"INSERT on ka_gochara_seal_approval", "INSERT on ka_gochara_new_receipt",', 1))
     verification = tmp_path / 'verification_job.py'
-    verification.write_text((KERNEL / 'verification_job.py').read_text().replace('("ka_gochara_seal_brief",)', '("ka_gochara_seal_brief", "ka_gochara_extra")', 1))
+    verification.write_text((KERNEL / 'verification_job.py').read_text().replace('("ka_gochara_seal_brief", "ka_gochara_near_miss_verification")', '("ka_gochara_seal_brief", "ka_gochara_near_miss_verification", "ka_gochara_extra")', 1))
+    assert 'ka_gochara_extra' in verification.read_text()                                                   # the plant landed on main's real VERIFIER_WRITE_TABLES text
     planted = derived_verification_seal_tables(verification, seal)
     real = {e['table'] for e in scope_doc('verification_seal')['written']}
     assert planted - real == {'public.ka_gochara_new_receipt', 'public.ka_gochara_extra'}

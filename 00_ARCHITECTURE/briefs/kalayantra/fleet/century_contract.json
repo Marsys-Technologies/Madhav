@@ -51,7 +51,7 @@
     "project": "madhav-astrology",
     "region": "asia-south1",
     "repository": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline",
-    "writer_source_digest": "d9c9d4d87dde106dccc0e751c696df2727655808c122ac9c5cf52cbc0bbcc9db"
+    "writer_source_digest": "3d1d4e67feb0bdedfce4427ec0863f0c32b49fd2792ad530a66a65965eb8e44f"
   },
   "item": "J-4e",
   "launch_args": {
@@ -157,7 +157,7 @@
   "stored_scope": "stored_non_moon",
   "timeout": {
     "cloud_run_task_timeout_seconds": 86400,
-    "source": ".github/workflows/deploy.yml:2515"
+    "source": ".github/workflows/deploy.yml:2518"
   },
   "triggered_by": "gochara-v5-century"
 }
