@@ -36,7 +36,7 @@ class Refused(Exception):
 
 # The deployed job's resources (#2976 deploys exactly these); the executed resource and the pre-execution definition read are judged against them by VALUE through the shared contract
 # (int64 `timeoutSeconds` arrives as a decimal string; quantities in any equivalent spelling).
-JOB_TIMEOUT_SECONDS, JOB_MEMORY, JOB_CPU = 7200, "8Gi", "2"
+JOB_TIMEOUT_SECONDS, JOB_MEMORY, JOB_CPU = 28800, "8Gi", "2"
 VERIFIER_SERVICE_ACCOUNT = "gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
 
 

@@ -40,9 +40,11 @@ MODEL_REL = "00_ARCHITECTURE/control/kalayantra/plan_model.json"
 TRACKER = FLEET.parents[3] / "platform" / "scripts" / "governance" / "pravaha_tracker"
 EMPTY_NEXT = {"stream": "", "version": 1, "running": [], "ready": [], "blocked": []}
 NEXT_STATUSES = {"running": ("running", "review"), "ready": ("ready",), "blocked": ("blocked", "failed", "parked", "conflict")}
-# the keys of an item row: state.py build_snapshot (id … cross_stream, **item_status(), deps_open*, elapsed_s)
+# the keys of an item row: state.py build_snapshot (id … cross_stream, **item_status(), deps_open*, the D-46 activation
+# fields activation_pending / built_waiting_on_gate / gate_blockers, elapsed_s)
 ROW_KEYS = {"id", "title", "lane", "gate", "owner", "depends_on", "cross_stream", "status", "source", "detail", "progress",
-            "actor", "evidence", "started_at", "updated_at", "checked_at", "deps_open", "deps_open_strict", "elapsed_s"}
+            "actor", "evidence", "started_at", "updated_at", "checked_at", "deps_open", "deps_open_strict", "elapsed_s",
+            "activation_pending", "built_waiting_on_gate", "gate_blockers"}
 # what item_status / build_snapshot add to some rows only
 ROW_EXTRAS = {"steps", "outcome", "detector_warning", "deps_merged_pending_deploy", "gaps", "skip_origin"}
 ROW_DECLARATIONS = {"completion_kind", "producer", "reviewer_rule", "step_evidence"}

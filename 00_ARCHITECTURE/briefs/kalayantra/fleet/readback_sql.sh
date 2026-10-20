@@ -9,7 +9,7 @@ KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; SQL=""; MIG=""; SQL_SHA=""
 while [ $# -gt 0 ]; do case "$1" in --sql-file|--sql_file) SQL="${2:-}"; shift 2;; --sql-sha256|--sql_sha256) SQL_SHA="${2:-}"; shift 2;; --migration) MIG="${2:-}"; shift 2;; *) echo "unknown argument: $1" >&2; exit 2;; esac; done
 [ -n "$SQL" ] || [ -n "$MIG" ] || { echo "sql_file or migration required" >&2; exit 2; }
 if [ -n "$MIG" ]; then [[ "$MIG" =~ ^[0-9A-Za-z_.-]{1,120}$ ]] || { echo "migration name has unsafe characters" >&2; exit 2; }; fi
-unset DATABASE_URL KY_BUILDER_DATABASE_URL KY_OWNER_DATABASE_URL
+unset DATABASE_URL KY_BUILDER_DATABASE_URL KY_OWNER_DATABASE_URL KY_LAYER_VERIFIER_DATABASE_URL
 PGENV="${KY_READBACK_PGENV:-/Users/Dev/.config/pravaha/pgenv.sh}"     # the override exists for tests; the executor's child environment never carries it
 [ -f "$PGENV" ] || { echo "read-only connection settings are missing" >&2; exit 4; }
 source "$PGENV"

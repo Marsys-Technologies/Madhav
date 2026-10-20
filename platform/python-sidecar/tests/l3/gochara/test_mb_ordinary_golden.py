@@ -91,6 +91,10 @@ BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, 
                 "subject_label": "native"}
 CLASS = "marriage"
 GUARD_SELECT = "SELECT state FROM public.asset_throughput WHERE chart_id = %s AND asset_id = %s"
+# F-CHANNEL (SR-W34-PREP-RULINGS 1): `run_substep` resolves the run's century config (_resolve_run_config) after its configuration checks and before the state guard,
+# which reads build_runs.plan_manifest once more, through the same digest-verifying `_plan_manifest`. One extra read-only SELECT per non-dry-run substep, checked
+# separately (exact text, one parameter, exactly one more than the golden's own manifest reads) and excluded from the statement summary like the state guard.
+MANIFEST_READ_SELECT = "SELECT plan_manifest, plan_manifest_digest FROM public.build_runs WHERE id = %s"
 LAYER_SELECT = ("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL AND "
                 "to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL AND "
                 "to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL")
@@ -316,6 +320,10 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
         period_guard = [s for s in raw[key] if s == [PERIOD_GUARD_SELECT, 11]]
         assert len(period_guard) == (1 if key == "inventory:marriage" else 0), f"{key}: expected the B5 period guard exactly once before the inventory projection"
         rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11], [LAYER_SELECT, 0])]
+        golden_reads = m["statements"]["shapes"].get(f"1|{MANIFEST_READ_SELECT}", 0)
+        if "[dry_run]" not in key:
+            assert rest.count([MANIFEST_READ_SELECT, 1]) == golden_reads + 1, f"{key}: expected exactly one extra plan_manifest read (the century-config resolution)"
+            rest.remove([MANIFEST_READ_SELECT, 1])         # the first one is the resolution's: it precedes the substep's own reads (the golden's sequence is order-sensitive)
         if key == writer_mod.SNAPSHOT_SUBSTEP:       # every other substep keeps its own P1 gate reads, compared with the golden unchanged
             assert rest.count([P1_GATE_SELECT, 1]) == 1, f"{key}: expected the new P1-minting schema read exactly once"
             rest.remove([P1_GATE_SELECT, 1])
@@ -381,7 +389,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (never relaxed).
     # Evaluation re-pinned for F-1305-INVENTED-SUPPORT (#3774): dasha_read and inventory_verifier changed (the snapshot path no longer invents support for a lord held
     # only outside the horizon). Re-derived the same way on the merge of this branch with main (main's bytes give 9f6c462e...); no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "3d24331f1a73721b761ca0af94da3c53493f92e9349769ba3fb6964a94d2bb42"
+    # Evaluation re-pinned again for F-CHANNEL (SR-W34-PREP-RULINGS 1, kalayantra/kind-batch): this branch also changes the ka_gochara_v5 writer's century-config overlay
+    # (+101 lines), which sits in the evaluation stage. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (main alone gives 3d24331f...); geometry and window are unchanged by it.
+    assert got["implementation"]["evaluation"] == "f065569bc20819003b658c205d864929bf21c240b6934177ae79f4ae3cac7a5d"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.

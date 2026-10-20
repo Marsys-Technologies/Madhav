@@ -21,7 +21,7 @@ Archive/evidence lives at KY_ROOT/run/ops/backups/<label>/; labels are unique
 and capture refuses to overwrite. Source URL and client errors never print.
 Executor request/review/lease/backup gates remain separate from these receipts.
 
---scope small_test (default: full, the behaviour above, unchanged) is the J-2a
+--scope small_test (scopes: 'full' (the default: the behaviour above, unchanged), 'small_test', 'century', 'verification_seal') is the J-2a
 SCOPED backup (surrogate ruling SR-J2A-BACKUP-SCOPE; spec
 00_ARCHITECTURE/briefs/kalayantra/fleet/J2A_SCOPED_BACKUP_v1_0.md). It archives
 the DEFINITIONS and DATA of exactly the tables the small test can write
@@ -43,6 +43,11 @@ archive's own definitions and data, and the same counts/digests are compared.
 (I) INTERPRETATION J2A-S1: the second same-snapshot table pass is dropped in
 scoped mode (REPEATABLE READ cannot make it differ); sequences, which are not
 transactional, are still measured before and after the dump.
+
+Three scopes share this one mechanism (W3W4 pack verify E3), each a reviewed scope file whose digest the executor-loaded policy pins (v5_small_test_shared.
+SCOPED_BACKUP_SCOPE_SHA256S): small_test (the J-2a file above), century (the final candidate build: the same staged run without the test slice, so the same tables, under its own
+name and digest) and verification_seal (the tables the verification job and the sealing job may write: verification_job.VERIFIER_WRITE_TABLES + seal_flow.SEALER_WRITE_ALLOWED).
+A receipt names its scope and a proof of one scope never admits a request for another.
 """
 from __future__ import annotations
 
@@ -68,7 +73,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     p.add_argument('--operation', choices=['snapshot', 'restore-verify'], required=True)
     p.add_argument('--label', required=True)
-    p.add_argument('--scope', choices=['full', 'small_test'], default='full')
+    p.add_argument('--scope', choices=['full', 'small_test', 'century', 'verification_seal'], default='full')
     mode = p.add_mutually_exclusive_group()
     mode.add_argument('--dry-run', action='store_true')
     mode.add_argument('--execute', action='store_true')
@@ -189,7 +194,16 @@ def compare_restore(expected: dict, actual: dict) -> None:
 # through --scope small_test or a ky.smalltest_backup/2 receipt; the full
 # mode above is untouched.
 # ---------------------------------------------------------------------------
-SCOPE_FILE = Path(__file__).with_name('backup_v5_small_test_scope.json')
+SCOPE_FILES = {'small_test': 'backup_v5_small_test_scope.json', 'century': 'backup_v5_century_scope.json',
+               'verification_seal': 'backup_v5_verification_seal_scope.json'}
+SCOPE_FILE = Path(__file__).with_name(SCOPE_FILES['small_test'])
+SCOPE_PATHS = {name: Path(__file__).with_name(file) for name, file in SCOPE_FILES.items() if name != 'small_test'}   # the other two reviewed scope files
+
+
+def scope_path(name: str) -> Path:
+    return SCOPE_FILE if name == 'small_test' else SCOPE_PATHS[name]
+
+
 SCOPED_BACKUP_SCHEMA = 'ky.smalltest_backup/2'
 SCOPED_RESTORE_SCHEMA = 'ky.smalltest_restore/2'
 SCOPED_MEASUREMENT_METHOD = shared_policy.SCOPED_MEASUREMENT_METHOD   # pinned in the shared policy: one definition for capture and check
@@ -235,10 +249,11 @@ def scope_digest(name: str, tables: list[str]) -> str:
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
-def load_scope(path: Path | None = None) -> dict:
-    """The reviewed scope file -> {name, tables (data), written, guarded_children, sha256}."""
+def load_scope(path: Path | None = None, name: str = 'small_test') -> dict:
+    """The reviewed scope file -> {name, tables (data), written, guarded_children, sha256}. `name` selects the reviewed file of that scope; a `path`
+    overrides the file, and the name inside it must then be one of the three scopes (the digest covers the name, so scopes never share one)."""
     try:
-        raw = json.loads((path or SCOPE_FILE).read_text())
+        raw = json.loads((path or scope_path(name)).read_text())
         written = [e['table'] for e in raw['written']]
         context = [e['table'] for e in raw['context']]
         guarded = [e['table'] for e in raw['guarded_children']]
@@ -246,7 +261,7 @@ def load_scope(path: Path | None = None) -> dict:
     except (OSError, ValueError, KeyError, TypeError):
         raise BackupRefused('reviewed scope file missing or malformed') from None
     tables = sorted(set(written) | set(context))
-    if (raw.get('schema') != 'ky.smalltest_backup_scope/1' or raw.get('name') != 'small_test' or not written
+    if (raw.get('schema') != 'ky.smalltest_backup_scope/1' or raw.get('name') not in SCOPE_FILES or (path is None and raw.get('name') != name) or not written
             or len(set(written)) != len(written) or set(written) & set(context)
             or any(re.fullmatch(r'[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*', t) is None for t in tables + guarded + excludes)):
         raise BackupRefused('reviewed scope file missing or malformed')
@@ -576,13 +591,13 @@ def restore_base_sql(root: Path, migrations: tuple = ()) -> tuple[str, dict]:
     return ''.join(parts), {'bundle': SCOPED_RESTORE_BASE_PATH, 'sha256': SCOPED_RESTORE_BASE_SHA256, 'migrations': applied}
 
 
-def validate_scoped_capture(receipt: dict, archive: Path, label: str) -> dict:
+def validate_scoped_capture(receipt: dict, archive: Path, label: str, scope_name: str = 'small_test') -> dict:
     if receipt.get('schema') != SCOPED_BACKUP_SCHEMA or receipt.get('status') != 'captured':
         raise BackupRefused('complete scoped capture receipt is required')
     if receipt.get('label') != label:
         raise BackupRefused('capture label differs')
     scope = receipt.get('scope')
-    current = load_scope()
+    current = load_scope(name=scope_name)
     if (not isinstance(scope, dict) or scope.get('name') != current['name'] or scope.get('sha256') != current['sha256']
             or not isinstance(scope.get('tables'), list) or not isinstance(scope.get('closure'), list)
             or not isinstance(scope.get('sequences'), list)
@@ -680,8 +695,8 @@ def _check_measurement_shapes(values: dict) -> None:
 
 
 def snapshot(folder: Path, label: str, scope: str = 'full') -> dict:
-    if scope == 'small_test':
-        return snapshot_scoped(folder, label)
+    if scope in SCOPE_FILES:
+        return snapshot_scoped(folder, label, scope)
     import psycopg
     from psycopg.conninfo import conninfo_to_dict
     source = os.environ.get('DATABASE_URL')
@@ -722,10 +737,10 @@ def restore_verify(folder: Path, label: str, scope: str = 'full') -> dict:
     import psycopg
     from psycopg import sql
     receipt = json.loads((folder / 'capture.json').read_text())
-    if (receipt.get('schema') == SCOPED_BACKUP_SCHEMA) != (scope == 'small_test'):
+    if (receipt.get('schema') == SCOPED_BACKUP_SCHEMA) != (scope in SCOPE_FILES):
         raise BackupRefused('capture scope differs from the requested scope')
-    if scope == 'small_test':
-        return restore_verify_scoped(folder, label, receipt)
+    if scope in SCOPE_FILES:
+        return restore_verify_scoped(folder, label, receipt, scope)
     archive = folder / 'database.dump'
     expected = validate_capture(receipt, archive, label)
     if receipt.get('script_sha256') != sha256(Path(__file__)):
@@ -766,10 +781,10 @@ def restore_verify(folder: Path, label: str, scope: str = 'full') -> dict:
     return proof
 
 
-def snapshot_scoped(folder: Path, label: str) -> dict:
+def snapshot_scoped(folder: Path, label: str, scope_name: str = 'small_test') -> dict:
     import psycopg
     from psycopg.conninfo import conninfo_to_dict
-    scope = load_scope()
+    scope = load_scope(name=scope_name)
     source = os.environ.get('DATABASE_URL')
     if not source:
         raise BackupRefused('executor source connection is missing')
@@ -825,16 +840,16 @@ def snapshot_scoped(folder: Path, label: str) -> dict:
                            'measurements of the listed scope tables and their foreign-key parents only; every other '
                            "relation's definition and data, functions, types, roles and grants excluded",
                'backup_taken': True, 'restore_verified': None}
-    validate_scoped_capture(receipt, archive, label)
+    validate_scoped_capture(receipt, archive, label, scope_name)
     write_receipt(folder / 'capture.json', receipt)
     return receipt
 
 
-def restore_verify_scoped(folder: Path, label: str, receipt: dict) -> dict:
+def restore_verify_scoped(folder: Path, label: str, receipt: dict, scope_name: str = 'small_test') -> dict:
     import psycopg
     from psycopg import sql
     archive = folder / 'database.dir'
-    expected = validate_scoped_capture(receipt, archive, label)
+    expected = validate_scoped_capture(receipt, archive, label, scope_name)
     legacy = receipt.get('script_sha256') in SCOPED_LEGACY_CAPTURE_SCRIPTS
     if receipt.get('script_sha256') != sha256(Path(__file__)) and not legacy:
         raise BackupRefused('capture script identity changed; recapture required')
@@ -904,9 +919,9 @@ def main(argv: list[str] | None = None) -> int:
         plan = {'operation': args.operation, 'label': args.label, 'status': 'planned',
                 'archive_directory': str(folder), 'scratch_database': f'ky_restore_{args.label}',
                 'backup_taken': None, 'restore_verified': None}
-        if args.scope == 'small_test':
+        if args.scope in SCOPE_FILES:
             try:
-                plan.update(scope=args.scope, scope_sha256=load_scope()['sha256'], validity_basis='scoped_content_digest_unchanged')
+                plan.update(scope=args.scope, scope_sha256=load_scope(name=args.scope)['sha256'], validity_basis='scoped_content_digest_unchanged')
             except BackupRefused as exc:
                 print(f'backup refused: {exc}', file=sys.stderr)
                 return 1

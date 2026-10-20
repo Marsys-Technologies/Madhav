@@ -441,7 +441,7 @@ REPO = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
 
 def execution(name="exec-1", **over):
     ex = {"metadata": {"name": name},
-          "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": "7200",     # int64 fields arrive as decimal STRINGS (API/SDK shape)
+          "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": "28800",     # int64 fields arrive as decimal STRINGS (API/SDK shape)
                   "containers": [{"image": f"{REPO}@{IMG}", "command": list(xcheck_contract.ENTRYPOINT), "args": ARGS,
                                   "resources": {"limits": {"cpu": "2", "memory": "8Gi"}},
                                   "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG},
@@ -750,13 +750,13 @@ def test_the_seal_jobs_non_zero_status_fails_the_run_unchanged(world, rc, needle
 
 # R15-2 / R15-3: int64 strings, quantities, the secret selector and the secret-remapping annotation — through the executed-resource check (the deploy readback and the pre-execution check
 # share the same contract functions; #2976's tests drive the same shapes through its readback)
-@pytest.mark.parametrize("ok", ["7200", 7200])
+@pytest.mark.parametrize("ok", ["28800", 28800])
 def test_a_documented_int64_string_or_integer_timeout_is_accepted(ok):
     assert xcheck(_mut((*T, "timeoutSeconds"), ok))["execution"] == "exec-1"
 
 
-@pytest.mark.parametrize("bad", [True, "7200.0", 7200.5, float("inf"), float("nan"), " 7200", "+7200", "07200", "7200s", "", None, "0x1c20", "7e3", 3600, "3600"])
-def test_a_timeout_that_is_not_exactly_the_documented_7200_is_refused(bad):
+@pytest.mark.parametrize("bad", [True, "28800.0", 28800.5, float("inf"), float("nan"), " 28800", "+28800", "028800", "28800s", "", None, "0x7080", "28.8e3", 7200, "7200", 3600, "3600"])
+def test_a_timeout_that_is_not_exactly_the_documented_28800_is_refused(bad):
     with pytest.raises(xc.Refused, match="timeoutSeconds"):
         xcheck(_mut((*T, "timeoutSeconds"), bad))
 
