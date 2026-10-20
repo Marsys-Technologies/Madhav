@@ -382,4 +382,6 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. Re-derived the same way
     # (main's bytes give 78b4d0a1…); evaluation and geometry are untouched by this change, and no golden component is re-captured.
     # J-4c F-LEANNESS also changed window_store (one round trip per window write group): re-derived the same way (main's bytes give 7a8c7ee1…); evaluation is untouched.
-    assert got["implementation"]["window"] == "6c981eb8166f70c8a4ebe3c9d99e0507dfffb3629244ec1132ba1bcfc047288f"
+    # Window re-pinned for the W3W4 strict-slice window-qualification fix: window_sweep.build_program no longer lists an OMITTED operand (karaka_agent, null_state omit)
+    # as an unresolved reason, so the writer's `unresolved` equals the verifier's. Re-derived the same way (main's bytes give 6c981eb8…); evaluation and geometry are untouched.
+    assert got["implementation"]["window"] == "99c4bc5c6f4e4648b890be7357a29e01bb8448719bf09dd42b9f6086bd9b31a1"
