@@ -264,7 +264,7 @@ class FieldAccumulator:
 
 
 def collect_field_block(accumulator, draw_statistics, *, start, end):
-    """Same shared schedule as jury; statistic callbacks remain consumer-owned."""
+    """Block collection over the accumulator's prepared schedule; statistic callbacks remain consumer-owned."""
     p = accumulator.preparation
     if not 0 <= start <= end <= len(p.offsets):
         raise ValueError('invalid draw block')

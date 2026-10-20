@@ -1,15 +1,18 @@
-"""K5-G1b-N2: the production jury caller receives the candidate's shift schedule.
+"""K5-G1b-N2: the production jury caller receives one shift schedule per candidate.
 
 PLAN §6.2(5): schedule and draw machinery run once per candidate; the jury keeps
-its own witness geometry and estimand. The same schedule digest is what the
-Kshetra field null binds (tests/l3/ka_kshetra/test_g1b_n2_shared_preparation.py).
+its own witness geometry and estimand. Scope of the claim: sharing ACROSS THE
+JURY CLASSES of one process. Sharing between the jury and the Kshetra field is
+NOT claimed: the two writers ask for different schedules (exposure seconds vs
+36525 days) in separate assets. That cross-writer remainder is carried, pending
+the native's decision; the test below pins the real state so it cannot be
+asserted by construction.
 """
 import importlib
 
 import pytest
 
 from services.kala_core import measure
-from services.kala_core.measure.field import prepare_field
 from tests.l3.ka_sangam.test_jury_writer import H, api, fixture_input
 
 agreement_module = importlib.import_module('services.ka_sangam.jury.agreement')
@@ -30,12 +33,21 @@ def test_production_jury_receives_one_candidate_schedule_shared_with_the_field(m
     # Every class's jury preparation was handed a schedule, the same prepared object.
     assert len(handed) == 2 and handed[0] is not None and handed[0] is handed[1]
     assert len(prepared) == 1
-    # The field (own estimand, own geometry) binds the identical schedule.
-    field = prepare_field('career', H.duration, schedule=handed[0])
-    assert career.agreement.schedule_digest == wealth.agreement.schedule_digest == field.schedule_digest != ''
-    assert tuple(d.offset for d in real_draws(H, (measure.Witness('G-P', (H,)),), anchor_id='G-P',
-        non_identity_shifts=31, exchangeable=False, schedule=handed[0]).null_draws) == field.offsets
-    assert career.agreement.conditional.experiment.estimand != field.experiment.estimand
+    assert career.agreement.schedule_digest == wealth.agreement.schedule_digest != ''
+
+
+def test_jury_and_kshetra_production_schedules_are_not_shared_across_writers():
+    # Cross-writer sharing is carried, not delivered (review K5-G1b-N2-R-B1): the
+    # Kshetra field schedule is candidate_schedule(36525 days, candidate_null_shifts())
+    # (writer._candidate_schedule); the jury's is over its exposure duration. If this
+    # fails because the digests became equal, real sharing exists: re-widen the claim
+    # in candidate.py / writer.py and assert both writers' digests here.
+    from services.ka_kshetra import stage4_field as S4
+    from services.ka_kshetra.writer import candidate_null_shifts
+    kshetra = measure.candidate_schedule(S4.HORIZON_DAYS, candidate_null_shifts())
+    jury = _compute('career').agreement
+    assert jury.schedule_digest and kshetra.digest
+    assert jury.schedule_digest != kshetra.digest
 
 
 def test_jury_refuses_a_schedule_prepared_for_another_horizon_or_shift_count():

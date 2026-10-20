@@ -2109,7 +2109,8 @@ class KaKshetraWriter(WriterBase):
 
     def _candidate_schedule(self):
         """The candidate's one shift schedule, shared by every class's field null
-        and by the jury (PLAN §6.2(5)). The estimand stays per class."""
+        (PLAN §6.2(5)). The estimand stays per class. The jury builds its own
+        schedule over its exposure duration; cross-writer sharing is carried."""
         from services.kala_core import measure
         return measure.candidate_schedule(HORIZON_DAYS, candidate_null_shifts())
 

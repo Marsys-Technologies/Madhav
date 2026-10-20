@@ -1,4 +1,4 @@
-"""K5-G1b-N2: once-per-candidate preparation shared with the jury.
+"""K5-G1b-N2: once-per-candidate preparation shared across the field classes.
 
 Authority: KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1 §6.2(2) no per-class
 re-preparation, §6.2(5) schedule, segment preparation and draw machinery run

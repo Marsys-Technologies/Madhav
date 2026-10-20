@@ -237,8 +237,11 @@ def compute(value: ClassInput, *, schedule: ShiftSchedule | None = None) -> Cand
     nodes, uses, roster, opinions = _class_evidence(value)
     support = _admitted_support(value.horizon, nodes, uses, roster)
     opinions = _supported_opinions(opinions, support)
-    # PLAN §6.2(5): the schedule is the candidate's, shared with the field null;
-    # the jury keeps its own witness geometry, estimand and conditioning.
+    # PLAN §6.2(5): one schedule per (duration, shifts) per process, shared by
+    # every class's jury preparation; the jury keeps its own witness geometry,
+    # estimand and conditioning. NOT shared with the Kshetra field: that schedule
+    # is over 36525 days, this one over the exposure duration in UTC seconds, in a
+    # separate asset (cross-writer sharing is carried, pending the native's decision).
     schedule = schedule or candidate_schedule(value.experiment_exposure.horizon.duration, value.non_identity_shifts)
     measured = agreement(value.experiment_exposure.horizon, nodes, uses, roster.values(), alpha=value.alpha,
         exchangeable=value.exchangeable, non_identity_shifts=value.non_identity_shifts,

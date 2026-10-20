@@ -84,9 +84,11 @@ class ExposureManifest:
 class ShiftSchedule:
     """The candidate's non-identity shifts, prepared once for every experiment.
 
-    Depends only on the horizon duration and the shift count, so the jury, the
-    selection null and each class's field-maximum null consume one object and
-    cannot drift apart. It carries no geometry and no estimand.
+    Depends only on the horizon duration and the shift count, so consumers that
+    ask for the same pair (every jury class; every Kshetra field class) consume
+    one object and cannot drift apart. Jury and field ask for different pairs
+    today (exposure seconds vs 36525 days), so they do not yet share it. It
+    carries no geometry and no estimand.
     """
     duration: float
     non_identity_shifts: int
@@ -254,9 +256,9 @@ def _candidate_schedule(duration: float, non_identity_shifts: int) -> ShiftSched
 def candidate_schedule(duration: float, non_identity_shifts: int = DEFAULT_NON_IDENTITY_SHIFTS) -> ShiftSchedule:
     """The one schedule for a horizon duration and shift count in this process.
 
-    The schedule is a pure function of those two numbers, so jury and field
-    writers that ask for it receive the same object (and across processes the
-    same digest, which the preparation digest binds). `candidate_schedule.cache_clear`
+    The schedule is a pure function of those two numbers, so callers that ask
+    for the same pair receive the same object (and across processes the same
+    digest, which the preparation digest binds). `candidate_schedule.cache_clear`
     exists for tests that count preparations.
     """
     return _candidate_schedule(float(duration), non_identity_shifts)
