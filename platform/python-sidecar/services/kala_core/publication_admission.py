@@ -6,8 +6,12 @@ adds only what the executor kinds need on top of it and delegates every real ope
 * ``rebuild`` / ``rebuild-dryrun`` -- the SR-BOLD-04 split. ``--phase pre`` admits only assets that do not depend on the
   gochara surface the flip changes, ``--phase post`` only assets that are that surface or depend on it. The set is read
   from ``asset_registry.depends_on`` at run time, never from a list kept here. The orchestrator's probe mode is its
-  default delta-skip gate (``asset_runner.py`` ``_run_data_writer``); it is switched off only by ``NIRMANA_FORCE_EXECUTE``,
-  so a rebuild that would force is refused.
+  default delta-skip gate (``asset_runner.py`` ``_run_data_writer``); it is switched off only by ``NIRMANA_FORCE_EXECUTE``.
+  An ambient forcing environment is refused. SR-BOLD-04-WITHDRAWN / U-K9P-01 (option B): the executor's ``rebuild`` kind passes
+  the explicit ``--force-execute`` flag, which makes this module -- not the caller's environment -- turn the gate off for
+  the one in-process run, so every planned writer executes and attests its grain under the new generation. A probe-skipped
+  writer cannot be admitted instead: its rows live only under the lit build's generation and serving reads the head
+  generation, so carrying its old grain forward would publish a layer silently missing that writer's rows (N.7.6, N.8).
 * ``verify-dryrun`` / ``publish-dryrun`` / ``rollback-dryrun`` -- the layer operations run for real inside a transaction
   that is then rolled back, with the rollback read back. ``dry_run_passed`` is true only when the operation ran, its
   write was observed inside the transaction, and the state read after the rollback equals the state read before it.
@@ -50,6 +54,17 @@ def force_refusal(environ: Mapping[str, str]) -> str | None:
     if environ.get(FORCE_ENV, '').strip().lower() in FORCING_VALUES:
         return FORCE_ENV + ' is set: the rebuild kind runs in probe mode and never forces every writer'
     return None
+
+
+@contextlib.contextmanager
+def forced_execution():
+    """Switch the orchestrator's delta-skip gate off for the duration of one in-process run, then restore the environment."""
+    previous = os.environ.get(FORCE_ENV, '')    # restored by assignment: an unset and an empty value both read as "not forcing"
+    os.environ[FORCE_ENV] = '1'
+    try:
+        yield
+    finally:
+        os.environ[FORCE_ENV] = previous
 
 
 def gochara_closure(edges: Mapping[str, Iterable[str]]) -> frozenset[str]:
@@ -166,6 +181,8 @@ def _parser() -> argparse.ArgumentParser:
         if operation in REBUILD_OPERATIONS:
             p.add_argument('--assets', required=True)
             p.add_argument('--phase', required=True, choices=PHASES)
+            if operation == 'rebuild':
+                p.add_argument('--force-execute', action='store_true')
         else:
             p.add_argument('--generation', required=True)
         if operation in ('publish-dryrun', 'rollback-dryrun'):
@@ -180,7 +197,12 @@ def _refuse(reason: str, code: int = 2) -> int:
     return code
 
 
+def _forces(args: argparse.Namespace) -> bool:
+    return bool(getattr(args, 'force_execute', False))
+
+
 def _admit_rebuild(dsn: str, args: argparse.Namespace) -> str | None:
+    # The explicit flag is the only way to force; an ambient forcing environment is still refused.
     forced = force_refusal(os.environ)
     if forced:
         return forced
@@ -191,7 +213,9 @@ def _admit_rebuild(dsn: str, args: argparse.Namespace) -> str | None:
 
 def _delegate_rebuild(args: argparse.Namespace) -> int:
     captured = io.StringIO()
-    with contextlib.redirect_stdout(captured):
+    # --force-execute applies to the real rebuild only; the dry run executes nothing.
+    forcing = _forces(args) and args.operation == 'rebuild'
+    with contextlib.redirect_stdout(captured), (forced_execution() if forcing else contextlib.nullcontext()):
         code = publication.main([args.operation, '--run-id', str(args.run_id), '--assets', args.assets])
     text = captured.getvalue().strip()
     try:
@@ -201,7 +225,7 @@ def _delegate_rebuild(args: argparse.Namespace) -> int:
         return code
     if code == 0:
         document['admission'] = {'phase': args.phase, 'assets': args.assets.split(','),
-                                 'probe_mode': 'delta_skip_gate', 'force_execute': False}
+                                 'probe_mode': 'force_execute' if forcing else 'delta_skip_gate', 'force_execute': forcing}
     print(json.dumps(document, sort_keys=True))
     return code
 

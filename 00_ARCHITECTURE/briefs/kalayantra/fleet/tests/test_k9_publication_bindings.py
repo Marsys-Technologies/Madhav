@@ -20,7 +20,8 @@ def test_all_k9_bindings_are_real_distinct_commands():
         assert entry['enabled'] is True
         assert entry['script']==f'platform/python-sidecar/services/kala_core/{module}.py'
         assert (REPO/entry['script']).is_file()
-        assert entry['fixed_args']==[command]
+        # SR-BOLD-04-WITHDRAWN / U-K9P-01 (option B): the real rebuild kind forces every writer to execute; no other kind carries a flag.
+        assert entry['fixed_args']==([command,'--force-execute'] if kind=='orchestrator_rebuild' else [command])
         assert entry['python_module']==f'services.kala_core.{module}'
         assert entry['cwd']=='platform/python-sidecar'
         assert entry['needs']==('layer_verifier' if kind=='layer_verify' else 'builder')
