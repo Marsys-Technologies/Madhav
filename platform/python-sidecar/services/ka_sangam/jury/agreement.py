@@ -3,7 +3,7 @@ from dataclasses import dataclass, replace
 from typing import Callable, Iterable
 from services.kala_core.measure import (
     DEFAULT_NON_IDENTITY_SHIFTS, Draw, Experiment, Interval, NullResult, Segment,
-    Witness, evaluate_experiment, intersect_intervals, jury_agreement, prepare_draws,
+    ShiftSchedule, Witness, evaluate_experiment, intersect_intervals, jury_agreement, prepare_draws,
 )
 from .evidence import Node, RootUse, Use, corroboration, evidence_graph
 from .groups import Group
@@ -30,13 +30,15 @@ class Agreement:
     pipeline_reason: str | None
     groups: tuple[Group,...]
     evidence: tuple[RootUse,...]
+    schedule_digest: str = ''
 
 
 def agreement(horizon: Interval, nodes: Iterable[Node], uses: Iterable[Use],
               groups: Iterable[Group], *, alpha: float, exchangeable: bool,
               non_identity_shifts: int=DEFAULT_NON_IDENTITY_SHIFTS,
               conditioning_intervals: tuple[Interval,...] | None=None,
-              pipeline_selector: WholePipelineSelector | None=None) -> Agreement:
+              pipeline_selector: WholePipelineSelector | None=None,
+              schedule: ShiftSchedule | None=None) -> Agreement:
     nodes=tuple(nodes)
     groups=tuple(sorted(set(groups),key=lambda g:g.group_id)); uses=tuple(uses)
     roster={g.group_id:g for g in groups}
@@ -76,17 +78,19 @@ def agreement(horizon: Interval, nodes: Iterable[Node], uses: Iterable[Use],
         witnesses=tuple(Witness(w.witness_id,w.intervals+selected_anchor) if w.witness_id=='G-P' else w for w in witnesses)
     else:
         witnesses=(*witnesses,Witness('G-P',selected_anchor))
-    preparation=prepare_draws(horizon,witnesses,anchor_id='G-P',non_identity_shifts=non_identity_shifts,exchangeable=exchangeable)
+    # The candidate's schedule is prepared once and handed in; prepare_draws
+    # refuses one built for another horizon or shift count.
+    preparation=prepare_draws(horizon,witnesses,anchor_id='G-P',non_identity_shifts=non_identity_shifts,exchangeable=exchangeable,schedule=schedule)
     conditional=jury_agreement(preparation,alpha=alpha)
     pipeline=None; reason='whole_pipeline_selector_not_supplied'
     if pipeline_selector:
         # Same shared shift schedule, but the judge is shifted too. A synthetic
         # fixed horizon is only preparation's anchor, never a scored witness.
         pipeline_preparation=prepare_draws(horizon,(*witnesses,Witness('__selection_horizon__',(horizon,))),
-            anchor_id='__selection_horizon__',non_identity_shifts=non_identity_shifts,exchangeable=exchangeable)
+            anchor_id='__selection_horizon__',non_identity_shifts=non_identity_shifts,exchangeable=exchangeable,schedule=preparation.schedule)
         def statistic(draw):
             clean=Draw(draw.offset,tuple(Segment(s.interval,s.support-{'__selection_horizon__'}) for s in draw.segments))
             return pipeline_selector.statistic(clean)
         pipeline=evaluate_experiment(pipeline_preparation,Experiment('whole_pipeline_selection',pipeline_selector.conditioning),statistic,alpha=alpha)
         reason=None
-    return Agreement(preparation.observation.segments,signature,conditional,pipeline,reason,groups,evidence_graph(nodes,uses))
+    return Agreement(preparation.observation.segments,signature,conditional,pipeline,reason,groups,evidence_graph(nodes,uses),preparation.schedule.digest)
