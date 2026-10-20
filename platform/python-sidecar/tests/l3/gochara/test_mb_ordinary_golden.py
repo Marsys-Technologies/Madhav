@@ -390,4 +390,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     assert got["implementation"]["geometry"] == "a8cb08f07fa867e010109d8a236422e39ebf0b57cf9a149eae64e42c7547a3ff"
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. With P06b's window-stage changes the merged-tree
     # digest below is re-derived the same way (main alone gives 6c981eb8...; J-4c F-LEANNESS also changed window_store); evaluation and geometry are untouched by this change, and no golden component is re-captured.
-    assert got["implementation"]["window"] == "41d28f7670e6f41f5fb92342e946ee1e56c538db2781aed1f91ce4ed4da38e11"
+    # Window re-pinned for the W3W4 strict-slice window-qualification fix: window_sweep.build_program no longer lists an OMITTED operand (karaka_agent, null_state omit)
+    # as an unresolved reason, so the writer's `unresolved` equals the verifier's. Re-derived on the merge with main (which carries P06b) from the merged tree's real bytes
+    # (main alone gives 41d28f76...); evaluation and geometry are untouched by this change and equal main's, and no golden component is re-captured.
+    assert got["implementation"]["window"] == "e0aea2fae6b607d5fb32124ae9e945fef6b1662fbb6de4fd8e053ec02e50e78d"
