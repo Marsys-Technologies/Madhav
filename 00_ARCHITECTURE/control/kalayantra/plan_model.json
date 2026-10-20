@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020+a55j-a55m-rescope-20261020",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -26116,7 +26116,7 @@
       "id": "J-4b-a55j",
       "track": "J",
       "lane": "J · Gochara 5.0 absorbed",
-      "title": "Phase 7 — keep inherited Pravāha A5.5j: Post-window provisioning for the full build: 1241 v7 (PR 2949), L1 read ACLs, act 2b sealer password, verification job deployed",
+      "title": "Phase 7 — keep inherited Pravāha A5.5j, re-scoped to the 1378 reality (SR-A55J-A55M-RESCOPE): the verifier/sealer principals and grants that migration 1378 put in production (applied 2026-10-14; it supersedes 1241 v7 / PR 2949), the open L1 read grants, the sealer credential (act 2b) provisioned into Secret Manager by the one-shot workflow, and the verification job configured but disabled",
       "owner": "N",
       "depends_on": [
         "J-0m",
@@ -26139,20 +26139,28 @@
           "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md",
           "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/decisions/PROTECTED_WINDOW_CLOSE_20261004.md",
           "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/engines/surrogate/SURROGATE_ANSWER_17.md:13–15,25–39",
-          "/Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749"
+          "/Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749",
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl: SR-A55J-A55M-RESCOPE (2026-10-20T10:40:35Z) and OWNER-GRANTS-MINIMAL-20261018 (SR-GRANTS-MINIMAL)",
+          "platform/migrations/1378_gochara_verifier_sealer_inventory_grants.sql (applied 2026-10-14T22:09:41Z; ledger sha256 04540a995e849517d03d80835a4dfaae0ee588c081485337d976814e44a70108)",
+          "/Users/Dev/kalayantra/run/ops/receipts/J-4b-a55j.recon-20261020T1100Z.json + .output.txt (production readback_sql, 2026-10-20: json sha256 e8878f89b481eea08142c170e27c286e19757fce28a340c6f66108ea6edbb39f, output sha256 3162cf336f7124b6fe3c20887a9afafaf13fda1d8c19f89aac0212f6c796c701)",
+          ".github/workflows/gochara-role-provisioning-oneshot.yml (the one-shot provisioning workflow; executor kind gochara_role_provisioning_dispatch)",
+          "00_ARCHITECTURE/briefs/kalayantra/fleet/CLOUDRUN_READBACK_v1_0.md + fleet/cloudrun_readback.py (cloudrun_job_readback)"
         ],
         "owns": [
           "/Users/Dev/kalayantra/run/ops/receipts/J-4b-a55j.json"
         ],
         "tests": [
           "Accepted disposition evidence (observation, not completion): post-window provisioning source row",
-          "each grant and principal read back independently through readback_sql",
-          "a builder-role write of a verification row is refused in production (read back from the role's privileges, not attempted)",
+          "Principals and grants (readback_sql, op id J-4b-a55j, the ACL surface of the 2026-10-20 recon): gochara_verifier, gochara_sealer and data_plane_builder exist with login=true and no superuser/createrole/createdb/replication/bypassrls; every table and column privilege and every ka_gochara_* EXECUTE grant that platform/migrations/1378_gochara_verifier_sealer_inventory_grants.sql specifies is present (acl_diff against the receipt output: no MISSING other than the L1 read grants below; MEASURED at the recon: principals present, ledger rows 1240 and 1378 applied, 1378 ledger sha256 equal to the repository file, no ledger row for 1241 (superseded by 1378) or 1303 because neither was ever applied; the recon's two ka_gochara_utc_ts(timestamptz) MISSING lines are a type-name spelling difference in the diff tool, the grant is present as 'timestamp with time zone')",
+          "The builder cannot write verification rows — read back from the role's privileges, not attempted: data_plane_builder holds no INSERT/UPDATE/DELETE/TRUNCATE on any verification table (MEASURED at the recon: SELECT only on ka_gochara_near_miss_verification)",
+          "OPEN grant act, measured MISSING at the recon: SELECT on chart_facts and chart_dashas for gochara_verifier and gochara_sealer (1378 leaves the L1 read grants to the data-plane ACL owner, its header lines 53-57). Closed by the one-shot provisioning workflow's grant list (SR-GRANTS-MINIMAL; each grant read back via readback_sql, one signer); no migration is written by this item (none is allocated to it in MIGRATION_ALLOCATION.json). Evidence: the same ACL readback re-run, acl_diff exit 0, then an independent reviewer readback of the same surface.",
+          "Verification job configured but disabled (I6; not the stale enabled-string proxy): cloudrun_job_readback of the job definition (image by digest, GOCHARA_RUNNER_COMMIT / GOCHARA_RUNNER_IMAGE_DIGEST env, the one secret reference by name and version only) plus fleet/executor_ops.json on main (verification_job enabled=false). MEASURED GAP: cloudrun_job_readback is bound to the job brahma-build-pipeline-job (fleet/cloudrun_readback.py JOB) and refuses any other job, so it cannot yet describe gochara-verification-job; until the existing kind accepts that job name (a parameter on the existing kind, SR-A55J-A55M-RESCOPE says no new kind) this observation is not producible and the step is not claimed.",
+          "Sealer credential (act 2b): generated by the one-shot provisioning workflow straight into Secret Manager, never printed or read (SR-GRANTS-MINIMAL; no owner slot, no human password act). The step reads only the workflow run's receipt and the secret version's existence (name and version as the verification job definition carries it) — never the secret. MEASURED: the current workflow draft still consumes a staged secret (GOCHARA_SEALER_PASSWORD_STAGING) and the executor kind serves only the create-roles stage; the generate-into-Secret-Manager stage is the provisioning workflow's change.",
           "Before landing, independently prove inherited prerequisite: A5.5e",
           "Measure this residual itself at its declared phase; a carrying packet code merge never satisfies it. Independent acceptance binds the evidence digest and every original dependency."
         ],
         "compat": "protected migrations land only inside the window; the runner refuses them outside it; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix)."
+        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix). SR-A55J-A55M-RESCOPE (2026-10-20): the migration reference 1241 is superseded by 1378 (applied 2026-10-14); principals, grants and the disabled job config are measured by readbacks (readback_sql for ACLs, cloudrun_job_readback for the job definition); no new executor kind. Cuts under SR-GRANTS-MINIMAL are listed in the PR body."
       },
       "completion_kind": "operation",
       "producer": "N",
@@ -26314,7 +26322,7 @@
       "id": "J-4c-a55m",
       "track": "J",
       "lane": "J · Gochara 5.0 absorbed",
-      "title": "Phase 8 — keep inherited Pravāha A5.5m: Second protected window applied and qualified: 1241 v7, L1 read grants, act 2b, verification job and acts 12-14, publication refusal for a test-slice vector, G8 seal-time census, 1303 and the dormant-role revokes, runner set (plan: runbooks/SECOND_WINDOW_PLAN_v1_0.md)",
+      "title": "Phase 8 — keep inherited Pravāha A5.5m: Second protected window applied and qualified: 1378 (supersedes 1241 v7), L1 read grants, act 2b, verification job and acts 12-14, publication refusal for a test-slice vector, G8 seal-time census, 1303 and the dormant-role revokes, runner set (plan: runbooks/SECOND_WINDOW_PLAN_v1_0.md)",
       "owner": "N",
       "depends_on": [
         "J-0m",
@@ -26336,7 +26344,10 @@
           "FINAL_BUILD_SCOPE_v1_0",
           "Gochara spec v1.4 + the delegated rulings of 2026-10-02 (frozen)",
           "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/engines/surrogate/SURROGATE_ANSWER_17.md:13–15,25–39",
-          "/Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749"
+          "/Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749",
+          "/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl: SR-A55J-A55M-RESCOPE (2026-10-20T10:40:35Z) and OWNER-GRANTS-MINIMAL-20261018 (SR-GRANTS-MINIMAL)",
+          "platform/migrations/1378_gochara_verifier_sealer_inventory_grants.sql (applied 2026-10-14; 1378 REVOKES nothing, its header line 4) and /Users/Dev/kalayantra/run/ops/receipts/J-4b-a55j.recon-20261020T1100Z.output.txt (ledger: 1240 and 1378 only)",
+          "/Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md (acts 12, 13, 14 and act 6b)"
         ],
         "owns": [
           "/Users/Dev/kalayantra/run/ops/receipts/J-4c-a55m.json"
@@ -26345,12 +26356,19 @@
           "Accepted disposition evidence (observation, not completion): second protected-window source row; source prerequisites retained",
           "equality proof: unchanged classes byte-identical to the measuring build's golden capture",
           "non-interference: the measuring rules' outputs unchanged",
+          "Stacking and ledger (readback_sql, the window2 readback ky-j4c-a55m-window2): ledger rows for 1302/1305/1306/1308/1378/1381/1398 applied and 1303 absent (1241 superseded by 1378, never applied); 1305 → 1306 → 1308 function stacking markers (copy_drift_block, class_census, path_census) and the completeness function's definition sha; migration hashes. Already true: 1305/1306/1308 applied (receipts sutradhara-srw2route-20261019T102659Z-1305/6/8), 1381 and 1398 applied.",
+          "1303 and the dormant-role revokes: OPEN. MEASURED: 1303 is not in the production ledger (never merged) and 1378 revokes nothing, so 1378 does not cover the revokes; the window2 readback's dormant_writer rows (NOLOGIN, memberless roles holding INSERT/UPDATE/DELETE/TRUNCATE on Gochara tables) decide: zero rows → retire the act as not_applicable by a declared decision citing that receipt; any row → an additive REVOKE migration in the W5W6 set (no number is allocated to this item; 1399 is withdrawn and reusable).",
+          "Act 12 (log view of the verification job's logs + roles/logging.viewAccessor on that view for github-actions@, narrow form only): runbook /Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md 'Act 12'. Evidence: gcloud logging views describe/get-iam-policy gochara_verification_job (exactly one binding) and the negative read with the workflow identity. NO existing readback kind measures it (cloudrun_job_readback describes the pipeline job only). Needed by J-5s: yes (gochara-seal-approved.yml reads the brief from these logs). Cut: the project-level roles/logging.viewer alternative.",
+          "Act 13 (github-actions@ may execute the verification job with overrides, on that one job): runbook 'Act 13'. Evidence: gcloud run jobs get-iam-policy gochara-verification-job (binding on that job only, no project-level roles/run.*). NO existing readback kind measures it (cloudrun_job_readback reads a job definition, not its IAM policy, and only for the pipeline job). Needed by J-5s: yes (the brief job runs gcloud run jobs execute --args).",
+          "Act 14 (github-actions@ holds roles/cloudsql.client for the proxy): runbook 'Act 14'. Evidence: gcloud projects get-iam-policy filtered to the role; indirectly, a successful one-shot provisioning run through the same proxy identity (github_run_readback, currently enabled:false). No grant is added unless the binding is absent; removal none for a pre-existing binding.",
+          "Verification job definition and sealer credential in disabled state: as J-4b-a55j (cloudrun_job_readback of gochara-verification-job — see its MEASURED GAP — and the provisioning run receipt/secret-version existence); the job is not enabled.",
+          "Publication refusal for a test-slice vector: still unlocated (the plan-doc number 1307 collided with an unrelated migration); the reviewer must find where it landed before this is a measured claim.",
           "Before landing, independently prove inherited prerequisite: A5.5e",
           "Before landing, independently prove inherited prerequisite: A5.5l",
           "Measure this residual itself at its declared phase; a carrying packet code merge never satisfies it. Independent acceptance binds the evidence digest and every original dependency."
         ],
         "compat": "candidate-only; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix)."
+        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix). SR-A55J-A55M-RESCOPE (2026-10-20): 1241 v7 is superseded by 1378; acts 12-14 are named above with their evidence paths; 1303 / the dormant-role revokes stay OPEN (1378 revokes nothing) until the window2 readback is run. No new executor kind is assumed; acts 12 and 13 (and 14 directly) have no existing readback."
       },
       "completion_kind": "operation",
       "producer": "N",

@@ -1,0 +1,117 @@
+"""SR-A55J-A55M-RESCOPE (surrogate ruling 2026-10-20): J-4b-a55j and J-4c-a55m are re-scoped to the 1378 reality.
+
+Claims, one oracle each (the reversion named after it fails that test):
+  1. neither item targets migration 1241: 1241 is not in the repository, 1378 is, and every 1241 mention is "superseded"
+     (reversion: restore "1241 v7" as a live target in either title)
+  2. the 1378 file in the repository is byte-identical to what production applied (ledger sha256 read back by the 2026-10-20
+     recon, ledger row 2026-10-14T22:09:41Z) and the plan cites that same hash (reversion: cite a different hash)
+  3. the dormant-role revoke act stays OPEN while its premise holds: 1378 contains no REVOKE statement and 1303 is not in the
+     repository, so a retirement decision for it may exist only if a migration in the repository revokes
+     (reversion: add D-J4B-1303-NA / D-J4C-DORMANT-NA while nothing revokes)
+  4. acts 12, 13, 14 are each named in J-4c-a55m's brief with the runbook anchor, an evidence statement and a measurability
+     statement; every readback kind the brief cites exists, enabled or not, in fleet/executor_ops.json and is read-only
+     (reversion: drop an act, or cite a kind the table does not have)
+  5. the "MEASURED GAP" the plan states for cloudrun_job_readback is true exactly while the kind cannot name the verification
+     job (reversion: widen cloudrun_readback.JOB without removing the gap text, or the other way round)
+  6. re-scoping retires nothing and adds nothing: both items stay mandatory members of the acceptance closure, none is
+     not_applicable, and the closure headline the tests pin (183 / 274) is unchanged (reversion: drop either item's edge)
+
+Sources: SR-A55J-A55M-RESCOPE and OWNER-GRANTS-MINIMAL-20261018 in /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl;
+platform/migrations/1378_gochara_verifier_sealer_inventory_grants.sql (header lines 4 and 53-57); runbook
+ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md acts 12-14; fleet/CLOUDRUN_READBACK_v1_0.md.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+from pathlib import Path
+
+import pytest
+
+from pravaha_tracker.state import load_closure
+
+REPO = Path(__file__).resolve().parents[5]
+MODEL_PATH = REPO / "00_ARCHITECTURE/control/kalayantra/plan_model.json"
+FLEET = REPO / "00_ARCHITECTURE/briefs/kalayantra/fleet"
+M1378 = REPO / "platform/migrations/1378_gochara_verifier_sealer_inventory_grants.sql"
+# the production ledger row for 1378 (recon J-4b-a55j.recon-20261020T1100Z, applied_at 2026-10-14 22:09:41 UTC)
+LEDGER_SHA_1378 = "04540a995e849517d03d80835a4dfaae0ee588c081485337d976814e44a70108"
+ITEMS = ("J-4b-a55j", "J-4c-a55m")
+
+
+@pytest.fixture(scope="module")
+def model():
+    return json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+
+
+def _item(model, iid):
+    return next(i for i in model["items"] if i["id"] == iid)
+
+
+def _text(item):
+    b = item["brief"]
+    return " ".join([item["title"], *b["spec"], *b["tests"], b["notes"]])
+
+
+def test_neither_item_targets_the_superseded_1241(model):  # claim 1
+    assert not list((REPO / "platform/migrations").glob("1241_*")) and M1378.is_file()
+    for iid in ITEMS:
+        item = _item(model, iid)
+        assert "1378" in item["title"], iid
+        for field in [item["title"], *item["brief"]["spec"], *item["brief"]["tests"], item["brief"]["notes"]]:
+            for m in re.finditer(r"1241", field):
+                assert re.search(r"supersed", field[max(0, m.start() - 60): m.end() + 60]), (iid, field[:120])
+
+
+def test_the_repository_1378_is_what_production_applied_and_the_plan_cites_it(model):  # claim 2
+    assert hashlib.sha256(M1378.read_bytes()).hexdigest() == LEDGER_SHA_1378
+    assert LEDGER_SHA_1378 in _text(_item(model, "J-4b-a55j"))
+
+
+def test_the_dormant_role_revoke_act_is_retired_only_if_a_migration_revokes(model):  # claim 3
+    sql = "\n".join(line for line in M1378.read_text(encoding="utf-8").splitlines() if not line.lstrip().startswith("--"))
+    revoked_by_a_migration = any(
+        re.search(r"(?im)^\s*REVOKE\b", p.read_text(encoding="utf-8", errors="replace"))
+        for p in (REPO / "platform/migrations").glob("13[0-9][0-9]_*.sql")
+        if "dormant" in p.read_text(encoding="utf-8", errors="replace").lower()
+    )
+    assert not re.search(r"(?im)^\s*REVOKE\b", sql)          # 1378 revokes nothing
+    assert not list((REPO / "platform/migrations").glob("1303_*"))   # 1303 was never merged
+    retired = [d["id"] for d in model["decisions"] if d["id"] in ("D-J4B-1303-NA", "D-J4C-DORMANT-NA")]
+    if not revoked_by_a_migration:
+        assert retired == []
+        assert "dormant-role revokes" in _item(model, "J-4c-a55m")["title"]
+        assert "OPEN" in _text(_item(model, "J-4c-a55m"))
+
+
+def test_acts_12_13_14_are_named_with_evidence_and_measurability(model):  # claim 4
+    tests = _item(model, "J-4c-a55m")["brief"]["tests"]
+    ops = json.loads((FLEET / "executor_ops.json").read_text(encoding="utf-8"))["ops"]
+    for n in (12, 13, 14):
+        row = [t for t in tests if t.startswith(f"Act {n} (")]
+        assert len(row) == 1, n
+        assert f"'Act {n}'" in row[0] and "Evidence:" in row[0], n
+        assert re.search(r"NO existing readback kind measures it|indirectly", row[0]), n
+    cited = {k for t in tests for k in re.findall(r"\b(readback_sql|cloudrun_job_readback|github_run_readback)\b", t)}
+    assert cited >= {"readback_sql", "cloudrun_job_readback", "github_run_readback"}
+    for kind in cited:
+        assert ops[kind].get("read_only") is True, kind
+
+
+def test_the_cloudrun_gap_is_stated_exactly_while_it_is_true(model):  # claim 5
+    src = (FLEET / "cloudrun_readback.py").read_text(encoding="utf-8")
+    kind_can_name_verification_job = "gochara-verification-job" in src
+    stated = "MEASURED GAP" in _text(_item(model, "J-4b-a55j"))
+    assert stated == (not kind_can_name_verification_job)
+
+
+def test_rescoping_retires_nothing_and_the_headline_is_unchanged(model):  # claim 6
+    closure = load_closure(model)
+    assert closure["closure_count"] == len(closure["closure"]) == 183 and len(model["items"]) == 274
+    for iid in ITEMS:
+        item = _item(model, iid)
+        assert item["mandatory"] is True and iid in closure["closure"]
+        assert item["steps"] and item["detector"]["path"].endswith(f"/{iid}.json")
+    assert _item(model, "J-4c-a55m")["depends_on"] == ["J-0m", "J-4b", "J-4c-a55l"]
+    assert _item(model, "J-4b-a55j")["depends_on"] == ["J-0m", "J-4a"]
