@@ -27711,7 +27711,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/p06b-nb-01"
+        "ref": "0919836b5493b72be89d8125d594c68492a87e3e",
+        "packet_pr": 3654,
+        "measures": "P06B pre-build (job X-20261016T142907Z-pb-p06b; independent review X-20261016T153511Z-review-pb-p06b ACCEPTED at f3cc67d): PR #3654 squash commit is contained in origin/main; the refs origin/kalayantra/p06b-nb-0N this detector used to name never existed, because the three findings were built inside that PR (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -27759,7 +27761,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/p06b-nb-02"
+        "ref": "0919836b5493b72be89d8125d594c68492a87e3e",
+        "packet_pr": 3654,
+        "measures": "P06B pre-build (job X-20261016T142907Z-pb-p06b; independent review X-20261016T153511Z-review-pb-p06b ACCEPTED at f3cc67d): PR #3654 squash commit is contained in origin/main; the refs origin/kalayantra/p06b-nb-0N this detector used to name never existed, because the three findings were built inside that PR (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -27807,7 +27811,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/p06b-nb-03"
+        "ref": "0919836b5493b72be89d8125d594c68492a87e3e",
+        "packet_pr": 3654,
+        "measures": "P06B pre-build (job X-20261016T142907Z-pb-p06b; independent review X-20261016T153511Z-review-pb-p06b ACCEPTED at f3cc67d): PR #3654 squash commit is contained in origin/main; the refs origin/kalayantra/p06b-nb-0N this detector used to name never existed, because the three findings were built inside that PR (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
