@@ -31,12 +31,15 @@ def test_both_j6m_suites_run_in_mandatory_fail_closed_db_step():
     assert '-p no:cacheprovider' in command
 
 
-def test_prebuild_preserves_disabled_authority_operations_and_deferred_helper():
+def test_authority_operations_run_only_the_reviewed_head_policy_and_the_helper_stays_deferred():
+    # SR-HEAD-POLICY-KEEP: was "preserves_disabled". The four kinds are enabled, but each one's script is the policy module itself
+    # (no second authority writer beside it); the gate tests are in fleet/tests/test_j6_head_bindings.py.
     ops = json.loads((ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json').read_text())['ops']
     for name in ('publish_head', 'rollback_head'):
-        assert ops[name]['enabled'] is False
+        assert ops[name]['enabled'] is True
         assert ops[name]['script'] == '00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py'
-        assert ops[name + '_dryrun']['enabled'] is False
+        assert ops[name + '_dryrun']['enabled'] is True
+        assert ops[name + '_dryrun']['script'] == ops[name]['script']
     # The rejected P09 helper was deferred on main. Do not recreate the B1
     # readiness-only mutation path during this admission-only prebuild.
     assert not (ROOT / 'platform/python-sidecar/services/gochara_kernel/authority_head.py').exists()

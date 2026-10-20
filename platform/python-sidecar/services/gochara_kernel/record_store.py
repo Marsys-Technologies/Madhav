@@ -66,7 +66,7 @@ from typing import Callable, Sequence
 
 from . import ledger as gk_ledger
 from . import targets
-from .contacts import find_roots
+from .contacts import _refine_root, find_roots
 from .convention import ORB_TABLE
 from .evaluator import RULE_VERSION, RecordEdge, record_uuid
 from .materialise import (BoundaryCrossing, ResidenceSpan, aspect_spans, mint_natal_record,
@@ -191,7 +191,8 @@ def _root_segment(index, root):
         f"{arc.body}: no station-bounded segment contains the root's arc [{arc.start_jd}, {arc.end_jd}] — arc index defect, refusing to derive a support")
 
 
-def _in_orb_span_around_root(index, root, orb_deg: float) -> tuple[float, float]:
+def _in_orb_span_around_root(index, root, orb_deg: float, *, refine: bool = False,
+                             ephe_path: str | None = None) -> tuple[float, float]:
     """The in-orb interval around one refined root, derived from the root's
     station-bounded SEGMENT (monotone — a turnaround inside the orb closes the
     interval at the segment's station boundary, E8-2).
@@ -212,6 +213,14 @@ def _in_orb_span_around_root(index, root, orb_deg: float) -> tuple[float, float]
     2026-10-01 (M20261001T172758-6f81). The occurrence-local derivation
     (the unwrapped level nearest the root) is exact per occurrence by
     construction.
+
+    SWISS-POLISHED EDGES (J-4c, F-INVENTED / F-ANOMALY). The spline bisection below stops at the first midpoint whose spline value is within the
+    index tolerance (1 arcsec) of the band edge, so an edge could miss the true band edge by up to ~1.5 arcsec of longitude (measured: 1.06-1.47 arcsec
+    at three real contacts, against a stated delta_lambda of 1 arcsec). With `refine` every edge the spline located is polished by the SAME direct
+    Swiss bisection that refines the exact root (`contacts._refine_root` -> `swiss_bisect`: sidereal Lahiri, SWIEPH, retflag asserted), inside the
+    piece the edge lies in, so a minted t_in / t_out sits on the ephemeris band edge to the bisection's 1e-9 day. An edge for which the Swiss bracket
+    cannot be found keeps the spline edge (the stated bound is then the index tolerance, never silently better). `refine=False` (the spline-only
+    callers and synthetic curves that have no ephemeris) is the old derivation, bit for bit.
     """
     arc = root.arc
     seg = _root_segment(index, root)
@@ -234,6 +243,17 @@ def _in_orb_span_around_root(index, root, orb_deg: float) -> tuple[float, float]
                 jd_b, fb = mid, fm
         return mid
 
+    def _edge(piece, jd_a: float, jd_b: float, target_u: float) -> float:
+        """One band edge: the spline bisection, then (refine) the Swiss polish inside `piece`."""
+        spline_jd = _bisect(jd_a, jd_b, target_u)
+        if not refine:
+            return spline_jd
+        try:
+            polished, _ = _refine_root(root.body, piece, spline_jd, target_u % 360.0, ephe_path)
+        except ValueError:
+            return spline_jd
+        return polished
+
     def _span_within(piece) -> tuple[float, float]:
         """The in-orb interval around the root, clipped to `piece` (a monotone arc or segment)."""
         span_lo = min(piece.start_lon_unwrapped, piece.end_lon_unwrapped)
@@ -241,14 +261,14 @@ def _in_orb_span_around_root(index, root, orb_deg: float) -> tuple[float, float]
         a, b = piece.start_jd, piece.end_jd
         if piece.direction == 1:
             if span_lo < lo - 1e-12:
-                a = _bisect(piece.start_jd, root.exact_jd, lo)
+                a = _edge(piece, piece.start_jd, root.exact_jd, lo)
             if span_hi > hi + 1e-12:
-                b = _bisect(root.exact_jd, piece.end_jd, hi)
+                b = _edge(piece, root.exact_jd, piece.end_jd, hi)
         else:
             if span_hi > hi + 1e-12:
-                a = _bisect(piece.start_jd, root.exact_jd, hi)
+                a = _edge(piece, piece.start_jd, root.exact_jd, hi)
             if span_lo < lo - 1e-12:
-                b = _bisect(root.exact_jd, piece.end_jd, lo)
+                b = _edge(piece, root.exact_jd, piece.end_jd, lo)
         return a, b
 
     # The span is derived within the root's ARC exactly as before, so every contact whose band stays inside its arc is BIT-IDENTICAL to what the
@@ -310,7 +330,7 @@ def solve_point_edges(
             t_exact_list=[jd_to_utc(r.exact_jd) for r in roots])
         occs: list[PointOccurrence] = []
         for root, contact in zip(roots, contacts):
-            a, b = _in_orb_span_around_root(index, root, orb)
+            a, b = _in_orb_span_around_root(index, root, orb, refine=refine, ephe_path=ephe_path)
             if not (a - 1e-9 <= root.exact_jd <= b + 1e-9):
                 raise RuntimeError(
                     f"{edge.agent} {edge.relation} {target}: refined root at "

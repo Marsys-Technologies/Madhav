@@ -26,8 +26,9 @@
       "PLAN §10 Serving"
      ],
      "detector": {
-      "ref": "origin/kalayantra/pb-k9-final",
-      "type": "branch_merged"
+      "min_bytes": 200,
+      "path": "/Users/Dev/kalayantra/run/K9_6_LIVE.json",
+      "type": "file_exists"
      },
      "item": "K9-6",
      "role": "live acceptance: the seven views resolve through the registry and the Vidhi bridge against the published head",
