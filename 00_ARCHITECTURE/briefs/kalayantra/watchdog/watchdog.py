@@ -20,11 +20,19 @@ work is waiting (finished jobs unread, a non-empty fast/BACKLOG.txt or fast/ARM_
 ONE nudge at most every KY_WD_NUDGE_EVERY_MIN minutes: it writes the line to KY_WD_DIR/NUDGE.txt (the cockpit's
 loop reads it) and logs action "nudge". No script-callable send into a running session exists (the SendMessage
 tool is the model's, and `claude --resume` on a live session starts a copy), so the file is the channel.
+
+Third line (page): when the cockpit session has had no turn for at least KY_WD_PAGE_IDLE_MIN minutes (measured as the
+nudge measures it: the transcript's last write) AND any of fast/ARM_ORDER.txt, fast/BACKLOG.txt or an ungated
+`- [ ]` item in fast/FOLLOWUPS.md is non-empty, the watchdog pages the owner surrogate session (KY_WD_PAGE_SESSION,
+default madhav-6d) at most every KY_WD_PAGE_EVERY_MIN minutes, through the same channel as the nudge (a one-line
+file in KY_WD_DIR: PAGE_SURROGATE.txt) and logs action "page-surrogate". A stale fast/CONDUCTOR_HEARTBEAT
+(older than KY_WD_HEARTBEAT_STALE_MIN minutes) is reported in the same page. No resume, no copy, no flags.
 """
 import datetime as dt
 import glob
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.request
@@ -66,6 +74,10 @@ class Config:
         self.fast_dir = g("KY_WD_FAST_DIR", os.path.dirname(self.fast_jobs.rstrip("/")))
         self.nudge_idle_min = float(g("KY_WD_NUDGE_IDLE_MIN", "20"))
         self.nudge_every_min = float(g("KY_WD_NUDGE_EVERY_MIN", "30"))
+        self.page_idle_min = float(g("KY_WD_PAGE_IDLE_MIN", "45"))
+        self.page_every_min = float(g("KY_WD_PAGE_EVERY_MIN", "45"))
+        self.page_session = g("KY_WD_PAGE_SESSION", "madhav-6d")
+        self.heartbeat_stale_min = float(g("KY_WD_HEARTBEAT_STALE_MIN", "10"))
         self.dry_run = g("KY_WD_DRY_RUN", "0") == "1"
         self.notify = g("KY_WD_NOTIFY", "1") == "1"
 
@@ -240,6 +252,43 @@ def nudge_text(unread, backlog, arm_order):
     return "%d finished jobs unread; backlog %d; arm-order %d; act" % (unread, backlog, arm_order)
 
 
+FOLLOWUP_OPEN = re.compile(r"^\s*-\s*\[ \]")
+FOLLOWUP_GATE = re.compile(r"\b(after|when|once|until|pending|held)\b", re.IGNORECASE)
+
+
+def ungated_followups(path):
+    """Open follow-up items ('- [ ]' lines) that carry no gate word (after/when/once/until/pending/held).
+    Missing/unreadable = 0."""
+    try:
+        with open(path) as fh:
+            return sum(1 for line in fh if FOLLOWUP_OPEN.match(line) and not FOLLOWUP_GATE.search(line))
+    except OSError:
+        return 0
+
+
+def heartbeat_age_min(path, now):
+    """Minutes since the conductor's last heartbeat (a UTC timestamp in the file), or None when missing/unparseable."""
+    try:
+        with open(path) as fh:
+            text = fh.read().strip()
+        stamp = dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
+        if stamp.tzinfo is None:
+            stamp = stamp.replace(tzinfo=UTC)
+    except (OSError, ValueError):
+        return None
+    return (now - stamp).total_seconds() / 60
+
+
+def page_text(silent_min, arm_order, backlog, followups, hb_age, stale_min):
+    text = "cockpit has had no turn for %d min; pending: arm-order %d, backlog %d, followups %d" % (
+        silent_min, arm_order, backlog, followups)
+    if hb_age is None:
+        text += "; CONDUCTOR_HEARTBEAT missing or unreadable"
+    elif hb_age > stale_min:
+        text += "; CONDUCTOR_HEARTBEAT stale %d min" % hb_age
+    return text
+
+
 # ───────────────────────────── state, log, actions ─────────────────────────────
 
 def load_state(cfg):
@@ -292,6 +341,36 @@ def nudge(cfg, state, rec, unread, backlog, arm_order, now):
     return True
 
 
+def page_surrogate(cfg, state, silent_min, now):
+    """Page the owner surrogate session when the cockpit has had no turn for cfg.page_idle_min with work pending;
+    at most one page per cfg.page_every_min. Returns the page record (also logged as action "page-surrogate"),
+    or None when no page was sent.
+
+    Same channel as the nudge: one overwritten line in KY_WD_DIR/PAGE_SURROGATE.txt. It never resumes, flags or
+    copies a session. An unknown silence (no transcript) never pages."""
+    if silent_min is None or silent_min < cfg.page_idle_min:
+        return None
+    arm_order = queue_depth(os.path.join(cfg.fast_dir, "ARM_ORDER.txt"))
+    backlog = queue_depth(os.path.join(cfg.fast_dir, "BACKLOG.txt"))
+    followups = ungated_followups(os.path.join(cfg.fast_dir, "FOLLOWUPS.md"))
+    if not (arm_order or backlog or followups):
+        return None
+    last = state.get("last_page")
+    if last and (now - dt.datetime.fromisoformat(last)).total_seconds() < cfg.page_every_min * 60:
+        return None
+    hb_age = heartbeat_age_min(os.path.join(cfg.fast_dir, "CONDUCTOR_HEARTBEAT"), now)
+    text = page_text(silent_min, arm_order, backlog, followups, hb_age, cfg.heartbeat_stale_min)
+    if not cfg.dry_run:
+        os.makedirs(cfg.dir, exist_ok=True)
+        with open(os.path.join(cfg.dir, "PAGE_SURROGATE.txt"), "w") as fh:
+            fh.write("%s %s: %s\n" % (now.isoformat(), cfg.page_session, text))
+    state["last_page"] = now.isoformat()
+    rec = {"ts": now.isoformat(), "action": "page-surrogate", "to": cfg.page_session, "page": text,
+           "silent_min": round(silent_min, 1), "dry_run": cfg.dry_run}
+    log(cfg, rec)
+    return rec
+
+
 def wake(cfg, sid):
     # No other flags: resuming with any flag starts a COPY of the session instead of continuing it
     # (verified 2026-10-15 against Claude Code 2.1.296). The session keeps its own saved options.
@@ -338,6 +417,10 @@ def tick(cfg, now=None, ps_start=proc_start, waker=wake):
         elif (now - lw).total_seconds() / 60 >= cfg.verify_min and not last_wake.get("counted"):
             state["failed_wakes"] = state.get("failed_wakes", 0) + 1
             last_wake["counted"] = True
+
+    paged = page_surrogate(cfg, state, silent_min, now)
+    if paged:
+        rec["page"] = paged["page"]
 
     if liveness != "absent":
         rec.update(action="none", reason="session %s" % liveness)
