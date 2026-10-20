@@ -14,7 +14,7 @@ PGENV="${KY_READBACK_PGENV:-/Users/Dev/.config/pravaha/pgenv.sh}"     # the over
 [ -f "$PGENV" ] || { echo "read-only connection settings are missing" >&2; exit 4; }
 source "$PGENV"
 exec "$KY_ROOT/venv/bin/python" - "$KY_ROOT" "$SQL" "$MIG" "$SQL_SHA" <<'KYPY'
-import csv, hashlib, pathlib, re, sys
+import csv, hashlib, os, pathlib, re, sys
 import psycopg
 
 root = pathlib.Path(sys.argv[1]).resolve(); sql_arg, mig = sys.argv[2], sys.argv[3]
@@ -37,7 +37,12 @@ else:
     sql = sql_bytes.decode("utf-8")
     if "\\" in sql: raise SystemExit("backslash is not allowed in a readback file")
     if not re.match(r"\s*(SELECT|WITH)\b", sql, re.I): raise SystemExit("one SELECT/WITH statement required")
-with psycopg.connect("") as conn:          # connection settings come from the read-only environment file only
+# The scoped backups measure rows under TimeZone=UTC and extra_float_digits=3 (platform/scripts/backup_v5_small_test_job.py);
+# a readback that compares against them must read float and timestamp text the same way. Set for this session only, at connect
+# time (never ALTER ROLE, never the credentials file); any PGOPTIONS the environment file already carries is kept, ours last.
+SESSION_OPTIONS = "-c timezone=UTC -c extra_float_digits=3"
+options = " ".join(x for x in (os.environ.get("PGOPTIONS", "").strip(), SESSION_OPTIONS) if x)
+with psycopg.connect("", options=options) as conn:          # connection settings come from the read-only environment file only
     conn.read_only = True
     with conn.cursor() as cur:
         cur.execute("SET LOCAL statement_timeout = '14min'")
