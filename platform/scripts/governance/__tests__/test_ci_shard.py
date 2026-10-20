@@ -114,7 +114,12 @@ def test_ci_matrix_count_and_name_agree(jobs):
     assert len(re.findall(rf"ci_shard\.py --count {n} ", runs + " ")) >= 2                       # the --verify step and the pytest step
     assert not re.findall(r"ci_shard\.py --count (?!%d\b)\d+" % n, runs)
     assert "--index ${{ matrix.shard }}" in runs and "--verify" in runs
-    assert sh.get("timeout-minutes", 0) <= 20   # raised from 10: the shard measured 593 s on the merge-group tree, just under the old cap
+    # raised from 10 (the shard measured 593 s on the merge-group tree), then to 35 for shard 1 only: it also runs the J-1a lane step
+    # (apt + pip installs, a throwaway cluster, ~5-8 min of DB tests). Still a pin, not a free pass: the lane step must exist for the
+    # extra budget to be justified, and the global A55 ceiling (45) stays above it.
+    timeout = sh.get("timeout-minutes", 0)
+    lane_step = any("pytest governance-tool-tests-lane --" in str(s.get("run", "")) for s in sh["steps"])
+    assert timeout <= (35 if lane_step else 20)
 
 
 def test_the_aggregate_job_keeps_the_original_required_name_and_fails_on_any_non_success(jobs):
