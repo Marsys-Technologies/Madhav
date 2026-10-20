@@ -200,6 +200,45 @@ def fence_quiescent() -> bool:
         return False
     return True
 
+def publish_teardown_completions() -> None:
+    """SR-TEARDOWN-COMPLETION: publish <op>.completion.json for a COMMITTED teardown receipt (status AWAITING_ABSENCE) once an ACCEPTED absence
+    receipt (acceptance/<absence op>.absence.json) binds its digest. The verdict is the reviewed policy's own absence_evidence, the very check
+    fence_quiescent runs, and the document is the one fence_quiescent writes; but no fence and no quiescence record is involved: this reads and
+    writes receipts only and never touches FENCE. A receipt or candidate the check refuses is skipped; nothing is published for it."""
+    candidates = sorted(ACC.glob("*.absence.json"))
+    if not candidates: return
+    for path in sorted(REC.glob("*.json")):
+        if path.name.endswith(".completion.json") or (REC / f"{path.stem}.completion.json").exists(): continue
+        try:
+            commit_bytes = path.read_bytes()
+            committed = json.loads(commit_bytes)
+            if (committed.get("kind") not in TEARDOWN_KINDS or committed.get("status") != "AWAITING_ABSENCE"
+                    or committed.get("operation_id") != path.stem): continue
+            policy = smalltest_policy(committed)
+            for accepted in candidates:
+                absence = REC / f"{accepted.name[:-len('.absence.json')]}.json"
+                if absence == path: continue
+                proof = {"absence_receipt": {"name": absence.name, "sha256": digest_bytes(absence.read_bytes())},
+                         "absence_acceptance": {"name": accepted.name, "sha256": digest_bytes(accepted.read_bytes())}}
+                try: observed = policy["absence_evidence"](proof, OPS, teardown_receipt=committed)
+                except Exception: continue
+                completion = dict(schema=f"ky.{committed['kind'].split('_')[0]}_completion/1", status="COMPLETED", operation_id=committed["operation_id"],
+                    request_sha256=committed["request_sha256"], reviewed_commit=committed["reviewed_commit"],
+                    commit_receipt_sha256=digest_bytes(commit_bytes), run_id=observed["run_id"],
+                    scope_sha256=observed["scope_sha256"], rowset_sha256=observed["rowset_sha256"],
+                    absence_receipt=proof["absence_receipt"], absence_acceptance=proof["absence_acceptance"])
+                target = REC / f"{path.stem}.completion.json"
+                with _lock:
+                    staged = target.with_suffix(".json.tmp")
+                    with staged.open("w") as stream:
+                        stream.write(json.dumps(completion, indent=1))
+                        stream.flush(); os.fsync(stream.fileno())
+                    os.replace(staged, target)
+                log(f"{path.stem} teardown completion published (absence {absence.stem})")
+                break
+        except Exception: continue
+
+
 def refresh_state() -> str:
     try: return str(json.loads(REFRESH.read_text()).get("result", "UNKNOWN"))
     except (OSError, json.JSONDecodeError): return "UNKNOWN"
@@ -1406,6 +1445,7 @@ def main() -> int:
         if time.time() - last_caps > 300: caps = capabilities(table is not None); last_caps = time.time()
         if table is None or (KY_ROOT / "HOLD").exists(): time.sleep(10); continue      # no table on main yet (before B-1), refs unreachable, or HOLD
         if FENCE.exists(): fence_quiescent()  # reconcile independent small-test completion; retain the owner-controlled fence
+        publish_teardown_completions()        # SR-TEARDOWN-COMPLETION: a committed teardown + its accepted absence complete without a fence
         for f in sorted(REQ.glob("*.json")):
             try: req = json.loads(f.read_text())
             except Exception as e:
