@@ -263,6 +263,35 @@ def build_bundle(facts: Iterable[Mapping], firings: Iterable[Mapping], signals: 
     return sorted(output, key=mechanism_density_key)
 
 
+def bind_signal_ids(rows: Iterable[Mapping]) -> dict[tuple[str, str | None], str]:
+    """The MSR signal each candidate row belongs to, keyed (mechanism_id, event_class_id).
+
+    (I) INTERPRETATION: the table's identity is one row per (chart, signal,
+    ayanamsha, generation) (idx_kap_chart_signal_ayan_generation) while the F1
+    graph is many rows per signal. A row therefore *belongs to* a signal only
+    when that is unambiguous: a testimony row is its own signal's row; an
+    admitted row belongs to its sole attached signal when no other row of the
+    same convention lists that signal. Rows with no, several or a shared
+    signal are absent from the result and keep an honest NULL (§N.7.6); no
+    signal is chosen, defaulted or invented for them.
+    """
+    rows = list(rows)
+    listed: dict[tuple[str, str], int] = {}
+    for row in rows:
+        for signal_id in row["attachments"]:
+            key = (str(row["ayanamsha_id"]), str(signal_id))
+            listed[key] = listed.get(key, 0) + 1
+    bound = {}
+    for row in rows:
+        attachments = list(row["attachments"])
+        if len(attachments) != 1:
+            continue
+        key = (str(row["ayanamsha_id"]), str(attachments[0]))
+        if row["route"] == "testimony" or listed[key] == 1:
+            bound[(row["mechanism_id"], row["event_class_id"])] = str(attachments[0])
+    return bound
+
+
 def mechanism_density_key(row):
     """Earned fact verification precedes an unavailable yoga verification tier."""
     if row.get('null_reason') in {reason.value for reason in UnassessedReason}:

@@ -288,3 +288,78 @@ def test_served_locator_resolution_reaches_the_stored_structural_graph(db):
     row = next(r for r in ledger_rows(db) if r['source'] == 'chart_facts:CODEX-moon')
     assert row['graph_edges'][0]['provenance'] == 'verse_cited'
     assert row['graph_edges'][0]['source_locator'] == 'bphs:PG286:C1'
+
+
+# --- K9 D10: candidate rows carry the signal they belong to (the output-digest key) -------------
+
+SIGNAL2 = "00000000-0000-0000-0000-000000000296"
+
+
+def _own_signal_testimony(db):
+    """An L2 signal over a fact no yoga uses, with an explicit proposal: a testimony row of its own."""
+    db.execute("INSERT INTO chart_facts VALUES (%s,'CODEX-sun','a','graha_position','Sun','longitude_sidereal',10,'deg',%s,'two_pass_verified',NULL,NULL,NULL)", (CHART, BUILD))
+    db.execute("INSERT INTO bodha_msr_signals VALUES (%s,%s,'a',ARRAY['CODEX-sun'],%s,0.8,%s)",
+               (CHART, SIGNAL2, Jsonb({'event_class_id': 'major_gain', 'assumptions': {'proposal': 'x'}}), BUILD))
+
+
+def _yojaka_digest_spec(db):
+    """Migration 1024's reviewed spec verbatim, re-pinned to this fixture's chart (sha recomputed by the real function)."""
+    import json
+    import re
+    from pipeline.orchestrator.provenance import canonical_digest
+    sql = (ROOT.parent / "migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql").read_text()
+    spec = json.loads(re.search(r"'(\{\"version\".*?\})'::jsonb", sql, re.S).group(1))
+    assert spec["components"][0]["key_columns"] == ["chart_id", "signal_id", "ayanamsha_id"]
+    spec["components"][0]["where_equals"] = {"chart_id": CHART}
+    db.execute('''CREATE TABLE asset_output_digest_specs (asset_id TEXT NOT NULL, spec_sha256 TEXT NOT NULL,
+                  spec JSONB NOT NULL, retired_at TIMESTAMPTZ, PRIMARY KEY (asset_id, spec_sha256))''')
+    db.execute("INSERT INTO asset_output_digest_specs(asset_id,spec_sha256,spec) VALUES ('ka_yojaka',%s,%s)",
+               (canonical_digest(spec), Jsonb(spec)))
+
+
+def test_testimony_row_carries_its_own_signal_and_the_registered_digest_computes(db):
+    """D10: spec 1024 keys on signal_id, so a candidate rebuild whose rows all belong to a signal must digest."""
+    from pipeline.orchestrator.output_digest import compute_output_digest
+    db.execute("DELETE FROM ga_yoga_firings")
+    _own_signal_testimony(db)
+    _yojaka_digest_spec(db)
+    KaYojakaWriter().run(ctx(db))
+    with db.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        digest, sha = compute_output_digest(cur, asset_id='ka_yojaka')  # raises on a NULL reviewed key
+    assert digest and len(digest) == 64 and sha
+    rows = db.execute("SELECT signal_id::text, mechanism_route FROM kala_activation_predicates "
+                      "WHERE generation='candidate:CODEX-197' ORDER BY 1").fetchall()
+    assert rows == [(SIGNAL, 'testimony'), (SIGNAL2, 'testimony')]  # one row per signal, each its own
+
+
+def test_a_signal_shared_by_several_rows_is_bound_to_none_of_them(db):
+    """sunapha binds two event classes (Y-SUNAPHA), so both rows list SIGNAL: a unique (chart, signal,
+    ayanamsha, generation) identity cannot hold both, and choosing one would invent a belonging."""
+    _own_signal_testimony(db)
+    KaYojakaWriter().run(ctx(db))
+    rows = dict(db.execute("SELECT mechanism_route, signal_id::text FROM kala_activation_predicates "
+                           "WHERE generation='candidate:CODEX-197' AND signal_id IS NULL "
+                           "OR generation='candidate:CODEX-197' AND mechanism_route='testimony'").fetchall())
+    assert rows == {'admitted': None, 'testimony': SIGNAL2}
+    assert db.execute("SELECT count(*) FROM kala_activation_predicates WHERE generation='candidate:CODEX-197' "
+                      "AND mechanism_route='admitted' AND signal_id IS NOT NULL").fetchone()[0] == 0
+
+
+def _row(mechanism, event_class, attachments, route="admitted", ayan="a"):
+    return dict(mechanism_id=mechanism, event_class_id=event_class, attachments=attachments,
+                route=route, ayanamsha_id=ayan)
+
+
+def test_bind_signal_ids_binds_only_an_unambiguous_belonging():
+    from services.ka_yojaka.promise_adapter import bind_signal_ids
+    rows = [
+        _row("m:sole", None, ["S1"]),                        # one signal, listed by nobody else -> bound
+        _row("m:two", "c1", ["S2"]), _row("m:two", "c2", ["S2"]),   # shared across classes -> unbound
+        _row("m:many", None, ["S3", "S4"]),                  # several candidates -> unbound
+        _row("m:none", None, []),                            # no signal exists -> unbound
+        _row("t:S5", "c1", ["S5"], route="testimony"),       # a testimony row IS its signal's row
+        _row("m:yoga5", None, ["S5"]),                       # ...and an admitted row listing it loses
+        _row("m:other-ayan", None, ["S1"], ayan="b"),        # same id under another convention is distinct
+    ]
+    assert bind_signal_ids(rows) == {("m:sole", None): "S1", ("t:S5", "c1"): "S5",
+                                     ("m:other-ayan", None): "S1"}
