@@ -46,7 +46,6 @@ def _admin():
 def cluster(tmp_path_factory):
     global DSN, ADMIN_URL, SUDSN
     data = tmp_path_factory.mktemp("pgscram") / "data"
-    sock = Path(tempfile.mkdtemp(prefix="b6pg"))
     pwfile = tmp_path_factory.mktemp("pgpw") / "pw"
     pwfile.write_text("testsuperpw")
     with socket.socket() as sk:
@@ -54,7 +53,7 @@ def cluster(tmp_path_factory):
         port = sk.getsockname()[1]
     env = {k: v for k, v in os.environ.items() if not k.startswith("PG")}
     subprocess.run([str(BIN / "initdb"), "-D", str(data), "-U", "postgres", "-A", "scram-sha-256", f"--pwfile={pwfile}", "-E", "UTF8"], check=True, capture_output=True, env=env)
-    subprocess.run([str(BIN / "pg_ctl"), "-D", str(data), "-o", f"-p {port} -k {sock} -c listen_addresses=127.0.0.1", "-l", str(data.parent / "log"), "-w", "start"],
+    subprocess.run([str(BIN / "pg_ctl"), "-D", str(data), "-o", f"-p {port} -c unix_socket_directories= -c listen_addresses=127.0.0.1", "-l", str(data.parent / "log"), "-w", "start"],
                    check=True, capture_output=True, env=env)
     SUDSN = f"postgresql://postgres:testsuperpw@127.0.0.1:{port}/postgres"
     ADMIN_URL = f"postgresql://pgadmin:{ADMIN_PW}@127.0.0.1:{port}/postgres"
@@ -70,7 +69,6 @@ def cluster(tmp_path_factory):
         yield {"port": port}
     finally:
         subprocess.run([str(BIN / "pg_ctl"), "-D", str(data), "-m", "immediate", "-w", "stop"], capture_output=True, env=env)
-        shutil.rmtree(sock, ignore_errors=True)
 
 
 @pytest.fixture()
@@ -495,3 +493,140 @@ def test_an_activation_that_cannot_be_observed_is_compensated_and_verified(world
     with _admin() as c:
         assert role(c, "gochara_sealer")[8] is True
         assert c.execute("SELECT shobj_description(oid,'pg_authid') FROM pg_roles WHERE rolname='gochara_sealer'").fetchone()[0] == "gochara-provision:sealer-password-null"
+
+
+# ── J-4b-a55j (A6 D-40, SR-GRANTS-MINIMAL / SR-A55J-A55M-RESCOPE): the L1 read grants and the sealer credential, both inside this one-shot ─────────────
+# Sources: migration 1378 header lines 53-57 ("NOT HERE, ON PURPOSE": both principals need SELECT on chart_facts and chart_dashas, nothing else, provisioned before the first
+# verification run); the runbook's "L1 read ACLs" section; SR-GRANTS-MINIMAL (the one-shot workflow generates the sealer credential straight into Secret Manager, never printed).
+L1_TABLES = ("chart_facts", "chart_dashas")
+PRIVS = ("SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER")
+
+
+@pytest.fixture()
+def l1(world):
+    """The two L1 tables (owned by the script's admin role, as the data-plane ownership bootstrap leaves them) plus a third L1 table that must stay untouched."""
+    with _admin() as c:
+        for t in (*L1_TABLES, "chart_divisionals"):
+            c.execute(f"DROP TABLE IF EXISTS public.{t}")
+            c.execute(f"CREATE TABLE public.{t} (id int)")
+            c.execute(f"ALTER TABLE public.{t} OWNER TO pgadmin")
+    yield
+    with _admin() as c:
+        for t in (*L1_TABLES, "chart_divisionals"):
+            c.execute(f"DROP TABLE IF EXISTS public.{t}")
+
+
+def held(role_name, table):
+    with _admin() as c:
+        return {p for p in PRIVS if c.execute("SELECT has_table_privilege(%s, %s, %s)", (role_name, f"public.{table}", p)).fetchone()[0]}
+
+
+def grant_option(role_name, table):
+    with _admin() as c:
+        return any(c.execute("SELECT has_table_privilege(%s, %s, %s)", (role_name, f"public.{table}", f"{p} WITH GRANT OPTION")).fetchone()[0] for p in PRIVS)
+
+
+def test_grant_l1_reads_gives_both_principals_select_on_exactly_the_two_l1_tables_and_nothing_else(world, l1):  # claim G1 (1378 header lines 53-57)
+    assert run(world).returncode == 0
+    r = run(world, "grant-l1-reads")
+    assert r.returncode == 0, r.stdout + r.stderr
+    for who in ("gochara_verifier", "gochara_sealer"):
+        for t in L1_TABLES:
+            assert held(who, t) == {"SELECT"}, (who, t)           # read only: no write, no REFERENCES/TRIGGER
+            assert grant_option(who, t) is False, (who, t)        # and no right to pass it on
+        assert held(who, "chart_divisionals") == set(), who       # a third L1 table is not widened
+    assert verbs(world) == ["add", "list"]                         # this stage touches no secret
+
+
+def test_grant_l1_reads_is_idempotent(world, l1):  # claim G4
+    assert run(world).returncode == 0
+    assert run(world, "grant-l1-reads").returncode == 0
+    again = run(world, "grant-l1-reads")
+    assert again.returncode == 0, again.stdout + again.stderr
+    assert held("gochara_sealer", "chart_facts") == {"SELECT"}
+
+
+def test_grant_l1_reads_refuses_when_a_principal_is_absent_and_changes_nothing(world, l1):  # claim G2
+    r = run(world, "grant-l1-reads")                               # create-roles has not run: neither role exists
+    assert r.returncode == 3 and "does not exist" in r.stderr, r.stdout + r.stderr
+    assert run(world).returncode == 0
+    with _admin() as c:
+        c.execute("DROP ROLE gochara_sealer")
+    r = run(world, "grant-l1-reads")
+    assert r.returncode == 3 and "gochara_sealer does not exist" in r.stderr, r.stdout + r.stderr
+    assert held("gochara_verifier", "chart_facts") == set()        # nothing was granted to the one that does exist
+
+
+def test_grant_l1_reads_refuses_a_wider_pre_existing_acl_and_commits_nothing(world, l1):  # claim G3 (the grant is atomic with its closure check)
+    assert run(world).returncode == 0
+    with _admin() as c:
+        c.execute("GRANT INSERT ON public.chart_dashas TO gochara_verifier")      # something already made the verifier able to write L1
+    r = run(world, "grant-l1-reads")
+    assert r.returncode != 0 and "postcondition" in r.stderr, r.stdout + r.stderr
+    assert held("gochara_verifier", "chart_dashas") == {"INSERT"}  # unchanged: the SELECT grant rolled back with the failed check
+    assert held("gochara_sealer", "chart_facts") == set()
+
+
+def sealer_secret_name(world):
+    return (world["tmp"] / "gcloud_argv.txt").read_text()
+
+
+def test_sealer_credential_writes_the_sealer_dsn_to_secret_manager_and_the_role_authenticates_with_it(world):  # claim C1 (SR-GRANTS-MINIMAL)
+    import psycopg as pg
+    assert run(world).returncode == 0
+    (world["tmp"] / "gcloud_argv.txt").unlink()
+    tail = "@127.0.0.1:5432/amjis"
+    r = run(world, "sealer-credential", tail=tail)
+    assert r.returncode == 0, r.stdout + r.stderr
+    dsn = world["capture"].read_text()
+    m = re.fullmatch(r"postgresql://gochara_sealer:([0-9a-f]{96})" + re.escape(tail), dsn)
+    assert m, "the secret must be exactly the sealer DSN"
+    argv = sealer_secret_name(world)
+    assert "secrets versions add gochara-sealer-db-url" in argv and "--data-file=-" in argv and m.group(1) not in argv
+    assert m.group(1) not in visible(r)                           # the password is in the secret input and nowhere a log shows
+    assert "sealer password set" in r.stdout
+    with _login("gochara_sealer", m.group(1)) as c:               # activation is observable
+        assert c.execute("SELECT current_user").fetchone()[0] == "gochara_sealer"
+    with _admin() as c:
+        assert c.execute("SELECT shobj_description(oid,'pg_authid') FROM pg_roles WHERE rolname='gochara_sealer'").fetchone()[0] == "gochara-provision:sealer-password-set"
+    assert verbs(world) == ["add", "list", "add", "list"]          # create-roles' pair, then this stage's pair: never `access`, never `destroy` on success
+
+
+def test_sealer_credential_refuses_unless_the_sealer_is_recorded_password_null_and_writes_no_secret(world):  # claim C4 + C5
+    assert run(world, "sealer-credential", tail="@127.0.0.1:5432/amjis").returncode == 3          # roles absent
+    assert run(world).returncode == 0
+    before = verbs(world)
+    assert run(world, "sealer-credential", tail="@127.0.0.1:5432/amjis").returncode == 0
+    first = world["capture"].read_text()
+    again = run(world, "sealer-credential", tail="@127.0.0.1:5432/amjis")
+    assert again.returncode == 3 and "password-SET" in again.stderr, again.stdout + again.stderr   # a second run never rotates behind the first
+    assert world["capture"].read_text() == first and verbs(world) == before + ["add", "list"]
+    for bad in ("@user:pass@host/db", "no-at-sign", "@/db?x=1;drop"):
+        assert run(world, "sealer-credential", tail=bad).returncode == 2, bad
+
+
+def test_a_failed_sealer_credential_activation_destroys_the_secret_version_resets_the_password_and_verifies_both(world):  # claim C3
+    assert run(world).returncode == 0
+    with _admin() as c:
+        c.execute("GRANT cloudsqlsuperuser TO gochara_sealer")        # the activation's postcondition fails
+        before = role(c, "gochara_sealer")
+    r = run(world, "sealer-credential", tail="@127.0.0.1:5432/amjis")
+    assert r.returncode == 5 and "compensated and VERIFIED" in r.stderr and "destroyed secret version 7" in r.stderr, r.stdout + r.stderr
+    with _admin() as c:
+        assert role(c, "gochara_sealer") == before and role(c, "gochara_sealer")[8] is True      # password NULL again, attributes as before
+    destroyed = (world["tmp"] / "gcloud_destroy.txt").read_text()
+    assert "--secret gochara-sealer-db-url" in destroyed          # the SEALER secret, not the verifier's, is the one rolled back
+    pw = re.search(r"gochara_sealer:([0-9a-f]{96})", world["capture"].read_text()).group(1)
+    assert pw not in visible(r)
+
+
+def test_an_unobservable_sealer_credential_is_compensated(world):  # claim C6
+    assert run(world).returncode == 0
+    shim = world["tmp"] / "psql_login_always_fails"
+    shim.write_text(f'#!/usr/bin/env bash\n[ "${{PGUSER:-}}" = "gochara_sealer" ] && exit 2\nexec "{PSQL}" "$@"\n')
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    r = run(world, "sealer-credential", tail="@127.0.0.1:5432/amjis", psql=str(shim))
+    assert r.returncode == 5 and "cannot authenticate after activation" in r.stderr and "compensated and VERIFIED" in r.stderr, r.stdout + r.stderr
+    with _admin() as c:
+        assert role(c, "gochara_sealer")[8] is True
+    assert "--secret gochara-sealer-db-url" in (world["tmp"] / "gcloud_destroy.txt").read_text()

@@ -32,6 +32,13 @@ record — status REFUSED, exit 1 — so a partial record can never be mistaken 
              the highest non-empty bucket's upper bound (a bound, not a sample maximum) for each, the CPU expressed in vCPUs against the
              job's allocated cpu, and a `shape` (SINGLE_THREAD_BOUND when p95 sits at ~1 vCPU with more allocated). A series that is absent,
              unreadable or whose query failed reads NULL with its `status`, never zero. No Cloud Run metric exposes DB wait: `wait` says so.
+  · --job gochara-verification-job ALONE (J-4b-a55j, SR-A55J-A55M-RESCOPE: "the config is measured by cloudrun_job_readback; no new executor kind"): the verification-job
+             record described under "Second job" below, from ONE fixed describe (no registry, execution, logs or metrics call), plus named `checks` (with `--execution`, `--logs` or
+             `--metrics` the record is the plain job record and carries no `checks`). It reads the definition .github/workflows/gochara-verification-job-deploy.yml deploys; each check
+             computed from the describe response and false when the field differs (§N.8): image BY DIGEST of the pipeline repository, the verifier's own runtime identity,
+             the verifier entry point as the container command, exactly the three contract environment variables (one secret, by name), GOCHARA_RUNNER_IMAGE_DIGEST equal to
+             the deployed digest, GOCHARA_RUNNER_COMMIT a 40-hex commit, one task, Cloud SQL instance, max-retries 0, 8Gi/2cpu/7200s. This kind never starts, schedules or executes anything,
+             and it does not read the executor table (this file runs standalone).
 Honest nulls (CLAUDE.md §N.7.6 / §N.8): the corpus (Swiss Ephemeris files) cannot be measured without running the image, so the record
 says so in `corpus.status` rather than carrying a green; `provenance.image_attests_commit` is false because the image itself carries no
 revision label. Shapes follow the Cloud Run v1 Job/Execution resources (`spec.template.spec.template.spec` for the job, the path
@@ -62,6 +69,13 @@ PROJECT = "madhav-astrology"
 REGION = "asia-south1"
 JOB = "brahma-build-pipeline-job"
 IMAGE_REPO = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
+VERIFICATION_JOB = "gochara-verification-job"                           # .github/workflows/gochara-verification-job-deploy.yml env VERIFICATION_JOB
+VERIFIER_SERVICE_ACCOUNT = "gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
+VERIFIER_COMMAND = ["python", "-m", "pipeline.orchestrator.verification_job"]
+VERIFIER_SECRET = ("GOCHARA_VERIFIER_DB_URL", "gochara-verifier-db-url", "latest")
+VERIFIER_PLAIN_ENV = frozenset({"GOCHARA_RUNNER_COMMIT", "GOCHARA_RUNNER_IMAGE_DIGEST"})
+CLOUDSQL_INSTANCE = "madhav-astrology:asia-south1:amjis-postgres"
+COMMIT_40 = re.compile(r"[0-9a-f]{40}")
 EXECUTION = re.compile(r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*")      # smalltest_launch.EXECUTION, byte for byte
 TAG_REF = re.compile(re.escape(IMAGE_REPO) + r":([0-9a-f]{40})")
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
@@ -240,8 +254,8 @@ def registry_digest(commit: str, runner) -> str:
     return digest
 
 
-def measure_job(runner, job_name: str = JOB) -> tuple[dict, str | None]:
-    job = gcloud_json(job_describe_argv(job_name), runner, "job")
+def measure_job(runner, job_name: str = JOB, described: dict | None = None) -> tuple[dict, str | None]:
+    job = described if described is not None else gcloud_json(job_describe_argv(job_name), runner, "job")
     name = (job.get("metadata") or {}).get("name") if isinstance(job.get("metadata"), dict) else None
     if name != job_name:
         raise Refused(f"job: the described resource is {name!r}, not {job_name!r}")
@@ -782,8 +796,64 @@ def measure_metrics(execution: dict, job: dict, runner, clock, job_name: str = J
             "cpu": {**cpu, **_cpu_shape(cpu, allocated["cpu_vcpus"])}, "memory": memory}
 
 
+def _check(name: str, observed, ok) -> dict:
+    return {"name": name, "observed": observed, "ok": ok}
+
+
+def verification_checks(job: dict) -> tuple[list[dict], bool | None]:
+    """J-4b-a55j: the verification job's definition against the contract its deploy workflow sets. Every check is computed from the ONE describe response."""
+    outer = job.get("spec", {}).get("template", {}) if isinstance(job.get("spec"), dict) else {}
+    task_count = parse_int64(outer.get("spec", {}).get("taskCount")) if isinstance(outer.get("spec"), dict) else None
+    template_annotations = ((outer.get("spec") or {}).get("template") or {}).get("metadata", {}).get("annotations", {}) if isinstance(outer.get("spec"), dict) else {}
+    task = job_task_spec(job)
+    container = only_container(task, "verification job")
+    reference = need(container, "image", "verification job")
+    if not reference.startswith(IMAGE_REPO + "@"):
+        raise Refused("verification job: the image is not referenced by digest of the pipeline repository (this job runs only code built from a commit, by digest)")
+    digest = reference[len(IMAGE_REPO) + 1:]
+    if not DIGEST.fullmatch(digest):
+        raise Refused("verification job: the image is not referenced by digest of the pipeline repository (the digest is not sha256:<64-hex>)")
+    shown = environment(container)
+    raw = {e["name"]: e for e in container["env"]}
+    limits = (container.get("resources") or {}).get("limits") if isinstance(container.get("resources"), dict) else None
+    limits = limits if isinstance(limits, dict) else {}
+    retries = _count(task.get("maxRetries"), "verification job.maxRetries", required=False)
+    timeout = parse_int64(task.get("timeoutSeconds"))
+    secret_row = {"name": VERIFIER_SECRET[0], "source": "secret", "secret": VERIFIER_SECRET[1], "version": VERIFIER_SECRET[2]}
+    contract_env = (len(shown) == 3 and secret_row in shown
+                    and {e["name"] for e in shown if e["source"] == "value"} == VERIFIER_PLAIN_ENV)
+    runner_digest = raw.get("GOCHARA_RUNNER_IMAGE_DIGEST", {}).get("value")
+    runner_commit = raw.get("GOCHARA_RUNNER_COMMIT", {}).get("value")
+    checks = [
+        _check("image_by_digest_of_pipeline_repo", reference, True),
+        _check("service_account_is_the_verifier_runtime", task.get("serviceAccountName"), task.get("serviceAccountName") == VERIFIER_SERVICE_ACCOUNT),
+        _check("command_is_the_verifier_entry_point", container.get("command"), container.get("command") == VERIFIER_COMMAND),
+        _check("environment_is_exactly_the_contract", [e["name"] for e in shown], contract_env),
+        _check("runner_digest_equals_image_digest", runner_digest == digest, runner_digest == digest),
+        _check("runner_commit_is_a_full_commit", isinstance(runner_commit, str) and bool(COMMIT_40.fullmatch(runner_commit)),
+               isinstance(runner_commit, str) and bool(COMMIT_40.fullmatch(runner_commit))),
+        _check("task_count_is_one", task_count, task_count == 1),
+        _check("cloudsql_instance_is_the_amjis_instance", template_annotations.get("run.googleapis.com/cloudsql-instances") if isinstance(template_annotations, dict) else None,
+               isinstance(template_annotations, dict) and template_annotations.get("run.googleapis.com/cloudsql-instances") == CLOUDSQL_INSTANCE),
+        _check("max_retries_is_zero", retries, None if retries is None else retries == 0),        # proto3 omits a zero: unknown here, settled by the v2 REST read (workflow F-R15-3)
+        _check("resources_8Gi_2cpu_7200s", {"memory": limits.get("memory"), "cpu": limits.get("cpu"), "timeout_seconds": timeout},
+               limits.get("memory") == "8Gi" and limits.get("cpu") == "2" and timeout == 7200),
+    ]
+    oks = [c["ok"] for c in checks]
+    return checks, (False if any(o is False for o in oks) else (None if any(o is None for o in oks) else True))
+
+
+def measure_verification(runner, clock=lambda: dt.datetime.now(dt.timezone.utc)) -> dict:
+    """J-4b-a55j: `--job gochara-verification-job` alone (no execution, logs or metrics): the job record main's reader builds, plus the named contract `checks`.
+    ONE describe call: its response feeds both the job record and the checks."""
+    described = gcloud_json(job_describe_argv(VERIFICATION_JOB), runner, "job")
+    record = measure(None, runner, clock, job_name=VERIFICATION_JOB, described=described)
+    checks, all_ok = verification_checks(described)
+    return {**record, "checks": checks, "all_checks_ok": all_ok}
+
+
 def measure(execution: str | None, runner=default_runner, clock=lambda: dt.datetime.now(dt.timezone.utc), *, logs: bool = False, metrics: bool = False,
-            job_name: str = JOB) -> dict:
+            job_name: str = JOB, described: dict | None = None) -> dict:
     if job_name not in EXECUTIONS:
         raise Refused(f"the job is not one this reader names: {sorted(EXECUTIONS)}")
     if execution is not None and not EXECUTIONS[job_name].fullmatch(execution):
@@ -792,7 +862,7 @@ def measure(execution: str | None, runner=default_runner, clock=lambda: dt.datet
         raise Refused("logs can only be read for one execution: --logs requires --execution")
     if metrics and execution is None:
         raise Refused("metrics can only be read for one execution: --metrics requires --execution")
-    job, commit = measure_job(runner, job_name)
+    job, commit = measure_job(runner, job_name, described)
     record = {
         "schema": SCHEMA,
         "status": "MEASURED",
@@ -828,7 +898,10 @@ def cli(argv=None, runner=default_runner) -> int:
     parser.add_argument("--metrics", nargs="?", const="true", default=None, choices=("true", "True"))      # SR-BOLD-09
     args = parser.parse_args(argv)                                       # any other argument exits 2 before a cloud call
     try:
-        record = measure(args.execution, runner, logs=args.logs is not None, metrics=args.metrics is not None, job_name=args.job)
+        if args.job == VERIFICATION_JOB and args.execution is None and args.logs is None and args.metrics is None:      # J-4b-a55j: the definition-only read adds the named contract checks
+            record = measure_verification(runner)
+        else:
+            record = measure(args.execution, runner, logs=args.logs is not None, metrics=args.metrics is not None, job_name=args.job)
         code = 0
     except Refused as exc:
         record, code = {"schema": SCHEMA, "status": "REFUSED", "reason": str(exc)}, 1
