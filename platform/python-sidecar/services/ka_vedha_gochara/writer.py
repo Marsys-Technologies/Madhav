@@ -498,20 +498,42 @@ class KaVedhaGocharaWriter(WriterBase):
     asset_id = "ka_vedha_gochara"
 
     def run(self, ctx) -> WriterResult:
-        """SR-A4-01: pre-built provider stays inert until explicit binding.
+        """Candidate-only vedha adapter.
 
-        No legacy mutation, rolling fallback, publication or production input
-        binding. Follow-on activation must supply a candidate-bound payload.
+        An explicit typed `vedha_candidate_payload` in config is consumed as
+        given (tests and a bound follow-on). Otherwise, under orchestrator
+        dispatch (config = chart_id + birth_params only), a build BOUND to a
+        layer candidate derives its payload writer-side (provider.derive_payload:
+        candidate row + database + sky seam) and writes/attests its candidate
+        grains (SR-K9-PUBLISHABLE D2). A build with no bound candidate stays
+        inert: no legacy mutation, rolling fallback or publication.
         """
         from services.ka_vedha_gochara.candidate import VedhaPayload
         from services.ka_vedha_gochara.storage import replace_candidate
 
         payload = ctx.config.get("vedha_candidate_payload")
-        if payload is None or ctx.dry_run:
+        if ctx.dry_run:
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes="KA-3a pre-build: provider binding/activation pending")
+        derived = False
+        if payload is None:
+            from services.kala_core.writer_grain import bound_candidate
+            build_id = getattr(ctx, "build_id", None)
+            candidate = (bound_candidate(ctx.db_conn, build_id, ctx.config["chart_id"])
+                         if build_id and ctx.db_conn is not None else None)
+            if candidate is None:
+                return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                                    notes="KA-3a pre-build: provider binding/activation pending")
+            from services.ka_vedha_gochara.provider import derive_payload
+            payload = derive_payload(ctx, candidate)
+            derived = True
         if not isinstance(payload, VedhaPayload):
             raise TypeError("candidate dispatch requires a typed VedhaPayload")
         count = replace_candidate(ctx, payload)
+        if derived:
+            # Rows written = the 3 family headers + the intervals, so a candidate
+            # whose horizon is honestly interval-free is not mistaken for a no-op.
+            return WriterResult(asset_id=self.asset_id, rows_inserted=count + len(payload.headers),
+                                notes="candidate vedha headers+intervals (writer-side provider); no publication")
         return WriterResult(asset_id=self.asset_id, rows_inserted=count,
                             notes="candidate-only vedha intervals; no publication")

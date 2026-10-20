@@ -123,10 +123,12 @@ def test_update_excludes_its_own_interval_with_unchanged_or_changed_start(conn,s
     assert conn.execute('SELECT t_in=%s,t_out=%s FROM kala_vedha_gochara_interval',(start,D)).fetchone()==(True,True)
 
 
-def test_dispatch_unbound_or_without_provider_is_inert(conn):
+def test_dispatch_unbound_is_inert(conn):
+    # A build with no candidate bound stays inert. A BOUND build (BUILD) is no
+    # longer inert since SR-K9-PUBLISHABLE D2: see test_k9_dispatch_provider.py.
     from services.ka_vedha_gochara.writer import KaVedhaGocharaWriter
     before=snapshot(conn,'kala_vedha_gochara')
-    for build in (NATAL,BUILD):
+    for build in (NATAL,):
         ctx=SimpleNamespace(db_conn=conn,build_id=build,config={'chart_id':CHART},dry_run=False)
         result=KaVedhaGocharaWriter().run(ctx)
         assert result.rows_inserted==0

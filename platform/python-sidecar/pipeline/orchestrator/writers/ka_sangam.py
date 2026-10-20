@@ -43,6 +43,8 @@ from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
+from services.kala_core.writer_grain import (
+    GRAIN_STEP, attest_inputs, bound_candidate, grain_steps, predicate_generation)
 from panchang_engine.swiss_backend import records_swiss_backend
 
 # ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
@@ -248,6 +250,10 @@ class _LegacyKaSangamWriter(WriterBase):
         conn      = ctx.db_conn
         chart_id  = ctx.config['chart_id']
         self._chart_id = chart_id
+        # K9 (SR-K9-PUBLISHABLE): a build bound to a layer candidate reads the
+        # predicates of THAT candidate generation, never the published head.
+        self._candidate = bound_candidate(conn, getattr(ctx, 'build_id', None), chart_id)
+        predicate_gen = predicate_generation(conn, chart_id, self._candidate)
 
         # Load candidate predicates.
         #
@@ -293,7 +299,7 @@ class _LegacyKaSangamWriter(WriterBase):
                     FROM kala_activation_predicates p
                     LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
                     WHERE p.chart_id = %s
-                      AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
+                      AND p.generation = %s
                       AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
                 ),
                 ranked AS (
@@ -311,9 +317,12 @@ class _LegacyKaSangamWriter(WriterBase):
                 FROM ranked
                 WHERE class_rank <= %s
                 """,
-                (chart_id, _MAX_PREDICATES),
+                (chart_id, predicate_gen, _MAX_PREDICATES),
             )
             candidates = cur.fetchall()
+        # The grain's input ledger: the predicate content this build consumed
+        # (row ids are execution history, not content).
+        self._grain_sources = [{k: v for k, v in row.items() if k != 'id'} for row in candidates]
 
         logger.info(
             "ka_sangam: loaded %d candidate predicates (pre-quota-select) for chart %s",
@@ -1191,9 +1200,25 @@ class KaSangamWriter(_LegacyKaSangamWriter):
     CLAUDE.md §N.8.4). Keep real legacy production rather than claiming either.
     """
 
+    def _attest_candidate_grain(self, ctx) -> WriterResult:
+        """Attest `ka_sangam:inputs` under the candidate generation (after every
+        class/lifetime substep). 'rows' only when kala_convergence holds rows."""
+        conn = ctx.db_conn
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            cur.execute("SELECT count(*) FROM kala_convergence WHERE chart_id = %s", (self._chart_id,))
+            produced = int(cur.fetchone()[0])
+        attest_inputs(conn, self._candidate, 'ka_sangam',
+                      sources={'kala_activation_predicates': self._grain_sources},
+                      produced_rows=produced)
+        return WriterResult('ka_sangam', 0, notes='candidate grain ka_sangam:inputs attested')
+
     def plan_substeps(self, ctx) -> list[SubStep]:
         if 'jury_fixture_inputs' not in ctx.config:
-            return super().plan_substeps(ctx)
+            # Read-only: the attestation substep is offered only while this
+            # candidate lacks the ka_sangam grain (writer_grain.grain_steps).
+            steps = super().plan_substeps(ctx)
+            return steps + grain_steps(ctx, self._candidate, 'ka_sangam',
+                                       {'kala_activation_predicates': self._grain_sources})
         from services.ka_sangam.jury import candidate
         inputs = candidate.class_inputs(ctx.config['jury_fixture_inputs'])
         generation = candidate.bind_candidate(ctx, lock=False)
@@ -1205,6 +1230,8 @@ class KaSangamWriter(_LegacyKaSangamWriter):
 
     def run_substep(self, ctx, step: SubStep) -> WriterResult:
         if 'jury_fixture_inputs' not in ctx.config:
+            if step.key == GRAIN_STEP:
+                return self._attest_candidate_grain(ctx)
             return super().run_substep(ctx, step)
         from services.ka_sangam.jury import candidate
         if not step.key.startswith('class:') or step.key[6:] not in self._jury_inputs:

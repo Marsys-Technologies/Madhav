@@ -38,6 +38,7 @@ from ga_writers.ga_sensitive_degree_writer import GANDANTA_CITATION, check_ganda
 import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from services.kala_core.writer_grain import attest_inputs, bound_candidate, predicate_generation
 from services.ka_temporal import (
     load_dasha_timeline,
     resolve_activation_windows,
@@ -211,6 +212,11 @@ class _LegacyKaVighnakaraWriter(WriterBase):
 
         conn     = ctx.db_conn  # NEVER commit or rollback
         chart_id = ctx.config['chart_id']
+        # K9 (SR-K9-PUBLISHABLE): a build bound to a layer candidate reads the
+        # predicates of THAT candidate generation (never the published head)
+        # and attests its input grain under it; an ordinary rebuild does neither.
+        candidate = bound_candidate(conn, getattr(ctx, 'build_id', None), chart_id)
+        predicate_gen = predicate_generation(conn, chart_id, candidate)
 
         # Idempotency: delete-then-insert scoped to chart.
         # Safe to DELETE only after confirming swisseph is available and we can rebuild.
@@ -232,6 +238,10 @@ class _LegacyKaVighnakaraWriter(WriterBase):
             convergence_rows = cur.fetchall()
 
         if not convergence_rows:
+            if candidate is not None:
+                attest_inputs(conn, candidate, 'ka_vighnakara',
+                              sources={'kala_convergence': [], 'predicate_generation': [predicate_gen]},
+                              produced_rows=0)
             return WriterResult(
                 asset_id='ka_vighnakara', rows_inserted=0,
                 notes='No convergence windows — run ka_sangam first',
@@ -304,7 +314,8 @@ class _LegacyKaVighnakaraWriter(WriterBase):
         already_covered = {
             str(r[1]) for r in convergence_rows if r[1] is not None  # signal_id column
         }
-        dasha_anchors = self._dasha_anchor_peaks(conn, chart_id, already_covered)
+        dasha_anchors = self._dasha_anchor_peaks(conn, chart_id, already_covered,
+                                                 generation=predicate_gen)
         for peak_date, signal_id in dasha_anchors:
             jd = _jd_from_date(peak_date)
             obstructions = _detect_all(
@@ -345,6 +356,12 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     rows if store_tier else [row[:-1] for row in rows],
                 )
 
+        if candidate is not None:
+            attest_inputs(conn, candidate, 'ka_vighnakara',
+                          sources={'kala_convergence': convergence_rows,
+                                   'dasha_anchor_peaks': dasha_anchors,
+                                   'predicate_generation': [predicate_gen]},
+                          produced_rows=len(rows))
         return WriterResult(asset_id='ka_vighnakara', rows_inserted=len(rows))
 
     def _fetch_combustion_orbs(self, conn) -> dict[str, float]:
@@ -484,7 +501,8 @@ class _LegacyKaVighnakaraWriter(WriterBase):
             logger.debug("ka_vighnakara: natal lagna fetch failed: %s", exc)
         return None
 
-    def _dasha_anchor_peaks(self, conn, chart_id: str, covered_signal_ids: set) -> list:
+    def _dasha_anchor_peaks(self, conn, chart_id: str, covered_signal_ids: set,
+                            generation: Optional[str] = None) -> list:
         """WP-2.1: distinct dasha-derived activation peaks for signals NOT covered
         by a convergence window, so obstruction detection reaches them.
 
@@ -518,11 +536,12 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
                     FROM kala_activation_predicates p
                     WHERE p.chart_id = %s
-                      AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
+                      AND p.generation = %s
                       AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
                     ORDER BY signal_id
                     """,
-                    (chart_id,),
+                    (chart_id, generation if generation is not None
+                     else predicate_generation(conn, chart_id, None)),
                 )
                 predicates = cur.fetchall()
 
