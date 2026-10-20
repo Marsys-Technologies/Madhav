@@ -1260,12 +1260,17 @@ RECORD_SUPPORT_PINS = {"ayan": _C_AYANAMSHA, "system": _C_SYSTEM, "tier": _C_TIE
 # in the horizon has an empty running set (`false`), never `unknown` (§N.8: has_rows must measure its own claim).
 # (I) INTERPRETATION (merge of main's J-2a with this PR's G12 copy): the `held` probe of a LEGACY snapshot (ids, no copy)
 # is main's live probe; for a snapshot WITH a copy the statement must not even NAME the live relation (the G12 claim), so
-# `held` there is read from the copy — the same rows the copy-reading builder (`make_period_rows_for_snapshot`) sees, so
-# builder and verifier agree on what "no rows" means for a copy snapshot.
+# `held` there is read from the snapshot ALONE: the copy's rows UNION `consumed_dasha_held`, the (lord, level) pairs the
+# build holds that the database recorded at capture (the copy carries only horizon-overlapping rows, so on its own it
+# cannot tell "held, running outside the horizon" from "absent"). The copy-reading builder
+# (`make_period_rows_for_snapshot(...).holds`) reads the same two things, so builder and verifier agree on what "no rows"
+# means for a copy snapshot. A snapshot captured before that record existed (`consumed_dasha_held` NULL) falls back to the
+# copy alone — the pre-record behaviour, which cannot see a held-but-outside lord.
 RECORD_SUPPORT_SQL_TEMPLATE = """
 WITH snap AS (
   SELECT s.consumed_dasha_row_ids AS ids,
-         (to_jsonb(s) -> 'consumed_dasha_rows') AS copy      -- the snapshot's COPY (1305, G12); JSON null / absent for a legacy snapshot
+         (to_jsonb(s) -> 'consumed_dasha_rows') AS copy,     -- the snapshot's COPY (1305, G12); JSON null / absent for a legacy snapshot
+         (to_jsonb(s) -> 'consumed_dasha_held') AS held_rec  -- the (lord, level) pairs the pinned build HOLDS, recorded at capture; JSON null / absent before that record existed
   FROM public.ka_gochara_search_input_snapshot s
   WHERE s.chart_id = %(chart)s AND s.generation = %(gen)s),
 src AS (
@@ -1319,7 +1324,11 @@ RECORD_SUPPORT_HELD_LIVE = """held AS (
                        AND x.dasha_row_id = ANY (snap.ids))),
 """
 RECORD_SUPPORT_HELD_COPY = """held AS (
-  SELECT DISTINCT lord, level_n FROM src),
+  SELECT DISTINCT lord, level_n FROM src
+  UNION                                                           -- a lord the build holds but that runs wholly outside the horizon is held, not absent
+  SELECT lower(e.value ->> 'lord'), (e.value ->> 'level_n')::int
+  FROM snap, jsonb_array_elements(snap.held_rec) AS e(value)
+  WHERE jsonb_typeof(snap.held_rec) = 'array'),
 """
 RECORD_SUPPORT_SQL_COPY = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", "").replace("@@HELD@@", RECORD_SUPPORT_HELD_COPY)
 RECORD_SUPPORT_SQL = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", RECORD_SUPPORT_LEGACY_ARM).replace("@@HELD@@", RECORD_SUPPORT_HELD_LIVE)

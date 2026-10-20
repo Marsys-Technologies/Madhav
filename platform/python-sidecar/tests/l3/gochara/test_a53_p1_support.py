@@ -12,6 +12,7 @@ Everything runs on the real applied schema (1081 + 1152–1157 + 1206) with the 
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -30,6 +31,7 @@ from .test_a53_inventory import CHART, CHART_ID, H0, H1, create_am5_database, dr
 
 UTC = timezone.utc
 GEN = writer_mod.GENERATION
+HELD_MIGRATION_SQL = Path(__file__).resolve().parents[4] / "migrations" / "1398_gochara_snapshot_dasha_held.sql"
 P1_PREREQS = [["period_running_at", "1.0.0"], ["natal_bhava_relationship", "1.0.0"],
               ["transit_relation", "1.0.0"]]
 
@@ -58,10 +60,19 @@ def legacy_world(monkeypatch, tmp_path):
     yield from _world(monkeypatch, tmp_path, faithful=False, apply_1305=False)
 
 
-def _world(monkeypatch, tmp_path, faithful, apply_1305=True):
+@pytest.fixture()
+def held_world(monkeypatch, tmp_path):
+    """The copy world with the snapshot's `consumed_dasha_held` record (migration 1398, the real file): which (lord, level) pairs the pinned build
+    HOLDS, whether or not their rows overlap the horizon."""
+    yield from _world(monkeypatch, tmp_path, faithful=False, apply_held=True)
+
+
+def _world(monkeypatch, tmp_path, faithful, apply_1305=True, apply_held=False):
     import psycopg
     admin, name, dsn = create_am5_database("p1s", faithful=faithful, apply_1305=apply_1305)
     conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    if apply_held:
+        conn.execute(HELD_MIGRATION_SQL.read_text())
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
     RuleRegistryStore(conn).seed()
     ephe = make_ephe(tmp_path, monkeypatch)
@@ -305,6 +316,105 @@ def test_an_anchor_whose_periods_all_lie_outside_the_horizon_is_computed_empty_a
                           " WHERE path_id = 'P1'").fetchone()[0] == "computed_empty"
     assert verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN,
                              event_class="marriage") == {"records": 1, "restricted": 1}
+
+
+def _outside_horizon_only(w):
+    """Venus holds ONE antardaśā, in 2023 — wholly before the horizon. The build holds Venus-AD; Venus does not run in the horizon."""
+    w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])
+
+
+def _run_outside_only(w):
+    _outside_horizon_only(w)
+    w.boot()
+    w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+    w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+    state = w.conn.execute("SELECT temporal_support_state FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'").fetchone()[0]
+    return _supports(w.conn), _results(w.conn), state
+
+
+def test_a_lord_held_only_outside_the_horizon_is_false_on_the_snapshot_path_too(held_world):
+    """The 1305 snapshot copy holds only horizon-overlapping rows. A lord the pinned build holds but that runs wholly outside the horizon has an EMPTY running
+    set: `period_running_at` false, support `computed_empty` (Phaladīpikā XX.38 reads the bhukti lord's period only while it runs). It is NOT "no rows": reading
+    it as such stores the whole contact span as support with `unknown` — support invented for a lord that does not run (B.10, §N.5). Builder AND verifier."""
+    w = held_world
+    assert _run_outside_only(w) == ([[]], ["false"], "computed_empty")
+    assert verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage") == {"records": 1, "restricted": 1}
+
+
+def test_the_snapshot_path_gives_what_the_live_reader_gives_over_the_same_build(legacy_world, held_world):
+    """Equivalence: the same synthetic build (Venus's only antardaśā wholly outside the horizon), the same contact, read once by the LIVE reader (a legacy
+    snapshot: `make_period_rows_for`) and once by the snapshot-copy reader. Same stored support, same prerequisite result, same state."""
+    assert _run_outside_only(held_world) == _run_outside_only(legacy_world) == ([[]], ["false"], "computed_empty")
+
+
+@pytest.mark.parametrize("periods, want", [
+    ([], ([[(_t(1, 10), _t(1, 25))]], ["unknown"], "computed")),                                    # the build holds NO Venus row anywhere: unrestricted + unknown
+    ([(2, _t(1, 1), _t(1, 12))], ([[(_t(1, 10), _t(1, 12))]], ["true"], "computed")),               # Venus runs inside the contact: restricted
+])
+def test_the_snapshot_path_keeps_absent_unknown_and_running_true_and_matches_live(legacy_world, held_world, periods, want):
+    """The two neighbours of the held-but-outside case must not move: an ABSENT lord stays unrestricted + `unknown`, a running lord stays restricted."""
+    def run(w):
+        w.set_periods(periods)
+        w.boot()
+        w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+        w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+        state = w.conn.execute("SELECT temporal_support_state FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'").fetchone()[0]
+        return _supports(w.conn), _results(w.conn), state
+    assert run(held_world) == run(legacy_world) == want
+
+
+def test_a_snapshot_captured_before_the_held_record_existed_reads_the_copy_alone(world):
+    """`consumed_dasha_held` absent (1305 without 1398): `held_recorded` is False and the reader gives the pre-record answer — it never claims to
+    have measured a held-but-outside lord it cannot see (§N.8). The contract says so."""
+    w = world
+    _outside_horizon_only(w)
+    w.boot()
+    rows_for, contract = make_period_rows_for_snapshot(w.conn, CHART_ID, GEN)
+    assert contract["held_recorded"] is False and rows_for.holds("venus", "ad") is False
+
+
+def test_the_held_record_is_computed_by_the_database_from_the_consumed_ids(held_world):
+    """Not what the builder submits: the 1398 trigger overwrites it from the pinned build's rows, so a submitted lie cannot reach the reader."""
+    w = held_world
+    _outside_horizon_only(w)
+    w.boot()
+    held = w.conn.execute("SELECT consumed_dasha_held FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+                          (CHART_ID, GEN)).fetchone()[0]
+    assert {"lord": "venus", "level_n": 2} in held and all(set(h) == {"lord", "level_n"} for h in held)
+    rows_for, contract = make_period_rows_for_snapshot(w.conn, CHART_ID, GEN)
+    assert contract["held_recorded"] is True
+    assert rows_for("venus", "ad") == [] and rows_for.holds("venus", "ad") is True and rows_for.holds("venus", "md") is False
+
+
+def test_1398_refuses_a_schema_without_1305():
+    """The gate: 1398 is additive on 1305's copy-build trigger and copy columns; applying it first is refused by name, never half-applied."""
+    import psycopg
+    admin, name, dsn = create_am5_database("h1398gate")                 # 1206 only: no 1305
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        with pytest.raises(Exception, match="migration_1305_not_applied"):
+            with conn.transaction():
+                conn.execute(HELD_MIGRATION_SQL.read_text())
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+
+
+def test_1398_grants_the_builder_execute_where_production_revokes_public_execute():
+    """Production revokes PUBLIC EXECUTE on functions amjis_app creates (1220), and the builder fires the trigger as the invoker: without the grant the first
+    snapshot insert after 1398 would fail with permission denied. The faithful mirror revokes PUBLIC EXECUTE exactly so; the grant must be the only way in."""
+    import psycopg
+    admin, name, dsn = create_am5_database("h1398grant", faithful=True, apply_1305=True)
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        conn.execute(HELD_MIGRATION_SQL.read_text())
+        fn = "public.ka_gochara_search_dasha_held(uuid,uuid[])"
+        can = lambda role: conn.execute("SELECT has_function_privilege(%s, %s::regprocedure, 'EXECUTE')", (role, fn)).fetchone()[0]    # noqa: E731
+        assert can("data_plane_builder") is True
+        assert can("gochara_verifier") is False and can("gochara_sealer") is False            # nothing wider: they only READ the column
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
 
 
 def test_a_failed_support_check_names_which_case_it_is_in():

@@ -108,6 +108,9 @@ permissions:
 # SR-CI-SCOPED-SAFEGUARD: three combination-sensitive suites run on EVERY merge_group whatever
 # paths changed (QUEUE_ALWAYS_JOBS in ci_gate.py): DB Integration Tests (SAMIKSHA, all shards),
 # the Gochara measuring build, and the C38 small-test teardown jobs. Everything else stays scoped.
+# OWNER-MERGE-GROUP-FULL-20261019 (supersedes the merge_group clause above, until the campaign closes): a merge_group runs the FULL
+# gate -- every DB job and profile, unscoped (MERGE_GROUP_FULL in ci_gate.py, the single switch); a pull_request stays path-scoped.
+# The SR-SCOPE-C37 path list that preceded it is kept as a record in ci_gate.py. Required check names are unchanged.
 # Full events (push/main, full_gate dispatch) run EVERY heavy job -- the safety net:
 # a red main is fixed forward.
 # The required Governance Gates aggregate depends on full-suite, so a failure,
@@ -209,12 +212,17 @@ jobs:
           fi
           python3 platform/scripts/governance/ci_gate.py --event "$GITHUB_EVENT_NAME" --base "$base" --head HEAD >> "$GITHUB_OUTPUT"
 
-  # SR-SELFHOSTED-SPLIT (OWNER-SELFHOSTED-SPLIT-20261018): the DB-heavy jobs (Kāla DB tests, the DB Integration
-  # shards and the Gochara A5.5f / C37 / C38 DB jobs) run on the owner's own ephemeral `madhav-db` runners when
-  # one is online, and on ubuntu-latest otherwise. Nothing waits on a sleeping machine: this probe runs on a
-  # GitHub-hosted runner, asks GitHub which self-hosted runners are online, and publishes the `runs-on` value
-  # those jobs use. Every failure path (no token, API error, bad answer, kill switch, fork PR) answers
-  # ubuntu-latest, and the step always exits 0, so a broken probe can never skip or fail a DB job.
+  # SR-SELFHOSTED-SPLIT (OWNER-SELFHOSTED-SPLIT-20261018) + SR-RUNNER-PROBE-NOSECRET: the DB-heavy jobs (Kāla DB
+  # tests, the DB Integration shards and the Gochara A5.5f / C37 / C38 DB jobs) run on the owner's own ephemeral
+  # `madhav-db` runners when one is online, and on ubuntu-latest otherwise. Nothing waits on a sleeping machine: this
+  # probe runs on a GitHub-hosted runner, reads a heartbeat and publishes the `runs-on` value those jobs use.
+  #
+  # Heartbeat: a launchd job on the owner's Mac sets the repository VARIABLE MADHAV_DB_ONLINE to the current UTC time
+  # (ISO 8601, e.g. 2026-10-19T16:00:00Z) every 60 s while at least one madhav-db runner is online and idle-capable,
+  # and never writes otherwise. No secret and no GitHub API call are involved here. The DB jobs move to madhav-db only
+  # when the timestamp parses AND is at most 180 s older than this job's own clock (a value more than 60 s in the
+  # future is clock skew or garbage, not a heartbeat). Missing, unparsable, future-dated, stale, kill switch or fork
+  # PR all answer ubuntu-latest, and the step always exits 0, so a broken probe can never skip or fail a DB job.
   #
   # Same job, same `name:` -- there is no second "mirror" job, so no required or aggregate check changes name,
   # none can report twice, and none is skipped on a full event (full-suite reads a skip there as a failure).
@@ -222,10 +230,9 @@ jobs:
   # platform/scripts/governance/check_selfhosted_fork_guard.py): a fork PR gets ubuntu-latest and never a
   # self-hosted label. No workflow uses pull_request_target on a self-hosted label.
   #
-  # Operation: secret MADHAV_RUNNER_PROBE_TOKEN = a fine-grained token with repository "Administration: read"
-  # only (lists runners; no other scope). Unset = always ubuntu-latest. Kill switch without a PR: set the
-  # repository variable MADHAV_DB_ENABLED=false. Optional MADHAV_DB_MIN_ONLINE (default 1) = runners that must be
-  # online before the DB jobs move.
+  # Operation (runbook: 00_ARCHITECTURE/briefs/kalayantra/fleet/SELFHOSTED_RUNNERS_v1_1.md): variable not written or
+  # older than 180 s = always ubuntu-latest. Kill switch without a PR: set the repository variable
+  # MADHAV_DB_ENABLED=false.
   db-runner-probe:
     name: DB runner probe (is a madhav-db runner online?)
     runs-on: ubuntu-latest
@@ -238,26 +245,27 @@ jobs:
       - name: Probe
         id: probe
         env:
-          GH_TOKEN: ${{ secrets.MADHAV_RUNNER_PROBE_TOKEN }}
-          REPO: ${{ github.repository }}
           DB_ENABLED: ${{ vars.MADHAV_DB_ENABLED }}
-          MIN_ONLINE: ${{ vars.MADHAV_DB_MIN_ONLINE }}
+          HEARTBEAT: ${{ vars.MADHAV_DB_ONLINE }}
         run: |
           set -u
           choose() { echo "runs_on=$1" >> "$GITHUB_OUTPUT"; echo "::notice title=db-runner-probe::$2"; exit 0; }
           fallback='"ubuntu-latest"'
+          max_age=180
+          max_skew=60
           [ "${DB_ENABLED:-true}" = "false" ] && choose "$fallback" "MADHAV_DB_ENABLED=false: DB jobs use ubuntu-latest"
-          [ -n "${GH_TOKEN:-}" ] || choose "$fallback" "no probe token: DB jobs use ubuntu-latest"
-          online="$(timeout 30 gh api "repos/${REPO}/actions/runners?per_page=100" \
-            --jq '[.runners[] | select(.status == "online") | select(any(.labels[]; .name == "madhav-db"))] | length' 2>/dev/null)" || online=""
-          case "$online" in ''|*[!0-9]*) choose "$fallback" "probe call failed: DB jobs use ubuntu-latest" ;; esac
-          min="${MIN_ONLINE:-1}"
-          case "$min" in ''|*[!0-9]*) min=1 ;; esac
-          [ "$min" -ge 1 ] || min=1
-          if [ "$online" -ge "$min" ]; then
-            choose '["self-hosted","madhav-db"]' "${online} madhav-db runner(s) online: DB jobs use madhav-db"
-          fi
-          choose "$fallback" "${online} madhav-db runner(s) online (need ${min}): DB jobs use ubuntu-latest"
+          hb="${HEARTBEAT:-}"
+          [ -n "$hb" ] || choose "$fallback" "no MADHAV_DB_ONLINE heartbeat: DB jobs use ubuntu-latest"
+          case "$hb" in
+            [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;;
+            *) choose "$fallback" "MADHAV_DB_ONLINE is not an ISO 8601 UTC timestamp: DB jobs use ubuntu-latest" ;;
+          esac
+          beat="$(python3 -c 'import calendar, sys, time; print(calendar.timegm(time.strptime(sys.argv[1], "%Y-%m-%dT%H:%M:%SZ")))' "$hb" 2>/dev/null)" || beat=""
+          case "$beat" in ''|*[!0-9]*) choose "$fallback" "MADHAV_DB_ONLINE does not parse as a date: DB jobs use ubuntu-latest" ;; esac
+          age=$(( $(date -u +%s) - beat ))
+          [ "$age" -ge $(( -max_skew )) ] || choose "$fallback" "heartbeat is ${age}s in the future (> ${max_skew}s skew): DB jobs use ubuntu-latest"
+          [ "$age" -le "$max_age" ] || choose "$fallback" "heartbeat is ${age}s old (> ${max_age}s): DB jobs use ubuntu-latest"
+          choose '["self-hosted","madhav-db"]' "heartbeat ${age}s old: DB jobs use madhav-db"
 
   typecheck:
     needs: [changes, generated-artifacts]
@@ -671,7 +679,7 @@ jobs:
           fi
 
       - name: Pravāha A5.3 — migration 1240 / 1233 live-DB suites (window verification gate, roles, seal flows, P1 anchor) — REQUIRED, never skipped
-        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'db-integration-tests-9-12'))) }}
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'db-integration-tests-9-12') || contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'p06b-python'))) }}
         # The A5.3 tests build their OWN throwaway databases (a53t_*) and cluster roles on the CI Postgres through the
         # admin DSN, apply the real migrations verbatim, and drop everything afterwards; this runs serially after the
         # 1206/1232/1233 suite above (which also creates and drops gochara_* roles). GOCHARA_A53_REQUIRE_DB=1 turns an
@@ -704,6 +712,7 @@ jobs:
           python scripts/gochara/mutation_check_verifier_side.py --scratch "$mutation_scratch"
           # ^ that one test needs the pre-refactor baseline commit, unreachable from this job's shallow checkout;
           # it still runs in Governance Gates.
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest p06b-python -- -q --tb=short -rs -p no:cacheprovider
 
       - name: Install MCP dependencies for published public-view SQL tests
         working-directory: platform-mcp
@@ -2972,14 +2981,16 @@ jobs:
     # rules (ci_gate.py); any other value, including the empty output of a failed `changes`, runs the shards (fail-closed).
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' && needs.changes.outputs.run_combination_suites != 'false' }}
     # Suvarṇa E4.1 (sharded, Exec Suvarṇa): runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
-    # drift_detector/schema_validator tests are enforced, not just present. No DB, no network: tests that need a live DB skip on their
-    # own (PG*/DATABASE_URL unset), and tests pinning campaign artifacts that are not on this tree skip via conftest.
+    # drift_detector/schema_validator tests are enforced, not just present. The shard pytest runs without DB settings; DB tests skip on their
+    # own (PG*/DATABASE_URL unset), and missing campaign artifacts skip via conftest. The final J-1a step owns a separate loopback-only CI cluster.
     # The single job outgrew its 10-minute ceiling (median ~8.5 min, max ~10 min on main), so the test files are split across 5 shards (3 until the 2026-10-05 L0-L2 build-out grew the suite to ~48 min of shard time) by
     # platform/scripts/governance/ci_shard.py (deterministic, size-balanced, `--verify` fails if any file is in no shard or in two).
     # The aggregate job below keeps the original job name; this one is test steps only.
     name: Governance Tool Tests shard ${{ matrix.shard }}/5
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Shard 1 also runs the J-1a lane step (apt + pip installs, a throwaway cluster, ~5-8 min of DB tests) after the shard pytest and the
+    # four discovery steps, which the old 20-minute ceiling did not budget for.
+    timeout-minutes: 35
     permissions:
       actions: read
       contents: read
@@ -3021,6 +3032,9 @@ jobs:
           [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
           python -m pytest "${FILES[@]}" -q --no-header -rs
 
+      - name: K9-23 disabled layer bindings and credential isolation
+        if: ${{ matrix.shard == 1 }}
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-k9-publication -- -q -p no:cacheprovider
       - name: OPS-NB-02 — operation-adapter rollback and acceptance regressions
         if: matrix.shard == 1
         run: >-
@@ -3043,6 +3057,36 @@ jobs:
         run: >-
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-shard-7-0 --
           -q --no-header -p no:cacheprovider
+
+      - name: J-1a — local lane admission, six dry-run CLIs and independent readback (REQUIRED)
+        # PR #3588 supplies discovery. Run once in this required matrix, on a host
+        # loopback server: a Docker proxy fails the actual-server address guard.
+        if: matrix.shard == 1
+        env:
+          GIT_OPTIONAL_LOCKS: '0'
+          PYTHONDONTWRITEBYTECODE: '1'
+          TMPDIR: ${{ runner.temp }}
+          KALA_REQUIRE_DB: '1'
+          KALA_ADMIN_DSN: postgresql://postgres@127.0.0.1:55433/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres@127.0.0.1:55433/postgres
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql
+          python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+          LANE_PG_BIN="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)"
+          LANE_PG_ROOT="$(mktemp -d "$RUNNER_TEMP/ky-j1a.XXXXXX")"
+          cleanup_lane_pg() {
+            if [ -f "$LANE_PG_ROOT/data/postmaster.pid" ]; then
+              "$LANE_PG_BIN/pg_ctl" -D "$LANE_PG_ROOT/data" -m fast -w stop || return 1
+            fi
+            rm -rf "$LANE_PG_ROOT"
+          }
+          trap cleanup_lane_pg EXIT
+          "$LANE_PG_BIN/initdb" -D "$LANE_PG_ROOT/data" -A trust -U postgres --no-locale --encoding=UTF8
+          "$LANE_PG_BIN/pg_ctl" -D "$LANE_PG_ROOT/data" -l "$LANE_PG_ROOT/postgres.log" -o "-h 127.0.0.1 -p 55433 -k $LANE_PG_ROOT" -w start
+          python -B "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-lane -- -q -rs -p no:cacheprovider --basetemp="$LANE_PG_ROOT/pytest" --junitxml=lane-smalltest.xml
+          python3 -c 'import xml.etree.ElementTree as ET; root = ET.parse("lane-smalltest.xml").getroot(); cases = root.findall(".//testcase"); skipped = root.findall(".//testcase/skipped"); raise SystemExit("required lane oracles need executed cases and zero skips" if not cases or skipped else 0)'
 
   governance-readback-tests:
     # P05-B02 / J4B + P07 / A6: readback (including populated real-DB negatives), current-source rehearsal and publication oracles feed the required governance aggregate.
@@ -3141,7 +3185,7 @@ jobs:
     # required check 'Governance Tool Tests (pytest)' of ruleset 20141220 since 2026-10-05; no per-shard context is required, so the shard
     # count can change without touching the ruleset.)
     name: Governance Tool Tests (pytest)
-    needs: [changes, governance-tool-tests-shard, governance-readback-tests, gochara-j5s-full-class-seal]
+    needs: [changes, governance-tool-tests-shard, governance-readback-tests, kala-db-tests, gochara-j5s-full-class-seal]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -3155,12 +3199,17 @@ jobs:
           READBACK_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'governance-readback-tests')) }}
           SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
           READBACK_RESULT: ${{ needs.governance-readback-tests.result }}
+          KALA_DB_RESULT: ${{ needs.kala-db-tests.result }}
+          KALA_DB_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'kala-db-tests')) }}
           J5S_RESULT: ${{ needs.gochara-j5s-full-class-seal.result }}
           J5S_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-j5s-full-class-seal')) }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           RUN_COMBINATION: ${{ needs.changes.outputs.run_combination_suites }}
           CHANGES_RESULT: ${{ needs.changes.result }}
         run: |
+          if [ "$KALA_DB_RESULT" != "success" ] && ! { [ "$KALA_DB_RESULT" = "skipped" ] && { [ "$DOCS_ONLY" = "true" ] || [ "$KALA_DB_EXPECTED" = "false" ]; }; }; then
+            echo "::error::Kāla DB Tests must pass for code changes (got '$KALA_DB_RESULT', expected='$KALA_DB_EXPECTED')"; exit 1
+          fi
           # J5S rehearsal (PR #3646) obeys the same light-gate event policy as every other heavy DB job: it must succeed on a full event or a
           # PR that selected it, and may be skipped only when it was not expected. The shard/readback decision below is main's, unchanged.
           if [ "$J5S_RESULT" != "success" ] && { [ "$J5S_RESULT" != "skipped" ] || [ "$J5S_EXPECTED" != "false" ]; }; then
@@ -4001,6 +4050,10 @@ jobs:
         run: |
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest unit-db-tests-l0-parihara -- -q -rs --tb=short -p no:cacheprovider
+
+      - name: P06b — protected migration readback and guarded replay (required)
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'p06b-typescript'))) }}
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest p06b-typescript -- --reporter=verbose
 
 
   full-suite:

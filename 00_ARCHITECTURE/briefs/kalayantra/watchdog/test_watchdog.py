@@ -262,3 +262,181 @@ def test_every_tick_is_logged(box):
     run(box, w)
     lines = (box["root"] / "run" / "watchdog" / "watchdog.jsonl").read_text().splitlines()
     assert len(lines) == 2 and all(json.loads(x)["action"] for x in lines)
+
+
+# ───────────────────────────── SR-IDLE-NUDGE: a live, idle cockpit with work waiting is nudged ─────────────────────────────
+
+def nudge_box(box, idle_min=60, status="idle"):
+    """A live cockpit, silent for `idle_min`, with a registry status of `status`. Queue files sit beside fast/jobs."""
+    set_mtime(box["transcript"], NOW - dt.timedelta(minutes=idle_min))
+    add_session(box, os.getpid(), status=status)
+    box["cfg"].fast_dir = str(box["fast"].parent)
+    return box["fast"].parent
+
+
+def nudge_file(box):
+    return box["root"] / "run" / "watchdog" / "NUDGE.txt"
+
+
+def test_idle_live_cockpit_with_unread_jobs_is_nudged_once_per_30_min(box):
+    """SR-IDLE-NUDGE: live + idle >= 20 min + unread finished jobs -> one nudge, then none for 30 min."""
+    queue = nudge_box(box)
+    add_job(box, "X-a", finished_at=NOW - dt.timedelta(minutes=10))
+    add_job(box, "X-b", finished_at=NOW - dt.timedelta(minutes=5))
+    (queue / "BACKLOG.txt").write_text("# header\nitem1\n\nitem2\nitem3\n")
+    (queue / "ARM_ORDER.txt").write_text("# header\n3773\n")
+    w = Waker()
+    rec = run(box, w)
+    assert rec["action"] == "nudge" and not w.calls
+    assert rec["nudge"] == "2 finished jobs unread; backlog 3; arm-order 1; act"
+    assert nudge_file(box).read_text().strip().endswith("2 finished jobs unread; backlog 3; arm-order 1; act")
+    assert run(box, w, now=NOW + dt.timedelta(minutes=15))["action"] == "none"  # inside the 30 min
+    assert run(box, w, now=NOW + dt.timedelta(minutes=29))["action"] == "none"
+    assert run(box, w, now=NOW + dt.timedelta(minutes=31))["action"] == "nudge"  # window over
+    log = [json.loads(x) for x in (box["root"] / "run" / "watchdog" / "watchdog.jsonl").read_text().splitlines()]
+    assert [r["action"] for r in log].count("nudge") == 2 and not w.calls
+
+
+def test_backlog_or_arm_order_alone_is_enough_to_nudge(box):
+    queue = nudge_box(box)
+    (queue / "ARM_ORDER.txt").write_text("3773\n")
+    rec = run(box, Waker())
+    assert rec["action"] == "nudge" and rec["nudge"] == "0 finished jobs unread; backlog 0; arm-order 1; act"
+
+
+def test_no_nudge_when_not_idle_long_enough(box):
+    nudge_box(box, idle_min=10)
+    add_job(box, "X-a", finished_at=NOW - dt.timedelta(minutes=5))
+    rec = run(box, Waker())
+    assert rec["action"] == "none" and not nudge_file(box).exists()
+
+
+def test_no_nudge_when_session_is_busy_not_idle(box):
+    nudge_box(box, status="busy")
+    add_job(box, "X-a", finished_at=NOW - dt.timedelta(minutes=5))
+    assert run(box, Waker())["action"] == "none" and not nudge_file(box).exists()
+
+
+def test_no_nudge_when_nothing_is_pending(box):
+    queue = nudge_box(box)
+    (queue / "BACKLOG.txt").write_text("# only a comment\n\n")  # empty in substance
+    add_job(box, "X-old", finished_at=NOW - dt.timedelta(hours=3))  # read before the last activity
+    add_job(box, "X-running")  # running work is not "unread"
+    rec = run(box, Waker())
+    assert rec["action"] == "none" and not nudge_file(box).exists()
+
+
+def test_dead_session_still_wakes_and_is_never_nudged(box):
+    """The resume path is unchanged: an absent session with pending work wakes; nothing is nudged."""
+    queue = nudge_box(box)
+    os.remove(box["sessions"] / ("%d.json" % os.getpid()))
+    (queue / "ARM_ORDER.txt").write_text("3773\n")
+    add_job(box, "X-a", finished_at=NOW - dt.timedelta(minutes=5))
+    w = Waker()
+    rec = run(box, w)
+    assert rec["action"] == "wake" and w.calls == [SID] and not nudge_file(box).exists()
+
+
+def test_dry_run_nudge_writes_no_file(box):
+    queue = nudge_box(box)
+    (queue / "BACKLOG.txt").write_text("item1\n")
+    box["cfg"].dry_run = True
+    rec = run(box, Waker())
+    assert rec["action"] == "nudge" and not nudge_file(box).exists()
+
+
+# ───────────────────────────── page-surrogate: no turn for 45 min with work pending pages madhav-6d ─────────────────────────────
+
+def page_file(box):
+    return box["root"] / "run" / "watchdog" / "PAGE_SURROGATE.txt"
+
+
+def page_log(box):
+    lines = (box["root"] / "run" / "watchdog" / "watchdog.jsonl").read_text().splitlines()
+    return [r for r in map(json.loads, lines) if r["action"] == "page-surrogate"]
+
+
+def stamp(when):
+    return when.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def test_page_sent_when_cockpit_silent_45_min_with_work_pending(box):
+    """Silent >= 45 min (transcript mtime, as the nudge measures it) + any pending source -> one page to madhav-6d."""
+    queue = nudge_box(box, idle_min=50, status="busy")  # no nudge here: only the page can fire
+    (queue / "ARM_ORDER.txt").write_text("# header\n3773\n3774\n")
+    (queue / "BACKLOG.txt").write_text("item1\n")
+    (queue / "FOLLOWUPS.md").write_text("- [ ] do it now\n- [x] done\n- [ ] after #3775 merges: heartbeat\n")
+    (queue / "CONDUCTOR_HEARTBEAT").write_text(stamp(NOW - dt.timedelta(minutes=1)) + "\n")
+    rec = run(box, Waker())
+    assert rec["page"] == "cockpit has had no turn for 50 min; pending: arm-order 2, backlog 1, followups 1"
+    assert page_file(box).read_text() == "%s madhav-6d: %s\n" % (NOW.isoformat(), rec["page"])
+    entries = page_log(box)
+    assert len(entries) == 1 and entries[0]["to"] == "madhav-6d" and entries[0]["page"] == rec["page"]
+
+
+def test_each_pending_source_alone_pages_and_gated_followups_do_not(box):
+    queue = nudge_box(box, idle_min=60, status="busy")
+    (queue / "FOLLOWUPS.md").write_text("\n".join(
+        "- [ ] %s thing" % w for w in ("after", "When", "once", "until", "pending", "held")) + "\n")
+    assert "page" not in run(box, Waker()) and not page_file(box).exists()  # every gate word gates
+    (queue / "FOLLOWUPS.md").write_text("- [ ] launch the review\n")
+    (queue / "CONDUCTOR_HEARTBEAT").write_text(stamp(NOW) + "\n")
+    assert run(box, Waker())["page"].endswith("arm-order 0, backlog 0, followups 1")
+
+
+def test_page_rate_limited_to_once_per_45_min(box):
+    queue = nudge_box(box, idle_min=50, status="busy")
+    (queue / "BACKLOG.txt").write_text("item1\n")
+    w = Waker()
+    assert "page" in run(box, w)
+    assert "page" not in run(box, w, now=NOW + dt.timedelta(minutes=20))
+    assert "page" not in run(box, w, now=NOW + dt.timedelta(minutes=44))
+    assert "page" in run(box, w, now=NOW + dt.timedelta(minutes=46))  # window over
+    assert len(page_log(box)) == 2 and not w.calls
+
+
+def test_no_page_when_nothing_pending_or_not_silent_long_enough(box):
+    queue = nudge_box(box, idle_min=60, status="busy")
+    (queue / "BACKLOG.txt").write_text("# only a comment\n\n")
+    (queue / "FOLLOWUPS.md").write_text("- [x] done\n- [ ] once main is green: arm\n")
+    (queue / "CONDUCTOR_HEARTBEAT").write_text(stamp(NOW - dt.timedelta(hours=2)) + "\n")  # stale alone never pages
+    assert "page" not in run(box, Waker()) and not page_file(box).exists() and not page_log(box)
+    (queue / "ARM_ORDER.txt").write_text("3773\n")
+    set_mtime(box["transcript"], NOW - dt.timedelta(minutes=44))  # work pending but the cockpit only 44 min quiet
+    assert "page" not in run(box, Waker()) and not page_file(box).exists()
+
+
+def test_page_reports_stale_conductor_heartbeat(box):
+    queue = nudge_box(box, idle_min=50, status="busy")
+    (queue / "ARM_ORDER.txt").write_text("3773\n")
+    (queue / "CONDUCTOR_HEARTBEAT").write_text(stamp(NOW - dt.timedelta(minutes=25)) + "\n")
+    page = run(box, Waker())["page"]
+    assert page.endswith("; CONDUCTOR_HEARTBEAT stale 25 min")
+    assert page_file(box).read_text().strip().endswith("CONDUCTOR_HEARTBEAT stale 25 min")
+
+
+def test_page_says_so_when_heartbeat_missing(box):
+    queue = nudge_box(box, idle_min=50, status="busy")
+    (queue / "ARM_ORDER.txt").write_text("3773\n")
+    assert run(box, Waker())["page"].endswith("; CONDUCTOR_HEARTBEAT missing or unreadable")
+
+
+def test_page_omits_heartbeat_text_when_fresh(box):
+    queue = nudge_box(box, idle_min=50, status="busy")
+    (queue / "ARM_ORDER.txt").write_text("3773\n")
+    (queue / "CONDUCTOR_HEARTBEAT").write_text(stamp(NOW - dt.timedelta(minutes=9)) + "\n")
+    assert "HEARTBEAT" not in run(box, Waker())["page"]
+
+
+def test_page_dry_run_writes_no_file_and_dead_session_still_wakes(box):
+    queue = nudge_box(box, idle_min=50)
+    os.remove(box["sessions"] / ("%d.json" % os.getpid()))
+    (queue / "ARM_ORDER.txt").write_text("3773\n")
+    add_job(box, "X-a", finished_at=NOW - dt.timedelta(minutes=5))
+    w = Waker()
+    rec = run(box, w)  # resume path unchanged; the page rides along
+    assert rec["action"] == "wake" and w.calls == [SID] and "page" in rec and page_file(box).exists()
+    os.remove(page_file(box))
+    box["cfg"].dry_run = True
+    box["cfg"].page_every_min = 0
+    assert "page" in run(box, Waker(), now=NOW + dt.timedelta(minutes=1)) and not page_file(box).exists()

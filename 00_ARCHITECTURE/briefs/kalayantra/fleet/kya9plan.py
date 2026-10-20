@@ -2,8 +2,10 @@
 """kya9plan.py — apply Amendment A9 (D-51, D-52, D-54, D-53 not_applicable set) to the plan model.
 
 Owner Amendment A9 (KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md §2–§5). Idempotent and deterministic:
-it edits only the fields named below, writes ACCEPTANCE_ROOTS_v3.json from the model, and computes CLOSURE_v3.json
-with kyclosure.compute (twice; the two renders must be byte-identical).
+it edits only the fields named below, writes ACCEPTANCE_ROOTS_v3.json from the model, and computes the closure with
+kyclosure.compute (twice; the two renders must be byte-identical). CLOSURE_v3.json is machine-owned (SR-CHURN-CUT 3: CI
+regenerates it from main, a PR never carries it), so this script prints its digest and writes the file only with --write-closure
+(the cockpit's refresh of the main checkout).
 
 Edits to plan_model.json (nothing else is touched):
   C-1.depends_on          JOIN-ALL removed (D-51.1); C-1 gates on the acceptance roots, K-AVADHI-C and the post-flip
@@ -233,7 +235,9 @@ def build_roots(model: dict, template: dict) -> dict:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[4]))
-    root = Path(ap.parse_args(argv).repo_root)
+    ap.add_argument("--write-closure", action="store_true", help="also write CLOSURE_v3.json (main-checkout refresh only)")
+    ns = ap.parse_args(argv)
+    root = Path(ns.repo_root)
     model_path = root / CONTROL / "plan_model.json"
     model = apply_model_edits(json.loads(model_path.read_text(encoding="utf-8")))
     template = json.loads((root / CONTROL / "ACCEPTANCE_ROOTS_v2_2.json").read_text(encoding="utf-8"))
@@ -244,7 +248,8 @@ def main(argv=None) -> int:
         return 1
     model_path.write_text(json.dumps(model, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     (root / CONTROL / "ACCEPTANCE_ROOTS_v3.json").write_bytes(kyclosure.render(roots))
-    (root / CONTROL / "CLOSURE_v3.json").write_bytes(first)
+    if ns.write_closure:
+        (root / CONTROL / "CLOSURE_v3.json").write_bytes(first)
     closure = json.loads(first)
     print(f"closure_count={closure['closure_count']} closure_sha256={closure['closure_sha256']} "
           f"file_sha256={hashlib.sha256(first).hexdigest()}")

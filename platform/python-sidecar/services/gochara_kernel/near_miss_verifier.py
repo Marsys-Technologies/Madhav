@@ -9,9 +9,9 @@ THE BAND (stated once): the 1-degree point band is drawn INCLUSIVELY — a body 
 built band does (`contact_reconstruct.band_intervals`: `gap <= 0`), `classify_graze` and `nd_h_tables.kb_edge_licensed`. `derive_near_misses` takes its
 stretches FROM `band_intervals` (a test with an off-grid dip proves it), so there is one band, not two.
 
-NOT DONE (stated plainly): the STATIONLESS-BODY duty of FB-24 (a Sun/Moon/mean-node stretch must never become a near-miss for lack of an
-observed root) has no detector here and no parameter pretending to be one; the stored rows' `precision_regime`/`delta_t`/`solver_method`
-fields are not checked; the ephemeris-backed derivation (the job supplies `position_at`) is not wired.
+P06b wires the independent ephemeris job below, including stationless refusal,
+precision evidence and a persisted generation digest. The 60-second excursion limit
+is carried explicitly; it is never an unqualified proof of arbitrarily short events.
 
 What a verifier must ACCEPT and REFUSE for the kind:
   * the three states of a rootless-or-rooted stretch (`classify_stretch`): CONTACT (a verified root, tangency included),
@@ -28,6 +28,8 @@ What a verifier must ACCEPT and REFUSE for the kind:
 from __future__ import annotations
 
 import math
+import hashlib
+import uuid
 from datetime import datetime, timedelta, timezone
 
 KIND = "near_miss"
@@ -66,7 +68,7 @@ def classify_stretch(*, rooted: bool, complete: bool, clipped_followed: bool = T
     a NEAR-MISS only when it is the COMPLETE maximal stretch (a horizon-clipped piece must have been followed beyond the
     edge and certified whole), its clearance is the global minimum of the stretch CERTIFIED WITHIN `tol` degrees by the speed-bound branch-and-bound of `_analyse_stretch`, and that clearance is at
     least GRAZE_MIN_APPROACH_DEG; anything less is UNRESOLVED with a named reason. (The stationless-body duty is NOT implemented
-    here: see the module's not-done list.)"""
+    by this classifier; derive_near_misses refuses stationless rootless stretches.)"""
     if rooted:
         return "contact", None
     if not complete:
@@ -274,6 +276,12 @@ def derive_near_misses(position_at, body: str, centres, lo: datetime, hi: dateti
             rec.update(state=state, reason=reason, clearance_deg=res["clearance_deg"], t_closest=res["t_closest"],
                        closest_candidates=res["closest_candidates"], closest_certified=res["closest_certified"], certificate_reason=res["reason"],
                        distance_at=dist_at, orb_deg=float(orb_deg), vmax_dps=float(vmax))
+        if rec["state"] == "near_miss":
+            # The ray is reconstructed from geometry, never from the stored level.
+            lon = float(checked(body, rec["t_closest"]))
+            rec["level_deg"] = min(centres, key=lambda c: abs(_signed_offset(lon, c)))
+        if not res["rooted"] and body.lower() in {"sun", "moon", "rahu", "ketu"}:
+            rec.update(state="unresolved", reason="stationless_rootless_stretch")
         out.append(rec)
     return out
 
@@ -481,6 +489,18 @@ def assign_ordinals(full_domain_set) -> list[tuple[int, dict]]:
     return [(i + 1, r) for i, r in enumerate(placed + unplaced)]
 
 
+def occurrence_uuid(object_id, full_domain_ordinal: int) -> str:
+    """FB-25: independently encode hash(object UUID, full-domain ordinal).
+
+    First 128 SHA-256 bits, UUID version 8 / RFC 4122 variant. Do not import
+    the builder's identity helpers: this is an independent identity detector.
+    """
+    digest = bytearray(hashlib.sha256(f"{object_id}|{full_domain_ordinal}".encode("utf-8")).digest()[:16])
+    digest[6] = (digest[6] & 0x0f) | 0x80
+    digest[8] = (digest[8] & 0x3f) | 0x80
+    return str(uuid.UUID(bytes=bytes(digest)))
+
+
 # ── set comparison and coverage (FB-28) ───────────────────────────────────────────────────────────────────────────
 def compare_sets(rederived, stored, *, junction_source, expected_orb_deg: float, expected_object_id,
                  reported_count: int | None = None, tol_seconds: float = 2.0) -> list[str]:
@@ -507,7 +527,7 @@ def compare_sets(rederived, stored, *, junction_source, expected_orb_deg: float,
     except NearMissError as exc:
         p.append(str(exc))
         ordered = []
-    ordinal_of = {id(r): o for o, r in ordered}
+    ordinal_of = {id(r): r.get("full_domain_ordinal", o) for o, r in ordered}
     used = set()
     for i, s in enumerate(stored):                                      # a stored row with a missing / NULL field is a NAMED refusal, never a TypeError
         absent = [k for k in ("t_in", "t_out", "clearance_deg", "ordinal", "object_id") if s.get(k) is None]
@@ -535,6 +555,15 @@ def compare_sets(rederived, stored, *, junction_source, expected_orb_deg: float,
             p.append(f"near_miss_object_mismatch: stored {s.get('object_id')!r} vs expected {expected_object_id!r}")
         if s.get("ordinal") != ordinal_of.get(id(w)):
             p.append(f"near_miss_ordinal_mismatch: stored {s.get('ordinal')!r} vs the full-domain position {ordinal_of.get(id(w))!r}")
+        # Bind the occurrence to this matched full-domain stretch, not a stored ordinal.
+        expected_id = occurrence_uuid(expected_object_id, ordinal_of.get(id(w)))
+        if str(s.get("near_miss_id")) != expected_id:
+            p.append(f"near_miss_identity_mismatch: stored {s.get('near_miss_id')!r} vs derived {expected_id}")
+        level = s.get("level_deg")
+        ray = w.get("level_deg")
+        if (not _finite(level) or not _finite(ray) or not 0 <= float(level) < 360
+                or abs(float(level) - float(ray)) > 1e-9):
+            p.append(f"near_miss_level_mismatch: stored {level!r} vs reconstructed ray {ray!r}")
         if s.get("closest_state") == "placed":
             tc = s.get("t_closest")
             cands = w.get("closest_candidates")
@@ -606,3 +635,225 @@ def noninterference_problems(layer_on: dict, layer_off: dict) -> list[str]:
 
 def utc(y, m, d, hh=0, mm=0, ss=0) -> datetime:
     return datetime(y, m, d, hh, mm, ss, tzinfo=timezone.utc)
+
+
+def precision_problems(row: dict) -> list[str]:
+    """FB-27: delta_t is the builder's final minimizer bracket WIDTH IN DAYS,
+    not astronomical TT-UT. Check it against the declared 1e-5 day regime (0.864 s).
+    The stored closest instant/clearance are additionally checked on the ephemeris.
+    """
+    p = []
+    if row.get("solver_method") != "swiss_refined_extremum":
+        p.append("near_miss_solver_method: no ephemeris refinement")
+    if row.get("precision_regime") != "swiss_golden_section_tol_1e-05d":
+        p.append("near_miss_precision_regime: unsupported declared accuracy")
+    dt = row.get("delta_t")
+    if not _finite(dt) or not 0 < float(dt) <= 1.000001e-5:
+        p.append("near_miss_delta_t: bracket width must be positive and <= 1e-5 days")
+    return p
+
+
+def _rows(cursor):
+    names = [d.name for d in cursor.description]
+    return [r if isinstance(r, dict) else dict(zip(names, r)) for r in cursor.fetchall()]
+
+
+def _scalar(conn, sql, params):
+    r = conn.execute(sql, params).fetchone()
+    return None if r is None else (next(iter(r.values())) if isinstance(r, dict) else r[0])
+
+
+def _ephemeris_position(ephe_path):
+    """Independent Swiss probe; serialized state and a backend check on EVERY call."""
+    import swisseph as swe
+    from panchang_engine.swiss_state import serialized_swiss_state
+    ids = {"sun": swe.SUN, "moon": swe.MOON, "mercury": swe.MERCURY, "venus": swe.VENUS,
+           "mars": swe.MARS, "jupiter": swe.JUPITER, "saturn": swe.SATURN,
+           "rahu": swe.MEAN_NODE, "ketu": swe.MEAN_NODE}
+    if not ephe_path:
+        raise NearMissError("near_miss_ephemeris_missing")
+
+    @serialized_swiss_state
+    def at(body, t):
+        swe.set_ephe_path(ephe_path)
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        xx, flags = swe.calc_ut(t.timestamp()/86400.0 + 2440587.5, ids[body], swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
+        if flags & swe.FLG_MOSEPH or not flags & swe.FLG_SWIEPH:
+            raise NearMissError("near_miss_ephemeris_backend: Swiss files required")
+        return (xx[0] + (180 if body == "ketu" else 0)) % 360
+    return at
+
+
+def _follow_domain_edge(position_at, body, centres, orb, rec, domain):
+    """FB-24: follow a clipped band on the ephemeris, at most 1500 days.
+    An observed root proves CONTACT even when it was outside the identity domain.
+    A rootless stretch beyond that domain stays unresolved: the builder cannot mint
+    an ordinal for a domain-edge near miss. Never infer absence from a clipped piece.
+    """
+    for days in (60, 120, 240, 480, 960, 1500):
+        lo = domain[0]-timedelta(days=days) if rec["t_in"] <= domain[0] else rec["t_in"]-timedelta(days=1)
+        hi = domain[1]+timedelta(days=days) if rec["t_out"] >= domain[1] else rec["t_out"]+timedelta(days=1)
+        found = derive_near_misses(position_at, body, centres, lo, hi, orb_deg=orb)
+        hits = [r for r in found if r["t_in"] < rec["t_out"] and rec["t_in"] < r["t_out"]]
+        if len(hits) != 1:
+            break
+        full = hits[0]
+        if full["state"] == "contact":
+            return full
+        if not full["clipped"]:
+            return {**rec, "state":"unresolved", "reason": "rootless_stretch_crosses_identity_domain"}
+    return {**rec, "state":"unresolved", "reason":"clipped_extension_unresolved_within_1500_days"}
+
+
+def _junction(conn, obj, rec, horizon, dashas, position_at):
+    """Re-read pinned sky identities and copied MD/AD content, independently of the builder.
+    The sky event population is compared to ephemeris partition crossings on this stretch.
+    """
+    from . import contact_reconstruct as cr
+    a, b = rec["t_in"], rec["t_out"]
+    iso = lambda t: t.astimezone(timezone.utc).isoformat()
+    dom = conn.execute("SELECT domain_start,domain_end FROM public.ka_gochara_sky_convention WHERE convention_id=%s",
+                       (obj["convention_id"],)).fetchone()
+    dom = tuple(dom.values()) if isinstance(dom, dict) else dom
+    out = {"interval_rule": "[t_in, t_out)", "sky_convention_id": obj["convention_id"]}
+    for kind, cells in (("sign_ingress",12),("nakshatra_ingress",27)):
+        source = _rows(conn.execute("SELECT event_id,t_exact FROM public.ka_gochara_sky_event e WHERE convention_id=%s AND body=%s "
+            "AND event_kind=%s AND t_exact >= %s AND t_exact < %s AND NOT EXISTS "
+            "(SELECT 1 FROM public.ka_gochara_sky_event n WHERE n.supersedes_event_id=e.event_id) ORDER BY t_exact,event_id",
+            (obj["convention_id"],obj["body"],kind,a,b)))
+        counts = conn.execute("SELECT count(*),count(*) FILTER(WHERE t_exact IS NULL) FROM public.ka_gochara_sky_event "
+            "WHERE convention_id=%s AND body=%s AND event_kind=%s", (obj["convention_id"],obj["body"],kind)).fetchone()
+        counts = tuple(counts.values()) if isinstance(counts,dict) else counts
+        complete = bool(dom and dom[0] <= a and b <= dom[1] and counts[0] and not counts[1])
+        if complete:
+            # Include a boundary at a by searching two seconds earlier; t_out stays excluded.
+            spans = cr.partition_intervals(position_at,obj["body"],cells,a-timedelta(seconds=2),b)
+            actual = sorted(x[0] for intervals in spans.values() for x in intervals if a <= x[0] < b)
+            if len(actual) != len(source) or any(abs((x-y["t_exact"]).total_seconds()) > 2 for x,y in zip(actual,source)):
+                raise NearMissError("near_miss_junction_source_geometry: " + kind)
+        out[kind] = {"state": "complete" if complete else "unknown",
+                     "events": [{"t": iso(r["t_exact"]), "event_id": str(r["event_id"])} for r in source]}
+    events = []
+    complete = horizon[0] <= a and b <= horizon[1]
+    for level in (1,2):
+        mine = sorted((r for r in dashas if r["level"] == level), key=lambda r:r["start"])
+        cursor = a
+        for r in mine:
+            if r["start"] <= cursor < r["end"]:
+                cursor = r["end"]
+        complete = complete and cursor >= b
+        seen = set()
+        for r in mine:
+            for t,edge in ((r["start"],"start"),(r["end"],"end")):
+                if a <= t < b and t not in seen:
+                    seen.add(t)
+                    events.append({"level": "MD" if level==1 else "AD", "t":iso(t), "dasha_row_id":r["id"], "row_edge":edge})
+    out["dasha_boundary"] = {"state":"complete" if complete else "unknown", "events":sorted(events,key=lambda e:(e["t"],e["level"]))}
+    parts = [out[k] for k in ("sign_ingress","nakshatra_ingress","dasha_boundary")]
+    complete = all(p["state"]=="complete" for p in parts)
+    out["contains_junction"] = True if any(p["events"] for p in parts) else (False if complete else None)
+    return out, complete
+
+
+def verify_generation(conn, *, chart_id, generation, ephe_path, persist=False):
+    """FB-29 job stage. Caller holds chart/global locks; no commits or connections here.
+    Compare the complete expected object census and each full-domain ephemeris search
+    with stored occurrences in the build horizon; persist only after EVERY check passes.
+    """
+    import json
+    from .window_verifier import _ASPECT_ANGLES, _POINT_ORB_DEG
+    pub = _rows(conn.execute("SELECT input_generation_vector,lower(horizon) AS lo,upper(horizon) AS hi "
+        "FROM public.kala_gochara_publication WHERE chart_id=%s AND generation=%s",(chart_id,generation)))
+    if not pub:
+        raise NearMissError("near_miss_manifest_missing")
+    vector = pub[0]["input_generation_vector"]
+    vector = json.loads(vector) if isinstance(vector,str) else vector
+    pin = vector.get("near_miss_layer_version")
+    if pin is None:
+        stored = _scalar(conn,"SELECT count(*) FROM public.ka_gochara_near_miss_search WHERE chart_id=%s AND generation=%s",(chart_id,generation)) if _scalar(conn,"SELECT to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL",()) else 0
+        final_rules = _scalar(conn,"SELECT EXISTS(SELECT 1 FROM public.ka_gochara_search_path_pin "
+            "WHERE chart_id=%s AND generation=%s AND disposition='included' AND rule_version='1.2.0')",(chart_id,generation))
+        occurrences = _scalar(conn,"SELECT count(*) FROM public.ka_gochara_near_miss WHERE chart_id=%s AND generation=%s",(chart_id,generation)) if _scalar(conn,"SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL",()) else 0
+        if stored or occurrences or final_rules:
+            raise NearMissError("near_miss_layer_unpinned")
+        return {"status":"OFF", "digest":None, "objects":0}
+    if type(pin) is not int or pin != LAYER_VERSION:
+        raise NearMissError("near_miss_layer_version")
+    orphaned = _scalar(conn,"SELECT count(*) FROM public.ka_gochara_near_miss n WHERE n.chart_id=%s AND n.generation=%s "
+        "AND NOT EXISTS(SELECT 1 FROM public.ka_gochara_near_miss_search s WHERE "
+        "(s.chart_id,s.generation,s.near_miss_object_id)=(n.chart_id,n.generation,n.near_miss_object_id))",(chart_id,generation))
+    if orphaned:
+        raise NearMissError("near_miss_unsearched: occurrence without search coverage")
+    position_at = _ephemeris_position(ephe_path)
+    horizon = (pub[0]["lo"],pub[0]["hi"])
+    before = _scalar(conn,"SELECT public.ka_gochara_near_miss_digest(%s,%s)",(chart_id,generation))
+    obligations = _rows(conn.execute("SELECT DISTINCT o.agent,o.relation,o.target FROM public.ka_gochara_search_obligation o "
+        "JOIN public.ka_gochara_search_path_pin p ON "
+        "(p.chart_id,p.generation,p.event_class,p.path_id,p.rule_version)=(o.chart_id,o.generation,o.event_class,o.path_id,o.rule_version) "
+        "WHERE o.chart_id=%s AND o.generation=%s AND p.disposition='included' AND o.relation IN ('conjunction','aspect') "
+        "AND o.target LIKE 'point:%%' AND o.agent <> 'moon' AND o.agent NOT LIKE 'period_lord:%%' ORDER BY 1,2,3",(chart_id,generation)))
+    searches = _rows(conn.execute("SELECT s.*,o.body,o.relation_kind,o.canonical_target,o.orb_policy_id,o.convention_id,"
+        "c.domain_start,c.domain_end FROM public.ka_gochara_near_miss_search s JOIN public.ka_gochara_near_miss_object o USING(near_miss_object_id) "
+        "JOIN public.ka_gochara_sky_convention c ON c.convention_id=o.convention_id WHERE s.chart_id=%s AND s.generation=%s",(chart_id,generation)))
+    expected = {(o["agent"],o["relation"],o["target"]) for o in obligations}
+    have = {(s["body"],s["relation_kind"],s["canonical_target"]) for s in searches}
+    if expected != have or len(have)!=len(searches):
+        raise NearMissError(f"near_miss_object_census: missing {sorted(expected-have)}, extra {sorted(have-expected)}")
+    cp = _scalar(conn,"SELECT consumed_dasha_rows FROM public.ka_gochara_search_input_snapshot WHERE chart_id=%s AND generation=%s",(chart_id,generation)) if searches else []
+    if searches and cp is None:
+        raise NearMissError("near_miss_dasha_copy_missing")
+    cp = json.loads(cp) if isinstance(cp,str) else cp
+    dashas = []
+    for e in cp:
+        key,content,meta=e["key"],e["content"],e["metadata"]
+        dashas.append({"level":int(key["level_n"]),"start":datetime.fromisoformat(key["start_iso"].replace('Z','+00:00')),
+            "end":datetime.fromisoformat(content["end_iso"].replace('Z','+00:00')),"id":str(meta["dasha_row_id"])})
+    problems=[]
+    for s in searches:
+        body,relation=s["body"],s["relation_kind"]
+        orb=_POINT_ORB_DEG[relation]
+        policy={"aspect":"orb_drishti_slow","conjunction":"orb_conj_slow"}[relation] + f":{orb:.6f}"
+        if s["orb_policy_id"] != policy:
+            problems.append("near_miss_orb_policy")
+        if s["convention_id"] != vector.get("sky_convention",{}).get("id"):
+            problems.append("near_miss_convention")
+        angles=(0.0,) if relation=="conjunction" else _ASPECT_ANGLES[body]
+        centres=[(float(s["canonical_target"].split(':')[1])-a)%360 for a in angles]
+        stored=_rows(conn.execute("SELECT *,near_miss_object_id AS object_id FROM public.ka_gochara_near_miss "
+            "WHERE chart_id=%s AND generation=%s AND near_miss_object_id=%s ORDER BY ordinal",(chart_id,generation,s["near_miss_object_id"])))
+        for row in stored:
+            problems += precision_problems(row)
+            if body in {"sun","moon","rahu","ketu"}:
+                problems.append("stationless_near_miss_stored")
+        if problems:
+            raise NearMissError('; '.join(problems))
+        derived=derive_near_misses(position_at,body,centres,s["domain_start"],s["domain_end"],orb_deg=orb)
+        derived = [_follow_domain_edge(position_at,body,centres,orb,r,(s["domain_start"],s["domain_end"]))
+                   if r["clipped"] and r["t_in"] < horizon[1] and r["t_out"] > horizon[0] else r for r in derived]
+        for ordinal,r in assign_ordinals([r for r in derived if r["state"]=="near_miss"]):
+            r["full_domain_ordinal"]=ordinal
+        relevant=[r for r in derived if r["t_in"] < horizon[1] and r["t_out"] > horizon[0]]
+        sh=s["horizon"]
+        problems += coverage_problems({"resolution_limit_seconds":60.0,"searched_complete":s["searched_complete"],
+            "horizon":(sh.lower,sh.upper),"count":s["near_miss_count"]},len(stored),horizon=horizon)
+        for row in stored:
+            # Rich stored junctions contain source identities, not merely kind names.
+            # Re-derive on its actual interval, then compare every field.
+            j,done=_junction(conn,s,row,horizon,dashas,position_at)
+            if row["junction"] != j or row["junction_complete"] != done:
+                problems.append("near_miss_junction_mismatch")
+            row["junction"]=None
+            row["junction_complete"]=False
+            problems += row_problems(row,domain=(s["domain_start"],s["domain_end"]))
+        problems += compare_sets(relevant,stored,junction_source=([],False),expected_orb_deg=orb,
+            expected_object_id=s["near_miss_object_id"],reported_count=s["near_miss_count"],tol_seconds=600)
+    if problems:
+        raise NearMissError('; '.join(problems))
+    after=_scalar(conn,"SELECT public.ka_gochara_near_miss_digest(%s,%s)",(chart_id,generation))
+    if before != after:
+        raise NearMissError("near_miss_state_changed_during_verification")
+    if persist:
+        conn.execute("DELETE FROM public.ka_gochara_near_miss_verification WHERE chart_id=%s AND generation=%s",(chart_id,generation))
+        conn.execute("INSERT INTO public.ka_gochara_near_miss_verification(chart_id,generation,layer_version,near_miss_digest) VALUES(%s,%s,1,%s)",(chart_id,generation,after))
+    return {"status":"VERIFIED", "digest":after,"objects":len(searches),"persisted":persist,
+        "resolution_limit_seconds":60.0, "output_identity":"vacuous_under_policy" if vector.get("result_policy")=="all_null_candidate/1" else None}

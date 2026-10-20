@@ -543,7 +543,9 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                 if s["status"] != new:
                     s["status"] = new
                     changed = True
-            if it.get("done_by") == "join":
+            if it.get("done_by") == "join" and s["status"] != "not_applicable":
+                # a join already not_applicable (required outcome or input unavailable) stays so: re-deriving it
+                # from its open dependencies flipped it back to waiting on alternate passes (SR-CLOSE-NOW, K5-2)
                 new = "done" if not strict_open else "waiting"
                 if s["status"] != new:
                     s["status"] = new

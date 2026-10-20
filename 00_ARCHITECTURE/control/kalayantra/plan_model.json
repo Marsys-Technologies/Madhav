@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020+k8-reg-rest-20261019",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020+close-now-bookkeeping-20261020+k8-reg-rest-20261019",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -4751,10 +4751,16 @@
         ]
       },
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-VC",
+        "reason": "D-VC refused as not_evaluable: no consenting evaluation population exists (PRE-D-VC default; SR-W34-PREP-RULINGS 4; applied by SR-CLOSE-NOW 2026-10-20, reversible)",
+        "re_entry": "a consenting evaluation population exists"
       },
       "join": true,
-      "done_by": "join"
+      "done_by": "join",
+      "requires_outcome": {
+        "D-VC": "approved"
+      }
     },
     {
       "id": "D-COMPACT",
@@ -27369,7 +27375,8 @@
       "title": "acharya dispute: unconditional Mars-in-eighth cancellation",
       "owner": "K",
       "depends_on": [
-        "KA-4b"
+        "KA-4b",
+        "D-KA4B-NB02-NA"
       ],
       "mandatory": true,
       "detector": {
@@ -27403,7 +27410,13 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-KA4B-NB02-NA",
+        "reason": "KA-4b is parked (its election view waits on a producer of evaluated scoped cancellations), so this finding on its cancellation reading cannot be acted on; SR-CLOSE-NOW item 7",
+        "re_entry": "KA-4b is re-entered: a sidecar producer of evaluated scoped cancellations (ALGO 3.17 steps 1-3/5) with a typed source contract is registered, so the election view can read its stored cancelled+locator rows"
+      },
+      "requires_outcome": {
+        "D-KA4B-NB02-NA": "approved"
       }
     },
     {
@@ -27715,7 +27728,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/p06b-nb-01"
+        "ref": "0919836b5493b72be89d8125d594c68492a87e3e",
+        "packet_pr": 3654,
+        "measures": "P06B pre-build (job X-20261016T142907Z-pb-p06b; independent review X-20261016T153511Z-review-pb-p06b ACCEPTED at f3cc67d): PR #3654 squash commit is contained in origin/main; the refs origin/kalayantra/p06b-nb-0N this detector used to name never existed, because the three findings were built inside that PR (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -27763,7 +27778,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/p06b-nb-02"
+        "ref": "0919836b5493b72be89d8125d594c68492a87e3e",
+        "packet_pr": 3654,
+        "measures": "P06B pre-build (job X-20261016T142907Z-pb-p06b; independent review X-20261016T153511Z-review-pb-p06b ACCEPTED at f3cc67d): PR #3654 squash commit is contained in origin/main; the refs origin/kalayantra/p06b-nb-0N this detector used to name never existed, because the three findings were built inside that PR (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -27811,7 +27828,9 @@
       "mandatory": true,
       "detector": {
         "type": "branch_merged",
-        "ref": "origin/kalayantra/p06b-nb-03"
+        "ref": "0919836b5493b72be89d8125d594c68492a87e3e",
+        "packet_pr": 3654,
+        "measures": "P06B pre-build (job X-20261016T142907Z-pb-p06b; independent review X-20261016T153511Z-review-pb-p06b ACCEPTED at f3cc67d): PR #3654 squash commit is contained in origin/main; the refs origin/kalayantra/p06b-nb-0N this detector used to name never existed, because the three findings were built inside that PR (SR-DETECTOR-REFS). The merged PR's review is the item's acceptance (SR-BOLD-07); typed exact-head acceptance, oracle CI and deployed-source containment are still required for the code claim."
       },
       "brief": {
         "spec": [
@@ -28726,7 +28745,13 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-VC",
+        "reason": "D-VC refused as not_evaluable: no consenting evaluation population exists (PRE-D-VC default; SR-W34-PREP-RULINGS 4; applied by SR-CLOSE-NOW 2026-10-20, reversible)",
+        "re_entry": "a consenting evaluation population exists"
+      },
+      "requires_outcome": {
+        "D-VC": "approved"
       }
     },
     {
@@ -28770,7 +28795,10 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-VC",
+        "reason": "D-VC refused as not_evaluable: no consenting evaluation population exists (PRE-D-VC default; SR-W34-PREP-RULINGS 4; applied by SR-CLOSE-NOW 2026-10-20, reversible)",
+        "re_entry": "a consenting evaluation population exists"
       }
     },
     {
@@ -28812,7 +28840,10 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-VC",
+        "reason": "D-VC refused as not_evaluable: no consenting evaluation population exists (PRE-D-VC default; SR-W34-PREP-RULINGS 4; applied by SR-CLOSE-NOW 2026-10-20, reversible)",
+        "re_entry": "a consenting evaluation population exists"
       }
     },
     {
@@ -28858,7 +28889,10 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-VC",
+        "reason": "D-VC refused as not_evaluable: no consenting evaluation population exists (PRE-D-VC default; SR-W34-PREP-RULINGS 4; applied by SR-CLOSE-NOW 2026-10-20, reversible)",
+        "re_entry": "a consenting evaluation population exists"
       }
     },
     {
@@ -28906,7 +28940,13 @@
       "producer": "K",
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-VC",
+        "reason": "D-VC refused as not_evaluable: no consenting evaluation population exists (PRE-D-VC default; SR-W34-PREP-RULINGS 4; applied by SR-CLOSE-NOW 2026-10-20, reversible)",
+        "re_entry": "a consenting evaluation population exists"
+      },
+      "requires_outcome": {
+        "D-VC": "approved"
       }
     },
     {
@@ -29377,6 +29417,23 @@
         "class": "retire_decision",
         "retires": "J-4c-pr2907"
       }
+    },
+    {
+      "id": "D-KA4B-NB02-NA",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Not applicable: KA4B-NB-02 — KA-4b is parked, so its cancellation-reading finding has nothing to act on",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "done_by": "decision",
+      "decision": "D-KA4B-NB02-NA",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "KA4B-NB-02"
+      }
     }
   ],
   "decisions": [
@@ -29425,8 +29482,8 @@
     {
       "id": "D-VC",
       "title": "Value checkpoint verdict",
-      "owner": "ADHIKĀRIN (G3)",
-      "default": "none — from the frozen rubric and the recorded outputs"
+      "owner": "ADHIKĀRIN (G3); the cockpit records the outcome (`ky decide D-VC --as steward --delegated --outcome refused`) under SR-CLOSE-NOW",
+      "default": "refused (not_evaluable) — no consenting evaluation population exists (PRE-D-VC default, SR-W34-PREP-RULINGS 4, applied by SR-CLOSE-NOW 2026-10-20); the dense path stays and the K5-2 family is not_applicable; re-entry: a consenting evaluation population exists"
     },
     {
       "id": "D-COMPACT",
@@ -29553,6 +29610,12 @@
       "title": "Not applicable (J-4c-pr2907): content already landed through #2901",
       "owner": "ADHIKĀRIN (N); the cockpit records the outcome (`ky decide D-J4C-PR2907-NA --outcome refused`) on the evidence of independent review X-20261019T150725Z-review-3596-pr2907 (NOT_APPLICABLE)",
       "default": "refused — #2907's content already landed through #2901 (squash 2e16dbdab, 2026-10-02); its owned files (drishti.py, test_drishti.py) are byte-identical to the #2907 head b598ee302; review X-20261019T150725Z-review-3596-pr2907 concluded NOT_APPLICABLE"
+    },
+    {
+      "id": "D-KA4B-NB02-NA",
+      "title": "Not applicable (KA4B-NB-02): KA-4b is parked, so its cancellation-reading finding has nothing to act on",
+      "owner": "ADHIKĀRIN (N); the cockpit records the outcome (`ky decide D-KA4B-NB02-NA --outcome refused`) under SR-CLOSE-NOW item 7",
+      "default": "refused — KA-4b is parked (SR-CLOSE-NOW item 7); re-entry: KA-4b is re-entered: a sidecar producer of evaluated scoped cancellations (ALGO 3.17 steps 1-3/5) with a typed source contract is registered, so the election view can read its stored cancelled+locator rows"
     }
   ],
   "coordination": {
