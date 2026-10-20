@@ -144,10 +144,9 @@ def test_x3_every_production_kind_of_the_real_table_is_classified(tmp_path):
     production = {k for k, v in table.items() if v.get("production")}
     exempt = {k for k in production if mod.mechanical_exempt(k)}
     assert exempt == {"smalltest_teardown", "measuring_teardown", "century_teardown", "publish_head", "rollback_head", "layer_publish", "layer_rollback", "measuring_cancel",
-                      "orchestrator_rebuild_teardown"}   # SR-PREBUILD-ALL: every *_teardown is a deletion, never mechanical
+                      "orchestrator_rebuild_teardown", "orchestrator_rebuild_cancel"}   # SR-PREBUILD-ALL: every *_teardown is a deletion, never mechanical
     assert production - exempt == {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch", "measuring_dispatch", "verification_job", "century_dispatch",
-                                   "orchestrator_rebuild", "layer_verify", "scheduler_pause", "scheduler_resume", "protected_window_dispatch", "gochara_role_provisioning_dispatch",
-                                   "orchestrator_rebuild_cancel"}   # U-M-01 / U-M-03: a dispatch, neither a deletion nor a serving change, so mechanical-eligible with a dry run; SR-PREBUILD-ALL: a stop request writes build_runs.stop_requested_at only and removes no data (executor.py untouched; holding it with measuring_cancel would be a one-name SIGNED_ONLY_KINDS edit)
+                                   "orchestrator_rebuild", "layer_verify", "scheduler_pause", "scheduler_resume", "protected_window_dispatch", "gochara_role_provisioning_dispatch"}   # U-M-01 / U-M-03: a dispatch, neither a deletion nor a serving change, so mechanical-eligible with a dry run; SR-CANCEL-LANE: every cancel kind (orchestrator_rebuild_cancel included) is single-signer, held with measuring_cancel
     assert mod.NO_DRYRUN_KINDS == {"backup_snapshot", "backup_restore_verify"} and all(k + "_dryrun" in table for k in {"smalltest_dispatch", "measuring_dispatch", "scheduler_pause", "scheduler_resume", "protected_window_dispatch", "gochara_role_provisioning_dispatch", "orchestrator_rebuild_cancel"})
 
 
@@ -308,7 +307,7 @@ def oracle_r1_foreign_record_never_reused(w, table):
 
 ORACLES = {
     "x1": (oracle_x1_deletions, ('return kind.endswith("_teardown") or kind in SIGNED_ONLY_KINDS', 'return kind in SIGNED_ONLY_KINDS')),
-    "x2": (oracle_x2_serving_and_cancel, ('SIGNED_ONLY_KINDS = frozenset({"publish_head", "layer_publish", "rollback_head", "layer_rollback", "measuring_cancel"})', 'SIGNED_ONLY_KINDS = frozenset()')),
+    "x2": (oracle_x2_serving_and_cancel, ('SIGNED_ONLY_KINDS = frozenset({"publish_head", "layer_publish", "rollback_head", "layer_rollback", "measuring_cancel", "orchestrator_rebuild_cancel", "century_cancel", "verification_cancel"})', 'SIGNED_ONLY_KINDS = frozenset()')),
     "a1": (oracle_a1_admitted_and_recorded, ("    if write_new_json(path, document): return None\n", "    if True: return None\n")),
     "a2": (oracle_a2_backup_needs_no_dry_run, ("    if kind in NO_DRYRUN_KINDS: return None, None\n", "    if False: return None, None\n")),
     "p1": (oracle_p1_manifest_must_be_listed, ('isinstance(p, dict) and p.get("pack_manifest_sha256") == manifest)', "isinstance(p, dict))")),
