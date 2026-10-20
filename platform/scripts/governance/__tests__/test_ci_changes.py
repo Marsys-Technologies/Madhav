@@ -237,7 +237,7 @@ def test_cli_fails_closed(tmp_path):
 
 HEAVY = ("replace-chain-substrate", "typecheck", "typecheck-mcp", "unit-tests", "db-integration-tests", "kala-db-tests", "k3-sealed-db-tests", "pratijna-v4-fixture-property-tests", "planner-regression",
          "icr-pr-gate", "governance-tool-tests-shard", "governance-readback-tests", "governance-gates-gochara", "gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes",
-         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")
+         "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build", "gochara-a55-final-rules", "gochara-a55-p06-legacy", "gochara-a55-g12-mutations", "gochara-j5s-full-class-seal")
 NEVER_SKIPPED = ("generated-artifacts", "changes", "secret-scan", "naming-lint", "fact-category-pin-lint", "earned-signal-lint", "registry-parity-gate", "governance-gates",
                  "governance-gates-static",       # the required Governance Gates check's parts (sharded 2026-10-08): never skipped, as before
                  "coverage-gate", "density-census", "governance-tool-tests",
@@ -265,6 +265,8 @@ def test_every_filtered_job_needs_changes_and_preserves_its_event_policy(jobs, n
 def test_the_cheap_and_required_gates_are_never_skipped_by_the_fast_path(jobs, name):
     j = jobs[name]
     assert "docs_only" not in str(j.get("if", "")), name
+    if name == "governance-gates":
+        assert str(j["if"]) == "${{ always() }}"
     if name not in {"governance-tool-tests", "governance-gates"}:
         assert "changes" not in (j.get("needs") if isinstance(j.get("needs"), list) else [j.get("needs")]), name
 
@@ -369,7 +371,7 @@ def test_the_classifier_has_no_unhandled_exception_path(monkeypatch):
 # ---------------------------------------------------------------- the A5.5f replace-chain job: a real, mandatory gate -----------------------
 
 A55_PREFIX = "gochara-a55-"                      # EVERY job with this prefix is a real-database Gochara job and is hardened below (CI-A55-SPLIT)
-A55_JOBS = ("gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes", "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-measuring-build")      # the jobs that must exist today; a new `gochara-a55-<name>` job is hardened automatically
+A55_JOBS = ("gochara-a55-replace-chain", "gochara-a55-slice-transitions", "gochara-a55-round2-runner", "gochara-a55-verifier-fixes", "gochara-a55-teardown", "gochara-a55-teardown-round2", "gochara-a55-teardown-round3", "gochara-a55-dispatch", "gochara-a55-final-rules", "gochara-a55-p06-legacy", "gochara-a55-g12-mutations", "gochara-a55-measuring-build")      # the jobs that must exist today; a new `gochara-a55-<name>` job is hardened automatically
 A55_MAX_TIMEOUT_MINUTES = 45                     # the old single job reached this limit; no job may be given more (split it instead)
 _FORBIDDEN_FLAGS = ("--deselect", "--ignore", "-k", "-m", "--collect-only", "--co", "--lf", "--last-failed", "--sw", "--stepwise")
 GOCHARA_TESTS = Path(__file__).resolve().parents[3] / "python-sidecar" / "tests" / "l3" / "gochara"
@@ -385,7 +387,13 @@ def _pytest_suites(step_run: str) -> list[str]:
         line = line.strip()
         if line.startswith("#") or "pytest" not in line:
             continue
-        out += [t for t in line.split() if t.startswith("tests/") and t.endswith(".py")]
+        for token in line.split():
+            if token.startswith("tests/") and token.endswith(".py"):
+                if any(char in token for char in '*?['):
+                    cwd = GOCHARA_TESTS.parents[2]
+                    out += sorted(path.relative_to(cwd).as_posix() for path in cwd.glob(token) if path.is_file())
+                else:
+                    out.append(token)
     return out
 
 
@@ -771,3 +779,49 @@ def test_p07_ci_rejects_skipped_or_missing_mcp_cases(jobs, tmp_path, case_count,
     (tmp_path / report_name).write_text("<testsuites><testsuite>" + "".join(cases) + "</testsuite></testsuites>")
     proc = subprocess.run([sys.executable, *command[1:]], cwd=tmp_path, capture_output=True, text=True)
     assert (proc.returncode == 0) is ok, proc.stdout + proc.stderr
+
+
+def test_j5s_glob_is_discovered_by_the_mandatory_db_guard():
+    selected = _pytest_suites('python -m pytest tests/l3/gochara/test_j5s_*_db.py -q')
+    assert selected == ['tests/l3/gochara/test_j5s_full_class_seal_db.py']
+
+
+@pytest.mark.parametrize('j5s,docs,others,expected', [
+    ('success', 'false', 'success', 0), ('failure', 'false', 'success', 1),
+    ('cancelled', 'false', 'success', 1), ('skipped', 'false', 'success', 1),
+    ('skipped', 'true', 'skipped', 0),
+])
+def test_j5s_result_is_required_by_the_existing_protected_umbrella(jobs, j5s, docs, others, expected):
+    umbrella = jobs['governance-tool-tests']
+    assert 'gochara-j5s-full-class-seal' in umbrella['needs']
+    step = umbrella['steps'][0]
+    assert step['env']['J5S_RESULT'] == '${{ needs.gochara-j5s-full-class-seal.result }}'
+    result = subprocess.run(['bash', '-c', step['run']], capture_output=True, text=True,
+                            env={'SHARDS_RESULT': others, 'READBACK_RESULT': others, 'EVENT_NAME': 'pull_request',
+                                 'READBACK_EXPECTED': 'false', 'J5S_EXPECTED': 'false' if docs == 'true' else 'true',
+                                 'J5S_RESULT': j5s, 'DOCS_ONLY': docs,
+                                 'KALA_DB_RESULT': 'success', 'KALA_DB_EXPECTED': 'true'})   # K9-23: the Kāla DB input is not under test here
+    assert result.returncode == expected
+
+
+@pytest.mark.parametrize('event,expected_flag,j5s,code', [
+    ('pull_request', 'false', 'skipped', 0),    # light PR that did not select the J5S profile: skip is by design
+    ('pull_request', 'true', 'skipped', 1),     # selected on a PR: a skip would hide a missing rehearsal
+    ('merge_group', 'true', 'skipped', 1),      # full events must run it
+    ('merge_group', 'true', 'success', 0),
+])
+def test_j5s_skip_is_accepted_only_when_the_light_gate_did_not_expect_it(jobs, event, expected_flag, j5s, code):
+    step = jobs['governance-tool-tests']['steps'][0]
+    assert 'J5S_EXPECTED' in step['env']
+    result = subprocess.run(['bash', '-c', step['run']], capture_output=True, text=True,
+                            env={'SHARDS_RESULT': 'success', 'READBACK_RESULT': 'success', 'EVENT_NAME': event,
+                                 'READBACK_EXPECTED': 'true', 'J5S_EXPECTED': expected_flag,
+                                 'J5S_RESULT': j5s, 'DOCS_ONLY': 'false',
+                                 'KALA_DB_RESULT': 'success', 'KALA_DB_EXPECTED': 'true'})   # K9-23: the Kāla DB input is not under test here
+    assert result.returncode == code, result.stdout
+
+
+def test_j5s_job_follows_the_light_pr_gate_and_is_a_full_suite_member(jobs):
+    job = jobs['gochara-j5s-full-class-seal']
+    assert "contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-j5s-full-class-seal')" in job['if']
+    assert 'gochara-j5s-full-class-seal' in jobs['full-suite']['needs']

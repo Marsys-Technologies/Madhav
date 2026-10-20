@@ -30,6 +30,8 @@
  * - --target <filename> flag: stops after that migration
  * - --only <a,b,...>: the protected-window path (deploy.yml "Apply Protected Public-Schema Migrations").
  *   An already-applied file in the list is a harmless skip (hash-checked like any applied file).
+ * - --replay-gochara --only <a,b,...>: SELECT-only ledger/hash preflight and independent readback;
+ *   refuses unapplied files. Never directly re-execute 1381 SQL (its predecessor pins refuse replay).
  * - Kāla protected files (scripts/kala_protected_migrations.txt) are SKIPPED with a ::warning:: by the
  *   routine path, never thrown on — see KALA_SCHEMA_WINDOW_DISPATCH below.
  *
@@ -153,6 +155,9 @@ export const PROTECTED_PUBLIC_SCHEMA_MIGRATIONS = new Set([
   '1233_gochara_p1_period_anchor.sql',
   '1235_ka_gochara_staged_candidate_evidence_function.sql',
   '1240_gochara_window_verification_gate.sql',
+  '1305_gochara_snapshot_owns_l1_copy.sql',
+  '1306_gochara_expected_class_census.sql',
+  '1308_gochara_near_miss_storage.sql',
 ])
 
 const AI_METERING_PROTECTED_PUBLIC_SCHEMA_MIGRATION = '1202_ai_metering_ledger.sql'
@@ -266,6 +271,8 @@ export interface RunOptions {
   target?: string
   /** Restrict execution and hash checks to an exact reviewed filename set. */
   only?: Set<string>
+  /** NB-03: hash-check applied Gochara migrations and repeat readback, with no DDL or SQL replay. */
+  replayGochara?: boolean
   /**
    * Disclosed-residual allowlist (Dvārapāla RULING 73), keyed by filename. Defaults to loading
    * `scripts/ci/migration_hash_disclosed_residuals.json` from disk. Tests pass an explicit map
@@ -830,11 +837,59 @@ async function backfillSqlIdentities(
  * Core migration logic — exported for unit tests.
  * Returns list of migration filenames that were (or would be) applied.
  */
+/** FB-21: run a separate read-only catalogue readback immediately after each protected apply. */
+export const GOCHARA_MIGRATION_READBACKS: Record<string, string> = {
+  '1305_gochara_snapshot_owns_l1_copy.sql': 'readback_1305_snapshot_copy.sql',
+  '1306_gochara_expected_class_census.sql': 'readback_1306_class_census.sql',
+  '1308_gochara_near_miss_storage.sql': 'readback_1308_near_miss_storage.sql',
+  '1381_gochara_near_miss_seal_integration.sql': 'readback_1381_near_miss_seal.sql',
+}
+
+export async function readBackGocharaMigration(client: PoolClient, filename: string): Promise<void> {
+  const script = GOCHARA_MIGRATION_READBACKS[filename]
+  if (!script) return
+  const sql = fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), 'gochara', script), 'utf8')
+  try {
+    const result = await client.query(sql)
+    const results = Array.isArray(result) ? result : [result]
+    console.log(`[migration-readback] ${filename}: ${JSON.stringify(results.map(r => r.rows))}`)
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  }
+}
+
+/** NB-03: a SELECT-only replay contract; all ledger hashes are checked before any readback. */
+async function replayGocharaMigrations(client: PoolClient, dirs: string[], options: RunOptions): Promise<string[]> {
+  const {only, dryRun, target} = options
+  if (!only?.size || dryRun || target) {
+    throw new Error('Gochara replay requires --only and cannot combine --target or --dry-run')
+  }
+  for (const name of only) {
+    if (!Object.hasOwn(GOCHARA_MIGRATION_READBACKS, name)) {
+      throw new Error(`Gochara replay has no reviewed readback for ${name}`)
+    }
+  }
+  const files = collectMigrationFiles(dirs).filter(f => only.has(f.name))
+  if (files.length !== only.size) throw new Error('Gochara replay migration file not found')
+  const ledger = await client.query<{filename: string, sha256: string}>('SELECT filename, sha256 FROM public._migrations_applied')
+  const hashes = new Map(ledger.rows.map(row => [row.filename, row.sha256]))
+  for (const file of files) {
+    if (!hashes.has(file.name)) throw new Error(`Gochara replay migration not applied: ${file.name}`)
+    const current = sha256Of(readMigrationSql(file))
+    const stored = hashes.get(file.name)!
+    if (current !== stored) throw new MigrationHashMismatchError(file.name, stored, current)
+  }
+  for (const file of files) await readBackGocharaMigration(client, file.name)
+  return [] // No migration was applied or re-executed.
+}
+
 export async function runMigrations(
   client: PoolClient,
   dirs: string[],
   options: RunOptions = {}
 ): Promise<string[]> {
+  if (options.replayGochara) return replayGocharaMigrations(client, dirs, options)
   const { dryRun = false, target, only } = options
   // Defaults to loading scripts/ci/migration_hash_disclosed_residuals.json from disk (real
   // production behavior — main() never passes this explicitly). Tests pass an explicit Map
@@ -913,6 +968,7 @@ export async function runMigrations(
       // Never auto-re-apply, never silently continue past a mismatch (unless disclosed —
       // see assertAppliedHashMatches's own docstring for the exact, pinned exception).
       assertAppliedHashMatches(file, applied, sql, disclosures)
+      if (only !== undefined) await readBackGocharaMigration(client, file.name)
       continue
     }
 
@@ -973,13 +1029,14 @@ export async function runMigrations(
       throw err
     }
 
+    if (only !== undefined) await readBackGocharaMigration(client, file.name)
     if (target && file.name === target) break
   }
 
   return ran
 }
 
-export function parseMigrationCliArgs(args: string[]): Pick<RunOptions, 'dryRun' | 'target' | 'only'> {
+export function parseMigrationCliArgs(args: string[]): Pick<RunOptions, 'dryRun' | 'target' | 'only' | 'replayGochara'> {
   const dryRun = args.includes('--dry-run')
   const targetIdx = args.indexOf('--target')
   const target = targetIdx !== -1 ? args[targetIdx + 1] : undefined
@@ -993,11 +1050,16 @@ export function parseMigrationCliArgs(args: string[]): Pick<RunOptions, 'dryRun'
   const only = onlyValue
     ? new Set(onlyValue.split(',').map((name) => name.trim()).filter(Boolean))
     : undefined
-  return { dryRun, target, only }
+  const replayGochara = args.includes('--replay-gochara')
+  if (replayGochara && (!only?.size || dryRun || target)) {
+    throw new Error('Gochara replay requires --only and cannot combine --target or --dry-run')
+  }
+  return { dryRun, target, only, ...(replayGochara ? {replayGochara: true} : {}) }
 }
 
 async function main(): Promise<void> {
-  const { dryRun, target, only } = parseMigrationCliArgs(process.argv.slice(2))
+  const options = parseMigrationCliArgs(process.argv.slice(2))
+  const {dryRun} = options
 
   const scriptDir = path.dirname(new URL(import.meta.url).pathname)
   const dirs = [
@@ -1008,7 +1070,7 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   const client = await pool.connect()
   try {
-    const ran = await runMigrations(client, dirs, { dryRun, target, only })
+    const ran = await runMigrations(client, dirs, options)
     if (dryRun) {
       console.log('Dry run — would apply:')
       ran.forEach(name => console.log(`  ${name}`))

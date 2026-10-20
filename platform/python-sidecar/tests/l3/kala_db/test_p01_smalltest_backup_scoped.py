@@ -17,6 +17,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[5] / 'platform/scripts'))
 import backup_v5_small_test_job as backup
+import v5_small_test_shared as shared
 
 SCHEMA_SQL = """
 DROP SCHEMA IF EXISTS p02 CASCADE;
@@ -439,3 +440,94 @@ def test_restore_refuses_when_the_restored_targets_ledger_is_not_the_one_the_bas
         backup.restore_verify(folder, label, 'small_test')
     assert not (folder / 'restore.json').exists()
     assert_target_removed(dsn, label)
+
+
+# ---- SR-BACKUP-VALIDITY-A8: a scoped backup is valid while its scoped-content digest is unchanged ---------------------------
+
+@pytest.fixture
+def proven(scoped, monkeypatch):
+    """A real capture and restore proof, laid out as the dispatch policy reads it (<root>/backups/<label>/)."""
+    dsn, tmp_path, _ = scoped
+    folder, label, receipt = capture(dsn, tmp_path)
+    backup.restore_verify(folder, label, 'small_test')
+    root = tmp_path / 'evidence'
+    (root / 'backups' / label).mkdir(parents=True)
+    for name in ('capture.json', 'restore.json'):
+        (root / 'backups' / label / name).write_bytes((folder / name).read_bytes())
+    monkeypatch.setattr(shared, 'SCOPED_BACKUP_SCOPE_SHA256', receipt['scope']['sha256'])     # the synthetic scope stands in for the pinned one
+    ref = {'backup_label': label, 'backup_restore_sha256': hashlib.sha256((root / 'backups' / label / 'restore.json').read_bytes()).hexdigest()}
+    return dsn, root, ref, receipt
+
+
+def test_an_unchanged_scope_is_valid_when_read_back_hours_later_by_the_real_measurement(proven):
+    """Claim: valid while the scoped content is unchanged, whatever the clock says (A8 §3). The capture's recorded digest
+    is the one a fresh read-only measurement of the same relations produces (one digest function)."""
+    from datetime import datetime, timedelta, timezone
+    dsn, root, ref, receipt = proven
+    assert receipt['scoped_content_digest'] == shared.scoped_content_digest(receipt['measurements'])
+    hours_later = datetime.now(timezone.utc) + timedelta(hours=9)
+    shared.scoped_backup_problem(ref, root, now=hours_later, measure=backup.measure_scope_now)
+
+
+def test_one_changed_row_in_scope_invalidates_the_backup_by_the_real_measurement(proven):
+    dsn, root, ref, _ = proven
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute("ALTER TABLE p02.written DISABLE TRIGGER ALL")        # the trigger would also write p02.audit: change exactly one row
+        conn.execute("UPDATE p02.written SET value = 'changed after the backup' WHERE id = 1")
+    with pytest.raises(shared.Refused, match='content has changed since the backup'):
+        shared.scoped_backup_problem(ref, root, measure=backup.measure_scope_now)
+
+
+UNMEASURABLE = 'scoped content could not be measured now'
+
+
+def test_a_scope_the_real_measurement_cannot_read_is_refused_never_assumed_valid(proven):
+    """Claim: a backup whose scoped relations cannot be measured now is not shown to be valid (A8 §3; N.8 / N.7.6: a measurement
+    that cannot run reads "refused", never "unchanged"). The relation is really gone from the throwaway database, so the REAL
+    measure_scope_now raises on its own SQL; the stub-measure twin lives in platform/scripts/__tests__/test_backup_v5_small_test_scoped.py."""
+    dsn, root, ref, receipt = proven
+    assert 'p02.audit' in receipt['measurements']['tables']
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute('DROP TABLE p02.audit')
+    with pytest.raises(psycopg.errors.UndefinedTable):
+        backup.measure_scope_now(sorted(receipt['measurements']['tables']), sorted(receipt['measurements']['sequences']))
+    with pytest.raises(shared.Refused, match=UNMEASURABLE):
+        shared.scoped_backup_problem(ref, root, measure=backup.measure_scope_now)
+
+
+@pytest.mark.parametrize('kind', ['smalltest_dispatch', 'century_dispatch'])
+def test_the_dispatch_and_century_execute_policies_refuse_an_unmeasurable_scope(proven, monkeypatch, kind):
+    """The policies the two dispatch scripts run at --execute before staging (_smalltest_request_policy /
+    _century_request_policy, wired to the real backup.measure_scope_now) return the refusal, not None."""
+    import dispatch_v5_century_job as century
+    import dispatch_v5_small_test_job as small
+    dsn, root, ref, _ = proven
+    monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)             # not under test: the lifecycle-absence file evidence
+    monkeypatch.setattr(shared, 'century_dryrun_evidence', lambda req, root: None)      # not under test: reached only after the backup check
+    if kind == 'smalltest_dispatch':
+        req = {**ref, 'kind': kind, 'args': {'run': 'one_class_full', 'classes': 'marriage'}}
+        policy = small._smalltest_request_policy
+    else:
+        req = {**ref, 'kind': kind, 'item_id': shared.CENTURY_ITEM, 'args': dict(shared.CENTURY_ARGS)}
+        policy = century._century_request_policy
+    assert policy(req, root) is None                                                    # measurable and unchanged: admitted
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute('ALTER TABLE p02.written RENAME TO written_renamed')               # a scoped relation the measurement can no longer find
+    assert UNMEASURABLE in policy(req, root)
+
+
+def test_the_fresh_measurement_is_read_only(scoped, monkeypatch):
+    dsn, _, _ = scoped
+    seen = []
+
+    def writes(conn, tables, sequences):
+        try:
+            conn.execute("INSERT INTO p02.audit (note) VALUES ('written by a measurement')")
+        except psycopg.errors.ReadOnlySqlTransaction as exc:
+            seen.append(exc)
+        return {'tables': {'p02.audit': {'rows': 0, 'sha256': 'a' * 64}}, 'sequences': {}}
+    monkeypatch.setattr(backup, 'scoped_measurements', writes)
+    backup.measure_scope_now(['p02.audit'], [])
+    assert len(seen) == 1
+    with psycopg.connect(dsn) as conn:
+        assert conn.execute("SELECT count(*) FROM p02.audit WHERE note = 'written by a measurement'").fetchone()[0] == 0

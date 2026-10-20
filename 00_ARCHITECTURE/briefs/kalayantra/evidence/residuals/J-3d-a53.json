@@ -1,0 +1,216 @@
+{
+ "schema": "ky.job_evidence/1",
+ "item": "J-3d-a53",
+ "step": "writer_completion_readback",
+ "claim": "Registered ka_gochara writer (inherited Pravaha A5.3): three objects, per-path pruning and interval sweep measured true on the local golden; interior extrema, day tier on demand, coarse-to-fine cost and 'closes Disclosure 3' are NARROWED or CARRIED as explicit nulls with cause and re-entry (SR-A53-NARROW, SR-J3-RESIDUALS). No narrowed or carried claim is asserted green.",
+ "rulings": [
+  {"id": "SR-J3-RESIDUALS", "clause": 2, "ledger": "run/DECISIONS_SURROGATE.jsonl line 225"},
+  {"id": "SR-A53-NARROW", "ledger": "run/DECISIONS_SURROGATE.jsonl line 226"}
+ ],
+ "measurement": {
+  "job": "X-20261019T024918Z-a53-measure",
+  "files": {
+   "A53_MEASURE.md": "017cba5b42846c7f15f40f27d0f75ada1c647f2c03cadb8d07cffba382af8f45",
+   "a53_measure.json": "38150175aa3b049023ebb42708b6bc640ced43014c2db8939aa5a43a27b2350c"
+  },
+  "golden": {
+   "path": "/Users/Dev/kalayantra/measuring-golden-20261018/golden",
+   "manifest_sha256": "0926425f99dd1886bd1f69b5f970fee6f27428856da7e6fecf494b56253a2d32",
+   "manifest_files_checked": 6,
+   "manifest_files_matching": 6,
+   "stored_scope": "test_slice",
+   "test_slice_classes": 26,
+   "classes_with_records": 24,
+   "result_policy_in_input_vector": "all_null_candidate/1"
+  },
+  "code_reviewed_commit": "a0520d04ceca8706c109bef2a70bebfd48ee3460",
+  "production_note": "Production rows are gone by design; every count below is from the local golden, not a database readback."
+ },
+ "day_tier_dependency_measurement": {
+  "job": "X-20261019T030741Z-daytier-dep",
+  "answer": "NO",
+  "files": {
+   "DAYTIER_DEP.md": "9519a7d3ed5e31835c7363ae939a944f5e33d3bafebbe84404d69eb15b16b3fc",
+   "daytier_dep.json": "eea4eb7865b935ad21a6b2809e096aebfc97733886cd00e0231fa3030e483ade"
+  },
+  "closure_items_scanned": 187,
+  "summary": "No served Kala read model whose plan item is in CLOSURE_v3 reads or needs a P6 record, a Moon contact or record, moon_on_demand output, or run_moon_query.",
+  "pinned_head": "a0520d04ceca8706c109bef2a70bebfd48ee3460",
+  "not_measured": "Production row counts (no remote database access by design).",
+  "latent_points_not_dependencies": ["L1 coverage block not filtered by partition kind (view_common.ts:311)", "L2 legacy vedha table may hold Moon-primary rows", "L3 legacy 3.0 windows blend the Moon by default"]
+ },
+ "claims": [
+  {
+   "id": "C1",
+   "claim": "Three objects: contacts, relationship records, evaluated windows",
+   "status": "measured_true",
+   "counts": {
+    "contacts_total": 14912,
+    "contacts_distinct_contact_id": 14912,
+    "contacts_without_any_record": 0,
+    "records_total": 174974,
+    "record_grains_class_path": 78,
+    "record_grain_counts_equal_digest": true,
+    "windows_total": 6629,
+    "window_grains_class_path_version": 78,
+    "records_without_contact": 8,
+    "records_without_contact_note": "all 8 are admission 'unqualified' with 0 supports, path P3 only"
+   },
+   "code": [
+    "platform/python-sidecar/services/gochara_kernel/record_store.py:809 (ka_gochara_contact)",
+    "platform/python-sidecar/services/gochara_kernel/record_store.py:939 (ka_gochara_relationship_record)",
+    "platform/python-sidecar/services/gochara_kernel/window_store.py:170,181 (ka_gochara_eval_window)",
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py:1043-1053 (plan grains)"
+   ]
+  },
+  {
+   "id": "C2",
+   "claim": "Per-path pruning (admission classification; pruned rows stored and flagged, not dropped)",
+   "status": "measured_true",
+   "counts": {
+    "not_admitted_by_path": {"P1": "63068 of 68521", "P2": "45 of 35121", "P3": "0 (8 unqualified)", "P4": "1304 of 5698"},
+    "records_by_admission_state": {"admitted": 110549, "not_admitted": 64417, "unqualified": 8},
+    "records_path_P5_P6": 0,
+    "classes_with_at_least_one_not_admitted": 20,
+    "classes_with_at_least_one_unqualified": 4,
+    "window_exclusion_ledger": {"not_admitted": 48708, "testimony": 17615, "no_support": 0}
+   },
+   "code": [
+    "platform/python-sidecar/services/gochara_kernel/record_store.py:1008-1022 (admission derived in SQL)",
+    "platform/python-sidecar/services/gochara_kernel/window_sweep.py:760-770 (exclusion)",
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py:152 (P5 held)",
+    "specs v1.4 (00_ARCHITECTURE/briefs/pravaha/design/GOCHARA_DESIGN_SPECS_v1_4.md):399 (section 2.3 invariant 2)"
+   ]
+  },
+  {
+   "id": "C3",
+   "claim": "Interval sweep: connected union of admitted scored supports (P4: intersection)",
+   "status": "measured_true",
+   "method": "independent re-union of admitted scored supports from the golden records, compared with the stored windows",
+   "counts": {
+    "grains_expected_to_hold_windows": 78,
+    "grains_where_windows_equal_independent_union": 78,
+    "windows_equal_independent_union": 6629,
+    "windows_total": 6629,
+    "extra_windows": 0,
+    "missing_grains": 0,
+    "zero_or_negative_length_windows": 0
+   },
+   "code": [
+    "platform/python-sidecar/services/gochara_kernel/window_sweep.py:792-803 (union; P4 intersect)",
+    "platform/python-sidecar/services/gochara_kernel/window_sweep.py:549,565"
+   ]
+  },
+  {
+   "id": "C4",
+   "claim": "Interior extrema (strongest instant inside a window, via maximise_earliest)",
+   "status": "narrowed_not_measured",
+   "result": null,
+   "wording": "implemented and unit-tested, not exercised by the measuring run (all_null policy)",
+   "cause": "The measuring run used result_policy all_null_candidate/1, whose branch leaves every score and peak empty and continues before the extremum search is reached. Windows in the golden carry only 5 fields (event_class, hi, lo, path_id, rule_version): 0 windows with a peak or score field, 0 with a peak instant. All 13258 window edges equal a member support edge, so 0 edges come from an extremum; extrema never move an edge, so that count cannot test them either. This is 0 by construction, not a finding of absence.",
+   "counts": {
+    "windows_with_peak_or_score_field": 0,
+    "windows_with_a_peak_instant_recorded": 0,
+    "window_edges_total": 13258,
+    "window_edges_equal_a_member_support_edge": 13258
+   },
+   "code": [
+    "platform/python-sidecar/services/gochara_kernel/window_sweep.py:455 (maximise_earliest)",
+    "platform/python-sidecar/services/gochara_kernel/window_sweep.py:824 (all-null branch continues before :888)",
+    "platform/python-sidecar/services/gochara_kernel/window_sweep.py:888 (only call site)",
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py:1559 (policy read back)",
+    "platform/python-sidecar/tests/l3/gochara/test_a53_window_sweep.py:333,349,354 (unit tests)"
+   ],
+   "re_entry": {
+    "when": "first window_qualification/1 build (the J-4d slice)",
+    "required_measured_row": "In the J-4d slice qualification and again in the J-4e readback: count of windows with peak fields set, and count of maximise_earliest edges. Both must be > 0 wherever the rules admit them; 0 is a defect, not a pass.",
+    "caveat": "Records whose factors are not constant stay NULL under the dynamic-objective switch (window_sweep.py:613), so the count applies to rules that admit a peak.",
+    "carried_to": ["J-4d", "J-4e"],
+    "ruling": "SR-A53-NARROW (4)"
+   }
+  },
+  {
+   "id": "C5a",
+   "claim": "Day tier: no day-resolution rows stored",
+   "status": "measured_true",
+   "counts": {
+    "moon_contacts": 0,
+    "records_with_moon_as_agent": 0,
+    "records_path_P6": 0,
+    "stretch_sink_bytes": 0,
+    "windows_le_1_day": 15,
+    "windows_le_1_hour": 0,
+    "windows_le_1_day_note": "span unions on P3 (14) and P4 (1), not a day tier"
+   },
+   "code": [
+    "specs v1.4:408 (section 2.3 invariant 6)",
+    "platform/python-sidecar/services/gochara_kernel/moon_on_demand.py:1-10",
+    "platform/migrations/1153_gochara_sky_event_substrate.sql:684 (kgse_body_domain_ck refuses a Moon sky event)",
+    "platform/migrations/1155_gochara_relationship_record.sql:729 (refuses a Moon record outside moon_on_demand)"
+   ]
+  },
+  {
+   "id": "C5b",
+   "claim": "Day tier computed on demand by the writer",
+   "status": "narrowed_not_measured",
+   "result": null,
+   "wording": "implemented and unit-tested; no writer step and no non-test caller",
+   "cause": "The writer plan has no day or Moon step. run_moon_query (moon_on_demand.py:183) is called only from tests/l3/gochara/test_a53_moon_on_demand.py; no production code passes moon=True. An on-demand answer leaves a returned receipt and one moon_on_demand coverage row, neither of which is in the golden. The golden therefore shows the absence of stored day rows (C5a) but cannot show the on-demand capability.",
+   "code": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py:999-1058 (writer plan)",
+    "platform/python-sidecar/services/gochara_kernel/moon_on_demand.py:183 (run_moon_query)",
+    "platform/python-sidecar/tests/l3/gochara/test_a53_moon_on_demand.py:110 (only caller)",
+    "platform/python-sidecar/services/gochara_kernel/candidate_boundary.py:30 (EXCLUDED_ON_DEMAND_KINDS, outside build identity)"
+   ],
+   "dependency_check": {
+    "question": "Does any served Kala read model inside CLOSURE_v3 depend on gochara day-resolution (P6 / Moon) rows?",
+    "answer": "NO",
+    "job": "X-20261019T030741Z-daytier-dep",
+    "effect": "The day tier is not a blocking finding for any closure item."
+   },
+   "re_entry": {
+    "carried_to": "the P6 promotion gate (B5.4), post-campaign",
+    "when": "when P6 is promoted, or when a served view first reads day-resolution rows",
+    "ruling": "SR-A53-NARROW (5b)"
+   }
+  },
+  {
+   "id": "C6",
+   "claim": "Coarse-to-fine, O(B log B) cost saving",
+   "status": "carried_not_measured",
+   "result": null,
+   "cause": "The golden stores pruned records (64417 kept and flagged) and records no timing or skipped-work counts; cost is measured by tests/l3/gochara/perf_a53_seal_cost.py, which is not part of the golden.",
+   "code": ["specs v1.4:806"],
+   "re_entry": {
+    "carried_to": "J-4e readback (substep timings)",
+    "ruling": "SR-A53-NARROW (coarse-to-fine)"
+   }
+  },
+  {
+   "id": "C7",
+   "claim": "Closes Disclosure 3",
+   "status": "carried_not_measured",
+   "result": null,
+   "wording": "carried to J-7a-a62 (deferred)",
+   "cause": "Not a data property of the golden. The spec closes Disclosure 3 at A6.2 (one registered writer produces '5.0'), which the J7 pre-build assigns to J-7a-a62 after soak; the J-7a family is deferred under A9 D-53. SR-J3-RESIDUALS clause 2 makes this a note on the item, not an a53 acceptance condition.",
+   "code": [
+    "00_ARCHITECTURE/briefs/pravaha/design/GOCHARA_DESIGN_SPECS_v1_4.md:816",
+    "00_ARCHITECTURE/briefs/kalayantra/J7_PREBUILD_v1_0.md:86"
+   ],
+   "re_entry": {
+    "carried_to": "J-7a-a62 (deferred, A9 D-53)",
+    "ruling": "SR-J3-RESIDUALS (2)"
+   }
+  }
+ ],
+ "summary": {
+  "measured_true": ["C1", "C2", "C3", "C5a"],
+  "narrowed_not_measured": ["C4", "C5b"],
+  "carried_not_measured": ["C6", "C7"],
+  "green_without_detector": []
+ },
+ "interpretation": "(I) INTERPRETATION: C5 is split in two (5a stored rows = none; 5b computed on demand) because the golden can prove the first and cannot prove the second. Alternative: one 'day tier' claim, which would have to read either false (no writer step) or green on absence alone.",
+ "not_claimed": "Dependency completion (J-0m, J-3c), the independent step receipt (reviews/steps/J-3d-a53.writer_completion_readback.json) and an executor receipt (ops/receipts/J-3d-a53.json with its request in ops/done) are separate and are not asserted by this file. This file is not an executor receipt.",
+ "personal_data": "none: counts, digests, class and path labels, file and line citations only; no record content, dates, targets or life-event rows",
+ "schema_note": "Shape mirrors ops/receipts/J-3c-a52.evidence.json (ky.job_evidence/1: claim, counts, interpretation, not_claimed, personal_data, step, schema), extended with a per-claim list because this item carries narrowed claims."
+}

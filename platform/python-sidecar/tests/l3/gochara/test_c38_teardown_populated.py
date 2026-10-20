@@ -19,7 +19,7 @@ from ._smalltest_executor_evidence import executor_bound_smalltest  # noqa: F401
 
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 
-from .test_a53_inventory import CHART_ID, H0, H1
+from .test_a53_inventory import CHART_ID, H0, H1, apply_near_miss_storage
 from .test_a53_p1_support import GEN
 from .test_a53_window_verification_roles import (_consistent_sky, _qualification_policy,  # noqa: F401  (autouse)
                                                  rworld)
@@ -38,6 +38,7 @@ def _bookkeeping(w):
         table = ddl.split("public.")[1].split(" ")[0]
         if w.conn.execute("SELECT to_regclass(%s)", (f"public.{table}",)).fetchone()[0] is None:
             w.conn.execute(ddl)
+    apply_near_miss_storage(w.conn)                              # the teardown's closed list covers the migration-1308 generation tables
     e = td.EXPECTED_REGISTRY_ROW
     w.conn.execute("DELETE FROM public.asset_registry WHERE asset_id IN (%s, 'other_asset')", (ASSET,))
     w.conn.execute("INSERT INTO public.asset_registry VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",

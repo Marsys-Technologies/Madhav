@@ -140,11 +140,31 @@ def test_absence_proof_measures_every_deleted_scope_and_run_ids():
 
 
 @pytest.mark.parametrize('table', ['build_runs', 'build_run_assets', 'asset_provenance_receipts',
-                                 'ka_gochara_contact', 'ka_gochara_search_input_snapshot', 'kala_gochara_publication'])
+                                 'ka_gochara_contact', 'ka_gochara_search_input_snapshot', 'kala_gochara_publication',
+                                 'ka_gochara_near_miss', 'ka_gochara_near_miss_search'])
 def test_absence_refuses_surviving_rows(table):
     cur = Counts({table: 1})
     with pytest.raises(teardown.TeardownRefused, match=table):
         teardown._prove_absence(cur, [])
+
+
+def test_teardown_closed_list_holds_the_generation_near_miss_tables_and_never_the_global_object():
+    """Migration 1308 (NearMissStore.delete_generation deletes exactly ka_gochara_near_miss and ka_gochara_near_miss_search by chart x
+    generation, near_miss.py). The backup scope declares them written, so the teardown's closed list, its absence proof and the independent
+    readback must move with it. ka_gochara_near_miss_object is GLOBAL and insert-only (a DELETE trigger refuses it; any chart or generation
+    may reference an object): the teardown never deletes nor counts it, in any of the four places."""
+    nm = ('ka_gochara_near_miss', 'ka_gochara_near_miss_search')
+    obj = 'ka_gochara_near_miss_object'
+    closed = [t for t, _ in teardown.GENERATION_TABLES]
+    assert all(t in closed for t in nm) and obj not in closed
+    assert closed.index('ka_gochara_search_input_snapshot') < min(map(closed.index, nm)) < closed.index('kala_gochara_publication')
+    scoped = [t for t, _, _, _ in teardown._scope_statements([])]
+    assert all(t in scoped for t in nm) and obj not in scoped
+    assert all(t in teardown._absence_counts(Counts(), []) for t in nm)
+    assert obj not in teardown._absence_counts(Counts(), [])
+    assert all(t in teardown.REQUIRED_PRIVILEGES['select_delete'] for t in nm) and obj not in teardown.REQUIRED_PRIVILEGES['select_delete']
+    readback = teardown.shared.absence_readback_sql()
+    assert all(f'FROM {t} WHERE chart_id' in readback for t in nm) and obj not in readback
 
 
 def test_failed_absence_detector_rolls_back_before_commit(monkeypatch):
@@ -182,7 +202,10 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     import datetime as dt
     import types
     source = ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py'
-    function = next(n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef) and n.name == 'validate')
+    # validate's signed route is signer_acceptance_problem (the A8 §3.9 block, moved out unchanged by OWNER-MINIMAL-PROTECTION-NOW);
+    # orchestrator_rebuild_cancel_problem (SR-CANCEL-LANE) is compiled for real: it returns None before touching any state for a non-cancel kind
+    functions = [n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef) and n.name in ('signer_acceptance_problem', 'orchestrator_rebuild_cancel_problem', 'validate')]
+    assert len(functions) == 3
     accepted_dir = tmp_path / 'acceptance'; accepted_dir.mkdir()
     globals_ = {'pathlib': importlib.import_module('pathlib'), 'SAFE_ID': importlib.import_module('re').compile(r'^[a-z0-9_-]+$'),
                 'SAFE_ARG': importlib.import_module('re').compile(r'^[A-Za-z0-9_.:+,/-]+$'),
@@ -191,11 +214,13 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
                 'lease_live': lambda lease: True, 'git': lambda *args: types.SimpleNamespace(returncode=0),
                 'dt': dt, 'json': json, 'seen': lambda key: False,
                 'utc_time': lambda value: dt.datetime.fromisoformat(value),
-                'smalltest_policy_problem': lambda req: None, 'request_digest': lambda req: 'synthetic_bound_digest',
+                'smalltest_policy_problem': lambda req: None, 'head_policy_problem': lambda req: None, 'request_digest': lambda req: 'synthetic_bound_digest',
                 # validate() ends with the scheduler and measuring-cancel admission rules; neither applies to a small-test kind
                 # (each has its own suite), so they are transport doubles here like smalltest_policy_problem.
-                'scheduler_policy_problem': lambda req: None, 'measuring_cancel_problem': lambda req: None}
-    exec(compile(ast.Module(body=[function], type_ignores=[]), str(source), 'exec'), globals_)
+                'scheduler_policy_problem': lambda req: None, 'measuring_cancel_problem': lambda req: None,
+                # the mechanical route needs a pack fill, which none of these requests carries (its own suite: fleet/tests/test_executor_mechanical_production.py)
+                'mechanical_pre_acceptance': lambda req, table: 'the mechanical route is not under test here'}
+    exec(compile(ast.Module(body=functions, type_ignores=[]), str(source), 'exec'), globals_)
     validate = globals_['validate']
     table = json.loads(TABLE.read_text())['ops']
     request = {'operation_id': 'p01_fixture', 'kind': kind, 'item_id': 'J-1a', 'idempotency_key': 'p01_fixture',

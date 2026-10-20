@@ -105,6 +105,7 @@ def inspect_rebuild(conn: Any, *, run_id: str, assets: str) -> dict:
     run = _run(conn,run_id)
     if assets.split(',') != run['plan']:
         raise ValueError('assets must exactly match the frozen ordered plan')
+    # K9-23 CI: plan inspection runs no dry-run detector; §N.8 requires null.
     return {'status':'PLAN_ONLY','run_id':run_id,'chart_id':str(run['chart_id']),
             'planned_assets':run['plan'],'executed_assets':[],'dry_run_passed':None}
 

@@ -268,11 +268,15 @@ def disposable_dsn():
     except UnsafeAdminDSN:
         raise                    # a hostile admin DSN is a configuration ERROR, never a skip
     except Exception as exc:  # noqa: BLE001
+        if os.environ.get('GOCHARA_A25_REQUIRE_DB') == '1':
+            pytest.fail(f'disposable cluster unreachable ({type(exc).__name__})')
         pytest.skip(f"NOT_RUN: disposable cluster unreachable ({exc})")
     actual = admin.execute(
         "SELECT system_identifier FROM pg_control_system()").fetchone()[0]
     if str(actual) != EXPECTED_CLUSTER_ID:
         admin.close()
+        if os.environ.get('GOCHARA_A25_REQUIRE_DB') == '1':
+            pytest.fail('disposable cluster identity differs from the readback pin')
         pytest.skip(
             "NOT_RUN: cluster system_identifier "
             f"{actual} is not the pinned disposable cluster — refusing to "

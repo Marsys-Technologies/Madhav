@@ -18,10 +18,11 @@ SURFACES = {
                      "approved canonical offline input and deployment-faithful builder-role rehearsal",
                      "accepted density/cap projection and Cloud Run timeout readback"]},
     "century_dispatch": {
-        "args": {"classes": "all"}, "caps": ["gcloud"], "runtime_principal": "data_plane_builder", "phase": "J-4d / J-4e",
-        "source": "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
-        "blockers": ["allocate final-rules 5.0 launch and dry-run binding through a real child; legacy century entry is 4.1",
-                     "P06b qualification, D-G9, measured cap/timeout and D-CLOUD", "confirm whether staging adds builder capability"]},
+        "args": {"classes": "all"}, "caps": ["builder", "gcloud"], "runtime_principal": "data_plane_builder", "phase": "J-4d / J-4e",
+        "source": "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py",
+        "blockers": ["P06b qualification, D-G9 and the N-G9 horizon decision (the writer, not the launcher, chooses what '5.0' answers)",
+                     "accepted density/cap projection and Cloud Run timeout readback, then D-CLOUD",
+                     "the real kind demands its century_dispatch_dryrun staging rollback, a scoped backup, the live lease and independent acceptance"]},
     "verification_job": {
         "args": {"generation": "5.0"}, "caps": ["gcloud"], "runtime_principal": "gochara_verifier", "phase": "phase 10, after P06b",
         "source": "platform/python-sidecar/pipeline/orchestrator/verification_job.py",
@@ -68,12 +69,20 @@ def prepare(kind, args):
     if args != entry["args"]:
         raise ValueError("request must match the bounded arguments exactly; no extra arguments")
     proposal = kind in ("protected_apply", "provision", "seal")
-    return dict(schema="ky.operation_preparation/1", kind=kind, status="PREPARATION_ONLY", enabled=False,
+    result = dict(schema="ky.operation_preparation/1", kind=kind, status="PREPARATION_ONLY", enabled=False,
                 binding_status="PROPOSAL_REQUIRES_CHILD" if proposal else "DISABLED_PENDING_PHASE",
                 chart_id="482012f1-710e-4a25-994a-93821f5871aa", generation=None if kind == "rollback_head" else "5.0", args=dict(args),
                 executor_capabilities=list(entry["caps"]), runtime_principal=entry["runtime_principal"],
                 enable_at=entry["phase"], source=entry["source"], blockers=list(entry["blockers"]),
                 external_human_approval_required=proposal, dry_run_passed=False)
+    if kind == "verification_job":
+        result["prepared_launcher"] = {
+            "script": "platform/scripts/prepare_gochara_verifier_launch.py",
+            "enabled": False, "production_allocation": None,
+            "input": "supplied immutable verifier job definition readbacks",
+            "output": "ky.j5s_verifier_launch_preparation/1",
+        }
+    return result
 
 
 def main(argv=None):

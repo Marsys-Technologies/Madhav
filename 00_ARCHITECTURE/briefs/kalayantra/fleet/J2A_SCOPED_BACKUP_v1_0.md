@@ -35,8 +35,14 @@ overwrites and the teardown deletes, and the insert-only global Gochara tables n
 
 * **Rule (ruling condition 1):** every table the dispatch, the run and the teardown can WRITE, plus `_migrations_applied`
   (context only: written by `scripts/migrate.ts`, kept so the proof can state the scratch schema is at the same migration set).
-  Currently 34 written + 1 context = 35 tables; the **digest** (`sha256` of the canonical JSON of `{schema, name, sorted tables}`)
-  is `489330948aecf7b6fdaa52d00a8f8fa8735e4ed1dcd27a14ee957bd43c07b528`. Prose and `sites` do not enter the digest.
+  Currently 37 written + 1 context = 38 tables (the three migration-1308 near-miss tables were added on top of the 34 + 1 first
+  derived at `4c43d2281`, by the p06 near-miss storage PR); the **digest** (`sha256` of the canonical JSON of `{schema, name, sorted tables}`)
+  is `1daf69d6e31279592947aa25e2b4f9a5c1c8137d6663ba039c27e7331ac7335a`. Prose and `sites` do not enter the digest.
+  The teardown's closed deletion list moves with the scope (owner-surrogate ruling madhav-6d, 2026-10-19): `GENERATION_TABLES` in
+  `teardown_v5_small_test_job.py` holds the two generation-scoped near-miss tables (`ka_gochara_near_miss`,
+  `ka_gochara_near_miss_search`; `NEAR_MISS_TABLES` in `v5_small_test_shared.py`, so the absence proof and the independent readback count
+  them too). The GLOBAL insert-only `ka_gochara_near_miss_object` is backed up but never deleted or counted by the teardown: its trigger
+  refuses DELETE and other charts and generations share an object. The table list, hence the digest, did not change.
 * **Independently re-derived** at head `4c43d2281` (not copied from the draft). Differences from the draft, all verified:
   `public.asset_throughput_state_audit` is **added** — a trigger (`586_f152_asset_throughput_state_audit.sql:96-117`) writes it on
   every `UPDATE OF state` of `asset_throughput`, which the dispatch upsert and the runner perform. Legacy
@@ -149,7 +155,7 @@ the data set may not exceed 500 MB on disk (`SCOPED_DATA_BUDGET_BYTES`; a COPY s
 before any `--jobs` gain) — over that the capture refuses **before dumping**, naming the byte count; `pg_dump` is killed at
 15 minutes and `pg_restore` at 10; each measurement statement is capped at 5 minutes. Estimate: schema catalog read 1–3 minutes,
 data (tens of MB expected) 1–5 minutes, local restore and proof under 2 minutes — **about 5–12 minutes typical, 28 minutes
-worst case**. The real byte count of the 35 tables is not known (none is among the ten largest relations; each is below
+worst case**. The real byte count of the 35 tables first derived is not known (none is among the ten largest relations; each is below
 0.52 GB including indexes): if the budget refusal fires, the step stops with that number and the cockpit decides — nothing is
 dumped. Local rehearsal on the full migration-derived schema (475 tables, pgvector, guard triggers): capture 0.4 s, restore 1.1 s.
 With the governed bundle as source stand-in and a login that cannot read an out-of-scope table: capture 0.1 s, restore (base build
@@ -161,6 +167,15 @@ The capture receipt states `validity` = `[snapshot instant, snapshot instant + 4
 proof repeats it. **(I) INTERPRETATION J2A-S3:** 4 h, so a sitting (dry run, pre-acceptance receipt — itself valid 3 h) fits;
 alternative: shorter, at the cost of re-running step 10 inside a long sitting. A dispatch must satisfy
 `restore proof time <= now <= not_after`.
+
+**Amended by SR-BACKUP-VALIDITY-A8 (A8 §3, 2026-10-18): the 4 h clock above no longer gates a scoped backup.** A scoped capture records
+`scoped_content_digest` (SHA-256 over its per-table row-count/content-hash and per-sequence measurements,
+`v5_small_test_shared.scoped_content_digest`) and `validity = {not_before: snapshot instant, basis}`; no `not_after`. A scoped backup
+is valid while (a) its restore proof is a verified proof of the pinned scope, bound to its capture, whose measured content has that
+digest, and (b) a fresh, read-only measurement of the same relations (`backup_v5_small_test_job.measure_scope_now`, the capture's
+own `scoped_measurements`) has that digest. The dispatch script runs (b) at `--execute` before anything is staged; the executor's
+admission has no database and checks (a) only. A measurement that cannot be taken refuses. An older capture's `not_after` stays
+readable and is never a gate. The 4 h window (`SCOPED_BACKUP_VALIDITY_S`) now applies to full-form (/1) proofs only.
 
 Enforcement is the smallest change that works: `scoped_backup_problem` in `v5_small_test_shared.py`, called from
 `smalltest_request_problem`, which runs at executor admission **and again inside the dispatch script at `--execute`**. A

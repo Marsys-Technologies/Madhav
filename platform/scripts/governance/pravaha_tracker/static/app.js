@@ -73,7 +73,9 @@
   function card(it) {
     const st = it.display_status || it.status;
     const prog = it.progress != null && st !== "done" ? `<div class="p"><div style="width:${Math.round(it.progress * 100)}%"></div></div>` : "";
-    const steps = it.steps ? `<div class="steps">${it.steps.map((s) => `<span class="${s.done ? "on" : ""}">${esc(s.name)}</span>`).join("")}</div>` : "";
+    const steps = it.steps ? `<div class="steps">${it.steps.map((s) => s.not_applicable
+      ? `<span class="on na" title="${esc(s.reason)} (decision ${esc(s.decision)})">${esc(s.name)} · N/A · ${esc(s.decision)}</span>`
+      : `<span class="${s.done ? "on" : ""}">${esc(s.name)}</span>`).join("")}</div>` : "";
     const gateWait = it.built_waiting_on_gate && it.gate_blockers?.length
       ? `<div class="s">built, waiting on gate: ${esc(it.gate_blockers.join(", "))}</div>` : "";
     const activation = it.activation_pending?.length

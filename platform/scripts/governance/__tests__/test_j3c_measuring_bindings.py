@@ -62,7 +62,7 @@ def test_measuring_receipt_requires_launch_record_and_cannot_replay_smalltest(tm
     body = dict(schema='ky.measuring_launch/1', status='LAUNCHED', run_id=S.RUN, chart_id=shared.CHART_ID,
         asset_id=shared.ASSET_ID, plan_manifest_digest='a' * 64, execution_name='brahma-build-pipeline-job-fixture')
     for output in (S.RUN, json.dumps({**body, 'schema': 'ky.smalltest_launch/1'}), json.dumps(body) + '\n' + json.dumps(body)):
-        executor.receipt(req, 'COMPLETED', rc=0, out=output, stdout=output)
+        executor.receipt(req, 'COMPLETED', rc=0, out=output)
         assert json.loads((tmp_path / 'launch.json').read_text())['status'] == 'FAILED'
     executor.receipt(req, 'COMPLETED', rc=0, out=json.dumps(body))
     assert json.loads((tmp_path / 'launch.json').read_text())['launch'] == body
@@ -227,9 +227,9 @@ def test_measuring_staging_receipt_requires_confirmed_rollback(tmp_path, monkeyp
         plan_manifest=manifest, plan_manifest_digest=shared.evidence_digest(manifest))
     for output in ('{}', json.dumps({**proof, 'rollback_confirmed': False}),
                    json.dumps({**proof, 'request_sha256': '0' * 64})):
-        executor.receipt(req, 'COMPLETED', rc=0, out=output, stdout=output)
+        executor.receipt(req, 'COMPLETED', rc=0, out=output)
         assert json.loads((tmp_path / 'rollback.json').read_text())['status'] == 'FAILED'
-    executor.receipt(req, 'COMPLETED', rc=0, out=json.dumps(proof), stdout=json.dumps(proof))
+    executor.receipt(req, 'COMPLETED', rc=0, out=json.dumps(proof))
     assert json.loads((tmp_path / 'rollback.json').read_text())['staging'] == proof
 
 
@@ -243,6 +243,27 @@ def test_measuring_launch_requires_same_manifest_rollback_not_boolean(tmp_path):
     assert shared.measuring_dryrun_evidence(req, tmp_path / 'run/ops', proof['plan_manifest_digest']) == proof
     with pytest.raises(shared.Refused):
         shared.measuring_dryrun_evidence(req, tmp_path / 'run/ops', '0' * 64)
+
+
+def test_a_mechanically_accepted_measuring_launch_passes_the_same_reviewed_policy_as_a_signed_one(tmp_path):
+    """OWNER-MINIMAL-PROTECTION-NOW: the J-3c launch carries `pack_fill` and no acceptance_receipt; the executor's own pre-acceptance record is what the
+    reviewed measuring policy reads (the staging rollback must precede it), and a record that is not complete refuses."""
+    req = dict(kind='measuring_dispatch', item_id='J-3c', operation_id='launch', args=dict(run='all_classes_full', classes='all'))
+    req['absence_receipt'], req['absence_acceptance'] = S.absence_for(tmp_path)
+    req = staging_for(tmp_path, req)
+    root = tmp_path / 'run/ops'
+    assert shared.measuring_request_problem(req, root) is None, 'control: the signed request is admitted'
+    req.pop('acceptance_receipt'); req.pop('dryrun_acceptance')
+    req['pack_fill'] = dict(pack_manifest_sha256='a' * 64, template={}, fill_sha256='b' * 64)
+    record = dict(schema='ky.mechanical_acceptance/1', phase='pre', by='executor-mechanical', result='ACCEPTED', operation_id='launch',
+                  request_sha256=shared.request_hash(req), reviewed_commit=S.COMMIT, ts='2026-10-18T00:00:00+00:00',
+                  checks={'request_equals_verified_pack_fill': True, 'dry_run_completed_ok_for_same_identity': True, 'lease_live': True})
+    S.put(tmp_path, 'acceptance', 'launch', record)
+    assert shared.measuring_request_problem(req, root) is None
+    S.put(tmp_path, 'acceptance', 'launch', dict(record, checks={'lease_live': False}))
+    assert shared.measuring_request_problem(req, root), 'a record with a false check must refuse'
+    S.put(tmp_path, 'acceptance', 'launch', dict(record, ts='2026-10-14T00:00:00+00:00'))
+    assert shared.measuring_request_problem(req, root), 'the staging rollback must precede the acceptance'
 
 
 def resign_snapshot(root, *, changed_file=None):

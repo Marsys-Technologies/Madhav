@@ -1,7 +1,8 @@
 """Amendment A9 plan-model claims, one oracle each (source: KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md).
 
   §2.1  roots exactly as listed; JOIN-ALL is no dependency of C-1 and lies outside the closure
-  §2.2  CLOSURE_v3.json is the deterministic closure of those roots over depends_on (kyclosure --check)
+  §2.2  the closure of those roots over depends_on is deterministic (kyclosure compute). CLOSURE_v3.json itself is CI-generated
+        from the reviewed source (SR-CHURN-CUT 3) and not carried in PRs, so every claim below reads the COMPUTED closure
   §3.1  the Tier-2 methods and the L5 hand-off depend on J-6l and sit in the closure (not deferred)
   §3.2  K-AVADHI-C is in the closure
   §4    no closure member depends on a deferred or not_applicable item (they could never complete)
@@ -21,6 +22,8 @@ CONTROL = REPO / "00_ARCHITECTURE" / "control" / "kalayantra"
 sys.path.insert(0, str(FLEET))
 import kya9plan  # noqa: E402
 import kyclosure  # noqa: E402
+sys.path.insert(0, str(REPO / "platform/scripts/governance"))
+import generated_paths  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -39,8 +42,8 @@ def roots():
 
 
 @pytest.fixture(scope="module")
-def closure():
-    return json.loads((CONTROL / "CLOSURE_v3.json").read_text(encoding="utf-8"))
+def closure(model, roots):
+    return kyclosure.compute(model, roots)      # SR-CHURN-CUT 3: the committed copy may lag the model until CI/refresh regenerates it
 
 
 def test_roots_are_exactly_the_listed_ones(roots):  # §2.1
@@ -60,8 +63,8 @@ def test_the_close_gates_on_the_acceptance_roots(items, roots):  # §2.1 (I) a r
 
 def test_closure_is_the_deterministic_closure_of_the_roots(model, roots):  # §2.2
     rendered = kyclosure.render(kyclosure.compute(model, roots))
-    assert rendered == (CONTROL / "CLOSURE_v3.json").read_bytes()
     assert rendered == kyclosure.render(kyclosure.compute(model, roots))
+    assert rendered == generated_paths.closure_bytes(REPO)      # the CI generator and this oracle agree on the bytes
 
 
 def test_post_flip_phase_depends_on_the_flip_and_is_counted(items, closure):  # §3.1
@@ -76,7 +79,8 @@ def test_k_avadhi_c_is_in_the_closure(closure):  # §3.2
 
 
 def test_no_closure_member_waits_on_a_deferred_or_retired_item(items, closure):  # §4
-    gone = set(kya9plan.DEFERRED) | set(kya9plan.A9_NB04_DEFERRED) | {t for _, _, ts in kya9plan.NOT_APPLICABLE for t in ts}
+    gone = (set(kya9plan.DEFERRED) | set(kya9plan.A9_NB04_DEFERRED) | set(kya9plan.PREP_DEFERRED)
+            | {t for _, _, ts in kya9plan.NOT_APPLICABLE for t in ts})
     assert not gone & set(closure["closure"])
     assert [(i, d) for i in closure["closure"] for d in items[i]["depends_on"] if d in gone] == []
 
@@ -123,3 +127,14 @@ def test_every_not_applicable_item_has_a_decision_item_and_entry(model, items): 
         assert did in decisions and items[did]["done_by"] == "decision"
         for t in targets:
             assert items[t]["requires_outcome"] == {did: "approved"} and did in items[t]["depends_on"]
+
+
+def test_prep_deferred_items_are_deferred_outside_c1_and_the_closure(items, closure):  # SR-W34-PREP-RULINGS 5b
+    # D-T2 and L0-K (L0-K has no branch yet, D-T2 is parked) would keep C-1 from ever starting; the surrogate deferred both
+    # with re-entry 'post-flip'. Fail-on-revert: put either back in C-1.depends_on, or class a, and this reads false.
+    for iid in kya9plan.PREP_DEFERRED:
+        assert iid not in items["C-1"]["depends_on"], iid
+        assert iid not in closure["closure"], iid
+        assert items[iid]["triage"]["class"] == "b" and items[iid]["triage"]["re_entry"].startswith("post-flip"), iid
+    for iid, cut in kya9plan.PREP_CUT_EDGES.items():
+        assert not set(cut) & set(items[iid]["depends_on"]) and not set(cut) & set(items[iid].get("requires_outcome") or {}), iid

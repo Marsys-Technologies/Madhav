@@ -21,6 +21,7 @@ from test_lane_smalltest import FLEET, ROOT, KINDS, request
 SIDECAR = ROOT / 'platform/python-sidecar'
 sys.path.insert(0, str(SIDECAR))
 from tests.l3.gochara import test_a53_inventory as base
+from tests.l3.gochara.test_a53_inventory import apply_near_miss_storage
 from tests.l3.gochara.test_c38_teardown_real_db import STUB_DDL
 from tests.l3._disposable_db_guard import assert_disposable_connection
 
@@ -52,6 +53,7 @@ def _lane_database(prefix, tag, *, seed=None):
                     conn.execute((migrations / '1379_gochara_sealed_authority.sql').read_text())
                     conn.execute((migrations / '1382_gochara_authority_no_truncate.sql').read_text())
             for ddl in STUB_DDL: conn.execute(ddl)
+            apply_near_miss_storage(conn)       # the teardown's closed list covers the migration-1308 generation tables (as c37/c38/n18 do)
             conn.execute('ALTER TABLE asset_registry ADD COLUMN layer text DEFAULT \'L3\', ADD COLUMN natural_key_partition text')
             conn.execute('ALTER TABLE build_runs ADD COLUMN action text, ADD COLUMN plan jsonb')
             conn.execute('ALTER TABLE build_run_assets ADD COLUMN position integer, ADD COLUMN state text')
@@ -116,7 +118,9 @@ def test_executor_export_six_receipts_and_final_independent_readback(lane_db, tm
     """Real export/CLI/receipts; only candidate Git-object lookup is overlaid.
 
     This candidate is uncommitted by job policy. The transport double overlays
-    these exact candidate files onto a read-only Git archive of HEAD. It never
+    these exact candidate files onto a read-only Git archive of origin/main.
+    The ancestor check stays real; this overlay is not operational qualification
+    of the candidate as a reviewed merged implementation. It never
     writes an object, branch, index, worktree, approval or campaign marker.
     """
     import hashlib
@@ -131,7 +135,7 @@ def test_executor_export_six_receipts_and_final_independent_readback(lane_db, tm
     monkeypatch.setattr(ex, 'log', lambda *a: None)
     monkeypatch.setattr(ex, 'seen', lambda _: False)
     read_git = ex.git
-    reviewed = read_git('rev-parse', 'HEAD').stdout.strip()
+    reviewed = read_git('rev-parse', 'origin/main').stdout.strip()
     def candidate_git(*args, **kwargs):
         if args[0] == 'cat-file':
             return SimpleNamespace(returncode=0 if (ROOT / args[2].split(':', 1)[1]).is_file() else 1)

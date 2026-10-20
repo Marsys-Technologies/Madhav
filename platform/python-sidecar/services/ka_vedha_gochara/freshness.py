@@ -31,7 +31,9 @@ Reports counts only. No row content is returned.
 """
 from __future__ import annotations
 
+from contextlib import redirect_stdout
 from dataclasses import dataclass, field
+import sys
 from typing import Any, Optional
 
 import psycopg.rows
@@ -39,20 +41,23 @@ import psycopg.rows
 from services.gochara_kernel.l1_identity import L1OperandAbsentError, l1_operand_identity
 from services.gochara_kernel.node_series_digest import node_series_identity
 from services.ka_moorti_nirnaya.logic import moorti_upstream_fingerprint
-from services.ka_moorti_nirnaya.writer import (
-    _fetch_moorti_table,
-    CANONICAL_AYANAMSHA as MOORTI_AYANAMSHA,
-    FORMULA_VERSION as MOORTI_FORMULA_VERSION,
-    L1_OPERANDS as MOORTI_L1_OPERANDS,
-)
-from services.ka_vedha_gochara.logic import upstream_fingerprint
-from services.ka_vedha_gochara.writer import (
-    _fetch_malefic_scale,
-    _fetch_vedha_rules,
-    CANONICAL_AYANAMSHA as VEDHA_AYANAMSHA,
-    FORMULA_VERSION as VEDHA_FORMULA_VERSION,
-    L1_OPERANDS as VEDHA_L1_OPERANDS,
-)
+# Transitive PyJHora imports print diagnostics. Keep CLI JSON on stdout
+# while retaining those diagnostics on stderr; no L0/L1 code is changed.
+with redirect_stdout(sys.stderr):
+    from services.ka_moorti_nirnaya.writer import (
+        _fetch_moorti_table,
+        CANONICAL_AYANAMSHA as MOORTI_AYANAMSHA,
+        FORMULA_VERSION as MOORTI_FORMULA_VERSION,
+        L1_OPERANDS as MOORTI_L1_OPERANDS,
+    )
+    from services.ka_vedha_gochara.logic import upstream_fingerprint
+    from services.ka_vedha_gochara.writer import (
+        _fetch_malefic_scale,
+        _fetch_vedha_rules,
+        CANONICAL_AYANAMSHA as VEDHA_AYANAMSHA,
+        FORMULA_VERSION as VEDHA_FORMULA_VERSION,
+        L1_OPERANDS as VEDHA_L1_OPERANDS,
+    )
 
 FRESH, STALE, NO_ROWS, TABLE_ABSENT = "fresh", "stale", "no_rows", "table_absent"
 

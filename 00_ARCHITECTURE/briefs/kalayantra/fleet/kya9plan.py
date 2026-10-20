@@ -2,8 +2,10 @@
 """kya9plan.py — apply Amendment A9 (D-51, D-52, D-54, D-53 not_applicable set) to the plan model.
 
 Owner Amendment A9 (KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md §2–§5). Idempotent and deterministic:
-it edits only the fields named below, writes ACCEPTANCE_ROOTS_v3.json from the model, and computes CLOSURE_v3.json
-with kyclosure.compute (twice; the two renders must be byte-identical).
+it edits only the fields named below, writes ACCEPTANCE_ROOTS_v3.json from the model, and computes the closure with
+kyclosure.compute (twice; the two renders must be byte-identical). CLOSURE_v3.json is machine-owned (SR-CHURN-CUT 3: CI
+regenerates it from main, a PR never carries it), so this script prints its digest and writes the file only with --write-closure
+(the cockpit's refresh of the main checkout).
 
 Edits to plan_model.json (nothing else is touched):
   C-1.depends_on          JOIN-ALL removed (D-51.1); C-1 gates on the acceptance roots, K-AVADHI-C and the post-flip
@@ -12,8 +14,10 @@ Edits to plan_model.json (nothing else is touched):
   K6-N1..N3.depends_on    V-K6 (retired by D-54) replaced by the K6 items it reviewed, so the retirement does not
                           propagate not_applicable into three live follow-ups
   V-K9.depends_on         K9-5, KR-1, KR-2 (deferred by D-53) removed, so a deferred item never gates the final review
-  D-T2, J-7, J-7-a63, J-7-b61, J-7-n-t2, L0-K, J-7b, J-7b-b62
+  J-7, J-7-a63, J-7-b61, J-7-n-t2, J-7b, J-7b-b62
                           depends_on J-6l where missing (D-52.1); triage class a (was b: deferred) — not deferred
+  D-T2, L0-K              (SR-W34-PREP-RULINGS 5b, applied by the close-prep PR, not by this script) deferred with re-entry
+                          'post-flip'; not C-1 dependencies; the J-7 family no longer depends on D-T2
   JOIN-ALL, K-CERT-2, W4-SAFETY-N01/N02, KA3B-N1/N2, OPS-NB-03, V-K3b/V-K5/V-K6/V-KA/V-VC
                           not_applicable, the way the tracker records it (CONTROL_PLANE.md: a final decision outcome
                           that contradicts requires_outcome): one retirement decision per reason, requires_outcome
@@ -110,7 +114,14 @@ NOT_APPLICABLE = [
      ["V-K3b", "V-K5", "V-K6", "V-KA", "V-VC"]),
 ]
 RETIRED_PACKET_EXITS = ["V-K3b", "V-K5", "V-K6", "V-KA", "V-VC"]
-POST_FLIP = ["D-T2", "J-7", "J-7-a63", "J-7-b61", "J-7-n-t2", "L0-K", "J-7b", "J-7b-b62"]
+POST_FLIP = ["J-7", "J-7-a63", "J-7-b61", "J-7-n-t2", "J-7b", "J-7b-b62"]
+# SR-W34-PREP-RULINGS item 5b (2026-10-19) overrides A9 D-52 for these two: deferred with re-entry, outside C-1's dependencies.
+# The J-7 family no longer waits on D-T2 (a closure member must not wait on a deferred item).
+PREP_DEFERRED = {
+    "D-T2": "post-flip: after V-J6 is accepted and the served layer has run one week on 5.0 (as the J-7a family)",
+    "L0-K": "post-flip: after V-J6 is accepted and the served layer has run one week on 5.0 (as the J-7a family)",
+}
+PREP_CUT_EDGES = {iid: ["D-T2"] for iid in ("J-7", "J-7-a63", "J-7-b61", "J-7-n-t2")}
 
 
 def _dedupe(seq):
@@ -224,7 +235,9 @@ def build_roots(model: dict, template: dict) -> dict:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[4]))
-    root = Path(ap.parse_args(argv).repo_root)
+    ap.add_argument("--write-closure", action="store_true", help="also write CLOSURE_v3.json (main-checkout refresh only)")
+    ns = ap.parse_args(argv)
+    root = Path(ns.repo_root)
     model_path = root / CONTROL / "plan_model.json"
     model = apply_model_edits(json.loads(model_path.read_text(encoding="utf-8")))
     template = json.loads((root / CONTROL / "ACCEPTANCE_ROOTS_v2_2.json").read_text(encoding="utf-8"))
@@ -235,7 +248,8 @@ def main(argv=None) -> int:
         return 1
     model_path.write_text(json.dumps(model, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     (root / CONTROL / "ACCEPTANCE_ROOTS_v3.json").write_bytes(kyclosure.render(roots))
-    (root / CONTROL / "CLOSURE_v3.json").write_bytes(first)
+    if ns.write_closure:
+        (root / CONTROL / "CLOSURE_v3.json").write_bytes(first)
     closure = json.loads(first)
     print(f"closure_count={closure['closure_count']} closure_sha256={closure['closure_sha256']} "
           f"file_sha256={hashlib.sha256(first).hexdigest()}")

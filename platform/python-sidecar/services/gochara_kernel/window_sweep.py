@@ -67,6 +67,9 @@ DIRECTIONAL_PATHS = frozenset({"P2"})
 # agent_nature is not implemented, and refuses if a record is ever qualified before it is.
 CATEGORICAL_PATHS = frozenset({"P1"})
 SWEEP_PATHS = FOR_ONLY_PATHS | DIRECTIONAL_PATHS | CATEGORICAL_PATHS
+# `karaka_agent` (ND-H-20261005, K-A) is a RANK category with the FB-36 authored default mapping and null_state `omit`: it
+# takes no part in the within-path product (it never admits, excludes or zeroes) — its category is read from
+# `services.gochara_rules.registry.karaka_category`.
 CATEGORICAL_FACTORS = frozenset({"dignity_of_transit_sign", "combustion", "agent_nature",
                                  "maitri_compound", "karaka_agent"})
 
@@ -438,9 +441,11 @@ def build_program(rec: SweepRecord, factor_rows: list[dict], *,
     for o in outcomes:
         if o.kind == "missing":
             null_states.add(o.null_state)
-            reasons.append((o.factor, o.reason))
             if o.null_state == UNQUALIFIED:
+                reasons.append((o.factor, o.reason))
                 qualified = False
+            # an OMITTED operand (a rank factor, K-A) takes no part in the product and breaks no qualification:
+            # it is not an unresolved reason of the member (`unresolved` classifies unqualified members only)
     if qualified and any(o.kind == "fn" and o.factor in STATE_VALUED_FACTORS for o in outcomes) \
             and not (rec.state_boundaries is not None and rec.state_boundaries_complete):
         null_states.add(UNQUALIFIED)

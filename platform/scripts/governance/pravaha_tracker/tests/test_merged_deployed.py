@@ -2,8 +2,10 @@
 
 The PR's merged review is the acceptance — no per-item verdict event, no post-deploy verdict. Operation items still
 close from executor receipts and decisions from the ledger. Oracle for every claim: the owner ruling SR-BOLD-07
-(DECISIONS_SURROGATE.jsonl), plan v3.0 §C (deployment containment = a successful `workflow_run` deploy of main whose
-sha contains the merge commit, cli.observe_containment) and A7 D-46 (done with open gates = implemented, with
+(DECISIONS_SURROGATE.jsonl; ruling 5 of 2026-10-19: ANY successful deploy.yml run of main whose sha contains the merge
+commit counts, whatever triggered it, provided a dispatch run's "Require earned deployment outcome" job passed and a
+deploy job succeeded - .github/workflows/deploy.yml deployment-outcome), plan v3.0 §C (deployment containment,
+cli.observe_containment) and A7 D-46 (done with open gates = implemented, with
 `activation_pending`).
 """
 from __future__ import annotations
@@ -245,7 +247,7 @@ def test_an_unguarded_done_claim_is_still_a_conflict_without_the_derived_proof()
     assert rows_of(model, {}, [claim])["K-OWN"]["status"] == "conflict"
 
 
-# ---- claim 8: the GitHub/git source: containment is a successful workflow_run deploy of main -----------------------
+# ---- claim 8: the GitHub/git source: containment is a successful deploy of main (any trigger) ----------------------
 class Recorder:
     def __init__(self, replies):
         self.replies, self.calls = replies, []
@@ -264,18 +266,84 @@ RUNS = json.dumps([{"databaseId": 1, "headSha": OTHER, "event": "workflow_dispat
                    {"databaseId": 2, "headSha": DEPLOYED, "event": "workflow_run", "createdAt": "t"}])
 
 
-def test_source_trusts_only_workflow_run_deploys_that_contain_the_merge(monkeypatch):
-    ancestry = {(MERGE, OTHER): 0, (MERGE, DEPLOYED): 0}      # both would contain it; the dispatch run is ignored
-    recorder = Recorder([(["gh", "run", "list"], (0, RUNS))])
+def _jobs(**results):
+    """`gh run view --json jobs` for deploy.yml: the outcome gate and the four deploy jobs, by conclusion."""
+    names = {"outcome": M.OUTCOME_JOB, "web": "Build & Deploy Web", "sidecar": "Build & Deploy Sidecar",
+             "mcp": "Build & Deploy MCP", "pipeline": "Build & Deploy Pipeline Job Image"}
+    return json.dumps({"jobs": [{"name": names[k], "conclusion": v} for k, v in results.items()]})
+
+
+EARNED = _jobs(outcome="success", web="success", sidecar="success", mcp="success", pipeline="success")
+MIGRATE_ONLY = _jobs(outcome="success", web="skipped", sidecar="skipped", mcp="skipped", pipeline="skipped")
+
+
+def _source(monkeypatch, runs, views, contains=(DEPLOYED,)):
+    """GitHubSource over canned `gh run list` / `gh run view` answers; `contains` = the shas that contain MERGE."""
     def run(cmd, cwd=None, timeout=5.0, shell=False):
+        if cmd[:3] == ["gh", "run", "list"]:
+            return 0, runs
+        if cmd[:3] == ["gh", "run", "view"]:
+            return views.get(cmd[3], (1, "gh: not found"))
         if cmd[:3] == ["git", "merge-base", "--is-ancestor"]:
-            recorder.calls.append(list(cmd))
-            return ancestry.get((cmd[3], cmd[4]), 1), ""
-        return recorder(cmd, cwd, timeout, shell)
+            return (0 if cmd[3] == MERGE and cmd[4] in contains else 1), ""
+        return 1, "unexpected"
     monkeypatch.setattr(D, "_run", run)
-    found = M.GitHubSource("/repo").deployed(MERGE)
+    return M.GitHubSource("/repo")
+
+
+def _dispatch(run_id=1, sha=DEPLOYED):
+    return json.dumps([{"databaseId": run_id, "headSha": sha, "event": "workflow_dispatch", "createdAt": "t"}])
+
+
+def test_source_counts_a_workflow_run_deploy_that_contains_the_merge(monkeypatch):
+    found = _source(monkeypatch, RUNS, {}).deployed(MERGE)      # the dispatch run 1 holds no merge, run 2 does
     assert found == {"deployed_sha": DEPLOYED, "run_id": 2, "contains_merge": True}
-    assert not any(c[:5] == ["git", "merge-base", "--is-ancestor", MERGE, OTHER] for c in recorder.calls)
+
+
+def test_source_counts_a_successful_dispatch_deploy_that_contains_the_merge(monkeypatch):
+    """BOLD-07: the protected-window run (workflow_dispatch, success, web/MCP/sidecar/pipeline deployed) counts."""
+    found = _source(monkeypatch, _dispatch(39237537349), {"39237537349": (0, EARNED)}).deployed(MERGE)
+    assert found == {"deployed_sha": DEPLOYED, "run_id": 39237537349, "contains_merge": True}
+
+
+def test_source_does_not_count_a_dispatch_run_that_only_migrated_and_skipped_every_deploy(monkeypatch):
+    """The gate passes with nothing deployed ('no-deployable-change'); GitHub calls the run green: not a deploy."""
+    source = _source(monkeypatch, _dispatch(5), {"5": (0, MIGRATE_ONLY)})
+    assert source.deployed(MERGE)["contains_merge"] is False
+
+
+def test_source_does_not_count_a_dispatch_run_whose_outcome_gate_did_not_pass(monkeypatch):
+    gate_red = _jobs(outcome="failure", web="success", sidecar="skipped", mcp="skipped", pipeline="skipped")
+    assert _source(monkeypatch, _dispatch(5), {"5": (0, gate_red)}).deployed(MERGE)["contains_merge"] is False
+    gate_missing = _jobs(web="success")
+    assert _source(monkeypatch, _dispatch(5), {"5": (0, gate_missing)}).deployed(MERGE)["contains_merge"] is False
+
+
+def test_source_does_not_count_a_dispatch_run_whose_jobs_cannot_be_read(monkeypatch):
+    assert _source(monkeypatch, _dispatch(5), {}).deployed(MERGE)["contains_merge"] is False
+    assert _source(monkeypatch, _dispatch(5), {"5": (0, "not json")}).deployed(MERGE)["contains_merge"] is False
+
+
+def test_source_does_not_count_a_dispatch_deploy_whose_sha_lacks_the_merge(monkeypatch):
+    source = _source(monkeypatch, _dispatch(5, OTHER), {"5": (0, EARNED)}, contains=())
+    assert source.deployed(MERGE)["contains_merge"] is False
+
+
+def test_source_asks_for_successful_runs_only_so_a_failed_run_never_counts(monkeypatch):
+    seen = []
+    def run(cmd, cwd=None, timeout=5.0, shell=False):
+        seen.append(list(cmd))
+        return (0, "[]") if cmd[:3] == ["gh", "run", "list"] else (1, "")
+    monkeypatch.setattr(D, "_run", run)
+    M.GitHubSource("/repo").deployed(MERGE)
+    listing = next(c for c in seen if c[:3] == ["gh", "run", "list"])
+    assert listing[listing.index("--status") + 1] == "success"
+
+
+def test_a_failed_dispatch_run_that_slips_into_the_list_does_not_count(monkeypatch):
+    """Defence in depth: the list is filtered by `--status success`, but a run with a red gate still never counts."""
+    red = _jobs(outcome="failure", web="failure", sidecar="skipped", mcp="skipped", pipeline="skipped")
+    assert _source(monkeypatch, _dispatch(9), {"9": (0, red)}).deployed(MERGE)["contains_merge"] is False
 
 
 def test_source_reports_not_contained_when_no_successful_deploy_has_the_merge(monkeypatch):
@@ -348,3 +416,36 @@ def test_events_skip_items_a_guarded_done_event_already_closed():
                      item("K-B", {"type": "pr_merged", "pr": 11}, owns=["b.py"]))
     M.derive(model, Spy(), skip={"K-A"})
     assert seen == [11]
+
+
+# ---- claim 10: the CLI's and the D-46 sweep's copies of the rule agree with the source's -----------------------------
+def _fake_subprocess(monkeypatch, listing, views, contains):
+    from pravaha_tracker import cli
+    def run(cmd, cwd=None, capture_output=True, text=True, timeout=0, check=False):
+        out, rc = "", 0
+        if cmd[:3] == ["gh", "run", "list"]:
+            out = listing
+        elif cmd[:3] == ["gh", "run", "view"]:
+            rc, out = views.get(cmd[3], (1, ""))
+        elif cmd[:3] == ["git", "merge-base", "--is-ancestor"]:
+            rc = 0 if cmd[4] in contains else 1
+        return subprocess.CompletedProcess(cmd, rc, out, "")
+    monkeypatch.setattr(cli.subprocess, "run", run)
+    return cli
+
+
+def test_cli_observe_containment_counts_an_earned_dispatch_deploy_and_not_a_migrate_only_one(monkeypatch):
+    cli = _fake_subprocess(monkeypatch, _dispatch(7), {"7": (0, EARNED)}, (DEPLOYED,))
+    assert cli.observe_containment("/repo", MERGE)["run_id"] == 7
+    cli = _fake_subprocess(monkeypatch, _dispatch(7), {"7": (0, MIGRATE_ONLY)}, (DEPLOYED,))
+    assert cli.observe_containment("/repo", MERGE)["contains_merge"] is False
+
+
+def test_d46_sweep_takes_a_dispatch_deploy_only_when_the_evidence_says_it_earned_the_deploy(monkeypatch):
+    from pravaha_tracker import d46_sweep
+    monkeypatch.setattr(d46_sweep, "is_ancestor", lambda repo, a, b: True)
+    run = {"run_id": 3, "head_sha": DEPLOYED, "conclusion": "success", "event": "workflow_dispatch", "branch": "main"}
+    assert d46_sweep._first_deploy("/repo", {"deploys": [run]}, MERGE) is None
+    assert d46_sweep._first_deploy("/repo", {"deploys": [{**run, "earned_deploy": True}]}, MERGE)["run_id"] == 3
+    assert d46_sweep._first_deploy("/repo", {"deploys": [{**run, "earned_deploy": True, "conclusion": "failure"}]},
+                                   MERGE) is None

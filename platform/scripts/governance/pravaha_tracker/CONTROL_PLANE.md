@@ -34,6 +34,21 @@ the running tracker uses a separate installed snapshot and changes only at B-2.
   prove the named `artifact_path`; relative artifact paths resolve beside the
   receipt. A supplied artifact digest must always match, and a named review
   result must still exist. Other step detector types keep their prior behavior.
+- Operation steps (SR-OP-STEPS, SR-OP-STEPS-2), each read mechanically, never from a synthesised verdict:
+  a step declared `evidence: lease_row` takes canonical lease evidence
+  `{coordination_commit, expires, item, lease_id, row, schema: ky.lease_row_evidence/1, step, taken}`; the commit must
+  be an ancestor of `origin/campaign-coordination` and `CAMPAIGN_COORDINATION.md` at that commit must hold that one row
+  with status ACTIVE. Where no V-stream verdict stands at the executor receipt's digest, the executor's own
+  `run/ops/acceptance/<operation_id>[.post].json` binds instead (same operation, request/receipt digest, signed
+  `executor-mechanical` with every check true or by a lane v1-v4, never the requester); a recorded rejection at the
+  digest still refuses. A step declared `evidence: acceptance_file` (J-3c `pre_acceptance`) takes
+  `run/ops/acceptance/<operation_id>.post.json` itself as evidence: it must name this item's operation, the digest of the
+  archived request, and be signed by a lane v1-v4 or `executor-mechanical` (every check true), never the requester.
+  A teardown receipt is complete (SR-TEARDOWN-COMPLETION) when the executor published `<op>.completion.json`, or when
+  it is COMMITTED (`AWAITING_ABSENCE`, proof `COMMITTED_AWAITING_ABSENCE`, exit 0) and an ACCEPTED absence receipt
+  (`acceptance/<absence op>.absence.json`) binds its `evidence_digest`, mirroring the executor's `absence_evidence`.
+  An item's `not_applicable_steps: {step: {decision, reason}}` counts a step as satisfied (and
+  the dashboard shows `N/A` with the citation) only while the cited plan decision is recorded (decided/delegated).
 - `decide --outcome approved|refused|deferred|insufficient_evidence` records a
   structured outcome. Approved and refused are final. Deferred and insufficient
   evidence remain open. A final incompatible outcome makes dependent executable

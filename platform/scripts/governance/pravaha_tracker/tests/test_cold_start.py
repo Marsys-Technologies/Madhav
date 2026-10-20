@@ -143,7 +143,7 @@ def test_cold_start_serves_snapshot_during_first_slow_tick(cold_config, monkeypa
         status, state, _ = read(base, "/api/state")
         assert status == 200
         assert state["version"] > (7 if restored else 0)
-        assert state["overall"]["total"] == 186  # acceptance closure (A9 D-51.3), as pinned in test_closure_headline.py
+        assert state["overall"]["total"] == 183  # acceptance closure (A9 D-51.3; SR-CLOSURE-272), as pinned in test_closure_headline.py
         assert state["health"]["event_log"]["events"] == 14_500
         assert state["health"]["initializing"] is False
         assert read(base, "/api/health")[1]["ok"] is True

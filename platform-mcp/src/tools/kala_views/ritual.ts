@@ -76,7 +76,7 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
-import { kalaViewAlias } from './registry_alias.js'
+import { kalaViewAlias, publishedRequestSchema } from './registry_alias.js'
 import {
   makeKalaEnvelope,
   fetchCalibrationMaturity,
@@ -140,6 +140,7 @@ const SkyPatternSpecShape = z
   .describe('Elevation §8 Mode-2 sky_pattern_spec v0 (schema sketch) — accepted/echoed at W0, compiled/searched at W4.')
 
 export const KalaRitualInputShape = {
+  published_request: publishedRequestSchema,
   chart_id: z.string().uuid().describe('Chart UUID. Required — no default chart.'),
   // Mode 1 (OPPORTUNITY SCAN): "Given: horizon."
   horizon: z.string().optional().describe("Mode 1 (opportunity scan): the horizon to search, e.g. '90d', '24m'. Ignored if sky_pattern_spec or undertaking is also present."),

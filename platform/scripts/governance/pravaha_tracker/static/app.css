@@ -85,6 +85,7 @@ h2 small, .sub { color: var(--muted); font-weight: 400; font-size: 12px; }
 .badge { font: 11px var(--mono); padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
 .steps { display: flex; gap: 4px; margin-top: 4px; } .steps span { font-size: 10px; padding: 0 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
 .steps span.on { background: var(--done-soft); color: var(--done); border-color: var(--done); }
+.steps span.na { background: transparent; color: var(--muted); border-style: dashed; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { color: var(--muted); font-weight: 500; font-size: 12px; }

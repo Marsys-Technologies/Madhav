@@ -16,6 +16,10 @@ import json
 
 import pytest
 
+# G8: this suite is NOT about the class census; it opts out BY NAME (see conftest.g8_census_opt_out and the guard in test_g8_class_census.py).
+G8_CENSUS_OPT_OUT_REASON = "exercises the seal brief payload digests on a deliberate one-class marriage world"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+
 from pipeline.orchestrator import verification_job as entry
 from services.gochara_kernel import seal_brief as sb
 from services.gochara_kernel import seal_flow
@@ -86,6 +90,8 @@ def test_a_verified_candidate_yields_a_complete_deterministic_payload_read_with_
     assert [m["migration"] for m in p["ledger"]] == list(sb.LEDGER_MIGRATIONS)
     assert p["seal_is_not_a_flip"] and p["disclosures"]["named_limits"]
     assert p["disclosures"]["policy"] == sb.ALL_NULL_DISCLOSURE and p["result_policy"] in p["disclosures"]["policy"]   # packet §R13b, verbatim
+    assert p["near_miss_output_identity"] == "vacuous_under_policy"
+    assert p["near_miss_layer"] == "stored_uncovered" and p["near_miss_verification"] is None
     assert sb.payload_digest(_brief_as_verifier(w, sealing_commit="c2")["payload"]) != one["sha256"]   # the commit is in it
 
 

@@ -36,15 +36,19 @@ def test_child_keeps_independent_acceptance_without_reopening_parent():
     assert "K9-23-N2" not in parent["depends_on"]
     assert child["completion_kind"] == "code"
     assert child["reviewer_rule"] == parent["reviewer_rule"] == "v_exact_head_then_deploy_containment"
-    assert child["detector"] == {"type": "branch_merged", "ref": "origin/kalayantra/k9-23-n2"}
+    # The pre-build #3606 (custody commit ee51abe09) only registered the finding; the finding is fixed only with K9-23
+    # (PR #3556), so the detector follows K9-23's branch and carries no packet_pr (which would read as merged evidence).
+    detector = child["detector"]
+    assert (detector["type"], detector["ref"]) == ("branch_merged", "origin/kalayantra/k9-23")
+    assert "packet_pr" not in detector and detector["ref"] == parent["detector"]["ref"]
     assert "status" not in child and "steps" not in child
 
 
-def test_preparation_preserves_disabled_production_operations():
+def test_k9_23_enablement_preserves_the_production_flags():
     ops = json.loads((BRIEFS / "fleet/executor_ops.json").read_text())["ops"]
     for kind in ("orchestrator_rebuild_dryrun", "orchestrator_rebuild",
                  "layer_verify", "layer_publish", "layer_rollback"):
-        assert ops[kind]["enabled"] is False, kind
+        assert ops[kind]["enabled"] is True, kind               # SR-PREBUILD-ALL: K9-23 bound and enabled them
         assert ops[kind]["production"] is (not kind.endswith("_dryrun")), kind   # A8 §3.8: a dry run is read-only with a credential
 
 

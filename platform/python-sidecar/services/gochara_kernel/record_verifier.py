@@ -3,7 +3,7 @@
 A P1 transit record's admitted support is its contact span restricted to the periods the agent RUNS. The
 builder computes it by calling Stream B's `period_running_at` predicate over the L1 rows it read; this
 verifier derives the same thing a different way — entirely in Postgres, from the SNAPSHOT-BOUND daśā rows
-(`consumed_dasha_row_ids`, levels 1–3, the agent's lord) with multirange arithmetic — and compares it with
+(the snapshot's COPY `consumed_dasha_rows`, or for a legacy snapshot `consumed_dasha_row_ids`; levels 1–3, the agent's lord) with multirange arithmetic — and compares it with
 what was stored, and the stored `period_running_at` result with what that support implies:
 
   anchor with running rows : stored support == contact ∩ D(anchor lord, anchor level); result == true iff non-empty
@@ -22,7 +22,13 @@ gap), narrower (discarding a valid later portion) or on the wrong pieces fails t
 """
 from __future__ import annotations
 
-from .inventory_verifier import RECORD_SUPPORT_PINS as _PINS, RECORD_SUPPORT_SQL as _SQL
+from .inventory_verifier import (
+    RECORD_SUPPORT_PINS as _PINS, RECORD_SUPPORT_SQL_COPY as _SQL_COPY, RECORD_SUPPORT_SQL as _SQL_LEGACY,
+)
+
+_SNAPSHOT_HAS_COPY = """
+SELECT jsonb_typeof(to_jsonb(s) -> 'consumed_dasha_rows') = 'array' FROM public.ka_gochara_search_input_snapshot s
+WHERE s.chart_id = %(chart)s AND s.generation = %(gen)s"""
 
 
 def _scalar(row) -> int:
@@ -43,7 +49,9 @@ def verify_p1_support(conn, *, chart_id: str, generation: str, event_class: str)
         if _scalar(n):
             raise RuntimeError("P1 records exist on a schema without the period-anchor columns (1233)")
         return {"records": 0, "restricted": 0}
-    rows = conn.execute(_SQL, {"chart": chart_id, "gen": generation, "cls": event_class, **_PINS}).fetchall()
+    has_copy = conn.execute(_SNAPSHOT_HAS_COPY, {"chart": chart_id, "gen": generation}).fetchone()
+    sql = _SQL_COPY if (has_copy is not None and _scalar(has_copy) is True) else _SQL_LEGACY
+    rows = conn.execute(sql, {"chart": chart_id, "gen": generation, "cls": event_class, **_PINS}).fetchall()
     problems: list[str] = []
     restricted = 0
     for rid, stored, expected, equal, expected_empty, result, has_rows in rows:
@@ -82,12 +90,8 @@ def verify_p1_house_descriptor(conn, *, chart_id: str, generation: str, event_cl
     rows = conn.execute(_HOUSE_SQL, {"chart": chart_id, "gen": generation, "cls": event_class}).fetchall()
     if not rows:
         return {"records": 0}              # nothing minted ⇒ nothing to verify (no natal read needed)
-    snap = conn.execute(
-        "SELECT consumed_fact_ids FROM public.ka_gochara_search_input_snapshot"
-        " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
-    if snap is None:
-        raise Unverifiable("no snapshot to read the lagna from")
-    lagna = int(read_chart(conn, snap[0])["lagna"] // 30)
+    from .inventory_verifier import read_chart_snapshot
+    lagna = int(read_chart_snapshot(conn, chart_id, generation)["lagna"] // 30)
     problems: list[str] = []
     for rid, target, house, fkind, farg in rows:
         if (fkind, farg) != ("dasha_lord", None):
@@ -230,12 +234,8 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
     from .inventory_verifier import bound_excluded_agents
     excluded = (bound_excluded_agents(conn, chart_id, generation)    # the bodies come from the MANIFEST's scope
                 if excluded_agents is None else tuple(excluded_agents))
-    snap = conn.execute(
-        "SELECT consumed_fact_ids FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
-        (chart_id, generation)).fetchone()
-    if snap is None:
-        raise Unverifiable("no snapshot to read the natal positions from")
-    natal = read_chart(conn, snap[0] if not isinstance(snap, dict) else next(iter(snap.values())))
+    from .inventory_verifier import read_chart_snapshot
+    natal = read_chart_snapshot(conn, chart_id, generation)          # the snapshot's COPY of the natal rows (G12), never live L1
     testimony = {lv: _testimony_lords(natal["natal"], natal["lagna"], event_class, rule_version, lv)
                  for lv in ("md", "ad", "pd")}
 

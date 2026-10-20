@@ -176,7 +176,7 @@ def test_d6_a_known_limit_FROM_two_words_and_a_tail_reads_as_sql():
 
 
 def test_d6_a_known_limit_the_real_corpus_sweep():
-    """The sweep of every candidate text of every registered writer (verb-start texts unchanged): only real SQL fragments start with a clause word (ON CONFLICT, AND EXISTS, AND cardinality)."""
+    """The sweep of every candidate text of every registered writer (verb-start texts unchanged): only real SQL fragments start with a clause word (ON CONFLICT, AND EXISTS, AND cardinality, UNION ALL SELECT)."""
     seen, clause = set(), []
     for pre in ("bg_", "ga_", "bo_", "ka_", "ph_", "mi_"):
         for aid, f in ac.registered_ids(pre).items():
@@ -192,7 +192,7 @@ def test_d6_a_known_limit_the_real_corpus_sweep():
                     seen.add(text)
                     if ac._sql_statement_text(text) and not ac._SQL_VERB_START.match(text):
                         clause.append(" ".join(text.split())[:40])
-    assert len(seen) > 500 and clause and all(c.upper().startswith(("ON CONFLICT", "AND ")) for c in clause), clause
+    assert len(seen) > 500 and clause and all(c.upper().startswith(("ON CONFLICT", "AND ", "UNION ALL SELECT ")) for c in clause), clause
 
 
 def test_d6_a_clause_fragment_with_a_subselect_reaches_the_reads_scan(monkeypatch, tmp_path):

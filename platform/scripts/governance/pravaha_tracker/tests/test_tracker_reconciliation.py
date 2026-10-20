@@ -135,4 +135,4 @@ def test_the_live_model_reconciles_to_its_item_count():
     rec = build_snapshot(model, [], {}, {}, {}, now=NOW, closure=load_closure(model))["overall"]["reconciliation"]
     assert rec["plan_items"] == len(model["items"]) == rec["sum_of_parts"]
     assert rec["unclassified"]["total"] == 0
-    assert rec["finish_path"]["total"] == 187 and reconciliation_line(rec).startswith(f"All {len(model['items'])} plan items")
+    assert rec["finish_path"]["total"] == 183 and reconciliation_line(rec).startswith(f"All {len(model['items'])} plan items")

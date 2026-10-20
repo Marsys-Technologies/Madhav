@@ -129,6 +129,33 @@ def decision_status(evs: list[dict]) -> tuple[str, dict | None]:
     return last["state"], last
 
 
+DECISION_RECORDED = ("decided", "delegated")    # the states of a recorded decision (item_status, done_by decision)
+
+
+def recorded_na_steps(item: dict, decisions: dict, outcomes: dict | None = None) -> dict[str, dict]:
+    """The item's plan-declared not-applicable steps whose cited decision is recorded in the decision ledger.
+
+    ``item["not_applicable_steps"]`` maps a step name to {decision, reason} (SR-OP-STEPS item 3). A step counts
+    only while its decision's last event is decided/delegated and its outcome is not an open one (deferred,
+    insufficient_evidence) and it carries a reason; an unrecorded citation is an honest gap, never satisfied.
+    ``decisions`` is ``index_events(events)["decisions"]``.
+    """
+    declared = item.get("not_applicable_steps")
+    if not isinstance(declared, dict):
+        return {}
+    out = {}
+    for name, spec in declared.items():
+        if name not in item.get("steps", []) or not isinstance(spec, dict):
+            continue
+        events = decisions.get(spec.get("decision"), [])
+        last = events[-1] if events else None
+        if (last and last.get("state") in DECISION_RECORDED
+                and last.get("outcome") not in (outcomes or {}).get("open", [])
+                and isinstance(spec.get("reason"), str) and spec["reason"].strip()):
+            out[name] = {"decision": spec["decision"], "reason": spec["reason"]}
+    return out
+
+
 def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool = False,
                 decision_outcomes: dict | None = None, derived: dict | None = None) -> dict:
     all_evs = ix["items"].get(item["id"], [])
@@ -145,8 +172,10 @@ def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool 
            "started_at": started, "updated_at": last["ts"] if last else None, "checked_at": None}
     if item.get("steps"):
         done_steps = {e.get("step") for e in step_evs if e["state"] == "done"}
-        out["steps"] = [{"name": s, "done": s in done_steps} for s in item["steps"]]
-        out["progress"] = len(done_steps & set(item["steps"])) / len(item["steps"])
+        na = recorded_na_steps(item, ix["decisions"], decision_outcomes)
+        out["steps"] = [{"name": s, "done": s in done_steps or s in na,
+                         **({"not_applicable": True, **na[s]} if s in na else {})} for s in item["steps"]]
+        out["progress"] = len((done_steps | set(na)) & set(item["steps"])) / len(item["steps"])
     if last and last.get("progress") is not None:
         out["progress"] = last["progress"]
 
@@ -211,7 +240,7 @@ def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool 
     if item.get("done_by") == "decision":
         st, dev = decision_status(ix["decisions"].get(item.get("decision", ""), []))
         out["source"] = "decision:" + item.get("decision", "?")
-        if st in ("decided", "delegated"):
+        if st in DECISION_RECORDED:
             outcome = dev.get("outcome")
             if decision_outcomes and outcome in decision_outcomes.get("open", []):
                 out.update(status="waiting", detail=dev.get("detail", ""), updated_at=dev["ts"])
@@ -515,7 +544,9 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                 if s["status"] != new:
                     s["status"] = new
                     changed = True
-            if it.get("done_by") == "join":
+            if it.get("done_by") == "join" and s["status"] != "not_applicable":
+                # a join already not_applicable (required outcome or input unavailable) stays so: re-deriving it
+                # from its open dependencies flipped it back to waiting on alternate passes (SR-CLOSE-NOW, K5-2)
                 new = "done" if not strict_open else "waiting"
                 if s["status"] != new:
                     s["status"] = new
