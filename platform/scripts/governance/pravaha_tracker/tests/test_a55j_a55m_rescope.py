@@ -14,7 +14,10 @@ Claims, one oracle each (the reversion named after it fails that test):
   5. the "MEASURED GAP" the plan states for cloudrun_job_readback is true exactly while the kind cannot name the verification
      job (reversion: widen cloudrun_readback.JOB without removing the gap text, or the other way round)
   6. re-scoping retires nothing and adds nothing: both items stay mandatory members of the acceptance closure, none is
-     not_applicable, and the closure headline the tests pin (183 / 274) is unchanged (reversion: drop either item's edge)
+     not_applicable, and the closure headline the tests pin (183) is unchanged and the plan never has fewer than the 274 items it had
+     before re-scoping (reversion: drop either item's edge)
+  7. this file is run by required CI: some include glob of a profile in ci_test_suites.json matches it (A5 D-33)
+     (reversion: remove the test_a55j*.py glob from governance-tool-tests-shard-7-0)
 
 Sources: SR-A55J-A55M-RESCOPE and OWNER-GRANTS-MINIMAL-20261018 in /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl;
 platform/migrations/1378_gochara_verifier_sealer_inventory_grants.sql (header lines 4 and 53-57); runbook
@@ -22,6 +25,7 @@ ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md acts 12-14; fleet/CLOUDRUN_READBACK_
 """
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 import re
@@ -108,10 +112,18 @@ def test_the_cloudrun_gap_is_stated_exactly_while_it_is_true(model):  # claim 5
 
 def test_rescoping_retires_nothing_and_the_headline_is_unchanged(model):  # claim 6
     closure = load_closure(model)
-    assert closure["closure_count"] == len(closure["closure"]) == 183 and len(model["items"]) == 274
+    assert closure["closure_count"] == len(closure["closure"]) == 183
+    assert len(model["items"]) >= 274   # retires nothing: the plan only grows (275 once #3632 merged); an exact pin goes red on every unrelated merge
     for iid in ITEMS:
         item = _item(model, iid)
         assert item["mandatory"] is True and iid in closure["closure"]
         assert item["steps"] and item["detector"]["path"].endswith(f"/{iid}.json")
     assert _item(model, "J-4c-a55m")["depends_on"] == ["J-0m", "J-4b", "J-4c-a55l"]
     assert _item(model, "J-4b-a55j")["depends_on"] == ["J-0m", "J-4a"]
+
+
+def test_this_file_is_matched_by_a_ci_suite_glob():  # claim 7
+    suites = json.loads((REPO / "platform/scripts/governance/ci_test_suites.json").read_text(encoding="utf-8"))
+    me = Path(__file__).resolve().relative_to(REPO).as_posix()
+    globs = [g for prof in suites["suites"].values() for g in prof.get("include", [])]
+    assert any(fnmatch.fnmatch(me, g) for g in globs), me
