@@ -91,7 +91,9 @@ def test_an_ordinary_build_and_the_two_older_slice_shapes_need_no_life_events_ta
         run_id = rw.stage_run(w.conn, _marker(shape, classes, horizon), get_writer_source_hash(writer_mod.ASSET_ID))
         _set_state(w, "building")          # what `run_asset` commits before the first substep (a staged run reads dormant until the runner starts it)
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=run_id, db_conn=w.conn, dry_run=False,
-                      config={"chart_id": CHART_ID, "birth_params": fetch_birth_params(w.conn, CHART_ID), "ephe_path": EPHE_PATH})
+                      config={"chart_id": CHART_ID, "birth_params": fetch_birth_params(w.conn, CHART_ID), "ephe_path": EPHE_PATH,
+                              # F-CHANNEL: an ordinary run must NAME its profile and horizon (the writer refuses to default them); what main defaulted to, named
+                              **({"gochara_v5_final_rules": False, "horizon": old} if shape == "ordinary" else {})})
     sl = writer_mod._test_slice(ctx)
     assert (sl is None) == (shape == "ordinary")
     assert writer_mod._horizon_basis(ctx, sl) is None

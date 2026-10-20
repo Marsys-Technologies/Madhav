@@ -152,7 +152,7 @@ def moon_run(request, monkeypatch, tmp_path):
 
         def step(key):
             ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-moon", db_conn=conn,
-                              config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe},
+                              config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": (H0, H1), "ephe_path": ephe},
                               dry_run=False)
             with conn.transaction():
                 return w.run_substep(ctx, SubStep(key=key, label=key))

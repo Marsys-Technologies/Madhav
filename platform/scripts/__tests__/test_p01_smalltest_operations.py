@@ -214,12 +214,13 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
                 'lease_live': lambda lease: True, 'git': lambda *args: types.SimpleNamespace(returncode=0),
                 'dt': dt, 'json': json, 'seen': lambda key: False,
                 'utc_time': lambda value: dt.datetime.fromisoformat(value),
-                'smalltest_policy_problem': lambda req: None, 'head_policy_problem': lambda req: None, 'request_digest': lambda req: 'synthetic_bound_digest',
-                # validate() ends with the scheduler and measuring-cancel admission rules; neither applies to a small-test kind
+                'smalltest_policy_problem': lambda req: None, 'head_policy_problem': lambda req: None, 'century_contract_problem': lambda req: None, 'request_digest': lambda req: 'synthetic_bound_digest',
+                # validate() ends with the scheduler, measuring-cancel and served-probe admission rules; neither applies to a small-test kind
                 # (each has its own suite), so they are transport doubles here like smalltest_policy_problem.
                 'scheduler_policy_problem': lambda req: None, 'measuring_cancel_problem': lambda req: None,
                 # the mechanical route needs a pack fill, which none of these requests carries (its own suite: fleet/tests/test_executor_mechanical_production.py)
-                'mechanical_pre_acceptance': lambda req, table: 'the mechanical route is not under test here'}
+                'mechanical_pre_acceptance': lambda req, table: 'the mechanical route is not under test here',
+                'served_probe_problem': lambda req, op: None}
     exec(compile(ast.Module(body=functions, type_ignores=[]), str(source), 'exec'), globals_)
     validate = globals_['validate']
     table = json.loads(TABLE.read_text())['ops']

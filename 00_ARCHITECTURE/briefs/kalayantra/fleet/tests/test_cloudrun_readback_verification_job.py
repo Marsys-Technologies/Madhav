@@ -10,8 +10,8 @@ the runner is a double returning a job shaped from the flags `.github/workflows/
   V4 GOCHARA_RUNNER_IMAGE_DIGEST must equal the deployed image digest and GOCHARA_RUNNER_COMMIT must be a 40-hex commit (ST-WIRE-2: the verifier records both as the brief's producer)   [digest comparison]
   V5 no secret value and no non-contract variable value is ever printed                                                                                                            [environment()/withheld rows]
   V6 a field Cloud Run omits (proto3 zero maxRetries) reads NULL, never 0 and never a green                                                                                        [_count(...)/ok None]
-  V7 `--job` takes only the verification job, refuses to combine with execution/logs/metrics, and the executor table carries it as an allowed argument                            [argparse choices / allowed_args]
-  V8 the kind stays read-only and the verification job is still disabled in the executor table (the `disabled` half of "configured but disabled")                                      [executor_ops.json]
+  V7 `--job` takes only named jobs, adds `checks` only on the definition-alone read, and the executor table carries it as an allowed argument                                 [argparse choices / allowed_args]
+  V8 the kind stays read-only and the record makes no claim about the executor table (main enabled `verification_job` under J-4b)                                                      [executor_ops.json]
 """
 import copy
 import importlib.util
@@ -93,10 +93,10 @@ def test_v1_a_describe_of_another_job_is_refused():
 
 def test_v2_the_image_is_read_by_digest_and_a_tag_reference_is_refused():
     record, _ = measure()
-    assert record["job"]["image"] == {"reference": f"{REPO_IMAGE}@{DIGEST}", "digest": DIGEST} and checks(record)["image_by_digest_of_pipeline_repo"]["ok"] is True
+    assert record["job"]["image"] == {"reference": f"{REPO_IMAGE}@{DIGEST}", "tag": None, "digest": DIGEST} and checks(record)["image_by_digest_of_pipeline_repo"]["ok"] is True
     tagged = verification_job()
     tagged["spec"]["template"]["spec"]["template"]["spec"]["containers"][0]["image"] = f"{REPO_IMAGE}:{SHA}"
-    with pytest.raises(CR.Refused, match="by digest"):
+    with pytest.raises(CR.Refused, match="a tag or another repository is refused"):
         CR.measure_verification(Cloud(tagged))
 
 
@@ -152,18 +152,18 @@ def test_v6_an_omitted_max_retries_reads_null_not_zero_and_not_green():
     assert checks(present)["max_retries_is_zero"]["ok"] is True
 
 
-def test_v7_the_cli_takes_only_the_verification_job_and_nothing_to_combine_with_it(capsys):
+def test_v7_the_cli_takes_only_named_jobs_and_checks_appear_only_on_the_definition_alone_read(capsys):
     cloud = Cloud()
     assert CR.cli(["--job", "gochara-verification-job"], runner=cloud) == 0
-    assert json.loads(capsys.readouterr().out)["job"]["name"] == "gochara-verification-job"
-    for argv in (["--job", "brahma-build-pipeline-job"], ["--job", "nope"]):
+    out = json.loads(capsys.readouterr().out)
+    assert out["job"]["name"] == "gochara-verification-job" and out["all_checks_ok"] is True and len(cloud.calls) == 1
+    for argv in (["--job", "nope"], ["--job", "brahma-build-pipeline-job-abc12"]):
         with pytest.raises(SystemExit) as stop:
             CR.cli(argv, runner=Cloud())
-        assert stop.value.code == 2
-    for extra in (["--execution", "brahma-build-pipeline-job-abc12"], ["--logs", "true"], ["--metrics", "true"]):
-        cloud = Cloud()
-        assert CR.cli(["--job", "gochara-verification-job", *extra], runner=cloud) == 1
-        assert "REFUSED" in capsys.readouterr().out and cloud.calls == []                             # refused BEFORE any cloud call
+        assert stop.value.code == 2                                                                   # an unlisted name exits 2 before any cloud call
+    cloud = Cloud()
+    assert CR.cli(["--job", "gochara-verification-job", "--execution", "gochara-verification-job-abc12"], runner=cloud) == 1     # main's reader: the job record, here refused by the stub's missing execution call
+    assert "checks" not in json.loads(capsys.readouterr().out)                                       # `checks` belong to the definition-alone read only
     entry = json.loads((FLEET / "executor_ops.json").read_text())["ops"]["cloudrun_job_readback"]
     assert "job" in entry["allowed_args"]
 
@@ -180,7 +180,8 @@ def test_v7_end_to_end_through_the_script_with_a_stub_gcloud(tmp_path):
     assert done.returncode == 0 and out["status"] == "MEASURED" and out["all_checks_ok"] is True
 
 
-def test_v8_the_kind_is_read_only_and_the_verification_job_is_still_disabled():
+def test_v8_the_kind_is_read_only():
     ops = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
     assert ops["cloudrun_job_readback"]["read_only"] is True and ops["cloudrun_job_readback"]["production"] is False
-    assert ops["verification_job"]["enabled"] is False                                              # "configured but DISABLED" (J-4b-a55j; not a string proxy)
+    # (I) INTERPRETATION: the PR's "verification_job stays disabled" half is obsolete on main (J-4b enabled it for the launch lane); this reader never reads the table and no longer claims it.
+    assert "disabled_half" not in measure()[0]

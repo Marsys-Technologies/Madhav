@@ -1,0 +1,163 @@
+{
+  "cancel_schema": "ky.century_cancel/1",
+  "cap": {
+    "source": "platform/migrations/1395_ka_gochara_v5_writer_timeout_72000.sql",
+    "writer_timeout_seconds": 72000
+  },
+  "classes": {
+    "count": 26,
+    "scored": [
+      "achievement_recognition",
+      "bereavement",
+      "business_launch",
+      "career_advancement",
+      "career_change",
+      "career_entry",
+      "career_setback",
+      "childbirth",
+      "chronic_onset",
+      "education_milestone",
+      "exam_outcome",
+      "financial_deception",
+      "foreign_settlement",
+      "illness_acute",
+      "major_gain",
+      "major_loss",
+      "marriage",
+      "parental_event",
+      "property_acquisition",
+      "psychological_arc",
+      "relocation",
+      "romantic_start",
+      "separation",
+      "spiritual_turn",
+      "surgery",
+      "travel_event"
+    ],
+    "selector": "all",
+    "source": "platform/python-sidecar/services/gochara_rules/registry.py ROW_MEMBERSHIP (value not None)"
+  },
+  "generation": "5.0",
+  "horizon": {
+    "end": "2084-02-05T00:00:00+00:00",
+    "end_source": "CLAUDE.md §B birth date + 100 years",
+    "interval": "[start, end)",
+    "start": "1998-01-01T00:00:00+00:00",
+    "start_source": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py DEFAULT_HORIZON[0]"
+  },
+  "image": {
+    "digest_source": "pipeline.orchestrator.writer_runtime_support.get_writer_source_hash('ka_gochara_v5')",
+    "job": "brahma-build-pipeline-job",
+    "project": "madhav-astrology",
+    "region": "asia-south1",
+    "repository": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline",
+    "writer_source_digest": "3b629c6ea2165cac4619192bd3a795ec95ba518fd8a7f967ec55b322c031caca"
+  },
+  "item": "J-4e",
+  "launch_args": {
+    "classes": "all",
+    "defer_in_build_verify": "true",
+    "final_rules": "true",
+    "horizon": "1998-01-01T00:00:00+00:00,2084-02-05T00:00:00+00:00"
+  },
+  "output_tables": [
+    {
+      "class_column": "event_class",
+      "object": "ka_gochara_eval_window",
+      "table": "public.ka_gochara_eval_window",
+      "where": null
+    },
+    {
+      "class_column": "event_class",
+      "object": "ka_gochara_relationship_record",
+      "table": "public.ka_gochara_relationship_record",
+      "where": null
+    },
+    {
+      "class_column": null,
+      "object": "ka_gochara_contact",
+      "table": "public.ka_gochara_contact",
+      "where": null
+    },
+    {
+      "class_column": "partition_key",
+      "object": "kala_gochara_coverage",
+      "table": "public.kala_gochara_coverage",
+      "where": "partition_kind = 'event_class'"
+    },
+    {
+      "class_column": "event_class",
+      "object": "ka_gochara_search_interval",
+      "table": "public.ka_gochara_search_interval",
+      "where": null
+    },
+    {
+      "class_column": "event_class",
+      "object": "ka_gochara_search_obligation",
+      "table": "public.ka_gochara_search_obligation",
+      "where": null
+    },
+    {
+      "class_column": "event_class",
+      "object": "ka_gochara_search_path_pin",
+      "table": "public.ka_gochara_search_path_pin",
+      "where": null
+    },
+    {
+      "class_column": "event_class",
+      "object": "ka_gochara_search_inventory",
+      "table": "public.ka_gochara_search_inventory",
+      "where": null
+    },
+    {
+      "class_column": null,
+      "object": "ka_gochara_search_input_snapshot",
+      "table": "public.ka_gochara_search_input_snapshot",
+      "where": null
+    },
+    {
+      "class_column": null,
+      "object": "ka_gochara_near_miss",
+      "table": "public.ka_gochara_near_miss",
+      "where": null
+    },
+    {
+      "class_column": null,
+      "object": "ka_gochara_near_miss_search",
+      "table": "public.ka_gochara_near_miss_search",
+      "where": null
+    }
+  ],
+  "policy": {
+    "certification": {
+      "sink_policy": "raise",
+      "source": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v5.py policy selection, unmarked arm (POLICY_RAISE)",
+      "strict": true
+    },
+    "config_keys": {
+      "defer_in_build_verify": "gochara_v5_defer_in_build_verify",
+      "final_rules": "gochara_v5_final_rules"
+    },
+    "defer_in_build_verify": true,
+    "final_rules": true,
+    "source": {
+      "file": "VERIFY_DEFERRAL.json",
+      "ruling": "SR-W3-SHAPE 3; SR-W34-PREP-RULINGS 1",
+      "sha256": "777154deb01cf11f520a80702a02b57b9970dff691cc4c3efe1ec1e5e6add80e"
+    }
+  },
+  "rulings": [
+    "SR-EDGES-PROOF 2",
+    "SR-HORIZON-PUBLIC",
+    "SR-W34-LEASE",
+    "SR-W3-SHAPE 3",
+    "SR-J3-CAP-LIVE"
+  ],
+  "schema": "ky.century_contract/1",
+  "stored_scope": "stored_non_moon",
+  "timeout": {
+    "cloud_run_task_timeout_seconds": 86400,
+    "source": ".github/workflows/deploy.yml:2518"
+  },
+  "triggered_by": "gochara-v5-century"
+}

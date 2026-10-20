@@ -97,6 +97,11 @@ class _ManifestConn:
 
 
 def _ctx(manifest=None, **config) -> ContextSpec:
+    # F-CHANNEL: a run that is not a test slice must NAME its rule profile and horizon (the writer refuses to default them). The golden-plan tests below pin the
+    # plan of an unmarked run, so they name what an absent key used to mean: the measuring profile and DEFAULT_HORIZON. A slice context names neither (its marker does).
+    marked = manifest is not None and writer_mod.TEST_SLICE_KEY in (json.loads(manifest) if isinstance(manifest, str) else manifest)
+    if not marked:
+        config = {"gochara_v5_final_rules": False, "horizon": writer_mod.DEFAULT_HORIZON, **config}
     return ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="test-build",
                        db_conn=_ManifestConn(manifest),
                        config={"chart_id": CHART_ID, **config}, dry_run=False)
@@ -693,7 +698,8 @@ def _ctx_row(row):
     if row is not None and len(row) == 1:
         row = (row[0], None if row[0] is None else _digest_of(row[0]))        # the digest dispatch would have stored
     return ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=_RowConn(row),
-                       config={"chart_id": CHART_ID}, dry_run=False)
+                       config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": writer_mod.DEFAULT_HORIZON},     # F-CHANNEL: an unmarked run names both
+                       dry_run=False)
 
 
 @pytest.mark.parametrize("manifest", [[{writer_mod.TEST_SLICE_KEY: {}}], [], "a-bare-string", 7, True,

@@ -224,7 +224,7 @@ def test_the_writer_window_substep_runs_on_the_runners_native_types(grain, monke
                         _swiss_from_spans({"saturn": [(T0 + 10 * DAY, T0 + 200 * DAY)]}))
     monkeypatch.setattr(writer_mod, "_verify_live_inputs", lambda ctx, chart_id: None)   # own test below
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-window", db_conn=grain,
-                      config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON}, dry_run=False)
+                      config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON, "gochara_v5_final_rules": False}, dry_run=False)
     w = writer_mod.GocharaV5Writer()
     with grain.transaction():
         res = w.run_substep(ctx, SubStep(key=f"window:{CLS}:{PATH}", label="w"))
@@ -234,7 +234,7 @@ def test_the_writer_window_substep_runs_on_the_runners_native_types(grain, monke
     assert row[3] is None and row[6] == "unqualified"
     # the dry run solves and writes nothing
     dry = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-dry", db_conn=grain,
-                      config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON}, dry_run=True)
+                      config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON, "gochara_v5_final_rules": False}, dry_run=True)
     assert w.run_substep(dry, SubStep(key=f"window:{CLS}:{PATH}", label="w")).rows_inserted == 0
 
 
@@ -343,7 +343,7 @@ def test_p2_with_a_bound_vedha_source_stores_both_channels_in_the_real_schema(p2
 def test_a_window_grain_outside_the_planned_paths_is_refused_by_name(grain, monkeypatch):
     monkeypatch.setattr(writer_mod, "_verify_live_inputs", lambda ctx, chart_id: None)
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-x", db_conn=grain,
-                      config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON}, dry_run=False)
+                      config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON, "gochara_v5_final_rules": False}, dry_run=False)
     with grain.transaction():
         res = writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=f"window:{CLS}:P5", label="w"))
     assert res.rows_inserted == 0 and "unknown window grain" in res.notes
@@ -694,7 +694,7 @@ def test_the_writer_stores_a_dynamic_window_as_named_null_and_the_verifier_repro
     monkeypatch.setattr(writer_mod, "_verify_live_inputs", lambda ctx, chart_id: None)
     monkeypatch.setattr(writer_mod, "VEDHA_SOURCE", lambda rec, t: 0.5)
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-dyn", db_conn=conn,
-                      config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON}, dry_run=False)
+                      config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON, "gochara_v5_final_rules": False}, dry_run=False)
     with conn.transaction():
         res = writer_mod.GocharaV5Writer().run_substep(
             ctx, SubStep(key=f"window:{cls}:P2", label="w"))

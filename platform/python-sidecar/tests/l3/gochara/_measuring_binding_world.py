@@ -49,7 +49,7 @@ def measuring_teardown_world():
         w = writer.GocharaV5Writer()
         with conn.transaction():
             w.run_substep(ContextSpec(asset_id=writer.ASSET_ID, build_id='11111111-2222-4333-8444-555555555555', db_conn=conn, dry_run=False,
-                config={'chart_id': rw.CHART, 'ephe_path': EPHE_PATH}), SubStep(key=writer.CONVENTION_SUBSTEP, label='convention'))
+                config={'chart_id': rw.CHART, 'ephe_path': EPHE_PATH, 'gochara_v5_final_rules': False, 'horizon': writer.DEFAULT_HORIZON}), SubStep(key=writer.CONVENTION_SUBSTEP, label='convention'))
         yield SimpleNamespace(conn=conn, dsn=dsn, _w=w)
     finally:
         conn.close()

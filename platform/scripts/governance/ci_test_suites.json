@@ -56,6 +56,7 @@
       "include": [
         "tests/l3/ka_bhavishya_lekha/test_certification*.py",
         "tests/l3/ka_kshetra/test_g1*.py",
+        "tests/l3/ka_sangam/test_jury_shared_preparation*.py",
         "tests/l3/ka_vedha_gochara/test_ka3a_overlays_module_oracles*.py",
         "tests/l3/ka_vedha_gochara/test_ka3a_coverage_and_qualification_*.py"
       ],
@@ -589,7 +590,8 @@
         "platform/scripts/governance/pravaha_tracker/tests/test_decision*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_tracker_reconcil*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_merged_deployed*.py",
-        "platform/scripts/governance/pravaha_tracker/tests/test_done_dependency*.py"
+        "platform/scripts/governance/pravaha_tracker/tests/test_done_dependency*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_a55j*.py"
       ]
     },
     "governance-readback-tests-3-0": {
@@ -955,6 +957,13 @@
       "engine": "vitest",
       "include": [
         "scripts/__tests__/p06b_*.test.ts"
+      ]
+    },
+    "governance-tool-tests-lane": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_lane_smalltest*.py"
       ]
     }
   }
