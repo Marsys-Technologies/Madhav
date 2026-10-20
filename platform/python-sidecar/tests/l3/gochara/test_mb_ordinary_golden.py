@@ -370,11 +370,15 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # only, because a G12 copy (1305) holds horizon-overlapping rows alone. Re-derived the same way; no golden component is re-captured.
     # Evaluation re-pinned for SR-W3-SHAPE 3 (gochara_v5_defer_in_build_verify): the writer and input_vector sources changed, the ordinary
     # (flag-absent) run's every other component, outcome, row count and SQL shape is unchanged. Re-derived the same way (main's bytes give 6c86c3fb…).
-    assert got["implementation"]["evaluation"] == "9f6c462e41ee255517dc9619e469ef8a77eab1acfccf40cabef03c6a18835bcf"
+    # Evaluation re-pinned for F-1305-INVENTED-SUPPORT (#3774): dasha_read and inventory_verifier changed (the snapshot path no longer invents support for a lord held
+    # only outside the horizon). Re-derived the same way on the merge of this branch with main (main's bytes give 9f6c462e...); no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "83fd38793175de02acedf65908f95645688d1442d4fbc1a5434cdbefc6209e6b"
     # J-4c: the geometry stage moved ONLY by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root (06825a43... -> the digest below, re-derived the same
     # way on the merged tree; evaluation and window are unchanged by J-4c). No golden component is re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
     # J-4c F-LEANNESS (d96b3bfb0) then moved record_store again (one round trip per record write group, anchor-column probe once per store): geometry re-derived the same way (main's bytes give e7634d7f…).
-    assert got["implementation"]["geometry"] == "4479243d6b7a9b8579cf7f9eb6b8d363bdd12722d24d9ff813c3b14a1e0680eb"
+    # Geometry re-pinned again for F-1305-INVENTED-SUPPORT (#3774): record_store's period-rows cache now carries the held-presence flag. On the merged tree
+    # (main's J-4c F-LEANNESS record_store plus this change) the digest is below; main's bytes alone give 4479243d...
+    assert got["implementation"]["geometry"] == "0ecc897ce5fec8550640169a782271f1e359e07e864d6a9390bf0fa6fb861dbe"
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. Re-derived the same way
     # (main's bytes give 78b4d0a1…); evaluation and geometry are untouched by this change, and no golden component is re-captured.
     # J-4c F-LEANNESS also changed window_store (one round trip per window write group): re-derived the same way (main's bytes give 7a8c7ee1…); evaluation is untouched.
