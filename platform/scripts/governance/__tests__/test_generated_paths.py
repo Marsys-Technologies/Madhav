@@ -9,6 +9,13 @@ Claims, one oracle each (a planted reversion of the named production line fails 
   5. the PR guard refuses a diff that carries a generated path, accepts a diff that does not
   6. executor pin shards are append-only: adding one passes, editing/removing/renaming a merged one is refused
   7. `filter` prints exactly the non-generated names (the cockpit's patch-id input)
+
+SR-CHURN-CUT 5 (kind PRs add one shard and edit no shared census line), one oracle each:
+  8. kind_shard_required: a diff that adds, changes or removes an executor_ops.json kind is refused unless it ADDS a pin shard whose `entries` name that kind
+     (a shard parked under pending/ does not count; a removed kind needs a `rebase` shard); the same diff with the covering shard is admitted
+  9. frozen_base_violations: an edit to a frozen BASE census literal is refused unless the PR adds a `"rebase": true` shard; layout and comments are not edits
+ 10. the registry names real module-level literals of real census tests (a misspelt name would protect nothing) and every one of them exists today
+ 11. the guard is wired into the CI step: ci_generated.generate --base refuses the same diff
 """
 import importlib.util
 import json
@@ -155,3 +162,121 @@ def test_filter_prints_only_the_names_that_are_not_generated():  # claim 7
     out = subprocess.run([sys.executable, str(GOV / 'generated_paths.py'), 'filter'], input='\n'.join(names) + '\n',
                          capture_output=True, text=True, check=True).stdout.split()
     assert out == ['src.py', '00_ARCHITECTURE/control/kalayantra/plan_model.json']
+
+
+# ───────────────────────────── SR-CHURN-CUT 5 ─────────────────────────────
+
+OPS = gp.OPS
+CENSUS = '00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_dryrun.py'     # a frozen file of the real registry: BASE_ENABLED
+BASE_CENSUS = 'BASE_ENABLED = ("a", "b")\n\n\ndef test_it():\n    assert BASE_ENABLED\n'
+
+
+def ops_text(*kinds, **override):
+    return '{"ops": {\n' + ',\n'.join(f'  "{k}": ' + json.dumps(override.get(k, {"enabled": False, "needs": "none"})) for k in kinds) + '\n}}\n'
+
+
+def shard_text(item, *kinds, rebase=False):
+    return json.dumps({'schema': 'ky.executor_pin_shard/2', 'item': item, 'after': None, 'entries': {k: {'enabled': False} for k in kinds},
+                       **({'rebase': True} if rebase else {})})
+
+
+@pytest.fixture()
+def kind_repo(tmp_path):
+    r = tmp_path / 'repo'
+    r.mkdir()
+    git(r, 'init', '-q', '-b', 'main')
+    (r / 'platform/scripts/governance').mkdir(parents=True)
+    shutil.copyfile(GOV / 'generated_paths.json', r / 'platform/scripts/governance/generated_paths.json')
+    (r / OPS).parent.mkdir(parents=True, exist_ok=True)
+    (r / OPS).write_text(ops_text('k1', 'k2', 'k3'))
+    (r / CENSUS).parent.mkdir(parents=True, exist_ok=True)
+    (r / CENSUS).write_text(BASE_CENSUS)
+    (r / gp.SHARD_DIR).mkdir(parents=True)
+    (r / gp.SHARD_DIR / 'README.md').write_text('readme\n')
+    git(r, 'add', '-A')
+    git(r, 'commit', '-q', '-m', 'base')
+    base = git(r, 'rev-parse', 'HEAD')
+    git(r, 'checkout', '-q', '-b', 'pr')
+    return r, base
+
+
+def test_a_changed_kind_needs_a_covering_new_shard(kind_repo):  # claim 8
+    r, base = kind_repo
+    commit(r, {OPS: ops_text('k1', 'k2', 'k3', 'k4')})
+    errors = gp.check(r, base)
+    assert len(errors) == 1 and 'k4' in errors[0] and 'kind_shard_required' in errors[0]
+    commit(r, {gp.SHARD_DIR + 'K9-01.json': shard_text('K9-01', 'k4')})
+    assert gp.check(r, base) == []                                                         # the same diff with its shard is admitted
+    # a README edit in the shard directory is not an edit of merged history
+    commit(r, {gp.SHARD_DIR + 'README.md': 'new words\n'})
+    assert gp.check(r, base) == []
+
+
+def test_a_changed_entry_a_partial_shard_and_a_parked_shard_do_not_cover(kind_repo):  # claim 8
+    r, base = kind_repo
+    commit(r, {OPS: ops_text('k1', 'k2', 'k3', k2={"enabled": True, "needs": "none"})})      # an existing kind changes: a shard names it too
+    assert [e for e in gp.check(r, base) if 'k2' in e]
+    commit(r, {OPS: ops_text('k1', 'k2', 'k3', 'k4', 'k5', k2={"enabled": True, "needs": "none"}), gp.SHARD_DIR + 'K9-02.json': shard_text('K9-02', 'k2', 'k4')})
+    errors = gp.check(r, base)
+    assert len(errors) == 1 and 'k5' in errors[0]                                          # k2 and k4 are covered, k5 is not
+    commit(r, {gp.SHARD_DIR + 'pending/K9-03.json': shard_text('K9-03', 'k5')})
+    assert len(gp.check(r, base)) == 1                                                     # pending/ is not loaded by the tests, so it covers nothing
+    commit(r, {gp.SHARD_DIR + 'K9-03.json': shard_text('K9-03', 'k5')})
+    assert gp.check(r, base) == []                                                         # two shards together cover the diff
+
+
+def test_a_removed_kind_needs_a_rebase_shard(kind_repo):  # claim 8
+    r, base = kind_repo
+    commit(r, {OPS: ops_text('k1', 'k3'), gp.SHARD_DIR + 'K9-04.json': shard_text('K9-04', 'k1')})
+    errors = gp.check(r, base)
+    assert len(errors) == 1 and 'k2' in errors[0] and 'removed' in errors[0]
+    commit(r, {gp.SHARD_DIR + 'K9-05.json': shard_text('K9-05', 'k1', rebase=True)})
+    assert gp.check(r, base) == []
+
+
+def test_a_frozen_base_literal_is_edited_only_with_a_rebase_shard(kind_repo):  # claim 9
+    r, base = kind_repo
+    commit(r, {CENSUS: '# a comment\nBASE_ENABLED = (\n    "a",\n    "b",\n)\n\n\ndef test_it():\n    assert BASE_ENABLED\n'})
+    assert gp.check(r, base) == []                                                         # layout and comments are not edits
+    commit(r, {CENSUS: 'BASE_ENABLED = ("a", "b", "c")\n\n\ndef test_it():\n    assert BASE_ENABLED\n'})
+    errors = gp.check(r, base)
+    assert len(errors) == 1 and 'BASE_ENABLED' in errors[0] and 'edited' in errors[0]
+    commit(r, {gp.SHARD_DIR + 'K9-06.json': shard_text('K9-06', 'k1')})
+    errors = gp.check(r, base)
+    assert len(errors) == 1 and 'BASE_ENABLED' in errors[0]                                # an ordinary shard does not excuse a BASE edit
+    commit(r, {gp.SHARD_DIR + 'K9-07.json': shard_text('K9-07', 'k1', rebase=True)})
+    assert gp.check(r, base) == []                                                         # the cockpit's rebase path
+    commit(r, {CENSUS: 'def test_it():\n    assert True\n'}, remove=[])
+    assert gp.check(r, base) == []                                                         # (still under the rebase shard)
+
+
+def test_a_removed_frozen_literal_or_file_is_refused_and_a_new_name_is_not(kind_repo):  # claim 9
+    r, base = kind_repo
+    commit(r, {CENSUS: BASE_CENSUS + 'EXTRA = {"c"}\n'})
+    assert gp.check(r, base) == []                                                         # a new module-level name is nobody's BASE
+    commit(r, {CENSUS: 'EXTRA = {"c"}\n'})
+    assert any('BASE_ENABLED' in e and 'removed' in e for e in gp.check(r, base))
+    commit(r, {}, remove=[CENSUS])
+    assert any('BASE_ENABLED' in e and 'removed' in e for e in gp.check(r, base))
+
+
+def test_the_registry_names_real_module_level_literals_of_real_census_tests():  # claim 10
+    import ast
+    reg = gp.load()
+    assert {f['path'].rsplit('/', 1)[1] for f in reg['frozen_base_literals']} == {
+        'test_executor_table.py', 'test_operation_adapters.py', 'test_executor_a8.py', 'test_operation_dryrun.py',
+        'test_executor_mechanical_production.py', 'test_executor_mechanical_acceptance.py', 'test_w4_smalltest_enablement.py'}
+    for frozen in reg['frozen_base_literals']:
+        assigned = {t.id for n in ast.parse((ROOT / frozen['path']).read_text()).body if isinstance(n, ast.Assign) for t in n.targets if isinstance(t, ast.Name)}
+        assert frozen['names'] and set(frozen['names']) <= assigned, (frozen['path'], sorted(set(frozen['names']) - assigned))
+        assert len(set(frozen['names'])) == len(frozen['names'])
+    assert gp._assigned(None, {'X'}) == {} and gp._assigned('X = 1\nX = 2\n', {'X'}) == {'X': [ast.dump(ast.Constant(1)), ast.dump(ast.Constant(2))]}
+
+
+def test_ci_generated_refuses_the_same_diff_before_it_generates_anything(kind_repo, tmp_path, monkeypatch):  # claim 11
+    r, base = kind_repo
+    commit(r, {OPS: ops_text('k1', 'k2', 'k3', 'k4')})
+    mod = ci_generated()
+    monkeypatch.setattr(mod, 'ROOT', r)
+    with pytest.raises(ValueError, match='kind_shard_required'):
+        mod.generate(tmp_path / 'out', base)

@@ -4,9 +4,14 @@ from pathlib import Path
 
 import pytest
 
+import sys
+
 from smalltest_admission_support import ARG_VALUES, approve, caps, load_executor, request
 
 FLEET = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(FLEET))
+import executor_pin_shards as eps  # noqa: E402  (SR-CHURN-CUT 5: a later kind's binding is a `w4_bindings` entry of its shard, not a tuple below)
+SHARDS = eps.load_shards()
 BASE_ENABLED = {"readback_sql", "migration_readback", "cloudrun_job_readback", "local_schema_seed", "finalize"}
 # A7 D-44 (owner direction): the one read-only kind added after Wave 4; enabled by B-1, not a Wave 4 op, so it is named here rather than folded into W4.
 D44_READ_ONLY = {"quiescence_check"}
@@ -68,16 +73,29 @@ def executor(tmp_path, monkeypatch):
     return load_executor(tmp_path, monkeypatch)
 
 
+# Frozen BASE of the census (above); the shards add and re-bind kinds. SHARD_BINDINGS: the exact binding of every kind a shard states, [needs, script, fixed_args, allowed_args, production, timeout_s].
+BASE_ENABLED_SET = BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION) | FAMILY_CANCEL | set(CENTURY) | PROBE | K9 | HEAD
+ENABLED_SET = eps.enabled_after(BASE_ENABLED_SET, SHARDS)
+ALL_KINDS = BASE_ENABLED_SET | DISABLED | set(eps.entries_after(SHARDS))
+DISABLED_SET = ALL_KINDS - ENABLED_SET
+SHARD_BINDINGS = eps.w4_after({}, SHARDS)
+
+
+def live(base):
+    """The kinds of a frozen binding table that no shard has re-bound: a re-bound kind is checked against its shard's binding, below."""
+    return [kind for kind in base if kind not in SHARD_BINDINGS]
+
+
 def test_only_wave4_measuring_scheduler_verification_century_cancel_probe_head_and_k9_ops_are_newly_enabled(table):
-    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION) | FAMILY_CANCEL | set(CENTURY) | PROBE | DISABLED | K9 | HEAD
-    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(VERIFICATION) | FAMILY_CANCEL | set(CENTURY) | PROBE | K9 | HEAD
-    for kind in DISABLED:
+    assert set(table) == ALL_KINDS
+    assert {k for k, op in table.items() if op["enabled"] is True} == ENABLED_SET
+    for kind in DISABLED_SET:
         assert table[kind]["enabled"] is False
         if "prepared_dry_run" in table[kind]:
             assert table[kind]["prepared_dry_run"]["enabled"] is False
 
 
-@pytest.mark.parametrize("kind", W4)
+@pytest.mark.parametrize("kind", live(W4))
 def test_exact_script_capability_and_argv(table, kind):
     op = table[kind]
     needs, script, fixed, allowed = W4[kind]
@@ -93,7 +111,7 @@ def test_exact_script_capability_and_argv(table, kind):
     assert op.get("remote_async", False) is (kind == "smalltest_dispatch")                      # A8 §3.11: only the remote launch takes the fence
 
 
-@pytest.mark.parametrize("kind", list(W4) + ["readback_sql", "migration_readback"])
+@pytest.mark.parametrize("kind", live(W4) + ["readback_sql", "migration_readback"])
 def test_real_validate_accepts_only_listed_arguments(table, executor, kind):
     args = {name: ARG_VALUES[name] for name in table[kind]["allowed_args"]}
     req = request(executor, kind, args)
@@ -103,7 +121,7 @@ def test_real_validate_accepts_only_listed_arguments(table, executor, kind):
         assert executor.validate(req, table, caps()) == f"disallowed args ['{name}']"
 
 
-@pytest.mark.parametrize("kind", W4)
+@pytest.mark.parametrize("kind", live(W4))
 def test_missing_each_required_capability_is_refused(table, executor, kind):
     req = request(executor, kind)
     for required in [table[kind]["needs"], *table[kind].get("also_needs", [])]:
@@ -111,7 +129,7 @@ def test_missing_each_required_capability_is_refused(table, executor, kind):
         assert executor.validate(req, table, missing) == f"capability_missing: {required}"
 
 
-@pytest.mark.parametrize("kind", sorted(DISABLED))
+@pytest.mark.parametrize("kind", sorted(DISABLED_SET))
 def test_every_future_operation_stays_refused(table, executor, kind):
     assert "is not enabled" in executor.validate(request(executor, kind), table, caps())
 
@@ -150,7 +168,7 @@ def test_changed_evidence_bytes_refuse_even_with_valid_request_approval(table, e
 
 
 # ───────────── J-3a: the four measuring kinds ─────────────
-@pytest.mark.parametrize("kind", MEASURING)
+@pytest.mark.parametrize("kind", live(MEASURING))
 def test_measuring_exact_script_capability_and_argv(table, kind):
     op = table[kind]
     needs, script, fixed, allowed, item = MEASURING[kind]
@@ -164,21 +182,21 @@ def test_measuring_exact_script_capability_and_argv(table, kind):
     assert op.get("remote_async", False) is (kind == "measuring_dispatch")                              # A8 §3.11: only the remote launch takes the fence
 
 
-@pytest.mark.parametrize("kind", MEASURING)
+@pytest.mark.parametrize("kind", live(MEASURING))
 def test_measuring_missing_each_required_capability_is_refused(table, executor, kind):
     req = request(executor, kind)
     for required in [table[kind]["needs"], *table[kind].get("also_needs", [])]:
         assert executor.validate(req, table, {**caps(), required: False}) == f"capability_missing: {required}"
 
 
-@pytest.mark.parametrize("kind", MEASURING)
+@pytest.mark.parametrize("kind", live(MEASURING))
 def test_measuring_validate_refuses_unlisted_arguments_and_the_smalltest_horizon(table, executor, kind):
     for name in ["execute", "run-id", "operation", "i-am-steward", "sql", "generation", "horizon-start", "horizon-end"]:
         req = request(executor, kind, {name: "fixture"})
         assert executor.validate(req, table, caps()) == f"disallowed args ['{name}']"
 
 
-@pytest.mark.parametrize("kind", MEASURING)
+@pytest.mark.parametrize("kind", live(MEASURING))
 def test_measuring_requests_reach_the_reviewed_measuring_policy_not_the_enablement_refusal(table, executor, kind):
     # the fixture's item is J-2a; the real measuring policy (loaded from the reviewed commit) must be what answers
     args = {"run": "all_classes_full", "classes": "all"} if "dispatch" in kind else {}
@@ -189,7 +207,7 @@ def test_measuring_requests_reach_the_reviewed_measuring_policy_not_the_enableme
 
 
 # ───────────── J-4b: the verification kinds (SR-PREBUILD-ALL; SR-TEARDOWN-AUTHORITY-GATE item 2: every enabled kind has its dry-run sibling) ─────────────
-@pytest.mark.parametrize("kind", VERIFICATION)
+@pytest.mark.parametrize("kind", live(VERIFICATION))
 def test_verification_exact_script_capability_and_argv(table, kind):
     op = table[kind]
     needs, script, fixed, allowed, production, timeout = VERIFICATION[kind]
@@ -205,12 +223,12 @@ def test_the_verification_dry_run_sibling_runs_the_same_script_as_the_launch(tab
     assert table["verification_job_dryrun"]["allowed_args"] == table["verification_job"]["allowed_args"]
 
 
-@pytest.mark.parametrize("kind", VERIFICATION)
+@pytest.mark.parametrize("kind", live(VERIFICATION))
 def test_verification_missing_the_gcloud_capability_is_refused(table, executor, kind):
     assert executor.validate(request(executor, kind, {"generation": "5.0"}), table, {**caps(), "gcloud": False}) == "capability_missing: gcloud"
 
 
-@pytest.mark.parametrize("kind", VERIFICATION)
+@pytest.mark.parametrize("kind", live(VERIFICATION))
 def test_verification_validate_refuses_every_argument_but_generation(table, executor, kind):
     for name in ["brief", "sealing-commit", "report-only", "final-rules", "chart", "class", "run", "classes", "execution", "sql"]:
         assert executor.validate(request(executor, kind, {name: "fixture"}), table, caps()) == f"disallowed args ['{name}']"
@@ -288,3 +306,32 @@ def test_century_teardown_is_enabled_but_never_mechanical(table, executor):
     assert table["century_teardown"]["enabled"] is True and table["century_teardown_dryrun"]["enabled"] is True
     assert executor.mechanical_exempt("century_teardown") is True
     assert "pre-acceptance receipt missing" in executor.validate({**request(executor, "century_teardown"), "acceptance_receipt": None}, table, caps())
+
+
+# ───────────── SR-CHURN-CUT 5: the kinds a shard binds (new kinds, and BASE kinds a shard re-binds) ─────────────
+def assert_binding(kind, binding, table, executor):
+    needs, script, fixed, allowed, production, timeout = binding
+    op = table[kind]
+    assert op["needs"] == needs and op["script"] == script and (FLEET.parents[3] / script).is_file(), kind      # never TO_BE_SET
+    assert op["fixed_args"] == fixed and op["allowed_args"] == allowed and op["production"] is production and op.get("timeout_s") == timeout, kind
+    if op["enabled"] is not True:
+        return
+    args = {name: ARG_VALUES.get(name, "fixture") for name in allowed}
+    for name in ["execute", "i-am-steward", "unlisted-argument"]:
+        if name not in allowed:
+            assert executor.validate(request(executor, kind, {**args, name: "fixture"}), table, caps()) == f"disallowed args ['{name}']", kind
+    for required in [needs, *op.get("also_needs", [])]:
+        assert executor.validate(request(executor, kind, args), table, {**caps(), required: False}) == f"capability_missing: {required}", kind
+
+
+def test_every_shard_binding_is_exact_admitted_only_with_its_listed_arguments_and_needs_its_capability(table, executor):
+    for kind, binding in SHARD_BINDINGS.items():
+        assert_binding(kind, binding, table, executor)
+
+
+def test_the_binding_check_reads_the_real_table_and_fails_on_a_wrong_binding(table, executor):
+    right = ["builder", "platform/scripts/dispatch_v5_measuring_job.py", ["--i-am-steward", "--after-settled-1", "--dry-run"], ["run", "classes"], False, None]
+    assert_binding("measuring_dispatch_dryrun", right, table, executor)
+    for field, value in ((1, "platform/scripts/dispatch_v5_century_job.py"), (3, ["run"]), (4, True), (5, 300)):
+        with pytest.raises(AssertionError):
+            assert_binding("measuring_dispatch_dryrun", [*right[:field], value, *right[field + 1:]], table, executor)

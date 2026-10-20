@@ -94,7 +94,7 @@ def generate(destination: Path, base: str | None):
         bad = changed_outputs(changed)
         if bad:
             raise ValueError('machine-owned outputs must not be edited in branches: ' + ', '.join(bad))
-        append_only = generated_paths.shard_violations(generated_paths.diff_changes(ROOT, base, 'HEAD'))
+        append_only = generated_paths.shard_violations(generated_paths.diff_changes(ROOT, base, 'HEAD')) + generated_paths.kind_violations(ROOT, base, 'HEAD')   # SR-CHURN-CUT 5: a kind PR adds one shard
         if append_only:
             raise ValueError('; '.join(append_only))
     # Generate leaf mirrors before the census/snapshot dependency chain, then
