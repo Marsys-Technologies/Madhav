@@ -108,7 +108,7 @@ def _run(w, triggered_by=td.TRIGGERED_BY, scope="asset", target=ASSET, assets=(A
 
 
 def _step(w, rid, key, horizon=None):
-    config = {"chart_id": CHART_ID, "ephe_path": EPHE_PATH}
+    config = {"chart_id": CHART_ID, "ephe_path": EPHE_PATH, "gochara_v5_final_rules": False}      # F-CHANNEL: the measuring profile, named
     if horizon is not None:
         config["horizon"] = horizon
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=str(rid), db_conn=w.conn, dry_run=False, config=config)

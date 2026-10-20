@@ -446,6 +446,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -586,6 +589,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -652,6 +658,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -722,6 +731,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -804,6 +816,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -825,6 +840,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -890,6 +908,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -911,6 +932,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -976,6 +1000,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -997,6 +1024,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1061,6 +1091,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -1082,6 +1115,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1147,6 +1183,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -1168,6 +1207,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1233,6 +1275,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -1254,6 +1299,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1323,6 +1371,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -1344,6 +1395,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1412,6 +1466,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -1433,6 +1490,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1501,6 +1561,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -1522,6 +1585,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1582,6 +1648,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -1603,6 +1672,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1668,6 +1740,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1691,6 +1766,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ]
@@ -1755,6 +1833,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -1776,6 +1857,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1841,6 +1925,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -1862,6 +1949,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1931,6 +2021,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -1996,6 +2089,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -2059,6 +2155,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -2123,6 +2222,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -2327,6 +2429,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -2701,6 +2806,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -2778,6 +2886,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -2905,6 +3016,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -3173,6 +3287,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -5359,6 +5476,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -5611,6 +5731,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -5905,6 +6028,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -6367,6 +6493,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -6523,6 +6652,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -6634,6 +6766,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -6724,6 +6859,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -6814,6 +6952,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -6901,6 +7042,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -6985,6 +7129,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -7072,6 +7219,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -8728,6 +8878,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -8749,6 +8902,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -8770,6 +8926,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -8791,6 +8950,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -8812,6 +8974,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -8833,6 +8998,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -8856,6 +9024,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ]
@@ -9085,6 +9256,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -12446,6 +12620,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -12467,6 +12644,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ]
@@ -12563,6 +12743,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -12586,6 +12769,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ]
@@ -12634,6 +12820,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -12658,6 +12847,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ]
@@ -12706,6 +12898,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -12730,6 +12925,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ]
@@ -12833,6 +13031,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         },
         {
@@ -12854,6 +13055,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ]
@@ -12926,6 +13130,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ]
@@ -14628,6 +14835,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -14926,6 +15136,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -15430,6 +15643,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -15653,6 +15869,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ]
@@ -15835,6 +16054,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -16175,6 +16397,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         },
         {
@@ -16196,6 +16421,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -16235,6 +16463,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -16273,6 +16504,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -16311,6 +16545,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         },
         {
@@ -16332,6 +16569,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -16385,6 +16625,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -16408,6 +16651,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ]
@@ -16446,6 +16692,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         },
         {
@@ -16467,6 +16716,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -16515,6 +16767,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       },
       {
@@ -16536,6 +16791,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -16603,6 +16861,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -16789,6 +17050,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -16861,6 +17125,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -17218,6 +17485,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -17515,6 +17785,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -17798,6 +18071,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ]
@@ -17882,6 +18158,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ]
@@ -17920,6 +18199,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ],
@@ -17967,6 +18249,9 @@
          "checked_at": null,
          "deps_open": [],
          "deps_open_strict": [],
+         "activation_pending": [],
+         "built_waiting_on_gate": false,
+         "gate_blockers": [],
          "elapsed_s": null
         }
        ]
@@ -18657,6 +18942,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -18758,6 +19046,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],
@@ -18963,6 +19254,9 @@
        "checked_at": null,
        "deps_open": [],
        "deps_open_strict": [],
+       "activation_pending": [],
+       "built_waiting_on_gate": false,
+       "gate_blockers": [],
        "elapsed_s": null
       }
      ],

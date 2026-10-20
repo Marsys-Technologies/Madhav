@@ -52,7 +52,7 @@ def g12(request, monkeypatch, tmp_path):
 
         def step(key):
             ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-g12", db_conn=conn,
-                              config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
+                              config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
             with conn.transaction():
                 return w.run_substep(ctx, SubStep(key=key, label=key))
         for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP, "inventory:marriage", "coverage:marriage"):
@@ -712,7 +712,7 @@ def test_a_first_seal_on_a_legacy_snapshot_is_refused_and_a_replay_of_a_sealed_g
         w = writer_mod.GocharaV5Writer()
         for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP):
             ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-legacyseal", db_conn=conn,
-                              config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
+                              config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
             with conn.transaction():
                 w.run_substep(ctx, SubStep(key=k, label=k))
         with pytest.raises(seal_brief.BriefRefused) as e:
@@ -950,7 +950,7 @@ def test_every_runnable_substep_after_the_snapshot_runs_with_live_L1_gone_not_on
     live_L1_is_gone_entirely."""
     step, conn = g12
     w = writer_mod.GocharaV5Writer()
-    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-g12-plan", db_conn=conn, config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": None}, dry_run=False)
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-g12-plan", db_conn=conn, config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": (H0, H1), "ephe_path": None}, dry_run=False)
     planned = [x.key for x in w.plan_substeps(ctx)]
     after = planned[planned.index(writer_mod.SNAPSHOT_SUBSTEP) + 1:]
     runnable = [k for k in after if ":marriage" in k and k not in ("window:marriage:P3", "window:marriage:P4", "verify:marriage")]
@@ -1099,7 +1099,7 @@ def test_without_1305_the_writer_builds_the_legacy_snapshot_and_the_note_says_so
         notes = {}
         for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP):
             ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-legacy", db_conn=conn,
-                              config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
+                              config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
             with conn.transaction():
                 notes[k] = w.run_substep(ctx, SubStep(key=k, label=k)).notes
         assert "LEGACY: no L1 copy; apply snapshot-copy migration before any seal" in notes[writer_mod.SNAPSHOT_SUBSTEP]
@@ -1488,7 +1488,7 @@ def test_chronological_a_generation_sealed_with_a_legacy_snapshot_then_1305_appl
         ephe = make_ephe(tmp_path, monkeypatch)
         w = writer_mod.GocharaV5Writer()
         for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP):
-            ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-chron", db_conn=conn, config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
+            ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-chron", db_conn=conn, config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": (H0, H1), "ephe_path": ephe}, dry_run=False)
             with conn.transaction():
                 w.run_substep(ctx, SubStep(key=k, label=k))
         assert InventoryStore(conn).snapshot_copy_available() is False, "the pre-1305 schema: the snapshot is legacy-shaped"

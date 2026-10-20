@@ -84,7 +84,7 @@ class _Conn:
 
 def _ctx(conn=None, dry_run=False, **config) -> ContextSpec:
     return ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-1", db_conn=conn if conn is not None else _Conn(),
-                       config={"chart_id": CHART_ID, **config}, dry_run=dry_run)
+                       config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, **config}, dry_run=dry_run)
 
 
 # ── (a) derivation from the database ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -96,18 +96,21 @@ def _slice(run="all_classes_full", **kw):
     return writer_mod._validate_test_slice(_marker(run, **kw))
 
 
-def test_an_ordinary_build_with_the_real_runner_config_keeps_default_horizon_and_never_reads_the_log():
-    """Steward MB-CODEX-1 ruling 1 / Codex blocker 1: the real runner supplies only chart_id and birth_params. No marker: DEFAULT_HORIZON as on main, no life_events read
-    (an unusable log cannot stop an ordinary build), no horizon_basis component, so the vector is byte-identical."""
+def test_an_ordinary_build_with_an_explicit_horizon_keeps_it_and_never_reads_the_log():
+    """Steward MB-CODEX-1 ruling 1 / Codex blocker 1, as amended by SR-W34-PREP-RULINGS 1 (F-CHANNEL): an ordinary build names its horizon explicitly (the century dispatch stages
+    it; here the config carries DEFAULT_HORIZON's bounds): no life_events read (an unusable log cannot stop an ordinary build), no horizon_basis component, so the vector is
+    byte-identical. One that names none is REFUSED (run_horizon_required), never defaulted: the last assertion."""
     unusable = [("not", "a", "row")]                                                                          # a log the derivation could not read
     conn = _Conn(lel=unusable)
-    ctx = _ctx(conn, birth_params=BIRTH_PARAMS)
+    ctx = _ctx(conn, birth_params=BIRTH_PARAMS, horizon=OLD_DEFAULT)
     assert tuple(writer_mod.DEFAULT_HORIZON) == OLD_DEFAULT
     assert tuple(writer_mod._effective_horizon(ctx, None)) == OLD_DEFAULT
     assert writer_mod._test_slice(ctx) is None and writer_mod._horizon_basis(ctx, None) is None
     assert len(writer_mod.GocharaV5Writer().plan_substeps(ctx)) == 298
     assert not [sql for sql, _ in conn.statements if "life_events" in sql or "kala_gochara_publication" in sql], "an ordinary build never reads the log or the pinned basis"
     assert writer_mod._effective_horizon(_ctx(horizon=FULL), None) is FULL                                    # an explicit config horizon: as given, as on main
+    with pytest.raises(writer_mod.RunHorizonRefusal, match="run_horizon_required"):
+        writer_mod.GocharaV5Writer().plan_substeps(_ctx(_Conn(), birth_params=BIRTH_PARAMS))
 
 
 @pytest.mark.parametrize("run, horizon", [("one_class_full", OLD_DEFAULT), ("all_classes_1y", (datetime(2025, 4, 1, tzinfo=UTC), datetime(2026, 4, 1, tzinfo=UTC)))])
@@ -475,7 +478,7 @@ def _rules_run(monkeypatch, conn, *, guard=True, dry_run=False):
     monkeypatch.setattr(writer_mod, "_ephe_path", lambda c: "/x")
     if not guard:
         monkeypatch.setattr(writer_mod, "_require_building", lambda c, ch: None)       # "main": no guard
-    res = writer_mod.GocharaV5Writer().run_substep(_ctx(conn, dry_run=dry_run, birth_params=BIRTH_PARAMS), SubStep(key=writer_mod.RULES_SUBSTEP, label="rules"))
+    res = writer_mod.GocharaV5Writer().run_substep(_ctx(conn, dry_run=dry_run, birth_params=BIRTH_PARAMS, horizon=OLD_DEFAULT), SubStep(key=writer_mod.RULES_SUBSTEP, label="rules"))
     return calls, res
 
 
@@ -503,7 +506,7 @@ def test_a_non_building_refusal_precedes_the_first_write_the_rules_seed(monkeypa
     monkeypatch.setattr(writer_mod, "RuleRegistryStore", Store)
     monkeypatch.setattr(writer_mod, "_ephe_path", lambda c: "/x")
     with pytest.raises(writer_mod.AssetNotBuilding):
-        writer_mod.GocharaV5Writer().run_substep(_ctx(_Conn(throughput="error"), birth_params=BIRTH_PARAMS), SubStep(key=writer_mod.RULES_SUBSTEP, label="rules"))
+        writer_mod.GocharaV5Writer().run_substep(_ctx(_Conn(throughput="error"), birth_params=BIRTH_PARAMS, horizon=OLD_DEFAULT), SubStep(key=writer_mod.RULES_SUBSTEP, label="rules"))
     assert seeded == [], "refused before the seed (the first write)"
 
 
@@ -517,6 +520,6 @@ def test_the_guard_is_skipped_in_a_dry_run_and_when_the_row_is_absent_for_a_mark
 
 def test_the_guard_decision_is_documented_in_the_code_as_a_deliberate_change_to_every_v5_build():
     import inspect
-    src = inspect.getsource(writer_mod.GocharaV5Writer.run_substep)
+    src = inspect.getsource(writer_mod.GocharaV5Writer._run_resolved_substep)      # the substep proper (run_substep resolves the config, then delegates)
     i = src.index("_require_building(ctx, chart_id)")
     assert "DELIBERATE CHANGE TO EVERY v5 BUILD" in src[max(0, i - 900):i]

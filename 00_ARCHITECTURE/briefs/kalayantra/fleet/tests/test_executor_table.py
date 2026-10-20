@@ -84,18 +84,19 @@ MEASURING_BINDINGS = {
         "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": [], "production": True, "enabled_by": "J-3d",
     },
 }
-# SR-PREBUILD-ALL (item J-4e, enabled_by J-4d): the century family. century_dispatch = the measuring launch without the test slice
+# SR-PREBUILD-ALL (item J-4e, enabled_by J-4d): the century family. F-CHANNEL (SR-W34-PREP-RULINGS 1): both dispatch kinds also take final_rules, defer_in_build_verify and horizon. century_dispatch = the measuring launch without the test slice
 # (builder because it stages the run, gcloud because it launches it); the dry run is its production:false sibling; the teardown pair reuses the
-# scoped teardown (SR-TEARDOWN-AUTHORITY-GATE item 3) and the REAL teardown stays enabled:false until the owner's teardown authority is recorded.
+# scoped teardown (SR-TEARDOWN-AUTHORITY-GATE item 3). W3W4 pack verify E1: the REAL teardown is enabled (its dry-run twin exists and the pack's bind predicate needs all six century kinds
+# enabled); it stays signed-only (executor.mechanical_exempt), so enabling the kind lets no request run without a verifier lane's acceptance.
 CENTURY_BINDINGS = {
     "century_dispatch": {
         "enabled": True, "needs": "builder", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py",
-        "fixed_args": [], "allowed_args": ["classes"], "production": True, "remote_async": True, "enabled_by": "J-4d",
+        "fixed_args": [], "allowed_args": ["classes", "final_rules", "defer_in_build_verify", "horizon"], "production": True, "remote_async": True, "enabled_by": "J-4d",
         "also_needs": ["gcloud"],
     },
     "century_dispatch_dryrun": {
         "enabled": True, "needs": "builder", "script": "platform/scripts/dispatch_v5_century_job.py",
-        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run"], "allowed_args": ["classes"],
+        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run"], "allowed_args": ["classes", "final_rules", "defer_in_build_verify", "horizon"],
         "production": False, "enabled_by": "J-4d",
     },
     "century_teardown_dryrun": {
@@ -103,16 +104,26 @@ CENTURY_BINDINGS = {
         "fixed_args": ["--dry-run"], "allowed_args": [], "production": False, "enabled_by": "J-4d",
     },
     "century_teardown": {
-        "enabled": False, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
+        "enabled": True, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
         "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": [], "production": True, "enabled_by": "J-4d",
     },
 }
+# J-4b (SR-PREBUILD-ALL): the verification launcher and its dry-run sibling, bound exactly (fleet/verification_launch.py). The flag is the only enablement edit.
+VERIFICATION_BINDINGS = {
+    "verification_job": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", "fixed_args": [],
+                         "allowed_args": ["generation"], "production": True, "remote_async": True, "timeout_s": 900, "enabled_by": "J-4b"},
+    "verification_job_dryrun": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py", "fixed_args": ["--dry-run"],
+                                "allowed_args": ["generation"], "production": False, "timeout_s": 21600, "enabled_by": "J-4b"},
+}
+# F-CHANNEL: the prepared_dry_run block is disabled PREPARATION_ONLY review metadata served by operation_dryrun.py (a bounded `classes` descriptor, never an executor
+# surface); (I) INTERPRETATION: it stays classes-only while the century kinds themselves gain the three channel arguments.
+PREPARED_ALLOWED = {"century_dispatch": ["classes"]}
 # A8 §3.11: the kinds whose work continues remotely after the child returns — the only ones that take the production fence.
 REMOTE_ASYNC_KINDS = {"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"}
 # J-2a M6/M7: the one added read-only kind (fleet/CLOUDRUN_READBACK_v1_0.md). Exact binding, not permission for any other op.
 CLOUDRUN_READBACK = {
     "enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py",
-    "fixed_args": [], "allowed_args": ["execution", "logs", "metrics"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
+    "fixed_args": [], "allowed_args": ["execution", "logs", "metrics", "job"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
     "timeout_s": 600, "enabled_by": "J-2a",
 }
 # A7 D-44: `read_only` marks the kinds the executor accepts mechanically; `quiescence_check` is the one added read-only kind (session readback).
@@ -158,6 +169,18 @@ K9_BINDINGS = {
     "layer_rollback_dryrun": _k9("builder", K9_ADMISSION, "rollback-dryrun", ["generation", "expected-head"], False, "services.kala_core.publication_admission"),
     "layer_rollback": _k9("builder", K9_MODULE, "rollback", ["generation", "expected-head"], True, "services.kala_core.publication"),
 }
+# W3W4 pack verify E1 (enabled_by the family's enabling item): measuring_cancel's two siblings, one family per build/job, appended after the measuring pair. Exact bindings; each production kind
+# has its dry-run twin (production:false, `--dry-run`), the same script, the same single `execution` argument and the default requester (adhikarin only).
+FAMILY_CANCEL_BINDINGS = {
+    "century_cancel_dryrun": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/century_cancel.py", "fixed_args": ["--dry-run"],
+                              "allowed_args": ["execution"], "production": False, "timeout_s": 300, "enabled_by": "J-4d"},
+    "century_cancel": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/century_cancel.py", "fixed_args": [],
+                       "allowed_args": ["execution"], "production": True, "timeout_s": 900, "enabled_by": "J-4d"},
+    "verification_cancel_dryrun": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_cancel.py", "fixed_args": ["--dry-run"],
+                                   "allowed_args": ["execution"], "production": False, "timeout_s": 300, "enabled_by": "J-4b"},
+    "verification_cancel": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_cancel.py", "fixed_args": [],
+                            "allowed_args": ["execution"], "production": True, "timeout_s": 900, "enabled_by": "J-4b"},
+}
 # U-M-12 (enabled_by J-4b, the protected-window item): the read-only GitHub run readback for the window watch; prepared for W3/W4 and SHIPPED DISABLED, so it is in no ENABLED_KINDS set below.
 GITHUB_RUN_READBACK = {
     "enabled": False, "needs": "none", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/github_run_readback.py",
@@ -182,6 +205,12 @@ PROVISIONING_BINDINGS = {
     "gochara_role_provisioning_dispatch": {"enabled": False, "needs": "none", "script": PROVISIONING_SCRIPT, "fixed_args": ["--execute"],
                                            "allowed_args": ["stage", "dsn_tail", "confirm", "window_lease_id"], "production": True, "timeout_s": 300, "enabled_by": "J-4b"},
 }
+# SR-TEARDOWN-AUTHORITY-GATE item 3 (enabled_by J-6l): the read-only served_probe kind, appended after every earlier kind. Exact binding, including the fixed endpoint set.
+SERVED_PROBE_BINDINGS = {
+    "served_probe": {"enabled": True, "needs": "none", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/served_probe.py", "fixed_args": [], "allowed_args": ["endpoint"],
+                     "requesters": ["adhikarin", "v1", "v2"], "production": False, "read_only": True, "timeout_s": 120, "enabled_by": "J-6l",
+                     "probe_endpoints": {"app_health": {"url": "https://madhav.marsys.in/api/health", "store_body": True}}},
+}
 # SR-PREBUILD-ALL (W5/W6 union MISSING: KIND-http_probe, KIND-orchestrator_rebuild_cancel/_teardown), appended after the provisioning kinds and SHIPPED DISABLED. Exact bindings.
 # http_probe: the read-only, credential-free probe of one fixed URL (SR-TEARDOWN-AUTHORITY-GATE 3). The two K9 control families run publication_admission.py (rebuild_control).
 HTTP_PROBE = {
@@ -198,11 +227,11 @@ REBUILD_CONTROL_BINDINGS = {
     "orchestrator_rebuild_teardown": _k9_control("teardown", True, 600),
 }
 HEAD_KINDS = ("publish_head", "publish_head_dryrun", "rollback_head", "rollback_head_dryrun")   # J-6m / J-6r: enabled only through head_operation.py's reviewed policy (SR-HEAD-POLICY-KEEP)
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(HEAD_KINDS) | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(K9_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]} | executor_pin_shards.enabled_kinds(SHARDS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; K9-23: the eight layer/rebuild kinds; J-4d: the three enabled century kinds
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(HEAD_KINDS) | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(K9_BINDINGS) | set(VERIFICATION_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]} | set(SERVED_PROBE_BINDINGS) | set(FAMILY_CANCEL_BINDINGS) | executor_pin_shards.enabled_kinds(SHARDS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; K9-23: the eight layer/rebuild kinds; J-4d: the three enabled century kinds
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
-P10_ENABLED_ITEMS = ("J-1a", "J-4d", "J-6m", "J-6r")      # J-1a: Wave 4 small test; J-4d: SR-PREBUILD-ALL (the century launcher is merged-with-this-PR); J-6m / J-6r: SR-HEAD-POLICY-KEEP (the head kinds, through the head policy)
+P10_ENABLED_ITEMS = ("J-1a", "J-4b", "J-4d", "J-6m", "J-6r")      # J-1a: Wave 4 small test; J-4b: the verification launcher; J-4d: SR-PREBUILD-ALL (the century launcher is merged-with-this-PR); J-6m / J-6r: SR-HEAD-POLICY-KEEP (the head kinds, through the head policy)
 P10_STILL_DISABLED = {item: kind for item, kind in P10.items() if item not in P10_ENABLED_ITEMS}
 BOUNDARY_FUNCTIONS = ["validate", "execute", "run_one", "main", "lease_live", "request_digest", "fence_quiescent",
                       "refresh_refusal_reason", "handover_from_main", "refresh_from_main_or_fail_closed",
@@ -267,7 +296,7 @@ def test_enabled_is_the_first_key_of_every_entry():
         assert next(iter(entry)) == "enabled", f"{kind}: first key is {next(iter(entry))}"
 
 
-def test_p10_entries_present_with_only_j1a_and_j4d_enabled():
+def test_p10_entries_present_with_only_j1a_j4b_and_j4d_enabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     for item, kind in P10.items():
         assert kind in ops, f"{kind} is missing"
@@ -289,22 +318,25 @@ def assert_table_matches_pin(now, shards=None):
     expected_order.insert(expected_order.index("cloudrun_job_readback") + 1, "quiescence_check")
     for sibling, real in (("layer_verify_dryrun", "layer_verify"), ("layer_publish_dryrun", "layer_publish"), ("layer_rollback_dryrun", "layer_rollback")):
         expected_order.insert(expected_order.index(real), sibling)   # K9-23: each layer dry-run sits directly before its operation
+    expected_order.insert(expected_order.index("verification_job") + 1, "verification_job_dryrun")      # J-4b: the sibling sits right after its kind
     pos = expected_order.index("century_dispatch") + 1
     expected_order[pos:pos] = ["century_dispatch_dryrun", "century_teardown_dryrun", "century_teardown"]
     # J6 head-change bindings: each head kind gains an explicit `_dryrun` sibling right after it
     for head_kind in ("publish_head", "rollback_head"):
         expected_order.insert(expected_order.index(head_kind) + 1, head_kind + "_dryrun")
     expected_order += list(SCHEDULER_BINDINGS)                      # SR-J3-REAPER-PAUSE: appended last
+    expected_order += list(FAMILY_CANCEL_BINDINGS)                  # W3W4 pack verify E1: after the measuring cancel pair
     expected_order.append("github_run_readback")                    # U-M-12: appended after the scheduler kinds
     expected_order += list(PROTECTED_WINDOW_BINDINGS)               # U-M-01: appended after the scheduler kinds
     expected_order += list(PROVISIONING_BINDINGS)                   # U-M-03: appended after the github_run_readback kind
-    expected_order.append("http_probe")                             # SR-PREBUILD-ALL: appended after the provisioning kinds
+    expected_order += list(SERVED_PROBE_BINDINGS)                   # SR-TEARDOWN-AUTHORITY-GATE item 3: after them
+    expected_order.append("http_probe")                             # SR-PREBUILD-ALL: appended after the served_probe kind
     expected_order += list(REBUILD_CONTROL_BINDINGS)                # SR-PREBUILD-ALL: cancel and teardown, each dry run directly before its operation
     _, expected_order = executor_pin_shards.apply_shards(dict.fromkeys(expected_order), expected_order, shards)   # reviewed shards, in file-name order
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
-    expected["readback_sql"]["allowed_args"] = ["sql_file", "sql_sha256"]   # J6 live readback pins the SQL by digest
+    expected["readback_sql"]["allowed_args"] = ["sql_file", "sql_sha256", "sql-sha256"]   # J6 live readback pins the SQL by digest; K9-4b adds its hyphenated key
     for kind in K9_KINDS:
         assert expected[kind]["enabled_by"] == "K9-3", f"{kind}: the pin no longer says K9-3 — test premise broken"
         expected[kind]["enabled_by"] = "K9-23"
@@ -317,12 +349,15 @@ def assert_table_matches_pin(now, shards=None):
     expected["verification_job"]["needs"] = "gcloud"
     expected.update(json.loads(json.dumps(MEASURING_BINDINGS)))
     expected.update(json.loads(json.dumps(CENTURY_BINDINGS)))
+    expected.update(json.loads(json.dumps(VERIFICATION_BINDINGS)))
     expected["cloudrun_job_readback"] = json.loads(json.dumps(CLOUDRUN_READBACK))
     expected["quiescence_check"] = json.loads(json.dumps(QUIESCENCE_CHECK))
     expected.update(json.loads(json.dumps(SCHEDULER_BINDINGS)))
+    expected.update(json.loads(json.dumps(FAMILY_CANCEL_BINDINGS)))
     expected["github_run_readback"] = json.loads(json.dumps(GITHUB_RUN_READBACK))
     expected.update(json.loads(json.dumps(PROTECTED_WINDOW_BINDINGS)))
     expected.update(json.loads(json.dumps(PROVISIONING_BINDINGS)))
+    expected.update(json.loads(json.dumps(SERVED_PROBE_BINDINGS)))
     expected["http_probe"] = json.loads(json.dumps(HTTP_PROBE))
     expected.update(json.loads(json.dumps(REBUILD_CONTROL_BINDINGS)))
     for kind in READ_ONLY_KINDS[:3]:
@@ -331,7 +366,7 @@ def assert_table_matches_pin(now, shards=None):
                         ("verification_job", "phase 10 after P06b"), ("publish_head", "J-6m"), ("rollback_head", "J-6r")]:
         expected[kind]["prepared_dry_run"] = {
             "enabled": False, "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py",
-            "fixed_args": ["--dry-run", "--kind", kind], "allowed_args": expected[kind]["allowed_args"], "enable_at": phase,
+            "fixed_args": ["--dry-run", "--kind", kind], "allowed_args": PREPARED_ALLOWED.get(kind, expected[kind]["allowed_args"]), "enable_at": phase,
             "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"}
     for kind, binding in P01_BINDINGS.items():
         expected[kind].update(enabled=True, **binding)
@@ -388,6 +423,19 @@ def test_table_pin_refuses_unreviewed_measuring_and_century_changes(kind, field,
     now = load_ops(OPS_FILE.read_text())
     assert_table_matches_pin(now)
     now["ops"][kind][field] = (not now["ops"][kind]["enabled"]) if field == "enabled" else value      # flip whichever way the pin has it
+    with pytest.raises(AssertionError, match=re.escape(f"{kind}.{field}")):
+        assert_table_matches_pin(now)
+
+
+@pytest.mark.parametrize("kind", VERIFICATION_BINDINGS)
+@pytest.mark.parametrize("field,value", [
+    ("enabled", False), ("script", "platform/scripts/unreviewed.py"),
+    ("fixed_args", ["--brief"]), ("allowed_args", ["generation", "sealing-commit"]), ("production", not True),
+])
+def test_table_pin_refuses_unreviewed_verification_changes(kind, field, value):
+    now = load_ops(OPS_FILE.read_text())
+    assert_table_matches_pin(now)
+    now["ops"][kind][field] = value if field != "production" else (not now["ops"][kind]["production"])
     with pytest.raises(AssertionError, match=re.escape(f"{kind}.{field}")):
         assert_table_matches_pin(now)
 
@@ -477,7 +525,7 @@ def _segments(src):
 # their call sites in receipt/validate). J6B-NB-01 then keeps a duplicate head request's refusal separate from the retained receipt:
 # `receipt` (preserve_existing) and `main` (its call site) carry the pins re-derived from the merged executor.py. SR-TEARDOWN-COMPLETION adds publish_teardown_completions (new, pinned) and its one call in `main`. Each hash is of the merged executor.py segment; every other mutation,
 # including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'fence_quiescent': '4d985c5cda7a752745962eaf645bf6f6833afc89ca7f3a6ddcff852b33fb7cad', 'publish_teardown_completions': 'd45b8410b0031ad8f9d53add76fbcd0b7eef9b31974fc23167d5771b2f41eb97', 'receipt': 'c451545a5c136e767a2b051c17d2e3cbf17ca1c73cc1941a02891e9770c1dc3a', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'f2676f15c255cfcb6221ebb668ddaabe12acdc87e18428bcf9df04549aa2a9d7', 'validate': '2c4ccd752536fac5ffb80a2e2175387a6de940948e88e490c3ed90e3af126784', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': '88bf9fe8db575678fc093c7ca3f65238a650a085d0c530334553f6a3cf86058c', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': '55ec56f43c66590db415dbc5141b889fe226392e2dd81bcc14568d9147a9d925', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': 'c121e7e9ab5598343d0d74b60e7d3029c064643ffc510b49e9f086235d72a2b0', 'main': '360f30fcb48e27231024595a86e17ac81a79cb7beb6183abdcd3a6f51c084fd3', 'child_stderrs': '2701c3a828806e2e6653b398609becae1dbf40043a5d1efe6d4335c7abbe902a', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3', 'run_one': 'f30360721639b59cd9371c10aec7fc2251e2aef8acebdf20d78a0e856894adbb', 'session_marker': '21216adbf560807fffed590211a11235484167a5dbd762a18aed9c59cdd5ab09', 'write_new_json': 'b69919f6644041481108595fa11fe896bf8ede6de391adca233a28ea8a6c3e26', 'measured_identity': 'f47bc85d6d3516158ea1ef399d8e28a74674318d4842f9596da43c26a5f49222', 'mechanical_post_acceptance': '383b0a42ec72e3ed3d840f9693ecb288d4e7a431f285553601a244fffd55ed0e', 'accepted_cloudrun_execution': '5a87517fae4a7febf1eb0479e56b70bf90673e4569a00f74897ba2e298f5ae7d', 'mechanical_quiescence': 'adcc6130579cf4bc7930977e34e99ddc5dc522c74d8374e04b10b50974c51ca4', 'mechanical_acceptance': 'c9e263a19704a100a4583ad84cf6126d4bdff10c312aad7cd964606fae12a806', 'request_digest': '972ee7e7f9d665377108a9ab233c45db04b3e8a9a31825dc7560ce05b08406b6', 'refresh_from_main_or_fail_closed': 'c177789a8289a212e5690d1a70b87a34e36c34df052c1687e5cd3965f78eb18c', 'remote_async': '053f72a12ac1629af29731e3f5ab77bcecfde2c1fb01e56c256640a886755b98', 'UNBOUND_REQUEST_FIELDS': 'e3c09d66976b1be9186502bceb7b318a1416f93cd640bdbc4ad852e437b17a12', 'REMOTE_ASYNC_KINDS': '3896625f1c5786170001c8b85ac4e5b0dde89fe249de020d76920b0ad5ef1155', 'SCHEDULER_JOB': 'eb099f996955c70fd6bd1aa6a50fc7dfc195b7c3e78594751dd226d9b862faf4', 'SCHEDULER_PROJECT': 'e63bc56c1f7ff7c1cabcbbfe7af3a48b3aaeec1aa4c7e090144cd0167d62afa5', 'SCHEDULER_REGION': 'c0267426fb76794ab995158ddec9e3fc8127772b137618e9019892344acb0b80', 'SCHEDULER_SCRIPT': 'f479c65ab5597d6fca611a5804d02dcaa87d5c3e099dffa466f948cab610f083', 'SCHEDULER_ACTION': 'bcce7bd9f31fbe10c8fa722a2bd609416107b280bf4e26550633dc8cf0561a00', 'SCHEDULER_STATES': 'b57629e1c41abd330b2da37f27865473060e2a104d0d28b287d74b97b36a731d', 'SCHEDULER_UTC': 'd463e745920163c76c1dea9659a8eeef2aed71da4bd059a8588f1fddb69596b4', 'SCHEDULER_BACKSTOP': '5336986b52b9342f36bebb292599e0faffefdfba49d95329afda5452904df188', 'lease_expiry': '23f2b14757ee303848c7f77c3d39e066dcf872a6122855707ac7d9401a1aa0c4', 'scheduler_policy_problem': '12630309cd268eeb090355a5844ae4d462f472b11e9da75f02495d896fe0a94f', 'scheduler_proof': '8ef650eaa9c0e78ee080de1862aecf52c378ca5f6e72012600064c4f28d41428', 'scheduler_write': '53a2d469ef44b3a9805794d9c889e4b14fbf6c97e07f94800d172d499888389b', 'scheduler_backstop_records': 'db053014456aaa26df639582cdbb728c9d213545f0221fd1c6a9b917fae5e552', 'arm_scheduler_backstop': '0e7a39078a9870914c142643be9be49bf1081ebc7be2c8ee2415c3de95b7bd29', 'scheduler_backstop_satisfy': '201c57f603bb483f38add84b058d28ae28340aae3a2d46fe4f721b9918d74081', 'scheduler_backstop_fire': '8dc3f584770fdd06d363cf20be284661aead0a589cf9832e8ded2db18b7126ae', 'scheduler_backstop_tick': 'c6fcad69671e482c5460eda18f0d07f53699c39195802f9c0cd431b1a11fe4b8', 'measuring_cancel_problem': '635e5e5b1fc83e143a793eb4c2b54e5fc200593b8f275b653cf577f231c8df42', 'measuring_cancel_proof': '19b48179419b7864b6640bedbc19cfbee601b2bd263030d26d18b69ff6930765', 'canonical_sha': 'f8f23ad6c9162e9444540ddfdf1046ac31db16f1807ec27cb0fc1d6482a4d0ba', 'mechanical_exempt': '802a819301de8a5ad283a693cc87931548cfbd9ea93f1cad2187f0aeb3f1de0a', 'pack_fill_check': '084a2d76b85ad35339ee50e820747e0d8617e04d1b4da9a87701c0f17c8d73c3', 'dry_run_check': 'ba4c756c73f67f3500f30d73733573882a59032af7399835d062c0eaa8f82269', 'mechanical_problem': 'b1b2e07fce11b99da96af74d59f1b2112d686a65f6980a4bafd0ad812873fe88', 'mechanical_pre_acceptance': '4c566fb91b17c63ddabdd5b7859640daaef57110ed114f054272718f5e4c2090', 'signer_acceptance_problem': '81b018c05f10e2355e7bfe2168ae2db625e13a124f18dbf5482b13f9dd23afea', 'PACK_ALLOWLIST': '895b42a1a543f823c50bf4504f68c969ca317324d1583716b09393883a845a56', 'SIGNED_ONLY_KINDS': '09678fa78a79fe55969ccfc15ef5e0bcd50b4d2158caa7932bea9836d027b4f8', 'NO_DRYRUN_KINDS': '1831c60b886d47185af1542e9be21cf4c330d3495ca9259471a37d2991d903f7', 'PACK_NEVER_FILLED': 'ae15e6db6c6772e98a7fa57994ec23c3607af03c3d81b7fc38e7dc7ee5913786', 'DRYRUN_IDENTITY_FIELDS': 'b81fe525fa8a151e2183e0f1065255b9bb0b47d43c4c7f45b80fa7397d79c528', 'HEX64': 'f4b9a1efc5cff4c648c87e337ff1353507e3ba55ceb7c9b11d9ae6f3f3bcd638', 'TEARDOWN_KINDS': '000958948e0d8470e5f2cab40814a720906d5accb4364769fe0fb39a280a9b4f', 'LAUNCH_SCHEMAS': '5669869ddc216dbec7564d7f5b26c7020060959b7759859e117add2c6ff7390f', 'head_policy': '948d21ff7ed3d7e4ba67bfdcf3d11ce042a3c7fef7603d3de852b3beff9a116c', 'head_policy_problem': '7d4d5e7cd616c4a4e0703361630ada5544250aad5907e359618ba5de2491f96f', 'CANCEL_LANE_KINDS': '334c0602860aa0968a403142c9beab2e45150fbe4b139aeac3e726b6b7eee263', 'orchestrator_rebuild_cancel_problem': 'cfa7655750eedb6380581c18fa1a4513ec52b37a6ffb06d658dd941360d70dd4', 'orchestrator_rebuild_dryrun_problem': '9c6548881ad44391c5500b52f66e2e8b8cebb4300f826662451b69c890f51b39', 'run_cancel_lane': '375bdd8c04c23a62cdf7664420fcb5ff83b7d10b1bd68680c313d7184c50ecb2', 'pool_for': '3d3cbd3261efd3cca258cf9794d58ad5760e5c8df141040469560b25834ee637'}
+W4_FUNCTION_HASHES = {'fence_quiescent': '4d985c5cda7a752745962eaf645bf6f6833afc89ca7f3a6ddcff852b33fb7cad', 'publish_teardown_completions': 'd45b8410b0031ad8f9d53add76fbcd0b7eef9b31974fc23167d5771b2f41eb97', 'receipt': 'f6766f185ebf4cf09b9be520192eb8c5c821ead8c2995b96d56225ade96fffee', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'f2676f15c255cfcb6221ebb668ddaabe12acdc87e18428bcf9df04549aa2a9d7', 'validate': '86bbdbb2d58846cbd5cb53d961e473b8cf23a3baca0235abd1250d4d8bfc14e3', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': '88bf9fe8db575678fc093c7ca3f65238a650a085d0c530334553f6a3cf86058c', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': '55ec56f43c66590db415dbc5141b889fe226392e2dd81bcc14568d9147a9d925', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': 'e5d8fb05c31874578aee3e301a01dfc520d9c19b06998918306e9298a1fc9c52', 'main': '360f30fcb48e27231024595a86e17ac81a79cb7beb6183abdcd3a6f51c084fd3', 'child_stderrs': '2701c3a828806e2e6653b398609becae1dbf40043a5d1efe6d4335c7abbe902a', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3', 'run_one': '6a08659e9d99619c9805387cc5fe679c67110e569c69491902f670acb676a92e', 'session_marker': '21216adbf560807fffed590211a11235484167a5dbd762a18aed9c59cdd5ab09', 'write_new_json': 'b69919f6644041481108595fa11fe896bf8ede6de391adca233a28ea8a6c3e26', 'measured_identity': 'f47bc85d6d3516158ea1ef399d8e28a74674318d4842f9596da43c26a5f49222', 'mechanical_post_acceptance': '383b0a42ec72e3ed3d840f9693ecb288d4e7a431f285553601a244fffd55ed0e', 'accepted_cloudrun_execution': '5a87517fae4a7febf1eb0479e56b70bf90673e4569a00f74897ba2e298f5ae7d', 'mechanical_quiescence': '46ba060737ea5fa54276b21fbf5b81dd258ea1cafbc0472e961624d6a59c52c0', 'mechanical_acceptance': 'c9e263a19704a100a4583ad84cf6126d4bdff10c312aad7cd964606fae12a806', 'request_digest': '972ee7e7f9d665377108a9ab233c45db04b3e8a9a31825dc7560ce05b08406b6', 'refresh_from_main_or_fail_closed': 'c177789a8289a212e5690d1a70b87a34e36c34df052c1687e5cd3965f78eb18c', 'remote_async': '053f72a12ac1629af29731e3f5ab77bcecfde2c1fb01e56c256640a886755b98', 'UNBOUND_REQUEST_FIELDS': 'e3c09d66976b1be9186502bceb7b318a1416f93cd640bdbc4ad852e437b17a12', 'REMOTE_ASYNC_KINDS': '3896625f1c5786170001c8b85ac4e5b0dde89fe249de020d76920b0ad5ef1155', 'SCHEDULER_JOB': 'eb099f996955c70fd6bd1aa6a50fc7dfc195b7c3e78594751dd226d9b862faf4', 'SCHEDULER_PROJECT': 'e63bc56c1f7ff7c1cabcbbfe7af3a48b3aaeec1aa4c7e090144cd0167d62afa5', 'SCHEDULER_REGION': 'c0267426fb76794ab995158ddec9e3fc8127772b137618e9019892344acb0b80', 'SCHEDULER_SCRIPT': 'f479c65ab5597d6fca611a5804d02dcaa87d5c3e099dffa466f948cab610f083', 'SCHEDULER_ACTION': 'bcce7bd9f31fbe10c8fa722a2bd609416107b280bf4e26550633dc8cf0561a00', 'SCHEDULER_STATES': 'b57629e1c41abd330b2da37f27865473060e2a104d0d28b287d74b97b36a731d', 'SCHEDULER_UTC': 'd463e745920163c76c1dea9659a8eeef2aed71da4bd059a8588f1fddb69596b4', 'SCHEDULER_BACKSTOP': '5336986b52b9342f36bebb292599e0faffefdfba49d95329afda5452904df188', 'lease_expiry': '23f2b14757ee303848c7f77c3d39e066dcf872a6122855707ac7d9401a1aa0c4', 'scheduler_policy_problem': '12630309cd268eeb090355a5844ae4d462f472b11e9da75f02495d896fe0a94f', 'scheduler_proof': '8ef650eaa9c0e78ee080de1862aecf52c378ca5f6e72012600064c4f28d41428', 'scheduler_write': '53a2d469ef44b3a9805794d9c889e4b14fbf6c97e07f94800d172d499888389b', 'scheduler_backstop_records': 'db053014456aaa26df639582cdbb728c9d213545f0221fd1c6a9b917fae5e552', 'arm_scheduler_backstop': '0e7a39078a9870914c142643be9be49bf1081ebc7be2c8ee2415c3de95b7bd29', 'scheduler_backstop_satisfy': '201c57f603bb483f38add84b058d28ae28340aae3a2d46fe4f721b9918d74081', 'scheduler_backstop_fire': '8dc3f584770fdd06d363cf20be284661aead0a589cf9832e8ded2db18b7126ae', 'scheduler_backstop_tick': 'c6fcad69671e482c5460eda18f0d07f53699c39195802f9c0cd431b1a11fe4b8', 'measuring_cancel_problem': '3540604f172b3c303bdc4761c2aac8337b3aa86ce1a256585b16c2dbaae564e3', 'measuring_cancel_proof': '9a23c26ffb83f5d8c2706c7fd917154792709dca99b6cc83d84c910d45425d56', 'canonical_sha': 'f8f23ad6c9162e9444540ddfdf1046ac31db16f1807ec27cb0fc1d6482a4d0ba', 'mechanical_exempt': 'dd2cdfdfa61c025c9435b95576ee2098ae4a10d0411631bb84de84791105eb3b', 'pack_fill_check': '084a2d76b85ad35339ee50e820747e0d8617e04d1b4da9a87701c0f17c8d73c3', 'dry_run_check': 'ba4c756c73f67f3500f30d73733573882a59032af7399835d062c0eaa8f82269', 'mechanical_problem': 'b1b2e07fce11b99da96af74d59f1b2112d686a65f6980a4bafd0ad812873fe88', 'mechanical_pre_acceptance': '4c566fb91b17c63ddabdd5b7859640daaef57110ed114f054272718f5e4c2090', 'signer_acceptance_problem': '81b018c05f10e2355e7bfe2168ae2db625e13a124f18dbf5482b13f9dd23afea', 'PACK_ALLOWLIST': '895b42a1a543f823c50bf4504f68c969ca317324d1583716b09393883a845a56', 'SIGNED_ONLY_KINDS': '09678fa78a79fe55969ccfc15ef5e0bcd50b4d2158caa7932bea9836d027b4f8', 'NO_DRYRUN_KINDS': '1831c60b886d47185af1542e9be21cf4c330d3495ca9259471a37d2991d903f7', 'PACK_NEVER_FILLED': 'ae15e6db6c6772e98a7fa57994ec23c3607af03c3d81b7fc38e7dc7ee5913786', 'DRYRUN_IDENTITY_FIELDS': 'b81fe525fa8a151e2183e0f1065255b9bb0b47d43c4c7f45b80fa7397d79c528', 'HEX64': 'f4b9a1efc5cff4c648c87e337ff1353507e3ba55ceb7c9b11d9ae6f3f3bcd638', 'TEARDOWN_KINDS': '000958948e0d8470e5f2cab40814a720906d5accb4364769fe0fb39a280a9b4f', 'LAUNCH_SCHEMAS': '5669869ddc216dbec7564d7f5b26c7020060959b7759859e117add2c6ff7390f', 'head_policy': '948d21ff7ed3d7e4ba67bfdcf3d11ce042a3c7fef7603d3de852b3beff9a116c', 'head_policy_problem': '7d4d5e7cd616c4a4e0703361630ada5544250aad5907e359618ba5de2491f96f', 'CANCEL_LANE_KINDS': '334c0602860aa0968a403142c9beab2e45150fbe4b139aeac3e726b6b7eee263', 'orchestrator_rebuild_cancel_problem': 'cfa7655750eedb6380581c18fa1a4513ec52b37a6ffb06d658dd941360d70dd4', 'orchestrator_rebuild_dryrun_problem': '9c6548881ad44391c5500b52f66e2e8b8cebb4300f826662451b69c890f51b39', 'run_cancel_lane': '375bdd8c04c23a62cdf7664420fcb5ff83b7d10b1bd68680c313d7184c50ecb2', 'pool_for': '3d3cbd3261efd3cca258cf9794d58ad5760e5c8df141040469560b25834ee637', 'PROBE_SCHEMA': 'd147867d01d6cb73ce415c8ef98b5b872a0b38e5b1d1b88ca11492ae10168379', 'PROBE_SHA256': 'b0408a0fadcf3cce6cd9940020bf2aa69d55e963e8cd65f31083fef00c1af54c', 'served_probe_problem': '9f4026de7fbac12174ce5ea4a51cba289d70b976d7ed319041dadb114f4da812', 'served_probe_proof': '642f7d4881be42759919e31042cfab066cc3d7f90ccff4d8d9c59b92fd2945ec', 'century_contract_problem': 'fa6a4a46478c9a957851cedb7f385da94e889a93626b933004acfe3efae23268', 'CANCEL_FAMILIES': '9eb02e478bd1f13f01fc9b91ac02ab74bc79ec1b447e9e51b60f2bc661e68f09', 'CANCEL_KINDS': 'db887a0417366d2fc6c47e0b2c14a5ee32c1ff35a8a42159174efdd9af8ccb71'}
 
 
 def _module_docstring(src):
@@ -792,7 +840,7 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["verification_job", "century_teardown", *PROTECTED_WINDOW_BINDINGS, *PROVISIONING_BINDINGS, "http_probe", *REBUILD_CONTROL_BINDINGS])   # K9 kinds are enabled here (K9-23), not disabled
+@pytest.mark.parametrize("kind", [*PROTECTED_WINDOW_BINDINGS, *PROVISIONING_BINDINGS, "http_probe", *REBUILD_CONTROL_BINDINGS])   # K9 kinds, verification_job, century_teardown and the head kinds are enabled here, not disabled
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)
@@ -1068,3 +1116,18 @@ def test_every_mutating_k9_kind_has_a_dry_run_sibling_that_accepts_the_same_argu
     sibling = ops[kind + "_dryrun"] if kind != "orchestrator_rebuild" else ops["orchestrator_rebuild_dryrun"]
     assert sibling["production"] is False and sibling["enabled"] is True and sibling["needs"] == ops[kind]["needs"]
     assert set(sibling["allowed_args"]) == set(ops[kind]["allowed_args"])
+
+
+# ───────────────────────── K9-4b: a readback of the layer operation is bound to its exact SQL bytes (K923B, SR-3645-SPLIT) ─────────────────────────
+
+@pytest.mark.parametrize("digest", [None, "", "A" * 64, "a" * 63, "g" * 64])
+def test_k94b_readback_without_a_prepared_sql_digest_is_refused(tmp_path, monkeypatch, digest):
+    """Claim: a `readback_sql` for item K9-4b is admitted only with a lowercase 64-hex `sql-sha256` (the digest k9_readback.prepare_readback binds into the request); the
+    executor's request digest then covers the SQL bytes the read-only child verifies before it connects (readback_sql.sh). Control: a well-formed digest is admitted."""
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    table = w.table()
+    args = {"sql_file": "run/ops/sql/k94b.sql"} if digest is None else {"sql_file": "run/ops/sql/k94b.sql", "sql-sha256": digest}
+    assert w.mod.validate(simple_request("readback_sql", item_id="K9-4b", args=dict(args, **{"sql-sha256": "a" * 64})), table, ALL_CAPS) is None, "control failed"
+    assert w.mod.validate(simple_request("readback_sql", item_id="K9-4b", args=args), table, ALL_CAPS) == "K9-4b readback requires a prepared SQL digest"
+    other = {k: v for k, v in args.items() if k != "sql-sha256"}
+    assert w.mod.validate(simple_request("readback_sql", item_id="X", args=other), table, ALL_CAPS) is None      # other items' readbacks are unchanged

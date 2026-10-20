@@ -1,0 +1,69 @@
+{
+ "schema": "ky.smalltest_backup_scope/1",
+ "name": "verification_seal",
+ "derived_at_commit": "ccf21321096115bfbb925e123964342888e4575c",
+ "rule": "data_tables = written + context. digest = sha256 of the canonical JSON {schema, name, tables: sorted data_tables}. Prose and sites do not enter the digest.",
+ "derived_from": "the two write surfaces the code itself declares and enforces at run time: the verifier job proves its login holds privilege on exactly verification_job.VERIFIER_WRITE_TABLES (and none on BUILDER_TABLES) before it writes, and the sealer proves its login holds exactly seal_flow.SEALER_WRITE_ALLOWED; every other Cloud Run job or script of the verification and sealing path is read-only on these relations. Re-derived by tests/test_backup_v5_century_scopes.py (V1) from those constants, and equal to the J5S pack's derive_scope.py output.",
+ "written": [
+  {
+   "table": "public.ka_gochara_eval_window_verification",
+   "group": "verifier_write",
+   "source": "platform/python-sidecar/services/gochara_kernel/verification_job.py:VERIFIER_WRITE_TABLES (VERIFICATION_TABLES)"
+  },
+  {
+   "table": "public.ka_gochara_generation_seal",
+   "group": "sealer_write",
+   "source": "platform/python-sidecar/services/gochara_kernel/seal_flow.py:SEALER_WRITE_ALLOWED (\"INSERT on ka_gochara_generation_seal\")"
+  },
+  {
+   "table": "public.ka_gochara_near_miss_verification",
+   "group": "verifier_write",
+   "source": "platform/python-sidecar/services/gochara_kernel/verification_job.py:VERIFIER_WRITE_TABLES (P06b, migration 1381; written by near_miss_verifier.verify_generation(persist=True))"
+  },
+  {
+   "table": "public.ka_gochara_seal_approval",
+   "group": "sealer_write",
+   "source": "platform/python-sidecar/services/gochara_kernel/seal_flow.py:SEALER_WRITE_ALLOWED (\"INSERT on ka_gochara_seal_approval\")"
+  },
+  {
+   "table": "public.ka_gochara_seal_brief",
+   "group": "verifier_write",
+   "source": "platform/python-sidecar/services/gochara_kernel/verification_job.py:VERIFIER_WRITE_TABLES (the --brief append)"
+  },
+  {
+   "table": "public.ka_gochara_search_inventory_verification",
+   "group": "verifier_write",
+   "source": "platform/python-sidecar/services/gochara_kernel/verification_job.py:VERIFIER_WRITE_TABLES (VERIFICATION_TABLES)"
+  },
+  {
+   "table": "public.kala_gochara_publication",
+   "group": "sealer_write",
+   "source": "platform/python-sidecar/services/gochara_kernel/seal_flow.py:SEALER_WRITE_ALLOWED (\"UPDATE(status|published_at|content_digest|row_counts) on kala_gochara_publication\")"
+  }
+ ],
+ "context": [
+  {
+   "table": "public._migrations_applied",
+   "why": "NOT written by the verification or sealing jobs (only scripts/migrate.ts at deploy). Kept so the restore proof can state the scratch schema is at the same migration set (as in the small_test scope)."
+  }
+ ],
+ "guarded_children": [],
+ "guarded_children_note": "none declared: a delete/update referential action from a written table to a table outside the data set is refused BY NAME at capture time (backup_v5_small_test_job.scoped_catalog), so an unreviewed child fails closed instead of being assumed away.",
+ "unreached": [],
+ "dynamic_sites": [],
+ "builder_tables_verifier_must_not_write": [
+  "ka_gochara_contact",
+  "ka_gochara_eval_window",
+  "ka_gochara_eval_window_record",
+  "ka_gochara_record_prerequisite",
+  "ka_gochara_relationship_record",
+  "ka_gochara_search_input_snapshot",
+  "ka_gochara_search_interval",
+  "ka_gochara_search_inventory",
+  "ka_gochara_search_obligation",
+  "ka_gochara_search_path_pin",
+  "kala_gochara_coverage",
+  "kala_gochara_publication"
+ ],
+ "builder_tables_note": "verification_job.BUILDER_TABLES, copied for the reader: the VERIFIER login holds no write on them. kala_gochara_publication is also listed as written because the SEALER login (a different principal) updates four of its columns."
+}

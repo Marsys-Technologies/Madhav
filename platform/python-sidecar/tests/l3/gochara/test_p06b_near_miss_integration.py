@@ -252,7 +252,7 @@ def real_jupiter_candidate(chain):
         # Populate real pinned sky source identities, including verified-empty junctions.
         from pipeline.orchestrator.writers import ContextSpec, SubStep, ka_gochara_v5 as writer
         ctx=ContextSpec(asset_id=writer.ASSET_ID,build_id='p06b-sky',db_conn=c,dry_run=False,
-                        config={'chart_id':CHART_ID,'horizon':NEAR,'ephe_path':EPHE_PATH})
+                        config={'chart_id':CHART_ID,'horizon':NEAR,'ephe_path':EPHE_PATH,'gochara_v5_final_rules':False})   # F-CHANNEL: an ordinary run names its (measuring) profile
         writer.GocharaV5Writer().run_substep(ctx,SubStep(key='body:Jupiter',label='Jupiter'))
         obj=builder.NearMissObject('jupiter','aspect','point:265.39','orb_drishti_slow:1.000000',sky)
         found=builder.solve_object_near_misses(obj=obj,index=production_arc_index('Jupiter',EPHE_PATH),orb_deg=1,
