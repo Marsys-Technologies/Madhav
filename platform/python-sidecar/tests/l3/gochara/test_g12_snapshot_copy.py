@@ -1167,7 +1167,9 @@ def test_the_readback_sql_runs_read_only_and_reports_what_the_post_apply_check_e
             if sql.upper() in ("BEGIN READ ONLY", "COMMIT"):
                 continue
             results.append(conn.execute(sql).fetchall())
-    columns, check, trigger, functions, replaced, grants, shas, ledger = results
+    version, columns, check, trigger, functions, replaced, grants, shas, ledger = results
+    # the readback records the server version first (FB-21: pg_get_functiondef text is version-formatted), read from the live server it ran on
+    assert version == [(conn.execute("SHOW server_version_num").fetchone()[0],)] and version[0][0].isdigit()
     assert [r[0] for r in columns] == ["consumed_dasha_rows", "consumed_fact_rows", "dasha_metadata_digest", "l1_facts_metadata_digest"]
     assert check == [("kgsis_l1_copy_ck", False)]                              # NOT VALID: governs new rows, scans no old one
     assert len(trigger) == 1 and trigger[0][1] == "O" and trigger[0][2] is True and trigger[0][3] is True
