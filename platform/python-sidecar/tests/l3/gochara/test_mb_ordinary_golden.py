@@ -324,6 +324,20 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
             new = old[0].replace("AND start_iso < end_iso AND", "AND")
             assert rest.count([new, 13]) == 1
             rest = [[old[0], n] if sql == new else [sql, n] for sql, n in rest]
+        if key.startswith("record:"):
+            # J-4c F-LEANNESS (C5, test_a53_j4c_leanness_pipeline.py): the P1 anchor-column catalogue probe is read ONCE per store, no longer once per
+            # record. The accepted capture ran it before every relationship-record INSERT; this build runs it once (before the first) plus the substep's
+            # own single read. Assert exactly that, then put the probe back before each later INSERT so the full ordered sequence is still compared.
+            insert = "INSERT INTO public.ka_gochara_relationship_record"
+            assert rest.count([P1_GATE_SELECT, 1]) == 2, f"{key}: expected the anchor-column probe exactly twice (substep read + once per store)"
+            expanded, minted = [], 0
+            for sql, n in rest:
+                if sql.startswith(insert):
+                    minted += 1
+                    if minted > 1:
+                        expanded.append([P1_GATE_SELECT, 1])
+                expanded.append([sql, n])
+            rest = expanded
         assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards differ from the accepted P06 baseline"
 
 
@@ -359,7 +373,9 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     assert got["implementation"]["evaluation"] == "9f6c462e41ee255517dc9619e469ef8a77eab1acfccf40cabef03c6a18835bcf"
     # J-4c: the geometry stage moved ONLY by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root (06825a43... -> the digest below, re-derived the same
     # way on the merged tree; evaluation and window are unchanged by J-4c). No golden component is re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
-    assert got["implementation"]["geometry"] == "e7634d7faf7df43521f5236d79a94c8a31192e62d78dc8eaa939160eaca0a6f7"
+    # J-4c F-LEANNESS (d96b3bfb0) then moved record_store again (one round trip per record write group, anchor-column probe once per store): geometry re-derived the same way (main's bytes give e7634d7f…).
+    assert got["implementation"]["geometry"] == "4479243d6b7a9b8579cf7f9eb6b8d363bdd12722d24d9ff813c3b14a1e0680eb"
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. Re-derived the same way
     # (main's bytes give 78b4d0a1…); evaluation and geometry are untouched by this change, and no golden component is re-captured.
-    assert got["implementation"]["window"] == "7a8c7ee133e82bea91960f843bca45073befb9827a6bd59b121bb9a47ae22dcc"
+    # J-4c F-LEANNESS also changed window_store (one round trip per window write group): re-derived the same way (main's bytes give 7a8c7ee1…); evaluation is untouched.
+    assert got["implementation"]["window"] == "6c981eb8166f70c8a4ebe3c9d99e0507dfffb3629244ec1132ba1bcfc047288f"
