@@ -292,9 +292,9 @@ def test_sampled_candidate_dispatch_runs_the_pinned_nonidentity_experiment(monke
         segment_index=i, **vars(s)) for i, s in enumerate(ev.build_segments())]
     shifts, partitions = [], []
     real_replicate, real_build = S5.replicate_evaluator, S5._null_build_segments
-    def replicate(field, delta):
+    def replicate(field, delta, geometry=None):
         shifts.append(delta)
-        return real_replicate(field, delta)
+        return real_replicate(field, delta, geometry)
     def build(field):
         actual = real_build(field)
         reference = field.build_segments()
