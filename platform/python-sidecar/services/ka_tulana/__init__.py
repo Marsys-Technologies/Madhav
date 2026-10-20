@@ -364,7 +364,7 @@ CERTIFICATION_MAPPING = json.loads(r'''
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.ts": "8b86d0fea6b3a802dab0dbbd40313e660fae360841c34b0561b7718aac515938",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.test.ts": "af171fd981ca01a3f4f6322968499da6a3cf419abff67307db3eed2afcbcf2e3",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts": "5e5aad6f57d52d3c9dbbb38582f8c99db4aba8b4b72b37dff6341a3410c8d530",
-    "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts": "33a4c14a7a66b27c6757188bd886d9a114a4c7711e2e085ad90061afc4a95589",
+    "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts": "6103e4c92fc78b47561ee1e86ff1a4c325e6b4f80f13d185a35aa6c1d68500c7",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_explain.ts": "f561265b6c922fac0084f5317ebd3af1851c4b58926563bf948bb4a9c25a3c33",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_now.ts": "4c8266893b1cd10b5b687b8cfe1344460b23d841ad6bcbf77954c2e63af75bcd",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_priority.ts": "e593c623cdd70ff65e09f1283264354c7b527d82f743d53b522fa76cd11bb66a",

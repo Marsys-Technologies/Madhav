@@ -385,16 +385,24 @@ function buildCoverage(
     ))
   }
 
-  // The muhūrta-scope parihāra layer is a REAL, NAMED corpus gap (not an unbuilt feature):
-  // every row in bg_parihara_rules is scope=natal. Disclosed as its own coverage entry so a
+  // A corpus with no muhūrta-scope parihāra row is a REAL, NAMED gap (not an unbuilt feature).
+  // Disclosed as its own coverage entry so a
   // caller reading "adjudication: computed" cannot infer that cancellations were available.
   if (adjudication !== null && adjudication.density.parihara_rules_muhurta_scope === 0) {
     coverage.push(notInCorpusCoverage(
       'muhurta_scope_parihara_rules',
       adjudication.gap_report.parihara_corpus_gap ??
-      'no muhūrta-scope doṣa-cancellation rule exists in the ingested corpus.',
+      'no muhūrta-scope parihāra rule is present in the corpus counts.',
     ))
   }
+
+  // U:25 item 4: the lattice emits kālams, yogas, ghaṭīs and tithi/nakṣatra/lagna spans — not the
+  // vivāha chapter's doṣas — so "no doṣa present" is never read as "checked and clean".
+  coverage.push(notInCorpusCoverage(
+    'vivaha_chapter_dosas',
+    'not_detected: the muhūrta lattice does not emit the vivāha chapter\'s doṣas, so an absent ' +
+    'doṣa on a candidate is not a clearance.',
+  ))
 
   // Item 7 (ṢAḌ-DARŚANA W4 ruling R-1): the muhūrta-lagna substrate now EXISTS as
   // bg_muhurta_lattice factor_family='lagna' (12–13 rising-sign spans/day, each carrying
@@ -1151,8 +1159,9 @@ export function registerKalaElectTool(server: McpServer, principal: Principal): 
     'for cited findings versus uncited-convention factor spans — never read as one number. ' +
     'A ritual/yajña question with no named undertaking routes to kala_ritual_get instead ' +
     '(Modes 1-2) — this tool never accepts a bare sky-pattern or opportunity-scan query. ' +
-    'Honest remaining gaps: no muhūrta-scope doṣa-cancellation rule exists in the ingested ' +
-    'corpus, so residual doṣas are reported uncancelled. ITEM 38 IS NOW CLOSED: each surviving ' +
+    'Honest remaining gaps: this lattice reading derives no cancellation, so a candidate with doṣas ' +
+    'reads cancellation_unassessed (never uncancelled) and the vivāha chapter\'s doṣas are ' +
+    'not_detected. ITEM 38 IS NOW CLOSED: each surviving ' +
     'candidate also carries paired_rite — the preparatory rite AND its own best time, scored ' +
     'over a horizon that ENDS at that candidate\'s start, served as one answer with the ' +
     'act-time slate. A null paired_rite is legal and always carries paired_rite_reason. ' +
