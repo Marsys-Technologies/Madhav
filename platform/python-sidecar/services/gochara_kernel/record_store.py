@@ -56,6 +56,8 @@ stored row is a loud build failure, never a silent dedup.
 """
 from __future__ import annotations
 
+import contextlib
+import functools
 import json as _json
 import struct
 import uuid as _uuid
@@ -397,6 +399,41 @@ class CrossingInfo:
     precision_regime: str | None
 
 
+#: J-4c F-LEANNESS: when False every store method sends its statements one network round trip each, exactly as before. The default
+#: sends the statements of ONE write group together (libpq pipeline mode) — same SQL, same parameters, same order, same checks.
+PIPELINE_ENABLED = True
+
+
+@functools.lru_cache(maxsize=1)
+def _pipeline_supported() -> bool:
+    try:
+        import psycopg
+        return bool(psycopg.Pipeline.is_supported())
+    except Exception:  # noqa: BLE001 - no driver / no pipeline support in this libpq: the sequential path is the answer, never an error
+        return False
+
+
+@contextlib.contextmanager
+def pipelined(conn):
+    """Send every statement executed inside the block in ONE network round trip (libpq pipeline mode), then synchronise on exit.
+
+    A record costs ~14 statements (object, identity, contact, record, prerequisite insert + each one's read-back check, the result and
+    the admission state); each used to be its own round trip, and against a remote database the round trips ARE the per-class cost
+    (J-3d F-LEANNESS: the six tiny classes have <= 38 intervals but their ~2,000 contacts mint a record each). The statements are unchanged and keep their order; the read-back CHECKS run
+    after the block, on cursors whose results the block's synchronisation delivered, so the callers fetch only after it. Rules the callers keep:
+
+      * nothing inside a block may depend on the RESULT of an earlier statement of the same block (params are built before it);
+      * a refusal raised by a check still aborts the caller's transaction exactly as before — the orchestrator rolls the substep back
+        and no store method's exception is caught and continued from (the extra statements a pipelined group already sent die with it);
+      * a connection without `pipeline()` (a unit-test fake) or a libpq without pipeline support runs the block sequentially, unchanged."""
+    start = getattr(conn, "pipeline", None)
+    if not PIPELINE_ENABLED or start is None or not _pipeline_supported():
+        yield
+        return
+    with start():
+        yield
+
+
 def _byte_check(stored: tuple | None, expected: tuple, what: str) -> None:
     if stored is None or tuple(str(x) for x in stored) != tuple(str(x) for x in expected):
         raise IdentityCollisionError(
@@ -472,15 +509,20 @@ class RecordStore:
     writes. Nothing here commits, rolls back or locks.
     """
 
+    # J-4c: the applied schema is read ONCE per store (one store = one substep = one transaction that holds the chart lock), not once per
+    # record — a migration cannot land inside a substep, and a fresh store (the next substep) reads the catalogue again
+    _p1_anchor_columns: bool | None = None
+
     def p1_anchor_columns_available(self) -> bool:
         """Does the APPLIED schema carry both P1 period-anchor columns on the relationship record
         (1233)? Read from the catalogue, never assumed."""
-        row = self.conn.execute(
-            "SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_relationship_record'::regclass"
-            " AND attname = ANY(%s) AND NOT attisdropped AND attnum > 0", (list(P1_ANCHOR_COLUMNS),)).fetchone()
-        if row is None:
-            return False
-        return (next(iter(row.values())) if isinstance(row, dict) else row[0]) == len(P1_ANCHOR_COLUMNS)
+        if self._p1_anchor_columns is None:
+            row = self.conn.execute(
+                "SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_relationship_record'::regclass"
+                " AND attname = ANY(%s) AND NOT attisdropped AND attnum > 0", (list(P1_ANCHOR_COLUMNS),)).fetchone()
+            self._p1_anchor_columns = (row is not None and
+                                       (next(iter(row.values())) if isinstance(row, dict) else row[0]) == len(P1_ANCHOR_COLUMNS))
+        return self._p1_anchor_columns
 
     def __init__(self, conn):
         self.conn = conn
@@ -496,6 +538,12 @@ class RecordStore:
         the DB-lowercase body already; SkyEventStore.insert_physical_object
         keys DB_BODY on Title case, so the insert is replicated here with
         the same tolerant mapping the read side uses."""
+        with pipelined(self.conn):
+            readback = self._queue_object(poid)
+        self._check_object(readback, poid)
+
+    def _queue_object(self, poid: PhysicalObjectId):
+        """The object's insert-if-absent and its read-back, executed; returns the read-back cursor for `_check_object`."""
         body = DB_BODY.get(poid.body, poid.body.lower())
         self.conn.execute(
             "INSERT INTO public.ka_gochara_physical_object ("
@@ -506,16 +554,40 @@ class RecordStore:
             (str(poid.uuid), body, poid.relation_kind,
              poid.canonical_target, poid.convention_id),
         )
-        row = self.conn.execute(
+        return self.conn.execute(
             "SELECT physical_object_id FROM public.ka_gochara_physical_object"
             " WHERE body = %s AND relation_kind = %s AND canonical_target = %s"
             " AND convention_id = %s",
             (body, poid.relation_kind, poid.canonical_target, poid.convention_id),
-        ).fetchone()
+        )
+
+    @staticmethod
+    def _check_object(readback, poid: PhysicalObjectId) -> None:
+        row = readback.fetchone()
         if row is None or str(row[0]) != str(poid.uuid):
             raise IdentityCollisionError(
                 f"physical object {poid.identity_bytes}: stored id "
                 f"{row[0] if row else None} != derived {poid.uuid}")
+
+    def _ensure_object_and_identity(self, poid: PhysicalObjectId, contact_id, occurrence_ordinal: int) -> None:
+        """The object, byte-checked, THEN the contact identity, byte-checked — two write groups, never one: the identity's foreign key and
+        the contact's composite key depend on what the check before them proved, so a collision still raises its own named error
+        (IdentityCollisionError) before any dependent statement is sent, exactly as the one-statement-at-a-time code did."""
+        self._ensure_object(poid)
+        with pipelined(self.conn):
+            self.conn.execute(
+                "INSERT INTO public.ka_gochara_contact_identity"
+                " (contact_id, physical_object_id, occurrence_ordinal)"
+                " VALUES (%s,%s,%s) ON CONFLICT (contact_id) DO NOTHING",
+                (str(contact_id), str(poid.uuid), occurrence_ordinal),
+            )
+            identity_readback = self.conn.execute(
+                "SELECT physical_object_id, occurrence_ordinal"
+                " FROM public.ka_gochara_contact_identity WHERE contact_id = %s",
+                (str(contact_id),),
+            )
+        _byte_check(identity_readback.fetchone(), (str(poid.uuid), occurrence_ordinal),
+                    f"contact identity {contact_id}")
 
     # ── read side: the A2 global boundary table (read-only) ──────────────
 
@@ -825,23 +897,25 @@ class RecordStore:
         (chart_id, generation, contact_id, physical_object_id, occurrence_ordinal, convention_id, body,
          relation_kind, t_in, t_out, t_exact, solver_method, delta_lambda, delta_t, precision_regime,
          coverage_json) = params
-        self.conn.execute(
-            "INSERT INTO public.ka_gochara_contact ("
-            " chart_id, generation, contact_id, physical_object_id,"
-            " occurrence_ordinal, convention_id, body, relation_kind,"
-            " t_in, t_out, t_exact, solver_method, delta_lambda, delta_t,"
-            " precision_regime, coverage)"
-            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
-            " ON CONFLICT (chart_id, generation, contact_id) DO NOTHING",
-            params,
-        )
-        row = self.conn.execute(
-            "SELECT physical_object_id, occurrence_ordinal, convention_id, body, relation_kind,"
-            " t_in, t_out, t_exact, solver_method, delta_lambda, delta_t, precision_regime, coverage"
-            " FROM public.ka_gochara_contact"
-            " WHERE chart_id = %s AND generation = %s AND contact_id = %s",
-            (chart_id, generation, contact_id),
-        ).fetchone()
+        with pipelined(self.conn):
+            self.conn.execute(
+                "INSERT INTO public.ka_gochara_contact ("
+                " chart_id, generation, contact_id, physical_object_id,"
+                " occurrence_ordinal, convention_id, body, relation_kind,"
+                " t_in, t_out, t_exact, solver_method, delta_lambda, delta_t,"
+                " precision_regime, coverage)"
+                " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+                " ON CONFLICT (chart_id, generation, contact_id) DO NOTHING",
+                params,
+            )
+            readback = self.conn.execute(
+                "SELECT physical_object_id, occurrence_ordinal, convention_id, body, relation_kind,"
+                " t_in, t_out, t_exact, solver_method, delta_lambda, delta_t, precision_regime, coverage"
+                " FROM public.ka_gochara_contact"
+                " WHERE chart_id = %s AND generation = %s AND contact_id = %s",
+                (chart_id, generation, contact_id),
+            )
+        row = readback.fetchone()
         derived = (physical_object_id, occurrence_ordinal, convention_id, body, relation_kind, t_in, t_out, t_exact,
                    solver_method, delta_lambda, delta_t, precision_regime, _json.loads(coverage_json))
         diffs = _contact_row_diffs(tuple(row) if row is not None else None, derived)
@@ -856,20 +930,7 @@ class RecordStore:
                        poid: PhysicalObjectId, convention_id: str,
                        crossing: CrossingInfo | None,
                        horizon_end: datetime) -> None:
-        self._ensure_object(poid)
-        self.conn.execute(
-            "INSERT INTO public.ka_gochara_contact_identity"
-            " (contact_id, physical_object_id, occurrence_ordinal)"
-            " VALUES (%s,%s,%s) ON CONFLICT (contact_id) DO NOTHING",
-            (str(contact.contact_id), str(poid.uuid), contact.occurrence_ordinal),
-        )
-        row = self.conn.execute(
-            "SELECT physical_object_id, occurrence_ordinal"
-            " FROM public.ka_gochara_contact_identity WHERE contact_id = %s",
-            (str(contact.contact_id),),
-        ).fetchone()
-        _byte_check(row, (str(poid.uuid), contact.occurrence_ordinal),
-                    f"contact identity {contact.contact_id}")
+        self._ensure_object_and_identity(poid, contact.contact_id, contact.occurrence_ordinal)
 
         truncated = span.t_exact is None
         t_in = span.t_in
@@ -894,21 +955,7 @@ class RecordStore:
     def insert_point_contact(self, *, chart_id: str, generation: str,
                              occ: PointOccurrence, poid: PhysicalObjectId,
                              convention_id: str) -> None:
-        self._ensure_object(poid)
-        self.conn.execute(
-            "INSERT INTO public.ka_gochara_contact_identity"
-            " (contact_id, physical_object_id, occurrence_ordinal)"
-            " VALUES (%s,%s,%s) ON CONFLICT (contact_id) DO NOTHING",
-            (str(occ.contact.contact_id), str(poid.uuid),
-             occ.contact.occurrence_ordinal),
-        )
-        row = self.conn.execute(
-            "SELECT physical_object_id, occurrence_ordinal"
-            " FROM public.ka_gochara_contact_identity WHERE contact_id = %s",
-            (str(occ.contact.contact_id),),
-        ).fetchone()
-        _byte_check(row, (str(poid.uuid), occ.contact.occurrence_ordinal),
-                    f"contact identity {occ.contact.contact_id}")
+        self._ensure_object_and_identity(poid, occ.contact.contact_id, occ.contact.occurrence_ordinal)
 
         params = (
             chart_id, generation, str(occ.contact.contact_id), str(poid.uuid),
@@ -955,52 +1002,56 @@ class RecordStore:
             # a placeholder zero is indistinguishable from a computed zero downstream); 1155 permits NULL
             "unqualified", house_from_frame, None, None, "unqualified", None,
         )
-        self.conn.execute(
-            "INSERT INTO public.ka_gochara_relationship_record ("
-            " record_id, chart_id, generation, contact_id, event_class,"
-            " affected_person, frame_kind, frame_arg, agent, relation,"
-            " object_id, object_kind, object_role, path_id, rule_version,"
-            " temporal_support_state, temporal_support_grain,"
-            " temporal_support_intervals, coverage_partition_kind,"
-            " coverage_partition_key, coverage_facts, precision,"
-            " source_text, source_page, source_fact_ids, provenance,"
-            " operator_role, ruling_ref, admission_state, house_from_frame,"
-            " evidence_for_occurrence, evidence_against_occurrence,"
-            " outcome_valence_for_native, severity"
-            + (", period_anchor_lord, period_anchor_level" if anchored else "") + ")"
-            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
-            " %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" + (",%s,%s" if anchored else "") + ")"
-            " ON CONFLICT (record_id) DO NOTHING",
-            params + ((edge.period_anchor_lord, edge.period_anchor_level) if anchored else ()),
-        )
-        row = self.conn.execute(
-            "SELECT chart_id::text, generation, event_class, path_id, rule_version"
-            " FROM public.ka_gochara_relationship_record WHERE record_id = %s",
-            (str(record_id),),
-        ).fetchone()
-        _byte_check(row, (chart_id, generation, edge.event_class,
-                          edge.path_id, edge.rule_version),
-                    f"record {record_id}")
-        # F5 prerequisite membership: exactly the path's declared set, in
-        # declared order; result NULL = not yet evaluated (counts as
-        # unknown — the finalize check at COMMIT derives 'unqualified').
-        for ordinal, (predicate_id, predicate_version) in enumerate(prerequisites, start=1):
+        # ONE write group: the record, its read-back, the prerequisite membership and ITS read-back. Nothing in it is built from an earlier
+        # statement's result; the two byte checks run after it, so a mismatch still fails the build (a named error), and the
+        # prerequisite rows a mismatching record's group already sent die with the aborted substep transaction.
+        with pipelined(self.conn):
             self.conn.execute(
-                "INSERT INTO public.ka_gochara_record_prerequisite ("
-                " record_id, chart_id, generation, ordinal, predicate_id,"
-                " predicate_rule_version, result)"
-                " VALUES (%s,%s,%s,%s,%s,%s,NULL)"
-                " ON CONFLICT (record_id, ordinal) DO NOTHING",
-                (str(record_id), chart_id, generation, ordinal,
-                 predicate_id, predicate_version),
+                "INSERT INTO public.ka_gochara_relationship_record ("
+                " record_id, chart_id, generation, contact_id, event_class,"
+                " affected_person, frame_kind, frame_arg, agent, relation,"
+                " object_id, object_kind, object_role, path_id, rule_version,"
+                " temporal_support_state, temporal_support_grain,"
+                " temporal_support_intervals, coverage_partition_kind,"
+                " coverage_partition_key, coverage_facts, precision,"
+                " source_text, source_page, source_fact_ids, provenance,"
+                " operator_role, ruling_ref, admission_state, house_from_frame,"
+                " evidence_for_occurrence, evidence_against_occurrence,"
+                " outcome_valence_for_native, severity"
+                + (", period_anchor_lord, period_anchor_level" if anchored else "") + ")"
+                " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"
+                " %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s" + (",%s,%s" if anchored else "") + ")"
+                " ON CONFLICT (record_id) DO NOTHING",
+                params + ((edge.period_anchor_lord, edge.period_anchor_level) if anchored else ()),
             )
-        stored = self.conn.execute(
-            "SELECT predicate_id, predicate_rule_version"
-            " FROM public.ka_gochara_record_prerequisite"
-            " WHERE record_id = %s ORDER BY ordinal",
-            (str(record_id),),
-        ).fetchall()
-        _byte_check(stored, [tuple(p) for p in prerequisites],
+            record_readback = self.conn.execute(
+                "SELECT chart_id::text, generation, event_class, path_id, rule_version"
+                " FROM public.ka_gochara_relationship_record WHERE record_id = %s",
+                (str(record_id),),
+            )
+            # F5 prerequisite membership: exactly the path's declared set, in
+            # declared order; result NULL = not yet evaluated (counts as
+            # unknown — the finalize check at COMMIT derives 'unqualified').
+            for ordinal, (predicate_id, predicate_version) in enumerate(prerequisites, start=1):
+                self.conn.execute(
+                    "INSERT INTO public.ka_gochara_record_prerequisite ("
+                    " record_id, chart_id, generation, ordinal, predicate_id,"
+                    " predicate_rule_version, result)"
+                    " VALUES (%s,%s,%s,%s,%s,%s,NULL)"
+                    " ON CONFLICT (record_id, ordinal) DO NOTHING",
+                    (str(record_id), chart_id, generation, ordinal,
+                     predicate_id, predicate_version),
+                )
+            stored_readback = self.conn.execute(
+                "SELECT predicate_id, predicate_rule_version"
+                " FROM public.ka_gochara_record_prerequisite"
+                " WHERE record_id = %s ORDER BY ordinal",
+                (str(record_id),),
+            )
+        _byte_check(record_readback.fetchone(), (chart_id, generation, edge.event_class,
+                                                 edge.path_id, edge.rule_version),
+                    f"record {record_id}")
+        _byte_check(stored_readback.fetchall(), [tuple(p) for p in prerequisites],
                     f"record {record_id} prerequisite membership")
 
     def set_prerequisite_result(self, *, record_id, ordinal: int,
@@ -1010,42 +1061,44 @@ class RecordStore:
         UPDATE). A rerun computing a DIFFERENT result for the same row is
         nondeterminism — loud failure, never a silent overwrite."""
         assert result in ("true", "false", "unknown"), result
-        self.conn.execute(
-            "UPDATE public.ka_gochara_record_prerequisite SET result = %s"
-            " WHERE record_id = %s AND ordinal = %s AND predicate_id = %s"
-            " AND predicate_rule_version = %s",
-            (result, str(record_id), ordinal, predicate_id,
-             predicate_version),
-        )
-        row = self.conn.execute(
-            "SELECT result FROM public.ka_gochara_record_prerequisite"
-            " WHERE record_id = %s AND ordinal = %s",
-            (str(record_id), ordinal),
-        ).fetchone()
-        _byte_check(row, (result,),
+        # ONE write group (the result, its read-back, the admission state derived from the stored results); the byte check runs after it
+        with pipelined(self.conn):
+            self.conn.execute(
+                "UPDATE public.ka_gochara_record_prerequisite SET result = %s"
+                " WHERE record_id = %s AND ordinal = %s AND predicate_id = %s"
+                " AND predicate_rule_version = %s",
+                (result, str(record_id), ordinal, predicate_id,
+                 predicate_version),
+            )
+            readback = self.conn.execute(
+                "SELECT result FROM public.ka_gochara_record_prerequisite"
+                " WHERE record_id = %s AND ordinal = %s",
+                (str(record_id), ordinal),
+            )
+            # F5 (1155): the record's admission_state must EQUAL the state derived
+            # from its prerequisite results at COMMIT (any false ⇒ not_admitted;
+            # else any unknown/unevaluated ⇒ unqualified; else admitted). Writing
+            # a result without re-deriving the state is a COMMIT-time failure for
+            # every record whose result is not 'unknown'. Derived IN SQL from the
+            # stored results — the finalisation trigger is the detector that
+            # catches this expression drifting from the contract's rule.
+            self.conn.execute(
+                "UPDATE public.ka_gochara_relationship_record SET admission_state ="
+                " (SELECT CASE"
+                "   WHEN count(*) FILTER (WHERE m.result = 'false') > 0"
+                "     THEN 'not_admitted'"
+                "   WHEN count(*) FILTER (WHERE m.result IS DISTINCT FROM 'true'"
+                "                          AND m.result IS DISTINCT FROM 'false') > 0"
+                "     THEN 'unqualified'"
+                "   ELSE 'admitted' END"
+                "  FROM public.ka_gochara_record_prerequisite m"
+                "  WHERE m.record_id = %s)"
+                " WHERE record_id = %s",
+                (str(record_id), str(record_id)),
+            )
+        _byte_check(readback.fetchone(), (result,),
                     f"prerequisite result {record_id}/{ordinal} "
                     f"({predicate_id})")
-        # F5 (1155): the record's admission_state must EQUAL the state derived
-        # from its prerequisite results at COMMIT (any false ⇒ not_admitted;
-        # else any unknown/unevaluated ⇒ unqualified; else admitted). Writing
-        # a result without re-deriving the state is a COMMIT-time failure for
-        # every record whose result is not 'unknown'. Derived IN SQL from the
-        # stored results — the finalisation trigger is the detector that
-        # catches this expression drifting from the contract's rule.
-        self.conn.execute(
-            "UPDATE public.ka_gochara_relationship_record SET admission_state ="
-            " (SELECT CASE"
-            "   WHEN count(*) FILTER (WHERE m.result = 'false') > 0"
-            "     THEN 'not_admitted'"
-            "   WHEN count(*) FILTER (WHERE m.result IS DISTINCT FROM 'true'"
-            "                          AND m.result IS DISTINCT FROM 'false') > 0"
-            "     THEN 'unqualified'"
-            "   ELSE 'admitted' END"
-            "  FROM public.ka_gochara_record_prerequisite m"
-            "  WHERE m.record_id = %s)"
-            " WHERE record_id = %s",
-            (str(record_id), str(record_id)),
-        )
 
 
 # ── grain orchestration (one substep = one call = one transaction) ────────
@@ -1268,24 +1321,34 @@ def materialise_record_grain(
         named in the counts, never silently dropped."""
         rel = _p1_relation(agent, level) if path_id == "P1" else None
         return bool(rel and rel["licence"] == "testimony")
-    _period_rows_cache: dict[tuple, list[dict] | None] = {}
+    _period_rows_cache: dict[tuple, tuple[list[dict] | None, bool]] = {}
 
     def _p1_running_support(edge: RecordEdge, support: tuple[datetime, datetime]):
         """(state, intervals) of a P1 transit record's support restricted to D(anchor, level) — the running
         intervals of the pinned rows at the record's ANCHOR LEVEL whose lord is its ANCHOR (AM-21 part 2; not the
-        transiting agent's periods, not every level). No L1 daśā reader / no rows for that (lord, level) ⇒
-        ('unrestricted', None): the contact span is stored as is and the prerequisite is an explicit `unknown` — a
-        support that could not be restricted is never presented as restricted."""
+        transiting agent's periods, not every level). No L1 daśā reader / the pinned build holds NO row for that
+        (lord, level) ⇒ ('unrestricted', None): the contact span is stored as is and the prerequisite is an explicit
+        `unknown` — a support that could not be restricted is never presented as restricted. A lord the build HOLDS but
+        whose rows lie wholly outside the horizon (a snapshot copy carries only the horizon-overlapping rows, so the
+        reader's `holds(...)` answers for the whole build) does not run in it: ('restricted', []) — empty running set,
+        `false`, exactly as the live reader gives it — never "no rows" (B.10: no support is invented, §N.5)."""
         if path_id != "P1" or dasha_rows_for is None:
             return "unrestricted", None
         key = (_anchor(edge), edge.period_anchor_level)
         if key not in _period_rows_cache:
             raw = dasha_rows_for(*key) if edge.period_anchor_level else dasha_rows_for(key[0])
-            _period_rows_cache[key] = [_dasharow(r) for r in raw] if raw else None
-        rows = _period_rows_cache[key]
+            _period_rows_cache[key] = ([_dasharow(r) for r in raw] if raw else None,
+                                       bool(raw) or _held_outside_horizon(key))
+        rows, held = _period_rows_cache[key]
         if not rows:
-            return "unrestricted", None
+            return ("restricted", []) if held else ("unrestricted", None)
         return "restricted", period_running_support(support, rows)
+
+    def _held_outside_horizon(key) -> bool:
+        holds = getattr(dasha_rows_for, "holds", None)          # only the snapshot-copy reader can know a held-but-not-running lord
+        if holds is None:
+            return False
+        return bool(holds(*key) if key[1] else holds(key[0]))
 
     coverage_key = event_class
     # The grain's version is the SELECTED path reference; the enumerated edges must carry exactly it.
