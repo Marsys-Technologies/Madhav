@@ -324,6 +324,20 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
             new = old[0].replace("AND start_iso < end_iso AND", "AND")
             assert rest.count([new, 13]) == 1
             rest = [[old[0], n] if sql == new else [sql, n] for sql, n in rest]
+        if key.startswith("record:"):
+            # J-4c F-LEANNESS (C5, test_a53_j4c_leanness_pipeline.py): the P1 anchor-column catalogue probe is read ONCE per store, no longer once per
+            # record. The accepted capture ran it before every relationship-record INSERT; this build runs it once (before the first) plus the substep's
+            # own single read. Assert exactly that, then put the probe back before each later INSERT so the full ordered sequence is still compared.
+            insert = "INSERT INTO public.ka_gochara_relationship_record"
+            assert rest.count([P1_GATE_SELECT, 1]) == 2, f"{key}: expected the anchor-column probe exactly twice (substep read + once per store)"
+            expanded, minted = [], 0
+            for sql, n in rest:
+                if sql.startswith(insert):
+                    minted += 1
+                    if minted > 1:
+                        expanded.append([P1_GATE_SELECT, 1])
+                expanded.append([sql, n])
+            rest = expanded
         assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards differ from the accepted P06 baseline"
 
 
