@@ -478,6 +478,44 @@ def test_one_changed_row_in_scope_invalidates_the_backup_by_the_real_measurement
         shared.scoped_backup_problem(ref, root, measure=backup.measure_scope_now)
 
 
+UNMEASURABLE = 'scoped content could not be measured now'
+
+
+def test_a_scope_the_real_measurement_cannot_read_is_refused_never_assumed_valid(proven):
+    """Claim: a backup whose scoped relations cannot be measured now is not shown to be valid (A8 §3; N.8 / N.7.6: a measurement
+    that cannot run reads "refused", never "unchanged"). The relation is really gone from the throwaway database, so the REAL
+    measure_scope_now raises on its own SQL; the stub-measure twin lives in platform/scripts/__tests__/test_backup_v5_small_test_scoped.py."""
+    dsn, root, ref, receipt = proven
+    assert 'p02.audit' in receipt['measurements']['tables']
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute('DROP TABLE p02.audit')
+    with pytest.raises(psycopg.errors.UndefinedTable):
+        backup.measure_scope_now(sorted(receipt['measurements']['tables']), sorted(receipt['measurements']['sequences']))
+    with pytest.raises(shared.Refused, match=UNMEASURABLE):
+        shared.scoped_backup_problem(ref, root, measure=backup.measure_scope_now)
+
+
+@pytest.mark.parametrize('kind', ['smalltest_dispatch', 'century_dispatch'])
+def test_the_dispatch_and_century_execute_policies_refuse_an_unmeasurable_scope(proven, monkeypatch, kind):
+    """The policies the two dispatch scripts run at --execute before staging (_smalltest_request_policy /
+    _century_request_policy, wired to the real backup.measure_scope_now) return the refusal, not None."""
+    import dispatch_v5_century_job as century
+    import dispatch_v5_small_test_job as small
+    dsn, root, ref, _ = proven
+    monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)             # not under test: the lifecycle-absence file evidence
+    monkeypatch.setattr(shared, 'century_dryrun_evidence', lambda req, root: None)      # not under test: reached only after the backup check
+    if kind == 'smalltest_dispatch':
+        req = {**ref, 'kind': kind, 'args': {'run': 'one_class_full', 'classes': 'marriage'}}
+        policy = small._smalltest_request_policy
+    else:
+        req = {**ref, 'kind': kind, 'item_id': shared.CENTURY_ITEM, 'args': dict(shared.CENTURY_ARGS)}
+        policy = century._century_request_policy
+    assert policy(req, root) is None                                                    # measurable and unchanged: admitted
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute('ALTER TABLE p02.written RENAME TO written_renamed')               # a scoped relation the measurement can no longer find
+    assert UNMEASURABLE in policy(req, root)
+
+
 def test_the_fresh_measurement_is_read_only(scoped, monkeypatch):
     dsn, _, _ = scoped
     seen = []
