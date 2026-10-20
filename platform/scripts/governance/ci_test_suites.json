@@ -933,6 +933,13 @@
         "../00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_j6_live_readback*.py"
       ]
     },
+    "governance-tool-tests-k9-publication": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_k9_publication*.py"
+      ]
+    },
     "p06b-python": {
       "cwd": "platform/python-sidecar",
       "engine": "pytest",
