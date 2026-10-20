@@ -103,10 +103,15 @@ describe('P06B-NB-03 guarded replay', () => {
   })
   it('preflights every requested hash before producing any readback', async () => {
     const {createHash} = await import('crypto')
-    const rows=[{filename,sha256:createHash('sha256').update(content).digest('hex')},
-      {filename:'1308_gochara_near_miss_storage.sql',sha256:'0'.repeat(64)}]
+    // The mismatch must sit on the file collected LATER (1381 sorts after 1308): the earlier file matches, so an
+    // interleaved check-then-readback loop would read 1308 back before refusing 1381. Only a full preflight pass
+    // refuses with no readback at all.
+    const early='1308_gochara_near_miss_storage.sql'
+    const rows=[{filename:early,sha256:createHash('sha256').update('SELECT 1308;').digest('hex')},
+      {filename,sha256:'0'.repeat(64)}]
     const {calls,result}=await invoke(rows,new Set(rows.map(r=>r.filename)))
     await expect(result).rejects.toThrow(/hash mismatch|sha256/i)
+    expect(calls.some(sql => sql.includes('BEGIN READ ONLY;'))).toBe(false)
     expect(calls.every(sql => /^SELECT /i.test(sql))).toBe(true)
   })
 })
