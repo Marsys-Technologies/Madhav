@@ -1321,24 +1321,34 @@ def materialise_record_grain(
         named in the counts, never silently dropped."""
         rel = _p1_relation(agent, level) if path_id == "P1" else None
         return bool(rel and rel["licence"] == "testimony")
-    _period_rows_cache: dict[tuple, list[dict] | None] = {}
+    _period_rows_cache: dict[tuple, tuple[list[dict] | None, bool]] = {}
 
     def _p1_running_support(edge: RecordEdge, support: tuple[datetime, datetime]):
         """(state, intervals) of a P1 transit record's support restricted to D(anchor, level) — the running
         intervals of the pinned rows at the record's ANCHOR LEVEL whose lord is its ANCHOR (AM-21 part 2; not the
-        transiting agent's periods, not every level). No L1 daśā reader / no rows for that (lord, level) ⇒
-        ('unrestricted', None): the contact span is stored as is and the prerequisite is an explicit `unknown` — a
-        support that could not be restricted is never presented as restricted."""
+        transiting agent's periods, not every level). No L1 daśā reader / the pinned build holds NO row for that
+        (lord, level) ⇒ ('unrestricted', None): the contact span is stored as is and the prerequisite is an explicit
+        `unknown` — a support that could not be restricted is never presented as restricted. A lord the build HOLDS but
+        whose rows lie wholly outside the horizon (a snapshot copy carries only the horizon-overlapping rows, so the
+        reader's `holds(...)` answers for the whole build) does not run in it: ('restricted', []) — empty running set,
+        `false`, exactly as the live reader gives it — never "no rows" (B.10: no support is invented, §N.5)."""
         if path_id != "P1" or dasha_rows_for is None:
             return "unrestricted", None
         key = (_anchor(edge), edge.period_anchor_level)
         if key not in _period_rows_cache:
             raw = dasha_rows_for(*key) if edge.period_anchor_level else dasha_rows_for(key[0])
-            _period_rows_cache[key] = [_dasharow(r) for r in raw] if raw else None
-        rows = _period_rows_cache[key]
+            _period_rows_cache[key] = ([_dasharow(r) for r in raw] if raw else None,
+                                       bool(raw) or _held_outside_horizon(key))
+        rows, held = _period_rows_cache[key]
         if not rows:
-            return "unrestricted", None
+            return ("restricted", []) if held else ("unrestricted", None)
         return "restricted", period_running_support(support, rows)
+
+    def _held_outside_horizon(key) -> bool:
+        holds = getattr(dasha_rows_for, "holds", None)          # only the snapshot-copy reader can know a held-but-not-running lord
+        if holds is None:
+            return False
+        return bool(holds(*key) if key[1] else holds(key[0]))
 
     coverage_key = event_class
     # The grain's version is the SELECTED path reference; the enumerated edges must carry exactly it.

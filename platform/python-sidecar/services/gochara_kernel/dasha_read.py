@@ -609,7 +609,14 @@ def validate_live_dasha_periods(chart_id, periods, ayanamsha_id, *, conn=None):
 def make_period_rows_for_snapshot(conn, chart_id: str, generation: str) -> tuple[Callable[[str], list[dict]], dict]:
     """`make_period_rows_for` over the search-input SNAPSHOT's own COPY of the consumed daśā rows (G12, Codex round 1 ruling 3): after the snapshot substep the
     P1 `period_running_at` operand reader never reads live L1, so a rebuild that lands between substeps cannot split the output from the snapshot. The
-    contract records the build the COPY carries. A snapshot without a copy (migration 1305 not applied) falls back to the live reader."""
+    contract records the build the COPY carries. A snapshot without a copy (migration 1305 not applied) falls back to the live reader.
+
+    The copy holds only the rows OVERLAPPING the horizon, so on its own it cannot tell a lord the pinned build holds but that runs wholly OUTSIDE the horizon
+    (empty running set ⇒ `period_running_at` false) from a lord the build does not hold at all (⇒ unrestricted + `unknown`). The snapshot therefore also
+    records, at capture, which (lord, level) pairs the pinned build holds (`consumed_dasha_held`, a jsonb array of {lord, level_n}). `rows_for.holds(agent,
+    level)` answers from the copy UNION that record: True ⇒ restrict by the (possibly empty) running rows; False ⇒ the build holds no row for it. A snapshot
+    captured before the record existed has `consumed_dasha_held` NULL/absent: `holds` then reads the copy alone (the pre-record behaviour) and
+    `contract["held_recorded"]` is False, so nobody mistakes that answer for a measured one (§N.8)."""
     import json
     from datetime import datetime, timezone
     from decimal import Decimal
@@ -618,25 +625,42 @@ def make_period_rows_for_snapshot(conn, chart_id: str, generation: str) -> tuple
         " AND column_name = 'consumed_dasha_rows'").fetchone()
     if int(next(iter(has.values())) if isinstance(has, dict) else has[0]) != 1:
         return make_period_rows_for(conn, chart_id)
-    row = conn.execute("SELECT consumed_dasha_rows::text FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+    has_held = conn.execute(
+        "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ka_gochara_search_input_snapshot'"
+        " AND column_name = 'consumed_dasha_held'").fetchone()
+    held_col = "consumed_dasha_held::text" if int(next(iter(has_held.values())) if isinstance(has_held, dict) else has_held[0]) == 1 else "NULL::text"
+    row = conn.execute(f"SELECT consumed_dasha_rows::text, {held_col} FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
                        (chart_id, generation)).fetchone()
-    text = None if row is None else (next(iter(row.values())) if isinstance(row, dict) else row[0])
+    text, held_text = (None, None) if row is None else (tuple(row.values()) if isinstance(row, dict) else tuple(row))
     if text is None:
         return make_period_rows_for(conn, chart_id)
     copy = json.loads(text, parse_float=Decimal)
+    held_array = json.loads(held_text) if held_text is not None else None
+    held_recorded = isinstance(held_array, list)
+    held_pairs = {(str(h["lord"]).lower(), int(h["level_n"])) for h in held_array} if held_recorded else set()
     rows = [{"start_iso": datetime.fromisoformat(e["key"]["start_iso"]).astimezone(timezone.utc),
              "end_iso": datetime.fromisoformat(e["content"]["end_iso"]).astimezone(timezone.utc),
              "lord_graha": e["content"]["lord_graha"], "level_n": int(e["key"]["level_n"]),
              "build_id": str(e["metadata"]["build_id"])} for e in copy if e["key"]["system_id"] == PINNED_SYSTEM]
     builds = sorted({r["build_id"] for r in rows})
     contract = {"build_id": builds[0] if len(builds) == 1 else None, "read": True, "source": "snapshot_copy", "rows": len(rows),
-                "builds_in_copy": builds}
+                "builds_in_copy": builds,
+                "held_recorded": held_recorded, "held_pairs": len(held_pairs)}
 
     def rows_for(agent: str, level: str | int | None = None) -> list[dict]:
         want = str(agent).lower()
         want_level = LEVEL_N[level] if isinstance(level, str) else level
         return [{"start_iso": r["start_iso"], "end_iso": r["end_iso"]} for r in rows
                 if str(r.get("lord_graha", "")).lower() == want and (want_level is None or r.get("level_n") == want_level)]
+
+    def holds(agent: str, level: str | int | None = None) -> bool:
+        """Does the pinned build hold ANY row for (agent, level) — inside the horizon or not? (`level=None`: at any of MD/AD/PD.)"""
+        want = str(agent).lower()
+        want_level = LEVEL_N[level] if isinstance(level, str) else level
+        if rows_for(want, want_level):
+            return True
+        return any(lord == want and (want_level is None or lv == want_level) for lord, lv in held_pairs)
+    rows_for.holds = holds
     return rows_for, contract
 
 

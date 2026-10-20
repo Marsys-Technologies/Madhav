@@ -169,6 +169,8 @@ EXPECTED_OPERATION_OWNERS = {
     ("pyjhora_adapter/strength.py", "compute_vimsopaka"),
     ("pyjhora_adapter/vargas.py", "compute_vargas"),
     ("scripts/validate_data_plane_l3_w0_baselines.py", "_transit_ephemeris_context"),
+    # J-4d: the independent ephemeris root's one Swiss call site holds swiss_state_scope() across path + mode + calc.
+    ("scripts/kala_gochara_cutover/j4d_edge_root.py", "state"),
     ("routers/ephemeris.py", "_calculate_sidereal_positions"),
     ("services/gochara_kernel/input_vector.py", "probe_opened_files"),
     ("services/gochara_kernel/input_vector_verifier.py", "_probe"),                # R9-3: the verifier's own census/probe/backend
