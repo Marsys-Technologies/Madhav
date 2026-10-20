@@ -35,11 +35,15 @@ CENTURY = {
     "century_teardown_dryrun": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--dry-run"], [], "J-4d"),
 }
 CENTURY_DISABLED = {"century_teardown": ("owner", "platform/scripts/teardown_v5_small_test_job.py", ["--execute", "--i-am-steward"], [], "J-4d")}
-DISABLED = {"verification_job", "publish_head", "rollback_head", *CENTURY_DISABLED,
-            "publish_head_dryrun", "rollback_head_dryrun",
+DISABLED = {"verification_job", *CENTURY_DISABLED,
             "gochara_role_provisioning_dispatch", "gochara_role_provisioning_dispatch_dryrun",      # U-M-03: shipped disabled
             "github_run_readback",   # U-M-12: prepared for W3/W4, shipped disabled; exact binding pinned in test_executor_table
-            "protected_window_dispatch_dryrun", "protected_window_dispatch"}   # U-M-01: shipped disabled
+            "protected_window_dispatch_dryrun", "protected_window_dispatch",   # U-M-01: shipped disabled
+            "http_probe", "orchestrator_rebuild_cancel_dryrun", "orchestrator_rebuild_cancel",      # SR-PREBUILD-ALL: shipped disabled; exact bindings pinned in test_executor_table
+            "orchestrator_rebuild_teardown_dryrun", "orchestrator_rebuild_teardown"}
+# SR-HEAD-POLICY-KEEP: the four head kinds are enabled, but only through head_operation.py's reviewed policy (the executor refuses a request the policy refuses);
+# their exact binding is pinned in test_executor_table.py and the policy gate in test_j6_head_bindings.py. They were in DISABLED until this change.
+HEAD = {"publish_head", "publish_head_dryrun", "rollback_head", "rollback_head_dryrun"}
 K9 = {"orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify_dryrun", "layer_verify", "layer_publish_dryrun", "layer_publish",
       "layer_rollback_dryrun", "layer_rollback"}   # K9-23 (SR-PREBUILD-ALL): bound and enabled; their exact bindings are pinned in test_executor_table.py
 
@@ -55,8 +59,8 @@ def executor(tmp_path, monkeypatch):
 
 
 def test_only_six_wave4_measuring_scheduler_and_century_ops_are_newly_enabled(table):
-    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(CENTURY) | DISABLED | K9
-    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(CENTURY) | K9
+    assert set(table) == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(CENTURY) | DISABLED | K9 | HEAD
+    assert {k for k, op in table.items() if op["enabled"] is True} == BASE_ENABLED | D44_READ_ONLY | set(W4) | set(MEASURING) | SCHEDULER | set(CENTURY) | K9 | HEAD
     for kind in DISABLED:
         assert table[kind]["enabled"] is False
         if "prepared_dry_run" in table[kind]:

@@ -21,6 +21,7 @@ from test_lane_smalltest import FLEET, ROOT, KINDS, request
 SIDECAR = ROOT / 'platform/python-sidecar'
 sys.path.insert(0, str(SIDECAR))
 from tests.l3.gochara import test_a53_inventory as base
+from tests.l3.gochara.test_a53_inventory import apply_near_miss_storage
 from tests.l3.gochara.test_c38_teardown_real_db import STUB_DDL
 from tests.l3._disposable_db_guard import assert_disposable_connection
 
@@ -52,6 +53,7 @@ def _lane_database(prefix, tag, *, seed=None):
                     conn.execute((migrations / '1379_gochara_sealed_authority.sql').read_text())
                     conn.execute((migrations / '1382_gochara_authority_no_truncate.sql').read_text())
             for ddl in STUB_DDL: conn.execute(ddl)
+            apply_near_miss_storage(conn)       # the teardown's closed list covers the migration-1308 generation tables (as c37/c38/n18 do)
             conn.execute('ALTER TABLE asset_registry ADD COLUMN layer text DEFAULT \'L3\', ADD COLUMN natural_key_partition text')
             conn.execute('ALTER TABLE build_runs ADD COLUMN action text, ADD COLUMN plan jsonb')
             conn.execute('ALTER TABLE build_run_assets ADD COLUMN position integer, ADD COLUMN state text')

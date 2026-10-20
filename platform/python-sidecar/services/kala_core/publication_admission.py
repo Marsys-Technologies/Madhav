@@ -11,6 +11,9 @@ adds only what the executor kinds need on top of it and delegates every real ope
 * ``verify-dryrun`` / ``publish-dryrun`` / ``rollback-dryrun`` -- the layer operations run for real inside a transaction
   that is then rolled back, with the rollback read back. ``dry_run_passed`` is true only when the operation ran, its
   write was observed inside the transaction, and the state read after the rollback equals the state read before it.
+* ``cancel`` / ``teardown`` (+ ``-dryrun``) -- ``rebuild_control``: the orchestrator's stop request for a run, and the deletion of
+  an unpublished candidate of a terminal run. Each is read back from the database after its commit; the ``-dryrun`` twin is
+  the same rehearsal as the layer ones.
 """
 from __future__ import annotations
 
@@ -19,12 +22,13 @@ import contextlib
 import io
 import json
 import os
+from datetime import timezone
 from typing import Any, Callable, Iterable, Mapping
 from uuid import UUID
 
 import psycopg
 
-from services.kala_core import publication
+from services.kala_core import publication, rebuild_control
 from services.kala_core.publication import CANONICAL_CHART
 
 # SR-BOLD-04 reading (J-bold04 GRAPH.json split_rule_used): "gochara-dependent" is one of the four gochara producers
@@ -37,6 +41,8 @@ FORCE_ENV = 'NIRMANA_FORCE_EXECUTE'
 FORCING_VALUES = ('1', 'true', 'yes')
 REBUILD_OPERATIONS = ('rebuild', 'rebuild-dryrun')
 REHEARSALS = ('verify-dryrun', 'publish-dryrun', 'rollback-dryrun')
+CONTROL_OPERATIONS = ('cancel', 'teardown')
+CONTROL_REHEARSALS = ('cancel-dryrun', 'teardown-dryrun')
 
 
 def force_refusal(environ: Mapping[str, str]) -> str | None:
@@ -108,6 +114,12 @@ def _plan(conn: Any, args: argparse.Namespace) -> tuple[Callable[[], Any], Calla
                                        (CANONICAL_CHART,)).fetchone()
         return observe, lambda: publication.rollback(conn, generation=args.generation, expected_head=args.expected_head)
     run_id = str(args.run_id)
+    if op == 'cancel-dryrun':
+        return (lambda: rebuild_control.cancel_state(conn, run_id),
+                lambda: rebuild_control.cancel(conn, run_id=run_id))
+    if op == 'teardown-dryrun':
+        return (lambda: rebuild_control.census(conn, run_id),
+                lambda: rebuild_control.teardown(conn, run_id=run_id))
     _canonical_candidate_refusal(conn, run_id, args.generation)
     if op == 'verify-dryrun':
         observe = lambda: conn.execute('SELECT count(*) FROM kala_layer_verification WHERE chart_id=%s AND generation=%s',
@@ -145,10 +157,12 @@ def rehearse(conn: Any, args: argparse.Namespace) -> dict:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='operation', required=True)
-    for operation in REBUILD_OPERATIONS + REHEARSALS:
+    for operation in REBUILD_OPERATIONS + REHEARSALS + CONTROL_OPERATIONS + CONTROL_REHEARSALS:
         p = sub.add_parser(operation)
         if operation != 'rollback-dryrun':
             p.add_argument('--run-id', required=True, type=UUID)
+        if operation in CONTROL_OPERATIONS + CONTROL_REHEARSALS:
+            continue
         if operation in REBUILD_OPERATIONS:
             p.add_argument('--assets', required=True)
             p.add_argument('--phase', required=True, choices=PHASES)
@@ -192,6 +206,30 @@ def _delegate_rebuild(args: argparse.Namespace) -> int:
     return code
 
 
+def _control(dsn: str, args: argparse.Namespace) -> int:
+    """``cancel`` / ``teardown``: commit, then read the outcome back from the database (never from an exit code)."""
+    run_id = str(args.run_id)
+    with psycopg.connect(dsn, connect_timeout=5) as conn:
+        try:
+            if args.operation == 'cancel':
+                result = rebuild_control.cancel(conn, run_id=run_id)
+            else:
+                result = rebuild_control.teardown(conn, run_id=run_id)
+        except ValueError as exc:
+            conn.rollback()
+            return _refuse(str(exc))
+        conn.commit()
+        if args.operation == 'cancel':
+            state, requested = rebuild_control.cancel_state(conn, run_id)
+            result['readback'] = {'state': state, 'stop_requested_at': requested.astimezone(timezone.utc).isoformat() if requested else None}
+        else:
+            result['readback'] = {'remaining_rows': rebuild_control.row_counts(conn, rebuild_control.CANONICAL_CHART, result['generation']),
+                                  'head_generation': rebuild_control.head_of(conn, rebuild_control.CANONICAL_CHART)}
+        conn.rollback()
+    print(json.dumps(result, sort_keys=True, default=str))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     dsn = os.environ.get('DATABASE_URL')
@@ -201,6 +239,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.operation in REBUILD_OPERATIONS:
             reason = _admit_rebuild(dsn, args)
             return _refuse(reason) if reason else _delegate_rebuild(args)
+        if args.operation in CONTROL_OPERATIONS:
+            return _control(dsn, args)
         with psycopg.connect(dsn, connect_timeout=5) as conn:
             try:
                 result = rehearse(conn, args)

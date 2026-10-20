@@ -15,8 +15,19 @@ sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(SCRIPTS / '__tests__'))
 
 
+def scoped_content_unchanged(monkeypatch):
+    """These suites stage a dispatch against a guarded loopback database that never held the scoped backup's relations; the fresh
+    scoped-content measurement (SR-BACKUP-VALIDITY-A8) is not their subject. The fixture backup records `S.FIXTURE_MEASURED`, and this
+    stand-in reports it unchanged. The measurement itself is proved in scripts/__tests__/test_backup_v5_small_test_scoped.py and
+    tests/l3/kala_db/test_p01_smalltest_backup_scoped.py."""
+    import backup_v5_small_test_job
+    import smalltest_safety_support as S
+    monkeypatch.setattr(backup_v5_small_test_job, 'measure_scope_now', S.fixture_measure)
+
+
 @pytest.fixture(autouse=True)
 def executor_bound_smalltest(monkeypatch, tmp_path):
+    scoped_content_unchanged(monkeypatch)
     import json
     import teardown_v5_small_test_job as td
     import dispatch_v5_small_test_job as dispatch
