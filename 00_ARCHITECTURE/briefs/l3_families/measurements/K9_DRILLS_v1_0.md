@@ -1,10 +1,10 @@
 ---
 artifact: K9_DRILLS
-version: "1.0"
-status: PREBUILD — local manifest protocol proven; full-layer drills pending
-produced_on: 2026-10-16
+version: "1.1"
+status: ENABLED BINDINGS — local manifest protocol proven; full-layer drills pending
+produced_on: 2026-10-20
 item: K9-23
-changelog: "1.0: separately bound disabled layer operations, local failure/rollback proofs and full-drill protocol."
+changelog: "1.1: all eight layer/rebuild kinds are enabled (SR-PREBUILD-ALL, #3746) and described as bound; each drill names the runner record it must retain; backup bindings confirmed from the declaration; every full-layer result stays null; the Gochara separation statement follows main (publish_head / rollback_head enabled by #3786, verification_job still disabled). 1.0: separately bound disabled layer operations, local failure/rollback proofs and full-drill protocol."
 ---
 
 # Layer publication and rebuild drills
@@ -12,20 +12,36 @@ changelog: "1.0: separately bound disabled layer operations, local failure/rollb
 The three layer operations are distinct from Gochara's `verification_job`,
 `publish_head`, and `rollback_head`. They operate only the `kala_layer_*` manifest
 and call the existing APIs. They neither switch Gochara authority nor delete
-candidate, published, issued-forecast or production rows. SR-A4-01 keeps all five
-K9 executor entries disabled; preparation is not activation evidence.
+candidate, published, issued-forecast or production rows. In the declaration
+`verification_job` is `enabled:false`, while `publish_head` and `rollback_head` are enabled
+only through the reviewed head policy (J-6m / J-6r, #3786) and run `fleet/head_operation.py`;
+no Gochara kind shares a script with a layer kind. All eight layer and rebuild kinds below are enabled in
+`fleet/executor_ops.json` (SR-PREBUILD-ALL, #3746): `orchestrator_rebuild_dryrun`,
+`orchestrator_rebuild`, `layer_verify_dryrun`, `layer_verify`, `layer_publish_dryrun`,
+`layer_publish`, `layer_rollback_dryrun` and `layer_rollback`. Enablement says the
+refusals below are in place; it is not evidence that a full layer has been rebuilt,
+published or rolled back.
 
-## Prepared interface
+## Bound interface
 
-Run from `platform/python-sidecar` as the principal allocated by the executor:
+Run from `platform/python-sidecar` as the principal allocated by the executor. The
+three real layer operations are `services.kala_core.publication` itself; the rebuild
+kinds and every `*_dryrun` sibling go through `services.kala_core.publication_admission`,
+which delegates the real work to it:
 
 ```text
-python -m services.kala_core.publication rebuild-dryrun --run-id RUN_UUID --assets ORDERED_COMMA_LIST
-python -m services.kala_core.publication rebuild --run-id RUN_UUID --assets ORDERED_COMMA_LIST
+python -m services.kala_core.publication_admission rebuild-dryrun --run-id RUN_UUID --assets ORDERED_COMMA_LIST --phase pre|post
+python -m services.kala_core.publication_admission rebuild --run-id RUN_UUID --assets ORDERED_COMMA_LIST --phase pre|post
 python -m services.kala_core.publication verify --run-id RUN_UUID --generation GENERATION --independently-derived-digest SHA256
 python -m services.kala_core.publication publish --run-id RUN_UUID --generation GENERATION --expected-head PREVIOUS_GENERATION_OR_NONE
 python -m services.kala_core.publication rollback --generation RETAINED_PREVIOUS_GENERATION --expected-head CURRENT_GENERATION
+python -m services.kala_core.publication_admission verify-dryrun | publish-dryrun | rollback-dryrun   (same arguments as the real operation)
 ```
+
+A layer dry run executes the real operation in a transaction it rolls back and reads
+back; `dry_run_passed` is true only when the rollback was confirmed and a write was
+observed inside the transaction. The rebuild dry run is plan inspection only
+(K9_BENCHMARKS_v1_0.md, Execution boundary) and never earns `dry_run_passed`.
 
 **(I) INTERPRETATION:** the required initial-publication expected-head token is
 `NONE`, since executor argument validation does not transport an empty value.
@@ -79,7 +95,7 @@ candidate, incomplete inventory, failed/missing/stale/wrong-principal verificati
 stale expected head and changed live head are refused without a head mutation.
 A published zero-row grain is an explicit result, never an absent result.
 
-The rollback test publishes A, opens and publishes B against A, then CAS-restores
+The rollback oracle, `test_rollback_restores_retained_head_and_payload_bytes`, publishes A, opens and publishes B against A, then CAS-restores
 A against B. It compares the retained head row's actual serialized bytes
 (including its stored timestamp) and all candidate-grain row bytes before and
 after rollback. The separate previous-head test refuses a jump from C to A when
@@ -88,23 +104,28 @@ The existing multi-connection lifecycle suite remains selected alongside these
 new tests. These are manifest-protocol proofs, not a production served-payload
 or full-layer semantic qualification.
 
-Executor tests prove the five bindings remain disabled, select distinct commands,
-and pass only the operation's one connection. Required Governance Tool Tests
+Executor tests prove the eight bindings are enabled with the declared module, subcommand and
+capability, select distinct commands, pass only the operation's one connection, and
+never let `NIRMANA_FORCE_EXECUTE` reach a child. Required Governance Tool Tests
 runs those binding tests and now depends on Kāla DB Tests. The CI gate's own
 negative cases execute its shell predicate with failed, cancelled and skipped DB
 results; only an intentional docs-only skip is permitted.
 
-## Full-layer drills still owed before enablement
+## Full-layer drills still owed
 
-| Drill | Raw evidence to retain | Current result |
-|---|---|---|
-| Baseline full candidate | run id, frozen plan/digest, every candidate grain, independent checks, qualified consumer bytes | null — K9-1 execution pending |
-| Attachment-only upstream change | exact before/after upstream values; actual runner `asset.skip_no_delta` and `asset.substep` events; completed/repeated grains | null — no real invalidation run |
-| Interpretation change | same evidence, with geometry reuse distinguished from writer invocation | null — no real invalidation run |
-| Convention change | convention pins and actual rerun events, never a predicted rerun list | null — no real invalidation run |
-| Kill/resume | monotonic start/kill times, durable-grain snapshot at kill, resumed completed/repeated keys and CPU/wall loss | null — no real killed-substep run |
-| Publish/rollback | full served projection bytes at A, retained A bytes, head CAS A→B→A, bytes compared after rollback | local manifest bytes proven; full served projection null |
-| Backup and restore | qualified named backup, scratch-target restore, exact row/hash comparison and capability readback | null — J-1a qualification pending |
+The bindings are enabled; these drills are the evidence a full layer is owed before its
+first real use. Each row names the runner record that must be preserved, because the
+dependency graph and `build_run_assets.state='complete'` cannot say what ran.
+
+| Drill | Runner record to retain | Raw evidence to retain | Current result |
+|---|---|---|---|
+| Baseline full candidate | every `asset.substep` event and the frozen plan digest | run id, every candidate grain, independent checks, qualified consumer bytes | null — K9-1 execution pending |
+| Attachment-only upstream change | `asset.skip_no_delta` and `asset.substep` events per writer, plus the content-bound progress ledger | exact before/after upstream values; completed and repeated grains | null — no real invalidation run |
+| Interpretation change | `asset.skip_no_delta` and `asset.substep` events, geometry reuse distinguished from writer invocation | same evidence as above | null — no real invalidation run |
+| Convention change | `asset.skip_no_delta` and `asset.substep` events for the actual rerun, never a predicted list | convention pins before and after | null — no real invalidation run |
+| Kill/resume | `asset.substep` events up to the kill and after the resume, with monotonic timestamps | durable-grain snapshot at the kill, resumed completed and repeated keys, CPU and wall loss | null — no real killed-substep run |
+| Publish/rollback | none from the runner; the head rows and grain bytes are database state | full served projection bytes at A, retained A bytes, head CAS A→B→A, bytes compared after rollback | local manifest bytes proven; full served projection null |
+| Backup and restore | none from the runner; the backup receipts and the scratch-restore receipt | qualified named backup, scratch-target restore, exact row/hash comparison, capability readback | null — J-1a qualification pending |
 
 For each real drill preserve what the runner actually did. Do not infer reruns
 from the dependency graph or from `build_run_assets.state='complete'`:
@@ -115,15 +136,21 @@ a skipped grain and a repeated grain. Restart loss is elapsed abandoned work
 since the last durable boundary, measured at the kill, with repeated-work time
 reported separately. No restart-loss number is claimed by this pre-build.
 
-The backup entries still name J-1a placeholders in `fleet/executor_ops.json`.
-Their declared capability is `gcloud`; neither script binding is qualified.
-`platform/scripts/backup/export_irreplaceable_tables.sh:7` is a narrower logical
-export of two table sets using `DATABASE_URL` and optional GCS; it is not a
-whole-layer Cloud SQL backup/restore proof. Keep both backup operations disabled
-until J-1a supplies the real scripts and confirms their capabilities. Do not
-reuse that narrow export as a canonical rebuild backup.
+Backup operations, confirmed from the declaration (`fleet/executor_ops.json`, enabled_by J-1a)
+and not re-qualified here:
+
+- `backup_snapshot` is enabled, capability `owner`, script `platform/scripts/backup_v5_small_test_job.py`, arguments `label` and `scope`.
+- `backup_restore_verify` is enabled, capability `owner`, script `platform/scripts/backup_v5_small_test_job.py`, arguments `label` and `scope`.
+
+The script exists in the tree, so these are no longer placeholders. It is a pg_dump
+capture with a measured scratch restore, full or `--scope small_test`; the scratch restore
+proves the archive, not a production restore. Qualified backup/restore evidence for a
+rebuilt layer is J-1a's and stays null in the table above.
+`platform/scripts/backup/export_irreplaceable_tables.sh:7` is a narrower logical export of
+two table sets using `DATABASE_URL` and optional GCS; it is not a whole-layer backup/restore
+proof. Do not reuse it as a canonical rebuild backup.
 
 D-R9 remains in force: the century materializer stays held and its data retained
 until the successor proves coverage and refinement semantics (surrogate charter
 §5 KYD-4; KALA_LAYER_CODE_ARCHITECTURE_PLAN_v1_1.md §12 R-9). Neither a local
-publication test nor the prepared bindings release that hold.
+publication test nor the enabled bindings release that hold.

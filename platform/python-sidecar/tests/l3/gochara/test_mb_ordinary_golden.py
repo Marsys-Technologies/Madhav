@@ -35,7 +35,8 @@ re-derived from the merged tree's real bytes.
 capture is driven with that flag True: the accepted P06 capture is, by definition, the final-rule build. The default (legacy) profile's
 isolation is main's own claim, held by test_a53_gochara_v5_writer.py / test_nd_h_builder_tiers.py, not by this golden.
 (I) INTERPRETATION: main's J4C-A (#3596) graha-mapping source updates are part of the
-merged tree whose digests are pinned below, so no separate J4C pin is applied to this capture. Exactly one state-guard SELECT is checked
+merged tree whose digests are pinned below, so no separate J4C pin is applied to this capture.
+P06b adds exactly one manifest catalogue probe (LAYER_SELECT) and the near-miss verifier module to the geometry identity. Exactly one state-guard SELECT is checked
 per non-dry-run substep and excluded from both SQL summaries. B5 adds exactly
 one invalid-period guard SELECT to inventory:marriage; its complete shape and
 parameter count are checked separately, preserving the stored baseline.
@@ -90,6 +91,9 @@ BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, 
                 "subject_label": "native"}
 CLASS = "marriage"
 GUARD_SELECT = "SELECT state FROM public.asset_throughput WHERE chart_id = %s AND asset_id = %s"
+LAYER_SELECT = ("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL AND "
+                "to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL AND "
+                "to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL")
 # J-2a-P1L: the snapshot substep reads the applied schema ONCE through p1_minting_closed_reason (RecordStore.p1_anchor_columns_available) to
 # decide whether the P1 anchor rows are consulted (and so ledgered). Like the state guard it is checked separately — its exact text, one
 # parameter, exactly once — and, in the snapshot substep only (the golden's snapshot never issued it; coverage already did), excluded from
@@ -307,9 +311,11 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
         assert g["outcome"] == m["outcome"], f"{key}: the observable outcome differs from the accepted P06 baseline"
         assert g["counts"] == m["counts"], f"{key}: the table row counts differ from the accepted P06 baseline"
         guard = [s for s in raw[key] if s == [GUARD_SELECT, 2]]
+        layer = [s for s in raw[key] if s == [LAYER_SELECT, 0]]
+        assert len(layer) == (1 if key == "manifest" else 0), (key, layer)
         period_guard = [s for s in raw[key] if s == [PERIOD_GUARD_SELECT, 11]]
         assert len(period_guard) == (1 if key == "inventory:marriage" else 0), f"{key}: expected the B5 period guard exactly once before the inventory projection"
-        rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11])]
+        rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11], [LAYER_SELECT, 0])]
         if key == writer_mod.SNAPSHOT_SUBSTEP:       # every other substep keeps its own P1 gate reads, compared with the golden unchanged
             assert rest.count([P1_GATE_SELECT, 1]) == 1, f"{key}: expected the new P1-minting schema read exactly once"
             rest.remove([P1_GATE_SELECT, 1])
@@ -338,11 +344,11 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
                         expanded.append([P1_GATE_SELECT, 1])
                 expanded.append([sql, n])
             rest = expanded
-        assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards differ from the accepted P06 baseline"
+        assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards and layer probe differ from the accepted P06 baseline"
 
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
-    """Preserve P06 inputs with main's evaluation/geometry implementation updates.
+    """Preserve P06 inputs with main's evaluation/geometry implementation updates; P06b adds its near-miss verifier to the geometry identity.
 
     No `horizon_basis` or `test_slice` component may appear in an ordinary run.
     """
@@ -366,22 +372,25 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # source changes on top of the accepted P06 capture. The three digests below are re-derived from this merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the function the manifest vector itself is built by); the golden
     # fixture is not re-captured and every other component, outcome, row count and SQL shape is still compared to it unchanged.
+    # P06b (this PR) merged on top: its input-vector/verifier changes move the evaluation pin and its near_miss_verifier enters the geometry identity; the pins below are
+    # re-derived the same way from the merged tree's real bytes (never relaxed).
     # Evaluation re-pinned again for the snapshot-substep fix (#3516 CI repair): the J-2a-P1L out-of-horizon anchor ledger is kept for a LEGACY snapshot
     # only, because a G12 copy (1305) holds horizon-overlapping rows alone. Re-derived the same way; no golden component is re-captured.
     # Evaluation re-pinned for SR-W3-SHAPE 3 (gochara_v5_defer_in_build_verify): the writer and input_vector sources changed, the ordinary
-    # (flag-absent) run's every other component, outcome, row count and SQL shape is unchanged. Re-derived the same way (main's bytes give 6c86c3fb…).
+    # (flag-absent) run's every other component, outcome, row count and SQL shape is unchanged. Merged with P06b (this PR) and re-derived from the
+    # merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (never relaxed).
     # Evaluation re-pinned for F-1305-INVENTED-SUPPORT (#3774): dasha_read and inventory_verifier changed (the snapshot path no longer invents support for a lord held
     # only outside the horizon). Re-derived the same way on the merge of this branch with main (main's bytes give 9f6c462e...); no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "83fd38793175de02acedf65908f95645688d1442d4fbc1a5434cdbefc6209e6b"
-    # J-4c: the geometry stage moved ONLY by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root (06825a43... -> the digest below, re-derived the same
-    # way on the merged tree; evaluation and window are unchanged by J-4c). No golden component is re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
-    # J-4c F-LEANNESS (d96b3bfb0) then moved record_store again (one round trip per record write group, anchor-column probe once per store): geometry re-derived the same way (main's bytes give e7634d7f…).
-    # Geometry re-pinned again for F-1305-INVENTED-SUPPORT (#3774): record_store's period-rows cache now carries the held-presence flag. On the merged tree
-    # (main's J-4c F-LEANNESS record_store plus this change) the digest is below; main's bytes alone give 4479243d...
-    assert got["implementation"]["geometry"] == "0ecc897ce5fec8550640169a782271f1e359e07e864d6a9390bf0fa6fb861dbe"
-    # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. Re-derived the same way
-    # (main's bytes give 78b4d0a1…); evaluation and geometry are untouched by this change, and no golden component is re-captured.
-    # J-4c F-LEANNESS also changed window_store (one round trip per window write group): re-derived the same way (main's bytes give 7a8c7ee1…); evaluation is untouched.
+    assert got["implementation"]["evaluation"] == "3d24331f1a73721b761ca0af94da3c53493f92e9349769ba3fb6964a94d2bb42"
+    # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
+    # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
+    # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
+    # Geometry re-pinned again for F-1305-INVENTED-SUPPORT (#3774): record_store's period-rows cache now carries the held-presence flag; the digest below is re-derived on the
+    # merged tree (main's bytes give 0ecc897c...).
+    assert got["implementation"]["geometry"] == "a8cb08f07fa867e010109d8a236422e39ebf0b57cf9a149eae64e42c7547a3ff"
+    # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. With P06b's window-stage changes the merged-tree
+    # digest below is re-derived the same way (main alone gives 6c981eb8...; J-4c F-LEANNESS also changed window_store); evaluation and geometry are untouched by this change, and no golden component is re-captured.
     # Window re-pinned for the W3W4 strict-slice window-qualification fix: window_sweep.build_program no longer lists an OMITTED operand (karaka_agent, null_state omit)
-    # as an unresolved reason, so the writer's `unresolved` equals the verifier's. Re-derived the same way (main's bytes give 6c981eb8…); evaluation and geometry are untouched.
-    assert got["implementation"]["window"] == "99c4bc5c6f4e4648b890be7357a29e01bb8448719bf09dd42b9f6086bd9b31a1"
+    # as an unresolved reason, so the writer's `unresolved` equals the verifier's. Re-derived on the merge with main (which carries P06b) from the merged tree's real bytes
+    # (main alone gives 41d28f76...); evaluation and geometry are untouched by this change and equal main's, and no golden component is re-captured.
+    assert got["implementation"]["window"] == "e0aea2fae6b607d5fb32124ae9e945fef6b1662fbb6de4fd8e053ec02e50e78d"

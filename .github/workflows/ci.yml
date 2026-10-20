@@ -679,7 +679,7 @@ jobs:
           fi
 
       - name: Pravāha A5.3 — migration 1240 / 1233 live-DB suites (window verification gate, roles, seal flows, P1 anchor) — REQUIRED, never skipped
-        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'db-integration-tests-9-12'))) }}
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'db-integration-tests-9-12') || contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'p06b-python'))) }}
         # The A5.3 tests build their OWN throwaway databases (a53t_*) and cluster roles on the CI Postgres through the
         # admin DSN, apply the real migrations verbatim, and drop everything afterwards; this runs serially after the
         # 1206/1232/1233 suite above (which also creates and drops gochara_* roles). GOCHARA_A53_REQUIRE_DB=1 turns an
@@ -712,6 +712,7 @@ jobs:
           python scripts/gochara/mutation_check_verifier_side.py --scratch "$mutation_scratch"
           # ^ that one test needs the pre-refactor baseline commit, unreachable from this job's shallow checkout;
           # it still runs in Governance Gates.
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest p06b-python -- -q --tb=short -rs -p no:cacheprovider
 
       - name: Install MCP dependencies for published public-view SQL tests
         working-directory: platform-mcp
@@ -4017,6 +4018,10 @@ jobs:
         run: |
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest unit-db-tests-l0-parihara -- -q -rs --tb=short -p no:cacheprovider
+
+      - name: P06b — protected migration readback and guarded replay (required)
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'p06b-typescript'))) }}
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest p06b-typescript -- --reporter=verbose
 
 
   full-suite:
