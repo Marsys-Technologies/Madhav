@@ -330,6 +330,20 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
             new = old[0].replace("AND start_iso < end_iso AND", "AND")
             assert rest.count([new, 13]) == 1
             rest = [[old[0], n] if sql == new else [sql, n] for sql, n in rest]
+        if key.startswith("record:"):
+            # J-4c F-LEANNESS (C5, test_a53_j4c_leanness_pipeline.py): the P1 anchor-column catalogue probe is read ONCE per store, no longer once per
+            # record. The accepted capture ran it before every relationship-record INSERT; this build runs it once (before the first) plus the substep's
+            # own single read. Assert exactly that, then put the probe back before each later INSERT so the full ordered sequence is still compared.
+            insert = "INSERT INTO public.ka_gochara_relationship_record"
+            assert rest.count([P1_GATE_SELECT, 1]) == 2, f"{key}: expected the anchor-column probe exactly twice (substep read + once per store)"
+            expanded, minted = [], 0
+            for sql, n in rest:
+                if sql.startswith(insert):
+                    minted += 1
+                    if minted > 1:
+                        expanded.append([P1_GATE_SELECT, 1])
+                expanded.append([sql, n])
+            rest = expanded
         assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards and layer probe differ from the accepted P06 baseline"
 
 
@@ -367,9 +381,9 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (never relaxed).
     assert got["implementation"]["evaluation"] == "50adad7a303ded4de992bd4edb150fae63704d8f31028b6c86429bd460c0ff6e"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
-    # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives e7634d7f...; evaluation and window are unchanged by J-4c). No golden component is
+    # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
-    assert got["implementation"]["geometry"] == "388de67d9ccd5849f1232d686285d90989da48735ae547e9728c2eb0be454bd6"
+    assert got["implementation"]["geometry"] == "17d869533a0cef25dead81f71e21bfc2757c96f80395ebb147b40f05d0d98de8"
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. With P06b's window-stage changes the merged-tree
-    # digest below is re-derived the same way (main alone gives 78b4d0a1...); evaluation and geometry are untouched by this change, and no golden component is re-captured.
-    assert got["implementation"]["window"] == "101a930fc513b482e88ea13265c521738760d43f334c6ed50618935a9bc150da"
+    # digest below is re-derived the same way (main alone gives 6c981eb8...; J-4c F-LEANNESS also changed window_store); evaluation and geometry are untouched by this change, and no golden component is re-captured.
+    assert got["implementation"]["window"] == "41d28f7670e6f41f5fb92342e946ee1e56c538db2781aed1f91ce4ed4da38e11"
