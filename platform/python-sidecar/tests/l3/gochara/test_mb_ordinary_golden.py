@@ -364,7 +364,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # only, because a G12 copy (1305) holds horizon-overlapping rows alone. Re-derived the same way; no golden component is re-captured.
     # Evaluation re-pinned for SR-W3-SHAPE 3 (gochara_v5_defer_in_build_verify): the writer and input_vector sources changed, the ordinary
     # (flag-absent) run's every other component, outcome, row count and SQL shape is unchanged. Re-derived the same way (main's bytes give 6c86c3fb…).
-    assert got["implementation"]["evaluation"] == "9f6c462e41ee255517dc9619e469ef8a77eab1acfccf40cabef03c6a18835bcf"
+    # Evaluation re-pinned for F-CHANNEL (SR-W34-PREP-RULINGS 1, kalayantra/kind-batch): the only governed source this branch changes relative to main 9f3a668d7 is the
+    # ka_gochara_v5 writer's century-config overlay (+101 lines), which sits in the evaluation stage (main's own bytes give 9f6c462e…). Re-derived from the merged tree's real
+    # bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES); geometry and window are unchanged by it and no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "f1e22a53b4d22d23440a44f773ace20ec0e2a5703383c0daa7ba9a0cd35d1d1c"
     # J-4c: the geometry stage moved ONLY by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root (06825a43... -> the digest below, re-derived the same
     # way on the merged tree; evaluation and window are unchanged by J-4c). No golden component is re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
     assert got["implementation"]["geometry"] == "e7634d7faf7df43521f5236d79a94c8a31192e62d78dc8eaa939160eaca0a6f7"

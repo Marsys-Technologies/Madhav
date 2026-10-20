@@ -454,7 +454,8 @@ def proven(scoped, monkeypatch):
     (root / 'backups' / label).mkdir(parents=True)
     for name in ('capture.json', 'restore.json'):
         (root / 'backups' / label / name).write_bytes((folder / name).read_bytes())
-    monkeypatch.setattr(shared, 'SCOPED_BACKUP_SCOPE_SHA256', receipt['scope']['sha256'])     # the synthetic scope stands in for the pinned one
+    for pinned in ('small_test', 'century'):                                                  # the synthetic scope stands in for each pinned one a dispatch names
+        monkeypatch.setitem(shared.SCOPED_BACKUP_SCOPE_SHA256S, pinned, receipt['scope']['sha256'])
     ref = {'backup_label': label, 'backup_restore_sha256': hashlib.sha256((root / 'backups' / label / 'restore.json').read_bytes()).hexdigest()}
     return dsn, root, ref, receipt
 
@@ -508,7 +509,7 @@ def test_the_dispatch_and_century_execute_policies_refuse_an_unmeasurable_scope(
         req = {**ref, 'kind': kind, 'args': {'run': 'one_class_full', 'classes': 'marriage'}}
         policy = small._smalltest_request_policy
     else:
-        req = {**ref, 'kind': kind, 'item_id': shared.CENTURY_ITEM, 'args': dict(shared.CENTURY_ARGS)}
+        req = {**ref, 'kind': kind, 'item_id': shared.CENTURY_ITEM, 'args': dict(zip(shared.CENTURY_ARG_KEYS, ('all', 'true', 'true', '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00')))}      # the four exact args (F-CHANNEL), synthetic bounds
         policy = century._century_request_policy
     assert policy(req, root) is None                                                    # measurable and unchanged: admitted
     with psycopg.connect(dsn, autocommit=True) as conn:
