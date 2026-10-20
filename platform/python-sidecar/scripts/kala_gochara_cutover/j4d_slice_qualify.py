@@ -69,6 +69,7 @@ from typing import Any, Callable
 
 from services.gochara_kernel import measuring_capture as mc
 from services.gochara_kernel import measuring_report as mr
+from services.gochara_kernel import near_miss as nm
 from services.gochara_kernel import rule_registry as rr
 
 SCHEMA = "ky.j4d_slice_verdict/1"
@@ -84,6 +85,7 @@ LANE_PORT = 55433
 LANE_DB_NAME = re.compile(r"(?:ky_[a-z0-9_]+|a53t_[a-z0-9_]+)")
 GENERATION = "5.0"
 REPO = Path(__file__).resolve().parents[4]
+NEAR_MISS_MIGRATION = REPO / "platform" / "migrations" / "1308_gochara_near_miss_storage.sql"
 PLAN_MODEL = REPO / "00_ARCHITECTURE" / "control" / "kalayantra" / "plan_model.json"
 CANNOT_ESTABLISH = (
     "near-miss layer on/off over the 14 NONINTERFERENCE_KEYS and the five live endpoints (P06b / J-5q)",
@@ -235,6 +237,25 @@ def observe_build():
         cc.certify_contact_geometry, ws.maximise_earliest = real_certify, real_maximise
 
 
+def ensure_near_miss_layer(conn: Any) -> str:
+    """'present' | 'applied': the lane carries the near-miss storage (migration 1308) before any substep runs, as the final candidate's database does.
+
+    Without it the writer takes its pre-ND-P2 path (`NearMissStore.layer_present`): the builder stores no near-miss and the class's `verify:` refuses
+    the first one ("expected contact ... is not in the ledger") because there is nowhere to keep it, so a slice on such a lane fails for a reason the
+    final build does not have (J-4d pre-run F2: 10 stretches of psychological_arc, all rootless positive-clearance near-misses of the natal Moon
+    point). The strict certification policy is NOT relaxed: the lane is made faithful instead. The REAL migration file is applied (idempotent,
+    CREATE ... IF NOT EXISTS, one transaction, the lane connection only) and the writer's own presence test must then say yes, or the harness refuses."""
+    require_lane(conn)
+    store = nm.NearMissStore(conn)
+    if store.layer_present():
+        return "present"
+    with conn.transaction():
+        conn.execute(NEAR_MISS_MIGRATION.read_text(encoding="utf-8"))
+    if not store.layer_present():
+        raise SliceRefused("near_miss_layer_not_applied")
+    return "applied"
+
+
 def build_slice(conn: Any, *, chart_id: str, horizon: tuple, classes: list[str], ephe_path: str, birth_params: dict | None = None,
                 build_id: str = "j4d-slice", head: tuple | None = None, kinds: tuple | None = None,
                 paths: tuple | None = None, on_step: Callable[[str, Any], None] | None = None,
@@ -245,11 +266,12 @@ def build_slice(conn: Any, *, chart_id: str, horizon: tuple, classes: list[str],
     `conn` must be an autocommit lane connection. `head` / `kinds` / `paths` narrow the class-less substeps and the per-class substep kinds
     and paths (a harness on a stubbed L1 and a pre-built substrate cannot run them all); the lane run leaves all three None. `result_policy` selects the
     generation's numeric result policy (the writer's own default when None). The build is NOT a validated test slice, so the writer certifies under its
-    STRICT policy (every invented / anomaly stretch raises). Returns {'steps', 'defects', 'observed'}; the first raised substep stops the build and is a defect.
+    STRICT policy (every invented / anomaly stretch raises). Returns {'steps', 'defects', 'observed', 'near_miss_layer'}; the first raised substep stops the build and is a defect.
     """
     from pipeline.orchestrator.writers import ContextSpec, ka_gochara_v5 as writer_mod
 
     require_lane(conn)
+    layer = ensure_near_miss_layer(conn)
     config = {"chart_id": chart_id, "horizon": tuple(horizon), "ephe_path": ephe_path, "gochara_v5_final_rules": final_rules}
     if result_policy is not None:
         config["result_policy"] = result_policy
@@ -279,7 +301,7 @@ def build_slice(conn: Any, *, chart_id: str, horizon: tuple, classes: list[str],
                 defects.append({"step": step.key, "defect": "unverified", "detail": result.notes})
             if on_step is not None:
                 on_step(step.key, result)
-    return {"steps": steps, "defects": defects, "observed": observed}
+    return {"steps": steps, "defects": defects, "observed": observed, "near_miss_layer": layer}
 
 
 def read_slice_raw(conn: Any, *, chart_id: str, classes: list[str], generation: str = GENERATION) -> dict:

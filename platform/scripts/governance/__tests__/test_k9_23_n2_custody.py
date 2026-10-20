@@ -36,11 +36,11 @@ def test_child_keeps_independent_acceptance_without_reopening_parent():
     assert "K9-23-N2" not in parent["depends_on"]
     assert child["completion_kind"] == "code"
     assert child["reviewer_rule"] == parent["reviewer_rule"] == "v_exact_head_then_deploy_containment"
-    # SR-DETECTOR-REFS: the source branch was deleted at merge, so the detector pins the PR #3606 squash commit
-    # (K9-23-N2: pre-build K9-23-N2 (A6 D-40) (#3606)), which must stay contained in origin/main.
+    # The pre-build #3606 (custody commit ee51abe09) only registered the finding; the finding is fixed only with K9-23
+    # (PR #3556), so the detector follows K9-23's branch and carries no packet_pr (which would read as merged evidence).
     detector = child["detector"]
-    assert (detector["type"], detector["ref"], detector["packet_pr"]) == (
-        "branch_merged", "ee51abe09bd5e62d8bba6999515ef160fe688cbc", 3606)
+    assert (detector["type"], detector["ref"]) == ("branch_merged", "origin/kalayantra/k9-23")
+    assert "packet_pr" not in detector and detector["ref"] == parent["detector"]["ref"]
     assert "status" not in child and "steps" not in child
 
 

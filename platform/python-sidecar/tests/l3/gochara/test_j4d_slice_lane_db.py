@@ -20,10 +20,12 @@ import pytest
 from scripts.kala_gochara_cutover import j4d_slice_qualify as q
 from services.gochara_kernel import contact_certify as cc
 from services.gochara_kernel import measuring_capture as mc
+from services.gochara_kernel import near_miss as nm
 
 from .conftest import EPHE_PATH
 from .test_a53_inventory import CHART_ID
 from .test_a55_replace_chain import SHORT, _World, template  # noqa: F401
+from .test_d1_near_miss_storage import KEY, NEAR, template_off  # noqa: F401
 
 SLICE = ["bereavement", "marriage", "parental_event"]
 PATHS = ("P2", "P3")
@@ -234,3 +236,25 @@ def test_a_planted_difference_in_the_re_derived_golden_fails_the_final_slice(red
                                                               "contacts": bundle["contacts.jsonl"]})
     assert got["verdict"] == q.FULL_BUILD_REQUIRED
     assert any(r.startswith("rederived_equality_") for r in got["reasons"])
+
+
+def test_a_lane_without_the_near_miss_storage_is_made_faithful_so_a_class_with_a_near_miss_verifies(template_off):   # noqa: F811
+    """J-4d pre-run F2. On a lane that lacks migration 1308 the writer takes its pre-ND-P2 path (nowhere to keep a near-miss), so `verify:<class>` refuses
+    every rootless positive-clearance stretch with "expected contact [...) is not in the ledger" - 10 of them for psychological_arc, all on the natal
+    Moon point, none paired with an "invented" line. The stand-in chart has the same shape (Jupiter's 2003-12-15 loop to 2004-01-23 never reaches the
+    aspect ray to point:265.39; test_d1_near_miss_storage pins the refusal on the OFF layer). `build_slice` must put the storage in first
+    (the final candidate has it, ND-P2 rule 2) - the strict policy is not relaxed - and the near-miss is then stored, one unscored interval."""
+    world = _World(template_off)
+    try:
+        assert not nm.NearMissStore(world.conn).layer_present()
+        got = q.build_slice(world.conn, chart_id=CHART_ID, horizon=NEAR, classes=["marriage"], ephe_path=EPHE_PATH,
+                            head=("rules", "manifest", "snapshot"), kinds=("inventory", "coverage", "record", "window", "verify"))
+        assert got["defects"] == [], got["defects"]
+        assert got["near_miss_layer"] == "applied" and "verify:marriage" in [s["step"] for s in got["steps"]]
+        stored = world.conn.execute(
+            "SELECT o.body, o.relation_kind, o.canonical_target, n.standing, n.score FROM public.ka_gochara_near_miss n"
+            " JOIN public.ka_gochara_near_miss_object o USING (near_miss_object_id) WHERE n.generation = '5.0'").fetchall()
+        assert [tuple(r) for r in stored] == [(*KEY, "near_miss", None)]
+        assert q.ensure_near_miss_layer(world.conn) == "present"                              # idempotent: a lane that has it is left alone
+    finally:
+        world.close()

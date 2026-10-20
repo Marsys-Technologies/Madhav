@@ -340,6 +340,35 @@ def test_the_build_refuses_a_database_that_is_not_the_lane_before_any_substep(mo
     assert seen == []
 
 
+class _LaneWithoutNearMissStorage:
+    """A lane connection whose catalog never gains the near-miss tables, whatever is executed (the migration 'did not take')."""
+
+    def __init__(self):
+        self.executed = []
+
+    def execute(self, sql, params=None):
+        self.executed.append(sql)
+        outer = self
+
+        class _Cur:
+            def fetchone(self):
+                return ("ky_lane_x", "127.0.0.1/32", 55433) if "current_database" in sql else (False,)
+        return _Cur()
+
+    @contextmanager
+    def transaction(self):
+        yield
+
+
+def test_the_near_miss_layer_is_applied_from_the_real_migration_and_a_lane_where_it_does_not_take_is_refused():
+    """J-4d pre-run F2: the layer must be PROVEN present (the writer's own presence test) after the migration, or the harness refuses by name."""
+    conn = _LaneWithoutNearMissStorage()
+    with pytest.raises(q.SliceRefused, match="near_miss_layer_not_applied"):
+        q.ensure_near_miss_layer(conn)
+    assert any("ka_gochara_near_miss_search" in sql and "CREATE TABLE" in sql.upper() for sql in conn.executed)       # the real 1308 file was run
+    assert q.NEAR_MISS_MIGRATION.name == "1308_gochara_near_miss_storage.sql" and q.NEAR_MISS_MIGRATION.exists()
+
+
 # ── command line ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_choose_prints_the_slice_and_a_bad_slice_exits_2(capsys, tmp_path):
