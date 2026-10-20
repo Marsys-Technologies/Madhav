@@ -8,7 +8,10 @@ Both operations take ONE argument, the run id, and are scoped to the canonical c
   Only the REQUEST is made here: the returned ``state_after`` is what the database says, never a presumed ``CANCELLED``.
 * ``teardown`` deletes the unpublished candidate of a TERMINAL run and every row that references it. The referencing tables
   are read from ``pg_constraint`` at run time, never from a list kept here (B.10); a dependent whose key is not
-  ``(chart_id, generation)``, or that is itself referenced by another table, is refused rather than guessed at. A published
+  ``(chart_id, generation)`` is refused rather than guessed at. A dependent that is itself referenced by another table (the
+  production ``issued_forecast``, referenced by ``issued_forecast_outcome``, migration 1351) is never deleted from and never
+  cascaded into: with no rows for the candidate it is left alone, with any it REFUSES the teardown naming it (SR-K9-PUBLISHABLE
+  D8: delivered forecasts are append-only history). A published
   candidate, the head generation and a candidate whose retained previous head is gone are refused. The head is read before and
   after and must be equal. The caller owns the transaction: nothing here commits.
 * SR-K9-PUBLISHABLE D8: a teardown of a FAILED run also restores the asset states that run wrote. A failed rebuild leaves
@@ -85,14 +88,15 @@ def cancel(conn: Any, *, run_id: str, chart_id: str = CANONICAL_CHART) -> dict:
 
 
 def dependents(conn: Any) -> list[dict]:
-    """Every table with a foreign key to ``kala_layer_candidate``, read from the catalog."""
+    """Every table with a foreign key to ``kala_layer_candidate``, read from the catalog, with the tables that reference it in turn."""
     rows = conn.execute("""
         SELECT n.nspname, c.relname, con.conrelid,
                (SELECT array_agg(a.attname ORDER BY k.ord) FROM unnest(con.conkey) WITH ORDINALITY k(attnum, ord)
                  JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = k.attnum),
                (SELECT array_agg(a.attname ORDER BY k.ord) FROM unnest(con.confkey) WITH ORDINALITY k(attnum, ord)
                  JOIN pg_attribute a ON a.attrelid = con.confrelid AND a.attnum = k.attnum),
-               EXISTS (SELECT 1 FROM pg_constraint down WHERE down.contype = 'f' AND down.confrelid = con.conrelid)
+               (SELECT array_agg(DISTINCT dc.relname ORDER BY dc.relname) FROM pg_constraint down
+                 JOIN pg_class dc ON dc.oid = down.conrelid WHERE down.contype = 'f' AND down.confrelid = con.conrelid)
           FROM pg_constraint con
           JOIN pg_class c ON c.oid = con.conrelid
           JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -102,9 +106,8 @@ def dependents(conn: Any) -> list[dict]:
     for schema, table, _oid, columns, referenced, referenced_by_others in rows:
         if referenced != CANDIDATE_KEY or len(columns) != 2:
             raise ValueError(f'{table} references the candidate by {referenced}: only (chart_id, generation) can be torn down')
-        if referenced_by_others:
-            raise ValueError(f'{table} is itself referenced by another table: its dependents are not covered')
-        found[(schema, table, tuple(columns))] = {'schema': schema, 'table': table, 'columns': list(columns)}
+        found[(schema, table, tuple(columns))] = {'schema': schema, 'table': table, 'columns': list(columns),
+                                                  'referenced_by': list(referenced_by_others or [])}
     return list(found.values())
 
 
@@ -114,6 +117,17 @@ def _where(dep: dict) -> sql.Composed:
 
 def _table(dep: dict) -> sql.Composed:
     return sql.SQL('{}.{}').format(sql.Identifier(dep['schema']), sql.Identifier(dep['table']))
+
+
+def protected_rows(conn: Any, deps: list[dict], chart_id: str, generation: str) -> list[tuple[str, int, list[str]]]:
+    """(table, rows of this candidate, tables referencing it) for each referenced dependent that holds rows of the candidate."""
+    held = []
+    for dep in deps:
+        if dep['referenced_by']:
+            n = conn.execute(sql.SQL('SELECT count(*) FROM {} WHERE ').format(_table(dep)) + _where(dep), (chart_id, generation)).fetchone()[0]
+            if n:
+                held.append((dep['table'], n, dep['referenced_by']))
+    return held
 
 
 def candidate_of(conn: Any, run_id: str, chart_id: str):
@@ -210,8 +224,16 @@ def teardown(conn: Any, *, run_id: str, chart_id: str = CANONICAL_CHART) -> dict
         raise ValueError('a published candidate or the head generation is never torn down')
     if not retained_previous_present(conn, chart_id, cand[2]):
         raise ValueError('the retained previous generation is not present: refusing to delete beside an unreadable head')
+    deps = dependents(conn)
+    held = protected_rows(conn, deps, chart_id, generation)
+    if held:      # delivered history is append-only: refuse before anything is deleted, never delete it, never cascade
+        raise ValueError('; '.join(f"{table} is itself referenced by {', '.join(by)} and holds {n} row(s) of this candidate: "
+                                   f'issued history is never torn down' for table, n, by in held))
     deleted: dict[str, int] = {}
-    for dep in dependents(conn):
+    for dep in deps:
+        if dep['referenced_by']:
+            deleted[dep['table']] = 0     # referenced dependent with no rows of this candidate (checked above): not touched
+            continue
         deleted[dep['table']] = conn.execute(sql.SQL('DELETE FROM {} WHERE ').format(_table(dep)) + _where(dep),
                                              (chart_id, generation)).rowcount
     removed = conn.execute("DELETE FROM kala_layer_candidate WHERE chart_id = %s AND generation = %s AND build_id = %s "
