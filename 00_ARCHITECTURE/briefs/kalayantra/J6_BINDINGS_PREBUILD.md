@@ -8,7 +8,13 @@ authority: KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A6_PREBUILD.md, D-40
 
 # J6 authority bindings and evidence preparation
 
-This change prepares code. All four authority kinds remain **disabled** in
+> **2026-10-20 SR-HEAD-POLICY-KEEP:** the four authority kinds are now **enabled** in
+> `fleet/executor_ops.json`, only through this policy: the executor loads `head_operation.py`
+> from the request's reviewed commit and refuses any request it refuses; `head_operation.py`
+> is also the kinds' script. Both real kinds stay signed-only. Tests:
+> `fleet/tests/test_j6_head_bindings.py` (gate), `tests/l3/gochara/test_j6_bindings_db.py` (entry point).
+
+This change prepares code. All four authority kinds were **disabled** at prebuild time in
 `fleet/executor_ops.json:20`. No request, production observation, decision,
 J6R_REHEARSAL, J6L_LIVE or step-acceptance receipt is produced by this prebuild.
 The J-6-n-flip decision residual remains open; its read-only consumer is prepared.

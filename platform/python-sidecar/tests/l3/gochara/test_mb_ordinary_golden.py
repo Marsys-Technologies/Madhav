@@ -370,4 +370,6 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives e7634d7f...; evaluation and window are unchanged by J-4c). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
     assert got["implementation"]["geometry"] == "388de67d9ccd5849f1232d686285d90989da48735ae547e9728c2eb0be454bd6"
-    assert got["implementation"]["window"] == "d886cc893d597c170a83dbce91f2f89be2c302def6d949e935e1ca859bfa62d5"
+    # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. With P06b's window-stage changes the merged-tree
+    # digest below is re-derived the same way (main alone gives 78b4d0a1...); evaluation and geometry are untouched by this change, and no golden component is re-captured.
+    assert got["implementation"]["window"] == "101a930fc513b482e88ea13265c521738760d43f334c6ed50618935a9bc150da"

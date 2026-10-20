@@ -1839,14 +1839,14 @@ class DeclaredSnapshotCases(unittest.TestCase):
 
     def test_committed_model_stages_exactly_its_retirements(self):
         # the two B-2 retirements, plus the six owner-authorised not_applicable decisions of Amendment A9
-        # (D-51, D-53, D-54): staged, so none is a question for the native
+        # (D-51, D-53, D-54), plus D-J4C-PR2907-NA (#2907 landed through #2901): staged, so none is a question for the native
         with open(COMMITTED_MODEL, encoding="utf-8") as handle:
             model = json.load(handle)
         snapshot = self.snapshot(model=model)
         staged = {row["id"] for row in snapshot["decisions"] if row.get("staged")}
         self.assertEqual(staged, {"D-RETIRE-B-K-INBOX", "D-RETIRE-B-CLAIM-RECOVERY", "D-A9-NA-JOIN-ALL",
                                   "D-A9-NA-K-CERT-2", "D-A9-NA-W4-SAFETY", "D-A9-NA-PROCESS-NOTES",
-                                  "D-A9-NA-OPS-NB-03", "D-A9-NA-PACKET-EXITS"})
+                                  "D-A9-NA-OPS-NB-03", "D-A9-NA-PACKET-EXITS", "D-J4C-PR2907-NA"})
         self.assertFalse(staged & {row["id"] for row in snapshot["native_queue"]})
 
 

@@ -56,6 +56,16 @@ def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
         if row.get("value_mapping"):
             raise RuntimeError(f"window verifier: {fid} declares a value_mapping it cannot derive from")
         return ("unq", "value_mapping_undeclared")
+    if fid == "karaka_agent":
+        # K-A (ND-H-20261005; registry `karaka_agent` row): a RANK category — never admits, excludes or zeroes.
+        # Its row declares null_state `omit`, so it takes no part in the within-path product and breaks no
+        # qualification. Read from the ROW's declared null_state, not from the sweep (independent derivation):
+        # a row that declares anything else is a named missing operand, like the other categorical rows.
+        if row.get("value_mapping"):
+            raise RuntimeError(f"window verifier: {fid} declares a value_mapping it cannot derive from")
+        if row.get("null_state") == "omit":
+            return ("na",)
+        return ("unq", "value_mapping_undeclared")
     raise RuntimeError(f"window verifier: factor {fid!r} has no verifier derivation")
 
 

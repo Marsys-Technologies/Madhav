@@ -37,7 +37,8 @@ MEASURING_KINDS = {"measuring_dispatch_dryrun", "measuring_dispatch", "measuring
 K9_KINDS = {"orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify_dryrun", "layer_verify", "layer_publish_dryrun", "layer_publish",
             "layer_rollback_dryrun", "layer_rollback"}   # K9-23
 CENTURY_KINDS = {"century_dispatch_dryrun", "century_dispatch", "century_teardown_dryrun"}   # SR-PREBUILD-ALL (century_teardown stays disabled)
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS | MEASURING_KINDS | SCHEDULER_KINDS | K9_KINDS | CENTURY_KINDS
+HEAD_KINDS = {"publish_head", "publish_head_dryrun", "rollback_head", "rollback_head_dryrun"}
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS | MEASURING_KINDS | SCHEDULER_KINDS | K9_KINDS | CENTURY_KINDS | HEAD_KINDS   # SR-HEAD-POLICY-KEEP: enabled through the head policy
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 ITEM = "K9-FIXTURE"
 LEASE = "LEASE-KY-FIXTURE"
@@ -844,7 +845,7 @@ def test_remote_plan_matches_the_current_wave4_launcher(monkeypatch):
 def test_only_p01_production_kinds_are_enabled_and_wave4_launch_stays_bound(bench):
     table = real_table()
     assert {k for k, v in table.items() if v["enabled"]} == ENABLED_KINDS
-    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == {k for k in P01_KINDS | MEASURING_KINDS | K9_KINDS | CENTURY_KINDS | {"scheduler_pause", "scheduler_resume", "measuring_cancel"} if not k.endswith("_dryrun")}   # A8 §3.8
+    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == {k for k in P01_KINDS | MEASURING_KINDS | K9_KINDS | CENTURY_KINDS | {"scheduler_pause", "scheduler_resume", "measuring_cancel", "publish_head", "rollback_head"} if not k.endswith("_dryrun")}   # A8 §3.8
     entry = table["smalltest_dispatch"]
     assert entry["script"].endswith("/smalltest_launch.py") and entry["also_needs"] == ["gcloud"]
     for kind in ("smalltest_dispatch",):
