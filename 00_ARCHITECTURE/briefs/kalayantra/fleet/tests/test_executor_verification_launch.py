@@ -112,8 +112,9 @@ class Clock:
         return self.now
 
 
-def execution_v1(name=NAME, args=vl.EXECUTE_ARGS):
-    return {"metadata": {"name": name}, "spec": {"taskCount": 1, "template": {"spec": task(args)}}}
+def execution_v1(name=NAME, args=vl.EXECUTE_ARGS, owner="gochara-verification-job"):
+    # a real Cloud Run execution carries the owning job as the run.googleapis.com/job label (the literal name, not vl.JOB, so a wrong constant cannot hide)
+    return {"metadata": {"name": name, "labels": {"run.googleapis.com/job": owner}}, "spec": {"taskCount": 1, "template": {"spec": task(args)}}}
 
 
 class Cloud:

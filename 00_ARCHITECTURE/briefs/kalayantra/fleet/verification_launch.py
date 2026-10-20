@@ -293,7 +293,7 @@ def wait_for_execution(name: str, job_reference: str, runner, sleep, monotonic) 
     started, unreadable = monotonic(), 0
     while True:
         try:
-            measured = readback.measure_execution(name, job_reference, runner)
+            measured = readback.measure_execution(name, job_reference, runner, JOB)      # the execution's owner label is judged against THIS job (the reader defaults to the pipeline job)
             unreadable = 0
         except REFUSALS as exc:
             unreadable += 1
