@@ -142,7 +142,7 @@ describe('§N.6 density — convention rows are served, counted separately, neve
 // ── Stage 3: parihāra adjudication ──────────────────────────────────────────
 
 describe('stage 3 — parihāra adjudication (juridical, never additive)', () => {
-  it('leaves every doṣa residual when the corpus carries no muhūrta-scope cancellation rule', () => {
+  it('reads cancellation_unassessed (never uncancelled) for a doṣa-bearing candidate, with per-scope counts', () => {
     const natalOnly: PariharaRuleRow[] = [{
       dosha_canonical_id: 'manglik_dosha',
       dosha_name_en: 'Manglik Dosha',
@@ -162,13 +162,18 @@ describe('stage 3 — parihāra adjudication (juridical, never additive)', () =>
     const ledger = out.ledgers[0]!
     expect(ledger.pariharas_applied).toHaveLength(0)
     expect(ledger.residual_dosas.map((d) => d.factor_key)).toEqual(['rahu_kalam'])
-    expect(ledger.net_standing).toBe('residual_dosas_present')
-    expect(ledger.adjudication_note).toMatch(/no muhūrta-scope/i)
-    expect(out.gap_report.parihara_corpus_gap).toMatch(/no muhūrta-scope/i)
+    // ALGO 3.17 step 3 / U:25 item 4: unassessed is never reported as "uncancelled".
+    expect(ledger.net_standing).toBe('cancellation_unassessed')
+    expect(ledger.adjudication_note).toContain('cancellation_unassessed')
+    expect(ledger.adjudication_note).toContain('natal=1')
+    expect(ledger.adjudication_note).not.toMatch(/uncancelled/i)
+    expect(out.gap_report.parihara_corpus_gap).toContain('natal=1')
+    expect(out.gap_report.parihara_corpus_gap).not.toMatch(/uncancelled/i)
+    expect(out.density.parihara_rules_by_scope).toEqual({ natal: 1 })
   })
 
-  it('applies a muhūrta-scope rule when one genuinely exists, and cites it', () => {
-    const rescue: PariharaRuleRow[] = [{
+  it('derives NO cancellation in TypeScript: a key-matching muhūrta-scope rule does not cancel (U:25 item 4)', () => {
+    const keyMatching: PariharaRuleRow[] = [{
       dosha_canonical_id: 'rahu_kalam',
       dosha_name_en: 'Rāhu-kālam',
       dosha_category: 'muhurta',
@@ -182,21 +187,32 @@ describe('stage 3 — parihāra adjudication (juridical, never additive)', () =>
     }]
     const out = adjudicateCandidates([CANDIDATE_A], substrate({
       lattice_rows: [latticeRow()],
-      parihara_rules: rescue,
+      parihara_rules: keyMatching,
     }))
     const ledger = out.ledgers[0]!
-    expect(ledger.pariharas_applied).toHaveLength(1)
-    expect(ledger.pariharas_applied[0]!.dosha_key).toBe('rahu_kalam')
-    expect(ledger.pariharas_applied[0]!.source_citation).toContain('Muhurta Chintamani')
-    expect(ledger.residual_dosas).toHaveLength(0)
-    expect(ledger.net_standing).toBe('fully_cancelled')
+    expect(ledger.pariharas_applied).toHaveLength(0)
+    expect(ledger.net_standing).toBe('cancellation_unassessed')
+    expect(out.density.parihara_rules_by_scope).toEqual({ muhurta: 1 })
   })
 
-  it('marks a doṣa-free candidate clean', () => {
+  it('states that the vivāha chapter\'s doṣas are not detected (U:25 item 4)', () => {
+    const out = adjudicateCandidates([CANDIDATE_A], substrate({ lattice_rows: [latticeRow()] }))
+    expect(out.vivaha_chapter_dosas).toBe('not_detected')
+  })
+
+  it('never reads an unreadable lattice as clean', () => {
+    const out = adjudicateCandidates([CANDIDATE_A], substrate({
+      lattice_available: false, unavailable_reason: 'query_muhurta_lattice returned status 503',
+    }))
+    expect(out.ledgers[0]!.net_standing).toBe('not_adjudicated')
+  })
+
+  it('reads a doṣa-free candidate no_cited_dosa_detected, not clean', () => {
     const out = adjudicateCandidates([CANDIDATE_A], substrate({
       lattice_rows: [latticeRow({ factor_key: 'abhijit', detail: { category: 'auspicious' } })],
     }))
-    expect(out.ledgers[0]!.net_standing).toBe('clean')
+    expect(out.ledgers[0]!.net_standing).toBe('no_cited_dosa_detected')
+    expect(out.ledgers[0]!.adjudication_note).toMatch(/not a clearance/i)
   })
 
   it('does not adjudicate at all when the parihāra payload is unavailable', () => {
@@ -244,36 +260,21 @@ const ABHIJIT_PARIHARA_ROW: PariharaRuleRow = {
   extraction_context: 'translator_gloss_in_narrative',
 }
 
-describe('ADJUDICATION-10 — the real seeded Abhijit sarva-doṣaghna row rescues a real doṣa', () => {
-  it('rescues a rahu_kalam candidate via the real seeded row, with the full judgment ledger', () => {
+describe('ADJUDICATION-10 — the real seeded Abhijit row is counted, never key-match-applied (U:25 item 4)', () => {
+  it('does not cancel a rahu_kalam candidate in TypeScript, even with the real seeded row present', () => {
     const out = adjudicateCandidates([CANDIDATE_A], substrate({
       lattice_rows: [latticeRow()],  // real, cited rahu_kalam dosha overlapping CANDIDATE_A
       parihara_rules: [ABHIJIT_PARIHARA_ROW],
     }))
     const ledger = out.ledgers[0]!
 
-    // doṣas_present → parihāras_applied (citations) → residual → net standing
     expect(ledger.dosas_present.map((d) => d.factor_key)).toEqual(['rahu_kalam'])
-    expect(ledger.pariharas_applied).toHaveLength(1)
-    expect(ledger.pariharas_applied[0]).toMatchObject({
-      dosha_key: 'rahu_kalam',
-      dosha_name_en: 'Rahu Kalam',
-      net_standing: 'cancelled',
-      extraction_context: 'translator_gloss_in_narrative',
-    })
-    expect(ledger.pariharas_applied[0]!.cancellation_condition_text).toContain('Abhijit Sarva Doshaghnam')
-    expect(ledger.pariharas_applied[0]!.source_citation).toContain('bphs_jaimini_pg0213_c01')
-    expect(ledger.residual_dosas).toHaveLength(0)
-    expect(ledger.net_standing).toBe('fully_cancelled')
-    expect(ledger.adjudication_note).toMatch(/cancelled by a cited muhūrta-scope parihāra rule/i)
+    expect(ledger.pariharas_applied).toHaveLength(0)
+    expect(ledger.residual_dosas.map((d) => d.factor_key)).toEqual(['rahu_kalam'])
+    expect(ledger.net_standing).toBe('cancellation_unassessed')
   })
 
-  it('leaves a DIFFERENT doṣa (not rahu_kalam) residual — the row does not silently rescue everything', () => {
-    // Same real seeded row, but the overlapping doṣa is yamaganda, not rahu_kalam.
-    // The schema has no wildcard/all-doṣa convention, so this row's reach is
-    // exactly and only what its dosha_canonical_id key-matches — proving the
-    // engine does NOT over-apply the "sarva" (all) claim beyond what the
-    // schema can honestly encode.
+  it('reads a DIFFERENT doṣa (not rahu_kalam) cancellation_unassessed as well', () => {
     const out = adjudicateCandidates([CANDIDATE_A], substrate({
       lattice_rows: [latticeRow({
         factor_key: 'yamaganda',
@@ -285,21 +286,15 @@ describe('ADJUDICATION-10 — the real seeded Abhijit sarva-doṣaghna row rescu
     expect(ledger.dosas_present.map((d) => d.factor_key)).toEqual(['yamaganda'])
     expect(ledger.pariharas_applied).toHaveLength(0)
     expect(ledger.residual_dosas.map((d) => d.factor_key)).toEqual(['yamaganda'])
-    expect(ledger.net_standing).toBe('residual_dosas_present')
-    // Honest wording: a muhūrta rule exists, it just doesn't key-match this doṣa.
-    expect(ledger.adjudication_note).toMatch(/no muhūrta-scope parihāra rule in the corpus matches this specific residual doṣa/i)
+    expect(ledger.net_standing).toBe('cancellation_unassessed')
   })
 
-  it('a clean (doṣa-free) candidate no longer claims "no muhūrta-scope parihāra rule exists in the corpus"', () => {
-    // Regression guard: once ANY muhurta-scope row is present, the engine must
-    // not attach the blanket "no muhūrta-scope parihāra rule exists in the
-    // corpus" disclaimer to an unrelated clean candidate — that claim would
-    // now be false.
+  it('a doṣa-free candidate carries no "no muhūrta-scope parihāra rule exists" disclaimer', () => {
     const out = adjudicateCandidates([CANDIDATE_A], substrate({
       lattice_rows: [latticeRow({ factor_key: 'abhijit', detail: { category: 'auspicious' } })],
       parihara_rules: [ABHIJIT_PARIHARA_ROW],
     }))
-    expect(out.ledgers[0]!.net_standing).toBe('clean')
+    expect(out.ledgers[0]!.net_standing).toBe('no_cited_dosa_detected')
     expect(out.ledgers[0]!.adjudication_note).not.toMatch(/no muhūrta-scope parihāra rule exists in the corpus/i)
   })
 

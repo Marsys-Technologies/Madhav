@@ -108,8 +108,8 @@ function make2WindowResult() {
  * sections to trim — without forcing the `candidates` array itself to shrink.
  *
  * 25 dosa rows (inauspicious, no matching parihāra rule) -> dosas_present + residual_dosas
- * per ledger (sections D/E). 5 muhūrta-scope parihāra rules matching a subset of dosha
- * keys -> pariharas_applied per ledger (section G) genuinely non-empty too.
+ * per ledger (sections D/E). 5 muhūrta-scope parihāra rules keyed to a subset of dosha
+ * keys are present but, since KA-4b (U:25 item 4), cancel nothing: pariharas_applied stays empty.
  */
 function makeLargeSubstrate() {
   const span = { start_utc: '2026-08-01T00:00:00Z', end_utc: '2026-12-01T00:00:00Z' }
@@ -208,11 +208,11 @@ describe('F-122 follow-up: judgment_ledger aliasing fix (independent-review find
       expect(
         ledger!.residual_dosas.length,
         `candidate ${candidate.start} judgment_ledger.residual_dosas must not be emptied by the lattice_adjudication.ledgers[] bookkeeping trim`,
-      ).toBe(20) // 25 dosas - 5 with a matching parihara rule = 20 residual
+      ).toBe(25) // U:25 item 4: no key-match cancellation in TS, so all 25 stay cancellation_unassessed
       expect(
         ledger!.pariharas_applied.length,
-        `candidate ${candidate.start} judgment_ledger.pariharas_applied must not be emptied by the lattice_adjudication.ledgers[] bookkeeping trim`,
-      ).toBe(5)
+        `candidate ${candidate.start} judgment_ledger.pariharas_applied stays empty: the 5 key-matching rules in the substrate must not cancel (U:25 item 4)`,
+      ).toBe(0)
     }
 
     // And the object identity itself must be independent — never the same reference as

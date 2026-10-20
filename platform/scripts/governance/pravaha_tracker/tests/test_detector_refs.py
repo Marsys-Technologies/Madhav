@@ -17,6 +17,7 @@ PACKET = {
     "J6M-R1": 3636, "K5-G1b-N1": 3640, "K6-N1": 3635, "K6-N2": 3635, "K6-N3": 3635, "K5G1A-R1": 3605,
     "K5G1A-R2": 3605, "J-4c-pr2907": 3596, "J-4c-pr2953": 3596, "J-4c-pr2988": 3596,
     "J-4c-pr3082": 3596, "J-4c-pr3085": 3596, "J-4c-pr3111": 3596, "J-4c-pr3187": 3604, "J-4c-pr3188": 3604,
+    "P06B-NB-01": 3654, "P06B-NB-02": 3654, "P06B-NB-03": 3654,
 }
 # K9-23-N2 is not here: its pre-build #3606 only registered the finding, so its detector follows K9-23 itself
 # (pinned in governance/__tests__/test_k9_23_n2_custody.py)

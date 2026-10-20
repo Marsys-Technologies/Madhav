@@ -50,7 +50,7 @@ def test_candidate_null_uses_shared_schedule_and_full_reference(monkeypatch):
     from types import SimpleNamespace
     seen=[]
     # Boundary-sensitive full reference is reached for every non-identity draw.
-    monkeypatch.setattr(S5,'replicate_evaluator',lambda ev,delta: seen.append(delta) or ev)
+    monkeypatch.setattr(S5,'replicate_evaluator',lambda ev,delta,geometry=None: seen.append(delta) or ev)
     monkeypatch.setattr(S5,'_null_build_segments',lambda ev:[Segment(0,0,10,0,0)])
     p=prepare_field('career',10.,non_identity_shifts=3)
     acc=FieldAccumulator(p,buckets=(1,3))
@@ -62,7 +62,9 @@ def test_candidate_null_uses_shared_schedule_and_full_reference(monkeypatch):
     writer=W.KaKshetraWriter(); writer._generation='candidate:g1';writer._dry_run=False
     fresh=FieldAccumulator(p,buckets=(1,3))
     monkeypatch.setattr(writer,'_require_stage4_committed',lambda *a:None)
-    monkeypatch.setattr(writer,'_class_context',lambda *a:SimpleNamespace(evaluator=object(),null_accumulator=fresh))
+    from services.ka_kshetra import stage4_field as S4
+    monkeypatch.setattr(writer,'_bind_preparation',lambda *a:None)
+    monkeypatch.setattr(writer,'_class_context',lambda *a:SimpleNamespace(evaluator=SimpleNamespace(envelopes=S4.EnvelopeIndex([],10)),null_accumulator=fresh))
     monkeypatch.setattr(writer,'_record_substep',lambda *a:None)
     monkeypatch.setattr(W,'candidate_null_shifts',lambda:3)
     seen.clear()
@@ -182,6 +184,7 @@ def test_writer_prepares_one_schedule_for_every_class_of_a_candidate(monkeypatch
     from services.ka_kshetra import writer as W
     from services.kala_core import measure
     calls = []
+    measure.candidate_schedule.cache_clear()
     real = measure.prepare_schedule
     monkeypatch.setattr(measure, 'prepare_schedule', lambda *a, **k: calls.append(a) or real(*a, **k))
     monkeypatch.setattr(W, 'candidate_null_shifts', lambda: 3)
