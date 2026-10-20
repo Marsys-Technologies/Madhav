@@ -133,7 +133,8 @@ def _ctx(chart_id: str = CHART_ID, dry_run: bool = False,
          conn: _RecordingConn | None = None) -> ContextSpec:
     return ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="test-build",
                        db_conn=conn if conn is not None else _RecordingConn(),
-                       config={"chart_id": chart_id, "horizon": writer_mod.DEFAULT_HORIZON}, dry_run=dry_run)     # the horizon is CONFIGURED: an absent one is derived (FB-2)
+                       config={"chart_id": chart_id, "horizon": writer_mod.DEFAULT_HORIZON,
+                               "gochara_v5_final_rules": False}, dry_run=dry_run)     # the horizon and the (measuring) rule profile are CONFIGURED: an absent horizon is derived (FB-2), an absent profile is refused (F-CHANNEL)
 
 
 # ── (a) registration + frozen-contract shape ─────────────────────────────────
@@ -288,8 +289,9 @@ def test_coverage_substep_writes_the_class_partition_after_the_chart_lock(
     assert {e.path_id for e in kw["class_edges"]} <= {"P1", "P2", "P3", "P4"}
     lock_idx = next(i for i, (sql, _) in enumerate(conn.statements)
                     if "ka_gochara_lock_chart" in sql)
-    # the lock precedes every record-phase WRITE; the only statements before it are the state guard's read-only SELECT (and its savepoint, if any)
-    assert all(("asset_throughput" in sql and "SELECT" in sql) or "SAVEPOINT" in sql for sql, _ in conn.statements[:lock_idx])
+    # the lock precedes every record-phase WRITE; the only statements before it are read-only SELECTs — the run-config read of build_runs.plan_manifest (F-CHANNEL)
+    # and the state guard's (asset_throughput) — and their savepoints, if any
+    assert all((("asset_throughput" in sql or "build_runs" in sql) and "SELECT" in sql) or "SAVEPOINT" in sql for sql, _ in conn.statements[:lock_idx])
 
 
 def test_record_grain_dispatches_with_context_and_reports_counts(
@@ -511,6 +513,26 @@ def test_final_rules_are_opt_in_and_do_not_change_the_default_writer(_record_pha
     ctx.config['gochara_v5_final_rules'] = True
     w.run_substep(ctx, SubStep(key='record:parental_event:P2', label=''))
     assert _record_phase_fakes['grain'][-1]['edges'] == []
+
+
+def test_a_context_naming_no_rule_profile_runs_the_measuring_profile_not_the_final_one(monkeypatch):
+    """The DEFAULT path (mutant writer.default-isolation). `_ctx()` names the profile explicitly (main's RunProfileRefusal refuses an unnamed
+    non-slice run), so nothing else exercises the profile wrapper with the key ABSENT. The pre-build isolation promise is that an unnamed
+    default is the measuring profile: ND-H 1.2.0 is not bound. A dry run is exempt from RunProfileRefusal, so the wrapper is reached key-less."""
+    import contextlib
+    from services.gochara_kernel import rule_registry as rr
+    ctx = _ctx(dry_run=True)
+    del ctx.config['gochara_v5_final_rules']
+    real, seen = rr.rule_profile, []
+
+    @contextlib.contextmanager
+    def spy(*, final_rules):
+        with real(final_rules=final_rules):
+            seen.append((final_rules, rr.bound_path_refs()))
+            yield
+    monkeypatch.setattr(rr, "rule_profile", spy)
+    writer_mod.GocharaV5Writer().plan_substeps(ctx)
+    assert seen and all(final is False and refs == rr.BOUND_PATH_REFS for final, refs in seen)
 
 
 def test_final_rules_cannot_be_selected_for_a_test_slice(monkeypatch):

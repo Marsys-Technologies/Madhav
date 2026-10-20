@@ -145,6 +145,11 @@ export const queryPariharaGraphCapability: CapabilityDescriptor = {
         )
         const rules = rulesResult.rows
         const muhurtaScoped = rules.filter((r) => r['scope'] === 'muhurta')
+        const rulesByScope: Record<string, number> = {}
+        for (const r of rules) {
+          const scope = String(r['scope'])
+          rulesByScope[scope] = (rulesByScope[scope] ?? 0) + 1
+        }
 
         // Live density counts — the placeholder/real split is queried, never asserted from
         // a remembered literal (the substrate's own PR body number would go stale silently).
@@ -184,14 +189,14 @@ export const queryPariharaGraphCapability: CapabilityDescriptor = {
             'exist in brahma_dosha_catalog and are reachable via query_dosha_catalog, but they ' +
             'are not citation-backed cancellation rules and must not be counted as such.',
           muhurta_scope_rule_count: muhurtaScoped.length,
+          // U:25 item 4 / ALGO 3.17 step 3: live per-scope counts replace the old "ZERO muhūrta-scope
+          // … report residual doṣas uncancelled" narration. A rule count never asserts that any
+          // doṣa is uncancelled — cancellation is assessed per doṣa by the scoped evaluator.
+          rules_by_scope: rulesByScope,
           scope_note:
-            muhurtaScoped.length === 0
-              ? 'ZERO muhūrta-scope cancellation rules exist. Every row here is scope=natal ' +
-                '(Manglik/Kāla-Sarpa/Kemadruma-class bhaṅga). The corpus holds no muhūrta-specific ' +
-                'doṣa-cancellation content at chapter/verse grain — registered as a gap in the ' +
-                'factor census. An adjudication engine must therefore report residual doṣas ' +
-                'uncancelled rather than apply a natal bhaṅga rule to a moment.'
-              : `${muhurtaScoped.length} muhūrta-scope cancellation rule(s) present.`,
+            `Parihāra rules by scope (live): ${Object.entries(rulesByScope).map(([k, n]) => `${k}=${n}`).join(', ') || 'none'}. ` +
+            'A rule count is not an assessment of any candidate; whether a doṣa is cancelled is ' +
+            'stated per doṣa by the scoped evaluator (cancelled with locator, or cancellation_unassessed).',
           ...(rules.length === 0
             ? { empty_reason: `No parihāra rows${doshaId ? ` for dosha_canonical_id=${doshaId}` : ''} — the bg_parihara_rules asset may not be built in this environment.` }
             : {}),

@@ -529,10 +529,10 @@ def test_the_century_execute_policy_measures_the_scope_and_refuses_a_backup_whos
     scoped backup is admitted only while a fresh measurement at dispatch equals the recorded digest, and refused as soon as it differs.
     `_century_request_policy` (what `--execute` runs before staging) must hand backup.measure_scope_now to the evidence policy."""
     century = importlib.import_module('dispatch_v5_century_job')
-    old = write_evidence(tmp_path, shared, started=datetime.now(timezone.utc) - timedelta(days=30))
+    old = write_evidence(tmp_path, shared, scope_sha=shared.SCOPED_BACKUP_SCOPE_SHA256S['century'], started=datetime.now(timezone.utc) - timedelta(days=30))      # a century dispatch demands the CENTURY scope's proof (W3W4 pack verify E3)
     monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)
     monkeypatch.setattr(shared, 'century_dryrun_evidence', lambda req, root, digest=None: None)
-    req = {'kind': 'century_dispatch', 'item_id': shared.CENTURY_ITEM, 'args': dict(shared.CENTURY_ARGS), **old}
+    req = {'kind': 'century_dispatch', 'item_id': shared.CENTURY_ITEM, 'args': {'classes': 'all', 'final_rules': 'true', 'defer_in_build_verify': 'true', 'horizon': '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00'}, **old}      # the four exact args (F-CHANNEL), synthetic bounds
     unchanged = now_measure()
     monkeypatch.setattr(backup, 'measure_scope_now', unchanged)
     assert century._century_request_policy(req, tmp_path) is None

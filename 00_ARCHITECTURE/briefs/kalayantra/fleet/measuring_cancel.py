@@ -19,10 +19,15 @@ Honest nulls (CLAUDE.md §N.7.6 / §N.8): a state that could not be read is null
 cancelledCount >= 1 with runningCount == 0. No live cancelled execution was captured for this build, so a shape that cannot be read REFUSES (state
 null) and never guesses; the first real cancel is the proof of the shape.
 
-Runs from the reviewed tree (a production kind), so it imports its two siblings; the project / region / job constants are cloudrun_readback's."""
+Runs from the reviewed tree (a production kind), so it imports its two siblings; the project / region / job constants are cloudrun_readback's.
+
+One engine, three families (W3W4 pack verify E1): `century_cancel.py` (the century build runs on the SAME Cloud Run job, record `ky.century_cancel/1`) and
+`verification_cancel.py` (the verification job `gochara-verification-job`, record `ky.verification_cancel/1`) are thin entry points that hand this module their
+`CancelSpec`; the measuring defaults below are unchanged byte for byte."""
 from __future__ import annotations
 
 import argparse
+import collections
 import datetime as dt
 import json
 import os
@@ -35,6 +40,13 @@ import cloudrun_readback as readback        # noqa: E402  gcloud_json / executio
 from scheduler_reaper import request_digest  # noqa: E402  the executor's request digest, byte for byte (its own test pins that)
 
 SCHEMA = "ky.measuring_cancel/1"
+
+
+# What differs between the cancel families: the record schema, the Cloud Run job whose execution may be cancelled, that job's execution-name shape, a help line.
+CancelSpec = collections.namedtuple("CancelSpec", "schema job execution description")
+
+
+MEASURING = CancelSpec(SCHEMA, readback.JOB, readback.EXECUTION, "Governed cancel of ONE running Cloud Run execution of the measuring build.")
 Refused = readback.Refused
 STATES = ("RUNNING", "CANCELLED", "SUCCEEDED", "FAILED")
 POLLS = 12                  # read-backs after the cancel call, until the execution leaves RUNNING
@@ -54,15 +66,15 @@ def count(value, what: str) -> int:
     return parsed
 
 
-def observe(name: str, runner) -> str:
+def observe(name: str, runner, spec: CancelSpec = MEASURING) -> str:
     """The execution's state as Cloud Run reports it now."""
     resource = readback.gcloud_json(readback.execution_describe_argv(name), runner, "execution")
     meta = resource.get("metadata") if isinstance(resource.get("metadata"), dict) else {}
     if meta.get("name") != name:
         raise Refused(f"execution: the described resource is {meta.get('name')!r}, not {name!r}")
     owner = readback.labels_of(resource).get("run.googleapis.com/job")
-    if owner is not None and owner != readback.JOB:                          # cloudrun_readback's reading: an absent label is not a mismatch (the name is matched exactly above)
-        raise Refused(f"execution: it belongs to job {owner!r}, not {readback.JOB!r}")
+    if owner is not None and owner != spec.job:                              # cloudrun_readback's reading: an absent label is not a mismatch (the name is matched exactly above)
+        raise Refused(f"execution: it belongs to job {owner!r}, not {spec.job!r}")
     status = resource.get("status") if isinstance(resource.get("status"), dict) else None
     conditions = status.get("conditions") if status else None
     if not isinstance(conditions, list) or not conditions:
@@ -86,15 +98,16 @@ def observe(name: str, runner) -> str:
     return "RUNNING"
 
 
-def run(execution: str, dry_run: bool, environ: dict, runner=readback.default_runner, sleep=time.sleep, now: dt.datetime | None = None) -> tuple[int, dict]:
+def run(execution: str, dry_run: bool, environ: dict, runner=readback.default_runner, sleep=time.sleep, now: dt.datetime | None = None,
+        spec: CancelSpec = MEASURING) -> tuple[int, dict]:
     now = now or dt.datetime.now(dt.timezone.utc)
     try:
         request = json.loads(environ.get("KY_OPERATION_REQUEST") or "null")
     except ValueError:
         request = None
     request = request if isinstance(request, dict) else {}
-    record = {"schema": SCHEMA, "action": "cancel", "dry_run": dry_run, "plan": None, "status": None, "reason": None, "project": readback.PROJECT, "region": readback.REGION,
-              "job": readback.JOB, "execution": execution if readback.EXECUTION.fullmatch(execution or "") else None,
+    record = {"schema": spec.schema, "action": "cancel", "dry_run": dry_run, "plan": None, "status": None, "reason": None, "project": readback.PROJECT, "region": readback.REGION,
+              "job": spec.job, "execution": execution if spec.execution.fullmatch(execution or "") else None,
               "operation_id": request.get("operation_id"), "request_sha256": request_digest(request) if request else None,
               "state_before": None, "changed": False, "state": None, "polls": 0, "gcloud_calls": 0, "measured_at": now.isoformat(timespec="seconds")}
     calls = 0
@@ -103,13 +116,13 @@ def run(execution: str, dry_run: bool, environ: dict, runner=readback.default_ru
         nonlocal calls
         calls += 1
         try:
-            return observe(execution, runner)
+            return observe(execution, runner, spec)
         except Refused as e:
             raise Refused(f"{what}: {e}") from None
 
     try:
         if record["execution"] is None:
-            raise Refused("execution is not a brahma-build-pipeline-job execution name")
+            raise Refused(f"execution is not a {spec.job} execution name")
         if dry_run:
             record.update(plan=[readback.execution_describe_argv(execution), cancel_argv(execution), readback.execution_describe_argv(execution)], status="DRY_RUN")
             record["gcloud_calls"] = 0
@@ -148,12 +161,13 @@ def run(execution: str, dry_run: bool, environ: dict, runner=readback.default_ru
     return (0 if record["status"] == "OK" else 1), record
 
 
-def main(argv: list[str] | None = None, environ: dict | None = None, runner=readback.default_runner, sleep=time.sleep, out=sys.stdout) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0], allow_abbrev=False)
+def main(argv: list[str] | None = None, environ: dict | None = None, runner=readback.default_runner, sleep=time.sleep, out=sys.stdout,
+         spec: CancelSpec = MEASURING) -> int:
+    parser = argparse.ArgumentParser(description=spec.description, allow_abbrev=False)
     parser.add_argument("--execution", required=True)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
-    rc, record = run(args.execution, args.dry_run, os.environ if environ is None else environ, runner, sleep)
+    rc, record = run(args.execution, args.dry_run, os.environ if environ is None else environ, runner, sleep, spec=spec)
     out.write(json.dumps(record, sort_keys=True) + "\n")
     return rc
 

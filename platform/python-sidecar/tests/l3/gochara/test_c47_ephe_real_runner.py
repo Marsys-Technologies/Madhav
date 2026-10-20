@@ -107,7 +107,7 @@ def test_a_config_path_and_an_environment_path_that_differ_are_refused_on_real_c
         def __getattr__(self, name):
             raise AssertionError(f"connection used: {name}")
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="x", db_conn=Untouched(), dry_run=False,
-                      config={"chart_id": CHART_ID, "ephe_path": EPHE_PATH})
+                      config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "ephe_path": EPHE_PATH})
     for key in (writer_mod.RULES_SUBSTEP, f"{writer_mod.BODY_SUBSTEP_PREFIX}Sun", writer_mod.MANIFEST_SUBSTEP):
         with pytest.raises(writer_mod.EphemerisConfigRefusal, match="name different directories"):
             writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=key, label=key))
@@ -183,7 +183,7 @@ def test_the_first_substep_refuses_before_anything_is_written(monkeypatch):
 
         def __getattr__(self, name):                      # any USE of the connection (execute, cursor, transaction...) fails the test
             raise AssertionError(f"connection used: {name}")
-    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="x", db_conn=Boom(), dry_run=False, config={"chart_id": CHART_ID})
+    ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="x", db_conn=Boom(), dry_run=False, config={"chart_id": CHART_ID, "gochara_v5_final_rules": False})
     with pytest.raises(writer_mod.EphemerisConfigRefusal):
         writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=writer_mod.RULES_SUBSTEP, label="rules"))
 
@@ -273,7 +273,7 @@ def test_real_runner_with_the_variable_set_runs_the_slice(rworld, template):
     clone = _World(template)
     try:
         ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="cfg", db_conn=clone.conn, dry_run=False,
-                          config={"chart_id": CHART_ID, "ephe_path": EPHE_PATH, "horizon": writer_mod.DEFAULT_HORIZON})
+                          config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "ephe_path": EPHE_PATH, "horizon": writer_mod.DEFAULT_HORIZON})
         with clone.conn.transaction():
             writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=writer_mod.MANIFEST_SUBSTEP, label="manifest"))
         cfg_vector = clone.conn.execute("SELECT input_generation_vector FROM public.kala_gochara_publication WHERE chart_id = %s"

@@ -50,7 +50,7 @@ describe('F-122 §5 recurrence guard: elect.ts TrimmableSection coverage', () =>
       candidate_id: id,
       dosas_present: [], pariharas_applied: [], residual_dosas: [],
       supporting_factors: [], neutral_annotations: [],
-      net_standing: 'clean' as const,
+      net_standing: 'no_cited_dosa_detected' as const,
       convention_only_factors: [], convention_only_factor_count: 0,
       convention_only_keys: [], convention_only_note: null,
       adjudication_note: 'test',
@@ -65,7 +65,7 @@ describe('F-122 §5 recurrence guard: elect.ts TrimmableSection coverage', () =>
         gap_report: { statement: '', factor_families_evaluated: [], factors_not_computed: [], factors_not_in_corpus: [], census_disposition_counts: {}, census_state: 'not_in_corpus' as const, parihara_corpus_gap: null, next_occurrence: null },
         coverage_state: 'not_in_corpus' as const,
         coverage_reason: null,
-        density: { cited_rows_in_horizon: 0, convention_only_rows_in_horizon: 0, parihara_rules_total: 0, parihara_rules_muhurta_scope: 0 },
+        density: { cited_rows_in_horizon: 0, convention_only_rows_in_horizon: 0, parihara_rules_total: 0, parihara_rules_muhurta_scope: 0, parihara_rules_by_scope: {} },
       },
     } as unknown as Parameters<typeof candidatesSection.setArray>[0]
 

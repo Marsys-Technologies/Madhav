@@ -266,6 +266,15 @@ def candidate_null_shifts():
     return DEFAULT_NON_IDENTITY_SHIFTS
 
 
+#: Ledger key prefix recording the candidate preparation digest the null stage ran on.
+_PREPARATION_KEY = 'stage5prep:'
+
+#: Shifted-geometry offsets a candidate keeps so every class of a replicate
+#: block reads one build (PLAN §6.2(5)). Retained memory is unmeasured (K9); 1
+#: degrades to a rebuild per class, never to a different value.
+GEOMETRY_SHARE_DRAWS = S5.DEFAULT_BLOCK_SIZE
+
+
 @register(ASSET_ID)
 @records_swiss_backend
 class KaKshetraWriter(WriterBase):
@@ -296,7 +305,8 @@ class KaKshetraWriter(WriterBase):
         self._chart_id = ctx.config['chart_id']
         self._dry_run = bool(getattr(ctx, 'dry_run', False))
         self._class_cache: dict[str, _ClassContext] = {}
-        self._null_schedule = None
+        self._null_geometry = None
+        self._bound_preparation = None
         self._skipped: list[dict[str, str]] = []
         #: Machine-readable not-computed reasons that are NOT class skips — e.g.
         #: the rarity axis being unavailable. Surfaced in the substep notes so a
@@ -429,10 +439,22 @@ class KaKshetraWriter(WriterBase):
                                           label=f'dhara null {ec} — {DN.DEFAULT_REPLICATES} replicates → kala_field_null'))
                 work_steps.append(SubStep(key=f'stage5dhara:{ec}:2',
                                           label=f'dhara windows {ec} — load null → kala_field_windows'))
-            else:
+            elif not hasattr(self, '_generation'):
                 for b in range(1, n_blocks + 1):
                     work_steps.append(SubStep(key=f'stage5:{ec}:{b}',
                                               label=f'null {ec} replicate block {b}/{n_blocks}'))
+                work_steps.append(SubStep(key=f'stage5finalize:{ec}',
+                                          label=f'windows + robustness {ec}'))
+        if _ev5 != 'analytic' and hasattr(self, '_generation'):
+            # Candidate order is block-major: every class runs a replicate block
+            # while that block's shifted geometry is held, so it is built once
+            # (PLAN §6.2(5)). Each class still owns its blocks, accumulator and
+            # finalize; a partial class re-runs whole on resume as before.
+            for b in range(1, n_blocks + 1):
+                for ec in self._event_classes:
+                    work_steps.append(SubStep(key=f'stage5:{ec}:{b}',
+                                              label=f'null {ec} replicate block {b}/{n_blocks}'))
+            for ec in self._event_classes:
                 work_steps.append(SubStep(key=f'stage5finalize:{ec}',
                                           label=f'windows + robustness {ec}'))
         # Stages 6 → 6.5 → 8, in pipeline order and strictly after every
@@ -743,7 +765,10 @@ class KaKshetraWriter(WriterBase):
         lo = (block - 1) * size
         if hasattr(self, '_generation'):
             hi = min(block * size, candidate_null_shifts())
-            S5.run_field_block(cctx.evaluator, cctx.null_accumulator, start=lo, end=hi)
+            geometry = self._candidate_geometry(cctx.evaluator.envelopes)
+            self._bind_preparation(conn, cctx.evaluator.envelopes)
+            S5.run_field_block(cctx.evaluator, cctx.null_accumulator, start=lo, end=hi,
+                               geometry=geometry)
         else:
             hi = min(block * size, S5.DEFAULT_REPLICATES - 1)
             S5.run_null(cctx.evaluator, HORIZON_DAYS, S5.DEFAULT_REPLICATES,
@@ -2084,13 +2109,37 @@ class KaKshetraWriter(WriterBase):
 
     def _candidate_schedule(self):
         """The candidate's one shift schedule, shared by every class's field null
-        (PLAN §6.2(5)). Geometry and estimand stay per class."""
+        (PLAN §6.2(5)). The estimand stays per class. The jury builds its own
+        schedule over its exposure duration; cross-writer sharing is carried."""
         from services.kala_core import measure
-        schedule = getattr(self, '_null_schedule', None)
-        if schedule is None:
-            schedule = self._null_schedule = measure.prepare_schedule(
-                measure.Interval(0, HORIZON_DAYS), candidate_null_shifts())
-        return schedule
+        return measure.candidate_schedule(HORIZON_DAYS, candidate_null_shifts())
+
+    def _candidate_geometry(self, envelopes):
+        """The candidate's shifted transit/obstruction geometry, built once per
+        offset for every class (PLAN §6.2(2,5)); bound to the envelope set."""
+        geometry = getattr(self, '_null_geometry', None)
+        if geometry is None:
+            geometry = self._null_geometry = S5.shared_geometry(
+                envelopes, self._candidate_schedule(), capacity=GEOMETRY_SHARE_DRAWS)
+        return geometry
+
+    def _bind_preparation(self, conn, envelopes):
+        """Bind the null stage to the preparation content digest (PLAN §6.2(7)):
+        the schedule plus the envelope set. A ledger recorded for other content
+        refuses; a fresh ledger records this one. Checked once per process."""
+        from services.kala_core import measure
+        if getattr(self, '_bound_preparation', None) is not None or self._dry_run:
+            return
+        prep = measure.prepare_candidate(self._candidate_schedule(), S5.envelope_digest(envelopes))
+        with conn.cursor() as cur:
+            cur.execute('SELECT substep_key FROM build_substep_progress '
+                        'WHERE chart_id = %s AND asset_id = %s', (self._chart_id, ASSET_ID))
+            recorded = [r['substep_key'][len(_PREPARATION_KEY):] for r in S4._rows(cur)
+                        if r['substep_key'].startswith(_PREPARATION_KEY)]
+        measure.bind_preparation(recorded, prep)
+        if not recorded:
+            self._record_substep(conn, _PREPARATION_KEY + prep.digest, 0)
+        self._bound_preparation = prep
 
     def _new_null_accumulator(self, event_class):
         if hasattr(self, '_generation'):
@@ -2508,6 +2557,9 @@ class KaKshetraWriter(WriterBase):
                  f'snapshot={self._snapshot_id}',
                  f'dhara_sweep_semantics={sweep_semantics}',
                  f'classes={",".join(sorted(self._event_classes))}']
+        if hasattr(self, '_generation'):
+            # Content-bound resume (PLAN §6.2(7)): another schedule is another build.
+            parts.append(f'schedule={self._candidate_schedule().digest}')
         return hashlib.sha256('|'.join(parts).encode('utf-8')).hexdigest()
 
     def _load_completed_substeps(self, conn, chart_id, fingerprint) -> Optional[set[str]]:

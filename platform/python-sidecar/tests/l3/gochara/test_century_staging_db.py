@@ -23,6 +23,11 @@ for path in (str(FLEET), str(SCRIPTS), str(SCRIPTS / '__tests__')):
         sys.path.insert(0, path)
 
 
+# F-CHANNEL: the century request's profile, deferral switch and horizon. SYNTHETIC bounds (the real D-G9 horizon is life-event derived).
+CENTURY_ARGS = dict(classes='all', final_rules='true', defer_in_build_verify='false', horizon='2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00')
+CENTURY_CLI = ['--classes', 'all', '--final_rules', 'true', '--defer_in_build_verify', 'false', '--horizon', CENTURY_ARGS['horizon']]
+
+
 @pytest.fixture(autouse=True)
 def _scoped_content_unchanged(monkeypatch):
     scoped_content_unchanged(monkeypatch)
@@ -36,21 +41,28 @@ def test_century_real_rollback_then_exact_unmarked_staged_launch(measuring_world
     dw = measuring_world
     import century_launch
     import dispatch_v5_century_job as century
+    import backup_v5_small_test_job as backup
     import smalltest_safety_support as S
     import v5_small_test_shared as shared
+    # the scoped-backup content measurement is proved in test_backup_v5_small_test_scoped.py; this suite stages against the measuring world, whose database has no scoped relations
+    monkeypatch.setattr(backup, 'measure_scope_now', S.fixture_measure)
     monkeypatch.setenv('DATABASE_URL', dw.dsn)
     monkeypatch.setenv('KY_ROOT', str(tmp_path))
     rr, ar = S.absence_for(tmp_path)
-    req = S.authorize(tmp_path, dict(kind='century_dispatch_dryrun', item_id='J-4e', operation_id='rollback', args=dict(classes='all'),
+    req = S.authorize(tmp_path, dict(kind='century_dispatch_dryrun', item_id='J-4e', operation_id='rollback', args=dict(CENTURY_ARGS),
                                      absence_receipt=rr, absence_acceptance=ar))
     monkeypatch.setenv('KY_OPERATION_REQUEST', json.dumps(req))
-    base = ['--i-am-steward', '--after-settled-1', '--classes', 'all']
+    base = ['--i-am-steward', '--after-settled-1', *CENTURY_CLI]
 
     # 1. the dry run runs the REAL staging transaction and rolls it back: zero writes, an unmarked century manifest, the launch it would make
     century.main(base + ['--dry-run'])
     plan = json.loads(capsys.readouterr().out)
     assert plan['schema'] == 'ky.century_staging/1' and plan['status'] == 'ROLLED_BACK' and plan['rollback_confirmed'] is True
     assert 'gochara_v5_test_slice' not in plan['plan_manifest'] and plan['triggered_by'] == shared.CENTURY_TRIGGERED_BY
+    # F-CHANNEL: the request's three values are STAGED in the manifest (so plan_manifest_digest covers them) in the writer's canonical form
+    assert plan['plan_manifest'][shared.CENTURY_CONFIG_KEY] == dict(schema='gochara_v5_century_config/1', final_rules=True, defer_in_build_verify=False,
+                                                                     horizon=['2001-01-01T00:00:00+00:00', '2051-01-01T00:00:00+00:00'])
+    assert plan['args'] == CENTURY_ARGS and plan['plan_manifest_digest'] == shared.evidence_digest(plan['plan_manifest'])
     assert plan['launch_plan'] == century.launch_plan(plan['run_id']) and plan['launch_plan']['async_launch'] is True
     assert runs(dw) == (0, 0)
 
@@ -73,7 +85,7 @@ def test_century_real_rollback_then_exact_unmarked_staged_launch(measuring_world
     # 3. the real launch: staged ONCE, launched exactly that run, with the century trigger and an unmarked manifest
     monkeypatch.setenv('KY_OPERATION_REQUEST', json.dumps(S.authorize(tmp_path, req)))
     calls = []
-    result = century_launch.run(['--classes', 'all'], dispatcher=century,
+    result = century_launch.run(CENTURY_CLI, dispatcher=century,
                                 connect=lambda: psycopg.connect(dw.dsn, row_factory=psycopg.rows.dict_row), claim_dir=tmp_path / 'claims',
                                 launcher=lambda rid, timeout: calls.append(rid) or 'brahma-build-pipeline-job-centuryfixture')
     row = dw.conn.execute('SELECT id, state, triggered_by, plan_manifest, plan_manifest_digest FROM build_runs').fetchone()
@@ -85,7 +97,7 @@ def test_century_real_rollback_then_exact_unmarked_staged_launch(measuring_world
 
     # 4. never a second staging: the durable claim and the one-active-run rule both refuse a replay
     with pytest.raises(Exception):
-        century_launch.run(['--classes', 'all'], dispatcher=century, connect=lambda: psycopg.connect(dw.dsn, row_factory=psycopg.rows.dict_row),
+        century_launch.run(CENTURY_CLI, dispatcher=century, connect=lambda: psycopg.connect(dw.dsn, row_factory=psycopg.rows.dict_row),
                            claim_dir=tmp_path / 'claims', launcher=lambda rid, timeout: calls.append(rid) or 'brahma-build-pipeline-job-again')
     assert len(calls) == 1 and runs(dw) == (1, 1)
 

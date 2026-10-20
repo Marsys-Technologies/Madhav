@@ -4,7 +4,10 @@ Claims, one doctrine-grounded oracle each (the ruling is the source; B.10 -- mea
   C1  pre admits only assets outside the gochara surface and its dependents, post only inside it
   C2  the dependent set is transitive (ka_vighnakara via ka_sangam) and read from the registry rows
   C3  an unknown, blank, duplicated or empty asset list is refused
-  C4  the probe gate stays on: a forcing NIRMANA_FORCE_EXECUTE is refused before any database or orchestrator call
+  C4  an AMBIENT forcing NIRMANA_FORCE_EXECUTE is refused before any database or orchestrator call, flag or not
+  C4b the rebuild kind's explicit --force-execute (SR-BOLD-04-WITHDRAWN / U-K9P-01, option B) makes the orchestrator force for
+      exactly the delegated run, so no writer is probe-skipped and every one attests its grain; the environment is restored;
+      without the flag the probe stays on; the dry run does not take the flag
   C5  an admitted rebuild delegates once to publication with the exact run and assets, and a refused one never does
   C6  each layer dry-run runs the real operation, rolls it back and reads the rollback back; dry_run_passed is earned
   C7  a refused layer operation is reported REFUSED with dry_run_passed false and changes nothing
@@ -125,6 +128,44 @@ def test_admitted_rebuild_delegates_once_with_the_exact_run_and_assets(wired, mo
                                 'probe_mode': 'delta_skip_gate', 'force_execute': False}
 
 
+def _recording_delegate(seen, c):
+    def delegate(argv):
+        # runner.py execute_run forces exactly when this predicate holds (pinned by test_force_execute_is_refused_exactly_when_the_orchestrator_would_force)
+        seen.append(ADMISSION.force_refusal(ADMISSION.os.environ) is not None)
+        print(json.dumps({'status': 'BUILD_COMPLETED', 'run_id': c.build_id}))
+        return 0
+    return delegate
+
+
+@pytest.mark.parametrize('flag,forces', [(['--force-execute'], True), ([], False)])
+def test_the_force_flag_alone_decides_whether_the_orchestrator_probe_is_off(wired, monkeypatch, capsys, flag, forces):
+    registry(wired, {'ga_positions': [], 'ka_yojaka': ['ga_positions']})
+    c = prepare(wired, writers=('ka_yojaka',))
+    seen = []
+    monkeypatch.setattr(publication, 'main', _recording_delegate(seen, c))
+    code, out = run(['rebuild', '--run-id', c.build_id, '--assets', 'ka_yojaka', '--phase', 'pre', *flag], capsys)
+    assert code == 0 and seen == [forces]
+    assert out['admission']['force_execute'] is forces
+    assert out['admission']['probe_mode'] == ('force_execute' if forces else 'delta_skip_gate')
+    assert ADMISSION.force_refusal(ADMISSION.os.environ) is None      # the run's environment is restored
+
+
+def test_the_forced_environment_is_restored_when_the_run_raises(wired, monkeypatch, capsys):
+    registry(wired, {'ga_positions': [], 'ka_yojaka': ['ga_positions']})
+    c = prepare(wired, writers=('ka_yojaka',))
+    def boom(argv): raise RuntimeError('orchestrator crashed')
+    monkeypatch.setattr(publication, 'main', boom)
+    with pytest.raises(RuntimeError):
+        ADMISSION.main(['rebuild', '--run-id', c.build_id, '--assets', 'ka_yojaka', '--phase', 'pre', '--force-execute'])
+    assert ADMISSION.force_refusal(ADMISSION.os.environ) is None
+
+
+def test_the_dry_run_does_not_take_the_force_flag(capsys):
+    with pytest.raises(SystemExit):
+        ADMISSION.main(['rebuild-dryrun', '--run-id', str(uuid.uuid4()), '--assets', 'ka_yojaka', '--phase', 'pre', '--force-execute'])
+    capsys.readouterr()
+
+
 def test_phase_violation_is_refused_and_nothing_is_delegated(wired, monkeypatch, capsys):
     registry(wired, {'ga_positions': [], 'ka_gochara': ['ga_positions'], 'ka_sangam': ['ka_gochara']})
     c = prepare(wired, writers=('ka_gochara', 'ka_sangam'))
@@ -133,13 +174,15 @@ def test_phase_violation_is_refused_and_nothing_is_delegated(wired, monkeypatch,
     assert code == 2 and out['status'] == 'REFUSED' and 'ka_gochara' in out['reason']
 
 
-@pytest.mark.parametrize('operation', ['rebuild', 'rebuild-dryrun'])
+@pytest.mark.parametrize('operation', ['rebuild', 'rebuild-dryrun', 'rebuild+flag'])
 def test_forcing_environment_is_refused_before_any_connection(operation, monkeypatch, capsys):
+    flag = ['--force-execute'] if operation == 'rebuild+flag' else []
+    operation = 'rebuild' if flag else operation
     monkeypatch.setenv('DATABASE_URL', 'never-used')
     monkeypatch.setenv('NIRMANA_FORCE_EXECUTE', '1')
     monkeypatch.setattr(ADMISSION.psycopg, 'connect', lambda *a, **k: pytest.fail('refusal precedes any connection'))
     monkeypatch.setattr(publication, 'main', lambda argv: pytest.fail('refusal precedes delegation'))
-    code, out = run([operation, '--run-id', str(uuid.uuid4()), '--assets', 'ka_yojaka', '--phase', 'pre'], capsys)
+    code, out = run([operation, '--run-id', str(uuid.uuid4()), '--assets', 'ka_yojaka', '--phase', 'pre', *flag], capsys)
     assert code == 2 and out['status'] == 'REFUSED' and 'NIRMANA_FORCE_EXECUTE' in out['reason']
 
 

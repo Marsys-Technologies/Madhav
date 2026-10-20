@@ -7,18 +7,31 @@ from __future__ import annotations
 
 import datetime as dt
 import importlib
+import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import pytest
 
 from pravaha_tracker import cli, state
-from pravaha_tracker.state import build_snapshot, load_closure, reconciliation_line
+from pravaha_tracker.state import build_snapshot, reconciliation_line
 
 NOW = dt.datetime(2026, 10, 18, tzinfo=dt.timezone.utc)
 REPO = Path(__file__).resolve().parents[5]
 MODEL_PATH = REPO / "00_ARCHITECTURE/control/kalayantra/plan_model.json"
 PARTS = ("finish_path", "side_work", "deferred", "cancelled", "bookkeeping_decisions", "done_outside_plan", "unclassified")
+
+
+def _closure(model):
+    """The closure of THIS model: a pure function of plan_model.json + ACCEPTANCE_ROOTS (kyclosure.compute). The committed
+    CLOSURE_v3.json is CI-generated from main (SR-CHURN-CUT 3), so a model change is pinned against the recomputation."""
+    spec = importlib.util.spec_from_file_location("kyclosure", REPO / "00_ARCHITECTURE/briefs/kalayantra/fleet/kyclosure.py")
+    kyclosure = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = kyclosure     # dataclass-style lookups need the module registered
+    spec.loader.exec_module(kyclosure)
+    roots = json.loads((REPO / "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v3.json").read_text(encoding="utf-8"))
+    return kyclosure.compute(model, roots)
 
 
 def _ev(item, state_, **kw):
@@ -132,7 +145,7 @@ def test_repo_root_honours_pravaha_repo(monkeypatch, tmp_path):
 
 def test_the_live_model_reconciles_to_its_item_count():
     model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
-    rec = build_snapshot(model, [], {}, {}, {}, now=NOW, closure=load_closure(model))["overall"]["reconciliation"]
+    rec = build_snapshot(model, [], {}, {}, {}, now=NOW, closure=_closure(model))["overall"]["reconciliation"]
     assert rec["plan_items"] == len(model["items"]) == rec["sum_of_parts"]
     assert rec["unclassified"]["total"] == 0
-    assert rec["finish_path"]["total"] == 183 and reconciliation_line(rec).startswith(f"All {len(model['items'])} plan items")
+    assert rec["finish_path"]["total"] == 181 and reconciliation_line(rec).startswith(f"All {len(model['items'])} plan items")   # 183 -> 181: VC-1 and VC-2 leave with the retired VC-2 (SR-CLOSE-NOW 5)

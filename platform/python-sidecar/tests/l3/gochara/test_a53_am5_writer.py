@@ -59,9 +59,8 @@ def run(am5, monkeypatch, tmp_path):
     w = writer_mod.GocharaV5Writer()
 
     def step(key, final_rules=False):
-        config = {"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}
-        if final_rules:                 # main made the final (ND-H 1.2.0) rules an explicit opt-in
-            config["gochara_v5_final_rules"] = True
+        config = {"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe,
+                  "gochara_v5_final_rules": bool(final_rules)}       # main made the final (ND-H 1.2.0) rules an explicit opt-in; F-CHANNEL: the profile is always named
         ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-1", db_conn=am5, config=config,
                           dry_run=False)
         with am5.transaction():

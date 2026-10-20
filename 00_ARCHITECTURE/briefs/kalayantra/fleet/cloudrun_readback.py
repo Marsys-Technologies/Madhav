@@ -37,6 +37,14 @@ says so in `corpus.status` rather than carrying a green; `provenance.image_attes
 revision label. Shapes follow the Cloud Run v1 Job/Execution resources (`spec.template.spec.template.spec` for the job, the path
 deploy.yml already reads; `spec.template.spec` for an execution, as gochara_seal_execution_check.py reads it) — (I) INTERPRETATION: no
 live response was captured for this build; the first real run is the proof of the shape, and a different shape REFUSES, never guesses.
+Second job (W3W4 pack verify E2): the optional `--job gochara-verification-job` measures the VERIFICATION Cloud Run job instead (the only other job this reader
+will name; an unlisted name exits 2 before a cloud call). Its execution name must be `gochara-verification-job-<suffix>`. The job is deployed by
+`gochara-verification-job-deploy.yml` from the same pipeline repository but by IMMUTABLE DIGEST (`<repository>@sha256:<64-hex>`, no commit tag), so the image
+reference must have that shape (a tag or another repository is refused) and no registry call is made; the commit is the job's own `GOCHARA_RUNNER_COMMIT`
+variable, shown only when it is 40 lowercase hex (as is `GOCHARA_RUNNER_IMAGE_DIGEST` when it is `sha256:<64-hex>`; the secret binding shows its NAME only).
+`logs true` on that job reads the job's ONE final report instead of build-job lines: the same paged reader with a fixed filter for lines that carry `"classes"`;
+`logs.report` is the parsed report object only when exactly ONE well-formed report was read and the read was complete, otherwise null beside
+`reports_found` / `unreadable_lines` / `truncated` (never a guess). Without `--job` every record is byte-for-byte what it was.
 Standard library only: the executor copies this single file out of origin/main and runs it, so it cannot import its siblings."""
 from __future__ import annotations
 
@@ -57,9 +65,16 @@ IMAGE_REPO = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
 EXECUTION = re.compile(r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*")      # smalltest_launch.EXECUTION, byte for byte
 TAG_REF = re.compile(re.escape(IMAGE_REPO) + r":([0-9a-f]{40})")
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
+VERIFICATION_JOB = "gochara-verification-job"                            # .github/workflows/gochara-verification-job-deploy.yml VERIFICATION_JOB
+VERIFICATION_EXECUTION = re.compile(r"gochara-verification-job-[a-z0-9]+(?:-[a-z0-9]+)*")
+EXECUTIONS = {JOB: EXECUTION, VERIFICATION_JOB: VERIFICATION_EXECUTION}  # the only jobs this reader names, each with its execution-name shape
+IMMUTABLE_REF = re.compile(re.escape(IMAGE_REPO) + r"@(sha256:[0-9a-f]{64})")
 ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,127}")
 # Plain values that may be shown. Everything else is a name only; a new key needs a reviewed edit here.
 ENV_VALUE_ALLOWLIST = frozenset({"GCP_PROJECT", "PUBSUB_TOPIC", "KA_KSHETRA_HASH_SPILL_DIR", "SE_EPHE_PATH", "SWE_EPHE_PATH", "PYTHONPATH"})
+# Plain values that may be shown ONLY in their exact public-identifier shape (a commit, an image digest): the verification job's runner identity.
+ENV_VALUE_SHAPES = {"GOCHARA_RUNNER_COMMIT": re.compile(r"[0-9a-f]{40}"), "GOCHARA_RUNNER_IMAGE_DIGEST": DIGEST}
+REPORT_MARK = '"classes"'                                                # the verification job's final report is the ONE JSON line carrying this key
 GCLOUD_TIMEOUT_S = 120
 LOG_PAGE_SIZE = 1000                                                     # entries per `gcloud logging read` call; a short page proves the read reached the oldest entry
 LOG_MAX_PAGES = 60                                                       # hard cap: 60,000 entries, far above a 26-class measuring build; beyond it `truncated` is true and counts read null
@@ -84,8 +99,8 @@ class Refused(RuntimeError):
     pass
 
 
-def job_describe_argv() -> list[str]:
-    return ["gcloud", "run", "jobs", "describe", JOB, f"--project={PROJECT}", f"--region={REGION}", "--format=json"]
+def job_describe_argv(job_name: str = JOB) -> list[str]:
+    return ["gcloud", "run", "jobs", "describe", job_name, f"--project={PROJECT}", f"--region={REGION}", "--format=json"]
 
 
 def image_describe_argv(commit: str) -> list[str]:
@@ -96,11 +111,11 @@ def execution_describe_argv(name: str) -> list[str]:
     return ["gcloud", "run", "jobs", "executions", "describe", name, f"--project={PROJECT}", f"--region={REGION}", "--format=json"]
 
 
-def logs_filter(name: str, not_after: str | None = None) -> str:
-    """The one fixed filter; `not_after` (page 2 onward) is a CURSOR_TIME-validated entry time, the only thing that ever varies."""
-    flt = (f'resource.type="cloud_run_job" AND resource.labels.job_name="{JOB}" AND resource.labels.location="{REGION}" '
-           f'AND labels."run.googleapis.com/execution_name"="{name}" '
-           f'AND (textPayload:"STRETCH_SINK" OR textPayload:"asset.substep")')
+def logs_filter(name: str, not_after: str | None = None, job_name: str = JOB) -> str:
+    """The one fixed filter per job; `not_after` (page 2 onward) is a CURSOR_TIME-validated entry time, the only thing that ever varies."""
+    flt = (f'resource.type="cloud_run_job" AND resource.labels.job_name="{job_name}" AND resource.labels.location="{REGION}" '
+           f'AND labels."run.googleapis.com/execution_name"="{name}" ')
+    flt += ('AND (textPayload:"STRETCH_SINK" OR textPayload:"asset.substep")' if job_name == JOB else 'AND textPayload:"\\"classes\\""')
     if not_after is not None:
         if not CURSOR_TIME.fullmatch(not_after):
             raise Refused("logs: a paging cursor is not a strict RFC 3339 UTC time")
@@ -108,8 +123,8 @@ def logs_filter(name: str, not_after: str | None = None) -> str:
     return flt
 
 
-def logs_read_argv(name: str, not_after: str | None = None) -> list[str]:
-    flt = logs_filter(name, not_after)
+def logs_read_argv(name: str, not_after: str | None = None, job_name: str = JOB) -> list[str]:
+    flt = logs_filter(name, not_after, job_name)
     return ["gcloud", "logging", "read", flt, f"--project={PROJECT}", f"--limit={LOG_PAGE_SIZE}", "--order=desc", "--format=json"]
 
 
@@ -197,7 +212,7 @@ def environment(container: dict) -> list[dict]:
             shown.append({"name": name, "source": "secret", "secret": ref["name"], "version": ref.get("key") if isinstance(ref.get("key"), str) else None})
         elif isinstance(entry.get("value"), str):
             row = {"name": name, "source": "value"}
-            if name in ENV_VALUE_ALLOWLIST:
+            if name in ENV_VALUE_ALLOWLIST or (name in ENV_VALUE_SHAPES and ENV_VALUE_SHAPES[name].fullmatch(entry["value"])):
                 row["value"] = entry["value"]
             else:
                 row["value_withheld"] = True
@@ -225,33 +240,42 @@ def registry_digest(commit: str, runner) -> str:
     return digest
 
 
-def measure_job(runner) -> tuple[dict, str]:
-    job = gcloud_json(job_describe_argv(), runner, "job")
+def measure_job(runner, job_name: str = JOB) -> tuple[dict, str | None]:
+    job = gcloud_json(job_describe_argv(job_name), runner, "job")
     name = (job.get("metadata") or {}).get("name") if isinstance(job.get("metadata"), dict) else None
-    if name != JOB:
-        raise Refused(f"job: the described resource is {name!r}, not {JOB!r}")
+    if name != job_name:
+        raise Refused(f"job: the described resource is {name!r}, not {job_name!r}")
     task = job_task_spec(job)
     container = only_container(task, "job")
     reference = need(container, "image", "job")
-    match = TAG_REF.fullmatch(reference)
-    if not match:
-        raise Refused("job: the image reference is not <pipeline repository>:<40-hex commit>; no commit can be tied to it")
-    commit = match.group(1)
     limits = (container.get("resources") or {}).get("limits") if isinstance(container.get("resources"), dict) else None
     labels = labels_of(job)
-    if labels.get("commit-sha", commit) != commit:
-        raise Refused("job: the job's commit-sha label disagrees with its image tag")
+    shown = environment(container)
+    if job_name == JOB:
+        match = TAG_REF.fullmatch(reference)
+        if not match:
+            raise Refused("job: the image reference is not <pipeline repository>:<40-hex commit>; no commit can be tied to it")
+        commit = match.group(1)
+        if labels.get("commit-sha", commit) != commit:
+            raise Refused("job: the job's commit-sha label disagrees with its image tag")
+        image = {"reference": reference, "tag": commit, "digest": registry_digest(commit, runner)}
+    else:                                                                # the verification job: immutable digest, no tag, nothing for the registry to resolve
+        match = IMMUTABLE_REF.fullmatch(reference)
+        if not match:
+            raise Refused("job: the image reference is not <pipeline repository>@sha256:<64-hex>; a tag or another repository is refused")
+        commit = next((row["value"] for row in shown if row["name"] == "GOCHARA_RUNNER_COMMIT" and "value" in row), None)
+        image = {"reference": reference, "tag": None, "digest": match.group(1)}
     maximum = task.get("maxRetries")
     return {
-        "name": JOB,
-        "image": {"reference": reference, "tag": commit, "digest": registry_digest(commit, runner)},
+        "name": job_name,
+        "image": image,
         "service_account": need(task, "serviceAccountName", "job"),
         "timeout_seconds": _count(task.get("timeoutSeconds"), "job.timeoutSeconds", required=True),
         "max_retries": _count(maximum, "job.maxRetries", required=False),
         "memory": need(limits, "memory", "job.resources.limits"),
         "cpu": need(limits, "cpu", "job.resources.limits"),
         "labels": labels,
-        "environment": environment(container),
+        "environment": shown,
     }, commit
 
 
@@ -274,14 +298,14 @@ def _time(value, what):
     return value
 
 
-def measure_execution(name: str, job_reference: str, runner) -> dict:
+def measure_execution(name: str, job_reference: str, runner, job_name: str = JOB) -> dict:
     resource = gcloud_json(execution_describe_argv(name), runner, "execution")
     meta = resource.get("metadata") if isinstance(resource.get("metadata"), dict) else {}
     if meta.get("name") != name:
         raise Refused(f"execution: the described resource is {meta.get('name')!r}, not {name!r}")
     owner = labels_of(resource).get("run.googleapis.com/job")
-    if owner is not None and owner != JOB:
-        raise Refused(f"execution: it belongs to job {owner!r}, not {JOB!r}")
+    if owner is not None and owner != job_name:
+        raise Refused(f"execution: it belongs to job {owner!r}, not {job_name!r}")
     container = only_container(execution_task_spec(resource), "execution")
     image = need(container, "image", "execution")
     status = resource.get("status") if isinstance(resource.get("status"), dict) else None
@@ -468,7 +492,7 @@ def _entry_key(entry):
     return insert if isinstance(insert, str) and insert else json.dumps(entry, sort_keys=True, separators=(",", ":"))
 
 
-def _read_all_pages(name: str, runner, monotonic) -> tuple[list, int, str | None]:
+def _read_all_pages(name: str, runner, monotonic, job_name: str = JOB) -> tuple[list, int, str | None]:
     """Newest-first pages until a short page (complete) or a stop condition. Returns (entries, pages_read, truncation_reason|None)."""
     seen: dict[str, dict] = {}
     cursor = None
@@ -479,7 +503,7 @@ def _read_all_pages(name: str, runner, monotonic) -> tuple[list, int, str | None
             return list(seen.values()), pages, "page_cap"
         if pages and monotonic() - started > LOG_BUDGET_S:
             return list(seen.values()), pages, "time_budget"
-        page = gcloud_json(logs_read_argv(name, cursor), runner, "logs", shape=list)
+        page = gcloud_json(logs_read_argv(name, cursor, job_name), runner, "logs", shape=list)
         if any(not isinstance(entry, dict) for entry in page):
             raise Refused("logs: an entry is not a JSON object")
         pages += 1
@@ -500,7 +524,42 @@ def _read_all_pages(name: str, runner, monotonic) -> tuple[list, int, str | None
         cursor = f"{oldest[0]}.{oldest[1]}Z"
 
 
-def measure_logs(name: str, runner, monotonic=time.monotonic) -> dict:
+def measure_report_logs(name: str, runner, monotonic, job_name: str) -> dict:
+    """The verification job's log: its ONE final report (a JSON object line with a `classes` object and a `generation`). `report` is that object only when
+    exactly one was read AND the read reached the oldest entry; zero, several, an unreadable candidate line or a truncated read leave it null beside the counts."""
+    entries, pages, reason = _read_all_pages(name, runner, monotonic, job_name)
+    floor = dt.datetime.min.replace(tzinfo=dt.timezone.utc)
+    entries.sort(key=lambda e: (_log_time(e.get("timestamp")) or floor, _entry_key(e)), reverse=True)
+    reports, unreadable = [], 0
+    for entry in entries:
+        for line in _entry_lines(entry):
+            text = line.strip()
+            if REPORT_MARK not in text or not text.startswith("{"):
+                continue                                                 # prose that merely names the word is not a candidate
+            body = _object_from(text)
+            if body is None:
+                unreadable += 1                                          # a cut-short or malformed object line: counted, never skipped silently
+            elif isinstance(body.get("classes"), dict) and "generation" in body:
+                reports.append(body)
+    truncated = reason is not None
+    return {
+        "execution": name,
+        "filter": logs_filter(name, None, job_name),
+        "page_size": LOG_PAGE_SIZE,
+        "max_pages": LOG_MAX_PAGES,
+        "pages_read": pages,
+        "entries_returned": len(entries),
+        "truncated": truncated,
+        "truncation_reason": reason,
+        "unreadable_lines": unreadable,
+        "reports_found": len(reports),
+        "report": reports[0] if len(reports) == 1 and not truncated and not unreadable else None,
+    }
+
+
+def measure_logs(name: str, runner, monotonic=time.monotonic, job_name: str = JOB) -> dict:
+    if job_name != JOB:
+        return measure_report_logs(name, runner, monotonic, job_name)
     entries, pages, reason = _read_all_pages(name, runner, monotonic)
     # a total order, so equal inputs give equal output whatever order gcloud broke time ties in: newest first, then insertId/JSON
     floor = dt.datetime.min.replace(tzinfo=dt.timezone.utc)
@@ -551,15 +610,15 @@ def measure_logs(name: str, runner, monotonic=time.monotonic) -> dict:
 
 # ───────────── metrics (SR-BOLD-09): CPU / memory utilisation of one execution from Cloud Monitoring ─────────────
 
-def metrics_filter(metric_type: str) -> str:
+def metrics_filter(metric_type: str, job_name: str = JOB) -> str:
     """Constants only; the execution is scoped by the time window (the metric label that would name it is not relied on)."""
     return (f'metric.type="{metric_type}" AND resource.type="{METRICS_RESOURCE_TYPE}" '
-            f'AND resource.labels.job_name="{JOB}" AND resource.labels.location="{REGION}"')
+            f'AND resource.labels.job_name="{job_name}" AND resource.labels.location="{REGION}"')
 
 
-def metrics_read_argv(metric_type: str, start: str, end: str) -> list[str]:
+def metrics_read_argv(metric_type: str, start: str, end: str, job_name: str = JOB) -> list[str]:
     # (I) INTERPRETATION: `gcloud monitoring time-series list` with these flags is the read route; no live call was made for this build.
-    return ["gcloud", "monitoring", "time-series", "list", f"--filter={metrics_filter(metric_type)}", f"--interval-start-time={start}",
+    return ["gcloud", "monitoring", "time-series", "list", f"--filter={metrics_filter(metric_type, job_name)}", f"--interval-start-time={start}",
             f"--interval-end-time={end}", f"--project={PROJECT}", "--format=json"]
 
 
@@ -692,16 +751,16 @@ def _cpu_shape(report, vcpus):
     return {"allocated_vcpus": vcpus, "mean_vcpus": mean_v, "p95_vcpus": p95_v, "shape": shape}
 
 
-def _metric_leg(metric_type, start, end, runner):
+def _metric_leg(metric_type, start, end, runner, job_name=JOB):
     try:
-        series = gcloud_json(metrics_read_argv(metric_type, start, end), runner, f"metrics {metric_type}", shape=list)
+        series = gcloud_json(metrics_read_argv(metric_type, start, end, job_name), runner, f"metrics {metric_type}", shape=list)
     except Refused as exc:
         return {"metric_type": metric_type, "status": "QUERY_FAILED", "reason": str(exc), "series": 0, "points": 0, "samples": 0,
                 "mean": None, "p95": None, "max_upper_bound": None}
     return _series_report(series, metric_type)
 
 
-def measure_metrics(execution: dict, job: dict, runner, clock) -> dict:
+def measure_metrics(execution: dict, job: dict, runner, clock, job_name: str = JOB) -> dict:
     start, finish = _utc(execution.get("start_time")), _utc(execution.get("completion_time"))
     end = finish or clock()
     allocated = {"cpu_vcpus": _vcpus(job.get("cpu")), "memory_bytes": _bytes(job.get("memory"))}
@@ -715,22 +774,25 @@ def measure_metrics(execution: dict, job: dict, runner, clock) -> dict:
         return {**out, "window": None, "cpu": {**gone, "allocated_vcpus": allocated["cpu_vcpus"], "mean_vcpus": None, "p95_vcpus": None, "shape": None},
                 "memory": {**gone, "peak_bytes_upper_bound": None}}
     begin, stop = start.strftime(METRIC_TIME), end.strftime(METRIC_TIME)
-    cpu, memory = _metric_leg(CPU_METRIC, begin, stop, runner), _metric_leg(MEMORY_METRIC, begin, stop, runner)
+    cpu, memory = _metric_leg(CPU_METRIC, begin, stop, runner, job_name), _metric_leg(MEMORY_METRIC, begin, stop, runner, job_name)
     limit = allocated["memory_bytes"]
     memory["peak_bytes_upper_bound"] = None if limit is None or memory["max_upper_bound"] is None else memory["max_upper_bound"] * limit
     return {**out, "window": {"start": begin, "end": stop, "end_is_now": finish is None},
-            "filters": {"cpu": metrics_filter(CPU_METRIC), "memory": metrics_filter(MEMORY_METRIC)},
+            "filters": {"cpu": metrics_filter(CPU_METRIC, job_name), "memory": metrics_filter(MEMORY_METRIC, job_name)},
             "cpu": {**cpu, **_cpu_shape(cpu, allocated["cpu_vcpus"])}, "memory": memory}
 
 
-def measure(execution: str | None, runner=default_runner, clock=lambda: dt.datetime.now(dt.timezone.utc), *, logs: bool = False, metrics: bool = False) -> dict:
-    if execution is not None and not EXECUTION.fullmatch(execution):
-        raise Refused("the execution name is not brahma-build-pipeline-job-<suffix>")
+def measure(execution: str | None, runner=default_runner, clock=lambda: dt.datetime.now(dt.timezone.utc), *, logs: bool = False, metrics: bool = False,
+            job_name: str = JOB) -> dict:
+    if job_name not in EXECUTIONS:
+        raise Refused(f"the job is not one this reader names: {sorted(EXECUTIONS)}")
+    if execution is not None and not EXECUTIONS[job_name].fullmatch(execution):
+        raise Refused(f"the execution name is not {job_name}-<suffix>")
     if logs and execution is None:
         raise Refused("logs can only be read for one execution: --logs requires --execution")
     if metrics and execution is None:
         raise Refused("metrics can only be read for one execution: --metrics requires --execution")
-    job, commit = measure_job(runner)
+    job, commit = measure_job(runner, job_name)
     record = {
         "schema": SCHEMA,
         "status": "MEASURED",
@@ -739,7 +801,8 @@ def measure(execution: str | None, runner=default_runner, clock=lambda: dt.datet
         "region": REGION,
         "job": job,
         "provenance": {
-            "basis": "image tag is the 40-hex commit deploy.yml built and pushed (tag :${DEPLOY_SHA}); digest is what that tag resolves to at measured_at",
+            "basis": ("image tag is the 40-hex commit deploy.yml built and pushed (tag :${DEPLOY_SHA}); digest is what that tag resolves to at measured_at" if job_name == JOB else
+                      "the verification job references its image by immutable digest (gochara-verification-job-deploy.yml); the commit is the job's own GOCHARA_RUNNER_COMMIT variable when the readback shows it, else null"),
             "image_commit": commit,
             "job_label_commit_sha": job["labels"].get("commit-sha"),
             "image_attests_commit": False,
@@ -749,22 +812,23 @@ def measure(execution: str | None, runner=default_runner, clock=lambda: dt.datet
             "reason": "no image label, registry field or Cloud Run field records the ephemeris corpus digest; it can only be read by running the image",
             "build_gate_read_at": {"path": "platform/python-sidecar/Dockerfile.pipeline", "commit": commit},
         },
-        "execution": measure_execution(execution, job["image"]["reference"], runner) if execution is not None else None,
-        "logs": measure_logs(execution, runner) if logs else None,
+        "execution": measure_execution(execution, job["image"]["reference"], runner, job_name) if execution is not None else None,
+        "logs": measure_logs(execution, runner, job_name=job_name) if logs else None,
     }
     if metrics:                                                          # the key exists only when asked: a run without --metrics prints what it always printed
-        record["metrics"] = measure_metrics(record["execution"], job, runner, clock)
+        record["metrics"] = measure_metrics(record["execution"], job, runner, clock, job_name)
     return record
 
 
 def cli(argv=None, runner=default_runner) -> int:
     parser = argparse.ArgumentParser(description="Read-only measurement of the pipeline Cloud Run job.", allow_abbrev=False)
     parser.add_argument("--execution", default=None)
+    parser.add_argument("--job", default=JOB, choices=tuple(EXECUTIONS))      # the executor appends `--job <name>`; absent = the pipeline job
     parser.add_argument("--logs", nargs="?", const="true", default=None, choices=("true", "True"))      # the executor appends `--logs true`
     parser.add_argument("--metrics", nargs="?", const="true", default=None, choices=("true", "True"))      # SR-BOLD-09
     args = parser.parse_args(argv)                                       # any other argument exits 2 before a cloud call
     try:
-        record = measure(args.execution, runner, logs=args.logs is not None, metrics=args.metrics is not None)
+        record = measure(args.execution, runner, logs=args.logs is not None, metrics=args.metrics is not None, job_name=args.job)
         code = 0
     except Refused as exc:
         record, code = {"schema": SCHEMA, "status": "REFUSED", "reason": str(exc)}, 1
