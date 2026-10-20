@@ -16,6 +16,8 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import generated_paths  # noqa: E402  (SR-CHURN-CUT 3: the registry and the closure derivation)
 OUTPUTS = [
     'platform/src/generated/muhurta_undertakings.generated.ts',
     'platform/src/lib/retrieval/signal_glossary.generated.ts',
@@ -34,6 +36,9 @@ PROJECTION_OUTPUTS = [
 ] + ['platform-mcp/src/generated/mcp_surface_profiles.generated.ts',
      '00_ARCHITECTURE/briefs/retrieval_impl/R1_PROJECTION_COMPILER_REPORT.md']
 OUTPUTS += PROJECTION_OUTPUTS
+# SR-CHURN-CUT 3: the plan closure is a pure function of plan_model.json + ACCEPTANCE_ROOTS (kyclosure.compute); it is
+# computed here from the reviewed source, so a feature PR never carries it (changed_outputs refuses it).
+OUTPUTS.append(generated_paths.CLOSURE)
 # These are governed historical receipts or database observations, not offline
 # compiler outputs. Their existing review/hash guards remain authoritative.
 SOURCE_RECORDS = ('platform/src/generated/harvest/', 'platform/src/generated/census/',
@@ -89,6 +94,9 @@ def generate(destination: Path, base: str | None):
         bad = changed_outputs(changed)
         if bad:
             raise ValueError('machine-owned outputs must not be edited in branches: ' + ', '.join(bad))
+        append_only = generated_paths.shard_violations(generated_paths.diff_changes(ROOT, base, 'HEAD'))
+        if append_only:
+            raise ValueError('; '.join(append_only))
     # Generate leaf mirrors before the census/snapshot dependency chain, then
     # independently check every compiler and the existing runtime digest guard.
     node_scripts = ['scripts/generate_muhurta_undertakings.ts',
@@ -113,6 +121,7 @@ def generate(destination: Path, base: str | None):
     changed = [p for p in PROJECTION_OUTPUTS if first[p] != (ROOT / p).read_bytes()]
     if changed:
         raise ValueError('nondeterministic projection outputs: ' + ', '.join(changed))
+    generated_paths.write_closure(ROOT)
     destination.mkdir(parents=True, exist_ok=True)
     import shutil
     for path in OUTPUTS:

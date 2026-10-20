@@ -12,6 +12,7 @@ Everything runs on the real applied schema (1081 + 1152–1157 + 1206) with the 
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -20,7 +21,7 @@ from pipeline.orchestrator.writers import ContextSpec, SubStep
 from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
 from services.gochara_kernel import evaluator as ev
 from services.gochara_kernel import record_store as rs
-from services.gochara_kernel.dasha_read import make_period_rows_for
+from services.gochara_kernel.dasha_read import make_period_rows_for_snapshot
 from services.gochara_kernel.record_verifier import verify_p1_support
 from services.gochara_kernel.rule_registry import RuleRegistryStore
 from services.gochara_kernel.substrate import SkyEventStore, assign_occurrence_ordinals, physical_object_id
@@ -30,6 +31,7 @@ from .test_a53_inventory import CHART, CHART_ID, H0, H1, create_am5_database, dr
 
 UTC = timezone.utc
 GEN = writer_mod.GENERATION
+HELD_MIGRATION_SQL = Path(__file__).resolve().parents[4] / "migrations" / "1398_gochara_snapshot_dasha_held.sql"
 P1_PREREQS = [["period_running_at", "1.0.0"], ["natal_bhava_relationship", "1.0.0"],
               ["transit_relation", "1.0.0"]]
 
@@ -52,10 +54,25 @@ def world(monkeypatch, tmp_path):
     yield from _world(monkeypatch, tmp_path, faithful=False)
 
 
-def _world(monkeypatch, tmp_path, faithful):
+@pytest.fixture()
+def legacy_world(monkeypatch, tmp_path):
+    """The same world on a LEGACY snapshot (migration 1305 not applied): the verifier reads the pinned periods from live L1, as before G12."""
+    yield from _world(monkeypatch, tmp_path, faithful=False, apply_1305=False)
+
+
+@pytest.fixture()
+def held_world(monkeypatch, tmp_path):
+    """The copy world with the snapshot's `consumed_dasha_held` record (migration 1398, the real file): which (lord, level) pairs the pinned build
+    HOLDS, whether or not their rows overlap the horizon."""
+    yield from _world(monkeypatch, tmp_path, faithful=False, apply_held=True)
+
+
+def _world(monkeypatch, tmp_path, faithful, apply_1305=True, apply_held=False):
     import psycopg
-    admin, name, dsn = create_am5_database("p1s", faithful=faithful)
+    admin, name, dsn = create_am5_database("p1s", faithful=faithful, apply_1305=apply_1305)
     conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    if apply_held:
+        conn.execute(HELD_MIGRATION_SQL.read_text())
     monkeypatch.setattr(writer_mod, "calc_sidereal_lon", lambda body, jd, ephe: (10.0, 2))
     RuleRegistryStore(conn).seed()
     ephe = make_ephe(tmp_path, monkeypatch)
@@ -69,6 +86,45 @@ def _world(monkeypatch, tmp_path, faithful):
         with conn.transaction():
             return w.run_substep(ctx, SubStep(key=key, label=key))
 
+    def _fill_to_the_contract():
+        """G12 (1305): a snapshot is taken only over an L1 that satisfies the database's REQUIRED-SCOPE contract: at each level MD/AD/PD the periods are contiguous and cover the
+        horizon, and every AD/PD has a parent at the level above that CONTAINS it (hierarchy). These helpers used to leave honest GAPS between the periods a test names and
+        insert them parentless; in a copy-bearing world they are given their parents (the MD for an AD, the AD containing a PD) and the uncovered parts of levels 2 and 3 are
+        filled with a filler lord (Ketu) INSIDE the right parent, so the named periods are unchanged and the rest of the horizon is simply 'another lord running'. A legacy
+        world (1305 not applied) keeps the gaps and the parentless rows."""
+        if not apply_1305:
+            return
+        md = conn.execute("SELECT dasha_row_id FROM public.chart_dashas WHERE level_n = 1 ORDER BY start_iso LIMIT 1").fetchone()[0]
+        conn.execute("UPDATE public.chart_dashas SET parent_row_id = %s WHERE level_n = 2 AND parent_row_id IS NULL", (md,))
+        counter = [0]
+
+        def cover(level, segments):
+            for lo, hi, parent in segments:
+                rows = conn.execute("SELECT start_iso, end_iso FROM public.chart_dashas WHERE level_n = %s AND start_iso < %s AND end_iso > %s ORDER BY start_iso",
+                                    (level, hi, lo)).fetchall()
+                cursor, fillers = lo, []
+                for a, b in rows:
+                    if a > cursor:
+                        fillers.append((cursor, min(a, hi)))
+                    cursor = max(cursor, b)
+                    if cursor >= hi:
+                        break
+                if cursor < hi:
+                    fillers.append((cursor, hi))
+                for a, b in fillers:
+                    counter[0] += 1
+                    conn.execute(
+                        "INSERT INTO public.chart_dashas(dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id,"
+                        " verification_pass_status) VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,%s,'Ketu',%s,%s,%s,'two_pass_verified')",
+                        (str(uuid.UUID(int=1000 + counter[0])), CHART_ID, level, parent, a, b, base_build()))
+
+        cover(2, [(H0, H1, md)])
+        conn.execute("UPDATE public.chart_dashas c SET parent_row_id = (SELECT p.dasha_row_id FROM public.chart_dashas p WHERE p.level_n = 2 AND p.start_iso <= c.start_iso"
+                     " AND p.end_iso >= c.end_iso ORDER BY p.start_iso LIMIT 1) WHERE c.level_n = 3 AND c.parent_row_id IS NULL")
+        ads = conn.execute("SELECT dasha_row_id, greatest(start_iso, %s), least(end_iso, %s) FROM public.chart_dashas WHERE level_n = 2 AND start_iso < %s AND end_iso > %s"
+                           " ORDER BY start_iso", (H0, H1, H1, H0)).fetchall()
+        cover(3, [(a, b, pid) for pid, a, b in ads])
+
     def set_periods(venus):
         """Make Venus run exactly `venus` = [(level, start, end)]; the stub's other level-2/3 rows are removed
         (their gaps become honest `missing_inputs` ledger intervals; overlapping rows would be refused)."""
@@ -79,6 +135,7 @@ def _world(monkeypatch, tmp_path, faithful):
                 " parent_row_id, lord_graha, start_iso, end_iso, build_id, verification_pass_status)"
                 " VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,NULL,'Venus',%s,%s,%s,'two_pass_verified')",
                 (str(uuid.UUID(int=900 + i)), CHART_ID, lvl, a, b, base_build()))
+        _fill_to_the_contract()
 
     def set_lord_periods(rows):
         """rows = [(lord, level, start, end)]: replace ALL level-2/3 rows by exactly these (any lord)."""
@@ -89,6 +146,7 @@ def _world(monkeypatch, tmp_path, faithful):
                 " parent_row_id, lord_graha, start_iso, end_iso, build_id, verification_pass_status)"
                 " VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,NULL,%s,%s,%s,%s,'two_pass_verified')",
                 (str(uuid.UUID(int=900 + i)), CHART_ID, lvl, lord.title(), a, b, base_build()))
+        _fill_to_the_contract()
 
     def boot():
         for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP, writer_mod.SNAPSHOT_SUBSTEP,
@@ -125,7 +183,8 @@ def _world(monkeypatch, tmp_path, faithful):
                  and e.obj.canonical_target == "span:7"
                  and (e.period_anchor_lord, e.period_anchor_level) in wanted]
         assert len(edges) == len(wanted)
-        rows_for, _ = make_period_rows_for(conn, CHART_ID)
+        # the writer's own reader (ka_gochara_v5 record substep): the snapshot's COPY when it has one, live L1 for a legacy snapshot
+        rows_for, _ = make_period_rows_for_snapshot(conn, CHART_ID, GEN)
         store = rs.RecordStore(conn)
         sky = SkyEventStore(conn).register_convention()
         with conn.transaction():
@@ -237,14 +296,17 @@ def test_an_agent_with_no_daśā_rows_is_unrestricted_with_an_explicit_unknown(w
                              event_class="marriage") == {"records": 1, "restricted": 0}
 
 
-def test_an_anchor_whose_periods_all_lie_outside_the_horizon_is_computed_empty_and_false_not_unknown(world):
+def test_an_anchor_whose_periods_all_lie_outside_the_horizon_is_computed_empty_and_false_not_unknown(legacy_world):
     """J-2a run 1: the snapshot binds only the daśā rows OVERLAPPING the horizon; an anchor lord that HAS rows at its level
     in the pinned build, none of them overlapping the horizon, simply does not run in it — period_running_at is `false`
     with an empty (computed) support, exactly as the builder stores it. 'No rows' (⇒ unrestricted + `unknown`) means L1
     holds no row for that (lord, level) at all, NOT 'none inside the horizon'. Phaladīpikā XX.38 reads a bhukti lord's
     period only while it runs; a lord whose period lies wholly before/after the horizon does not run in it. The detector
-    (§N.8) is `has_rows`: it must read false ONLY for a (lord, level) with no pinned row anywhere."""
-    w = world
+    (§N.8) is `has_rows`: it must read false ONLY for a (lord, level) with no pinned row anywhere.
+    Run on the LEGACY world (the snapshot has ids, no copy): that is the arm whose `held` probe reads the pinned build in live L1
+    (and whose builder reads live L1). A snapshot WITH a copy holds only the overlapping rows, so there `held` is read from the copy
+    (see RECORD_SUPPORT_HELD_COPY) and the builder (make_period_rows_for_snapshot) sees the same rows."""
+    w = legacy_world
     w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])   # Venus AD: a past year only
     w.boot()
     w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
@@ -254,6 +316,105 @@ def test_an_anchor_whose_periods_all_lie_outside_the_horizon_is_computed_empty_a
                           " WHERE path_id = 'P1'").fetchone()[0] == "computed_empty"
     assert verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN,
                              event_class="marriage") == {"records": 1, "restricted": 1}
+
+
+def _outside_horizon_only(w):
+    """Venus holds ONE antardaśā, in 2023 — wholly before the horizon. The build holds Venus-AD; Venus does not run in the horizon."""
+    w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])
+
+
+def _run_outside_only(w):
+    _outside_horizon_only(w)
+    w.boot()
+    w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+    w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+    state = w.conn.execute("SELECT temporal_support_state FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'").fetchone()[0]
+    return _supports(w.conn), _results(w.conn), state
+
+
+def test_a_lord_held_only_outside_the_horizon_is_false_on_the_snapshot_path_too(held_world):
+    """The 1305 snapshot copy holds only horizon-overlapping rows. A lord the pinned build holds but that runs wholly outside the horizon has an EMPTY running
+    set: `period_running_at` false, support `computed_empty` (Phaladīpikā XX.38 reads the bhukti lord's period only while it runs). It is NOT "no rows": reading
+    it as such stores the whole contact span as support with `unknown` — support invented for a lord that does not run (B.10, §N.5). Builder AND verifier."""
+    w = held_world
+    assert _run_outside_only(w) == ([[]], ["false"], "computed_empty")
+    assert verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage") == {"records": 1, "restricted": 1}
+
+
+def test_the_snapshot_path_gives_what_the_live_reader_gives_over_the_same_build(legacy_world, held_world):
+    """Equivalence: the same synthetic build (Venus's only antardaśā wholly outside the horizon), the same contact, read once by the LIVE reader (a legacy
+    snapshot: `make_period_rows_for`) and once by the snapshot-copy reader. Same stored support, same prerequisite result, same state."""
+    assert _run_outside_only(held_world) == _run_outside_only(legacy_world) == ([[]], ["false"], "computed_empty")
+
+
+@pytest.mark.parametrize("periods, want", [
+    ([], ([[(_t(1, 10), _t(1, 25))]], ["unknown"], "computed")),                                    # the build holds NO Venus row anywhere: unrestricted + unknown
+    ([(2, _t(1, 1), _t(1, 12))], ([[(_t(1, 10), _t(1, 12))]], ["true"], "computed")),               # Venus runs inside the contact: restricted
+])
+def test_the_snapshot_path_keeps_absent_unknown_and_running_true_and_matches_live(legacy_world, held_world, periods, want):
+    """The two neighbours of the held-but-outside case must not move: an ABSENT lord stays unrestricted + `unknown`, a running lord stays restricted."""
+    def run(w):
+        w.set_periods(periods)
+        w.boot()
+        w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+        w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+        state = w.conn.execute("SELECT temporal_support_state FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'").fetchone()[0]
+        return _supports(w.conn), _results(w.conn), state
+    assert run(held_world) == run(legacy_world) == want
+
+
+def test_a_snapshot_captured_before_the_held_record_existed_reads_the_copy_alone(world):
+    """`consumed_dasha_held` absent (1305 without 1398): `held_recorded` is False and the reader gives the pre-record answer — it never claims to
+    have measured a held-but-outside lord it cannot see (§N.8). The contract says so."""
+    w = world
+    _outside_horizon_only(w)
+    w.boot()
+    rows_for, contract = make_period_rows_for_snapshot(w.conn, CHART_ID, GEN)
+    assert contract["held_recorded"] is False and rows_for.holds("venus", "ad") is False
+
+
+def test_the_held_record_is_computed_by_the_database_from_the_consumed_ids(held_world):
+    """Not what the builder submits: the 1398 trigger overwrites it from the pinned build's rows, so a submitted lie cannot reach the reader."""
+    w = held_world
+    _outside_horizon_only(w)
+    w.boot()
+    held = w.conn.execute("SELECT consumed_dasha_held FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+                          (CHART_ID, GEN)).fetchone()[0]
+    assert {"lord": "venus", "level_n": 2} in held and all(set(h) == {"lord", "level_n"} for h in held)
+    rows_for, contract = make_period_rows_for_snapshot(w.conn, CHART_ID, GEN)
+    assert contract["held_recorded"] is True
+    assert rows_for("venus", "ad") == [] and rows_for.holds("venus", "ad") is True and rows_for.holds("venus", "md") is False
+
+
+def test_1398_refuses_a_schema_without_1305():
+    """The gate: 1398 is additive on 1305's copy-build trigger and copy columns; applying it first is refused by name, never half-applied."""
+    import psycopg
+    admin, name, dsn = create_am5_database("h1398gate")                 # 1206 only: no 1305
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        with pytest.raises(Exception, match="migration_1305_not_applied"):
+            with conn.transaction():
+                conn.execute(HELD_MIGRATION_SQL.read_text())
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
+
+
+def test_1398_grants_the_builder_execute_where_production_revokes_public_execute():
+    """Production revokes PUBLIC EXECUTE on functions amjis_app creates (1220), and the builder fires the trigger as the invoker: without the grant the first
+    snapshot insert after 1398 would fail with permission denied. The faithful mirror revokes PUBLIC EXECUTE exactly so; the grant must be the only way in."""
+    import psycopg
+    admin, name, dsn = create_am5_database("h1398grant", faithful=True, apply_1305=True)
+    conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
+    try:
+        conn.execute(HELD_MIGRATION_SQL.read_text())
+        fn = "public.ka_gochara_search_dasha_held(uuid,uuid[])"
+        can = lambda role: conn.execute("SELECT has_function_privilege(%s, %s::regprocedure, 'EXECUTE')", (role, fn)).fetchone()[0]    # noqa: E731
+        assert can("data_plane_builder") is True
+        assert can("gochara_verifier") is False and can("gochara_sealer") is False            # nothing wider: they only READ the column
+    finally:
+        conn.close()
+        drop_am5_database(admin, name)
 
 
 def test_a_failed_support_check_names_which_case_it_is_in():
@@ -267,8 +428,19 @@ def test_a_failed_support_check_names_which_case_it_is_in():
         verify_p1_support(_RowsConn(rows), chart_id=CHART_ID, generation=GEN, event_class="marriage")
 
 
-def test_the_verifier_refuses_a_support_that_admits_a_period_gap_or_discards_a_valid_portion(world):
+def test_a_later_change_of_live_periods_does_not_unverify_a_generation_that_owns_its_copy(world):
+    """G12: the verifier reads the periods the SNAPSHOT owns; a later L1 change is drift (reported by staleness), never a failure to verify."""
     w = world
+    w.set_periods([(2, _t(1, 1), _t(1, 12)), (2, _t(1, 18), _t(2, 1))])
+    w.boot()
+    w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+    w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+    w.conn.execute("UPDATE public.chart_dashas SET end_iso = %s WHERE dasha_row_id = %s", (_t(1, 18), str(uuid.UUID(int=900))))
+    verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage")          # still verifies, from the copy
+
+
+def test_the_verifier_refuses_a_support_that_admits_a_period_gap_or_discards_a_valid_portion(legacy_world):
+    w = legacy_world
     w.set_periods([(2, _t(1, 1), _t(1, 12)), (2, _t(1, 18), _t(2, 1))])
     w.boot()
     w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
@@ -353,10 +525,12 @@ def _snapshot_ids(conn):
         (CHART_ID, GEN)).fetchone()[0]}
 
 
-def test_a_false_period_running_at_has_its_consulted_anchor_rows_in_the_snapshot_ledger(world):
+def test_a_false_period_running_at_has_its_consulted_anchor_rows_in_the_snapshot_ledger(legacy_world):
     """The completion detector (item J-2a-P1L): an anchor (lord, level) held in the pinned build, every row outside the
-    horizon, is stored 'false' — and each of those rows is listed in consumed_dasha_row_ids (B.3)."""
-    w = world
+    horizon, is stored 'false' — and each of those rows is listed in consumed_dasha_row_ids (B.3).
+    Run on the LEGACY world (ids, no copy): a snapshot WITH a copy (1305) stores only the horizon-overlapping rows, so the out-of-horizon
+    rows cannot be ledgered there (see the copy-world twin below)."""
+    w = legacy_world
     w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC)),       # Venus AD, wholly before
                    (2, datetime(2027, 3, 1, tzinfo=UTC), datetime(2027, 6, 1, tzinfo=UTC))])      # Venus AD, wholly after
     w.boot()
@@ -380,6 +554,23 @@ def test_an_anchor_with_no_row_in_the_pinned_build_stays_unknown_and_unrestricte
     assert _false_p1_records(w.conn) == 0
     assert verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage") == {
         "records": 1, "restricted": 0}
+
+
+def test_a_snapshot_with_a_copy_ledgers_no_out_of_horizon_anchor_row_and_the_anchor_stays_unknown(world):
+    """G12 (1305) x J-2a-P1L, copy-world twin of the two ledger tests: the copy holds only rows OVERLAPPING the horizon (the database refuses
+    `period_outside_horizon`), so an anchor (lord, level) whose pinned rows all lie outside it has no row in the copy — builder and verifier both read
+    `held` from the copy — and its P1 prerequisite is the explicit 'unknown' with the unrestricted contact span (N.7.6), never a stored 'false'. The
+    snapshot is still taken (the writer must not put a row the contract refuses into the copy)."""
+    w = world
+    w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC)),       # Venus AD, wholly before
+                   (2, datetime(2027, 3, 1, tzinfo=UTC), datetime(2027, 6, 1, tzinfo=UTC))])      # Venus AD, wholly after
+    w.boot()
+    w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+    w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+    assert not ({str(uuid.UUID(int=900)), str(uuid.UUID(int=901))} & _snapshot_ids(w.conn))
+    assert _supports(w.conn) == [[(_t(1, 10), _t(1, 25))]] and _results(w.conn) == ["unknown"]
+    assert _false_p1_records(w.conn) == 0
+    assert verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage") == {"records": 1, "restricted": 0}
 
 
 def test_the_snapshot_binds_no_anchor_rows_while_p1_minting_is_closed(world, monkeypatch):
@@ -421,11 +612,11 @@ def test_the_population_check_still_refuses_an_out_of_horizon_row_whose_group_is
     assert any("lies wholly outside the horizon (an extra row)" in p and before["dasha_row_id"] in p for p in problems)
 
 
-def test_the_seal_time_population_check_accepts_the_ledgered_snapshot(world):
+def test_the_seal_time_population_check_accepts_the_ledgered_snapshot(legacy_world):
     """The ledger must not block sealing: the verifier's own query-based population check (verification job) accepts a
-    snapshot that holds the out-of-horizon rows of a consulted anchor group."""
+    snapshot that holds the out-of-horizon rows of a consulted anchor group. LEGACY world (ids, no copy): see the copy-world twin."""
     from services.gochara_kernel import inventory_verifier as inv
-    w = world
+    w = legacy_world
     w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])
     w.boot()
     assert str(uuid.UUID(int=900)) in _snapshot_ids(w.conn)

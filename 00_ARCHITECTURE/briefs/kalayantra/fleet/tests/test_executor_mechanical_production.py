@@ -143,10 +143,12 @@ def test_x3_every_production_kind_of_the_real_table_is_classified(tmp_path):
     table = json.loads(OPS_FILE.read_text())["ops"]
     production = {k for k, v in table.items() if v.get("production")}
     exempt = {k for k in production if mod.mechanical_exempt(k)}
-    assert exempt == {"smalltest_teardown", "measuring_teardown", "publish_head", "rollback_head", "layer_publish", "layer_rollback", "measuring_cancel"}
+    assert exempt == {"smalltest_teardown", "measuring_teardown", "century_teardown", "publish_head", "rollback_head", "layer_publish", "layer_rollback", "measuring_cancel",
+                      "orchestrator_rebuild_teardown"}   # SR-PREBUILD-ALL: every *_teardown is a deletion, never mechanical
     assert production - exempt == {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch", "measuring_dispatch", "verification_job", "century_dispatch",
-                                   "orchestrator_rebuild", "layer_verify", "scheduler_pause", "scheduler_resume"}
-    assert mod.NO_DRYRUN_KINDS == {"backup_snapshot", "backup_restore_verify"} and all(k + "_dryrun" in table for k in {"smalltest_dispatch", "measuring_dispatch", "scheduler_pause", "scheduler_resume"})
+                                   "orchestrator_rebuild", "layer_verify", "scheduler_pause", "scheduler_resume", "protected_window_dispatch", "gochara_role_provisioning_dispatch",
+                                   "orchestrator_rebuild_cancel"}   # U-M-01 / U-M-03: a dispatch, neither a deletion nor a serving change, so mechanical-eligible with a dry run; SR-PREBUILD-ALL: a stop request writes build_runs.stop_requested_at only and removes no data (executor.py untouched; holding it with measuring_cancel would be a one-name SIGNED_ONLY_KINDS edit)
+    assert mod.NO_DRYRUN_KINDS == {"backup_snapshot", "backup_restore_verify"} and all(k + "_dryrun" in table for k in {"smalltest_dispatch", "measuring_dispatch", "scheduler_pause", "scheduler_resume", "protected_window_dispatch", "gochara_role_provisioning_dispatch", "orchestrator_rebuild_cancel"})
 
 
 # ───────────────────────────── A: admitted, and recorded ─────────────────────────────

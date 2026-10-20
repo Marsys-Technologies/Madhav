@@ -107,7 +107,7 @@ def test_soak_binds_opaque_owner_rule_and_each_actual_sample_without_deciding_it
     with pytest.raises(live.Refused): live.record_soak(BINDING,[first,bad],owner_rule_raw=rule)
 
 
-def test_tooling_is_on_mandatory_ci_path_and_no_new_kind_is_enabled():
+def test_tooling_is_on_mandatory_ci_path_and_the_head_kinds_are_enabled_only_through_the_policy():   # SR-HEAD-POLICY-KEEP: was 'no_new_kind_is_enabled'
     root=FLEET.parents[3]
     sys.path.insert(0, str(root/'platform/scripts/governance'))
     from ci_discovery import expanded_workflow_text
@@ -115,7 +115,8 @@ def test_tooling_is_on_mandatory_ci_path_and_no_new_kind_is_enabled():
     for name in ('test_j6_head_bindings.py','test_j6_live_readback.py','test_j6_bindings_db.py'):
         assert name in ci
     table=json.loads((FLEET/'executor_ops.json').read_text())['ops']
-    assert not any(table[k]['enabled'] for k in ('publish_head','rollback_head','publish_head_dryrun','rollback_head_dryrun'))
+    for k in ('publish_head','rollback_head','publish_head_dryrun','rollback_head_dryrun'):   # enabled, and each runs the policy module itself (gate: test_j6_head_bindings.py)
+        assert table[k]['enabled'] is True and table[k]['script'].endswith('/fleet/head_operation.py')
 
 
 def test_capture_and_soak_cli_import_exact_bytes_without_network_or_acceptance(tmp_path,capsys):

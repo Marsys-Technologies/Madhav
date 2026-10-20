@@ -26,8 +26,9 @@
       "PLAN §10 Serving"
      ],
      "detector": {
-      "ref": "origin/kalayantra/pb-k9-final",
-      "type": "branch_merged"
+      "min_bytes": 200,
+      "path": "/Users/Dev/kalayantra/run/K9_6_LIVE.json",
+      "type": "file_exists"
      },
      "item": "K9-6",
      "role": "live acceptance: the seven views resolve through the registry and the Vidhi bridge against the published head",
@@ -155,7 +156,10 @@
     },
     {
      "brief_spec": [
-      "CHARTER §0, §14"
+      "CHARTER §0 (lines 2 and 4 read as amended by A9 D-53), §14",
+      "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v3.json (A9 D-51)",
+      "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md §2 (D-51), §4 (D-53)",
+      "SR-W34-PREP-RULINGS (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl, 2026-10-19T12:20Z) item 5"
      ],
      "detector": {
       "min_bytes": 6000,
@@ -165,7 +169,7 @@
      "item": "C-1",
      "role": "guarded close step 1",
      "step": null,
-     "title": "Close report: the five definition-of-done lines, each MET or NOT MET with its detector evidence; decisions ledger; gaps; measured costs; lessons"
+     "title": "Close report: the A9 acceptance set (ACCEPTANCE_ROOTS_v3) attested as of C-1 — the five definition-of-done lines read as amended by A9 D-53, each MET or NOT MET with its detector evidence; decisions ledger; gaps; deferred items with re-entry; measured costs; lessons"
     },
     {
      "brief_spec": [

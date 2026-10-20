@@ -175,13 +175,13 @@ def _sha(text: str) -> str:
 
 def _exact_float(num: Any, subject: str) -> float:
     """The F-3 §3 round-trip guard, derived independently of `targets`: a stored L1 numeric
-    must equal what its float64 carries (`Decimal(repr(float(x))) == x.normalize()`),
+    must equal what its float64 carries (`Decimal(repr(float(x))) == x` (exact Decimal equality)),
     else there is no honest identity text to re-derive from — unverifiable, never rounded."""
     if isinstance(num, float):
         return num
     exact = num if isinstance(num, Decimal) else Decimal(str(num))
     value = float(exact)
-    if Decimal(repr(value)) != exact.normalize():
+    if Decimal(repr(value)) != exact:          # exact Decimal equality (.normalize() would round to the context precision and accept a tiny difference)
         raise Unverifiable(
             f"graha_position {subject} = {num!r} is not exactly representable as a float64: "
             "the identity text would be quantised — refusing to re-derive (F-3 §3)")
@@ -204,6 +204,66 @@ def read_chart(conn: Any, fact_ids: Sequence[str]) -> dict[str, Any]:
     if missing:
         raise Unverifiable(f"the snapshot's consumed facts lack {missing}: nothing to derive from")
     return {"lagna": lagna, "natal": natal}
+
+
+def chart_from_copy(copy: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """The natal chart from a snapshot's COPY of the consumed fact rows (G12 route 1): the same subjects and the same exactness guard as
+    `read_chart`, read from the stored content instead of live L1. `copy` must have been parsed with `parse_float=Decimal` (see
+    `read_chart_snapshot`) so a numeric is never quantised on the way."""
+    problems = fact_copy_violations(copy)
+    if problems:                                   # a duplicated, foreign or valueless subject is refused by name, never resolved by element order
+        raise Unverifiable("the snapshot's fact copy violates the capture contract: " + "; ".join(f"{c} ({d})" for c, d in problems))
+    lagna, natal = None, {}
+    for e in copy:
+        c = e.get("content") or {}
+        subj, num = (e.get("key") or {}).get("fact_subject"), c.get("fact_value_num")
+        if num is None:
+            continue
+        if subj == "LAGNA":
+            lagna = _exact_float(num, subj)
+        elif subj in _FACT_SUBJECT:
+            natal[_FACT_SUBJECT[subj]] = _exact_float(num, subj)
+    missing = [s for s in ("lagna",) if lagna is None] + [g for g in _GRAHAS if g not in natal]
+    if missing:
+        raise Unverifiable(f"the snapshot's consumed facts lack {missing}: nothing to derive from")
+    return {"lagna": lagna, "natal": natal}
+
+
+def snapshot_copies(conn: Any, chart_id: str, generation: str) -> dict[str, Any] | None:
+    """The snapshot's COPIES of its consumed L1 rows, numerics kept EXACT (`Decimal`): {"facts": [...], "dashas": [...],
+    "fact_ids": [...], "dasha_row_ids": [...]} — or None when the generation has no snapshot. `facts` / `dashas` are None for a LEGACY snapshot
+    (written before migration 1305: ids only; not self-contained)."""
+    import json
+    row = conn.execute(
+        "SELECT consumed_fact_ids, consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s",
+        (chart_id, generation)).fetchone()
+    if row is None:
+        return None
+    ids = tuple(row.values()) if isinstance(row, dict) else tuple(row)
+    out: dict[str, Any] = {"fact_ids": list(ids[0]), "dasha_row_ids": [str(x) for x in ids[1]], "facts": None, "dashas": None}
+    has_copy = conn.execute(
+        "SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ka_gochara_search_input_snapshot'"
+        " AND column_name IN ('consumed_fact_rows', 'consumed_dasha_rows')").fetchone()
+    if int(next(iter(has_copy.values())) if isinstance(has_copy, dict) else has_copy[0]) == 2:
+        cp = conn.execute(
+            "SELECT consumed_fact_rows::text, consumed_dasha_rows::text FROM public.ka_gochara_search_input_snapshot"
+            " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+        cp = tuple(cp.values()) if isinstance(cp, dict) else tuple(cp)
+        if cp[0] is not None and cp[1] is not None:
+            out["facts"] = json.loads(cp[0], parse_float=Decimal)
+            out["dashas"] = json.loads(cp[1], parse_float=Decimal)
+    return out
+
+
+def read_chart_snapshot(conn: Any, chart_id: str, generation: str) -> dict[str, Any]:
+    """The natal chart the generation was built from: read from the snapshot's own COPY (so it exists after any later L1 rebuild); a LEGACY
+    snapshot is read by id from live L1, as before."""
+    snap = snapshot_copies(conn, chart_id, generation)
+    if snap is None:
+        raise Unverifiable("no search-input snapshot to read the natal chart from")
+    if snap["facts"] is None:
+        return read_chart(conn, snap["fact_ids"])
+    return chart_from_copy(snap["facts"])
 
 
 def _sign_index(lon: float) -> int:
@@ -560,7 +620,7 @@ def rederive_inventory_digest(
         (chart_id, generation, event_class)).fetchone()
     if snap is None or hdr is None:
         raise Unverifiable("no snapshot / inventory header to verify against")
-    chart = read_chart(conn, snap[1])           # every class: P2 needs the natal Moon even where H is unknown
+    chart = read_chart_snapshot(conn, chart_id, generation)           # every class: P2 needs the natal Moon even where H is unknown (the snapshot's COPY, G12)
     pins = derive_class_pins(event_class, chart, sealed_paths,
                              excluded_agents=(bound_excluded_agents(conn, chart_id, generation)       # R9-10: the manifest's scope
                                               if excluded_agents is None else tuple(excluded_agents)),
@@ -595,10 +655,17 @@ def rederive_ledger_digest(
         " WHERE chart_id = %s AND generation = %s AND event_class = %s",
         (chart_id, generation, event_class)).fetchone()
     lo, hi = hdr
-    rows = conn.execute(
-        "SELECT level_n, start_iso, end_iso, lower(lord_graha) FROM public.chart_dashas"
-        " WHERE chart_id = %s AND dasha_row_id = ANY(%s::uuid[]) ORDER BY level_n, start_iso",
-        (chart_id, [str(x) for x in snap[0]])).fetchall()
+    copies = snapshot_copies(conn, chart_id, generation)
+    if copies is not None and copies["dashas"] is not None:         # G12: the rows the snapshot OWNS, not live L1
+        from datetime import datetime as _dt, timezone as _tz
+        rows = sorted((int(e["key"]["level_n"]), _dt.fromisoformat(e["key"]["start_iso"]).astimezone(_tz.utc),
+                       _dt.fromisoformat(e["content"]["end_iso"]).astimezone(_tz.utc), str(e["content"]["lord_graha"]).lower())
+                      for e in copies["dashas"])
+    else:
+        rows = conn.execute(
+            "SELECT level_n, start_iso, end_iso, lower(lord_graha) FROM public.chart_dashas"
+            " WHERE chart_id = %s AND dasha_row_id = ANY(%s::uuid[]) ORDER BY level_n, start_iso",
+            (chart_id, [str(x) for x in snap[0]])).fetchall()
     lines = []
     for ob in obligations:
         agent, relation = ob.split("|")[3], ob.split("|")[4]
@@ -830,7 +897,8 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
     """Pure: the violations (empty = the population is the §4.0 population). `consumed` are the rows the
     snapshot's ids resolve to for this chart; `pinned` the rows the contract selects (ayanāṃśa, system,
     tier, build, levels) — both with level_n, start_iso, end_iso, lord_graha, build_id, system_id,
-    ayanamsha_id, verification_pass_status, parent_row_id, dasha_row_id."""
+    ayanamsha_id, verification_pass_status, parent_row_id, dasha_row_id. This is the check of a LEGACY snapshot (ids only, written before migration
+    1305); a snapshot that OWNS a copy is judged by `copy_contract_violations` (the capture contract, the database's own codes)."""
     lo, hi = horizon
     out: list[str] = []
     found = {str(r["dasha_row_id"]) for r in consumed}
@@ -880,30 +948,247 @@ def check_dasha_population(consumed: Sequence[Mapping[str, Any]], pinned: Sequen
     return out
 
 
-def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: str) -> dict:
+# ── the CAPTURE CONTRACT of a copy-bearing snapshot (G12 route 1, round 6) ───────────────────────────────────────────────────────────────────────────────
+# An INDEPENDENT Python statement of the contract the database states in `ka_gochara_search_copy_violations` (migration 1305): same codes, one violation per
+# offending element, judged over a COPY and nothing else (no connection is taken). The two implementations are run over the same shapes by
+# tests/l3/gochara/test_g12_snapshot_copy.py and must agree code for code. Invariant (R1): what is validated is exactly what is stored — the object judged is the
+# stored jsonb value, never the upstream rows it was built from. Invariant (R2): with `eligibility=False` nothing here reads a tier or a build.
+
+_C_FACT_SUBJECTS = ("LAGNA",) + tuple(_FACT_SUBJECT)
+_C_FACT_CATEGORY, _C_FACT_KEY = "graha_position", "longitude_sidereal"
+
+
+def _well_formed(e: Any) -> bool:
+    return isinstance(e, Mapping) and all(isinstance(e.get(block), Mapping) for block in ("key", "content", "metadata"))
+
+
+def _key_text(key: Any) -> str:
+    import json
+    return json.dumps(key, sort_keys=True, default=str)
+
+
+def fact_copy_violations(copy: Any) -> list[tuple[str, str]]:
+    """The fact half of the contract: every element is a natal longitude of the canonical ayanāṃśa for one of the ten subjects; each subject exactly once; each
+    with a numeric value. Returns (code, detail) pairs; [] = satisfied."""
+    out: list[tuple[str, str]] = []
+    if not isinstance(copy, (list, tuple)):
+        out.append(("copy_malformed", "the fact copy is not a JSON array"))
+        copy = []                                  # ... and it therefore holds none of the required members (reported below, as the database does)
+    counts = {s: 0 for s in _C_FACT_SUBJECTS}
+    for i, e in enumerate(copy, 1):
+        if not _well_formed(e):
+            out.append(("copy_malformed", f"fact element {i} is not {{key, content, metadata}}"))
+            continue
+        k = e["key"]
+        if not (k.get("ayanamsha_id") == _C_AYANAMSHA and k.get("fact_category") == _C_FACT_CATEGORY and k.get("fact_key") == _C_FACT_KEY
+                and k.get("fact_subject") in counts):
+            out.append(("fact_out_of_scope", f"fact {_key_text(k)} is not a natal longitude of the canonical ayanamsha for a required subject"))
+            continue
+        counts[k["fact_subject"]] += 1
+        num = e["content"].get("fact_value_num")
+        if isinstance(num, bool) or not isinstance(num, (int, float, Decimal)):
+            out.append(("fact_value_missing", f"fact {_key_text(k)} has no numeric value"))
+    for subject, n in counts.items():
+        if n == 0:
+            out.append(("required_fact_missing", f"subject {subject}"))
+        elif n > 1:
+            out.append(("required_fact_duplicate", f"subject {subject} has {n} rows (natural key not unique)"))
+    return out
+
+
+def _ts(value: Any):
+    from datetime import datetime as _dt, timezone as _tz
+    if value is None:
+        return None
+    if isinstance(value, _dt):
+        return value.astimezone(_tz.utc)
+    return _dt.fromisoformat(str(value)).astimezone(_tz.utc)
+
+
+def _period_of_element(e: Mapping[str, Any]) -> dict[str, Any]:
+    """One copy element as the flat record the period contract reads (identity from key/content, ids, build and tier from metadata)."""
+    k, c, m = e["key"], e["content"], e["metadata"]
+    return {"key": _key_text(k), "ay": k.get("ayanamsha_id"), "sy": k.get("system_id"), "lv": None if k.get("level_n") is None else int(k["level_n"]),
+            "st": _ts(k.get("start_iso")), "kp": k.get("kp_sublevel") or "", "en": _ts(c.get("end_iso")), "lord": c.get("lord_graha"),
+            "plv": None if c.get("parent_level_n") is None else int(c["parent_level_n"]), "pst": _ts(c.get("parent_start_iso")), "lpath": c.get("lord_path"),
+            "id": None if m.get("dasha_row_id") is None else str(m["dasha_row_id"]), "pid": None if m.get("parent_row_id") is None else str(m["parent_row_id"]),
+            "build": None if m.get("build_id") is None else str(m["build_id"]), "tier": m.get("verification_pass_status")}
+
+
+def period_contract_violations(periods: Sequence[Mapping[str, Any]], horizon: tuple, *, eligibility: bool) -> list[tuple[str, str]]:
+    """The period half of the contract over flat period records (see `_period_of_element`): scope, horizon, positive length, unique row ids; each level MD/AD/PD
+    present, unique by start, contiguous (no gap, no overlap) and covering the horizon; the HIERARCHY (every AD/PD: its natural parent pointer names a period of
+    the population at the level above, that period's row id is the row's parent_row_id, it contains the row, and the lord path is the parent's plus the row's
+    lord); and, only with `eligibility`, the population's OWN tier and build (two_pass_verified, a build on every row, one build)."""
+    lo, hi = horizon
+    out: list[tuple[str, str]] = []
+    scope = [p for p in periods if p["ay"] == _C_AYANAMSHA and p["sy"] == _C_SYSTEM and p["lv"] in _C_LEVELS]
+    for p in periods:
+        if not (p["ay"] == _C_AYANAMSHA and p["sy"] == _C_SYSTEM and p["lv"] in _C_LEVELS):
+            out.append(("period_out_of_scope", f"period {p['key']} is not a Vimśottarī MD/AD/PD of the canonical ayanamsha"))
+    d = [p for p in scope if p["st"] is not None and p["en"] is not None and p["st"] < hi and p["en"] > lo]
+    inside = {id(p) for p in d}
+    for p in scope:
+        if id(p) not in inside:
+            out.append(("period_outside_horizon", f"period {p['key']} ending {p['en']} does not overlap the horizon {lo}..{hi}"))
+    for p in d:
+        if not p["en"] > p["st"]:
+            out.append(("period_not_positive", f"level {p['lv']} period starting {p['st']} ends {p['en']} (not after its start)"))
+    seen: dict[Any, int] = {}
+    for p in periods:
+        seen[p["id"]] = seen.get(p["id"], 0) + 1
+    for rid, n in seen.items():
+        if n > 1 or rid is None:
+            out.append(("period_row_id_duplicate", f"row id {rid} is carried by {n} elements"))
+    if eligibility:
+        for p in periods:
+            if p["tier"] != _C_TIER:
+                out.append(("period_tier_ineligible", f"period {p['key']} (row {p['id']}) carries tier {p['tier']}, not {_C_TIER}"))
+            if p["build"] is None:
+                out.append(("period_build_missing", f"period {p['key']} (row {p['id']}) carries no build id"))
+        builds = sorted({p["build"] for p in periods if p["build"] is not None})
+        if len(builds) > 1:
+            out.append(("dasha_builds_mixed", f"the copy holds rows of {len(builds)} builds: {', '.join(builds)}"))
+    for level in _C_LEVELS:
+        rows = sorted((p for p in d if p["lv"] == level), key=lambda p: (p["st"], p["en"], p["id"] or ""))
+        if not rows:
+            out.append(("required_level_missing", f"level {level} has no period overlapping the horizon"))
+            continue
+        for prev, nxt in zip(rows, rows[1:]):
+            if nxt["st"] == prev["st"]:
+                out.append(("required_period_duplicate", f"level {level} start {nxt['st']} (another period of the level shares the start)"))
+            if nxt["st"] > prev["st"] and nxt["st"] < prev["en"]:
+                out.append(("required_period_overlap", f"level {level} period starting {nxt['st']} begins before the previous ends ({prev['en']})"))
+            if nxt["st"] > prev["en"]:
+                out.append(("required_period_gap", f"level {level} period starting {nxt['st']} begins after the previous ends ({prev['en']})"))
+        if min(p["st"] for p in rows) > lo:
+            out.append(("required_horizon_start_uncovered", f"level {level} first period starts {min(p['st'] for p in rows)} after the horizon start {lo}"))
+        if max(p["en"] for p in rows) < hi:
+            out.append(("required_horizon_end_uncovered", f"level {level} last period ends {max(p['en'] for p in rows)} before the horizon end {hi}"))
+    for c in d:
+        if c["lv"] == 1:
+            if c["lpath"] != c["lord"]:
+                out.append(("lord_path_inconsistent", f"level 1 period starting {c['st']} carries lord path {c['lpath']}, which is not its own lord"))
+            if c["pid"] is not None or c["plv"] is not None or c["pst"] is not None:          # a ROOT has no parent, of this or of any other chart, ayanamsha or system
+                out.append(("root_has_parent", f"level 1 period starting {c['st']} carries a parent (row {c['pid']}, level {c['plv']}): a Mahādaśā is a root"))
+            continue
+        parents = [p for p in d if p["ay"] == c["ay"] and p["sy"] == c["sy"] and p["lv"] == c["lv"] - 1 and c["plv"] == p["lv"] and c["pst"] == p["st"]]
+        if not parents:
+            out.append(("required_parent_missing", f"level {c['lv']} period starting {c['st']} has no parent present at level {c['lv'] - 1} of the same ayanamsha and system"))
+            continue
+        if c["pid"] is None or not any(p["id"] == c["pid"] for p in parents):
+            out.append(("required_parent_id_mismatch", f"level {c['lv']} period starting {c['st']} hangs under row {c['pid']}, which is not the row the copy holds at its parent's natural key"))
+        if any(not (c["st"] >= p["st"] and c["en"] <= p["en"]) for p in parents):
+            out.append(("required_parent_not_containing", f"level {c['lv']} period {c['st']} .. {c['en']} is not inside its parent"))
+        if not any(c["lpath"] == (None if p["lpath"] is None or c["lord"] is None else f"{p['lpath']}/{c['lord']}") for p in parents):
+            out.append(("lord_path_inconsistent", f"level {c['lv']} period starting {c['st']} carries lord path {c['lpath']}, which is not its parent's path plus its own lord"))
+    return out
+
+
+def dasha_copy_violations(copy: Any, horizon: tuple, *, eligibility: bool = True) -> list[tuple[str, str]]:
+    """The period half of the contract over a daśā COPY (the stored jsonb array of {key, content, metadata})."""
+    out: list[tuple[str, str]] = []
+    if not isinstance(copy, (list, tuple)):
+        out.append(("copy_malformed", "the daśā copy is not a JSON array"))
+        copy = []
+    periods = []
+    for i, e in enumerate(copy, 1):
+        if not _well_formed(e):
+            out.append(("copy_malformed", f"daśā element {i} is not {{key, content, metadata}}"))
+        else:
+            periods.append(_period_of_element(e))
+    return out + period_contract_violations(periods, horizon, eligibility=eligibility)
+
+
+def copy_contract_violations(facts: Any, dashas: Any, horizon: tuple, *, eligibility: bool = True) -> list[tuple[str, str]]:
+    """The whole capture contract over a snapshot's two copies — the Python twin of `public.ka_gochara_search_copy_violations(facts, dashas, horizon, eligibility)`."""
+    return fact_copy_violations(facts) + dasha_copy_violations(dashas, horizon, eligibility=eligibility)
+
+
+def _periods_of_live_rows(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """Flat period records derived by THIS verifier from live `chart_dashas` rows (the natural parent pointer and the lord path are computed here from the
+    rows' own parent ids, never read from the database's copy functions): the independent side of the capture comparison."""
+    by_id = {str(r["dasha_row_id"]): r for r in rows}
+    out = []
+    for r in rows:
+        parent = by_id.get(str(r["parent_row_id"])) if r["parent_row_id"] is not None else None
+        lords, cur, depth = [], r, 0
+        while cur is not None and depth < 8:
+            lords.append(str(cur["lord_graha"]).lower())
+            cur = by_id.get(str(cur["parent_row_id"])) if cur["parent_row_id"] is not None else None
+            depth += 1
+        key = {"ayanamsha_id": r["ayanamsha_id"], "system_id": r["system_id"], "level_n": int(r["level_n"]), "start_iso": _ts(r["start_iso"]).isoformat(),
+               "kp_sublevel": r.get("kp_sublevel") or ""}
+        out.append({"key": _key_text(key), "ay": r["ayanamsha_id"], "sy": r["system_id"], "lv": int(r["level_n"]), "st": _ts(r["start_iso"]),
+                    "kp": r.get("kp_sublevel") or "", "en": _ts(r["end_iso"]), "lord": str(r["lord_graha"]).lower(),
+                    "plv": None if parent is None else int(parent["level_n"]), "pst": None if parent is None else _ts(parent["start_iso"]),
+                    "lpath": "/".join(reversed(lords)), "id": str(r["dasha_row_id"]), "pid": None if r["parent_row_id"] is None else str(r["parent_row_id"]),
+                    "build": None if r["build_id"] is None else str(r["build_id"]), "tier": r["verification_pass_status"]})
+    return out
+
+
+_COMPARED = ("ay", "sy", "lv", "st", "kp", "en", "lord", "plv", "pst", "lpath", "pid", "build", "tier")
+
+
+def _manifest_horizon(conn: Any, chart_id: str, generation: str) -> tuple:
+    row = conn.execute("SELECT lower(horizon), upper(horizon) FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s",
+                       (chart_id, generation)).fetchone()
+    row = None if row is None else (tuple(row.values()) if isinstance(row, dict) else tuple(row))
+    if row is None or row[0] is None or row[1] is None:
+        raise Unverifiable("no bound, finite manifest horizon to judge the consumed population against")
+    return row[0], row[1]
+
+
+def _dasha_settlement_of(conn: Any, chart_id: str) -> dict:
     # The verifier imports nothing from the builder (test_the_verifier_imports_nothing_from_the_builder), so the rehearsal
     # connection is recognised by a marker on its CLASS, not by an import; a raw or mocked connection never carries it.
     if getattr(type(conn), "synthetic_settlement_authority", False) is True:
-        settlement = conn.settlement(chart_id)
-    else:
-        settlement = _load_dasha_settlement(chart_id)
+        return conn.settlement(chart_id)
+    return _load_dasha_settlement(chart_id)
+
+
+def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: str, against_live: bool = False) -> dict:
+    """The §4.0 population contract.
+
+    A snapshot that OWNS a copy (G12 route 1) is judged ON ITS STORED COPY, by `copy_contract_violations` (both copies, the bound manifest horizon, eligibility
+    on): no live L1 is read, so the verification of a generation never depends on what a later rebuild did upstream. The comparison with live L1 after capture
+    is the drift REPORT (`staleness`) and the database gate, never a failure to verify.
+
+    `against_live=True` is the CAPTURE-TIME check the writer runs once, right after the snapshot is taken: in addition to the above, this verifier derives the
+    upstream scope ITSELF from live `chart_dashas` (every Vimśottarī / lahiri MD, AD, PD row overlapping the horizon, EVERY tier and build), judges it by the
+    same contract, and requires the stored copy to be exactly that scope, row for row and field for field. The governed settlement pin is enforced there, at capture
+    time, where it belongs. (I) INTERPRETATION: settlement governs capture and legacy reads; an owned copy remains verifiable after a later rebuild. A LEGACY snapshot (no copy) keeps the 1206-era check against live L1."""
+    settlement = _dasha_settlement_of(conn, chart_id) if against_live else None
     snap = conn.execute(
         "SELECT consumed_dasha_row_ids FROM public.ka_gochara_search_input_snapshot"
         " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
     if snap is None:
         raise Unverifiable("no search-input snapshot to validate the consumed daśā population against")
     ids = [str(x) for x in snap[0]]
-    horizon = conn.execute(
-        "SELECT min(lower(horizon)), max(upper(horizon)) FROM public.ka_gochara_search_inventory"
-        " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
-    if horizon is None or horizon[0] is None:
-        raise Unverifiable("no inventory horizon to validate the consumed daśā population against")
+    copies = snapshot_copies(conn, chart_id, generation)
+    has_copy = copies is not None and copies["dashas"] is not None
     cols = ("dasha_row_id, level_n, parent_row_id, lord_graha, start_iso, end_iso, build_id, system_id,"
-            " ayanamsha_id, verification_pass_status")
+            " ayanamsha_id, verification_pass_status, kp_sublevel")
 
     def rows(sql, params):
         names = [c.strip() for c in cols.split(",")]
         return [dict(zip(names, r)) for r in conn.execute(sql, params).fetchall()]
+
+    if has_copy:
+        horizon = _manifest_horizon(conn, chart_id, generation)
+        problems = copy_contract_violations(copies["facts"], copies["dashas"], horizon, eligibility=True)
+        if problems:
+            raise Unverifiable("consumed daśā population (the snapshot's copy) violates the capture contract: " + "; ".join(f"{c} ({d})" for c, d in problems))
+        stored = [_period_of_element(e) for e in copies["dashas"]]
+        if not against_live:
+            return {"consumed": len(stored), "pinned_overlapping": len(stored), "source": "snapshot_copy"}
+    else:
+        horizon = conn.execute(
+            "SELECT min(lower(horizon)), max(upper(horizon)) FROM public.ka_gochara_search_inventory"
+            " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+        if horizon is None or horizon[0] is None:
+            raise Unverifiable("no inventory horizon to validate the consumed daśā population against")
+    settlement = settlement or _dasha_settlement_of(conn, chart_id)
     # G6 (verifier's OWN query, builder code not imported): every Vimśottarī / lahiri row of the chart — all tiers, all levels — is ONE build,
     # the governed settled-build rule is independent of the builder's contract code
     builds = sorted(str(r[0]) for r in conn.execute(
@@ -922,6 +1207,28 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
     build = settlement["run_id"]
     if eligible != [build]:
         raise SettlementRefused("settled_build_absent", f"named build {build} is not eligible for chart {chart_id}")
+    if has_copy:
+        live = _periods_of_live_rows(rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s AND system_id = %s"
+                                          " AND level_n = ANY(%s)", (chart_id, _C_AYANAMSHA, _C_SYSTEM, list(_C_LEVELS))))
+        lo, hi = horizon
+        scope = [p for p in live if p["st"] < hi and p["en"] > lo]                      # the upstream scope: EVERY tier and build
+        problems = [f"upstream {c} ({d})" for c, d in period_contract_violations(scope, horizon, eligibility=True)]
+        mine, theirs = {p["id"]: p for p in stored}, {p["id"]: p for p in scope}
+        for rid in sorted(set(theirs) - set(mine)):
+            problems.append(f"upstream_row_not_in_copy (row {rid} {theirs[rid]['key']} tier {theirs[rid]['tier']} build {theirs[rid]['build']} is in the "
+                            "required scope but the snapshot's copy does not hold it)")
+        for rid in sorted(set(mine) - set(theirs), key=str):
+            problems.append(f"copy_row_not_in_upstream_scope (row {rid} {mine[rid]['key']} is in the snapshot's copy but not in the upstream scope)")
+        for rid in sorted(set(mine) & set(theirs)):
+            fields = [f for f in _COMPARED if mine[rid][f] != theirs[rid][f]]
+            if fields:
+                problems.append(f"copy_row_differs_from_upstream (row {rid} {mine[rid]['key']}: {fields})")
+        if problems:
+            raise Unverifiable("consumed daśā population violates the capture contract against live L1: " + "; ".join(problems))
+        result = {"consumed": len(stored), "pinned_overlapping": len(scope), "source": "snapshot_copy_and_live"}
+        if settlement.get("synthetic") is True:
+            result.update(synthetic_settlement=True, production_acceptance=False)
+        return result
     consumed = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s"
                     " AND dasha_row_id = ANY(%s::uuid[])", (chart_id, ids))
     pinned = rows(f"SELECT {cols} FROM public.chart_dashas WHERE chart_id = %s AND ayanamsha_id = %s"
@@ -939,7 +1246,8 @@ def validate_consumed_dasha_population(conn: Any, *, chart_id: str, generation: 
     return result
 
 
-__all__ += ["check_dasha_population", "validate_consumed_dasha_population"]
+__all__ += ["check_dasha_population", "validate_consumed_dasha_population", "copy_contract_violations", "fact_copy_violations",
+            "dasha_copy_violations", "period_contract_violations"]
 
 
 # Snapshot-bound record verification SQL; deliberately independent of the builder.
@@ -950,24 +1258,31 @@ RECORD_SUPPORT_PINS = {"ayan": _C_AYANAMSHA, "system": _C_SYSTEM, "tier": _C_TIE
 # row for an anchor (lord, level) at all. "No rows" (⇒ unrestricted + `unknown`, A5_3 brief v1.27) means no pinned row
 # for that (lord, level) ANYWHERE in the settled build — `held` probes exactly that; a lord that is held but not running
 # in the horizon has an empty running set (`false`), never `unknown` (§N.8: has_rows must measure its own claim).
-RECORD_SUPPORT_SQL = """
+# (I) INTERPRETATION (merge of main's J-2a with this PR's G12 copy): the `held` probe of a LEGACY snapshot (ids, no copy)
+# is main's live probe; for a snapshot WITH a copy the statement must not even NAME the live relation (the G12 claim), so
+# `held` there is read from the snapshot ALONE: the copy's rows UNION `consumed_dasha_held`, the (lord, level) pairs the
+# build holds that the database recorded at capture (the copy carries only horizon-overlapping rows, so on its own it
+# cannot tell "held, running outside the horizon" from "absent"). The copy-reading builder
+# (`make_period_rows_for_snapshot(...).holds`) reads the same two things, so builder and verifier agree on what "no rows"
+# means for a copy snapshot. A snapshot captured before that record existed (`consumed_dasha_held` NULL) falls back to the
+# copy alone — the pre-record behaviour, which cannot see a held-but-outside lord.
+RECORD_SUPPORT_SQL_TEMPLATE = """
 WITH snap AS (
-  SELECT s.consumed_dasha_row_ids AS ids FROM public.ka_gochara_search_input_snapshot s
+  SELECT s.consumed_dasha_row_ids AS ids,
+         (to_jsonb(s) -> 'consumed_dasha_rows') AS copy,     -- the snapshot's COPY (1305, G12); JSON null / absent for a legacy snapshot
+         (to_jsonb(s) -> 'consumed_dasha_held') AS held_rec  -- the (lord, level) pairs the pinned build HOLDS, recorded at capture; JSON null / absent before that record existed
+  FROM public.ka_gochara_search_input_snapshot s
   WHERE s.chart_id = %(chart)s AND s.generation = %(gen)s),
+src AS (
+  SELECT lower(e.value #>> '{content,lord_graha}') AS lord, (e.value #>> '{key,level_n}')::int AS level_n,
+         (e.value #>> '{key,start_iso}')::timestamptz AS s, (e.value #>> '{content,end_iso}')::timestamptz AS e
+  FROM snap, jsonb_array_elements(snap.copy) AS e(value)
+  WHERE jsonb_typeof(snap.copy) = 'array'@@LEGACY_ARM@@),
 runs AS (
-  SELECT lower(d.lord_graha) AS lord, d.level_n,
-         range_agg(tstzrange(d.start_iso, d.end_iso, '[)')) AS m
-  FROM public.chart_dashas d, snap
-  WHERE d.chart_id = %(chart)s AND d.dasha_row_id = ANY (snap.ids) AND d.level_n IN (1, 2, 3)
+  SELECT lord, level_n, range_agg(tstzrange(s, e, '[)')) AS m
+  FROM src WHERE level_n IN (1, 2, 3)
   GROUP BY 1, 2),
-held AS (
-  SELECT DISTINCT lower(d.lord_graha) AS lord, d.level_n
-  FROM public.chart_dashas d
-  WHERE d.chart_id = %(chart)s AND d.ayanamsha_id = %(ayan)s AND d.system_id = %(system)s
-    AND d.verification_pass_status = %(tier)s AND d.level_n IN (1, 2, 3)
-    AND d.build_id IN (SELECT x.build_id FROM public.chart_dashas x, snap WHERE x.chart_id = %(chart)s
-                       AND x.dasha_row_id = ANY (snap.ids))),
-rec AS (
+@@HELD@@rec AS (
   SELECT r.record_id, r.period_anchor_lord AS lord,
          CASE r.period_anchor_level WHEN 'md' THEN 1 WHEN 'ad' THEN 2 WHEN 'pd' THEN 3 END AS level_n,
          r.temporal_support_state AS state,
@@ -991,3 +1306,29 @@ SELECT rec.record_id::text, rec.stored::text,
 FROM rec LEFT JOIN held ON (held.lord, held.level_n) = (rec.lord, rec.level_n)
          LEFT JOIN runs ON (runs.lord, runs.level_n) = (rec.lord, rec.level_n)
 """
+
+# A snapshot WITH a copy (1305, G12) is read from the copy ALONE: the statement must not even NAME the live relation (so it runs with live L1 gone, and
+# without privileges on it). Only a LEGACY snapshot (ids, no copy) keeps the live arm, as before.
+RECORD_SUPPORT_LEGACY_ARM = """
+  UNION ALL
+  SELECT lower(d.lord_graha), d.level_n, d.start_iso, d.end_iso
+  FROM public.chart_dashas d, snap
+  WHERE (snap.copy IS NULL OR jsonb_typeof(snap.copy) <> 'array')                -- LEGACY snapshot: read by id from live L1, as before
+    AND d.chart_id = %(chart)s AND d.dasha_row_id = ANY (snap.ids)"""
+RECORD_SUPPORT_HELD_LIVE = """held AS (
+  SELECT DISTINCT lower(d.lord_graha) AS lord, d.level_n
+  FROM public.chart_dashas d
+  WHERE d.chart_id = %(chart)s AND d.ayanamsha_id = %(ayan)s AND d.system_id = %(system)s
+    AND d.verification_pass_status = %(tier)s AND d.level_n IN (1, 2, 3)
+    AND d.build_id IN (SELECT x.build_id FROM public.chart_dashas x, snap WHERE x.chart_id = %(chart)s
+                       AND x.dasha_row_id = ANY (snap.ids))),
+"""
+RECORD_SUPPORT_HELD_COPY = """held AS (
+  SELECT DISTINCT lord, level_n FROM src
+  UNION                                                           -- a lord the build holds but that runs wholly outside the horizon is held, not absent
+  SELECT lower(e.value ->> 'lord'), (e.value ->> 'level_n')::int
+  FROM snap, jsonb_array_elements(snap.held_rec) AS e(value)
+  WHERE jsonb_typeof(snap.held_rec) = 'array'),
+"""
+RECORD_SUPPORT_SQL_COPY = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", "").replace("@@HELD@@", RECORD_SUPPORT_HELD_COPY)
+RECORD_SUPPORT_SQL = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", RECORD_SUPPORT_LEGACY_ARM).replace("@@HELD@@", RECORD_SUPPORT_HELD_LIVE)

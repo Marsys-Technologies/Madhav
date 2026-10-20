@@ -1,9 +1,9 @@
 ---
 artifact: W4_EXECUTOR_BINDINGS
-version: 1.1
+version: 1.2
 status: PREPARATION_ONLY — independent review, integration and phase enablement outstanding
 produced_on: 2026-10-15
-changelog: "v1.1 (2026-10-16): J3C-BINDINGS supersedes measuring proposal metadata with dedicated disabled bindings; v1.0: initial launch/preparation surfaces."
+changelog: "v1.2 (2026-10-20): publish_head / rollback_head and their dry-run siblings are enabled through the reviewed head policy (head_operation.py, SR-HEAD-POLICY-KEEP); v1.1 (2026-10-16): J3C-BINDINGS supersedes measuring proposal metadata with dedicated disabled bindings; v1.0: initial launch/preparation surfaces."
 ---
 
 # Wave 4 step 7 — executable launch bridge and later preparation
@@ -79,8 +79,8 @@ proposed request and its gaps reviewable now.
 | measuring_dispatch | run=all_classes_full, classes=all | builder + gcloud | J-3a/J-3c; staging rollback and actual launch qualification |
 | century_dispatch | classes=all | gcloud | J-4d/J-4e; final-rules 5.0 launcher; confirm any staging builder requirement |
 | verification_job | generation=5.0 | gcloud | phase 10 after P06b; remote launcher and immutable job-definition readback |
-| publish_head | generation=5.0 | builder | J-6m; governed switch, retained head and compare-and-swap contract |
-| rollback_head | no target presumed; request contract awaits measured retained head | builder | J-6r; retained-head rehearsal contract, not deletion-to-v1 |
+| publish_head | ENABLED (SR-HEAD-POLICY-KEEP): generation, manifest-id, expected-head-sha256 | builder | J-6m; `fleet/head_operation.py --kind publish_head --execute`, sibling `publish_head_dryrun` (`--dry-run`: the same compare-and-swap, rolled back); the executor refuses what `head_operation.request_problem` refuses (head_change scope, exact args, D-FLIP decision event, dry-run receipt); V-lane signer stays required |
+| rollback_head | ENABLED (SR-HEAD-POLICY-KEEP): generation (the recorded previous head), manifest-id, expected-head-sha256 | builder | J-6r; `fleet/head_operation.py --kind rollback_head --execute`, sibling `rollback_head_dryrun`; restores the retained head bound to the original publish receipt, never deletion-to-v1; V-lane signer stays required |
 
 The additional disabled `measuring_dispatch.staging_dry_run` descriptor binds the
 **real transaction rollback** path: the existing dispatcher with fixed steward,
@@ -115,13 +115,14 @@ for the verifier or sealer.
   implementation job; no new tracker child id is invented. Cockpit must register
   the real child and bind review/source before this wrapper becomes executable.
 
-Proposed future kind names, **not allocated or executable**:
+**Update (SR-PREBUILD-ALL, 2026-10-18):** the century family is allocated and bound — see `CENTURY_BINDINGS_v1_0.md`.
+
+Proposed future kind names, **not allocated or executable** (the measuring and century dryrun/teardown kinds have since been allocated):
 `measuring_dispatch_dryrun`, `century_dispatch_dryrun`,
-`verification_job_dryrun`, `publish_head_dryrun`, `rollback_head_dryrun`,
+`verification_job_dryrun`,
 `protected_apply`, `protected_apply_dryrun`, `provision`, `provision_dryrun`,
 `seal`, `seal_dryrun`. Cockpit must decide names, child allocation, exact request
-inputs, capabilities and enable-at-phase gates. Century, authority switching and
-protected interfaces remain explicitly unbound; their existing placeholders
+inputs, capabilities and enable-at-phase gates. Protected interfaces remain explicitly unbound (century and the head kinds are bound — SR-PREBUILD-ALL / SR-HEAD-POLICY-KEEP); their existing placeholders
 continue to fail closed even if accidentally enabled.
 
 ## Opened source contracts

@@ -35,6 +35,10 @@ PY_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py"
 SH_REL = "00_ARCHITECTURE/briefs/kalayantra/fleet/executor.sh"
 COORD_REL = "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md"
 
+sys.path.insert(0, str(FLEET))
+import executor_pin_shards  # noqa: E402  (SR-CHURN-CUT 3: append-only pin shards; edits after this one are new files, not edits here)
+SHARDS = executor_pin_shards.load_shards()
+
 PLAN_PIN = "e709f60d7fcd4559227a25a4d5d83d6431c396b6"
 MODEL_PIN = "cf9831bceff36abd5a50e95328b83d16a4c1ce24"  # final J-4p/main integration target
 PINNED_EXECUTOR_SHA256 = "8b9a164f52b307514d7b42f87019070689b1533f624b871a2e1d113408ebdcf7"
@@ -80,12 +84,35 @@ MEASURING_BINDINGS = {
         "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": [], "production": True, "enabled_by": "J-3d",
     },
 }
+# SR-PREBUILD-ALL (item J-4e, enabled_by J-4d): the century family. century_dispatch = the measuring launch without the test slice
+# (builder because it stages the run, gcloud because it launches it); the dry run is its production:false sibling; the teardown pair reuses the
+# scoped teardown (SR-TEARDOWN-AUTHORITY-GATE item 3) and the REAL teardown stays enabled:false until the owner's teardown authority is recorded.
+CENTURY_BINDINGS = {
+    "century_dispatch": {
+        "enabled": True, "needs": "builder", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py",
+        "fixed_args": [], "allowed_args": ["classes"], "production": True, "remote_async": True, "enabled_by": "J-4d",
+        "also_needs": ["gcloud"],
+    },
+    "century_dispatch_dryrun": {
+        "enabled": True, "needs": "builder", "script": "platform/scripts/dispatch_v5_century_job.py",
+        "fixed_args": ["--i-am-steward", "--after-settled-1", "--dry-run"], "allowed_args": ["classes"],
+        "production": False, "enabled_by": "J-4d",
+    },
+    "century_teardown_dryrun": {
+        "enabled": True, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
+        "fixed_args": ["--dry-run"], "allowed_args": [], "production": False, "enabled_by": "J-4d",
+    },
+    "century_teardown": {
+        "enabled": False, "needs": "owner", "script": "platform/scripts/teardown_v5_small_test_job.py",
+        "fixed_args": ["--execute", "--i-am-steward"], "allowed_args": [], "production": True, "enabled_by": "J-4d",
+    },
+}
 # A8 §3.11: the kinds whose work continues remotely after the child returns — the only ones that take the production fence.
 REMOTE_ASYNC_KINDS = {"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"}
 # J-2a M6/M7: the one added read-only kind (fleet/CLOUDRUN_READBACK_v1_0.md). Exact binding, not permission for any other op.
 CLOUDRUN_READBACK = {
     "enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/cloudrun_readback.py",
-    "fixed_args": [], "allowed_args": ["execution", "logs"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
+    "fixed_args": [], "allowed_args": ["execution", "logs", "metrics"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
     "timeout_s": 600, "enabled_by": "J-2a",
 }
 # A7 D-44: `read_only` marks the kinds the executor accepts mechanically; `quiescence_check` is the one added read-only kind (session readback).
@@ -114,16 +141,69 @@ SCHEDULER_BINDINGS = {
     "measuring_cancel": {"enabled": True, "needs": "gcloud", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/measuring_cancel.py", "fixed_args": [],   # SR-J3-CANCEL-NULL
                          "allowed_args": ["execution"], "production": True, "timeout_s": 900, "enabled_by": "J-3c"},
 }
+# K9-23 (SR-PREBUILD-ALL): the five layer/rebuild kinds bound to kala_core.publication, plus the three dry-run siblings SR-TEARDOWN-AUTHORITY-GATE 2 requires.
+# layer_verify/layer_publish/layer_rollback run publication.py itself; the rebuild kinds and every layer dry-run go through publication_admission.py.
+K9_MODULE = "platform/python-sidecar/services/kala_core/publication.py"
+K9_ADMISSION = "platform/python-sidecar/services/kala_core/publication_admission.py"
+def _k9(needs, script, fixed, allowed, production, module, **more):
+    return {"enabled": True, "needs": needs, "script": script, "fixed_args": [fixed], "allowed_args": allowed, "production": production,
+            "enabled_by": "K9-23", "cwd": "platform/python-sidecar", "python_module": module, **more}
+K9_BINDINGS = {
+    "orchestrator_rebuild_dryrun": _k9("builder", K9_ADMISSION, "rebuild-dryrun", ["assets", "run-id", "phase"], False, "services.kala_core.publication_admission"),
+    "orchestrator_rebuild": _k9("builder", K9_ADMISSION, "rebuild", ["assets", "run-id", "phase"], True, "services.kala_core.publication_admission", timeout_s=21600),
+    "layer_verify_dryrun": _k9("layer_verifier", K9_ADMISSION, "verify-dryrun", ["run-id", "generation", "independently-derived-digest"], False, "services.kala_core.publication_admission"),
+    "layer_verify": _k9("layer_verifier", K9_MODULE, "verify", ["run-id", "generation", "independently-derived-digest"], True, "services.kala_core.publication"),
+    "layer_publish_dryrun": _k9("builder", K9_ADMISSION, "publish-dryrun", ["run-id", "generation", "expected-head"], False, "services.kala_core.publication_admission"),
+    "layer_publish": _k9("builder", K9_MODULE, "publish", ["run-id", "generation", "expected-head"], True, "services.kala_core.publication"),
+    "layer_rollback_dryrun": _k9("builder", K9_ADMISSION, "rollback-dryrun", ["generation", "expected-head"], False, "services.kala_core.publication_admission"),
+    "layer_rollback": _k9("builder", K9_MODULE, "rollback", ["generation", "expected-head"], True, "services.kala_core.publication"),
+}
 # U-M-12 (enabled_by J-4b, the protected-window item): the read-only GitHub run readback for the window watch; prepared for W3/W4 and SHIPPED DISABLED, so it is in no ENABLED_KINDS set below.
 GITHUB_RUN_READBACK = {
     "enabled": False, "needs": "none", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/github_run_readback.py",
     "fixed_args": [], "allowed_args": ["run"], "requesters": ["adhikarin", "v1", "v2"], "production": False,
     "read_only": True, "timeout_s": 300, "enabled_by": "J-4b",
 }
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds
+# U-M-01 (SR-PREBUILD-ALL; surrogate ruling SR-W2-ROUTE): the protected-window dispatch family, appended after the scheduler kinds and shipped DISABLED (not used in W2).
+# Exact bindings; the enabling PR flips `enabled` here and in the table together. `needs: none`: the child needs only the GitHub CLI session of the executor's own HOME.
+PROTECTED_WINDOW_SCRIPT = "00_ARCHITECTURE/briefs/kalayantra/fleet/protected_window_launch.py"
+PROTECTED_WINDOW_ARGS = ["flag", "ref", "head", "window_lease_id"]
+PROTECTED_WINDOW_BINDINGS = {
+    "protected_window_dispatch_dryrun": {"enabled": False, "needs": "none", "script": PROTECTED_WINDOW_SCRIPT, "fixed_args": ["--dry-run"],
+                                         "allowed_args": PROTECTED_WINDOW_ARGS, "production": False, "timeout_s": 300, "enabled_by": "J-4b"},
+    "protected_window_dispatch": {"enabled": False, "needs": "none", "script": PROTECTED_WINDOW_SCRIPT, "fixed_args": [],
+                                  "allowed_args": PROTECTED_WINDOW_ARGS, "production": True, "remote_async": True, "timeout_s": 600, "enabled_by": "J-4b"},
+}
+# U-M-03 (enabled_by J-4b): the two role-provisioning dispatch kinds, appended after the scheduler/cancel kinds, DISABLED. Exact bindings.
+PROVISIONING_SCRIPT = "00_ARCHITECTURE/briefs/kalayantra/fleet/role_provisioning_dispatch.py"
+PROVISIONING_BINDINGS = {
+    "gochara_role_provisioning_dispatch_dryrun": {"enabled": False, "needs": "none", "script": PROVISIONING_SCRIPT, "fixed_args": ["--dry-run"],
+                                                  "allowed_args": ["stage", "dsn_tail", "confirm", "window_lease_id"], "production": False, "timeout_s": 300, "enabled_by": "J-4b"},
+    "gochara_role_provisioning_dispatch": {"enabled": False, "needs": "none", "script": PROVISIONING_SCRIPT, "fixed_args": ["--execute"],
+                                           "allowed_args": ["stage", "dsn_tail", "confirm", "window_lease_id"], "production": True, "timeout_s": 300, "enabled_by": "J-4b"},
+}
+# SR-PREBUILD-ALL (W5/W6 union MISSING: KIND-http_probe, KIND-orchestrator_rebuild_cancel/_teardown), appended after the provisioning kinds and SHIPPED DISABLED. Exact bindings.
+# http_probe: the read-only, credential-free probe of one fixed URL (SR-TEARDOWN-AUTHORITY-GATE 3). The two K9 control families run publication_admission.py (rebuild_control).
+HTTP_PROBE = {
+    "enabled": False, "needs": "none", "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/http_probe.py", "fixed_args": [], "allowed_args": ["probe"],
+    "requesters": ["adhikarin", "v1", "v2"], "production": False, "read_only": True, "timeout_s": 300, "enabled_by": "J-6l",
+}
+def _k9_control(operation, production, timeout):
+    return {"enabled": False, "needs": "builder", "script": K9_ADMISSION, "fixed_args": [operation], "allowed_args": ["run-id"], "production": production,
+            "enabled_by": "K9-23", "cwd": "platform/python-sidecar", "python_module": "services.kala_core.publication_admission", "timeout_s": timeout}
+REBUILD_CONTROL_BINDINGS = {
+    "orchestrator_rebuild_cancel_dryrun": _k9_control("cancel-dryrun", False, 300),
+    "orchestrator_rebuild_cancel": _k9_control("cancel", True, 300),
+    "orchestrator_rebuild_teardown_dryrun": _k9_control("teardown-dryrun", False, 300),
+    "orchestrator_rebuild_teardown": _k9_control("teardown", True, 600),
+}
+HEAD_KINDS = ("publish_head", "publish_head_dryrun", "rollback_head", "rollback_head_dryrun")   # J-6m / J-6r: enabled only through head_operation.py's reviewed policy (SR-HEAD-POLICY-KEEP)
+ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(HEAD_KINDS) | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(K9_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]} | executor_pin_shards.enabled_kinds(SHARDS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; K9-23: the eight layer/rebuild kinds; J-4d: the three enabled century kinds
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
+P10_ENABLED_ITEMS = ("J-1a", "J-4d", "J-6m", "J-6r")      # J-1a: Wave 4 small test; J-4d: SR-PREBUILD-ALL (the century launcher is merged-with-this-PR); J-6m / J-6r: SR-HEAD-POLICY-KEEP (the head kinds, through the head policy)
+P10_STILL_DISABLED = {item: kind for item, kind in P10.items() if item not in P10_ENABLED_ITEMS}
 BOUNDARY_FUNCTIONS = ["validate", "execute", "run_one", "main", "lease_live", "request_digest", "fence_quiescent",
                       "refresh_refusal_reason", "handover_from_main", "refresh_from_main_or_fail_closed",
                       "capabilities", "run_group"]
@@ -187,11 +267,11 @@ def test_enabled_is_the_first_key_of_every_entry():
         assert next(iter(entry)) == "enabled", f"{kind}: first key is {next(iter(entry))}"
 
 
-def test_p10_entries_present_with_only_j1a_enabled():
+def test_p10_entries_present_with_only_j1a_and_j4d_enabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
     for item, kind in P10.items():
         assert kind in ops, f"{kind} is missing"
-        assert enabled_state(kind, ops[kind]) is (item == "J-1a"), f"{kind} has unexpected enablement"
+        assert enabled_state(kind, ops[kind]) is (item in P10_ENABLED_ITEMS), f"{kind} has unexpected enablement"      # J-4d: century_dispatch, SR-PREBUILD-ALL
         assert ops[kind]["enabled_by"] == item
 
 
@@ -199,18 +279,28 @@ def test_table_equals_the_pin_except_reviewed_k9_and_w4_preparation_edits():
     assert_table_matches_pin(load_ops(OPS_FILE.read_text()))
 
 
-def assert_table_matches_pin(now):
+def assert_table_matches_pin(now, shards=None):
+    shards = SHARDS if shards is None else shards
     base = load_ops(base_text(OPS_REL))
     expected_order = list(base["ops"])
     pos = expected_order.index("measuring_dispatch") + 1
     expected_order[pos:pos] = ["measuring_dispatch_dryrun", "measuring_teardown_dryrun", "measuring_teardown"]
     expected_order.insert(expected_order.index("migration_readback") + 1, "cloudrun_job_readback")
     expected_order.insert(expected_order.index("cloudrun_job_readback") + 1, "quiescence_check")
+    for sibling, real in (("layer_verify_dryrun", "layer_verify"), ("layer_publish_dryrun", "layer_publish"), ("layer_rollback_dryrun", "layer_rollback")):
+        expected_order.insert(expected_order.index(real), sibling)   # K9-23: each layer dry-run sits directly before its operation
+    pos = expected_order.index("century_dispatch") + 1
+    expected_order[pos:pos] = ["century_dispatch_dryrun", "century_teardown_dryrun", "century_teardown"]
     # J6 head-change bindings: each head kind gains an explicit `_dryrun` sibling right after it
     for head_kind in ("publish_head", "rollback_head"):
         expected_order.insert(expected_order.index(head_kind) + 1, head_kind + "_dryrun")
     expected_order += list(SCHEDULER_BINDINGS)                      # SR-J3-REAPER-PAUSE: appended last
     expected_order.append("github_run_readback")                    # U-M-12: appended after the scheduler kinds
+    expected_order += list(PROTECTED_WINDOW_BINDINGS)               # U-M-01: appended after the scheduler kinds
+    expected_order += list(PROVISIONING_BINDINGS)                   # U-M-03: appended after the github_run_readback kind
+    expected_order.append("http_probe")                             # SR-PREBUILD-ALL: appended after the provisioning kinds
+    expected_order += list(REBUILD_CONTROL_BINDINGS)                # SR-PREBUILD-ALL: cancel and teardown, each dry run directly before its operation
+    _, expected_order = executor_pin_shards.apply_shards(dict.fromkeys(expected_order), expected_order, shards)   # reviewed shards, in file-name order
     assert set(now) == set(base) and set(now["ops"]) == set(expected_order), "the set of kinds or top-level keys changed"
     assert list(now["ops"]) == expected_order, "the order of kinds changed"
     expected = json.loads(json.dumps(base["ops"]))
@@ -220,15 +310,21 @@ def assert_table_matches_pin(now):
         expected[kind]["enabled_by"] = "K9-23"
         assert "TO_BE_SET_BY_K9-3" in expected[kind]["script"]
         expected[kind]["script"] = expected[kind]["script"].replace("TO_BE_SET_BY_K9-3", "TO_BE_SET_BY_K9-23", 1)
+    expected.update(json.loads(json.dumps(K9_BINDINGS)))              # K9-23: the exact enabled bindings (the pin's five placeholders are replaced, three siblings added)
     expected["smalltest_dispatch"]["script"] = "00_ARCHITECTURE/briefs/kalayantra/fleet/smalltest_launch.py"
     expected["smalltest_dispatch"]["also_needs"] = ["gcloud"]
     expected["smalltest_dispatch_dryrun"]["fixed_args"] = ["--i-am-steward", "--after-settled-1", "--dry-run"]
     expected["verification_job"]["needs"] = "gcloud"
     expected.update(json.loads(json.dumps(MEASURING_BINDINGS)))
+    expected.update(json.loads(json.dumps(CENTURY_BINDINGS)))
     expected["cloudrun_job_readback"] = json.loads(json.dumps(CLOUDRUN_READBACK))
     expected["quiescence_check"] = json.loads(json.dumps(QUIESCENCE_CHECK))
     expected.update(json.loads(json.dumps(SCHEDULER_BINDINGS)))
     expected["github_run_readback"] = json.loads(json.dumps(GITHUB_RUN_READBACK))
+    expected.update(json.loads(json.dumps(PROTECTED_WINDOW_BINDINGS)))
+    expected.update(json.loads(json.dumps(PROVISIONING_BINDINGS)))
+    expected["http_probe"] = json.loads(json.dumps(HTTP_PROBE))
+    expected.update(json.loads(json.dumps(REBUILD_CONTROL_BINDINGS)))
     for kind in READ_ONLY_KINDS[:3]:
         expected[kind]["read_only"] = True
     for kind, phase in [("measuring_dispatch", "J-3a"), ("century_dispatch", "J-4d"),
@@ -249,7 +345,7 @@ def assert_table_matches_pin(now):
     for kind in ("publish_head", "rollback_head"):
         original = expected[kind]
         for dry in (False, True):
-            entry = {"enabled": False, "needs": "builder",
+            entry = {"enabled": True, "needs": "builder",      # SR-HEAD-POLICY-KEEP: enabled; the executor still refuses whatever head_operation.request_problem refuses
                 "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py",
                 "fixed_args": ["--kind", kind, "--dry-run" if dry else "--execute"],
                 "allowed_args": ["generation", "manifest-id", "expected-head-sha256"],
@@ -265,6 +361,7 @@ def assert_table_matches_pin(now):
         entry.pop("required_rows", None)
         if kind.endswith("_dryrun"): entry["production"] = False
         if kind in REMOTE_ASYNC_KINDS: entry["remote_async"] = True
+    expected, _ = executor_pin_shards.apply_shards(expected, expected_order, shards)   # shard entries are the exact table entries: no A8 normalisation applies on top
     for kind, entry in now["ops"].items():
         assert set(entry) == set(expected[kind]), f"{kind}: key set changed"
         assert next(iter(entry)) == "enabled", f"{kind}: enabled must remain first"
@@ -282,25 +379,25 @@ def test_table_pin_refuses_an_extra_kind():
         assert_table_matches_pin(now)
 
 
-@pytest.mark.parametrize("kind", MEASURING_BINDINGS)
+@pytest.mark.parametrize("kind", [*MEASURING_BINDINGS, *CENTURY_BINDINGS])
 @pytest.mark.parametrize("field,value", [
-    ("enabled", False), ("script", "platform/scripts/unreviewed.py"),
+    ("enabled", None), ("script", "platform/scripts/unreviewed.py"),
     ("fixed_args", ["--execute"]), ("allowed_args", ["unreviewed"]),
 ])
-def test_table_pin_refuses_unreviewed_measuring_changes(kind, field, value):
+def test_table_pin_refuses_unreviewed_measuring_and_century_changes(kind, field, value):
     now = load_ops(OPS_FILE.read_text())
     assert_table_matches_pin(now)
-    now["ops"][kind][field] = value
+    now["ops"][kind][field] = (not now["ops"][kind]["enabled"]) if field == "enabled" else value      # flip whichever way the pin has it
     with pytest.raises(AssertionError, match=re.escape(f"{kind}.{field}")):
         assert_table_matches_pin(now)
 
 
-def test_k9_placeholders_name_k9_23_and_none_is_filled():
+def test_k9_kinds_name_k9_23_and_no_placeholder_remains():
     ops = load_ops(OPS_FILE.read_text())["ops"]
-    for kind in K9_KINDS:
+    for kind in K9_BINDINGS:
         assert ops[kind]["enabled_by"] == "K9-23"
-        assert ops[kind]["script"].startswith("TO_BE_SET_BY_K9-23"), kind
-        assert "K9-3" not in ops[kind]["script"].replace("K9-23", ""), kind
+        assert "TO_BE_SET" not in json.dumps(ops[kind]), kind
+        assert (REPO / ops[kind]["script"]).is_file(), kind
     assert ops["local_schema_seed"]["script"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/local_db.sh"
     assert ops["local_schema_seed"]["fixed_args"] == ["seed"]
 
@@ -324,7 +421,7 @@ def test_model_completion_detector_preserves_main_authority(item, kind):
     detector = detector_definition(item)
     assert detector == main_item["detector"]
     assert not detector.get("path", "").endswith("/" + OPS_REL)
-    assert enabled_state(kind, load_ops(OPS_FILE.read_text())["ops"][kind]) is (item == "J-1a")
+    assert enabled_state(kind, load_ops(OPS_FILE.read_text())["ops"][kind]) is (item in P10_ENABLED_ITEMS)
 
 
 def test_detector_state_unreadable_is_a_failure():
@@ -372,14 +469,15 @@ def _segments(src):
 # mechanical_* and accepted_cloudrun_execution additions are pinned the same way.
 # Exact Wave 4 safety-fix, #3607 (f847ba24d) measuring and J-1a lane additions, including the
 # local_schema_seed scratch lifecycle (#3627) and the D-33 generated-overlay hand-off (#3672, d62eb02d4:
-# overlay_proofs, apply_generated_overlay and their call sites in receipt/execute/execute_lane), and the J-3c blocker fix (2026-10-18: child_stdouts and its
-# call sites in execute/run_one/receipt, so the measuring dry-run rollback proof is parsed from the child's stdout alone) and the Amendment A8 executor changes
+# overlay_proofs, apply_generated_overlay and their call sites in receipt/execute/execute_lane), and the J-3c blocker fix (2026-10-18: the measuring dry-run rollback proof is parsed from the child's stdout alone), as made structural by SR-EXECUTOR-FRAMING
+# (child_stderrs and its call sites in execute/execute_lane/run_one/receipt/scheduler_backstop_fire: stdout and stderr are stored separately, never joined) and the Amendment A8 executor changes
 # (validate, validate_lane, execute_lane, execute, main, request_digest, refresh_from_main_or_fail_closed, remote_async and the two
-# module constants UNBOUND_REQUEST_FIELDS / REMOTE_ASYNC_KINDS) and the J-6 head-binding additions (head_policy, head_policy_problem and
+# module constants UNBOUND_REQUEST_FIELDS / REMOTE_ASYNC_KINDS), the SR-PREBUILD-ALL century kinds (receipt, fence_quiescent, smalltest_policy_problem,
+# mechanical_quiescence and the two module constants TEARDOWN_KINDS / LAUNCH_SCHEMAS) and the J-6 head-binding additions (head_policy, head_policy_problem and
 # their call sites in receipt/validate). J6B-NB-01 then keeps a duplicate head request's refusal separate from the retained receipt:
 # `receipt` (preserve_existing) and `main` (its call site) carry the pins re-derived from the merged executor.py. Each hash is of the merged executor.py segment; every other mutation,
 # including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'fence_quiescent': '4e5ee3a3318f4d556f2f54061bad3227ec25c8fd1a19a09defc7de5afd96b416', 'receipt': '750d2206b3e73494ed2a4180f8cd3928755302de318a2ab228f6d8d9570b682e', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': '5b0eba5031bde1fd947b380b210363d875a54e7c90a48fbff5231048faf3ccc7', 'validate': '029c5e5200ddfb86d7a9c82e6f4fefac98f4381e06337cdd9198bbb66b9d7017', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': '88bf9fe8db575678fc093c7ca3f65238a650a085d0c530334553f6a3cf86058c', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': 'a55ce4f528862e280c618dc45d0461b46fc1611670bd9481aeb1c3d452a3e89e', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': 'd6aa64851ee0643d839bbe4d6840f1ef6ffe437a181545eceb2ab36c84e04ac4', 'main': '115c03723546696672d212bdd98e01946f4f37541303294aee36b228115f7504', 'child_stdouts': '9dcbc2e8d1d727541ecb250b6aa47451ea0a676245e5c8eb5512445eeee9f7c5', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3', 'run_one': '1e4f9733e083a041786be6ee1579582444c3589c8903b48c3f5647b66fc37e0c', 'session_marker': '21216adbf560807fffed590211a11235484167a5dbd762a18aed9c59cdd5ab09', 'write_new_json': 'b69919f6644041481108595fa11fe896bf8ede6de391adca233a28ea8a6c3e26', 'measured_identity': 'f47bc85d6d3516158ea1ef399d8e28a74674318d4842f9596da43c26a5f49222', 'mechanical_post_acceptance': '383b0a42ec72e3ed3d840f9693ecb288d4e7a431f285553601a244fffd55ed0e', 'accepted_cloudrun_execution': '5a87517fae4a7febf1eb0479e56b70bf90673e4569a00f74897ba2e298f5ae7d', 'mechanical_quiescence': 'c893b95cb448bebbb2899238059139e431d842dca307c4dc71bdc5e8526e260c', 'mechanical_acceptance': 'c9e263a19704a100a4583ad84cf6126d4bdff10c312aad7cd964606fae12a806', 'request_digest': '972ee7e7f9d665377108a9ab233c45db04b3e8a9a31825dc7560ce05b08406b6', 'refresh_from_main_or_fail_closed': 'c177789a8289a212e5690d1a70b87a34e36c34df052c1687e5cd3965f78eb18c', 'remote_async': '053f72a12ac1629af29731e3f5ab77bcecfde2c1fb01e56c256640a886755b98', 'UNBOUND_REQUEST_FIELDS': 'e3c09d66976b1be9186502bceb7b318a1416f93cd640bdbc4ad852e437b17a12', 'REMOTE_ASYNC_KINDS': '3896625f1c5786170001c8b85ac4e5b0dde89fe249de020d76920b0ad5ef1155', 'SCHEDULER_JOB': 'eb099f996955c70fd6bd1aa6a50fc7dfc195b7c3e78594751dd226d9b862faf4', 'SCHEDULER_PROJECT': 'e63bc56c1f7ff7c1cabcbbfe7af3a48b3aaeec1aa4c7e090144cd0167d62afa5', 'SCHEDULER_REGION': 'c0267426fb76794ab995158ddec9e3fc8127772b137618e9019892344acb0b80', 'SCHEDULER_SCRIPT': 'f479c65ab5597d6fca611a5804d02dcaa87d5c3e099dffa466f948cab610f083', 'SCHEDULER_ACTION': 'bcce7bd9f31fbe10c8fa722a2bd609416107b280bf4e26550633dc8cf0561a00', 'SCHEDULER_STATES': 'b57629e1c41abd330b2da37f27865473060e2a104d0d28b287d74b97b36a731d', 'SCHEDULER_UTC': 'd463e745920163c76c1dea9659a8eeef2aed71da4bd059a8588f1fddb69596b4', 'SCHEDULER_BACKSTOP': '5336986b52b9342f36bebb292599e0faffefdfba49d95329afda5452904df188', 'lease_expiry': '23f2b14757ee303848c7f77c3d39e066dcf872a6122855707ac7d9401a1aa0c4', 'scheduler_policy_problem': '12630309cd268eeb090355a5844ae4d462f472b11e9da75f02495d896fe0a94f', 'scheduler_proof': '8ef650eaa9c0e78ee080de1862aecf52c378ca5f6e72012600064c4f28d41428', 'scheduler_write': '53a2d469ef44b3a9805794d9c889e4b14fbf6c97e07f94800d172d499888389b', 'scheduler_backstop_records': 'db053014456aaa26df639582cdbb728c9d213545f0221fd1c6a9b917fae5e552', 'arm_scheduler_backstop': '0e7a39078a9870914c142643be9be49bf1081ebc7be2c8ee2415c3de95b7bd29', 'scheduler_backstop_satisfy': '201c57f603bb483f38add84b058d28ae28340aae3a2d46fe4f721b9918d74081', 'scheduler_backstop_fire': '1339f4d0fcf724bdfb90cf116a5c685e7b5a33d49ef23c142e0845405d67a2e7', 'scheduler_backstop_tick': 'c6fcad69671e482c5460eda18f0d07f53699c39195802f9c0cd431b1a11fe4b8', 'measuring_cancel_problem': '635e5e5b1fc83e143a793eb4c2b54e5fc200593b8f275b653cf577f231c8df42', 'measuring_cancel_proof': '19b48179419b7864b6640bedbc19cfbee601b2bd263030d26d18b69ff6930765', 'canonical_sha': 'f8f23ad6c9162e9444540ddfdf1046ac31db16f1807ec27cb0fc1d6482a4d0ba', 'mechanical_exempt': '802a819301de8a5ad283a693cc87931548cfbd9ea93f1cad2187f0aeb3f1de0a', 'pack_fill_check': '084a2d76b85ad35339ee50e820747e0d8617e04d1b4da9a87701c0f17c8d73c3', 'dry_run_check': 'ba4c756c73f67f3500f30d73733573882a59032af7399835d062c0eaa8f82269', 'mechanical_problem': 'b1b2e07fce11b99da96af74d59f1b2112d686a65f6980a4bafd0ad812873fe88', 'mechanical_pre_acceptance': '4c566fb91b17c63ddabdd5b7859640daaef57110ed114f054272718f5e4c2090', 'signer_acceptance_problem': '81b018c05f10e2355e7bfe2168ae2db625e13a124f18dbf5482b13f9dd23afea', 'PACK_ALLOWLIST': '895b42a1a543f823c50bf4504f68c969ca317324d1583716b09393883a845a56', 'SIGNED_ONLY_KINDS': '73a9f5fa12f897b89e6a3bb7ca126826f67b812bef4fd55d25c2c2343db815a5', 'NO_DRYRUN_KINDS': '1831c60b886d47185af1542e9be21cf4c330d3495ca9259471a37d2991d903f7', 'PACK_NEVER_FILLED': 'ae15e6db6c6772e98a7fa57994ec23c3607af03c3d81b7fc38e7dc7ee5913786', 'DRYRUN_IDENTITY_FIELDS': 'b81fe525fa8a151e2183e0f1065255b9bb0b47d43c4c7f45b80fa7397d79c528', 'HEX64': 'f4b9a1efc5cff4c648c87e337ff1353507e3ba55ceb7c9b11d9ae6f3f3bcd638', 'head_policy': '948d21ff7ed3d7e4ba67bfdcf3d11ce042a3c7fef7603d3de852b3beff9a116c', 'head_policy_problem': '7d4d5e7cd616c4a4e0703361630ada5544250aad5907e359618ba5de2491f96f'}
+W4_FUNCTION_HASHES = {'fence_quiescent': '4d985c5cda7a752745962eaf645bf6f6833afc89ca7f3a6ddcff852b33fb7cad', 'receipt': 'c451545a5c136e767a2b051c17d2e3cbf17ca1c73cc1941a02891e9770c1dc3a', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'f2676f15c255cfcb6221ebb668ddaabe12acdc87e18428bcf9df04549aa2a9d7', 'validate': '029c5e5200ddfb86d7a9c82e6f4fefac98f4381e06337cdd9198bbb66b9d7017', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': '88bf9fe8db575678fc093c7ca3f65238a650a085d0c530334553f6a3cf86058c', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': '55ec56f43c66590db415dbc5141b889fe226392e2dd81bcc14568d9147a9d925', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': 'c121e7e9ab5598343d0d74b60e7d3029c064643ffc510b49e9f086235d72a2b0', 'main': '115c03723546696672d212bdd98e01946f4f37541303294aee36b228115f7504', 'child_stderrs': '2701c3a828806e2e6653b398609becae1dbf40043a5d1efe6d4335c7abbe902a', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3', 'run_one': 'f30360721639b59cd9371c10aec7fc2251e2aef8acebdf20d78a0e856894adbb', 'session_marker': '21216adbf560807fffed590211a11235484167a5dbd762a18aed9c59cdd5ab09', 'write_new_json': 'b69919f6644041481108595fa11fe896bf8ede6de391adca233a28ea8a6c3e26', 'measured_identity': 'f47bc85d6d3516158ea1ef399d8e28a74674318d4842f9596da43c26a5f49222', 'mechanical_post_acceptance': '383b0a42ec72e3ed3d840f9693ecb288d4e7a431f285553601a244fffd55ed0e', 'accepted_cloudrun_execution': '5a87517fae4a7febf1eb0479e56b70bf90673e4569a00f74897ba2e298f5ae7d', 'mechanical_quiescence': 'adcc6130579cf4bc7930977e34e99ddc5dc522c74d8374e04b10b50974c51ca4', 'mechanical_acceptance': 'c9e263a19704a100a4583ad84cf6126d4bdff10c312aad7cd964606fae12a806', 'request_digest': '972ee7e7f9d665377108a9ab233c45db04b3e8a9a31825dc7560ce05b08406b6', 'refresh_from_main_or_fail_closed': 'c177789a8289a212e5690d1a70b87a34e36c34df052c1687e5cd3965f78eb18c', 'remote_async': '053f72a12ac1629af29731e3f5ab77bcecfde2c1fb01e56c256640a886755b98', 'UNBOUND_REQUEST_FIELDS': 'e3c09d66976b1be9186502bceb7b318a1416f93cd640bdbc4ad852e437b17a12', 'REMOTE_ASYNC_KINDS': '3896625f1c5786170001c8b85ac4e5b0dde89fe249de020d76920b0ad5ef1155', 'SCHEDULER_JOB': 'eb099f996955c70fd6bd1aa6a50fc7dfc195b7c3e78594751dd226d9b862faf4', 'SCHEDULER_PROJECT': 'e63bc56c1f7ff7c1cabcbbfe7af3a48b3aaeec1aa4c7e090144cd0167d62afa5', 'SCHEDULER_REGION': 'c0267426fb76794ab995158ddec9e3fc8127772b137618e9019892344acb0b80', 'SCHEDULER_SCRIPT': 'f479c65ab5597d6fca611a5804d02dcaa87d5c3e099dffa466f948cab610f083', 'SCHEDULER_ACTION': 'bcce7bd9f31fbe10c8fa722a2bd609416107b280bf4e26550633dc8cf0561a00', 'SCHEDULER_STATES': 'b57629e1c41abd330b2da37f27865473060e2a104d0d28b287d74b97b36a731d', 'SCHEDULER_UTC': 'd463e745920163c76c1dea9659a8eeef2aed71da4bd059a8588f1fddb69596b4', 'SCHEDULER_BACKSTOP': '5336986b52b9342f36bebb292599e0faffefdfba49d95329afda5452904df188', 'lease_expiry': '23f2b14757ee303848c7f77c3d39e066dcf872a6122855707ac7d9401a1aa0c4', 'scheduler_policy_problem': '12630309cd268eeb090355a5844ae4d462f472b11e9da75f02495d896fe0a94f', 'scheduler_proof': '8ef650eaa9c0e78ee080de1862aecf52c378ca5f6e72012600064c4f28d41428', 'scheduler_write': '53a2d469ef44b3a9805794d9c889e4b14fbf6c97e07f94800d172d499888389b', 'scheduler_backstop_records': 'db053014456aaa26df639582cdbb728c9d213545f0221fd1c6a9b917fae5e552', 'arm_scheduler_backstop': '0e7a39078a9870914c142643be9be49bf1081ebc7be2c8ee2415c3de95b7bd29', 'scheduler_backstop_satisfy': '201c57f603bb483f38add84b058d28ae28340aae3a2d46fe4f721b9918d74081', 'scheduler_backstop_fire': '8dc3f584770fdd06d363cf20be284661aead0a589cf9832e8ded2db18b7126ae', 'scheduler_backstop_tick': 'c6fcad69671e482c5460eda18f0d07f53699c39195802f9c0cd431b1a11fe4b8', 'measuring_cancel_problem': '635e5e5b1fc83e143a793eb4c2b54e5fc200593b8f275b653cf577f231c8df42', 'measuring_cancel_proof': '19b48179419b7864b6640bedbc19cfbee601b2bd263030d26d18b69ff6930765', 'canonical_sha': 'f8f23ad6c9162e9444540ddfdf1046ac31db16f1807ec27cb0fc1d6482a4d0ba', 'mechanical_exempt': '802a819301de8a5ad283a693cc87931548cfbd9ea93f1cad2187f0aeb3f1de0a', 'pack_fill_check': '084a2d76b85ad35339ee50e820747e0d8617e04d1b4da9a87701c0f17c8d73c3', 'dry_run_check': 'ba4c756c73f67f3500f30d73733573882a59032af7399835d062c0eaa8f82269', 'mechanical_problem': 'b1b2e07fce11b99da96af74d59f1b2112d686a65f6980a4bafd0ad812873fe88', 'mechanical_pre_acceptance': '4c566fb91b17c63ddabdd5b7859640daaef57110ed114f054272718f5e4c2090', 'signer_acceptance_problem': '81b018c05f10e2355e7bfe2168ae2db625e13a124f18dbf5482b13f9dd23afea', 'PACK_ALLOWLIST': '895b42a1a543f823c50bf4504f68c969ca317324d1583716b09393883a845a56', 'SIGNED_ONLY_KINDS': '73a9f5fa12f897b89e6a3bb7ca126826f67b812bef4fd55d25c2c2343db815a5', 'NO_DRYRUN_KINDS': '1831c60b886d47185af1542e9be21cf4c330d3495ca9259471a37d2991d903f7', 'PACK_NEVER_FILLED': 'ae15e6db6c6772e98a7fa57994ec23c3607af03c3d81b7fc38e7dc7ee5913786', 'DRYRUN_IDENTITY_FIELDS': 'b81fe525fa8a151e2183e0f1065255b9bb0b47d43c4c7f45b80fa7397d79c528', 'HEX64': 'f4b9a1efc5cff4c648c87e337ff1353507e3ba55ceb7c9b11d9ae6f3f3bcd638', 'TEARDOWN_KINDS': '000958948e0d8470e5f2cab40814a720906d5accb4364769fe0fb39a280a9b4f', 'LAUNCH_SCHEMAS': '5669869ddc216dbec7564d7f5b26c7020060959b7759859e117add2c6ff7390f', 'head_policy': '948d21ff7ed3d7e4ba67bfdcf3d11ce042a3c7fef7603d3de852b3beff9a116c', 'head_policy_problem': '7d4d5e7cd616c4a4e0703361630ada5544250aad5907e359618ba5de2491f96f'}
 
 
 def _module_docstring(src):
@@ -389,9 +487,13 @@ def _module_docstring(src):
     return None
 
 
+# Exact K9-23 additions: a distinct verifier capability and its one-connection injection (`capabilities` and `execute` = the reviewed function plus two lines).
+K9_FUNCTION_HASHES = {'capabilities': '5ebe1c302e6b797c2af0da3bb72b7a9aadca4b40663645396aab217a27b9b675', 'execute': 'e5d8fb05c31874578aee3e301a01dfc520d9c19b06998918306e9298a1fc9c52'}
+
+
 def normalize_wave4(base_src, work_src):
     base_seg, work_seg = _segments(base_src), _segments(work_src)
-    for name, digest in W4_FUNCTION_HASHES.items():
+    for name, digest in (W4_FUNCTION_HASHES | K9_FUNCTION_HASHES).items():
         segment = work_seg.get(name, "")
         if hashlib.sha256(segment.encode()).hexdigest() == digest:
             if name in base_seg:
@@ -482,8 +584,10 @@ def test_boundary_refuses_removal_of_a_new_safety_helper(name):
 
 
 @pytest.mark.parametrize("name,old,new", [
-    ("receipt", 'proof.get("rollback_confirmed") is True', 'proof.get("rollback_confirmed") is False'),
-    ("fence_quiescent", '"ky.measuring_completion/1"', '"ky.smalltest_completion/1"'),
+    ("receipt", 'proof.get("rollback_confirmed") is (expected == "ROLLED_BACK")', 'proof.get("rollback_confirmed") is True'),
+    ("receipt", 'proof.get("schema") == "ky.century_staging/1"', 'proof.get("schema") == "ky.measuring_staging/1"'),
+    ("receipt", 'LAUNCH_SCHEMAS[req["kind"]]', '"ky.smalltest_launch/1"'),
+    ("fence_quiescent", 'f"ky.{committed[\'kind\'].split(\'_\')[0]}_completion/1"', '"ky.smalltest_completion/1"'),
     ("smalltest_policy_problem", '"measuring_request_problem"', '"smalltest_request_problem"'),
 ])
 def test_boundary_refuses_changes_to_reviewed_measuring_functions(name, old, new):
@@ -545,7 +649,7 @@ def test_executor_sh_differs_from_the_pin_only_in_the_git_assignment():
 GIT_ENV = {"GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0",
            "GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
            "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}
-ALL_CAPS = {"builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
+ALL_CAPS = {"layer_verifier": True, "builder": True, "owner": True, "pgenv": True, "gcloud": True, "none": True}
 # 2026-10-17 incident: an inherited GIT_DIR beats `-C`, so `git init --bare` re-initialised the SHARED repository. A fixture's git must only see what it made.
 REPO_LOCATING_VARS = ("GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE",
                       "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE")
@@ -688,17 +792,17 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", ["verification_job", "century_dispatch", "publish_head", "rollback_head", *K9_KINDS])
+@pytest.mark.parametrize("kind", ["verification_job", "century_teardown", *PROTECTED_WINDOW_BINDINGS, *PROVISIONING_BINDINGS, "http_probe", *REBUILD_CONTROL_BINDINGS])   # K9 kinds are enabled here (K9-23), not disabled
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)
     assert why is not None and "not enabled" in why, why
 
 
-@pytest.mark.parametrize("kind", K9_KINDS)
+@pytest.mark.parametrize("kind", K9_BINDINGS)
 def test_entry_enabled_in_a_copy_with_a_placeholder_script_is_refused(tmp_path, monkeypatch, kind):
     text = OPS_FILE.read_text()
-    w = World(tmp_path, monkeypatch, copy_with(text, kind))
+    w = World(tmp_path, monkeypatch, copy_with(text, kind, script="TO_BE_SET_BY_FIXTURE"))
     table = w.table()
     assert enabled_state(kind, table[kind]) is True and "TO_BE_SET" in table[kind]["script"]
     assert w.mod.validate(w.production_request(kind), table, ALL_CAPS) == "operation script not yet reviewed/landed"
@@ -794,13 +898,13 @@ def test_enabled_set_is_exactly_bootstrap_plus_wave4():
 
 def test_p10_entries_present_and_disabled():
     ops = load_ops(OPS_FILE.read_text())["ops"]
-    for item, kind in {item: kind for item, kind in P10.items() if item != "J-1a"}.items():
+    for item, kind in P10_STILL_DISABLED.items():
         assert kind in ops, f"{kind} is missing"
         assert enabled_state(kind, ops[kind]) is False, f"{kind} must be disabled"
         assert ops[kind]["enabled_by"] == item
 
 
-@pytest.mark.parametrize("item,kind", sorted({item: kind for item, kind in P10.items() if item != "J-1a"}.items()))
+@pytest.mark.parametrize("item,kind", sorted(P10_STILL_DISABLED.items()))
 def test_future_table_enablement_and_typed_model_detectors_stay_separate(item, kind):
     # The reconciled model uses packet/rehearsal evidence, not enabled-string
     # completion. Preserve the legacy first-key format without inventing a detector.
@@ -895,3 +999,68 @@ def test_nonseed_child_does_not_inherit_caller_scratch_or_connections(tmp_path, 
                              {"script": "fixture.py", "needs": "none", "production": False})
     assert rc == 0, output
     assert not list(mod.EXEC.iterdir()) and not list(mod.TMP.iterdir())
+
+
+# ───────────────────────────── K9-23: the enabled layer / rebuild kinds are admitted only on their gates ─────────────────────────────
+
+K9_PRODUCTION = [k for k, e in K9_BINDINGS.items() if e["production"]]
+K9_ARGS = {"run-id": "6f1d3c1e-0000-4000-8000-000000000001", "generation": "g-1", "expected-head": "g-0", "assets": "ka_yojaka", "phase": "pre",
+           "independently-derived-digest": "0" * 64}
+
+
+def k9_args(kind):
+    return {name: K9_ARGS[name] for name in K9_BINDINGS[kind]["allowed_args"]}
+
+
+@pytest.mark.parametrize("kind", K9_PRODUCTION)
+def test_k9_production_kind_is_admitted_with_a_dry_run_attestation_and_refused_without(tmp_path, monkeypatch, kind):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    table = w.table()
+    req = w.production_request(kind, args=k9_args(kind))
+    assert w.mod.validate(w.accept(req), table, ALL_CAPS) is None, "control failed — the refusal below would be vacuous"
+    checks = {"backup_taken": True, "restore_verified": True}
+    assert w.mod.validate(w.accept(req, checks=checks), table, ALL_CAPS) == "required backup/restore/dry-run attestation missing"
+    assert w.mod.validate(w.accept(req, checks={**checks, "dry_run_passed": False}), table, ALL_CAPS) == "required backup/restore/dry-run attestation missing"
+
+
+@pytest.mark.parametrize("kind", K9_PRODUCTION)
+def test_k9_production_kind_without_a_live_lease_is_refused(tmp_path, monkeypatch, kind):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    req = w.production_request(kind, args=k9_args(kind), lease_id="no-such-lease")
+    assert "lease is not the single unexpired ACTIVE row" in w.mod.validate(w.accept(req), w.table(), ALL_CAPS)
+
+
+@pytest.mark.parametrize("kind", [k for k in K9_BINDINGS if not K9_BINDINGS[k]["production"]])
+def test_k9_dry_run_needs_no_lease_or_acceptance_but_a_merged_commit(tmp_path, monkeypatch, kind):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    table = w.table()
+    req = simple_request(kind, args=k9_args(kind), reviewed_commit=w.reviewed)
+    assert w.mod.validate(req, table, ALL_CAPS) is None
+    assert w.mod.validate({**req, "reviewed_commit": "a" * 40}, table, ALL_CAPS) == "reviewed_commit is not merged to main"
+    assert w.mod.validate({k: v for k, v in req.items() if k != "reviewed_commit"}, table, ALL_CAPS) == "reviewed_commit required for a dry-run operation"
+
+
+@pytest.mark.parametrize("kind", K9_BINDINGS)
+def test_k9_kind_refuses_an_argument_it_was_not_bound_for(tmp_path, monkeypatch, kind):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    req = simple_request(kind, args={**k9_args(kind), "force": "1"}, reviewed_commit=w.reviewed)
+    assert w.mod.validate(req, w.table(), ALL_CAPS) == "disallowed args ['force']"
+
+
+@pytest.mark.parametrize("kind,missing", [("layer_verify", "layer_verifier"), ("layer_verify_dryrun", "layer_verifier"),
+                                          ("layer_publish", "builder"), ("layer_publish_dryrun", "builder"),
+                                          ("layer_rollback", "builder"), ("orchestrator_rebuild", "builder")])
+def test_k9_kind_waits_on_exactly_its_own_capability(tmp_path, monkeypatch, kind, missing):
+    w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
+    req = simple_request(kind, args=k9_args(kind), reviewed_commit=w.reviewed)
+    assert w.mod.validate(req, w.table(), {**ALL_CAPS, missing: False}) == f"capability_missing: {missing}"
+    other = "builder" if missing == "layer_verifier" else "layer_verifier"
+    assert (w.mod.validate(req, w.table(), {**ALL_CAPS, other: False}) or "").startswith("capability_missing") is False
+
+
+@pytest.mark.parametrize("kind", K9_PRODUCTION)
+def test_every_mutating_k9_kind_has_a_dry_run_sibling_that_accepts_the_same_arguments(kind):
+    ops = load_ops(OPS_FILE.read_text())["ops"]
+    sibling = ops[kind + "_dryrun"] if kind != "orchestrator_rebuild" else ops["orchestrator_rebuild_dryrun"]
+    assert sibling["production"] is False and sibling["enabled"] is True and sibling["needs"] == ops[kind]["needs"]
+    assert set(sibling["allowed_args"]) == set(ops[kind]["allowed_args"])

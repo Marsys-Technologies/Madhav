@@ -15,12 +15,12 @@ and an EVIDENCE FILE supplied by the cockpit (it has `gh`; this module never cal
                       "pr": 3561, "head": "<40>"}      # code: the exact reviewed head
                      | {... "artifact_digest": "<64>"}],  # artifact (post-deploy acceptances are retired, A8 §4)
      "deploys": [{"run_id": 123, "head_sha": "<40>", "conclusion": "success", "event": "workflow_run",
-                  "branch": "main", "created_at": "<iso>"}],
+                  "branch": "main", "created_at": "<iso>"}],   # a workflow_dispatch run also needs "earned_deploy": true
      "detectors": {"K3-2": {"status": "done", "detail": "..."}}}   # optional; --apply asks the live tracker
 
 An item closes only when every piece is present and git agrees: the merge commit is an ancestor of `main_sha`, the
-acceptance names the PR's exact head and comes from the model's verdict stream, and a successful workflow_run
-deploy of main has a head that CONTAINS the merge commit (read from git, never from the file's say-so).
+acceptance names the PR's exact head and comes from the model's verdict stream, and a successful deploy of main
+(workflow_run, or workflow_dispatch whose jobs earned the deploy) has a head that CONTAINS the merge commit (read from git, never from the file's say-so).
 """
 from __future__ import annotations
 
@@ -125,8 +125,9 @@ def _acceptance(model, events, evidence, item, *, head=None, digest=None, phase=
 
 def _first_deploy(repo, evidence, merge):
     runs = [r for r in evidence.get("deploys", []) if r.get("conclusion") == "success"
-            and r.get("event") == "workflow_run" and r.get("branch", "main") == "main" and _sha(r.get("head_sha"), 40)
-            and r.get("run_id")]
+            and (r.get("event") == "workflow_run" or (r.get("event") == "workflow_dispatch"
+                                                       and r.get("earned_deploy") is True))
+            and r.get("branch", "main") == "main" and _sha(r.get("head_sha"), 40) and r.get("run_id")]
     for run in sorted(runs, key=lambda r: (str(r.get("created_at")), str(r["run_id"]))):
         if is_ancestor(repo, merge, run["head_sha"]):
             return run

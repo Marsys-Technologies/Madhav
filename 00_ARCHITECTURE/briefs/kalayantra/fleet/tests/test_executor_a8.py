@@ -204,11 +204,14 @@ def test_every_dry_run_kind_is_read_only_with_a_credential_in_the_table():
     ops = json.loads(OPS_FILE.read_text())["ops"]
     dry = {k for k in ops if k.endswith("_dryrun")}
     assert dry == {"smalltest_dispatch_dryrun", "smalltest_teardown_dryrun", "measuring_dispatch_dryrun", "measuring_teardown_dryrun",
-                   "orchestrator_rebuild_dryrun", "scheduler_pause_dryrun", "scheduler_resume_dryrun", "measuring_cancel_dryrun",
-                   "publish_head_dryrun", "rollback_head_dryrun"}
+                   "orchestrator_rebuild_dryrun", "layer_verify_dryrun", "layer_publish_dryrun", "layer_rollback_dryrun",
+                   "scheduler_pause_dryrun", "scheduler_resume_dryrun", "measuring_cancel_dryrun",
+                   "century_dispatch_dryrun", "century_teardown_dryrun", "publish_head_dryrun", "rollback_head_dryrun", "protected_window_dispatch_dryrun", "gochara_role_provisioning_dispatch_dryrun",
+                   "orchestrator_rebuild_cancel_dryrun", "orchestrator_rebuild_teardown_dryrun"}   # SR-PREBUILD-ALL: the K9 control dry runs hold the builder capability like the rebuild
+    credential_free = {"protected_window_dispatch_dryrun", "gochara_role_provisioning_dispatch_dryrun"}   # U-M-01 (I): its only credential is the GitHub CLI session of the executor's own HOME, no database or cloud capability (least privilege); U-M-03: reads git only and makes no gh call, so it holds no credential at all
     for kind in dry:
         assert ops[kind]["production"] is False, kind
-        assert ops[kind]["needs"] in ("builder", "owner", "gcloud"), kind             # the credential stays (the scheduler pair holds the executor's gcloud identity and makes no call)
+        assert ops[kind]["needs"] in (("none",) if kind in credential_free else ("builder", "owner", "gcloud", "layer_verifier")), kind   # the credential stays (the scheduler pair holds the executor's gcloud identity and makes no call)
         assert "required_rows" not in ops[kind] and "remote_async" not in ops[kind], kind
 
 
@@ -284,8 +287,8 @@ def test_the_named_remote_kinds_are_fenced_without_the_flag_and_the_table_flags_
     assert mod.remote_async("some_future_kind", {"production": True, "remote_async": True}) is True
     assert mod.remote_async("some_future_kind", {"production": True, "remote_async": "true"}) is False       # the boolean, never prose
     ops = json.loads(OPS_FILE.read_text())["ops"]
-    assert {k for k, e in ops.items() if e.get("remote_async") is True} == REMOTE_ASYNC
-    assert all(ops[k]["production"] is True for k in REMOTE_ASYNC)
+    assert {k for k, e in ops.items() if e.get("remote_async") is True} == REMOTE_ASYNC | {"protected_window_dispatch"}   # U-M-01: fenced by its table flag alone (executor.py is untouched)
+    assert all(ops[k]["production"] is True for k in REMOTE_ASYNC | {"protected_window_dispatch"})
 
 
 # 7 ── lane_receipts

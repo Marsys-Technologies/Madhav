@@ -108,6 +108,9 @@ permissions:
 # SR-CI-SCOPED-SAFEGUARD: three combination-sensitive suites run on EVERY merge_group whatever
 # paths changed (QUEUE_ALWAYS_JOBS in ci_gate.py): DB Integration Tests (SAMIKSHA, all shards),
 # the Gochara measuring build, and the C38 small-test teardown jobs. Everything else stays scoped.
+# OWNER-MERGE-GROUP-FULL-20261019 (supersedes the merge_group clause above, until the campaign closes): a merge_group runs the FULL
+# gate -- every DB job and profile, unscoped (MERGE_GROUP_FULL in ci_gate.py, the single switch); a pull_request stays path-scoped.
+# The SR-SCOPE-C37 path list that preceded it is kept as a record in ci_gate.py. Required check names are unchanged.
 # Full events (push/main, full_gate dispatch) run EVERY heavy job -- the safety net:
 # a red main is fixed forward.
 # The required Governance Gates aggregate depends on full-suite, so a failure,
@@ -209,12 +212,17 @@ jobs:
           fi
           python3 platform/scripts/governance/ci_gate.py --event "$GITHUB_EVENT_NAME" --base "$base" --head HEAD >> "$GITHUB_OUTPUT"
 
-  # SR-SELFHOSTED-SPLIT (OWNER-SELFHOSTED-SPLIT-20261018): the DB-heavy jobs (Kāla DB tests, the DB Integration
-  # shards and the Gochara A5.5f / C37 / C38 DB jobs) run on the owner's own ephemeral `madhav-db` runners when
-  # one is online, and on ubuntu-latest otherwise. Nothing waits on a sleeping machine: this probe runs on a
-  # GitHub-hosted runner, asks GitHub which self-hosted runners are online, and publishes the `runs-on` value
-  # those jobs use. Every failure path (no token, API error, bad answer, kill switch, fork PR) answers
-  # ubuntu-latest, and the step always exits 0, so a broken probe can never skip or fail a DB job.
+  # SR-SELFHOSTED-SPLIT (OWNER-SELFHOSTED-SPLIT-20261018) + SR-RUNNER-PROBE-NOSECRET: the DB-heavy jobs (Kāla DB
+  # tests, the DB Integration shards and the Gochara A5.5f / C37 / C38 DB jobs) run on the owner's own ephemeral
+  # `madhav-db` runners when one is online, and on ubuntu-latest otherwise. Nothing waits on a sleeping machine: this
+  # probe runs on a GitHub-hosted runner, reads a heartbeat and publishes the `runs-on` value those jobs use.
+  #
+  # Heartbeat: a launchd job on the owner's Mac sets the repository VARIABLE MADHAV_DB_ONLINE to the current UTC time
+  # (ISO 8601, e.g. 2026-10-19T16:00:00Z) every 60 s while at least one madhav-db runner is online and idle-capable,
+  # and never writes otherwise. No secret and no GitHub API call are involved here. The DB jobs move to madhav-db only
+  # when the timestamp parses AND is at most 180 s older than this job's own clock (a value more than 60 s in the
+  # future is clock skew or garbage, not a heartbeat). Missing, unparsable, future-dated, stale, kill switch or fork
+  # PR all answer ubuntu-latest, and the step always exits 0, so a broken probe can never skip or fail a DB job.
   #
   # Same job, same `name:` -- there is no second "mirror" job, so no required or aggregate check changes name,
   # none can report twice, and none is skipped on a full event (full-suite reads a skip there as a failure).
@@ -222,10 +230,9 @@ jobs:
   # platform/scripts/governance/check_selfhosted_fork_guard.py): a fork PR gets ubuntu-latest and never a
   # self-hosted label. No workflow uses pull_request_target on a self-hosted label.
   #
-  # Operation: secret MADHAV_RUNNER_PROBE_TOKEN = a fine-grained token with repository "Administration: read"
-  # only (lists runners; no other scope). Unset = always ubuntu-latest. Kill switch without a PR: set the
-  # repository variable MADHAV_DB_ENABLED=false. Optional MADHAV_DB_MIN_ONLINE (default 1) = runners that must be
-  # online before the DB jobs move.
+  # Operation (runbook: 00_ARCHITECTURE/briefs/kalayantra/fleet/SELFHOSTED_RUNNERS_v1_1.md): variable not written or
+  # older than 180 s = always ubuntu-latest. Kill switch without a PR: set the repository variable
+  # MADHAV_DB_ENABLED=false.
   db-runner-probe:
     name: DB runner probe (is a madhav-db runner online?)
     runs-on: ubuntu-latest
@@ -238,26 +245,27 @@ jobs:
       - name: Probe
         id: probe
         env:
-          GH_TOKEN: ${{ secrets.MADHAV_RUNNER_PROBE_TOKEN }}
-          REPO: ${{ github.repository }}
           DB_ENABLED: ${{ vars.MADHAV_DB_ENABLED }}
-          MIN_ONLINE: ${{ vars.MADHAV_DB_MIN_ONLINE }}
+          HEARTBEAT: ${{ vars.MADHAV_DB_ONLINE }}
         run: |
           set -u
           choose() { echo "runs_on=$1" >> "$GITHUB_OUTPUT"; echo "::notice title=db-runner-probe::$2"; exit 0; }
           fallback='"ubuntu-latest"'
+          max_age=180
+          max_skew=60
           [ "${DB_ENABLED:-true}" = "false" ] && choose "$fallback" "MADHAV_DB_ENABLED=false: DB jobs use ubuntu-latest"
-          [ -n "${GH_TOKEN:-}" ] || choose "$fallback" "no probe token: DB jobs use ubuntu-latest"
-          online="$(timeout 30 gh api "repos/${REPO}/actions/runners?per_page=100" \
-            --jq '[.runners[] | select(.status == "online") | select(any(.labels[]; .name == "madhav-db"))] | length' 2>/dev/null)" || online=""
-          case "$online" in ''|*[!0-9]*) choose "$fallback" "probe call failed: DB jobs use ubuntu-latest" ;; esac
-          min="${MIN_ONLINE:-1}"
-          case "$min" in ''|*[!0-9]*) min=1 ;; esac
-          [ "$min" -ge 1 ] || min=1
-          if [ "$online" -ge "$min" ]; then
-            choose '["self-hosted","madhav-db"]' "${online} madhav-db runner(s) online: DB jobs use madhav-db"
-          fi
-          choose "$fallback" "${online} madhav-db runner(s) online (need ${min}): DB jobs use ubuntu-latest"
+          hb="${HEARTBEAT:-}"
+          [ -n "$hb" ] || choose "$fallback" "no MADHAV_DB_ONLINE heartbeat: DB jobs use ubuntu-latest"
+          case "$hb" in
+            [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ;;
+            *) choose "$fallback" "MADHAV_DB_ONLINE is not an ISO 8601 UTC timestamp: DB jobs use ubuntu-latest" ;;
+          esac
+          beat="$(python3 -c 'import calendar, sys, time; print(calendar.timegm(time.strptime(sys.argv[1], "%Y-%m-%dT%H:%M:%SZ")))' "$hb" 2>/dev/null)" || beat=""
+          case "$beat" in ''|*[!0-9]*) choose "$fallback" "MADHAV_DB_ONLINE does not parse as a date: DB jobs use ubuntu-latest" ;; esac
+          age=$(( $(date -u +%s) - beat ))
+          [ "$age" -ge $(( -max_skew )) ] || choose "$fallback" "heartbeat is ${age}s in the future (> ${max_skew}s skew): DB jobs use ubuntu-latest"
+          [ "$age" -le "$max_age" ] || choose "$fallback" "heartbeat is ${age}s old (> ${max_age}s): DB jobs use ubuntu-latest"
+          choose '["self-hosted","madhav-db"]' "heartbeat ${age}s old: DB jobs use madhav-db"
 
   typecheck:
     needs: [changes, generated-artifacts]
@@ -357,6 +365,11 @@ jobs:
         # Mutation-proven: adding a duplicate number in EITHER directory makes it exit 1.
         run: npm run guard:migration-numbers
 
+
+      - name: AI Console — failed/aborted prepare recovery attempt window (P06 R1)
+        # Also collected by npm test; keep the 15-minute failure/abort regression
+        # explicit in the required Unit Tests job.
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" vitest unit-tests-p06 -- --reporter=verbose
 
       - run: npm test -- --reporter=verbose
 
@@ -2133,6 +2146,173 @@ jobs:
           cd python-sidecar
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-dispatch-1-9 -- -q --tb=short -rs -p no:cacheprovider
 
+  gochara-a55-g12-mutations:
+    # P06 G12 snapshot-copy baseline and SQL mutations (four isolated slices).
+    # See the split note on gochara-a55-replace-chain.
+    needs: [changes, generated-artifacts]
+    if: ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-g12-mutations'))) }}
+    name: Gochara P06 - G12 mutations (throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        slice: [0, 1, 2, 3]
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/restore-generated
+      - name: P06 G12 snapshot-copy baseline and mutation slice (REQUIRED, never skipped)
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-g12-mutations-p06'))) }}
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-g12-mutations-p06 -- -q --tb=short -rs -p no:cacheprovider
+          cd ..
+          python scripts/gochara/mutation_check_1305.py --slice "${{ matrix.slice }}/4"
+
+  gochara-a55-final-rules:
+    # P06 final rules, expected-class census, near-miss storage and verifier mutations.
+    # See the split note on gochara-a55-replace-chain.
+    needs: [changes, generated-artifacts]
+    if: ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-final-rules'))) }}
+    name: Gochara P06 - final rules, census, snapshot and storage (real runner, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/restore-generated
+      - name: P06 final-rule, census, storage and verifier suites (REQUIRED, never skipped)
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-final-rules-p06'))) }}
+        env:
+          GOCHARA_A53_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+          GOCHARA_A25_ADMIN_DSN: postgresql://postgres:postgres@localhost:5432/postgres
+          GOCHARA_A25_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          export GOCHARA_A25_DISPOSABLE_CLUSTER_ID="$(python -c 'import os; from tests.l3.gochara._disposable_db_guard import guarded_admin_connect; c=guarded_admin_connect(os.environ["GOCHARA_A25_ADMIN_DSN"], autocommit=True); print(c.execute("SELECT system_identifier FROM pg_control_system()").fetchone()[0]); c.close()')"
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-final-rules-p06 -- -q --tb=short -rs -p no:cacheprovider
+          mutation_scratch="$(mktemp -d "$RUNNER_TEMP/ky-p06-XXXXXX")"
+          python ../scripts/gochara/mutation_check_verifier_side.py --scratch "$mutation_scratch"
+
+  gochara-a55-p06-legacy:
+    # P06 inherited WP6 ports on a dedicated guarded disposable database.
+    # See the split note on gochara-a55-replace-chain.
+    needs: [changes, generated-artifacts]
+    if: ${{ !cancelled() && (((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-a55-p06-legacy'))) }}
+    name: Gochara P06 - legacy ports (real runner, throwaway Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: platform
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16
+        env:
+          POSTGRES_PASSWORD: local
+          POSTGRES_USER: wp6
+          POSTGRES_DB: wp6
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI_PR_DB_PROFILES: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && needs.changes.outputs.db_profiles || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/restore-generated
+      - name: P06 inherited WP6 integration suites (REQUIRED, never skipped)
+        if: ${{ ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate)) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && (contains(fromJSON(needs.changes.outputs.db_profiles || '[]'), 'gochara-a55-p06-legacy-p06'))) }}
+        env:
+          WP6_LEDGER_DSN: postgresql://wp6:local@localhost:5432/wp6
+          GOCHARA_P06_LEGACY_REQUIRE_DB: '1'
+          GOCHARA_A53_ADMIN_DSN: postgresql://wp6:local@localhost:5432/postgres
+          GOCHARA_A53_REQUIRE_DB: '1'
+        run: |
+          pip install -r python-sidecar/requirements-ci.txt --quiet
+          se1_dir="$(mktemp -d)"
+          for se1_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$se1_file" --output "$se1_dir/$se1_file"
+          done
+          (cd "$se1_dir" && printf '%s\n' \
+            'ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66  sepl_18.se1' \
+            '1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7  semo_18.se1' \
+            'a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2  seas_18.se1' \
+            | sha256sum -c -)
+          export SE_EPHE_PATH="$se1_dir"
+          export GOCHARA_SE1_REQUIRE=1
+          cd python-sidecar
+          # File-launched cutover scripts import sidecar packages through this path.
+          export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+          python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest gochara-a55-p06-legacy-p06 -- -q --tb=short -rs -p no:cacheprovider
+
   gochara-a55-round2-runner:
     # A5.5f / C46 / C47: the test-slice round-2 suite and the real-runner ephemeris suite (see the split note on gochara-a55-replace-chain).
     needs: [changes, generated-artifacts, db-runner-probe]
@@ -2851,6 +3031,9 @@ jobs:
           [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
           python -m pytest "${FILES[@]}" -q --no-header -rs
 
+      - name: K9-23 disabled layer bindings and credential isolation
+        if: ${{ matrix.shard == 1 }}
+        run: python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-k9-publication -- -q -p no:cacheprovider
       - name: OPS-NB-02 — operation-adapter rollback and acceptance regressions
         if: matrix.shard == 1
         run: >-
@@ -3001,7 +3184,7 @@ jobs:
     # required check 'Governance Tool Tests (pytest)' of ruleset 20141220 since 2026-10-05; no per-shard context is required, so the shard
     # count can change without touching the ruleset.)
     name: Governance Tool Tests (pytest)
-    needs: [changes, governance-tool-tests-shard, governance-readback-tests, gochara-j5s-full-class-seal]
+    needs: [changes, governance-tool-tests-shard, governance-readback-tests, kala-db-tests, gochara-j5s-full-class-seal]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -3015,12 +3198,17 @@ jobs:
           READBACK_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'governance-readback-tests')) }}
           SHARDS_RESULT: ${{ needs.governance-tool-tests-shard.result }}
           READBACK_RESULT: ${{ needs.governance-readback-tests.result }}
+          KALA_DB_RESULT: ${{ needs.kala-db-tests.result }}
+          KALA_DB_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'kala-db-tests')) }}
           J5S_RESULT: ${{ needs.gochara-j5s-full-class-seal.result }}
           J5S_EXPECTED: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.full_gate) || ((github.event_name == 'pull_request' || github.event_name == 'merge_group') && contains(fromJSON(needs.changes.outputs.db_jobs || '[]'), 'gochara-j5s-full-class-seal')) }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           RUN_COMBINATION: ${{ needs.changes.outputs.run_combination_suites }}
           CHANGES_RESULT: ${{ needs.changes.result }}
         run: |
+          if [ "$KALA_DB_RESULT" != "success" ] && ! { [ "$KALA_DB_RESULT" = "skipped" ] && { [ "$DOCS_ONLY" = "true" ] || [ "$KALA_DB_EXPECTED" = "false" ]; }; }; then
+            echo "::error::Kāla DB Tests must pass for code changes (got '$KALA_DB_RESULT', expected='$KALA_DB_EXPECTED')"; exit 1
+          fi
           # J5S rehearsal (PR #3646) obeys the same light-gate event policy as every other heavy DB job: it must succeed on a full event or a
           # PR that selected it, and may be skipped only when it was not expected. The shard/readback decision below is main's, unchanged.
           if [ "$J5S_RESULT" != "success" ] && { [ "$J5S_RESULT" != "skipped" ] || [ "$J5S_EXPECTED" != "false" ]; }; then
@@ -3865,7 +4053,7 @@ jobs:
 
   full-suite:
     name: Full suite event contract
-    needs: [changes, db-integration-tests, gochara-j5s-full-class-seal, gochara-a55-dispatch, gochara-a55-measuring-build, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, replace-chain-substrate, required-db-integration-tests, required-gochara-a55-replace-chain, required-gochara-a55-round2-runner, required-gochara-a55-teardown, required-gochara-a55-teardown-round3, required-gochara-a55-verifier-fixes, unit-db-tests]
+    needs: [changes, db-integration-tests, gochara-j5s-full-class-seal, gochara-a55-dispatch, gochara-a55-final-rules, gochara-a55-g12-mutations, gochara-a55-measuring-build, gochara-a55-p06-legacy, gochara-a55-replace-chain, gochara-a55-round2-runner, gochara-a55-slice-transitions, gochara-a55-teardown, gochara-a55-teardown-round2, gochara-a55-teardown-round3, gochara-a55-verifier-fixes, governance-gates-gochara, governance-gates-py-sidecar-shard, governance-readback-tests, k3-sealed-db-tests, kala-db-tests, pratijna-v4-fixture-property-tests, replace-chain-substrate, required-db-integration-tests, required-gochara-a55-replace-chain, required-gochara-a55-round2-runner, required-gochara-a55-teardown, required-gochara-a55-teardown-round3, required-gochara-a55-verifier-fixes, unit-db-tests]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

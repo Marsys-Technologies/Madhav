@@ -252,8 +252,12 @@ def test_a_fresh_build_before_and_after_has_the_same_contact_ids_and_only_the_wr
     contact's start differs, by the 30.6 hours Stream B measured."""
     horizon = (datetime(1998, 1, 1, tzinfo=UTC), datetime(1998, 12, 31, tzinfo=UTC))
     fixed = rs._in_orb_span_around_root
+
+    def arc_only(index, root, orb, *, refine=False, ephe_path=None):                 # the real signature (J-4c added refine / ephe_path): forwarded, not dropped
+        return fixed(legacy_index(index), root, orb, refine=refine, ephe_path=ephe_path)
+
     built = {}
-    for name, span in (("before", lambda index, root, orb: fixed(legacy_index(index), root, orb)), ("after", fixed)):
+    for name, span in (("before", arc_only), ("after", fixed)):
         monkeypatch.setattr(rs, "_in_orb_span_around_root", span)
         world = _World(template)
         try:

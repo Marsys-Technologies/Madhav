@@ -21,11 +21,12 @@ REPO = Path(__file__).resolve().parents[5]
 MODEL_PATH = REPO / "00_ARCHITECTURE/control/kalayantra/plan_model.json"
 
 NOT_APPLICABLE = ["JOIN-ALL", "K-CERT-2", "W4-SAFETY-N01", "W4-SAFETY-N02", "KA3B-N1", "KA3B-N2", "OPS-NB-03",
-                  "V-K3b", "V-K5", "V-K6", "V-KA", "V-VC"]
+                  "V-K3b", "V-K5", "V-K6", "V-KA", "V-VC", "J-4c-pr2907"]
 DEFERRED = ["J-7a", "J-7a-a62", "J-7a-pr3099", "KR-1", "KR-2", "J-8", "J-8-b63", "J-8-j3", "J-8a", "K9-5",
             "K9-5-NB-01"]
 DEFERRED_NB04 = ["J-4a-a25", "J-4a-a26", "J-3a-b44"]   # SR-A9-INTERP A9-NB-04: no phase brief reads their output;
                                                          # J-3a-b44 added by SR-A9-NB-04-B44 (its 4.1 baseline needs a25)
+DEFERRED_PREP = ["D-T2", "L0-K", "D-GOCHARA-TIMEOUT"]    # SR-W34-PREP-RULINGS 5b/5f: deferred with re-entry, outside C-1 and the closure
 
 
 def _rows(snap):
@@ -79,7 +80,8 @@ def decided(tmp_path_factory):
     saved = cli.EVENTS, cli.load_model
     cli.EVENTS, cli.load_model = str(log), lambda: model
     try:
-        for dec in sorted(d["id"] for d in model["decisions"] if d["id"].startswith("D-A9-NA-")):
+        # D-J4C-PR2907-NA: #2907's content landed through #2901 (review X-20261019T150725Z-review-3596-pr2907)
+        for dec in sorted(d["id"] for d in model["decisions"] if d["id"].startswith(("D-A9-NA-", "D-J4C-PR2907-NA"))):
             assert cli.main(["decide", dec, "--outcome", "refused", "--as", "steward", "--delegated",
                              "--detail", f"A9 {dec}"]) == 0
     finally:
@@ -101,15 +103,15 @@ def test_not_applicable_does_not_spread_into_the_closure(decided):
     rows = _rows(snap)
     closure = set(load_closure(model)["closure"])
     assert [i for i in closure if rows[i]["status"] == "not_applicable"] == []
-    assert all(rows[i]["status"] != "not_applicable" for i in ("K6-N1", "K6-N2", "K6-N3", "K9-4a", "C-1"))
+    assert all(rows[i]["status"] != "not_applicable" for i in ("K6-N1", "K6-N2", "K6-N3", "K9-4a", "C-1", "J-4c"))
     assert snap["overall"]["not_applicable"] == 0
 
 
 def test_the_headline_denominator_is_the_closure_and_every_deferred_item_is_listed(decided):
     _, snap = decided
     o = snap["overall"]
-    assert o["total"] == 187 and o["plan_wide"]["total"] == 272
+    assert o["total"] == 183 and o["plan_wide"]["total"] == 274
     listed = {d["id"]: d for d in o["deferred"]}
-    assert set(DEFERRED + DEFERRED_NB04) <= set(listed)
-    assert all(listed[i]["re_entry"] for i in DEFERRED + DEFERRED_NB04)
-    assert not set(listed) & {"D-T2", "J-7", "J-7b", "L0-K"}   # D-52: the post-flip phase is not deferred
+    assert set(DEFERRED + DEFERRED_NB04 + DEFERRED_PREP) <= set(listed)
+    assert all(listed[i]["re_entry"] for i in DEFERRED + DEFERRED_NB04 + DEFERRED_PREP)
+    assert not set(listed) & {"J-7", "J-7b"}   # D-52: the rest of the post-flip phase is not deferred (D-T2, L0-K are: SR-W34-PREP-RULINGS 5b)

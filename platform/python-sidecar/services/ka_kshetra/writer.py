@@ -296,6 +296,7 @@ class KaKshetraWriter(WriterBase):
         self._chart_id = ctx.config['chart_id']
         self._dry_run = bool(getattr(ctx, 'dry_run', False))
         self._class_cache: dict[str, _ClassContext] = {}
+        self._null_schedule = None
         self._skipped: list[dict[str, str]] = []
         #: Machine-readable not-computed reasons that are NOT class skips — e.g.
         #: the rarity axis being unavailable. Surfaced in the substep notes so a
@@ -2081,11 +2082,21 @@ class KaKshetraWriter(WriterBase):
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
+    def _candidate_schedule(self):
+        """The candidate's one shift schedule, shared by every class's field null
+        (PLAN §6.2(5)). Geometry and estimand stay per class."""
+        from services.kala_core import measure
+        schedule = getattr(self, '_null_schedule', None)
+        if schedule is None:
+            schedule = self._null_schedule = measure.prepare_schedule(
+                measure.Interval(0, HORIZON_DAYS), candidate_null_shifts())
+        return schedule
+
     def _new_null_accumulator(self, event_class):
         if hasattr(self, '_generation'):
             from services.kala_core.measure.field import prepare_field, FieldAccumulator
             return FieldAccumulator(prepare_field(event_class, HORIZON_DAYS,
-                non_identity_shifts=candidate_null_shifts()))
+                schedule=self._candidate_schedule()))
         return S5.NullAccumulator(replicates=S5.DEFAULT_REPLICATES, horizon_days=HORIZON_DAYS)
 
     def _class_context(self, conn, event_class: str) -> _ClassContext:

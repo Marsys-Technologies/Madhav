@@ -46,6 +46,14 @@ import hashlib
 import importlib.util
 from types import SimpleNamespace
 import smalltest_safety_support as S
+
+
+@pytest.fixture(autouse=True)
+def _scoped_content_unchanged(monkeypatch):
+    """These tests stage a dispatch against a fake database; the fresh scoped-content measurement is not their subject
+    (it is proved in test_backup_v5_small_test_scoped.py and the kala_db suite)."""
+    import backup_v5_small_test_job
+    monkeypatch.setattr(backup_v5_small_test_job, 'measure_scope_now', S.fixture_measure)
 import v5_small_test_shared as shared
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -303,6 +311,7 @@ def test_generated_independent_readback_measures_counts_and_binds_commit():
     assert sql.startswith('SELECT ') and sql.endswith('AS absence_proof')
     assert 'count(*) FROM build_runs WHERE id =' in sql
     assert 'count(*) FROM ka_gochara_contact WHERE chart_id =' in sql
+    assert 'count(*) FROM ka_gochara_near_miss WHERE chart_id =' in sql and 'count(*) FROM ka_gochara_near_miss_search WHERE chart_id =' in sql
     assert "partition_kind = 'event_class'" in sql
     assert shared.evidence_digest(committed) in sql
     assert 'registry_inert' in sql and 'is_active IS FALSE' in sql

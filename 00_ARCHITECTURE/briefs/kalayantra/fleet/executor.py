@@ -10,7 +10,7 @@ What it trusts: nothing an agent can edit in a working tree. The operations tabl
 
 Loop: read run/ops/requests/*.json → validate → (production: take the single production slot) → validate AGAIN immediately
 before execution → run in its own process group → write run/ops/receipts/<operation_id>.json (redacted; the complete output
-goes to <operation_id>.output.txt with its sha256) → move the request to run/ops/done/.
+is the child's stdout alone, in <operation_id>.output.txt, and its stderr alone in <operation_id>.stderr.txt, each with its own sha256) → move the request to run/ops/done/.
 
 Production approval binds the request (A8 §3.9): ONE verifier lane's acceptance receipt carries the sha256 of the request as
 sorted compact JSON without the fields that may lawfully change after signing — `acceptance_receipt`, `expires_at` and any
@@ -67,6 +67,8 @@ SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]{1,80}$"); SAFE_ARG = re.compile(r"^[A-Za-
 CHILD_ENV_ALLOW = {"HOME", "PATH", "LANG", "LC_ALL", "TZ", "TMPDIR", "USER", "LOGNAME", "CLOUDSDK_CONFIG", "GOOGLE_APPLICATION_CREDENTIALS"}
 SEEN = OPS / "idempotency.jsonl"; MAX_TIMEOUT = 6 * 3600
 UNBOUND_REQUEST_FIELDS = frozenset({"acceptance_receipt", "expires_at"})   # A8 §3.9: plus any `*_expires_at` field — see request_digest; mirrored by kyd_kinds_ops.request_digest and v5_small_test_shared.request_hash
+TEARDOWN_KINDS = ("smalltest_teardown", "measuring_teardown", "century_teardown")   # the committed teardowns that wait for an independent absence
+LAUNCH_SCHEMAS = {"smalltest_dispatch": "ky.smalltest_launch/1", "measuring_dispatch": "ky.measuring_launch/1", "century_dispatch": "ky.century_launch/1"}
 REMOTE_ASYNC_KINDS = frozenset({"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"})   # A8 §3.11: work continues remotely after the child returns — fenced even if a table drops `remote_async`
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
 PACK_ALLOWLIST = OPS / "PACK_ALLOWLIST.json"   # OWNER-MINIMAL-PROTECTION-NOW: written by the cockpit ONLY from an ACCEPTED verify job of a pack; this executor only reads it
@@ -119,6 +121,7 @@ def load_table() -> dict | None:
 
 def capabilities(table_on_main: bool) -> dict:
     caps = {"builder": bool(os.environ.get("KY_BUILDER_DATABASE_URL")), "owner": bool(os.environ.get("KY_OWNER_DATABASE_URL")),
+            "layer_verifier": bool(os.environ.get("KY_LAYER_VERIFIER_DATABASE_URL")),
             "pgenv": pathlib.Path("/Users/Dev/.config/pravaha/pgenv.sh").exists(),
             "gcloud": subprocess.run(["gcloud", "auth", "list", "--format=value(account)"], capture_output=True, text=True).stdout.strip() != "",
             "none": True, "ops_table_on_main": table_on_main, "production_slot": "PENDING" if FENCE.exists() else "free",
@@ -176,10 +179,10 @@ def fence_quiescent() -> bool:
         committed = json.loads(commit_bytes)
         if committed.get("operation_id") != operation_id or committed.get("request_sha256") != request_sha256:
             return False
-        if committed.get("kind") in ("smalltest_teardown", "measuring_teardown"):
+        if committed.get("kind") in TEARDOWN_KINDS:
             policy = smalltest_policy(committed)
             observed = policy["absence_evidence"](proof, OPS, teardown_receipt=committed)
-            completion = dict(schema="ky.measuring_completion/1" if committed["kind"] == "measuring_teardown" else "ky.smalltest_completion/1", status="COMPLETED", operation_id=operation_id,
+            completion = dict(schema=f"ky.{committed['kind'].split('_')[0]}_completion/1", status="COMPLETED", operation_id=operation_id,
                 request_sha256=request_sha256, reviewed_commit=committed["reviewed_commit"],
                 commit_receipt_sha256=digest_bytes(commit_bytes), run_id=observed["run_id"],
                 scope_sha256=observed["scope_sha256"], rowset_sha256=observed["rowset_sha256"],
@@ -549,7 +552,7 @@ def scheduler_backstop_fire(path: pathlib.Path, record: dict, at: dt.datetime) -
     req = {"operation_id": oid, "kind": "scheduler_resume", "item_id": str(record.get("item_id") or "unknown"), "idempotency_key": oid,
            "requested_by": "executor-backstop", "kyd": str(record.get("kyd") or "backstop"), "reviewed_commit": commit,
            "args": {"job": SCHEDULER_JOB}, "backstop_for": record.get("operation_id")}
-    rc, out = 127, ""
+    rc, out, err = 127, "", ""
     try:
         if not SHA.fullmatch(commit) or git("merge-base", "--is-ancestor", commit, "origin/main").returncode: raise ValueError("reviewed commit is not merged")
         source = git("show", f"{commit}:{SCHEDULER_SCRIPT}")
@@ -557,13 +560,13 @@ def scheduler_backstop_fire(path: pathlib.Path, record: dict, at: dt.datetime) -
         script = TMP / f"{oid}.scheduler_reaper.py"; script.write_text(source.stdout)
         env = {k: v for k, v in os.environ.items() if k in CHILD_ENV_ALLOW}
         env["KY_OPERATION_REQUEST"] = json.dumps(req, sort_keys=True, separators=(",", ":")); env["KY_ROOT"] = str(KY_ROOT)
-        try: p = run_group([PY, str(script), "--action", "resume", "--job", SCHEDULER_JOB], KY_ROOT, env, 600); rc, out = p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
+        try: p = run_group([PY, str(script), "--action", "resume", "--job", SCHEDULER_JOB], KY_ROOT, env, 600); rc, out, err = p.returncode, p.stdout or "", p.stderr or ""
         finally: script.unlink(missing_ok=True)
     except Exception as e: out = f"backstop could not run: {type(e).__name__}: {redact(str(e))}"
     proof, problem = scheduler_proof(req, rc, out)
     ok = rc == 0 and problem is None and proof is not None and proof.get("state") == "ENABLED"
     receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or "backstop resume did not read back ENABLED"), rc, out,
-            {"scheduler": proof, "backstop_for": record.get("operation_id"), "attempt": attempt})
+            {"scheduler": proof, "backstop_for": record.get("operation_id"), "attempt": attempt}, err)
     update = dict(record, attempts=attempt, last_attempt_at=now(), last_receipt=oid)
     if ok: update.update(status="FIRED", fired_at=now())
     else: update["next_attempt_at"] = (at + dt.timedelta(seconds=min(900, 30 * 2 ** (attempt - 1)))).isoformat(timespec="seconds")
@@ -641,13 +644,17 @@ def measuring_cancel_proof(req: dict, rc: int | None, out: str) -> tuple[dict | 
     return rec, None
 
 
-def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str = "", extra: dict | None = None, stdout: str | None = None, *, preserve_existing: bool = False) -> None:
-    """`out` is the complete evidence (stdout, then stderr). `stdout` is the child's stdout alone: the one stream a whole-document proof is parsed from,
-    because a child may lawfully print advisory lines on stderr. A caller that does not pass it supplies no proof stream, so such a proof reads as missing."""
+def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str | None = None, extra: dict | None = None, stderr: str = "", *, preserve_existing: bool = False) -> None:
+    """SR-EXECUTOR-FRAMING: `out` is the child's stdout alone and `stderr` its stderr alone; the executor adds no byte of its own to either. A proof is
+    parsed from `out` only (a child may lawfully print advisory lines on stderr). `<op>.output.txt` holds stdout exactly (after redaction) and
+    `<op>.stderr.txt` stderr, each with its own sha256/bytes. A receipt made before this change has one combined `output_file` (stdout, "\\n", stderr)
+    and no stderr_* fields; it still verifies, because every reader checks the file against `output_sha256` only. `out=None` means nothing ran."""
     name = req.get("operation_id") if SAFE_ID.match(str(req.get("operation_id", ""))) else "unknown"
     r = {"operation_id": req.get("operation_id"), "kind": req.get("kind"), "item_id": req.get("item_id"), "status": status, "reason": reason,
-         "exit_code": rc, "stdout_tail": redact(out[-20000:]), "ts": now(), "reviewed_commit": req.get("reviewed_commit"),
+         "exit_code": rc, "stdout_tail": redact((out or "")[-20000:]), "ts": now(), "reviewed_commit": req.get("reviewed_commit"),
          "requested_by": req.get("requested_by"), "kyd": req.get("kyd"), "request_sha256": request_digest(req) if req.get("kind") else None}
+    if stderr: r["stderr_tail"] = redact(stderr[-4000:])
+    out = out or ""
     receipt_path = REC / f"{name}.json"
     separate_refusal = preserve_existing and status == "REFUSED" and receipt_path.exists()
     if separate_refusal:
@@ -661,11 +668,14 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
     if lane_selected(req):
         receipt_lane(req, r, status, rc, out)
     if out:                                           # the complete output is evidence; the tail alone must never be mistaken for it
-        body = redact(out); output_path = receipt_path.with_suffix(".output.txt"); output_path.write_text(body)
-        r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body.encode()).hexdigest(); r["output_bytes"] = len(body.encode())
+        body = redact(out).encode(); output_path = receipt_path.with_suffix(".output.txt"); output_path.write_bytes(body)
+        r["output_file"] = str(output_path); r["output_sha256"] = hashlib.sha256(body).hexdigest(); r["output_bytes"] = len(body)
+    if stderr:
+        body = redact(stderr).encode(); stderr_path = receipt_path.with_suffix(".stderr.txt"); stderr_path.write_bytes(body)
+        r["stderr_file"] = str(stderr_path); r["stderr_sha256"] = hashlib.sha256(body).hexdigest(); r["stderr_bytes"] = len(body)
     if req.get("kind") == "measuring_dispatch_dryrun" and status == "COMPLETED":
         try:
-            proof = json.loads(stdout or "")                      # stdout only: the advisory lines on stderr are evidence, never part of the proof
+            proof = json.loads(out)                               # `out` is stdout alone: the advisory lines on stderr are evidence, never part of the proof
             manifest = proof.get("plan_manifest") or {}
             valid = (rc == 0 and proof.get("schema") == "ky.measuring_staging/1"
                 and proof.get("status") == "ROLLED_BACK" and proof.get("rollback_confirmed") is True
@@ -680,7 +690,24 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             r["staging"] = proof
         else:
             r.update(status="FAILED", reason="bound measuring staging rollback proof missing; reconcile transaction outcome")
-    if not lane_selected(req) and req.get("kind") in ("smalltest_dispatch", "measuring_dispatch") and status == "COMPLETED":
+    if req.get("kind") == "century_dispatch_dryrun" and status == "COMPLETED":
+        try:
+            proof = json.loads(out)
+            manifest = proof.get("plan_manifest") or {}
+            valid = (rc == 0 and proof.get("schema") == "ky.century_staging/1"
+                and proof.get("status") == "ROLLED_BACK" and proof.get("rollback_confirmed") is True
+                and proof.get("operation_id") == req["operation_id"] and proof.get("request_sha256") == request_digest(req)
+                and proof.get("args") == req.get("args") and manifest.get("chart_id") == CANONICAL_CHART
+                and manifest.get("scope_target") == "ka_gochara_v5"
+                and proof.get("triggered_by") == "gochara-v5-century" and "gochara_v5_test_slice" not in manifest    # a century run carries NO slice marker
+                and proof.get("plan_manifest_digest") == digest_bytes(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()))
+        except (ValueError, TypeError, AttributeError):
+            valid = False
+        if valid:
+            r["staging"] = proof
+        else:
+            r.update(status="FAILED", reason="bound century staging rollback proof missing; reconcile transaction outcome")
+    if not lane_selected(req) and req.get("kind") in ("smalltest_dispatch", "measuring_dispatch", "century_dispatch") and status == "COMPLETED":
         # A staging UUID/exit zero is never launch evidence. Only the reviewed
         # wrapper's machine record binds the exact run and remote execution.
         records = []
@@ -689,7 +716,7 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
                 value = json.loads(line)
             except (ValueError, TypeError):
                 continue
-            if isinstance(value, dict) and value.get("schema") == ("ky.measuring_launch/1" if req["kind"] == "measuring_dispatch" else "ky.smalltest_launch/1"):
+            if isinstance(value, dict) and value.get("schema") == LAUNCH_SCHEMAS[req["kind"]]:
                 records.append(value)
         launch = records[0] if len(records) == 1 else {}
         if (rc == 0 and launch.get("status") == "LAUNCHED" and launch.get("chart_id") == CANONICAL_CHART
@@ -700,7 +727,7 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
             r["launch"] = launch
         else:
             r.update(status="FAILED", reason="small-test launch identity missing or invalid; reconcile remote outcome")
-    if not lane_selected(req) and req.get("kind") in ("smalltest_teardown", "smalltest_teardown_dryrun", "measuring_teardown", "measuring_teardown_dryrun") and status == "COMPLETED":
+    if not lane_selected(req) and req.get("kind") in (*TEARDOWN_KINDS, "smalltest_teardown_dryrun", "measuring_teardown_dryrun", "century_teardown_dryrun") and status == "COMPLETED":
         records = []
         for line in out.splitlines():
             if line.startswith("teardown_proof\t"):
@@ -708,9 +735,9 @@ def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out
                 except ValueError: pass
         proof = records[0] if len(records) == 1 else {}
         expected = "ROLLED_BACK" if req["kind"].endswith("_dryrun") else "COMMITTED_AWAITING_ABSENCE"
-        measuring = req["kind"].startswith("measuring_")
-        scope = req.get("measuring_scope" if measuring else "smalltest_scope")
-        if (rc == 0 and isinstance(proof, dict) and proof.get("schema") == ("ky.measuring_teardown/1" if measuring else "ky.smalltest_teardown/1") and proof.get("status") == expected
+        family = req["kind"].split("_")[0]                    # smalltest | measuring | century
+        scope = req.get(f"{family}_scope")
+        if (rc == 0 and isinstance(proof, dict) and proof.get("schema") == f"ky.{family}_teardown/1" and proof.get("status") == expected
                 and proof.get("request_sha256") == request_digest(req) and proof.get("operation_id") == req["operation_id"]
                 and proof.get("scope") == scope
                 and proof.get("scope_sha256") == digest_bytes(json.dumps(scope, sort_keys=True, separators=(",", ":")).encode())
@@ -754,10 +781,11 @@ def smalltest_policy(req: dict):
 
 def smalltest_policy_problem(req: dict) -> str | None:
     if req.get("kind") not in ("smalltest_teardown", "smalltest_teardown_dryrun", "smalltest_dispatch", "smalltest_dispatch_dryrun",
-                               "measuring_dispatch", "measuring_dispatch_dryrun", "measuring_teardown", "measuring_teardown_dryrun"):
+                               "measuring_dispatch", "measuring_dispatch_dryrun", "measuring_teardown", "measuring_teardown_dryrun",
+                               "century_dispatch", "century_dispatch_dryrun", "century_teardown", "century_teardown_dryrun"):
         return None
     try:
-        policy_name = "measuring_request_problem" if req["kind"].startswith("measuring_") else "smalltest_request_problem"
+        policy_name = {"measuring": "measuring_request_problem", "century": "century_request_problem"}.get(req["kind"].split("_")[0], "smalltest_request_problem")
         return smalltest_policy(req)[policy_name](req, OPS)
     except Exception:
         return "reviewed small-test evidence policy unavailable or invalid"
@@ -983,9 +1011,8 @@ def lane_qualification(req: dict) -> list[dict]:
     return bound
 
 
-def child_stdouts(_store: dict = {}) -> dict:
-    """In-memory hand-off of each operation's child stdout (alone, without stderr) from execute() to receipt(); execute() keeps returning the
-    combined output that is the evidence file."""
+def child_stderrs(_store: dict = {}) -> dict:
+    """In-memory hand-off of each operation's child stderr from execute()/execute_lane() to receipt(); execute() returns the child's stdout alone."""
     return _store
 
 
@@ -1057,7 +1084,8 @@ def execute_lane(req: dict, op: dict) -> tuple[int, str]:
         adapter = op.get("lane_readback", op.get("lane_dry_run"))["script"]
         p = run_group([PY, str(source / adapter), "--dry-run", "--lane-target", json.dumps(req["lane_target"], sort_keys=True)],
                       source, env, min(int(req.get("timeout_s", 900)), MAX_TIMEOUT))
-        return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
+        child_stderrs()[req["operation_id"]] = p.stderr or ""
+        return p.returncode, p.stdout or ""
 
 
 def receipt_lane(req: dict, record: dict, status: str, rc: int | None, out: str) -> None:
@@ -1124,6 +1152,7 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
     env = {k: v for k, v in os.environ.items() if k in CHILD_ENV_ALLOW}          # neither privileged connection reaches a child by default
     if op["needs"] == "builder": env["DATABASE_URL"] = os.environ["KY_BUILDER_DATABASE_URL"]
     elif op["needs"] == "owner": env["DATABASE_URL"] = os.environ["KY_OWNER_DATABASE_URL"]
+    elif op["needs"] == "layer_verifier": env["DATABASE_URL"] = os.environ["KY_LAYER_VERIFIER_DATABASE_URL"]
     env["KY_OPERATION_REQUEST"] = json.dumps(req, sort_keys=True, separators=(",", ":"))
     env["PGAPPNAME"] = session_marker(oid)                                      # A7 D-44: libpq tags every connection this child opens, so quiescence can see them
     env["SE_EPHE_PATH"] = os.environ.get("SE_EPHE_PATH", str(KY_ROOT / "ephe")); env["KY_ROOT"] = str(KY_ROOT)
@@ -1142,8 +1171,8 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
                 p = run_group(argv, KY_ROOT, env, timeout)
         finally:
             tmp.unlink(missing_ok=True)
-        child_stdouts()[oid] = p.stdout or ""
-        return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
+        child_stderrs()[oid] = p.stderr or ""
+        return p.returncode, p.stdout or ""
     wt = EXEC / f"op-{oid}"
     a = git("worktree", "add", "--detach", str(wt), req["reviewed_commit"], timeout=600)
     if a.returncode != 0: return 126, "cannot create the operation worktree: " + a.stderr[-400:]
@@ -1157,8 +1186,8 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
         if overlay is None: return 126, "generated overlay refused: " + why
         overlay_proofs()[oid] = overlay
         p = run_group(argv, cwd, env, timeout)
-        child_stdouts()[oid] = p.stdout or ""
-        return p.returncode, (p.stdout or "") + "\n" + (p.stderr or "")
+        child_stderrs()[oid] = p.stderr or ""
+        return p.returncode, p.stdout or ""
     finally:
         git("worktree", "remove", "--force", str(wt), timeout=300)
 
@@ -1269,7 +1298,7 @@ def mechanical_quiescence(req: dict, archived: pathlib.Path) -> str | None:
         if isinstance(value, dict) and value.get("schema") == "ky.session_readback/1": found.append(value)
     sessions = found[0] if len(found) == 1 else {}
     marker = session_marker(target)
-    needs_remote = done.get("kind") in ("smalltest_dispatch", "measuring_dispatch") or isinstance(done.get("launch"), dict)
+    needs_remote = done.get("kind") in ("smalltest_dispatch", "measuring_dispatch", "century_dispatch") or isinstance(done.get("launch"), dict)
     remote = None
     if needs_remote:
         try: remote = accepted_cloudrun_execution(str(args.get("execution_readback", "")), str((done.get("launch") or {}).get("execution_name", "")))
@@ -1278,7 +1307,7 @@ def mechanical_quiescence(req: dict, archived: pathlib.Path) -> str | None:
     except (KeyError, TypeError, ValueError): after_terminal = False
     checks = dict(own_checks,
         target_is_a_production_operation=entry.get("production") is True and "lane_target" not in done,
-        target_is_not_a_teardown=done.get("kind") not in ("smalltest_teardown", "measuring_teardown"),
+        target_is_not_a_teardown=done.get("kind") not in TEARDOWN_KINDS,
         target_receipt_terminal=done.get("operation_id") == target and done.get("status") in ("COMPLETED", "FAILED", "AWAITING_ABSENCE"),
         fence_names_the_target_request=fence.get("operation_id") == target and bool(done.get("request_sha256")) and fence.get("request_sha256") == done.get("request_sha256"),
         target_not_in_flight=None not in inflight and target not in inflight,
@@ -1324,14 +1353,14 @@ def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
             receipt(req, "REFUSED", why); return
         if req["kind"] == "scheduler_pause": arm_scheduler_backstop(req)      # SR-J3-REAPER-PAUSE: armed BEFORE the pause runs; a refusal to arm stops the pause
         rc, out = execute(req, op)
-        stdout = child_stdouts().pop(req["operation_id"], None)
+        stderr = child_stderrs().pop(req["operation_id"], "")
         extra = None if lane_selected(req) else {"session_marker": session_marker(req["operation_id"])}
         proof, problem = scheduler_proof(req, rc, out) if extra is not None and req["kind"] in SCHEDULER_ACTION else (None, None)
         if proof is not None: extra["scheduler"] = proof        # the state read back AFTER the action, as the reviewed script measured it
         cancelled, cancel_problem = measuring_cancel_proof(req, rc, out) if extra is not None and req["kind"] in ("measuring_cancel", "measuring_cancel_dryrun") else (None, None)
         if cancelled is not None: extra["cancel"] = cancelled   # likewise: the execution state read back after the cancel (CANCELLED, or the observed state beside a FAILED receipt)
         ok = rc == 0 and problem is None and cancel_problem is None
-        receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra, stdout)
+        receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra, stderr)
         if ok and req["kind"] == "scheduler_resume": scheduler_backstop_satisfy(req)
     except subprocess.TimeoutExpired as e:
         receipt(req, "FAILED", "timeout — the local process group was killed; a remote job may still be running: read the postconditions", 124, str(e))
