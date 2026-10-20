@@ -15,6 +15,14 @@
 #                    commit (or an interruption while it is in flight) is COMPENSATED — the password is reset to NULL (and
 #                    NOLOGIN restored if the role was NOLOGIN) and the reset is VERIFIED; if that cannot be verified the run
 #                    says so loudly (exit 70) and the secrets must NOT be discarded.
+#   grant-l1-reads   J-4b-a55j (SR-GRANTS-MINIMAL): GRANT SELECT on chart_facts and chart_dashas — and on nothing else — to gochara_verifier and
+#                    gochara_sealer (migration 1378's header lines 53-57 leave these two L1 reads to the data-plane ACL owner). ONE transaction:
+#                    the grant and a closure check (exactly SELECT, no write privilege, no grant option, for both roles on both tables) commit together
+#                    or not at all. Refuses if either role is absent. Idempotent. Touches no secret.
+#   sealer-credential  J-4b-a55j (SR-GRANTS-MINIMAL, replaces the person-run staging of act 2b): the sealer's password is generated HERE, the full DSN
+#                    is written straight to Secret Manager (SEALER_SECRET) BEFORE the role is touched, then the role is activated in one transaction
+#                    with its postconditions, observed by an authentication, and listed. Same compensation as `sealer-password` PLUS the destroy of
+#                    this run's secret version. Needs DSN_TAIL in the sealer's TCP loopback form (@127.0.0.1:5432/<db>). Never printed, never read.
 #
 # THE PASSWORD STATE IS NEVER READ FROM pg_authid (Fable F-R12-3): on Cloud SQL the admin roles are cloudsqlsuperuser members, not superusers, and pg_authid is
 #   superuser-only — a predicate that needed it would refuse unconditionally (a fail-closed dead end). Instead the state is (1) RECORDED in a role comment that
@@ -35,17 +43,20 @@ set -Eeuo pipefail
 set +x
 umask 077
 
-STAGE="${STAGE:?STAGE is required (create-roles | sealer-password)}"
+STAGE="${STAGE:?STAGE is required (create-roles | sealer-password | grant-l1-reads | sealer-credential)}"
 ADMIN_DATABASE_URL="${ADMIN_DATABASE_URL:?ADMIN_DATABASE_URL (the governed ownership-admin connection) is required}"
 VERIFIER_ROLE=gochara_verifier
 SEALER_ROLE=gochara_sealer
 VERIFIER_SECRET="${VERIFIER_SECRET:-gochara-verifier-db-url}"
+SEALER_SECRET="${SEALER_SECRET:-gochara-sealer-db-url}"
 GCLOUD_PROJECT="${GCLOUD_PROJECT:-madhav-astrology}"
 GCLOUD_BIN="${GCLOUD_BIN:-gcloud}"
 PSQL_BIN="${PSQL_BIN:-psql}"
 
 CREATED_ROLES=()          # roles created by THIS process — rolled back automatically if anything later fails
 CREATED_VERSION=""        # the secret version written by THIS process — destroyed if anything later fails
+CREATED_SECRET=""         # the secret that version belongs to (the verifier's or the sealer's)
+SEALER_PROBE_PW=""        # sealer-credential only: the generated password, kept for the authentication probe that VERIFIES a compensation
 SEALER_ACTIVATION=0       # 1 from the moment sealer activation is attempted: any non-success exit then COMPENSATES
 SEALER_WAS_LOGIN=""       # the sealer's rolcanlogin before activation (the compensation restores it)
 COMPLETED=0
@@ -120,7 +131,7 @@ rollback() {
       if psql_admin -c "ALTER ROLE $SEALER_ROLE $restore" >/dev/null 2>&1 \
          && psql_admin -c "COMMENT ON ROLE $SEALER_ROLE IS '$MARK_NULL'" >/dev/null 2>&1 \
          && [ "$(sealer_marker 2>/dev/null)" = "$MARK_NULL" ] \
-         && ! login_ok "${SEALER_PASSWORD_STAGING:-}"; then
+         && ! login_ok "${SEALER_PROBE_PW:-${SEALER_PASSWORD_STAGING:-}}"; then
         echo "compensated and VERIFIED: $SEALER_ROLE can no longer authenticate with the staged password and its recorded state is password-null (login restored to '$SEALER_WAS_LOGIN'). The stored secrets are recovery material until you re-run." >&2
       else
         echo "ROLLBACK INCOMPLETE — THE SEALER MAY BE ACTIVE. Run 'ALTER ROLE $SEALER_ROLE $restore;' by hand and prove the staged password no longer authenticates BEFORE deleting any secret; treat as an incident." >&2
@@ -128,7 +139,7 @@ rollback() {
       fi
     fi
     if [ -n "$CREATED_VERSION" ]; then
-      if "$GCLOUD_BIN" secrets versions destroy "$CREATED_VERSION" --secret "$VERIFIER_SECRET" --project "$GCLOUD_PROJECT" --quiet >/dev/null 2>&1; then
+      if "$GCLOUD_BIN" secrets versions destroy "$CREATED_VERSION" --secret "${CREATED_SECRET:-$VERIFIER_SECRET}" --project "$GCLOUD_PROJECT" --quiet >/dev/null 2>&1; then
         echo "rolled back: destroyed secret version $CREATED_VERSION" >&2
       else
         echo "ROLLBACK INCOMPLETE: destroy secret version $CREATED_VERSION by hand (needs secretmanager.versions.destroy: the secretVersionManager binding of act 11)" >&2; rc=70
@@ -143,7 +154,7 @@ rollback() {
       fi
     done
   fi
-  unset SEALER_PASSWORD_STAGING 2>/dev/null || true
+  unset SEALER_PASSWORD_STAGING SEALER_PROBE_PW 2>/dev/null || true
   exit "$rc"
 }
 trap rollback EXIT
@@ -185,13 +196,51 @@ create_role() {   # $1 role, $2 connection limit; prints which form was used
   note "created $role: $form"
 }
 
+# the tail carries NO credential: it must start with @ and must not contain another @ or a userinfo-looking part
+check_dsn_tail() {
+  printf '%s' "$DSN_TAIL" | grep -Eq '^@[A-Za-z0-9._/:%=&?-]+$' || fail "DSN_TAIL is not a plain @host/db?params string" 2
+  case "${DSN_TAIL#@}" in *@*) fail "DSN_TAIL must not contain a second @ (no credentials)" 2;; esac
+}
+
+# the sealer must be exactly as create-roles left it (recorded password-null) before any stage that sets a password
+require_sealer_password_null() {
+  role_exists "$SEALER_ROLE" || fail "role $SEALER_ROLE does not exist — run create-roles first"
+  SEALER_WAS_LOGIN="$(q "SELECT rolcanlogin FROM pg_roles WHERE rolname = '$SEALER_ROLE'")"
+  local state
+  state="$(sealer_marker)"
+  case "$state" in
+    "$MARK_NULL") ;;
+    "$MARK_SET") fail "the sealer's recorded state is password-SET — refusing to overwrite" ;;
+    *) fail "the sealer carries no recorded password-null state ('$state'): it was not created by this one-shot, or its state is unknown — refusing" ;;
+  esac
+}
+
+# ONE transaction: the sealer activation AND its postconditions. ALTER ROLE is transactional in PostgreSQL, so a failed postcondition aborts the whole thing and the
+# password is NEVER left set by a failed check. (stderr discarded: a server error can quote the statement.) $1 = the password.
+activate_sealer() {
+  {
+    printf "BEGIN;\n"
+    printf "ALTER ROLE %s LOGIN PASSWORD '%s';\n" "$SEALER_ROLE" "$1"
+    printf "COMMENT ON ROLE %s IS '%s';\n" "$SEALER_ROLE" "$MARK_SET"
+    cat <<SQL
+DO \$post\$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cloudsqlsuperuser') THEN RAISE EXCEPTION 'postcondition: cloudsqlsuperuser absent (not Cloud SQL)'; END IF;
+  IF pg_has_role('$SEALER_ROLE', 'cloudsqlsuperuser', 'MEMBER') THEN RAISE EXCEPTION 'postcondition: sealer is a member of cloudsqlsuperuser'; END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$SEALER_ROLE' AND (rolsuper OR rolcreaterole OR rolcreatedb OR rolreplication OR rolbypassrls OR rolinherit OR NOT rolcanlogin)) THEN
+    RAISE EXCEPTION 'postcondition: sealer attributes are not the least-privilege set'; END IF;
+  IF EXISTS (SELECT 1 FROM pg_auth_members WHERE member = (SELECT oid FROM pg_roles WHERE rolname = '$SEALER_ROLE') OR roleid = (SELECT oid FROM pg_roles WHERE rolname = '$SEALER_ROLE')) THEN
+    RAISE EXCEPTION 'postcondition: sealer has role memberships'; END IF;
+END \$post\$;
+COMMIT;
+SQL
+  } | psql_admin -f - >/dev/null 2>&1
+}
+
 case "$STAGE" in
   create-roles)
     VERIFIER_CONNECTION_LIMIT="${VERIFIER_CONNECTION_LIMIT:-4}"
     DSN_TAIL="${DSN_TAIL:?DSN_TAIL (the non-secret host/database/params of the verifier DSN, starting with @) is required}"
-    # the tail carries NO credential: it must start with @ and must not contain another @ or a userinfo-looking part
-    printf '%s' "$DSN_TAIL" | grep -Eq '^@[A-Za-z0-9._/:%=&?-]+$' || fail "DSN_TAIL is not a plain @host/db?params string" 2
-    case "${DSN_TAIL#@}" in *@*) fail "DSN_TAIL must not contain a second @ (no credentials)" 2;; esac
+    check_dsn_tail
     for r in "$VERIFIER_ROLE" "$SEALER_ROLE"; do
       if role_exists "$r"; then fail "role $r already exists — this one-shot refuses (idempotent by refusal); inspect, then roll back by the runbook if it is a failed earlier run"; fi
     done
@@ -213,6 +262,7 @@ case "$STAGE" in
       | "$GCLOUD_BIN" secrets versions add "$VERIFIER_SECRET" --project "$GCLOUD_PROJECT" --data-file=- --format='value(name)')" \
       || fail "writing the verifier DSN to Secret Manager failed — rolling back this run's roles" 5
     CREATED_VERSION="${VERSION_OUT##*/versions/}"
+    CREATED_SECRET="$VERIFIER_SECRET"
     [ -n "$CREATED_VERSION" ] || fail "the secret version id was not returned — rolling back this run's roles" 5
     # stderr of the ALTER is discarded: a server error can quote the statement (and so the password)
     printf "ALTER ROLE %s PASSWORD '%s';\n" "$VERIFIER_ROLE" "$PW" \
@@ -232,33 +282,10 @@ case "$STAGE" in
     [ "${#SEALER_PASSWORD_STAGING}" -ge 64 ] || fail "the staged sealer password is too short" 2
     printf '%s' "$SEALER_PASSWORD_STAGING" | grep -Eq '^[0-9a-f]+$' || fail "the staged sealer password must be hex (no quoting hazard)" 2
     echo "::add-mask::$SEALER_PASSWORD_STAGING"
-    SEALER_WAS_LOGIN="$(q "SELECT rolcanlogin FROM pg_roles WHERE rolname = '$SEALER_ROLE'")"
-    state="$(sealer_marker)"
-    case "$state" in
-      "$MARK_NULL") ;;
-      "$MARK_SET") fail "the sealer's recorded state is password-SET — refusing to overwrite" ;;
-      *) fail "the sealer carries no recorded password-null state ('$state'): it was not created by this one-shot, or its state is unknown — refusing" ;;
-    esac
+    require_sealer_password_null
     if login_ok "$SEALER_PASSWORD_STAGING"; then fail "the sealer already authenticates with the staged password — refusing"; fi
     SEALER_ACTIVATION=1       # from here on, any non-success exit (a failed statement, a failed postcondition, a cancelled run) COMPENSATES
-    # ONE transaction: the activation AND its postconditions. ALTER ROLE is transactional in PostgreSQL, so a failed postcondition aborts the whole thing and the
-    # password is NEVER left set by a failed check. (stderr discarded: a server error can quote the statement.)
-    {
-      printf "BEGIN;\n"
-      printf "ALTER ROLE %s LOGIN PASSWORD '%s';\n" "$SEALER_ROLE" "$SEALER_PASSWORD_STAGING"
-      printf "COMMENT ON ROLE %s IS '%s';\n" "$SEALER_ROLE" "$MARK_SET"
-      cat <<SQL
-DO \$post\$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cloudsqlsuperuser') THEN RAISE EXCEPTION 'postcondition: cloudsqlsuperuser absent (not Cloud SQL)'; END IF;
-  IF pg_has_role('$SEALER_ROLE', 'cloudsqlsuperuser', 'MEMBER') THEN RAISE EXCEPTION 'postcondition: sealer is a member of cloudsqlsuperuser'; END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$SEALER_ROLE' AND (rolsuper OR rolcreaterole OR rolcreatedb OR rolreplication OR rolbypassrls OR rolinherit OR NOT rolcanlogin)) THEN
-    RAISE EXCEPTION 'postcondition: sealer attributes are not the least-privilege set'; END IF;
-  IF EXISTS (SELECT 1 FROM pg_auth_members WHERE member = (SELECT oid FROM pg_roles WHERE rolname = '$SEALER_ROLE') OR roleid = (SELECT oid FROM pg_roles WHERE rolname = '$SEALER_ROLE')) THEN
-    RAISE EXCEPTION 'postcondition: sealer has role memberships'; END IF;
-END \$post\$;
-COMMIT;
-SQL
-    } | psql_admin -f - >/dev/null 2>&1 \
+    activate_sealer "$SEALER_PASSWORD_STAGING" \
       || fail "sealer activation or its postconditions failed (server message suppressed) — nothing was committed; compensating anyway" 5
     # the activation must be OBSERVABLE: the sealer can now authenticate with the staged password (otherwise: compensate)
     login_ok "$SEALER_PASSWORD_STAGING" || fail "the sealer cannot authenticate after activation — compensating" 5
@@ -266,6 +293,63 @@ SQL
     verification_facts "$SEALER_ROLE" 2
     COMPLETED=1
     note "sealer password set. NEXT: the steward deletes the staging secret (and verifies it is absent) and reports act 2b."
+    ;;
+  grant-l1-reads)
+    # J-4b-a55j: the two L1 reads migration 1378 leaves to the data-plane ACL owner (its header lines 53-57) — SELECT, on these two tables, for these two roles, nothing else.
+    # One transaction: the GRANT and the closure check commit together or not at all. No secret is involved.
+    for r in "$VERIFIER_ROLE" "$SEALER_ROLE"; do role_exists "$r" || fail "role $r does not exist — run create-roles first"; done
+    for t in chart_facts chart_dashas; do
+      [ "$(q "SELECT to_regclass('public.$t') IS NOT NULL")" = "t" ] || fail "relation public.$t does not exist — refusing to grant"
+    done
+    psql_admin -f - <<SQL || fail "the L1 read grants or their closure check failed — nothing was committed" 5
+BEGIN;
+GRANT SELECT ON public.chart_facts, public.chart_dashas TO $VERIFIER_ROLE, $SEALER_ROLE;
+DO \$post\$ DECLARE r text; t text; p text; BEGIN
+  FOREACH r IN ARRAY ARRAY['$VERIFIER_ROLE', '$SEALER_ROLE'] LOOP
+    FOREACH t IN ARRAY ARRAY['chart_facts', 'chart_dashas'] LOOP
+      IF NOT has_table_privilege(r, 'public.' || t, 'SELECT') THEN RAISE EXCEPTION 'postcondition: % holds no SELECT on %', r, t; END IF;
+      FOREACH p IN ARRAY ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'] LOOP
+        IF has_table_privilege(r, 'public.' || t, p) THEN RAISE EXCEPTION 'postcondition: % holds % on % (the L1 grant is read-only)', r, p, t; END IF;
+      END LOOP;
+      FOREACH p IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'] LOOP
+        IF has_table_privilege(r, 'public.' || t, p || ' WITH GRANT OPTION') THEN RAISE EXCEPTION 'postcondition: % holds % WITH GRANT OPTION on %', r, p, t; END IF;
+      END LOOP;
+    END LOOP;
+  END LOOP;
+END \$post\$;
+COMMIT;
+SQL
+    note "l1_read_grants: SELECT on chart_facts, chart_dashas for $VERIFIER_ROLE, $SEALER_ROLE (closure checked in the same transaction)"
+    COMPLETED=1
+    ;;
+  sealer-credential)
+    # J-4b-a55j (SR-GRANTS-MINIMAL): generated here, written straight to Secret Manager, never printed and never read back. The secret store FIRST (so a failure
+    # leaves a password-null role and an unused version, never an unknown password), then the role in ONE transaction, then an authentication that must succeed.
+    DSN_TAIL="${DSN_TAIL:?DSN_TAIL (the non-secret host/database of the SEALER DSN, TCP loopback form @127.0.0.1:5432/<db>, starting with @) is required}"
+    check_dsn_tail
+    role_exists "$SEALER_ROLE" || fail "role $SEALER_ROLE does not exist — run create-roles first"
+    require_sealer_password_null
+    if login_ok "$(openssl rand -hex 32)"; then fail "the sealer AUTHENTICATED with a random password: it is not password-protected — refusing"; fi
+    PW="$(openssl rand -hex 48)"
+    [ "${#PW}" -eq 96 ] || fail "password generation failed" 5
+    echo "::add-mask::$PW"
+    SEALER_PROBE_PW="$PW"
+    VERSION_OUT="$(printf '%s' "postgresql://${SEALER_ROLE}:${PW}${DSN_TAIL}" \
+      | "$GCLOUD_BIN" secrets versions add "$SEALER_SECRET" --project "$GCLOUD_PROJECT" --data-file=- --format='value(name)')" \
+      || fail "writing the sealer DSN to Secret Manager failed — nothing was changed in the database" 5
+    CREATED_VERSION="${VERSION_OUT##*/versions/}"
+    CREATED_SECRET="$SEALER_SECRET"
+    [ -n "$CREATED_VERSION" ] || fail "the secret version id was not returned — nothing was changed in the database" 5
+    SEALER_ACTIVATION=1       # from here on, any non-success exit COMPENSATES (password back to NULL, verified) and then destroys this run's secret version
+    activate_sealer "$PW" \
+      || fail "sealer activation or its postconditions failed (server message suppressed) — nothing was committed; compensating anyway" 5
+    login_ok "$PW" || fail "the sealer cannot authenticate after activation — compensating" 5
+    unset PW
+    "$GCLOUD_BIN" secrets versions list "$SEALER_SECRET" --project "$GCLOUD_PROJECT" --format='value(name,state)' | sed 's/^/secret_version: /' \
+      || fail "listing the secret versions failed (needs secretmanager.versions.list) — compensating" 5
+    verification_facts "$SEALER_ROLE" 2
+    COMPLETED=1
+    note "sealer password set; DSN written to Secret Manager secret $SEALER_SECRET (never printed)."
     ;;
   *) fail "unknown STAGE '$STAGE'" 2 ;;
 esac
