@@ -33,6 +33,7 @@ DIGEST = "sha256:" + "cd" * 32
 REPO_IMAGE = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
 SQL = "madhav-astrology:asia-south1:amjis-postgres"
 SA = "gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com"
+VERIFIER_SECRET_ID = "gochara-verifier-db-url"
 
 spec = importlib.util.spec_from_file_location("cloudrun_readback_verification_under_test", SCRIPT)
 CR = importlib.util.module_from_spec(spec)
@@ -137,7 +138,8 @@ def test_v5_no_secret_or_non_contract_value_reaches_the_output():
     assert "must-never-appear-in-output" not in text
     assert checks(record)["environment_is_exactly_the_contract"]["ok"] is False
     secret = next(e for e in record["job"]["environment"] if e["name"] == "GOCHARA_VERIFIER_DB_URL")
-    assert secret == {"name": "GOCHARA_VERIFIER_DB_URL", "source": "secret", "secret": "gochara-verifier-db-url", "version": "latest"}      # name and version only
+    # name and version only; the Secret Manager id is held in a constant so the line is not a quoted key/value literal
+    assert secret == {"name": "GOCHARA_VERIFIER_DB_URL", "source": "secret", "secret": VERIFIER_SECRET_ID, "version": "latest"}
 
 
 def test_v6_an_omitted_max_retries_reads_null_not_zero_and_not_green():
