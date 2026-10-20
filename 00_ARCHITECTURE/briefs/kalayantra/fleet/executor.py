@@ -58,6 +58,11 @@ Served probe (SR-TEARDOWN-AUTHORITY-GATE item 3): the read-only `served_probe` k
 entry (a name the table does not declare is refused at admission, before any process starts), sends no credential and follows no redirect, and records the HTTP
 status, content type, byte length and sha256 of the body — the body itself only for an endpoint declared `store_body: true` and only if it carries no personal data.
 A non-2xx answer, or a record that does not bind this operation, is a FAILED receipt; a 2xx one is accepted mechanically like `readback_sql` (fleet/served_probe.py).
+
+Cancel lane (SR-CANCEL-LANE): every production cancel / stall-stop kind (CANCEL_LANE_KINDS, a closed allow-list) runs on its OWN single worker, never on the
+production worker, and never waits for the production fence — a cancel queued behind the very operation it must stop would never run. The lane refuses any
+kind that is not on the list, every one of them is signed-only, and `orchestrator_rebuild_cancel` is admitted only for the run-id of an `orchestrator_rebuild`
+that is in flight.
 """
 from __future__ import annotations
 import concurrent.futures as cf, datetime as dt, fcntl, hashlib, json, os, pathlib, re, shutil, signal, subprocess, sys, tempfile, threading, time
@@ -81,7 +86,8 @@ LAUNCH_SCHEMAS = {"smalltest_dispatch": "ky.smalltest_launch/1", "measuring_disp
 REMOTE_ASYNC_KINDS = frozenset({"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"})   # A8 §3.11: work continues remotely after the child returns — fenced even if a table drops `remote_async`
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
 PACK_ALLOWLIST = OPS / "PACK_ALLOWLIST.json"   # OWNER-MINIMAL-PROTECTION-NOW: written by the cockpit ONLY from an ACCEPTED verify job of a pack; this executor only reads it
-SIGNED_ONLY_KINDS = frozenset({"publish_head", "layer_publish", "rollback_head", "layer_rollback", "measuring_cancel", "century_cancel", "verification_cancel"})   # serving changes, plus the deletion-adjacent cancels; every `*_teardown` kind is signed-only too (see mechanical_exempt)
+SIGNED_ONLY_KINDS = frozenset({"publish_head", "layer_publish", "rollback_head", "layer_rollback", "measuring_cancel", "orchestrator_rebuild_cancel", "century_cancel", "verification_cancel"})   # serving changes, plus the deletion-adjacent cancels (every kind on CANCEL_LANE_KINDS, which a test keeps equal to this set's cancels); every `*_teardown` kind is signed-only too (see mechanical_exempt)
+CANCEL_LANE_KINDS = frozenset({"measuring_cancel", "orchestrator_rebuild_cancel", "century_cancel", "verification_cancel"})   # SR-CANCEL-LANE: a CLOSED allow-list (never a name-suffix match); a name with no table entry is simply never requested; tests/test_executor_cancel_lane.py keeps it complete against the table
 CANCEL_FAMILIES = {"measuring": {"item": "J-3c", "dispatch": "measuring_dispatch", "schema": "ky.measuring_cancel/1", "job": "brahma-build-pipeline-job", "execution": r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*"}, "century": {"item": "J-4e", "dispatch": "century_dispatch", "schema": "ky.century_cancel/1", "job": "brahma-build-pipeline-job", "execution": r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*"}, "verification": {"item": "J-5s", "dispatch": "verification_job", "schema": "ky.verification_cancel/1", "job": "gochara-verification-job", "execution": r"gochara-verification-job-[a-z0-9]+(?:-[a-z0-9]+)*"}}   # per family: the request item, the dispatch kind whose receipt names the target, the record schema the reviewed script prints, the Cloud Run job and its execution-name shape (the century build runs on the same job as the measuring build)
 CANCEL_KINDS = {f"{family}_cancel{twin}": family for family in CANCEL_FAMILIES for twin in ("", "_dryrun")}
 NO_DRYRUN_KINDS = frozenset({"backup_snapshot", "backup_restore_verify"})   # the two production kinds with no dry-run kind and no `dry_run_passed` attestation (kyd_kinds_ops.required_checks)
@@ -657,6 +663,21 @@ def measuring_cancel_problem(req: dict) -> str | None:
     return None
 
 
+def orchestrator_rebuild_cancel_problem(req: dict) -> str | None:
+    """SR-CANCEL-LANE admission for `orchestrator_rebuild_cancel` (and its dry run), run at the tail of validate (so again immediately before execution): the
+    run-id must be the run-id of an `orchestrator_rebuild` request that is in flight (accepted, not yet finished) right now. A cancel of a run nothing is
+    running, or of another run, refuses; an unreadable in-flight entry binds nothing."""
+    if req.get("kind") not in ("orchestrator_rebuild_cancel", "orchestrator_rebuild_cancel_dryrun"): return None
+    run_id = (req.get("args") or {}).get("run-id")
+    if not (isinstance(run_id, str) and SAFE_ID.fullmatch(run_id)): return "run-id required: the run of the orchestrator_rebuild to cancel"
+    for path in sorted(INFLIGHT.glob("*.json")):
+        try: running = json.loads(path.read_text())
+        except (OSError, ValueError): continue
+        if (isinstance(running, dict) and running.get("kind") == "orchestrator_rebuild" and running.get("operation_id") != req.get("operation_id")
+                and isinstance(running.get("args"), dict) and running["args"].get("run-id") == run_id): return None
+    return "the target run-id is not the run of an orchestrator_rebuild in flight"
+
+
 def measuring_cancel_proof(req: dict, rc: int | None, out: str) -> tuple[dict | None, str | None]:
     """(record, problem) for a cancel kind's (or its dry run's) complete output. `record` is the ONE ky.<family>_cancel/1 line when it names this
     operation, this request digest, this kind and exactly the targeted execution of the family's job (else None); `problem` is None only when the state
@@ -976,7 +997,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         else: why = signer_acceptance_problem(req)
         if why: return why
     if not reserved and seen(req["idempotency_key"]): return "idempotency key already used"
-    return century_contract_problem(req) or smalltest_policy_problem(req) or scheduler_policy_problem(req) or measuring_cancel_problem(req) or head_policy_problem(req) or served_probe_problem(req, op)
+    return century_contract_problem(req) or smalltest_policy_problem(req) or scheduler_policy_problem(req) or measuring_cancel_problem(req) or orchestrator_rebuild_cancel_problem(req) or head_policy_problem(req) or served_probe_problem(req, op)
 
 
 def lane_selected(req: dict) -> bool:
@@ -1470,6 +1491,23 @@ def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
         mechanical_acceptance(req, DONE / path.name)
 
 
+def run_cancel_lane(path: pathlib.Path, req: dict, op: dict) -> None:
+    """SR-CANCEL-LANE: what the cancel lane's worker runs. A kind that is not on the closed allow-list is refused here, whatever routed it, and never executed."""
+    if req.get("kind") not in CANCEL_LANE_KINDS:
+        try: receipt(req, "REFUSED", f"kind {req.get('kind')} is not a cancel kind; the cancel lane runs only {sorted(CANCEL_LANE_KINDS)}")
+        finally:
+            try: shutil.move(str(path), DONE / path.name)
+            except Exception: pass
+        return
+    run_one(path, req, op)
+
+
+def pool_for(req: dict, production: bool, readers, builder, cancel_lane):
+    """Which worker a request runs on: a production cancel kind -> its own lane; any other production kind -> the single production worker; the rest -> the readers."""
+    if production and req.get("kind") in CANCEL_LANE_KINDS: return cancel_lane, run_cancel_lane
+    return (builder if production else readers), run_one
+
+
 def main() -> int:
     for d in (REQ, REC, DONE, ACC, INFLIGHT, TMP, OPS / "sql", EXEC, KY_ROOT / "logs"): d.mkdir(parents=True, exist_ok=True)
     instance_lock = (OPS / "executor.lock").open("a+")
@@ -1491,8 +1529,9 @@ def main() -> int:
     for _, armed in scheduler_backstop_records():
         if armed.get("status") == "ARMED": log(f"{armed.get('operation_id')} scheduler backstop re-armed from disk: resume {armed.get('job')} at {armed.get('resume_by')}")
     readers = cf.ThreadPoolExecutor(max_workers=4, thread_name_prefix="read"); builder = cf.ThreadPoolExecutor(max_workers=1, thread_name_prefix="prod")
+    cancel_lane = cf.ThreadPoolExecutor(max_workers=1, thread_name_prefix="cancel")      # SR-CANCEL-LANE: its own worker, so a cancel never queues behind the production operation it stops
     while True:
-        if (RUN / "STOP_executor").exists(): log("STOP_executor present; no new operations; exiting when idle"); readers.shutdown(wait=True); builder.shutdown(wait=True); return 0
+        if (RUN / "STOP_executor").exists(): log("STOP_executor present; no new operations; exiting when idle"); readers.shutdown(wait=True); builder.shutdown(wait=True); cancel_lane.shutdown(wait=True); return 0
         scheduler_backstop_tick()                            # SR-J3-REAPER-PAUSE: before every gate below; the first turn after a restart fires an overdue resume at once
         if time.time() - last_sync > 60:
             try:
@@ -1509,17 +1548,18 @@ def main() -> int:
             except Exception as e:
                 receipt({"operation_id": f.stem}, "REFUSED", f"unreadable request: {e}"); shutil.move(str(f), DONE / f.name); continue
             production = bool((table.get(req.get("kind")) or {}).get("production")) and not lane_selected(req)
-            if production and FENCE.exists() and req.get("kind") not in ("scheduler_resume", "measuring_cancel", "century_cancel", "verification_cancel"): continue      # the single production slot is taken; the request waits where it is (a resume of the watchdog is the safe direction and a cancel stops the very dispatch that holds the fence: neither waits)
+            if production and FENCE.exists() and req.get("kind") != "scheduler_resume" and req.get("kind") not in CANCEL_LANE_KINDS: continue      # the single production slot is taken; the request waits where it is (a resume of the watchdog is the safe direction and a cancel stops the very dispatch that holds the fence: neither waits)
             why = validate(req, table, caps)
             if why:
                 receipt(req, "REFUSED", why, preserve_existing=True); shutil.move(str(f), DONE / f.name); continue
-            if production and remote_async(req["kind"], table[req["kind"]]):     # A8 §3.11: a synchronous kind takes no fence
+            if production and req["kind"] not in CANCEL_LANE_KINDS and remote_async(req["kind"], table[req["kind"]]):     # A8 §3.11: a synchronous kind takes no fence
                 FENCE.write_text(json.dumps({"operation_id": req["operation_id"], "request_sha256": request_digest(req), "ts": now()}))
             mark_seen(req["idempotency_key"], req["operation_id"])
             flight = INFLIGHT / f.name; shutil.move(str(f), flight)
             op = table[req["kind"]]
             receipt(req, "RUNNING", "accepted; in flight")
-            (builder if production else readers).submit(run_one, flight, req, op)
+            pool, work = pool_for(req, production, readers, builder, cancel_lane)
+            pool.submit(work, flight, req, op)
         time.sleep(10)
 
 

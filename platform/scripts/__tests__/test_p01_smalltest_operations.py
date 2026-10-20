@@ -202,9 +202,10 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     import datetime as dt
     import types
     source = ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py'
-    # validate's signed route is signer_acceptance_problem (the A8 §3.9 block, moved out unchanged by OWNER-MINIMAL-PROTECTION-NOW)
-    functions = [n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef) and n.name in ('signer_acceptance_problem', 'validate')]
-    assert len(functions) == 2
+    # validate's signed route is signer_acceptance_problem (the A8 §3.9 block, moved out unchanged by OWNER-MINIMAL-PROTECTION-NOW);
+    # orchestrator_rebuild_cancel_problem (SR-CANCEL-LANE) is compiled for real: it returns None before touching any state for a non-cancel kind
+    functions = [n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef) and n.name in ('signer_acceptance_problem', 'orchestrator_rebuild_cancel_problem', 'validate')]
+    assert len(functions) == 3
     accepted_dir = tmp_path / 'acceptance'; accepted_dir.mkdir()
     globals_ = {'pathlib': importlib.import_module('pathlib'), 'SAFE_ID': importlib.import_module('re').compile(r'^[a-z0-9_-]+$'),
                 'SAFE_ARG': importlib.import_module('re').compile(r'^[A-Za-z0-9_.:+,/-]+$'),
