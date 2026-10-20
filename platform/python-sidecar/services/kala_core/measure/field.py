@@ -5,12 +5,13 @@ geometry. Callers supply the FULL reference evaluator; this core never imports
 a stage or an outcome scorer. Numeric reductions below moved verbatim from
 stage5_null (bitwise contract); no compact evaluator is introduced.
 """
+from collections import OrderedDict
 from dataclasses import dataclass
 import hashlib
 import heapq
 import json
 import math
-from typing import Iterable, Optional, Sequence
+from typing import Any, Callable, Iterable, Optional, Sequence
 from . import DEFAULT_NON_IDENTITY_SHIFTS, Experiment, Interval, bind_schedule, prepare_schedule
 
 DURATION_BUCKETS = (1, 3, 7, 15, 30, 60, 90, 180, 365, 730)
@@ -153,6 +154,49 @@ def prepare_field(event_class, horizon_days, *, non_identity_shifts=None, schedu
     material = [experiment.estimand, experiment.conditioning, horizon_days, offsets]
     digest = hashlib.sha256(json.dumps(material, separators=(',', ':')).encode()).hexdigest()
     return FieldPreparation(event_class, horizon_days, offsets, experiment, digest, schedule.digest)
+
+
+class SharedGeometry:
+    """Shifted field geometry, built once per schedule offset for a candidate.
+
+    The geometry is the field's own transit/obstruction envelope set shifted by
+    a schedule offset; it is class-independent, so every class's draw at the same
+    offset reads one build. It is bound to the digest of the set it shifts and
+    to the schedule, and it refuses anything that is not that kind of object, so
+    a jury draw (witness segments) can never stand in for it. At most `capacity`
+    offsets are retained (least recently used out); capacity 1 degrades to
+    rebuilding per class, never to a wrong value.
+    """
+
+    def __init__(self, schedule, base: Any, base_digest: str, build: Callable[[float], Any],
+                 product_type: type, capacity: int):
+        if not base_digest or capacity < 1:
+            raise ValueError('shared geometry needs the digest of the set it shifts and a positive capacity')
+        self.schedule = schedule
+        self.base = base
+        self.base_digest = base_digest
+        self.product_type = product_type
+        self.capacity = capacity
+        self.builds = 0
+        self._build = build
+        self._kept: OrderedDict[float, Any] = OrderedDict()
+
+    def shifted(self, offset: float, base: Any):
+        if base is not self.base:
+            raise ValueError('shared geometry is bound to a different envelope set')
+        if offset not in self.schedule.offsets:
+            raise ValueError('offset is not on the candidate schedule')
+        if offset in self._kept:
+            self._kept.move_to_end(offset)
+            return self._kept[offset]
+        product = self._build(offset)
+        if not isinstance(product, self.product_type):
+            raise ValueError('shared geometry product is not field envelope geometry')
+        self.builds += 1
+        self._kept[offset] = product
+        while len(self._kept) > self.capacity:
+            self._kept.popitem(last=False)
+        return product
 
 
 @dataclass(frozen=True)
