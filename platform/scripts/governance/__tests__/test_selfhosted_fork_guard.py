@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import textwrap
+import time
 from pathlib import Path
 
 import pytest
@@ -196,6 +198,73 @@ def test_the_probe_job_is_github_hosted_and_never_fails_the_pipeline():
     script = probe['steps'][0]['run']
     # the fallback answer is ubuntu-latest, and the only way out of the script is `exit 0` through choose()
     assert "fallback='\"ubuntu-latest\"'" in script and 'exit 1' not in script
+
+
+def test_the_probe_uses_no_secret_and_no_runner_api_call():
+    """SR-RUNNER-PROBE-NOSECRET: the heartbeat is a repository variable; no token, no `gh api` runners call."""
+    text = (ROOT / '.github/workflows/ci.yml').read_text(encoding='utf-8')
+    assert 'MADHAV_RUNNER_PROBE_TOKEN' not in text
+    probe = _ci()['jobs']['db-runner-probe']
+    step = probe['steps'][0]
+    assert 'secrets.' not in json.dumps(probe) and 'GH_TOKEN' not in step.get('env', {})
+    assert 'gh api' not in step['run'] and 'actions/runners' not in step['run']
+    assert step['env']['HEARTBEAT'] == '${{ vars.MADHAV_DB_ONLINE }}'
+    assert step['env']['DB_ENABLED'] == '${{ vars.MADHAV_DB_ENABLED }}'
+
+
+# -- claim: DB jobs route to madhav-db only on a fresh, parseable heartbeat (<= 180 s old, <= 60 s in the future) ---------------------
+SELF_HOSTED = '["self-hosted","madhav-db"]'
+UBUNTU = '"ubuntu-latest"'
+
+
+def _iso(offset_seconds: float) -> str:
+    return time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time() + offset_seconds))
+
+
+def _run_probe(tmp_path, heartbeat, db_enabled=None) -> str:
+    """Run the ci.yml probe step's own script under bash with the step's env; return the published runs_on value."""
+    script = _ci()['jobs']['db-runner-probe']['steps'][0]['run']
+    out = tmp_path / 'github_output'
+    out.write_text('')
+    env = {'PATH': os.environ['PATH'], 'GITHUB_OUTPUT': str(out)}
+    if heartbeat is not None:
+        env['HEARTBEAT'] = heartbeat
+    if db_enabled is not None:
+        env['DB_ENABLED'] = db_enabled
+    done = subprocess.run(['bash', '-c', script], env=env, capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr
+    lines = [l for l in out.read_text().splitlines() if l.startswith('runs_on=')]
+    assert len(lines) == 1, lines
+    return lines[0].split('=', 1)[1]
+
+
+@pytest.mark.parametrize('offset', [0, -10, -170, 30])
+def test_a_fresh_heartbeat_routes_the_db_jobs_to_madhav_db(tmp_path, offset):
+    assert _run_probe(tmp_path, _iso(offset)) == SELF_HOSTED
+
+
+@pytest.mark.parametrize('offset', [-200, -400, -86400])
+def test_planted_stale_heartbeat_routes_to_ubuntu_latest(tmp_path, offset):
+    assert _run_probe(tmp_path, _iso(offset)) == UBUNTU
+
+
+@pytest.mark.parametrize('offset', [120, 3600])
+def test_planted_future_dated_heartbeat_beyond_skew_routes_to_ubuntu_latest(tmp_path, offset):
+    assert _run_probe(tmp_path, _iso(offset)) == UBUNTU
+
+
+@pytest.mark.parametrize('heartbeat', [
+    None, '', 'yesterday', '1792425600', '2026-13-45T99:99:99Z', '2026-02-30T10:00:00Z',
+    '2026-10-19 16:00:00', '2026-10-19T16:00:00+00:00', '2026-10-19T16:00:00',
+])
+def test_missing_or_unparsable_heartbeat_routes_to_ubuntu_latest(tmp_path, heartbeat):
+    assert _run_probe(tmp_path, heartbeat) == UBUNTU
+
+
+def test_the_kill_switch_beats_a_fresh_heartbeat_and_only_the_word_false_trips_it(tmp_path):
+    assert _run_probe(tmp_path, _iso(0), db_enabled='false') == UBUNTU
+    assert _run_probe(tmp_path, _iso(0), db_enabled='true') == SELF_HOSTED
+    assert _run_probe(tmp_path, _iso(0), db_enabled='') == SELF_HOSTED
 
 
 def test_the_guard_is_selected_by_its_ci_profile_and_by_governance_shard_discovery():
