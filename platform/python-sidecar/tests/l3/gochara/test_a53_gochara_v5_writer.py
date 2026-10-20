@@ -515,6 +515,26 @@ def test_final_rules_are_opt_in_and_do_not_change_the_default_writer(_record_pha
     assert _record_phase_fakes['grain'][-1]['edges'] == []
 
 
+def test_a_context_naming_no_rule_profile_runs_the_measuring_profile_not_the_final_one(monkeypatch):
+    """The DEFAULT path (mutant writer.default-isolation). `_ctx()` names the profile explicitly (main's RunProfileRefusal refuses an unnamed
+    non-slice run), so nothing else exercises the profile wrapper with the key ABSENT. The pre-build isolation promise is that an unnamed
+    default is the measuring profile: ND-H 1.2.0 is not bound. A dry run is exempt from RunProfileRefusal, so the wrapper is reached key-less."""
+    import contextlib
+    from services.gochara_kernel import rule_registry as rr
+    ctx = _ctx(dry_run=True)
+    del ctx.config['gochara_v5_final_rules']
+    real, seen = rr.rule_profile, []
+
+    @contextlib.contextmanager
+    def spy(*, final_rules):
+        with real(final_rules=final_rules):
+            seen.append((final_rules, rr.bound_path_refs()))
+            yield
+    monkeypatch.setattr(rr, "rule_profile", spy)
+    writer_mod.GocharaV5Writer().plan_substeps(ctx)
+    assert seen and all(final is False and refs == rr.BOUND_PATH_REFS for final, refs in seen)
+
+
 def test_final_rules_cannot_be_selected_for_a_test_slice(monkeypatch):
     ctx = _ctx()
     ctx.config['gochara_v5_final_rules'] = True
