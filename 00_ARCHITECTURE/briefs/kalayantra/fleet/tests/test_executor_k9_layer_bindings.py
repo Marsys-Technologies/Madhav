@@ -22,7 +22,7 @@ K9 = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify_dryru
       # SR-PREBUILD-ALL: cancel and teardown of a rebuild run (rebuild_control via publication_admission); shipped disabled, but what the executor would run is pinned here
       "orchestrator_rebuild_cancel_dryrun", "orchestrator_rebuild_cancel", "orchestrator_rebuild_teardown_dryrun", "orchestrator_rebuild_teardown"]
 ARGS = {"run-id": "6f1d3c1e-0000-4000-8000-000000000001", "generation": "g-1", "expected-head": "g-0", "assets": "ka_yojaka,ka_sangam",
-        "phase": "post", "independently-derived-digest": "0" * 64}
+        "independently-derived-digest": "0" * 64}
 URLS = {"KY_BUILDER_DATABASE_URL": "builder-fixture", "KY_LAYER_VERIFIER_DATABASE_URL": "verifier-fixture", "KY_OWNER_DATABASE_URL": "owner-fixture"}
 
 

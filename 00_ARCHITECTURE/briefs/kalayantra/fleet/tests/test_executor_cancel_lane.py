@@ -55,6 +55,10 @@ class LaneWorld(CancelWorld):
                "args": args or {}, "reviewed_commit": COMMIT, "expires_at": (utc_now() + dt.timedelta(hours=1)).isoformat()}
         if production:
             req.update(chart_id=self.mod.CANONICAL_CHART, lease_id=LEASE)
+            if kind == "orchestrator_rebuild":      # SR-K9-PUBLISHABLE D7: a rebuild is admitted only with the executor's own COMPLETED dry-run receipt for its identity
+                from test_executor_rebuild_dryrun_detector import archive_dry_run
+                for d in (self.mod.REC, self.mod.DONE): d.mkdir(parents=True, exist_ok=True)
+                req["dryrun_receipt"] = archive_dry_run(self, req, oid=f"dry-{oid}")
             acceptance = self.mod.ACC / f"{oid}.json"
             req["acceptance_receipt"] = str(acceptance)
             acceptance.write_text(json.dumps({"result": "ACCEPTED", "by": "v1", "operation_id": oid, "reviewed_commit": COMMIT, "ts": self.mod.now(),

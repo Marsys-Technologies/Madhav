@@ -11,6 +11,13 @@ Both operations take ONE argument, the run id, and are scoped to the canonical c
   ``(chart_id, generation)``, or that is itself referenced by another table, is refused rather than guessed at. A published
   candidate, the head generation and a candidate whose retained previous head is gone are refused. The head is read before and
   after and must be equal. The caller owns the transaction: nothing here commits.
+* SR-K9-PUBLISHABLE D8: a teardown of a FAILED run also restores the asset states that run wrote. A failed rebuild leaves
+  assets ``stale`` (``staleness.propagate_downstream_staleness``) and ``error`` (the failing asset and its blocked dependents);
+  nothing else marks which ones, so the orchestrator's own audit trail (``asset_throughput_state_audit``, written by trigger for
+  every state change made through ``pipeline.orchestrator.db.connect``) is read for the run's own window on this chart. An
+  asset is restored to the state it held before the run ONLY IF it is still ``stale``/``error`` from that window's last change and
+  its first change in the window came from a settled state; anything changed since, or by anyone else, is left alone. A role that
+  cannot read the audit trail refuses the teardown rather than guess (N.7.6). Never touches a published head or another chart.
 """
 from __future__ import annotations
 
@@ -25,6 +32,10 @@ from services.kala_core.publication import CANONICAL_CHART
 CANCELLABLE = ('planned', 'running', 'paused')
 TERMINAL = ('completed', 'stopped', 'failed')       # build_runs_state_check: planned, running, paused + these three
 CANDIDATE_KEY = ['chart_id', 'generation']
+AUDIT_TABLE = 'asset_throughput_state_audit'
+WRITTEN_BY_A_FAILED_RUN = ('stale', 'error')
+SETTLED_BEFORE = ('lit', 'service_ok', 'mature', 'dormant')     # runner.py's settled states: what a stale/error row can be restored to
+ORCHESTRATOR = 'asset_runner'                                   # pipeline/orchestrator/db.py: marsys.triggered_by on every build connection
 
 
 def _scoped_run(conn: Any, run_id: str, chart_id: str) -> dict:
@@ -139,6 +150,47 @@ def retained_previous_present(conn: Any, chart_id: str, expected_head: str | Non
                         (chart_id, expected_head)).fetchone() is not None
 
 
+def asset_state_census(conn: Any, chart_id: str = CANONICAL_CHART) -> list[tuple]:
+    """The readback of a restore: every (asset, state) of the chart, as the database now holds them."""
+    return [tuple(r) for r in conn.execute('SELECT asset_id, state FROM asset_throughput WHERE chart_id = %s ORDER BY asset_id',
+                                           (chart_id,)).fetchall()]
+
+
+def failed_run_asset_states(conn: Any, run_id: str, chart_id: str = CANONICAL_CHART) -> list[tuple]:
+    """(asset_id, current state, state before the run) for each stale/error row the run's own window left behind."""
+    if conn.execute('SELECT to_regclass(%s)', (AUDIT_TABLE,)).fetchone()[0] is None:
+        raise ValueError('the asset state audit trail is absent: the failed run\'s asset states cannot be identified')
+    if not conn.execute('SELECT has_table_privilege(current_user, %s, %s)', (AUDIT_TABLE, 'SELECT')).fetchone()[0]:
+        raise ValueError('this role cannot read the asset state audit trail: the failed run\'s asset states cannot be identified')
+    return [tuple(r) for r in conn.execute("""
+        WITH win AS (SELECT started_at, COALESCE(ended_at, now()) AS ended_at FROM build_runs WHERE id = %(run)s AND started_at IS NOT NULL),
+             span AS (SELECT a.asset_id,
+                             (array_agg(a.old_state ORDER BY a.id ASC))[1] AS first_old,
+                             (array_agg(a.new_state ORDER BY a.id DESC))[1] AS last_new
+                        FROM asset_throughput_state_audit a, win
+                       WHERE a.chart_id = %(chart)s AND a.triggered_by = %(by)s
+                         AND a.changed_at >= win.started_at AND a.changed_at <= win.ended_at
+                       GROUP BY a.asset_id)
+        SELECT t.asset_id, t.state, span.first_old
+          FROM span JOIN asset_throughput t ON t.chart_id = %(chart)s AND t.asset_id = span.asset_id
+         WHERE t.state = ANY(%(written)s) AND t.state = span.last_new AND span.first_old = ANY(%(settled)s)
+         ORDER BY t.asset_id""", {'run': run_id, 'chart': chart_id, 'by': ORCHESTRATOR, 'written': list(WRITTEN_BY_A_FAILED_RUN),
+                                  'settled': list(SETTLED_BEFORE)}).fetchall()]
+
+
+def restore_asset_states(conn: Any, found: list[tuple], chart_id: str) -> list[dict]:
+    """Restore each (asset_id, state, state before the run) of ``failed_run_asset_states`` to the state it held before the run."""
+    restored = []
+    for asset_id, state, before in found:
+        changed = conn.execute("UPDATE asset_throughput SET state = %s, last_error = CASE WHEN state = 'error' THEN NULL ELSE last_error END "
+                               "WHERE chart_id = %s AND asset_id = %s AND state = %s",
+                               (before, chart_id, asset_id, state)).rowcount
+        if changed != 1:
+            raise ValueError(f'{asset_id} changed state before it could be restored')
+        restored.append({'asset_id': asset_id, 'from': state, 'to': before})
+    return restored
+
+
 def teardown(conn: Any, *, run_id: str, chart_id: str = CANONICAL_CHART) -> dict:
     run = _scoped_run(conn, run_id, chart_id)
     if run['state'] not in TERMINAL:
@@ -146,6 +198,7 @@ def teardown(conn: Any, *, run_id: str, chart_id: str = CANONICAL_CHART) -> dict
     cand = candidate_of(conn, run_id, chart_id)
     if cand is None:
         raise ValueError('this run has no candidate rows: nothing to tear down')
+    to_restore = failed_run_asset_states(conn, run_id, chart_id) if run['state'] == 'failed' else []     # refuses before anything is deleted
     generation = cand[0]
     lock_candidate_inputs(conn, Candidate(chart_id, generation, run_id, cand[2]))    # serialises with a publish of the same candidate
     cand = conn.execute('SELECT generation, state, expected_head_generation FROM kala_layer_candidate '
@@ -171,5 +224,6 @@ def teardown(conn: Any, *, run_id: str, chart_id: str = CANONICAL_CHART) -> dict
         raise ValueError('the head moved during the teardown')
     if not retained_previous_present(conn, chart_id, cand[2]):
         raise ValueError('the retained previous generation is not present after the teardown')
+    restored = restore_asset_states(conn, to_restore, chart_id)
     return {'status': 'TORN_DOWN', 'run_id': run_id, 'generation': generation, 'candidate_state': cand[1], 'deleted': deleted,
-            'head_generation': head_after, 'retained_previous_present': True}
+            'head_generation': head_after, 'retained_previous_present': True, 'asset_states_restored': restored}
