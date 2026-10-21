@@ -35,7 +35,7 @@
 # identity reads ONLY that job's logs through a log view, may execute that one job with overrides, and holds the Cloud SQL client right); the sealer DSN (GOCHARA_SEALER_DB_URL in
 # `gochara-seal`) must use the runner's loopback proxy tail (@127.0.0.1:5432/<db>).
 # WIRE (ST-WIRE-2): the compact line carries contract_version seal_brief_transport/1 and producer {commit, image_digest, execution_id}; the approval file is seal_approval/2 with the REQUIRED brief_id and
-# producer_execution_id; the seal job runs from THIS checkout of github.sha and first checks its own implementation digest against the registry lock (exit 4: own_checkout_digest_mismatch / own_checkout_digest_unregistered); the verification job's definition carries GOCHARA_RUNNER_IMAGE_DIGEST (set by #2976 from the digest it resolves) or the verifier refuses to brief (producer_identity_absent).
+# producer_execution_id; the seal job runs from THIS checkout of github.sha and first checks its own implementation digest against the registry lock (exit 4: own_checkout_digest_mismatch / own_checkout_digest_unregistered). The lock is machine-owned (SR-CHURN-CUT 3: CI regenerates it, a PR never carries it), so BOTH jobs first apply the verified `ci-generated` artifact of a successful ci.yml run for github.sha (.github/actions/apply-generated-overlay; platform/scripts/governance/apply_generated_overlay.py) — the bytes deploy.yml bakes into the image — and fail closed, named, if it is absent or unverified (the brief job also runs the own-checkout check before any approval is requested); the verification job's definition carries GOCHARA_RUNNER_IMAGE_DIGEST (set by #2976 from the digest it resolves) or the verifier refuses to brief (producer_identity_absent).
 name: Gochara approved seal (P08; operator dispatched)
 
 on:
@@ -99,6 +99,11 @@ jobs:
           git fetch --no-tags origin main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
+      - name: Apply the verified ci-generated overlay for this commit (the raw checkout's generated files, the implementation lock included, are stale by design)
+        uses: ./.github/actions/apply-generated-overlay
+        with:
+          sha: ${{ github.sha }}
+
       - name: Refuse every chart or generation except the full candidate
         id: candidate
         env:
@@ -114,6 +119,11 @@ jobs:
           set -euo pipefail
           python3 -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
           PYTHONPATH=platform/python-sidecar python3 -c "import psycopg, swisseph; from pipeline.orchestrator import seal_job, verification_job; from services.gochara_kernel import seal_flow, seal_brief; print('S-DEP OK')"
+
+      - name: Check the sealing job's own checkout against the registered lock (the seal's first act), BEFORE any approval is requested
+        run: |
+          set -euo pipefail
+          PYTHONPATH=platform/python-sidecar python3 -c "from services.gochara_kernel import seal_flow; print('own checkout OK', seal_flow.check_own_checkout()['implementation_digest'])"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -270,6 +280,12 @@ jobs:
           test "$(git rev-parse HEAD)" = "$EXPECTED_SEALING_COMMIT"
           git fetch --no-tags origin main
           git merge-base --is-ancestor "$EXPECTED_SEALING_COMMIT" origin/main
+
+      # Straight after the checkout: ci_generated.py verify refuses a tree changed since its reviewed commit, so this must precede the brief/approval downloads.
+      - name: Apply the verified ci-generated overlay for this commit (the same bytes deploy bakes into the image; the seal's own-checkout lock must equal the image's)
+        uses: ./.github/actions/apply-generated-overlay
+        with:
+          sha: ${{ needs.brief.outputs.sealing_commit }}
 
       - name: Retrieve the retained brief OF THIS RUN AND ATTEMPT (a seal-only re-run has none and fails; it must not reuse an older attempt's brief, start a fresh run)
         uses: actions/download-artifact@v4
