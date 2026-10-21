@@ -888,7 +888,7 @@ def main(argv=None) -> int:
     q.add_argument("--rederived", help="a golden bundle re-derived locally by j4d_rederive_golden.py; the slice's unchanged cells must equal it byte for byte")
     q.add_argument("--result-policy", help="the generation's numeric result policy for the build (the writer's default when absent); window_qualification/1 "
                                            "admits peaks, which the peak-windows row then requires")
-    q.add_argument("--p1-form-b", action="store_true", help="SR-B1-Q3C-JOB: select P1@1.3.0 (owner's Form B, Q3(c) side rule) for the build; default = 1.0.0, unchanged")
+    q.add_argument("--p1-form-b", action="store_true", help="SR-B1-Q3C-JOB: select P1@1.3.0 (owner's Form B, Q3(c) side rule) for the build; default = 1.0.0, unchanged. The trial's verification must carry the same flag (`verification_job --p1-form-b`)")
     q.add_argument("--output", required=True)
     args = parser.parse_args(argv)
     try:

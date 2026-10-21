@@ -453,7 +453,7 @@ class P1Operands:
             return _L1_SIGN_RUNG[cat], (), lord, None
         disclosures = ()
         if graha in NODES:
-            if not ref["own_signs"] and sign in NODE_RESERVED_SIGNS[graha]:
+            if sign in set(NODE_RESERVED_SIGNS[graha]) - set(ref["own_signs"]) - {ref.get("moolatrikona_sign")}:
                 raise p1.StrictInputError("node_dignity_unclassified", f"{graha} in {sign}: the verse's mūlatrikoṇa/own sign, not in L0")
             if sign == NODE_VARIANT_OWN_SIGNS[graha]:
                 disclosures += ("node_own_sign_variant_unresolved",)
@@ -491,7 +491,7 @@ class P1Operands:
 
     def mt_edges(self, graha: str, lo: datetime, hi: datetime) -> list[datetime]:
         ref = self._ref[graha]
-        if ref.get("moolatrikona_sign") is None:
+        if ref.get("moolatrikona_sign") is None or graha in NODES:      # a node's mūlatrikoṇa is its whole sign: its edges are the ingresses
             return []
         base = p1.SIGNS.index(ref["moolatrikona_sign"]) * 30.0
         a, b = base + ref["moolatrikona_from"], base + ref["moolatrikona_to"]

@@ -23,11 +23,11 @@ the difference is pinned by a differential test, not hidden.
 
 Nodes (ANSWERS §B.5, ruling): Rāhu/Ketu are never combust (declared). Their exaltation/debilitation come from L0 as seeded; the
 mūlatrikoṇa and own signs the served verse names (BPHS 47.34-39, bphs:PG573:C2-PG574:C1) are NOT in L0, so a node in one of
-those signs has NO rung (`node_dignity_unclassified`, an honest null — not a guess) until L0 carries them. An own sign L0 later
-adds to a node's row is classified by that row and leaves the reserved set by itself; a node MŪLATRIKOṆA cannot, because the
-strict reader `p1_inputs.validated_dignity_row` deliberately drops a node's mūlatrikoṇa (it has no degree range) — carrying it
-needs that reader changed, not this module. The disputed node-friendship pairs and the variant own signs are DISCLOSED on the
-result, not silently resolved.
+those signs has NO rung (`node_dignity_unclassified`, an honest null — not a guess) until L0 carries them. Migration 1401 (PR #3840)
+carries them: an own sign and a node mūlatrikoṇa SIGN with NO degree range. The strict reader `p1_inputs.validated_dignity_row` reads a
+stored node mūlatrikoṇa as the WHOLE sign (0..30; ANSWERS.md v2.1 §B.5, SR-1401-VERIFIED: Rāhu in Gemini = MT, Ketu in Sagittarius = MT), so
+the sign leaves the reserved set by itself; where no sign is stored (a pre-1401 DB) it stays reserved. The disputed node-friendship pairs and
+the variant own signs are DISCLOSED on the result, not silently resolved.
 """
 from __future__ import annotations
 
@@ -206,9 +206,8 @@ class LordRungRules:
             dignity_boundaries(graha, dignity_rows)         # L0 and L1 must agree on the mūlatrikoṇa range (refused otherwise)
         nais = validated_naisargika(naisargika_rows)
         self.friendship = {other: rel for (g, other), rel in nais.items() if g == graha}
-        # an own sign L0 now DOES carry for the node is classified by L0 and is not reserved any more (see the module docstring
-        # for why a node mūlatrikoṇa cannot close this way)
-        self.reserved_signs = frozenset(set(NODE_RESERVED_SIGNS.get(graha, ())) - set(self.ref["own_signs"]))
+        # an own sign or a (whole-sign) mūlatrikoṇa L0 now DOES carry for the node is classified by L0 and is not reserved any more
+        self.reserved_signs = frozenset(set(NODE_RESERVED_SIGNS.get(graha, ())) - set(self.ref["own_signs"]) - {self.ref.get("moolatrikona_sign")})
 
     def rung(self, sign: str, degree_in_sign: float, combust: bool | None) -> RungResult:
         if sign not in SIGNS:

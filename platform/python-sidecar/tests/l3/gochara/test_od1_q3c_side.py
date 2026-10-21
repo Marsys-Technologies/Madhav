@@ -18,7 +18,8 @@ contradicts it. Claims, each with ONE oracle (its single planted reversion is na
   S4  both columns, every cell: side AND value in the builder and the verifier        (revert: any one side/value of a cell)
   S5  the owner's golden cases (the job's list) in both derivations, both classes     (revert: Q3(a))
   S6  the Moon's side flips AT the pakṣa change, per instant, in the builder           (revert: the nature read once per window)
-  S7  nodes: Rāhu exalted -> favourable 1.0; migration-1401 shapes: Aquarius own -> favourable 0.5, Gemini honest null (PENDING-1401-MT)  (revert: classify by friendship)
+  S7  nodes: Rāhu exalted -> favourable 1.0; migration-1401 shapes: Aquarius own -> favourable 0.5, Gemini / Ketu Sagittarius whole-sign MT -> favourable 0.75
+      (SR-1401-VERIFIED); no stored sign -> honest null; a node row with a degree range refused   (revert: the reader forces the nodes' MT sign to None)
   S8  independence: the verifier loads nothing of the builder's side rule at runtime    (revert: an import of p1_valence)
   S9  rule version: a table is read only under 1.3.0; 1.0.0 declares none, so nothing moves  (revert: any version accepted)
   S10 the trial flag selects 1.3.0 explicitly and only inside its profile                (revert: the flag ignored / default flipped)
@@ -248,39 +249,76 @@ def test_s6_the_moons_side_flips_at_the_paksa_change_inside_one_window():
 
 
 # ── S7: the nodes ────────────────────────────────────────────────────────────────────────────────────────────────────
-def _dig_1401():
-    """The bg_dignity_reference rows as migration 1401 (SR-DOCTRINE-H) leaves them: Rāhu mūlatrikoṇa Gemini with NO degree range, own Aquarius.
-    Typed from the migration's VALUES (moolatrikona_sign 'Gemini', moolatrikona_from/to NULL, own_signs {'Aquarius'}); it is not applied to any database."""
+def _dig_1401(*, ketu=False):
+    """The bg_dignity_reference rows as migration 1401 (PR #3840, SR-DOCTRINE-H) leaves them: Rāhu mūlatrikoṇa Gemini with NO degree range, own Aquarius.
+    Typed from the migration's VALUES (moolatrikona_sign 'Gemini', moolatrikona_from/to NULL, own_signs {'Aquarius'}); it is not applied to any database.
+    `ketu=True` adds the verse's Ketu mūlatrikoṇa SIGN (Sagittarius, BPHS 47.34-39, bphs:PG573:C2-PG574:C1) in the same shape — the sign only, nothing else of the row."""
     rows = copy.deepcopy(DIG)
     for r in rows:
         if r["graha"] == "Rahu":
             r.update(moolatrikona_sign="Gemini", moolatrikona_from=None, moolatrikona_to=None, own_signs=["Aquarius"])
+        if ketu and r["graha"] == "Ketu":
+            r.update(moolatrikona_sign="Sagittarius", moolatrikona_from=None, moolatrikona_to=None)
     return rows
 
 
-def test_s7_nodes_exalted_rahu_is_favourable_and_the_1401_rows_number_own_but_leave_gemini_an_honest_null():
+def _node_both(node, dig, position, event_class):
+    """(builder source, verifier evaluation) for a node over the given L0 dignity rows."""
+    ops = P.P1Operands(P.P1L0(P.dignity_reference_from_rows(dig), P.combustion_orbs_from_rows(COMB), P.naisargika_from_rows(NAIS)), position, form_b=MAPPING)
+    src = ops.sources_for(node, complete=True, event_class=event_class)
+    ev = chk.P1Check(position, dignity_rows=dig, orb_rows=COMB, naisargika_rows=NAIS).bind(ROWS, event_class).evaluate({"agent": node.lower()}, T)
+    return src, ev
+
+
+def test_s7_nodes_exalted_rahu_is_favourable_and_the_1401_rows_number_own():
     """Rāhu in Taurus is exalted (L0 as seeded): malefic column, favourable 1.00, both derivations. With the 1401 rows, Rāhu in Aquarius is OWN, malefic ->
-    favourable 0.50 in both. Rāhu in Gemini (the verse's mūlatrikoṇa, carried by 1401 as a SIGN with no degree range) stays `node_dignity_unclassified`
-    — PENDING-1401-MT: numbering a whole-sign mūlatrikoṇa needs a ruling and a reader change, neither invented here (B.10). Planted reversion: classify the
-    reserved sign by friendship."""
+    favourable 0.50 in both. Planted reversion: classify the reserved sign by friendship."""
     for event_class in (GAIN, ADVERSE):
         _s, channel, val = builder("Rahu", sky("Rahu", lon("Taurus", 10)), event_class)
         assert (channel, val) == (expected_channel(F, event_class), pytest.approx(1.0))
         ev = verifier("Rahu", sky("Rahu", lon("Taurus", 10)), event_class)
         assert (ev.nature, ev.rung, ev.side, ev.value) == ("malefic", "EX", F, pytest.approx(1.0))
-    dig = _dig_1401()
-    position = sky("Rahu", lon("Aquarius", 10))
-    ops = P.P1Operands(P.P1L0(P.dignity_reference_from_rows(dig), P.combustion_orbs_from_rows(COMB), P.naisargika_from_rows(NAIS)), position, form_b=MAPPING)
-    src = ops.sources_for("Rahu", complete=True, event_class=GAIN)
+    src, ev = _node_both("Rahu", _dig_1401(), sky("Rahu", lon("Aquarius", 10)), GAIN)
     assert src["agent_nature"].channel_at(T) == FOR and src["dignity_of_transit_sign"].value_at(T) == pytest.approx(0.5)
-    ev = chk.P1Check(position, dignity_rows=dig, orb_rows=COMB, naisargika_rows=NAIS).bind(ROWS, GAIN).evaluate({"agent": "rahu"}, T)
     assert (ev.rung, ev.side, ev.value) == ("OWN", F, pytest.approx(0.5))
-    gemini = sky("Rahu", lon("Gemini", 10))
-    ops = P.P1Operands(P.P1L0(P.dignity_reference_from_rows(dig), P.combustion_orbs_from_rows(COMB), P.naisargika_from_rows(NAIS)), gemini, form_b=MAPPING)
-    src = ops.sources_for("Rahu", complete=True, event_class=GAIN)
-    assert src["agent_nature"].channel_at(T) is None and src["agent_nature"].unknown_reason(T) == "node_dignity_unclassified"
-    ev = chk.P1Check(gemini, dignity_rows=dig, orb_rows=COMB, naisargika_rows=NAIS).bind(ROWS, GAIN).evaluate({"agent": "rahu"}, T)
-    assert isinstance(ev, chk.P1Unknown) and ev.reason == "node_dignity_unclassified"
+
+
+@pytest.mark.parametrize("node, sign, deg", [("Rahu", "Gemini", 0.5), ("Rahu", "Gemini", 15.0), ("Rahu", "Gemini", 29.9),
+                                             ("Ketu", "Sagittarius", 0.5), ("Ketu", "Sagittarius", 29.9)])
+def test_s7_a_node_moolatrikona_with_no_stored_degree_range_is_the_whole_sign_MT_in_both_derivations(node, sign, deg):
+    """SR-1401-VERIFIED / ANSWERS.md v2.1 §B.5 + BPHS 47.34-39 (bphs:PG573:C2-PG574:C1: the verse names Gemini and Sagittarius as the nodes' mūlatrikoṇa and gives
+    no degrees): migration 1401 stores the SIGN with NULL from/to, and the strict reader reads that as the WHOLE sign. Rāhu in Gemini / Ketu in Sagittarius is MT,
+    malefic column: favourable 0.75 (§B.3), builder and independent verifier, at both ends of the sign. Planted reversion: the reader forces the nodes'
+    `moolatrikona_sign` back to None (strict L0 reader, p1_inputs) — both derivations then answer `node_dignity_unclassified`."""
+    dig = _dig_1401(ketu=True)
+    position = sky(node, lon(sign, deg))
+    for event_class in (GAIN, ADVERSE):
+        src, ev = _node_both(node, dig, position, event_class)
+        assert src["agent_nature"].channel_at(T) == expected_channel(F, event_class), (node, deg, "builder side")
+        assert src["dignity_of_transit_sign"].value_at(T) == pytest.approx(0.75), (node, deg, "builder value")
+        assert (ev.nature, ev.rung, ev.side, ev.value) == ("malefic", "MT", F, pytest.approx(0.75)), (node, deg, "verifier")
+
+
+def test_s7_where_no_node_moolatrikona_sign_is_stored_gemini_and_sagittarius_stay_an_honest_null():
+    """The pre-1401 database (and 1401's Ketu row, which this test leaves without a sign): no stored sign -> no whole-sign MT is invented; the node in the verse's
+    sign is `node_dignity_unclassified` in both derivations (B.10 / N.7.6). Planted reversion: the reader treats every node's reserved sign as MT regardless of
+    what L0 stores."""
+    for node, sign, dig in (("Rahu", "Gemini", DIG), ("Ketu", "Sagittarius", DIG), ("Ketu", "Sagittarius", _dig_1401())):
+        src, ev = _node_both(node, dig, sky(node, lon(sign, 10)), GAIN)
+        assert src["agent_nature"].channel_at(T) is None and src["agent_nature"].unknown_reason(T) == "node_dignity_unclassified", (node, "builder")
+        assert isinstance(ev, chk.P1Unknown) and ev.reason == "node_dignity_unclassified", (node, "verifier")
+
+
+def test_s7_a_node_row_that_gives_a_degree_range_is_refused_not_read_as_a_whole_sign():
+    """The reader's whole-sign reading is for the verse's rangeless mūlatrikoṇa only: a node row carrying a partial or full degree range contradicts it and is
+    refused by name (no silent widening of a stated range). Planted reversion: the check removed — the range would be ignored and the whole sign scored."""
+    rows = _dig_1401()
+    for r in rows:
+        if r["graha"] == "Rahu":
+            r.update(moolatrikona_from=0.0, moolatrikona_to=20.0)
+    with pytest.raises(p1.StrictInputError) as e:
+        p1.validated_dignity_row(rows, "Rahu")
+    assert e.value.reason == "dignity_node_moolatrikona_range_not_whole_sign"
 
 
 # ── S8: independence — an import-graph proof ────────────────────────────────────────────────────────────────────────
@@ -421,6 +459,18 @@ def test_s10_the_command_lines_expose_the_flag():
     finally:
         argparse.ArgumentParser.parse_args = orig
     assert seen == [True, False]
+
+
+def test_s10_verification_job_selects_1_3_0_iff_its_flag_is_given(monkeypatch):
+    """B-1 (lane review of od1-q3c): the VERIFICATION half of the trial. `verification_job --p1-form-b` really runs the wrapped job under P1@1.3.0, and
+    without it under 1.0.0 (acceptance (d); the build's flag must be matched or the kernel raises `VerificationDisagrees("selection", ...)`).
+    Planted reversion: `main` parses the option but ignores it (`rule_profile(final_rules=args.final_rules)`) — the first selection then reads 1.0.0."""
+    from pipeline.orchestrator import verification_job
+    seen = []
+    monkeypatch.setattr(verification_job, "_run", lambda args: seen.append(rr.selected_versions_for("marriage")["P1"]) or 0)
+    assert verification_job.main(["--chart", "c", "--p1-form-b"]) == 0
+    assert verification_job.main(["--chart", "c"]) == 0
+    assert seen == ["1.3.0", "1.0.0"]
 
 
 def test_s10_under_the_flag_the_1_3_0_rows_persist_and_read_back_with_their_table_on_the_real_schema(pg):

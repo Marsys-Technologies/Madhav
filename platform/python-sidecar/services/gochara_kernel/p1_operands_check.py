@@ -37,9 +37,10 @@ verifier's own decider, and the factor rows' declared table is CHECKED against i
 nature-only table, say) is refused by name, so the verifier is not a rubber stamp for the builder's data. Defined for rule version 1.3.0 only.
 
 NODES (ANSWERS.md §B.5). Rāhu's and Ketu's exaltation and debility come from L0 as seeded. Their mūlatrikoṇa and own signs are
-NOT in L0, and the verse puts them in Gemini and Aquarius (Rāhu) and Sagittarius (Ketu): a node there is UNDETERMINED
-(`node_dignity_unclassified`), never classified from friendship. The rule lifts for a sign L0 comes to hold as the node's own
-sign. Combustion is not applicable to a node (L1 M-19).
+NOT in the pre-1401 L0, and the verse puts them in Gemini and Aquarius (Rāhu) and Sagittarius (Ketu): a node there is UNDETERMINED
+(`node_dignity_unclassified`), never classified from friendship. The rule lifts for a sign L0 holds as the node's own sign or as its
+mūlatrikoṇa: migration 1401 (PR #3840) stores the latter as a SIGN with no degree range, which the strict reader takes as the WHOLE sign
+(ANSWERS.md v2.1 §B.5, SR-1401-VERIFIED: Rāhu in Gemini = MT, Ketu in Sagittarius = MT). Combustion is not applicable to a node (L1 M-19).
 
 WHAT THE VALUE TABLE LOOKS LIKE (I) INTERPRETATION — nothing in the repository fixes the shape of the P1 `category_mapping` yet
 (the data PR D2 writes it): this reader accepts, and refuses anything else by name,
