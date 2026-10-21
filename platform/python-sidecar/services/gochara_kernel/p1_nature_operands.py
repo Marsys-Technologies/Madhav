@@ -11,9 +11,10 @@ What this module supplies to the window sweep (through W0's `OperandSource`, nev
     Moon's pakṣa flips. The search is `contact_reconstruct._core` (speed-bounded, named limit `contact_reconstruct.NAMED_LIMIT`);
     its answers are memoised per aligned chunk when the position source declares a `cache_key`.
   * `P1LordValence` — the lord's side and value at t: `p1_valence.LordRungRules` gives the effective rung (COMB > EX > MT > OWN >
-    DEB > FR/NEU/INI) and the validated `SideValueMapping` (Form B, the registry's `category_mapping`) gives (side, value) for
-    (nature, rung). Exactly ONE factor decides the side (W0 refuses two): the side — default by nature, overridden at the extremes
-    the rung names — is the `agent_nature` source's `channel_at`; the VALUE is the table value, carried by the dignity factor's
+    DEB > FR/NEU/INI), `p1_valence.q3c_side` decides the SIDE (Q3(c): the nature's default, overridden at the extremes the rung names —
+    benefic adverse in COMB/DEB/INI, malefic favourable in EX/MT/OWN) and the validated `SideValueMapping` (Form B, the registry's
+    `category_mapping`) supplies the VALUE (its sides must agree with the rule). Exactly ONE factor decides the side (W0 refuses two): the side
+    is the `agent_nature` source's `channel_at`; the VALUE is the table value, carried by the dignity factor's
     source; `agent_nature` itself has magnitude 1 and the combustion factor the declared neutral 1.0, so the within-path product
     equals the table (ANSWERS §B.2).
 
@@ -28,7 +29,7 @@ from typing import Callable
 
 from services.gochara_rules import nature as _nature
 from services.gochara_rules import p1_valence as _pv
-from services.gochara_rules.p1_inputs import GRAHAS, NEVER_COMBUST, SIGNS
+from services.gochara_rules.p1_inputs import GRAHAS, NEVER_COMBUST, SIGNS, StrictInputError as _StrictInputError
 from services.gochara_rules.score import channel_for
 
 from . import contact_reconstruct as _cr
@@ -219,7 +220,10 @@ class P1LordValence:
         nat = self.nature.nature_at(t)
         if nat is None:
             return REASON_POSITION_UNAVAILABLE
-        side, value = self.mapping.side_and_value(nat, res.rung)
+        side = _pv.q3c_side(nat, res.rung)             # Q3(c): the side is decided HERE, per instant, by the rule (SR-B1-Q3C-JOB) ...
+        table_side, value = self.mapping.side_and_value(nat, res.rung)
+        if table_side != side:                          # ... and the table is only its VALUE column (a mapping built by hand is re-checked)
+            raise _StrictInputError("mapping_side_contradicts_q3c", f"{nat}/{res.rung}: table {table_side!r}, Q3(c) {side!r}")
         return LordValence(nat, res.rung, side, value, res.disclosures)
 
     def channel_at(self, t: datetime) -> str | None:

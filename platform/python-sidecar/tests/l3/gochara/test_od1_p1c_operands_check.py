@@ -123,11 +123,11 @@ COMB_MAP = {"combust": _c(ADV, 1.0), "not_combust": {"value": 1.0}}
 
 
 def _row(fid, mapping, **kw):
-    return {"factor_id": fid, "rule_version": "9.0.0", "null_state": "unqualified", "direction": "doctrine-ordered",
+    return {"factor_id": fid, "rule_version": "1.3.0", "null_state": "unqualified", "direction": "doctrine-ordered",
             "function": "step", "range": [0.0, 1.0], "units": "unitless", "category_mapping": mapping, **kw}
 
 
-def p1_rows(path="P1", version="9.0.0"):
+def p1_rows(path="P1", version="1.3.0"):
     return [_row("dignity_of_transit_sign", DIGNITY_MAP), _row("combustion", COMB_MAP), _row("agent_nature", NATURE_MAP)]
 
 
@@ -411,7 +411,7 @@ def test_v3_an_unreadable_value_table_is_refused_by_name_never_defaulted():
 def test_v4_maitri_is_retired_from_p1_so_no_derivation_exists_for_it():
     """Q7 b (P1-MAPPING-DECISION): `maitri_compound` is retired from P1 in the new version. A maitrī row that nevertheless
     declares a table is unqualified by name in the verifier. Planted reversion: it becomes a step factor."""
-    row = {"factor_id": "maitri_compound", "rule_version": "9.0.0", "null_state": "unqualified", "category_mapping": {"friend": 0.5}}
+    row = {"factor_id": "maitri_compound", "rule_version": "1.3.0", "null_state": "unqualified", "category_mapping": {"friend": 0.5}}
     rec = {"agent": "jupiter", "root": "r", "relation": "residence", "kind": "sign_span", "house": None, "supports": []}
     assert wv._row_state(row, rec, False, False, p1=_bound(Sky())) == ("unq", "maitri_compound_retired_not_derivable")
 
@@ -571,7 +571,7 @@ def test_w5_the_builders_w0_hooks_and_the_verifier_agree_on_one_world():
         return None if isinstance(v, P1Unknown) else v
     src = OperandSource(value_at=value, channel_at=side, complete=True, boundaries=lambda lo, hi: binding.channel_boundaries(agent, lo, hi))
     rec = _rec("r1", path="P1", root="root1", agent="jupiter", supports=((0, 10),), operand_sources={"agent_nature": src})
-    nature = {"factor_id": "agent_nature", "rule_version": "9.0.0", "null_state": "unqualified", "direction": "doctrine-ordered",
+    nature = {"factor_id": "agent_nature", "rule_version": "1.3.0", "null_state": "unqualified", "direction": "doctrine-ordered",
               "function": "step", "range": [0.0, 1.0], "units": "unitless"}       # the same `direction` as the P1 rows
     (draft,), _ = ws.draft_windows(CLASS, [rec], lambda p, v: [nature], allow_dynamic=True)
     assert abs((draft.peak_instant - _d(5)).total_seconds()) <= p1c.PEAK_TOLERANCE_SECONDS and draft.score == pytest.approx(0.125)

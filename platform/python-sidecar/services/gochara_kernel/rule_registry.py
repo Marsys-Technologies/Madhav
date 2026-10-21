@@ -92,22 +92,40 @@ BOUND_PATHS = tuple(dict.fromkeys(pid for pid, _v in BOUND_PATH_REFS))
 # prevents one concurrent writer from changing another writer's selection.
 _FINAL_RULES = ContextVar("gochara_final_rules", default=False)
 
+# SR-B1-Q3C-JOB: the owner's Form B period-lord rule version P1@1.3.0 (Q3(c) side rule) is REGISTERED but not selected by default. A trial — and only a
+# trial, until the owner/surrogate flips the default — selects it EXPLICITLY through the profile flag `p1_form_b` (writer config key
+# `gochara_v5_p1_form_b`; `j4d_slice_qualify --p1-form-b`). Off (the default) nothing below moves: the catalogue, the selection and every digest are
+# byte-identical to a build that has never heard of 1.3.0.
+P1_FORM_B_REF = ("P1", rules_registry.P1_FORM_B_VERSION)
+P1_FORM_B_FACTOR_REFS = tuple(tuple(ref) for ref in rules_registry.RULE_PATHS[P1_FORM_B_REF]["soft_factors"])
+_P1_FORM_B = ContextVar("gochara_p1_form_b", default=False)
+
 
 @contextmanager
-def rule_profile(*, final_rules: bool):
+def rule_profile(*, final_rules: bool, p1_form_b: bool = False):
     if type(final_rules) is not bool:
         raise ValueError("gochara_v5_final_rules must be a boolean")
+    if type(p1_form_b) is not bool:
+        raise ValueError("gochara_v5_p1_form_b must be a boolean")
     token = _FINAL_RULES.set(final_rules)
+    token_b = _P1_FORM_B.set(p1_form_b)
     try:
         yield
     finally:
+        _P1_FORM_B.reset(token_b)
         _FINAL_RULES.reset(token)
+
+
+def p1_form_b_selected() -> bool:
+    """Is P1@1.3.0 (Form B, the Q3(c) side rule) selected by the CURRENT profile? Read at call time; False unless a trial asked for it."""
+    return _P1_FORM_B.get()
 
 
 def bound_path_refs() -> tuple[tuple[str, str], ...]:
     """The CURRENT bound CATALOGUE — every sealed (path, version) — read at call time (a consumer never
     captures the tuple at import)."""
-    return tuple(dict.fromkeys(tuple(BOUND_PATH_REFS) + (ND_H_PATH_REFS if _FINAL_RULES.get() else ())))
+    return tuple(dict.fromkeys(tuple(BOUND_PATH_REFS) + (ND_H_PATH_REFS if _FINAL_RULES.get() else ())
+                               + ((P1_FORM_B_REF,) if _P1_FORM_B.get() else ())))
 
 
 # R8-2 (Codex round 8): the bound CATALOGUE is not the SELECTION. `BOUND_PATH_REFS` is every (path, version)
@@ -135,6 +153,8 @@ def selected_versions_for(event_class: str) -> dict[str, str]:
     for (cls, pid), version in CLASS_SELECTION_OVERRIDES.items():
         if cls == event_class and (_FINAL_RULES.get() or version != rules_registry.ND_H_VERSION):
             selected[pid] = version
+    if _P1_FORM_B.get() and selected.get("P1") == "1.0.0":     # the trial flag moves the DEFAULT P1 only; an ND-H class's 1.2.0 override is its own decision (plan I-5)
+        selected["P1"] = rules_registry.P1_FORM_B_VERSION
     for pid, version in selected.items():
         if (pid, version) not in bound_path_refs():
             raise ValueError(f"selected {pid}@{version} is not in the bound catalogue")
@@ -241,7 +261,8 @@ BOUND_FACTORS = tuple(dict.fromkeys(fid for fid, _v in BOUND_FACTOR_REFS))
 
 def bound_factor_refs():
     return tuple(dict.fromkeys(tuple(BOUND_FACTOR_REFS) +
-                               ((("karaka_agent", rules_registry.ND_H_VERSION),) if _FINAL_RULES.get() else ())))
+                               ((("karaka_agent", rules_registry.ND_H_VERSION),) if _FINAL_RULES.get() else ()) +
+                               (P1_FORM_B_FACTOR_REFS if _P1_FORM_B.get() else ())))
 
 
 # E6: predicate declarations (id → (operator, operands)).
@@ -631,6 +652,9 @@ def _normalise(value):
 
 
 __all__ = [
+    "P1_FORM_B_FACTOR_REFS",
+    "P1_FORM_B_REF",
+    "p1_form_b_selected",
     "BOUND_FACTORS",
     "BOUND_FACTOR_REFS",
     "BOUND_PATHS",

@@ -1050,6 +1050,14 @@ CENTURY_CONFIG_SCHEMA = "gochara_v5_century_config/2"
 _CENTURY_CONFIG_FIELDS = frozenset({"schema", "final_rules", "defer_in_build_verify", "horizon", "result_policy"})
 _RESULT_POLICY_KEY = "result_policy"
 _FINAL_RULES_KEY = "gochara_v5_final_rules"
+#: SR-B1-Q3C-JOB: the trial's explicit selection of P1@1.3.0 (Form B, the Q3(c) side rule). Absent / False = today's behaviour, byte-identical. It is not a
+#: century-config field: only a trial harness (`j4d_slice_qualify --p1-form-b`) sets it, so a production dispatch can never carry it.
+_P1_FORM_B_KEY = "gochara_v5_p1_form_b"
+
+
+def _p1_form_b_kwargs(ctx) -> dict:
+    """The profile's `p1_form_b` argument iff the run's config names the key — the default call stays exactly `rule_profile(final_rules=...)`."""
+    return {"p1_form_b": ctx.config[_P1_FORM_B_KEY]} if _P1_FORM_B_KEY in ctx.config else {}
 _CENTURY_DEFER_KEY = "gochara_v5_defer_in_build_verify"
 
 
@@ -1148,7 +1156,7 @@ def _with_rule_profile(method):
     @wraps(method)
     def profiled(self, ctx, *args, **kwargs):
         final = ctx.config.get("gochara_v5_final_rules", False)
-        with gk_rule_registry.rule_profile(final_rules=final):
+        with gk_rule_registry.rule_profile(final_rules=final, **_p1_form_b_kwargs(ctx)):
             return method(self, ctx, *args, **kwargs)
     return profiled
 
@@ -1263,7 +1271,7 @@ class GocharaV5Writer(WriterBase):
         # F-CHANNEL: the staged century config is overlaid and an unmarked run without an explicit profile / horizon refused HERE — after the configuration checks
         # above (no database use before them) and before the first read of the rule profile; the rest of the substep runs under the RESOLVED profile.
         ctx = _resolve_run_config(ctx)
-        with gk_rule_registry.rule_profile(final_rules=ctx.config.get(_FINAL_RULES_KEY, False)):
+        with gk_rule_registry.rule_profile(final_rules=ctx.config.get(_FINAL_RULES_KEY, False), **_p1_form_b_kwargs(ctx)):
             return self._run_resolved_substep(ctx, step, chart_id)
 
     def _run_resolved_substep(self, ctx: ContextSpec, step: SubStep, chart_id: str) -> WriterResult:
