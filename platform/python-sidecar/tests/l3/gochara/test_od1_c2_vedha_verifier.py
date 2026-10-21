@@ -3,8 +3,8 @@
 Doctrine (served corpus, Phaladīpikā XXVI.3–8, phaladeepika:PG322:C1 / PG323:C1): a favourable-house transit is NULLIFIED while a
 cited obstructor occupies its vedha place; the pairs are the 36 cited rows of L0 `bg_transit_rules` (literal fixture
 `tests/l3/gochara_rules/fixtures/l0_vedha_rows_2026_10_02.json`, read-only from production 2026-10-02: Sun 3→9, 6→12, 10→4, 11→5; Mercury
-2→5 …); Sun↔Saturn and Moon↔Mercury never obstruct each other (M-8); the nodes' vedha is UNDECIDED (ND-NODE-VEDHA) and their six L0 rows
-are flagged UNSOURCED; the Moon is not a stored agent (`excluding_on_demand_moon_obstruction`); an obstructor with no established
+2→5 …); Sun↔Saturn and Moon↔Mercury never obstruct each other (M-8); the nodes obstruct the seven planets like any graha and a transiting
+node carries no vedha factor (ND-NODE-VEDHA, owner-confirmed 2026-10-21; their six L0 rows stay flagged UNSOURCED); the Moon is not a stored agent (`excluding_on_demand_moon_obstruction`); an obstructor with no established
 residence over the primary span is missing data, never "inactive" (Codex round 7 [6a]).
 
 World used throughout: the native Moon in Aquarius (sign 11) ⇒ house h is sign (10 + h − 1) % 12 + 1, so the Sun in the 3rd is in Aries
@@ -22,8 +22,8 @@ Claims, each with ONE oracle (the single planted reversion that must fail it is 
   C2-4 an obstructor with no established residence over the primary span is `obstructor_residence_unknown` — never 1.0; a KNOWN obstruction still
        wins; a record unknown throughout is wholly unknown
        (revert: an empty residence list read as "not in the vedha house");
-  C2-5 a node in the vedha house with no cited obstruction is `node_obstruction_undecided`
-       (revert: a node obstructs / is ignored);
+  C2-5 a node in the vedha house OBSTRUCTS like any graha (ND-NODE-VEDHA i; SR-OD1 D3 — the pre-ruling reading was `node_obstruction_undecided`)
+       (revert: a node in the vedha house is ignored / undecided);
   C2-6 a contact stored with no end and no horizon to close it is left out — a coverage gap, never inactivity
        (revert: the open contact is dropped from the gap check by closing it at the primary span's end);
   C2-7 the janma-rāśi sign is cross-checked against every stored house; disagreeing records are refused
@@ -204,13 +204,10 @@ def test_c2_4_a_missing_residence_is_unknown_never_inactive_and_a_known_obstruct
 
 # ── C2-5 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 def test_c2_5_a_node_in_the_vedha_house_obstructs_like_any_graha():
-    # SR-OD1 merge-back: C2 pinned the PRE-ruling reading here (a node alone in the vedha house = `node_obstruction_undecided`). C1 carries the owner's
-    # ND-NODE-VEDHA (i) — the nodes obstruct (Phaladipika XXVI.3-8, XXVI.2/24/45-46) — and the verifier's derivation is `vedha_derive.derive_vedha`, whose default
-    # is now that ruling; the two readings must not disagree, so the expectation is the ruled one (0.0, no unknown reason). The pre-ruling reading stays
-    # selectable (`nodes=NODES_UNDECIDED`) and is exercised by tests/l3/ka_vedha_gochara/test_overlays.py.
     ov = overlay([SUN], quiet("rahu") + [("rahu", "span:2", D(-5), D(22)), ("rahu", f"span:{SUN_VEDHA_SIGN_H9}", D(22), D(400))])("r-sun")
     assert ov.value_at(D(15)) == 1.0
-    assert ov.value_at(D(30)) == 0.0 and ov.unknown_reason_at(D(30)) is None
+    assert ov.value_at(D(30)) == 0.0 and ov.unknown_reason_at(D(30)) is None            # Rāhu in the 9th from the Moon nullifies the Sun in the 3rd
+    assert [(s.t_in, s.t_out, s.state) for s in ov.segments if s.state == "active"] == [(D(22), D(40), "active")]
 
 
 # ── C2-6 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────

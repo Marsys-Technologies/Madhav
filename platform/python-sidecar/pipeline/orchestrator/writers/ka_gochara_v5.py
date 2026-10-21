@@ -764,6 +764,9 @@ def _applicable_rulings() -> list[dict]:
     out += [{"id": r["ruling_ref"], "path": f"{r['path_id']}@{r['rule_version']}"}
             for r in _rr.path_rows() if r["ruling_ref"]]
     out.append({"id": "AM-14", "rule": "moon_agent_excluded_from_stored_tier"})
+    # SR-OD1 D3 (B.3): the owner rulings the vedha operand stands on are part of the identity whenever a vedha source is bound
+    if vedha_source() is not None:
+        out += [{"id": rid, "factor": "vedha_attenuation@1.3.0", "rule": rule} for rid, rule in gk_vedha_source.RULINGS.items()]
     # R9-5: the PD level of P1 is explicitly authorised TESTIMONY under a named limitation (part of the identity)
     out.append({"id": gk_evaluator.P1_PD_RULING, "limitation": gk_evaluator.P1_PD_LIMITATION,
                 "rule": "p1_pd_level_is_testimony_never_scored"})

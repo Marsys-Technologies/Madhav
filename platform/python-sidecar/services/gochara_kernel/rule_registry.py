@@ -87,9 +87,11 @@ BOUND_PATH_REFS = (("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.
 BOUND_PATHS = tuple(dict.fromkeys(pid for pid, _v in BOUND_PATH_REFS))
 #: SR-OD1 V1 (owner-confirmed doctrine batch). The measuring profile keeps the 1.0.0 catalogue and selection BYTE FOR
 #: BYTE (the measuring build contract is for those rows); the FINAL profile — the only one a century run uses —
-#: additionally binds P1/P3/P4@1.3.0 and P2@1.1.0 (AM-18), exactly as it does the ND-H 1.2.0 rows.
+#: additionally binds P1/P2/P3/P4@1.3.0, exactly as it does the ND-H 1.2.0 rows.
 DOCTRINE_PATH_REFS = tuple((pid, rules_registry.DOCTRINE_VERSION) for pid in rules_registry.DOCTRINE_PATHS)
-VEDHA_PATH_REFS = (("P2", rules_registry.KERNEL_VERSION),)
+#: SR-OD1 D3: P2 is now a doctrine path (P2@1.3.0, the owner-confirmed vedha rows) and is bound through `DOCTRINE_PATH_REFS`; the
+#: AM-18 row P2@1.1.0 is no longer bound (as P3/P4@1.1.0 are not). Kept as an empty tuple so a caller that patches it still works.
+VEDHA_PATH_REFS: tuple = ()
 FINAL_ONLY_PATH_REFS = ND_H_PATH_REFS + DOCTRINE_PATH_REFS + VEDHA_PATH_REFS
 
 
@@ -146,9 +148,10 @@ def bound_path_refs() -> tuple[tuple[str, str], ...]:
 # path). The default selection is the 1.0.0 set; a successor is searched only by a deliberate edit of
 # `SELECTED_PATH_REFS` (or a per-class override) after its review gate passes. Both are read at call time.
 SELECTED_PATH_REFS = (("P1", "1.0.0"), ("P2", "1.0.0"), ("P3", "1.0.0"), ("P4", "1.0.0"), ("P5", "1.0.0"))
-#: SR-OD1 V1: the FINAL profile's default selection — the doctrine rows (P1/P3/P4@1.3.0) and the AM-18 vedha row
-#: (P2@1.1.0); P5 is held (ST-P5-HOLD) and stays @1.0.0. The per-class ND-H overrides below still win for their paths.
-FINAL_SELECTED_PATH_REFS = (("P1", rules_registry.DOCTRINE_VERSION), ("P2", rules_registry.KERNEL_VERSION),
+#: SR-OD1 V1: the FINAL profile's default selection — the doctrine rows P1/P3/P4@1.3.0 and (SR-OD1 D3: VEDHA-SOURCE /
+#: ND-NODE-VEDHA / ND-VIPAREETA) the owner-confirmed vedha row P2@1.3.0; P5 is held (ST-P5-HOLD) and stays @1.0.0.
+#: The per-class ND-H overrides below still win for their paths.
+FINAL_SELECTED_PATH_REFS = (("P1", rules_registry.DOCTRINE_VERSION), ("P2", rules_registry.DOCTRINE_VERSION),
                             ("P3", rules_registry.DOCTRINE_VERSION), ("P4", rules_registry.DOCTRINE_VERSION),
                             ("P5", "1.0.0"))
 
@@ -289,13 +292,13 @@ BOUND_FACTOR_REFS = tuple((fid, _FACTOR_FIRST_VERSION.get(fid, "1.0.0")) for fid
 BOUND_FACTORS = tuple(dict.fromkeys(fid for fid, _v in BOUND_FACTOR_REFS))
 
 
-#: SR-OD1 V1: the factor rows only the FINAL profile binds — the 1.3.0 doctrine rows, plus graduated_drishti@1.1.0 and
-#: vedha_attenuation@1.1.0 (AM-13 / AM-18, bound as they are). maitri_compound is RETIRED (Q7 b): no 1.3.0 row.
+#: SR-OD1 V1: the factor rows only the FINAL profile binds — the 1.3.0 doctrine rows (vedha_attenuation@1.3.0 since SR-OD1 D3),
+#: plus graduated_drishti@1.1.0 (AM-13, bound as it is). maitri_compound is RETIRED (Q7 b): no 1.3.0 row.
 DOCTRINE_FACTOR_REFS = tuple((fid, rules_registry.DOCTRINE_VERSION)
-                             for fid in ("dignity_of_transit_sign", "combustion", "agent_nature", "activity_kernel"))
+                             for fid in ("dignity_of_transit_sign", "combustion", "agent_nature", "activity_kernel",
+                                         "vedha_attenuation"))
 FINAL_ONLY_FACTOR_REFS = ((("karaka_agent", rules_registry.ND_H_VERSION),) + DOCTRINE_FACTOR_REFS
-                          + (("graduated_drishti", rules_registry.KERNEL_VERSION),
-                             ("vedha_attenuation", rules_registry.KERNEL_VERSION)))
+                          + (("graduated_drishti", rules_registry.KERNEL_VERSION),))
 
 
 def bound_factor_refs():

@@ -40,6 +40,14 @@ _SIGN_TARGET = re.compile(r"^span:([1-9]|1[0-2])$")
 _OBSTRUCTOR_BODIES = ("sun", "mars", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu")
 _TITLE = {b: b.capitalize() for b in _OBSTRUCTOR_BODIES}
 
+#: SR-OD1 D3: the owner rulings this operand stands on — the ledger ids (B.3) that the build's ruling list, the substep's notes and the
+#: vedha_attenuation@1.3.0 / P2@1.3.0 registry rows all carry (`registry.VEDHA_RULINGS` is the registry's copy; a test asserts they agree)
+RULINGS = {
+    "VEDHA-SOURCE": "phaladeepika_xxvi_house_vedha_only_moon_on_demand_excluded_and_labelled",
+    "ND-NODE-VEDHA": "nodes_obstruct_like_any_graha_transiting_nodes_carry_no_vedha_factor",
+    "ND-VIPAREETA": "no_vipareeta_cancellation_in_this_version",
+}
+
 _RESIDENCE_SQL = (
     "SELECT c.body, o.canonical_target, c.t_in, COALESCE(c.t_out, upper(cov.completed_horizon))"
     " FROM public.ka_gochara_contact c"
@@ -221,7 +229,7 @@ class VedhaProvider:
         derived = [o for o in self._memo.values() if o.applicable]
         return {"records": len(self._memo), "applicable": len(derived), "not_applicable": len(self._memo) - len(derived),
                 "scopes": sorted({s for o in derived for s in o.scopes}), "moon_sign": self._moon_sign,
-                "pairs_digest": None if self._pairs is None else self._pairs.content_digest,
+                "rulings": sorted(RULINGS), "pairs_digest": None if self._pairs is None else self._pairs.content_digest,
                 "open_contacts_without_horizon": self._skipped_open}
 
 
@@ -236,4 +244,4 @@ class VedhaSource:
 
 SOURCE = VedhaSource()
 
-__all__ = ["RecordOverlay", "SOURCE", "Segment", "VedhaProvider", "VedhaSource", "VedhaSourceError"]
+__all__ = ["RULINGS", "RecordOverlay", "SOURCE", "Segment", "VedhaProvider", "VedhaSource", "VedhaSourceError"]

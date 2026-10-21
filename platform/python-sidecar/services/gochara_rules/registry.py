@@ -930,12 +930,19 @@ del _p2_old
 # shape (windows blank `orb_not_ratified`); never a placeholder.
 DOCTRINE_VERSION = "1.3.0"
 #: the owner rulings each 1.3.0 path version stands on (the basis of its `superseded_by_version` pin)
-DOCTRINE_PATH_RULINGS = {"P1": "P1-MAPPING-DECISION", "P3": "AM-13-RATIFIED", "P4": "AM-13-RATIFIED"}
+DOCTRINE_PATH_RULINGS = {"P1": "P1-MAPPING-DECISION", "P2": "VEDHA-SOURCE", "P3": "AM-13-RATIFIED", "P4": "AM-13-RATIFIED"}
+#: SR-OD1 D3 (owner-confirmed 2026-10-21; DECISIONS_SURROGATE.jsonl): the three rulings the vedha rows (P2 and vedha_attenuation
+#: @1.3.0) stand on — the ledger ids B.3 requires. `DOCTRINE_PATH_RULINGS["P2"]` is the one the supersession pin cites.
+VEDHA_RULINGS = ("VEDHA-SOURCE", "ND-NODE-VEDHA", "ND-VIPAREETA")
 #: what each ruling is, as the persisted free-text `score_rule` states it (the registry digest covers that column)
 DOCTRINE_RULING_TEXT = {
     "P1-MAPPING-DECISION": "P1-MAPPING-DECISION (owner, 2026-10-21: Q3-Q7 as one package, Form B; maitri_compound retired)",
     "AM-13-RATIFIED": "AM-13-RATIFIED (owner, 2026-10-21: GOCHARA_SPECS_V1_5_AMENDMENTS_DRAFT §AM-13 bindings K-1..K-6, "
                       "varga_position unclassified, nodes cast no dṛṣṭi)",
+    "VEDHA-SOURCE": "VEDHA-SOURCE (owner, 2026-10-21: Phaladīpikā XXVI.3-8 house-vedha only, Sarvatobhadra / lattā never folded in; "
+                    "Moon on-demand obstruction excluded and labelled); ND-NODE-VEDHA (owner, 2026-10-21: Rāhu / Ketu in a vedha house "
+                    "obstruct the seven planets like any graha; a transiting node carries no vedha factor of its own); "
+                    "ND-VIPAREETA (owner, 2026-10-21: no vipāreeta cancellation in this version)",
 }
 DOCTRINE_PATHS = tuple(DOCTRINE_PATH_RULINGS)
 
@@ -1012,10 +1019,52 @@ RETIRED_FACTORS: dict[tuple[str, str], dict] = {
                   "component, which no served text defines for a transit (Q7 b)",
         "source": "P1-MAPPING-DECISION"}}
 
+#: SR-OD1 D3 — vedha_attenuation@1.3.0: the owner-confirmed vedha declaration (VEDHA-SOURCE, ND-NODE-VEDHA, ND-VIPAREETA). The 1.1.0
+#: row (AM-18) stays as authored; this row differs from it in exactly the three rulings: the nodes are obstructors, so
+#: `node_obstruction_undecided` is no longer a state the row can promise; a transiting node carries no vedha factor; vipāreeta
+#: cancellation is not produced. The ruling ids ride in the flat selector (token form, B.3 ledger refs) and in the P2@1.3.0 row.
+_VEDHA_FLAT_1_3_0 = {
+    "operand": "state:vedha_interval_derived_from_residence",
+    "applicable_records": "favourable_residence_cited_pairs_only",
+    "map_active": 0, "map_inactive": 1,
+    "active_qualification": "vedha_active",
+    "unqualified_reasons": ["obstructor_residence_unknown", "node_residence_unknown"],
+    "inactive_scope": "excluding_on_demand_moon_obstruction",
+    "scope_exempt_primaries": ["mercury"],            # Phaladīpikā XXVI.6: the Moon never obstructs Mercury
+    "vedha_source": "phaladeepika_xxvi_3_8_house_vedha_only",
+    "node_as_obstructor": "obstructs_like_any_graha",
+    "node_as_transiting_body": "no_vedha_factor",
+    "vipareeta_state": "not_produced_owner_ruled",
+    "ruling_refs": [r.lower().replace("-", "_") for r in VEDHA_RULINGS],
+}
+assert not flat_problems(_VEDHA_FLAT_1_3_0), flat_problems(_VEDHA_FLAT_1_3_0)
+_factor("vedha_attenuation",
+        rule_version=DOCTRINE_VERSION,
+        operand="vedha state at t, derived from stored residence spans (vedha_derive.derive_vedha); the obstructors are the "
+                "stored seven plus Rāhu/Ketu (ND-NODE-VEDHA i)",
+        function="step", range=[0.0, 1.0], units="unitless",
+        direction="higher = stronger", null_state="unqualified",
+        operand_selector=_VEDHA_FLAT_1_3_0, applicability=decode_vedha(_VEDHA_FLAT_1_3_0),
+        effect="as vedha_attenuation@1.1.0 (Phaladīpikā XXVI.3-8 house-vedha only — VEDHA-SOURCE): active obstruction nullifies "
+               "the favourable-residence record's contribution (0.0; admission is never changed — qualification vedha_active); "
+               "ESTABLISHED inactivity is 1.0 with the scope 'excluding_on_demand_moon_obstruction' (Mercury excepted); an "
+               "obstructor residence not established over the span is unqualified (obstructor_residence_unknown, "
+               "node_residence_unknown). A Rāhu/Ketu in the vedha house obstructs like any graha (ND-NODE-VEDHA i; no stated "
+               "exception applies to the nodes); a transiting Rāhu/Ketu record carries NO vedha factor, declared not-applicable "
+               "(ND-NODE-VEDHA ii); no vipāreeta cancellation (ND-VIPAREETA). Adverse-residence and uncited (graha, house) "
+               "records: declared not-applicable; nothing graded")
+SUPERSEDED_FACTORS[composite_ref("vedha_attenuation", KERNEL_VERSION)] = {
+    "superseded_by": composite_ref("vedha_attenuation", DOCTRINE_VERSION),
+    "reason": "1.1.0 still promises node_obstruction_undecided and an unruled vipāreeta state; the owner's rulings make the "
+              "nodes obstructors, give a transiting node no vedha factor and produce no cancellation",
+    "source": "VEDHA-SOURCE; ND-NODE-VEDHA; ND-VIPAREETA (OWNER-DOCTRINE-CONFIRMED-20261021)"}
+
+_VIPAREETA_NOTE = "vipareeta cancellation per §5"
 _SOFT_FACTORS_1_3_0 = {
     "P1": [composite_ref("dignity_of_transit_sign", DOCTRINE_VERSION),
            composite_ref("combustion", DOCTRINE_VERSION),
            composite_ref("agent_nature", DOCTRINE_VERSION)],
+    "P2": [composite_ref("vedha_attenuation", DOCTRINE_VERSION)],
     "P3": [composite_ref("activity_kernel", DOCTRINE_VERSION),
            composite_ref("graduated_drishti", KERNEL_VERSION)],
     "P4": [composite_ref("activity_kernel", DOCTRINE_VERSION)],
@@ -1026,12 +1075,17 @@ DOCTRINE_SUPERSEDED_PATHS: dict[tuple[str, str], dict] = {}
 for _pid in DOCTRINE_PATHS:
     _old = RULE_PATHS[composite_ref(_pid, RULE_VERSION)]
     _ruling = DOCTRINE_PATH_RULINGS[_pid]
+    _old_note = _old.get("note") or ""
+    if _pid == "P2":       # SR-OD1 D3: the 1.0.0 note promises "vipareeta cancellation per §5"; ND-VIPAREETA rules it out
+        assert _VIPAREETA_NOTE in _old_note, "P2@1.0.0 note changed: re-check the vipāreeta clause against ND-VIPAREETA"
+        _old_note = _old_note.replace(_VIPAREETA_NOTE, "NO vipāreeta cancellation in this version (ND-VIPAREETA); a node in a "
+                                      "vedha house obstructs like any graha, an uncited_extension (ND-NODE-VEDHA i)")
     RULE_PATHS[composite_ref(_pid, DOCTRINE_VERSION)] = {
         **_old, "rule_version": DOCTRINE_VERSION,
         "soft_factors": list(_SOFT_FACTORS_1_3_0[_pid]),
         "note": f"{_ruling} (owner, OWNER-DOCTRINE-CONFIRMED-20261021): soft factors moved to the 1.3.0 doctrine "
                 f"rows" + ("; maitri_compound retired (Q7 b)" if _pid == "P1" else "")
-                + (f"; {_old['note']}" if _old.get("note") else ""),
+                + (f"; {_old_note}" if _old_note else ""),
         # the persisted free-text column of the path row (`score_rule`) names the ruling, so the registry digest
         # pins it; the H table is added once `h_table_sha256` exists (below the ND-H block)
         "score_rule": f"{_old['score_rule']}; {DOCTRINE_RULING_TEXT[_ruling]}",
@@ -1040,7 +1094,7 @@ for _pid in DOCTRINE_PATHS:
         DOCTRINE_SUPERSEDED_PATHS[composite_ref(_pid, _older)] = {
             "superseded_by": composite_ref(_pid, DOCTRINE_VERSION), "ruling_ref": _ruling,
             "reason": "soft factors moved to the owner-confirmed 1.3.0 doctrine rows"}
-del _pid, _old, _ruling, _older
+del _pid, _old, _old_note, _ruling, _older
 
 
 # ══ ND-H-20261005 — the eight classes: three tiers and kārakas, rule_version 1.2.0 ══════════════════
@@ -1579,6 +1633,8 @@ SUPERSEDED_FACTORS[composite_ref("maitri_compound", RULE_VERSION)] = {
 
 # ── the 1.3.0 path rows pin the H table they read (as the 1.2.0 rows do), now that `h_table_sha256` exists ──
 for _pid in DOCTRINE_PATHS:
+    if _pid == "P2":       # P2 (the Moon-frame residence path) reads no H table — nothing to pin
+        continue
     _row = RULE_PATHS[composite_ref(_pid, DOCTRINE_VERSION)]
     _row["h_table_version"] = DOCTRINE_VERSION
     _row["h_table_sha256"] = h_table_sha256(DOCTRINE_VERSION)
