@@ -740,6 +740,21 @@ def _known_nowhere(prog: "RecordProgram", a: datetime, b: datetime, samples: int
     return all(prog.value_at(a + timedelta(seconds=span * k / samples)) is None for k in range(samples))
 
 
+def _named_unknown_over_support(prog: "RecordProgram", samples: int = 24) -> list[str]:
+    """P1B (extends the W0 reason pass-through to a record unknown over its WHOLE support): the named reasons its factors give at
+    the same sampled instants `_known_nowhere` looked at — only if EVERY sampled instant of every support has a name, else [] (the
+    generic reason then stands: a partly named unknown is not reported as if it were fully explained)."""
+    names: set[str] = set()
+    for a, b in prog.rec.supports:
+        span = (b - a).total_seconds()
+        for k in range(samples):
+            r = prog.unknown_reason_at(a + timedelta(seconds=span * k / samples))
+            if r is None:
+                return []
+            names.add(r)
+    return sorted(names)
+
+
 def _pieces(lo: datetime, hi: datetime, progs: list[RecordProgram]):
     """Elementary pieces of [lo, hi): between consecutive support endpoints the live set is constant."""
     cuts = {lo, hi}
@@ -891,7 +906,12 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     # The against channel is EVALUATED when the path assigns a direction per record (P2), or when
     # its registry row declares no against-channel operand at all (empty sum = 0.0). A declared or
     # ambiguous row leaves it NULL — derived from the row, never from the path's name.
-    against_evaluated = path_id in DIRECTIONAL_PATHS or against_channel_state(factor_rows) == "none_declared"
+    # P1B: P1's rows DECLARE the operand (agent_nature: benefic → favourable channel, malefic → adverse) and the sweep now places
+    # every qualified P1 record in a channel per instant (`record_channel` refuses a P1 record no factor places), so a declared
+    # operand on a categorical path is EVALUATED; an unqualified member whose side is unknown still makes the sum unqualified
+    # (`against_unq`). An ambiguous row stays NULL.
+    against_evaluated = (path_id in DIRECTIONAL_PATHS or against_channel_state(factor_rows) == "none_declared"
+                         or (path_id in CATEGORICAL_PATHS and against_channel_state(factor_rows) == "declared"))
     programs = {r.record_id: build_program(r, factor_rows, drishti=drishti, vedha=vedha)
                 for r in members}
     # A record whose operand is undeterminable over its WHOLE support is unqualified — never a 0.0
@@ -901,7 +921,9 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             if all(_known_nowhere(prog, a, b) for a, b in prog.rec.supports):
                 prog.qualified = False
                 prog.null_states.add(UNQUALIFIED)
-                prog.reasons.append(("operand", "operand_undeterminable_over_support"))
+                named = _named_unknown_over_support(prog)
+                prog.reasons.extend(("operand", r) for r in named) if named else \
+                    prog.reasons.append(("operand", "operand_undeterminable_over_support"))
     for prog in programs.values():
         # W0: a record whose side is decided per instant by a factor has no static channel (None = both, for an
         # unqualified one); every other record's channel is the static `record_channel`

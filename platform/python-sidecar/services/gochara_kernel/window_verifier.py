@@ -130,9 +130,18 @@ def _channel(event_class: str, path_id: str, rec: dict, *, per_instant: bool = F
     raise RuntimeError(f"window verifier: path {path_id} has no channel derivation")
 
 
-def _against_evaluated(path_id: str, factor_rows: list[dict]) -> bool:
+def _names_a_channel(direction) -> bool:
+    return isinstance(direction, str) and ("channel" in direction or "valence" in direction)
+
+
+def _against_evaluated(path_id: str, factor_rows: list[dict], *, per_instant_channel: bool = False) -> bool:
     if path_id == "P2":
         return True
+    if path_id == "P1" and per_instant_channel:
+        # P1B: the caller derives each P1 record's side per instant, so a row that names a channel is an evaluable
+        # against-channel operand; a silent or unparseable direction (neither magnitude-only nor naming a channel) is not
+        return bool(factor_rows) and all(r.get("direction") in _MAGNITUDE_ONLY or _names_a_channel(r.get("direction"))
+                                         for r in factor_rows)
     return bool(factor_rows) and all(r.get("direction") in _MAGNITUDE_ONLY for r in factor_rows)
 
 
@@ -275,7 +284,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     for recs_ in by_window.values():
         for rec_ in recs_.values():
             rec_["boundaries_complete"] = _boundaries_complete(rec_["relation"], rec_["supports"], completed)
-    against_ok = _against_evaluated(path_id, factor_rows)
+    against_ok = _against_evaluated(path_id, factor_rows, per_instant_channel=channel_at is not None)
     problems: list[str] = list(membership_problems)
     numeric = 0
     fully_reproduced = 0            # windows whose stored fields were reproduced EXACTLY (incl. the NULL ones)
