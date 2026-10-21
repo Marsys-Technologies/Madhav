@@ -18,12 +18,18 @@ and the factor rows the path is sealed against:
 
 A window with a non-constant member (an angular kernel) is checked structurally only and reported as
 `numeric_reproduced = False` — never claimed as reproduced.
+
+P1c (SR-OD1): a P1 record whose factor rows declare a `category_mapping` is STEP-valued — constant between the instants its
+dignity / combustion / nature state changes, which `p1_operands_check` derives independently from `position_at` and L0. Such a
+window IS reproduced (pieces cut at those instants, value read at each piece's start) once `dynamic_enabled`; without a
+`p1_check` the verifier has no derivation and the record is unqualified by name — a numbered window is then a disagreement.
 """
 from __future__ import annotations
 
 from datetime import timezone
 
 from . import boundary_match as bm
+from . import p1_operands_check as _p1c
 
 _TOL = 1e-6                                 # REAL (float4) storage round-trip — NOT the peak tie
 _TIE = 1e-9                                 # the frozen measurement contract's peak-tie tolerance
@@ -32,8 +38,9 @@ _TITLE = {"sun": "Sun", "moon": "Moon", "mars": "Mars", "mercury": "Mercury", "j
           "venus": "Venus", "saturn": "Saturn", "rahu": "Rahu", "ketu": "Ketu"}
 
 
-def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
-    """('na',) | ('const', v) | ('fn',) | ('unq', reason) for one factor on one record."""
+def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool, p1=None):
+    """('na',) | ('const', v) | ('fn',) | ('step',) | ('unq', reason) for one factor on one record. `p1` is the
+    `p1_operands_check.P1Binding` of a P1 path (P1c): the verifier's own derivation of the period lord's step-valued states."""
     fid, ap = row["factor_id"], row.get("applicability")
     if fid == "activity_kernel":
         if not ap:
@@ -55,6 +62,13 @@ def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
     if fid in ("dignity_of_transit_sign", "combustion", "agent_nature", "maitri_compound"):
         if row.get("value_mapping"):
             raise RuntimeError(f"window verifier: {fid} declares a value_mapping it cannot derive from")
+        if row.get("category_mapping"):
+            if fid == "maitri_compound":
+                return ("unq", "maitri_compound_retired_not_derivable")      # Q7 b: retired from P1, no derivation exists
+            if p1 is None:
+                return ("unq", "p1_derivation_not_supplied")                  # declared, yet nothing here can derive it
+            problem = p1.record_problem(fid, rec)
+            return ("unq", problem) if problem else ("step",)
         return ("unq", "value_mapping_undeclared")
     if fid == "karaka_agent":
         # K-A (ND-H-20261005; registry `karaka_agent` row): a RANK category — never admits, excludes or zeroes.
@@ -92,8 +106,9 @@ def _boundaries_complete(relation, supports, completed) -> bool:
     return all(completed.lower <= a and b <= completed.upper for a, b in supports)
 
 
-def _record_state(factor_rows, rec, drishti_bound, vedha_bound):
-    states = [_row_state(r, rec, drishti_bound, vedha_bound) for r in factor_rows]
+def _record_state(factor_rows, rec, drishti_bound, vedha_bound, p1=None):
+    # a bare 4-argument call when there is no P1 derivation: `_row_state` keeps its pre-P1c contract for every other caller
+    states = [_row_state(r, rec, drishti_bound, vedha_bound, **({} if p1 is None else {"p1": p1})) for r in factor_rows]
     if any(s[0] == "unq" for s in states):
         return ("unq", sorted({s[1] for s in states if s[0] == "unq"}))
     state_valued_fn = any(s[0] == "fn" and r["factor_id"] in _STATE_VALUED for s, r in zip(states, factor_rows))
@@ -101,6 +116,8 @@ def _record_state(factor_rows, rec, drishti_bound, vedha_bound):
         return ("unq", [STATE_BOUNDARIES_REASON])
     if any(s[0] == "fn" for s in states):
         return ("fn", None)
+    if any(s[0] == "step" for s in states):
+        return ("step", None)           # value and side come from the P1 derivation, per piece
     value = 1.0
     for s in states:
         if s[0] == "const":
@@ -202,7 +219,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                             rule_version: str, factor_rows: list[dict],
                             drishti_bound: bool = False, vedha_bound: bool = False,
                             dynamic_enabled: bool = False, policy: str | None = None,
-                            solver_check: bool = True, channel_at=None, channel_boundaries=None) -> dict:
+                            solver_check: bool = True, channel_at=None, channel_boundaries=None, p1_check=None) -> dict:
     """`solver_check` (W0, plan N-6): whether THIS call runs the solver check on a window whose numbers cannot be reproduced
     by the constant-window derivation (a function-valued member under `dynamic_enabled`). The in-build self-check in the writer
     passes False — the independent prover runs once, in the verification job, not twice inside the writer's cap — and then
@@ -210,8 +227,16 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     (`solver_checked_windows` is 0): the report says what ran. A deferral never satisfies a gate — the windows stay UNVERIFIED.
 
     `channel_at(record, t)` / `channel_boundaries(record, lo, hi)` (W0): the per-instant channel of a P1 record and its change
-    instants, supplied by the caller's own derivation; absent ⇒ a P1 record has no channel derivation (refused, as before)."""
+    instants, supplied by the caller's own derivation; absent ⇒ a P1 record has no channel derivation (refused, as before).
+
+    `p1_check` (P1c): a `p1_operands_check.P1Check` — the verifier's own sky + L0 derivation of the P1 states. Bound to this
+    path's factor rows it supplies the P1 records' value, side (`channel_at`), unknown reasons and change instants, replacing any
+    `channel_at` / `channel_boundaries` passed in. A P1 path whose rows declare no `category_mapping` is unchanged by it."""
     grain = (chart_id, generation, event_class, path_id, rule_version)
+    p1 = None
+    if path_id == "P1" and p1_check is not None and _p1c.needs_p1_check(factor_rows):
+        p1 = p1_check.bind(factor_rows, event_class)
+        channel_at, channel_boundaries = p1.channel_at, p1.channel_boundaries
     # R9-1: the policy is the MANIFEST's. An explicit `policy` is only for a generation without a manifest row (the
     # solver's own fixtures); against a manifest it must agree — it never overrides it.
     manifest_policy = _manifest_policy(conn, grain)
@@ -319,11 +344,12 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
          s_objective, s_objective_value, s_qualification) in windows:
         recs = by_window.get(wid, {})
         tag = f"window {lo.astimezone(timezone.utc).isoformat()}"
-        states = {rid: _record_state(factor_rows, r, drishti_bound, vedha_bound) for rid, r in recs.items()}
+        states = {rid: _record_state(factor_rows, r, drishti_bound, vedha_bound, p1) for rid, r in recs.items()}
         unq_ids = [rid for rid, s in states.items() if s[0] == "unq"]
         qualified = {rid: s for rid, s in states.items() if s[0] != "unq"}
         null_states = list(null_states or [])
         has_fn = any(s[0] == "fn" for s in qualified.values())
+        has_step = any(s[0] == "step" for s in qualified.values())      # P1c: step-valued from the P1 derivation
         if severity is not None:
             problems.append(f"{tag}: severity {severity} must be NULL")
         if peak is not None and not (lo <= peak < hi):
@@ -388,10 +414,10 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             detail.append(row)
             continue
         # ── policy 2: the dynamic switch ────────────────────────────────────────────────────────────────────
-        if has_fn and not dynamic_enabled:
+        if (has_fn or has_step) and not dynamic_enabled:
             row["unqualified_reason"] = DYNAMIC_SWITCH_REASON
             row["unresolved"] = {**row["unresolved"], DYNAMIC_SWITCH_REASON: sum(
-                1 for s in qualified.values() if s[0] == "fn")}
+                1 for s in qualified.values() if s[0] in ("fn", "step"))}
             ok_null = expect_null_window(tag, stored, DYNAMIC_SWITCH_REASON)
             check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
             if ok_null:
@@ -421,6 +447,32 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                                 "evaluate that channel (expected NULL)")
             continue
         # ── policy 3–5: every live member is a constant — re-derive piecewise ─────────────────────────────
+        def val(rid, t):
+            """The record's value at t: its constant, or — a P1 step-valued record — the P1 derivation's."""
+            return p1.value_at(recs[rid], t) if qualified[rid][0] == "step" else qualified[rid][1]
+
+        pieces = _pieces(lo, hi, recs, None if channel_boundaries is None else
+                         lambda rid, r, x, y: channel_boundaries(r, x, y) if chans[rid] == PER_INSTANT else [])
+        if has_step:
+            # P1c: a piece on which a live step-valued member is undeterminable leaves the objective unknown there; the window is
+            # then blank — the first reason (sorted), one count per (piece, reason) — the policy table's rule for an unknown
+            # portion, which is never dropped (R7 [1])
+            unknown: dict[str, int] = {}
+            for a, _b in pieces:
+                for reason in {p1.unknown_reason(recs[rid], a) for rid in _live(recs, a)
+                               if rid in qualified and qualified[rid][0] == "step"} - {None}:
+                    unknown[reason] = unknown.get(reason, 0) + 1
+            if unknown:
+                merged = dict(row["unresolved"])
+                for reason, n in unknown.items():
+                    merged[reason] = merged.get(reason, 0) + n
+                row["unresolved"], row["unqualified_reason"] = dict(sorted(merged.items())), sorted(unknown)[0]
+                ok_null = expect_null_window(tag, stored, row["unqualified_reason"])
+                check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+                if ok_null:
+                    fully_reproduced += 1
+                detail.append(row)
+                continue
         if peak is None or ev_for is None:
             problems.append(f"{tag}: the objective is qualified but peak/evidence_for is NULL")
             detail.append(row)
@@ -429,20 +481,19 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             problems.append(f"{tag}: evidence_against is stored but the registry row declares no way to "
                             "evaluate that channel (expected NULL)")
         cands = []
-        for a, b in _pieces(lo, hi, recs, None if channel_boundaries is None else
-                            lambda rid, r, x, y: channel_boundaries(r, x, y) if chans[rid] == PER_INSTANT else []):
+        for a, b in pieces:
             live = [rid for rid in _live(recs, a) if rid in qualified]
             if path_id == "P4":
                 act = {}
                 for rid in live:
-                    act[recs[rid]["agent"]] = max(act.get(recs[rid]["agent"], 0.0), qualified[rid][1])
+                    act[recs[rid]["agent"]] = max(act.get(recs[rid]["agent"], 0.0), val(rid, a))
                 if set(act) == {"jupiter", "saturn"}:
                     cands.append((min(act.values()), a))
             else:
                 per_root: dict[str, float] = {}
                 for rid in live:
                     if chan_at(rid, a) == "evidence_for_occurrence":
-                        per_root[recs[rid]["root"]] = max(per_root.get(recs[rid]["root"], 0.0), qualified[rid][1])
+                        per_root[recs[rid]["root"]] = max(per_root.get(recs[rid]["root"], 0.0), val(rid, a))
                 cands.append((sum(per_root.values()), a))     # no for-channel member live ⇒ the objective is 0
         if not cands:
             problems.append(f"{tag}: no objective candidate re-derived")
@@ -459,14 +510,14 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         sums = {"evidence_for_occurrence": {}, "evidence_against_occurrence": {}}
         for rid in live_q:
             slot = sums[chan_at(rid, want_peak)]
-            slot[recs[rid]["root"]] = max(slot.get(recs[rid]["root"], 0.0), qualified[rid][1])
+            slot[recs[rid]["root"]] = max(slot.get(recs[rid]["root"], 0.0), val(rid, want_peak))
         want_for = sum(sums["evidence_for_occurrence"].values())
         if path_id == "P4":
             want_score = best
         elif any(rid in unq_ids for rid in live_now):
             want_score = None                         # a live unqualified member's product is unknown
         else:
-            want_score = max((qualified[rid][1] for rid in live_q), default=0.0)
+            want_score = max((val(rid, want_peak) for rid in live_q), default=0.0)
         ok = True
         if (score is None) != (want_score is None) or (
                 score is not None and abs(score - want_score) > _TOL):
@@ -475,7 +526,9 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         if want_score is not None and not (0.0 <= want_score <= 1.0 + _TOL):
             problems.append(f"{tag}: re-derived score {want_score} outside [0,1]")
             ok = False
-        if peak != want_peak:
+        # an instant at a DERIVED change point (P1c) is located to BISECT_SECONDS by each side independently: two locations agree
+        # within PEAK_TOLERANCE_SECONDS. Every other peak is a stored support endpoint — compared exactly
+        if (peak != want_peak) if not has_step else (abs((peak - want_peak).total_seconds()) > _p1c.PEAK_TOLERANCE_SECONDS):
             problems.append(f"{tag}: peak {peak} != re-derived {want_peak}")
             ok = False
         if abs(ev_for - want_for) > _TOL:

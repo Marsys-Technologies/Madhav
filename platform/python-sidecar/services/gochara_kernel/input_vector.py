@@ -61,11 +61,11 @@ IMPLEMENTATION_MODULES = {
         "record_derivation", "record_verifier", "scope_response",
         "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",) + tuple(_R + m for m in (
         "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "flat_selector", "frames",
-        "kernel_factor", "nature", "p6", "permission", "predicates", "records", "registry", "score", "strength",
+        "kernel_factor", "nature", "p1_inputs", "p6", "permission", "predicates", "records", "registry", "score", "strength",
         "valence", "vedha", "vedha_derive")),
     # R10-4: the VERIFICATION JOB (the library and the operator entry point) is part of the governed implementation identity —
     # the pinned job is part of the trusted system (AM-24 item 4), so a different job is a different manifest vector
-    "window": tuple(_K + m for m in ("result_policy", "candidate_boundary", "numerical_window_gate", "seal_brief", "seal_flow", "verification_job", "window_gate", "window_store",
+    "window": tuple(_K + m for m in ("result_policy", "candidate_boundary", "numerical_window_gate", "p1_operands_check", "seal_brief", "seal_flow", "verification_job", "window_gate", "window_store",
                                      "window_sweep", "window_verifier")) + ("pipeline.orchestrator.verification_job", "pipeline.orchestrator.seal_job"),
 }
 
