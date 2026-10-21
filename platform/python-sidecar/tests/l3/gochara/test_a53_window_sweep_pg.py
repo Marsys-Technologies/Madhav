@@ -365,6 +365,20 @@ _VEDHA_FN = lambda rid: RecordVedha(applicable=True, complete=True)             
 _VEDHA_EDGES_INCOMPLETE = lambda rid: RecordVedha(applicable=True, complete=False)        # noqa: E731
 
 
+class _FixedOverlay:
+    """What `vedha_verifier.derive_overlay` returns, with a fixed per-record answer: callable by record id, and it reports itself the way
+    the verifier's report reads a derived overlay (`.summary()`)."""
+
+    def __init__(self, per_record):
+        self._per_record = per_record
+
+    def __call__(self, record_id):
+        return self._per_record(record_id)
+
+    def summary(self):
+        return {"fixed_overlay": True}
+
+
 def _verify(conn, cls, path, rows_for=ws.registry_factor_rows, **kw):
     from services.gochara_kernel.window_verifier import verify_window_semantics
     return verify_window_semantics(conn, chart_id=CHART_ID, generation=GEN, event_class=cls,
@@ -705,7 +719,7 @@ def test_the_writer_stores_a_dynamic_window_as_named_null_and_the_verifier_repro
     # its own oracles (test_od1_c2_vedha_verifier*.py); this test is about the NULL window, so the verifier is handed the fixed overlay
     # that says what the builder says here: a vedha source with no edge list ⇒ the edges are incomplete (R8-6)
     from services.gochara_kernel import vedha_verifier as _vv
-    monkeypatch.setattr(_vv, "derive_overlay", lambda conn, **kw: _VEDHA_EDGES_INCOMPLETE)
+    monkeypatch.setattr(_vv, "derive_overlay", lambda conn, **kw: _FixedOverlay(_VEDHA_EDGES_INCOMPLETE))
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-dyn", db_conn=conn,
                       config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON, "gochara_v5_final_rules": False}, dry_run=False)
     with conn.transaction():
