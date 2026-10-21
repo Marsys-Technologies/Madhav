@@ -62,7 +62,7 @@ def _build_kwargs(conn, ephe_path: str | None) -> dict:
         position_at=position_at, ephe_path=ephe_path, modules=iv.IMPLEMENTATION_MODULES, path_refs=rr.bound_path_refs(),
         configured_selection_for=rr.selected_versions_for, path_rulings=w.VERIFIER_PATH_RULINGS,
         h_unknown=w.VERIFIER_H_UNKNOWN_RULING, moon_scope_domain=moon, factor_rows_for=bound_rows,
-        drishti_bound=w.DRISHTI_SOURCE is not None, vedha_bound=w.VEDHA_SOURCE is not None)
+        drishti_bound=w.DRISHTI_SOURCE is not None, vedha_bound=w.vedha_source() is not None)
 
 
 def _moon_scope_available(conn) -> bool:

@@ -80,6 +80,7 @@ from services.gochara_kernel import input_vector_verifier as gk_input_vector_ver
 from services.gochara_kernel import window_sweep as gk_window_sweep
 from services.gochara_kernel import p1_operands as gk_p1_operands
 from services.gochara_kernel import p1_operands_check as gk_p1_operands_check
+from services.gochara_kernel import vedha_source as gk_vedha_source
 from services.gochara_kernel import result_policy as gk_result_policy
 from services.gochara_kernel import contact_certify as gk_contact_certify
 from services.gochara_kernel import near_miss as gk_near_miss
@@ -131,7 +132,20 @@ def _drishti_source(agent: str, offset: int, factor_ref: tuple):
 # in the sweep (graduated_drishti_source_not_landed / vedha_overlay_not_bound), and the same fact is
 # handed to the independent window verifier, so builder and verifier cannot disagree on it.
 DRISHTI_SOURCE = _drishti_source
-VEDHA_SOURCE = None         # the overlay binding is a pending steward ruling (kala_vedha_gochara vs derived)
+VEDHA_SOURCE = None         # an EXPLICIT binding (a steward ruling, or a test's); None ⇒ the active rule profile decides — `vedha_source()`
+#: SR-OD1 C1 (VEDHA-SOURCE, ND-NODE-VEDHA, ND-VIPAREETA — owner-confirmed 2026-10-21): the vedha operand of the FINAL (doctrine)
+#: rule profile is DERIVED from the stored residence contacts (Phaladīpikā XXVI house-vedha only; nodes obstruct). The measuring
+#: profile keeps its pre-doctrine contract byte for byte: the overlay stays unbound there (`vedha_overlay_not_bound`).
+FINAL_VEDHA_SOURCE = gk_vedha_source.SOURCE
+
+
+def vedha_source():
+    """The vedha operand source of the ACTIVE rule profile (read at call time): an explicit `VEDHA_SOURCE` binding wins; else the
+    derived source under the final profile; else None. Builder, input vector and verification job all ask THIS, so none of them
+    can disagree with another about whether the overlay is bound."""
+    if VEDHA_SOURCE is not None:
+        return VEDHA_SOURCE
+    return FINAL_VEDHA_SOURCE if gk_rule_registry.final_rules_active() else None
 # SR-OD1 P1a: P1's dignity / combustion / maitrī operand sources are bound when the owner-table PR (D2) supplies the value rules
 # `{factor_id: p1_operands.ValueRule}`. None = unbound: P1 windows keep their named blank (`value_mapping_undeclared`) and the three L0
 # reference tables are not a dependency of the build (`_l0_consumed`).
@@ -932,10 +946,10 @@ def _p1_form_b_bound() -> bool:
 
 def _l0_consumed() -> tuple[str, ...]:
     """The L0 authorities this build ACTUALLY consumes (R8-1). The vedha pairs feed P2's vedha operand only;
-    while `VEDHA_SOURCE` is unbound nothing reads them, so `bg_transit_rules` is not a dependency of the
+    while the vedha source is unbound (`vedha_source()`) nothing reads them, so `bg_transit_rules` is not a dependency of the
     build and is neither loaded nor bound. The same rule holds for P1's three reference tables: they are consumed only when the P1 operand
     sources are bound (`P1_VALUE_RULES`, or a bound P1 version that declares the Form B table)."""
-    return (("bg_transit_rules",) if VEDHA_SOURCE is not None else ()) \
+    return (("bg_transit_rules",) if vedha_source() is not None else ()) \
         + (("bg_combustion_orbs", "bg_dignity_reference", "bg_graha_naisargika_friendship")
            if P1_VALUE_RULES is not None or _p1_form_b_bound() else ())
 
@@ -1898,8 +1912,12 @@ class GocharaV5Writer(WriterBase):
             # R4 (SR-Q6-L1-AMEND): a Form B grain records the combustion authority its states were derived from (orb row ids + digest, the
             # L1 module's digest) in every window's qualification provenance; the verifier re-derives the same record from its own reads
             inherited = gk_p1_operands.grain_inheritance(p1_ops)
+            vedha = vedha_source()
+            if hasattr(vedha, "for_grain"):    # C1: a source bound to this grain (its reads are lazy: only a vedha-bearing record triggers them)
+                vedha = vedha.for_grain(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
+                                        records=records)
             drafts, ex = gk_window_sweep.draft_windows(
-                event_class, records, bound_rows, drishti=DRISHTI_SOURCE, vedha=VEDHA_SOURCE,
+                event_class, records, bound_rows, drishti=DRISHTI_SOURCE, vedha=vedha,
                 policy=policy, combustion_inheritance=inherited)
             counts = store.replace_grain_windows(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
@@ -1923,7 +1941,7 @@ class GocharaV5Writer(WriterBase):
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version,
                 factor_rows=rows,
-                drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=VEDHA_SOURCE is not None,
+                drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=vedha_source() is not None,
                 solver_check=False, p1_check=p1_check)             # N-6: the independent prover runs once, in the verification job
             unverified += report["unverified_dynamic"]
             solver_deferred += report["solver_check_deferred_windows"]

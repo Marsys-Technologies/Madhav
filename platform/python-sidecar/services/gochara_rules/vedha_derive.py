@@ -22,18 +22,21 @@ support: the window stays admitted and the record stays stored with qualificatio
 
 Rulings applied here:
   * exceptions Sun<->Saturn and Moon<->Mercury (M-8) never obstruct each other;
-  * `cancelled_vipareeta` is NOT produced — no served citation (ND-VIPAREETA);
-  * Rāhu/Ketu as obstructors are UNDECIDED (ND-NODE-VEDHA): while a node resides in the
-    vedha house and no cited obstructor does, the state is `unqualified`
-    (`node_obstruction_undecided`) — neither 0 nor 1;
+  * `cancelled_vipareeta` is NOT produced — the owner left it out (ND-VIPAREETA: no cancellation of an obstruction
+    by a companion; the commentary-grade rule at bphs:PG313:C1 is recorded, not applied);
+  * Rāhu/Ketu OBSTRUCT the seven planets like any graha (ND-NODE-VEDHA (i); Phaladīpikā XXVI.3-8 read "planets", and
+    XXVI.2 / XXVI.24 / XXVI.45-46 treat the nodes as grahas): a node resident in the vedha house is a cited-kind
+    obstruction (0.0, listed among `obstructors`) and its residence must be established over the primary span like any
+    other obstructor's. TRANSITING nodes carry no vedha factor of their own (ND-NODE-VEDHA (ii)): the six L0 node rows
+    stay UNSOURCED and refused, so a node primary is declared not-applicable;
   * the Moon is not a stored agent, so a stored state can prove `active` but never fully
     `inactive`: every 1.0 carries the machine-readable scope
     `excluding_on_demand_moon_obstruction` — except for a Mercury primary, whose cited
     exception already removes the Moon from the obstructor set;
   * COVERAGE (Codex round 7 [6a]): an obstructor's residence must be ESTABLISHED over the primary span
     before its absence from the vedha house counts. An empty or gapped residence list is NOT "inactive":
-    where no known cited obstruction already settles the value (known obstruction -> 0.0 wins), a coverage
-    gap yields `unqualified` (`obstructor_residence_unknown`) — never 1.0;
+    where no known obstruction already settles the value (known obstruction -> 0.0 wins), a coverage
+    gap yields `unqualified` (`obstructor_residence_unknown`; for a node `node_residence_unknown`) — never 1.0;
   * applicability: favourable-house residence records only. A record whose
     (graha, house) is not a cited pair carries NO vedha factor (declared not-applicable).
 
@@ -53,6 +56,12 @@ NODES = frozenset({"Rahu", "Ketu"})
 CLASSICAL = ("Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
 # the Moon is never a STORED agent (M-3 / AM-14), so it is never in the stored obstructor set
 STORED_OBSTRUCTORS = ("Sun", "Mars", "Mercury", "Jupiter", "Venus", "Saturn")
+# ND-NODE-VEDHA (i): the nodes obstruct like any graha — the obstructor set the derivation reads is the stored six plus them
+OBSTRUCTORS = STORED_OBSTRUCTORS + ("Rahu", "Ketu")
+#: how `derive_vedha` treats a node resident in the vedha house. The RULED reading is the default; the open-question reading stays
+#: selectable only for an asset that has not adopted the ruling yet (`ka_vedha_gochara`'s independent sweep, whose cross-check
+#: calls `derive_vedha(..., nodes=NODES_UNDECIDED)`). Nothing on the numerical-window path passes it.
+NODES_OBSTRUCT, NODES_UNDECIDED = "obstruct", "undecided"
 
 STATE_ACTIVE, STATE_INACTIVE, STATE_UNQUALIFIED = "active", "inactive", "unqualified"
 
@@ -126,7 +135,7 @@ def pairs_from_rows(rows) -> VedhaPairs:
         seen.add(key)
         if graha in NODES:
             if not cite.upper().startswith(_UNSOURCED):
-                raise VedhaPairsError(f"{graha} {ph}: a node vedha row is cited — ND-NODE-VEDHA must be ruled first")
+                raise VedhaPairsError(f"{graha} {ph}: a node vedha row is cited — ND-NODE-VEDHA rules that a transiting node carries no vedha factor; a node pair is a new ruling")
             node_n[graha] = node_n.get(graha, 0) + 1
             continue                                        # L0-flagged UNSOURCED node rows are counted, never usable
         if graha not in CLASSICAL:
@@ -205,7 +214,7 @@ def _coverage_gaps(spans, within) -> list:
 
 
 def derive_vedha(primary: str, primary_house: int, primary_span, *, moon_sign: int,
-                 residence: dict[str, list], pairs: "VedhaPairs") -> dict:
+                 residence: dict[str, list], pairs: "VedhaPairs", nodes: str = NODES_OBSTRUCT) -> dict:
     """Vedha state over ONE primary residence span.
 
     residence: graha -> [(sign 1..12, t_in, t_out), …] stored residence spans, nodes included. An obstructor with no
@@ -215,10 +224,16 @@ def derive_vedha(primary: str, primary_house: int, primary_span, *, moon_sign: i
     unknown_obstructors}]} partitioning primary_span; `applicable: False` (state `not_applicable`, no segments) when
     the (primary, house) is not a cited pair.
 
-    Precedence per segment: known cited obstruction -> 0.0 (settles it whatever else is unknown); otherwise any coverage
-    gap of a necessary obstructor, or an undecided node obstruction / node coverage gap -> NULL (`unqualified`); only
-    ESTABLISHED inactivity -> 1.0 (with the Moon scope unless the primary is Mercury).
+    Precedence per segment: a known obstruction by any graha, a node included -> 0.0 (settles it whatever else is
+    unknown); otherwise any coverage gap of a necessary obstructor (`obstructor_residence_unknown`; a node's
+    `node_residence_unknown`) -> NULL (`unqualified`); only ESTABLISHED inactivity -> 1.0 (with the Moon scope unless the
+    primary is Mercury).
+
+    `nodes=NODES_UNDECIDED` is the pre-ruling reading (a node alone in the vedha house is `unqualified`, `node_obstruction_undecided`);
+    it exists for the one asset that has not adopted ND-NODE-VEDHA (see `NODES_UNDECIDED`) and is never the default.
     """
+    if nodes not in (NODES_OBSTRUCT, NODES_UNDECIDED):
+        raise VedhaPairsError(f"nodes must be {NODES_OBSTRUCT!r} or {NODES_UNDECIDED!r}, got {nodes!r}")
     if not isinstance(pairs, VedhaPairs):
         raise VedhaPairsError("pairs must be a validated VedhaPairs load (pairs_from_rows / load_pairs)")
     if not (isinstance(moon_sign, int) and not isinstance(moon_sign, bool) and 1 <= moon_sign <= 12):
@@ -229,24 +244,31 @@ def derive_vedha(primary: str, primary_house: int, primary_span, *, moon_sign: i
     if not _t(primary_span[0]) < _t(primary_span[1]):
         raise VedhaPairsError(f"empty or inverted primary span {primary_span!r}")
     v_house = pairs[key]
-    necessary = [g for g in STORED_OBSTRUCTORS if g != primary and exception_for(primary, g) == "none"]   # M-8 exceptions never obstruct
+    obstructors = OBSTRUCTORS if nodes == NODES_OBSTRUCT else STORED_OBSTRUCTORS
+    necessary = [g for g in obstructors if g != primary and exception_for(primary, g) == "none"]   # M-8 exceptions never obstruct
     cited: dict[str, list] = {}
     gaps: dict[str, list] = {}
+    node_gaps: list = []
     for g in necessary:
         spans = _validated_spans(g, residence.get(g, []))
         gap = _coverage_gaps(spans, primary_span)
         if gap:
-            gaps[g] = gap
+            if g in NODES:
+                node_gaps += gap
+            else:
+                gaps[g] = gap
         hit = [x for x in (_intersect(primary_span, s) for s in _house_spans(spans, moon_sign, v_house)) if x]
         if hit:
             cited[g] = hit
-    node_hits, node_gaps = [], []
-    for n in sorted(NODES):
-        spans = _validated_spans(n, residence.get(n, []))
-        node_gaps += _coverage_gaps(spans, primary_span)
-        node_hits += [x for x in (_intersect(primary_span, s) for s in _house_spans(spans, moon_sign, v_house)) if x]
     active = _union([x for hs in cited.values() for x in hs])
-    node_only = _subtract(_union(node_hits), active)
+    node_only = []
+    if nodes == NODES_UNDECIDED:                    # the pre-ruling reading: a node is watched, not an obstructor
+        node_hits = []
+        for n in sorted(NODES):
+            spans = _validated_spans(n, residence.get(n, []))
+            node_gaps += _coverage_gaps(spans, primary_span)
+            node_hits += [x for x in (_intersect(primary_span, s) for s in _house_spans(spans, moon_sign, v_house)) if x]
+        node_only = _subtract(_union(node_hits), active)
     node_gaps = _union(node_gaps)
     all_gaps = [x for gs in gaps.values() for x in gs]
     cuts = sorted({primary_span[0], primary_span[1]}

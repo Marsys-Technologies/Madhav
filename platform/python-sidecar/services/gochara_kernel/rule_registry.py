@@ -127,6 +127,11 @@ def p1_form_b_selected() -> bool:
     return _P1_FORM_B.get()
 
 
+def final_rules_active() -> bool:
+    """True inside a `rule_profile(final_rules=True)` scope (the century / doctrine profile); read at call time."""
+    return _FINAL_RULES.get()
+
+
 def bound_path_refs() -> tuple[tuple[str, str], ...]:
     """The CURRENT bound CATALOGUE — every sealed (path, version) — read at call time (a consumer never
     captures the tuple at import)."""

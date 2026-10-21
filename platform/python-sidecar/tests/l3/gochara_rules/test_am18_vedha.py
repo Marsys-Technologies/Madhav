@@ -138,7 +138,7 @@ def test_o_vi_6_abutting_obstructors_exception_and_node_in_one_primary_span():
     res["Mars"] = cov(span(7, "04-01", "04-25"))               # obstructs 04-14 → 04-25
     res["Jupiter"] = cov(span(7, "04-25", "05-05"))            # ABUTS Mars exactly at 04-25
     res["Saturn"] = cov(span(7, "04-01", "06-01"))             # Sun↔Saturn exception: never obstructs the Sun
-    res["Rahu"] = cov(span(7, "05-05", "05-10"))               # a node alone in the vedha house
+    res["Rahu"] = cov(span(7, "05-05", "05-10"))               # a node alone in the vedha house: it obstructs like any graha (ND-NODE-VEDHA i)
     out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
     assert out["applicable"] and out["vedha_house"] == 9
     got = [(s["t_in"][5:10], s["t_out"][5:10], s["state"], s["value"], s["reason"], s["scope"], s["obstructors"])
@@ -146,7 +146,7 @@ def test_o_vi_6_abutting_obstructors_exception_and_node_in_one_primary_span():
     assert got == [
         ("04-14", "04-25", "active", 0.0, None, None, ["Mars"]),
         ("04-25", "05-05", "active", 0.0, None, None, ["Jupiter"]),            # abutting: no clean gap at 04-25
-        ("05-05", "05-10", "unqualified", None, "node_obstruction_undecided", None, []),
+        ("05-05", "05-10", "active", 0.0, None, None, ["Rahu"]),               # ND-NODE-VEDHA (i): a node is an obstructor, not an undecided state
         ("05-10", "05-15", "inactive", 1.0, None, MOON_SCOPE, []),
     ]
     # the segments partition the primary span exactly (half-open, no gap, no overlap)
@@ -174,20 +174,41 @@ def test_o_vi_6_mercury_has_no_moon_scope_other_primaries_do():
     assert s["segments"][0]["scope"] == MOON_SCOPE
 
 
-def test_o_vi_6_cited_obstructor_beats_a_simultaneous_node():
+def test_o_vi_6_a_node_obstructs_alongside_and_around_a_graha_without_splitting_the_state():
+    """ND-NODE-VEDHA (i): Phaladīpikā XXVI.3-8 read "planets", and the chapter treats Rāhu/Ketu as grahas (XXVI.2, XXVI.24) —
+    a node in the vedha house nullifies exactly like Mars would; where both are there both are named."""
     res = base_residence()
     res["Mars"] = cov(span(7, "04-20", "05-01")); res["Rahu"] = cov(span(7, "04-15", "05-10"))
     out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
-    rows = [(s["t_in"][5:10], s["t_out"][5:10], s["state"]) for s in out["segments"]]
-    assert rows == [("04-14", "04-15", "inactive"), ("04-15", "04-20", "unqualified"), ("04-20", "05-01", "active"),
-                    ("05-01", "05-10", "unqualified"), ("05-10", "05-15", "inactive")]
-    # a node boundary INSIDE a cited obstruction must not split it: Rahu enters 04-25 while Mars is still there
-    res = base_residence()
-    res["Mars"] = cov(span(7, "04-20", "05-01")); res["Rahu"] = cov(span(7, "04-25", "05-10"))
-    inner = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
-    assert [(s["t_in"][5:10], s["t_out"][5:10], s["state"]) for s in inner["segments"]] == [
-        ("04-14", "04-20", "inactive"), ("04-20", "05-01", "active"), ("05-01", "05-10", "unqualified"),
-        ("05-10", "05-15", "inactive")]
+    rows = [(s["t_in"][5:10], s["t_out"][5:10], s["state"], s["obstructors"]) for s in out["segments"]]
+    assert rows == [("04-14", "04-15", "inactive", []), ("04-15", "04-20", "active", ["Rahu"]),
+                    ("04-20", "05-01", "active", ["Mars", "Rahu"]), ("05-01", "05-10", "active", ["Rahu"]),
+                    ("05-10", "05-15", "inactive", [])]
+    # Ketu is a node too, and a node that merely sits in a DIFFERENT house obstructs nothing
+    res = base_residence(); res["Ketu"] = cov(span(7, "04-20", "05-01")); res["Rahu"] = cov(span(3, "04-14", "05-15"))
+    ketu = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
+    assert [(s["t_in"][5:10], s["state"], s["obstructors"]) for s in ketu["segments"]] == [
+        ("04-14", "inactive", []), ("04-20", "active", ["Ketu"]), ("05-01", "inactive", [])]
+
+
+def test_a_transiting_node_carries_no_vedha_factor():
+    """ND-NODE-VEDHA (ii): the six L0 node rows stay UNSOURCED and refused, so a node primary is declared not-applicable —
+    never a 1, never a 0 — in whichever house it stands (the Sun's pairs are NOT extended to the nodes)."""
+    for node in ("Rahu", "Ketu"):
+        for house in range(1, 13):
+            out = derive_vedha(node, house, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON,
+                               residence=base_residence(), pairs=PAIRS)
+            assert out == {"applicable": False, "state": "not_applicable", "reason": "no_cited_vedha_pair_for_this_house", "segments": []}
+
+
+def test_no_vipareeta_cancellation_a_companion_in_the_favourable_house_does_not_lift_the_obstruction():
+    """ND-VIPAREETA: bphs:PG313:C1 (commentary) says a companion joining the Sun in the 3rd would switch the 9th-house vedha off;
+    the owner left that out. Mars is in the Sun's own house (Aries, 3rd from the Moon) AND Jupiter in the vedha house (Libra, 9th):
+    the obstruction stands, and no `cancelled_vipareeta` state exists in the output."""
+    res = base_residence(); res["Mars"] = cov(span(1, "04-14", "05-15")); res["Jupiter"] = cov(span(7, "04-20", "05-01"))
+    out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
+    assert [(s["t_in"][5:10], s["state"]) for s in out["segments"]] == [("04-14", "inactive"), ("04-20", "active"), ("05-01", "inactive")]
+    assert {s["state"] for s in out["segments"]} <= {"active", "inactive", "unqualified"}
 
 
 def test_o_vi_6_half_open_edges_and_not_applicable_and_missing_inputs():
@@ -200,12 +221,12 @@ def test_o_vi_6_half_open_edges_and_not_applicable_and_missing_inputs():
 
 
 def test_value_mapping_is_the_cited_step_and_never_graded():
-    res = base_residence(); res["Mars"] = cov(span(7, "04-20", "05-01")); res["Ketu"] = cov(span(7, "05-01", "05-05"))
+    res = base_residence(); res["Mars"] = cov(span(7, "04-20", "05-01")); res["Ketu"] = [(2, "2025-01-01T00:00Z", "2025-04-30T00:00Z")]
     out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
     vals = {s["state"]: vedha_factor_value(s, factor_ref=VREF) for s in out["segments"]}
     assert vals["active"]["value"] == 0.0 and vals["active"]["qualification"] == "vedha_active"
     assert vals["inactive"]["value"] == 1.0 and vals["inactive"]["scope"] == MOON_SCOPE
-    assert vals["unqualified"]["value"] is None and vals["unqualified"]["reason"] == "node_obstruction_undecided"
+    assert vals["unqualified"]["value"] is None and vals["unqualified"]["reason"] == "node_residence_unknown"
     assert {v["value"] for v in vals.values()} <= {0.0, 1.0, None}
 
 
@@ -243,13 +264,13 @@ def test_version_exact_dispatch_and_declared_non_applicability():
 
 
 def test_qualification_propagates_from_the_node_state_into_the_channel():
-    """R1 integration: a node-undecided segment is `value: None` and must make the record's channel NULL (never 0);
+    """R1 integration: a node-residence-unknown segment is `value: None` and must make the record's channel NULL (never 0);
     an active (0.0) segment is a genuine zero; a declared non-applicability is skipped."""
     score = pytest.importorskip("services.gochara_rules.score")
     from services.gochara_rules.records import RelationshipRecord
     if not hasattr(score, "unqualified_reasons"):          # R1 (PR #2905) not in this tree yet
         pytest.skip("R1 qualification propagation not present in this tree")
-    res = base_residence(); res["Rahu"] = cov(span(7, "04-20", "05-01"))
+    res = base_residence(); res["Rahu"] = [(2, "2025-01-01T00:00Z", "2025-04-30T00:00Z")]
     out = derive_vedha("Sun", 3, ("2025-04-14T00:00Z", "2025-05-15T00:00Z"), moon_sign=MOON, residence=res, pairs=PAIRS)
     node_seg = next(s for s in out["segments"] if s["state"] == "unqualified")
     rec = RelationshipRecord(chart_id="482012f1-710e-4a25-994a-93821f5871aa", generation="5.0", event_class="marriage", affected_person="native",
@@ -336,12 +357,12 @@ def test_malformed_residence_is_refused():
 
 # ── Codex round 7 [6c] — structured results + an INDEPENDENT oracle ───────────────────────────────────
 def test_structured_results_carry_state_reason_scope_and_obstructors():
-    res = base_residence(); res["Mars"] = cov(span(7, "04-20", "05-01")); res["Rahu"] = cov(span(7, "05-01", "05-05")); res["Venus"] = []
+    res = base_residence(); res["Mars"] = cov(span(7, "04-20", "05-01")); res["Venus"] = []
     out = run(res)
     results = vedha_factor_results(out, factor_ref=VREF)
     by = {r["state"]: r for r in results}
     assert by["active"]["value"] == 0.0 and by["active"]["qualification"] == "vedha_active" and by["active"]["obstructors"] == ["Mars"]
-    assert by["unqualified"]["value"] is None and by["unqualified"]["reason"] in ("obstructor_residence_unknown", "node_obstruction_undecided")
+    assert by["unqualified"]["value"] is None and by["unqualified"]["reason"] == "obstructor_residence_unknown"
     assert by["unqualified"]["unknown_obstructors"] == ["Venus"] and all(r["factor"] == VREF for r in results)
     assert all({"t_in", "t_out", "state", "value", "reason", "reasons", "scope", "qualification", "obstructors"} <= set(r) for r in results)
     clean = vedha_factor_results(run(base_residence()), factor_ref=VREF)
@@ -411,7 +432,8 @@ def test_every_reason_the_derivation_can_emit_is_declared_on_the_registry_row():
     for primary, house, span_, res in _scenarios():
         for seg in run(res, primary, house, span_)["segments"]:
             emitted |= set(seg["reasons"])
-    assert {"obstructor_residence_unknown", "node_obstruction_undecided", "node_residence_unknown"} <= emitted
+    assert {"obstructor_residence_unknown", "node_residence_unknown"} <= emitted
+    assert "node_obstruction_undecided" not in emitted                  # ND-NODE-VEDHA (i): a node in the vedha house is an obstruction, never undecided
     assert emitted <= declared, emitted - declared
 
 
@@ -440,7 +462,7 @@ def test_callback_returns_the_requested_reference_boundaries_scopes_and_structur
     assert cb["factor"] == VREF and cb["applicable"] is True and all(r["factor"] == VREF for r in cb["results"])
     assert cb["boundaries"] == ["2025-04-14T00:00Z", "2025-04-20T00:00Z", "2025-05-01T00:00Z", "2025-05-05T00:00Z", "2025-05-15T00:00Z"]
     assert cb["scopes"] == [MOON_SCOPE]                                                 # the inactive stretches carry the Moon scope
-    assert [r["state"] for r in cb["results"]] == ["inactive", "active", "unqualified", "inactive"]
+    assert [(r["state"], r["obstructors"]) for r in cb["results"]] == [("inactive", []), ("active", ["Mars"]), ("active", ["Rahu"]), ("inactive", [])]
     assert check_callback_result(cb, VREF) is cb
     na = vedha_callback_result(run(base_residence(), "Saturn", 8), factor_ref=VREF)
     assert na["applicable"] is False and na["boundaries"] == [] and [r["state"] for r in na["results"]] == ["not_applicable"]
