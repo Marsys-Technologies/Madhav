@@ -1,7 +1,8 @@
 # Gochara verifier/sealer ROLE PROVISIONING — ONE-SHOT. DRAFT: HOLD. Codex reviews this file BEFORE it is ever dispatched.
 #
 # Authority: the native's direct ruling #1 (2026-10-02): SQL admin route = option A — a reviewed one-shot workflow over the
-# existing governed ownership-admin secret, run under the owner's credentials by the steward.
+# existing governed ownership-admin secret, run under the owner's credentials by the steward. Stage grant-l1-reads uses the protected
+# data_plane_migrator secret instead (precedent: kala-verifier-role-oneshot.yml grant-usage, owner-approved 2026-10-08; owner step 1 fix 2026-10-21).
 #   decisions/NATIVE_DIRECT_RULINGS_20261002.md · runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md (acts 1, 2a, 2b)
 #
 # It does exactly one thing, and only the statements in platform/scripts/gochara-provision-roles.sh (reviewed with it):
@@ -10,6 +11,8 @@
 #                    and written straight to Secret Manager; refuses if either role already exists.
 #   sealer-password  act 2b only, after the live-gate proof (see the runbook §7.1).
 #   grant-l1-reads   J-4b-a55j (SR-GRANTS-MINIMAL): SELECT on chart_facts and chart_dashas plus USAGE on schema public (C-04) for the two principals, nothing else, closure-checked in the same transaction.
+#                    Owner step 1 fix (2026-10-21): this stage alone runs over the protected data_plane_migrator secret (the ownership admin owns nothing after the data-plane
+#                    cutover and cannot grant on public or on the L1 tables), issuing each GRANT as data_plane_l1_owner / data_plane_schema_owner. No new stage, no new secret.
 #   sealer-credential  J-4b-a55j (SR-GRANTS-MINIMAL): the sealer's password generated in the run and its DSN written straight to Secret Manager (gochara-sealer-db-url);
 #                    replaces the person-run staging of act 2b. Never printed, never read. PREPARED, NOT DISPATCHED: its secret container, its temporary
 #                    secretVersionManager binding and its consumer (the seal job, J-5s) are production steps recorded in J4B_A55J_PREBUILD_v1_0.md.
@@ -97,6 +100,9 @@ jobs:
           STAGE: ${{ inputs.stage }}
           DSN_TAIL: ${{ inputs.dsn_tail }}
           ADMIN_DATABASE_URL: ${{ secrets.DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL }}
+          # grant-l1-reads ONLY: the protected data_plane_migrator route (member of the schema and L1 owner roles; the ownership admin owns nothing after the cutover).
+          # Same secret and route as kala-verifier-role-oneshot.yml (stage grant-usage). Read from the environment by the script, never from argv.
+          MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
           SEALER_PASSWORD_STAGING: ${{ secrets.GOCHARA_SEALER_PASSWORD_STAGING }}
           GCLOUD_PROJECT: madhav-astrology
         run: bash platform/scripts/gochara-provision-roles.sh
