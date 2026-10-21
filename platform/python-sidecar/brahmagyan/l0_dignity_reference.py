@@ -173,20 +173,42 @@ DIGNITY_REFERENCE: list[dict[str, Any]] = [
         "graha": "Rahu",
         "exaltation_sign": "Taurus",       "exaltation_degree": None,
         "debilitation_sign": "Scorpio",    "debilitation_degree": None,
-        "moolatrikona_sign": None,         "moolatrikona_from": None, "moolatrikona_to": None,
-        "own_signs": [],
-        "classical_citation": "BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — Parashari consensus: Taurus",
-        "notes": "Taurus exaltation per Parashari mainstream (BPHS/Phaladeepika/Saravali/JH/PL); Gemini is a minority Kerala school position",
+        "moolatrikona_sign": "Gemini",     "moolatrikona_from": None, "moolatrikona_to": None,
+        "own_signs": ["Aquarius"],
+        "classical_citation": (
+            "BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — Parashari consensus: Taurus. "
+            "Moolatrikona and own signs: BPHS Ch.47 (verses 34-39½ as served), chunks bphs:PG573:C2 to bphs:PG574:C1, verse text: "
+            "“The Moola trikonas of Rahu and Ketu are Gemini and Sagittarius respectively. "
+            "The own signs of Rahu and Ketu are Aquarius and Scorpio in that order.” (SR-DOCTRINE-H, migration 1401)"
+        ),
+        "notes": (
+            "Taurus exaltation per Parashari mainstream (BPHS/Phaladeepika/Saravali/JH/PL); Gemini is a minority Kerala school position. "
+            "Moolatrikona Gemini and own sign Aquarius per BPHS Ch.47; the verse names signs only, so no degree range is stored "
+            "(moolatrikona_from and moolatrikona_to are NULL). Minority reading, not stored in own_signs and unresolved: "
+            "“Some learneds have expressed the view that Virgo is the own sign of Rahu and Pisces is the own sign of Ketu.” "
+            "(bphs:PG573:C2 to bphs:PG574:C1)"
+        ),
         "variant_traditions": RAHU_VARIANT_TRADITIONS,
     },
     {
         "graha": "Ketu",
         "exaltation_sign": "Scorpio",      "exaltation_degree": None,
         "debilitation_sign": "Taurus",     "debilitation_degree": None,
-        "moolatrikona_sign": None,         "moolatrikona_from": None, "moolatrikona_to": None,
-        "own_signs": [],
-        "classical_citation": "BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — reverse of Rahu",
-        "notes": "Scorpio exaltation per Parashari mainstream; Sagittarius is a minority Kerala school position",
+        "moolatrikona_sign": "Sagittarius", "moolatrikona_from": None, "moolatrikona_to": None,
+        "own_signs": ["Scorpio"],
+        "classical_citation": (
+            "BPHS Ch.3 (Santanam); Phaladeepika Ch.1; Saravali — reverse of Rahu. "
+            "Moolatrikona and own signs: BPHS Ch.47 (verses 34-39½ as served), chunks bphs:PG573:C2 to bphs:PG574:C1, verse text: "
+            "“The Moola trikonas of Rahu and Ketu are Gemini and Sagittarius respectively. "
+            "The own signs of Rahu and Ketu are Aquarius and Scorpio in that order.” (SR-DOCTRINE-H, migration 1401)"
+        ),
+        "notes": (
+            "Scorpio exaltation per Parashari mainstream; Sagittarius is a minority Kerala school position. "
+            "Moolatrikona Sagittarius and own sign Scorpio per BPHS Ch.47; the verse names signs only, so no degree range is stored "
+            "(moolatrikona_from and moolatrikona_to are NULL). Minority reading, not stored in own_signs and unresolved: "
+            "“Some learneds have expressed the view that Virgo is the own sign of Rahu and Pisces is the own sign of Ketu.” "
+            "(bphs:PG573:C2 to bphs:PG574:C1)"
+        ),
         "variant_traditions": KETU_VARIANT_TRADITIONS,
     },
 ]

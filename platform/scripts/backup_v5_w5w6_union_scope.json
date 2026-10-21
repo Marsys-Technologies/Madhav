@@ -1,0 +1,993 @@
+{
+ "schema": "ky.smalltest_backup_scope/1",
+ "name": "w5w6_union",
+ "derived_at_commit": "4ebc0b2eb2e4ad22e1eed546427bf231f9e2fffc",
+ "derived_from": "the UNION of the two write surfaces of the W5+W6 window (SR-MINIMAL-PROTECTION: one dump, one scope). (1) J-6: every table head_operation.change_head writes or reads for publish_head / rollback_head and the retained previous head (head_operation.py: kala_gochara_authority UPDATE; kala_gochara_publication, ka_gochara_generation_seal, the RETAINED_TABLES rows and the retained-rows comparison READ), plus the three tables the pack's J-6 scope-hash SQL measures (PACK/sql/w6-j6-scope-hash.sql). (2) K9: every table the closed six-writer rebuild plan writes (ka_yojaka, ka_vedha_gochara, ka_gochara_resonance, ka_gochara, ka_sangam, ka_vighnakara, in the rehearsed order), the layer manifest/verification/head tables publication.verify / publish / rollback write, what rebuild_control.cancel / teardown touch, and the orchestrator bookkeeping every run writes. Method: the J-2a static scan (smalltest_backup_scope_support) run over head_operation.py, the first-party import closure of the six writers and of the K9 control modules, and the orchestrator package, plus the literal table arguments of replace_candidate_partition (the writers' only dynamic path); tests/test_backup_v5_w5w6_union_scope.py (U1) refuses a write target this file does not list. `sites` below are that scan's (prose, not in the digest).",
+ "rule": "data_tables = written + context. digest = sha256 of the canonical JSON {schema, name, tables: sorted data_tables}. Prose and sites do not enter the digest.",
+ "plan": [
+  "ka_yojaka",
+  "ka_vedha_gochara",
+  "ka_gochara_resonance",
+  "ka_gochara",
+  "ka_sangam",
+  "ka_vighnakara"
+ ],
+ "written": [
+  {
+   "table": "public.kala_gochara_authority",
+   "group": "j6_head",
+   "sites": [
+    {
+     "file": "00_ARCHITECTURE/briefs/kalayantra/fleet/head_operation.py",
+     "function": "change_head",
+     "kind": "UPDATE",
+     "line": 282
+    }
+   ],
+   "note": "the J-6 head pointer: head_operation.change_head UPDATEs the one chart row by compare-and-swap (publish_head / rollback_head); the pack's scope-hash SQL (w6-j6-scope-hash.sql) reads it"
+  },
+  {
+   "table": "public.kala_gochara_publication",
+   "group": "j6_head",
+   "sites": [],
+   "note": "declared WRITTEN by the J-6 pack (PACK/SCOPE.json written_tables: publish_head writes the authority row and, through the ledger's publish, the publication row); head_operation.py itself only READS it (the retained-rows comparison and the target check), so no scanned site writes it. Listed as written, the stricter class: the capture then also refuses a trigger or referential action of this table that reaches outside the scope"
+  },
+  {
+   "table": "public.kala_layer_candidate",
+   "group": "k9_layer_manifest",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/kala_core/manifest/__init__.py",
+     "function": "open_candidate",
+     "kind": "INSERT",
+     "line": 67
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/manifest/__init__.py",
+     "function": "publish_candidate",
+     "kind": "UPDATE",
+     "line": 180
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "teardown",
+     "kind": "DELETE",
+     "line": 310
+    }
+   ],
+   "note": "the K9 candidate: opened by the manifest, published by publish_candidate, deleted by rebuild_control.teardown (an unpublished candidate of a terminal run)"
+  },
+  {
+   "table": "public.kala_layer_candidate_grain",
+   "group": "k9_layer_manifest",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/kala_core/manifest/__init__.py",
+     "function": "attest_grain",
+     "kind": "INSERT",
+     "line": 125
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/promise/candidate.py",
+     "function": "pin_input_vector",
+     "kind": "INSERT",
+     "line": 51
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "_delete_of_generation",
+     "kind": "DELETE",
+     "line": 269,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.kala_layer_head",
+   "group": "k9_layer_manifest",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+     "function": "publish_head",
+     "kind": "INSERT",
+     "line": 192
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+     "function": "publish_head",
+     "kind": "UPDATE",
+     "line": 199
+    }
+   ],
+   "note": "the K9 layer head: publication.publish / rollback switch it by compare-and-swap (idempotency.publish_head)"
+  },
+  {
+   "table": "public.kala_layer_verification",
+   "group": "k9_layer_manifest",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "_delete_of_generation",
+     "kind": "DELETE",
+     "line": 269,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/verify/__init__.py",
+     "function": "verify_candidate",
+     "kind": "INSERT",
+     "line": 49
+    }
+   ]
+  },
+  {
+   "table": "public.kala_activation_predicates",
+   "group": "k9_writer_ka_yojaka",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
+     "function": "KaYojakaWriter.legacy_testimony_fixture",
+     "kind": "DELETE",
+     "line": 575
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
+     "function": "KaYojakaWriter.legacy_testimony_fixture",
+     "kind": "INSERT",
+     "line": 554
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
+     "function": "KaYojakaWriter.run_substep",
+     "kind": "DELETE",
+     "line": 164
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
+     "function": "KaYojakaWriter.run_substep",
+     "kind": "INSERT",
+     "line": 168
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+     "function": "<module>",
+     "kind": "DELETE",
+     "line": 46
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "teardown",
+     "kind": "DELETE",
+     "line": 308,
+     "via": "dynamic"
+    }
+   ],
+   "note": "ka_yojaka output; carries the candidate generation with NO foreign key to kala_layer_candidate, so rebuild_control.teardown deletes it by (chart_id, generation) (UNLINKED_CANDIDATE_TABLES)"
+  },
+  {
+   "table": "public.kala_vedha_gochara",
+   "group": "k9_writer_ka_vedha_gochara",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/ka_vedha_gochara/writer.py",
+     "function": "<module>",
+     "kind": "DELETE",
+     "line": 118
+    },
+    {
+     "file": "platform/python-sidecar/services/ka_vedha_gochara/writer.py",
+     "function": "<module>",
+     "kind": "INSERT",
+     "line": 120
+    }
+   ]
+  },
+  {
+   "table": "public.kala_vedha_gochara_candidate",
+   "group": "k9_writer_ka_vedha_gochara",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+     "function": "<module>",
+     "kind": "DELETE",
+     "line": 40
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+     "function": "replace_candidate_partition",
+     "kind": "INSERT",
+     "line": 104,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "_delete_of_generation",
+     "kind": "DELETE",
+     "line": 269,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.kala_vedha_gochara_interval",
+   "group": "k9_writer_ka_vedha_gochara",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+     "function": "<module>",
+     "kind": "DELETE",
+     "line": 41
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+     "function": "replace_candidate_partition",
+     "kind": "INSERT",
+     "line": 104,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "_delete_of_generation",
+     "kind": "DELETE",
+     "line": 269,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.gochara_resonance_map",
+   "group": "k9_writer_ka_gochara_resonance",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/ka_gochara_resonance/writer.py",
+     "function": "<module>",
+     "kind": "DELETE",
+     "line": 932
+    },
+    {
+     "file": "platform/python-sidecar/services/ka_gochara_resonance/writer.py",
+     "function": "<module>",
+     "kind": "INSERT",
+     "line": 934
+    }
+   ],
+   "note": "ka_gochara_resonance output, per chart (no generation): rebuild_control.teardown does NOT remove it (K9 rehearsal r5 N8)"
+  },
+  {
+   "table": "public.kala_f1_relationship",
+   "group": "k9_writer_ka_gochara_resonance",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/ka_gochara_resonance/relationship_storage.py",
+     "function": "store_projection",
+     "kind": "DELETE",
+     "line": 47
+    },
+    {
+     "file": "platform/python-sidecar/services/ka_gochara_resonance/relationship_storage.py",
+     "function": "store_projection",
+     "kind": "INSERT",
+     "line": 59
+    }
+   ]
+  },
+  {
+   "table": "public.kala_f1_target_object",
+   "group": "k9_writer_ka_gochara_resonance",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/ka_gochara_resonance/relationship_storage.py",
+     "function": "store_projection",
+     "kind": "DELETE",
+     "line": 49
+    },
+    {
+     "file": "platform/python-sidecar/services/ka_gochara_resonance/relationship_storage.py",
+     "function": "store_projection",
+     "kind": "INSERT",
+     "line": 54
+    }
+   ]
+  },
+  {
+   "table": "public.kala_gochara_windows_v2",
+   "group": "k9_writer_ka_gochara",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
+     "function": "<module>",
+     "kind": "INSERT",
+     "line": 142,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
+     "function": "KaGocharaWriter.run_substep",
+     "kind": "DELETE",
+     "line": 390,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.kala_gochara_v2_build_state",
+   "group": "k9_writer_ka_gochara",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
+     "function": "KaGocharaWriter._upsert_build_state",
+     "kind": "INSERT",
+     "line": 490,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.kala_convergence",
+   "group": "k9_writer_ka_sangam",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+     "function": "_LegacyKaSangamWriter._insert_windows",
+     "kind": "INSERT",
+     "line": 996
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+     "function": "_LegacyKaSangamWriter._substep_lifetime",
+     "kind": "DELETE",
+     "line": 638
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+     "function": "_LegacyKaSangamWriter._substep_near",
+     "kind": "DELETE",
+     "line": 587
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+     "function": "_LegacyKaSangamWriter._substep_near",
+     "kind": "DELETE",
+     "line": 597
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+     "function": "_LegacyKaSangamWriter.run_substep",
+     "kind": "DELETE",
+     "line": 509
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+     "function": "<module>",
+     "kind": "DELETE",
+     "line": 48
+    }
+   ]
+  },
+  {
+   "table": "public.build_substep_progress",
+   "group": "k9_writer_ka_sangam",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+     "function": "_LegacyKaSangamWriter._record_substep",
+     "kind": "INSERT",
+     "line": 571
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+     "function": "_LegacyKaSangamWriter.run_substep",
+     "kind": "DELETE",
+     "line": 511
+    }
+   ],
+   "note": "ka_sangam legacy writer substep bookkeeping"
+  },
+  {
+   "table": "public.kala_jury_candidate",
+   "group": "k9_writer_ka_sangam",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/ka_sangam/jury/candidate.py",
+     "function": "write_candidate",
+     "kind": "DELETE",
+     "line": 329
+    },
+    {
+     "file": "platform/python-sidecar/services/ka_sangam/jury/candidate.py",
+     "function": "write_candidate",
+     "kind": "INSERT",
+     "line": 330
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "_delete_of_generation",
+     "kind": "DELETE",
+     "line": 269,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.kala_jury_candidate_segment",
+   "group": "k9_writer_ka_sangam",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/ka_sangam/jury/candidate.py",
+     "function": "write_candidate",
+     "kind": "DELETE",
+     "line": 327
+    },
+    {
+     "file": "platform/python-sidecar/services/ka_sangam/jury/candidate.py",
+     "function": "write_candidate",
+     "kind": "INSERT",
+     "line": 348
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "_delete_of_generation",
+     "kind": "DELETE",
+     "line": 269,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.kala_jury_candidate_contest",
+   "group": "k9_writer_ka_sangam",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/ka_sangam/jury/candidate.py",
+     "function": "write_candidate",
+     "kind": "DELETE",
+     "line": 328
+    },
+    {
+     "file": "platform/python-sidecar/services/ka_sangam/jury/candidate.py",
+     "function": "write_candidate",
+     "kind": "INSERT",
+     "line": 353
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "_delete_of_generation",
+     "kind": "DELETE",
+     "line": 269,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.kala_obstruction",
+   "group": "k9_writer_ka_vighnakara",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py",
+     "function": "_LegacyKaVighnakaraWriter.run",
+     "kind": "DELETE",
+     "line": 226
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py",
+     "function": "_LegacyKaVighnakaraWriter.run",
+     "kind": "INSERT",
+     "line": 352
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+     "function": "<module>",
+     "kind": "DELETE",
+     "line": 47
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+     "function": "replace_candidate_partition",
+     "kind": "INSERT",
+     "line": 104,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.asset_throughput",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_drive_substeps",
+     "kind": "UPDATE",
+     "line": 776
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_mark_probe_green",
+     "kind": "UPDATE",
+     "line": 852
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_data_writer",
+     "kind": "UPDATE",
+     "line": 1217
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_data_writer",
+     "kind": "UPDATE",
+     "line": 1227
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 545
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_skip_no_delta",
+     "kind": "UPDATE",
+     "line": 919
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_upsert_throughput_state",
+     "kind": "INSERT",
+     "line": 432
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_upsert_throughput_state",
+     "kind": "INSERT",
+     "line": 440
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "mark_asset_error",
+     "kind": "UPDATE",
+     "line": 492
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "run_asset",
+     "kind": "INSERT",
+     "line": 1419
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "run_asset",
+     "kind": "INSERT",
+     "line": 1427
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "_mark_asset_error_terminal",
+     "kind": "INSERT",
+     "line": 502
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "_mark_asset_error_terminal",
+     "kind": "INSERT",
+     "line": 510
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "execute_run",
+     "kind": "UPDATE",
+     "line": 1373
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/staleness.py",
+     "function": "propagate_downstream_staleness",
+     "kind": "UPDATE",
+     "line": 130
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "restore_asset_states",
+     "kind": "UPDATE",
+     "line": 256
+    }
+   ]
+  },
+  {
+   "table": "public.asset_throughput_state_audit",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/supabase/migrations/586_f152_asset_throughput_state_audit.sql",
+     "function": "_record_asset_throughput_state_change",
+     "kind": "TRIGGER",
+     "line": 99,
+     "via": "AFTER UPDATE OF state ON asset_throughput (line 116)"
+    }
+   ],
+   "note": "written by trigger trg_asset_throughput_state_audit on every UPDATE OF state of asset_throughput; rebuild_control.failed_run_asset_states reads it"
+  },
+  {
+   "table": "public.build_runs",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "run_asset",
+     "kind": "UPDATE",
+     "line": 1443
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "_terminalize_preflight_failure",
+     "kind": "UPDATE",
+     "line": 329
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "claim_runnable_run",
+     "kind": "UPDATE",
+     "line": 431
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "mark_run_state",
+     "kind": "UPDATE",
+     "line": 422
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "cancel",
+     "kind": "UPDATE",
+     "line": 83
+    }
+   ]
+  },
+  {
+   "table": "public.build_run_assets",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_mark_probe_green",
+     "kind": "UPDATE",
+     "line": 859
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_data_writer",
+     "kind": "UPDATE",
+     "line": 1236
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_data_writer",
+     "kind": "UPDATE",
+     "line": 1282
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 551
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 587
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_skip_no_delta",
+     "kind": "UPDATE",
+     "line": 931
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "mark_asset_error",
+     "kind": "UPDATE",
+     "line": 499
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "run_asset",
+     "kind": "INSERT",
+     "line": 1435
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "_mark_asset_error_terminal",
+     "kind": "UPDATE",
+     "line": 517
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "_terminalize_preflight_failure",
+     "kind": "UPDATE",
+     "line": 329
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "execute_run",
+     "kind": "UPDATE",
+     "line": 1380
+    }
+   ]
+  },
+  {
+   "table": "public.asset_provenance_receipts",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 615
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/provenance.py",
+     "function": "persist_successful_receipt",
+     "kind": "INSERT",
+     "line": 254
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/provenance.py",
+     "function": "reattribute_unchanged_receipt",
+     "kind": "UPDATE",
+     "line": 362
+    }
+   ]
+  },
+  {
+   "table": "public.asset_freshness",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/provenance.py",
+     "function": "_upsert_freshness_row",
+     "kind": "INSERT",
+     "line": 204
+    }
+   ]
+  },
+  {
+   "table": "public.orchestrator_event_register",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/events.py",
+     "function": "<module>",
+     "kind": "INSERT",
+     "line": 102
+    }
+   ]
+  },
+  {
+   "table": "public.asset_registry",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 558
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 633
+    }
+   ],
+   "note": "written only conditionally (health columns on the probe path); also the FK parent of throughput/receipts/freshness"
+  }
+ ],
+ "context": [
+  {
+   "table": "public._migrations_applied",
+   "why": "NOT written by the window (only scripts/migrate.ts at deploy). Kept so the restore proof can state the scratch schema is at the same migration set."
+  },
+  {
+   "table": "public.ka_gochara_generation_seal",
+   "why": "read-guarded by the J-6 pack (PACK/SCOPE.json read_guarded_tables) and by head_operation._target / the target check: the sealed-generation history a head flip must not touch (migration 1379 triggers); nothing in the scanned code writes it"
+  },
+  {
+   "table": "public.kala_gochara_windows",
+   "why": "read by head_operation.retained() (RETAINED_TABLES): the previous head's rows, compared before and after every head change; change_head refuses with retained_rows_changed if they differ. Nothing in the scanned code writes it"
+  },
+  {
+   "table": "public.kala_gochara_coverage",
+   "why": "read by head_operation.retained() (RETAINED_TABLES): the previous head's rows, compared before and after every head change; change_head refuses with retained_rows_changed if they differ. Nothing in the scanned code writes it"
+  },
+  {
+   "table": "public.ka_gochara_eval_window",
+   "why": "read by head_operation.retained() (RETAINED_TABLES): the previous head's rows, compared before and after every head change; change_head refuses with retained_rows_changed if they differ. Nothing in the scanned code writes it"
+  },
+  {
+   "table": "public.ka_gochara_eval_window_record",
+   "why": "read by head_operation.retained() (RETAINED_TABLES): the previous head's rows, compared before and after every head change; change_head refuses with retained_rows_changed if they differ. Nothing in the scanned code writes it"
+  },
+  {
+   "table": "public.ka_gochara_relationship_record",
+   "why": "read by head_operation.retained() (RETAINED_TABLES): the previous head's rows, compared before and after every head change; change_head refuses with retained_rows_changed if they differ. Nothing in the scanned code writes it"
+  },
+  {
+   "table": "public.ka_gochara_contact",
+   "why": "read by head_operation.retained() (RETAINED_TABLES): the previous head's rows, compared before and after every head change; change_head refuses with retained_rows_changed if they differ. Nothing in the scanned code writes it"
+  },
+  {
+   "table": "public.ka_gochara_search_inventory",
+   "why": "read by head_operation.retained() (RETAINED_TABLES): the previous head's rows, compared before and after every head change; change_head refuses with retained_rows_changed if they differ. Nothing in the scanned code writes it"
+  }
+ ],
+ "guarded_children": [
+  {
+   "table": "public.brahma_mimamsa_prediction_ledger",
+   "why": "FK ON DELETE SET NULL from build_runs; no scanned site deletes a build_runs row (test U5), so the action never fires"
+  },
+  {
+   "table": "public.brahma_prospective_ledger",
+   "why": "FK ON DELETE SET NULL from build_runs; no scanned site deletes a build_runs row (test U5), so the action never fires"
+  },
+  {
+   "table": "public.conversations",
+   "why": "FK ON DELETE SET NULL from build_runs; no scanned site deletes a build_runs row (test U5), so the action never fires"
+  },
+  {
+   "table": "public.event_chart_state_index",
+   "why": "FK ON DELETE SET NULL from build_runs; no scanned site deletes a build_runs row (test U5), so the action never fires"
+  },
+  {
+   "table": "public.mimamsa_calibration_snapshot",
+   "why": "FK ON DELETE SET NULL from build_runs; no scanned site deletes a build_runs row (test U5), so the action never fires"
+  },
+  {
+   "table": "public.mimamsa_predictions",
+   "why": "FK ON DELETE SET NULL from build_runs; no scanned site deletes a build_runs row (test U5), so the action never fires"
+  }
+ ],
+ "unreached": [
+  {
+   "name": "idempotency_catalog_of_other_writers",
+   "check": "catalog",
+   "module": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+   "function": "replace_candidate_partition",
+   "tables": [
+    "kala_activation",
+    "kala_activation_candidate",
+    "kala_avadhi",
+    "kala_darshana",
+    "kala_darshana_candidate",
+    "kala_field",
+    "kala_field_null",
+    "kala_field_salience",
+    "kala_field_snapshots",
+    "kala_jivana_parva",
+    "kala_jivana_parva_candidate",
+    "kala_kota_chakra_candidate",
+    "kala_moorti_nirnaya_candidate",
+    "kala_sudarshana_varsha_candidate",
+    "kala_taranga",
+    "kala_taranga_candidate",
+    "kala_tithi_pravesha_candidate"
+   ],
+   "why": "idempotency._DELETE_CANDIDATE is the closed catalog of every Kāla candidate table replace_candidate_partition accepts; the DELETE text of each entry is a write site of this module. The closed plan's callers pass only the literal tables of the dynamic site below (kala_vedha_gochara_interval, kala_vedha_gochara_candidate, kala_obstruction), asserted by test U1; the others belong to writers outside the plan (ka_avadhi, ka_taranga, the K6 and contested-candidate writers, the layer-field writers), which the plan never runs."
+  },
+  {
+   "name": "issued_forecast_registrar",
+   "check": "entry_functions",
+   "module": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+   "aliases": [
+    "idempotency",
+    "idem"
+   ],
+   "entry_functions": [
+    "insert_immutable_checked"
+   ],
+   "internal_functions": [],
+   "tables": [
+    "issued_forecast"
+   ],
+   "why": "the issued-forecast registrar is delivery-only: publication._run and rebuild_control._scoped_run refuse any plan holding ka_bhavishya_lekha (delivered forecasts are append-only history, SR-K9-PUBLISHABLE D8), and no scanned module calls insert_immutable_checked."
+  },
+  {
+   "name": "sky_event_store",
+   "check": "class_imports",
+   "module": "platform/python-sidecar/services/gochara_kernel/substrate.py",
+   "class_names": [
+    "SkyEventStore"
+   ],
+   "tables": [
+    "ka_gochara_physical_object",
+    "ka_gochara_sky_convention",
+    "ka_gochara_sky_event"
+   ],
+   "why": "the sky-event substrate writers are methods of SkyEventStore; the closed plan imports only jd_to_utc and PhysicalObjectId from this module (ka_vedha_gochara.candidate, ka_vighnakara.sealed, kala_core.sky), never the store. A writer that starts to use the store fails test U1."
+  },
+  {
+   "name": "bg_gochara_arcs_writer",
+   "check": "imported_names",
+   "module": "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py",
+   "allowed_imports": [
+    "SUBSTRATE_VERSION"
+   ],
+   "tables": [
+    "bg_gochara_arcs"
+   ],
+   "why": "the L0/L1 arc substrate writer is not a plan asset (the plan is ka_ only: publication._run / rebuild_control._scoped_run refuse a non-ka_ asset); ka_gochara imports only its SUBSTRATE_VERSION constant."
+  }
+ ],
+ "dynamic_sites": [
+  {
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
+   "function": "KaGocharaWriter._upsert_build_state",
+   "resolver": "const:platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py:BUILD_STATE_TABLE:scalar",
+   "tables": [
+    "kala_gochara_v2_build_state"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
+   "function": "KaGocharaWriter.run_substep",
+   "resolver": "const:platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py:TABLE:scalar",
+   "tables": [
+    "kala_gochara_windows_v2"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
+   "function": "<module>",
+   "resolver": "const:platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py:TABLE:scalar",
+   "tables": [
+    "kala_gochara_windows_v2"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py",
+   "function": "GocharaArcsWriter.run_substep",
+   "resolver": "const:platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py:TABLE:scalar",
+   "tables": [
+    "bg_gochara_arcs"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py",
+   "function": "<module>",
+   "resolver": "const:platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py:TABLE:scalar",
+   "tables": [
+    "bg_gochara_arcs"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/services/kala_core/idempotency/__init__.py",
+   "function": "replace_candidate_partition",
+   "resolver": "literals:replace_candidate_partition",
+   "tables": [
+    "kala_obstruction",
+    "kala_vedha_gochara_candidate",
+    "kala_vedha_gochara_interval"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+   "function": "_delete_of_generation",
+   "resolver": "fk_referrers:kala_layer_candidate:plan",
+   "tables": [
+    "kala_jury_candidate",
+    "kala_jury_candidate_contest",
+    "kala_jury_candidate_segment",
+    "kala_layer_candidate_grain",
+    "kala_layer_verification",
+    "kala_vedha_gochara_candidate",
+    "kala_vedha_gochara_interval"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+   "function": "teardown",
+   "resolver": "const:platform/python-sidecar/services/kala_core/rebuild_control.py:UNLINKED_CANDIDATE_TABLES:plain",
+   "tables": [
+    "kala_activation_predicates"
+   ]
+  }
+ ]
+}
