@@ -203,9 +203,11 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     import types
     source = ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py'
     # validate's signed route is signer_acceptance_problem (the A8 §3.9 block, moved out unchanged by OWNER-MINIMAL-PROTECTION-NOW);
-    # orchestrator_rebuild_cancel_problem (SR-CANCEL-LANE) is compiled for real: it returns None before touching any state for a non-cancel kind
-    functions = [n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef) and n.name in ('signer_acceptance_problem', 'orchestrator_rebuild_cancel_problem', 'validate')]
-    assert len(functions) == 3
+    # orchestrator_rebuild_cancel_problem (SR-CANCEL-LANE) and orchestrator_rebuild_dryrun_problem (SR-K9-PUBLISHABLE D7) are compiled for real: each
+    # returns None before touching any state for a kind that is not orchestrator_rebuild[_cancel]
+    functions = [n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef)
+                 and n.name in ('signer_acceptance_problem', 'orchestrator_rebuild_cancel_problem', 'orchestrator_rebuild_dryrun_problem', 'validate')]
+    assert len(functions) == 4
     accepted_dir = tmp_path / 'acceptance'; accepted_dir.mkdir()
     globals_ = {'pathlib': importlib.import_module('pathlib'), 'SAFE_ID': importlib.import_module('re').compile(r'^[a-z0-9_-]+$'),
                 'SAFE_ARG': importlib.import_module('re').compile(r'^[A-Za-z0-9_.:+,/-]+$'),
