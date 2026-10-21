@@ -325,10 +325,10 @@ NARR_CITES = {
     "bo_upaya": [(_WR + "bo_upaya.py", 1010, "reason = ("), (_WR + "bo_upaya.py", 1714, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
-    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 648, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 700, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 757, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 834, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 913, "'reason': ("), (_WR + "ka_vighnakara.py", 969, "'reason': f\"{planet_str} combust"),
-                      (_WR + "ka_vighnakara.py", 292, "json.dumps(obs['detail'])"),
+    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 681, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 733, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 790, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 867, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 946, "'reason': ("), (_WR + "ka_vighnakara.py", 1002, "'reason': f\"{planet_str} combust"),
+                      (_WR + "ka_vighnakara.py", 302, "json.dumps(obs['detail'])"),
                       (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
     "ka_avadhi": [(_WR + "ka_avadhi.py", 198, "'note': f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\""),
                   (_WR + "ka_avadhi.py", 315, "dossier=Jsonb(dossier)"),
@@ -668,7 +668,7 @@ def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant
     roots = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
              if isinstance(k, ast.Constant) and k.value == "detail"]
     composed, constant = _composed_lines(nw.composed_report(tree, roots, ("reason",)))
-    assert composed == [648, 700, 757, 834, 913, 969] and constant == [795, 870]
+    assert composed == [681, 733, 790, 867, 946, 1002] and constant == [828, 903]
 
 
 def _avadhi_dossier_prose_report(src):

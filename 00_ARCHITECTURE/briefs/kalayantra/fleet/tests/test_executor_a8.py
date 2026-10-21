@@ -19,6 +19,7 @@ execute_lane against test_executor_overlay's fixture repository.
 import datetime as dt
 import importlib.util
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -30,7 +31,20 @@ from test_executor_table import ALL_CAPS, CANONICAL_CHART, OPS_FILE, World, _loa
 HERE = Path(__file__).resolve().parent
 FLEET = HERE.parent
 REPO = FLEET.parents[3]
-REMOTE_ASYNC = {"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"}
+sys.path.insert(0, str(FLEET))
+import executor_pin_shards  # noqa: E402  (SR-CHURN-CUT 5: a later kind declares its class in a shard, not on a line below)
+SHARDS = executor_pin_shards.load_shards()
+REMOTE_ASYNC = {"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"}   # the kinds executor.REMOTE_ASYNC_KINDS names (frozen BASE)
+# frozen BASE of the two censuses below; a later kind is a `classes` entry (`dryrun_census` / `remote_async`) of its shard
+BASE_DRYRUN_CENSUS = {"smalltest_dispatch_dryrun", "smalltest_teardown_dryrun", "measuring_dispatch_dryrun", "measuring_teardown_dryrun",
+                      "orchestrator_rebuild_dryrun", "layer_verify_dryrun", "layer_publish_dryrun", "layer_rollback_dryrun",
+                      "scheduler_pause_dryrun", "scheduler_resume_dryrun", "measuring_cancel_dryrun",
+                      "verification_job_dryrun", "century_dispatch_dryrun", "century_teardown_dryrun", "century_cancel_dryrun", "verification_cancel_dryrun", "publish_head_dryrun", "rollback_head_dryrun", "protected_window_dispatch_dryrun", "gochara_role_provisioning_dispatch_dryrun",
+                      "orchestrator_rebuild_cancel_dryrun", "orchestrator_rebuild_teardown_dryrun"}   # SR-PREBUILD-ALL: the K9 control dry runs hold the builder capability like the rebuild
+BASE_FENCED = REMOTE_ASYNC | {"protected_window_dispatch"}   # U-M-01: fenced by its table flag alone
+CLASSES = executor_pin_shards.classes_after({**{k: ["dryrun_census"] for k in BASE_DRYRUN_CENSUS}, **{k: ["remote_async"] for k in BASE_FENCED}}, SHARDS)
+DRYRUN_CENSUS = executor_pin_shards.kinds_with(CLASSES, "dryrun_census")
+FENCED = executor_pin_shards.kinds_with(CLASSES, "remote_async")
 MISSING = "required backup/restore/dry-run attestation missing"
 EXPIRED = "approval expired or not yet valid"
 
@@ -203,11 +217,7 @@ def test_the_signers_required_checks_are_exactly_what_the_executor_demands(tmp_p
 def test_every_dry_run_kind_is_read_only_with_a_credential_in_the_table():
     ops = json.loads(OPS_FILE.read_text())["ops"]
     dry = {k for k in ops if k.endswith("_dryrun")}
-    assert dry == {"smalltest_dispatch_dryrun", "smalltest_teardown_dryrun", "measuring_dispatch_dryrun", "measuring_teardown_dryrun",
-                   "orchestrator_rebuild_dryrun", "layer_verify_dryrun", "layer_publish_dryrun", "layer_rollback_dryrun",
-                   "scheduler_pause_dryrun", "scheduler_resume_dryrun", "measuring_cancel_dryrun",
-                   "verification_job_dryrun", "century_dispatch_dryrun", "century_teardown_dryrun", "century_cancel_dryrun", "verification_cancel_dryrun", "publish_head_dryrun", "rollback_head_dryrun", "protected_window_dispatch_dryrun", "gochara_role_provisioning_dispatch_dryrun",
-                   "orchestrator_rebuild_cancel_dryrun", "orchestrator_rebuild_teardown_dryrun"}   # SR-PREBUILD-ALL: the K9 control dry runs hold the builder capability like the rebuild
+    assert dry == DRYRUN_CENSUS
     credential_free = {"protected_window_dispatch_dryrun", "gochara_role_provisioning_dispatch_dryrun"}   # U-M-01 (I): its only credential is the GitHub CLI session of the executor's own HOME, no database or cloud capability (least privilege); U-M-03: reads git only and makes no gh call, so it holds no credential at all
     for kind in dry:
         assert ops[kind]["production"] is False, kind
@@ -287,8 +297,9 @@ def test_the_named_remote_kinds_are_fenced_without_the_flag_and_the_table_flags_
     assert mod.remote_async("some_future_kind", {"production": True, "remote_async": True}) is True
     assert mod.remote_async("some_future_kind", {"production": True, "remote_async": "true"}) is False       # the boolean, never prose
     ops = json.loads(OPS_FILE.read_text())["ops"]
-    assert {k for k, e in ops.items() if e.get("remote_async") is True} == REMOTE_ASYNC | {"protected_window_dispatch"}   # U-M-01: fenced by its table flag alone (executor.py is untouched)
-    assert all(ops[k]["production"] is True for k in REMOTE_ASYNC | {"protected_window_dispatch"})
+    assert {k for k, e in ops.items() if e.get("remote_async") is True} == FENCED   # U-M-01: protected_window_dispatch is fenced by its table flag alone
+    assert all(ops[k]["production"] is True for k in FENCED)
+    assert REMOTE_ASYNC <= mod.REMOTE_ASYNC_KINDS <= FENCED       # whatever the executor names is fenced; a kind named later changes REMOTE_ASYNC_KINDS' digest (a shard's function_hashes)
 
 
 # 7 ── lane_receipts

@@ -100,6 +100,8 @@ from pipeline.orchestrator.writers import (
     register,
 )
 from services.gochara_grammar import resonance_map as RM
+from services.kala_core.writer_grain import (
+    GRAIN_STEP, attest_inputs, bound_candidate, grain_steps)
 from services.gochara_intensity._dbutil import savepoint_scope
 from services.w2g.db_source import DbArcSource
 from services.w2g.fingerprint import ARC_ENGINE_VERSION, class_fingerprint
@@ -185,6 +187,18 @@ class KaGocharaWriter(WriterBase):
     # ── FROZEN CONTRACT: plan_substeps + run_substep ─────────────────────────
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
+        # K9 (SR-K9-PUBLISHABLE): a build bound to a layer candidate also owes
+        # the candidate its `ka_gochara:inputs` grain, even when every class is
+        # fingerprint-complete or the plan is honestly empty. Planning stays
+        # read-only: the attestation substep is offered only while it is absent.
+        steps = self._plan_event_classes(ctx)
+        candidate = bound_candidate(ctx.db_conn, getattr(ctx, 'build_id', None), ctx.config['chart_id'])
+        if candidate is None:
+            return steps
+        return steps + grain_steps(ctx, candidate, self.asset_id,
+                                   self._input_sources(ctx.db_conn, ctx.config['chart_id']))
+
+    def _plan_event_classes(self, ctx: ContextSpec) -> list[SubStep]:
         chart_id = ctx.config['chart_id']
         conn = ctx.db_conn
         query = _query_fn(conn)
@@ -252,7 +266,47 @@ class KaGocharaWriter(WriterBase):
 
         return remaining
 
+    @staticmethod
+    def _input_sources(conn, chart_id: str) -> dict[str, list]:
+        """This writer's own input identity: per populated event class the
+        resonance targets' class_fingerprint, plus the arc fingerprints."""
+        query = _query_fn(conn)
+        arc_fps = KaGocharaWriter._fetch_arc_fingerprints(query)
+        classes = [r["event_class"] for r in query(
+            "SELECT DISTINCT event_class FROM gochara_resonance_map "
+            "WHERE chart_id = %s ORDER BY event_class", [chart_id])]
+        ledger = []
+        for event_class in classes:
+            with savepoint_scope(conn, "w2g_v2_targets_grain"):
+                targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
+            fp = (class_fingerprint(event_class, GRAMMAR_VERSION, [t.target_ref for t in targets],
+                                    BODIES, arc_fps) if targets else None)
+            ledger.append([event_class, fp])
+        return {'class_fingerprints': ledger, 'arc_fingerprints': sorted(arc_fps.items())}
+
+    def _attest_candidate_grain(self, ctx: ContextSpec) -> WriterResult:
+        """Attest `ka_gochara:inputs` under the candidate generation.
+
+        The input ledger is what this writer itself fingerprints: per populated
+        event class the resonance targets' class_fingerprint, plus the arc
+        fingerprints. 'rows' only when this chart holds windows in its own table.
+        """
+        chart_id = ctx.config['chart_id']
+        conn = ctx.db_conn
+        candidate = bound_candidate(conn, ctx.build_id, chart_id)
+        if candidate is None:
+            raise ValueError('grain attestation requires a candidate-bound build')
+        query = _query_fn(conn)
+        produced = query(f"SELECT count(*) AS n FROM {TABLE} WHERE chart_id = %s AND generation = %s",
+                         [chart_id, GENERATION_V2])[0]["n"]
+        attest_inputs(conn, candidate, self.asset_id,
+                      sources=self._input_sources(conn, chart_id), produced_rows=int(produced))
+        return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                            notes='candidate grain ka_gochara:inputs attested')
+
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
+        if step.key == GRAIN_STEP:
+            return self._attest_candidate_grain(ctx)
         t0 = time.time()
         chart_id = ctx.config['chart_id']
         event_class = step.key

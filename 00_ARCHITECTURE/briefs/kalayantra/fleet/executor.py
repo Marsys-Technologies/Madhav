@@ -81,13 +81,44 @@ SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]{1,80}$"); SAFE_ARG = re.compile(r"^[A-Za-
 CHILD_ENV_ALLOW = {"HOME", "PATH", "LANG", "LC_ALL", "TZ", "TMPDIR", "USER", "LOGNAME", "CLOUDSDK_CONFIG", "GOOGLE_APPLICATION_CREDENTIALS"}
 SEEN = OPS / "idempotency.jsonl"; MAX_TIMEOUT = 6 * 3600
 UNBOUND_REQUEST_FIELDS = frozenset({"acceptance_receipt", "expires_at"})   # A8 §3.9: plus any `*_expires_at` field — see request_digest; mirrored by kyd_kinds_ops.request_digest and v5_small_test_shared.request_hash
-TEARDOWN_KINDS = ("smalltest_teardown", "measuring_teardown", "century_teardown")   # the committed teardowns that wait for an independent absence
+# One element per line, sorted: a kind added by another PR is a one-line insertion that never touches a neighbour's line (SR-CHURN-CUT 5).
+TEARDOWN_KINDS = (   # the committed teardowns that wait for an independent absence
+    "century_teardown",
+    "measuring_teardown",
+    "smalltest_teardown",
+)
 LAUNCH_SCHEMAS = {"smalltest_dispatch": "ky.smalltest_launch/1", "measuring_dispatch": "ky.measuring_launch/1", "century_dispatch": "ky.century_launch/1"}
-REMOTE_ASYNC_KINDS = frozenset({"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"})   # A8 §3.11: work continues remotely after the child returns — fenced even if a table drops `remote_async`
+REMOTE_ASYNC_KINDS = frozenset({   # A8 §3.11: work continues remotely after the child returns — fenced even if a table drops `remote_async`
+    "century_dispatch",
+    "measuring_dispatch",
+    "smalltest_dispatch",
+    "verification_job",
+})
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
 PACK_ALLOWLIST = OPS / "PACK_ALLOWLIST.json"   # OWNER-MINIMAL-PROTECTION-NOW: written by the cockpit ONLY from an ACCEPTED verify job of a pack; this executor only reads it
-SIGNED_ONLY_KINDS = frozenset({"publish_head", "layer_publish", "rollback_head", "layer_rollback", "measuring_cancel", "orchestrator_rebuild_cancel", "century_cancel", "verification_cancel"})   # serving changes, plus the deletion-adjacent cancels (every kind on CANCEL_LANE_KINDS, which a test keeps equal to this set's cancels); every `*_teardown` kind is signed-only too (see mechanical_exempt)
-CANCEL_LANE_KINDS = frozenset({"measuring_cancel", "orchestrator_rebuild_cancel", "century_cancel", "verification_cancel"})   # SR-CANCEL-LANE: a CLOSED allow-list (never a name-suffix match); a name with no table entry is simply never requested; tests/test_executor_cancel_lane.py keeps it complete against the table
+SIGNED_ONLY_KINDS = frozenset({   # serving changes, plus the deletion-adjacent cancels (every kind on CANCEL_LANE_KINDS, which a test keeps equal to this set's cancels); every `*_teardown` kind is signed-only too (see mechanical_exempt)
+    "century_cancel",
+    "layer_publish",
+    "layer_rollback",
+    "measuring_cancel",
+    "orchestrator_rebuild_cancel",
+    "publish_head",
+    "rollback_head",
+    "verification_cancel",
+})
+CANCEL_LANE_KINDS = frozenset({   # SR-CANCEL-LANE: a CLOSED allow-list (never a name-suffix match); a name with no table entry is simply never requested; tests/test_executor_cancel_lane.py keeps it complete against the table
+    "century_cancel",
+    "measuring_cancel",
+    "orchestrator_rebuild_cancel",
+    "verification_cancel",
+})
+FENCE_EXEMPT_KINDS = frozenset({   # the single production slot is taken: these still run — a resume of the watchdog is the safe direction and a cancel stops the very dispatch that holds the fence (every CANCEL_LANE_KINDS member plus scheduler_resume)
+    "century_cancel",
+    "measuring_cancel",
+    "orchestrator_rebuild_cancel",
+    "scheduler_resume",
+    "verification_cancel",
+})
 CANCEL_FAMILIES = {"measuring": {"item": "J-3c", "dispatch": "measuring_dispatch", "schema": "ky.measuring_cancel/1", "job": "brahma-build-pipeline-job", "execution": r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*"}, "century": {"item": "J-4e", "dispatch": "century_dispatch", "schema": "ky.century_cancel/1", "job": "brahma-build-pipeline-job", "execution": r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*"}, "verification": {"item": "J-5s", "dispatch": "verification_job", "schema": "ky.verification_cancel/1", "job": "gochara-verification-job", "execution": r"gochara-verification-job-[a-z0-9]+(?:-[a-z0-9]+)*"}}   # per family: the request item, the dispatch kind whose receipt names the target, the record schema the reviewed script prints, the Cloud Run job and its execution-name shape (the century build runs on the same job as the measuring build)
 CANCEL_KINDS = {f"{family}_cancel{twin}": family for family in CANCEL_FAMILIES for twin in ("", "_dryrun")}
 NO_DRYRUN_KINDS = frozenset({"backup_snapshot", "backup_restore_verify"})   # the two production kinds with no dry-run kind and no `dry_run_passed` attestation (kyd_kinds_ops.required_checks)
@@ -1036,7 +1067,19 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         else: why = signer_acceptance_problem(req)
         if why: return why
     if not reserved and seen(req["idempotency_key"]): return "idempotency key already used"
-    return century_contract_problem(req) or smalltest_policy_problem(req) or scheduler_policy_problem(req) or measuring_cancel_problem(req) or orchestrator_rebuild_cancel_problem(req) or head_policy_problem(req) or served_probe_problem(req, op)
+    why = None
+    for check in (   # evaluated in this order, first problem wins; one per line, sorted. Each check is gated on its own kinds and only century_contract_problem and smalltest_policy_problem overlap (century_dispatch[_dryrun]): the century contract's reason is reported first, as before
+        lambda: century_contract_problem(req),
+        lambda: head_policy_problem(req),
+        lambda: measuring_cancel_problem(req),
+        lambda: orchestrator_rebuild_cancel_problem(req),
+        lambda: scheduler_policy_problem(req),
+        lambda: served_probe_problem(req, op),
+        lambda: smalltest_policy_problem(req),
+    ):
+        why = check()
+        if why: return why
+    return why
 
 
 def lane_selected(req: dict) -> bool:
@@ -1588,7 +1631,7 @@ def main() -> int:
             except Exception as e:
                 receipt({"operation_id": f.stem}, "REFUSED", f"unreadable request: {e}"); shutil.move(str(f), DONE / f.name); continue
             production = bool((table.get(req.get("kind")) or {}).get("production")) and not lane_selected(req)
-            if production and FENCE.exists() and req.get("kind") != "scheduler_resume" and req.get("kind") not in CANCEL_LANE_KINDS: continue      # the single production slot is taken; the request waits where it is (a resume of the watchdog is the safe direction and a cancel stops the very dispatch that holds the fence: neither waits)
+            if production and FENCE.exists() and req.get("kind") not in FENCE_EXEMPT_KINDS: continue      # the single production slot is taken; the request waits where it is (FENCE_EXEMPT_KINDS: neither a resume of the watchdog nor a cancel waits)
             why = validate(req, table, caps)
             if why:
                 receipt(req, "REFUSED", why, preserve_existing=True); shutil.move(str(f), DONE / f.name); continue

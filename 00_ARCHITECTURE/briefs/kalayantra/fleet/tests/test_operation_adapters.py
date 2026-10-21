@@ -14,6 +14,7 @@ import re
 import shutil
 import sqlite3
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 
@@ -21,6 +22,9 @@ import pytest
 
 HERE = Path(__file__).resolve().parent
 FLEET = HERE.parent
+sys.path.insert(0, str(FLEET))
+import executor_pin_shards  # noqa: E402  (SR-CHURN-CUT 5: later kinds are shards, not edits to the sets below)
+SHARDS = executor_pin_shards.load_shards()
 REPO = FLEET.parents[3]
 ADAPTERS_PY = FLEET / "operation_adapters.py"
 EXECUTOR_PY = FLEET / "executor.py"
@@ -41,7 +45,11 @@ K9_KINDS = {"orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify
 CENTURY_KINDS = {"century_dispatch_dryrun", "century_dispatch", "century_teardown_dryrun", "century_teardown"}   # SR-PREBUILD-ALL; century_teardown enabled by W3W4 pack verify E1 (signed-only)
 FAMILY_CANCEL_KINDS = {"century_cancel_dryrun", "century_cancel", "verification_cancel_dryrun", "verification_cancel"}   # W3W4 pack verify E1: measuring_cancel's siblings
 HEAD_KINDS = {"publish_head", "publish_head_dryrun", "rollback_head", "rollback_head_dryrun"}
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS | MEASURING_KINDS | SCHEDULER_KINDS | VERIFICATION_KINDS | K9_KINDS | CENTURY_KINDS | PROBE_KINDS | FAMILY_CANCEL_KINDS | HEAD_KINDS   # SR-HEAD-POLICY-KEEP: the head kinds are enabled through the head policy
+BASE_ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS | MEASURING_KINDS | SCHEDULER_KINDS | VERIFICATION_KINDS | K9_KINDS | CENTURY_KINDS | PROBE_KINDS | FAMILY_CANCEL_KINDS | HEAD_KINDS   # SR-HEAD-POLICY-KEEP: the head kinds are enabled through the head policy
+# frozen BASE (SR-CHURN-CUT 5): every set above is the reviewed census up to the shards; a later kind is a tests/executor_pin_shards/<ITEM>.json shard
+ENABLED_KINDS = executor_pin_shards.enabled_after(BASE_ENABLED_KINDS, SHARDS)
+BASE_PRODUCTION_ENABLED = {k for k in P01_KINDS | MEASURING_KINDS | K9_KINDS | CENTURY_KINDS | FAMILY_CANCEL_KINDS | {"scheduler_pause", "scheduler_resume", "measuring_cancel", "verification_job", "publish_head", "rollback_head"} if not k.endswith("_dryrun")}   # A8 §3.8
+PRODUCTION_ENABLED = executor_pin_shards.kinds_after(BASE_PRODUCTION_ENABLED, SHARDS, lambda e: e.get("enabled") is True and e.get("production") is True)
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 ITEM = "K9-FIXTURE"
 LEASE = "LEASE-KY-FIXTURE"
@@ -848,7 +856,7 @@ def test_remote_plan_matches_the_current_wave4_launcher(monkeypatch):
 def test_only_p01_production_kinds_are_enabled_and_wave4_launch_stays_bound(bench):
     table = real_table()
     assert {k for k, v in table.items() if v["enabled"]} == ENABLED_KINDS
-    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == {k for k in P01_KINDS | MEASURING_KINDS | K9_KINDS | CENTURY_KINDS | FAMILY_CANCEL_KINDS | {"scheduler_pause", "scheduler_resume", "measuring_cancel", "verification_job", "publish_head", "rollback_head"} if not k.endswith("_dryrun")}   # A8 §3.8
+    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == PRODUCTION_ENABLED   # A8 §3.8
     entry = table["smalltest_dispatch"]
     assert entry["script"].endswith("/smalltest_launch.py") and entry["also_needs"] == ["gcloud"]
     for kind in ("smalltest_dispatch",):
