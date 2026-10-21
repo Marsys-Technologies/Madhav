@@ -1,0 +1,10 @@
+{
+ "schema": "ky.executor_pin_shard/2",
+ "item": "B-6",
+ "function_hashes": {
+  "W4": {
+   "interrupted_takes_fence": "bda8cb55d8c8ced87d78afaff94790104f12ba23a6a20cc2c591143007c4c4bb",
+   "main": "9a3f35a7c7cfc35467a35359cbecf201b079783502be0c208817c505ee38c87a"
+  }
+ }
+}

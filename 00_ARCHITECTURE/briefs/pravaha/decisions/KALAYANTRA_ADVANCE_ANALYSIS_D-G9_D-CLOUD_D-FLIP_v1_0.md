@@ -1,6 +1,6 @@
 ---
 artifact: KALAYANTRA_ADVANCE_ANALYSIS_D-G9_D-CLOUD_D-FLIP
-version: "1.0"
+version: "1.1"
 status: DRAFT TEMPLATE — narrative/control only; decides nothing; every "measured" slot is EMPTY and stays empty until the named receipt exists
 date: 2026-10-18
 item: ADVANCE-ANALYSIS
@@ -154,7 +154,7 @@ Retained open (not dispositioned here, per `W4:353`): OD-3, OD-8, OD-9, OD-11 (`
 | C-1 | Accepted measuring readback | J-3d (G9-0.1 … G9-0.7) | every G9-0 row PASS | ⟦ ⟧ |
 | C-2 | D-G9 effective | governed `ky decide D-G9 … approved`; awaiting file `/Users/Dev/kalayantra/run/awaiting/D-G9.json` (`PM:27099` item `J-4d-n-g9`) | an `approved` event is recorded through the decision controller (`approved`/`refused` are final; `deferred`/`insufficient_evidence` stay open, `CHARTER:171`) | ⟦ ⟧ |
 | C-3 | Phase 6 — final-build decisions and upstream release | J-4a step `settled_build_reconciliation` → `reviews/steps/J-4a.settled_build_reconciliation.json`; artifact `/Users/Dev/kalayantra/run/J4A_PREREQUISITE.json` ≥ 200 bytes (`PM:19039`) | receipt `verdict:"MET"` AND file present AND a single settled build reconciled (`PM:19039` tests) | ⟦ ⟧ |
-| C-4 | Phase 7 — protected window, grants, verification job configured *disabled* | J-4b steps `packet_oracles_verified`, `configured_disabled_readback` (`PM`, item `J-4b`) | both receipts `MET`; each grant/principal read back through `readback_sql`; a builder-role write of a verification row is refused (read from privileges, not attempted) | ⟦ ⟧ |
+| C-4 | **REQUIRED BEFORE SEALING (J-5s), not a D-CLOUD precondition (OWNER-BUILD-FIRST-20261021).** Phase 7 — protected window, grants, verification job configured *disabled* | J-4b steps `packet_oracles_verified`, `configured_disabled_readback` (`PM`, item `J-4b`) | both receipts `MET`; each grant/principal read back through `readback_sql`; a builder-role write of a verification row is refused (read from privileges, not attempted) | ⟦ ⟧ |
 | C-5 | Phase 8 — final-rule builder/verifier proofs | J-4c step `p06b_ready`; artifact `/Users/Dev/kalayantra/run/J4C_PROOFS.json` ≥ 200 bytes (`PM`, item `J-4c`) | receipt `MET`; equality proof "unchanged classes byte-identical to the measuring build's golden capture"; non-interference proof "the measuring rules' outputs unchanged" | ⟦ ⟧ |
 | C-6 | Phase 9 — final-rules candidate qualified | J-4d steps `p06b_before_final_candidate`, `packet_oracles_verified`, `final_candidate_density_and_cap` (`PM:19443`); detector `pr_merged` PR 3512 | all three receipts `MET`; P06b complete; PR 3512 merged | ⟦ ⟧ |
 | C-7 | Density and residual dispositions recorded on the candidate | J-4d step `final_candidate_density_and_cap` (artifact_section) (`FBS` FB-41, FB-48, FB-56, FB-66) | the section records: FB-41 DVI reversion computed by the scorer script, FB-48 per-class decision, unresolved count known (OD-5 carried), near-miss counts real | ⟦ ⟧ |
@@ -163,7 +163,7 @@ Retained open (not dispositioned here, per `W4:353`): OD-3, OD-8, OD-9, OD-11 (`
 | C-10 | Request binds source and image | typed request under `/Users/Dev/kalayantra/run/ops/requests/` (`SUR:48`, G8) for op kind `century_dispatch`, `args={classes:"all"}` only (`W4:375-379`) | request carries the exact source commit and image digest of the candidate in C-6; **the same runtime image later runs verification** (`MBC:22` item 9: build and verification share one image) | ⟦ ⟧ |
 | C-11 | Request binds rules and class set | same request | rule versions and class set equal the candidate's (C-6/C-7); no rule version outside the candidate's selection | ⟦ ⟧ |
 | C-12 | Request binds horizon and cap | same request | horizon equals the `Q0.3` value ruled in D-G9; cap and task timeout equal C-8 | ⟦ ⟧ |
-| C-13 | Request binds the operation window | same request; protected-window controls from C-4 | an explicit start/end window is present and lies inside the protected window | ⟦ ⟧ |
+| C-13 | Request binds the operation window | same request. The protected-window controls from C-4 are REQUIRED BEFORE SEALING (OWNER-BUILD-FIRST-20261021), not here | an explicit start/end window is present (the operation window of the lease). The clause "inside the protected window" is re-scoped to before sealing (OWNER-BUILD-FIRST-20261021) | ⟦ ⟧ |
 | C-14 | One canonical-chart, candidate-only | same request; `RB-SQL`-style readback of `kala_gochara_publication` for the chart and generation; J-3d absence proof (`J-3d.absence.json`) | exactly one chart; no publication row for the target generation, or status `candidate`; the measuring build's test-slice rows are absent (J-3d absence proof accepted) | ⟦ ⟧ |
 | C-15 | No implicit capacity or credential expansion | request text | names no new credential, principal or capacity (`W4:371`) | ⟦ ⟧ |
 
@@ -205,7 +205,9 @@ Retained open (not dispositioned here, per `W4:353`): OD-3, OD-8, OD-9, OD-11 (`
 | I-4 | G8 preconditions gate J-4e, not D-CLOUD | add as D-CLOUD rows |
 | I-5 | File location: `briefs/pravaha/decisions/`, beside `MEASURING_BUILD_CONTRACT_v1_0.md` (D-G9's spec brief) and `FINAL_BUILD_SCOPE`'s home; control JSON beside it, not under `control/kalayantra/` | `briefs/kalayantra/` or `control/kalayantra/`; the latter holds files the fleet code globs |
 | I-6 | For OD-7/OD-10 the "base rate"/"burden" the scorer judges is the readback's `class_union` share (scorer `base_rates` = union of admitted days ÷ `H_DAYS`, `metrics.py:80-88`) | a per-path share |
+| I-7 | OWNER-BUILD-FIRST-20261021: D-CLOUD rows C-4 and the protected-window clause of C-13 existed only because of the owner's Google Cloud / GitHub provisioning acts (J-4b-a55j, J-4c-a55m, acts 6/6b/12/13/14); they are re-scoped to "required before SEALING (J-5s)". Every other row stands. | keep C-4 / C-13 as D-CLOUD preconditions (the owner decision rules this out) |
 
 **Not verified here.** No production, Cloud Run, credential or `gh` access; the J-3d, D-G9, D-CLOUD, D-FLIP receipts and `run/` files named above were *not read* as evidence (they do not yet exist for the real measuring run) — only their declared names and patterns in `PM` are cited. `FBS` and `EP` are read from their external paths, not from this tree. `PM` line numbers are at this head; PLAN v3.0's `PM:` numbers (18948, 19379, 19858) are stale against it (current: `PM:19016`, `19541`, `20020`). The 0.8 × cap factor for the final build is stated at `W4:363` and `MBC:88`, not in `FBS` FB-58. No value in any slot is a measurement; every `⟦ ⟧` is empty.
 
 **Changelog.** 1.0 (2026-10-18) — first draft; ADVANCE-ANALYSIS.
+1.1 (2026-10-21) — OWNER-BUILD-FIRST-20261021: C-4 and the protected-window clause of C-13 re-scoped to "required before sealing"; plan_model.json J-4b/J-4c/J-4c-a55m/J-5s edges moved in the same change.

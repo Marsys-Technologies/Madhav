@@ -103,7 +103,7 @@ With `--job gochara-verification-job` and none of `--execution`, `--logs`, `--me
 | `environment_is_exactly_the_contract` | three variables only: `GOCHARA_VERIFIER_DB_URL` from secret `gochara-verifier-db-url:latest`, `GOCHARA_RUNNER_COMMIT`, `GOCHARA_RUNNER_IMAGE_DIGEST` |
 | `runner_digest_equals_image_digest` | the digest variable equals the digest in the image reference |
 | `runner_commit_is_a_full_commit` | the commit variable is 40-hex |
-| `task_count_is_one`, `cloudsql_instance_is_the_amjis_instance`, `resources_8Gi_2cpu_7200s` | as deployed |
+| `task_count_is_one`, `cloudsql_instance_is_the_amjis_instance`, `resources_8Gi_2cpu_28800s` | as deployed (`--memory 8Gi --cpu 2 --task-timeout 28800`; the ruled 28,800 s, #3747 via #3789, PRECENTURY_PLAN §9 D-2) |
 | `max_retries_is_zero` | `maxRetries` is 0; Cloud Run omits a zero, so an absent field reads null (not true) and the v2 REST read of the deploy workflow settles it |
 
 No variable value outside the contract is printed. What this does NOT prove: that the job is not executed by another principal or schedule, and anything about the executor table's `verification_job` entry (main enabled it under J-4b; this reader runs standalone and does not read the table; it starts, schedules and executes nothing). (I) INTERPRETATION: the shape is read from the deploy workflow's own flags, not from a captured live response; the first real run is the proof of the shape and a different shape REFUSES.
