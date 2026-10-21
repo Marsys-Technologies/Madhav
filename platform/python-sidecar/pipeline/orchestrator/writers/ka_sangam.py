@@ -253,7 +253,6 @@ class _LegacyKaSangamWriter(WriterBase):
         # K9 (SR-K9-PUBLISHABLE): a build bound to a layer candidate reads the
         # predicates of THAT candidate generation, never the published head.
         self._candidate = bound_candidate(conn, getattr(ctx, 'build_id', None), chart_id)
-        predicate_gen = predicate_generation(conn, chart_id, self._candidate)
 
         # Load candidate predicates.
         #
@@ -322,6 +321,9 @@ class _LegacyKaSangamWriter(WriterBase):
                 )
             else:
                 # K9: a candidate-bound build reads its OWN candidate generation.
+                # (Read only on this path: the ordinary rebuild above resolves
+                # head-or-legacy inside its own SQL, so it needs no extra read.)
+                predicate_gen = predicate_generation(conn, chart_id, self._candidate)
                 cur.execute(
                     """
                     WITH scored AS (
@@ -1254,7 +1256,10 @@ class KaSangamWriter(_LegacyKaSangamWriter):
         if 'jury_fixture_inputs' not in ctx.config:
             # Read-only: the attestation substep is offered only while this
             # candidate lacks the ka_sangam grain (writer_grain.grain_steps).
+            self._candidate = None  # every dispatch path defines it before the guard below
             steps = super().plan_substeps(ctx)
+            if self._candidate is None:
+                return steps  # ordinary rebuild: nothing to attest, no grain read
             return steps + grain_steps(ctx, self._candidate, 'ka_sangam',
                                        {'kala_activation_predicates': self._grain_sources})
         from services.ka_sangam.jury import candidate

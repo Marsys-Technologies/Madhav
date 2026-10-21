@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020+close-now-bookkeeping-20261020+a55j-a55m-rescope-20261020+vc2-retire-20261020+drop-dka4b-na-20261021+k8-reg-rest-20261019",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020+close-now-bookkeeping-20261020+a55j-a55m-rescope-20261020+vc2-retire-20261020+drop-dka4b-na-20261021+build-first-reseq-20261021+k8-reg-rest-20261019",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -19332,8 +19332,7 @@
         "J-4b-pr3089",
         "J-4b-pr3108",
         "J-4b-pr3114",
-        "J-4b-pr3119",
-        "J-4b-a55j"
+        "J-4b-pr3119"
       ],
       "mandatory": true,
       "detector": {
@@ -19375,7 +19374,7 @@
           "a builder-role write of a verification row is refused in production (read back from the role's privileges, not attempted)"
         ],
         "compat": "protected migrations land only inside the window; the runner refuses them outside it",
-        "notes": "Wave 4 code source is P05; no inherited branch-tip detector. Code review/CI/containing deployment and applicable operation readbacks remain separate earned requirements."
+        "notes": "Wave 4 code source is P05; no inherited branch-tip detector. Code review/CI/containing deployment and applicable operation readbacks remain separate earned requirements. OWNER-BUILD-FIRST-20261021 (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl): the edge J-4b -> J-4b-a55j is removed. The owner provisioning acts (J-4b-a55j) no longer gate the code chain, the century build or its authorisation; they gate SEALING (J-5s depends on J-4b-a55j and J-4c-a55m). This item stays the P05 code merge; its step configured_disabled_readback is measured by the same job read as J-4b-a55j (principals_grants_disabled_config) and is required before sealing, not before J-4c."
       },
       "completion_kind": "code",
       "producer": "K",
@@ -19428,7 +19427,6 @@
         "J-4c-pr3191",
         "J-4c-pr3193",
         "J-4c-a55l",
-        "J-4c-a55m",
         "P06b"
       ],
       "mandatory": true,
@@ -19449,7 +19447,8 @@
           "equality proof: unchanged classes byte-identical to the measuring build's golden capture",
           "non-interference: the measuring rules' outputs unchanged"
         ],
-        "compat": "candidate-only"
+        "compat": "candidate-only",
+        "notes": "OWNER-BUILD-FIRST-20261021 (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl): the edge J-4c -> J-4c-a55m is removed. This item keeps its own proofs unchanged (J4C_PROOFS.json, step p06b_ready); only the owner IAM record / protected-window act (J-4c-a55m) no longer gates it - it gates J-5s."
       },
       "completion_kind": "artifact",
       "producer": "K",
@@ -19591,7 +19590,7 @@
           "SURROGATE G5",
           "PLAN §8.1 F-5 full century"
         ],
-        "notes": "approved only after the measuring build's readback is accepted and phases 6–9 are done."
+        "notes": "approved only after the measuring build's readback is accepted and phases 6–9 are done. OWNER-BUILD-FIRST-20261021 (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl): this authorisation no longer waits on J-4b-a55j / J-4c-a55m (it depends only on J-4d, whose chain is free of both). Checklist rows that existed only because of the owner acts are re-scoped to REQUIRED BEFORE SEALING (J-5s): C-4 (J-4b grants / disabled job-config receipts) and the protected-window clause of C-13 (KALAYANTRA_ADVANCE_ANALYSIS_D-G9_D-CLOUD_D-FLIP_v1_0.md/.json). Every other row stands."
       },
       "done_by": "decision",
       "decision": "D-CLOUD",
@@ -19800,7 +19799,9 @@
         "J-5s-pr2975",
         "J-5s-pr2976",
         "J-5s-j2",
-        "P06b"
+        "P06b",
+        "J-4b-a55j",
+        "J-4c-a55m"
       ],
       "mandatory": true,
       "steps": [
@@ -19830,7 +19831,7 @@
         ],
         "g8": "G8 preconditions on every production request: live lease on campaign-coordination, backup taken and its restore verified, dry run passed, one build slot, PARĪKṢAKA's pre-acceptance receipt; postconditions read back through an executor readback_sql op for the recorded run id — never from an exit code",
         "compat": "candidate-only production writes on the governed path; served output unchanged",
-        "notes": "The SQL observation alone is not acceptance: the verdict also binds the expected manifest and the job's run id.",
+        "notes": "The SQL observation alone is not acceptance: the verdict also binds the expected manifest and the job's run id. OWNER-BUILD-FIRST-20261021 (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl): depends on J-4b-a55j and J-4c-a55m (the owner provisioning acts: L1 read grants, sealer credential, act 6 job deploy, 6b, 12, 13, 14 and the IAM record). Everything that seals or publishes (J-6a, J-6m, J-6r, D-FLIP, J-6, K9 publication) is downstream of J-5s and so carries both.",
         "owns": [
           "/Users/Dev/kalayantra/run/ops/receipts/J-5s.json"
         ]
@@ -26174,7 +26175,7 @@
           "Measure this residual itself at its declared phase; a carrying packet code merge never satisfies it. Independent acceptance binds the evidence digest and every original dependency."
         ],
         "compat": "protected migrations land only inside the window; the runner refuses them outside it; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix). SR-A55J-A55M-RESCOPE (2026-10-20): the migration reference 1241 is superseded by 1378 (applied 2026-10-14); principals, grants and the disabled job config are measured by readbacks (readback_sql for ACLs, cloudrun_job_readback for the job definition); no new executor kind. Cuts under SR-GRANTS-MINIMAL are listed in the PR body."
+        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix). SR-A55J-A55M-RESCOPE (2026-10-20): the migration reference 1241 is superseded by 1378 (applied 2026-10-14); principals, grants and the disabled job config are measured by readbacks (readback_sql for ACLs, cloudrun_job_readback for the job definition); no new executor kind. Cuts under SR-GRANTS-MINIMAL are listed in the PR body. OWNER-BUILD-FIRST-20261021 (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl): the 10 owner Google Cloud / GitHub acts (OWNER_GUIDE steps 1-10: this item's provisioning, J-4c-a55m's IAM record, acts 6/6b/12/13/14) are gates before SEALING (J-5s depends on this item directly), not before the century build. The build writes only with the builder identity. J-4b no longer depends on this item."
       },
       "completion_kind": "operation",
       "producer": "N",
@@ -26341,7 +26342,8 @@
       "depends_on": [
         "J-0m",
         "J-4b",
-        "J-4c-a55l"
+        "J-4c-a55l",
+        "J-4b-a55j"
       ],
       "mandatory": true,
       "detector": {
@@ -26382,7 +26384,7 @@
           "Measure this residual itself at its declared phase; a carrying packet code merge never satisfies it. Independent acceptance binds the evidence digest and every original dependency."
         ],
         "compat": "candidate-only; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix). SR-A55J-A55M-RESCOPE (2026-10-20): 1241 v7 is superseded by 1378; acts 12-14 are named above with their evidence paths; 1303 / the dormant-role revokes stay OPEN (1378 revokes nothing) until the window2 readback is run. No new executor kind is assumed; acts 12 and 13 (and 14 directly) have no existing readback."
+        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix). SR-A55J-A55M-RESCOPE (2026-10-20): 1241 v7 is superseded by 1378; acts 12-14 are named above with their evidence paths; 1303 / the dormant-role revokes stay OPEN (1378 revokes nothing) until the window2 readback is run. No new executor kind is assumed; acts 12 and 13 (and 14 directly) have no existing readback. OWNER-BUILD-FIRST-20261021 (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl): no longer gates J-4c, J-4d, D-CLOUD or the century build; it is a gate before SEALING (J-5s depends on it). Edge added: J-4c-a55m -> J-4b-a55j (its judge binds the J-4b-a55j step receipt, which the removed J-4b -> J-4b-a55j edge used to supply transitively). Acts 6/6b/12/13/14 are owner acts required before sealing."
       },
       "completion_kind": "operation",
       "producer": "N",

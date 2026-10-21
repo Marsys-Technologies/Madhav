@@ -1,0 +1,53 @@
+name: Apply the verified generated overlay (seal)
+description: >-
+  Find the non-expired `ci-generated` artifact of a SUCCESSFUL ci.yml run for the reviewed SHA (the lookup deploy.yml uses), extract it into a quarantine
+  directory, verify it against that SHA and apply only the generated paths to the checkout. Fail closed, named, if it is absent, expired, unverified or
+  carries anything else. Never regenerates. Run it straight after the checkout: the checkout must be clean (ci_generated.py verify refuses a changed tree).
+inputs:
+  sha:
+    description: The reviewed source SHA (the checkout's HEAD)
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Find the verified ci-generated artifact for this source (fail closed if absent)
+      id: find
+      uses: actions/github-script@v7
+      env:
+        SOURCE_SHA: ${{ inputs.sha }}
+      with:
+        script: |
+          const sha = process.env.SOURCE_SHA;
+          const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+            ...context.repo, workflow_id: 'ci.yml', head_sha: sha, per_page: 100,
+          });
+          let accepted;
+          for (const run of runs.filter(r => r.head_sha === sha && r.status === 'completed' && r.conclusion === 'success')) {
+            const response = await github.rest.actions.listWorkflowRunArtifacts({
+              ...context.repo, run_id: run.id, per_page: 100,
+            });
+            if (response.data.artifacts.some(a => a.name === 'ci-generated' && !a.expired)) {
+              accepted = run;
+              break;
+            }
+          }
+          if (!accepted) throw new Error('seal_overlay_artifact_absent: no non-expired ci-generated artifact from a successful ci.yml run for ' + sha + ' (a green CI run on this commit is required before the seal; the committed generated files are stale by design)');
+          core.setOutput('run_id', accepted.id);
+    - uses: actions/download-artifact@v4
+      with:
+        name: ci-generated
+        path: ${{ runner.temp }}/seal-ci-generated
+        run-id: ${{ steps.find.outputs.run_id }}
+        github-token: ${{ github.token }}
+    - name: Verify the artifact against the SHA and apply only the generated paths
+      shell: bash
+      env:
+        SOURCE_SHA: ${{ inputs.sha }}
+        ARTIFACT_DIR: ${{ runner.temp }}/seal-ci-generated
+        PYTHONDONTWRITEBYTECODE: '1'
+      run: |
+        set -euo pipefail
+        test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+        python3 -I -B platform/scripts/governance/apply_generated_overlay.py --artifact "$ARTIFACT_DIR" --sha "$SOURCE_SHA"
+        # the same verification the deploy restore performs: source SHA, every byte, the full declared set, and a checkout unchanged since its reviewed commit
+        python3 -I -B platform/scripts/governance/ci_generated.py verify --sha "$SOURCE_SHA"

@@ -37,7 +37,7 @@ record — status REFUSED, exit 1 — so a partial record can never be mistaken 
              `--metrics` the record is the plain job record and carries no `checks`). It reads the definition .github/workflows/gochara-verification-job-deploy.yml deploys; each check
              computed from the describe response and false when the field differs (§N.8): image BY DIGEST of the pipeline repository, the verifier's own runtime identity,
              the verifier entry point as the container command, exactly the three contract environment variables (one secret, by name), GOCHARA_RUNNER_IMAGE_DIGEST equal to
-             the deployed digest, GOCHARA_RUNNER_COMMIT a 40-hex commit, one task, Cloud SQL instance, max-retries 0, 8Gi/2cpu/7200s. This kind never starts, schedules or executes anything,
+             the deployed digest, GOCHARA_RUNNER_COMMIT a 40-hex commit, one task, Cloud SQL instance, max-retries 0, 8Gi/2cpu/28800s. This kind never starts, schedules or executes anything,
              and it does not read the executor table (this file runs standalone).
 Honest nulls (CLAUDE.md §N.7.6 / §N.8): the corpus (Swiss Ephemeris files) cannot be measured without running the image, so the record
 says so in `corpus.status` rather than carrying a green; `provenance.image_attests_commit` is false because the image itself carries no
@@ -75,6 +75,11 @@ VERIFIER_COMMAND = ["python", "-m", "pipeline.orchestrator.verification_job"]
 VERIFIER_SECRET = ("GOCHARA_VERIFIER_DB_URL", "gochara-verifier-db-url", "latest")
 VERIFIER_PLAIN_ENV = frozenset({"GOCHARA_RUNNER_COMMIT", "GOCHARA_RUNNER_IMAGE_DIGEST"})
 CLOUDSQL_INSTANCE = "madhav-astrology:asia-south1:amjis-postgres"
+# The verification job's resources as deployed: gochara-verification-job-deploy.yml `--memory 8Gi --cpu 2 --task-timeout 28800`. The timeout is the ruled 28,800 s
+# (#3747 via #3789; PRECENTURY_PLAN §9 D-2, F-VERIFY-TIMEOUT). This file is copied out alone so it cannot import gochara_seal_execution_check.JOB_TIMEOUT_SECONDS;
+# tests/test_cloudrun_readback_verification_job.py pins these equal to it, to both deploy flags and to the launch preparation, and the check name is derived from them.
+VERIFIER_MEMORY, VERIFIER_CPU, VERIFIER_TIMEOUT_SECONDS = "8Gi", "2", 28800
+VERIFIER_RESOURCES_CHECK = f"resources_{VERIFIER_MEMORY}_{VERIFIER_CPU}cpu_{VERIFIER_TIMEOUT_SECONDS}s"
 COMMIT_40 = re.compile(r"[0-9a-f]{40}")
 EXECUTION = re.compile(r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*")      # smalltest_launch.EXECUTION, byte for byte
 TAG_REF = re.compile(re.escape(IMAGE_REPO) + r":([0-9a-f]{40})")
@@ -836,8 +841,8 @@ def verification_checks(job: dict) -> tuple[list[dict], bool | None]:
         _check("cloudsql_instance_is_the_amjis_instance", template_annotations.get("run.googleapis.com/cloudsql-instances") if isinstance(template_annotations, dict) else None,
                isinstance(template_annotations, dict) and template_annotations.get("run.googleapis.com/cloudsql-instances") == CLOUDSQL_INSTANCE),
         _check("max_retries_is_zero", retries, None if retries is None else retries == 0),        # proto3 omits a zero: unknown here, settled by the v2 REST read (workflow F-R15-3)
-        _check("resources_8Gi_2cpu_7200s", {"memory": limits.get("memory"), "cpu": limits.get("cpu"), "timeout_seconds": timeout},
-               limits.get("memory") == "8Gi" and limits.get("cpu") == "2" and timeout == 7200),
+        _check(VERIFIER_RESOURCES_CHECK, {"memory": limits.get("memory"), "cpu": limits.get("cpu"), "timeout_seconds": timeout},
+               limits.get("memory") == VERIFIER_MEMORY and limits.get("cpu") == VERIFIER_CPU and timeout == VERIFIER_TIMEOUT_SECONDS),
     ]
     oks = [c["ok"] for c in checks]
     return checks, (False if any(o is False for o in oks) else (None if any(o is None for o in oks) else True))

@@ -125,7 +125,8 @@
       "depends_on": [
         "J-0m",
         "J-4b",
-        "J-4c-a55l"
+        "J-4c-a55l",
+        "J-4b-a55j"
       ],
       "inherited_prerequisites": [
         "A5.5e",
