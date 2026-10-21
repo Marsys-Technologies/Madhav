@@ -9,19 +9,23 @@ by construction.
 
 WHAT IT PROVES for one numbered window (a stored peak instant `t*` and objective value `M`):
 
-  1. VALUE        F(t*) = M within 1e-6 (the float4 storage round-trip);
-  2. UPPER BOUND  sup F <= M + 1e-7, by a FIRST-ORDER monotone enclosure: between cuts every term is constant or monotone,
+  1. VALUE        F(t*) = M within 1e-6 or the float4 rounding interval at M's magnitude, whichever is wider (the stored REAL is a
+                  float4: its error is half a float4 spacing, which grows with the value, a fixed 1e-7 does not model it; R-1);
+  2. UPPER BOUND  sup F <= M + the float4 interval (half a float4 spacing at M, plus 1e-10) — the stored REAL is compared with the
+                  UNROUNDED maximum inside its own rounding interval (R-1 a) — by a FIRST-ORDER monotone enclosure: between cuts every term is constant or monotone,
                   so a piece [l, r) satisfies  sup F <= U(l, r) = sum over roots of max over records of max(f(l), f(r))
                   (tightened, per body, to max(H(l), H(r)) of the body's convex sum H; for the max-min objective: min over
                   the two agents). No speed constant, no acceleration bound (no H4);
                   a piece whose bound is above the threshold is bisected until the bound falls below it, a witness above
                   it is found, or the width floor is reached (then the window is UNVERIFIED, never passed);
-  3. EARLIEST TIE the stored `t*` is no later than the earliest DISTINCT LOCAL EXTREMUM of F within the frozen tie
-                  tolerance (1e-9) of the maximum, with a grey band of +-2e-10 around that threshold: a genuine boundary
-                  tie is not fatal, a missed earlier tie is. The tie rule is between distinct extrema, never on the
-                  shoulder of one smooth hump;
-  4. INSTANT      |t* - earliest tie extremum| <= PEAK_INSTANT_TOLERANCE (owner decision SOLVER-TOLERANCES, Q12 a: the
-                  strongest moment exact to the second);
+  3. EARLIEST TIE the stored `t*` is the earliest DISTINCT LOCAL EXTREMUM of F within the frozen tie tolerance (1e-9) of the
+                  UNROUNDED maximum. The tie rule is between distinct extrema, never on the shoulder of one smooth hump. The
+                  +-2e-10 grey band around that threshold is ONLY an ambiguity detector (R-1 b): when the earliest qualifying
+                  extremum differs across the band the window is UNVERIFIED `tie_ambiguous` (INCONCLUSIVE), never VERIFIED —
+                  a window is never accepted because its stored instant lies between two candidates;
+  4. INSTANT      the stored `t*` lies within PEAK_INSTANT_TOLERANCE (owner decision SOLVER-TOLERANCES, Q12 a: the strongest
+                  moment exact to the second) of an ACTUAL qualifying extremum (one whose unrounded value reaches the tie
+                  threshold), never of a point between extrema;
   5. H1, H2       H1: every tent-bearing support lies in one arc on which the body's longitude is monotone (velocity-sign
                   sampling at <= 5 d spacing + the audited minimum station spacing; a station within seconds of a support
                   end is a Swiss station the stored arc index (a spline of daily knots) does not coincide with: it is an
@@ -35,6 +39,8 @@ WHAT IT PROVES for one numbered window (a stored peak instant `t*` and objective
     a legitimate arc);
   - the maximum is RE-DERIVED (the stored value is a float4, the stored instant may sit a second from the crest) and the ties are read off it;
   - check 3 and check 4 both carry the Q12 tolerance, so a peak 0.5 s from its crest is accepted and one 30 s away is not;
+  - "the earliest qualifying extremum differs" across the grey band means by more than the Q12 tolerance (extrema within 1 s of each
+    other are interchangeable at the stored instant's own resolution; alternative: any difference — flags more windows);
   - with ONE body behind every tent of a piece F is convex in that body's (monotone) longitude: its supremum is an end value and it has no
     interior local maximum, however the terms rise and fall (two natal points a fixed distance apart make F exactly flat);
   - the prover takes plain data (`CheckRecord`, `StoredWindow`, a `position_at` callable); adapting the stored rows is the integration's job.
@@ -62,9 +68,9 @@ P4_AGENTS = frozenset({"jupiter", "saturn"})
 
 # ── tolerances (each a statement of what is being compared) ─────────────────────────────────────────────────────────────
 VALUE_TOL = 1e-6              # a stored REAL (float4) number against a double re-derivation
-BOUND_TOL = 1e-7              # sup F <= M + BOUND_TOL: the fixed threshold of the upper-bound check
+F4_ABS_SLACK = 1e-10          # added to the float4 half-spacing: the builder's own unrounded accuracy (R-1 a: half-ulp of M plus 1e-10)
 TIE = 1e-9                    # the frozen peak-tie tolerance between distinct local extrema
-GREY = 2e-10                  # grey band around the tie threshold (interpretation I-2)
+GREY = 2e-10                  # grey band around the tie threshold: an ambiguity detector only (R-1 b)
 PEAK_INSTANT_TOLERANCE_S = 1.0   # owner decision SOLVER-TOLERANCES (Q12 a): exact to the second
 PLATEAU_EPS = 1e-12           # two objective samples this close are one plateau (float noise on longitudes of size 360 is ~6e-14)
 
@@ -102,6 +108,7 @@ F_VALENCE = "valence_mismatch"
 U_BUDGET = "verifier_budget_exhausted"
 U_CERT = "solver_certificate_incomplete"
 U_TIE = "tie_scan_inconclusive"
+U_AMBIG = "tie_ambiguous"            # INCONCLUSIVE (R-6): the earliest qualifying extremum differs across theta +- GREY
 
 #: the claim each finding falsifies (plan §2.4 numbering; the prover's own list is in the tests)
 CLAIM_OF = {F_VALUE: "value_at_peak", F_ABOVE: "upper_bound", F_EARLIER_TIE: "earliest_tie", F_INSTANT: "peak_instant",
@@ -116,6 +123,14 @@ class _NotGiven:
 
 
 NOT_GIVEN = _NotGiven()           # a stored field the caller does not want compared (None means a stored NULL)
+
+
+def _f4_tol(x: float) -> float:
+    """The widest error a stored REAL (float4, 24-bit significand) can carry against the unrounded number it stores: half a float4
+    spacing at `x`'s magnitude, plus F4_ABS_SLACK (R-1 a). A fixed absolute tolerance is wrong at both ends: below 1 it is slack, above
+    ~2 a correct round-trip exceeds it."""
+    _, e = math.frexp(abs(float(x)))
+    return math.ldexp(1.0, e - 25) + F4_ABS_SLACK
 
 
 @dataclass(frozen=True)
@@ -548,7 +563,7 @@ class _Engine:
         return v if (v is not None and v > thr) else None
 
     def _bound(self, m_stored: float):
-        thr = m_stored + BOUND_TOL
+        thr = m_stored + _f4_tol(m_stored)
         worst = None
         for pc in self.pieces:
             if not pc.defined:
@@ -585,13 +600,13 @@ class _Engine:
                 stack.append((m, r, vm, vr))
                 stack.append((l, m, vl, vm))
         if worst is not None:
-            self.unverified.append((U_CERT, f"the bound could not be pushed under M + {BOUND_TOL} on "
+            self.unverified.append((U_CERT, f"the bound could not be pushed under M + {_f4_tol(m_stored):.3g} on "
                                             f"[{self._dt(worst[0]).isoformat()}, {self._dt(worst[1]).isoformat()}) at the "
                                             f"{MIN_WIDTH_S} s width floor"))
 
     def _above(self, t: float, value: float, m_stored: float):
         self.findings.append(Finding(F_ABOVE, f"the objective reaches {value!r} at {self._dt(t).isoformat()}, above the "
-                                              f"stored maximum {m_stored!r} + {BOUND_TOL}"))
+                                              f"stored maximum {m_stored!r} + {_f4_tol(m_stored):.3g}"))
         self.rederived["witness"] = (self._dt(t), value)
 
     # ── checks 3-4: the earliest DISTINCT LOCAL EXTREMUM within the tie tolerance of the maximum ──────────────────────
@@ -714,12 +729,12 @@ class _Engine:
             want_score = max((v for _, _, v in lv), default=0.0)
         self.rederived.update(score=want_score, evidence_for=want_for, evidence_against=want_against)
         if st.score is not NOT_GIVEN and ((st.score is None) != (want_score is None) or (
-                want_score is not None and abs(st.score - want_score) > VALUE_TOL)):
+                want_score is not None and abs(st.score - want_score) > max(VALUE_TOL, _f4_tol(want_score)))):
             self.findings.append(Finding(F_SCORE, f"score {st.score!r} != re-derived {want_score!r}"))
-        if st.evidence_for is not NOT_GIVEN and (st.evidence_for is None or abs(st.evidence_for - want_for) > VALUE_TOL):
+        if st.evidence_for is not NOT_GIVEN and (st.evidence_for is None or abs(st.evidence_for - want_for) > max(VALUE_TOL, _f4_tol(want_for))):
             self.findings.append(Finding(F_EVFOR, f"evidence_for {st.evidence_for!r} != re-derived {want_for!r}"))
         if st.evidence_against is not NOT_GIVEN and ((st.evidence_against is None) != (want_against is None) or (
-                want_against is not None and abs(st.evidence_against - want_against) > VALUE_TOL)):
+                want_against is not None and abs(st.evidence_against - want_against) > max(VALUE_TOL, _f4_tol(want_against)))):
             self.findings.append(Finding(F_EVAGAINST, f"evidence_against {st.evidence_against!r} != re-derived "
                                                       f"{want_against!r}"))
         if st.outcome_valence is not NOT_GIVEN and self.event_class is not None:
@@ -764,7 +779,7 @@ class _Engine:
             return
         f_star = self._objective_at(t_star)
         self.rederived["value_at_peak"] = f_star
-        if f_star is None or abs(f_star - st.objective_value) > VALUE_TOL:
+        if f_star is None or abs(f_star - st.objective_value) > max(VALUE_TOL, _f4_tol(st.objective_value)):
             self.findings.append(Finding(F_VALUE, f"the objective at the stored peak {st.peak_instant.isoformat()} is "
                                                   f"{f_star!r}, the stored value {st.objective_value!r}"))
         self._bound(st.objective_value)
@@ -772,24 +787,36 @@ class _Engine:
             return
         if f_star is not None:
             # The maximum itself is re-derived here (the stored value is a float4): every distinct local maximum within the widest
-            # threshold of the stored peak's value is collected once; M-hat is the largest of them, the ties are read off it.
+            # threshold of the stored peak's value is collected once; M-hat is the largest of them (UNROUNDED), the ties are read off it.
             cands = self._extrema(f_star - TIE - GREY - 1e-12)
             if not cands:
                 self.unverified.append((U_TIE, "no local extremum reached the tie threshold — the scan is inconclusive"))
             else:
                 m_hat = max(f for _, f in cands)
                 self.rederived["maximum"] = m_hat
+                if abs(st.objective_value - m_hat) > _f4_tol(m_hat):
+                    self.findings.append(Finding(F_VALUE, (
+                        f"the stored maximum {st.objective_value!r} is not the re-derived maximum {m_hat!r} inside its float4 "
+                        f"interval (+-{_f4_tol(m_hat):.3g})")))
                 theta = m_hat - TIE
-                t_lo, t_mid, t_hi = (min(t for t, f in cands if f >= th) for th in (theta - GREY, theta, theta + GREY))
-                self.rederived["earliest_tie"] = {"t": self._dt(t_mid), "grey": (self._dt(t_lo), self._dt(t_hi))}
-                if t_star > t_hi + self.tol_s:
-                    self.findings.append(Finding(F_EARLIER_TIE, (
-                        f"a distinct local extremum within the tie tolerance of the maximum sits at {self._dt(t_hi).isoformat()}"
-                        f" (at the strict end of the grey band), before the stored peak {st.peak_instant.isoformat()}")))
-                if abs(t_star - t_mid) > self.tol_s and not (t_lo - self.tol_s <= t_star <= t_hi + self.tol_s):
+                # the earliest QUALIFYING extremum (unrounded value >= theta) at the strict, nominal and lenient end of the grey band
+                e_lo, e_mid, e_hi = (min(t for t, f in cands if f >= th) for th in (theta - GREY, theta, theta + GREY))
+                self.rederived["earliest_tie"] = {"t": self._dt(e_mid), "grey": (self._dt(e_lo), self._dt(e_hi))}
+                widest = [t for t, f in cands if f >= theta - GREY]
+                if not any(abs(t_star - t) <= self.tol_s for t in widest):
                     self.findings.append(Finding(F_INSTANT, (
-                        f"the stored peak {st.peak_instant.isoformat()} is {t_star - t_mid:+.3f} s from the earliest tie "
-                        f"extremum {self._dt(t_mid).isoformat()}, beyond the {self.tol_s} s tolerance")))
+                        f"the stored peak {st.peak_instant.isoformat()} is within {self.tol_s} s of no extremum that reaches the tie "
+                        f"threshold of the maximum (the earliest qualifying one is {self._dt(e_mid).isoformat()}, "
+                        f"{t_star - e_mid:+.3f} s away)")))
+                elif e_hi - e_lo > self.tol_s:
+                    self.unverified.append((U_AMBIG, (
+                        f"the earliest extremum within the tie tolerance of the maximum is {self._dt(e_lo).isoformat()} at the strict "
+                        f"end of the +-{GREY} grey band and {self._dt(e_hi).isoformat()} at the lenient end — which instant is the "
+                        "frozen earliest tie is not decidable at this precision")))
+                elif abs(t_star - e_mid) > self.tol_s:
+                    self.findings.append(Finding(F_EARLIER_TIE, (
+                        f"a distinct local extremum within the tie tolerance of the maximum sits at {self._dt(e_mid).isoformat()}, "
+                        f"before the stored peak {st.peak_instant.isoformat()}")))
             self._at_peak(t_star, f_star)
 
 
