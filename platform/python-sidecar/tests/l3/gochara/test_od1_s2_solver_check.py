@@ -780,10 +780,12 @@ def test_the_independence_detector_reads_false_on_a_planted_import():
 def test_importing_the_checker_does_not_load_the_builder():
     import subprocess
     root = str(Path(__file__).resolve().parents[3])
-    # the package `__init__` imports `knots`, which needs the Swiss Ephemeris binding at import time; a runner without it (the DB shards)
-    # gets a stand-in module so the question asked here — does the checker pull in the builder — is still answered there, not skipped
+    # the package `__init__` imports `knots` (the Swiss Ephemeris binding) and `arcs` (scipy's CubicSpline) at import time; a runner without
+    # either (the DB shards) gets a stand-in module so the question asked here — does the checker pull in the builder — is still answered there, not skipped
     code = (f"import sys; sys.path.insert(0, {root!r})\n"
-            "try:\n    import swisseph\nexcept ImportError:\n    from unittest import mock; sys.modules['swisseph'] = mock.MagicMock()\n"
+            "from unittest import mock\n"
+            "for name in ('swisseph', 'scipy', 'scipy.interpolate'):\n"
+            "    try:\n        __import__(name)\n    except ImportError:\n        sys.modules[name] = mock.MagicMock()\n"
             "from services.gochara_kernel import window_solver_check\n"
             "bad = [m for m in ('services.gochara_kernel.window_sweep', 'services.gochara_kernel.window_solver') if m in sys.modules]\n"
             "print('LOADED', bad) if bad else print('CLEAN')\n")

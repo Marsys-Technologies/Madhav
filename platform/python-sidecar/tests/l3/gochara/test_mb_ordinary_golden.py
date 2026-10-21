@@ -421,7 +421,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # the verifier self-check), input_vector (p1_nature_operands / p1_operands / p1_valence / the P1 L0 consumption), rule_registry (the authored category_mapping read back and
     # persisted), inventory / inventory_verifier (P1 1.0.0 -> 1.3.0 supersession) and gochara_rules.registry (the P1@1.3.0 rows) changed. Re-derived from the merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 906763ec... is the pre-union W0 merge); no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "26e700048f7eacd536df6f02af8bf20fb49a088d717b395d92c4ccc7dec46dd9"
+    # Evaluation re-pinned for the merge with main's SR-DOCTRINE-H (#3840, migration 1401): ga_writers.ga_condition_writer (the L1 rule functions P1 calls by name, in the evaluation
+    # stage) changed there (node dignity/friendship). Re-derived from the merged tree's real bytes the same way (this branch alone gives 26e70004...); geometry and window are unchanged
+    # by it and no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "1c08798e6a2c8285b86004f76da3205f6eaebce44ec102d868e02314d529e111"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
