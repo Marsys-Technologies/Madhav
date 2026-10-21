@@ -57,7 +57,8 @@ def _rows(conn, sql, params=()):
 
 def test_the_whole_bound_catalogue_seeds_and_every_1_2_0_row_is_stored_as_declared(pg):
     counts = _seeded(pg)
-    assert counts["paths"] == len(rr.bound_path_refs()) == 8 and counts["seals"] == 8
+    # P1..P5 @1.0.0 + P1/P3/P4 @1.2.0 + P1/P3/P4 @1.3.0 (SR-OD1 V1) + P2 @1.1.0 (AM-18)
+    assert counts["paths"] == len(rr.bound_path_refs()) == 12 and counts["seals"] == 12
     assert counts["factors"] == len(rr.bound_factor_refs())
     stored = {(p, v): (prov, role, ruling, score) for p, v, prov, role, ruling, score in _rows(
         pg, "SELECT path_id, rule_version, provenance, operator_role, ruling_ref, score_rule"
@@ -89,7 +90,8 @@ def test_the_p4_role_inventory_carries_karaka_at_1_2_0_only_and_the_sealed_1_0_0
     _seeded(pg)
     roles = {v: {s["object_role"] for s in sel} for v, sel in _rows(
         pg, "SELECT rule_version, object_selector FROM public.ka_gochara_rule_path WHERE path_id = 'P4'")}
-    assert roles == {"1.0.0": {"signature_house", "lord"}, V: {"signature_house", "lord", "karaka"}}
+    assert roles == {"1.0.0": {"signature_house", "lord"}, "1.3.0": {"signature_house", "lord"},
+                     V: {"signature_house", "lord", "karaka"}}
     assert rr._PATH_ROLES["P4"] == ("signature_house", "lord")
     p3 = {v: {s["object_role"] for s in sel} for v, sel in _rows(
         pg, "SELECT rule_version, object_selector FROM public.ka_gochara_rule_path WHERE path_id = 'P3'")}
