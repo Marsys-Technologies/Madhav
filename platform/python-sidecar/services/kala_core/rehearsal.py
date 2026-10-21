@@ -26,16 +26,19 @@ from pipeline.orchestrator.service_probes import run_health_probe
 # PLAN §4.1 / §6.4: F1 precedes the F1-consuming Avadhi read model. The
 # chart-independent sky has no separate registry id: the judge owns its grains.
 # Registrar issuance is delivery-only and is never in this replaceable set.
+# K9 r4: ka_gochara_resonance sits between ka_yojaka (its dependency) and the writers that read it
+# (ka_gochara_v5, ka_sangam, ka_vighnakara, ka_kshetra); leaving it out of the plan lets the transit
+# writers run against a stale resonance map. The registry edges are in migration 1392.
 WAVES = (
     ('ka_dasha_kala', 'ka_vedha_gochara', 'ka_moorti_nirnaya', 'ka_kota_chakra',
      'ka_tithi_pravesha', 'ka_sudarshana_varsha'),
-    ('ka_yojaka',), ('ka_avadhi',), ('ka_gochara_v5',), ('ka_vighnakara',),
+    ('ka_yojaka',), ('ka_gochara_resonance',), ('ka_avadhi',), ('ka_gochara_v5',), ('ka_vighnakara',),
     ('ka_sangam',), ('ka_kshetra',),
     ('ka_kalasutra', 'ka_kala_darshana', 'ka_taranga', 'ka_jivana_parva'),
     ('ka_tulana', 'ka_muhurta_seva', 'ka_graha_sancara'),
 )
 ASSETS = tuple(asset for wave in WAVES for asset in wave)
-MATERIALIZED = frozenset(asset for wave in WAVES[1:8] for asset in wave)
+MATERIALIZED = frozenset(asset for wave in WAVES[1:9] for asset in wave)
 _INPUTS = ('lane', 'chart_id', 'generation', 'build_id', 'expected_head_generation',
            'model_digest', 'rule_registry_version', 'conventions', 'grains_by_asset')
 

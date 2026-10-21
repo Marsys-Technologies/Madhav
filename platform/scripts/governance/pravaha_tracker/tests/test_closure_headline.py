@@ -23,7 +23,7 @@ REPO = Path(__file__).resolve().parents[5]
 MODEL_PATH = REPO / "00_ARCHITECTURE/control/kalayantra/plan_model.json"
 
 NOT_APPLICABLE = ["JOIN-ALL", "K-CERT-2", "W4-SAFETY-N01", "W4-SAFETY-N02", "KA3B-N1", "KA3B-N2", "OPS-NB-03",
-                  "V-K3b", "V-K5", "V-K6", "V-KA", "V-VC", "J-4c-pr2907", "KA4B-NB-02"]
+                  "V-K3b", "V-K5", "V-K6", "V-KA", "V-VC", "J-4c-pr2907"]
 DEFERRED = ["J-7a", "J-7a-a62", "J-7a-pr3099", "KR-1", "KR-2", "J-8", "J-8-b63", "J-8-j3", "J-8a", "K9-5",
             "K9-5-NB-01"]
 DEFERRED_NB04 = ["J-4a-a25", "J-4a-a26", "J-3a-b44"]   # SR-A9-INTERP A9-NB-04: no phase brief reads their output;
@@ -94,10 +94,9 @@ def decided(tmp_path_factory):
     saved = cli.EVENTS, cli.load_model
     cli.EVENTS, cli.load_model = str(log), lambda: model
     try:
-        # D-J4C-PR2907-NA: #2907's content landed through #2901 (review X-20261019T150725Z-review-3596-pr2907);
-        # D-KA4B-NB02-NA: KA-4b is parked (SR-CLOSE-NOW item 7)
+        # D-J4C-PR2907-NA: #2907's content landed through #2901 (review X-20261019T150725Z-review-3596-pr2907)
         for dec in sorted(d["id"] for d in model["decisions"]
-                          if d["id"].startswith(("D-A9-NA-", "D-J4C-PR2907-NA", "D-KA4B-NB02-NA"))):
+                          if d["id"].startswith(("D-A9-NA-", "D-J4C-PR2907-NA"))):
             assert cli.main(["decide", dec, "--outcome", "refused", "--as", "steward", "--delegated",
                              "--detail", f"A9 {dec}"]) == 0
     finally:
@@ -126,7 +125,7 @@ def test_not_applicable_does_not_spread_into_the_closure(decided):
 def test_the_headline_denominator_is_the_closure_and_every_deferred_item_is_listed(decided):
     _, snap = decided
     o = snap["overall"]
-    assert o["total"] == 181 and o["plan_wide"]["total"] == 275   # 183 -> 181: VC-1 and VC-2 leave with the retired VC-2 (SR-CLOSE-NOW 5)
+    assert o["total"] == 181 and o["plan_wide"]["total"] == 274   # 183 -> 181: VC-1 and VC-2 leave with the retired VC-2 (SR-CLOSE-NOW 5); 275 -> 274: D-KA4B-NB02-NA dropped (SR-CLOSE-NOW.amend-7)
     listed = {d["id"]: d for d in o["deferred"]}
     assert set(DEFERRED + DEFERRED_NB04 + DEFERRED_PREP) <= set(listed)
     assert all(listed[i]["re_entry"] for i in DEFERRED + DEFERRED_NB04 + DEFERRED_PREP)
@@ -220,14 +219,15 @@ def test_vc2_retirement_is_declared_with_its_re_entry_and_keeps_its_unmeasured_d
     assert vc2["detector"]["ref"] == "origin/kalayantra/vc-2" and "UNMEASURED" in vc2["detector"]["measures"]
 
 
-def test_ka4b_nb_02_is_retired_by_a_declared_decision_that_carries_ka_4bs_re_entry():
+def test_ka4b_nb_02_is_a_plain_child_of_ka_4b_with_no_declared_retirement():
+    # SR-CLOSE-NOW.amend-7: KA4B-NB-02 closes with KA-4b, so D-KA4B-NB02-NA must not be recorded (not declared at all, or it
+    # would sit 'ready' forever); the item keeps its plain dependency on KA-4b and its original triage class
     model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
     items = {i["id"]: i for i in model["items"]}
     nb = items["KA4B-NB-02"]
-    assert nb["requires_outcome"] == {"D-KA4B-NB02-NA": "approved"} and "D-KA4B-NB02-NA" in nb["depends_on"]
-    assert nb["triage"]["class"] == "retired" and "sidecar producer" in nb["triage"]["re_entry"]
-    assert items["D-KA4B-NB02-NA"]["triage"] == {"class": "retire_decision", "retires": "KA4B-NB-02"}
-    assert "D-KA4B-NB02-NA" in {d["id"] for d in model["decisions"]}
+    assert nb["depends_on"] == ["KA-4b"] and "requires_outcome" not in nb
+    assert nb["triage"] == {"class": "a"}
+    assert "D-KA4B-NB02-NA" not in items and "D-KA4B-NB02-NA" not in {d["id"] for d in model["decisions"]}
 
 
 def test_k_cert_carries_no_deferral_so_its_real_artifact_acceptance_can_count():

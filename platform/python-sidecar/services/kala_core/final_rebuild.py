@@ -61,7 +61,7 @@ def prepare(plan: dict, frozen_run: dict) -> dict:
              and frozen_run['action'] == 'rebuild' and frozen_run['scope'] == 'asset_set'
              and frozen_run['scope_target'] == plan['request']['scope_target'], 'frozen run identity/scope differs')
     grains = plan['conventions'].get('publication_grains')
-    _require(isinstance(grains, dict) and set(grains) == set(ASSETS), 'publication grains must cover all 19 writers')
+    _require(isinstance(grains, dict) and set(grains) == set(ASSETS), 'publication grains must cover all 20 writers')
     keys = []
     for aid, values in grains.items():
         _require(isinstance(values, list) and bool(values), 'every writer needs explicit publication grains')
