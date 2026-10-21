@@ -3220,17 +3220,22 @@ jobs:
           shards_not_applicable=false
           if [ "$SHARDS_RESULT" = "skipped" ] && [ "$EVENT_NAME" = "pull_request" ] \
              && { [ "$DOCS_ONLY" = "true" ] || { [ "$RUN_COMBINATION" = "false" ] && [ "$CHANGES_RESULT" = "success" ]; }; }; then shards_not_applicable=true; fi
-          if [ "$READBACK_RESULT" = "skipped" ] && [ "$READBACK_EXPECTED" = "false" ]; then
-            if [ "$SHARDS_RESULT" = "success" ] || [ "$shards_not_applicable" = "true" ]; then
-              echo "governance tests passed; unchanged readbacks skipped by event policy"
-              if [ "$shards_not_applicable" = "true" ]; then
-                msg="Governance Tool Tests shards NOT APPLICABLE on this PR: merge_group-only (SR-BOLD-08a) or docs-only; the merge queue runs them"
-                echo "$msg"; echo "$msg" >> "$GITHUB_STEP_SUMMARY"
-              fi
-              exit 0
+          # Readbacks pass when they succeeded and were expected (a PR that touched a readback selected them; an unexpected run only
+          # counts beside a succeeded shard set) or were skipped while not expected; the
+          # shard set passes when it succeeded or is not applicable. Any other pairing, including a failed or an unexpectedly skipped
+          # readback, falls through to the error below.
+          if [ "$READBACK_RESULT" = "skipped" ] && [ "$READBACK_EXPECTED" = "false" ]; then readbacks_ok=skipped
+          elif [ "$READBACK_RESULT" = "success" ] && { [ "$SHARDS_RESULT" = "success" ] || [ "$READBACK_EXPECTED" = "true" ]; }; then readbacks_ok=success
+          else readbacks_ok=false; fi
+          if [ "$readbacks_ok" != "false" ] && { [ "$SHARDS_RESULT" = "success" ] || [ "$shards_not_applicable" = "true" ]; }; then
+            if [ "$shards_not_applicable" = "true" ]; then
+              msg="Governance Tool Tests shards NOT APPLICABLE on this PR: merge_group-only (SR-BOLD-08a) or docs-only; the merge queue runs them"
+              echo "$msg"; echo "$msg" >> "$GITHUB_STEP_SUMMARY"
             fi
+            if [ "$readbacks_ok" = "skipped" ]; then echo "governance tests passed; unchanged readbacks skipped by event policy"
+            else echo "all governance test shards or their PR deferral, readbacks and J5S rehearsal passed"; fi
+            exit 0
           fi
-          if [ "$SHARDS_RESULT" = "success" ] && [ "$READBACK_RESULT" = "success" ]; then echo "all governance test shards, readbacks and J5S rehearsal passed"; exit 0; fi
           echo "::error::governance test shards finished '$SHARDS_RESULT', readbacks '$READBACK_RESULT' (docs_only='$DOCS_ONLY'), not 'success'"; exit 1
 
   governance-gates-py-sidecar-shard:

@@ -19,6 +19,10 @@
 #                    gochara_sealer (migration 1378's header lines 53-57 leave these two L1 reads to the data-plane ACL owner). ONE transaction:
 #                    the grant and a closure check (exactly SELECT, no write privilege, no grant option, for both roles on both tables) commit together
 #                    or not at all. Refuses if either role is absent. Idempotent. Touches no secret.
+#                    C-04: the same transaction also GRANTs USAGE ON SCHEMA public — and nothing else on the schema — to the same two roles: a table SELECT
+#                    cannot be used without namespace USAGE (the J-4b-a55j readback measured schema-usage false for both). The closure check requires
+#                    USAGE, no CREATE and no grant option on the schema for both, so a grantor without rights on `public` (PostgreSQL only WARNs and grants
+#                    nothing) aborts the whole stage instead of passing. Not a new owner click: the stage is the one the guide already runs.
 #   sealer-credential  J-4b-a55j (SR-GRANTS-MINIMAL, replaces the person-run staging of act 2b): the sealer's password is generated HERE, the full DSN
 #                    is written straight to Secret Manager (SEALER_SECRET) BEFORE the role is touched, then the role is activated in one transaction
 #                    with its postconditions, observed by an authentication, and listed. Same compensation as `sealer-password` PLUS the destroy of
@@ -295,7 +299,8 @@ case "$STAGE" in
     note "sealer password set. NEXT: the steward deletes the staging secret (and verifies it is absent) and reports act 2b."
     ;;
   grant-l1-reads)
-    # J-4b-a55j: the two L1 reads migration 1378 leaves to the data-plane ACL owner (its header lines 53-57) — SELECT, on these two tables, for these two roles, nothing else.
+    # J-4b-a55j: the two L1 reads migration 1378 leaves to the data-plane ACL owner (its header lines 53-57) — SELECT, on these two tables, for these two roles, nothing else —
+    # plus the schema USAGE without which those reads cannot be used (C-04).
     # One transaction: the GRANT and the closure check commit together or not at all. No secret is involved.
     for r in "$VERIFIER_ROLE" "$SEALER_ROLE"; do role_exists "$r" || fail "role $r does not exist — run create-roles first"; done
     for t in chart_facts chart_dashas; do
@@ -304,8 +309,15 @@ case "$STAGE" in
     psql_admin -f - <<SQL || fail "the L1 read grants or their closure check failed — nothing was committed" 5
 BEGIN;
 GRANT SELECT ON public.chart_facts, public.chart_dashas TO $VERIFIER_ROLE, $SEALER_ROLE;
+GRANT USAGE ON SCHEMA public TO $VERIFIER_ROLE, $SEALER_ROLE;
 DO \$post\$ DECLARE r text; t text; p text; BEGIN
   FOREACH r IN ARRAY ARRAY['$VERIFIER_ROLE', '$SEALER_ROLE'] LOOP
+    -- namespace access (C-04): exactly USAGE. has_schema_privilege counts PUBLIC grants too, the same effective test the provisioning readback applies.
+    IF NOT has_schema_privilege(r, 'public', 'USAGE') THEN RAISE EXCEPTION 'postcondition: % holds no USAGE on schema public', r; END IF;
+    IF has_schema_privilege(r, 'public', 'CREATE') THEN RAISE EXCEPTION 'postcondition: % holds CREATE on schema public (the schema grant is USAGE only)', r; END IF;
+    FOREACH p IN ARRAY ARRAY['USAGE', 'CREATE'] LOOP
+      IF has_schema_privilege(r, 'public', p || ' WITH GRANT OPTION') THEN RAISE EXCEPTION 'postcondition: % holds % WITH GRANT OPTION on schema public', r, p; END IF;
+    END LOOP;
     FOREACH t IN ARRAY ARRAY['chart_facts', 'chart_dashas'] LOOP
       IF NOT has_table_privilege(r, 'public.' || t, 'SELECT') THEN RAISE EXCEPTION 'postcondition: % holds no SELECT on %', r, t; END IF;
       FOREACH p IN ARRAY ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'] LOOP
@@ -319,7 +331,7 @@ DO \$post\$ DECLARE r text; t text; p text; BEGIN
 END \$post\$;
 COMMIT;
 SQL
-    note "l1_read_grants: SELECT on chart_facts, chart_dashas for $VERIFIER_ROLE, $SEALER_ROLE (closure checked in the same transaction)"
+    note "l1_read_grants: SELECT on chart_facts, chart_dashas and USAGE on schema public for $VERIFIER_ROLE, $SEALER_ROLE (closure checked in the same transaction)"
     COMPLETED=1
     ;;
   sealer-credential)
