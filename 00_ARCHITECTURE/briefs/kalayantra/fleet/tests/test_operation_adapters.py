@@ -255,29 +255,26 @@ class Bench:
             "outcome": {"SUCCEEDED": "succeeded", "FAILED": "failed"}.get(state),
             "receipt_sha256": sha_file(self.X.REC / (prepared["operation_id"] + ".json")), "source": "fake remote"}, **fields)
 
-def archive_prior_dry_run(bench, req):
-    """SR-K9-PUBLISHABLE D7: the production `orchestrator_rebuild` is admitted only on the executor's own receipt of a COMPLETED
-    `orchestrator_rebuild_dryrun` for the same identity (executor.dry_run_check). Archive such a dry run (request in done/, receipt and complete
-    output in receipts/, as the executor writes them) under its own operation id and return the `dryrun_receipt` citation for `req`."""
+def archive_dry_run(bench, req, oid="OP-FIX-dry0"):
+    """The `orchestrator_rebuild_dryrun` of `req`'s identity as this executor would have archived it (done/ request, output, COMPLETED receipt); returns the
+    {name, sha256} citation. SR-K9-PUBLISHABLE D7: the production kind is admitted only on the executor's OWN receipt of that dry run (dry_run_check)."""
     X = bench.X
-    oid = "OP-FIX-prior-dry-" + req["args"]["run-id"][:8]
-    dreq = dict(req, operation_id=oid, kind="orchestrator_rebuild_dryrun", idempotency_key=oid)
-    dreq.pop("acceptance_receipt", None); dreq.pop("dryrun_receipt", None)
-    (X.DONE / (oid + ".json")).write_text(json.dumps(dreq))
+    dreq = {"operation_id": oid, "kind": "orchestrator_rebuild_dryrun", "item_id": req["item_id"], "idempotency_key": oid, "requested_by": "adhikarin",
+            "kyd": req["kyd"], "args": copy.deepcopy(req["args"]), "chart_id": req["chart_id"], "reviewed_commit": req["reviewed_commit"]}
+    (X.DONE / f"{oid}.json").write_text(json.dumps(dreq))
     output = json.dumps({"status": "PLAN_ONLY", "dry_run_passed": None}) + "\n"
-    (X.REC / (oid + ".output.txt")).write_text(output)
-    record = {"operation_id": oid, "kind": dreq["kind"], "item_id": req["item_id"], "status": "COMPLETED", "reason": "", "exit_code": 0,
-              "ts": X.now(), "reviewed_commit": req["reviewed_commit"], "request_sha256": X.request_digest(dreq),
-              "output_sha256": hashlib.sha256(output.encode()).hexdigest()}
+    (X.REC / f"{oid}.output.txt").write_text(output)
+    record = {"operation_id": oid, "kind": dreq["kind"], "item_id": req["item_id"], "status": "COMPLETED", "reason": "", "exit_code": 0, "ts": X.now(),
+              "reviewed_commit": req["reviewed_commit"], "request_sha256": X.request_digest(dreq), "output_sha256": hashlib.sha256(output.encode()).hexdigest()}
     body = json.dumps(record, indent=1).encode()
-    (X.REC / (oid + ".json")).write_bytes(body)
-    return {"name": oid + ".json", "sha256": hashlib.sha256(body).hexdigest()}
+    (X.REC / f"{oid}.json").write_bytes(body)
+    return {"name": f"{oid}.json", "sha256": hashlib.sha256(body).hexdigest()}
 
 def accepted_request(bench, steps=None):
     spec = (steps or [RUN()])[0]
     req = dict(spec, item_id=ITEM, idempotency_key=spec["operation_id"], requested_by="adhikarin", chart_id=CANONICAL_CHART)
     if req["kind"] == "orchestrator_rebuild":
-        req["dryrun_receipt"] = archive_prior_dry_run(bench, req)
+        req["dryrun_receipt"] = archive_dry_run(bench, req)
     digest = bench.X.request_digest(req)
     prepared = {"schema": "ky.op_prepared/1", "operation_id": req["operation_id"], "item": ITEM, "step": 1,
         "request": copy.deepcopy(req), "request_sha256": digest, "prepared_by": "controller:fixture", "prepared_by_slot": None}

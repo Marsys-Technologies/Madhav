@@ -203,8 +203,8 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     import types
     source = ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py'
     # validate's signed route is signer_acceptance_problem (the A8 §3.9 block, moved out unchanged by OWNER-MINIMAL-PROTECTION-NOW);
-    # orchestrator_rebuild_cancel_problem (SR-CANCEL-LANE) and orchestrator_rebuild_dryrun_problem (SR-K9-PUBLISHABLE D7) are compiled for real: each
-    # returns None before touching any state for a kind that is not orchestrator_rebuild[_cancel]
+    # orchestrator_rebuild_cancel_problem (SR-CANCEL-LANE) and orchestrator_rebuild_dryrun_problem (SR-K9-PUBLISHABLE D7) are compiled for real: each returns
+    # None before touching any state for a kind other than its own
     functions = [n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef)
                  and n.name in ('signer_acceptance_problem', 'orchestrator_rebuild_cancel_problem', 'orchestrator_rebuild_dryrun_problem', 'validate')]
     assert len(functions) == 4
