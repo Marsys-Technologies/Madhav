@@ -10,8 +10,14 @@ What is read:
   * MEMBER spans — per member record of a window: its agent, whether its object_role is `karaka` (a K-B
     luminary target), and each of its support intervals INTERSECTED with the window's interval. These give
     the P3 fast/slow split and the K-B contribution (a window is a union over agents).
-  * the HORIZON — the generation's one `completed_horizon` across its event_class coverage partitions; two
-    different horizons refuse (never a silent pick).
+  * the BUILD SPAN — the generation's one `completed_horizon` across its event_class coverage partitions
+    (1998..2084 for a century build); two different horizons refuse (never a silent pick).
+
+Two spans, never confused (J-5q; the surrogate's ruling on the density report). The shares are taken over the SCORED span
+(`registry.H0`..`registry.H1`, 1998-01-01..2026-04-17, protocol §1: the days the held-out events and the T-FP budget are scored
+over) by default; the BUILD span is reported beside it as a label (`build_span`) and may be selected with `span="build"`. The report
+says which one its shares are over (`horizon_kind`). A scored-span report of a generation whose build span does not cover the scored
+span is REFUSED: the uncovered days would read as "nothing admitted".
 
 A stored interval is half-open [lo, hi). A calendar day is counted when ANY instant of it is admitted; days
 are taken in `tz` (default IST, +05:30 — the day convention of the scorer's extract).
@@ -27,6 +33,10 @@ import json
 import sys
 
 from .density import AdmittedSpan, admitted_day_share_report
+from .registry import H0, H1
+
+#: the scored span (inclusive calendar days): the span the admitted-day shares are reported over by default
+SCORED_SPAN = (H0, H1)
 
 IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 
@@ -111,14 +121,31 @@ def read_spans(conn, chart_id: str, generation: str, tz: dt.tzinfo = IST) -> tup
 
 
 def report_from_store(conn, *, chart_id: str, generation: str, tz: dt.tzinfo = IST,
-                      horizon: tuple[dt.date, dt.date] | None = None) -> dict:
-    """The admitted-day-share report of one stored generation. `horizon` overrides the coverage horizon (the
-    report over the SCORED horizon, FB-50); the DVI members are those of the H table each class's P4 windows
-    were built under."""
+                      horizon: tuple[dt.date, dt.date] | None = None, span: str = "scored") -> dict:
+    """The admitted-day-share report of one stored generation. The shares are over `horizon` when given (an explicit override, labelled
+    `override`), else over the SCORED span (`span="scored"`, the default; FB-50) or the BUILD span (`span="build"`, the coverage horizon).
+    The DVI members are those of the H table each class's P4 windows were built under."""
     from services.gochara_rules import registry as rules
 
+    if span not in ("scored", "build"):
+        raise ExtractRefused(f"span {span!r} is not 'scored' or 'build'")
     spans, p4_version = read_spans(conn, chart_id, generation, tz)
-    h = horizon or read_horizon(conn, chart_id, generation, tz)
+    build = None
+    if horizon is not None:
+        h, kind = horizon, "override"
+        try:
+            build = read_horizon(conn, chart_id, generation, tz)
+        except ExtractRefused:
+            build = None                       # an explicit override does not need the label; the report then carries a null build span
+    else:
+        build = read_horizon(conn, chart_id, generation, tz)
+        if span == "build":
+            h, kind = build, "build"
+        else:
+            if not (build[0] <= SCORED_SPAN[0] and SCORED_SPAN[1] <= build[1]):
+                raise ExtractRefused(f"generation {generation!r}: the build span {build[0]}..{build[1]} does not cover the scored span "
+                                     f"{SCORED_SPAN[0]}..{SCORED_SPAN[1]}; the uncovered days would read as 'nothing admitted'")
+            h, kind = SCORED_SPAN, "scored"
     dvi = {}
     for cls, version in sorted(p4_version.items()):
         members = rules.tier_table_lagna(version).get(cls, {}).get("dvi", ())
@@ -135,6 +162,9 @@ def report_from_store(conn, *, chart_id: str, generation: str, tz: dt.tzinfo = I
             raise ExtractRefused(f'final_rule_context_conflict: {cls}')
         contexts[cls] = context
     out = admitted_day_share_report(spans, h, dvi_members=dvi, generation=generation, class_contexts=contexts)
+    out["horizon_kind"] = kind
+    out["scored_span"] = [SCORED_SPAN[0].isoformat(), SCORED_SPAN[1].isoformat()]
+    out["build_span"] = None if build is None else [build[0].isoformat(), build[1].isoformat()]
     out["source"] = {"kind": "stored_windows", "chart_id": chart_id, "day_timezone": str(tz),
                      "tables": ["ka_gochara_eval_window", "ka_gochara_eval_window_record",
                                 "ka_gochara_relationship_record", "kala_gochara_coverage"],
@@ -144,7 +174,7 @@ def report_from_store(conn, *, chart_id: str, generation: str, tz: dt.tzinfo = I
     return out
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, connect=None) -> int:
     """CLI. The connection string is read from the ENVIRONMENT variable named by --dsn-env (never an argument:
     no DSN on a command line); the session is opened read-only."""
     import os
@@ -154,16 +184,20 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--generation", required=True)
     ap.add_argument("--dsn-env", required=True, help="NAME of the environment variable holding the connection string")
     ap.add_argument("--output", required=True)
+    ap.add_argument("--span", choices=("scored", "build"), default="scored",
+                    help="the span the shares are over: the SCORED span 1998-01-01..2026-04-17 (default) or the generation's build span")
     args = ap.parse_args(argv)
     dsn = os.environ.get(args.dsn_env)
     if not dsn:
         print(f"environment variable {args.dsn_env} is not set", file=sys.stderr)
         return 2
-    import psycopg
-    with psycopg.connect(dsn, autocommit=False) as conn:
+    if connect is None:
+        import psycopg
+        connect = psycopg.connect
+    with connect(dsn, autocommit=False) as conn:
         conn.execute("SET TRANSACTION READ ONLY")
         try:
-            report = report_from_store(conn, chart_id=args.chart_id, generation=args.generation)
+            report = report_from_store(conn, chart_id=args.chart_id, generation=args.generation, span=args.span)
         except ExtractRefused as exc:
             print(f"REFUSED: {exc}", file=sys.stderr)
             return 1
