@@ -67,6 +67,19 @@ def test_k8_reads_match_the_actual_known_active_producers_with_one_disclosed_bac
                 shared=(ac.SIDECAR/'services/kala_core/overlays/contested_storage.py').read_text()
                 assert "if payload.family == 'kota_chakra':\n            cur.execute('LOCK TABLE bg_kota_chakra_rings" in shared
                 continue
+            # SR-OD1 P1a/D2: the scanner reads P1's three L0 reference tables out of the P1 operand loaders, but the build
+            # consumes them only when P1's operand sources are bound (writer `_l0_consumed`: "a dependency only when
+            # consumed", A5_3 brief). Nothing binds them today, so no edge is declared. The exemption is asserted from
+            # source and expires with the gate: binding a P1 value-rule table or the Form B version 1.3.0 fails it until
+            # ka_gochara_v5 declares the producer edge.
+            if aid=='ka_gochara_v5' and table in ('bg_combustion_orbs','bg_dignity_reference','bg_graha_naisargika_friendship') \
+                    and {x[0] for x in sites}<={'services/gochara_kernel/p1_operands.py','services/gochara_kernel/p1_operands_check.py'}:
+                writer_src=(ac.WRITERS/'ka_gochara_v5.py').read_text()
+                assert re.search(r'(?m)^P1_VALUE_RULES = None\b',writer_src), 'P1 value rules are bound: declare the L0 edge'
+                assert '''if P1_VALUE_RULES is not None or _p1_form_b_bound() else ())''' in writer_src
+                bound=re.search(r'(?m)^BOUND_PATH_REFS = (\(.*\))$',(ac.SIDECAR/'services/gochara_kernel/rule_registry.py').read_text())
+                assert bound and '"P1", "1.3.0"' not in bound[1], 'P1 Form B is bound: declare the L0 edge'
+                continue
             if producers & set(row['depends_on']):matched+=1;continue
             # Never repair a downstream calibration read by creating a cycle.
             cyclic={p for p in producers if aid in ac._ancestors(graph,p)}
