@@ -1344,3 +1344,117 @@ for _cls in sorted(ND_P2_KB_TARGETS):
             "superseded_by": composite_ref(_pid, ND_H_VERSION), "ruling_ref": ND_P2_RULING,
             "reason": "natal Sun as a derived target for father-bereavement (ND-P2-20261005 rule 3)"}
 del _pid, _cls
+
+# ══ OD-1 D2 — P1 period-lord strength, Form B, rule_version 1.3.0 (owner-confirmed 2026-10-21) ═══════════
+# The owner confirmed the reviewed doctrine answers (OWNER-DOCTRINE-CONFIRMED-20261021; ANSWERS.md v2.1) and chose Form B
+# (P1-MAPPING-DECISION): Q3 c — the natural nature sets the default side, dignity and combustion override it at the extremes the texts
+# name (a badly placed lord turns harmful, a well-placed malefic gives good); Q4 list confirmed (Rāhu/Ketu natural malefics, BPHS 3.11;
+# "joined" = same sign; node windows numbered partly); Q5 c — seven rungs + combustion, precedence COMB > EX > MT > OWN > DEB > FR/NEU/INI,
+# friendship = the PERIOD LORD's own table toward the lord of the sign it occupies; Q6 mapping only (SR-Q6-L1): the L1 state "combust" =
+# the depression rung, adverse 1.0, the nodes not applicable; Q7 b — `maitri_compound` retired from P1.
+# New immutable rows under SR-SOLVER-PLAN-1 (new rule versions for everything that changes semantics); the 1.0.0 rows are NOT edited.
+# NOT bound here: like AM-13's 1.1.0 rows these exist in the registry and are bound only by a deliberate edit of `BOUND_PATH_REFS` /
+# `SELECTED_PATH_REFS` / `BOUND_FACTOR_REFS` in `K/rule_registry.py` after the P1 review gate — and the eight ND-H classes (P1 at 1.2.0)
+# need their own decision (plan I-5).
+#
+# Every cell is ONE declared value (CLAUDE.md §N.7.3) and carries its evidence tag (ANSWERS.md §B.3):
+#   V   a served verse states both the side and the value for this nature      Vs  a verse states the side, the value is the owner-table's
+#   B   the value is borrowed from a served strength table (Uttara Kālāmṛta)   I   a construction with no verse behind it
+# calibration_status = uncalibrated_default on every cell; the first calibration set is the windows where Form A and Form B put the lord on
+# opposite sides (a benefic in an inimical sign, in debility or combust; a malefic in exaltation, mūlatrikoṇa or own sign).
+P1_FORM_B_VERSION = "1.3.0"
+P1_FORM_B_RULING = "P1-MAPPING-DECISION"
+P1_FORM_B_RULINGS = ("OWNER-DOCTRINE-CONFIRMED-20261021", "P1-MAPPING-DECISION", "SR-Q6-L1", "SR-SOLVER-PLAN-1")
+P1_NATURES = ("benefic", "malefic")
+P1_DIGNITY_RUNGS = ("EX", "MT", "OWN", "FR", "NEU", "INI", "DEB")
+#: {(natural nature, rung): (side, value, evidence tag)}; COMB is the combustion row's `combust` cell, not a dignity cell
+P1_FORM_B_CELLS: dict[tuple[str, str], tuple[str, float, str]] = {
+    ("benefic", "EX"): ("favourable", 1.0, "V"), ("malefic", "EX"): ("favourable", 1.0, "V"),
+    ("benefic", "MT"): ("favourable", 0.75, "V"), ("malefic", "MT"): ("favourable", 0.75, "I"),
+    ("benefic", "OWN"): ("favourable", 0.5, "V"), ("malefic", "OWN"): ("favourable", 0.5, "I"),
+    ("benefic", "FR"): ("favourable", 0.25, "V"), ("malefic", "FR"): ("adverse", 0.5, "Vs/I"),
+    ("benefic", "NEU"): ("favourable", 0.125, "B"), ("malefic", "NEU"): ("adverse", 0.625, "I"),
+    ("benefic", "INI"): ("adverse", 0.75, "Vs/I"), ("malefic", "INI"): ("adverse", 0.75, "V"),
+    ("benefic", "DEB"): ("adverse", 1.0, "V"), ("malefic", "DEB"): ("adverse", 1.0, "V"),
+}
+P1_FORM_B_COMBUST = ("adverse", 1.0, "V")           # the L1 state "combust" = the depression rung (XX.30 tail; SR-Q6-L1)
+P1_FORM_B_NATURE_SIDE = {"benefic": "favourable", "malefic": "adverse"}   # the default side; magnitude 1 by declaration (ANSWERS §B.2)
+assert set(P1_FORM_B_CELLS) == {(n, r) for n in P1_NATURES for r in P1_DIGNITY_RUNGS}
+
+
+def _p1_cell(side: str, value: float, tag: str | None = None) -> dict:
+    return {"side": side, "value": value} if tag is None else {"side": side, "value": value, "evidence": tag}
+
+
+def _p1_form_b_evidence() -> str:
+    return "; ".join(f"{n}/{r} {s} {v:g} [{t}]" for (n, r), (s, v, t) in P1_FORM_B_CELLS.items())
+
+
+_P1_FORM_B_COMMON = dict(
+    rule_version=P1_FORM_B_VERSION, ruling_ref=P1_FORM_B_RULING, calibration_status="uncalibrated_default",
+    range=[0.0, 1.0], units="unitless", null_state="unqualified")
+_factor("dignity_of_transit_sign",
+        **_P1_FORM_B_COMMON,
+        operand="effective rung of the period lord at t: COMB > EX > MT > OWN > DEB > FR/NEU/INI, friendship = the period lord's own "
+                "natural-friendship row toward the lord of the sign it occupies (bg_graha_naisargika_friendship WHERE graha = period lord)",
+        function="categorical_ordered",
+        categories=list(P1_DIGNITY_RUNGS),
+        category_mapping={f"{n}/{r}": _p1_cell(*P1_FORM_B_CELLS[(n, r)]) for n in P1_NATURES for r in P1_DIGNITY_RUNGS},
+        direction="Form B two-sided: the cell names the SIDE (spec §3.1: favourable feeds the channel a benefic lord feeds) and the "
+                  "value in (0, 1]; precedence COMB > EX > MT > OWN > DEB > FR/NEU/INI",
+        effect=f"{'/'.join(P1_FORM_B_RULINGS)}: ANSWERS.md v2.1 §B.3 Form B cells, each tagged V (verse: side and value), Vs (verse: "
+               f"side; value the owner-table's), B (value borrowed from a served strength table), I (construction): {_p1_form_b_evidence()}. "
+               "Combustion is a rung (the combustion row's `combust` cell); this row contributes nothing of its own there")
+_factor("combustion",
+        **_P1_FORM_B_COMMON,
+        operand="L1 combustion state of the period lord (bg_combustion_orbs + the L1 computation, inherited by fact, never recomputed: "
+                "SR-Q6-L1); the Sun and the nodes are declared not applicable",
+        function="step",
+        category_mapping={"combust": _p1_cell(*P1_FORM_B_COMBUST), "not_combust": {"value": 1.0}},
+        direction="lower = stronger",
+        effect="SR-Q6-L1 + P1-MAPPING-DECISION (Q6, mapping only): the L1 state combust = the depression rung, side adverse, value 1.0 "
+               "[V: XX.30 tail 'similar to that in depression', BJ XX.11, XX.37, Saravali 27]; not combust = the neutral element 1.0 and the "
+               "dignity rung decides; Rāhu/Ketu and the Sun: not applicable (BPHS 7.28-29 translator's note PG99:C1, L1 M-19); the orbs and "
+               "the Saturn 16-vs-15 disagreement (ANSWERS §H-3) are L1's, not this row's")
+_factor("agent_nature",
+        **_P1_FORM_B_COMMON,
+        operand="natural nature of the period lord at t (BPHS 3.11: Sun, Mars, Saturn, waning Moon, Rāhu, Ketu malefic; Mercury malefic iff "
+                "in the same sign as a malefic)",
+        function="categorical_ordered",
+        categories=list(P1_NATURES),
+        category_mapping={n: _p1_cell(P1_FORM_B_NATURE_SIDE[n], 1.0) for n in P1_NATURES},
+        direction="benefic → favourable channel; malefic → adverse channel (the default), class-relative per spec §3.1; magnitude 1 by "
+                  "declaration — the dignity rung or combustion overrides the SIDE per instant (Form B)",
+        effect="P1-MAPPING-DECISION Q3 c / Q4: the nature sets the default side and carries no magnitude of its own [V: BPHS 3.11, "
+               "bphs:PG26:C1; Phaladīpikā gochara chapter phaladeepika:PG347:C1]; 'joined' = same sign (Q4 x); the Moon's pakṣa flips at "
+               "the Sun-Moon elongation 0/180 degrees")
+SUPERSEDED_FACTORS[composite_ref("dignity_of_transit_sign", RULE_VERSION)] = {
+    "superseded_by": composite_ref("dignity_of_transit_sign", P1_FORM_B_VERSION),
+    "reason": "1.0.0 carries only a virupa ordering anchor (no magnitude claim): no value is assignable; the owner's Form B table replaces it",
+    "source": f"{P1_FORM_B_RULING} (OWNER-DOCTRINE-CONFIRMED-20261021)"}
+SUPERSEDED_FACTORS[composite_ref("combustion", RULE_VERSION)] = {
+    "superseded_by": composite_ref("combustion", P1_FORM_B_VERSION),
+    "reason": "1.0.0 declares a step with no mapping; combustion is now the depression rung (SR-Q6-L1)",
+    "source": f"{P1_FORM_B_RULING}; SR-Q6-L1"}
+SUPERSEDED_FACTORS[composite_ref("agent_nature", RULE_VERSION)] = {
+    "superseded_by": composite_ref("agent_nature", P1_FORM_B_VERSION),
+    "reason": "1.0.0 declares the categories with no mapping; the default side per nature is now declared",
+    "source": f"{P1_FORM_B_RULING}"}
+SUPERSEDED_FACTORS[composite_ref("maitri_compound", RULE_VERSION)] = {
+    "superseded_by": None,
+    "reason": "RETIRED from P1 (Q7 b): its only cited content, the friendship of the sign lord, is the FR/NEU/INI rungs of the dignity "
+              "factor; the pañcadhā relation needs a temporary-friendship component no served text applies to a transit",
+    "source": f"{P1_FORM_B_RULING} (Q7 b)"}
+
+_p1_old = RULE_PATHS[composite_ref("P1", RULE_VERSION)]
+RULE_PATHS[composite_ref("P1", P1_FORM_B_VERSION)] = {
+    **_p1_old, "rule_version": P1_FORM_B_VERSION, "ruling_ref": P1_FORM_B_RULING,
+    "soft_factors": [composite_ref("dignity_of_transit_sign", P1_FORM_B_VERSION), composite_ref("combustion", P1_FORM_B_VERSION),
+                     composite_ref("agent_nature", P1_FORM_B_VERSION)],
+    "note": f"{_p1_old['note']}; {P1_FORM_B_RULING}: Form B period-lord strength, maitri_compound retired (Q7 b)"}
+SUPERSEDED_PATHS[composite_ref("P1", RULE_VERSION)] = {
+    "superseded_by": composite_ref("P1", P1_FORM_B_VERSION),
+    "reason": "soft factors moved to the Form B rows (dignity_of_transit_sign / combustion / agent_nature @1.3.0); maitri_compound retired",
+    "source": f"{P1_FORM_B_RULING} (OWNER-DOCTRINE-CONFIRMED-20261021)"}
+H_TABLE_VERSIONS[P1_FORM_B_VERSION] = "spec_2_2"      # the ordinary classes' truth table; no ND-H class selects 1.3.0 (CLASS_SELECTION_OVERRIDES)
+del _p1_old

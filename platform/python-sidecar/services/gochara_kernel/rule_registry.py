@@ -375,8 +375,10 @@ def factor_rows() -> list[dict]:
             "units": units,
             "calibration_status": src["calibration_status"],
             "doctrine_ordering": _FACTOR_DOCTRINE_ORDERING.get(fid),
-            "category_mapping": (src.get("ordering_anchor")
-                                 if fid == "dignity_of_transit_sign" else src.get("category_mapping")),
+            # E5: the 1.0.0 dignity row's virupa ordering anchor rides here; a row that authors a value table (the P1 Form B rows) is
+            # persisted with THAT table
+            "category_mapping": (src["category_mapping"] if src.get("category_mapping") is not None
+                                 else src.get("ordering_anchor") if fid == "dignity_of_transit_sign" else None),
             "null_state": src["null_state"],
             "effect": src["effect"],
         })
@@ -571,16 +573,18 @@ class RuleRegistryStore:
             if ref not in declared:
                 raise RegistryDivergenceError(f"persisted membership {ref} is not a bound factor reference")
             row = self.conn.execute(
-                "SELECT operand_selector, null_state, function, direction FROM public.ka_gochara_factor"
+                "SELECT operand_selector, null_state, function, direction, category_mapping FROM public.ka_gochara_factor"
                 " WHERE factor_id = %s AND rule_version = %s", ref).fetchone()
             if row is None:
                 raise RegistryDivergenceError(f"factor {ref} has persisted membership but no row")
-            selector, null_state, function, direction = _as_tuple(
-                ["operand_selector", "null_state", "function", "direction"], row)
+            selector, null_state, function, direction, mapping = _as_tuple(
+                ["operand_selector", "null_state", "function", "direction", "category_mapping"], row)
             selector = _normalise(selector)
+            mapping = _normalise(mapping)
             want = declared[ref]
             if (selector != want["operand_selector"] or null_state != want["null_state"]
-                    or function != want["function"] or direction != want["direction"]):
+                    or function != want["function"] or direction != want["direction"]
+                    or (mapping or None) != (want["category_mapping"] or None)):
                 raise RegistryDivergenceError(f"persisted factor {ref} diverges from the declaration")
             src = rules_registry.FACTORS[ref]
             decoded = decode_factor_selector(factor_id, selector)
@@ -592,6 +596,11 @@ class RuleRegistryStore:
             item["operand_selector"] = selector                    # verbatim, as persisted
             if decoded:
                 item["applicability"] = decoded
+            if src.get("category_mapping") is not None:
+                # OD-1 D2: an AUTHORED value table (the P1 Form B rows) is part of the declaration the sweep and the verifier evaluate, so it
+                # is read back as persisted and checked against the declaration above. The 1.0.0 dignity row's `ordering_anchor` rides in
+                # the same DB column (E5) but is no value table: it is not surfaced here, so a 1.0.0 grain reads exactly what it read.
+                item["category_mapping"] = mapping
             out.append(item)
         return out
 

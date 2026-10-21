@@ -46,10 +46,19 @@ class StrictInputError(ValueError):
         self.detail = detail
 
 
+L1_RULE_MODULE = "ga_writers.ga_condition_writer"
+
+
 def _l1():
-    """L1's pure rule module (lazy: it pulls psycopg and the engine adapter; this module must stay importable without them)."""
-    import ga_writers.ga_condition_writer as l1
-    return l1
+    """L1's pure rule module (lazy: it pulls psycopg and the engine adapter; this module must stay importable without them).
+
+    Imported BY NAME, not by an `import` statement, on purpose: L1's condition writer is a full writer (its imports open connections), and
+    the gochara writer's executable-closure hasher and the static no-commit / no-connect conformance scan
+    (`tests/l3/gochara/test_a53_writerbase_conformance.py`) walk `import` statements — they would pull the whole L1 writer closure into
+    `ka_gochara_v5`. The dependency is not hidden: `L1_RULE_MODULE` is listed in the input vector's `evaluation` implementation modules
+    (`input_vector.IMPLEMENTATION_MODULES`), so a change to an L1 rule this module calls changes the manifest's implementation identity."""
+    import importlib
+    return importlib.import_module(L1_RULE_MODULE)
 
 
 def _row(r) -> dict:

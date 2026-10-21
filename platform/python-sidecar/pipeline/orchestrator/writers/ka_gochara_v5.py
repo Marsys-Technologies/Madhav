@@ -78,6 +78,8 @@ from services.gochara_kernel import inventory as gk_inventory
 from services.gochara_kernel import input_vector as gk_input_vector
 from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
+from services.gochara_kernel import p1_operands as gk_p1_operands
+from services.gochara_kernel import p1_operands_check as gk_p1_operands_check
 from services.gochara_kernel import result_policy as gk_result_policy
 from services.gochara_kernel import contact_certify as gk_contact_certify
 from services.gochara_kernel import near_miss as gk_near_miss
@@ -130,6 +132,10 @@ def _drishti_source(agent: str, offset: int, factor_ref: tuple):
 # handed to the independent window verifier, so builder and verifier cannot disagree on it.
 DRISHTI_SOURCE = _drishti_source
 VEDHA_SOURCE = None         # the overlay binding is a pending steward ruling (kala_vedha_gochara vs derived)
+# SR-OD1 P1a: P1's dignity / combustion / maitrī operand sources are bound when the owner-table PR (D2) supplies the value rules
+# `{factor_id: p1_operands.ValueRule}`. None = unbound: P1 windows keep their named blank (`value_mapping_undeclared`) and the three L0
+# reference tables are not a dependency of the build (`_l0_consumed`).
+P1_VALUE_RULES = None
 # AM-5 (v1.5 amendments; migration 1206): the search-completeness chain.
 MANIFEST_SUBSTEP = "manifest"
 SNAPSHOT_SUBSTEP = "snapshot"
@@ -916,11 +922,22 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
         require_scored_classes=True)
 
 
+def _p1_form_b_bound() -> bool:
+    """D2: does the bound catalogue contain a P1 version whose soft-factor rows declare the owner's Form B table (P1@1.3.0)? The answer
+    follows the registry, not a flag: the day `("P1", "1.3.0")` joins `BOUND_PATH_REFS` the build consumes P1's L0 tables and numbers P1."""
+    from services.gochara_rules import p1_valence as _pv, registry as _rules_registry
+    return any(pid == "P1" and _pv.has_form_b([_rules_registry.FACTORS[ref] for ref in _rules_registry.RULE_PATHS[(pid, ver)]["soft_factors"]])
+               for pid, ver in gk_rule_registry.bound_path_refs())
+
+
 def _l0_consumed() -> tuple[str, ...]:
     """The L0 authorities this build ACTUALLY consumes (R8-1). The vedha pairs feed P2's vedha operand only;
     while `VEDHA_SOURCE` is unbound nothing reads them, so `bg_transit_rules` is not a dependency of the
-    build and is neither loaded nor bound."""
-    return ("bg_transit_rules",) if VEDHA_SOURCE is not None else ()
+    build and is neither loaded nor bound. The same rule holds for P1's three reference tables: they are consumed only when the P1 operand
+    sources are bound (`P1_VALUE_RULES`, or a bound P1 version that declares the Form B table)."""
+    return (("bg_transit_rules",) if VEDHA_SOURCE is not None else ()) \
+        + (("bg_combustion_orbs", "bg_dignity_reference", "bg_graha_naisargika_friendship")
+           if P1_VALUE_RULES is not None or _p1_form_b_bound() else ())
 
 
 class ChartRefusal(Exception):
@@ -1831,6 +1848,20 @@ class GocharaV5Writer(WriterBase):
             return lon
 
         store = WindowStore(ctx.db_conn)
+        # SR-OD1 P1a / D2: the P1 operand sources, only when bound — per-factor `P1_VALUE_RULES`, or the Form B table the grain's version
+        # declares (read from the persisted rows the sweep itself evaluates); the L0 tables are read through the validated loaders,
+        # never a fallback
+        p1_l0 = []
+
+        def p1_operands_for(version: str):
+            if path_id != "P1":
+                return None
+            form_b = gk_p1_operands.form_b_mapping(bound_rows(path_id, version))
+            if form_b is None and P1_VALUE_RULES is None:
+                return None
+            if not p1_l0:
+                p1_l0.append(gk_p1_operands.load_p1_l0(ctx.db_conn.cursor()))
+            return gk_p1_operands.P1Operands(p1_l0[0], position_at, rules=None if form_b is not None else P1_VALUE_RULES, form_b=form_b)
         # R9-1: the result policy is read BACK from the generation's manifest (the vector the build was bound to) —
         # this writer holds no policy constant of its own
         policy = gk_result_policy.manifest_policy(ctx.db_conn, chart_id, GENERATION)
@@ -1854,7 +1885,7 @@ class GocharaV5Writer(WriterBase):
         for version in versions:        # the path→version map comes from the records, not a constant
             records = store.read_grain(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
-                path_id=path_id, rule_version=version, position_at=position_at)
+                path_id=path_id, rule_version=version, position_at=position_at, p1=p1_operands_for(version))
             drafts, ex = gk_window_sweep.draft_windows(
                 event_class, records, bound_rows, drishti=DRISHTI_SOURCE, vedha=VEDHA_SOURCE,
                 policy=policy)
@@ -1871,12 +1902,17 @@ class GocharaV5Writer(WriterBase):
             gk_window_verifier.verify_member_geometry(
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version, position_at=position_at)
+            rows = bound_rows(path_id, version)
+            # D2: a P1 version that declares the Form B table is re-derived by the verifier's OWN sky + L0 reads (P1c), never from the
+            # builder's operands; absent that table the self-check is exactly what it was
+            p1_check = (gk_p1_operands_check.P1Check.from_conn(ctx.db_conn, position_at)
+                        if path_id == "P1" and gk_p1_operands_check.needs_p1_check(rows) else None)
             report = verify_window_semantics(
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version,
-                factor_rows=bound_rows(path_id, version),
+                factor_rows=rows,
                 drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=VEDHA_SOURCE is not None,
-                solver_check=False)             # N-6: the independent prover runs once, in the verification job
+                solver_check=False, p1_check=p1_check)             # N-6: the independent prover runs once, in the verification job
             unverified += report["unverified_dynamic"]
             solver_deferred += report["solver_check_deferred_windows"]
             reproduced += report["fully_reproduced"]

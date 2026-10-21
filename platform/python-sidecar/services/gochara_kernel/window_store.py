@@ -20,6 +20,7 @@ from . import targets
 from .convention import drishti_angles
 from .evaluator import record_uuid
 from .record_store import RecordStore, pipelined
+from .substrate import DB_BODY
 from .window_sweep import OperandSource, SweepRecord, WindowDraft, graha_title
 
 _SIGN_DEG = 30.0
@@ -65,14 +66,33 @@ class WindowStore:
 
     # ── read ────────────────────────────────────────────────────────────────
 
+    def _fetch_stations(self, body: str, convention_id: str) -> list[datetime]:
+        """The substrate's STORED station instants of `body` (the ephemeris-refined `t_exact`, ascending). P1's Mercury / Venus combustion
+        reads the retrograde regime from them (L1 gives those two a smaller orb while retrograde). A READ for the window stage, kept here and
+        not on `RecordStore` so the geometry implementation identity (and the pin that binds it) does not move for it."""
+        rows = self.conn.execute(
+            "SELECT t_exact FROM public.ka_gochara_sky_event WHERE event_kind = 'station' AND body = %s"
+            " AND convention_id = %s AND t_exact IS NOT NULL ORDER BY t_exact",
+            (DB_BODY.get(body, body.lower()), convention_id)).fetchall()
+        return [r[0] if not isinstance(r, dict) else next(iter(r.values())) for r in rows]
+
     def read_grain(self, *, chart_id: str, generation: str, event_class: str, path_id: str,
                    rule_version: str,
-                   position_at: Callable[[str, datetime], float] | None = None) -> list[SweepRecord]:
+                   position_at: Callable[[str, datetime], float] | None = None,
+                   p1=None) -> list[SweepRecord]:
+        """The grain's records as sweep inputs. `p1` (a `p1_operands.P1Operands`, bound by the writer only when the P1 operand sources are
+        bound) adds the P1 factors' per-factor sources to the P1 records; absent, the records are exactly what they were."""
+        anchor_col = "NULL::text"
+        if p1 is not None and path_id == "P1":
+            if not self._records.p1_anchor_columns_available():
+                # without the anchor a delivery form (Sun / Jupiter through another lord's sign) would be judged by the WRONG lord's sky
+                raise RuntimeError("P1 operand sources need the period-anchor column (migration 1233): not applied — refused, never defaulted to the agent")
+            anchor_col = "r.period_anchor_lord"
         rows = self.conn.execute(
             "SELECT r.record_id::text, COALESCE(r.contact_id, r.object_id)::text, r.path_id,"
             " r.rule_version, r.relation, r.object_kind, r.agent, r.operator_role,"
             " r.admission_state, o.canonical_target, r.house_from_frame,"
-            " lower(s.x), upper(s.x), lower_inc(s.x), upper_inc(s.x), c.t_exact, c.convention_id"
+            " lower(s.x), upper(s.x), lower_inc(s.x), upper_inc(s.x), c.t_exact, c.convention_id, " + anchor_col +
             " FROM public.ka_gochara_relationship_record r"
             " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id"
             " LEFT JOIN public.ka_gochara_contact c ON (c.chart_id, c.generation, c.contact_id)"
@@ -84,11 +104,11 @@ class WindowStore:
             (chart_id, generation, event_class, path_id, rule_version)).fetchall()
         grouped: dict[str, dict] = {}
         for (rid, root, pid, ver, rel, kind, agent, role, adm, target, house,
-             lo, hi, lo_inc, hi_inc, t_exact, conv) in rows:
+             lo, hi, lo_inc, hi_inc, t_exact, conv, anchor) in rows:
             g = grouped.setdefault(rid, {
                 "root": root, "pid": pid, "ver": ver, "rel": rel, "kind": kind, "agent": agent,
                 "role": role, "adm": adm, "target": target, "house": house,
-                "t_exact": t_exact, "conv": conv, "supports": []})
+                "t_exact": t_exact, "conv": conv, "anchor": anchor, "supports": []})
             if lo is not None:
                 if not (lo_inc and not hi_inc):
                     raise RuntimeError(
@@ -97,6 +117,7 @@ class WindowStore:
                 g["supports"].append((lo.astimezone(timezone.utc), hi.astimezone(timezone.utc)))
         out: list[SweepRecord] = []
         crossings: dict[tuple, list[datetime]] = {}
+        station_lists: dict[tuple, list[datetime]] = {}
         # R8-6: the ingress boundaries are complete over a support only when the class's coverage partition
         # completed that stretch (an incompletely searched stretch may hide an unlisted sign change)
         cov = self.conn.execute(
@@ -125,17 +146,31 @@ class WindowStore:
             # the completeness of the ingress list over this record's supports (R8-6, above)
             bounds_complete = bounds is not None and completed is not None and bool(g["supports"]) \
                 and all(completed.lower <= a and b <= completed.upper for a, b in g["supports"])
-            out.append(SweepRecord(
+            rec = SweepRecord(
                 record_id=rid, root_id=g["root"], path_id=g["pid"], rule_version=g["ver"],
                 relation=g["rel"], object_kind=g["kind"], agent=g["agent"],
                 operator_role=g["role"], admission_state=g["adm"],
                 supports=tuple(g["supports"]), longitude_at=lon, aspect_rays=rays or (),
                 aspect_offset_at=offset, house_from_frame=g["house"], canonical_target=g["target"],
                 state_boundaries=bounds, peak_hints=hints, state_boundaries_complete=bounds_complete,
+                period_anchor_lord=g["anchor"],
                 # W0: the same boundaries, now also stated PER FACTOR — they are the dṛṣṭi offset's, and say nothing
                 # about any other state-valued factor of the record
                 operand_sources={} if bounds is None else {
-                    "graduated_drishti": OperandSource(boundaries=bounds, complete=bounds_complete)}))
+                    "graduated_drishti": OperandSource(boundaries=bounds, complete=bounds_complete)})
+            if p1 is not None and g["pid"] == "P1":
+                # P1a: the period lord's dignity / combustion / maitrī sources. Complete only where the class's coverage partition
+                # completed every support (the stored stations behind a Mercury / Venus retrograde regime are a stored list, R8-6).
+                lord = graha_title(g["anchor"] or g["agent"])
+                stations = None
+                if p1.needs_stations(lord) and g["conv"]:
+                    if (lord, g["conv"]) not in station_lists:
+                        station_lists[(lord, g["conv"])] = sorted(self._fetch_stations(lord, g["conv"]))
+                    stations = station_lists[(lord, g["conv"])]
+                p1_complete = completed is not None and bool(g["supports"]) \
+                    and all(completed.lower <= a and b <= completed.upper for a, b in g["supports"])
+                rec = p1.attach(rec, complete=p1_complete, stations=stations, event_class=event_class)
+            out.append(rec)
         return out
 
     # ── write ───────────────────────────────────────────────────────────────

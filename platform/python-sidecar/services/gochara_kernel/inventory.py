@@ -318,6 +318,8 @@ def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
 def supersession_basis(path_id: str, old: str, new: str) -> str:
     """The 1206-grammar basis of a `superseded_by_version` pin (non-degrading: no ruling_ref). The anchor names
     the amendment that approved the successor; the verifier carries its OWN copy of this table."""
+    if (path_id, new) == ("P1", "1.3.0"):                     # SR-OD1 D2: the owner's Form B rule version, a ruling not an amendment
+        return "ruling:P1-MAPPING-DECISION"
     anchor = "AM-18" if path_id == "P2" else "AM-13"
     return f"spec:GOCHARA_SPECS_V1_5_AMENDMENTS@1.5#{anchor}-{path_id.lower()}-{old}-superseded-by-{new}"
 

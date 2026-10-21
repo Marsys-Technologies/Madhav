@@ -175,12 +175,21 @@ def test_the_verifier_refuses_what_it_cannot_derive_rather_than_picking_a_versio
                               path_exclusions={}, h_unknown_exclusion=V_H)
 
 
+def test_p1s_form_b_version_supersedes_1_0_0_under_the_owners_ruling_on_both_independent_sides():
+    """SR-OD1 D2: the registry approves P1 1.0.0 -> 1.3.0; the planner and the verifier each carry that fact and name the same basis — the
+    ruling, not an amendment. Planted reversion: either side's basis falls back to the AM-13 anchor."""
+    from services.gochara_kernel import inventory as planner
+    assert planner._approved_successor("P1", "1.0.0") == "1.3.0"
+    assert planner.supersession_basis("P1", "1.0.0", "1.3.0") == ver._supersession_basis("p1", "1.0.0", "1.3.0") == "ruling:P1-MAPPING-DECISION"
+    assert planner.supersession_basis("P3", "1.0.0", "1.1.0") == ver._supersession_basis("p3", "1.0.0", "1.1.0")      # the AM-13 anchor is unchanged
+
+
 def test_the_verifiers_supersession_table_is_its_own_not_the_registrys():
     import ast
     import inspect
     imported = {n.module for n in ast.walk(ast.parse(inspect.getsource(ver))) if isinstance(n, ast.ImportFrom)}
     assert not any("registry" in (m or "") or "inventory" == (m or "").split(".")[-1] for m in imported)
-    assert ver._SUPERSEDED == {("p2", "1.0.0"): "1.1.0", ("p3", "1.0.0"): "1.1.0",
+    assert ver._SUPERSEDED == {("p1", "1.0.0"): "1.3.0", ("p2", "1.0.0"): "1.1.0", ("p3", "1.0.0"): "1.1.0",
                                ("p4", "1.0.0"): "1.1.0", ("p5", "1.0.0"): "1.1.0"}
     # ... and it agrees with what the registry actually approves (so a new approval cannot go unmirrored)
     approved = {(p.lower(), v): tuple(row["superseded_by"])[1]

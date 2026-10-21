@@ -511,13 +511,16 @@ def inventory_preimage(*, convention_id: str, horizon: tuple[str, str], input_di
 #: The verifier's OWN copy of the approved supersessions (R8-2): `(path, older) -> successor`. Not imported from
 #: the builder's inventory module or the registry — it is told what the amendments approved (AM-13: P3/P4/P5;
 #: AM-18: P2) independently of the code it checks.
-_SUPERSEDED = {("p2", "1.0.0"): "1.1.0", ("p3", "1.0.0"): "1.1.0",
+#: SR-OD1 D2: P1 1.0.0 -> 1.3.0 is the owner's Form B rule version (P1-MAPPING-DECISION).
+_SUPERSEDED = {("p1", "1.0.0"): "1.3.0", ("p2", "1.0.0"): "1.1.0", ("p3", "1.0.0"): "1.1.0",
                ("p4", "1.0.0"): "1.1.0", ("p5", "1.0.0"): "1.1.0"}
 
 
 def _supersession_basis(path: str, old: str, new: str, event_class=None) -> str:
     if new == "1.2.0":
         return "ruling:ND-P2-20261005" if event_class == "bereavement" else "ruling:ND-H-20261005"
+    if (path, new) == ("p1", "1.3.0"):                        # SR-OD1 D2: the owner's Form B rule version (a ruling, not an amendment)
+        return "ruling:P1-MAPPING-DECISION"
     anchor = "AM-18" if path == "p2" else "AM-13"
     return f"spec:GOCHARA_SPECS_V1_5_AMENDMENTS@1.5#{anchor}-{path}-{old}-superseded-by-{new}"
 

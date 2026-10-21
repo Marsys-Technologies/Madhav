@@ -397,6 +397,7 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     from . import numerical_window_gate as nwg
     from . import window_gate as wg
     from . import window_verifier as wv
+    from . import p1_operands_check as p1c
 
     def stage(name, fn):
         try:
@@ -475,6 +476,9 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
                              " AND generation = %s", (chart_id, generation)).fetchone())
     windows = []
     reports: list = []
+    # C2: the janma-rāśi sign (1..12) from the snapshot's COPY of the natal chart — the vedha verifier cross-checks every stored
+    # P2 house against it (None without a snapshot: it is then the sign the stored records imply, and they must agree)
+    moon_sign = None if chart is None else inv_v._sign_index(chart["natal"]["moon"]) + 1
     for path_id, version in pins:
         grain = dict(chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
                      rule_version=version)
@@ -491,9 +495,12 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
             out.setdefault("records", {})[path_id] = derived["records"]
         stage(f"member_support {path_id}", lambda g=grain: wv.verify_member_support(conn, **g))
         stage(f"member_geometry {path_id}", lambda g=grain: wv.verify_member_geometry(conn, position_at=position_at, **g))
-        report = stage(f"window_semantics {path_id}", lambda g=grain, p=path_id, v=version: wv.verify_window_semantics(
-            conn, factor_rows=factor_rows_for(p, v), drishti_bound=drishti_bound, vedha_bound=vedha_bound,
-            solver_check=True, **g))
+        rows = factor_rows_for(path_id, version)
+        # P1c: a P1 path whose rows declare a value table is re-derived from the verifier's own sky + L0 reads
+        p1_check = p1c.P1Check.from_conn(conn, position_at) if path_id == "P1" and p1c.needs_p1_check(rows) else None
+        report = stage(f"window_semantics {path_id}", lambda g=grain, r=rows, c=p1_check: wv.verify_window_semantics(
+            conn, factor_rows=r, drishti_bound=drishti_bound, vedha_bound=vedha_bound,
+            solver_check=True, p1_check=c, moon_sign=moon_sign, **g))
         entry = {"path_id": path_id, "rule_version": version, "status": report["status"],
                  "policy_version": report["policy_version"], "windows": report["windows"]}
         attestation = None
