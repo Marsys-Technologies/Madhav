@@ -494,4 +494,6 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # geometry is asserted unchanged by the merge (R2's own geometry pin 0186cc07... carries over); no golden component is re-captured.
     # Window re-pinned at the SR-OD1 merge-back wave 2 (D3): D3 vedha_source/vedha_verifier/input_vector stage moves with the same edits. Re-derived from the merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 875d5eec... is the head before this merge); no golden component is re-captured.
-    assert got["implementation"]["window"] == "51971966d9beaa4e84e85ac09d94f7a5543088a47f620ea10c477bbeabc3f415"
+    # Window re-pinned at the SR-OD1 merge-back wave 2 (R8): R8 sharded aggregate: verification_job / numerical_window_gate (window stage) changed; evaluation and geometry are unchanged. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 51971966... is the head before this merge); no golden component is re-captured.
+    assert got["implementation"]["window"] == "0c0ae8a9bbbba936f2925fda33d2d9eda0260ad7aebeaa6ebf4de7f7692cf410"

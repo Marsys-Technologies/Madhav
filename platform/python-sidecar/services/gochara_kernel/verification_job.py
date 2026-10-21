@@ -367,7 +367,7 @@ def _inventory_header(conn, chart_id, generation, event_class):
 
 def verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
                  path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
-                 drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None) -> dict:
+                 drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None, shard: dict | None = None) -> dict:
     """See `_verify_class`. A class whose records (or any derivation) the verifier cannot independently derive is
     UNVERIFIED — an explicit result, the gate stays closed, nothing is persisted — never a pass."""
     from . import inventory_verifier as inv_v
@@ -376,14 +376,14 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
                              position_at=position_at, configured_selection=configured_selection,
                              path_rulings=path_rulings, h_unknown=h_unknown, moon_scope_domain=moon_scope_domain,
                              factor_rows_for=factor_rows_for, drishti_bound=drishti_bound, vedha_bound=vedha_bound,
-                             persist=persist, runner=runner)
+                             persist=persist, runner=runner, shard=shard)
     except inv_v.Unverifiable as exc:
         return {"event_class": event_class, "persisted": False, "status": "UNVERIFIED", "reason": str(exc)}
 
 
 def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
                   path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
-                  drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None) -> dict:
+                  drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None, shard: dict | None = None) -> dict:
     """Everything the independent verifiers say about ONE event class. With `persist=False` (the builder's in-build
     self-check, and `--report-only`) nothing is written. With `persist=True` — the verifier principal's act — the 1206
     inventory-verification row and every included P1–P4 grain's 1240 window-verification row are REPLACED (the caller
@@ -525,7 +525,7 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
                 "no longer identifies the stored state (a writer replaced it outside the lock protocol); nothing is persisted")
         for grain, report, derived_w, attestation in reports:
             # OD-1: under `window_qualification/1` the grain's PASSED attestation rides in the runner-identity object of its 1240 row (no migration needed)
-            row_runner = runner if attestation is None else nwg.runner_with_attestation(runner if runner is not None else wg.runner_identity(), attestation)
+            row_runner = runner if attestation is None else nwg.runner_with_attestation(runner if runner is not None else wg.runner_identity(), attestation, shard)
             stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report, d=derived_w, rr=row_runner:
                   wg.record_verification(conn, report=r, input_digest=snap, expected=d, runner=rr,
                                          checked_inputs_digest=fp0["grains"][f"{g['path_id']}@{g['rule_version']}"][0],
@@ -592,13 +592,32 @@ def candidate_gate_on_candidate_manifest(conn, chart_id: str, generation: str) -
     return out
 
 
+def near_miss_verified_for_state(conn, chart_id: str, generation: str):
+    """The persisted near-miss verification digest when it equals the digest of the stored near-miss state NOW (the seal gate's own staleness test, migration 1381); else None. A
+    rebuild that changes the near-miss state makes the row stale, so the pass runs again; a class-sharded launch's second and later shards reuse the first one's result."""
+    if not _one(conn.execute("SELECT to_regclass('public.ka_gochara_near_miss_verification') IS NOT NULL").fetchone()):
+        return None                    # the near-miss layer is not in this database: the pass has nothing to reuse (it reports OFF)
+    row = conn.execute("SELECT near_miss_digest FROM public.ka_gochara_near_miss_verification WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone()
+    if row is None:
+        return None
+    stored = _one(row)
+    now = _one(conn.execute("SELECT public.ka_gochara_near_miss_digest(%s, %s)", (chart_id, generation)).fetchone())
+    return stored if stored == now else None
+
+
 def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, position_at, ephe_path: str | None = None,
         modules: dict | None = None, path_refs=None, configured_selection_for: Callable, path_rulings: dict,
         h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable, drishti_bound: bool, vedha_bound: bool,
-        report_only: bool = False, enforce_identity: bool = True) -> dict:
+        report_only: bool = False, enforce_identity: bool = True, producer: dict | None = None) -> dict:
     """The whole sequence. Identity first, then the preconditions (a refusal writes NOTHING), then one transaction per
     class (replace-before-seal), then the SAME candidate gate the seal uses. `enforce_identity=False` is a TEST SEAM for
-    fixtures that connect as a superuser; the entry point never passes it."""
+    fixtures that connect as a superuser; the entry point never passes it.
+
+    SR-OD1 R8 — class-sharded launches: `classes` names the SHARD this launch verifies. Every 1240 row it persists under `window_qualification/1` carries the shard stamp
+    (`numerical_window_gate.shard_stamp`: generation, head = this runner's commit, image digest, execution, the shard's classes). `producer` is the job's own identity
+    (`seal_brief.producer_identity()`: commit / image digest / execution id; the entry point passes it and refuses to persist without it); without one the image and execution
+    are read from the job's environment and are None where it names none. A SUBSET run also reports `aggregate`: what the generation-wide verdict reads now, so the cockpit
+    sees which classes are still missing — it never changes this run's own status (the sealer and the brief read the aggregate, not a shard's report)."""
     from . import window_gate as wg
     report: dict[str, Any] = {"chart_id": chart_id, "generation": generation, "report_only": report_only, "classes": {}}
     report["identity"] = check_identity(conn) if enforce_identity else {"separate": "NOT CHECKED (test seam)"}
@@ -617,10 +636,22 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
             take_locks(conn, chart_id)
             if precondition_fingerprint(conn, chart_id, generation) != shared_fp:
                 raise VerificationRefused("stale_inputs", "manifest changed before near-miss verification")
-            report["near_miss"] = nmv.verify_generation(conn, chart_id=chart_id, generation=generation,
-                ephe_path=ephe_path, persist=not report_only)
+            done = None if report_only else near_miss_verified_for_state(conn, chart_id, generation)
+            if done is not None:          # SR-A10-1 B3: the generation-wide near-miss pass runs ONCE per epoch — a later shard finds its persisted result and reuses it
+                report["near_miss"] = {"status": "VERIFIED", "digest": done, "persisted": True, "reused": True}
+            else:
+                report["near_miss"] = nmv.verify_generation(conn, chart_id=chart_id, generation=generation,
+                    ephe_path=ephe_path, persist=not report_only)
     except nmv.NearMissError as exc:
         raise VerificationDisagrees("near_miss", str(exc)) from exc
+    from . import numerical_window_gate as nwg
+    env = __import__("os").environ
+    who = producer or {}
+    head = (pre.get("runner") or {}).get("commit")
+    shard = nwg.shard_stamp(generation=generation, head=head, classes=pre["classes"], epoch=nwg.current_epoch(conn, chart_id, generation),
+                            image_digest=who.get("image_digest", env.get("GOCHARA_RUNNER_IMAGE_DIGEST")),
+                            execution_id=who.get("execution_id", env.get("CLOUD_RUN_EXECUTION"))) if head else None
+    report["shard"] = shard
     disagreements = []
     for cls in pre["classes"]:
         try:
@@ -634,7 +665,7 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
                     conn, chart_id=chart_id, generation=generation, event_class=cls, position_at=position_at,
                     configured_selection=configured_selection_for(cls), path_rulings=path_rulings, h_unknown=h_unknown,
                     moon_scope_domain=moon_scope_domain, factor_rows_for=factor_rows_for, drishti_bound=drishti_bound,
-                    vedha_bound=vedha_bound, persist=not report_only, runner=pre.get("runner"))
+                    vedha_bound=vedha_bound, persist=not report_only, runner=pre.get("runner"), shard=shard)
         except VerificationDisagrees as exc:
             report["classes"][cls] = {"event_class": cls, "status": "DISAGREE", "stage": exc.stage, "detail": exc.detail}
             disagreements.append(cls)
@@ -656,6 +687,9 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     if report_only and verdict["status"] != nwg.NOT_APPLICABLE:
         verdict = {"schema": nwg.SCHEMA, "status": "NOT_EVALUATED", "policy": verdict["policy"], "detail": "report-only: nothing was persisted, so no attestation exists to read back"}
     report["numerical_window_gate"] = verdict
+    if not full and not report_only and verdict["status"] != nwg.NOT_APPLICABLE:
+        agg = nwg.generation_verdict(conn, chart_id, generation)
+        report["aggregate"] = {"status": agg["status"], "problems": agg["problems"][:50], "problem_count": len(agg["problems"]), "classes_attested": (agg.get("aggregate") or {}).get("classes_attested")}
     if verdict["status"] == nwg.FAILED:
         gate = gate + [{"event_class": "*", "path_id": None, "rule_version": None, "violation": "numerical_window_gate_failed", "detail": p} for p in verdict["problems"]]
     report["gate"] = gate

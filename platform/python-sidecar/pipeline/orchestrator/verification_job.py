@@ -1,6 +1,8 @@
 """Entry point of the separate VERIFICATION JOB (ND-ROLES option A; Codex round 9, R9-6.1).
 
     python -m pipeline.orchestrator.verification_job --chart <uuid> [--generation 5.0] [--class <c> …] [--report-only]
+        (`--class` repeated names a SHARD of the generation: SR-OD1 R8 launches the 26 classes as pinned shards — fleet/VERIFY_SHARDS.json — each its own execution; the
+        generation-wide AGGREGATE `numerical_window_gate.generation_verdict` is what `--brief` and the seal read, and it refuses unless every class is attested at one head)
     python -m pipeline.orchestrator.verification_job --chart <uuid> [--generation 5.0] --brief [--sealing-commit <sha>]
 
 NOT a registered writer and not in the build DAG: the orchestrator contract is frozen and nothing chains this to a build.
@@ -144,8 +146,19 @@ def _run(args):
                                              "sha256": out["sha256"], "persisted": persisted, "producer": producer,
                                              "brief_bytes": len(raw), "brief_file": brief_file, "brief_chunks": True}))
             return vj.EXIT_OK
-        report = vj.run(conn, chart_id=args.chart, generation=args.generation, classes=args.classes,
-                        report_only=args.report_only, **_build_kwargs(conn, args.ephe_path))
+        producer = None
+        if not args.report_only:
+            # SR-OD1 R8: a persisting launch (a shard or the whole generation) stamps every row it writes with its own commit / immutable image / execution — it refuses
+            # BEFORE writing anything if the job cannot name them, exactly as `--brief` does
+            from services.gochara_kernel import seal_brief
+            try:
+                producer = seal_brief.producer_identity()
+            except seal_brief.BriefRefused as exc:
+                print(json.dumps({"status": "REFUSED", "code": exc.code, "detail": exc.detail}))
+                return vj.EXIT_REFUSED
+        classes = None if args.classes is None else list(dict.fromkeys(args.classes))      # a repeated --class names it once
+        report = vj.run(conn, chart_id=args.chart, generation=args.generation, classes=classes,
+                        report_only=args.report_only, producer=producer, **_build_kwargs(conn, args.ephe_path))
         print(json.dumps(report, default=str, sort_keys=True))
         return report["exit_code"]
     except vj.VerificationRefused as exc:

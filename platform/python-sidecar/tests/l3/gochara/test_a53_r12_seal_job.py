@@ -461,6 +461,13 @@ def built_numbers(rworld, request, monkeypatch):
 #  N10. the stdlib brief check agrees with the sidecar's verdict and refuses a FAILED / table-mismatched / miscounted one                           — revert: skip the check
 
 
+@pytest.fixture(autouse=True)
+def _job_identity(monkeypatch):
+    """SR-OD1 R8: every attestation is bound to the immutable image and the execution that wrote it; the aggregate the brief and the seal read refuses one that names neither."""
+    monkeypatch.setenv("GOCHARA_RUNNER_IMAGE_DIGEST", "sha256:" + "1" * 64)
+    monkeypatch.setenv("CLOUD_RUN_EXECUTION", "executions/test-exec-1")
+
+
 def _gate_rows(w):
     return [json.loads(r[0]) if isinstance(r[0], str) else r[0] for r in w.conn.execute(
         "SELECT runner_identity FROM public.ka_gochara_eval_window_verification ORDER BY path_id").fetchall()]
