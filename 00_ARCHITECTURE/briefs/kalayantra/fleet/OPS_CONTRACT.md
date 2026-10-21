@@ -1,9 +1,9 @@
 ---
 artifact: KV3_B_OPS_CONTRACT
-version: 1.0
+version: 1.1
 status: PREPARATION_ONLY
 produced_on: 2026-10-16
-changelog: Reconcile PR 3485 with current main and Wave 4 bindings; remove dispatcher dependencies.
+changelog: 1.1 (2026-10-21, M-W56-16) adds Head completion filing. 1.0 Reconcile PR 3485 with current main and Wave 4 bindings; remove dispatcher dependencies.
 ---
 
 # Executor operation-adapter contract
@@ -47,6 +47,30 @@ No executor daemon or production/cloud operation runs in these tests.
 `ky.op_observation/1` binds operation_id, request_sha256, receipt_sha256, terminal,
 outcome and source. The verifier owns the semantic observation and independently
 published verdict; this helper does not grant authority to create either.
+
+## Head completion filing (M-W56-16)
+
+A committed `publish_head` / `rollback_head` ends `AWAITING_READBACK` (never `*_dryrun`). The executor publishes its `receipts/<op>.completion.json`
+(schema `ky.head_completion/1`) from `publish_head_completions()` (called beside `publish_teardown_completions()` every turn, no fence, never touching
+`PRODUCTION_PENDING.json`) when ALL of these files exist under `run/ops/`. The author of each is not the executor:
+
+| file | who files it |
+|---|---|
+| `receipts/<op>.json` (status `AWAITING_READBACK`) and `done/<op>.json` (the archived head request) | the executor, on commit |
+| `done/<rb>.json`, `receipts/<rb>.json`, `receipts/<rb>.output.txt` | a `readback_sql` request by a v-lane (`requested_by` v1..v4, never the head requester) whose `args.sql_sha256` is the sha256 of `head_operation.readback_sql(req)` (offline: `head_operation.py readback-sql --request <req>`) |
+| `acceptance/<op>.readback.json` | the signer post-acceptance (a v-lane, never the head requester), see below |
+
+`acceptance/<op>.readback.json` is exactly the `accepted` argument of `head_operation.complete` plus one key naming the readback:
+`{"result": "ACCEPTED", "by": "v1".."v4", "operation_id": <op>, "request_sha256": <request digest>, "receipt_sha256": sha256(receipts/<op>.json bytes),
+"readback_receipt_sha256": sha256(receipts/<rb>.json bytes), "readback_operation_id": <rb>}`. Ruling S-5: the readback is requested by a v-lane inside the
+signer post-acceptance (the pack's `W-publish` step, brief 04's autopilot step), never by the executor.
+
+The verdict is the reviewed policy's own `complete(req, commit_raw, rb_req, rb_raw, output_raw, accepted)` loaded from the request's `reviewed_commit`
+(never the working tree); for a `rollback_head` the policy's `request_problem` is re-run, so `rollback_of` must still bind the original publish. The
+publisher also refuses a readback requested by the head requester itself (`complete` only requires a v-lane). The document is what `complete` returned
+plus `schema`, `readback_operation_id` and `source_digests {commit_receipt, readback_receipt, acceptance}`; it is staged, fsynced and `os.replace`d under
+the executor's lock and is never rewritten. Anything the policy refuses is skipped (no document, no error), so an incomplete or wrong filing simply
+leaves the head change `AWAITING_READBACK`. Tests: `tests/test_executor_head_completion.py`.
 
 ## Merge disposition and interpretations
 
