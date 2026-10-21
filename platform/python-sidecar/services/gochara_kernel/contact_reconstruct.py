@@ -27,10 +27,22 @@ VMAX_DPS = {"sun": 1.2, "moon": 16.0, "mars": 1.0, "mercury": 2.6, "venus": 1.6,
 STEP_SECONDS = 6 * 3600
 MIN_EXCURSION_SECONDS = 60
 BISECT_SECONDS = 1.0
+#: SR-OD1 R2 (SR-H2-1S): the floor for the P1 STATE providers (sign ingress, dignity rung, combustion entry / exit, Moon pakṣa, Mercury's
+#: company). Their step factors are maximised EXACTLY by the window solver, so a state island of a few seconds is a real part of the
+#: objective and the 60 s floor (which cannot exclude one) is not enough: the floor equals the bisection resolution, matching the owner's
+#: "to the second" (Q12). The VMAX pruning is what keeps this affordable — only cells within `vmax * dt` of an edge are bisected.
+STATE_MIN_EXCURSION_SECONDS = BISECT_SECONDS
 #: the named limit, verbatim, for every report that relies on this reconstruction
 NAMED_LIMIT = (f"contact geometry is certified under smooth motion (speed <= the stated per-body bound): every in-sign / "
                f"out-of-sign interval of at least {MIN_EXCURSION_SECONDS} s is found and each crossing located to within "
                f"{BISECT_SECONDS} s; excursions shorter than {MIN_EXCURSION_SECONDS} s are not excluded")
+#: the named limit of the P1 state providers (the floor above, and the ownership rule of a change instant), verbatim, for every report
+#: that relies on a P1 state boundary list
+STATE_NAMED_LIMIT = (f"state-change instants are certified under smooth motion (speed <= the stated per-body bound): every interval of at "
+                     f"least {STATE_MIN_EXCURSION_SECONDS:g} s during which a state holds is found and each change located to within "
+                     f"{BISECT_SECONDS:g} s (the builder refines it to a microsecond); excursions shorter than "
+                     f"{STATE_MIN_EXCURSION_SECONDS:g} s are not excluded; a change instant belongs to the NEW state "
+                     f"(half-open [change, next change))")
 GUARANTEE_ASSUMPTION = "smooth_motion_speed_bounded"
 
 UTC = timezone.utc
@@ -53,12 +65,20 @@ def _angdiff(a: float, b: float) -> float:
     return abs((a - b + 180.0) % 360.0 - 180.0)
 
 
-def _core(state_at, edge_distance, vmax_dps: float, lo: datetime, hi: datetime) -> list[datetime]:
+def _core(state_at, edge_distance, vmax_dps: float, lo: datetime, hi: datetime, *,
+          min_excursion_seconds: float = MIN_EXCURSION_SECONDS) -> list[datetime]:
     """The instants in (lo, hi) at which `state_at` changes, located to BISECT_SECONDS, found under the speed bound:
     from a sample at distance `d` from a state edge the state cannot flip within `dt` seconds when `d > vmax*dt`
-    (the quantity `edge_distance(t)` is a distance in degrees to the nearest edge of the state)."""
+    (the quantity `edge_distance(t)` is a distance in degrees to the nearest edge of the state).
+
+    Each returned instant is the first sample at which the state already differs from the one before it: the NEW state owns it
+    (half-open [change, next change), the same rule the P1 builder's microsecond refinement applies). `min_excursion_seconds` is the
+    floor of the search (default: the contact geometry's `MIN_EXCURSION_SECONDS`; the P1 state providers pass
+    `STATE_MIN_EXCURSION_SECONDS`); a state held for less than the floor is not excluded."""
     if hi <= lo:
         raise ValueError("empty horizon")
+    if not min_excursion_seconds > 0:
+        raise ValueError("the search floor must be positive")
     vmax = vmax_dps / 86400.0                                     # degrees per second
     changes: list[datetime] = []
 
@@ -77,7 +97,7 @@ def _core(state_at, edge_distance, vmax_dps: float, lo: datetime, hi: datetime) 
         sa, sb = state_at(a), state_at(b)
         if sa == sb and edge_distance(a) > vmax * dt and edge_distance(b) > vmax * dt:
             return                                                # cannot reach an edge within the step
-        if dt <= MIN_EXCURSION_SECONDS:
+        if dt <= min_excursion_seconds:
             if sa != sb:
                 changes.append(crossing(a, b))
             return
@@ -181,4 +201,4 @@ def cached_residence_intervals(position_at, body: str, lo: datetime, hi: datetim
 
 
 __all__ = ["BISECT_SECONDS", "band_intervals", "cached_partition_intervals", "cached_residence_intervals", "partition_intervals", "GUARANTEE_ASSUMPTION", "GeometryUnavailable", "MIN_EXCURSION_SECONDS", "NAMED_LIMIT",
-           "STEP_SECONDS", "VMAX_DPS", "residence_intervals"]
+           "STATE_MIN_EXCURSION_SECONDS", "STATE_NAMED_LIMIT", "STEP_SECONDS", "VMAX_DPS", "residence_intervals"]

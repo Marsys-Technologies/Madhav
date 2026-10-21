@@ -461,13 +461,18 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # lanes' kernel/rules edits (R4/R5/Q3C p1_operands*, p1_valence, p1_inputs, rule_registry, V1 registry rows, inventory(+_verifier), D1/V1 input_vector) and by `vedha_source`
     # joining the window stage (implmods review, "Answer to check (2)"); geometry is asserted unchanged (a8cb08f0...). Re-derived with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) from the merged tree's real bytes; no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "bc1692181dc52b5515252be13be2a99fe663715ccbc8e54ea431c17b7263d15f"
+    # Evaluation re-pinned for SR-OD1 R2 (SR-H2-1S): p1_operands and p1_nature_operands search the P1 state boundaries at the 1 s STATE floor and publish the state named limit.
+    # Re-pinned ONCE more at the SR-OD1 merge-back wave 2 (R2 on the wave-1 head): the R2 edits and the wave-1 evaluation edits are on one tree; re-derived with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) from the merged tree's real bytes (the prior pin bc169218... is the wave-1 head); no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "ec5ef7a9d40690d53280bc038fbab74bce91670a8cadb66122f0620d8bfc3ed4"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
     # Geometry re-pinned again for F-1305-INVENTED-SUPPORT (#3774): record_store's period-rows cache now carries the held-presence flag; the digest below is re-derived on the
     # merged tree (main's bytes give 0ecc897c...).
-    assert got["implementation"]["geometry"] == "a8cb08f07fa867e010109d8a236422e39ebf0b57cf9a149eae64e42c7547a3ff"
+    # Geometry re-pinned for SR-OD1 R2 (SR-H2-1S): contact_reconstruct gains the STATE floor / STATE_NAMED_LIMIT and `_core`'s `min_excursion_seconds` keyword (default unchanged, so the
+    # contact geometry's own behaviour and 60 s named limit are untouched). Re-derived the same way (the prior pin a8cb08f0... is the I1 union).
+    assert got["implementation"]["geometry"] == "0186cc0713d64905a8d9e31a39d05e4dc02e37af10f550960ae30161933d709c"
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. With P06b's window-stage changes the merged-tree
     # digest below is re-derived the same way (main alone gives 6c981eb8...; J-4c F-LEANNESS also changed window_store); evaluation and geometry are untouched by this change, and no golden component is re-captured.
     # Window re-pinned for the W3W4 strict-slice window-qualification fix: window_sweep.build_program no longer lists an OMITTED operand (karaka_agent, null_state omit)
@@ -483,4 +488,6 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned ONCE for SR-OD1 R9c-A10-1 (G-8): window_solver (S1) and window_solver_check (S2) join the window stage (they were in no stage list; nothing imports
     # them until the sweep calls the solver, so the import-closure test could not see them). Geometry is asserted unchanged above (a8cb08f0...). Re-derived the same way
     # (the prior pin fc0e7500... is the I1 union before this change); no golden component is re-captured.
-    assert got["implementation"]["window"] == "e9e05bae78f71a6026ef0745241d9dad3d1c64e50d639f60ba54ad5f166ded73"
+    # Window re-pinned for SR-OD1 R2 (SR-H2-1S): p1_operands_check searches at the STATE floor. Re-derived the same way on the wave-2 merged tree (the prior pin e9e05bae... is the wave-1 head);
+    # geometry is asserted unchanged by the merge (R2's own geometry pin 0186cc07... carries over); no golden component is re-captured.
+    assert got["implementation"]["window"] == "875d5eecf4060d8cf0c573f4b5a70e6cde2fe518cf68f0b91da02fa306dc8f71"

@@ -94,9 +94,11 @@ def _restore_factor_registry():
 
 def world(**bodies):
     """position_at over linear motion: body -> (longitude at day 0, degrees per day). Bodies not named sit at 200 deg (Libra)
-    — far from anything a test moves, and a different sign from every companion position used here."""
+    — far from anything a test moves, and a different sign from every companion position used here. The Moon alone sits 90° behind
+    (a waning 270° elongation, in Cancer): a Moon exactly on the Sun is exactly ON the pakṣa edge, a degenerate world in which the
+    search's speed bound can prune nothing (SR-OD1 R2: its 1 s floor then bisects every cell to the floor)."""
     def position_at(body, t):
-        lon0, rate = bodies.get(body, (200.0, 0.0))
+        lon0, rate = bodies.get(body, (110.0 if body == "Moon" else 200.0, 0.0))
         return (lon0 + rate * (t - _d(0)).total_seconds() / 86400.0) % 360.0
     return position_at
 
