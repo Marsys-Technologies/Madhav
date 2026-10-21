@@ -527,8 +527,10 @@ export async function readDataPlaneOwnershipStatus(
         SELECT 'suvarna_reader','USAGE'
          WHERE to_regrole('suvarna_reader') IS NOT NULL
         UNION ALL
-        -- Kāla verifier_principal (native-approved 2026-10-09; kala-provision-verifier-role.sh): NOLOGIN, USAGE only,
+        -- Kāla verifier_principal (native-approved 2026-10-09; kala-provision-verifier-role.sh): USAGE only,
         -- and only once the role exists. CREATE stays forbidden: an extra (verifier_principal, CREATE) row is still drift.
+        -- O-W56-C: gochara-provision-roles.sh stage layer-verifier-credential lets this role LOG IN (the executor's whole-layer verifier); it grants nothing,
+        -- and this gate reads no login attribute of it, so no allowance changes (data_plane_gochara_acl_gate.db.test.ts, claims A1-A3).
         SELECT 'verifier_principal','USAGE'
          WHERE to_regrole('verifier_principal') IS NOT NULL
       )

@@ -22,12 +22,23 @@ export const BUILDER_SECRET = 'data-plane-builder-db-url'
 export const BUILDER_DECLARED_EXTRA_PROJECT_ROLES: readonly string[] = ['projects/madhav-astrology/roles/vertexEmbeddingPredict']
 const BUILDER_REQUIRED_PROJECT_ROLE = 'roles/cloudsql.client'
 // Gochara verification job: its own identity + its own secret + one named job (Option A, ND-ROLES).
-// The sealer has NO GCP identity and NO Secret Manager secret: its DSN lives only in the
-// `gochara-seal` GitHub environment, so any gochara/sealer name here is a violation, not a pair.
+// The sealer has NO GCP identity of its own. Since J-4b-a55j (SR-GRANTS-MINIMAL, #3820) its DSN lives in exactly ONE Secret Manager
+// secret, `gochara-sealer-db-url` (written by the one-shot `sealer-credential` stage, read at run time by the seal workflow's
+// identity); that one secret, with its exact policy (assertSealerSecretIsolation), is the only sealer-named resource admitted.
+// Any other gochara/sealer-named secret or service account is a violation, not a pair.
 export const VERIFIER_SERVICE_ACCOUNT = `gochara-verifier-runtime@${project}.iam.gserviceaccount.com`
 export const VERIFIER_SECRET = 'gochara-verifier-db-url'
 export const VERIFIER_JOB = 'gochara-verification-job'
+export const SEALER_SECRET = 'gochara-sealer-db-url'
+// O-W56-C (M-W56-4): the KĀLA-YANTRA executor's whole-layer verifier login. `verifier_principal` is made able to log in by the one-shot stage `layer-verifier-credential`
+// (gochara-provision-roles.sh), which writes its DSN to exactly ONE Secret Manager secret and nothing else; the cockpit/owner reads that secret by hand into the executor environment
+// (KY_LAYER_VERIFIER_DATABASE_URL), so NO workload identity ever reads it. That one secret, with its exact policy (assertLayerVerifierSecretIsolation), is the only layer-verifier-named
+// resource admitted; any look-alike name is a violation (the secret listing below also matches /layer-verifier/), and no Cloud Run surface may reference it.
+export const LAYER_VERIFIER_SECRET = 'kala-layer-verifier-db-url'
 const SEALER_REFERENCE = /gochara[-_]sealer|GOCHARA_SEALER/i
+const LAYER_VERIFIER_REFERENCE = /kala[-_]layer[-_]verifier|KY_LAYER_VERIFIER_DATABASE_URL/i
+/** The secret-name filter shared by the live listing and the tests: everything the verifier/sealer/layer-verifier gates must see. */
+export const GATED_SECRET_NAME = /gochara|sealer|layer[-_]verifier/i
 
 interface IamBinding { role: string; members?: string[]; condition?: unknown }
 interface IamPolicy { bindings?: IamBinding[] }
@@ -532,6 +543,10 @@ export interface VerifierState {
   serviceAccount?: ServiceAccount
   serviceAccountPolicy?: IamPolicy
   secretPolicy?: IamPolicy
+  /** IAM policy of the sealer secret; read only when that secret exists. Not measured while it exists = fails. */
+  sealerSecretPolicy?: IamPolicy
+  /** IAM policy of the layer-verifier secret; read only when that secret exists. Not measured while it exists = fails. */
+  layerVerifierSecretPolicy?: IamPolicy
   /** Count of user-managed keys; undefined = not measured, which fails (no key may exist). */
   userManagedKeys?: number
 }
@@ -607,6 +622,46 @@ export function assertVerifierInheritedControl(
 }
 
 /**
+ * J-4b-a55j sealer secret (`gochara-sealer-db-url`): the EXACT policy it may carry, nothing else.
+ *   absent                               -> passes (staged);
+ *   no bindings at all                   -> passes (staged: container created and credential written, nobody may read it yet; owner
+ *                                           guide step 5 removed the temporary secretVersionManager binding, step 12 not yet done);
+ *   exactly ONE binding, ONE member      -> passes iff it is roles/secretmanager.secretAccessor for the deployment principal (the
+ *                                           seal workflow's runtime identity, github-actions@; owner guide step 12), with or without
+ *                                           the step-12 time condition (a condition can only narrow an allow binding).
+ * Anything else — another role (including a LEFTOVER secretVersionManager of the step-3 window: (I) the gate requires it absent), another
+ * member (the verifier service account above all), a second binding, a second member — fails. Project-wide secret access is refused
+ * separately by assertSecretIsolation / assertEffectiveIsolation.
+ */
+export function assertSealerSecretIsolation(state: VerifierState, expectedDeployer = process.env.DATA_PLANE_DEPLOY_PRINCIPAL): void {
+  if (!state.secretNames.includes(SEALER_SECRET)) return
+  if (state.sealerSecretPolicy === undefined) throw new Error(`Sealer secret ${SEALER_SECRET} exists but its IAM policy was not measured.`)
+  const pairs = (state.sealerSecretPolicy.bindings ?? []).flatMap((binding) => (binding.members ?? []).map((member) => `${binding.role}|${member}`))
+  if (pairs.length === 0) return
+  if (!expectedDeployer || pairs.length !== 1 || pairs[0] !== `roles/secretmanager.secretAccessor|${expectedDeployer}`) {
+    throw new Error(`Sealer secret ${SEALER_SECRET} must have no bindings (staged) or exactly roles/secretmanager.secretAccessor for the seal workflow identity ${expectedDeployer ?? '(DATA_PLANE_DEPLOY_PRINCIPAL unset)'} and no other role or principal; found: ${pairs.sort().join(', ')}.`)
+  }
+}
+
+/**
+ * O-W56-C layer-verifier secret (`kala-layer-verifier-db-url`): the EXACT policy it may carry is NONE.
+ *   absent                -> passes (not yet provisioned);
+ *   no bindings at all    -> passes (the credential is written; nobody but the project owner — whose access is inherited, and is the declared control-plane admin the
+ *                            project-wide secret check already pins — may read it, which is how the cockpit loads it into the executor);
+ *   ANY binding           -> fails: including a LEFTOVER secretVersionManager of the provisioning window (it must be removed before the next deploy, exactly as for the sealer
+ *                            secret), the verifier service account, the deployment principal and the builder.
+ * A policy that was not measured while the secret exists fails (N.7.6: an honest null is not a pass).
+ */
+export function assertLayerVerifierSecretIsolation(state: VerifierState): void {
+  if (!state.secretNames.includes(LAYER_VERIFIER_SECRET)) return
+  if (state.layerVerifierSecretPolicy === undefined) throw new Error(`Layer-verifier secret ${LAYER_VERIFIER_SECRET} exists but its IAM policy was not measured.`)
+  const pairs = (state.layerVerifierSecretPolicy.bindings ?? []).flatMap((binding) => (binding.members ?? []).map((member) => `${binding.role}|${member}`))
+  if (pairs.length > 0) {
+    throw new Error(`Layer-verifier secret ${LAYER_VERIFIER_SECRET} must have NO IAM bindings (the executor operator reads it through inherited project ownership; a leftover provisioning-window binding must be removed); found: ${pairs.sort().join(', ')}.`)
+  }
+}
+
+/**
  * Gate for the Gochara verification pair. Absent resources pass (act 3 -> act 4 are staged), but
  * whatever exists must be exact and anything gochara-named that is not the pair fails.
  * Project-wide secret access for ANY principal is already refused by assertSecretIsolation.
@@ -622,12 +677,14 @@ export function assertVerifierIsolation(
   if (unknownAccounts.length > 0) {
     throw new Error(`Unknown gochara service account(s) ${unknownAccounts.sort().join(', ')}; only ${VERIFIER_SERVICE_ACCOUNT} is permitted.`)
   }
-  const unknownSecrets = state.secretNames.filter((name) => name !== VERIFIER_SECRET)
+  const unknownSecrets = state.secretNames.filter((name) => name !== VERIFIER_SECRET && name !== SEALER_SECRET && name !== LAYER_VERIFIER_SECRET)
   if (unknownSecrets.length > 0) {
-    throw new Error(`Unknown gochara/sealer secret(s) ${unknownSecrets.sort().join(', ')}; the sealer credential lives only in the gochara-seal environment.`)
+    throw new Error(`Unknown gochara/sealer secret(s) ${unknownSecrets.sort().join(', ')}; only ${VERIFIER_SECRET}, ${SEALER_SECRET} and ${LAYER_VERIFIER_SECRET} are permitted.`)
   }
+  assertSealerSecretIsolation(state, expectedDeployer)
+  assertLayerVerifierSecretIsolation(state)
   const hasAccount = state.serviceAccountEmails.length === 1
-  const hasSecret = state.secretNames.length === 1
+  const hasSecret = state.secretNames.includes(VERIFIER_SECRET)
   if (hasSecret && !hasAccount) throw new Error('Verifier secret exists without its dedicated service account.')
   if (!hasAccount) return
   const member = `serviceAccount:${VERIFIER_SERVICE_ACCOUNT}`
@@ -731,7 +788,10 @@ export function assertEffectiveIsolation(
       throw new Error(`Builder identity is used outside the one named build job (${surface.kind}/${surface.name}).`)
     }
     if (SEALER_REFERENCE.test(serialized)) {
-      throw new Error(`Sealer credential or identity is referenced on Cloud Run ${surface.kind}/${surface.name}; it lives only in the gochara-seal environment.`)
+      throw new Error(`Sealer credential or identity is referenced on Cloud Run ${surface.kind}/${surface.name}; the sealer DSN is read only by the seal workflow from Secret Manager, never by a Cloud Run surface.`)
+    }
+    if (LAYER_VERIFIER_REFERENCE.test(serialized)) {
+      throw new Error(`Layer-verifier credential is referenced on Cloud Run ${surface.kind}/${surface.name}; the executor reads it by hand from Secret Manager, never a Cloud Run surface.`)
     }
     const usesVerifierSecret = inventory.secrets.includes(VERIFIER_SECRET)
     const usesVerifierIdentity = inventory.serviceAccount === VERIFIER_SERVICE_ACCOUNT
@@ -772,7 +832,7 @@ function loadVerifierState(): VerifierState {
     .filter((email) => /gochara|sealer/i.test(email))
   const secretNames = gcloud<{ name?: string }[]>(['secrets', 'list', '--project', project])
     .map((entry) => (entry.name ?? '').split('/').pop() ?? '')
-    .filter((name) => /gochara|sealer/i.test(name))
+    .filter((name) => GATED_SECRET_NAME.test(name))
   const state: VerifierState = { serviceAccountEmails, secretNames }
   if (serviceAccountEmails.includes(VERIFIER_SERVICE_ACCOUNT)) {
     state.serviceAccount = gcloud<ServiceAccount>(['iam', 'service-accounts', 'describe', VERIFIER_SERVICE_ACCOUNT, '--project', project])
@@ -781,6 +841,12 @@ function loadVerifierState(): VerifierState {
   }
   if (secretNames.includes(VERIFIER_SECRET)) {
     state.secretPolicy = gcloud<IamPolicy>(['secrets', 'get-iam-policy', VERIFIER_SECRET, '--project', project])
+  }
+  if (secretNames.includes(SEALER_SECRET)) {
+    state.sealerSecretPolicy = gcloud<IamPolicy>(['secrets', 'get-iam-policy', SEALER_SECRET, '--project', project])
+  }
+  if (secretNames.includes(LAYER_VERIFIER_SECRET)) {
+    state.layerVerifierSecretPolicy = gcloud<IamPolicy>(['secrets', 'get-iam-policy', LAYER_VERIFIER_SECRET, '--project', project])
   }
   return state
 }

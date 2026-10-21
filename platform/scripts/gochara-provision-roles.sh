@@ -34,6 +34,15 @@
 #                    is written straight to Secret Manager (SEALER_SECRET) BEFORE the role is touched, then the role is activated in one transaction
 #                    with its postconditions, observed by an authentication, and listed. Same compensation as `sealer-password` PLUS the destroy of
 #                    this run's secret version. Needs DSN_TAIL in the sealer's TCP loopback form (@127.0.0.1:5432/<db>). Never printed, never read.
+#   layer-verifier-credential  O-W56-C (M-W56-4): the KĀLA-YANTRA executor's whole-layer verifier login. The Kāla role `verifier_principal` is created NOLOGIN by
+#                    kala-provision-verifier-role.sh (K0a-3) and publication.py:86 refuses to verify unless `current_user` IS verifier_principal, so the credential is that role
+#                    itself made able to log in. Same shape as `sealer-credential`: the password is generated HERE, the full DSN is written straight to Secret Manager
+#                    (LAYER_VERIFIER_SECRET) BEFORE the role is touched, then the role is activated (LOGIN, a password, CONNECTION LIMIT 4) in ONE transaction with its postconditions
+#                    (least privilege, no superuser edge, USAGE on public and no CREATE, no write beyond the single INSERT on kala_layer_verification, owns nothing), observed by an
+#                    authentication that must report current_user = verifier_principal, and listed. Compensation as for the sealer (NOLOGIN, PASSWORD NULL, CONNECTION LIMIT -1,
+#                    VERIFIED by a failed authentication) PLUS the destroy of this run's secret version — except when the compensation itself cannot be verified, where the version is KEPT.
+#                    Refuses unless the role exists NOLOGIN as created (so it never rotates behind a first run). Grants NOTHING (the role's grants are migrations 1330/1334/1390 and the
+#                    kala-provision-verifier-role.sh grant-usage stage). Needs DSN_TAIL in the executor's TCP loopback form (@127.0.0.1:<port>/<db>). Never printed, never read.
 #
 # THE PASSWORD STATE IS NEVER READ FROM pg_authid (Fable F-R12-3): on Cloud SQL the admin roles are cloudsqlsuperuser members, not superusers, and pg_authid is
 #   superuser-only — a predicate that needed it would refuse unconditionally (a fail-closed dead end). Instead the state is (1) RECORDED in a role comment that
@@ -54,7 +63,7 @@ set -Eeuo pipefail
 set +x
 umask 077
 
-STAGE="${STAGE:?STAGE is required (create-roles | sealer-password | grant-l1-reads | sealer-credential)}"
+STAGE="${STAGE:?STAGE is required (create-roles | sealer-password | grant-l1-reads | sealer-credential | layer-verifier-credential)}"
 # grant-l1-reads runs over the protected data_plane_migrator route (the only login that can act as the schema and L1 owners); every other stage over the ownership admin
 if [ "$STAGE" = "grant-l1-reads" ]; then
   ADMIN_DATABASE_URL="${MIGRATOR_DATABASE_URL:?MIGRATOR_DATABASE_URL (the protected data_plane_migrator route) is required for grant-l1-reads}"
@@ -65,6 +74,9 @@ VERIFIER_ROLE=gochara_verifier
 SEALER_ROLE=gochara_sealer
 VERIFIER_SECRET="${VERIFIER_SECRET:-gochara-verifier-db-url}"
 SEALER_SECRET="${SEALER_SECRET:-gochara-sealer-db-url}"
+LAYER_VERIFIER_ROLE=verifier_principal
+LAYER_VERIFIER_SECRET="${LAYER_VERIFIER_SECRET:-kala-layer-verifier-db-url}"
+LAYER_VERIFIER_CONNECTION_LIMIT=4
 GCLOUD_PROJECT="${GCLOUD_PROJECT:-madhav-astrology}"
 GCLOUD_BIN="${GCLOUD_BIN:-gcloud}"
 PSQL_BIN="${PSQL_BIN:-psql}"
@@ -75,6 +87,9 @@ CREATED_SECRET=""         # the secret that version belongs to (the verifier's o
 SEALER_PROBE_PW=""        # sealer-credential only: the generated password, kept for the authentication probe that VERIFIES a compensation
 SEALER_ACTIVATION=0       # 1 from the moment sealer activation is attempted: any non-success exit then COMPENSATES
 SEALER_WAS_LOGIN=""       # the sealer's rolcanlogin before activation (the compensation restores it)
+LV_PROBE_PW=""            # layer-verifier-credential only: the generated password, kept for the authentication probe that VERIFIES a compensation
+LV_ACTIVATION=0           # 1 from the moment the layer-verifier activation is attempted: any non-success exit then COMPENSATES
+LV_COMPENSATION_FAILED=0  # 1 when that compensation could not be verified: the secret version is then KEPT (it is the only record of a possibly-live credential)
 COMPLETED=0
 
 fail() { echo "REFUSED: $*" >&2; exit "${2:-3}"; }
@@ -134,6 +149,9 @@ sealer_marker() { q "SELECT COALESCE(shobj_description(oid, 'pg_authid'), '') FR
 # can the sealer AUTHENTICATE with this password? (the probe that replaces reading pg_authid; the password goes in the CHILD's environment only, never argv)
 login_ok() { PGUSER="$SEALER_ROLE" PGPASSWORD="$1" PGCONNECT_TIMEOUT=10 "$PSQL_BIN" -X -q -t -A -c 'SELECT 1' >/dev/null 2>&1; }
 
+# can the layer verifier AUTHENTICATE with this password, AS ITSELF? (publication.py:86 requires current_user = verifier_principal; the password goes in the CHILD's environment only)
+lv_login_ok() { [ "$(PGUSER="$LAYER_VERIFIER_ROLE" PGPASSWORD="$1" PGCONNECT_TIMEOUT=10 "$PSQL_BIN" -X -q -t -A -c 'SELECT current_user' 2>/dev/null)" = "$LAYER_VERIFIER_ROLE" ]; }
+
 # ── rollback / compensation: runs on EVERY exit path ──────────────────────────────────────────────────────────────────────────────────────
 rollback() {
   local rc=$?
@@ -154,7 +172,22 @@ rollback() {
         rc=70
       fi
     fi
-    if [ -n "$CREATED_VERSION" ]; then
+    if [ "$LV_ACTIVATION" = 1 ]; then
+      # COMPENSATE the layer-verifier activation (idempotent): back to exactly the state kala-provision-verifier-role.sh created (NOLOGIN, no password, no connection limit), then VERIFY.
+      echo "COMPENSATING the layer-verifier activation (exit $rc)..." >&2
+      if psql_admin -c "ALTER ROLE $LAYER_VERIFIER_ROLE NOLOGIN PASSWORD NULL CONNECTION LIMIT -1" >/dev/null 2>&1 \
+         && [ "$(q "SELECT rolcanlogin || '|' || rolconnlimit FROM pg_roles WHERE rolname = '$LAYER_VERIFIER_ROLE'" 2>/dev/null)" = "false|-1" ] \
+         && ! lv_login_ok "$LV_PROBE_PW"; then
+        echo "compensated and VERIFIED: $LAYER_VERIFIER_ROLE is NOLOGIN again with a null password and can no longer authenticate with this run's password." >&2
+      else
+        LV_COMPENSATION_FAILED=1
+        echo "ROLLBACK INCOMPLETE — THE LAYER VERIFIER MAY BE ACTIVE. Run 'ALTER ROLE $LAYER_VERIFIER_ROLE NOLOGIN PASSWORD NULL CONNECTION LIMIT -1;' by hand and prove this run's password no longer authenticates; the secret version is KEPT (destroy it only after that); treat as an incident." >&2
+        rc=70
+      fi
+    fi
+    if [ -n "$CREATED_VERSION" ] && [ "$LV_COMPENSATION_FAILED" = 1 ]; then
+      echo "secret version $CREATED_VERSION of ${CREATED_SECRET} NOT destroyed: the compensation is unverified" >&2
+    elif [ -n "$CREATED_VERSION" ]; then
       if "$GCLOUD_BIN" secrets versions destroy "$CREATED_VERSION" --secret "${CREATED_SECRET:-$VERIFIER_SECRET}" --project "$GCLOUD_PROJECT" --quiet >/dev/null 2>&1; then
         echo "rolled back: destroyed secret version $CREATED_VERSION" >&2
       else
@@ -170,7 +203,7 @@ rollback() {
       fi
     done
   fi
-  unset SEALER_PASSWORD_STAGING SEALER_PROBE_PW 2>/dev/null || true
+  unset SEALER_PASSWORD_STAGING SEALER_PROBE_PW LV_PROBE_PW 2>/dev/null || true
   exit "$rc"
 }
 trap rollback EXIT
@@ -218,6 +251,11 @@ check_dsn_tail() {
   case "${DSN_TAIL#@}" in *@*) fail "DSN_TAIL must not contain a second @ (no credentials)" 2;; esac
 }
 
+# the executor reaches the database through a local loopback proxy: @127.0.0.1:<port>/<db>, nothing else (no socket form, no other host, no query)
+check_layer_verifier_dsn_tail() {
+  printf '%s' "$DSN_TAIL" | grep -Eq '^@127\.0\.0\.1:[0-9]{1,5}/[A-Za-z0-9_.-]+$' || fail "DSN_TAIL must be the executor's TCP loopback form @127.0.0.1:<port>/<db> (no credentials, no query)" 2
+}
+
 # the sealer must be exactly as create-roles left it (recorded password-null) before any stage that sets a password
 require_sealer_password_null() {
   role_exists "$SEALER_ROLE" || fail "role $SEALER_ROLE does not exist — run create-roles first"
@@ -246,6 +284,38 @@ DO \$post\$ BEGIN
     RAISE EXCEPTION 'postcondition: sealer attributes are not the least-privilege set'; END IF;
   IF EXISTS (SELECT 1 FROM pg_auth_members WHERE member = (SELECT oid FROM pg_roles WHERE rolname = '$SEALER_ROLE') OR roleid = (SELECT oid FROM pg_roles WHERE rolname = '$SEALER_ROLE')) THEN
     RAISE EXCEPTION 'postcondition: sealer has role memberships'; END IF;
+END \$post\$;
+COMMIT;
+SQL
+  } | psql_admin -f - >/dev/null 2>&1
+}
+
+# ONE transaction: the layer-verifier activation AND its postconditions (ALTER ROLE is transactional, so a failed postcondition aborts the whole thing and the password is NEVER left
+# set by a failed check). stderr discarded: a server error can quote the statement. $1 = the password.
+activate_layer_verifier() {
+  {
+    printf "BEGIN;\n"
+    printf "ALTER ROLE %s LOGIN PASSWORD '%s' CONNECTION LIMIT %s;\n" "$LAYER_VERIFIER_ROLE" "$1" "$LAYER_VERIFIER_CONNECTION_LIMIT"
+    cat <<SQL
+DO \$post\$ DECLARE r oid := (SELECT oid FROM pg_roles WHERE rolname = '$LAYER_VERIFIER_ROLE'); BEGIN
+  IF r IS NULL THEN RAISE EXCEPTION 'postcondition: role absent'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cloudsqlsuperuser') THEN RAISE EXCEPTION 'postcondition: cloudsqlsuperuser absent (not Cloud SQL)'; END IF;
+  IF pg_has_role('$LAYER_VERIFIER_ROLE', 'cloudsqlsuperuser', 'MEMBER') THEN RAISE EXCEPTION 'postcondition: layer verifier is a member of cloudsqlsuperuser'; END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE oid = r AND (rolsuper OR rolcreaterole OR rolcreatedb OR rolreplication OR rolbypassrls OR rolinherit OR NOT rolcanlogin OR rolconnlimit <> $LAYER_VERIFIER_CONNECTION_LIMIT)) THEN
+    RAISE EXCEPTION 'postcondition: layer verifier attributes are not the least-privilege login set'; END IF;
+  -- it is a member of nothing, and the only membership IN it is the creating admin's own administration right (PostgreSQL 16 records that; earlier versions record none)
+  IF EXISTS (SELECT 1 FROM pg_auth_members WHERE member = r)
+     OR EXISTS (SELECT 1 FROM pg_auth_members WHERE roleid = r AND (member <> (SELECT oid FROM pg_roles WHERE rolname = current_user) OR NOT admin_option)) THEN
+    RAISE EXCEPTION 'postcondition: layer verifier has role memberships'; END IF;
+  IF NOT has_schema_privilege(r, 'public', 'USAGE') THEN RAISE EXCEPTION 'postcondition: layer verifier holds no USAGE on schema public (run kala-verifier-role-oneshot.yml grant-usage first)'; END IF;
+  IF has_schema_privilege(r, 'public', 'CREATE') THEN RAISE EXCEPTION 'postcondition: layer verifier holds CREATE on schema public'; END IF;
+  -- the only write the whole-layer verifier makes is the receipt INSERT on kala_layer_verification (migration 1330); it owns nothing and writes nothing else
+  IF EXISTS (SELECT 1 FROM pg_class c WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r','p','v','m','f') AND (c.relowner = r
+       OR has_table_privilege(r, c.oid, 'UPDATE') OR has_table_privilege(r, c.oid, 'DELETE') OR has_table_privilege(r, c.oid, 'TRUNCATE')
+       OR has_any_column_privilege(r, c.oid, 'UPDATE')
+       OR ((has_table_privilege(r, c.oid, 'INSERT') OR has_any_column_privilege(r, c.oid, 'INSERT')) AND c.relname <> 'kala_layer_verification')
+       OR has_table_privilege(r, c.oid, 'SELECT WITH GRANT OPTION') OR has_table_privilege(r, c.oid, 'INSERT WITH GRANT OPTION'))) THEN
+    RAISE EXCEPTION 'postcondition: layer verifier holds more than the verification receipt INSERT and its reads'; END IF;
 END \$post\$;
 COMMIT;
 SQL
@@ -386,6 +456,36 @@ SQL
     verification_facts "$SEALER_ROLE" 2
     COMPLETED=1
     note "sealer password set; DSN written to Secret Manager secret $SEALER_SECRET (never printed)."
+    ;;
+  layer-verifier-credential)
+    # O-W56-C: generated here, written straight to Secret Manager, never printed and never read back. The secret store FIRST (so a failure leaves a NOLOGIN role and an unused
+    # version, never an unknown password), then the role in ONE transaction, then an authentication AS verifier_principal that must succeed.
+    DSN_TAIL="${DSN_TAIL:?DSN_TAIL (the non-secret host/database of the executor DSN, TCP loopback form @127.0.0.1:<port>/<db>, starting with @) is required}"
+    check_layer_verifier_dsn_tail
+    role_exists "$LAYER_VERIFIER_ROLE" || fail "role $LAYER_VERIFIER_ROLE does not exist — run kala-verifier-role-oneshot.yml (create-role, then grant-usage) first"
+    [ "$(q "SELECT rolcanlogin || '|' || rolconnlimit FROM pg_roles WHERE rolname = '$LAYER_VERIFIER_ROLE'")" = "false|-1" ] \
+      || fail "$LAYER_VERIFIER_ROLE is not the NOLOGIN role kala-provision-verifier-role.sh created (it can already log in, or its connection limit was changed): refusing to provision over it"
+    if lv_login_ok "$(openssl rand -hex 32)"; then fail "$LAYER_VERIFIER_ROLE AUTHENTICATED with a random password: it is not password-protected — refusing"; fi
+    PW="$(openssl rand -hex 48)"
+    [ "${#PW}" -eq 96 ] || fail "password generation failed" 5
+    echo "::add-mask::$PW"
+    LV_PROBE_PW="$PW"
+    VERSION_OUT="$(printf '%s' "postgresql://${LAYER_VERIFIER_ROLE}:${PW}${DSN_TAIL}" \
+      | "$GCLOUD_BIN" secrets versions add "$LAYER_VERIFIER_SECRET" --project "$GCLOUD_PROJECT" --data-file=- --format='value(name)')" \
+      || fail "writing the layer-verifier DSN to Secret Manager failed — nothing was changed in the database" 5
+    CREATED_VERSION="${VERSION_OUT##*/versions/}"
+    CREATED_SECRET="$LAYER_VERIFIER_SECRET"
+    [ -n "$CREATED_VERSION" ] || fail "the secret version id was not returned — nothing was changed in the database" 5
+    LV_ACTIVATION=1       # from here on, any non-success exit COMPENSATES (NOLOGIN, password NULL, verified) and then destroys this run's secret version
+    activate_layer_verifier "$PW" \
+      || fail "layer-verifier activation or its postconditions failed (server message suppressed) — nothing was committed; compensating anyway" 5
+    lv_login_ok "$PW" || fail "the layer verifier cannot authenticate as itself after activation — compensating" 5
+    unset PW
+    "$GCLOUD_BIN" secrets versions list "$LAYER_VERIFIER_SECRET" --project "$GCLOUD_PROJECT" --format='value(name,state)' | sed 's/^/secret_version: /' \
+      || fail "listing the secret versions failed (needs secretmanager.versions.list) — compensating" 5
+    verification_facts "$LAYER_VERIFIER_ROLE" "$LAYER_VERIFIER_CONNECTION_LIMIT"
+    COMPLETED=1
+    note "layer verifier password set; DSN written to Secret Manager secret $LAYER_VERIFIER_SECRET (never printed). NEXT: the owner removes the temporary secretVersionManager binding and the cockpit loads the secret into the executor environment (KY_LAYER_VERIFIER_DATABASE_URL)."
     ;;
   *) fail "unknown STAGE '$STAGE'" 2 ;;
 esac
