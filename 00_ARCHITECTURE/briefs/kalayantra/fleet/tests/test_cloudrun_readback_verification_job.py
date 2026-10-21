@@ -12,10 +12,14 @@ the runner is a double returning a job shaped from the flags `.github/workflows/
   V6 a field Cloud Run omits (proto3 zero maxRetries) reads NULL, never 0 and never a green                                                                                        [_count(...)/ok None]
   V7 `--job` takes only named jobs, adds `checks` only on the definition-alone read, and the executor table carries it as an allowed argument                                 [argparse choices / allowed_args]
   V8 the kind stays read-only and the record makes no claim about the executor table (main enabled `verification_job` under J-4b)                                                      [executor_ops.json]
+  V9 the resources check demands the RULED 28,800 s task timeout (#3747 via #3789: "job task timeout 28,800 s in deploy, readback, seal check and launch preparation";
+     PRECENTURY_PLAN §9 D-2, F-VERIFY-TIMEOUT): a job at 7,200 s reads false, and the reader's pin cannot drift from the seal check's constant, both deploy flags or the launch preparation
+                                                                                                                                                                                  [VERIFIER_TIMEOUT_SECONDS = 7200]
 """
 import copy
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -23,11 +27,16 @@ from types import SimpleNamespace
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "platform/scripts"))
+import gochara_seal_execution_check as execchk  # noqa: E402  the one source of truth the deploy workflow, seal check and launch preparation share
+
 HERE = Path(__file__).resolve().parent
 FLEET = HERE.parent
 REPO = FLEET.parents[3]
 SCRIPT = FLEET / "cloudrun_readback.py"
 DEPLOY = REPO / ".github/workflows/gochara-verification-job-deploy.yml"
+LAUNCH_PREP = REPO / "platform/scripts/prepare_gochara_verifier_launch.py"
+RULED_TIMEOUT_SECONDS = 28800                         # #3747 via #3789; PRECENTURY_PLAN §9 D-2 (F-VERIFY-TIMEOUT)
 SHA = "0123456789abcdef0123456789abcdef01234567"
 DIGEST = "sha256:" + "cd" * 32
 REPO_IMAGE = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
@@ -55,7 +64,7 @@ def verification_job():
                         {"name": "GOCHARA_RUNNER_COMMIT", "value": SHA},
                         {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": DIGEST}],
                     "resources": {"limits": {"cpu": "2", "memory": "8Gi"}}}],
-                "maxRetries": 0, "serviceAccountName": SA, "timeoutSeconds": "7200"}}}}},
+                "maxRetries": 0, "serviceAccountName": SA, "timeoutSeconds": str(execchk.JOB_TIMEOUT_SECONDS)}}}}},
     }
 
 
@@ -105,7 +114,7 @@ def test_v2_the_image_is_read_by_digest_and_a_tag_reference_is_refused():
     (lambda c, t: c.__setitem__("command", ["python", "-m", "pipeline.orchestrator.main"]), "command_is_the_verifier_entry_point"),
     (lambda c, t: c["env"].append({"name": "DATABASE_URL", "valueFrom": {"secretKeyRef": {"key": "latest", "name": "data-plane-builder-db-url"}}}), "environment_is_exactly_the_contract"),
     (lambda c, t: c["env"][0]["valueFrom"]["secretKeyRef"].__setitem__("name", "data-plane-builder-db-url"), "environment_is_exactly_the_contract"),
-    (lambda c, t: c["resources"]["limits"].__setitem__("memory", "16Gi"), "resources_8Gi_2cpu_7200s"),
+    (lambda c, t: c["resources"]["limits"].__setitem__("memory", "16Gi"), "resources_8Gi_2cpu_28800s"),
 ])
 def test_v3_each_identity_entry_point_and_environment_field_is_checked(mutate, name):
     job = verification_job()
@@ -185,3 +194,23 @@ def test_v8_the_kind_is_read_only():
     assert ops["cloudrun_job_readback"]["read_only"] is True and ops["cloudrun_job_readback"]["production"] is False
     # (I) INTERPRETATION: the PR's "verification_job stays disabled" half is obsolete on main (J-4b enabled it for the launch lane); this reader never reads the table and no longer claims it.
     assert "disabled_half" not in measure()[0]
+
+
+def test_v9_the_resources_check_demands_the_ruled_28800_s_timeout_and_a_7200_s_job_reads_false():
+    base, _ = measure()
+    row = checks(base)["resources_8Gi_2cpu_28800s"]
+    assert row["observed"] == {"memory": "8Gi", "cpu": "2", "timeout_seconds": RULED_TIMEOUT_SECONDS} and row["ok"] is True and base["all_checks_ok"] is True
+    old = verification_job()
+    old["spec"]["template"]["spec"]["template"]["spec"]["timeoutSeconds"] = "7200"                    # the value #3802 expected before the ruling was applied to it
+    record, _ = measure(old)
+    assert checks(record)["resources_8Gi_2cpu_28800s"]["ok"] is False and record["all_checks_ok"] is False
+
+
+def test_v9_the_timeout_pins_cannot_drift_from_the_seal_checks_constant():
+    assert execchk.JOB_TIMEOUT_SECONDS == RULED_TIMEOUT_SECONDS
+    assert (CR.VERIFIER_MEMORY, CR.VERIFIER_CPU, CR.VERIFIER_TIMEOUT_SECONDS) == (execchk.JOB_MEMORY, execchk.JOB_CPU, execchk.JOB_TIMEOUT_SECONDS)
+    deploy = DEPLOY.read_text()
+    assert [int(v) for v in re.findall(r"--task-timeout (\d+)", deploy)] == [execchk.JOB_TIMEOUT_SECONDS]          # gcloud run jobs deploy
+    assert [int(v) for v in re.findall(r"--timeout-seconds (\d+)", deploy)] == [execchk.JOB_TIMEOUT_SECONDS]       # the post-deploy definition readback
+    assert re.findall(r"--memory (\S+)", deploy) == [execchk.JOB_MEMORY] * 2 and re.findall(r"--cpu (\S+)", deploy) == [execchk.JOB_CPU] * 2
+    assert [int(v) for v in re.findall(r"timeout_seconds=(\d+)", LAUNCH_PREP.read_text())] == [execchk.JOB_TIMEOUT_SECONDS]

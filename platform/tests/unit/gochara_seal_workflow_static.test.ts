@@ -170,6 +170,43 @@ describe('gochara-seal-approved.yml', () => {
     for (const needle of ['requirements-ci.txt', 'import psycopg, swisseph', 'seal_job', 'verification_job', 'seal_flow', 'seal_brief']) expect(run).toContain(needle)
     expect(smoke).toBeLessThan(steps.findIndex((st) => String(st.id ?? '') === 'execute'))
   })
+  it('SR-CHURN-CUT 3: the brief side (part 1, which installs and imports the sidecar) and the seal job apply the verified ci-generated overlay for the sealing commit right after the revision bind, before anything that imports the registry or adds files; part 1 checks its own checkout before any approval', () => {
+    const idx = (steps: any[], pred: (s: any) => boolean) => steps.findIndex(pred)
+    const isOverlay = (s: any) => s.uses === './.github/actions/apply-generated-overlay'
+    // C-08 split the brief job in two: the smoke, the own-checkout check and the execution start are part 1 (brief_start); part 2 (brief) only waits, reads and checks scripts that import nothing from the sidecar
+    const bs = briefStart.steps as any[], ss = seal.steps as any[]
+    expect(JSON.stringify(brief.steps)).not.toContain('python-sidecar')                    // so part 2 needs no overlay: no step of it reads the registry or the lock
+    expect(bs.filter(isOverlay)).toHaveLength(1)
+    expect(ss.filter(isOverlay)).toHaveLength(1)
+    expect(bs.find(isOverlay).with.sha).toBe('${{ github.sha }}')
+    expect(ss.find(isOverlay).with.sha).toBe('${{ needs.brief.outputs.sealing_commit }}')
+    const bind = (steps: any[]) => idx(steps, (s) => String(s.name).startsWith('Bind to the reviewed sealing revision'))
+    expect(idx(bs, isOverlay)).toBe(bind(bs) + 1)
+    expect(idx(ss, isOverlay)).toBe(bind(ss) + 1)
+    // the verify inside the action refuses a tree changed since its commit: nothing may be downloaded or installed ahead of it in the seal job
+    expect(idx(ss, (s) => String(s.uses ?? '').startsWith('actions/download-artifact'))).toBeGreaterThan(idx(ss, isOverlay))
+    expect(idx(ss, (s) => String(s.name).startsWith('Verify the approval and call the seal job'))).toBeGreaterThan(idx(ss, isOverlay))
+    const smoke = idx(bs, (s) => String(s.name ?? '').startsWith('Smoke the sealing job'))
+    expect(smoke).toBeGreaterThan(idx(bs, isOverlay))
+    const own = bs.findIndex((s) => String(s.run ?? '').includes('seal_flow.check_own_checkout()'))
+    expect(own).toBeGreaterThan(smoke)
+    expect(own).toBeLessThan(idx(bs, (s) => s.id === 'execute'))
+  })
+  it('SR-CHURN-CUT 3: the overlay action looks up a non-expired ci-generated artifact of a SUCCESSFUL ci.yml run for the SHA, fails closed, never regenerates, and applies through the quarantine tool', () => {
+    const action = parse(readFileSync(resolve(root, '.github/actions/apply-generated-overlay/action.yml'), 'utf8')) as any
+    const steps = action.runs.steps as any[]
+    const find = steps.find((s) => s.id === 'find')
+    expect(find.uses).toMatch(/^actions\/github-script@/)
+    for (const needle of ["workflow_id: 'ci.yml'", "a.name === 'ci-generated' && !a.expired", "r.conclusion === 'success'", 'seal_overlay_artifact_absent']) expect(find.with.script).toContain(needle)
+    const download = steps.find((s) => String(s.uses ?? '').startsWith('actions/download-artifact'))
+    expect(download.with.name).toBe('ci-generated')
+    expect(download.with['run-id']).toBe('${{ steps.find.outputs.run_id }}')
+    expect(download.with.path).toContain('runner.temp')                                    // quarantine, never `.`
+    const apply = String(steps.at(-1).run)
+    expect(apply.indexOf('apply_generated_overlay.py --artifact')).toBeGreaterThanOrEqual(0)
+    expect(apply.indexOf('apply_generated_overlay.py')).toBeLessThan(apply.indexOf('ci_generated.py verify --sha'))
+    expect(JSON.stringify(steps)).not.toMatch(/ci_generated\.py generate|regenerate|continue-on-error|\|\|\s*true/)
+  })
   it('F-R15-3: reads maxRetries of the job AND of the execution from the v2 REST representation as well as v1', () => {
     const steps = briefSteps
     const image = steps.find((st) => st.id === 'image'), check = steps.find((st) => st.id === 'check')
