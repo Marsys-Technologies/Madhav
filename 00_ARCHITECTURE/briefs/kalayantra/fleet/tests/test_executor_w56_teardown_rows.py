@@ -1,5 +1,5 @@
 """W5W6-READINESS WP2 (brief 02), the executor side of the two K9 teardown kinds: `orchestrator_rebuild_teardown` and `orchestrator_rebuild_teardown_dryrun` are ENABLED in the committed
-table (shard W56-WP2-teardown.json; surrogate ruling S-1 may hold them back, in which case this file and that shard are dropped together). The oracles read the committed table as shipped.
+table (shard K9-4b.json; surrogate ruling S-1 may hold them back, in which case this file and that shard are dropped together). The oracles read the committed table as shipped.
 
   C2  every teardown kind needs a V1 signer (SR-MINIMAL-PROTECTION 2; `executor.mechanical_exempt`: every `*_teardown` is a deletion, never mechanical) and the signer's attestations
       that a backup was taken and a dry run passed. (Open point, stated not hidden: the executor has no receipt detector for a K9 teardown dry run, unlike `orchestrator_rebuild`'s

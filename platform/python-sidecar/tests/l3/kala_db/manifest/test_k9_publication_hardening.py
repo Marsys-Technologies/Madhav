@@ -15,7 +15,7 @@ the production module with that claim's line reverted (``mutated``); the oracle 
   D8c only a FAILED run restores: a completed run's teardown leaves its (legitimate) stale flips
   D8d a role that cannot read the audit trail refuses before anything is deleted (N.7.6: an honest refusal, not a guess)
   D8e the real kind commits and reads the restored states back from the database
-  D8f the executor table enables the teardown pair on the admission module (W56-WP2, ruling S-1); signed-only is X1 of test_executor_mechanical_production.py
+  D8f the executor table enables the teardown pair on the admission module (W5W6 WP2, shard K9-4b, ruling S-1); signed-only is X1 of test_executor_mechanical_production.py
 """
 import contextlib
 import importlib.util
@@ -419,7 +419,7 @@ def test_d8e_the_dry_run_restores_nothing(stale_world, wired, capsys):
 
 @pytest.mark.parametrize('kind', ['orchestrator_rebuild_teardown_dryrun', 'orchestrator_rebuild_teardown'])
 def test_d8f_the_teardown_pair_is_enabled_on_the_admission_module(kind):
-    # Enabled by W5W6-READINESS WP2 under surrogate ruling S-1 (shard W56-WP2-teardown.json). The OWNER-AUTH-TEARDOWN-v2 authority covers only ka_gochara_v5 candidate/test rows, so
+    # Enabled by W5W6-READINESS WP2 under surrogate ruling S-1 (shard K9-4b.json). The OWNER-AUTH-TEARDOWN-v2 authority covers only ka_gochara_v5 candidate/test rows, so
     # deletion of a K9 rebuild candidate stays behind the signed-only rule (X1 of test_executor_mechanical_production.py), the pack's teardown gate and the database role.
     table = json.loads(OPS.read_text())['ops']
     assert table[kind]['enabled'] is True and table[kind]['script'].endswith('publication_admission.py')

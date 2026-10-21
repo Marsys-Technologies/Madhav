@@ -1,5 +1,5 @@
 """W5W6-READINESS WP2 (brief 02), the executor side of the two K9 cancel kinds: `orchestrator_rebuild_cancel` and `orchestrator_rebuild_cancel_dryrun` are ENABLED in the committed table
-(shard W56-WP2-cancel.json). One doctrine-grounded oracle per distinct claim; each has ONE planted reversion that fails (§N.8). Unlike test_executor_cancel_lane.py, which patches the kinds
+(shard K9-4a.json). One doctrine-grounded oracle per distinct claim; each has ONE planted reversion that fails (§N.8). Unlike test_executor_cancel_lane.py, which patches the kinds
 on in a copy, these oracles read the committed table as shipped.
 
   C1  the cancel is admitted only for the run-id of the rebuild in flight (SR-CANCEL-LANE): the committed cancel and cancel dry run are admitted for that run-id; another run-id and a request
@@ -18,7 +18,7 @@ from test_executor_table import BASE_ENABLED_KINDS, ENABLED_KINDS, OPS_FILE, REB
 
 CANCEL_KINDS = ("orchestrator_rebuild_cancel_dryrun", "orchestrator_rebuild_cancel")
 TEARDOWN_KINDS = ("orchestrator_rebuild_teardown_dryrun", "orchestrator_rebuild_teardown")
-TEARDOWN_SHARD = Path(executor_pin_shards.SHARD_DIR) / "W56-WP2-teardown.json"
+TEARDOWN_SHARD = Path(executor_pin_shards.SHARD_DIR) / "K9-4b.json"
 ENABLED_HERE = set(CANCEL_KINDS) | (set(TEARDOWN_KINDS) if TEARDOWN_SHARD.exists() else set())      # the teardown pair rides its own shard so the cockpit can hold it (surrogate ruling S-1)
 
 
@@ -69,7 +69,7 @@ def test_c1_planted_reversion_the_cancel_off_the_lane_allow_list_fails(world, mo
 def check_c6(ops):
     """AssertionError unless `ops` (a loaded executor_ops table) is the earlier table plus exactly the kinds this item enables."""
     now = {kind for kind, entry in ops.items() if entry["enabled"] is True}
-    earlier = executor_pin_shards.enabled_after(BASE_ENABLED_KINDS, [s for s in SHARDS if not str(s["item"]).startswith("W56-WP2")])
+    earlier = executor_pin_shards.enabled_after(BASE_ENABLED_KINDS, [s for s in SHARDS if s["item"] not in ("K9-4a", "K9-4b")])
     assert now == earlier | ENABLED_HERE, f"enabled set differs: +{sorted(now - earlier - ENABLED_HERE)} -{sorted((earlier | ENABLED_HERE) - now)}"
     assert now == ENABLED_KINDS
     for kind in ENABLED_HERE:
