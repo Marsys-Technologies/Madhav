@@ -321,9 +321,16 @@ def _require_keys(mapping, keys, factor: str) -> dict:
     return mapping
 
 
+def subject_of(rec: dict) -> str:
+    """The governed subject of a P1 record's factors, lower-case: its PERIOD ANCHOR LORD (migration 1233), else its own agent — the same
+    rule the builder applies (`p1_operands.P1Operands.attach`; SR-PLAN-REVIEW-RECONCILED R-5, Phaladīpikā XX.34-38: the period lord's
+    strength is judged where the period lord stands, however the delivery form reaches the native). The geometry stays on `rec["agent"]`."""
+    return (rec.get("anchor") or rec["agent"]).lower()
+
+
 class P1Binding:
     """The check bound to one path's factor rows and one event class: values, sides, channels, unknown reasons and change
-    instants of a stored record (a dict with at least `agent`)."""
+    instants of a stored record (a dict with at least `agent`; its `anchor`, when present, is the governed subject — `subject_of`)."""
 
     def __init__(self, check: P1Check, factor_rows, event_class: str):
         self.check, self.event_class = check, event_class
@@ -361,7 +368,7 @@ class P1Binding:
         lord needs that is missing / divergent), else None. Static: it does not depend on t."""
         if factor_id in self._row_problem:
             return self._row_problem[factor_id]
-        graha = rec["agent"].title()
+        graha = subject_of(rec).title()
         if factor_id == "dignity_of_transit_sign":
             return self.check.dignity_problem(graha)
         if factor_id == "combustion":
@@ -370,11 +377,12 @@ class P1Binding:
 
     def evaluate(self, rec: dict, t: datetime):
         """`Evaluation` of the record at t, or `P1Unknown` (a named per-instant reason)."""
-        key = (rec["agent"], t)
+        subject = subject_of(rec)           # the cache key is the SUBJECT: two records of one agent under different anchors never share an entry
+        key = (subject, t)
         if key not in self._eval_cache:
             if len(self._eval_cache) > 500_000:
                 self._eval_cache.clear()
-            self._eval_cache[key] = self._evaluate(rec["agent"].title(), t)
+            self._eval_cache[key] = self._evaluate(subject.title(), t)
         return self._eval_cache[key]
 
     def _evaluate(self, graha: str, t: datetime):
@@ -410,8 +418,8 @@ class P1Binding:
 
     def channel_boundaries(self, rec: dict, lo: datetime, hi: datetime) -> list[datetime]:
         """The record's change instants inside [lo, hi): where its value OR side may change (the verifier cuts its pieces here)."""
-        return self.check.boundaries(rec["agent"].title(), lo, hi)
+        return self.check.boundaries(subject_of(rec).title(), lo, hi)
 
 
 __all__ = ["Evaluation", "MAITRI_RETIRED_REASON", "MAPPING_NOT_SUPPLIED_REASON", "NODE_DIGNITY_UNCLASSIFIED", "P1Binding", "P1Check",
-           "P1_FACTORS", "P1Unknown", "PEAK_TOLERANCE_SECONDS", "RETIRED_FACTORS", "RUNGS", "needs_p1_check"]
+           "P1_FACTORS", "P1Unknown", "PEAK_TOLERANCE_SECONDS", "RETIRED_FACTORS", "RUNGS", "needs_p1_check", "subject_of"]
