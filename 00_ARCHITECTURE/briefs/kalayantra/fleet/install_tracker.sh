@@ -5,13 +5,42 @@
 #   install_tracker.sh --stop
 # Acceptance (charter §4.1): health 200 is not enough — the receipt records package path+hash, model hash, no model error,
 # a fresh tick, and (after B-1) that `ky audit` runs. Written to run/TRACKER_INSTALL_RECEIPT.json.
+#
+# v1.2 (2026-10-21, incident 07:05Z): the plan model and the tracker's repo path come from ONE source, KY_SOURCE_REPO (default: the auto-synced
+# campaign checkout, the same default as executor.sh / finalize.sh / bin/ky), never from the stale $KY_ROOT/wt/campaign. Staleness rule —
+# the installer refuses (exit 1, before the package, plist or tracker is touched) unless, after `git fetch origin main` in that checkout:
+#   E_TRACKER_SOURCE_DIVERGED   HEAD is an ancestor-or-equal of origin/main (a checkout with its own commits is not the live model);
+#   E_TRACKER_SOURCE_STALE      HEAD is at most KY_STALE_MAX_COMMITS (default 20) commits behind origin/main;
+#   E_TRACKER_MODEL_STALE       at most KY_MODEL_MAX_COMMITS (default 3) commits that change plan_model.json are missing from HEAD.
+# After bootout it waits for the service to disappear, retries bootstrap once, and exits non-zero unless health answers 200 within
+# KY_HEALTH_WAIT_S (default 60) — the tracker is never left down silently.
 set -euo pipefail
 umask 077
 KY_ROOT="${KY_ROOT:-/Users/Dev/kalayantra}"; RUN="$KY_ROOT/run"
 mkdir -p "$RUN" "$KY_ROOT/bin" "$RUN/reviews" "$RUN/verdicts" "$RUN/claims" "$RUN/ops" "$HOME/Library/LaunchAgents"
 LABEL=com.madhav.kalayantra.tracker; PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"; PY=/opt/homebrew/bin/python3
-MODEL="$KY_ROOT/wt/campaign/00_ARCHITECTURE/control/kalayantra/plan_model.json"
+KY_SOURCE_REPO="${KY_SOURCE_REPO:-/Users/Dev/worktrees.noindex/madhav/claude/kalayantra-campaign}"
+MODEL_REL="00_ARCHITECTURE/control/kalayantra/plan_model.json"; MODEL="$KY_SOURCE_REPO/$MODEL_REL"
+FLEET_REL="00_ARCHITECTURE/briefs/kalayantra/fleet"
+die() { echo "install_tracker: $1: $2" >&2; exit "${3:-1}"; }
 if [ "${1:-}" = "--stop" ]; then launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true; rm -f "$PLIST"; echo "tracker stopped"; exit 0; fi
+# Source check (runs before the package selection, snapshot, plist or tracker is touched): the live model must come from a current checkout of origin/main.
+[ -f "$MODEL" ] || die E_TRACKER_SOURCE_MISSING "plan model missing: $MODEL (KY_SOURCE_REPO=$KY_SOURCE_REPO)"
+git -C "$KY_SOURCE_REPO" rev-parse --git-dir >/dev/null 2>&1 || die E_TRACKER_SOURCE_MISSING "$KY_SOURCE_REPO is not a git checkout"
+git -C "$KY_SOURCE_REPO" fetch -q origin main || die E_TRACKER_SOURCE_FETCH "cannot refresh origin/main in $KY_SOURCE_REPO"
+git -C "$KY_SOURCE_REPO" merge-base --is-ancestor HEAD origin/main \
+  || die E_TRACKER_SOURCE_DIVERGED "HEAD of $KY_SOURCE_REPO is not an ancestor of origin/main"
+BEHIND="$(git -C "$KY_SOURCE_REPO" rev-list --count HEAD..origin/main)" || die E_TRACKER_SOURCE_FETCH "cannot count commits behind origin/main"
+[ "$BEHIND" -le "${KY_STALE_MAX_COMMITS:-20}" ] \
+  || die E_TRACKER_SOURCE_STALE "$KY_SOURCE_REPO is $BEHIND commits behind origin/main (limit ${KY_STALE_MAX_COMMITS:-20}); sync it first"
+MODEL_BEHIND="$(git -C "$KY_SOURCE_REPO" rev-list --count HEAD..origin/main -- "$MODEL_REL")" || die E_TRACKER_SOURCE_FETCH "cannot count model commits"
+[ "$MODEL_BEHIND" -le "${KY_MODEL_MAX_COMMITS:-3}" ] \
+  || die E_TRACKER_MODEL_STALE "plan model in $KY_SOURCE_REPO is $MODEL_BEHIND model commits behind origin/main (limit ${KY_MODEL_MAX_COMMITS:-3}); sync it first"
+# Run from a fleet_live copy without bin/, the wrappers are taken from the source checkout's fleet directory (2026-10-21).
+if [ -z "${KY_WRAPPER_SRC:-}" ] && [ ! -f "$(dirname "${BASH_SOURCE[0]}")/bin/ky" ]; then
+  KY_WRAPPER_SRC="$KY_SOURCE_REPO/$FLEET_REL"
+  [ -f "$KY_WRAPPER_SRC/bin/ky" ] && [ -f "$KY_WRAPPER_SRC/bin/kybrief" ] || die E_TRACKER_NO_WRAPPERS "no bin/ky beside this script and none under $KY_WRAPPER_SRC"
+fi
 if [ "${1:-}" = "--gov" ]; then [ $# -eq 2 ] || { echo "usage: --gov <package-parent-dir>"; exit 2; }; GOV="$2"; printf '%s\n' "$GOV" > "$RUN/TRACKER_GOV"
 elif [ -s "$RUN/TRACKER_GOV" ]; then GOV="$(cat "$RUN/TRACKER_GOV")"
 else echo "Select the reviewed tracker package explicitly: $0 --gov <dir containing pravaha_tracker/>"; exit 1; fi
@@ -20,11 +49,10 @@ else echo "Select the reviewed tracker package explicitly: $0 --gov <dir contain
 # tree (B-1b is developed there) can never break the running control plane. Re-run this installer to adopt a new package.
 LIVE="$KY_ROOT/tracker_live"; rm -rf "$LIVE.new"; mkdir -p "$LIVE.new"
 rsync -a --exclude '__pycache__' "$GOV/pravaha_tracker" "$LIVE.new/"; rm -rf "$LIVE.old"; [ -d "$LIVE" ] && mv "$LIVE" "$LIVE.old"; mv "$LIVE.new" "$LIVE"
-[ -f "$MODEL" ] || { echo "plan model missing: $MODEL"; exit 1; }
 $PY -c "import json,sys; json.load(open(sys.argv[1]))" "$MODEL"
 touch "$RUN/EVENTS.jsonl"
 # wrappers: begin — ky and kybrief are static, reviewed files (bin/ beside this script); installing them is a byte copy.
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+HERE="${KY_WRAPPER_SRC:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)}"
 for w in ky kybrief; do install -m 0755 "$HERE/bin/$w" "$KY_ROOT/bin/$w"; done
 # wrappers: end
 cat > "$PLIST" <<EOF
@@ -41,7 +69,7 @@ cat > "$PLIST" <<EOF
     <key>PRAVAHA_EVENTS</key><string>$RUN/EVENTS.jsonl</string>
     <key>PRAVAHA_PLAN_MODEL</key><string>$MODEL</string>
     <key>PRAVAHA_TRACKER_PORT</key><string>8767</string>
-    <key>PRAVAHA_REPO</key><string>$KY_ROOT/wt/campaign</string>
+    <key>PRAVAHA_REPO</key><string>$KY_SOURCE_REPO</string>
     <key>PRAVAHA_PGENV</key><string>/Users/Dev/.config/pravaha/pgenv.sh</string>
     <key>PRAVAHA_HOLD</key><string>$KY_ROOT/HOLD</string>
     <key>PYTHONUNBUFFERED</key><string>1</string>
@@ -50,9 +78,24 @@ cat > "$PLIST" <<EOF
   <key>StandardOutPath</key><string>$RUN/tracker.log</string><key>StandardErrorPath</key><string>$RUN/tracker.log</string>
 </dict></plist>
 EOF
-launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$PLIST"; launchctl enable "gui/$(id -u)/$LABEL"
-for i in $(seq 1 20); do curl -fs -m 3 http://127.0.0.1:8767/api/health >/dev/null 2>&1 && break; sleep 1; done
+UIDD="gui/$(id -u)"; POLL="${KY_POLL_S:-1}"
+loaded() { launchctl print "$UIDD/$LABEL" >/dev/null 2>&1; }
+unload_and_wait() {   # bootout is asynchronous: wait until the service is really gone before bootstrapping again
+  launchctl bootout "$UIDD/$LABEL" 2>/dev/null || true
+  for _ in $(seq 1 "${KY_BOOTOUT_WAIT_S:-30}"); do loaded || return 0; sleep "$POLL"; done
+  ! loaded
+}
+unload_and_wait || die E_TRACKER_BOOTOUT "service $LABEL still loaded after ${KY_BOOTOUT_WAIT_S:-30}s; tracker NOT restarted"
+if ! launchctl bootstrap "$UIDD" "$PLIST"; then
+  echo "install_tracker: bootstrap failed; retrying once" >&2
+  unload_and_wait || die E_TRACKER_BOOTOUT "service $LABEL still loaded before the bootstrap retry; tracker is DOWN"
+  sleep "$POLL"
+  launchctl bootstrap "$UIDD" "$PLIST" || die E_TRACKER_BOOTSTRAP "launchctl bootstrap failed twice; tracker is DOWN"
+fi
+launchctl enable "$UIDD/$LABEL"
+UP=0
+for _ in $(seq 1 "${KY_HEALTH_WAIT_S:-60}"); do curl -fs -m 3 http://127.0.0.1:8767/api/health >/dev/null 2>&1 && { UP=1; break; }; sleep "$POLL"; done
+[ "$UP" = 1 ] || die E_TRACKER_DOWN "no health 200 within ${KY_HEALTH_WAIT_S:-60}s; tracker is DOWN (see $RUN/tracker.log)"
 H="$(curl -fs -m 5 http://127.0.0.1:8767/api/health || true)"
 $PY - "$H" "$GOV" "$MODEL" "$RUN/TRACKER_INSTALL_RECEIPT.json" "$KY_ROOT/bin/ky" "$LIVE" <<'PYEOF'
 import hashlib, json, os, pathlib, subprocess, sys, time
