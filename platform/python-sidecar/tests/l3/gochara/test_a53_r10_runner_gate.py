@@ -55,6 +55,8 @@ def test_the_entry_point_refuses_without_an_ephemeris_path(built, monkeypatch, c
     from .test_a53_verification_job import PASSWORD
     w = built
     monkeypatch.delenv("SE_EPHE_PATH", raising=False)
+    monkeypatch.setenv("GOCHARA_RUNNER_IMAGE_DIGEST", "sha256:" + "1" * 64)            # SR-OD1 R8: the persisting launch names its producer first
+    monkeypatch.setenv("CLOUD_RUN_EXECUTION", "executions/test-exec-1")
     monkeypatch.setattr(entry, "_build_kwargs", lambda conn, ephe: {
         k: v for k, v in _kwargs(w, _job_position(w, [LIBRA])).items() if k not in ("classes", "ephe_path")} | {"ephe_path": ephe})
     w.conn.execute(f"ALTER ROLE gochara_verifier LOGIN PASSWORD '{PASSWORD}'")

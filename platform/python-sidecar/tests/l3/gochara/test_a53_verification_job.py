@@ -35,6 +35,14 @@ from .test_a53_window_verification_roles import _consistent_sky, _seal  # noqa: 
 from ._verification_persist import persist_window_verification  # noqa: F401
 
 FIXTURE = Path(__file__).parent / "fixtures" / "l1_read_stand_in_grants.sql"
+JOB_IMAGE = "sha256:" + "1" * 64
+
+
+@pytest.fixture(autouse=True)
+def _job_identity(monkeypatch):
+    """SR-OD1 R8: a persisting launch stamps every row with its commit / immutable image / execution and refuses to start without them (the deployed job's definition carries them)."""
+    monkeypatch.setenv("GOCHARA_RUNNER_IMAGE_DIGEST", JOB_IMAGE)
+    monkeypatch.setenv("CLOUD_RUN_EXECUTION", "projects/p/locations/l/jobs/gochara-verification-job/executions/e1")
 GATE_DELTA = Path(__file__).parent / "fixtures" / "verifier_combined_gate_delta_grants.sql"
 PASSWORD = "job-test-pw"
 

@@ -25,6 +25,15 @@ What one run does, in order (every refusal happens before the next step):
                 and the job's ONE report line is read back from its stdout log and printed UNCHANGED after the record. The job in this mode persists nothing (verification_job.run
                 `persist=not report_only`) and reports the combined candidate gate honestly; whether the report is clean is judged by the pack's dryrun_gate, not here.
 
+SHARDS (SR-OD1 R8, RECONCILIATION R-8): one whole-generation execution of the 26 classes cannot fit the job's 28,800 s task timeout, so a launch may name ONE shard of the pinned
+partition (`fleet/VERIFY_SHARDS.json`, `ky.verification_shards/1`): the request carries the second argument `shard` (V01..), equal to the command line's `--shard`, and the job is
+launched with `--class <c>` once per class of that shard (the Cloud Run `--args` list is comma-joined, so a comma-separated class list is not usable; the job's flag is repeated). The
+shard -> classes map is read from the pinned file, never from the request, and its sha256 is in the record. Each shard is its own execution, its own operation and its own claim; the
+rehearsal (`verification_job_dryrun --shard V03`) and the dispatch (`verification_job --shard V03`) run the same classes. Every row a shard persists carries its generation, head, image
+digest, execution and classes (the job stamps them); the seal brief and the seal read only the generation-wide AGGREGATE, which refuses unless every class is attested at one head.
+A dry run's record carries `report_only_run.capacity` (G-5, per shard: measured wall <= 0.75 x the task timeout; `verification_shards.py capacity` projects the 26-class total).
+A request with no `shard` launches the whole generation exactly as before (a small generation, a rehearsal); it is not the way to verify 26 classes.
+
 Prints a `ky.verification_launch/1` JSON record (status DRY_RUN | LAUNCHED). A launch prints that one line; a dry run prints it and then the job's report line (the
 record carries no `classes`, so the report is the one report in the output). `executed_check.status` is CONFORMS | NONCONFORMING | UNREADABLE (null in a dry run; the dry run's own is under `report_only_run`).
 A failure after step 3 leaves the claim in LAUNCH_PENDING and the exit non-zero: reconcile, never retry. Honest nulls (CLAUDE.md §N.7.6 / §N.8): nothing here says the
@@ -68,6 +77,7 @@ import gochara_seal_execution_check as execchk            # noqa: E402  the veri
 import gochara_verification_job_contract as vjc           # noqa: E402  the pinned task contract (shared byte for byte with the deploy and seal workflows)
 import gochara_verification_job_readback as jobrb         # noqa: E402  the deployed-definition check
 import smalltest_launch as bridge                         # noqa: E402  the durable claim fence and canonical JSON, shared with the other launchers
+import verification_shards as shards                      # noqa: E402  the pinned class shards (SR-OD1 R8) and the G-5 capacity arithmetic
 from scheduler_reaper import request_digest               # noqa: E402  the executor's request digest, byte for byte
 
 SCHEMA = "ky.verification_launch/1"
@@ -79,6 +89,12 @@ CLOUDSQL_INSTANCE = "madhav-astrology:asia-south1:amjis-postgres"
 KIND_EXECUTE, KIND_DRYRUN = "verification_job", "verification_job_dryrun"
 EXECUTE_ARGS = ("--chart", CHART, "--generation", GENERATION)
 REPORT_ONLY_ARGS = EXECUTE_ARGS + ("--report-only",)
+
+
+def build_job_args(shard_classes=None, report_only: bool = False) -> tuple:
+    """The job's argument list: the constants, then `--class <c>` for each class of the shard (shard_classes comes only from the pinned file), then `--report-only` for a dry run."""
+    base = EXECUTE_ARGS + tuple(a for c in (shard_classes or ()) for a in ("--class", c))
+    return base + (("--report-only",) if report_only else ())
 WAIT_BUDGET_S = 21000          # under the executor's MAX_TIMEOUT (6 h = 21600): the refusal names the execution instead of the executor killing us silently
 POLL_INTERVAL_S = 30
 LOG_ATTEMPTS, LOG_RETRY_S = 8, 15                    # Cloud Logging lags a completed execution by seconds
@@ -138,7 +154,7 @@ def read_v2(url: str, runner, fetch) -> dict:
     return fetch(url, token)
 
 
-def bind_request(environ, argv_generation: str, dry_run: bool) -> tuple[dict, str]:
+def bind_request(environ, argv_generation: str, dry_run: bool, argv_shard=None) -> tuple[dict, str]:
     """The request this process was started for. (request, request_sha256); a refusal names the field, never a value that could be a credential."""
     try:
         request = json.loads(environ.get("KY_OPERATION_REQUEST") or "null")
@@ -156,8 +172,10 @@ def bind_request(environ, argv_generation: str, dry_run: bool) -> tuple[dict, st
     if not isinstance(request.get("reviewed_commit"), str) or not COMMIT.fullmatch(request["reviewed_commit"]):
         raise Refused("reviewed_commit is not a 40-hex commit")
     args = request.get("args")
-    if not isinstance(args, dict) or set(args) != {"generation"} or args["generation"] != GENERATION or argv_generation != GENERATION:
+    if not isinstance(args, dict) or set(args) not in ({"generation"}, {"generation", "shard"}) or args["generation"] != GENERATION or argv_generation != GENERATION:
         raise Refused(f"the only verified generation is {GENERATION}, and the request and the command line must both name it")
+    if args.get("shard") != argv_shard:
+        raise Refused("the request and the command line must name the same shard (or both none)")
     return request, request_digest(request)
 
 
@@ -316,16 +334,22 @@ def _wall_seconds(measured: dict):
     return round((end - start).total_seconds(), 3) if end >= start else None
 
 
-def report_only_run(definition: dict, request: dict, runner, fetch, launcher, sleep, monotonic) -> dict:
-    """The dry run's body: ONE `--report-only` execution of the job, waited for, judged and its report read back. -> the `report_only_run` record (with `report_line`)."""
-    execution = (launcher or (lambda: cloud_launcher(runner, REPORT_ONLY_ARGS, "report-only launch failed or outcome unknown; list the job's executions before running again")))()
+def report_only_run(definition: dict, request: dict, runner, fetch, launcher, sleep, monotonic, shard=None) -> dict:
+    """The dry run's body: ONE `--report-only` execution of the job (of the shard's classes, when `shard` = {id, classes} is given), waited for, judged and its report read back.
+    -> the `report_only_run` record (with `report_line`)."""
+    run_args = build_job_args((shard or {}).get("classes"), report_only=True)
+    execution = (launcher or (lambda: cloud_launcher(runner, run_args, "report-only launch failed or outcome unknown; list the job's executions before running again")))()
     if not isinstance(execution, str) or not EXECUTION.fullmatch(execution):
         raise Refused("report-only execution identity absent or wrong job; list the job's executions before running again")
     measured, waited = wait_for_execution(execution, f"{readback.IMAGE_REPO}@{definition['image_digest']}", runner, sleep, monotonic)
-    run_record = {"execution_name": execution, "args": list(REPORT_ONLY_ARGS), "outcome": measured["outcome"], "start_time": measured["start_time"],
+    run_record = {"execution_name": execution, "args": list(run_args), "outcome": measured["outcome"], "start_time": measured["start_time"],
                   "completion_time": measured["completion_time"], "execution_wall_s": _wall_seconds(measured), "waited_s": round(waited, 3),
-                  "executed_check": executed_check(execution, definition["image_digest"], request["reviewed_commit"], runner, fetch, REPORT_ONLY_ARGS),
+                  "executed_check": executed_check(execution, definition["image_digest"], request["reviewed_commit"], runner, fetch, run_args),
                   "report_status": None, "report_line": None}
+    # G-5: the MEASURED effective wall (completionTime - startTime of this execution, certificate verifier included) against 0.75 x the task timeout; null when the wall was not read.
+    # A whole-generation run is measured over the pinned class total: it is the SERIAL path's test (`verification_shards.py serial`); a shard's is the FALLBACK's.
+    doc = (shard or {}).get("doc") or shards.load()[0]
+    run_record["capacity"] = shards.shard_capacity(run_record["execution_wall_s"], len(shard["classes"]) if shard else doc["classes_total"], doc)
     try:
         line, report = read_report(execution, runner, sleep)
     except REFUSALS as exc:
@@ -343,19 +367,30 @@ def run(argv=None, *, environ=None, runner=readback.default_runner, fetch=http_g
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--generation", required=True)
     parser.add_argument("--dry-run", action="store_true", help="validate and print the plan; no claim, no launch")
+    parser.add_argument("--shard", default=None, help="one shard id (V01..) of fleet/VERIFY_SHARDS.json; absent = the whole generation")
     args = parser.parse_args(argv)
     environ = os.environ if environ is None else environ
     now = now or dt.datetime.now(dt.timezone.utc)
-    request, digest = bind_request(environ, args.generation, args.dry_run)
+    request, digest = bind_request(environ, args.generation, args.dry_run, args.shard)
+    shard = None
+    if args.shard is not None:
+        try:
+            doc, doc_sha = shards.load()      # the partition is the pinned file's, never the request's; an unknown or malformed one REFUSES before any cloud read
+            shard = {"id": args.shard, "classes": shards.classes_for(args.shard, doc), "shards_sha256": doc_sha, "doc": doc}
+        except shards.Refused as exc:
+            raise Refused(str(exc)) from None
     definition = definition_check(request, runner, fetch)
+    execute_args = build_job_args(shard and shard["classes"])
     record = {"schema": SCHEMA, "status": "DRY_RUN" if args.dry_run else "LAUNCH_PENDING", "mode": "dry_run" if args.dry_run else "execute",
               "operation_id": request["operation_id"], "item_id": request.get("item_id"), "request_sha256": digest, "reviewed_commit": request["reviewed_commit"],
               "chart_id": CHART, "generation": GENERATION, "project": readback.PROJECT, "region": readback.REGION, "job": JOB,
               "service_account": execchk.VERIFIER_SERVICE_ACCOUNT, "image_digest": definition["image_digest"], "definition_check": definition["status"],
-              "args": list(EXECUTE_ARGS), "execution_name": None, "executed_check": None, "measured_at": now.isoformat(timespec="seconds"),
-              "plan": {"execute": execute_argv(REPORT_ONLY_ARGS if args.dry_run else EXECUTE_ARGS)}}
+              "args": list(execute_args), "shard": shard and {k: v for k, v in shard.items() if k != "doc"},
+              "execution_name": None, "executed_check": None, "measured_at": now.isoformat(timespec="seconds"),
+              "plan": {"execute": execute_argv(build_job_args(shard and shard["classes"], report_only=True) if args.dry_run else execute_args)}}
     if args.dry_run:
-        record.update(args=list(REPORT_ONLY_ARGS), report_only_run=report_only_run(definition, request, runner, fetch, launcher, sleep, monotonic))
+        record.update(args=list(build_job_args(shard and shard["classes"], report_only=True)),
+                      report_only_run=report_only_run(definition, request, runner, fetch, launcher, sleep, monotonic, shard))
         return record
     root = environ.get("KY_ROOT")
     if not root and claim_dir is None:
@@ -365,15 +400,31 @@ def run(argv=None, *, environ=None, runner=readback.default_runner, fetch=http_g
     path = claim_dir / f"{request['operation_id']}.json"
     claim = {k: v for k, v in record.items() if k != "plan"}
     bridge._write_claim(path, claim, exclusive=True)                 # the cross-process no-retry fence; before any remote effect
-    execution = (launcher or (lambda: cloud_launcher(runner)))()
+    execution = (launcher or (lambda: cloud_launcher(runner, execute_args)))()
     if not isinstance(execution, str) or not EXECUTION.fullmatch(execution):
         raise Refused("remote execution identity absent or wrong job; retained claim requires reconciliation")
     claim.update(status="LAUNCHED", execution_name=execution)
     bridge._write_claim(path, claim)
-    record.update(status="LAUNCHED", execution_name=execution, executed_check=executed_check(execution, definition["image_digest"], request["reviewed_commit"], runner, fetch))
+    append_history(claim_dir, {**record, "execution_name": execution})
+    record.update(status="LAUNCHED", execution_name=execution, executed_check=executed_check(execution, definition["image_digest"], request["reviewed_commit"], runner, fetch, execute_args))
     claim["executed_check"] = record["executed_check"]
     bridge._write_claim(path, claim)
     return record
+
+
+def append_history(claim_dir: Path, record: dict) -> None:
+    """The execution HISTORY (SR-A10-1 B3): one append-only line per launch in `<claim_dir>/HISTORY.jsonl` — operation, execution, shard (id, classes, pinned-file digest), reviewed
+    commit (the head the job was defined at), image digest, request digest and time — fsynced. It is never rewritten: a re-run of a shard is a new line, so which execution attested
+    which class at which head stays readable after the database rows are replaced. It records launches, not outcomes (the outcome is the execution read back and the attestations)."""
+    line = bridge.canonical({"operation_id": record["operation_id"], "execution_name": record["execution_name"], "shard": record["shard"], "generation": record["generation"],
+                             "reviewed_commit": record["reviewed_commit"], "image_digest": record["image_digest"], "request_sha256": record["request_sha256"],
+                             "args": record["args"], "launched_at": record["measured_at"]})
+    fd = os.open(claim_dir / "HISTORY.jsonl", os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o640)
+    try:
+        os.write(fd, (line + "\n").encode("utf-8"))
+        os.fsync(fd)
+    finally:
+        os.close(fd)
 
 
 def cli(argv=None, **injected):

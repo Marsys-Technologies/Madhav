@@ -119,6 +119,7 @@
         "tests/l3/gochara/test_n18*.py",
         "tests/l3/gochara/test_nd_h*.py",
         "tests/l3/gochara/test_od1_c2*.py",
+        "tests/l3/gochara/test_od1_r8*.py",
         "tests/l3/gochara/test_near_miss*.py",
         "tests/l3/gochara/test_p06*.py",
         "tests/l3/gochara/test_j6_bindings*.py"
@@ -568,6 +569,7 @@
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cloudrun_readback*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_verification_shards*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_github_run_readback*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_iam_policy_readback*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_http_probe*.py"

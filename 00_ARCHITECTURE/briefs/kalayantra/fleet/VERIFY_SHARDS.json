@@ -1,0 +1,71 @@
+{
+ "schema": "ky.verification_shards/1",
+ "generation": "5.0",
+ "classes_total": 26,
+ "task_timeout_s": 28800,
+ "wall_fraction": 0.75,
+ "basis": "SR-OD1 R8 (RECONCILIATION R-8; SR-R8-SHARDED). 26 scored classes (ka_gochara_v5.SCORED_CLASSES, sorted) in 7 consecutive shards of 4,4,4,4,4,3,3. Capacity: PLAN.md 2.5 puts verification at 1.8-3.8 ks/class plus <= 0.6 ks solver check = <= 4.4 ks/class, so 4 classes <= 17.6 ks <= 0.75 x 28,800 s = 21,600 s. The dry run MEASURES it (G-5); this is a design bound, not a measurement.",
+ "shards": [
+  {
+   "id": "V01",
+   "classes": [
+    "achievement_recognition",
+    "bereavement",
+    "business_launch",
+    "career_advancement"
+   ]
+  },
+  {
+   "id": "V02",
+   "classes": [
+    "career_change",
+    "career_entry",
+    "career_setback",
+    "childbirth"
+   ]
+  },
+  {
+   "id": "V03",
+   "classes": [
+    "chronic_onset",
+    "education_milestone",
+    "exam_outcome",
+    "financial_deception"
+   ]
+  },
+  {
+   "id": "V04",
+   "classes": [
+    "foreign_settlement",
+    "illness_acute",
+    "major_gain",
+    "major_loss"
+   ]
+  },
+  {
+   "id": "V05",
+   "classes": [
+    "marriage",
+    "parental_event",
+    "property_acquisition",
+    "psychological_arc"
+   ]
+  },
+  {
+   "id": "V06",
+   "classes": [
+    "relocation",
+    "romantic_start",
+    "separation"
+   ]
+  },
+  {
+   "id": "V07",
+   "classes": [
+    "spiritual_turn",
+    "surgery",
+    "travel_event"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,50 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "J-4b",
+  "after": null,
+  "entries": {
+    "verification_job": {
+      "enabled": true,
+      "needs": "gcloud",
+      "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py",
+      "fixed_args": [],
+      "allowed_args": [
+        "generation",
+        "shard"
+      ],
+      "production": true,
+      "remote_async": true,
+      "timeout_s": 900,
+      "enabled_by": "J-4b",
+      "prepared_dry_run": {
+        "enabled": false,
+        "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py",
+        "fixed_args": [
+          "--dry-run",
+          "--kind",
+          "verification_job"
+        ],
+        "allowed_args": [
+          "generation"
+        ],
+        "enable_at": "phase 10 after P06b",
+        "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"
+      }
+    },
+    "verification_job_dryrun": {
+      "enabled": true,
+      "needs": "gcloud",
+      "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py",
+      "fixed_args": [
+        "--dry-run"
+      ],
+      "allowed_args": [
+        "generation",
+        "shard"
+      ],
+      "production": false,
+      "timeout_s": 21600,
+      "enabled_by": "J-4b"
+    }
+  }
+}

@@ -20,7 +20,9 @@ table yields none, a blank where it yields a value, a reason that names the all-
 This module keeps its OWN literals (the frozen table's binding comes from the vector verifier's, not the builder's `result_policy`; a test asserts they are equal)."""
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 from typing import Any
 
 SCHEMA = "numerical_window_gate/1"
@@ -28,6 +30,7 @@ PASSED, FAILED, NOT_APPLICABLE = "PASSED", "FAILED", "NOT_APPLICABLE"
 POLICY_QUALIFICATION = "window_qualification/1"
 POLICY_ALL_NULL = "all_null_candidate/1"
 ATTESTATION_KEY = "numerical_window_gate"                 # the key inside the 1240 row's runner_identity
+SHARD_KEY = "verification_shard"                          # …beside it: WHICH launch (generation, head, image, execution, classes) wrote the row (SR-OD1 R8)
 
 #: the reason codes the policy leaves a window blank under, grouped for the disclosure (the group is a label; the CODE is what is counted and stored). A code in no group
 #: is still counted, under `other_named_reason`: a blank is never nameless.
@@ -143,15 +146,74 @@ def grain_attestation(conn, *, chart_id: str, generation: str, event_class: str,
             "numbered": c["numbered"], "numbered_without_score": c["numbered_without_score"], "valence": c["valence"], "blank": c["blank"]}
 
 
-def runner_with_attestation(runner: dict, attestation: dict) -> dict:
-    """The runner-identity object the 1240 row stores, carrying the attestation beside the commit / implementation digest the SQL gate reads."""
-    return {**runner, ATTESTATION_KEY: attestation}
+def runner_with_attestation(runner: dict, attestation: dict, shard: dict | None = None) -> dict:
+    """The runner-identity object the 1240 row stores, carrying the attestation beside the commit / implementation digest the SQL gate reads, and (a class-sharded
+    launch, SR-OD1 R8) the shard stamp that says which launch wrote the row."""
+    return {**runner, ATTESTATION_KEY: attestation, **({} if shard is None else {SHARD_KEY: shard})}
 
 
-def generation_verdict(conn, chart_id: str, generation: str, classes=None) -> dict:
+_IMAGE_DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
+
+
+def current_epoch(conn, chart_id: str, generation: str) -> str | None:
+    """The EPOCH of a generation's build: the digest of the candidate manifest's identity and the search-input snapshot the verification reads. A rebuild replaces the manifest row
+    and/or the snapshot, so every attestation written before it names another epoch and is void (R10-2). None when either is unreadable — an unreadable epoch is never matched."""
+    pub = _rows(conn, "SELECT manifest_id::text FROM public.kala_gochara_publication WHERE chart_id = %s AND generation = %s", (chart_id, generation))
+    snap = _rows(conn, "SELECT input_digest FROM public.ka_gochara_search_input_snapshot WHERE chart_id = %s AND generation = %s", (chart_id, generation))
+    if len(pub) != 1 or len(snap) != 1:
+        return None
+    return hashlib.sha256(json.dumps({"generation": generation, "manifest_id": pub[0][0], "input_digest": snap[0][0]}, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def shard_stamp(*, generation: str, head: str, classes, epoch: str | None, image_digest: str | None = None, execution_id: str | None = None) -> dict:
+    """What one verification launch (a SHARD: a class subset of the generation, or the whole of it) says about itself in every 1240 row it writes: the generation, the EPOCH it
+    verified, the head (the commit of the code that ran), the immutable image digest and the execution, and the classes it verified. `generation_verdict` (the AGGREGATE) reads only these and
+    the rows: a shard that ran at another head, or on another image, or for another generation, makes the aggregate refuse. Nothing here is a guess: a value the launch cannot
+    name is None, and the aggregate says so."""
+    return {"generation": generation, "epoch": epoch, "head": head, "image_digest": image_digest, "execution_id": execution_id, "classes": sorted(set(classes))}
+
+
+def _shard_problems(tag: str, generation: str, cls: str, runner: dict, pinned_impl: str | None, epoch: str | None) -> list[str]:
+    """Why ONE grain's row cannot be part of the aggregate: no shard stamp, a stamp for another generation, epoch or class, a head that is not the runner's own commit, an image
+    digest or execution that is not named, or code the manifest did not pin (a shard run before a rebuild is void — R10-2)."""
+    stamp = runner.get(SHARD_KEY)
+    out = []
+    if not isinstance(stamp, dict):
+        return [f"{tag}: the verification row carries no shard stamp (it was not written by a stamped verification launch)"]
+    if stamp.get("generation") != generation:
+        out.append(f"{tag}: the shard attested generation {stamp.get('generation')!r}, not {generation!r}")
+    if not isinstance(stamp.get("head"), str) or not stamp["head"] or stamp.get("head") != runner.get("commit"):
+        out.append(f"{tag}: the shard head {stamp.get('head')!r} is not the commit {runner.get('commit')!r} of the runner that wrote the row")
+    if epoch is None or stamp.get("epoch") != epoch:
+        out.append(f"{tag}: the shard attested epoch {stamp.get('epoch')!r}; the generation's build epoch is {epoch!r} — it was rebuilt since, or its epoch is unreadable")
+    if not (isinstance(stamp.get("image_digest"), str) and _IMAGE_DIGEST.fullmatch(stamp["image_digest"])):
+        out.append(f"{tag}: the shard names no immutable image digest ({stamp.get('image_digest')!r})")
+    if not (isinstance(stamp.get("execution_id"), str) and stamp["execution_id"].strip()):
+        out.append(f"{tag}: the shard names no execution")
+    if cls not in (stamp.get("classes") or []):
+        out.append(f"{tag}: the shard that wrote the row does not list class {cls!r} among its classes")
+    if pinned_impl is not None and runner.get("implementation_digest") != pinned_impl:
+        out.append(f"{tag}: attested by code ({runner.get('implementation_digest')}) other than the code the manifest pins ({pinned_impl}) — a verification run before a rebuild is void")
+    return out
+
+
+def expected_classes(conn, chart_id: str, generation: str, vector: dict):
+    """The class universe the aggregate must COVER: the manifest's pinned `scored_classes` (the pinned list, never 'whatever attestations exist'). A named seam: the G8 census
+    opt-out of the older one-class job-mechanics suites (tests/l3/gochara/conftest.py) sets it aside, exactly as it sets aside the job's own census."""
+    return vector.get("scored_classes")
+
+
+def generation_verdict(conn, chart_id: str, generation: str, classes=None, head: str | None = None) -> dict:
     """The gate's verdict for the generation, from the PERSISTED attestations and the LIVE stored windows — a pure read. NOT_APPLICABLE unless the manifest selects
     `window_qualification/1`. PASSED iff no problem: the manifest binds the frozen table, and every included P1–P4 grain has a VERIFIED 1240 row whose attestation is PASSED,
-    names that table, and equals the live recount. `classes` limits it to a class subset (the job's own subset run)."""
+    names that table, and equals the live recount. `classes` limits it to a class subset (the job's own subset run).
+
+    With `classes=None` this is the AGGREGATE over class-sharded verification launches (SR-OD1 R8), the only verdict the seal brief and the sealing job read. It checks COVERAGE, not
+    presence: every class the manifest pins (`scored_classes`) has its search-path pins and every included grain of it a PASSED attestation (a pinned class with no pin rows at all
+    refuses); every row carries the shard stamp of the launch that wrote it (generation, head = the writing runner's commit, image digest, execution, classes); the rows agree on ONE
+    head and ONE image (two shards at different heads refuse, naming both); and every row was written by the code the manifest pins (so a shard run before a rebuild that changed
+    the code is void); every row is bound to the build EPOCH (manifest + search-input snapshot), a named image digest and a named execution; every pinned class has its search inventory
+    and the inventory's independent re-derivation (the expected grains come from the inventories). `head`, when given, is the head the aggregate must be at. A subset verdict (`classes` given) is the job's own and does not carry these checks."""
     from .result_policy import manifest_vector
     vector = manifest_vector(conn, chart_id, generation)
     policy = None if vector is None else vector.get("result_policy")
@@ -168,6 +230,31 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None) -> di
     verification = {(c, p, v): (s, pol, ws, ri if isinstance(ri, dict) else json.loads(ri)) for c, p, v, s, pol, ws, ri in _rows(
         conn, "SELECT event_class, path_id, rule_version, status, policy_version, windows_stored, runner_identity FROM public.ka_gochara_eval_window_verification"
               " WHERE chart_id = %s AND generation = %s", (chart_id, generation))}
+    aggregate = classes is None
+    pinned_impl = None
+    if aggregate:
+        from . import window_gate as wg
+        impl = vector.get("implementation")
+        pinned_impl = None if impl is None else hashlib.sha256(wg._canon(impl).encode("utf-8")).hexdigest()
+        if pinned_impl is None:
+            problems.append("the manifest vector pins no implementation: no shard can be shown to have run the pinned code")
+        epoch = current_epoch(conn, chart_id, generation)
+        # expected GRAINS come from the INVENTORIES: every pinned class needs its search inventory and that inventory's independent re-derivation (B3, SR-A10-1)
+        inv = {r[0]: r[1] for r in _rows(conn, "SELECT event_class, inventory_digest FROM public.ka_gochara_search_inventory WHERE chart_id = %s AND generation = %s", (chart_id, generation))}
+        inv_ver: dict[str, set] = {}
+        for c, d in _rows(conn, "SELECT event_class, rederived_inventory_digest FROM public.ka_gochara_search_inventory_verification WHERE chart_id = %s AND generation = %s", (chart_id, generation)):
+            inv_ver.setdefault(c, set()).add(d)
+        scored = expected_classes(conn, chart_id, generation, vector)
+        if not isinstance(scored, list) or not scored:
+            problems.append("the manifest vector pins no scored_classes: the aggregate has no class census to cover")
+            scored = []
+        have = {p[0] for p in _rows(conn, "SELECT DISTINCT event_class FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s", (chart_id, generation))}
+        problems += [f"{c}: a pinned scored class with no search-path pin at all — no shard can have attested it" for c in sorted(set(scored) - have)]
+        problems += [f"{c}: a class with search-path pins that the manifest does not pin as scored" for c in sorted(have - set(scored))]
+        problems += [f"{c}: a pinned scored class with no search inventory — its grains cannot be enumerated" for c in sorted(set(scored) - set(inv))]
+        problems += [f"{c}: the inventory is not attested by an independent re-derivation of its digest" for c in sorted(set(scored) & set(inv)) if inv_ver.get(c) != {inv[c]}]
+    shards: dict[tuple, set] = {}
+    executions: set[tuple] = set()
     total = {"windows": 0, "numbered": 0, "numbered_without_score": 0}
     valence: dict[str, int] = {}
     by_path: dict[str, dict] = {}
@@ -180,6 +267,12 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None) -> di
             continue
         status, vpolicy, stored, runner = row
         att = runner.get(ATTESTATION_KEY)
+        if aggregate:
+            problems += _shard_problems(tag, generation, cls, runner, pinned_impl, epoch)
+            st = runner.get(SHARD_KEY)
+            if isinstance(st, dict):
+                shards.setdefault((st.get("head"), st.get("image_digest")), set()).add(cls)
+                executions.add((st.get("execution_id"), st.get("head"), st.get("image_digest"), tuple(st.get("classes") or ())))
         if status != "VERIFIED" or vpolicy != POLICY_QUALIFICATION:
             problems.append(f"{tag}: the window verification is {status!r} under {vpolicy!r}")
         if not isinstance(att, dict):
@@ -208,7 +301,20 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None) -> di
         for reason, n in live["blank"].items():
             honest[(path, reason)] = honest.get((path, reason), 0) + n
     blank = total["windows"] - total["numbered"]
-    return {"schema": SCHEMA, "status": FAILED if problems else PASSED, "policy": policy, "table": binding, "grains": len(pins), "windows": total["windows"],
+    extra: dict[str, Any] = {}
+    if aggregate:
+        heads = sorted({h for h, _ in shards}, key=str)
+        images = sorted({i for _, i in shards}, key=str)
+        if len(heads) > 1:
+            problems.append("the classes were attested at different heads: " + "; ".join(f"{h!r}: {sorted(c for (hh, _), c2 in shards.items() if hh == h for c in c2)}" for h in heads))
+        if len(images) > 1:
+            problems.append("the classes were attested on different images: " + "; ".join(f"{i!r}: {sorted(c for (_, ii), c2 in shards.items() if ii == i for c in c2)}" for i in images))
+        if head is not None and heads and heads != [head]:
+            problems.append(f"the aggregate must be at head {head!r}; the shards ran at {heads}")
+        extra = {"aggregate": {"head": heads[0] if len(heads) == 1 else None, "image_digest": images[0] if len(images) == 1 else None, "epoch": epoch,
+                               "classes_attested": sorted(c for cs in shards.values() for c in cs),
+                               "executions": [{"execution_id": e, "head": h, "image_digest": i, "classes": list(c)} for e, h, i, c in sorted(executions, key=str)]}}
+    return {"schema": SCHEMA, "status": FAILED if problems else PASSED, "policy": policy, "table": binding, "grains": len(pins), "windows": total["windows"], **extra,
             "numbered_windows": total["numbered"], "numbered_without_score": total["numbered_without_score"], "blank_windows": blank,
             "valence_of_numbered": dict(sorted(valence.items())), "by_path": dict(sorted(by_path.items())),
             "honest_nulls": [{"path_id": p, "group": reason_group(r), "reason": r, "windows": n} for (p, r), n in sorted(honest.items())],
