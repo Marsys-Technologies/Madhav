@@ -50,7 +50,7 @@ def test_every_statement_is_one_read_only_select_scoped_to_one_chart_and_generat
             assert f" {verb} " not in f" {text} "
         assert "CHART_ID = %S::UUID" in text and "GENERATION = %S" in text
     conn = _Conn()
-    dx.report_from_store(conn, chart_id="c", generation="5.0")
+    dx.report_from_store(conn, chart_id="c", generation="5.0", span="build")
     assert {p for _s, p in conn.seen} == {("c", "5.0")} and len(conn.seen) == 3
 
 
@@ -72,7 +72,7 @@ def test_the_report_is_built_from_windows_and_member_supports_with_dvi_from_the_
     members = [("property_acquisition", "P3", "mars", "signature_house", _t(2001, 1, 1), _t(2001, 1, 11)),
                ("property_acquisition", "P3", "saturn", "lord", _t(2001, 1, 9), _t(2001, 1, 21)),
                ("marriage", "P3", "venus", "signature_house", _t(2001, 1, 5), _t(2001, 1, 9))]
-    rep = dx.report_from_store(_Conn(windows, members), chart_id="c", generation="5.0", tz=UTC)
+    rep = dx.report_from_store(_Conn(windows, members), chart_id="c", generation="5.0", tz=UTC, span="build")
     assert rep["horizon"] == ["2001-01-01", "2001-04-10"] and rep["horizon_days"] == 100
     prop = rep["classes"]["property_acquisition"]
     assert prop["admitted_day_share"]["P3"] == 0.20 and prop["admitted_day_share"]["P3_fast"] == 0.10
@@ -89,7 +89,7 @@ def test_a_karaka_member_is_the_k_b_contribution():
     windows = [("psychological_arc", "P3", "1.2.0", _t(2001, 1, 1), _t(2001, 1, 11))]
     members = [("psychological_arc", "P3", "saturn", "karaka", _t(2001, 1, 1), _t(2001, 1, 11)),
                ("psychological_arc", "P3", "mars", "signature_house", _t(2001, 1, 7), _t(2001, 1, 11))]
-    got = dx.report_from_store(_Conn(windows, members), chart_id="c", generation="5.0", tz=UTC)["classes"]["psychological_arc"]
+    got = dx.report_from_store(_Conn(windows, members), chart_id="c", generation="5.0", tz=UTC, span="build")["classes"]["psychological_arc"]
     assert got["admitted_days"]["kb_only"] == 6 and got["admitted_days"]["P3"] == 10
 
 
@@ -98,14 +98,14 @@ def test_a_karaka_member_is_the_k_b_contribution():
     ([(_t(2001, 1, 1), _t(2001, 4, 11)), (_t(2001, 1, 1), _t(2002, 1, 1))], "different completed horizons")])
 def test_a_missing_or_ambiguous_horizon_is_refused_by_name(horizons, needle):
     with pytest.raises(dx.ExtractRefused) as exc:
-        dx.report_from_store(_Conn(horizons=horizons), chart_id="c", generation="5.0")
+        dx.report_from_store(_Conn(horizons=horizons), chart_id="c", generation="5.0", span="build")
     assert needle in str(exc.value)
 
 
 def test_p4_windows_of_one_class_under_two_rule_versions_are_refused():
     windows = [("property_acquisition", "P4", v, _t(2001, 2, 1), _t(2001, 2, 3)) for v in ("1.0.0", "1.2.0")]
     with pytest.raises(dx.ExtractRefused):
-        dx.report_from_store(_Conn(windows), chart_id="c", generation="5.0")
+        dx.report_from_store(_Conn(windows), chart_id="c", generation="5.0", span="build")
 
 
 # ── (b) the real schema ──────────────────────────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ def test_the_extractor_reads_a_real_stored_window_and_writes_nothing(grain):
     tables = ("ka_gochara_eval_window", "ka_gochara_eval_window_record", "ka_gochara_relationship_record",
               "kala_gochara_coverage")
     before = {t: conn.execute(f"SELECT count(*), max(xmin::text::bigint) FROM public.{t}").fetchone() for t in tables}
-    rep = dx.report_from_store(conn, chart_id=CHART_ID, generation=GEN, tz=UTC)
+    rep = dx.report_from_store(conn, chart_id=CHART_ID, generation=GEN, tz=UTC, span="build")
     after = {t: conn.execute(f"SELECT count(*), max(xmin::text::bigint) FROM public.{t}").fetchone() for t in tables}
     assert after == before                                                    # read-only, by the rows' own versions
     lo, hi = HORIZON
@@ -136,7 +136,7 @@ def test_the_extractor_reads_a_real_stored_window_and_writes_nothing(grain):
 
 
 def test_the_extractor_on_a_generation_with_no_window_reports_no_class_and_does_not_invent_one(grain):
-    rep = dx.report_from_store(grain, chart_id=CHART_ID, generation=GEN, tz=UTC)
+    rep = dx.report_from_store(grain, chart_id=CHART_ID, generation=GEN, tz=UTC, span="build")
     assert rep["classes"] == {} and rep["horizon_days"] == 400
 
 
