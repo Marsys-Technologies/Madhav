@@ -1,0 +1,353 @@
+{
+ "schema": "trial_ready.checks/1",
+ "predicate": "TRIAL_READY/1",
+ "source": "PLAN_A10_1 §2.2 (A10.1 B7); the 25 required ids are fixed in trial_ready.py REQUIRED_IDS, not here, so a missing entry here reads null",
+ "checks": [
+  {
+   "id": "T01",
+   "claim": "R-1 verifier tolerances merged",
+   "detector": "R1 plateau oracle (8 s peak must not verify) and 4.1234567 sum oracle fail on the head",
+   "owner_lane": "R1",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane R1 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: #3844 in review)"
+    }
+   ]
+  },
+  {
+   "id": "T02",
+   "claim": "R-2 boundary completeness",
+   "detector": "the 10 s island is not found through the real provider",
+   "owner_lane": "R2",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane R2 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: running)"
+    }
+   ]
+  },
+  {
+   "id": "T03",
+   "claim": "R-3 close extrema",
+   "detector": "the ≥ 2-extrema fixture does not return `tie_isolation_unresolved`",
+   "owner_lane": "R3",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane R3 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: #3843 accepted, CI repair)"
+    }
+   ]
+  },
+  {
+   "id": "T04",
+   "claim": "R-4 combustion inheritance **+ its DB key admitted** (migration applied on the lane DB)",
+   "detector": "a window carrying `combustion_inheritance` fails to INSERT; foreign orb row does not refuse on the verifier side",
+   "owner_lane": "R4 + migration 1402",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane R4 + migration 1402 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: fix running, number needed)"
+    }
+   ]
+  },
+  {
+   "id": "T05",
+   "claim": "R-5 P1 subject = anchor",
+   "detector": "Sun-agent/Jupiter-anchor record yields one side on builder and the other on verifier",
+   "owner_lane": "R5",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane R5 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: review running)"
+    }
+   ]
+  },
+  {
+   "id": "T06",
+   "claim": "R-6 + R-7 certificate **+ its DB keys admitted** (1403 or equivalent)",
+   "detector": "tampered leaf is not detected; exhaust-then-easy fixture blanks the easy window; certificate INSERT fails",
+   "owner_lane": "R67",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane R67 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: running)"
+    }
+   ]
+  },
+  {
+   "id": "T07",
+   "claim": "Q3C side per Q3(c) (16 cells, both columns, goldens)",
+   "detector": "any cell side/value differs from the literal table",
+   "owner_lane": "Q3C",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane Q3C is not bound in this registry yet; the lane's PR adds its binding (state at plan time: review not started)"
+    }
+   ]
+  },
+  {
+   "id": "T08",
+   "claim": "D1 orb 1.0° ratified + AM-13 K-1..K-6",
+   "detector": "`orb_not_ratified` or `applicability_undeclared` > 0 in a probe window",
+   "owner_lane": "D1",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane D1 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: #3842 accepted)"
+    }
+   ]
+  },
+  {
+   "id": "T09",
+   "claim": "C1 vedha provider + D3 choices (nodes obstruct, transiting nodes N/A, no vipāreeta)",
+   "detector": "node-obstruction case or node-primary N/A case fails",
+   "owner_lane": "C1, D3",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane C1, D3 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: review / running)"
+    }
+   ]
+  },
+  {
+   "id": "T10",
+   "claim": "**1401 applied** on the lane DB (and on the trial DB)",
+   "detector": "query reads Rāhu Taurus ≠ EX or Gemini ≠ MT, or the five pairs differ from `bphs:PG40:C1`",
+   "owner_lane": "L0-1401",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/test_migration_1401_l0_node_dignity.py"
+     ]
+    },
+    {
+     "kind": "pytest",
+     "cwd": ".",
+     "tests": [
+      "platform/scripts/governance/__tests__/test_sr_doctrine_h_node_dignity_1401.py"
+     ]
+    },
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "expect": "t",
+     "sql": "SELECT (SELECT count(*) FROM bg_graha_naisargika_friendship WHERE (graha, other_graha, relation) IN (('Rahu','Mercury','neutral'),('Rahu','Mars','enemy'),('Rahu','Jupiter','friend'),('Ketu','Sun','enemy'),('Ketu','Moon','enemy'))) = 5 AND (SELECT count(*) FROM bg_dignity_reference WHERE (graha, moolatrikona_sign) IN (('Rahu','Gemini'),('Ketu','Sagittarius'))) = 2"
+    },
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_TRIAL_DSN",
+     "expect": "t",
+     "sql": "SELECT (SELECT count(*) FROM bg_graha_naisargika_friendship WHERE (graha, other_graha, relation) IN (('Rahu','Mercury','neutral'),('Rahu','Mars','enemy'),('Rahu','Jupiter','friend'),('Ketu','Sun','enemy'),('Ketu','Moon','enemy'))) = 5 AND (SELECT count(*) FROM bg_dignity_reference WHERE (graha, moolatrikona_sign) IN (('Rahu','Gemini'),('Ketu','Sagittarius'))) = 2"
+    }
+   ]
+  },
+  {
+   "id": "T11",
+   "claim": "ND-H applied **in place** on 1.2.0, changelog entry, retained-row census",
+   "detector": "a retained row derived from pre-change 1.2.0 survives; changelog digest before/after absent",
+   "owner_lane": "NDH",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane NDH is not bound in this registry yet; the lane's PR adds its binding (state at plan time: pending)"
+    }
+   ]
+  },
+  {
+   "id": "T12",
+   "claim": "1.3.0 **selected** on the head (the flag the trial reads)",
+   "detector": "flipping the flag to 1.2.0 does not make G-2 refuse",
+   "owner_lane": "SELECT-130",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane SELECT-130 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: to start)"
+    }
+   ]
+  },
+  {
+   "id": "T13",
+   "claim": "DASH readback (dasha operands to 2084 or named blank)",
+   "detector": "a record past the table end fails the build instead of blanking",
+   "owner_lane": "DASH",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane DASH is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not started)"
+    }
+   ]
+  },
+  {
+   "id": "T14",
+   "claim": "Trial evaluator T1b: G-3 table, forbidden reasons, caps, noninterference, digests record, **EQUIVALENCE_RECORD emission**, **TRIAL_READY evaluator**",
+   "detector": "evaluator reads true on a planted forbidden reason or cap breach",
+   "owner_lane": "T1B",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane T1B is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not started)"
+    }
+   ]
+  },
+  {
+   "id": "T15",
+   "claim": "**S3 end-to-end**: `window_solver` connected to `window_sweep`; `window_solver_check` connected to `window_verifier`; `dynamic_objective_solver_guarantee_not_available` **absent**; named reasons (`tie_ambiguous`, `tie_isolation_unresolved`, `verifier_budget_exhausted`) carried to seal-brief counts; numerical gate counts populations **after** classification",
+   "detector": "the numbered dynamic-window oracle (a window with a time-varying factor gets a proven maximum and instant, the verifier agrees) fails, or the forbidden reason still appears in a dynamic window",
+   "owner_lane": "S3",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane S3 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: lane started 16:30Z)"
+    }
+   ]
+  },
+  {
+   "id": "T16",
+   "claim": "R8 **and R8X** in the trial identity (`generation_verdict` derives the 26 expected classes from the pinned universe; remove-one-class and mixed commit/image refuse)",
+   "detector": "the 25-class and mixed-head fixtures read PASSED",
+   "owner_lane": "R8, R8X",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane R8, R8X is not bound in this registry yet; the lane's PR adds its binding (state at plan time: R8 running)"
+    }
+   ]
+  },
+  {
+   "id": "T17",
+   "claim": "G-5 **effective-wall** measurement and the **two-shard overlap** harness exist on the disposable fixture",
+   "detector": "harness cannot report lock wait separately from compute",
+   "owner_lane": "T1B / R8X",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane T1B / R8X is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not started)"
+    }
+   ]
+  },
+  {
+   "id": "T18",
+   "claim": "G-6 compulsory in the verifier's pinned plan (deterministic 3 % + generation-wide top-five mixed pieces); aggregate refuses missing G-6",
+   "detector": "a generation with the sample omitted aggregates PASSED",
+   "owner_lane": "R8X",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane R8X is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not started)"
+    }
+   ]
+  },
+  {
+   "id": "T19",
+   "claim": "**EQR tool present in the trial**; `window_solver`, `window_solver_check` (and the kinematic tables S1 binds) are in `IMPLEMENTATION_MODULES`; import-closure test passes",
+   "detector": "editing either module does not change the module vector",
+   "owner_lane": "EQR",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane EQR is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not started)"
+    }
+   ]
+  },
+  {
+   "id": "T20",
+   "claim": "I1-FINAL: main merged up, pins and goldens re-derived **once**, DB suites green locally, `lc_collate`/`lc_ctype` unchanged, geometry pin `a8cb08f0` unchanged (SR-DB-LOCALE-CHECK)",
+   "detector": "any of those moves → STOP, tell the surrogate",
+   "owner_lane": "I1-FINAL",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane I1-FINAL is not bound in this registry yet; the lane's PR adds its binding (state at plan time: to start)"
+    }
+   ]
+  },
+  {
+   "id": "T21",
+   "claim": "RV-INT scoped integration review passed at the head (claims enumerated, one planted reversion each)",
+   "detector": "a seam reversion (anchor × Form B side, factor boundary × certificate coverage, R8 × seal admission) survives",
+   "owner_lane": "RV-INT",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane RV-INT is not bound in this registry yet; the lane's PR adds its binding (state at plan time: to start)"
+    }
+   ]
+  },
+  {
+   "id": "T22",
+   "claim": "every LC-* merged; **no lane with an open BLOCKING finding**; per-lane review bound to the actual patch (A10.1 N1)",
+   "detector": "a lane head differs from the reviewed patch id",
+   "owner_lane": "conductor",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane conductor is not bound in this registry yet; the lane's PR adds its binding (state at plan time: per lane)"
+    }
+   ]
+  },
+  {
+   "id": "T23",
+   "claim": "migrations 1400/1401/1402/1403 recorded in `MIGRATION_ALLOCATION.json` and applied on the lane DB",
+   "detector": "ledger or DB differ from the head's migration list",
+   "owner_lane": "cockpit",
+   "parts": [
+    {
+     "kind": "json_keys",
+     "path": "/Users/Dev/kalayantra/run/MIGRATION_ALLOCATION.json",
+     "object": "allocated",
+     "keys": [
+      "1400",
+      "1401",
+      "1402",
+      "1403"
+     ]
+    },
+    {
+     "kind": "db_migrations",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "dir": "platform/migrations",
+     "prefixes": [
+      "1400_",
+      "1401_",
+      "1402_",
+      "1403_"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "T24",
+   "claim": "linux/amd64 image available for the qualifying run (SR-AMD64-PER-HEAD)",
+   "detector": "the amd64 slice cannot start",
+   "owner_lane": "T1B / ops",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "the oracle of lane T1B / ops is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not built)"
+    }
+   ]
+  },
+  {
+   "id": "T25",
+   "claim": "lane DB at 55433 up, C collation, all head migrations present",
+   "detector": "`SHOW lc_collate` ≠ recorded or a migration is missing",
+   "owner_lane": "ops",
+   "parts": [
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "expect": "t",
+     "sql": "SELECT datcollate = 'C' AND datctype = 'C' FROM pg_database WHERE datname = current_database()"
+    },
+    {
+     "kind": "unbound",
+     "needs": "every head migration present on the lane DB: needs the protected-window selector parity (platform/scripts/migrate.ts discoverKalaProtectedMigrations) so protected-skipped files are not read as missing"
+    }
+   ]
+  }
+ ]
+}
