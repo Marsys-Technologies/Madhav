@@ -305,6 +305,32 @@ def test_readback_driver_checks_requested_query_digest_before_connecting(tmp_pat
     assert not connected
 
 
+def test_readback_connection_opens_with_utc_and_three_float_digits(tmp_path,monkeypatch):
+    # W3W4 R3. The scoped backups measure under timezone=UTC and extra_float_digits=3 (platform/scripts/backup_v5_small_test_job.py
+    # measurements()); the readback session must read float/timestamp text the same way or scope_hash_gate reads NULL.
+    # Real embedded Python, only the connect boundary faked: it records the options and stops before any query.
+    import types
+    psycopg=types.ModuleType('psycopg')
+    monkeypatch.setitem(sys.modules,'psycopg',psycopg)
+    root=tmp_path/'ky';sql=root/'run/ops/sql/r3.sql';sql.parent.mkdir(parents=True)
+    sql.write_text('SELECT 1 AS observed;')
+    source=(FLEET/'readback_sql.sh').read_text().split("<<'KYPY'\n",1)[1].split('\nKYPY',1)[0]
+    seen=[]
+    def connect(*a,**kw):
+        seen.append((a,kw));raise RuntimeError('stop at connect')
+    psycopg.connect=connect
+    monkeypatch.setattr(sys,'argv',['readback',str(root),'run/ops/sql/r3.sql','',''])
+    monkeypatch.delenv('PGOPTIONS',raising=False)
+    with pytest.raises(RuntimeError,match='stop at connect'):
+        exec(compile(source,'readback_sql.sh embedded Python','exec'),{'__name__':'__main__'})
+    assert seen==[(('',),{'options':'-c timezone=UTC -c extra_float_digits=3'})]
+    # An option the environment file already carries is kept, ours come last so they win.
+    seen.clear();monkeypatch.setenv('PGOPTIONS','-c extra_float_digits=1 -c search_path=public')
+    with pytest.raises(RuntimeError,match='stop at connect'):
+        exec(compile(source,'readback_sql.sh embedded Python','exec'),{'__name__':'__main__'})
+    assert seen[0][1]['options']=='-c extra_float_digits=1 -c search_path=public -c timezone=UTC -c extra_float_digits=3'
+
+
 def test_executor_g8_checks_remain_required_before_head_policy(tmp_path,monkeypatch):
     ex=executor(tmp_path,monkeypatch)
     acc=ex.OPS/'acceptance';acc.mkdir();monkeypatch.setattr(ex,'ACC',acc)
