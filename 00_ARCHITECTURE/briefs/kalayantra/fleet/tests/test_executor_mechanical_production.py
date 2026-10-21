@@ -35,6 +35,7 @@ MANIFEST = hashlib.sha256(b"pack-manifest-fixture").hexdigest()
 OTHER_MANIFEST = hashlib.sha256(b"another-pack-manifest").hexdigest()
 KIND = "scheduler_resume"               # a non-exempt production kind with a dry-run kind whose admission needs no reviewed-source policy
 SERVING = ("publish_head", "layer_publish", "rollback_head", "layer_rollback")
+CANCELS = ("measuring_cancel", "century_cancel", "verification_cancel")      # W3W4 pack verify E1: the cancel family, signed-only like the serving changes
 
 
 def sha(data):
@@ -129,8 +130,8 @@ def oracle_x1_deletions(w, table):
 def oracle_x2_serving_and_cancel(w, table):
     control, _, _ = scenario(w, oid="mech-control")
     assert w.mod.mechanical_problem(control, table)[0] is None, "control failed — the refusals below would be vacuous"
-    enabled = {**table, **{k: dict(table[k], enabled=True, script="platform/scripts/fixture.py") for k in (*SERVING, "measuring_cancel")}}
-    for n, kind in enumerate((*SERVING, "measuring_cancel")):
+    enabled = {**table, **{k: dict(table[k], enabled=True, script="platform/scripts/fixture.py") for k in (*SERVING, *CANCELS)}}
+    for n, kind in enumerate((*SERVING, *CANCELS)):
         template = template_for(w, kind); publish(w, [template])
         req = fill_request(w, template, f"mech-srv-{n}", dry=dry_run(w, kind, f"dry-srv-{n}"))
         why, _ = w.mod.mechanical_problem(req, enabled)
@@ -143,7 +144,7 @@ def test_x3_every_production_kind_of_the_real_table_is_classified(tmp_path):
     table = json.loads(OPS_FILE.read_text())["ops"]
     production = {k for k, v in table.items() if v.get("production")}
     exempt = {k for k in production if mod.mechanical_exempt(k)}
-    assert exempt == {"smalltest_teardown", "measuring_teardown", "century_teardown", "publish_head", "rollback_head", "layer_publish", "layer_rollback", "measuring_cancel",
+    assert exempt == {"smalltest_teardown", "measuring_teardown", "century_teardown", "publish_head", "rollback_head", "layer_publish", "layer_rollback", *CANCELS,
                       "orchestrator_rebuild_teardown", "orchestrator_rebuild_cancel"}   # SR-PREBUILD-ALL: every *_teardown is a deletion, never mechanical
     assert production - exempt == {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch", "measuring_dispatch", "verification_job", "century_dispatch",
                                    "orchestrator_rebuild", "layer_verify", "scheduler_pause", "scheduler_resume", "protected_window_dispatch", "gochara_role_provisioning_dispatch"}   # U-M-01 / U-M-03: a dispatch, neither a deletion nor a serving change, so mechanical-eligible with a dry run; SR-CANCEL-LANE: every cancel kind (orchestrator_rebuild_cancel included) is single-signer, held with measuring_cancel

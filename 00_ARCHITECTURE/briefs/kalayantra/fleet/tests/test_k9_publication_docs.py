@@ -26,8 +26,8 @@ OPS = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
 LAYER_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify_dryrun", "layer_verify", "layer_publish_dryrun",
                "layer_publish", "layer_rollback_dryrun", "layer_rollback"]
 GOCHARA_KINDS = ["verification_job", "publish_head", "rollback_head"]
-# main's declaration: publish_head / rollback_head enabled through the head policy (#3786); verification_job still a placeholder
-GOCHARA_ENABLED = {"verification_job": False, "publish_head": True, "rollback_head": True}
+# the declaration: publish_head / rollback_head enabled through the head policy (#3786); verification_job enabled by J-4b (fleet/verification_launch.py)
+GOCHARA_ENABLED = {"verification_job": True, "publish_head": True, "rollback_head": True}
 BACKUP_KINDS = ["backup_snapshot", "backup_restore_verify"]
 ENV_KEYS = ["Hardware", "Operating system", "Python", "pytest", "psycopg", "pyswisseph", "PyYAML", "Ephemeris path"]
 DIMENSIONS = ["Claim kind", "Workload", "Cache", "Whole run", "Components", "Storage", "First qualified consumer", "Resume", "Scenarios"]
@@ -87,7 +87,7 @@ def check_drills(text, ops, repo):
         assert ops[kind]["script"] not in {ops[k]["script"] for k in LAYER_KINDS}, kind + " shares a script with a layer kind"
         assert ops[kind]["enabled"] is GOCHARA_ENABLED[kind], kind + " changed state in the declaration: the document's separation statement needs review"
     flat = " ".join(text.split())
-    assert "`verification_job` is `enabled:false`" in flat and "`publish_head` and `rollback_head` are enabled" in flat, "document does not state the declared Gochara enablement"
+    assert "`verification_job` is `enabled:true`" in flat and "`publish_head` and `rollback_head` are enabled" in flat, "document does not state the declared Gochara enablement"
     for kind in BACKUP_KINDS:
         entry = ops[kind]
         assert (repo / entry["script"]).is_file()

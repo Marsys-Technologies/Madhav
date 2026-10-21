@@ -9,6 +9,10 @@
 #                    post-check pg_has_role(...,'cloudsqlsuperuser','MEMBER') = false, the verifier's password generated in the run
 #                    and written straight to Secret Manager; refuses if either role already exists.
 #   sealer-password  act 2b only, after the live-gate proof (see the runbook §7.1).
+#   grant-l1-reads   J-4b-a55j (SR-GRANTS-MINIMAL): SELECT on chart_facts and chart_dashas for the two principals, nothing else, closure-checked in the same transaction.
+#   sealer-credential  J-4b-a55j (SR-GRANTS-MINIMAL): the sealer's password generated in the run and its DSN written straight to Secret Manager (gochara-sealer-db-url);
+#                    replaces the person-run staging of act 2b. Never printed, never read. PREPARED, NOT DISPATCHED: its secret container, its temporary
+#                    secretVersionManager binding and its consumer (the seal job, J-5s) are production steps recorded in J4B_A55J_PREBUILD_v1_0.md.
 # It prints only non-secret verification facts. No artifact is uploaded. It is workflow_dispatch ONLY.
 #
 # AFTER USE this file is removed or disabled in a follow-up PR (the runbook's rollback step); until then it must never be dispatched
@@ -19,12 +23,12 @@ on:
   workflow_dispatch:
     inputs:
       stage:
-        description: 'create-roles (acts 1+2a) or sealer-password (act 2b)'
+        description: 'create-roles (acts 1+2a), sealer-password (act 2b, staged), grant-l1-reads (J-4b-a55j) or sealer-credential (J-4b-a55j)'
         required: true
         type: choice
-        options: [create-roles, sealer-password]
+        options: [create-roles, sealer-password, grant-l1-reads, sealer-credential]
       dsn_tail:
-        description: 'create-roles only: the NON-SECRET tail of the verifier DSN, e.g. @/dbname?host=/cloudsql/<connection-name> (starts with @, no credentials)'
+        description: 'create-roles: the NON-SECRET tail of the verifier DSN, e.g. @/dbname?host=/cloudsql/<connection-name>; sealer-credential: the sealer tail @127.0.0.1:5432/<dbname> (starts with @, no credentials)'
         required: false
         type: string
       confirm:

@@ -30,7 +30,7 @@ def test_existing_kind_has_disabled_bounded_preparation(kind, args, cap):
     assert result["status"] == "PREPARATION_ONLY" and result["dry_run_passed"] is False
     assert result["executor_capabilities"] == cap and result["blockers"]
     op = json.loads((FLEET / "executor_ops.json").read_text())["ops"][kind]
-    assert op["enabled"] is (kind in ("measuring_dispatch", "century_dispatch", "publish_head", "rollback_head"))      # J-3a / J-4d / J-6m / J-6r (SR-HEAD-POLICY-KEEP) enabled the kind; the prepared surface stays disabled review metadata
+    assert op["enabled"] is (kind in ("measuring_dispatch", "verification_job", "century_dispatch", "publish_head", "rollback_head"))      # J-3a / J-4b / J-4d / J-6m / J-6r (SR-HEAD-POLICY-KEEP) enabled the kind; the prepared surface stays disabled review metadata
     surface = op["prepared_dry_run"]
     assert surface["enabled"] is False and surface["script"].endswith("/operation_dryrun.py")
     assert surface["fixed_args"] == ["--dry-run", "--kind", kind]
@@ -92,6 +92,7 @@ def test_j5s_preparation_points_to_disabled_strict_definition_planner():
         'input': 'supplied immutable verifier job definition readbacks',
         'output': 'ky.j5s_verifier_launch_preparation/1',
     }
-    # The executor kind and canonical future receipt stay unactivated.
+    # J-4b enabled the executor kind on its own launcher; the prepared planner above stays disabled review metadata.
     op = json.loads((FLEET / 'executor_ops.json').read_text())['ops']['verification_job']
-    assert op['enabled'] is False and op['script'].startswith('TO_BE_SET_BY_J-4b')
+    assert op['enabled'] is True and op['enabled_by'] == 'J-4b'
+    assert op['script'] == '00_ARCHITECTURE/briefs/kalayantra/fleet/verification_launch.py'

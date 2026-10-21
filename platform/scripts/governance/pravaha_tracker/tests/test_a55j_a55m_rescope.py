@@ -14,7 +14,7 @@ Claims, one oracle each (the reversion named after it fails that test):
   5. the "MEASURED GAP" the plan states for cloudrun_job_readback is true exactly while the kind cannot name the verification
      job (reversion: widen cloudrun_readback.JOB without removing the gap text, or the other way round)
   6. re-scoping retires nothing and adds nothing: both items stay mandatory members of the acceptance closure, none is
-     not_applicable, and the closure headline the tests pin (183) is unchanged and the plan never has fewer than the 274 items it had
+     not_applicable, and the closure headline the tests pin (181 since VC-2's retirement) is unchanged and the plan never has fewer than the 274 items it had
      before re-scoping (reversion: drop either item's edge)
   7. this file is run by required CI: some include glob of a profile in ci_test_suites.json matches it (A5 D-33)
      (reversion: remove the test_a55j*.py glob from governance-tool-tests-shard-7-0)
@@ -27,13 +27,14 @@ from __future__ import annotations
 
 import fnmatch
 import hashlib
+import importlib.util
 import json
 import re
+import sys
 from pathlib import Path
 
 import pytest
 
-from pravaha_tracker.state import load_closure
 
 REPO = Path(__file__).resolve().parents[5]
 MODEL_PATH = REPO / "00_ARCHITECTURE/control/kalayantra/plan_model.json"
@@ -42,6 +43,17 @@ M1378 = REPO / "platform/migrations/1378_gochara_verifier_sealer_inventory_grant
 # the production ledger row for 1378 (recon J-4b-a55j.recon-20261020T1100Z, applied_at 2026-10-14 22:09:41 UTC)
 LEDGER_SHA_1378 = "04540a995e849517d03d80835a4dfaae0ee588c081485337d976814e44a70108"
 ITEMS = ("J-4b-a55j", "J-4c-a55m")
+
+
+def _closure(model):
+    """The closure of THIS model: a pure function of plan_model.json + ACCEPTANCE_ROOTS (kyclosure.compute). The committed
+    CLOSURE_v3.json is CI-generated from main (SR-CHURN-CUT 3), so a model change is pinned against the recomputation."""
+    spec = importlib.util.spec_from_file_location("kyclosure", REPO / "00_ARCHITECTURE/briefs/kalayantra/fleet/kyclosure.py")
+    kyclosure = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = kyclosure     # dataclass-style lookups need the module registered
+    spec.loader.exec_module(kyclosure)
+    roots = json.loads((REPO / "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v3.json").read_text(encoding="utf-8"))
+    return kyclosure.compute(model, roots)
 
 
 @pytest.fixture(scope="module")
@@ -111,8 +123,8 @@ def test_the_cloudrun_gap_is_stated_exactly_while_it_is_true(model):  # claim 5
 
 
 def test_rescoping_retires_nothing_and_the_headline_is_unchanged(model):  # claim 6
-    closure = load_closure(model)
-    assert closure["closure_count"] == len(closure["closure"]) == 183
+    closure = _closure(model)
+    assert closure["closure_count"] == len(closure["closure"]) == 181   # 183 -> 181: VC-1 and VC-2 leave with the retired VC-2 (SR-CLOSE-NOW 5)
     assert len(model["items"]) >= 274   # retires nothing: the plan only grows (275 once #3632 merged); an exact pin goes red on every unrelated merge
     for iid in ITEMS:
         item = _item(model, iid)

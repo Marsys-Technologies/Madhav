@@ -211,7 +211,7 @@ def template():
             sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "scripts/governance"))
             from ci_replace_chain_fixture import load
             ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="tpl", db_conn=conn, dry_run=False,
-                              config={"chart_id": CHART_ID, "horizon": LONG, "ephe_path": EPHE_PATH})
+                              config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": LONG, "ephe_path": EPHE_PATH})
             with conn.transaction():
                 w.run_substep(ctx, SubStep(key=writer_mod.CONVENTION_SUBSTEP, label="convention"))
                 load(conn, prepared)  # same chart-locked transaction; no silent rebuild
@@ -219,7 +219,7 @@ def template():
             for key in [writer_mod.CONVENTION_SUBSTEP] + [f"{writer_mod.BODY_SUBSTEP_PREFIX}{b}"
                                                           for b in writer_mod.SUBSTRATE_BODIES]:
                 ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="tpl", db_conn=conn, dry_run=False,
-                                  config={"chart_id": CHART_ID, "horizon": LONG, "ephe_path": EPHE_PATH})
+                                  config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": LONG, "ephe_path": EPHE_PATH})
                 with conn.transaction():
                     w.run_substep(ctx, SubStep(key=key, label=key))
     except BaseException:
@@ -249,7 +249,7 @@ class _World:
 
     def step(self, key, horizon):
         ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-1", db_conn=self.conn, dry_run=False,
-                          config={"chart_id": CHART_ID, "horizon": horizon, "ephe_path": EPHE_PATH})
+                          config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": horizon, "ephe_path": EPHE_PATH})
         with self.conn.transaction():
             return self._w.run_substep(ctx, SubStep(key=key, label=key))
 
@@ -445,7 +445,7 @@ def test_a_retry_after_a_mid_build_failure_is_a_whole_plan_replay_and_equals_a_f
 
         def dispatch(run_id):
             ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=run_id, db_conn=conn, dry_run=False,
-                              config={"chart_id": chart, "horizon": SHORT, "ephe_path": EPHE_PATH})
+                              config={"chart_id": chart, "gochara_v5_final_rules": False, "horizon": SHORT, "ephe_path": EPHE_PATH})
             asset_runner._drive_substeps(conn, conn.cursor(), run_id, chart, writer_mod.ASSET_ID, writer, ctx)
 
         writer.fail_at = f"record:{CLASSES[1]}:P2"

@@ -5,3 +5,6 @@ export KY_BUILDER_DATABASE_URL=''    # the builder connection — production bui
 export KY_LAYER_VERIFIER_DATABASE_URL=''  # a separate verifier_principal login; layer_verify and layer_verify_dryrun only (K9-23). Never the builder or owner connection. Empty → those two kinds wait on capability_missing.
 export KY_OWNER_DATABASE_URL=''      # the owner-level connection — small-test TEARDOWN only. Empty → the small tests wait (there is no retention alternative).
 export SE_EPHE_PATH=$KY_ROOT/ephe
+
+# Whole-layer verifier only; executor passes this alone to layer_verify.
+export KY_LAYER_VERIFIER_DATABASE_URL=''  # separately provisioned verifier_principal; empty means capability_missing

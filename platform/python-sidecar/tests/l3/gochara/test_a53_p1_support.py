@@ -79,7 +79,7 @@ def _world(monkeypatch, tmp_path, faithful, apply_1305=True, apply_held=False):
     w = writer_mod.GocharaV5Writer()
 
     def step(key):
-        config = {"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe}
+        config = {"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe, "gochara_v5_final_rules": False}
         if wd.result_policy is not None:           # R9-1: the manifest's result policy (default: all_null_candidate/1)
             config["result_policy"] = wd.result_policy
         ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-p1", db_conn=conn, config=config, dry_run=False)

@@ -43,6 +43,11 @@ describe('gochara-role-provisioning-oneshot.yml', () => {
     expect(run.shell).toBe('bash')
     expect(JSON.stringify(wf.jobs.provision.steps.filter((s) => s !== run))).not.toContain('secrets.')
   })
+  it('offers exactly the four reviewed stages (J-4b-a55j adds grant-l1-reads and sealer-credential) and no free-form one', () => {
+    const on = wf.on as { workflow_dispatch: { inputs: { stage: { type: string; options: string[] } } } }
+    expect(on.workflow_dispatch.inputs.stage.type).toBe('choice')
+    expect(on.workflow_dispatch.inputs.stage.options).toEqual(['create-roles', 'sealer-password', 'grant-l1-reads', 'sealer-credential'])
+  })
   it('verifies the downloaded Cloud SQL proxy against a pinned sha256 before running it', () => {
     const proxy = (wf.jobs.provision.steps).find((s) => s.name === 'Start Cloud SQL Auth Proxy')
     if (!proxy?.run) throw new Error('Proxy startup script is required')
@@ -77,8 +82,8 @@ describe('gochara-provision-roles.sh', () => {
   })
   it('discards the stderr of every statement that carries a password (a server error can quote it) and rolls back / compensates its own partial work on every exit path', () => {
     const alters = c.split('\n').filter((l) => /psql_admin -f -/.test(l))
-    expect(alters.length).toBe(2)                                           // the verifier ALTER and the sealer activation transaction
-    for (const l of alters) expect(l).toContain('>/dev/null 2>&1')
+    expect(alters.length).toBe(3)                                           // the verifier ALTER, the shared sealer activation transaction, and the L1-read grants (which carry no secret)
+    expect(alters.filter((l) => l.includes('>/dev/null 2>&1')).length).toBe(2)
     expect(c).toContain('trap rollback EXIT')
     expect(c).toContain("trap 'exit 143' TERM")                              // a cancelled run still runs the compensation
     expect(c).toContain('secrets versions destroy')
@@ -101,6 +106,21 @@ describe('gochara-provision-roles.sh', () => {
     expect(c).toContain('printf "BEGIN;')
     expect(c).toContain('COMMIT;')
     expect(c).toMatch(/postcondition: sealer is a member of cloudsqlsuperuser/)
+  })
+  it('J-4b-a55j: the L1 grant is SELECT-only on exactly chart_facts and chart_dashas for exactly the two principals, checked in the same transaction', () => {
+    const grants = [...c.matchAll(/^GRANT .*$/gm)].map((m) => m[0])
+    expect(grants).toEqual(['GRANT SELECT ON public.chart_facts, public.chart_dashas TO $VERIFIER_ROLE, $SEALER_ROLE;'])
+    expect(c).toContain('the L1 grant is read-only')
+    expect(c).toContain('WITH GRANT OPTION')
+  })
+  it('J-4b-a55j: the sealer credential goes secret-store first, shares the one activation transaction, and the rollback destroys the version of the secret it wrote', () => {
+    const stage = c.slice(c.indexOf('  sealer-credential)'), c.indexOf('  *) fail "unknown STAGE'))
+    expect(stage.indexOf('secrets versions add "$SEALER_SECRET"')).toBeGreaterThan(-1)
+    expect(stage.indexOf('secrets versions add')).toBeLessThan(stage.indexOf('activate_sealer "$PW"'))
+    expect(stage).toContain('echo "::add-mask::$PW"')
+    expect(stage).toContain('--data-file=-')
+    expect(c).toContain('--secret "${CREATED_SECRET:-$VERIFIER_SECRET}"')
+    expect(c).toContain('SEALER_SECRET="${SEALER_SECRET:-gochara-sealer-db-url}"')
   })
   it('is idempotent by refusal and refuses a non-loopback connection', () => {
     expect(c).toContain('already exists')

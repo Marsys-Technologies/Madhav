@@ -248,7 +248,7 @@ def candidate_db(isolated_kala_db_dsn):
         conn.execute((platform / "supabase/migrations/527_kala_gochara_generation_authority.sql").read_text())
         conn.execute((platform / "migrations/1236_gochara_authority_refuses_governed_generation.sql").read_text())
         ctx = ContextSpec(asset_id=w.ASSET_ID, build_id="j3-local-rehearsal", db_conn=conn, dry_run=False,
-                          config={"chart_id": CHART_ID, "horizon": SHORT, "ephe_path": os.environ["SE_EPHE_PATH"]})
+                          config={"chart_id": CHART_ID, "gochara_v5_final_rules": False, "horizon": SHORT, "ephe_path": os.environ["SE_EPHE_PATH"]})
         writer = w.GocharaV5Writer()
         keys = [w.RULES_SUBSTEP, w.CONVENTION_SUBSTEP] + [f"body:{b}" for b in w.SUBSTRATE_BODIES]
         keys += [w.MANIFEST_SUBSTEP, w.SNAPSHOT_SUBSTEP, "inventory:marriage", "coverage:marriage",

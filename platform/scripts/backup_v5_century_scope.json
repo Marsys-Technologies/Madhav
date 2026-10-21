@@ -1,0 +1,1222 @@
+{
+ "schema": "ky.smalltest_backup_scope/1",
+ "name": "century",
+ "derived_at_commit": "ccf21321096115bfbb925e123964342888e4575c",
+ "derived_from": "small_test: the century run is the measuring/small-test staged run WITHOUT the test-slice marker (dispatch_v5_century_job.py reuses dispatch_v5_small_test_job._main; century_launch.py reuses smalltest_launch.launch_staged), so it executes the same ka_gochara_v5 writer through the same orchestrator and kernel and writes the same tables. The unmarked run adds no table; tests/test_backup_v5_century_scopes.py (C1c) scans the century dispatch and launch modules together with every file the small-test scan reads and refuses a write target this file does not list. `sites` below are the small_test derivation's (prose, not in the digest).",
+ "rule": "data_tables = written + context. digest = sha256 of the canonical JSON {schema, name, tables: sorted data_tables}. Prose and sites do not enter the digest.",
+ "written": [
+  {
+   "table": "public.asset_throughput",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_upsert_throughput_state",
+     "kind": "INSERT",
+     "line": 432
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_upsert_throughput_state",
+     "kind": "INSERT",
+     "line": 440
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "mark_asset_error",
+     "kind": "UPDATE",
+     "line": 492
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 545
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_drive_substeps",
+     "kind": "UPDATE",
+     "line": 776
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_mark_probe_green",
+     "kind": "UPDATE",
+     "line": 852
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_skip_no_delta",
+     "kind": "UPDATE",
+     "line": 919
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_data_writer",
+     "kind": "UPDATE",
+     "line": 1217
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_data_writer",
+     "kind": "UPDATE",
+     "line": 1227
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "run_asset",
+     "kind": "INSERT",
+     "line": 1419
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "run_asset",
+     "kind": "INSERT",
+     "line": 1427
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "_mark_asset_error_terminal",
+     "kind": "INSERT",
+     "line": 502
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "_mark_asset_error_terminal",
+     "kind": "INSERT",
+     "line": 510
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "execute_run",
+     "kind": "UPDATE",
+     "line": 1373
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/staleness.py",
+     "function": "propagate_downstream_staleness",
+     "kind": "UPDATE",
+     "line": 130
+    },
+    {
+     "file": "platform/scripts/dispatch_v5_small_test_job.py",
+     "function": "_main",
+     "kind": "INSERT",
+     "line": 574
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 464
+    }
+   ],
+   "note": "dispatch upsert OVERWRITES any existing row of the pinned chart (forces dormant); teardown deletes it: the backup is the only record of a pre-test row"
+  },
+  {
+   "table": "public.asset_throughput_state_audit",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/supabase/migrations/586_f152_asset_throughput_state_audit.sql",
+     "function": "_record_asset_throughput_state_change",
+     "kind": "TRIGGER",
+     "line": 99,
+     "via": "AFTER UPDATE OF state ON asset_throughput (line 116)"
+    }
+   ],
+   "note": "written by trigger trg_asset_throughput_state_audit on every UPDATE OF state of asset_throughput; the teardown does not delete it"
+  },
+  {
+   "table": "public.build_runs",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "run_asset",
+     "kind": "UPDATE",
+     "line": 1443
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "_terminalize_preflight_failure",
+     "kind": "UPDATE",
+     "line": 329
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "mark_run_state",
+     "kind": "UPDATE",
+     "line": 422
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "claim_runnable_run",
+     "kind": "UPDATE",
+     "line": 431
+    },
+    {
+     "file": "platform/scripts/dispatch_v5_small_test_job.py",
+     "function": "_main",
+     "kind": "INSERT",
+     "line": 582
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 463
+    }
+   ]
+  },
+  {
+   "table": "public.build_run_assets",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "mark_asset_error",
+     "kind": "UPDATE",
+     "line": 499
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 551
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 587
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_mark_probe_green",
+     "kind": "UPDATE",
+     "line": 859
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_skip_no_delta",
+     "kind": "UPDATE",
+     "line": 931
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_data_writer",
+     "kind": "UPDATE",
+     "line": 1236
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_data_writer",
+     "kind": "UPDATE",
+     "line": 1282
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "run_asset",
+     "kind": "INSERT",
+     "line": 1435
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "_terminalize_preflight_failure",
+     "kind": "UPDATE",
+     "line": 329
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "_mark_asset_error_terminal",
+     "kind": "UPDATE",
+     "line": 517
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/runner.py",
+     "function": "execute_run",
+     "kind": "UPDATE",
+     "line": 1380
+    },
+    {
+     "file": "platform/scripts/dispatch_v5_small_test_job.py",
+     "function": "_main",
+     "kind": "INSERT",
+     "line": 594
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 462
+    }
+   ]
+  },
+  {
+   "table": "public.asset_provenance_receipts",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 615
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/provenance.py",
+     "function": "persist_successful_receipt",
+     "kind": "INSERT",
+     "line": 254
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/provenance.py",
+     "function": "reattribute_unchanged_receipt",
+     "kind": "UPDATE",
+     "line": 362
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 460
+    }
+   ]
+  },
+  {
+   "table": "public.asset_freshness",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/provenance.py",
+     "function": "_upsert_freshness_row",
+     "kind": "INSERT",
+     "line": 204
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 461
+    },
+    {
+     "file": "platform/supabase/migrations/596_nirmana_provenance_receipts.sql",
+     "function": "nirmana_invalidate_registry_receipts",
+     "kind": "TRIGGER",
+     "line": 74,
+     "via": "trigger on asset_registry; only if is_active changes"
+    }
+   ]
+  },
+  {
+   "table": "public.orchestrator_event_register",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/events.py",
+     "function": "<module>",
+     "kind": "INSERT",
+     "line": 102
+    }
+   ],
+   "note": "append-only; the teardown does not delete it; its identity sequence moves"
+  },
+  {
+   "table": "public.asset_registry",
+   "group": "bookkeeping",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 558
+    },
+    {
+     "file": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py",
+     "function": "_run_service_health_probe",
+     "kind": "UPDATE",
+     "line": 633
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "teardown",
+     "kind": "UPDATE",
+     "line": 651
+    }
+   ],
+   "note": "written only conditionally (health columns on the probe path; is_active restore if found active); also the FK parent of throughput/receipts/freshness"
+  },
+  {
+   "table": "public.ka_gochara_predicate",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/rule_registry.py",
+     "function": "RuleRegistryStore._bind",
+     "kind": "INSERT",
+     "line": 438,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_factor",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/rule_registry.py",
+     "function": "RuleRegistryStore._bind",
+     "kind": "INSERT",
+     "line": 438,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_rule_path",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/rule_registry.py",
+     "function": "RuleRegistryStore._bind",
+     "kind": "INSERT",
+     "line": 438,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_rule_path_prerequisite",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/rule_registry.py",
+     "function": "RuleRegistryStore._bind",
+     "kind": "INSERT",
+     "line": 438,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_rule_path_soft_factor",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/rule_registry.py",
+     "function": "RuleRegistryStore._bind",
+     "kind": "INSERT",
+     "line": 438,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_rule_path_seal",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/rule_registry.py",
+     "function": "RuleRegistryStore._bind",
+     "kind": "INSERT",
+     "line": 438,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_sky_convention",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/substrate.py",
+     "function": "SkyEventStore.register_convention",
+     "kind": "INSERT",
+     "line": 412
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_physical_object",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore._ensure_object",
+     "kind": "INSERT",
+     "line": 481
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/substrate.py",
+     "function": "SkyEventStore.insert_physical_object",
+     "kind": "INSERT",
+     "line": 426
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_sky_event",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/substrate.py",
+     "function": "SkyEventStore.insert_event",
+     "kind": "INSERT",
+     "line": 456
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_contact_identity",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.insert_contact",
+     "kind": "INSERT",
+     "line": 841
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.insert_point_contact",
+     "kind": "INSERT",
+     "line": 879
+    }
+   ]
+  },
+  {
+   "table": "public.kala_gochara_convention",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "register_convention",
+     "kind": "INSERT",
+     "line": 388
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_convention_bridge",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.ensure_bridge",
+     "kind": "INSERT",
+     "line": 538
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_near_miss_object",
+   "group": "writer_global_insert_only",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/near_miss.py",
+     "function": "NearMissStore._ensure_object",
+     "kind": "INSERT",
+     "line": 420,
+     "via": "dynamic"
+    }
+   ],
+   "note": "migration 1308 near-miss layer; GLOBAL and insert-only (its trigger refuses DELETE; objects are shared by every chart and generation): backed up, but deliberately NOT in the teardown's closed list or its absence proof"
+  },
+  {
+   "table": "public.kala_gochara_publication",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "publish_candidate",
+     "kind": "INSERT",
+     "line": 541
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "publish_candidate",
+     "kind": "UPDATE",
+     "line": 561
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "_publish",
+     "kind": "UPDATE",
+     "line": 738
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "_publish",
+     "kind": "UPDATE",
+     "line": 748
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "supersede",
+     "kind": "UPDATE",
+     "line": 775
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "rollback",
+     "kind": "UPDATE",
+     "line": 811
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "clear_generation",
+     "kind": "UPDATE",
+     "line": 909
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 466,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.kala_gochara_coverage",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "write_coverage",
+     "kind": "DELETE",
+     "line": 497
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "write_coverage",
+     "kind": "DELETE",
+     "line": 510
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "write_coverage",
+     "kind": "INSERT",
+     "line": 520
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+     "function": "_delete_generation_rows",
+     "kind": "DELETE",
+     "line": 823
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.delete_generation_chain",
+     "kind": "DELETE",
+     "line": 643
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.delete_class_chain",
+     "kind": "DELETE",
+     "line": 664
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.write_moon_coverage",
+     "kind": "INSERT",
+     "line": 687
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.write_coverage",
+     "kind": "INSERT",
+     "line": 767
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 466,
+     "via": "dynamic"
+    }
+   ],
+   "note": "the teardown deletes only partition_kind=event_class rows; Moon coverage is retained"
+  },
+  {
+   "table": "public.ka_gochara_contact",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore._delete_orphaned_contacts",
+     "kind": "DELETE",
+     "line": 590
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.delete_generation_chain",
+     "kind": "DELETE",
+     "line": 641
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore._insert_contact_row",
+     "kind": "INSERT",
+     "line": 809
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 466,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_relationship_record",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.delete_record_grain",
+     "kind": "DELETE",
+     "line": 616
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.delete_generation_chain",
+     "kind": "DELETE",
+     "line": 640
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.delete_class_chain",
+     "kind": "DELETE",
+     "line": 660
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.insert_record",
+     "kind": "INSERT",
+     "line": 939
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.set_prerequisite_result",
+     "kind": "UPDATE",
+     "line": 1016
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 466,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/supabase/migrations/1155_*",
+     "function": "ka_gochara_contact_propagate_precision",
+     "kind": "TRIGGER",
+     "line": 0,
+     "via": "trigger ka_gochara_contact_2_propagate_precision on ka_gochara_contact"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_record_prerequisite",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.insert_record",
+     "kind": "INSERT",
+     "line": 969
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.set_prerequisite_result",
+     "kind": "UPDATE",
+     "line": 994
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_eval_window",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.delete_record_grain",
+     "kind": "DELETE",
+     "line": 611
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.delete_generation_chain",
+     "kind": "DELETE",
+     "line": 639
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/record_store.py",
+     "function": "RecordStore.delete_class_chain",
+     "kind": "DELETE",
+     "line": 655
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/window_store.py",
+     "function": "WindowStore.replace_grain_windows",
+     "kind": "DELETE",
+     "line": 152
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/window_store.py",
+     "function": "WindowStore.replace_grain_windows",
+     "kind": "INSERT",
+     "line": 170
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/window_store.py",
+     "function": "WindowStore.replace_grain_windows",
+     "kind": "INSERT",
+     "line": 181
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 466,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_eval_window_record",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/window_store.py",
+     "function": "WindowStore.replace_grain_windows",
+     "kind": "INSERT",
+     "line": 190
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_eval_window_verification",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/window_gate.py",
+     "function": "record_verification",
+     "kind": "DELETE",
+     "line": 324
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/window_gate.py",
+     "function": "record_verification",
+     "kind": "INSERT",
+     "line": 329
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_search_input_snapshot",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.delete_generation_inventory",
+     "kind": "DELETE",
+     "line": 111
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.insert_snapshot",
+     "kind": "INSERT",
+     "line": 148
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 466,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_search_inventory",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.delete_class_inventory",
+     "kind": "DELETE",
+     "line": 97,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.delete_generation_inventory",
+     "kind": "DELETE",
+     "line": 108,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.write_class_inventory",
+     "kind": "INSERT",
+     "line": 191
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.write_class_inventory",
+     "kind": "UPDATE",
+     "line": 227
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 466,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_search_path_pin",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.delete_class_inventory",
+     "kind": "DELETE",
+     "line": 97,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.delete_generation_inventory",
+     "kind": "DELETE",
+     "line": 108,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.write_class_inventory",
+     "kind": "INSERT",
+     "line": 197
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 466,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_search_obligation",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.delete_class_inventory",
+     "kind": "DELETE",
+     "line": 97,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.delete_generation_inventory",
+     "kind": "DELETE",
+     "line": 108,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.write_class_inventory",
+     "kind": "INSERT",
+     "line": 206
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 466,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_search_interval",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.delete_class_inventory",
+     "kind": "DELETE",
+     "line": 97,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.delete_generation_inventory",
+     "kind": "DELETE",
+     "line": 108,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+     "function": "InventoryStore.write_class_inventory",
+     "kind": "INSERT",
+     "line": 215
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 466,
+     "via": "dynamic"
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_search_inventory_verification",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/inventory_verifier.py",
+     "function": "write_verification",
+     "kind": "INSERT",
+     "line": 576
+    }
+   ]
+  },
+  {
+   "table": "public.ka_gochara_near_miss",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/near_miss.py",
+     "function": "NearMissStore.delete_generation",
+     "kind": "DELETE",
+     "line": 390,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/near_miss.py",
+     "function": "NearMissStore.write_object",
+     "kind": "INSERT",
+     "line": 469,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 480,
+     "via": "dynamic"
+    }
+   ],
+   "note": "migration 1308 near-miss layer; the small test is a slice, which stores no near-miss (write_object returns early) but still runs the layer's whole-generation REPLACE (delete_generation) on chart x 5.0, so a pre-existing near-miss row of a full candidate is deleted: the backup is the only record of it; the teardown's closed list (GENERATION_TABLES) deletes it and its absence proof counts it"
+  },
+  {
+   "table": "public.ka_gochara_near_miss_search",
+   "group": "writer_generation_5_0",
+   "sites": [
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/near_miss.py",
+     "function": "NearMissStore.delete_generation",
+     "kind": "DELETE",
+     "line": 390,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/gochara_kernel/near_miss.py",
+     "function": "NearMissStore.write_object",
+     "kind": "INSERT",
+     "line": 472,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/scripts/teardown_v5_small_test_job.py",
+     "function": "_delete_everything",
+     "kind": "DELETE",
+     "line": 480,
+     "via": "dynamic"
+    }
+   ],
+   "note": "migration 1308 near-miss layer; same reach as ka_gochara_near_miss, and the teardown deletes and counts it the same way"
+  }
+ ],
+ "context": [
+  {
+   "table": "public._migrations_applied",
+   "why": "NOT written by the small test (only scripts/migrate.ts at deploy). Kept so the restore proof can state the scratch schema is at the same migration set."
+  }
+ ],
+ "guarded_children": [
+  {
+   "table": "public.brahma_mimamsa_prediction_ledger",
+   "why": "FK ON DELETE SET NULL from build_runs; the teardown refuses unless the reference count is zero (teardown_v5_small_test_job.py reference guard), so the action never fires"
+  },
+  {
+   "table": "public.brahma_prospective_ledger",
+   "why": "FK ON DELETE SET NULL from build_runs; the teardown refuses unless the reference count is zero (teardown_v5_small_test_job.py reference guard), so the action never fires"
+  },
+  {
+   "table": "public.conversations",
+   "why": "FK ON DELETE SET NULL from build_runs; the teardown refuses unless the reference count is zero (teardown_v5_small_test_job.py reference guard), so the action never fires"
+  },
+  {
+   "table": "public.event_chart_state_index",
+   "why": "FK ON DELETE SET NULL from build_runs; the teardown refuses unless the reference count is zero (teardown_v5_small_test_job.py reference guard), so the action never fires"
+  },
+  {
+   "table": "public.mimamsa_calibration_snapshot",
+   "why": "FK ON DELETE SET NULL from build_runs; the teardown refuses unless the reference count is zero (teardown_v5_small_test_job.py reference guard), so the action never fires"
+  },
+  {
+   "table": "public.mimamsa_predictions",
+   "why": "FK ON DELETE SET NULL from build_runs; the teardown refuses unless the reference count is zero (teardown_v5_small_test_job.py reference guard), so the action never fires"
+  }
+ ],
+ "unreached": [
+  {
+   "name": "legacy_v4_ledger",
+   "module": "platform/python-sidecar/services/gochara_kernel/ledger.py",
+   "aliases": [
+    "ledger",
+    "gk_ledger",
+    "ledger_mod"
+   ],
+   "entry_functions": [
+    "write_contacts",
+    "rollback",
+    "clear_generation",
+    "clear_windows_on_reversal",
+    "supersede"
+   ],
+   "internal_functions": [
+    "_insert_contact_rows",
+    "_delete_generation_rows"
+   ],
+   "tables": [
+    "kala_gochara_contacts",
+    "kala_gochara_windows"
+   ],
+   "why": "legacy v4 ledger tables and the reversal paths; the v5 writer calls only publish_candidate and register_convention of ledger.py (candidate-only run, no supersede/rollback). Only ka_gochara_v4_41_candidate.py calls write_contacts."
+  },
+  {
+   "name": "sealing_and_verification_jobs",
+   "modules": [
+    "platform/python-sidecar/pipeline/orchestrator/seal_job.py",
+    "platform/python-sidecar/pipeline/orchestrator/verification_job.py",
+    "platform/python-sidecar/services/gochara_kernel/seal_flow.py",
+    "platform/python-sidecar/services/gochara_kernel/seal_brief.py",
+    "platform/python-sidecar/services/gochara_kernel/verification_job.py",
+    "platform/python-sidecar/services/gochara_kernel/near_miss_verifier.py"
+   ],
+   "module_names": [
+    "seal_job",
+    "verification_job",
+    "seal_flow",
+    "seal_brief",
+    "near_miss_verifier"
+   ],
+   "tables": [
+    "ka_gochara_seal_approval",
+    "ka_gochara_seal_brief",
+    "ka_gochara_near_miss_verification"
+   ],
+   "why": "sealing is not part of the small test (the sliced build is unsealable, writer docstring); these are separate job entry points that no scanned module imports. ka_gochara_near_miss_verification (P06b, migration 1381) is written only by near_miss_verifier.verify_generation(persist=True), whose sole importer is the gochara verification job (verification_job.py, lazy import in the near-miss stage); the ka_gochara_v5 writer's import closure does not reach either module"
+  }
+ ],
+ "dynamic_sites": [
+  {
+   "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+   "function": "InventoryStore.delete_class_inventory",
+   "resolver": "const:platform/python-sidecar/services/gochara_kernel/inventory_store.py:_CLASS_TABLES_DELETE_ORDER:plain",
+   "tables": [
+    "ka_gochara_search_interval",
+    "ka_gochara_search_inventory",
+    "ka_gochara_search_obligation",
+    "ka_gochara_search_path_pin"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/services/gochara_kernel/inventory_store.py",
+   "function": "InventoryStore.delete_generation_inventory",
+   "resolver": "const:platform/python-sidecar/services/gochara_kernel/inventory_store.py:_CLASS_TABLES_DELETE_ORDER:plain",
+   "tables": [
+    "ka_gochara_search_interval",
+    "ka_gochara_search_inventory",
+    "ka_gochara_search_obligation",
+    "ka_gochara_search_path_pin"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/services/gochara_kernel/rule_registry.py",
+   "function": "RuleRegistryStore._bind",
+   "resolver": "calls:platform/python-sidecar/services/gochara_kernel/rule_registry.py:_bind",
+   "tables": [
+    "ka_gochara_factor",
+    "ka_gochara_predicate",
+    "ka_gochara_rule_path",
+    "ka_gochara_rule_path_prerequisite",
+    "ka_gochara_rule_path_seal",
+    "ka_gochara_rule_path_soft_factor"
+   ]
+  },
+  {
+   "file": "platform/scripts/teardown_v5_small_test_job.py",
+   "function": "_delete_everything",
+   "resolver": "const:platform/scripts/v5_small_test_shared.py+platform/scripts/teardown_v5_small_test_job.py:GENERATION_TABLES:first",
+   "tables": [
+    "ka_gochara_contact",
+    "ka_gochara_eval_window",
+    "ka_gochara_near_miss",
+    "ka_gochara_near_miss_search",
+    "ka_gochara_relationship_record",
+    "ka_gochara_search_input_snapshot",
+    "ka_gochara_search_interval",
+    "ka_gochara_search_inventory",
+    "ka_gochara_search_obligation",
+    "ka_gochara_search_path_pin",
+    "kala_gochara_coverage",
+    "kala_gochara_publication"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/services/gochara_kernel/near_miss.py",
+   "function": "NearMissStore._ensure_object",
+   "resolver": "const:platform/python-sidecar/services/gochara_kernel/near_miss.py:TABLES:plain",
+   "tables": [
+    "ka_gochara_near_miss",
+    "ka_gochara_near_miss_object",
+    "ka_gochara_near_miss_search"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/services/gochara_kernel/near_miss.py",
+   "function": "NearMissStore.delete_generation",
+   "resolver": "const:platform/python-sidecar/services/gochara_kernel/near_miss.py:TABLES:plain",
+   "tables": [
+    "ka_gochara_near_miss",
+    "ka_gochara_near_miss_object",
+    "ka_gochara_near_miss_search"
+   ]
+  },
+  {
+   "file": "platform/python-sidecar/services/gochara_kernel/near_miss.py",
+   "function": "NearMissStore.write_object",
+   "resolver": "const:platform/python-sidecar/services/gochara_kernel/near_miss.py:TABLES:plain",
+   "tables": [
+    "ka_gochara_near_miss",
+    "ka_gochara_near_miss_object",
+    "ka_gochara_near_miss_search"
+   ]
+  }
+ ]
+}

@@ -38,8 +38,8 @@ describe('gochara-verification-job-deploy.yml', () => {
       return args[args.indexOf(flag) + 1]
     }
     expect(value(deployed, '--tasks')).toBe('1')
-    expect(value(deployed, '--task-timeout')).toBe('7200')
-    expect(value(checked, '--timeout-seconds')).toBe('7200')
+    expect(value(deployed, '--task-timeout')).toBe('28800')
+    expect(value(checked, '--timeout-seconds')).toBe('28800')
     for (const [flag, expected] of [['--memory', '8Gi'], ['--cpu', '2']]) {
       expect(value(deployed, flag)).toBe(expected)
       expect(value(checked, flag)).toBe(expected)

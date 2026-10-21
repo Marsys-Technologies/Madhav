@@ -1018,6 +1018,98 @@ def _class_of_grain(key: str) -> str | None:
     return None
 
 
+# ── gochara_v5_century_config (F-CHANNEL; SR-W34-PREP-RULINGS 1) ──────────────────────────────────────────────────────────────────────────
+# The production orchestrator builds `ctx.config` from chart_id and birth_params ONLY (the FROZEN asset_runner), so an unmarked (century) run had no way to
+# receive the final-rule profile, the verify-deferral switch or the horizon and ran the measuring profile over the code-default horizon. The century
+# dispatch now STAGES them in `build_runs.plan_manifest[gochara_v5_century_config]`; that manifest is covered by `plan_manifest_digest`, which every read
+# below verifies (`_plan_manifest`), so the three values are fixed at dispatch and a change mid-run is refused by name. The writer overlays them on
+# `ctx.config` (where the rest of the writer already reads them) and then REFUSES a run that is not a test slice and still has no explicit rule profile
+# or no explicit horizon — never a silent default to the measuring profile or to DEFAULT_HORIZON.
+CENTURY_CONFIG_KEY = "gochara_v5_century_config"
+CENTURY_CONFIG_SCHEMA = "gochara_v5_century_config/1"
+_CENTURY_CONFIG_FIELDS = frozenset({"schema", "final_rules", "defer_in_build_verify", "horizon"})
+_FINAL_RULES_KEY = "gochara_v5_final_rules"
+_CENTURY_DEFER_KEY = "gochara_v5_defer_in_build_verify"
+
+
+class CenturyConfigRefusal(ValueError):
+    """The gochara_v5_century_config component of build_runs.plan_manifest is malformed or contradicts ctx.config — refused by name, never guessed."""
+
+
+class RunProfileRefusal(CenturyConfigRefusal):
+    """run_rule_profile_required: a run that is not a test slice arrived with no explicit gochara_v5_final_rules — it would have run the measuring profile."""
+
+
+class RunHorizonRefusal(CenturyConfigRefusal):
+    """run_horizon_required: a run that is not a test slice arrived with no explicit horizon — it would have run the code-default DEFAULT_HORIZON."""
+
+
+def validate_century_config(raw) -> dict:
+    """The canonical century-config component, or a named refusal. Used at staging (the dispatch) and at run time (the writer), so what is staged is by construction
+    what the writer accepts. `horizon` is the two derived bounds as tz-aware ISO timestamps (stored in UTC, half-open, inside the substrate domain)."""
+    def refuse(msg):
+        raise CenturyConfigRefusal(f"{ASSET_ID}: {CENTURY_CONFIG_KEY}: {msg} — refused, never guessed")
+    if not isinstance(raw, dict):
+        refuse(f"the component is {type(raw).__name__}, not an object")
+    if set(raw) != _CENTURY_CONFIG_FIELDS:
+        refuse(f"fields {sorted(raw)} are not exactly {sorted(_CENTURY_CONFIG_FIELDS)}")
+    if raw["schema"] != CENTURY_CONFIG_SCHEMA:
+        refuse(f"schema {raw['schema']!r} is not {CENTURY_CONFIG_SCHEMA!r}")
+    for field in ("final_rules", "defer_in_build_verify"):
+        if type(raw[field]) is not bool:
+            refuse(f"{field} {raw[field]!r} is not a boolean")
+    if raw["defer_in_build_verify"] and not raw["final_rules"]:
+        refuse("defer_in_build_verify needs final_rules (only a final build may defer its in-build verify)")
+    horizon = raw["horizon"]
+    if not isinstance(horizon, (list, tuple)) or len(horizon) != 2 or not all(isinstance(x, str) for x in horizon):
+        refuse(f"horizon {horizon!r} is not a pair of ISO timestamps")
+    try:
+        points = tuple(datetime.fromisoformat(x) for x in horizon)
+    except (ValueError, OverflowError):
+        refuse(f"horizon {horizon!r} is not parseable ISO 8601")
+    if any(p.tzinfo is None for p in points):
+        refuse(f"horizon {horizon!r} carries a naive timestamp")
+    try:
+        start, end = (p.astimezone(timezone.utc) for p in points)
+    except (ValueError, OverflowError):
+        refuse(f"horizon {horizon!r} cannot be converted to UTC")
+    if not start < end:
+        refuse(f"horizon {horizon!r} is empty or inverted")
+    gk_horizon.require_inside_substrate_domain((start, end))
+    return {"schema": CENTURY_CONFIG_SCHEMA, "final_rules": raw["final_rules"], "defer_in_build_verify": raw["defer_in_build_verify"],
+            "horizon": [start.isoformat(), end.isoformat()]}
+
+
+def _resolve_run_config(ctx: ContextSpec) -> ContextSpec:
+    """`ctx` with the staged century config overlaid on its config, and the explicit-profile / explicit-horizon guard applied to every run that is not a test slice.
+    A test slice (the measuring build included) is exempt: it sets its scope in its marker and its rules are always the measuring ones. A dry run executes
+    nothing (it plans without a connection), so the guard does not apply to it; the overlay still does when a manifest is readable.
+    Called by `plan_substeps` and, after its configuration checks, by `run_substep` — never at entry, so a mis-provisioned job still refuses before any database use."""
+    manifest = _plan_manifest(ctx)
+    marked = manifest is not None and TEST_SLICE_KEY in manifest
+    if manifest is not None and CENTURY_CONFIG_KEY in manifest:
+        if marked:
+            raise CenturyConfigRefusal(f"{ASSET_ID}: {CENTURY_CONFIG_KEY}: a run carrying a {TEST_SLICE_KEY} marker takes no century config — refused, never guessed")
+        staged = validate_century_config(manifest[CENTURY_CONFIG_KEY])
+        wanted = {_FINAL_RULES_KEY: staged["final_rules"], _CENTURY_DEFER_KEY: staged["defer_in_build_verify"],
+                  "horizon": tuple(datetime.fromisoformat(x) for x in staged["horizon"])}
+        merged = dict(ctx.config)
+        for key, value in wanted.items():
+            present = merged.get(key)
+            if key in merged and (tuple(present) if key == "horizon" and isinstance(present, (list, tuple)) else present) != value:
+                raise CenturyConfigRefusal(f"{ASSET_ID}: {CENTURY_CONFIG_KEY}: ctx.config[{key!r}] {present!r} contradicts the staged value {value!r} — refused, never guessed")
+            merged[key] = value
+        ctx = dataclasses.replace(ctx, config=merged)
+    if not marked and not ctx.dry_run:
+        if ctx.config.get(_FINAL_RULES_KEY) is None:
+            raise RunProfileRefusal(f"{ASSET_ID}: run_rule_profile_required: this run is not a test slice and names no {_FINAL_RULES_KEY} — "
+                                    "it would run the measuring rule profile; stage it through the century dispatch (final_rules)")
+        if ctx.config.get("horizon") is None:
+            raise RunHorizonRefusal(f"{ASSET_ID}: run_horizon_required: this run is not a test slice and names no horizon — it would run the "
+                                    "code-default DEFAULT_HORIZON; stage it through the century dispatch (horizon)")
+    return ctx
+
+
 def _with_rule_profile(method):
     """Pre-build isolation: final rules require explicit candidate configuration."""
     from functools import wraps
@@ -1059,6 +1151,7 @@ class GocharaV5Writer(WriterBase):
         marker = the full SCORED_CLASSES plan, byte-identical to today."""
         ctx = _native_ctx(ctx)
         _require_pinned_chart(ctx.config["chart_id"])
+        ctx = _resolve_run_config(ctx)         # F-CHANNEL: the staged century config overlaid; an unmarked run without an explicit profile / horizon refused
         slice_ = _test_slice(ctx)
         _defer_in_build_verify(ctx, slice_)         # SR-W3-SHAPE 3: a refused flag is refused at PLAN time; the plan itself never changes
         classes = slice_.classes if slice_ is not None else SCORED_CLASSES
@@ -1136,6 +1229,14 @@ class GocharaV5Writer(WriterBase):
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes=f"dry_run: {step.key} not solved, nothing written")
         _ephe_path(ctx)         # every substep resolves it, so the FIRST ('rules') refuses a mis-provisioned job in seconds (no database use)
+        # F-CHANNEL: the staged century config is overlaid and an unmarked run without an explicit profile / horizon refused HERE — after the configuration checks
+        # above (no database use before them) and before the first read of the rule profile; the rest of the substep runs under the RESOLVED profile.
+        ctx = _resolve_run_config(ctx)
+        with gk_rule_registry.rule_profile(final_rules=ctx.config.get(_FINAL_RULES_KEY, False)):
+            return self._run_resolved_substep(ctx, step, chart_id)
+
+    def _run_resolved_substep(self, ctx: ContextSpec, step: SubStep, chart_id: str) -> WriterResult:
+        """The substep proper, under the resolved config and rule profile (see `run_substep`)."""
         # DELIBERATE CHANGE TO EVERY v5 BUILD (steward MB-CODEX-2 ruling 2), not only the measuring shape: the state guard. The frozen runner's watchdog marks an asset
         # `error` on a fired `writer_timeout_seconds` and does NOT stop the writer thread, so an evicted thread could keep committing substeps; the final build needs this
         # protection too. A healthy build (state `building`) behaves exactly as before apart from this one read-only SELECT per substep; a dry run and an absent row skip it;

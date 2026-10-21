@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020+close-now-bookkeeping-20261020+a55j-a55m-rescope-20261020",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020+close-now-bookkeeping-20261020+a55j-a55m-rescope-20261020+vc2-retire-20261020",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -4648,7 +4648,13 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "a"
+        "class": "retired",
+        "decision": "D-VC",
+        "reason": "D-VC refused as not_evaluable: no consenting evaluation population exists, so the three arms are not run; the generator, blinding, digest and readiness gate merged as PR #3732 stay and no real output exists (PRE-D-VC default; SR-W34-PREP-RULINGS 4; SR-CLOSE-NOW 5, 2026-10-20, reversible)",
+        "re_entry": "a consenting evaluation population exists"
+      },
+      "requires_outcome": {
+        "D-VC": "approved"
       }
     },
     {
@@ -4657,9 +4663,7 @@
       "lane": "N · decisions",
       "title": "Value checkpoint verdict per the frozen rubric (G3): approved = pass; refused = fail or a final insufficient_evidence / not_evaluable, with the four-way result recorded per arm",
       "owner": "N",
-      "depends_on": [
-        "VC-2"
-      ],
+      "depends_on": [],
       "mandatory": true,
       "brief": {
         "spec": [
@@ -4667,7 +4671,7 @@
           "RULINGS NR-KALA-R12",
           "PLAN §9 row 7 exit"
         ],
-        "notes": "A refused outcome parks the G2 work (D-G2, K5-3 not_applicable), never the G1 repair. Never used to flip anything."
+        "notes": "A refused outcome parks the G2 work (D-G2, K5-3 not_applicable), never the G1 repair. Never used to flip anything. A refused not_evaluable outcome also retires VC-2 (its three arms are not run without a consenting population); VC-2 therefore names this decision (requires_outcome) and this decision no longer names VC-2, which keeps the plan acyclic (SR-CLOSE-NOW 5; (I) INTERPRETATION: drop the D-VC to VC-2 edge rather than accept the skipped input, because VC-2 requires_outcome D-VC would otherwise be a cycle)."
       },
       "done_by": "decision",
       "decision": "D-VC",
@@ -26160,7 +26164,7 @@
           "Principals and grants (readback_sql, op id J-4b-a55j, the ACL surface of the 2026-10-20 recon): gochara_verifier, gochara_sealer and data_plane_builder exist with login=true and no superuser/createrole/createdb/replication/bypassrls; every table and column privilege and every ka_gochara_* EXECUTE grant that platform/migrations/1378_gochara_verifier_sealer_inventory_grants.sql specifies is present (acl_diff against the receipt output: no MISSING other than the L1 read grants below; MEASURED at the recon: principals present, ledger rows 1240 and 1378 applied, 1378 ledger sha256 equal to the repository file, no ledger row for 1241 (superseded by 1378) or 1303 because neither was ever applied; the recon's two ka_gochara_utc_ts(timestamptz) MISSING lines are a type-name spelling difference in the diff tool, the grant is present as 'timestamp with time zone')",
           "The builder cannot write verification rows — read back from the role's privileges, not attempted: data_plane_builder holds no INSERT/UPDATE/DELETE/TRUNCATE on any verification table (MEASURED at the recon: SELECT only on ka_gochara_near_miss_verification)",
           "OPEN grant act, measured MISSING at the recon: SELECT on chart_facts and chart_dashas for gochara_verifier and gochara_sealer (1378 leaves the L1 read grants to the data-plane ACL owner, its header lines 53-57). Closed by the one-shot provisioning workflow's grant list (SR-GRANTS-MINIMAL; each grant read back via readback_sql, one signer); no migration is written by this item (none is allocated to it in MIGRATION_ALLOCATION.json). Evidence: the same ACL readback re-run, acl_diff exit 0, then an independent reviewer readback of the same surface.",
-          "Verification job configured but disabled (I6; not the stale enabled-string proxy): cloudrun_job_readback of the job definition (image by digest, GOCHARA_RUNNER_COMMIT / GOCHARA_RUNNER_IMAGE_DIGEST env, the one secret reference by name and version only) plus fleet/executor_ops.json on main (verification_job enabled=false). MEASURED GAP: cloudrun_job_readback is bound to the job brahma-build-pipeline-job (fleet/cloudrun_readback.py JOB) and refuses any other job, so it cannot yet describe gochara-verification-job; until the existing kind accepts that job name (a parameter on the existing kind, SR-A55J-A55M-RESCOPE says no new kind) this observation is not producible and the step is not claimed.",
+          "Verification job configured (I6; not the stale enabled-string proxy): cloudrun_job_readback with `job` gochara-verification-job reads the job definition (image by digest, GOCHARA_RUNNER_COMMIT / GOCHARA_RUNNER_IMAGE_DIGEST env, the one secret reference by name and version only) — the existing kind takes that job name as a parameter (fleet/cloudrun_readback.py VERIFICATION_JOB; SR-A55J-A55M-RESCOPE says no new kind), so the observation is producible — plus the verification_job entry of fleet/executor_ops.json on main, read as it stands at the time of the step (the entry's enabled state is measured, never assumed).",
           "Sealer credential (act 2b): generated by the one-shot provisioning workflow straight into Secret Manager, never printed or read (SR-GRANTS-MINIMAL; no owner slot, no human password act). The step reads only the workflow run's receipt and the secret version's existence (name and version as the verification job definition carries it) — never the secret. MEASURED: the current workflow draft still consumes a staged secret (GOCHARA_SEALER_PASSWORD_STAGING) and the executor kind serves only the create-roles stage; the generate-into-Secret-Manager stage is the provisioning workflow's change.",
           "Before landing, independently prove inherited prerequisite: A5.5e",
           "Measure this residual itself at its declared phase; a carrying packet code merge never satisfies it. Independent acceptance binds the evidence digest and every original dependency."
@@ -26365,9 +26369,9 @@
           "Stacking and ledger (readback_sql, the window2 readback ky-j4c-a55m-window2): ledger rows for 1302/1305/1306/1308/1378/1381/1398 applied and 1303 absent (1241 superseded by 1378, never applied); 1305 → 1306 → 1308 function stacking markers (copy_drift_block, class_census, path_census) and the completeness function's definition sha; migration hashes. Already true: 1305/1306/1308 applied (receipts sutradhara-srw2route-20261019T102659Z-1305/6/8), 1381 and 1398 applied.",
           "1303 and the dormant-role revokes: OPEN. MEASURED: 1303 is not in the production ledger (never merged) and 1378 revokes nothing, so 1378 does not cover the revokes; the window2 readback's dormant_writer rows (NOLOGIN, memberless roles holding INSERT/UPDATE/DELETE/TRUNCATE on Gochara tables) decide: zero rows → retire the act as not_applicable by a declared decision citing that receipt; any row → an additive REVOKE migration in the W5W6 set (no number is allocated to this item; 1399 is withdrawn and reusable).",
           "Act 12 (log view of the verification job's logs + roles/logging.viewAccessor on that view for github-actions@, narrow form only): runbook /Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md 'Act 12'. Evidence: gcloud logging views describe/get-iam-policy gochara_verification_job (exactly one binding) and the negative read with the workflow identity. NO existing readback kind measures it (cloudrun_job_readback describes the pipeline job only). Needed by J-5s: yes (gochara-seal-approved.yml reads the brief from these logs). Cut: the project-level roles/logging.viewer alternative.",
-          "Act 13 (github-actions@ may execute the verification job with overrides, on that one job): runbook 'Act 13'. Evidence: gcloud run jobs get-iam-policy gochara-verification-job (binding on that job only, no project-level roles/run.*). NO existing readback kind measures it (cloudrun_job_readback reads a job definition, not its IAM policy, and only for the pipeline job). Needed by J-5s: yes (the brief job runs gcloud run jobs execute --args).",
+          "Act 13 (github-actions@ may execute the verification job with overrides, on that one job): runbook 'Act 13'. Evidence: gcloud run jobs get-iam-policy gochara-verification-job (binding on that job only, no project-level roles/run.*). NO existing readback kind measures it (cloudrun_job_readback reads a job definition, not its IAM policy). Needed by J-5s: yes (the brief job runs gcloud run jobs execute --args).",
           "Act 14 (github-actions@ holds roles/cloudsql.client for the proxy): runbook 'Act 14'. Evidence: gcloud projects get-iam-policy filtered to the role; indirectly, a successful one-shot provisioning run through the same proxy identity (github_run_readback, currently enabled:false). No grant is added unless the binding is absent; removal none for a pre-existing binding.",
-          "Verification job definition and sealer credential in disabled state: as J-4b-a55j (cloudrun_job_readback of gochara-verification-job — see its MEASURED GAP — and the provisioning run receipt/secret-version existence); the job is not enabled.",
+          "Verification job definition and sealer credential in disabled state: as J-4b-a55j (cloudrun_job_readback of gochara-verification-job, see its verification-job step, and the provisioning run receipt/secret-version existence); the job's enabled state is measured at the step, never assumed.",
           "Publication refusal for a test-slice vector: still unlocated (the plan-doc number 1307 collided with an unrelated migration); the reviewer must find where it landed before this is a measured claim.",
           "Before landing, independently prove inherited prerequisite: A5.5e",
           "Before landing, independently prove inherited prerequisite: A5.5l",
