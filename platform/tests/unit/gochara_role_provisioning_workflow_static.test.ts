@@ -107,11 +107,18 @@ describe('gochara-provision-roles.sh', () => {
     expect(c).toContain('COMMIT;')
     expect(c).toMatch(/postcondition: sealer is a member of cloudsqlsuperuser/)
   })
-  it('J-4b-a55j: the L1 grant is SELECT-only on exactly chart_facts and chart_dashas for exactly the two principals, checked in the same transaction', () => {
+  it('J-4b-a55j + C-04: the L1 grant is SELECT-only on exactly chart_facts and chart_dashas, and the schema grant is USAGE-only on public, for exactly the two principals, checked in the same transaction', () => {
     const grants = [...c.matchAll(/^GRANT .*$/gm)].map((m) => m[0])
-    expect(grants).toEqual(['GRANT SELECT ON public.chart_facts, public.chart_dashas TO $VERIFIER_ROLE, $SEALER_ROLE;'])
+    expect(grants).toEqual([
+      'GRANT SELECT ON public.chart_facts, public.chart_dashas TO $VERIFIER_ROLE, $SEALER_ROLE;',
+      'GRANT USAGE ON SCHEMA public TO $VERIFIER_ROLE, $SEALER_ROLE;',
+    ])
     expect(c).toContain('the L1 grant is read-only')
+    expect(c).toContain('the schema grant is USAGE only')
     expect(c).toContain('WITH GRANT OPTION')
+    const stage = c.slice(c.indexOf('  grant-l1-reads)'), c.indexOf('  sealer-credential)'))
+    expect(stage.indexOf('GRANT USAGE ON SCHEMA public')).toBeLessThan(stage.indexOf('COMMIT;'))   // inside the one transaction
+    expect(stage.indexOf('BEGIN;')).toBeLessThan(stage.indexOf('GRANT USAGE ON SCHEMA public'))
   })
   it('J-4b-a55j: the sealer credential goes secret-store first, shares the one activation transaction, and the rollback destroys the version of the secret it wrote', () => {
     const stage = c.slice(c.indexOf('  sealer-credential)'), c.indexOf('  *) fail "unknown STAGE'))
