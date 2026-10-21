@@ -34,7 +34,8 @@ table's `remote_async: true`, or a named dispatch / century / verification job) 
 RETAINED afterwards — success, failure or interruption — because a dispatch returns while its remote job still runs. Only the
 owner surrogate removes it, after the quiescence receipt for that request. Synchronous production kinds take no fence (the one
 production worker serialises them); read-only operations are not fenced and run in parallel. A production operation in flight
-at a restart is NEVER re-run: its receipt says INTERRUPTED. A refused executor refresh (HOLD, STOP, queued or in-flight work,
+at a restart is NEVER re-run: its receipt says INTERRUPTED, and the restart takes the fence for it. A read-only kind or a `*_dryrun` (`production: false`)
+interrupted at a restart takes none; an unknown kind, an unreadable request or an unreadable table fences (W3W4 rehearsal D10). A refused executor refresh (HOLD, STOP, queued or in-flight work,
 an unproven fence) is logged as REFRESH_REFUSED and recorded in run/ops/EXECUTOR_REFRESH.json; this snapshot keeps serving.
 A child process receives an allow-listed environment plus, at most, the ONE connection its operation needs.
 
@@ -1590,21 +1591,35 @@ def pool_for(req: dict, production: bool, readers, builder, cancel_lane):
     return (builder if production else readers), run_one
 
 
+def interrupted_takes_fence(req: dict, table: dict | None) -> bool:
+    """W3W4 rehearsal D10: an operation interrupted by a restart holds the production slot only when its kind is a production kind in the table.
+    A read-only kind or a `*_dryrun` (`production: false`) leaves nothing to reconcile, so it never fences. Fail closed: no table, an unknown
+    kind or an entry that does not say `production: false` fences."""
+    entry = table.get(req.get("kind")) if isinstance(table, dict) else None
+    return not (isinstance(entry, dict) and entry.get("production") is False)
+
+
 def main() -> int:
     for d in (REQ, REC, DONE, ACC, INFLIGHT, TMP, OPS / "sql", EXEC, KY_ROOT / "logs"): d.mkdir(parents=True, exist_ok=True)
     instance_lock = (OPS / "executor.lock").open("a+")
     try: fcntl.flock(instance_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError: return 0                       # another executor owns the boundary
     interrupted = sorted(f.name for f in INFLIGHT.glob("*.json"))
-    lane_interrupted = set()
+    unfenced = set(); restart_table = None; restart_table_read = False
     for name in interrupted:                               # a restart never re-runs an operation, and never frees the production slot
         f = INFLIGHT / name
         try: req = json.loads(f.read_text())
         except Exception: req = {"operation_id": f.stem}
-        if lane_selected(req): lane_interrupted.add(name)
+        if lane_selected(req): unfenced.add(name)
+        else:
+            if not restart_table_read:
+                try: restart_table = load_table()
+                except Exception: restart_table = None     # an unreadable table fences every interrupted non-lane operation
+                restart_table_read = True
+            if not interrupted_takes_fence(req, restart_table): unfenced.add(name)
         receipt(req, "INTERRUPTED", "the executor restarted while this operation was in flight; it was NOT re-run — read the postconditions")
         shutil.move(str(f), DONE / f.name)
-    production_interrupted = [name for name in interrupted if name not in lane_interrupted]
+    production_interrupted = [name for name in interrupted if name not in unfenced]
     if production_interrupted and not FENCE.exists(): FENCE.write_text(json.dumps({"interrupted": production_interrupted, "ts": now()}))
     table = None; caps = capabilities(False); last_caps = 0.0; last_sync = 0.0
     log("executor up")
