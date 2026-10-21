@@ -21,6 +21,8 @@ Claims, each with ONE oracle that fails on its single planted reversion (named i
   R8 an orb mismatch (value, row id, or L1 module digest) is refused, naming the field                          (revert: the record is not compared)
   R9 a window that records no inheritance is refused                                                              (revert: absence accepted)
   R10 an identity is never invented: a row handed in without an id is refused by name, on both sides              (revert: id defaults to 0)
+  R11 CHANGED combustion settings: the verifier states the record of the rows IT reads now, and refuses results      (revert: the verifier's record is a
+      built from the old rows (the orb-mismatch case the ruling names)                                                 constant of the seed rows, digest or ids)
 """
 from __future__ import annotations
 
@@ -38,8 +40,8 @@ from services.gochara_rules import p1_inputs as p1
 from services.gochara_kernel.window_sweep import OperandSource
 
 from .test_a53_window_sweep import _draft, _rec
-from .test_od1_p1c_operands_check import (DIGNITY_ROWS, NAIS_ROWS, ORB_ROWS, Sky, _check, _d, _jupiter_world, _ProvConn, _ReadConn, _stored,
-                                          _verify)
+from .test_od1_p1c_operands_check import (DIGNITY_ROWS, NAIS_ROWS, ORB_ROWS, Sky, _check, _d, _jupiter_world, _ProvConn, _ReadConn, _Rows,
+                                          _stored, _verify)
 from .test_od1_w0_interface import P1_ROWS, _steady
 
 #: the ids the seed (migration 250) gives the eight rows, in its insertion order
@@ -209,3 +211,40 @@ def test_r10_a_row_without_an_id_is_refused_by_name_on_both_sides():
     with pytest.raises(p1.StrictInputError) as checked:
         _check(orb_rows=no_ids).combustion_inheritance()
     assert checked.value.reason == "l0_row_id_missing"
+
+
+# ══ R11: changed combustion settings — the checker reads the NEW rows and rejects the old results ═════════════════════════════
+
+class _AlteredOrbsConn(_ReadConn):
+    """The verifier's L0 read after `bg_combustion_orbs` was amended: the orb SELECT answers `rows`, the other two relations as the seed."""
+
+    def __init__(self, rows):
+        super().__init__()
+        self._rows = rows
+
+    def execute(self, sql, params=()):
+        if "bg_combustion_orbs" in sql:
+            self.sql.append(sql)
+            return _Rows([(r["graha"], r["orb_degrees"], r["deep_orb_degrees"], r["id"]) for r in self._rows])
+        return super().execute(sql, params)
+
+
+@pytest.mark.parametrize("field, other, amended", [
+    # an L0 amendment of a VALUE (the open Saturn 15° / 16° question, SR-DOCTRINE-H): same rows, other content ⇒ the digest moves, the ids do not
+    ("orb_digest", "orb_row_ids", _with("Saturn", orb_degrees=16)),
+    # a re-seeded row (new surrogate id, same values) ⇒ the ids move, the digest (the values' identity, R2) does not
+    ("orb_row_ids", "orb_digest", _with("Mars", id=99)),
+])
+def test_r11_changed_combustion_settings_are_read_by_the_checker_and_the_old_results_are_refused(field, other, amended):
+    """The ruling's oracle (R-4: "a supplied orb row that differs from a local constant ⇒ provenance refuses"), on the VERIFIER side. The builder's
+    windows record the seed rows (EXPECTED); L0 now holds `amended` rows. The checker must (a) state the record of the rows it READ — equal to what a
+    builder over those rows would record and different from the seed's in `field` only — and (b) refuse the old window, naming `field`.
+    Planted reversions (one per production claim): the verifier's digest is a constant of the seed rows ⇒ the `orb_digest` case is accepted; its
+    ids are a constant map ⇒ the `orb_row_ids` case is accepted."""
+    checker = p1c.P1Check.from_conn(_AlteredOrbsConn(amended), Sky())
+    record = checker.combustion_inheritance()
+    assert record == _ops(amended).combustion_inheritance()
+    assert record[field] != EXPECTED[field] and record[other] == EXPECTED[other]
+    sky, conn = _world(EXPECTED)                       # the window built from the seed rows
+    with pytest.raises(RuntimeError, match=f"combustion inheritance {field}"):
+        _verify(conn, sky, check=p1c.P1Check.from_conn(_AlteredOrbsConn(amended), sky))

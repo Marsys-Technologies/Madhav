@@ -476,7 +476,7 @@ def _jupiter_world():
 
 
 def _verify(conn, sky, *, rows=None, p1=True, **kw):
-    check = _check(sky) if p1 else None
+    check = kw.pop("check", None) or (_check(sky) if p1 else None)         # `check`: a verifier built over other L0 rows (R4 review B2)
     return wv.verify_window_semantics(conn, factor_rows=rows or p1_rows(), p1_check=check, dynamic_enabled=True,
                                       policy=wv.POLICY_VERSION, **{**GRAIN, "event_class": CLASS}, **kw)
 
