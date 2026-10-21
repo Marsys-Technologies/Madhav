@@ -160,8 +160,8 @@ def _k9(needs, script, fixed, allowed, production, module, **more):
     return {"enabled": True, "needs": needs, "script": script, "fixed_args": fixed if isinstance(fixed, list) else [fixed], "allowed_args": allowed, "production": production,
             "enabled_by": "K9-23", "cwd": "platform/python-sidecar", "python_module": module, **more}
 K9_BINDINGS = {
-    "orchestrator_rebuild_dryrun": _k9("builder", K9_ADMISSION, "rebuild-dryrun", ["assets", "run-id"], False, "services.kala_core.publication_admission"),
-    "orchestrator_rebuild": _k9("builder", K9_ADMISSION, ["rebuild", "--force-execute"], ["assets", "run-id"], True, "services.kala_core.publication_admission", timeout_s=21600),
+    "orchestrator_rebuild_dryrun": _k9("builder", K9_ADMISSION, "rebuild-dryrun", ["assets", "run-id", "phase"], False, "services.kala_core.publication_admission"),
+    "orchestrator_rebuild": _k9("builder", K9_ADMISSION, ["rebuild", "--force-execute"], ["assets", "run-id", "phase"], True, "services.kala_core.publication_admission", timeout_s=21600),
     "layer_verify_dryrun": _k9("layer_verifier", K9_ADMISSION, "verify-dryrun", ["run-id", "generation", "independently-derived-digest"], False, "services.kala_core.publication_admission"),
     "layer_verify": _k9("layer_verifier", K9_MODULE, "verify", ["run-id", "generation", "independently-derived-digest"], True, "services.kala_core.publication"),
     "layer_publish_dryrun": _k9("builder", K9_ADMISSION, "publish-dryrun", ["run-id", "generation", "expected-head"], False, "services.kala_core.publication_admission"),
@@ -1143,7 +1143,8 @@ K9_ARGS = {"run-id": "6f1d3c1e-0000-4000-8000-000000000001", "generation": "g-1"
 
 
 def k9_args(kind):
-    return {name: K9_ARGS[name] for name in K9_BINDINGS[kind]["allowed_args"]}
+    bound = {**K9_BINDINGS, **executor_pin_shards.entries_after(SHARDS)}[kind]   # BASE plus the reviewed shards (K9-23.json narrows the two rebuild kinds' allowed_args)
+    return {name: K9_ARGS[name] for name in bound["allowed_args"]}
 
 
 @pytest.mark.parametrize("kind", K9_PRODUCTION)
