@@ -925,8 +925,9 @@ del _p2_old
 #   * maitri_compound is RETIRED from P1 (Q7 b): P1@1.3.0 simply does not name it; the 1.0.0 row stays as authored.
 #   * P1/P3/P4@1.3.0 — same prerequisites as 1.0.0, soft factors moved to the rows above (+ graduated_drishti@1.1.0
 #     for P3). P2 is NOT re-versioned: P2@1.1.0 / vedha_attenuation@1.1.0 (AM-18) are bound by selection.
-# The value of the orb is NOT in this file's rows until D1: `ORB_DECISION_1_3_0` is the single, named slot
-# (None ⇒ the row is the unratified shape and windows stay blank `orb_not_ratified`; never a placeholder).
+# The value of the orb enters this file in ONE place, `ORB_DECISION_1_3_0` (SR-OD1 D1: ND-ORB-SCALE, ND-ORB-ADMISSION,
+# AM-13-RATIFIED — owner confirmation 2026-10-21T12:37:41Z, DECISIONS_SURROGATE.jsonl). None would ship the unratified
+# shape (windows blank `orb_not_ratified`); never a placeholder.
 DOCTRINE_VERSION = "1.3.0"
 #: the owner rulings each 1.3.0 path version stands on (the basis of its `superseded_by_version` pin)
 DOCTRINE_PATH_RULINGS = {"P1": "P1-MAPPING-DECISION", "P3": "AM-13-RATIFIED", "P4": "AM-13-RATIFIED"}
@@ -938,9 +939,16 @@ DOCTRINE_RULING_TEXT = {
 }
 DOCTRINE_PATHS = tuple(DOCTRINE_PATH_RULINGS)
 
+#: The ledger ids the orb stands on (B.3): ND-ORB-SCALE is the scoring orb (strength = 1 − |Δλ|/orb, spec §7.2 inv 3);
+#: ND-ORB-ADMISSION is the contact admission band, which the built convention (`ORB_TABLE orb_conj_slow` /
+#: `orb_drishti_slow`) and the verifier's `_POINT_ORB_DEG` already state at the same 1.0° (no code change for it).
+ND_ORB_SCALE_LEDGER_ID = "ND-ORB-SCALE"
+ND_ORB_ADMISSION_LEDGER_ID = "ND-ORB-ADMISSION"
+AM13_LEDGER_ID = "AM-13-RATIFIED"
 #: D1's slot: {"orb_deg": <finite, > 0>, "orb_decision_ref": <selector token of the ledger id>}. None ⇒ unratified.
 #: (Token grammar `^[a-z][a-z0-9_]*…` — the ledger id ND-ORB-SCALE is written `nd_orb_scale` in a selector.)
-ORB_DECISION_1_3_0: dict | None = None
+#: 1.0° = Q2 (a), equal to the admission band; one value for conjunction and aspect (per-graha orbs would be invented, B.10).
+ORB_DECISION_1_3_0: dict | None = {"orb_deg": 1.0, "orb_decision_ref": ND_ORB_SCALE_LEDGER_ID.lower().replace("-", "_")}
 
 
 def kernel_flat_1_3_0(orb_decision: dict | None) -> dict:
@@ -965,10 +973,11 @@ _factor("activity_kernel",
         direction="higher = stronger", null_state="unqualified",
         operand_selector=_KERNEL_FLAT_1_3_0, applicability=decode_kernel(_KERNEL_FLAT_1_3_0),
         effect="as activity_kernel@1.1.0 (AM-13: extent targets take the membership step, true point targets "
-               "1 − |Δλ|/orb), with the point orb carried as a RATIFIED decision once D1 binds it "
-               "(ND-ORB-SCALE; ND-ORB-ADMISSION keeps the 1.0° admission band); until then the point branch is "
-               "unqualified, reason orb_not_ratified. Object kinds in neither group (varga_position) stay "
-               "unqualified, never 1; nodes cast no dṛṣṭi (AM-13-RATIFIED K-1..K-6)")
+               "1 − |Δλ|/orb), with the point orb a RATIFIED decision: scoring orb 1.0° "
+               "(ND-ORB-SCALE, owner 2026-10-21, uncalibrated_default; one value for conjunction and aspect), equal to the "
+               "1.0° contact admission band (ND-ORB-ADMISSION, owner 2026-10-21). Applicability bindings K-1..K-6 "
+               "ratified by AM-13-RATIFIED (owner 2026-10-21): object kinds in neither group (varga_position) stay "
+               "unqualified, never 1; nodes cast no dṛṣṭi. Basis: ANSWERS.md v2.1 Part A + AM-13")
 
 #: Form B (P1-MAPPING-DECISION; ANSWERS.md §B.2): precedence COMB > EX > MT > OWN > DEB > FR/NEU/INI. Combustion
 #: is its own factor row (the L1 state), so the dignity row carries the seven rungs it can take.

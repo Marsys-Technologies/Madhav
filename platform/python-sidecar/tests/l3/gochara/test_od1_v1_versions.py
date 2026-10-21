@@ -19,7 +19,8 @@ Claims, each with ONE oracle that fails on its single planted reversion (named i
        (SR-SOLVER-PLAN-1) (revert: leave 1.2.0 on the 1.0.0 factors);
   V-6  the AM-13 bindings K-1..K-3: P3 reads activity_kernel@1.3.0 + graduated_drishti@1.1.0, P4 the kernel only; varga_position is
        unclassified and nodes cast no dṛṣṭi (AM-13-RATIFIED) (revert: classify varga_position as a point kind);
-  V-7  the orb row: shipped UNRATIFIED with no value and no reference (D1 is the only place a value enters); the slot, filled with
+  V-7  the orb row: a value enters only through the one slot (V1 shipped it empty; SR-OD1 D1 filled it with the owner-confirmed
+       ND-ORB-SCALE value — see test_od1_d1_orb_values.py); the slot, filled with
        the confirmed ND-ORB-SCALE value, yields a ratified row the existing consumer evaluates as 1 − |Δλ|/orb (spec §7.2 inv 3);
        an orb without a ledger reference is refused (revert: ratify without a reference);
   V-8  no shipped registry row carries a placeholder decision reference, and the detector can read false (N.8)
