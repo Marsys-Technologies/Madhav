@@ -67,7 +67,7 @@ def oracle_y2_other_kinds_keep_the_attestation_route(w, table):
 
 ORACLES = {
     "y1": (oracle_y1_attestation_alone_never_admits_a_rebuild,
-           ("or orchestrator_rebuild_dryrun_problem(req, table) or head_policy_problem(req)", "or head_policy_problem(req)")),
+           ("        lambda: orchestrator_rebuild_dryrun_problem(req, table),\n", "")),
     "y2": (oracle_y2_other_kinds_keep_the_attestation_route,
            ('    if req.get("kind") != "orchestrator_rebuild": return None\n    return dry_run_check(req, table)[0]',
             '    return dry_run_check(req, table)[0]')),

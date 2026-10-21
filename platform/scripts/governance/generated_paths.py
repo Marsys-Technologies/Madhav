@@ -8,12 +8,14 @@ function of plan_model.json + ACCEPTANCE_ROOTS (fleet/kyclosure.py compute).
 
   generated_paths.py list                     one generated path/prefix per line
   git diff --name-only A B | generated_paths.py filter     the names that are NOT generated (patch-id input)
-  generated_paths.py check --base SHA         PR guard: refuses a diff that carries a generated path or edits a pin shard
+  generated_paths.py check --base SHA         PR guard: refuses a diff that carries a generated path, edits a pin shard, changes an executor kind
+                                              without adding a covering shard, or edits a frozen BASE census literal without a `rebase` shard
   generated_paths.py refresh                  rewrite the locally derivable committed copies (cockpit/main checkout only)
 Exit: 0 ok · 1 refused (findings on stderr)
 """
 from __future__ import annotations
 import argparse
+import ast
 import json
 import os
 from pathlib import Path
@@ -26,6 +28,7 @@ FLEET = ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet'
 MODEL = '00_ARCHITECTURE/control/kalayantra/plan_model.json'
 CLOSURE = '00_ARCHITECTURE/control/kalayantra/CLOSURE_v3.json'
 SHARD_DIR = '00_ARCHITECTURE/briefs/kalayantra/fleet/tests/executor_pin_shards/'
+OPS = '00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json'
 
 
 def load(path: Path = REGISTRY) -> dict:
@@ -77,7 +80,7 @@ def _git(root: Path, *args: str) -> str:
 def shard_violations(changes: list[tuple[str, str]]) -> list[str]:
     """Pin shards are append-only: a shard that exists at the base is reviewed history and is never modified, renamed or removed."""
     return [f'executor pin shard {path} is merged history; add a new shard instead of {status}-ing it'
-            for status, path in changes if path.startswith(SHARD_DIR) and not status.startswith('A')]
+            for status, path in changes if path.startswith(SHARD_DIR) and path.endswith('.json') and not status.startswith('A')]
 
 
 def diff_changes(root: Path, base: str, head: str = 'HEAD') -> list[tuple[str, str]]:
@@ -88,11 +91,94 @@ def diff_changes(root: Path, base: str, head: str = 'HEAD') -> list[tuple[str, s
     return out
 
 
+def _show(root: Path, rev: str, path: str) -> str | None:
+    """A file's text at a revision, or None when it does not exist there."""
+    try:
+        return _git(root, 'show', f'{rev}:{path}')
+    except subprocess.CalledProcessError:
+        return None
+
+
+def _ops(text: str | None) -> dict:
+    return json.loads(text)['ops'] if text else {}
+
+
+def _added_shards(root: Path, head: str, changes: list[tuple[str, str]]) -> list[dict]:
+    """The pin shards this diff ADDS (direct children of the shard directory: `pending/` and the README are not loaded by the tests)."""
+    out = []
+    for status, path in changes:
+        if status.startswith('A') and path.startswith(SHARD_DIR) and path.endswith('.json') and '/' not in path[len(SHARD_DIR):]:
+            try:
+                out.append(json.loads(_show(root, head, path) or '{}'))
+            except ValueError:
+                out.append({})
+    return out
+
+
+def kind_shard_required(root: Path, base: str, head: str = 'HEAD', changes: list[tuple[str, str]] | None = None) -> list[str]:
+    """SR-CHURN-CUT 5: a diff that changes the key set or any entry of executor_ops.json `ops` must ADD a pin shard whose `entries` name every changed
+    kind, so a kind PR adds one new file and no shared census line. A removed kind is named by no `entries`: it needs a `rebase` shard (the BASE changes)."""
+    changes = diff_changes(root, base, head) if changes is None else changes
+    fork = _git(root, 'merge-base', base, head).strip()
+    before, after = _ops(_show(root, fork, OPS)), _ops(_show(root, head, OPS))
+    shards = _added_shards(root, head, changes)
+    if any(s.get('rebase') is True for s in shards):
+        return []
+    named = {kind for s in shards for kind in (s.get('entries') or {})}
+    changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+    removed = [k for k in changed if k not in after]
+    errors = [f'executor_ops.json kind {k} changed without a covering pin shard: add {SHARD_DIR}<ITEM>.json whose `entries` name it (kind_shard_required)'
+              for k in changed if k in after and k not in named]
+    errors += [f'executor_ops.json kind {k} was removed: no shard entry can state that; the BASE census changes, so the PR must add a shard with `"rebase": true` (cockpit only)'
+               for k in removed]
+    return errors
+
+
+def _assigned(source: str | None, names) -> dict:
+    """{name: [ast.dump of each module-level value assigned to it]} for the wanted names. Comments and layout are not part of the AST."""
+    out: dict = {}
+    for node in ast.parse(source).body if source else []:
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AnnAssign) and node.value else []
+        for target in targets:
+            if isinstance(target, ast.Name) and target.id in names:
+                out.setdefault(target.id, []).append(ast.dump(node.value))
+    return out
+
+
+def frozen_base_violations(root: Path, base: str, head: str = 'HEAD', changes: list[tuple[str, str]] | None = None) -> list[str]:
+    """SR-CHURN-CUT 5: the BASE literals of the census tests (registry `frozen_base_literals`) are frozen. A literal that exists at the fork point and
+    is changed or removed at head is refused unless the PR also adds a shard naming `"rebase": true` (the cockpit compacting shards into BASE)."""
+    changes = diff_changes(root, base, head) if changes is None else changes
+    if any(s.get('rebase') is True for s in _added_shards(root, head, changes)):
+        return []
+    fork = _git(root, 'merge-base', base, head).strip()
+    touched = {path for _, path in changes}
+    errors = []
+    for frozen in load(root / 'platform/scripts/governance/generated_paths.json').get('frozen_base_literals', []):
+        if frozen['path'] not in touched:
+            continue
+        names = set(frozen['names'])
+        try:
+            was, now = _assigned(_show(root, fork, frozen['path']), names), _assigned(_show(root, head, frozen['path']), names)
+        except SyntaxError as exc:
+            errors.append(f'{frozen["path"]}: cannot parse a frozen BASE census file ({exc.msg})')
+            continue
+        errors += [f'{frozen["path"]}: frozen BASE literal {name} was {"removed" if name not in now else "edited"}; a new kind or class is a pin shard, '
+                   f'and only a shard with `"rebase": true` may change BASE (frozen_base_violations)'
+                   for name in sorted(was) if was[name] != now.get(name)]
+    return errors
+
+
+def kind_violations(root: Path, base: str, head: str = 'HEAD') -> list[str]:
+    changes = diff_changes(root, base, head)
+    return kind_shard_required(root, base, head, changes) + frozen_base_violations(root, base, head, changes)
+
+
 def check(root: Path, base: str, head: str = 'HEAD') -> list[str]:
     changes = diff_changes(root, base, head)
     errors = [f'machine-owned path carried in the diff (CI regenerates it from main): {p}'
               for p in generated_in([p for _, p in changes], load(root / 'platform/scripts/governance/generated_paths.json'))]
-    return errors + shard_violations(changes)
+    return errors + shard_violations(changes) + kind_violations(root, base, head)
 
 
 def main(argv=None) -> int:

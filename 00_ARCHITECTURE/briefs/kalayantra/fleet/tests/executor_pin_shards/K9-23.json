@@ -1,0 +1,47 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "K9-23",
+  "entries": {
+    "orchestrator_rebuild_dryrun": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "platform/python-sidecar/services/kala_core/publication_admission.py",
+      "fixed_args": [
+        "rebuild-dryrun"
+      ],
+      "allowed_args": [
+        "assets",
+        "run-id"
+      ],
+      "production": false,
+      "enabled_by": "K9-23",
+      "cwd": "platform/python-sidecar",
+      "python_module": "services.kala_core.publication_admission"
+    },
+    "orchestrator_rebuild": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "platform/python-sidecar/services/kala_core/publication_admission.py",
+      "fixed_args": [
+        "rebuild",
+        "--force-execute"
+      ],
+      "allowed_args": [
+        "assets",
+        "run-id"
+      ],
+      "production": true,
+      "enabled_by": "K9-23",
+      "cwd": "platform/python-sidecar",
+      "python_module": "services.kala_core.publication_admission",
+      "timeout_s": 21600
+    }
+  },
+  "function_hashes": {
+    "W4": {
+      "validate": "4f5bb539707ab9b67475046cf92fa1031b29a0683773d5c84c6ab40303333e03",
+      "orchestrator_rebuild_dryrun_problem": "9c6548881ad44391c5500b52f66e2e8b8cebb4300f826662451b69c890f51b39"
+    }
+  },
+  "rebase": true
+}
