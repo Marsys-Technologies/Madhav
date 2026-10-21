@@ -33,8 +33,15 @@ NUMERIC_RESULT_FIELDS = ("score", "evidence_for", "evidence_against", "objective
 #: `window_verifier` re-implements independently; its digest is BOUND in the manifest's input vector (`qualification_table`) whenever the generation's
 #: policy is `window_qualification/1`, so a generation drafted under one table can never be verified, briefed or sealed under another. Editing a rule here
 #: moves the digest — a new table is a new generation, never a silent continuation.
-QUALIFICATION_TABLE_SCHEMA = "window_qualification_table/1"
+#: /2 (SR-OD1 S3): rule 2 is no longer the dynamic switch. A qualified function-valued member is SOLVED by the certified solver (`window_solver`, re-proved by the
+#: independent `window_solver_check`): the window carries a proven global maximum and its earliest tie instant, or no number and one of the named solver reasons below.
+#: The policy id stays `window_qualification/1` (the century config, dispatch and seal job are untouched); the table's schema version and digest move.
+QUALIFICATION_TABLE_SCHEMA = "window_qualification_table/2"
+#: RETIRED by /2: no build emits it and no gate accepts it as an explanation under the solver table (kept as a name so a stale artefact is recognised, never produced).
 DYNAMIC_SWITCH_REASON = "dynamic_objective_solver_guarantee_not_available"
+#: the reasons rule 2 may leave a window blank under (the solver's own strings; the checker and the numerical gate keep their own copies, a test asserts equality)
+SOLVER_BLANK_REASONS = ("solver_budget_exhausted", "monotone_arc_not_established", "solver_certificate_incomplete", "state_boundaries_incomplete",
+                        "objective_unknown_over_component", "objective_undeterminable")
 QUALIFICATION_TABLE = {
     "schema": QUALIFICATION_TABLE_SCHEMA,
     "policy": POLICY_QUALIFICATION,
@@ -44,8 +51,10 @@ QUALIFICATION_TABLE = {
     "rules": [
         {"n": 1, "when": "an unqualified member whose channel is for or unknown",
          "then": "objective unqualified: peak, score, evidence_for, evidence_against NULL; reason = the first unresolved reason, sorted"},
-        {"n": 2, "when": "a qualified function-valued member",
-         "then": f"unqualified under {DYNAMIC_SWITCH_REASON} (the named switch)"},
+        {"n": 2, "when": "a qualified function-valued member (a point-kernel tent, a graduated dṛṣṭi or a vedha state)",
+         "then": "SOLVED: peak = the earliest distinct local extremum within the frozen tie tolerance of the proven global maximum, objective_value = that maximum; "
+                 "or, where the certificate cannot be completed, NO number and one named solver reason (peak, score, evidence_for, evidence_against NULL, valence unqualified): "
+                 + ", ".join(SOLVER_BLANK_REASONS) + "; never a best-found value"},
         {"n": 3, "when": "otherwise",
          "then": "objective determined (an against-only population has the identically-zero objective, earliest maximum = component start); peak and evidence_for stored"},
         {"n": 4, "when": "score",

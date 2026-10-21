@@ -79,9 +79,12 @@ class WindowStore:
     def read_grain(self, *, chart_id: str, generation: str, event_class: str, path_id: str,
                    rule_version: str,
                    position_at: Callable[[str, datetime], float] | None = None,
-                   p1=None) -> list[SweepRecord]:
+                   p1=None, speed_at: Callable[[str, datetime], tuple] | None = None) -> list[SweepRecord]:
         """The grain's records as sweep inputs. `p1` (a `p1_operands.P1Operands`, bound by the writer only when the P1 operand sources are
-        bound) adds the P1 factors' per-factor sources to the P1 records; absent, the records are exactly what they were."""
+        bound) adds the P1 factors' per-factor sources to the P1 records; absent, the records are exactly what they were.
+
+        `speed_at(body, t) -> (longitude, speed deg/day)` (S3, the solver's seam: ONE ephemeris call for both) rides on every record with a body longitude;
+        the stored Swiss station instants of the body ride on every POINT-contact record (`station_instants`, the solver's extra cuts, S0 K-2)."""
         anchor_col = "NULL::text"
         if p1 is not None and path_id == "P1":
             if not self._records.p1_anchor_columns_available():
@@ -118,6 +121,11 @@ class WindowStore:
         out: list[SweepRecord] = []
         crossings: dict[tuple, list[datetime]] = {}
         station_lists: dict[tuple, list[datetime]] = {}
+
+        def stations_of(lord: str, conv: str) -> list[datetime]:
+            if (lord, conv) not in station_lists:
+                station_lists[(lord, conv)] = sorted(self._fetch_stations(lord, conv))
+            return station_lists[(lord, conv)]
         # R8-6: the ingress boundaries are complete over a support only when the class's coverage partition
         # completed that stretch (an incompletely searched stretch may hide an unlisted sign change)
         cov = self.conn.execute(
@@ -125,11 +133,15 @@ class WindowStore:
             " AND partition_kind = 'event_class' AND partition_key = %s", (chart_id, generation, event_class)).fetchone()
         completed = None if cov is None else (cov[0] if not isinstance(cov, dict) else next(iter(cov.values())))
         for rid, g in grouped.items():
-            lon = offset = rays = hints = bounds = None
+            lon = offset = rays = hints = bounds = lon_speed = tent_stations = None
             if position_at is not None and g["rel"] in ("residence", "aspect", "conjunction"):
                 name = graha_title(g["agent"])
                 lon = (lambda t, _n=name: position_at(_n, t))
                 rays = drishti_angles(name) if g["rel"] == "aspect" else ()
+                if speed_at is not None:
+                    lon_speed = (lambda t, _n=name: speed_at(_n, t))
+                if g["rel"] in ("conjunction", "aspect") and g["target"].startswith("point:") and g["conv"]:
+                    tent_stations = (lambda _n=name, _c=g["conv"]: stations_of(_n, _c))
             if position_at is not None and g["rel"] == "aspect":
                 offset = _aspect_offset_provider(g["target"], g["agent"], position_at)
                 # the dṛṣṭi offset (a house-offset STEP function) changes only where the body changes
@@ -154,6 +166,7 @@ class WindowStore:
                 aspect_offset_at=offset, house_from_frame=g["house"], canonical_target=g["target"],
                 state_boundaries=bounds, peak_hints=hints, state_boundaries_complete=bounds_complete,
                 period_anchor_lord=g["anchor"],
+                longitude_speed_at=lon_speed, station_instants=tent_stations,
                 # W0: the same boundaries, now also stated PER FACTOR — they are the dṛṣṭi offset's, and say nothing
                 # about any other state-valued factor of the record
                 operand_sources={} if bounds is None else {
@@ -164,9 +177,7 @@ class WindowStore:
                 lord = graha_title(g["anchor"] or g["agent"])
                 stations = None
                 if p1.needs_stations(lord) and g["conv"]:
-                    if (lord, g["conv"]) not in station_lists:
-                        station_lists[(lord, g["conv"])] = sorted(self._fetch_stations(lord, g["conv"]))
-                    stations = station_lists[(lord, g["conv"])]
+                    stations = stations_of(lord, g["conv"])
                 p1_complete = completed is not None and bool(g["supports"]) \
                     and all(completed.lower <= a and b <= completed.upper for a, b in g["supports"])
                 rec = p1.attach(rec, complete=p1_complete, stations=stations, event_class=event_class)

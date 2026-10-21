@@ -37,9 +37,15 @@ SHARD_KEY = "verification_shard"                          # …beside it: WHICH 
 TIME_VARYING = "time_varying_factor"
 CATEGORICAL = "categorical_factor_unmapped"
 APPLICABILITY = "kernel_applicability_undeclared"
+SOLVER_CERTIFICATE = "solver_certificate"               # S3: the solver could not complete its certificate (the window is blank, never a best-found number)
 OTHER = "other_named_reason"
+#: the reason the dynamic switch used to leave a time-varying window under — RETIRED by `window_qualification_table/2` (rule 2 is "solved or a named solver reason"):
+#: a window blank under it was built by code that does not implement the bound table, so it is a REFUSAL here, never an honest null (see `census`)
+RETIRED_SWITCH_REASON = "dynamic_objective_solver_guarantee_not_available"
 REASON_GROUPS = {
-    "dynamic_objective_solver_guarantee_not_available": TIME_VARYING,
+    "solver_budget_exhausted": SOLVER_CERTIFICATE,
+    "monotone_arc_not_established": SOLVER_CERTIFICATE,
+    "solver_certificate_incomplete": SOLVER_CERTIFICATE,
     "state_boundaries_incomplete": TIME_VARYING,
     "graduated_drishti_source_not_landed": TIME_VARYING,
     "vedha_overlay_not_bound": TIME_VARYING,
@@ -112,6 +118,8 @@ def census(conn, chart_id: str, generation: str, event_class: str, path_id: str,
                 problems.append(f"{n} blank window(s) carry NO reason code")
             elif reason == ALL_NULL_REASON:
                 problems.append(f"{n} window(s) are blank under {ALL_NULL_REASON!r} — the all-NULL policy's reason under {POLICY_QUALIFICATION}: a stub policy")
+            elif reason == RETIRED_SWITCH_REASON:
+                problems.append(f"{n} window(s) are blank under {RETIRED_SWITCH_REASON!r} — the dynamic switch the solver table retired: they were built without the solver")
             else:
                 out["blank"][reason] = out["blank"].get(reason, 0) + n
             if has_number:
@@ -134,8 +142,13 @@ def grain_attestation(conn, *, chart_id: str, generation: str, event_class: str,
         raise NumericalGateDisagrees(f"{tag}: the re-derivation ran under {report.get('policy_version')!r}, not {POLICY_QUALIFICATION}")
     c = census(conn, chart_id, generation, event_class, path_id, rule_version)
     problems = list(c["problems"])
+    if report.get("dynamic_enabled") is not True:
+        problems.append("the re-derivation did not run under the solver table (dynamic_enabled is not True): a function-valued window was judged against the retired switch")
     if report.get("status") != "VERIFIED" or report.get("unverified_windows"):
         problems.append(f"the re-derivation is {report.get('status')!r} with {len(report.get('unverified_windows') or ())} window(s) it could not reproduce")
+    if report.get("solver_check_deferred_windows") or report.get("solver_check_unavailable_windows"):
+        problems.append(f"{report.get('solver_check_deferred_windows') or 0} window(s) had the independent solver check deferred and {report.get('solver_check_unavailable_windows') or 0} had no "
+                        "ephemeris to be checked against: neither satisfies the gate")
     if report.get("fully_reproduced") != c["windows"]:
         problems.append(f"{report.get('fully_reproduced')} of {c['windows']} stored windows were reproduced exactly")
     if report.get("numeric_reproduced") != c["numbered"]:
@@ -259,6 +272,7 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None, head:
     valence: dict[str, int] = {}
     by_path: dict[str, dict] = {}
     honest: dict[tuple, int] = {}
+    honest_grain: dict[tuple, int] = {}
     for cls, path, ver in pins:
         tag = f"{cls}/{path}@{ver}"
         row = verification.get((cls, path, ver))
@@ -300,6 +314,7 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None, head:
         slot["blank"] += live["windows"] - live["numbered"]
         for reason, n in live["blank"].items():
             honest[(path, reason)] = honest.get((path, reason), 0) + n
+            honest_grain[(cls, path, ver, reason)] = n
     blank = total["windows"] - total["numbered"]
     extra: dict[str, Any] = {}
     if aggregate:
@@ -318,8 +333,19 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None, head:
             "numbered_windows": total["numbered"], "numbered_without_score": total["numbered_without_score"], "blank_windows": blank,
             "valence_of_numbered": dict(sorted(valence.items())), "by_path": dict(sorted(by_path.items())),
             "honest_nulls": [{"path_id": p, "group": reason_group(r), "reason": r, "windows": n} for (p, r), n in sorted(honest.items())],
+            # S3 (FB53 P16 gap 1): the blank counts per GRAIN (class × path × version) and per reason group, so a brief reader sees where a solver reason concentrates
+            "honest_nulls_by_grain": [{"event_class": c, "path_id": p, "rule_version": v, "group": reason_group(r), "reason": r, "windows": n}
+                                      for (c, p, v, r), n in sorted(honest_grain.items())],
+            "blank_by_group": _by_group(honest),
             "judgment_flags": ["no_window_numbered_under_numerical_policy"] if total["windows"] and not total["numbered"] else [],
             "problems": problems, "disclosure": DISCLOSURE}
+
+
+def _by_group(honest: dict) -> dict:
+    out: dict[str, int] = {}
+    for (_path, reason), n in honest.items():
+        out[reason_group(reason)] = out.get(reason_group(reason), 0) + n
+    return dict(sorted(out.items()))
 
 
 def require_passed(conn, chart_id: str, generation: str) -> dict:

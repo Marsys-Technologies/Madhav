@@ -25,8 +25,9 @@ What each part measures (CLAUDE.md N.8: every verdict part has a detector that c
                       with the fixed solver; the slice's unchanged cells equal it byte for byte, edges included.
   * certification     `certification_proof`: the build's own certification ran under the STRICT policy (`contact_certify.POLICY_RAISE`, observed at the
                       call, not assumed) and an independent collect-all pass over the built slice counts 0 invented / 0 anomaly stretches.
-  * peak windows      `peak_windows_row` (SR-A53-NARROW): windows with peak fields set and `maximise_earliest` edges, both > 0 wherever the result policy
-                      admits peaks; 0 there is a defect.
+  * peak windows      `peak_windows_row` (SR-A53-NARROW; rewritten by SR-OD1 S3): windows with peak fields set > 0 wherever the result policy admits peaks (0 there is
+                      a defect); the legacy `maximise_earliest` sampler never numbers a window; every window the solver was asked to solve ended certified or
+                      blank-with-a-reason. No search edges are demanded (a time-varying window is solved, not searched; a constants-only slice has none).
   * non-interference  `noninterference_proof`: for every cell the final rules DO change, no record of the measuring rule version leaks in
                       and a cell the final rules suppress holds no row; and the measuring (default) rule profile is still the default
                       after the final-rules build (the profile did not leak out of its context).
@@ -215,13 +216,16 @@ def _aware(value: str) -> datetime:
 
 @contextmanager
 def observe_build():
-    """Record what the build REALLY did, at the call: the certification policy of every `certify_contact_geometry` call and the number of
-    `maximise_earliest` calls (one per non-constant objective piece). The module attributes are wrapped for the build and restored; nothing
-    is assumed from configuration (N.8: a claim about the policy needs a detector that sees the policy)."""
+    """Record what the build REALLY did, at the call: the certification policy of every `certify_contact_geometry` call, the number of `maximise_earliest`
+    calls (the LEGACY sampler — a window must never be numbered by it, S3) and what the window SOLVER did (`window_solver.solve`: calls, windows solved with a
+    certificate, blanks by reason, ephemeris evaluations). The module attributes are wrapped for the build and restored; nothing is assumed from configuration
+    (N.8: a claim about the policy needs a detector that sees the policy)."""
     from services.gochara_kernel import contact_certify as cc
+    from services.gochara_kernel import window_solver as sol
     from services.gochara_kernel import window_sweep as ws
-    observed: dict = {"certification_policies": [], "maximise_earliest_calls": 0}
-    real_certify, real_maximise = cc.certify_contact_geometry, ws.maximise_earliest
+    observed: dict = {"certification_policies": [], "maximise_earliest_calls": 0,
+                      "solver": {"calls": 0, "certified": 0, "blank": {}, "evals": 0, "max_window_evals": 0}}
+    real_certify, real_maximise, real_solve = cc.certify_contact_geometry, ws.maximise_earliest, sol.solve
 
     def certify(*args, **kwargs):
         observed["certification_policies"].append(kwargs.get("sink_policy", cc.POLICY_RAISE))
@@ -230,11 +234,23 @@ def observe_build():
     def maximise(*args, **kwargs):
         observed["maximise_earliest_calls"] += 1
         return real_maximise(*args, **kwargs)
-    cc.certify_contact_geometry, ws.maximise_earliest = certify, maximise
+
+    def solve(*args, **kwargs):
+        res = real_solve(*args, **kwargs)
+        seen = observed["solver"]
+        seen["calls"] += 1
+        seen["evals"] += res.evals
+        seen["max_window_evals"] = max(seen["max_window_evals"], res.evals)
+        if res.status == sol.SOLVED and res.certificate is not None:
+            seen["certified"] += 1
+        elif res.status == sol.BLANK:
+            seen["blank"][res.reason] = seen["blank"].get(res.reason, 0) + 1
+        return res
+    cc.certify_contact_geometry, ws.maximise_earliest, sol.solve = certify, maximise, solve
     try:
         yield observed
     finally:
-        cc.certify_contact_geometry, ws.maximise_earliest = real_certify, real_maximise
+        cc.certify_contact_geometry, ws.maximise_earliest, sol.solve = real_certify, real_maximise, real_solve
 
 
 def ensure_near_miss_layer(conn: Any) -> str:
@@ -775,9 +791,19 @@ def certification_proof(observed: dict, measured: dict | None) -> dict:
 # ── the peak-windows row (SR-A53-NARROW) ─────────────────────────────────────────────────────────────────────────
 
 def peak_windows_row(conn: Any, *, chart_id: str, classes: list[str], observed: dict, generation: str = GENERATION) -> dict:
-    """Windows with peak fields set and `maximise_earliest` edges (SR-A53-NARROW 4): both must be > 0 wherever the rules admit a peak, and 0 there is
-    a defect, not a pass. Under `all_null_candidate/1` no peak is admitted: the row then reports the counts, `admitted` false, and a peak that is set
-    anyway is a defect (migration 1240 forbids it)."""
+    """The peak-windows row (SR-A53-NARROW 4; rewritten by SR-OD1 S3, N-7). Under `window_qualification/1` (table /2) a window with a time-varying factor
+    is SOLVED, not searched, so the old demand — `maximise_earliest` edges > 0 — asserted a search that no longer exists. What this row measures instead:
+
+      * windows with peak fields set > 0 where the rules admit a peak (0 there is a defect, not a pass) — unchanged;
+      * the LEGACY SAMPLER (`maximise_earliest`) was never used: a window numbered by search carries no certificate (a count > 0 is a defect);
+      * every window the solver was asked to solve is ACCOUNTED: calls = solved with a certificate + blank under a named reason (a call that ends neither
+        way is a defect);
+      * the number of windows the solver numbered (each with its certificate) does not exceed the windows that carry a peak.
+
+    It does NOT demand solver calls: a slice whose windows are all constant (a constants-only or Stage-A policy, or classes with no time-varying factor)
+    has no certificate to demand. Populations are counted AFTER the build's own classification (what the solver returned), never from a prior guess.
+    Under `all_null_candidate/1` no peak is admitted: the row then reports the counts, `admitted` false, and a peak that is set anyway is a defect
+    (migration 1240 forbids it)."""
     from services.gochara_kernel import result_policy as rp
     problems = []
     try:
@@ -789,18 +815,26 @@ def peak_windows_row(conn: Any, *, chart_id: str, classes: list[str], observed: 
                           " AND (peak_instant IS NOT NULL OR score IS NOT NULL OR objective_value IS NOT NULL)", (chart_id, generation, list(classes))).fetchone()[0]
     n_all = conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s AND event_class = ANY(%s)",
                          (chart_id, generation, list(classes))).fetchone()[0]
-    edges = int((observed or {}).get("maximise_earliest_calls", 0))
+    legacy = int((observed or {}).get("maximise_earliest_calls", 0))
+    seen = (observed or {}).get("solver") or {"calls": 0, "certified": 0, "blank": {}, "evals": 0, "max_window_evals": 0}
+    blank = sum(seen["blank"].values())
     admitted = policy == rp.POLICY_QUALIFICATION
     if admitted:
         if n_peak == 0:
             problems.append("peak_windows_zero: no window carries a peak field although window_qualification/1 admits them")
-        if edges == 0:
-            problems.append("maximise_earliest_edges_zero: the sweep never maximised an objective although window_qualification/1 admits peaks")
+        if legacy:
+            problems.append(f"legacy_search_used: {legacy} call(s) of window_sweep.maximise_earliest — the sampler can only under-estimate and carries no certificate")
+        if seen["calls"] != seen["certified"] + blank:
+            problems.append(f"solver_calls_unaccounted: {seen['calls']} solve call(s) ended as {seen['certified']} certified + {blank} blank")
+        if seen["certified"] > n_peak:
+            problems.append(f"certificates_without_windows: {seen['certified']} certified solve(s) but only {n_peak} window(s) carry a peak field")
     elif policy is not None and n_peak:
         problems.append(f"peak_present_under_{policy}: {n_peak} window(s) carry a peak field")
     return {"passed": not problems, "result_policy": policy, "admitted": admitted, "windows": n_all, "windows_with_peak_fields_set": n_peak,
-            "maximise_earliest_edges": edges,
-            "edges_are": "calls of window_sweep.maximise_earliest during the build (one per non-constant objective piece)",
+            "legacy_search_calls": legacy,
+            "solver": {"calls": seen["calls"], "certified": seen["certified"], "blank_by_reason": dict(sorted(seen["blank"].items())),
+                       "evals": seen["evals"], "max_window_evals": seen["max_window_evals"]},
+            "solver_is": "calls of window_solver.solve during the build (one per window with a qualified time-varying member)",
             "problems": problems}
 
 

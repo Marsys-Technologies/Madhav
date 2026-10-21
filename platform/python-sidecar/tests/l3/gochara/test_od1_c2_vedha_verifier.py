@@ -271,8 +271,9 @@ def test_c2_10_verify_window_semantics_derives_the_overlay_itself_and_reproduces
     conn = _window_world(quiet("mars") + [("mars", "span:2", D(-5), D(20)), ("mars", f"span:{SUN_VEDHA_SIGN_H9}", D(20), D(30)),
                                           ("mars", "span:8", D(30), D(400))])
     rows = [{"factor_id": "vedha_attenuation", "rule_version": "9.0.0", "null_state": "unqualified"}]
+    # S3: the stored window is the RETIRED switch's blank, so this is the legacy-switch world (`dynamic_enabled=False`); the solver world is test_od1_s3_integration
     out = wv.verify_window_semantics(conn, chart_id=CHART, generation=GEN, event_class=CLS, path_id="P2", rule_version="1.0.0",
-                                     factor_rows=rows, vedha_bound=True, policy=wv.POLICY_VERSION, moon_sign=MOON)
+                                     factor_rows=rows, vedha_bound=True, policy=wv.POLICY_VERSION, moon_sign=MOON, dynamic_enabled=False)
     assert out["status"] == "VERIFIED" and out["fully_reproduced"] == 1
     assert out["vedha_derivation"]["applicable"] == 1 and out["vedha_derivation"]["moon_sign"] == MOON
     assert out["vedha_derivation"]["scopes"] == [vd.MOON_SCOPE] and len(out["vedha_derivation"]["pairs_digest"]) == 64

@@ -70,7 +70,7 @@ from services.gochara_kernel import arcs as gk_arcs
 from services.gochara_kernel.dasha_read import make_period_rows_for, make_period_rows_for_snapshot
 from services.gochara_kernel.chart_context import (fetch_chart_context, fetch_chart_context_from_snapshot,
                                                    require_complete)
-from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots
+from services.gochara_kernel.knots import calc_sidereal_lon, calc_sidereal_lon_speed, sample_knots
 from services.gochara_kernel.record_store import (RecordStore,
                                                   materialise_record_grain,
                                                   write_class_coverage)
@@ -1872,6 +1872,16 @@ class GocharaV5Writer(WriterBase):
                     "Swiss bit (F-14 — a Moshier fallback is a named failure, never a silent probe)")
             return lon
 
+        def speed_at(body: str, t: datetime) -> tuple:
+            """The solver's seam (S3): (sidereal longitude, Swiss longitudinal speed in degrees per DAY) from ONE ephemeris call; the same Swiss-bit
+            discipline as `position_at`."""
+            jd = t.timestamp() / 86400.0 + _JD_UNIX_EPOCH
+            lon, speed, retflag = calc_sidereal_lon_speed(body.title(), jd, ephe_path)
+            if not (retflag & 2):
+                raise RuntimeError(
+                    f"speed probe {body} @ {t.isoformat()}: retflag {retflag} lacks the Swiss bit (F-14 — a Moshier fallback is a named failure)")
+            return lon, speed
+
         store = WindowStore(ctx.db_conn)
         # SR-OD1 P1a / D2: the P1 operand sources, only when bound — per-factor `P1_VALUE_RULES`, or the Form B table the grain's version
         # declares (read from the persisted rows the sweep itself evaluates); the L0 tables are read through the validated loaders,
@@ -1911,7 +1921,7 @@ class GocharaV5Writer(WriterBase):
             p1_ops = p1_operands_for(version)
             records = store.read_grain(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
-                path_id=path_id, rule_version=version, position_at=position_at, p1=p1_ops)
+                path_id=path_id, rule_version=version, position_at=position_at, p1=p1_ops, speed_at=speed_at)
             # R4 (SR-Q6-L1-AMEND): a Form B grain records the combustion authority its states were derived from (orb row ids + digest, the
             # L1 module's digest) in every window's qualification provenance; the verifier re-derives the same record from its own reads
             inherited = gk_p1_operands.grain_inheritance(p1_ops)
@@ -1919,9 +1929,11 @@ class GocharaV5Writer(WriterBase):
             if hasattr(vedha, "for_grain"):    # C1: a source bound to this grain (its reads are lazy: only a vedha-bearing record triggers them)
                 vedha = vedha.for_grain(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
                                         records=records)
+            # S3: a window with a qualified function-valued member is SOLVED (certified maximum + earliest tie instant) or blank under a named solver reason —
+            # never the retired dynamic switch. The budget is per window; the independent solver check runs once, in the verification job (N-6, below).
             drafts, ex = gk_window_sweep.draft_windows(
                 event_class, records, bound_rows, drishti=DRISHTI_SOURCE, vedha=vedha,
-                policy=policy, combustion_inheritance=inherited)
+                solver=gk_window_sweep.PRODUCTION_SOLVER, policy=policy, combustion_inheritance=inherited)
             counts = store.replace_grain_windows(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version, drafts=drafts)
@@ -1964,16 +1976,17 @@ class GocharaV5Writer(WriterBase):
                 f"{' — ' + ', '.join(why) if why else ''} — score/evidence/peak NULL, severity NULL by "
                 f"ruling), {memberships} membership row(s); excluded records {excluded}; independent SQL "
                 "components + member-support geometry checked; semantic re-derivation: ")
-        tail = (f"{reproduced} window(s) reproduced exactly, {unverified} UNVERIFIED (function-valued "
-                "members — checked against universal bounds only; this result does NOT satisfy a "
-                "verification gate)" if unverified
+        pending = unverified - solver_deferred          # numbered by the solver, its independent check left to the verification job (N-6)
+        tail = (f"{reproduced} window(s) reproduced exactly"
+                + (f", {pending} UNVERIFIED (function-valued members — checked against universal bounds only; this result does NOT satisfy a "
+                   "verification gate)" if pending else "")
+                + (f", {solver_deferred} numbered by the solver with its independent check DEFERRED to the verification job (not a pass)"
+                   if solver_deferred else "") if unverified
                 else f"reproduced all {reproduced} window(s) exactly")
         stored_note = ("; verification result NOT persisted by the builder — verification_pending_verifier_principal "
                        "(the separate verification job writes it; the candidate gate stays closed until it has run)")
-        deferral = (f"; solver check deferred to the verification job for {solver_deferred} window(s)"
-                    if solver_deferred else "")
         return WriterResult(asset_id=self.asset_id, rows_inserted=windows + memberships,
-                            notes=head + tail + deferral + stored_note)
+                            notes=head + tail + stored_note)
 
     @staticmethod
     def _take_chart_lock(ctx: ContextSpec, chart_id: str) -> None:

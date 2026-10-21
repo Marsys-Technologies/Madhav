@@ -150,7 +150,10 @@ def qual_gate(**over):
     """A PASSED numerical-window gate verdict whose counts the attestations below agree with: 5 windows, 3 numbered, 2 blank with a reason (OD-1, SR-OD1-DESIGN)."""
     g = {"schema": "numerical_window_gate/1", "status": "PASSED", "policy": bc.POLICY_QUALIFICATION, "table": BOUND, "grains": 2, "windows": 5, "numbered_windows": 3,
          "numbered_without_score": 0, "blank_windows": 2, "valence_of_numbered": {"favourable": 3}, "by_path": {}, "problems": [],
-         "honest_nulls": [{"path_id": "P1", "group": "categorical_factor_unmapped", "reason": "value_mapping_undeclared", "windows": 2}]}
+         "honest_nulls": [{"path_id": "P1", "group": "categorical_factor_unmapped", "reason": "value_mapping_undeclared", "windows": 2}],
+         # SR-OD1 S3: the same blanks counted per GRAIN (class x path x version), which the approval check requires to account for every blank window
+         "honest_nulls_by_grain": [{"event_class": "marriage", "path_id": "P1", "rule_version": "1.0.0", "group": "categorical_factor_unmapped",
+                                    "reason": "value_mapping_undeclared", "windows": 2}]}
     g.update(over)
     return g
 

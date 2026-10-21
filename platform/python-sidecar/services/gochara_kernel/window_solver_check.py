@@ -661,20 +661,21 @@ class _Engine:
         a candidate: the located one must itself reach theta (a kinked crest is narrower than a sample)."""
         ninf = float("-inf")
         out = []
-        cur = None                                              # [value, first_point, n, point_before, left_lower]
+        cur = None                                              # [value, first_point, n, point_before, left_lower, run_points]
         prev_pt = None
         for pt in self._points(theta):
             f = ninf if pt[0] == "gap" else pt[1]
             if cur is not None and ((f == ninf and cur[0] == ninf) or (f > ninf and cur[0] > ninf
                                                                        and abs(f - cur[0]) <= PLATEAU_EPS)):
                 cur[2] += 1
+                cur[5].append(pt)
                 prev_pt = pt
                 continue
             if cur is not None and cur[0] > ninf and cur[4] and f < cur[0]:
                 got = self._locate(cur, pt)
                 if got[1] >= theta:
                     out.append(got)
-            cur = [f, pt, 1, prev_pt, cur is None or cur[0] < f]
+            cur = [f, pt, 1, prev_pt, cur is None or cur[0] < f, [pt]]
             prev_pt = pt
         if cur is not None and cur[0] > ninf and cur[4]:
             got = self._locate(cur, None)
@@ -683,15 +684,27 @@ class _Engine:
         return out
 
     def _locate(self, run, after):
-        _, first, n, before, _ = run
+        _, first, n, before, _, run_pts = run
         t0, f0, kind = first
         if n == 1 and kind == "end":
             return t0 - US, f0
+        if n > 1 and kind == "interior":
+            # Equal samples inside one refined piece are a PLATEAU — or the two flanks of a kinked crest that happen to be sampled at equal heights (flanks of
+            # unequal slope: the equal samples then sit at unequal distances from the crest, an exact tie of two floats). The midpoint between consecutive equal
+            # samples tells them apart: a plateau is flat there; a crest is above it, and is then located between those two samples.
+            for p, q in zip(run_pts, run_pts[1:]):
+                if p[2] == q[2] == "interior" and 0.0 < q[0] - p[0] <= 2.0 * LEAF_S:
+                    fm = self._objective_at(0.5 * (p[0] + q[0]))
+                    if fm is not None and fm > f0 + PLATEAU_EPS:
+                        return self._golden(p[0], q[0], t0, f0)
         if n > 1 or kind != "interior":
             return t0, f0
         lo_t = before[0] if before is not None and before[0] != "gap" else t0 - LEAF_S
         hi_t = after[0] if after is not None and after[0] != "gap" else t0 + LEAF_S
-        lo_t, hi_t = min(lo_t, t0), max(hi_t, t0)
+        return self._golden(min(lo_t, t0), max(hi_t, t0), t0, f0)
+
+    def _golden(self, lo_t, hi_t, t0, f0):
+        """The maximum of F inside [lo_t, hi_t] by golden-section search, to a microsecond; never worse than (t0, f0)."""
         g = (math.sqrt(5.0) - 1.0) / 2.0
         a, b = lo_t, hi_t
         c, d = b - g * (b - a), a + g * (b - a)

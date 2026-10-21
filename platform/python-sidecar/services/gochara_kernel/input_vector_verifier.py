@@ -169,8 +169,8 @@ _KNOWN_SCOPES = ("stored_non_moon",)
 _KNOWN_POLICIES = ("all_null_candidate/1", "window_qualification/1")
 #: OD-1 (SR-OD1-NUMERICAL): this verifier's OWN literal of the frozen `window_qualification/1` table binding (nothing imported from the builder's
 #: `result_policy`; a test asserts the two equal). The vector must carry exactly this component under that policy and none under the all-NULL one.
-QUALIFICATION_TABLE_BINDING = {"schema": "window_qualification_table/1",
-                               "digest": "5bbc65bb5fc98547bf0bea5d1ff90c76965155f3166a7042a11ab34772e6a80f"}
+QUALIFICATION_TABLE_BINDING = {"schema": "window_qualification_table/2",
+                               "digest": "f2c831a46c32ddb534cb07443e798f6c0fdce448c1b191570565f698ff5de3a9"}
 #: G8: the verifier's OWN scored-class universe (nothing imported from the builder): the 26 scored event classes of the evaluation
 #: protocol's fixed 27-class table (EVALUATION_PROTOCOL_v2_3 §2; gochara_eval.registry.CLASSES_27) minus `birth_anchor`, which is an
 #: unscored annotation — the evaluator refuses to enumerate it by design (O-CF-N6: zero rows). A drift test pins this tuple equal to both

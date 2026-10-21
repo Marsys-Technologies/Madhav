@@ -616,10 +616,11 @@ def test_a_fabricated_evidence_for_of_123_on_a_one_root_dynamic_window_is_refuse
     _write(conn, cls, "P2", [dataclasses.replace(drafts[0], evidence_against=3.0)])
     with pytest.raises(RuntimeError, match="evidence_against 3.0 is outside"):
         _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True, vedha_overlay=_VEDHA_FN)
-    # under the SWITCH (what the writer runs) any number on such a window is refused outright
+    # under the retired SWITCH any number on such a window is refused outright. S3 made the solver the default (`dynamic_enabled=None` follows the table), so the legacy
+    # switch is now selected explicitly: the claim (a number on a window the switch leaves blank is refused) is unchanged, only how the test asks for the switch moved.
     with pytest.raises(RuntimeError, match="partial subtotal was stored"):
         _write(conn, cls, "P2", [dataclasses.replace(drafts[0], evidence_for=123.0)])
-        _verify(conn, cls, "P2", vedha_bound=True, vedha_overlay=_VEDHA_FN)
+        _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=False, vedha_overlay=_VEDHA_FN)
 
 
 def test_a_genuine_dynamic_window_is_reported_unverified_and_cannot_satisfy_the_gate(p2_grain, monkeypatch):

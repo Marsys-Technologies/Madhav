@@ -466,7 +466,11 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) from the merged tree's real bytes (the prior pin bc169218... is the wave-1 head); no golden component is re-captured.
     # Evaluation re-pinned at the SR-OD1 merge-back wave 2 (D3): D3 owner-confirmed vedha: rule_registry, inventory_verifier, vedha_source and the registry rows moved. Re-derived from the merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin ec5ef7a9... is the head before this merge); no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "b66b58471499af68d2833b2ccd5f9e78edcf9de8d69de5ae7a60116e27025787"
+    # Evaluation re-pinned for SR-OD1 S3 (the solver wired end to end): ka_gochara_v5 (the writer asks the solver, carries its named reasons) and input_vector (the solver and its
+    # prover join the identity) changed. Re-derived the same way (the prior pin 26e70004... is the I1 union); geometry is asserted unchanged below and no golden component is re-captured.
+    # Evaluation re-pinned at the SR-OD1 merge-back wave 2 (S3 on R2+D3+R8): S3 solver wiring (ka_gochara_v5, input_vector) joins the R2/D3 evaluation edits on one tree. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin b66b5847... is the head before this merge); no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "65ba9ca9b110ce9284cc3ede07c6f0fb703f228633512e066876c34f315d2900"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
@@ -496,4 +500,8 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 875d5eec... is the head before this merge); no golden component is re-captured.
     # Window re-pinned at the SR-OD1 merge-back wave 2 (R8): R8 sharded aggregate: verification_job / numerical_window_gate (window stage) changed; evaluation and geometry are unchanged. Re-derived from the merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 51971966... is the head before this merge); no golden component is re-captured.
-    assert got["implementation"]["window"] == "0c0ae8a9bbbba936f2925fda33d2d9eda0260ad7aebeaa6ebf4de7f7692cf410"
+    # Window re-pinned for SR-OD1 S3: window_sweep (the builder calls window_solver), window_verifier (the prover re-derives and compares), window_store, window_solver_check,
+    # numerical_window_gate and result_policy (table /2) changed. Re-derived the same way (the prior pin fc0e7500... is the I1 union); geometry is unchanged by S3.
+    # Window re-pinned at the SR-OD1 merge-back wave 2 (S3 on R2+D3+R8): S3 window_sweep/window_verifier/window_store/numerical_window_gate on top of R8/D3/R2; geometry unchanged. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 0c0ae8a9... is the head before this merge); no golden component is re-captured.
+    assert got["implementation"]["window"] == "bb608cdadd10c9eb44b1086e8d467362bf9c7fc3e2363915fff07b366b97233e"
