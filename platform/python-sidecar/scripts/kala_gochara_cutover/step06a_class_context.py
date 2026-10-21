@@ -264,7 +264,9 @@ def _jsonable_period(p: dict) -> dict:
     JSON. ISO strings round-trip through DD.period_contains."""
     out = {}
     for k, v in p.items():
-        if isinstance(v, datetime):
+        if k == DD.MUDDA_OVERLAP_KEY:     # SR-W56-S3: interval dicts must stay dicts, or the blank reason is lost
+            out[k] = [_jsonable_period(i) for i in v]
+        elif isinstance(v, datetime):
             out[k] = v.isoformat()
         elif isinstance(v, (list, tuple)):
             out[k] = [str(x) for x in v]

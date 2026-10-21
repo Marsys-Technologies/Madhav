@@ -68,6 +68,80 @@ _MULTILEVEL_CONTRACT_FIELDS = ("lord_graha", "end_iso", "build_id",
                                "verification_pass_status")
 
 
+# SR-W56-S3 (owner-surrogate ruling 2026-10-21): the settled build's Tājika mudda years overlap
+# their successor by minutes (an L1 boundary defect, filed as F-L1-MUDDA-OVERLAP). L1 is not
+# changed and no boundary is invented: inside such an overlap the mudda lord is UNRESOLVED and
+# every dependent value reads blank with this reason. Any other overlap still raises.
+MUDDA_OVERLAP_REASON = "l1_mudda_boundary_overlap"
+MUDDA_OVERLAP_MAX_SECONDS = 86_400
+MUDDA_SYSTEM = "mudda"
+MUDDA_YEAR_LEVEL = 1          # one level-1 row = one varsha (ga_dashas_writer mudda "Varsha" rows)
+MUDDA_OVERLAP_KEY = "l1_mudda_boundary_overlaps"
+
+
+def _instant(value) -> datetime:
+    if isinstance(value, str):
+        value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value
+
+
+def mudda_boundary_overlap_seconds(system: str, level: int, a: dict, b: dict) -> Optional[float]:
+    """The overlap, in seconds, of two CONSECUTIVE rows `a` then `b` (sorted by start) iff it is a
+    named L1 mudda boundary defect: same chart, mudda, level-1 (year) rows, `a` starting before and
+    ending before `b` ends, and 0 < overlap <= 86,400 s. Otherwise None (the caller raises)."""
+    if system != MUDDA_SYSTEM or level != MUDDA_YEAR_LEVEL:
+        return None
+    if a.get("chart_id") != b.get("chart_id"):
+        return None
+    try:
+        a_start, a_end, b_start, b_end = (_instant(x.get(k)) for x, k in
+                                          ((a, "start_iso"), (a, "end_iso"), (b, "start_iso"), (b, "end_iso")))
+    except (ValueError, TypeError, AttributeError):
+        return None
+    if not (a_start < b_start < a_end < b_end):
+        return None
+    seconds = (a_end - b_start).total_seconds()
+    return seconds if 0 < seconds <= MUDDA_OVERLAP_MAX_SECONDS else None
+
+
+def _blank_mudda_overlaps(sib: list[dict], named: list[tuple[int, int]]) -> None:
+    """Cut each named pair to its own side of the overlap, so NO row covers the overlap interval
+    [b.start, a.end): the instant resolves to no mudda lord (never to a row-order pick). Both rows
+    carry the interval and the reason; the stored bounds stay on the row for audit."""
+    cuts = []
+    for i, j in named:
+        a, b = sib[i], sib[j]
+        a_end, b_start = a["end_iso"], b["start_iso"]
+        cuts.append((a, b, {"reason": MUDDA_OVERLAP_REASON, "start_iso": b_start, "end_iso": a_end,
+                            "seconds": (_instant(a_end) - _instant(b_start)).total_seconds()}))
+    for a, b, interval in cuts:       # classify on stored bounds first, cut afterwards (a middle row is cut twice)
+        a.setdefault("end_iso_stored", a["end_iso"])
+        b.setdefault("start_iso_stored", b["start_iso"])
+        a["end_iso"], b["start_iso"] = interval["start_iso"], interval["end_iso"]
+        for row in (a, b):
+            row.setdefault(MUDDA_OVERLAP_KEY, []).append(dict(interval))
+
+
+def unresolved_mudda_overlap_at(periods, dt_iso) -> Optional[dict]:
+    """The named overlap interval ({reason, start_iso, end_iso, seconds}) containing `dt_iso`, or
+    None. Half-open [start, end), like every other period."""
+    for period in periods:
+        for interval in period.get(MUDDA_OVERLAP_KEY) or ():
+            if period_contains(interval, dt_iso):
+                return interval
+    return None
+
+
+def mudda_overlap_census(periods) -> dict:
+    """Count of DISTINCT named overlaps in a read (each is carried by both of its rows)."""
+    seen = {(str(i["start_iso"]), str(i["end_iso"])): i["seconds"]
+            for p in periods for i in (p.get(MUDDA_OVERLAP_KEY) or ())}
+    return {"reason": MUDDA_OVERLAP_REASON, "overlaps_named": len(seen),
+            "overlap_seconds_total": sum(seen.values())}
+
+
 def canonicalize_multilevel_rows(rows: list[dict]) -> list[dict]:
     """The §4.0 duplicate rules as ONE pure pass over already-PINNED rows
     (GOCHARA_DESIGN_SPECS_v1_4 §4.0; ASTRA_REVIEW_A5_4 v1.1 P1-2). Used by
@@ -88,6 +162,9 @@ def canonicalize_multilevel_rows(rows: list[dict]) -> list[dict]:
       4. `(level, parent, index)` conflict — two surviving siblings whose
          half-open intervals overlap compete for one identity/instant:
          reject both, fail loudly (DashaReadConflict), never row-order pick.
+         ONE named exception (SR-W56-S3, `mudda_boundary_overlap_seconds`): consecutive
+         Tājika year rows overlapping by 0 < s <= 86,400 s read as an UNRESOLVED
+         interval (`l1_mudda_boundary_overlap`), not a conflict.
     The pinning (build / ayanāṃśa / tier) MUST happen before this pass —
     the caller's job; this function does not know the pins.
     """
@@ -132,14 +209,23 @@ def canonicalize_multilevel_rows(rows: list[dict]) -> list[dict]:
         sib.sort(key=lambda r: (str(r.get("start_iso")), str(r.get("end_iso"))))
         for idx, row in enumerate(sib):
             row["index"] = idx
-        for a, b in zip(sib, sib[1:]):
-            if str(b.get("start_iso")) < str(a.get("end_iso")):
+        named: list[tuple[int, int]] = []
+        for i, (a, b) in enumerate(zip(sib, sib[1:])):
+            if not str(b.get("start_iso")) < str(a.get("end_iso")):
+                continue
+            # SR-W56-S3: ONE narrow exception — a consecutive Tājika year pair of a chart whose
+            # overlap is a named L1 boundary defect. Anything else is the conflict it always was.
+            later = sib[i + 2:]      # a year overlapping a non-adjacent year (or leaving the middle one empty) is no boundary defect
+            if (mudda_boundary_overlap_seconds(system, level, a, b) is None
+                    or any(str(c.get("start_iso")) <= str(a.get("end_iso")) for c in later)):
                 raise DashaReadConflict(
                     f"chart_dashas §4.0 (level, parent, index) conflict: {system} "
                     f"level {level} under parent {parent} — rows "
                     f"{a.get('dasha_row_id')} [{a.get('start_iso')}, {a.get('end_iso')}) and "
                     f"{b.get('dasha_row_id')} [{b.get('start_iso')}, {b.get('end_iso')}) "
                     "overlap — both rejected, never silently picked")
+            named.append((i, i + 1))
+        _blank_mudda_overlaps(sib, named)
     return survivors
 
 
@@ -194,6 +280,8 @@ def period_contains(period: dict, dt_iso: str) -> bool:
 
 
 __all__ = ["DASHA_SYSTEMS", "fetch_dasha_periods", "fetch_dasha_periods_multilevel",
-           "canonicalize_multilevel_rows",
+           "canonicalize_multilevel_rows", "MUDDA_OVERLAP_REASON", "MUDDA_OVERLAP_MAX_SECONDS",
+           "mudda_boundary_overlap_seconds", "unresolved_mudda_overlap_at", "mudda_overlap_census",
+           "MUDDA_OVERLAP_KEY",
            "build_fixture_dasha_periods", "period_contains", "DashaReadConflict",
            "DEFAULT_LEVELS", "READ_CONTRACT_TIER"]

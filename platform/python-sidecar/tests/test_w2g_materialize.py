@@ -284,6 +284,30 @@ def test_materialize_event_class_honest_empty_when_all_candidates_inactive():
     assert result.rows == []
 
 
+def test_materialize_event_class_counts_the_named_l1_mudda_overlaps_of_the_dasha_read_it_used():
+    """SR-W56-S3: the per-class result carries the census of the named mudda boundary overlaps in the read this class scored against
+    (ka_gochara writes it into its run notes)."""
+    from datetime import datetime, timedelta, timezone
+    from services.gochara_grammar import dasha_data as DD
+    start = datetime(2001, 3, 1, tzinfo=timezone.utc)
+
+    def year(i, extra):
+        s0 = start + i * timedelta(days=365)
+        return {"dasha_row_id": f"m{i}", "system_id": "mudda", "level_n": 1, "parent_row_id": None, "lord_graha": "Sun",
+                "start_iso": s0, "end_iso": s0 + timedelta(days=365) + extra, "build_id": "b", "verification_pass_status": "t"}
+    read = DD.canonicalize_multilevel_rows([year(0, timedelta(minutes=10)), year(1, timedelta(0))])
+    source = InMemoryArcSource({"Saturn": _direct_arcs("Saturn", 400, 1.0, lon0=0.0)})
+    result = materialize_event_class(
+        swe, conn=None, chart_id="c1", event_class="marriage", arc_source=source,
+        horizon_start_jd=JD0, horizon_end_jd=JD0 + 399, bodies=["Saturn"],
+        fetch_resonance_targets=lambda *a, **k: [_target("Saturn", 250.0)],
+        fetch_dasha_periods=lambda *a, **k: read,
+        compute_lambda_e_fn=_fake_scorer(active_jds=set()),
+        fetch_temporal_shape_fn=lambda *a, **k: "point",
+    )
+    assert result.mudda_overlap == {"reason": "l1_mudda_boundary_overlap", "overlaps_named": 1, "overlap_seconds_total": 600}
+
+
 def test_generation_stamp_is_2_0():
     assert GENERATION_V2 == "2.0"
 
