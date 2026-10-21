@@ -179,7 +179,7 @@ def test_p1s_form_b_version_supersedes_1_0_0_under_the_owners_ruling_on_both_ind
     """SR-OD1 D2: the registry approves P1 1.0.0 -> 1.3.0; the planner and the verifier each carry that fact and name the same basis — the
     ruling, not an amendment. Planted reversion: either side's basis falls back to the AM-13 anchor."""
     from services.gochara_kernel import inventory as planner
-    assert planner._approved_successor("P1", "1.0.0") == "1.3.0"
+    assert planner._approved_successors("P1", "1.0.0") == frozenset({"1.3.0"})      # V1 renamed the helper: every approved successor, as a set
     assert planner.supersession_basis("P1", "1.0.0", "1.3.0") == ver._supersession_basis("p1", "1.0.0", "1.3.0") == "ruling:P1-MAPPING-DECISION"
     assert planner.supersession_basis("P3", "1.0.0", "1.1.0") == ver._supersession_basis("p3", "1.0.0", "1.1.0")      # the AM-13 anchor is unchanged
 

@@ -161,6 +161,10 @@ def test_an_h_unknown_class_selects_final_rows_under_the_final_rules_and_its_leg
     """Under the explicit final-rule opt-in the formerly unknown class selects final rows; its legacy rows are superseded."""
     from services.gochara_kernel import rule_registry
     step, conn = run
+    # SR-OD1 V1 + P1a: the final profile now binds P1@1.3.0, whose three L0 reference tables the build consumes and binds into its input
+    # vector (`_l0_consumed`); this fixture's DB carries no L0, so the real seed (migration 250: the same rows production reads) is applied
+    from pathlib import Path
+    conn.execute((Path(__file__).resolve().parents[4] / "migrations" / "250_bg_dignity_reference.sql").read_text(encoding="utf-8"))
     with rule_registry.rule_profile(final_rules=True):
         RuleRegistryStore(conn).seed()          # the 1.2.0 rows are part of the bound catalogue only under the final profile
     for k in (writer_mod.CONVENTION_SUBSTEP, writer_mod.MANIFEST_SUBSTEP,
@@ -235,9 +239,10 @@ def test_a_substep_after_the_manifest_refuses_a_registry_that_moved(run, monkeyp
     from services.gochara_kernel import rule_registry as rr
     from services.gochara_rules import registry as rules_registry
     paths = dict(rules_registry.RULE_PATHS)
-    paths[("P3", "1.3.0")] = dict(paths[("P3", "1.0.0")], rule_version="1.3.0")
+    # SR-OD1 V1: 1.3.0 is a real version now, so the "new sealed version" this test invents must be one that is not
+    paths[("P3", "9.9.9")] = dict(paths[("P3", "1.0.0")], rule_version="9.9.9")
     monkeypatch.setattr(rules_registry, "RULE_PATHS", paths)
-    monkeypatch.setattr(rr, "BOUND_PATH_REFS", rr.BOUND_PATH_REFS + (("P3", "1.3.0"),))
+    monkeypatch.setattr(rr, "BOUND_PATH_REFS", rr.BOUND_PATH_REFS + (("P3", "9.9.9"),))
     rr.RuleRegistryStore(conn).seed()                   # a new sealed version appears AFTER the manifest
     from services.gochara_kernel.input_vector import InputDrift
     with pytest.raises(InputDrift, match="registry"):

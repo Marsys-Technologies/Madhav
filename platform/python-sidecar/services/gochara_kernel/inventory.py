@@ -317,21 +317,28 @@ def _plan_p1(event_class: str, chart: dict, lo: datetime, hi: datetime,
 
 def supersession_basis(path_id: str, old: str, new: str) -> str:
     """The 1206-grammar basis of a `superseded_by_version` pin (non-degrading: no ruling_ref). The anchor names
-    the amendment that approved the successor; the verifier carries its OWN copy of this table."""
-    if (path_id, new) == ("P1", "1.3.0"):                     # SR-OD1 D2: the owner's Form B rule version, a ruling not an amendment
-        return "ruling:P1-MAPPING-DECISION"
+    the amendment that approved the successor; the verifier carries its OWN copy of this table. A successor at the
+    owner-confirmed doctrine version (1.3.0, SR-OD1 V1) names the owner ruling it stands on instead."""
+    if new == _rules.DOCTRINE_VERSION:
+        return f"ruling:{_rules.DOCTRINE_PATH_RULINGS[path_id]}"
     anchor = "AM-18" if path_id == "P2" else "AM-13"
     return f"spec:GOCHARA_SPECS_V1_5_AMENDMENTS@1.5#{anchor}-{path_id.lower()}-{old}-superseded-by-{new}"
 
 
-def _approved_successor(path_id: str, version: str) -> str | None:
-    """The version the registry approves as `path@version`'s successor (None if none)."""
+def _approved_successors(path_id: str, version: str) -> frozenset[str]:
+    """EVERY version the registry approves as a successor of `path@version`: the AM-13 / AM-18 table
+    (`SUPERSEDED_PATHS`, one step) and the owner-confirmed doctrine chain (`DOCTRINE_SUPERSEDED_PATHS`, SR-OD1 V1:
+    1.0.0 → 1.3.0, and 1.1.0 → 1.3.0 for P3/P4). A 1.0.0 row has both, so the selected version decides which applies."""
     from services.gochara_rules import registry as rules_registry
-    row = rules_registry.SUPERSEDED_PATHS.get(rules_registry.composite_ref(path_id, version))
-    if row is None:
-        return None
-    pid, ver = tuple(row["superseded_by"])
-    return ver if pid == path_id else None
+    ref = rules_registry.composite_ref(path_id, version)
+    out = set()
+    for table in (rules_registry.SUPERSEDED_PATHS, rules_registry.DOCTRINE_SUPERSEDED_PATHS):
+        row = table.get(ref)
+        if row is not None:
+            pid, ver = tuple(row["superseded_by"])
+            if pid == path_id:
+                out.add(ver)
+    return frozenset(out)
 
 
 def _exclusion_for(path_id: str, version: str,
@@ -397,6 +404,17 @@ def plan_class_inventory(
                 and event_class not in _rules.ND_H_CLASSES and selected.get(path_id) != rule_version):
             return PinPlan(path_id, rule_version, "excluded", exclusion_reason="not_applicable_to_class",
                            basis=f"ruling:{_rules.ND_H_RULING}"), []
+        # SR-OD1 V1: the 1.3.0 doctrine row is every OTHER class's row. A class that runs the path at its ND-H /
+        # ND-P2 row (1.2.0, re-derived in place from the 1.3.0 soft factors) does not search 1.3.0 — non-degrading,
+        # basis the ruling that put the class on 1.2.0 (the scoped supersession's own ruling, one source).
+        if (rule_version == _rules.DOCTRINE_VERSION and path_id in H_DEPENDENT_PATHS
+                and selected.get(path_id) == _rules.ND_H_VERSION):
+            scoped_row = _rules.CLASS_SUPERSEDED_PATHS.get((event_class, path_id, _rules.RULE_VERSION))
+            if scoped_row is None:
+                raise InventoryBlocked(
+                    f"{event_class}/{path_id}: runs at {_rules.ND_H_VERSION} but names no class-scoped ruling for it")
+            return PinPlan(path_id, rule_version, "excluded", exclusion_reason="not_applicable_to_class",
+                           basis=f"ruling:{scoped_row['ruling_ref']}"), []
         # ND-H item 5: P2 emits no row for a parent class once the class runs under its ND-H rows (the
         # native's Moon never evidences the parent, §1.2 inv 6).
         if (path_id == "P2" and event_class in _rules.P2_NO_ROW_CLASSES
@@ -457,7 +475,7 @@ def plan_class_inventory(
                 pins.append(pin)                 # excluded / computed_empty exactly as the version would be
                 continue
             # a non-selected version that WOULD be searched: superseded by the included selection, or refused
-            if chosen_pin.disposition == "included" and _approved_successor(path_id, rule_version) == chosen:
+            if chosen_pin.disposition == "included" and chosen in _approved_successors(path_id, rule_version):
                 pins.append(PinPlan(path_id, rule_version, "excluded",
                                     exclusion_reason="superseded_by_version",
                                     basis=supersession_basis(path_id, rule_version, chosen)))
