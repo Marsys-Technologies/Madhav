@@ -240,8 +240,8 @@ describe('P08 rebuilt operation boundary', () => {
 // C-02 (BEFORE_SEAL): the sealer DSN is written to Secret Manager `gochara-sealer-db-url` by the sealer-credential stage
 // (platform/scripts/gochara-provision-roles.sh) and NOTHING wrote the GitHub environment secret the workflow used to read.
 describe('gochara-seal-approved.yml sealer DSN from Secret Manager (C-02)', () => {
-  const dsn = 'postgresql://gochara_sealer:Zq9-unique-pw-marker@127.0.0.1:5432/amjis'
-  const pw = 'Zq9-unique-pw-marker'
+  const dsn = 'postgresql://gochara_sealer:fake-Zq9-marker@127.0.0.1:5432/amjis'
+  const pw = 'fake-Zq9-marker'
   const sealStep = (seal.steps as any[]).find((s) => String(s.run ?? '').includes('gochara-seal-approved.sh'))
   const reconcileStep = (seal.steps as any[]).find((s) => String(s.run ?? '').includes('gochara_seal_reconcile.py'))
   const gcloudOk = `process.stdout.write(${JSON.stringify(dsn + '\n')}); process.exit(0);`
