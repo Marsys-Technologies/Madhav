@@ -1,0 +1,44 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "W56-WP2-teardown",
+  "entries": {
+    "orchestrator_rebuild_teardown_dryrun": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "platform/python-sidecar/services/kala_core/publication_admission.py",
+      "fixed_args": [
+        "teardown-dryrun"
+      ],
+      "allowed_args": [
+        "run-id"
+      ],
+      "production": false,
+      "enabled_by": "K9-23",
+      "cwd": "platform/python-sidecar",
+      "python_module": "services.kala_core.publication_admission",
+      "timeout_s": 300
+    },
+    "orchestrator_rebuild_teardown": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "platform/python-sidecar/services/kala_core/publication_admission.py",
+      "fixed_args": [
+        "teardown"
+      ],
+      "allowed_args": [
+        "run-id"
+      ],
+      "production": true,
+      "enabled_by": "K9-23",
+      "cwd": "platform/python-sidecar",
+      "python_module": "services.kala_core.publication_admission",
+      "timeout_s": 600
+    }
+  },
+  "classes": {
+    "orchestrator_rebuild_teardown": [
+      "mechanical_exempt",
+      "marker_in_process"
+    ]
+  }
+}
