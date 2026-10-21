@@ -395,7 +395,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Evaluation re-pinned for OD-1 (SR-OD1-NUMERICAL): the ka_gochara_v5 writer's century config now carries result_policy (schema /2) and refuses a final-rules run with no
     # explicit policy, and input_vector binds the qualification table. Re-derived from the merged tree's real bytes the same way (main alone gives f065569b...); no golden
     # component is re-captured (this fixture's run names result_policy all_null_candidate/1, the accepted all-NULL build).
-    assert got["implementation"]["evaluation"] == "e5fae125839c76950bea3e346b764880bada86ecd0d898b81431698f1ba2adec"
+    # Evaluation re-pinned for SR-OD1 W0 (kalayantra/od1-w0-interface, #3832): the ka_gochara_v5 writer's reason pass-through and input_vector (solver_check switch) changed. Re-derived
+    # from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin e5fae125... is the pre-W0 merge); geometry
+    # is asserted unchanged below and no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "906763ec995e15a53e1d0dc9161298f060add406ef7c6f0193ae566cfe64f352"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
@@ -409,4 +412,6 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # (main alone gives 41d28f76...); evaluation and geometry are untouched by this change and equal main's, and no golden component is re-captured.
     # Window re-pinned for OD-1 (SR-OD1-NUMERICAL): numerical_window_gate joins the window stage, and seal_brief / seal_flow / verification_job / seal_job changed. Re-derived the
     # same way from the merged tree's real bytes (main alone gives e0aea2fa...); no golden component is re-captured.
-    assert got["implementation"]["window"] == "7dc92acc1248e58c48390f423b16d90e17a03e89df70ccfdfa9c43b84c828463"
+    # Window re-pinned for SR-OD1 W0 (#3832): window_sweep (per-factor boundaries, per-instant channel hook), window_verifier and window_store changed. Re-derived the same way from
+    # the merged tree's real bytes (the prior pin 7dc92acc... is the pre-W0 merge); geometry is unchanged by W0 and no golden component is re-captured.
+    assert got["implementation"]["window"] == "873236f38e854922e22135875e06d480e99a85e351fe006d77d6c63d31f1f4ca"
