@@ -38,15 +38,14 @@ describe('gochara-seal-approved.yml', () => {
     expect(seal.environment).toBe('gochara-seal')
     expect(seal.needs).toBe('brief')
     const briefText = JSON.stringify(brief)
-    expect(briefText).not.toMatch(/GOCHARA_SEALER_DB_URL/)
-    const sealUses = (seal.steps as any[]).filter((s) => JSON.stringify(s).includes('secrets.GOCHARA_SEALER_DB_URL'))
-    // exactly two steps of the GATED job see it: the orchestrator (the seal) and the read-only reconcile that follows it
-    expect(sealUses).toHaveLength(2)
-    expect(sealUses[0].run).toBe('bash platform/scripts/gochara-seal-approved.sh')
-    expect(String(sealUses[1].run)).toContain('gochara_seal_reconcile.py')
-    expect(String(sealUses[1].run)).not.toMatch(/gochara_seal_approval|seal_job|INSERT|UPDATE/)
-    // the secret appears nowhere else in the whole file
-    expect((text.match(/secrets\.GOCHARA_SEALER_DB_URL/g) ?? []).length).toBe(2)
+    expect(briefText).not.toMatch(/GOCHARA_SEALER_DB_URL|gochara-sealer-db-url|SEALER_SECRET/)
+    // C-02: the Secret Manager read happens in exactly two steps of the GATED job: the orchestrator (the seal) and the read-only reconcile that follows it
+    const sealReads = (seal.steps as any[]).filter((s) => String(s.run ?? '').includes('gcloud secrets versions access'))
+    expect(sealReads).toHaveLength(2)
+    expect(String(sealReads[0].run)).toContain('bash platform/scripts/gochara-seal-approved.sh')
+    expect(String(sealReads[1].run)).toContain('gochara_seal_reconcile.py')
+    expect(String(sealReads[1].run)).not.toMatch(/gochara_seal_approval|seal_job|INSERT|UPDATE/)
+    expect((text.match(/gcloud secrets versions access/g) ?? []).length).toBe(2)
   })
   it('binds both jobs to one reviewed revision: github.sha, an ancestor of origin/main, passed forward and re-checked', () => {
     for (const j of [brief, seal]) {
@@ -106,7 +105,7 @@ describe('gochara-seal-approved.yml', () => {
     const upload = (brief.steps as any[]).find((s) => s.uses?.startsWith('actions/upload-artifact'))
     expect(String(upload.with.path)).toContain('brief.json')
     expect(String(upload.with.path)).toContain('brief.compact.json')
-    const sealStep = (seal.steps as any[]).find((s) => s.run === 'bash platform/scripts/gochara-seal-approved.sh')
+    const sealStep = (seal.steps as any[]).find((s) => String(s.run ?? '').includes('bash platform/scripts/gochara-seal-approved.sh'))
     expect(sealStep.env.BRIEF_FILE).toBe('brief.json')
     expect(sealStep.env.BRIEF_COMPACT_FILE).toBe('brief.compact.json')
   })
@@ -167,6 +166,41 @@ describe('gochara-seal-approved.yml', () => {
     for (const needle of ['requirements-ci.txt', 'import psycopg, swisseph', 'seal_job', 'verification_job', 'seal_flow', 'seal_brief']) expect(run).toContain(needle)
     expect(smoke).toBeLessThan(steps.findIndex((st) => String(st.id ?? '') === 'execute'))
   })
+  it('SR-CHURN-CUT 3: both jobs apply the verified ci-generated overlay for the sealing commit right after the revision bind, before anything that imports the registry or adds files; the brief job checks its own checkout before any approval', () => {
+    const idx = (steps: any[], pred: (s: any) => boolean) => steps.findIndex(pred)
+    const isOverlay = (s: any) => s.uses === './.github/actions/apply-generated-overlay'
+    const bs = brief.steps as any[], ss = seal.steps as any[]
+    expect(bs.filter(isOverlay)).toHaveLength(1)
+    expect(ss.filter(isOverlay)).toHaveLength(1)
+    expect(bs.find(isOverlay).with.sha).toBe('${{ github.sha }}')
+    expect(ss.find(isOverlay).with.sha).toBe('${{ needs.brief.outputs.sealing_commit }}')
+    const bind = (steps: any[]) => idx(steps, (s) => String(s.name).startsWith('Bind to the reviewed sealing revision'))
+    expect(idx(bs, isOverlay)).toBe(bind(bs) + 1)
+    expect(idx(ss, isOverlay)).toBe(bind(ss) + 1)
+    // the verify inside the action refuses a tree changed since its commit: nothing may be downloaded or installed ahead of it in the seal job
+    expect(idx(ss, (s) => String(s.uses ?? '').startsWith('actions/download-artifact'))).toBeGreaterThan(idx(ss, isOverlay))
+    expect(idx(ss, (s) => String(s.name).startsWith('Verify the approval and call the seal job'))).toBeGreaterThan(idx(ss, isOverlay))
+    const smoke = idx(bs, (s) => String(s.name ?? '').startsWith('Smoke the sealing job'))
+    expect(smoke).toBeGreaterThan(idx(bs, isOverlay))
+    const own = bs.findIndex((s) => String(s.run ?? '').includes('seal_flow.check_own_checkout()'))
+    expect(own).toBeGreaterThan(smoke)
+    expect(own).toBeLessThan(idx(bs, (s) => s.id === 'execute'))
+  })
+  it('SR-CHURN-CUT 3: the overlay action looks up a non-expired ci-generated artifact of a SUCCESSFUL ci.yml run for the SHA, fails closed, never regenerates, and applies through the quarantine tool', () => {
+    const action = parse(readFileSync(resolve(root, '.github/actions/apply-generated-overlay/action.yml'), 'utf8')) as any
+    const steps = action.runs.steps as any[]
+    const find = steps.find((s) => s.id === 'find')
+    expect(find.uses).toMatch(/^actions\/github-script@/)
+    for (const needle of ["workflow_id: 'ci.yml'", "a.name === 'ci-generated' && !a.expired", "r.conclusion === 'success'", 'seal_overlay_artifact_absent']) expect(find.with.script).toContain(needle)
+    const download = steps.find((s) => String(s.uses ?? '').startsWith('actions/download-artifact'))
+    expect(download.with.name).toBe('ci-generated')
+    expect(download.with['run-id']).toBe('${{ steps.find.outputs.run_id }}')
+    expect(download.with.path).toContain('runner.temp')                                    // quarantine, never `.`
+    const apply = String(steps.at(-1).run)
+    expect(apply.indexOf('apply_generated_overlay.py --artifact')).toBeGreaterThanOrEqual(0)
+    expect(apply.indexOf('apply_generated_overlay.py')).toBeLessThan(apply.indexOf('ci_generated.py verify --sha'))
+    expect(JSON.stringify(steps)).not.toMatch(/ci_generated\.py generate|regenerate|continue-on-error|\|\|\s*true/)
+  })
   it('F-R15-3: reads maxRetries of the job AND of the execution from the v2 REST representation as well as v1', () => {
     const steps = brief.steps as any[]
     const image = steps.find((st) => st.id === 'image'), check = steps.find((st) => st.id === 'check')
@@ -200,9 +234,13 @@ describe('P08 rebuilt operation boundary', () => {
       const python = join(dir, 'python3')
       writeFileSync(python, `#!/bin/sh\nprintf '%s\\n' '{"state":"${state}"}'\nexit ${exit}\n`)
       chmodSync(python, 0o755)
+      // C-02: the step now reads the sealer DSN with gcloud; stub it so the test never reaches a real gcloud (slow on a CI runner)
+      const gcloud = join(dir, 'gcloud')
+      writeFileSync(gcloud, `#!/bin/sh\nprintf '%s\\n' 'postgresql://gochara_sealer:fake-Zq9-marker@127.0.0.1:5432/amjis'\nexit 0\n`)
+      chmodSync(gcloud, 0o755)
       const result = spawnSync('bash', ['-c', step.run], {
         cwd: dir, encoding: 'utf8', timeout: 10_000,
-        env: { PATH: `${dir}:${process.env.PATH}`, CHART_ID: '482012f1-710e-4a25-994a-93821f5871aa',
+        env: { PATH: `${dir}:${process.env.PATH}`, SEALER_SECRET: 'gochara-sealer-db-url', CHART_ID: '482012f1-710e-4a25-994a-93821f5871aa',
           GENERATION: '5.0', BRIEF_DIGEST: 'a'.repeat(64), GITHUB_RUN_ID: '17', GITHUB_RUN_ATTEMPT: '1',
           GITHUB_STEP_SUMMARY: join(dir, 'summary.md') },
       })
@@ -235,5 +273,96 @@ describe('P08 rebuilt operation boundary', () => {
     expect(rec.run).toContain('reconcile.json')
     const record = seal.steps.find((s: any) => s.uses?.startsWith('actions/upload-artifact'))
     expect(record.with.path).toContain('reconcile.json')
+  })
+})
+
+// C-02 (BEFORE_SEAL): the sealer DSN is written to Secret Manager `gochara-sealer-db-url` by the sealer-credential stage
+// (platform/scripts/gochara-provision-roles.sh) and NOTHING wrote the GitHub environment secret the workflow used to read.
+describe('gochara-seal-approved.yml sealer DSN from Secret Manager (C-02)', () => {
+  const dsn = 'postgresql://gochara_sealer:fake-Zq9-marker@127.0.0.1:5432/amjis'
+  const pw = 'fake-Zq9-marker'
+  const sealStep = (seal.steps as any[]).find((s) => String(s.run ?? '').includes('gochara-seal-approved.sh'))
+  const reconcileStep = (seal.steps as any[]).find((s) => String(s.run ?? '').includes('gochara_seal_reconcile.py'))
+  const gcloudOk = `process.stdout.write(${JSON.stringify(dsn + '\n')}); process.exit(0);`
+  const orchestrator = `console.log('ORCH_DSN_MATCH=' + (process.env.GOCHARA_SEALER_DB_URL === process.env.EXPECT_DSN)); process.exit(0);`
+
+  it('no longer references the GitHub environment secret anywhere in the workflow, comments included', () => {
+    expect(text).not.toMatch(/secrets\.GOCHARA_SEALER_DB_URL/)
+    expect(text).not.toMatch(/secrets\.GOCHARA_SEALER/)
+  })
+  it('reads the ONE named secret at run time through the existing Workload Identity step, which precedes the read', () => {
+    const names = (seal.steps as any[]).map((s) => String(s.name))
+    const auth = names.findIndex((n) => n === 'Authenticate to Google Cloud')
+    expect(auth).toBeGreaterThan(-1)
+    expect(auth).toBeLessThan((seal.steps as any[]).indexOf(sealStep))
+    expect(sealStep.env.SEALER_SECRET).toBe('gochara-sealer-db-url')
+    expect(reconcileStep.env.SEALER_SECRET).toBe('gochara-sealer-db-url')
+    expect(String(sealStep.run)).toContain('gcloud secrets versions access latest --secret="$SEALER_SECRET" --project=madhav-astrology')
+  })
+  it('passes the DSN only through the environment of the steps that need it: never job/workflow env, GITHUB_ENV, GITHUB_OUTPUT or an artifact', () => {
+    expect(wf.env.GOCHARA_SEALER_DB_URL).toBeUndefined()
+    expect(seal.env).toBeUndefined()
+    for (const s of seal.steps as any[]) expect(s.env?.GOCHARA_SEALER_DB_URL).toBeUndefined()
+    const lines = code(text).split('\n').filter((l) => l.includes('GOCHARA_SEALER_DB_URL'))
+    for (const l of lines) expect(l).not.toMatch(/GITHUB_ENV|GITHUB_OUTPUT|GITHUB_STEP_SUMMARY|\.json|upload-artifact/)
+  })
+  it('never echoes the DSN: every use of the variable is an assignment, a test, a mask, an export/unset or the read-only reconcile call', () => {
+    const allowed = [
+      /^\s*if ! GOCHARA_SEALER_DB_URL="\$\(gcloud secrets versions access latest .* 2>\/dev\/null\)" \|\| \[ -z "\$GOCHARA_SEALER_DB_URL" \]; then$/,
+      /^\s*if GOCHARA_SEALER_DB_URL="\$\(gcloud secrets versions access latest .* 2>\/dev\/null\)" && \[ -n "\$GOCHARA_SEALER_DB_URL" \]; then$/,
+      /^\s*echo "::add-mask::\$GOCHARA_SEALER_DB_URL"$/,
+      /^\s*SEALER_PASSWORD="\$\{GOCHARA_SEALER_DB_URL#\*:\/\/\*:\}"$/,
+      /^\s*export GOCHARA_SEALER_DB_URL$/,
+      /^\s*unset GOCHARA_SEALER_DB_URL$/,
+    ]
+    const offenders = code(text).split('\n').filter((l) => l.includes('GOCHARA_SEALER_DB_URL') && !allowed.some((a) => a.test(l)))
+    expect(offenders).toEqual([])
+    expect(code(text)).not.toMatch(/set -[a-z]*x|xtrace|\bprintenv\b|(^|\s)env(\s|$)/m)
+    expect(code(text).split('\n').filter((l) => /(echo|printf|cat)[^\n]*\$\{?SEALER_PASSWORD/.test(l) && !/echo "::add-mask::\$SEALER_PASSWORD"/.test(l))).toEqual([])
+  })
+  it('executes: reads the secret, masks DSN and password, hands the DSN to the orchestrator, and prints it nowhere', () => {
+    const r = runWorkflowShell(sealStep.run, { gcloud: gcloudOk, bash: orchestrator }, { SEALER_SECRET: 'gochara-sealer-db-url', EXPECT_DSN: dsn })
+    expect(r.status, r.stderr).toBe(0)
+    expect(r.calls.find((c) => c.command === 'gcloud')?.args).toEqual(['secrets', 'versions', 'access', 'latest', '--secret=gochara-sealer-db-url', '--project=madhav-astrology'])
+    expect(r.calls.find((c) => c.command === 'bash')?.args).toEqual(['platform/scripts/gochara-seal-approved.sh'])
+    expect(r.stdout).toContain('ORCH_DSN_MATCH=true')
+    const lines = r.stdout.split('\n')
+    expect(lines).toContain(`::add-mask::${dsn}`)
+    expect(lines).toContain(`::add-mask::${pw}`)
+    // the secret appears ONLY on the two mask commands (the runner's mask directive), never anywhere else, and never on stderr
+    expect(lines.filter((l) => l.includes(pw) && !l.startsWith('::add-mask::'))).toEqual([])
+    expect(r.stderr).not.toContain(pw)
+    // masks are issued before the orchestrator runs
+    expect(lines.findIndex((l) => l.startsWith('::add-mask::'))).toBeLessThan(lines.findIndex((l) => l.startsWith('ORCH_DSN_MATCH')))
+  })
+  it.each([
+    ['the read is refused (no secretAccessor / no enabled version)', `process.stderr.write('PERMISSION_DENIED ${'x'}'); process.exit(1);`],
+    ['the read succeeds with an empty payload', `process.exit(0);`],
+  ])('fails closed with a named error BEFORE the orchestrator when %s', (_n, gcloud) => {
+    const r = runWorkflowShell(sealStep.run, { gcloud, bash: orchestrator }, { SEALER_SECRET: 'gochara-sealer-db-url', EXPECT_DSN: dsn })
+    expect(r.status).not.toBe(0)
+    expect(r.stdout).toContain('::error::sealer-dsn-unavailable')
+    expect(r.stdout).toContain('gochara-sealer-db-url')
+    expect(r.calls.some((c) => c.command === 'bash')).toBe(false)
+  })
+  it('reconcile: reads the same secret, masks it, passes it to the reconcile script and prints it nowhere', () => {
+    const py = `console.log(JSON.stringify({state: 'SEALED', dsn_match: process.env.GOCHARA_SEALER_DB_URL === process.env.EXPECT_DSN})); process.exit(0);`
+    const r = runWorkflowShell(reconcileStep.run, { gcloud: gcloudOk, python3: py }, {
+      SEALER_SECRET: 'gochara-sealer-db-url', EXPECT_DSN: dsn, CHART_ID: 'c', GENERATION: '5.0', BRIEF_DIGEST: 'd',
+      GITHUB_RUN_ID: '1', GITHUB_RUN_ATTEMPT: '1', GITHUB_STEP_SUMMARY: '/dev/null',
+    })
+    expect(r.status, r.stderr).toBe(0)
+    expect(r.stdout).toContain('"dsn_match":true')
+    expect(r.stdout.split('\n').filter((l) => l.includes(pw) && !l.startsWith('::add-mask::'))).toEqual([])
+  })
+  it('reconcile: an unreadable secret leaves the variable unset, is named, and the reconcile script reports UNREADABLE (never "not sealed")', () => {
+    const py = `if (process.env.GOCHARA_SEALER_DB_URL !== undefined) process.exit(99); console.log(JSON.stringify({state: 'UNREADABLE'})); process.exit(12);`
+    const r = runWorkflowShell(reconcileStep.run, { gcloud: 'process.exit(1);', python3: py }, {
+      SEALER_SECRET: 'gochara-sealer-db-url', CHART_ID: 'c', GENERATION: '5.0', BRIEF_DIGEST: 'd',
+      GITHUB_RUN_ID: '1', GITHUB_RUN_ATTEMPT: '1', GITHUB_STEP_SUMMARY: '/dev/null',
+    })
+    expect(r.status).toBe(12)
+    expect(r.stdout).toContain('::error::sealer-dsn-unavailable')
+    expect(r.stdout).toContain('UNREADABLE')
   })
 })
