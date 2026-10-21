@@ -14,7 +14,8 @@ adds only what the executor kinds need on top of it and delegates every real ope
   writer cannot be admitted instead: its rows live only under the lit build's generation and serving reads the head
   generation, so carrying its old grain forward would publish a layer silently missing that writer's rows (N.7.6, N.8).
   The delegated operation's stdout is ONE JSON document (SR-K9-PUBLISHABLE D5): the orchestrator's ``[event]`` lines and any
-  import-time print go to stderr, and the ``admission`` block (``probe_mode`` / ``force_execute``) is added to the result
+  import-time print go to stderr (``PUBSUB_DISABLED`` is set for the run, so the events are printed, never published to Pub/Sub),
+  and the ``admission`` block (``probe_mode`` / ``force_execute``) is added to the result
   document, so a receipt shows whether the run was forced.
 * ``verify-dryrun`` / ``publish-dryrun`` / ``rollback-dryrun`` -- the layer operations run for real inside a transaction
   that is then rolled back, with the rollback read back. ``dry_run_passed`` is true only when the operation ran, its
@@ -43,6 +44,8 @@ from services.kala_core.publication import CANONICAL_CHART
 # runner.py execute_run: ``os.environ.get("NIRMANA_FORCE_EXECUTE", "").strip().lower() in ("1", "true", "yes")``
 FORCE_ENV = 'NIRMANA_FORCE_EXECUTE'
 FORCING_VALUES = ('1', 'true', 'yes')
+# events.py emit(): ``if os.environ.get("PUBSUB_DISABLED") or not os.environ.get("PUBSUB_TOPIC")`` prints the ``[event]`` line, otherwise publishes it
+PUBSUB_ENV = 'PUBSUB_DISABLED'
 REBUILD_OPERATIONS = ('rebuild', 'rebuild-dryrun')
 REHEARSALS = ('verify-dryrun', 'publish-dryrun', 'rollback-dryrun')
 CONTROL_OPERATIONS = ('cancel', 'teardown')
@@ -65,6 +68,22 @@ def forced_execution():
         yield
     finally:
         os.environ[FORCE_ENV] = previous
+
+
+@contextlib.contextmanager
+def pubsub_disabled():
+    """Keep the orchestrator's events off Pub/Sub for the duration of one in-process run, then restore the environment.
+
+    ``events.emit`` reads the variable at emit time and, when it is set, prints each ``[event]`` line instead of publishing it, so a
+    rebuild launched where ``PUBSUB_TOPIC`` is present still leaves its events as evidence on stderr and the two-source gates' log source
+    is populated (W5/W6 M-W56-17). Restored by assignment, like ``forced_execution``: an unset and an empty value both read as "not disabled".
+    """
+    previous = os.environ.get(PUBSUB_ENV, '')
+    os.environ[PUBSUB_ENV] = '1'
+    try:
+        yield
+    finally:
+        os.environ[PUBSUB_ENV] = previous
 
 
 def assets_refusal(edges: Mapping[str, Iterable[str]], assets: list[str]) -> str | None:
@@ -205,7 +224,7 @@ def _delegate_rebuild(args: argparse.Namespace) -> int:
     forcing = _forces(args) and args.operation == 'rebuild'
     code = 3
     try:
-        with contextlib.redirect_stdout(captured), (forced_execution() if forcing else contextlib.nullcontext()):
+        with contextlib.redirect_stdout(captured), pubsub_disabled(), (forced_execution() if forcing else contextlib.nullcontext()):
             code = publication.main([args.operation, '--run-id', str(args.run_id), '--assets', args.assets])
     finally:
         document, rest = split_output(captured.getvalue())

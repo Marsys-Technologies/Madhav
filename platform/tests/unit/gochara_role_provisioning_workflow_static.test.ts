@@ -48,10 +48,10 @@ describe('gochara-role-provisioning-oneshot.yml', () => {
     expect(run.shell).toBe('bash')
     expect(JSON.stringify(wf.jobs.provision.steps.filter((s) => s !== run))).not.toContain('secrets.')
   })
-  it('offers exactly the four reviewed stages (J-4b-a55j adds grant-l1-reads and sealer-credential) and no free-form one', () => {
+  it('offers exactly the five reviewed stages (J-4b-a55j adds grant-l1-reads and sealer-credential; O-W56-C adds layer-verifier-credential) and no free-form one', () => {
     const on = wf.on as { workflow_dispatch: { inputs: { stage: { type: string; options: string[] } } } }
     expect(on.workflow_dispatch.inputs.stage.type).toBe('choice')
-    expect(on.workflow_dispatch.inputs.stage.options).toEqual(['create-roles', 'sealer-password', 'grant-l1-reads', 'sealer-credential'])
+    expect(on.workflow_dispatch.inputs.stage.options).toEqual(['create-roles', 'sealer-password', 'grant-l1-reads', 'sealer-credential', 'layer-verifier-credential'])
   })
   it('verifies the downloaded Cloud SQL proxy against a pinned sha256 before running it', () => {
     const proxy = (wf.jobs.provision.steps).find((s) => s.name === 'Start Cloud SQL Auth Proxy')
@@ -87,8 +87,8 @@ describe('gochara-provision-roles.sh', () => {
   })
   it('discards the stderr of every statement that carries a password (a server error can quote it) and rolls back / compensates its own partial work on every exit path', () => {
     const alters = c.split('\n').filter((l) => /psql_admin -f -/.test(l))
-    expect(alters.length).toBe(3)                                           // the verifier ALTER, the shared sealer activation transaction, and the L1-read grants (which carry no secret)
-    expect(alters.filter((l) => l.includes('>/dev/null 2>&1')).length).toBe(2)
+    expect(alters.length).toBe(4)                                           // the verifier ALTER, the shared sealer activation transaction, the L1-read grants (which carry no secret) and the layer-verifier activation
+    expect(alters.filter((l) => l.includes('>/dev/null 2>&1')).length).toBe(3)
     expect(c).toContain('trap rollback EXIT')
     expect(c).toContain("trap 'exit 143' TERM")                              // a cancelled run still runs the compensation
     expect(c).toContain('secrets versions destroy')
@@ -147,6 +147,25 @@ describe('gochara-provision-roles.sh', () => {
     expect(stage).toContain('--data-file=-')
     expect(c).toContain('--secret "${CREATED_SECRET:-$VERIFIER_SECRET}"')
     expect(c).toContain('SEALER_SECRET="${SEALER_SECRET:-gochara-sealer-db-url}"')
+  })
+  it('O-W56-C: the layer-verifier credential goes secret-store first, activates in one transaction, is observed AS verifier_principal, grants nothing, and compensates before it destroys', () => {
+    const stage = c.slice(c.indexOf('  layer-verifier-credential)'), c.indexOf('  *) fail "unknown STAGE'))
+    expect(stage.length).toBeGreaterThan(200)
+    expect(stage.indexOf('secrets versions add "$LAYER_VERIFIER_SECRET"')).toBeGreaterThan(-1)
+    expect(stage.indexOf('secrets versions add')).toBeLessThan(stage.indexOf('activate_layer_verifier "$PW"'))
+    expect(stage.indexOf('activate_layer_verifier "$PW"')).toBeLessThan(stage.indexOf('lv_login_ok "$PW"'))
+    expect(stage).toContain('echo "::add-mask::$PW"')
+    expect(stage).toContain('--data-file=-')
+    expect(stage).not.toMatch(/\bGRANT\b/)                                                              // the stage grants nothing: the role's grants are migrations 1330/1334/1390 + grant-usage
+    const activation = c.slice(c.indexOf('activate_layer_verifier() {'), c.indexOf('case "$STAGE" in'))
+    expect(activation.indexOf('BEGIN;')).toBeGreaterThan(-1)
+    expect(activation.indexOf('BEGIN;')).toBeLessThan(activation.indexOf("ALTER ROLE %s LOGIN PASSWORD"))
+    expect(activation.indexOf("ALTER ROLE %s LOGIN PASSWORD")).toBeLessThan(activation.indexOf('DO \\$post\\$'))
+    expect(activation.indexOf('DO \\$post\\$')).toBeLessThan(activation.indexOf('COMMIT;'))
+    expect(c).toContain('LAYER_VERIFIER_SECRET="${LAYER_VERIFIER_SECRET:-kala-layer-verifier-db-url}"')
+    expect(c).toContain('COMPENSATING the layer-verifier activation')
+    expect(c).toContain('ROLLBACK INCOMPLETE — THE LAYER VERIFIER MAY BE ACTIVE')
+    expect(c.indexOf('COMPENSATING the layer-verifier activation')).toBeLessThan(c.indexOf('secrets versions destroy'))
   })
   it('is idempotent by refusal and refuses a non-loopback connection', () => {
     expect(c).toContain('already exists')
