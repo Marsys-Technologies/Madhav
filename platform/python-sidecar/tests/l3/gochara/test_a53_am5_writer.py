@@ -171,10 +171,11 @@ def test_an_h_unknown_class_selects_final_rows_under_the_final_rules_and_its_leg
     rows = conn.execute(
         "SELECT path_id, exclusion_reason, ruling_ref FROM public.ka_gochara_search_path_pin"
         " WHERE generation = %s AND event_class = 'spiritual_turn' AND disposition = 'excluded'"
-        " ORDER BY path_id", (GEN,)).fetchall()
-    assert rows == [("P1", "superseded_by_version", None),
-                    ("P3", "superseded_by_version", None),
-                    ("P4", "superseded_by_version", None),
+        " ORDER BY path_id, rule_version", (GEN,)).fetchall()
+    # SR-OD1 V1: the class runs at 1.2.0, so 1.0.0 is superseded and the 1.3.0 doctrine row is not applicable to it (ND-H)
+    assert rows == [("P1", "superseded_by_version", None), ("P1", "not_applicable_to_class", None),
+                    ("P3", "superseded_by_version", None), ("P3", "not_applicable_to_class", None),
+                    ("P4", "superseded_by_version", None), ("P4", "not_applicable_to_class", None),
                     ("P5", "tier_withheld_by_ruling", "ST-P5-HOLD-20261001")]
     selected = conn.execute(
         "SELECT path_id, disposition FROM public.ka_gochara_search_path_pin"

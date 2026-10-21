@@ -91,21 +91,21 @@ def test_v2_the_final_profile_binds_the_doctrine_rows_and_selects_them_by_defaul
     refs = set(rr.bound_path_refs())
     legacy = {(p, "1.0.0") for p in ("P1", "P2", "P3", "P4", "P5")}
     nd_h = {(p, ND) for p in ("P1", "P3", "P4")}
-    doctrine = {(p, DOC) for p in ("P1", "P3", "P4")}
-    assert refs == legacy | nd_h | doctrine | {("P2", "1.1.0")}
-    # P3/P4/P5 @1.1.0 stay unbound (FB-30): the 1.3.0 rows supersede them
-    assert not refs & {("P3", "1.1.0"), ("P4", "1.1.0"), ("P5", "1.1.0")}
+    doctrine = {(p, DOC) for p in ("P1", "P2", "P3", "P4")}                     # P2@1.3.0: the owner-confirmed vedha rows (SR-OD1 D3)
+    assert refs == legacy | nd_h | doctrine
+    # P2/P3/P4/P5 @1.1.0 stay unbound (FB-30; D3 for P2): the 1.3.0 rows supersede them
+    assert not refs & {("P2", "1.1.0"), ("P3", "1.1.0"), ("P4", "1.1.0"), ("P5", "1.1.0")}
     for cls in OTHERS:
         if cls == "bereavement":
             continue
-        assert rr.selected_versions_for(cls) == {"P1": DOC, "P2": "1.1.0", "P3": DOC, "P4": DOC, "P5": "1.0.0"}, cls
+        assert rr.selected_versions_for(cls) == {"P1": DOC, "P2": DOC, "P3": DOC, "P4": DOC, "P5": "1.0.0"}, cls
 
 
 def test_v3_the_nd_h_classes_and_bereavement_keep_1_2_0_on_their_paths(final):
     for cls in EIGHT:
-        assert rr.selected_versions_for(cls) == {"P1": ND, "P2": "1.1.0", "P3": ND, "P4": ND, "P5": "1.0.0"}, cls
+        assert rr.selected_versions_for(cls) == {"P1": ND, "P2": DOC, "P3": ND, "P4": ND, "P5": "1.0.0"}, cls
     # ND-P2 rule 3: bereavement runs P3/P4 at 1.2.0 (its natal-Sun target); its P1 follows the doctrine default
-    assert rr.selected_versions_for("bereavement") == {"P1": DOC, "P2": "1.1.0", "P3": ND, "P4": ND, "P5": "1.0.0"}
+    assert rr.selected_versions_for("bereavement") == {"P1": DOC, "P2": DOC, "P3": ND, "P4": ND, "P5": "1.0.0"}
 
 
 # ── V-4 / V-5 maitrī retired, the 1.2.0 rows re-derived in place ───────────────────────────────────────
@@ -297,9 +297,9 @@ def test_v13_one_included_version_per_path_and_every_sealed_version_accounted_fo
         assert (old.disposition, old.exclusion_reason, old.ruling_ref, old.basis) == (
             "excluded", "superseded_by_version", None, f"ruling:{reg.DOCTRINE_PATH_RULINGS[pid]}")
         assert pins[(pid, ND)].exclusion_reason == "not_applicable_to_class"
-    assert pins[("P2", "1.1.0")].disposition == "included"
-    assert pins[("P2", "1.0.0")].basis == inv.supersession_basis("P2", "1.0.0", "1.1.0") \
-        == "spec:GOCHARA_SPECS_V1_5_AMENDMENTS@1.5#AM-18-p2-1.0.0-superseded-by-1.1.0"
+    assert pins[("P2", DOC)].disposition == "included" and ("P2", "1.1.0") not in pins
+    old = pins[("P2", "1.0.0")]                                                          # SR-OD1 D3: the vedha rows stand on VEDHA-SOURCE
+    assert (old.disposition, old.exclusion_reason, old.basis) == ("excluded", "superseded_by_version", "ruling:VEDHA-SOURCE")
     assert [p.path_id for p in plan.pins if p.disposition == "included"].count("P3") == 1
 
 
@@ -339,7 +339,7 @@ def test_v13_without_the_doctrine_chain_a_default_class_cannot_be_planned(final,
 
 def test_v15_with_the_doctrine_rows_no_scored_cell_is_unchanged_so_the_j4d_equality_has_nothing_to_compare():
     """Why `kala_db/test_j4d_slice_qualification.py` and `test_j4d_slice_lane_db.py` run on the pre-doctrine final profile: under the
-    real registry every P1-P4 cell of every scored class is either on a different version (P1/P3/P4@1.3.0 or 1.2.0, P2@1.1.0) or
+    real registry every P1-P4 cell of every scored class is either on a different version (P1/P2/P3/P4@1.3.0 or 1.2.0) or
     suppressed (parental P2). The measuring-vs-final equality proof is superseded by the trial under window_qualification/1."""
     from scripts.kala_gochara_cutover import j4d_slice_qualify as q
     kinds = {(cls, path): q.cell_expectation(cls, path)["kind"] for cls in ALL_CLASSES for path in ("P1", "P2", "P3", "P4")}

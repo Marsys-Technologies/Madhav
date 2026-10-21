@@ -178,4 +178,8 @@ def test_the_verifier_derives_boundary_completeness_itself_and_agrees_with_the_b
     assert st == ("unq", [wv.STATE_BOUNDARIES_REASON]) and wv.STATE_BOUNDARIES_REASON == ws.STATE_BOUNDARIES_REASON
     assert wv._record_state(rows, {**rec, "boundaries_complete": True}, True, False) == ("fn", None)
     vedha = [{"factor_id": "vedha_attenuation"}]
-    assert wv._record_state(vedha, {**rec, "boundaries_complete": False}, False, True)[0] == "unq"
+    # C2: a vedha record's completeness is its OWN derivation's — the record-wide (dṛṣṭi) flag never vouches for it
+    from services.gochara_kernel.vedha_verifier import RecordVedha
+    incomplete = lambda rid: RecordVedha(applicable=True, complete=False)           # noqa: E731
+    assert wv._record_state(vedha, {**rec, "id": "r", "boundaries_complete": True}, False, True, incomplete) == (
+        "unq", [wv.STATE_BOUNDARIES_REASON])

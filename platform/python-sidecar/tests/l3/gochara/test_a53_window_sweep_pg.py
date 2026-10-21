@@ -358,6 +358,27 @@ def _write(conn, cls, path, drafts):
                                                 path_id=path, rule_version=VERSION, drafts=drafts)
 
 
+# C2: with a vedha source bound the verifier reads each record's vedha factor from an overlay (its own derivation from the stored
+# residence contacts in production); these fixtures are about the window arithmetic, so they hand it a fixed overlay
+from services.gochara_kernel.vedha_verifier import RecordVedha  # noqa: E402
+_VEDHA_FN = lambda rid: RecordVedha(applicable=True, complete=True)                       # noqa: E731
+_VEDHA_EDGES_INCOMPLETE = lambda rid: RecordVedha(applicable=True, complete=False)        # noqa: E731
+
+
+class _FixedOverlay:
+    """What `vedha_verifier.derive_overlay` returns, with a fixed per-record answer: callable by record id, and it reports itself the way
+    the verifier's report reads a derived overlay (`.summary()`)."""
+
+    def __init__(self, per_record):
+        self._per_record = per_record
+
+    def __call__(self, record_id):
+        return self._per_record(record_id)
+
+    def summary(self):
+        return {"fixed_overlay": True}
+
+
 def _verify(conn, cls, path, rows_for=ws.registry_factor_rows, **kw):
     from services.gochara_kernel.window_verifier import verify_window_semantics
     return verify_window_semantics(conn, chart_id=CHART_ID, generation=GEN, event_class=cls,
@@ -430,7 +451,7 @@ def test_verifier_checks_the_p2_channels_from_the_cited_sets(p2_grain):
     # record is unqualified (`state_boundaries_incomplete`, R8-6) and the window is NULL: builder and verifier derive
     # the same thing independently, so it is fully VERIFIED — no numeric vedha window can claim verification
     assert drafts[0].peak_instant is None and drafts[0].unqualified_reason == ws.STATE_BOUNDARIES_REASON
-    out = _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True)
+    out = _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True, vedha_overlay=_VEDHA_EDGES_INCOMPLETE)
     assert out["windows"] == 1 and out["unverified_dynamic"] == 0
     assert out["status"] == "VERIFIED"
 
@@ -605,21 +626,21 @@ def test_a_fabricated_evidence_for_of_123_on_a_one_root_dynamic_window_is_refuse
     conn, cls, drafts = _p2_dynamic_world(p2_grain, monkeypatch)
     _write(conn, cls, "P2", [dataclasses.replace(drafts[0], evidence_for=123.0)])
     with pytest.raises(RuntimeError, match="evidence_for 123.0 is outside"):
-        _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True)
+        _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True, vedha_overlay=_VEDHA_FN)
     _write(conn, cls, "P2", [dataclasses.replace(drafts[0], evidence_against=3.0)])
     with pytest.raises(RuntimeError, match="evidence_against 3.0 is outside"):
-        _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True)
+        _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True, vedha_overlay=_VEDHA_FN)
     # under the SWITCH (what the writer runs) any number on such a window is refused outright
     with pytest.raises(RuntimeError, match="partial subtotal was stored"):
         _write(conn, cls, "P2", [dataclasses.replace(drafts[0], evidence_for=123.0)])
-        _verify(conn, cls, "P2", vedha_bound=True)
+        _verify(conn, cls, "P2", vedha_bound=True, vedha_overlay=_VEDHA_FN)
 
 
 def test_a_genuine_dynamic_window_is_reported_unverified_and_cannot_satisfy_the_gate(p2_grain, monkeypatch):
     from services.gochara_kernel import window_verifier as wv
     conn, cls, drafts = _p2_dynamic_world(p2_grain, monkeypatch)
     _write(conn, cls, "P2", drafts)
-    out = _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True)
+    out = _verify(conn, cls, "P2", vedha_bound=True, dynamic_enabled=True, vedha_overlay=_VEDHA_FN)
     assert out["status"] == "UNVERIFIED_DYNAMIC" and out["unverified_dynamic"] == 1
     assert out["fully_reproduced"] == 0 and len(out["unverified_windows"]) == 1
     assert wv.satisfies_gate(out) is False
@@ -693,6 +714,12 @@ def test_the_writer_stores_a_dynamic_window_as_named_null_and_the_verifier_repro
         {"saturn": [(T0 + 20 * DAY, T0 + 120 * DAY)]}, inside=15.0, outside=195.0))      # Saturn in Aries
     monkeypatch.setattr(writer_mod, "_verify_live_inputs", lambda ctx, chart_id: None)
     monkeypatch.setattr(writer_mod, "VEDHA_SOURCE", lambda rec, t: 0.5)
+    # C2: the writer's in-build self-check verifies with a vedha source bound, so the verifier derives its own overlay from the stored
+    # residence contacts and the L0 pairs — tables this migration-chain fixture does not carry (`bg_transit_rules`). That derivation has
+    # its own oracles (test_od1_c2_vedha_verifier*.py); this test is about the NULL window, so the verifier is handed the fixed overlay
+    # that says what the builder says here: a vedha source with no edge list ⇒ the edges are incomplete (R8-6)
+    from services.gochara_kernel import vedha_verifier as _vv
+    monkeypatch.setattr(_vv, "derive_overlay", lambda conn, **kw: _FixedOverlay(_VEDHA_EDGES_INCOMPLETE))
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-dyn", db_conn=conn,
                       config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON, "gochara_v5_final_rules": False}, dry_run=False)
     with conn.transaction():
@@ -702,7 +729,7 @@ def test_the_writer_stores_a_dynamic_window_as_named_null_and_the_verifier_repro
     assert (row[2], row[3], row[4], row[5], row[6]) == (None, None, None, None, "unqualified")
     assert "UNVERIFIED" not in res.notes and "reproduced all 1 window(s) exactly" in res.notes
     from services.gochara_kernel import window_verifier as wv
-    out = _verify(conn, cls, "P2", vedha_bound=True)
+    out = _verify(conn, cls, "P2", vedha_bound=True, vedha_overlay=_VEDHA_EDGES_INCOMPLETE)
     assert out["status"] == "VERIFIED" and wv.satisfies_gate(out)
     (d,) = out["windows_detail"]
     # R8-6: with no source of vedha overlay edges the member is unqualified before the dynamic switch is reached

@@ -522,10 +522,10 @@ _SUPERSEDED = {("p2", "1.0.0"): "1.1.0", ("p3", "1.0.0"): "1.1.0",
 
 #: SR-OD1 V1 — the verifier's OWN copy of the owner-confirmed doctrine chain (1.3.0): `(path, older) -> successor`, and
 #: the owner ruling each successor stands on (the basis of the `superseded_by_version` pin). Told what the owner
-#: decided (P1-MAPPING-DECISION: P1; AM-13-RATIFIED: P3/P4), not imported from the builder or the registry.
-_DOCTRINE_SUPERSEDED = {("p1", "1.0.0"): "1.3.0", ("p3", "1.0.0"): "1.3.0", ("p3", "1.1.0"): "1.3.0",
-                        ("p4", "1.0.0"): "1.3.0", ("p4", "1.1.0"): "1.3.0"}
-_DOCTRINE_RULING = {"p1": "P1-MAPPING-DECISION", "p3": "AM-13-RATIFIED", "p4": "AM-13-RATIFIED"}
+#: decided (P1-MAPPING-DECISION: P1; VEDHA-SOURCE: P2, SR-OD1 D3; AM-13-RATIFIED: P3/P4), not imported from the builder or the registry.
+_DOCTRINE_SUPERSEDED = {("p1", "1.0.0"): "1.3.0", ("p2", "1.0.0"): "1.3.0", ("p2", "1.1.0"): "1.3.0",
+                        ("p3", "1.0.0"): "1.3.0", ("p3", "1.1.0"): "1.3.0", ("p4", "1.0.0"): "1.3.0", ("p4", "1.1.0"): "1.3.0"}
+_DOCTRINE_RULING = {"p1": "P1-MAPPING-DECISION", "p2": "VEDHA-SOURCE", "p3": "AM-13-RATIFIED", "p4": "AM-13-RATIFIED"}
 
 
 def _supersession_basis(path: str, old: str, new: str, event_class=None) -> str:
