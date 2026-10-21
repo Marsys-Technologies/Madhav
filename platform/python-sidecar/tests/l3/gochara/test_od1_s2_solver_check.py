@@ -27,6 +27,8 @@ Claims (doctrine / analytic source in each oracle's docstring; D-OWNER-TESTS-202
   S-24 two fixed points close together give an exact plateau, proved without search (one body ⇒ convex in its longitude)
   S-25 the max-min objective exists only where both agents are live   S-26 the +-2e-10 grey band around the 1e-9 tie threshold
   S-27 a kinked crest narrower than a sample is located and proved   S-28 ties are read off the re-derived maximum, not the stored peak's value
+  S-29 tied extrema closer than ISOLATION_S => `tie_isolation_unresolved` (INCONCLUSIVE; R-3), neither a pass nor a refutation
+  S-30 a close extremum that is NOT within the tie tolerance does not blank the window    S-31 tied extrema farther apart than ISOLATION_S are still decided
 plus guards without a reversion: independence of the module (an AST detector that is itself shown to read false on a planted import),
 the H1 sampling premise, and the S0-measured constants.
 """
@@ -293,6 +295,51 @@ def oracle_grey_band(m):
     inside = run(m, w_humps(m, 1.0 - 5e-10, 1.0), stored(m, 0.75, 1.0))
     assert inside.status == m.REFUTED and chk.F_EARLIER_TIE in codes(inside)
     assert run(m, w_humps(m, 1.0 - 1.1e-9, 1.0), stored(m, 0.75, 1.0)).status == m.VERIFIED
+
+
+def w_close(m, gap_s, b_const=1.0):
+    """Two distinct crests of ONE root `gap_s` seconds apart on a fast body (lon = 100 + 0.01 s): record a (tent level 100.10, orb 0.05) crests at
+    s = 10 over its support [0, 10 + gap/2), record b (level 100 + 0.01 (10 + gap)) crests at s = 10 + gap over [10 + gap/2, 30 + gap) at height
+    `b_const`. Per-root max: F peaks at 1.0 twice with a dip to 0.8 (gap 2) between them — two distinct local maxima, tied when b_const = 1."""
+    pos = sky_s(A=lambda s: 100.0 + 0.01 * s)
+    split, end = 10.0 + gap_s / 2.0, 30.0 + gap_s
+    recs = [m.CheckRecord("a", "R", "A", ((at(0), at(0, split)),), tent=m.TentFactor("A", 100.10, 0.05)),
+            m.CheckRecord("b", "R", "A", ((at(0, split), at(0, end)),), constant=b_const,
+                          tent=m.TentFactor("A", 100.0 + 0.01 * (10.0 + gap_s), 0.05))]
+    return {"lo": at(0), "hi": at(0, end), "records": recs, "pos": pos}
+
+
+@claim("S-29", "if y - x <= ISOLATION_S]", "if False]")
+def oracle_close_ties_are_not_isolated(m):
+    """SR-PLAN-REVIEW-RECONCILED R-3 (GPT B4 / window_solver H5): two distinct maxima, both exactly 1.0, 2 s apart (inside ISOLATION_S = 2 x the
+    builder's LEAF, <= 4 s): the earliest distinct one is not something either side's sampling scale can certify, so the window is the named
+    INCONCLUSIVE blank `tie_isolation_unresolved` — whichever of the two the stored peak sits at, and never a REFUTED `earlier_tie_not_taken`
+    for the later one (that would be a verdict the enumeration cannot back)."""
+    w = w_close(m, 2.0)
+    for when in (10.0, 12.0):
+        rep = run(m, w, stored(m, at(0, when), 1.0))
+        assert rep.status == m.UNVERIFIED and chk.U_ISOLATION in codes(rep) and not rep.findings, (when, rep.status, codes(rep))
+    assert len(rep.rederived["tie_cluster"]) == 1
+
+
+@claim("S-30", "ties = sorted(t for t, f in cands if f >= theta)", "ties = sorted(t for t, f in cands)")
+def oracle_a_close_non_tie_does_not_blank(m):
+    """The frozen tie tolerance is 1e-9 (N-11, window_sweep._TIE): a second crest 2 s away but 1.1e-9 BELOW the maximum is no tie, so the
+    window is decided as before — the earlier, higher crest is proved, and the same peak stored at the lower later crest is refuted."""
+    w = w_close(m, 2.0, b_const=1.0 - 1.1e-9)
+    rep = run(m, w, stored(m, at(0, 10.0), 1.0))
+    assert rep.status == m.VERIFIED, (rep.status, codes(rep))
+    assert chk.U_ISOLATION not in codes(rep)
+
+
+@claim("S-31", "ISOLATION_S = 4.0 ", "ISOLATION_S = 1e9 ")
+def oracle_separated_ties_are_still_decided(m):
+    """The detector is a proximity test, not a blanket blank: two exact ties 20 s apart (farther than ISOLATION_S) keep the frozen rule — the
+    earliest is proved, the later one refuted as `earlier_tie_not_taken`."""
+    w = w_close(m, 20.0)
+    assert run(m, w, stored(m, at(0, 10.0), 1.0)).status == m.VERIFIED
+    late = run(m, w, stored(m, at(0, 30.0), 1.0))
+    assert late.status == m.REFUTED and chk.F_EARLIER_TIE in codes(late) and chk.U_ISOLATION not in codes(late)
 
 
 @claim("S-9", "cuts.update(c for c in (self._sec(x) for x in st.boundaries(self._dt(a), self._dt(b))) if a < c < b)", "pass")
@@ -674,7 +721,7 @@ def test_the_single_planted_reversion_fails_the_oracle(cid):
 
 def test_every_claim_has_exactly_one_reversion_and_one_oracle():
     assert set(CLAIMS) == {"V-1", "S-2", "S-3", "S-4", "S-5", "S-6", "S-7", "S-8", "S-9", "S-10", "S-11", "S-12", "S-13", "S-14",
-                           "S-15", "S-16", "S-17", "S-18", "S-19", "S-20", "S-21", "S-22", "S-23", "S-24", "S-25", "S-26", "S-27", "S-28"}
+                           "S-15", "S-16", "S-17", "S-18", "S-19", "S-20", "S-21", "S-22", "S-23", "S-24", "S-25", "S-26", "S-27", "S-28", "S-29", "S-30", "S-31"}
     assert len({old for _, old, _ in CLAIMS.values()}) == len(CLAIMS)             # no two claims share a reversion site
 
 
