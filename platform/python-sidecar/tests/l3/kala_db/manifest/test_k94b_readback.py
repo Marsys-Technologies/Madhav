@@ -71,3 +71,26 @@ def test_single_select_jsonb_wrapper_runs_under_actual_readback_shell(kala_db_ds
     query.write_text("SELECT '{}'::jsonb AS evidence")
     changed=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=10)
     assert changed.returncode != 0 and 'digest' in changed.stderr
+
+
+def test_readback_session_runs_at_utc_and_three_float_digits_under_actual_shell(kala_db_dsn, tmp_path):
+    """W3W4 R3: whatever the environment file / role defaults say, the readback session itself is UTC with extra_float_digits=3
+    (the setting the scoped backups measure under, platform/scripts/backup_v5_small_test_job.py measurements()), and is still read-only."""
+    import csv, io, os
+    root=tmp_path/'runtime'; (root/'run/ops/sql').mkdir(parents=True); (root/'venv/bin').mkdir(parents=True)
+    (root/'venv/bin/python').symlink_to(sys.executable)
+    query=root/'run/ops/sql/r3.sql'
+    query.write_text("SELECT current_setting('TimeZone') AS tz, current_setting('extra_float_digits') AS efd, "
+                     "current_setting('transaction_read_only') AS ro, (0.1::float8 + 0.2::float8)::text AS f")
+    settings=psycopg.conninfo.conninfo_to_dict(kala_db_dsn)
+    assert settings['host'] in {'127.0.0.1','localhost'}
+    env={k:v for k,v in os.environ.items() if not k.startswith('PG') and k not in {'DATABASE_URL','KY_BUILDER_DATABASE_URL','KY_OWNER_DATABASE_URL','KY_LAYER_VERIFIER_DATABASE_URL'}}
+    # The symptom measured in production: a session that would otherwise run at extra_float_digits=1 and a non-UTC zone.
+    env.update(KY_ROOT=str(root),KY_READBACK_PGENV=str(tmp_path/'pgenv.sh'),PGHOST=settings['host'],PGPORT=settings['port'],PGUSER='postgres',
+               PGDATABASE=settings['dbname'],PGPASSFILE='/dev/null',PGOPTIONS='-c timezone=Asia/Kolkata -c extra_float_digits=1')
+    if settings.get('password'): env['PGPASSWORD']=settings['password']
+    (tmp_path/'pgenv.sh').write_text('# test uses guarded fixture PG settings\n')
+    run=subprocess.run(['bash',str(FLEET/'readback_sql.sh'),'--sql_file',str(query)],env=env,capture_output=True,text=True,timeout=10)
+    assert run.returncode==0,run.stderr
+    rows=list(csv.reader(io.StringIO(run.stdout),delimiter='\t'))
+    assert rows[0]==['tz','efd','ro','f'] and rows[1]==['UTC','3','on','0.30000000000000004']
