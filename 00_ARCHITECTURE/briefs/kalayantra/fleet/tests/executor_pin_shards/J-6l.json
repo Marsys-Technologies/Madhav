@@ -1,0 +1,25 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "J-6l",
+  "after": null,
+  "entries": {
+    "http_probe": {
+      "enabled": true,
+      "needs": "none",
+      "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/http_probe.py",
+      "fixed_args": [],
+      "allowed_args": [
+        "probe"
+      ],
+      "requesters": [
+        "adhikarin",
+        "v1",
+        "v2"
+      ],
+      "production": false,
+      "read_only": true,
+      "timeout_s": 300,
+      "enabled_by": "J-6l"
+    }
+  }
+}
