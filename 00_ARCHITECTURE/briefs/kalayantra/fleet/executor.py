@@ -96,6 +96,9 @@ REMOTE_ASYNC_KINDS = frozenset({   # A8 §3.11: work continues remotely after th
     "verification_job",
 })
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
+LOOP_TICK_S = 10        # the main loop's idle sleep: the finest grain at which any timed gate below can fire
+CAPS_REFRESH_S = 30     # A10.1 item 6: CAPABILITIES.json is rewritten at least this often (was 300)
+CAPS_FRESH_S = 45       # the freshness bound readers of CAPABILITIES.json apply (unchanged); a snapshot is at most CAPS_REFRESH_S + LOOP_TICK_S old
 PACK_ALLOWLIST = OPS / "PACK_ALLOWLIST.json"   # OWNER-MINIMAL-PROTECTION-NOW: written by the cockpit ONLY from an ACCEPTED verify job of a pack; this executor only reads it
 SIGNED_ONLY_KINDS = frozenset({   # serving changes, plus the deletion-adjacent cancels (every kind on CANCEL_LANE_KINDS, which a test keeps equal to this set's cancels); every `*_teardown` kind is signed-only too (see mechanical_exempt)
     "century_cancel",
@@ -169,6 +172,10 @@ def load_table() -> dict | None:
     if p.returncode != 0: return None
     try: return json.loads(p.stdout)["ops"]
     except Exception: return None
+
+def capabilities_due(last_caps: float, now_s: float) -> bool:
+    return now_s - last_caps >= CAPS_REFRESH_S
+
 
 def capabilities(table_on_main: bool) -> dict:
     caps = {"builder": bool(os.environ.get("KY_BUILDER_DATABASE_URL")), "owner": bool(os.environ.get("KY_OWNER_DATABASE_URL")),
@@ -1688,8 +1695,8 @@ def main() -> int:
                 table = load_table()
             except Exception as e: log(f"sync failed: {e}"); table = None
             last_sync = time.time()
-        if time.time() - last_caps > 300: caps = capabilities(table is not None); last_caps = time.time()
-        if table is None or (KY_ROOT / "HOLD").exists(): time.sleep(10); continue      # no table on main yet (before B-1), refs unreachable, or HOLD
+        if capabilities_due(last_caps, time.time()): caps = capabilities(table is not None); last_caps = time.time()
+        if table is None or (KY_ROOT / "HOLD").exists(): time.sleep(LOOP_TICK_S); continue      # no table on main yet (before B-1), refs unreachable, or HOLD
         if FENCE.exists(): fence_quiescent()  # reconcile independent small-test completion; retain the owner-controlled fence
         publish_teardown_completions()        # SR-TEARDOWN-COMPLETION: a committed teardown + its accepted absence complete without a fence
         publish_head_completions()            # M-W56-16: a committed head change + its independent readback and accepted digest complete without a fence
@@ -1710,7 +1717,7 @@ def main() -> int:
             receipt(req, "RUNNING", "accepted; in flight")
             pool, work = pool_for(req, production, readers, builder, cancel_lane)
             pool.submit(work, flight, req, op)
-        time.sleep(10)
+        time.sleep(LOOP_TICK_S)
 
 
 if __name__ == "__main__":
