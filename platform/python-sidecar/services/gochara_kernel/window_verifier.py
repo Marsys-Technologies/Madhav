@@ -269,7 +269,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     `.classification` in AGREED / DISAGREEMENT / INCONCLUSIVE, `.findings` and `.inconclusive`), or None for a window it does not cover
     (that window stays UNVERIFIED, as before). AGREED numbered ⇒ reproduced and numeric; AGREED blank (a justified `solver_budget_exhausted`) ⇒
     reproduced; DISAGREEMENT ⇒ a problem (the report raises: the seal is blocked, always); INCONCLUSIVE ⇒ the window is DEMOTED — counted as
-    reproduced (as the named blank it will be served as), listed in `inconclusive_windows` with the stored valence, never in `numeric_reproduced`,
+    reproduced (as the named blank it will be served as), listed in `inconclusive_windows` with its stored `window_id`, reason and valence, never in `numeric_reproduced`,
     and capped by the numerical-window gate. The adapter that builds the checker's records from these rows is the integration's (S3), not this
     function's; without a `solver_check_fn` nothing changes.
 
@@ -505,7 +505,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                         f"{code}: {detail_}" for code, detail_ in verdict.findings))
                 elif cls == "INCONCLUSIVE":
                     why = sorted(r for r, _d in verdict.inconclusive)[0]
-                    inconclusive.append({"window": row["window"], "reason": why, "stored_numbered": peak is not None,
+                    inconclusive.append({"window": row["window"], "window_id": wid, "reason": why, "stored_numbered": peak is not None,
                                          "valence": valence, "had_score": score is not None})
                     fully_reproduced += 1                  # reproduced as the named blank it will be served as
                 elif cls == "AGREED":

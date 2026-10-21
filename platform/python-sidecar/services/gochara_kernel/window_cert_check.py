@@ -14,8 +14,9 @@ WHAT IT DOES FOR A NUMBERED WINDOW (`check_numbered`)
      the sky contradicts is a DISAGREEMENT, whatever the maximum;
   3. the verifier's own proof (`window_solver_check`: value, upper bound, earliest tie, instant, H1/H2, the numbers at the peak) runs with its
      search STARTED FROM THE CERTIFICATE'S PARTITION instead of from the whole piece. Soundness is the verifier's own: any partition of a monotone
-     piece is covered by the first-order bound; an uncovered stretch is simply searched. If that check does not verify, the window is re-solved
-     from scratch (no certificate) and THAT outcome stands. `resolve=True` (the G-6 sample) skips the certificate altogether.
+     piece is covered by the first-order bound; an uncovered stretch is simply searched. If that check is UNVERIFIED (or refutes without an
+     evaluated witness), the window is re-solved from scratch (no certificate) and THAT outcome stands; a refutation carrying an evaluated witness
+     (`objective_exceeds_stored_maximum`, `peak_value_mismatch`) is a DISAGREEMENT as it stands — no re-solve can soften it. `resolve=True` (the G-6 sample) skips the certificate altogether.
 
 WHAT IT DOES FOR A `solver_budget_exhausted` BLANK (`check_budget_blank`) — the blank is justified by its certificate, not by the reason string:
   the declared per-window budget is the policy's (500,000: a builder cannot blank an easy window by declaring a small one); the evaluation count
@@ -54,6 +55,8 @@ OWN_H1_SPACING_S = chk.H1_SAMPLE_S
 G6_SAMPLE_RATE = 0.02                  # the share of numbered windows re-solved from scratch (R-7; the rate is the caller's to raise)
 STORED_INSTANT_TOL_S = 1e-5            # the builder's float seconds → a µs-quantised stored instant
 CLOSED_KINDS = ("piece", "dead", "leaf", "pruned")
+#: the verifier's findings that are an evaluated witness (not a partition-dependent search outcome): the objective at a real instant above the stored maximum, or other than the stored value
+WITNESSED_REFUTATIONS = frozenset({chk.F_ABOVE, chk.F_VALUE})
 
 AGREED, DISAGREEMENT, INCONCLUSIVE = "AGREED", "DISAGREEMENT", "INCONCLUSIVE"
 #: the UNVERIFIED reasons that are demoted rather than blocking (R-6). `tie_ambiguous` (R-1) and `tie_isolation_unresolved` (R-3) are the
@@ -69,6 +72,12 @@ C_BUDGET_DECLARED = "budget_declared_below_policy"
 C_BUDGET_EVALS = "budget_blank_evals_below_declared"
 C_NO_OPEN = "budget_blank_without_open_cell"
 C_OUTCOME = "certificate_outcome_mismatch"
+
+
+def _tol(kind: str) -> float:
+    """The ONE place this module reads the verifier's numeric tolerances: `"bound"` (a cell's claimed bound against the verifier's own evaluation) and `"value"` (the
+    certificate's double maximum against the stored REAL). od1-r1 (R-1) replaces both fixed constants with the float4 interval; the merge-back changes THIS function only."""
+    return {"bound": chk.BOUND_TOL, "value": chk.VALUE_TOL}[kind]
 
 
 def classify(report) -> str:
@@ -154,7 +163,7 @@ class _SeededEngine(chk._Engine):
                     continue
                 v = self._objective_at(t)
                 self.cells_checked += 1
-                if v is not None and v > u + chk.BOUND_TOL:
+                if v is not None and v > u + _tol("bound"):
                     self.witness_findings.append((C_WITNESS, f"a {kind} cell [{l!r}, {r!r}] claims the objective is at most {u!r}; "
                                                               f"the verifier evaluates {v!r} at {self._dt(t).isoformat()}"))
                     return
@@ -237,7 +246,7 @@ def check_numbered(*, lo: datetime, hi: datetime, records, objective: str, store
 
     bad, offset, cells, _opens = _parse(certificate, objective=objective, outcome="solved", lo=lo)
     if not bad:
-        if not _num(certificate.get("value")) or abs(certificate["value"] - stored.objective_value) > chk.VALUE_TOL:
+        if not _num(certificate.get("value")) or abs(certificate["value"] - stored.objective_value) > _tol("value"):
             bad.append((C_STORED, f"the certificate's maximum {certificate.get('value')!r} is not the stored objective value {stored.objective_value!r}"))
         if not _num(certificate.get("instant")) or abs((lo - stored.peak_instant).total_seconds() + certificate["instant"] + offset) > STORED_INSTANT_TOL_S:
             bad.append((C_STORED, f"the certificate's peak instant {certificate.get('instant')!r} s is not the stored peak {stored.peak_instant.isoformat()}"))
@@ -250,9 +259,13 @@ def check_numbered(*, lo: datetime, hi: datetime, records, objective: str, store
     if rep.status == chk.VERIFIED:
         return _from_inner(rep, used_certificate=True, fell_back=False, resolved=False, evals=eng.evals, cells_checked=eng.cells_checked,
                            seeds=eng.seed_count)
-    eng2, rep2 = run(None)                                         # the certificate-seeded check did not verify: solve from scratch
+    if rep.status == chk.REFUTED and any(f.code in WITNESSED_REFUTATIONS for f in rep.findings):
+        # a refutation the verifier's own evaluation witnessed (a point above the stored maximum, a different value at the stored peak) is a sound DISAGREEMENT whatever the
+        # partition; a from-scratch run that merely exhausted its budget must not turn it into an INCONCLUSIVE, demotable blank (lane review N-1)
+        return _from_inner(rep, used_certificate=True, fell_back=False, resolved=False, evals=eng.evals, cells_checked=eng.cells_checked, seeds=eng.seed_count)
+    eng2, rep2 = run(None)                                         # the certificate-seeded check did not verify (UNVERIFIED, or a refutation no point witnesses): from scratch
     return _from_inner(rep2, used_certificate=True, fell_back=True, resolved=False, evals=eng.evals + eng2.evals, cells_checked=eng.cells_checked,
-                       seeds=eng.seed_count)
+                       seeds=eng2.seed_count)                      # `seeds` is the DECIDING run's: 0 for a from-scratch re-solve
 
 
 # ── a solver_budget_exhausted blank ──────────────────────────────────────────────────────────────────────────────────────────

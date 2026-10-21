@@ -36,6 +36,14 @@ Claims (the cited rule is the ruling or classical definition the oracle is built
   W-2  an INCONCLUSIVE window is reproduced-as-blank, never numeric                                                     R-6
   W-3  the certificate rides in the qualification record without disturbing the provenance comparison                   R-7
   S-1  the sweep attaches the solver's certificate to the window it solved                                              R-7
+  V-10 a seeded refutation an evaluated point witnesses stands as a DISAGREEMENT (not re-solved, not softened)          R-6 (lane review N-1)
+  V-11 the fallback re-solve is from scratch (the deciding run used no certificate partition)                           R-7 (lane review N-4)
+  D-1  the grain attestation NAMES the demoted windows: sorted {window_id, reason}                                      R-6 (lane review B-1 a)
+  D-2  the gate refuses a demoted-window list that disagrees with the attested counts                                   R-6 (B-1 b)
+  D-3  the gate refuses a demoted window that is not a stored NUMBERED window of the grain                              R-6 (B-1 b)
+  D-4  a demoted window is served as the named blank: every number null, valence unqualified, reason = the attested     R-6 / §N.7.6 (B-1 c)
+  D-5  the demotions are read back from the VERIFIED grains' attestations, under the numerical policy only             R-6 (B-1 c)
+  (D-6, the wiring of the blank into `read_v5` — the finished window list passes through it — is in test_w1_serving_reader.py, on the real database)
 plus the end-to-end fixture (first window exhausts, the next window is easy), guards for the verifier's independence, and the literals the two sides restate.
 """
 from __future__ import annotations
@@ -51,6 +59,7 @@ from pathlib import Path
 import pytest
 
 from services.gochara_kernel import numerical_window_gate as nwg
+from services.gochara_kernel import serving_reader as rd
 from services.gochara_kernel import window_cert_check as cc
 from services.gochara_kernel import window_solver as sol
 from services.gochara_kernel import window_solver_check as chk
@@ -226,7 +235,7 @@ def oracle_k4(mods):
 
 # V-1 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-@claim("V-1", "window_cert_check", "if v is not None and v > u + chk.BOUND_TOL:", "if False:")
+@claim("V-1", "window_cert_check", 'if v is not None and v > u + _tol("bound"):', "if False:")
 def oracle_v1(mods):
     """R-7 / K12: the verifier does not take a cell's claimed bound on trust: it evaluates the sky at the cell's ends and middle. A `dead` cell claiming the objective is at
     most 0.5 where the (analytic) objective is 0.95 is a DISAGREEMENT, whatever the maximum."""
@@ -246,7 +255,7 @@ def c_codes(rep):
 
 # V-2 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-@claim("V-2", "window_cert_check", "abs(certificate[\"value\"] - stored.objective_value) > chk.VALUE_TOL", "False")
+@claim("V-2", "window_cert_check", 'abs(certificate["value"] - stored.objective_value) > _tol("value")', "False")
 def oracle_v2(mods):
     """R-7: the certificate must be the certificate of THIS window: its maximum is the stored objective value (float4 round trip, 1e-6). A certificate whose maximum is 1e-3
     off the stored one — another window's, or a tampered row — is a DISAGREEMENT."""
@@ -291,16 +300,48 @@ def oracle_v4(mods):
 @claim("V-5", "window_cert_check", "    if rep.status == chk.VERIFIED:\n        return _from_inner(rep, used_certificate=True, fell_back=False",
        "    if True:\n        return _from_inner(rep, used_certificate=True, fell_back=False")
 def oracle_v5(mods):
-    """R-7: the verifier re-solves ONLY when the certificate-seeded check fails, and that from-scratch outcome is the one that stands. A stored maximum 1e-3 too low (certificate
-    and stored row agreeing on the wrong number) fails the seeded check; the re-solve reaches the same DISAGREEMENT and says it re-solved. A sound certificate is NOT re-solved."""
+    """R-7: the verifier re-solves ONLY when the certificate-seeded check does not verify. A sound certificate is NOT re-solved; the same window with a verifier budget of 300
+    evaluations (the seeded check cannot finish: UNVERIFIED) IS re-solved from scratch, and that outcome — here the same budget running out — stands, saying it re-solved."""
     c = M(mods, "window_cert_check")
     h, res, cert = solved_hump()
     ok = h.check(c, cert, res)
     assert ok.classification == c.AGREED and ok.used_certificate and not ok.fell_back
+    rep = h.check(c, cert, res, max_evals=300)
+    assert rep.fell_back and rep.classification == c.INCONCLUSIVE, (rep.classification, rep.fell_back, rep.codes())
+
+
+# V-10 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def _wrong_max(h, res, cert):
+    """A stored maximum 1e-3 below the true one, the certificate agreeing with the stored row on the wrong number (so only the SKY can refute it)."""
     wrong = chk.StoredWindow(at(res.instant), res.value - 1e-3)
     cert["value"] = res.value - 1e-3
+    return wrong, cert
+
+
+@claim("V-10", "window_cert_check", "    if rep.status == chk.REFUTED and any(f.code in WITNESSED_REFUTATIONS for f in rep.findings):", "    if False:")
+def oracle_v10(mods):
+    """R-6 (lane review N-1): a refutation the verifier's own EVALUATION witnessed — here the objective reaches a point above a stored maximum 1e-3 too low — is a DISAGREEMENT as
+    it stands. It is not re-solved: a from-scratch run that merely exhausted its budget would turn a proven DISAGREEMENT into an INCONCLUSIVE window the gate demotes."""
+    c = M(mods, "window_cert_check")
+    h, res, cert = solved_hump()
+    wrong, cert = _wrong_max(h, res, cert)
     rep = c.check_numbered(lo=at(0), hi=at(h.T), records=h.records(), objective=chk.OBJ_SUM, stored=wrong, position_at=h.pos, certificate=cert)
-    assert rep.classification == c.DISAGREEMENT and rep.fell_back and "objective_exceeds_stored_maximum" in c_codes(rep), (rep.classification, rep.fell_back, rep.findings)
+    assert rep.classification == c.DISAGREEMENT and "objective_exceeds_stored_maximum" in c_codes(rep), (rep.classification, rep.codes())
+    assert not rep.fell_back and rep.used_certificate, "a witnessed refutation was re-solved"
+
+
+# V-11 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+@claim("V-11", "window_cert_check", "    eng2, rep2 = run(None)", "    eng2, rep2 = run(cells)")
+def oracle_v11(mods):
+    """R-7 (lane review N-4): 'solve from scratch' means the re-solve starts from the whole piece, not from the certificate's partition. The seeded check of the solved hump
+    starts from its certificate's cells (`seeds` > 0); when it cannot finish and the window is re-solved, the deciding run used NO seed."""
+    c = M(mods, "window_cert_check")
+    h, res, cert = solved_hump()
+    assert h.check(c, cert, res).seeds > 5
+    rep = h.check(c, cert, res, max_evals=300)
+    assert rep.fell_back and rep.seeds == 0, (rep.fell_back, rep.seeds)
 
 
 # V-6 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -333,13 +374,15 @@ def oracle_v7(mods):
 
 @claim("V-8", "window_cert_check", 'if certificate["evals"] < certificate["max_evals"]:', "if False:")
 def oracle_v8(mods):
-    """R-6: 'the evaluation count reached the declared budget'. The genuine exhausted certificate is borne out; the same certificate claiming 10,000 evaluations is a DISAGREEMENT."""
+    """R-6: 'the evaluation count reached the declared budget'. The genuine exhausted certificate is borne out; the same certificate claiming 10,000 evaluations, or one evaluation
+    short of the declared budget, is a DISAGREEMENT."""
     c = M(mods, "window_cert_check")
     h, _res, cert = exhausted_hump()
     assert h.check_blank(c, cert).classification == c.AGREED
-    cert["evals"] = 10_000
-    rep = h.check_blank(c, cert)
-    assert rep.classification == c.DISAGREEMENT and "budget_blank_evals_below_declared" in c_codes(rep), (rep.classification, rep.findings)
+    for short in (10_000, cert["max_evals"] - 1):                    # far below, and one evaluation short of the declared budget (lane review N-2)
+        cert["evals"] = short
+        rep = h.check_blank(c, cert)
+        assert rep.classification == c.DISAGREEMENT and "budget_blank_evals_below_declared" in c_codes(rep), (short, rep.classification, rep.findings)
 
 
 # V-9 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -402,9 +445,10 @@ def _census(numbered=10, blank=None, valence=None, no_score=0, windows=None):
             "valence": {"favourable": numbered} if valence is None else valence, "blank": blank, "problems": []}
 
 
-def _report(numeric, windows, demoted=()):
+def _report(numeric, windows, demoted=(), prefix="w"):
     return {"policy_version": nwg.POLICY_QUALIFICATION, "status": "VERIFIED", "unverified_windows": [], "fully_reproduced": windows, "numeric_reproduced": numeric,
-            "inconclusive_windows": [{"window": f"w{i}", "reason": r, "stored_numbered": True, "valence": "favourable", "had_score": True} for i, r in enumerate(demoted)]}
+            "inconclusive_windows": [{"window": f"2030-01-0{i + 1}T00:00:00+00:00", "window_id": f"{prefix}-{i}", "reason": r, "stored_numbered": True, "valence": "favourable",
+                                      "had_score": True} for i, r in enumerate(demoted)]}
 
 
 def _attest(m, census, report):
@@ -442,19 +486,24 @@ class _Conn:
         self.pins, self.rows = pins, rows
 
 
-def _verdict(m, windows_per_grain, demoted_per_grain):
+def _verdict(m, windows_per_grain, demoted_per_grain, numbered_ids=None, tamper=None):
     """`generation_verdict` over grains of `windows_per_grain` numbered windows each, `demoted_per_grain` of them demoted (a census, an attestation and a verification row per grain)."""
     grains = [("marriage", f"P{i + 1}", "1.0.0") for i in range(len(windows_per_grain))]
     census = {g: _census(w) for g, w in zip(grains, windows_per_grain)}
     runner = {}
     for g, w, dem in zip(grains, windows_per_grain, demoted_per_grain):
         census[g] = _census(w, blank={})
-        report = _report(w - dem, w, ("verifier_budget_exhausted",) * dem)
+        report = _report(w - dem, w, ("verifier_budget_exhausted",) * dem, prefix=g[1])
         runner[g] = m.runner_with_attestation({}, _attest(m, census[g], report))
+    if tamper is not None:
+        tamper(runner)
     sql_pins = [(c, p, v) for c, p, v in grains]
     sql_ver = [(c, p, v, "VERIFIED", m.POLICY_QUALIFICATION, windows_per_grain[i], runner[(c, p, v)]) for i, (c, p, v) in enumerate(grains)]
 
     def rows(conn, sql, params=()):
+        if "SELECT window_id::text" in sql:                      # the grain's stored numbered windows: `<path>-0 … <path>-(w-1)`
+            path = params[3]
+            return [(f"{path}-{i}",) for i in range(windows_per_grain[int(path[1:]) - 1])] if numbered_ids is None else numbered_ids(path)
         return sql_pins if "search_path_pin" in sql else sql_ver
     m._rows = rows
     m.census = lambda conn, chart, gen, cls, path, ver: census[(cls, path, ver)]
@@ -486,6 +535,118 @@ def oracle_g4(mods):
     m = M(mods, "numerical_window_gate")
     with pytest.raises(m.NumericalGateDisagrees, match="only .* may demote"):
         _attest(m, _census(10), _report(9, 12, ("monotone_arc_not_established",)))
+
+
+# D-1 .. D-5: the demoted windows are NAMED, checked at the gate, and served as the blank (lane review B-1, ruling SR-R67-B1-OWNER) ──────────────────────────
+
+@claim("D-1", "numerical_window_gate", '            ids.append({"window_id": w["window_id"], "reason": w["reason"]})\n', "")
+def oracle_d1(mods):
+    """R-6 (B-1 a): demotion is a fact about NAMED windows. The attestation of a grain whose verifier demoted two windows lists them — sorted, each with its stored window_id and its
+    reason — beside the counts; a demoted window the report cannot name (no stored id) is not attested at all."""
+    m = M(mods, "numerical_window_gate")
+    att = _attest(m, _census(10), _report(8, 12, ("verifier_budget_exhausted", "tie_ambiguous")))
+    assert att["demoted_windows"] == [{"window_id": "w-0", "reason": "verifier_budget_exhausted"}, {"window_id": "w-1", "reason": "tie_ambiguous"}], att["demoted_windows"]
+    swapped = _report(8, 12, ("verifier_budget_exhausted", "tie_ambiguous"))
+    swapped["inconclusive_windows"].reverse()
+    assert _attest(m, _census(10), swapped)["demoted_windows"] == att["demoted_windows"]           # sorted: the same set is the same attestation
+    nameless = _report(9, 12, ("verifier_budget_exhausted",))
+    del nameless["inconclusive_windows"][0]["window_id"]
+    with pytest.raises(m.NumericalGateDisagrees, match="no stored window_id"):
+        _attest(m, _census(10), nameless)
+
+
+@claim("D-2", "numerical_window_gate", "    out += _demoted_window_list_problems(d)\n", "")
+def oracle_d2(mods):
+    """R-6 (B-1 b): the persisted list must AGREE with the counts. An attestation whose list names one window while the counts say two were demoted — or the reverse, a list under a
+    reason the counts do not carry, or one window listed twice — makes the generation verdict FAIL (the seal refuses)."""
+    m = M(mods, "numerical_window_gate")
+    assert _verdict(m, [500, 500], [3, 2])["status"] == m.PASSED
+
+    def drop_one(runner):
+        att = runner[("marriage", "P1", "1.0.0")][m.ATTESTATION_KEY]
+        del att["demoted_windows"][-1]
+    bad = _verdict(m, [500, 500], [3, 2], tamper=drop_one)
+    assert bad["status"] == m.FAILED and any("list" in p and "counts" in p for p in bad["problems"]), bad["problems"]
+
+    def twice(runner):
+        att = runner[("marriage", "P1", "1.0.0")][m.ATTESTATION_KEY]
+        att["demoted_windows"][-1] = dict(att["demoted_windows"][0])
+    assert _verdict(m, [500, 500], [3, 2], tamper=twice)["status"] == m.FAILED
+
+    def other_reason(runner):
+        att = runner[("marriage", "P1", "1.0.0")][m.ATTESTATION_KEY]
+        att["demoted_windows"][0]["reason"] = "tie_ambiguous"
+    assert _verdict(m, [500, 500], [3, 2], tamper=other_reason)["status"] == m.FAILED
+
+    def not_a_list(runner):
+        runner[("marriage", "P1", "1.0.0")][m.ATTESTATION_KEY]["demoted_windows"] = "w-0"
+    assert _verdict(m, [500, 500], [3, 2], tamper=not_a_list)["status"] == m.FAILED
+
+
+@claim("D-3", "numerical_window_gate", "        if stray:\n", "        if False:\n")
+def oracle_d3(mods):
+    """R-6 (B-1 b): each attested window must be a stored NUMBERED window of THAT grain. A demoted id the grain does not hold as a numbered window — a blank, another grain's window,
+    an id that does not exist — makes the verdict FAIL, naming it."""
+    m = M(mods, "numerical_window_gate")
+    assert _verdict(m, [500, 500], [3, 2])["status"] == m.PASSED
+    # the stored P1 windows are `P1-0 … P1-499` less the first, which is now a blank: the attestation still demotes it
+    gone = _verdict(m, [500, 500], [3, 2], numbered_ids=lambda path: [(f"{path}-{i}",) for i in range(1, 500)] if path == "P1" else [(f"{path}-{i}",) for i in range(500)])
+    assert gone["status"] == m.FAILED and any("'P1-0'" in p and "not stored numbered windows of this grain" in p for p in gone["problems"]), gone["problems"]
+
+
+class _Fake:
+    """A connection answering the one query `_demoted_windows` makes, with the attestation rows the test supplies (and recording that it asked)."""
+
+    def __init__(self, rows):
+        self.rows, self.asked = rows, []
+
+    def execute(self, sql, params=()):
+        self.asked.append((sql, params))
+        return _Rows(self.rows)
+
+
+def _identity(*pairs):
+    return ({"commit": "x", "numerical_window_gate": {"status": "PASSED", "demoted_windows": [{"window_id": w, "reason": r} for w, r in pairs]}},)
+
+
+def _served_window(wid, **extra):
+    return {"window_id": wid, "event_class": "marriage", "peak_instant": "2030-01-01T00:00:00+00:00", "score": 0.5, "evidence_for": 1.25, "evidence_against": 0.25,
+            "severity": 0.5, "outcome_valence_for_native": "favourable", "objective": "evidence_for_per_root_sum", "objective_value": 1.25,
+            "qualification": {"policy": "window_qualification/1", "unqualified_reason": None, "solver_certificate": {"value": 1.25, "instant": 0.0}},
+            "unqualified_reason": None, "demoted_at_seal": False, **extra}
+
+
+@claim("D-4", "serving_reader", "w.update(peak_instant=None, score=None, evidence_for=None, evidence_against=None, severity=None, objective_value=None,\n"
+       "                 outcome_valence_for_native='unqualified', unqualified_reason=reason, demoted_at_seal=True)",
+       "w.update(unqualified_reason=reason, demoted_at_seal=True)")
+def oracle_d4(mods):
+    """R-6 / CLAUDE.md §N.7.6 (B-1 c): a demoted window is SERVED as the named blank it was sealed as — every numeric field null (the page's columns, the constructor's
+    `objective_value`, and the builder's certificate whose value and instant are the unverified number), the valence `unqualified`, `unqualified_reason` the attested reason. A window
+    the attestation does not list is served exactly as stored."""
+    r = M(mods, "serving_reader")
+    listed, other = _served_window("w-0"), _served_window("w-1")
+    before = copy.deepcopy(other)
+    r._serve_demoted_as_blank([listed, other], {"w-0": "verifier_budget_exhausted"})
+    assert all(listed[k] is None for k in ("peak_instant", "score", "evidence_for", "evidence_against", "severity", "objective_value")), listed
+    assert listed["outcome_valence_for_native"] == "unqualified" and listed["unqualified_reason"] == "verifier_budget_exhausted" and listed["demoted_at_seal"] is True
+    assert listed["qualification"]["unqualified_reason"] == "verifier_budget_exhausted" and "solver_certificate" not in listed["qualification"]
+    assert other == before
+
+
+@claim("D-5", "serving_reader", "    if policy != POLICY_QUALIFICATION:\n        return {}", "    if False:\n        return {}")
+def oracle_d5(mods):
+    """R-6 (B-1 c): the reader takes the demotions from the generation's VERIFIED grains' persisted attestations, under the numerical policy only — the all-NULL policy has no number
+    to blank and the reader does not even ask. Two grains' lists merge; a malformed entry is ignored (the gate refuses to seal one), never guessed."""
+    r = M(mods, "serving_reader")
+    conn = _Fake([_identity(("w-0", "tie_ambiguous")), _identity(("w-9", "verifier_budget_exhausted"))])
+    assert r._demoted_windows(conn, "c", "g", "window_qualification/1") == {"w-0": "tie_ambiguous", "w-9": "verifier_budget_exhausted"}
+    sql = conn.asked[0][0]
+    assert "status = 'VERIFIED'" in sql and "ka_gochara_eval_window_verification" in sql
+    silent = _Fake([_identity(("w-0", "tie_ambiguous"))])
+    assert r._demoted_windows(silent, "c", "g", "all_null_candidate/1") == {} and silent.asked == []
+    messy = _Fake([({"numerical_window_gate": {"demoted_windows": [{"window_id": 7, "reason": "x"}, {"window_id": "w-1"}, "w-2", {"window_id": "w-3", "reason": "tie_ambiguous"}]}},),
+                   ({"commit": "x"},)])
+    assert r._demoted_windows(messy, "c", "g", "window_qualification/1") == {"w-3": "tie_ambiguous"}
 
 
 # W-1 .. W-3: the verifier seam ───────────────────────────────────────────────────────────────────────────────────────────────────
@@ -574,14 +735,14 @@ def _fn_windows_with(v, verdicts, **kw):
 
 @claim("W-2", "window_verifier", "fully_reproduced += 1                  # reproduced as the named blank it will be served as", "pass")
 def oracle_w2(mods):
-    """R-6: an INCONCLUSIVE window is DEMOTED — counted as reproduced (as the named blank it will be served as, so the grain can verify), listed with its reason and the valence it
+    """R-6: an INCONCLUSIVE window is DEMOTED — counted as reproduced (as the named blank it will be served as, so the grain can verify), listed with its stored window_id, its reason and the valence it
     carried, and never counted among the numerically reproduced. An AGREED numbered window is numeric. The report stays VERIFIED."""
     v = M(mods, "window_verifier")
     rep, calls = _fn_windows_with(v, [Verdict("INCONCLUSIVE", inconclusive=[("verifier_budget_exhausted", "")]), Verdict("AGREED")], n=2)
     assert rep["status"] == "VERIFIED" and rep["windows"] == 2 and rep["fully_reproduced"] == 2 and rep["numeric_reproduced"] == 1, rep
     assert rep["solver_checked_windows"] == 2 and rep["unverified_dynamic"] == 0
-    assert rep["inconclusive_windows"] == [{"window": calls[0]["window"], "reason": "verifier_budget_exhausted", "stored_numbered": True,
-                                            "valence": calls[0]["valence"], "had_score": True}]
+    assert rep["inconclusive_windows"] == [{"window": calls[0]["window"], "window_id": "w0", "reason": "verifier_budget_exhausted",
+                                            "stored_numbered": True, "valence": calls[0]["valence"], "had_score": True}]
 
 
 @claim("W-3", "window_verifier", 'if {k: v for k, v in s_qual.items() if k != "solver_certificate"} != want_q:', "if s_qual != want_q:")
@@ -616,7 +777,7 @@ def oracle_s1(mods):
 # ── the harness ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 _COUNT = [0]
-_PATHS = {"window_solver": sol, "window_cert_check": cc, "numerical_window_gate": nwg, "window_verifier": wv, "window_sweep": ws}
+_PATHS = {"window_solver": sol, "window_cert_check": cc, "numerical_window_gate": nwg, "window_verifier": wv, "window_sweep": ws, "serving_reader": rd}
 
 
 def _load(name: str, source: str):
@@ -672,7 +833,7 @@ def test_the_single_planted_reversion_fails_the_oracle(cid):
 
 def test_every_claim_has_exactly_one_reversion_and_one_oracle():
     assert set(CLAIMS) == {"K-1", "K-2", "K-3", "K-4", "V-1", "V-2", "V-3", "V-4", "V-5", "V-6", "V-7", "V-8", "V-9", "C-1", "C-2", "C-3", "G-1", "G-2", "G-3", "G-4",
-                           "W-1", "W-2", "W-3", "S-1"}
+                           "W-1", "W-2", "W-3", "S-1", "V-10", "V-11", "D-1", "D-2", "D-3", "D-4", "D-5"}
     assert len({(m, old) for _, m, old, _ in CLAIMS.values()}) == len(CLAIMS)             # no two claims share a reversion site
 
 

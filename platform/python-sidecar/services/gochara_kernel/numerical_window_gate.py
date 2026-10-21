@@ -20,7 +20,9 @@ table yields none, a blank where it yields a value, a reason that names the all-
 POPULATIONS AFTER CLASSIFICATION (R-6). The verifier's solver check gives every function-valued window one of three classes: AGREED, DISAGREEMENT (blocks the
 seal, always: `verify_window_semantics` raises) or INCONCLUSIVE (it could not settle the window inside its own budget, or R-1/R-3's tie refusals). An INCONCLUSIVE
 window that carries a number is DEMOTED: the attestation counts it as a BLANK under its named reason, not as numbered, and lists it under `demoted` (the stored row
-still carries the builder's number; what is attested and sealed is that the window is served as the named blank). The census the gate recounts is the STORED
+still carries the builder's number; what is attested and sealed is that the window is served as the named blank). The attestation therefore NAMES them
+(`demoted_windows`: sorted `{window_id, reason}`): `generation_verdict` checks that each is a stored numbered window of the grain and that the list agrees with the counts,
+and `serving_reader` reads the list back and serves each listed window with every number null and `unqualified_reason` the attested reason. The census the gate recounts is the STORED
 populations; the attested populations are the stored ones after classification, and every difference is a named, counted demotion. The demoted share of all windows
 is capped at 0.5 % (`INCONCLUSIVE_SHARE_CAP`); above it the verdict FAILS and the seal refuses. A stored blank the check could not confirm stays the blank it is.
 
@@ -138,19 +140,24 @@ def census(conn, chart_id: str, generation: str, event_class: str, path_id: str,
 
 def demotions(report: dict) -> dict:
     """What the verifier's solver check demoted in a grain (R-6), from its re-derivation report: the windows that carried a number and could not be settled
-    (`demoted`: reason → windows; `demoted_valence`: the valence the stored number carried → windows; `demoted_without_score`) and the blanks it could not confirm."""
+    (`demoted`: reason → windows; `demoted_valence`: the valence the stored number carried → windows; `demoted_without_score`; `demoted_windows`: WHICH windows, as
+    sorted `{window_id, reason}` — the serving path reads them back, so a demotion is a fact about named windows and not only a count) and the blanks it could not confirm."""
     dem: dict[str, int] = {}
     dem_valence: dict[str, int] = {}
+    ids: list[dict] = []
     without_score = unconfirmed = 0
     for w in report.get("inconclusive_windows") or ():
         if w.get("stored_numbered"):
+            if not isinstance(w.get("window_id"), str) or not w["window_id"]:
+                raise NumericalGateDisagrees(f"a demoted window ({w.get('window')!r}) carries no stored window_id: what is demoted cannot be named, so it cannot be served as a blank")
+            ids.append({"window_id": w["window_id"], "reason": w["reason"]})
             dem[w["reason"]] = dem.get(w["reason"], 0) + 1
             dem_valence[w["valence"]] = dem_valence.get(w["valence"], 0) + 1
             without_score += 0 if w.get("had_score") else 1
         else:
             unconfirmed += 1
     return {"demoted": dict(sorted(dem.items())), "demoted_valence": dict(sorted(dem_valence.items())), "demoted_without_score": without_score,
-            "unconfirmed_blank_windows": unconfirmed}
+            "unconfirmed_blank_windows": unconfirmed, "demoted_windows": sorted(ids, key=lambda e: (e["window_id"], e["reason"]))}
 
 
 def _after_classification(live: dict, d: dict) -> dict:
@@ -168,6 +175,34 @@ def _after_classification(live: dict, d: dict) -> dict:
             "valence": dict(sorted(valence.items())), "blank": dict(sorted(blank.items()))}
 
 
+def _demoted_window_list_problems(d: dict) -> list[str]:
+    """The attested `demoted_windows` must be a sorted list of `{window_id, reason}` that AGREES with the counts: one entry per demoted window, each id once, reasons
+    counting up to `demoted`. (That each id is a stored numbered window of the grain is `generation_verdict`'s check, against the live table.)"""
+    lst = d.get("demoted_windows")
+    if not isinstance(lst, list) or not all(isinstance(e, dict) and set(e) == {"window_id", "reason"} and isinstance(e["window_id"], str) and e["window_id"]
+                                            and isinstance(e["reason"], str) for e in lst):
+        return ["the attested demoted_windows is not a list of {window_id, reason}"]
+    out: list[str] = []
+    ids = [e["window_id"] for e in lst]
+    if len(set(ids)) != len(ids):
+        out.append("a window is listed twice among the demoted windows")
+    if lst != sorted(lst, key=lambda e: (e["window_id"], e["reason"])):
+        out.append("the demoted windows are not listed in the sorted order")
+    by_reason: dict[str, int] = {}
+    for e in lst:
+        by_reason[e["reason"]] = by_reason.get(e["reason"], 0) + 1
+    if by_reason != dict(sorted(d["demoted"].items())):
+        out.append(f"the demoted windows list {dict(sorted(by_reason.items()))!r} by reason; the attested counts are {dict(sorted(d['demoted'].items()))!r}")
+    return out
+
+
+def _numbered_window_ids(conn, chart_id: str, generation: str, event_class: str, path_id: str, rule_version: str) -> set:
+    """The window_ids of the grain's stored NUMBERED windows (a peak is stored), by this module's own SQL."""
+    return {r[0] for r in _rows(conn, "SELECT window_id::text FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s AND event_class = %s"
+                                      " AND path_id = %s AND rule_version = %s AND peak_instant IS NOT NULL ORDER BY 1",
+                                (chart_id, generation, event_class, path_id, rule_version))}
+
+
 def _demotion_problems(live: dict, d: dict) -> list[str]:
     out: list[str] = []
     n = sum(d["demoted"].values())
@@ -176,6 +211,7 @@ def _demotion_problems(live: dict, d: dict) -> list[str]:
     if any(not isinstance(k, int) or isinstance(k, bool) or k < 0 for k in (*d["demoted"].values(), *d["demoted_valence"].values(), d["demoted_without_score"])):
         out.append("a demotion count is not a non-negative integer")
         return out
+    out += _demoted_window_list_problems(d)
     if n != sum(d["demoted_valence"].values()):
         out.append(f"{n} window(s) demoted but their valences account for {sum(d['demoted_valence'].values())}")
     if n > live["numbered"] or any(k > live["valence"].get(v, 0) for v, k in d["demoted_valence"].items()) or d["demoted_without_score"] > min(n, live["numbered_without_score"]):
@@ -261,10 +297,17 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None) -> di
         # R-6: the attested populations are the live (stored) ones after the verifier's classification. The demotions are the verifier's assertion (a stored row cannot
         # say it); everything else in the attestation must equal what the stored windows say now, and the demotions must fit inside the stored numbered windows.
         d = {"demoted": att.get("demoted", {}), "demoted_valence": att.get("demoted_valence", {}), "demoted_without_score": att.get("demoted_without_score", 0),
-             "unconfirmed_blank_windows": att.get("unconfirmed_blank_windows", 0)}
+             "unconfirmed_blank_windows": att.get("unconfirmed_blank_windows", 0), "demoted_windows": att.get("demoted_windows", [])}
         shape = [f"{tag}: {p}" for p in _demotion_problems(live, d)] if all(isinstance(d[k], dict) for k in ("demoted", "demoted_valence")) else [f"{tag}: the attested demotions are malformed"]
         problems += shape
         if shape:
+            continue
+        # R-6 (lane review B-1): the serving path blanks exactly the windows listed here, so each must be a stored NUMBERED window of THIS grain — a listed id that is not
+        # (a blank, a window of another grain, nothing at all) is a demotion of something that was never served as a number, and a numbered window left off the list is
+        # one the counts say was demoted and nothing blanks
+        stray = sorted({e["window_id"] for e in d["demoted_windows"]} - _numbered_window_ids(conn, chart_id, generation, cls, path, ver))
+        if stray:
+            problems.append(f"{tag}: the attested demoted windows {stray!r} are not stored numbered windows of this grain")
             continue
         after = _after_classification(live, d)
         want = {"schema": SCHEMA, "status": PASSED, "policy": POLICY_QUALIFICATION, "table": binding, "windows": live["windows"], "reproduced": live["windows"],
