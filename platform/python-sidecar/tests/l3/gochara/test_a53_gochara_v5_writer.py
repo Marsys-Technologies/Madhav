@@ -437,8 +437,8 @@ def test_seed_row_is_inactive_and_cites_both_planner_predicates():
     assert "is_active: false" in block
     assert "is_active: true" not in block
     # K8-REG / migration 1392 also declares the direct rule-registry read.
-    # This dependency correction does not activate the staged writer.
-    assert "depends_on: ['ga_positions', 'ga_dashas', 'bg_transit_rules']" in block
+    # This dependency correction does not activate the staged writer. SR-K8-EDGE-1403 adds the L0 dignity producer (migration 1403).
+    assert "depends_on: ['ga_positions', 'ga_dashas', 'bg_transit_rules', 'bg_dignity_reference']" in block
     # the inertness comment cites both planner predicates
     assert "runPreparation" in block and "recalibrationEnqueue" in block
 

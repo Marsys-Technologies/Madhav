@@ -823,6 +823,7 @@
     "asset_id": "ka_gochara_v5",
     "layer": "kala",
     "depends_on": [
+      "bg_dignity_reference",
       "bg_transit_rules",
       "ga_dashas",
       "ga_positions"

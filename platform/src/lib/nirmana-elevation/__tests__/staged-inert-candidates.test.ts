@@ -190,16 +190,16 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
   })
   // ── N-137 (Suvarṇa): v5 carries its TRUTHFUL dependencies and a declared test trigger; one rule for both ids ─────────────────────────────────────────
   describe('N-137 — the rule: inert, not retired, declared dependencies (or none), evidence only from declared test runs, nothing depends on it', () => {
-    const PAIR = ['ga_positions', 'ga_dashas']
-    const v5truthful = (over: Partial<NirmanaRegistryContractRow> = {}) => staged(V5, { depends_on: PAIR, ...over })
+    const V5_DEPS = ['ga_positions', 'ga_dashas', 'bg_transit_rules', 'bg_dignity_reference']
+    const v5truthful = (over: Partial<NirmanaRegistryContractRow> = {}) => staged(V5, { depends_on: V5_DEPS, ...over })
 
-    it('the rule table: v5 = exactly the pair + the small-test trigger + decision N-137; v4.1 = no dependencies, no test trigger', () => {
-      expect(NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V5)).toEqual({ declaredDependsOn: ['ga_dashas', 'ga_positions'], emptyDependsOnAllowed: true, testTriggers: ['gochara-v5-small-test'], evidenceCutoff: null, dependents: 'none', reason: 'unsealed test candidate', decision: 'N-137' })
+    it('the rule table: v5 = exactly the four-edge set (migrations 1304, 1392, 1403) + the small-test trigger + decision N-137; v4.1 = no dependencies, no test trigger', () => {
+      expect(NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V5)).toEqual({ declaredDependsOn: ['bg_dignity_reference', 'bg_transit_rules', 'ga_dashas', 'ga_positions'], emptyDependsOnAllowed: true, testTriggers: ['gochara-v5-small-test'], evidenceCutoff: null, dependents: 'none', reason: 'unsealed test candidate', decision: 'N-137' })
       expect(NIRMANA_STAGED_INERT_CANDIDATE_RULES.get(V41)).toMatchObject({ declaredDependsOn: [], testTriggers: [] })
     })
 
-    it('v5 with the truthful dependency pair (any order) and no non-test evidence is EXCLUDED: the baseline equals the frozen population and the monitor reads in_sync', () => {
-      for (const deps of [PAIR, [...PAIR].reverse()]) {
+    it('v5 with the truthful dependency set (any order) and no non-test evidence is EXCLUDED: the baseline equals the frozen population and the monitor reads in_sync', () => {
+      for (const deps of [V5_DEPS, [...V5_DEPS].reverse()]) {
         const rows = [...population, v5truthful({ depends_on: deps })]
         expect(isNirmanaStagedInertCandidate(rows[3])).toBe(true)
         expect(buildNirmanaBaselineCandidate(rows)).toEqual(frozen())
@@ -218,8 +218,8 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
     it.each([
       ['a NON-test evidence row (or one whose run is gone)', { has_non_test_runtime_evidence: true }],
       ['is_active true', { is_active: true }],
-      ['an EXTRA dependency', { depends_on: [...PAIR, 'bg_reference'] }],
-      ['a MISSING dependency (one of the pair)', { depends_on: ['ga_dashas'] }],
+      ['an EXTRA dependency', { depends_on: [...V5_DEPS, 'bg_reference'] }],
+      ['a MISSING dependency (one of the declared set)', { depends_on: ['ga_dashas'] }],
       ['a DIFFERENT dependency', { depends_on: ['ga_dashas', 'bg_reference'] }],
       ['a DUPLICATED dependency', { depends_on: ['ga_dashas', 'ga_dashas', 'ga_positions'] }],
       ['the evidence column unknown (null)', { has_non_test_runtime_evidence: null }],
@@ -235,11 +235,11 @@ describe('staged inert Gochara candidates — excluded while inert, visible the 
       expect(() => assertManifestMatchesRegistry(frozen().manifest, rows)).toThrow(/Frozen manifest contains 3 assets but the live registry contains 4/)
     })
 
-    it('v4.1 keeps its current rule through the same structure: no dependencies allowed (even v5\'s pair), and ANY evidence is non-test evidence', () => {
+    it('v4.1 keeps its current rule through the same structure: no dependencies allowed (even v5\'s set), and ANY evidence is non-test evidence', () => {
       expect(isNirmanaStagedInertCandidate(staged(V41))).toBe(true)
-      expect(isNirmanaStagedInertCandidate(staged(V41, { depends_on: PAIR }))).toBe(false)             // the pair is v5's declared set, not v4.1's
+      expect(isNirmanaStagedInertCandidate(staged(V41, { depends_on: V5_DEPS }))).toBe(false)             // the set is v5's declared set, not v4.1's
       expect(isNirmanaStagedInertCandidate(staged(V41, { has_non_test_runtime_evidence: true }))).toBe(false)
-      expect(() => buildNirmanaBaselineCandidate([...population, staged(V41, { depends_on: PAIR })])).toThrow()
+      expect(() => buildNirmanaBaselineCandidate([...population, staged(V41, { depends_on: V5_DEPS })])).toThrow()
     })
 
     it('a candidate with a DEPENDENT is still part of the live DAG: not excluded (v5 truthful or not)', () => {
