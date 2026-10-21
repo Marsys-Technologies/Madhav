@@ -388,8 +388,12 @@ def test_s10_the_default_selection_is_1_0_0_and_the_flag_selects_1_3_0_inside_it
         rr._membership_consistent()                                       # the selection is drawn from the bound catalogue
     assert P1_FORM_B not in rr.bound_path_refs() and rr.selected_versions_for("marriage")["P1"] == "1.0.0"
     assert rr.bound_factor_refs() == plain_factors                        # nothing leaks out of the profile
+    # SR-OD1 merge-back: the FINAL profile selects the owner-confirmed doctrine rows by default (V1: FINAL_SELECTED_PATH_REFS, P1@1.3.0), flag or no flag; the trial
+    # flag's own claim above (measuring profile: default 1.0.0, flag selects 1.3.0 inside its scope only) is unchanged
     with rr.rule_profile(final_rules=True, p1_form_b=False):
-        assert P1_FORM_B not in rr.bound_path_refs() and rr.selected_versions_for("marriage")["P1"] == "1.0.0"
+        assert P1_FORM_B in rr.bound_path_refs() and rr.selected_versions_for("marriage")["P1"] == "1.3.0"
+    with rr.rule_profile(final_rules=True, p1_form_b=True):
+        assert rr.selected_versions_for("marriage")["P1"] == "1.3.0"
     with pytest.raises(ValueError, match="gochara_v5_p1_form_b must be a boolean"):
         with rr.rule_profile(final_rules=False, p1_form_b="yes"):
             pass
