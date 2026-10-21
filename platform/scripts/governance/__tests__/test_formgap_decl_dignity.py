@@ -47,7 +47,7 @@ def _cc(table, col):
 def test_the_declaration_is_sound_and_names_its_forms():
     e = DECLS[AID]
     assert ac.prose_none_problem(e) is None and ac.curated_corpus_problem(e) is None and e["prose_fields"] == [] and e["evidence_kind"] == "writer"
-    assert [(c["table"], c["column"], c["count"], bool(c.get("seed"))) for c in e["curated_corpus"]] == [(T1, "notes", 2, True), (T3, "notes", 35, False), (T4, "notes", 27, True), (T5, "retrograde_note", 4, False)]
+    assert [(c["table"], c["column"], c["count"], bool(c.get("seed"))) for c in e["curated_corpus"]] == [(T1, "notes", 2, True), (T3, "notes", 35, False), (T4, "notes", 27, True), (T5, "retrograde_note", 4, False), (T2, "classical_citation", 72, False)]
     assert [e2 for e2 in e["produced_tables"]] == [{"table": t} for t in TABLES]
 
 
@@ -58,6 +58,7 @@ def test_the_pins_are_the_seed_objects_digests_including_the_tuple_seeds():
     assert pf.corpus_digest([t[5] for t in W._AVASTHA_SCHEMES if t[5]]) == _cc(T3, "notes")["digest"] and len([t for t in W._AVASTHA_SCHEMES if t[5]]) == 35
     assert pf.corpus_digest([r["notes"] for r in W._MOTION_STATE_THRESHOLDS if r.get("notes")]) == _cc(T4, "notes")["digest"]
     assert pf.corpus_digest([t[3] for t in W._COMBUSTION_ORBS if t[3]]) == _cc(T5, "retrograde_note")["digest"] and len([t for t in W._COMBUSTION_ORBS if t[3]]) == 4
+    assert pf.corpus_digest([t[3] for t in W._NAISARGIKA_FRIENDSHIP]) == _cc(T2, "classical_citation")["digest"] and len(W._NAISARGIKA_FRIENDSHIP) == 72
 
 
 def test_the_explicit_vocabularies_are_the_hand_stated_classical_words():
@@ -117,7 +118,7 @@ def test_REAL_WRITER_the_five_tables_read_na_on_all_six_cells_through_a_checked_
     got = _m(db, monkeypatch)
     fs.all_na(got)
     f = got["Narr.agree"]["prose_none"]["forms"]
-    assert sorted((x["table"], x["column"], x["count"]) for x in f["curated"]) == sorted([(T1, "notes", 2), (T3, "notes", 35), (T4, "notes", 27), (T5, "retrograde_note", 4)])
+    assert sorted((x["table"], x["column"], x["count"]) for x in f["curated"]) == sorted([(T1, "notes", 2), (T3, "notes", 35), (T4, "notes", 27), (T5, "retrograde_note", 4), (T2, "classical_citation", 72)])
 
 
 def test_REAL_WRITER_the_live_per_key_columns_equal_the_seed_words(db):
@@ -155,7 +156,7 @@ def test_REAL_WRITER_MUTATION_a_value_outside_its_form_is_a_FAIL(db, monkeypatch
 
 
 def test_REAL_WRITER_MUTATION_a_corpus_pin_that_is_not_the_data_is_a_FAIL(db, monkeypatch):
-    for k in range(4):
+    for k in range(5):
         d = _own()
         d["curated_corpus"][k]["digest"] = "a" * 64
         got = _m(db, monkeypatch, d)

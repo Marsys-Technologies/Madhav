@@ -59,8 +59,8 @@ _PD_CH4    = "PD Ch.4"
 _UK_CH4    = "UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)"
 _SS        = "SS / Saravali"
 _SARAVALI  = "Saravali Ch.6 / BPHS Ch.3"
-
-
+_BPHS_355_RAHU = "BPHS 3.55 translator note [C], chunk bphs:PG40:C1: “Rahu: The Sun, Moon and Mars are his enemies. Jupiter, Venus and Saturn are his friends. Mercury is his neutral.” (SR-DOCTRINE-H)"
+_BPHS_355_KETU = "BPHS 3.55 translator note [C], chunk bphs:PG40:C1: “Ketu: The luminaries are his enemies. Mars, Venus and Saturn are his friends, while Mercury and Jupiter are his neutrals.” (SR-DOCTRINE-H)"
 # ── 2. bg_graha_naisargika_friendship (72 rows) ───────────────────────────────
 # Columns: graha, other_graha, relation ('friend'|'neutral'|'enemy'), classical_citation
 
@@ -131,18 +131,18 @@ _NAISARGIKA_FRIENDSHIP: list[tuple[str, str, str, str]] = [
     # Rahu (8 rows)
     ("Rahu", "Venus",   "friend",  _UK_CH4),
     ("Rahu", "Saturn",  "friend",  _UK_CH4),
-    ("Rahu", "Mercury", "friend",  _UK_CH4),
+    ("Rahu", "Mercury", "neutral", _BPHS_355_RAHU),
     ("Rahu", "Sun",     "enemy",   _UK_CH4),
     ("Rahu", "Moon",    "enemy",   _UK_CH4),
-    ("Rahu", "Mars",    "neutral", _UK_CH4),
-    ("Rahu", "Jupiter", "neutral", _UK_CH4),
+    ("Rahu", "Mars",    "enemy",   _BPHS_355_RAHU),
+    ("Rahu", "Jupiter", "friend",  _BPHS_355_RAHU),
     ("Rahu", "Ketu",    "enemy",   _UK_CH4),
     # Ketu (8 rows)
     ("Ketu", "Mars",    "friend",  _UK_CH4),
     ("Ketu", "Venus",   "friend",  _UK_CH4),
     ("Ketu", "Saturn",  "friend",  _UK_CH4),
-    ("Ketu", "Sun",     "neutral", _UK_CH4),
-    ("Ketu", "Moon",    "neutral", _UK_CH4),
+    ("Ketu", "Sun",     "enemy",   _BPHS_355_KETU),
+    ("Ketu", "Moon",    "enemy",   _BPHS_355_KETU),
     ("Ketu", "Mercury", "neutral", _UK_CH4),
     ("Ketu", "Jupiter", "neutral", _UK_CH4),
     ("Ketu", "Rahu",    "enemy",   _UK_CH4),
