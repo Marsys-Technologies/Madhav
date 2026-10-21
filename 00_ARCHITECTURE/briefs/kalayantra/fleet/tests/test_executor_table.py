@@ -227,7 +227,8 @@ REBUILD_CONTROL_BINDINGS = {
     "orchestrator_rebuild_teardown": _k9_control("teardown", True, 600),
 }
 HEAD_KINDS = ("publish_head", "publish_head_dryrun", "rollback_head", "rollback_head_dryrun")   # J-6m / J-6r: enabled only through head_operation.py's reviewed policy (SR-HEAD-POLICY-KEEP)
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(HEAD_KINDS) | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(K9_BINDINGS) | set(VERIFICATION_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]} | set(SERVED_PROBE_BINDINGS) | set(FAMILY_CANCEL_BINDINGS) | executor_pin_shards.enabled_kinds(SHARDS)   # J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; K9-23: the eight layer/rebuild kinds; J-4d: the three enabled century kinds
+BASE_ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | set(HEAD_KINDS) | set(P01_BINDINGS) | set(MEASURING_BINDINGS) | set(SCHEDULER_BINDINGS) | set(K9_BINDINGS) | set(VERIFICATION_BINDINGS) | {k for k, v in CENTURY_BINDINGS.items() if v["enabled"]} | set(SERVED_PROBE_BINDINGS) | set(FAMILY_CANCEL_BINDINGS)   # frozen BASE (SR-CHURN-CUT 5): later enablements are shards; J-3a: the four measuring kinds; J-3c: the seven scheduler/cancel kinds; K9-23: the eight layer/rebuild kinds; J-4d: the three enabled century kinds
+ENABLED_KINDS = executor_pin_shards.enabled_after(BASE_ENABLED_KINDS, SHARDS)   # BASE plus the reviewed shards (tests/executor_pin_shards/<ITEM>.json), last shard per kind wins
 K9_KINDS = ["orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify", "layer_publish", "layer_rollback"]
 P10 = {"J-1a": "smalltest_dispatch", "J-4b": "verification_job", "J-4d": "century_dispatch",
        "J-6m": "publish_head", "J-6r": "rollback_head"}
@@ -523,9 +524,89 @@ def _segments(src):
 # module constants UNBOUND_REQUEST_FIELDS / REMOTE_ASYNC_KINDS), the SR-PREBUILD-ALL century kinds (receipt, fence_quiescent, smalltest_policy_problem,
 # mechanical_quiescence and the two module constants TEARDOWN_KINDS / LAUNCH_SCHEMAS) and the J-6 head-binding additions (head_policy, head_policy_problem and
 # their call sites in receipt/validate). J6B-NB-01 then keeps a duplicate head request's refusal separate from the retained receipt:
-# `receipt` (preserve_existing) and `main` (its call site) carry the pins re-derived from the merged executor.py. SR-TEARDOWN-COMPLETION adds publish_teardown_completions (new, pinned) and its one call in `main`. Each hash is of the merged executor.py segment; every other mutation,
+# `receipt` (preserve_existing) and `main` (its call site) carry the pins re-derived from the merged executor.py. SR-TEARDOWN-COMPLETION adds publish_teardown_completions (new, pinned) and its one call in `main`. SR-CHURN-CUT 5 re-pinned once the kind sets that are now one element per line (TEARDOWN_KINDS, REMOTE_ASYNC_KINDS, SIGNED_ONLY_KINDS, CANCEL_LANE_KINDS), the new FENCE_EXEMPT_KINDS and the two functions that changed with them (`validate`: its chain is a tuple of checks; `main`: the fence-skip reads FENCE_EXEMPT_KINDS); no behaviour changed. This is a frozen BASE: a later kind adds a tests/executor_pin_shards/<ITEM>.json `function_hashes` entry instead. Each hash is of the merged executor.py segment; every other mutation,
 # including weakening these functions, fails the boundary pin.
-W4_FUNCTION_HASHES = {'fence_quiescent': '4d985c5cda7a752745962eaf645bf6f6833afc89ca7f3a6ddcff852b33fb7cad', 'publish_teardown_completions': 'd45b8410b0031ad8f9d53add76fbcd0b7eef9b31974fc23167d5771b2f41eb97', 'receipt': 'f6766f185ebf4cf09b9be520192eb8c5c821ead8c2995b96d56225ade96fffee', 'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58', 'smalltest_policy_problem': 'f2676f15c255cfcb6221ebb668ddaabe12acdc87e18428bcf9df04549aa2a9d7', 'validate': '86bbdbb2d58846cbd5cb53d961e473b8cf23a3baca0235abd1250d4d8bfc14e3', 'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d', 'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9', 'validate_lane': '88bf9fe8db575678fc093c7ca3f65238a650a085d0c530334553f6a3cf86058c', 'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50', 'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34', 'execute_lane': '55ec56f43c66590db415dbc5141b889fe226392e2dd81bcc14568d9147a9d925', 'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05', 'execute': 'e5d8fb05c31874578aee3e301a01dfc520d9c19b06998918306e9298a1fc9c52', 'main': '360f30fcb48e27231024595a86e17ac81a79cb7beb6183abdcd3a6f51c084fd3', 'child_stderrs': '2701c3a828806e2e6653b398609becae1dbf40043a5d1efe6d4335c7abbe902a', 'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53', 'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3', 'run_one': '6a08659e9d99619c9805387cc5fe679c67110e569c69491902f670acb676a92e', 'session_marker': '21216adbf560807fffed590211a11235484167a5dbd762a18aed9c59cdd5ab09', 'write_new_json': 'b69919f6644041481108595fa11fe896bf8ede6de391adca233a28ea8a6c3e26', 'measured_identity': 'f47bc85d6d3516158ea1ef399d8e28a74674318d4842f9596da43c26a5f49222', 'mechanical_post_acceptance': '383b0a42ec72e3ed3d840f9693ecb288d4e7a431f285553601a244fffd55ed0e', 'accepted_cloudrun_execution': '5a87517fae4a7febf1eb0479e56b70bf90673e4569a00f74897ba2e298f5ae7d', 'mechanical_quiescence': '46ba060737ea5fa54276b21fbf5b81dd258ea1cafbc0472e961624d6a59c52c0', 'mechanical_acceptance': 'c9e263a19704a100a4583ad84cf6126d4bdff10c312aad7cd964606fae12a806', 'request_digest': '972ee7e7f9d665377108a9ab233c45db04b3e8a9a31825dc7560ce05b08406b6', 'refresh_from_main_or_fail_closed': 'c177789a8289a212e5690d1a70b87a34e36c34df052c1687e5cd3965f78eb18c', 'remote_async': '053f72a12ac1629af29731e3f5ab77bcecfde2c1fb01e56c256640a886755b98', 'UNBOUND_REQUEST_FIELDS': 'e3c09d66976b1be9186502bceb7b318a1416f93cd640bdbc4ad852e437b17a12', 'REMOTE_ASYNC_KINDS': '3896625f1c5786170001c8b85ac4e5b0dde89fe249de020d76920b0ad5ef1155', 'SCHEDULER_JOB': 'eb099f996955c70fd6bd1aa6a50fc7dfc195b7c3e78594751dd226d9b862faf4', 'SCHEDULER_PROJECT': 'e63bc56c1f7ff7c1cabcbbfe7af3a48b3aaeec1aa4c7e090144cd0167d62afa5', 'SCHEDULER_REGION': 'c0267426fb76794ab995158ddec9e3fc8127772b137618e9019892344acb0b80', 'SCHEDULER_SCRIPT': 'f479c65ab5597d6fca611a5804d02dcaa87d5c3e099dffa466f948cab610f083', 'SCHEDULER_ACTION': 'bcce7bd9f31fbe10c8fa722a2bd609416107b280bf4e26550633dc8cf0561a00', 'SCHEDULER_STATES': 'b57629e1c41abd330b2da37f27865473060e2a104d0d28b287d74b97b36a731d', 'SCHEDULER_UTC': 'd463e745920163c76c1dea9659a8eeef2aed71da4bd059a8588f1fddb69596b4', 'SCHEDULER_BACKSTOP': '5336986b52b9342f36bebb292599e0faffefdfba49d95329afda5452904df188', 'lease_expiry': '23f2b14757ee303848c7f77c3d39e066dcf872a6122855707ac7d9401a1aa0c4', 'scheduler_policy_problem': '12630309cd268eeb090355a5844ae4d462f472b11e9da75f02495d896fe0a94f', 'scheduler_proof': '8ef650eaa9c0e78ee080de1862aecf52c378ca5f6e72012600064c4f28d41428', 'scheduler_write': '53a2d469ef44b3a9805794d9c889e4b14fbf6c97e07f94800d172d499888389b', 'scheduler_backstop_records': 'db053014456aaa26df639582cdbb728c9d213545f0221fd1c6a9b917fae5e552', 'arm_scheduler_backstop': '0e7a39078a9870914c142643be9be49bf1081ebc7be2c8ee2415c3de95b7bd29', 'scheduler_backstop_satisfy': '201c57f603bb483f38add84b058d28ae28340aae3a2d46fe4f721b9918d74081', 'scheduler_backstop_fire': '8dc3f584770fdd06d363cf20be284661aead0a589cf9832e8ded2db18b7126ae', 'scheduler_backstop_tick': 'c6fcad69671e482c5460eda18f0d07f53699c39195802f9c0cd431b1a11fe4b8', 'measuring_cancel_problem': '3540604f172b3c303bdc4761c2aac8337b3aa86ce1a256585b16c2dbaae564e3', 'measuring_cancel_proof': '9a23c26ffb83f5d8c2706c7fd917154792709dca99b6cc83d84c910d45425d56', 'canonical_sha': 'f8f23ad6c9162e9444540ddfdf1046ac31db16f1807ec27cb0fc1d6482a4d0ba', 'mechanical_exempt': 'dd2cdfdfa61c025c9435b95576ee2098ae4a10d0411631bb84de84791105eb3b', 'pack_fill_check': '084a2d76b85ad35339ee50e820747e0d8617e04d1b4da9a87701c0f17c8d73c3', 'dry_run_check': 'ba4c756c73f67f3500f30d73733573882a59032af7399835d062c0eaa8f82269', 'mechanical_problem': 'b1b2e07fce11b99da96af74d59f1b2112d686a65f6980a4bafd0ad812873fe88', 'mechanical_pre_acceptance': '4c566fb91b17c63ddabdd5b7859640daaef57110ed114f054272718f5e4c2090', 'signer_acceptance_problem': '81b018c05f10e2355e7bfe2168ae2db625e13a124f18dbf5482b13f9dd23afea', 'PACK_ALLOWLIST': '895b42a1a543f823c50bf4504f68c969ca317324d1583716b09393883a845a56', 'SIGNED_ONLY_KINDS': '09678fa78a79fe55969ccfc15ef5e0bcd50b4d2158caa7932bea9836d027b4f8', 'NO_DRYRUN_KINDS': '1831c60b886d47185af1542e9be21cf4c330d3495ca9259471a37d2991d903f7', 'PACK_NEVER_FILLED': 'ae15e6db6c6772e98a7fa57994ec23c3607af03c3d81b7fc38e7dc7ee5913786', 'DRYRUN_IDENTITY_FIELDS': 'b81fe525fa8a151e2183e0f1065255b9bb0b47d43c4c7f45b80fa7397d79c528', 'HEX64': 'f4b9a1efc5cff4c648c87e337ff1353507e3ba55ceb7c9b11d9ae6f3f3bcd638', 'TEARDOWN_KINDS': '000958948e0d8470e5f2cab40814a720906d5accb4364769fe0fb39a280a9b4f', 'LAUNCH_SCHEMAS': '5669869ddc216dbec7564d7f5b26c7020060959b7759859e117add2c6ff7390f', 'head_policy': '948d21ff7ed3d7e4ba67bfdcf3d11ce042a3c7fef7603d3de852b3beff9a116c', 'head_policy_problem': '7d4d5e7cd616c4a4e0703361630ada5544250aad5907e359618ba5de2491f96f', 'CANCEL_LANE_KINDS': '334c0602860aa0968a403142c9beab2e45150fbe4b139aeac3e726b6b7eee263', 'orchestrator_rebuild_cancel_problem': 'cfa7655750eedb6380581c18fa1a4513ec52b37a6ffb06d658dd941360d70dd4', 'orchestrator_rebuild_dryrun_problem': '9c6548881ad44391c5500b52f66e2e8b8cebb4300f826662451b69c890f51b39', 'run_cancel_lane': '375bdd8c04c23a62cdf7664420fcb5ff83b7d10b1bd68680c313d7184c50ecb2', 'pool_for': '3d3cbd3261efd3cca258cf9794d58ad5760e5c8df141040469560b25834ee637', 'PROBE_SCHEMA': 'd147867d01d6cb73ce415c8ef98b5b872a0b38e5b1d1b88ca11492ae10168379', 'PROBE_SHA256': 'b0408a0fadcf3cce6cd9940020bf2aa69d55e963e8cd65f31083fef00c1af54c', 'served_probe_problem': '9f4026de7fbac12174ce5ea4a51cba289d70b976d7ed319041dadb114f4da812', 'served_probe_proof': '642f7d4881be42759919e31042cfab066cc3d7f90ccff4d8d9c59b92fd2945ec', 'century_contract_problem': 'fa6a4a46478c9a957851cedb7f385da94e889a93626b933004acfe3efae23268', 'CANCEL_FAMILIES': '9eb02e478bd1f13f01fc9b91ac02ab74bc79ec1b447e9e51b60f2bc661e68f09', 'CANCEL_KINDS': 'db887a0417366d2fc6c47e0b2c14a5ee32c1ff35a8a42159174efdd9af8ccb71'}
+BASE_W4_FUNCTION_HASHES = {
+    'fence_quiescent': '4d985c5cda7a752745962eaf645bf6f6833afc89ca7f3a6ddcff852b33fb7cad',
+    'publish_teardown_completions': 'd45b8410b0031ad8f9d53add76fbcd0b7eef9b31974fc23167d5771b2f41eb97',
+    'receipt': 'f6766f185ebf4cf09b9be520192eb8c5c821ead8c2995b96d56225ade96fffee',
+    'smalltest_policy': '7eeb58f3824919057e9a5845a816340981db7358ecace5ff130ac57f26efea58',
+    'smalltest_policy_problem': 'f2676f15c255cfcb6221ebb668ddaabe12acdc87e18428bcf9df04549aa2a9d7',
+    'validate': '0c1a7c33e2816594572212f9a975360801f4991ba213d9b699782c6c51aff12f',
+    'lane_selected': '16c586e33156c646f6411e46738929625f6e8d8533157fef16a9428fdb2f843d',
+    'lane_target_settings': 'aa4899d9eeea3ee66b6c85bdcd122108b2b67863009f9132ec750b12eb9a22a9',
+    'validate_lane': '88bf9fe8db575678fc093c7ca3f65238a650a085d0c530334553f6a3cf86058c',
+    'lane_qualification': 'bdfdb3a7f981c88dbbb79ebe4fca31745598a676a3ed330d655794786ff4ae50',
+    'lane_child_env': 'cb2e88d98cb481152a14b361f84403fd0861d771fb127bfeadd3df53f1ee9d34',
+    'execute_lane': '55ec56f43c66590db415dbc5141b889fe226392e2dd81bcc14568d9147a9d925',
+    'receipt_lane': 'c93ccb7e594b3080c2b8d78ee32e95e245217784a57ebb141088fc9e3ca53f05',
+    'execute': 'e5d8fb05c31874578aee3e301a01dfc520d9c19b06998918306e9298a1fc9c52',
+    'main': 'c8b7e349aee86f64b360fbeba947fef9ba349b51c827f3507afd786bdd69eb90',
+    'child_stderrs': '2701c3a828806e2e6653b398609becae1dbf40043a5d1efe6d4335c7abbe902a',
+    'overlay_proofs': '3fe0d184de37b9f83a74d4db2544f1db75997e4a875602f8f3cd3974b14e1b53',
+    'apply_generated_overlay': 'effe0b423c3c0328c4b3da9e2694097c022125fc5cb81ff59420a6cf54cf19c3',
+    'run_one': '6a08659e9d99619c9805387cc5fe679c67110e569c69491902f670acb676a92e',
+    'session_marker': '21216adbf560807fffed590211a11235484167a5dbd762a18aed9c59cdd5ab09',
+    'write_new_json': 'b69919f6644041481108595fa11fe896bf8ede6de391adca233a28ea8a6c3e26',
+    'measured_identity': 'f47bc85d6d3516158ea1ef399d8e28a74674318d4842f9596da43c26a5f49222',
+    'mechanical_post_acceptance': '383b0a42ec72e3ed3d840f9693ecb288d4e7a431f285553601a244fffd55ed0e',
+    'accepted_cloudrun_execution': '5a87517fae4a7febf1eb0479e56b70bf90673e4569a00f74897ba2e298f5ae7d',
+    'mechanical_quiescence': '46ba060737ea5fa54276b21fbf5b81dd258ea1cafbc0472e961624d6a59c52c0',
+    'mechanical_acceptance': 'c9e263a19704a100a4583ad84cf6126d4bdff10c312aad7cd964606fae12a806',
+    'request_digest': '972ee7e7f9d665377108a9ab233c45db04b3e8a9a31825dc7560ce05b08406b6',
+    'refresh_from_main_or_fail_closed': 'c177789a8289a212e5690d1a70b87a34e36c34df052c1687e5cd3965f78eb18c',
+    'remote_async': '053f72a12ac1629af29731e3f5ab77bcecfde2c1fb01e56c256640a886755b98',
+    'UNBOUND_REQUEST_FIELDS': 'e3c09d66976b1be9186502bceb7b318a1416f93cd640bdbc4ad852e437b17a12',
+    'REMOTE_ASYNC_KINDS': 'd933de450b21ceed54a720afd1da43c179ee62568677115ac51f638797a4af92',
+    'SCHEDULER_JOB': 'eb099f996955c70fd6bd1aa6a50fc7dfc195b7c3e78594751dd226d9b862faf4',
+    'SCHEDULER_PROJECT': 'e63bc56c1f7ff7c1cabcbbfe7af3a48b3aaeec1aa4c7e090144cd0167d62afa5',
+    'SCHEDULER_REGION': 'c0267426fb76794ab995158ddec9e3fc8127772b137618e9019892344acb0b80',
+    'SCHEDULER_SCRIPT': 'f479c65ab5597d6fca611a5804d02dcaa87d5c3e099dffa466f948cab610f083',
+    'SCHEDULER_ACTION': 'bcce7bd9f31fbe10c8fa722a2bd609416107b280bf4e26550633dc8cf0561a00',
+    'SCHEDULER_STATES': 'b57629e1c41abd330b2da37f27865473060e2a104d0d28b287d74b97b36a731d',
+    'SCHEDULER_UTC': 'd463e745920163c76c1dea9659a8eeef2aed71da4bd059a8588f1fddb69596b4',
+    'SCHEDULER_BACKSTOP': '5336986b52b9342f36bebb292599e0faffefdfba49d95329afda5452904df188',
+    'lease_expiry': '23f2b14757ee303848c7f77c3d39e066dcf872a6122855707ac7d9401a1aa0c4',
+    'scheduler_policy_problem': '12630309cd268eeb090355a5844ae4d462f472b11e9da75f02495d896fe0a94f',
+    'scheduler_proof': '8ef650eaa9c0e78ee080de1862aecf52c378ca5f6e72012600064c4f28d41428',
+    'scheduler_write': '53a2d469ef44b3a9805794d9c889e4b14fbf6c97e07f94800d172d499888389b',
+    'scheduler_backstop_records': 'db053014456aaa26df639582cdbb728c9d213545f0221fd1c6a9b917fae5e552',
+    'arm_scheduler_backstop': '0e7a39078a9870914c142643be9be49bf1081ebc7be2c8ee2415c3de95b7bd29',
+    'scheduler_backstop_satisfy': '201c57f603bb483f38add84b058d28ae28340aae3a2d46fe4f721b9918d74081',
+    'scheduler_backstop_fire': '8dc3f584770fdd06d363cf20be284661aead0a589cf9832e8ded2db18b7126ae',
+    'scheduler_backstop_tick': 'c6fcad69671e482c5460eda18f0d07f53699c39195802f9c0cd431b1a11fe4b8',
+    'measuring_cancel_problem': '3540604f172b3c303bdc4761c2aac8337b3aa86ce1a256585b16c2dbaae564e3',
+    'measuring_cancel_proof': '9a23c26ffb83f5d8c2706c7fd917154792709dca99b6cc83d84c910d45425d56',
+    'canonical_sha': 'f8f23ad6c9162e9444540ddfdf1046ac31db16f1807ec27cb0fc1d6482a4d0ba',
+    'mechanical_exempt': 'dd2cdfdfa61c025c9435b95576ee2098ae4a10d0411631bb84de84791105eb3b',
+    'pack_fill_check': '084a2d76b85ad35339ee50e820747e0d8617e04d1b4da9a87701c0f17c8d73c3',
+    'dry_run_check': 'ba4c756c73f67f3500f30d73733573882a59032af7399835d062c0eaa8f82269',
+    'mechanical_problem': 'b1b2e07fce11b99da96af74d59f1b2112d686a65f6980a4bafd0ad812873fe88',
+    'mechanical_pre_acceptance': '4c566fb91b17c63ddabdd5b7859640daaef57110ed114f054272718f5e4c2090',
+    'signer_acceptance_problem': '81b018c05f10e2355e7bfe2168ae2db625e13a124f18dbf5482b13f9dd23afea',
+    'PACK_ALLOWLIST': '895b42a1a543f823c50bf4504f68c969ca317324d1583716b09393883a845a56',
+    'SIGNED_ONLY_KINDS': '755ec72e9d12037ea63a0496e89df27784ef76790aceb741cf4a8b1d6f635b27',
+    'NO_DRYRUN_KINDS': '1831c60b886d47185af1542e9be21cf4c330d3495ca9259471a37d2991d903f7',
+    'PACK_NEVER_FILLED': 'ae15e6db6c6772e98a7fa57994ec23c3607af03c3d81b7fc38e7dc7ee5913786',
+    'DRYRUN_IDENTITY_FIELDS': 'b81fe525fa8a151e2183e0f1065255b9bb0b47d43c4c7f45b80fa7397d79c528',
+    'HEX64': 'f4b9a1efc5cff4c648c87e337ff1353507e3ba55ceb7c9b11d9ae6f3f3bcd638',
+    'TEARDOWN_KINDS': '604ab3a9b7084577249e4143d1e19e650cc2e2f1247dc9a5c4052a737a903708',
+    'LAUNCH_SCHEMAS': '5669869ddc216dbec7564d7f5b26c7020060959b7759859e117add2c6ff7390f',
+    'head_policy': '948d21ff7ed3d7e4ba67bfdcf3d11ce042a3c7fef7603d3de852b3beff9a116c',
+    'head_policy_problem': '7d4d5e7cd616c4a4e0703361630ada5544250aad5907e359618ba5de2491f96f',
+    'CANCEL_LANE_KINDS': '0f99f2adc1a01a0cffb578c5dd9946d872bfb4c48231e1e8ebeb36bce156d7d8',
+    'orchestrator_rebuild_cancel_problem': 'cfa7655750eedb6380581c18fa1a4513ec52b37a6ffb06d658dd941360d70dd4',
+    'run_cancel_lane': '375bdd8c04c23a62cdf7664420fcb5ff83b7d10b1bd68680c313d7184c50ecb2',
+    'pool_for': '3d3cbd3261efd3cca258cf9794d58ad5760e5c8df141040469560b25834ee637',
+    'PROBE_SCHEMA': 'd147867d01d6cb73ce415c8ef98b5b872a0b38e5b1d1b88ca11492ae10168379',
+    'PROBE_SHA256': 'b0408a0fadcf3cce6cd9940020bf2aa69d55e963e8cd65f31083fef00c1af54c',
+    'served_probe_problem': '9f4026de7fbac12174ce5ea4a51cba289d70b976d7ed319041dadb114f4da812',
+    'served_probe_proof': '642f7d4881be42759919e31042cfab066cc3d7f90ccff4d8d9c59b92fd2945ec',
+    'century_contract_problem': 'fa6a4a46478c9a957851cedb7f385da94e889a93626b933004acfe3efae23268',
+    'CANCEL_FAMILIES': '9eb02e478bd1f13f01fc9b91ac02ab74bc79ec1b447e9e51b60f2bc661e68f09',
+    'CANCEL_KINDS': 'db887a0417366d2fc6c47e0b2c14a5ee32c1ff35a8a42159174efdd9af8ccb71',
+    'FENCE_EXEMPT_KINDS': 'b30a80e941007ee3bcc5e2d528a14ebb05b0367561f9707457fb49f31f5bc31d',
+}
 
 
 def _module_docstring(src):
@@ -536,7 +617,12 @@ def _module_docstring(src):
 
 
 # Exact K9-23 additions: a distinct verifier capability and its one-connection injection (`capabilities` and `execute` = the reviewed function plus two lines).
-K9_FUNCTION_HASHES = {'capabilities': '5ebe1c302e6b797c2af0da3bb72b7a9aadca4b40663645396aab217a27b9b675', 'execute': 'e5d8fb05c31874578aee3e301a01dfc520d9c19b06998918306e9298a1fc9c52'}
+BASE_K9_FUNCTION_HASHES = {
+    'capabilities': '5ebe1c302e6b797c2af0da3bb72b7a9aadca4b40663645396aab217a27b9b675',
+    'execute': 'e5d8fb05c31874578aee3e301a01dfc520d9c19b06998918306e9298a1fc9c52',
+}
+_HASHES = executor_pin_shards.hashes_after({"W4": BASE_W4_FUNCTION_HASHES, "K9": BASE_K9_FUNCTION_HASHES}, SHARDS)   # BASE plus the reviewed shards; a later shard replaces a function's digest
+W4_FUNCTION_HASHES, K9_FUNCTION_HASHES = _HASHES["W4"], _HASHES["K9"]
 
 
 def normalize_wave4(base_src, work_src):
@@ -548,8 +634,8 @@ def normalize_wave4(base_src, work_src):
                 work_src = work_src.replace(segment, base_seg[name], 1)
             elif segment.startswith("def "):
                 work_src = work_src.replace(segment + "\n\n\n", "", 1)
-            else:                                        # an added module constant: its whole line goes, trailing comment included
-                work_src = re.sub(r"^" + re.escape(name) + r" = [^\n]*\n", "", work_src, count=1, flags=re.M)
+            else:                                        # an added module constant: its whole statement goes (one or many lines), trailing comment included
+                work_src = re.sub(r"^" + re.escape(segment) + r"[^\n]*\n", "", work_src, count=1, flags=re.M)
     for name in A8_REMOVED_CONSTANTS:                    # a removed constant: the pin's exact line returns in front of the line that followed it
         following = re.search(r"^" + re.escape(name) + r" = [^\n]*\n([^\n]*\n)", base_src, re.M)
         if following and not re.search(r"^" + re.escape(name) + r" = ", work_src, re.M):

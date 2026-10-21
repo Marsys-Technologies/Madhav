@@ -1,6 +1,6 @@
 {
   "schema": "ky.generated_paths/1",
-  "_doc": "SR-CHURN-CUT 3 (2026-10-19). Every machine-owned path: CI regenerates it from main and a PR never carries it (generated_paths.py check; ci_generated.py generate --base). `paths` are exact files, `prefixes` the generated trees minus `not_generated_prefixes` (governed receipts, not compiler output). The cockpit's patch-id computation (SR-CHURN-CUT 4) excludes these with `generated_paths.py filter`. Kept equal to ci_generated.OUTPUTS plus `derived` by test_generated_paths.py. `hand_authored_hotspots` are files many open PRs touch that are NOT generated and must stay hand-authored (measured 2026-10-19 over refs/remotes/origin/kalayantra/* touched in the last 2 days).",
+  "_doc": "SR-CHURN-CUT 3 (2026-10-19). Every machine-owned path: CI regenerates it from main and a PR never carries it (generated_paths.py check; ci_generated.py generate --base). `paths` are exact files, `prefixes` the generated trees minus `not_generated_prefixes` (governed receipts, not compiler output). The cockpit's patch-id computation (SR-CHURN-CUT 4) excludes these with `generated_paths.py filter`. Kept equal to ci_generated.OUTPUTS plus `derived` by test_generated_paths.py. `hand_authored_hotspots` are files many open PRs touch that are NOT generated and must stay hand-authored (measured 2026-10-19 over refs/remotes/origin/kalayantra/* touched in the last 2 days). SR-CHURN-CUT 5: `frozen_base_literals` lists the module-level BASE census literals of the executor census tests; `check --base` refuses an edit to one unless the PR adds a pin shard with `\"rebase\": true` (the cockpit compacting shards into BASE), and refuses a change to an executor_ops.json kind that adds no covering shard (generated_paths.kind_shard_required).",
   "paths": [
     "00_ARCHITECTURE/briefs/retrieval_impl/R1_PROJECTION_COMPILER_REPORT.md",
     "00_ARCHITECTURE/control/kalayantra/CLOSURE_v3.json",
@@ -34,6 +34,98 @@
     "platform/src/generated/nirmana-l0-analysis-receipts.ts",
     "platform/src/generated/nirmana-analysis-layer-pins.json"
   ],
+  "frozen_base_literals": [
+    {
+      "path": "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py",
+      "names": [
+        "BASE_ENABLED_KINDS",
+        "BASE_W4_FUNCTION_HASHES",
+        "BASE_K9_FUNCTION_HASHES",
+        "P01_BINDINGS",
+        "MEASURING_BINDINGS",
+        "CENTURY_BINDINGS",
+        "VERIFICATION_BINDINGS",
+        "SCHEDULER_BINDINGS",
+        "K9_BINDINGS",
+        "FAMILY_CANCEL_BINDINGS",
+        "GITHUB_RUN_READBACK",
+        "PROTECTED_WINDOW_BINDINGS",
+        "PROVISIONING_BINDINGS",
+        "SERVED_PROBE_BINDINGS",
+        "HTTP_PROBE",
+        "REBUILD_CONTROL_BINDINGS",
+        "CLOUDRUN_READBACK",
+        "QUIESCENCE_CHECK",
+        "HEAD_KINDS",
+        "REMOTE_ASYNC_KINDS"
+      ]
+    },
+    {
+      "path": "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_adapters.py",
+      "names": [
+        "P01_KINDS",
+        "SCHEDULER_KINDS",
+        "VERIFICATION_KINDS",
+        "PROBE_KINDS",
+        "MEASURING_KINDS",
+        "K9_KINDS",
+        "CENTURY_KINDS",
+        "FAMILY_CANCEL_KINDS",
+        "HEAD_KINDS",
+        "BASE_ENABLED_KINDS",
+        "BASE_PRODUCTION_ENABLED"
+      ]
+    },
+    {
+      "path": "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_a8.py",
+      "names": [
+        "REMOTE_ASYNC",
+        "BASE_DRYRUN_CENSUS",
+        "BASE_FENCED"
+      ]
+    },
+    {
+      "path": "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_operation_dryrun.py",
+      "names": [
+        "BASE_ENABLED"
+      ]
+    },
+    {
+      "path": "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_mechanical_production.py",
+      "names": [
+        "SERVING",
+        "CANCELS",
+        "TEARDOWNS",
+        "BASE_CLASSES",
+        "BASE_MECHANICAL_ELIGIBLE",
+        "BASE_HAS_DRYRUN"
+      ]
+    },
+    {
+      "path": "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_mechanical_acceptance.py",
+      "names": [
+        "BASE_TEARDOWN_KINDS",
+        "BASE_MARKER_ROUTE"
+      ]
+    },
+    {
+      "path": "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_w4_smalltest_enablement.py",
+      "names": [
+        "BASE_ENABLED",
+        "D44_READ_ONLY",
+        "PROBE",
+        "SCHEDULER",
+        "W4",
+        "MEASURING",
+        "VERIFICATION",
+        "CENTURY",
+        "FAMILY_CANCEL",
+        "DISABLED",
+        "HEAD",
+        "K9"
+      ]
+    }
+  ],
   "derived": [
     {
       "path": "00_ARCHITECTURE/control/kalayantra/CLOSURE_v3.json",
@@ -54,12 +146,12 @@
     {
       "path": "00_ARCHITECTURE/briefs/kalayantra/fleet/executor_ops.json",
       "open_branches": 20,
-      "why": "the fixed-operation table the executor reads from main: source of truth, hand-reviewed per kind"
+      "why": "the fixed-operation table the executor reads from main: source of truth, hand-reviewed per kind; every changed kind needs its own new pin shard (kind_shard_required)"
     },
     {
       "path": "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table.py",
       "open_branches": 23,
-      "why": "independent oracle for the table: a pin regenerated from the table would be a tautology (N.8); new reviewed edits go in append-only executor_pin_shards/ instead of this file"
+      "why": "independent oracle for the table: a pin regenerated from the table would be a tautology (N.8); new reviewed edits (kinds, classes, W4 bindings, executor function hashes) go in append-only executor_pin_shards/ instead of this file and the other census tests (SR-CHURN-CUT 5)"
     },
     {
       "path": "platform/scripts/governance/ci_test_suites.json",

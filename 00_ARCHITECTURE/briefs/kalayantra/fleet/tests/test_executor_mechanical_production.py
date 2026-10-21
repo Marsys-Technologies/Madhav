@@ -29,6 +29,7 @@ import pytest
 
 import test_executor_table as TT
 from test_executor_table import ALL_CAPS, CANONICAL_CHART, OPS_FILE, World
+import executor_pin_shards as eps    # test_executor_table put the fleet directory on sys.path (SR-CHURN-CUT 5)
 
 EXECUTOR_SRC = TT.EXECUTOR_PY            # the real file; a planted reversion is a copy of it
 MANIFEST = hashlib.sha256(b"pack-manifest-fixture").hexdigest()
@@ -36,6 +37,28 @@ OTHER_MANIFEST = hashlib.sha256(b"another-pack-manifest").hexdigest()
 KIND = "scheduler_resume"               # a non-exempt production kind with a dry-run kind whose admission needs no reviewed-source policy
 SERVING = ("publish_head", "layer_publish", "rollback_head", "layer_rollback")
 CANCELS = ("measuring_cancel", "century_cancel", "verification_cancel")      # W3W4 pack verify E1: the cancel family, signed-only like the serving changes
+TEARDOWNS = ("smalltest_teardown", "measuring_teardown", "century_teardown")
+# Frozen BASE of the safety classes (SR-CHURN-CUT 5): hand-written, independent of executor.py and executor_ops.json. A later kind declares its classes in its
+# own tests/executor_pin_shards/<ITEM>.json (schema /2); the full class set a shard gives a kind replaces the kind's earlier one.
+# Source: MECHANICAL_ACCEPTANCE_v1_0.md §2 — a deletion (every *_teardown) and a serving change are never mechanical; the cancels are held with them (W3W4 pack verify E1).
+BASE_CLASSES = {
+    **{k: ["mechanical_exempt", "signed_only"] for k in SERVING},
+    **{k: ["cancel_lane", "mechanical_exempt", "signed_only"] for k in (*CANCELS, "orchestrator_rebuild_cancel")},      # a cancel never waits behind the fence it stops (SR-CANCEL-LANE); orchestrator_rebuild_cancel: a stop request, held signed-only with the cancels
+    **{k: ["mechanical_exempt", "teardown"] for k in TEARDOWNS},
+    "orchestrator_rebuild_teardown": ["mechanical_exempt"],      # SR-PREBUILD-ALL: a deletion by name, but not one of the three committed teardowns
+    "backup_snapshot": ["no_dryrun"], "backup_restore_verify": ["no_dryrun"],
+    **{k: ["remote_async"] for k in ("smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job")},
+}
+# the production kinds the mechanical route admits, as classified when the census was frozen (everything else production is in BASE_CLASSES' exempt set)
+BASE_MECHANICAL_ELIGIBLE = {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch", "measuring_dispatch", "verification_job", "century_dispatch",
+                            "orchestrator_rebuild", "layer_verify", "scheduler_pause", "scheduler_resume", "protected_window_dispatch", "gochara_role_provisioning_dispatch"}   # U-M-01 / U-M-03: a dispatch, neither a deletion nor a serving change, so mechanical-eligible with a dry run
+BASE_HAS_DRYRUN = {"smalltest_dispatch", "measuring_dispatch", "scheduler_pause", "scheduler_resume", "protected_window_dispatch", "gochara_role_provisioning_dispatch", "orchestrator_rebuild_cancel"}
+SHARDS = eps.load_shards()
+CLASSES = eps.classes_after(BASE_CLASSES, SHARDS)
+SIGNED_ONLY = eps.kinds_with(CLASSES, "signed_only")
+EXEMPT = eps.kinds_with(CLASSES, "mechanical_exempt")
+BASE_PRODUCTION = {k for k, names in BASE_CLASSES.items() if "mechanical_exempt" in names} | BASE_MECHANICAL_ELIGIBLE
+PRODUCTION = eps.production_after(BASE_PRODUCTION, SHARDS)
 
 
 def sha(data):
@@ -130,8 +153,9 @@ def oracle_x1_deletions(w, table):
 def oracle_x2_serving_and_cancel(w, table):
     control, _, _ = scenario(w, oid="mech-control")
     assert w.mod.mechanical_problem(control, table)[0] is None, "control failed — the refusals below would be vacuous"
-    enabled = {**table, **{k: dict(table[k], enabled=True, script="platform/scripts/fixture.py") for k in (*SERVING, *CANCELS)}}
-    for n, kind in enumerate((*SERVING, *CANCELS)):
+    assert w.mod.SIGNED_ONLY_KINDS == SIGNED_ONLY, "executor.SIGNED_ONLY_KINDS is not the hand-declared signed_only class"
+    enabled = {**table, **{k: dict(table[k], enabled=True, script="platform/scripts/fixture.py") for k in sorted(SIGNED_ONLY)}}
+    for n, kind in enumerate(sorted(SIGNED_ONLY)):
         template = template_for(w, kind); publish(w, [template])
         req = fill_request(w, template, f"mech-srv-{n}", dry=dry_run(w, kind, f"dry-srv-{n}"))
         why, _ = w.mod.mechanical_problem(req, enabled)
@@ -308,7 +332,7 @@ def oracle_r1_foreign_record_never_reused(w, table):
 
 ORACLES = {
     "x1": (oracle_x1_deletions, ('return kind.endswith("_teardown") or kind in SIGNED_ONLY_KINDS', 'return kind in SIGNED_ONLY_KINDS')),
-    "x2": (oracle_x2_serving_and_cancel, ('SIGNED_ONLY_KINDS = frozenset({"publish_head", "layer_publish", "rollback_head", "layer_rollback", "measuring_cancel", "orchestrator_rebuild_cancel", "century_cancel", "verification_cancel"})', 'SIGNED_ONLY_KINDS = frozenset()')),
+    "x2": (oracle_x2_serving_and_cancel, ('    "century_cancel",\n    "layer_publish",\n', '    "layer_publish",\n')),      # century_cancel dropped from executor.SIGNED_ONLY_KINDS (MECHANICAL_ACCEPTANCE_v1_0.md: the cancels are signed-only)
     "a1": (oracle_a1_admitted_and_recorded, ("    if write_new_json(path, document): return None\n", "    if True: return None\n")),
     "a2": (oracle_a2_backup_needs_no_dry_run, ("    if kind in NO_DRYRUN_KINDS: return None, None\n", "    if False: return None, None\n")),
     "p1": (oracle_p1_manifest_must_be_listed, ('isinstance(p, dict) and p.get("pack_manifest_sha256") == manifest)', "isinstance(p, dict))")),
