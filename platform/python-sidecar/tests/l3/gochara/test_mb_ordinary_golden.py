@@ -402,7 +402,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # the verifier self-check), input_vector (p1_nature_operands / p1_operands / p1_valence / the P1 L0 consumption), rule_registry (the authored category_mapping read back and
     # persisted), inventory / inventory_verifier (P1 1.0.0 -> 1.3.0 supersession) and gochara_rules.registry (the P1@1.3.0 rows) changed. Re-derived from the merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 906763ec... is the pre-union W0 merge); no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "26e700048f7eacd536df6f02af8bf20fb49a088d717b395d92c4ccc7dec46dd9"
+    # Evaluation re-pinned ONCE for SR-OD1 R9c-A10-1 (G-8): input_vector.py itself is an evaluation module and gained the comment/list entry that puts window_solver and
+    # window_solver_check into the window stage, so its bytes (hence this digest) moved; no evaluation behaviour changed. Re-derived with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 26e70004... is the I1 union before this change); no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "4dd730cce668bf51a632015cc77829ab16ba3be13b1e6597eb4efe685720b983"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
@@ -418,7 +421,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # same way from the merged tree's real bytes (main alone gives e0aea2fa...); no golden component is re-captured.
     # Window re-pinned for SR-OD1 W0 (#3832): window_sweep (per-factor boundaries, per-instant channel hook), window_verifier and window_store changed. Re-derived the same way from
     # the merged tree's real bytes (the prior pin 7dc92acc... is the pre-W0 merge); geometry is unchanged by W0 and no golden component is re-captured.
-    # Window re-pinned ONCE for the SR-OD1 I1 union: window_solver_check (S2), vedha_verifier (C2), p1_operands_check (P1c) join the window stage and window_sweep / window_store /
+    # Window re-pinned ONCE for the SR-OD1 I1 union: vedha_verifier (C2), p1_operands_check (P1c) join the window stage and window_sweep / window_store /
     # window_verifier / verification_job changed (S1, S2, P1a-c, C2, D2). Geometry is UNCHANGED by the union (P1a's `RecordStore.fetch_stations` read moved to
     # `WindowStore._fetch_stations` precisely so that it stays a8cb08f0...). Re-derived the same way (the prior pin 873236f3... is the pre-union W0 merge).
-    assert got["implementation"]["window"] == "fc0e7500f0f30d89ea0519102b568dfd2b7d466e4208e63f282610981014c60d"
+    # Window re-pinned ONCE for SR-OD1 R9c-A10-1 (G-8): window_solver (S1) and window_solver_check (S2) join the window stage (they were in no stage list; nothing imports
+    # them until the sweep calls the solver, so the import-closure test could not see them). Geometry is asserted unchanged above (a8cb08f0...). Re-derived the same way
+    # (the prior pin fc0e7500... is the I1 union before this change); no golden component is re-captured.
+    assert got["implementation"]["window"] == "1fae349716b2477343f89d02d11db0a96bd0211c086e41bec768f11d290258f1"
