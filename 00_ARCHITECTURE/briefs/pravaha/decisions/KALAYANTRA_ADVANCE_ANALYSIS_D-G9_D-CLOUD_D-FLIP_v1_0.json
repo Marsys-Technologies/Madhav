@@ -1,8 +1,8 @@
 {
  "schema": "ky.advance_analysis/1",
  "item": "ADVANCE-ANALYSIS",
- "version": "1.0",
- "date": "2026-10-18",
+ "version": "1.1",
+ "date": "2026-10-21",
  "status": "DRAFT_TEMPLATE_NARRATIVE_CONTROL_ONLY",
  "narrative": "00_ARCHITECTURE/briefs/pravaha/decisions/KALAYANTRA_ADVANCE_ANALYSIS_D-G9_D-CLOUD_D-FLIP_v1_0.md",
  "rules": {
@@ -498,7 +498,7 @@
    },
    {
     "id": "C-4",
-    "evidence": "phase 7 protected window; verification job configured disabled",
+    "evidence": "phase 7 protected window; verification job configured disabled - REQUIRED BEFORE SEALING (J-5s), not a D-CLOUD precondition (OWNER-BUILD-FIRST-20261021)",
     "producer": "J-4b steps packet_oracles_verified, configured_disabled_readback",
     "pass_rule": "both receipts MET; grants/principals read back; builder-role verification-row write refused",
     "cite": "00_ARCHITECTURE/control/kalayantra/plan_model.json item J-4b",
@@ -581,7 +581,7 @@
     "id": "C-13",
     "evidence": "request binds operation window",
     "producer": "same request",
-    "pass_rule": "explicit window inside the protected window",
+    "pass_rule": "explicit operation window (the lease window); the clause 'inside the protected window' and the C-4 protected-window controls are REQUIRED BEFORE SEALING (OWNER-BUILD-FIRST-20261021)",
     "cite": "PRE-D-CLOUD",
     "measured": null,
     "status": "NULL"
