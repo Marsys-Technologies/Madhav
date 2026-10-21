@@ -60,7 +60,8 @@ def run(am5, monkeypatch, tmp_path):
 
     def step(key, final_rules=False):
         config = {"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe,
-                  "gochara_v5_final_rules": bool(final_rules)}       # main made the final (ND-H 1.2.0) rules an explicit opt-in; F-CHANNEL: the profile is always named
+                  "gochara_v5_final_rules": bool(final_rules),
+                  **({"result_policy": "all_null_candidate/1"} if final_rules else {})}       # OD-1: a final-rules run names its policy; main made the final (ND-H 1.2.0) rules an explicit opt-in; F-CHANNEL: the profile is always named
         ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-1", db_conn=am5, config=config,
                           dry_run=False)
         with am5.transaction():

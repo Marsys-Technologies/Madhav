@@ -1,0 +1,46 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "K9-4a",
+  "entries": {
+    "orchestrator_rebuild_cancel_dryrun": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "platform/python-sidecar/services/kala_core/publication_admission.py",
+      "fixed_args": [
+        "cancel-dryrun"
+      ],
+      "allowed_args": [
+        "run-id"
+      ],
+      "production": false,
+      "enabled_by": "K9-23",
+      "cwd": "platform/python-sidecar",
+      "python_module": "services.kala_core.publication_admission",
+      "timeout_s": 300
+    },
+    "orchestrator_rebuild_cancel": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "platform/python-sidecar/services/kala_core/publication_admission.py",
+      "fixed_args": [
+        "cancel"
+      ],
+      "allowed_args": [
+        "run-id"
+      ],
+      "production": true,
+      "enabled_by": "K9-23",
+      "cwd": "platform/python-sidecar",
+      "python_module": "services.kala_core.publication_admission",
+      "timeout_s": 300
+    }
+  },
+  "classes": {
+    "orchestrator_rebuild_cancel": [
+      "cancel_lane",
+      "mechanical_exempt",
+      "signed_only",
+      "marker_in_process"
+    ]
+  }
+}

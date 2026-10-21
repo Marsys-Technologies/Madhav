@@ -6,7 +6,7 @@ item: K6-5
 authority: KYD-141; ALGO 3.8; PLAN sections 4.1, 7, 9, 10
 produced_on: 2026-10-10
 changelog:
-  - "1.1 (2026-10-16, K6-N1): reconcile merged default dispatch, historical-only L4 safety and fixture/live admission limits; no runtime change."
+  - "1.1 (2026-10-16, K6-N1): reconcile merged default dispatch, historical-only L4 safety and fixture/live admission limits; no runtime change. 2026-10-21: shared-helper source citation corrected to :766; fixture/live-admission limits pinned by the contract oracle."
   - "1.0: pin the complete registrar input/output boundary using K6-5a storage."
 ---
 
@@ -25,7 +25,7 @@ Both keys still require a complete/verified fixture manifest and explicit
 delivery confirmation. This contract supplies consumer fixtures only; the
 conductor must admit actual producer, delivery-confirmation and ontology bindings
 before live issue creation. Both entries refuse every non-fixture manifest.
-Source: `platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:768`
+Source: `platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py:766`
 (shared helper), `:790` (registered default), `:803` (dispatch precedence).
 
 | Input | Exact mapping and admission |

@@ -96,6 +96,9 @@ REMOTE_ASYNC_KINDS = frozenset({   # A8 §3.11: work continues remotely after th
     "verification_job",
 })
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
+LOOP_TICK_S = 10        # the main loop's idle sleep: the finest grain at which any timed gate below can fire
+CAPS_REFRESH_S = 30     # A10.1 item 6: CAPABILITIES.json is rewritten at least this often (was 300)
+CAPS_FRESH_S = 45       # the freshness bound readers of CAPABILITIES.json apply (unchanged); a snapshot is at most CAPS_REFRESH_S + LOOP_TICK_S old
 PACK_ALLOWLIST = OPS / "PACK_ALLOWLIST.json"   # OWNER-MINIMAL-PROTECTION-NOW: written by the cockpit ONLY from an ACCEPTED verify job of a pack; this executor only reads it
 SIGNED_ONLY_KINDS = frozenset({   # serving changes, plus the deletion-adjacent cancels (every kind on CANCEL_LANE_KINDS, which a test keeps equal to this set's cancels); every `*_teardown` kind is signed-only too (see mechanical_exempt)
     "century_cancel",
@@ -169,6 +172,10 @@ def load_table() -> dict | None:
     if p.returncode != 0: return None
     try: return json.loads(p.stdout)["ops"]
     except Exception: return None
+
+def capabilities_due(last_caps: float, now_s: float) -> bool:
+    return now_s - last_caps >= CAPS_REFRESH_S
+
 
 def capabilities(table_on_main: bool) -> dict:
     caps = {"builder": bool(os.environ.get("KY_BUILDER_DATABASE_URL")), "owner": bool(os.environ.get("KY_OWNER_DATABASE_URL")),
@@ -288,6 +295,48 @@ def publish_teardown_completions() -> None:
                 log(f"{path.stem} teardown completion published (absence {absence.stem})")
                 break
         except Exception: continue
+
+
+def publish_head_completions() -> None:
+    """M-W56-16: the head twin of publish_teardown_completions. Publish <op>.completion.json (schema ky.head_completion/1) for a COMMITTED
+    publish_head / rollback_head receipt (status AWAITING_READBACK) once the filing convention is met (fleet/OPS_CONTRACT.md "Head completion filing"):
+    the archived head request done/<op>.json, an acceptance acceptance/<op>.readback.json naming `readback_operation_id`, and that readback's archived
+    request done/<rb>.json, receipt receipts/<rb>.json and output receipts/<rb>.output.txt. The verdict is the reviewed policy's own `complete`
+    (head_operation.complete, loaded from the request's reviewed_commit like head_policy, never the working tree); for a rollback the policy's
+    request_problem is re-run too, so its `rollback_of` must still bind the original publish. Receipts only: never FENCE, never a request, never the
+    executor reading or requesting the readback itself. A receipt the policy refuses is skipped (no document, no exception); an existing document is never rewritten."""
+    for path in sorted(REC.glob("*.json")):
+        if path.name.endswith(".completion.json") or (REC / f"{path.stem}.completion.json").exists(): continue
+        try:
+            commit_raw = path.read_bytes()
+            committed = json.loads(commit_raw)
+            if (committed.get("kind") not in ("publish_head", "rollback_head") or committed.get("status") != "AWAITING_READBACK"
+                    or committed.get("operation_id") != path.stem): continue
+            accepted_path = ACC / f"{path.stem}.readback.json"
+            if not accepted_path.exists(): continue
+            accepted_raw = accepted_path.read_bytes()
+            accepted = json.loads(accepted_raw)
+            readback_op = accepted.get("readback_operation_id")
+            if not isinstance(readback_op, str) or not SAFE_ID.fullmatch(readback_op) or readback_op == path.stem: continue
+            req = json.loads((DONE / f"{path.stem}.json").read_bytes())
+            rb_req = json.loads((DONE / f"{readback_op}.json").read_bytes())
+            if rb_req.get("requested_by") == req.get("requested_by"): continue      # S-5: the readback is a v-lane's, never the head requester's
+            rb_raw = (REC / f"{readback_op}.json").read_bytes()
+            output_raw = (REC / f"{readback_op}.output.txt").read_bytes()
+            policy = head_policy(req)
+            if req.get("kind") == "rollback_head" and policy["request_problem"](req, OPS): continue
+            completion = dict(policy["complete"](req, commit_raw, rb_req, rb_raw, output_raw, accepted), schema="ky.head_completion/1",
+                readback_operation_id=readback_op,
+                source_digests=dict(commit_receipt=digest_bytes(commit_raw), readback_receipt=digest_bytes(rb_raw), acceptance=digest_bytes(accepted_raw)))
+        except Exception: continue
+        target = REC / f"{path.stem}.completion.json"
+        with _lock:
+            staged = target.with_suffix(".json.tmp")
+            with staged.open("w") as stream:
+                stream.write(json.dumps(completion, indent=1))
+                stream.flush(); os.fsync(stream.fileno())
+            os.replace(staged, target)
+        log(f"{path.stem} head completion published (readback {readback_op})")
 
 
 def refresh_state() -> str:
@@ -1646,10 +1695,11 @@ def main() -> int:
                 table = load_table()
             except Exception as e: log(f"sync failed: {e}"); table = None
             last_sync = time.time()
-        if time.time() - last_caps > 300: caps = capabilities(table is not None); last_caps = time.time()
-        if table is None or (KY_ROOT / "HOLD").exists(): time.sleep(10); continue      # no table on main yet (before B-1), refs unreachable, or HOLD
+        if capabilities_due(last_caps, time.time()): caps = capabilities(table is not None); last_caps = time.time()
+        if table is None or (KY_ROOT / "HOLD").exists(): time.sleep(LOOP_TICK_S); continue      # no table on main yet (before B-1), refs unreachable, or HOLD
         if FENCE.exists(): fence_quiescent()  # reconcile independent small-test completion; retain the owner-controlled fence
         publish_teardown_completions()        # SR-TEARDOWN-COMPLETION: a committed teardown + its accepted absence complete without a fence
+        publish_head_completions()            # M-W56-16: a committed head change + its independent readback and accepted digest complete without a fence
         for f in sorted(REQ.glob("*.json")):
             try: req = json.loads(f.read_text())
             except Exception as e:
@@ -1667,7 +1717,7 @@ def main() -> int:
             receipt(req, "RUNNING", "accepted; in flight")
             pool, work = pool_for(req, production, readers, builder, cancel_lane)
             pool.submit(work, flight, req, op)
-        time.sleep(10)
+        time.sleep(LOOP_TICK_S)
 
 
 if __name__ == "__main__":

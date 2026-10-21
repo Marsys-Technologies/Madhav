@@ -39,6 +39,11 @@ describe('gochara-role-provisioning-oneshot.yml', () => {
     const run = steps.find((s) => s.name?.startsWith('Run the reviewed provisioning script'))
     if (!run?.env) throw new Error('Provisioning step and environment are required')
     expect(run.env.ADMIN_DATABASE_URL).toBe('${{ secrets.DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL }}')
+    // owner step 1 fix (2026-10-21): stage grant-l1-reads runs over the protected migrator route, the same secret kala-verifier-role-oneshot.yml uses — in env only, never in argv
+    expect(run.env.MIGRATOR_DATABASE_URL).toBe('${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}')
+    expect(Object.entries(run.env).filter(([, v]) => v.includes('secrets.')).map(([k]) => k).sort())
+      .toEqual(['ADMIN_DATABASE_URL', 'MIGRATOR_DATABASE_URL', 'SEALER_PASSWORD_STAGING'])
+    expect(code(workflowText).match(/(?<![A-Z_])MIGRATOR_DATABASE_URL/g)).toHaveLength(1)                 // named once, in that env block: nowhere in a command line
     expect(run.run).toBe('bash platform/scripts/gochara-provision-roles.sh')
     expect(run.shell).toBe('bash')
     expect(JSON.stringify(wf.jobs.provision.steps.filter((s) => s !== run))).not.toContain('secrets.')
@@ -119,6 +124,20 @@ describe('gochara-provision-roles.sh', () => {
     const stage = c.slice(c.indexOf('  grant-l1-reads)'), c.indexOf('  sealer-credential)'))
     expect(stage.indexOf('GRANT USAGE ON SCHEMA public')).toBeLessThan(stage.indexOf('COMMIT;'))   // inside the one transaction
     expect(stage.indexOf('BEGIN;')).toBeLessThan(stage.indexOf('GRANT USAGE ON SCHEMA public'))
+  })
+  it('owner step 1 fix: each GRANT is issued AS its owning role (SET LOCAL ROLE) inside the one transaction, before COMMIT, and the stage refuses any login but data_plane_migrator first', () => {
+    const stage = c.slice(c.indexOf('  grant-l1-reads)'), c.indexOf('  sealer-credential)'))
+    const sql = stage.slice(stage.indexOf('BEGIN;'), stage.indexOf('COMMIT;'))
+    expect(sql.indexOf('SET LOCAL ROLE data_plane_l1_owner;')).toBeGreaterThan(-1)
+    expect(sql.indexOf('SET LOCAL ROLE data_plane_l1_owner;')).toBeLessThan(sql.indexOf('GRANT SELECT ON public.chart_facts'))
+    expect(sql.indexOf('GRANT SELECT ON public.chart_facts')).toBeLessThan(sql.indexOf('SET LOCAL ROLE data_plane_schema_owner;'))
+    expect(sql.indexOf('SET LOCAL ROLE data_plane_schema_owner;')).toBeLessThan(sql.indexOf('GRANT USAGE ON SCHEMA public'))
+    expect(sql.indexOf('GRANT USAGE ON SCHEMA public')).toBeLessThan(sql.indexOf('DO \\$post\\$'))      // the closure check runs after both grants, in the same transaction
+    expect(stage.indexOf('data_plane_migrator|data_plane_migrator|true|true')).toBeGreaterThan(-1)
+    expect(stage.indexOf('data_plane_migrator|data_plane_migrator|true|true')).toBeLessThan(stage.indexOf('BEGIN;'))
+    expect(stage.indexOf("has_schema_privilege(current_user, 'public', 'USAGE')")).toBeLessThan(stage.indexOf("to_regclass('public.$t')"))   // permission asked before existence
+    expect(c).toContain('MIGRATOR_DATABASE_URL:?')                                                                                          // required for this stage
+    expect(c).toContain('unset MIGRATOR_DATABASE_URL')                                                                                      // never inherited by a child
   })
   it('J-4b-a55j: the sealer credential goes secret-store first, shares the one activation transaction, and the rollback destroys the version of the secret it wrote', () => {
     const stage = c.slice(c.indexOf('  sealer-credential)'), c.indexOf('  *) fail "unknown STAGE'))

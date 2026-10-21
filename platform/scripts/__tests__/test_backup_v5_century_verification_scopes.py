@@ -126,11 +126,11 @@ def test_v2_every_write_statement_of_the_verification_and_sealing_modules_target
 
 def test_p1_the_policy_pins_each_reviewed_scope_digest_and_the_digest_covers_the_name(backup, shared):
     pins = shared.SCOPED_BACKUP_SCOPE_SHA256S
-    assert set(pins) == {'small_test', 'century', 'verification_seal'}
+    assert set(pins) == {'small_test', 'century', 'verification_seal', 'w5w6_union'}                          # M-W56-6: the fourth scope is tested in test_backup_v5_w5w6_union_scope.py
     for name, digest in pins.items():
         assert backup.load_scope(name=name)['sha256'] == digest, name
     assert pins['small_test'] == shared.SCOPED_BACKUP_SCOPE_SHA256                                          # the J-2a name still means the small-test scope
-    assert len(set(pins.values())) == 3
+    assert len(set(pins.values())) == 4
     assert pins['verification_seal'] == PACK_VERIFICATION_SEAL_DIGEST
     century, small = backup.load_scope(name='century'), backup.load_scope(name='small_test')
     assert century['tables'] == small['tables'] and century['sha256'] != small['sha256']                     # same tables, another scope: the name is part of the digest
@@ -161,7 +161,7 @@ def test_p2_a_century_dispatch_demands_the_century_scopes_proof_and_the_default_
     monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)
     monkeypatch.setattr(shared, 'century_dryrun_evidence', lambda req, root, digest=None: None)
     base = {'kind': 'century_dispatch', 'item_id': shared.CENTURY_ITEM, 'args': {'classes': 'all', 'final_rules': 'true', 'defer_in_build_verify': 'true',
-                                                                                            'horizon': '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00'}}   # synthetic bounds (F-CHANNEL: the four exact args)
+                                                                                            'horizon': '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00', 'result_policy': 'window_qualification/1'}}   # synthetic bounds (F-CHANNEL: the four exact args)
     (tmp_path / 'small').mkdir()
     (tmp_path / 'century').mkdir()
     small = write_evidence(tmp_path / 'small', shared, label='p02_small')

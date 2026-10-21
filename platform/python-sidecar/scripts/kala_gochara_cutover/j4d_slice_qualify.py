@@ -265,7 +265,7 @@ def build_slice(conn: Any, *, chart_id: str, horizon: tuple, classes: list[str],
 
     `conn` must be an autocommit lane connection. `head` / `kinds` / `paths` narrow the class-less substeps and the per-class substep kinds
     and paths (a harness on a stubbed L1 and a pre-built substrate cannot run them all); the lane run leaves all three None. `result_policy` selects the
-    generation's numeric result policy (the writer's own default when None). The build is NOT a validated test slice, so the writer certifies under its
+    generation's numeric result policy (None = `all_null_candidate/1` under the final rules, the writer's own default under the measuring ones). The build is NOT a validated test slice, so the writer certifies under its
     STRICT policy (every invented / anomaly stretch raises). Returns {'steps', 'defects', 'observed', 'near_miss_layer'}; the first raised substep stops the build and is a defect.
     """
     from pipeline.orchestrator.writers import ContextSpec, ka_gochara_v5 as writer_mod
@@ -275,6 +275,10 @@ def build_slice(conn: Any, *, chart_id: str, horizon: tuple, classes: list[str],
     config = {"chart_id": chart_id, "horizon": tuple(horizon), "ephe_path": ephe_path, "gochara_v5_final_rules": final_rules}
     if result_policy is not None:
         config["result_policy"] = result_policy
+    elif final_rules:
+        # OD-1 (SR-OD1-NUMERICAL): the writer refuses a final-rules run that names no result policy. This slice lane has always run (and proved) the all-NULL
+        # policy, so it now NAMES it; a numerical slice is asked for with `result_policy`.
+        config["result_policy"] = "all_null_candidate/1"
     if birth_params:
         config["birth_params"] = birth_params
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=build_id, db_conn=conn, dry_run=False, config=config)

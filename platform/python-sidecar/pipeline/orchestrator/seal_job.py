@@ -5,7 +5,7 @@
 NOT a registered writer and not in the build DAG. Run only by the `gochara-seal` workflow, in the job that mounts the sealer credential.
 It reads exactly ONE database credential, `GOCHARA_SEALER_DB_URL`; its first act is the identity self-check (it refuses to run as anything
 but the `gochara_sealer` login) — and BEFORE any database contact it checks that the code it is running is the code registered for the
-sealing commit (`implementation_digest.lock.json`; refused, exit 4, otherwise). It owns ONE explicit transaction: seal locks → the policy requirement (`all_null_candidate/1`) → the
+sealing commit (`implementation_digest.lock.json`; refused, exit 4, otherwise). It owns ONE explicit transaction: seal locks → the policy requirement (`all_null_candidate/1`, or `window_qualification/1` with its frozen table bound in the manifest) → the
 approval RECOMPUTE (refused on any mismatch before publishing) → publication → the authoritative seal → the receipt → the
 post-publication boundary re-check; a failure anywhere rolls publication back too.
 

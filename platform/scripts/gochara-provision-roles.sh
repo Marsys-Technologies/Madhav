@@ -3,7 +3,7 @@
 # Runbook: 00_ARCHITECTURE/briefs/pravaha/runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md (acts 1, 2a, 2b, 11).
 #
 # Run ONLY by .github/workflows/gochara-role-provisioning-oneshot.yml (workflow_dispatch, after Codex review), over the
-# governed ownership-admin connection. Never `gcloud sql users create` and never the console: both make the new user a
+# governed ownership-admin connection (stage grant-l1-reads alone: the protected data_plane_migrator route, see its ROUTE note). Never `gcloud sql users create` and never the console: both make the new user a
 # member of cloudsqlsuperuser; every role here is made with SQL CREATE ROLE and the post-check proves NO membership.
 #
 # Stages (STAGE):
@@ -23,6 +23,13 @@
 #                    cannot be used without namespace USAGE (the J-4b-a55j readback measured schema-usage false for both). The closure check requires
 #                    USAGE, no CREATE and no grant option on the schema for both, so a grantor without rights on `public` (PostgreSQL only WARNs and grants
 #                    nothing) aborts the whole stage instead of passing. Not a new owner click: the stage is the one the guide already runs.
+#                    ROUTE (owner step 1 fix, 2026-10-21): this stage — and only this stage — does NOT use the ownership-admin connection. After the data-plane
+#                    cutover that login (`postgres`) owns nothing and belongs to no owner role: it has no USAGE on `public` and no right to GRANT on the L1
+#                    tables (schema public is owned by data_plane_schema_owner, the L1 tables by data_plane_l1_owner, both NOLOGIN). The stage therefore runs over
+#                    the protected data_plane_migrator route (MIGRATOR_DATABASE_URL — the route and the SET LOCAL ROLE pattern kala-provision-verifier-role.sh
+#                    stage grant-usage already uses), which is a member of both owner roles, and issues each GRANT AS THE OWNER (so the ACL grantor is the owner).
+#                    It refuses (exit 2) unless the session is exactly data_plane_migrator and a member of both owner roles. Every other stage keeps the
+#                    ownership-admin route.
 #   sealer-credential  J-4b-a55j (SR-GRANTS-MINIMAL, replaces the person-run staging of act 2b): the sealer's password is generated HERE, the full DSN
 #                    is written straight to Secret Manager (SEALER_SECRET) BEFORE the role is touched, then the role is activated in one transaction
 #                    with its postconditions, observed by an authentication, and listed. Same compensation as `sealer-password` PLUS the destroy of
@@ -48,6 +55,11 @@ set +x
 umask 077
 
 STAGE="${STAGE:?STAGE is required (create-roles | sealer-password | grant-l1-reads | sealer-credential)}"
+# grant-l1-reads runs over the protected data_plane_migrator route (the only login that can act as the schema and L1 owners); every other stage over the ownership admin
+if [ "$STAGE" = "grant-l1-reads" ]; then
+  ADMIN_DATABASE_URL="${MIGRATOR_DATABASE_URL:?MIGRATOR_DATABASE_URL (the protected data_plane_migrator route) is required for grant-l1-reads}"
+fi
+unset MIGRATOR_DATABASE_URL          # (never inherited by a child process, whichever stage runs)
 ADMIN_DATABASE_URL="${ADMIN_DATABASE_URL:?ADMIN_DATABASE_URL (the governed ownership-admin connection) is required}"
 VERIFIER_ROLE=gochara_verifier
 SEALER_ROLE=gochara_sealer
@@ -301,15 +313,27 @@ case "$STAGE" in
   grant-l1-reads)
     # J-4b-a55j: the two L1 reads migration 1378 leaves to the data-plane ACL owner (its header lines 53-57) — SELECT, on these two tables, for these two roles, nothing else —
     # plus the schema USAGE without which those reads cannot be used (C-04).
-    # One transaction: the GRANT and the closure check commit together or not at all. No secret is involved.
+    # One transaction: the GRANTs (each issued as the owning NOLOGIN role) and the closure check commit together or not at all. No secret is involved.
+    # Identity guard FIRST, before any change: exactly the protected migrator login, itself a member of both owner roles (pattern: kala-provision-verifier-role.sh grant-usage).
+    who="$(q "SELECT session_user || '|' || current_user || '|' || pg_has_role(session_user, 'data_plane_schema_owner', 'member') || '|' || pg_has_role(session_user, 'data_plane_l1_owner', 'member')")" \
+      || fail "could not read the connecting identity" 2
+    [ "$who" = "data_plane_migrator|data_plane_migrator|true|true" ] \
+      || fail "grant-l1-reads requires the direct protected data_plane_migrator route, a member of data_plane_schema_owner and data_plane_l1_owner (got session_user '${who%%|*}')" 2
     for r in "$VERIFIER_ROLE" "$SEALER_ROLE"; do role_exists "$r" || fail "role $r does not exist — run create-roles first"; done
+    # a qualified name in a schema the connecting role cannot enter raises "permission denied", which an existence probe would misreport as "does not exist": ask the privilege first
+    [ "$(q "SELECT has_schema_privilege(current_user, 'public', 'USAGE')")" = "t" ] \
+      || fail "the connecting role $(q "SELECT current_user") cannot enter schema public (no USAGE) — refusing to grant (an existence check on public.chart_facts would be meaningless)"
     for t in chart_facts chart_dashas; do
       [ "$(q "SELECT to_regclass('public.$t') IS NOT NULL")" = "t" ] || fail "relation public.$t does not exist — refusing to grant"
     done
     psql_admin -f - <<SQL || fail "the L1 read grants or their closure check failed — nothing was committed" 5
 BEGIN;
+SET LOCAL ROLE data_plane_l1_owner;
 GRANT SELECT ON public.chart_facts, public.chart_dashas TO $VERIFIER_ROLE, $SEALER_ROLE;
+RESET ROLE;
+SET LOCAL ROLE data_plane_schema_owner;
 GRANT USAGE ON SCHEMA public TO $VERIFIER_ROLE, $SEALER_ROLE;
+RESET ROLE;
 DO \$post\$ DECLARE r text; t text; p text; BEGIN
   FOREACH r IN ARRAY ARRAY['$VERIFIER_ROLE', '$SEALER_ROLE'] LOOP
     -- namespace access (C-04): exactly USAGE. has_schema_privilege counts PUBLIC grants too, the same effective test the provisioning readback applies.

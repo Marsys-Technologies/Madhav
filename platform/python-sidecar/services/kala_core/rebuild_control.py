@@ -15,7 +15,8 @@ Both operations take ONE argument, the run id, and are scoped to the canonical c
   referenced only by tables keyed by the same ``(chart_id, generation)`` (the vedha writer's ``kala_vedha_gochara_candidate`` and
   its ``kala_vedha_gochara_interval``, migration 1383) is the failed run's OWN candidate output: those referencing rows go first,
   then the dependent (K9 round 3 D8). ``kala_activation_predicates`` carries the candidate generation without a foreign key, so
-  its rows of the run's generation and chart are removed too (round 3 N1). A published
+  its rows of the run's generation and chart are removed too (round 3 N1), as are the ``kala_f1_*`` rows the resonance writer's candidate path leaves
+(W5/W6 N8). ``gochara_resonance_map`` has no generation column, so it is never deleted and the result names it with its row count. A published
   candidate, the head generation and a candidate whose retained previous head is gone are refused. The head is read before and
   after and must be equal. The caller owns the transaction: nothing here commits.
 * SR-K9-PUBLISHABLE D8: a teardown of a FAILED run also restores the asset states that run wrote. A failed rebuild leaves
@@ -44,7 +45,14 @@ CANDIDATE_KEY = ['chart_id', 'generation']
 AUDIT_TABLE = 'asset_throughput_state_audit'
 WRITTEN_BY_A_FAILED_RUN = ('stale', 'error')
 SETTLED_BEFORE = ('lit', 'service_ok', 'mature', 'dormant')     # runner.py's settled states: what a stale/error row can be restored to
-UNLINKED_CANDIDATE_TABLES = ('kala_activation_predicates',)     # carry (chart_id, generation) with no foreign key to kala_layer_candidate (ka_yojaka writes them)
+# Carry (chart_id, generation) with no foreign key to kala_layer_candidate, listed child first (the delete runs in this order). Derived from the write targets of the
+# closed K9 plan's writers (W5/W6 N8): ka_yojaka writes kala_activation_predicates; ka_gochara_resonance's candidate path (relationship_storage.store_projection, migration
+# 1342) writes kala_f1_relationship, whose foreign key points at kala_f1_target_object, both keyed by (chart_id, ayanamsha_id, generation) with generation LIKE 'candidate:%'.
+UNLINKED_CANDIDATE_TABLES = ('kala_activation_predicates', 'kala_f1_relationship', 'kala_f1_target_object')
+# A plan writer whose rows are NOT held per candidate generation: the table has no generation column (migration 459 + 1080), so a teardown can neither find the run's rows
+# nor restore the previous ones. ka_gochara_resonance's legacy path (no ``candidate_generation`` in its config, services/ka_gochara_resonance/writer.py) deletes and
+# re-inserts the whole chart. Teardown never deletes it (it would empty the table serving reads); it names it in the result with the rows it left (N.7.6).
+CHART_SCOPED_WRITES = {'ka_gochara_resonance': 'gochara_resonance_map'}
 ORCHESTRATOR = 'asset_runner'                                   # pipeline/orchestrator/db.py: marsys.triggered_by on every build connection
 
 
@@ -174,6 +182,17 @@ def head_of(conn: Any, chart_id: str):
 def unlinked_tables(conn: Any) -> list[str]:
     """The ``UNLINKED_CANDIDATE_TABLES`` this database has."""
     return [t for t in UNLINKED_CANDIDATE_TABLES if conn.execute('SELECT to_regclass(%s)', (t,)).fetchone()[0] is not None]
+
+
+def chart_scoped_writes(conn: Any, plan: list[str], chart_id: str) -> list[dict]:
+    """The plan's writers that write a chart-scoped table no teardown can scope to a generation, with the rows that table holds for the chart now."""
+    found = []
+    for asset, table in CHART_SCOPED_WRITES.items():
+        if asset in plan and conn.execute('SELECT to_regclass(%s)', (table,)).fetchone()[0] is not None:
+            rows = conn.execute(sql.SQL('SELECT count(*) FROM {} WHERE chart_id = %s').format(sql.Identifier(table)), (chart_id,)).fetchone()[0]
+            found.append({'asset_id': asset, 'table': table, 'rows_for_chart': rows,
+                          'reason': 'no generation column: the run\'s rows cannot be told from the previous build\'s, so they are left alone'})
+    return found
 
 
 def row_counts(conn: Any, chart_id: str, generation: str) -> dict[str, int]:
@@ -320,4 +339,4 @@ def teardown(conn: Any, *, run_id: str, chart_id: str = CANONICAL_CHART) -> dict
     restored = restore_asset_states(conn, to_restore, chart_id)
     return {'status': 'TORN_DOWN', 'run_id': run_id, 'generation': generation, 'candidate_state': cand[1], 'deleted': deleted,
             'head_generation': head_after, 'retained_previous_present': True, 'asset_states_restored': restored,
-            'asset_states_left_alone': left_alone}
+            'asset_states_left_alone': left_alone, 'chart_scoped_writes_left_alone': chart_scoped_writes(conn, run['plan'], chart_id)}

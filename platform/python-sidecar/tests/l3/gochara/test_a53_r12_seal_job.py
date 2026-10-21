@@ -2,8 +2,8 @@
 
 `seal_flow.seal_with_approval` was a library function whose only callers were tests: nothing obtained or authenticated the approval, bound
 the run to the reviewed revision, or owned the transaction. The job reads ONE credential (the sealer's), refuses unless it IS the sealer,
-validates the approval record, takes the RUN and the sealing REVISION from the environment of the running workflow, requires the milestone's
-`all_null_candidate/1` policy, and owns one explicit transaction (recompute → publish → seal → receipt) so a failure anywhere — the receipt
+validates the approval record, takes the RUN and the sealing REVISION from the environment of the running workflow, requires one of the two NAMED policies
+(`all_null_candidate/1`, or — OD-1 — `window_qualification/1` with its table bound; see the end of this file), and owns one explicit transaction (recompute → publish → seal → receipt) so a failure anywhere — the receipt
 included — rolls publication back too. Every case runs on the faithful disposable DB as the real `gochara_sealer` LOGIN."""
 from __future__ import annotations
 
@@ -196,8 +196,8 @@ def test_a_wrong_digest_is_refused_as_a_mismatch(sealable, capsys):
     _nothing_written(sealable)
 
 
-def test_the_job_requires_the_all_null_policy_explicitly(built):
-    assert sf.REQUIRED_POLICY == "all_null_candidate/1"
+def test_the_job_pins_the_policy_when_one_is_named(built):
+    assert sf.ACCEPTED_POLICIES == ("all_null_candidate/1", "window_qualification/1")
     w = built
     _verified(w)
     d = _brief_as_verifier(w, sealing_commit=COMMIT)["sha256"]
@@ -336,3 +336,292 @@ def test_a_receipt_naming_another_manifest_is_refused_even_with_the_first_seal(b
                 " approved_by_note, run_id, run_attempt, workflow_commit) VALUES (%s::uuid, %s, gen_random_uuid(),"
                 f" repeat('a', 64), (SELECT coalesce(max(brief_id), 1) FROM public.ka_gochara_seal_brief), 'executions/test-exec-1', 'x', 'x', 1, 1, 'abc1234')", (CHART_ID, GEN))
     assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_generation_seal").fetchone()[0] == 0
+
+
+# ═══ OD-1 (SR-OD1-NUMERICAL): the sealing job accepts `window_qualification/1` with its frozen table bound, and nothing else unknown ═══════════════
+# Claims (one oracle each; the planted reversion is named): 5. the verification job refuses a manifest whose bound table is not the frozen one and verifies the
+# same generation with it — through the live-input drift check every verification starts with (`qualification_table.digest` differs; revert: leave the table out of
+# `build_input_vector`, and the tampered manifest verifies); 6. the sealer ACCEPTS the policy with the table bound and writes the receipt,
+# refuses another table (`qualification_table_mismatch`, nothing written) and still refuses a policy it does not know (`wrong_policy`) (revert: restore the single
+# required policy / drop the table check). The all-NULL seal is unchanged: every test above this section is the all-NULL path.
+
+from services.gochara_kernel import result_policy as rp  # noqa: E402
+from services.gochara_kernel import verification_job as vj  # noqa: E402
+
+
+@pytest.fixture()
+def built_qual(rworld, request):
+    rworld.result_policy = rp.POLICY_QUALIFICATION          # the manifest step binds it (and the frozen table beside it) when `built` boots the world
+    return request.getfixturevalue("built")
+
+
+def _set_table_digest(w, digest):
+    _bypass(w, ("UPDATE public.kala_gochara_publication SET input_generation_vector = jsonb_set(input_generation_vector,"
+                " '{qualification_table,digest}', to_jsonb(%s::text))", (digest,)))
+
+
+def test_the_built_qualification_world_binds_the_frozen_table(built_qual):
+    vector = built_qual.conn.execute("SELECT input_generation_vector FROM public.kala_gochara_publication").fetchone()[0]
+    assert vector["result_policy"] == rp.POLICY_QUALIFICATION and vector["qualification_table"] == rp.qualification_table_component(rp.POLICY_QUALIFICATION)
+
+
+def test_the_verification_job_verifies_with_the_frozen_table_and_refuses_another(built_qual):
+    w = built_qual
+    assert _run(w)["status"] == "VERIFIED"
+    _set_table_digest(w, "0" * 64)
+    with pytest.raises(vj.VerificationRefused) as exc:
+        _run(w)
+    assert exc.value.code == "stale_inputs" and "qualification_table" in exc.value.detail, exc.value.detail
+
+
+@pytest.fixture()
+def sealable_qual(built_qual, monkeypatch, tmp_path):
+    w = built_qual
+    _verified(w)
+    digest = _brief_as_verifier(w, sealing_commit=COMMIT)["sha256"]
+    _sealer_stand_ins(w)
+    w.conn.execute(f"ALTER ROLE gochara_sealer LOGIN PASSWORD '{PASSWORD}'")
+    monkeypatch.setenv(seal_job.ENV_URL, make_conninfo(w.dsn, user="gochara_sealer", password=PASSWORD))
+    monkeypatch.setenv("GITHUB_RUN_ID", str(RUN))
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", str(ATTEMPT))
+    monkeypatch.setenv("GOCHARA_SEALING_COMMIT", COMMIT)
+    monkeypatch.setenv("GITHUB_TRIGGERING_ACTOR", ACTOR)
+    w.digest, w.tmp = digest, tmp_path
+    yield w
+
+
+def test_the_sealer_accepts_the_qualification_policy_with_its_table_bound(sealable_qual, capsys):
+    w = sealable_qual
+    code, out = _run_job(w, capsys, _approval(w.digest))
+    assert code == sf.EXIT_SEALED and out["status"] == "SEALED" and out["brief_digest"] == w.digest, out
+    assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "published"
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_seal_approval").fetchone()[0] == 1
+
+
+def test_the_sealer_refuses_a_manifest_that_binds_another_table_and_writes_nothing(sealable_qual, capsys):
+    w = sealable_qual
+    _set_table_digest(w, "0" * 64)
+    code, out = _run_job(w, capsys, _approval(w.digest))
+    assert code == sf.EXIT_REFUSED and out["code"] == "qualification_table_mismatch", out
+    _nothing_written(w)
+
+
+@pytest.mark.parametrize("policy", ["numeric/1", "all_null"])
+def test_the_sealer_still_refuses_a_policy_it_does_not_know(sealable_qual, capsys, policy):
+    w = sealable_qual
+    _bypass(w, ("UPDATE public.kala_gochara_publication SET input_generation_vector = jsonb_set(input_generation_vector, '{result_policy}',"
+                " to_jsonb(%s::text))", (policy,)))
+    code, out = _run_job(w, capsys, _approval(w.digest))
+    assert code == sf.EXIT_REFUSED and out["code"] == "wrong_policy", out
+    _nothing_written(w)
+
+
+# ═══ OD-1 numerical-window gate (SR-OD1-DESIGN): see the claims list in the block below ══════════════════════════════════════════════════════════════
+from services.gochara_kernel import numerical_window_gate as nwg  # noqa: E402
+from services.gochara_kernel import window_sweep as _ws  # noqa: E402
+from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod  # noqa: E402
+
+_ORIG_BOUND_ROWS = writer_mod.RuleRegistryStore.bound_factor_rows
+
+
+def _declared_kernel_rows(self, path, version):
+    """The 1.1.0 catalogue rows (they DECLARE applicability) where a 1.1.0 path exists, else the bound rows: the catalogue the final rules bind today (P3/P4 1.2.0 →
+    activity_kernel@1.0.0) declares none, so no window of it could be numbered — that finding is reported; this stand-in is the same one `test_a53_window_sweep_pg` uses."""
+    try:
+        return [dict(r) for r in _ws.registry_factor_rows(path, "1.1.0")]
+    except KeyError:
+        return _ORIG_BOUND_ROWS(self, path, version)
+
+
+@pytest.fixture()
+def built_numbers(rworld, request, monkeypatch):
+    """`built`, under `window_qualification/1`, with rows that declare applicability: the P3 and P4 windows come out NUMBERED, P1/P2 stay honest nulls."""
+    from datetime import datetime, timedelta, timezone
+    rworld.result_policy = rp.POLICY_QUALIFICATION
+    monkeypatch.setattr(writer_mod.RuleRegistryStore, "bound_factor_rows", _declared_kernel_rows)
+    fuzz = timedelta(milliseconds=500)         # a numeric window asks the geometry about the instant 1 µs before its end: finer than a float JD can state
+
+    def calc(body, jd, ephe):
+        t = datetime.fromtimestamp((jd - 2440587.5) * 86400.0, tz=timezone.utc)
+        return (195.0 if any(a - fuzz <= t < b + fuzz for a, b in SPANS.get(body.lower(), ())) else 15.0), 2
+    monkeypatch.setattr(writer_mod, "calc_sidereal_lon", calc)
+    return request.getfixturevalue("built")
+
+
+# Claims (SR-OD1-DESIGN; every one has ONE oracle and the planted reversion that must make it fail):
+#   N1. the independent job re-derives every window and persists a PASSED attestation per grain; the verdict's numbered count is the stored peaks   — revert: persist no attestation
+#   N2. a window blank where the frozen table yields a value is REFUSED by the re-derivation, and nothing is persisted                                 — revert: delete the "qualified but peak NULL" check
+#   N3. a stub policy (the build drafts all-NULL under a manifest that selects window_qualification/1) is REFUSED                                       — revert: the verifier accepts a blank for a qualified objective (same check)
+#   N4. a manifest that binds another table than the frozen one makes the verdict FAILED                                                            — revert: drop the table comparison in the verdict
+#   N5. a window_qualification/1 generation is not briefed, and not sealed, unless its gate PASSED (two named refusals)                              — revert: drop the brief problem / drop `require_passed`
+#   N6. a PASSED numbers generation SEALS, with the verdict and its counts in the sealed brief                                                         — revert: n/a (positive)
+#   N7. the all-NULL path is unchanged: no attestation, no verdict key, NOT_APPLICABLE                                                              — revert: attest under every policy
+#   N8. windows the policy cannot number are honest nulls: counted by reason code, grouped, never a refusal                                         — revert: the recount ignores blank reasons
+#   N9. a report-only run reports the gate NOT_EVALUATED, never green                                                                              — revert: delete that branch
+#  N10. the stdlib brief check agrees with the sidecar's verdict and refuses a FAILED / table-mismatched / miscounted one                           — revert: skip the check
+
+
+def _gate_rows(w):
+    return [json.loads(r[0]) if isinstance(r[0], str) else r[0] for r in w.conn.execute(
+        "SELECT runner_identity FROM public.ka_gochara_eval_window_verification ORDER BY path_id").fetchall()]
+
+
+def test_n1_the_job_persists_a_passed_attestation_per_grain_and_the_verdict_counts_the_stored_peaks(built_numbers):
+    w = built_numbers
+    report = _run(w)
+    assert report["status"] == "VERIFIED", report["classes"]
+    verdict = report["numerical_window_gate"]
+    peaks = w.conn.execute("SELECT count(peak_instant), count(*) FROM public.ka_gochara_eval_window").fetchone()
+    assert verdict["status"] == "PASSED" and (verdict["numbered_windows"], verdict["windows"]) == tuple(peaks) and verdict["numbered_windows"] >= 1
+    assert verdict["valence_of_numbered"] == {"favourable": verdict["numbered_windows"]} and verdict["grains"] == 4
+    assert verdict["judgment_flags"] == []
+    rows = _gate_rows(w)
+    assert len(rows) == 4 and all(r["numerical_window_gate"]["status"] == "PASSED" and r["numerical_window_gate"]["table"] == nwg.table_binding() for r in rows)
+    assert nwg.generation_verdict(w.conn, CHART_ID, GEN)["status"] == "PASSED"
+
+
+def test_n2_a_window_blank_where_the_table_yields_a_value_is_refused_and_nothing_is_persisted(built_numbers):
+    w = built_numbers
+    _bypass(w, ("UPDATE public.ka_gochara_eval_window SET peak_instant = NULL, score = NULL, evidence_for = NULL, evidence_against = NULL,"
+                " outcome_valence_for_native = 'unqualified' WHERE path_id = 'P3'", ()))
+    report = _run(w)
+    c = report["classes"][CLS]
+    assert (c["status"], c["stage"]) == ("DISAGREE", "window_semantics P3") and "peak/evidence_for is NULL" in c["detail"], c
+    assert report["status"] == "DISAGREE" and w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 0
+
+
+def test_n3_a_stub_policy_is_refused(built_numbers):
+    """What a stub `window_qualification/1` would store — every number NULL, the unqualified valence, and the ALL-NULL policy's own reason under the qualification policy's
+    name — written over the windows the real policy numbered. (Built that way the in-build verify refuses it too; the century defers that step, so the independent job
+    is the only detector there.)"""
+    w = built_numbers
+    _bypass(w, ("UPDATE public.ka_gochara_eval_window SET peak_instant = NULL, score = NULL, evidence_for = NULL, evidence_against = NULL, objective_value = NULL,"
+                " outcome_valence_for_native = 'unqualified', qualification = jsonb_set(qualification, '{unqualified_reason}', '\"all_null_candidate_policy\"')"
+                " WHERE path_id = 'P3'", ()))
+    report = _run(w)
+    c = report["classes"][CLS]
+    assert (c["status"], c["stage"]) == ("DISAGREE", "window_semantics P3"), c
+    assert w.conn.execute("SELECT count(*) FROM public.ka_gochara_eval_window_verification").fetchone()[0] == 0
+    c = nwg.census(w.conn, CHART_ID, GEN, CLS, "P3", "1.0.0")                       # …and the gate's own recount names it independently of the re-derivation
+    assert any("stub policy" in p for p in c["problems"]), c["problems"]
+
+
+def test_n4_a_manifest_that_binds_another_table_makes_the_verdict_fail(built_numbers):
+    w = built_numbers
+    assert _run(w)["status"] == "VERIFIED"
+    assert nwg.generation_verdict(w.conn, CHART_ID, GEN)["status"] == "PASSED"
+    _set_table_digest(w, "0" * 64)
+    verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)
+    assert verdict["status"] == "FAILED" and any("qualification_table" in p for p in verdict["problems"]), verdict["problems"]
+
+
+@pytest.fixture()
+def sealable_numbers(built_numbers, monkeypatch, tmp_path):
+    w = built_numbers
+    _verified(w)
+    w.digest = _brief_as_verifier(w, sealing_commit=COMMIT)["sha256"]
+    _sealer_stand_ins(w)
+    w.conn.execute(f"ALTER ROLE gochara_sealer LOGIN PASSWORD '{PASSWORD}'")
+    monkeypatch.setenv(seal_job.ENV_URL, make_conninfo(w.dsn, user="gochara_sealer", password=PASSWORD))
+    monkeypatch.setenv("GITHUB_RUN_ID", str(RUN))
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", str(ATTEMPT))
+    monkeypatch.setenv("GOCHARA_SEALING_COMMIT", COMMIT)
+    monkeypatch.setenv("GITHUB_TRIGGERING_ACTOR", ACTOR)
+    w.tmp = tmp_path
+    yield w
+    w.conn.execute("ALTER ROLE gochara_sealer NOLOGIN PASSWORD NULL")
+
+
+def _drop_attestation(w):
+    _bypass(w, ("UPDATE public.ka_gochara_eval_window_verification SET runner_identity = runner_identity - 'numerical_window_gate' WHERE path_id = 'P3'", ()))
+
+
+def test_n5a_a_generation_whose_gate_did_not_pass_is_not_briefed(built_numbers):
+    from services.gochara_kernel import seal_brief as sb
+    w = built_numbers
+    _verified(w)
+    _drop_attestation(w)
+    with pytest.raises(sb.BriefRefused) as exc:
+        _brief_as_verifier(w, sealing_commit=COMMIT)
+    assert exc.value.code == "candidate_not_approvable" and any(v.startswith("numerical_window_gate:") for v in exc.value.violations), exc.value.violations
+
+
+def test_n5b_a_brief_approved_before_the_gate_was_lost_is_not_sealed_and_nothing_is_written(sealable_numbers, capsys):
+    w = sealable_numbers
+    _drop_attestation(w)                                   # the approved brief existed; the attestation is gone at seal time
+    code, out = _run_job(w, capsys, _approval(w.digest))
+    assert code == sf.EXIT_REFUSED and out["code"] == "numerical_gate_not_passed", out
+    _nothing_written(w)
+
+
+def test_n6_a_passed_numbers_generation_seals(sealable_numbers, capsys):
+    w = sealable_numbers
+    code, out = _run_job(w, capsys, _approval(w.digest))
+    assert code == sf.EXIT_SEALED and out["status"] == "SEALED" and out["brief_digest"] == w.digest, out
+    assert w.conn.execute("SELECT status FROM public.kala_gochara_publication").fetchone()[0] == "published"
+    verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)             # the sealed generation's verdict still reads PASSED, with numbers in it
+    assert verdict["status"] == "PASSED" and verdict["numbered_windows"] >= 1
+
+
+def test_n7_the_all_null_path_is_unchanged(built):
+    w = built
+    report = _run(w)
+    assert report["status"] == "VERIFIED" and report["numerical_window_gate"] == {"schema": nwg.SCHEMA, "status": "NOT_APPLICABLE", "policy": rp.POLICY_ALL_NULL}
+    assert all("numerical_window_gate" not in r for r in _gate_rows(w))
+    payload = _brief_as_verifier(w, sealing_commit=COMMIT)
+    assert "numerical_window_gate" not in payload["payload"] and "qualification_table" not in payload["payload"]
+
+
+def test_n8_windows_the_policy_cannot_number_are_honest_nulls_counted_by_reason_never_a_refusal(built_qual):
+    w = built_qual                                       # the catalogue the final rules bind today declares no kernel applicability: the P3 window cannot be numbered
+    report = _run(w)
+    v = report["numerical_window_gate"]
+    assert report["status"] == "VERIFIED" and v["status"] == "PASSED" and v["numbered_windows"] == 0 and v["blank_windows"] == 1, v
+    blanks = w.conn.execute("SELECT qualification ->> 'unqualified_reason', count(*) FROM public.ka_gochara_eval_window WHERE peak_instant IS NULL GROUP BY 1").fetchall()
+    assert [tuple(b) for b in blanks] == [("applicability_undeclared", 1)]
+    assert v["honest_nulls"] == [{"path_id": "P3", "group": nwg.APPLICABILITY, "reason": "applicability_undeclared", "windows": 1}]
+    assert sum(h["windows"] for h in v["honest_nulls"]) == v["blank_windows"]
+    assert v["judgment_flags"] == ["no_window_numbered_under_numerical_policy"]            # a numbers-on generation with no number in it says so, in the verdict and the brief
+
+
+def test_n9_a_report_only_run_never_reads_green(built_numbers):
+    w = built_numbers
+    with login(w, "gochara_verifier") as conn:
+        from .test_a53_r10_complete_records import _job_position, _kwargs, LIBRA
+        report = vj.run(conn, chart_id=CHART_ID, generation=GEN, report_only=True, **_kwargs(w, _job_position(w, [LIBRA])))
+    assert report["numerical_window_gate"]["status"] == "NOT_EVALUATED" and report["status"] == "REPORT_ONLY"
+
+
+def _load_check_script():
+    from importlib import util
+    from pathlib import Path
+    script = Path(__file__).resolve().parents[5] / "platform/scripts/gochara_seal_brief_check.py"
+    spec = util.spec_from_file_location("gochara_seal_brief_check_nwg", script)
+    mod = util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_n10_the_stdlib_brief_check_agrees_with_the_sidecar_and_refuses_what_the_gate_would(built_numbers):
+    import copy
+    w = built_numbers
+    _verified(w)
+    payload = _brief_as_verifier(w, sealing_commit=COMMIT)["payload"]
+    check = _load_check_script()
+    assert nwg.table_binding() == check.QUALIFICATION_TABLE_BINDING and payload["numerical_window_gate"]["status"] == "PASSED"
+    check.check_numerical_gate(json.loads(json.dumps(payload)))                          # the real payload is accepted
+    def refuses(mutate):
+        p = json.loads(json.dumps(payload))
+        mutate(p)
+        with pytest.raises(check.Refused):
+            check.check_numerical_gate(p)
+    refuses(lambda p: p["numerical_window_gate"].update(status="FAILED", problems=["x"]))
+    refuses(lambda p: p["numerical_window_gate"].update(table={"schema": "window_qualification_table/1", "digest": "0" * 64}))
+    refuses(lambda p: p["numerical_window_gate"].update(blank_windows=p["numerical_window_gate"]["blank_windows"] + 1))
+    refuses(lambda p: p["numerical_window_gate"].update(honest_nulls=[{"path_id": "P3", "group": "g", "reason": "", "windows": 0}]))
+    refuses(lambda p: p.pop("numerical_window_gate"))
+    refuses(lambda p: p["attestations"].update(ka_gochara_eval_window_verification=[l.replace("numerical_window_gate", "gone") for l in p["attestations"]["ka_gochara_eval_window_verification"]]))
+    nullp = json.loads(json.dumps(payload))
+    nullp["result_policy"] = rp.POLICY_ALL_NULL
+    with pytest.raises(check.Refused):
+        check.check_numerical_gate(nullp)                                               # an all-NULL brief carries no numerical verdict

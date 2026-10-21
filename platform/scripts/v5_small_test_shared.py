@@ -741,11 +741,12 @@ def absence_evidence(req, root, *, teardown_receipt=None):
 # FULL-form (/1) proof only (full_backup_window_problem); an old scoped capture's `validity.not_after` stays readable
 # and is never a gate.
 SCOPED_BACKUP_SCOPE_SHA256 = "1daf69d6e31279592947aa25e2b4f9a5c1c8137d6663ba039c27e7331ac7335a"
-# W3W4 pack verify E3: the other two reviewed scopes (backup_v5_century_scope.json, backup_v5_verification_seal_scope.json), pinned the same way and for the same reason.
+# W3W4 pack verify E3: the other reviewed scopes (backup_v5_century_scope.json, backup_v5_verification_seal_scope.json; M-W56-6: backup_v5_w5w6_union_scope.json), pinned the same way and for the same reason.
 # A dispatch names ITS scope (scoped_backup_problem(scope=...)); a proof of another scope never admits it (the digest covers the scope's name as well as its tables).
 SCOPED_BACKUP_SCOPE_SHA256S = {"small_test": SCOPED_BACKUP_SCOPE_SHA256,
                                "century": "eab44eef1ceb06604cab21fbcc464334a9253af1f320ca322b797cf3ff32b020",
-                               "verification_seal": "d20d37b36dad2c7707379415a3981dc434caf85bf952f2bb43546fe392fca7ad"}
+                               "verification_seal": "d20d37b36dad2c7707379415a3981dc434caf85bf952f2bb43546fe392fca7ad",
+                               "w5w6_union": "28f093154c6044fbffed64ef718caac3456d8b829932f70dbc6c36c5a065f6da"}
 SCOPED_BACKUP_VALIDITY_S = 4 * 3600
 SCOPED_MEASUREMENT_METHOD = 'sql_sum_sha256_rowjson/1'
 
@@ -989,7 +990,10 @@ def measuring_dryrun_evidence(req, root, manifest_digest=None):
 # birth_params only): the final-rule profile, the verify-deferral switch and the D-G9 horizon. They ride in the request `args` — so the request digest the
 # acceptance and the pack fill bind covers them — and are STAGED in plan_manifest[CENTURY_CONFIG_KEY], which plan_manifest_digest covers. All four are required:
 # a century request that omitted one would stage a run the writer refuses at its first substep.
-CENTURY_ARG_KEYS = ('classes', 'final_rules', 'defer_in_build_verify', 'horizon')
+# OD-1 (SR-OD1-NUMERICAL): a fifth required value, `result_policy`, names the numeric-result policy the century build is bound under (the writer's century config /2 carries
+# it; a final-rules run without it is refused by name). Executor-side admission holds its OWN literal of the two named policies (a test pins it equal to the writer's).
+CENTURY_ARG_KEYS = ('classes', 'final_rules', 'defer_in_build_verify', 'horizon', 'result_policy')
+CENTURY_RESULT_POLICIES = ('all_null_candidate/1', 'window_qualification/1')
 CENTURY_CONFIG_KEY = 'gochara_v5_century_config'      # the writer's CENTURY_CONFIG_KEY (a test pins the two equal)
 CENTURY_EXECUTION_ENV = 'PUBSUB_DISABLED=1'      # J-3 gate: Pub/Sub on would publish asset.substep and print nothing the log read could see
 
@@ -1014,7 +1018,7 @@ def parse_century_horizon(raw):
 
 def century_args_problem(args):
     """The century request's exact argument contract (executor-side admission; the writer's own validator runs at the staging rollback that must precede
-    the real launch). Raises Refused; returns None when `args` is exactly classes=all, final_rules and defer_in_build_verify as 'true'/'false', and a horizon."""
+    the real launch). Raises Refused; returns None when `args` is exactly classes=all, final_rules and defer_in_build_verify as 'true'/'false', a horizon and one of the two named result policies."""
     if not isinstance(args, dict) or set(args) != set(CENTURY_ARG_KEYS):
         raise Refused('century request requires exactly ' + ', '.join(CENTURY_ARG_KEYS))
     if args['classes'] != 'all':
@@ -1024,11 +1028,13 @@ def century_args_problem(args):
             raise Refused(f"century {key} must be the string 'true' or 'false'")
     if args['defer_in_build_verify'] == 'true' and args['final_rules'] != 'true':
         raise Refused('century defer_in_build_verify needs final_rules')
+    if args['result_policy'] not in CENTURY_RESULT_POLICIES:
+        raise Refused('century result_policy must be one of ' + ', '.join(CENTURY_RESULT_POLICIES))
     parse_century_horizon(args['horizon'])
 
 
-def century_config_component(final_rules, defer_in_build_verify, horizon):
-    """The plan_manifest component for the three values, validated and canonicalised by the WRITER's own validator (the single implementation of what the
+def century_config_component(final_rules, defer_in_build_verify, horizon, result_policy):
+    """The plan_manifest component for the four values, validated and canonicalised by the WRITER's own validator (the single implementation of what the
     writer will accept). Arguments are the request strings ('true'/'false', 'start,end')."""
     module = writer()
     bounds = parse_century_horizon(horizon)
@@ -1037,7 +1043,8 @@ def century_config_component(final_rules, defer_in_build_verify, horizon):
             raise Refused(f"century {name} must be the string 'true' or 'false'")
     try:
         return module.validate_century_config({'schema': module.CENTURY_CONFIG_SCHEMA, 'final_rules': final_rules == 'true',
-                                               'defer_in_build_verify': defer_in_build_verify == 'true', 'horizon': list(bounds)})
+                                               'defer_in_build_verify': defer_in_build_verify == 'true', 'horizon': list(bounds),
+                                               'result_policy': result_policy})
     except Exception as exc:    # the writer's CenturyConfigRefusal or the horizon module's named domain refusals
         raise Refused(str(exc)) from None
 

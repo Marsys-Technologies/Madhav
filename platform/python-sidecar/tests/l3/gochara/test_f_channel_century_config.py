@@ -12,6 +12,8 @@ own fail-on-revert oracle (the planted reversion is named in the docstring):
   5. a malformed component is refused by name (shape, types, naive/inverted/out-of-domain horizon, deferral w/o final rules)
   6. a staged value that contradicts an explicit ctx.config value is refused, never merged
   7. the staged config is bound by the manifest digest: a config edited after dispatch is refused
+  8. (OD-1, SR-OD1-NUMERICAL) the numeric-result policy is an EXPLICIT staged value: a final-rules run with no `result_policy` refuses `run_result_policy_required`,
+     a staged policy reaches the writer config (so the manifest step binds it), an unknown one is refused, and a contradiction with ctx.config is refused  — revert: default the policy
 
 SYNTHETIC bounds only: the real horizon is life-event derived and appears in no code, test or commit text.
 """
@@ -37,7 +39,8 @@ HORIZON = (datetime(2001, 1, 1, tzinfo=timezone.utc), datetime(2051, 1, 1, tzinf
 
 
 def _component(**over):
-    base = {"schema": writer_mod.CENTURY_CONFIG_SCHEMA, "final_rules": True, "defer_in_build_verify": False, "horizon": [START, END]}
+    base = {"schema": writer_mod.CENTURY_CONFIG_SCHEMA, "final_rules": True, "defer_in_build_verify": False, "horizon": [START, END],
+            "result_policy": "window_qualification/1"}
     base.update(over)
     return base
 
@@ -61,6 +64,7 @@ def test_a_staged_century_config_reaches_the_writer_config_and_the_rule_profile(
     assert resolved.config["gochara_v5_final_rules"] is final_rules
     assert resolved.config["gochara_v5_defer_in_build_verify"] is defer
     assert resolved.config["horizon"] == HORIZON and writer_mod._effective_horizon(resolved, None) == HORIZON
+    assert resolved.config["result_policy"] == "window_qualification/1"                  # OD-1: the staged policy reaches the manifest step's `ctx.config.get("result_policy")`
     assert len(writer_mod.GocharaV5Writer().plan_substeps(_ctx(manifest))) == 298            # the full, unsliced plan
 
     seen = {}
@@ -137,7 +141,10 @@ def test_a_test_slice_needs_neither_profile_nor_horizon_and_takes_no_century_con
     ("not an object", ["x"]),
     ("an extra field", {**_component(), "extra": 1}),
     ("a missing field", {k: v for k, v in _component().items() if k != "horizon"}),
-    ("the wrong schema", _component(schema="gochara_v5_century_config/2")),
+    ("the wrong schema", _component(schema="gochara_v5_century_config/1")),
+    ("a missing result policy", {k: v for k, v in _component().items() if k != "result_policy"}),
+    ("an unknown result policy", _component(result_policy="all_null")),
+    ("a null result policy", _component(result_policy=None)),
     ("a non-boolean profile", _component(final_rules="true")),
     ("a non-boolean deferral", _component(defer_in_build_verify=1)),
     ("deferral without the final rules", _component(final_rules=False, defer_in_build_verify=True)),
@@ -166,11 +173,12 @@ def test_the_canonical_form_is_utc_and_a_fixed_point():
 # ── 6. a contradiction with an explicit ctx.config value is refused ────────────────────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("config", [{"gochara_v5_final_rules": False}, {"gochara_v5_defer_in_build_verify": True},
-                                    {"horizon": (datetime(2002, 1, 1, tzinfo=timezone.utc), HORIZON[1])}])
+                                    {"horizon": (datetime(2002, 1, 1, tzinfo=timezone.utc), HORIZON[1])},
+                                    {"result_policy": "all_null_candidate/1"}])
 def test_a_staged_value_that_contradicts_the_explicit_config_is_refused_never_merged(config):
     with pytest.raises(writer_mod.CenturyConfigRefusal, match="contradicts the staged value"):
         writer_mod.GocharaV5Writer().plan_substeps(_ctx(_century(), **config))
-    agreeing = _ctx(_century(), gochara_v5_final_rules=True, gochara_v5_defer_in_build_verify=False, horizon=list(HORIZON))
+    agreeing = _ctx(_century(), gochara_v5_final_rules=True, gochara_v5_defer_in_build_verify=False, horizon=list(HORIZON), result_policy="window_qualification/1")
     assert writer_mod._resolve_run_config(agreeing).config["horizon"] == HORIZON
 
 
@@ -187,3 +195,27 @@ def test_a_century_config_edited_after_dispatch_is_refused_not_read():
     ok = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b", db_conn=_ManifestConn(manifest, digest=stored_digest),
                      config={"chart_id": CHART_ID}, dry_run=False)
     assert len(writer_mod.GocharaV5Writer().plan_substeps(ok)) == 298
+
+
+# ── 8. OD-1: the numeric-result policy is explicit on a final-rules run ───────────────────────────────────────────────────────────────────────
+
+def test_a_final_rules_run_without_an_explicit_result_policy_refuses_by_name(monkeypatch):
+    """Claim 8a: a run that is not a test slice, names the final rules and a horizon but NO result_policy (no century config) would have bound the all-null DEFAULT — refused at
+    plan time and at the first substep. (revert: default the policy in `_resolve_run_config` — both raises vanish)"""
+    config = {"gochara_v5_final_rules": True, "horizon": HORIZON}
+    with pytest.raises(writer_mod.RunResultPolicyRefusal, match="run_result_policy_required"):
+        writer_mod.GocharaV5Writer().plan_substeps(_ctx({}, **config))
+    monkeypatch.setattr(writer_mod, "_ephe_path", lambda ctx: "ephe")
+    with pytest.raises(writer_mod.RunResultPolicyRefusal, match="run_result_policy_required"):
+        writer_mod.GocharaV5Writer().run_substep(_ctx({}, **config), SubStep(key=writer_mod.RULES_SUBSTEP, label="rules"))
+    with pytest.raises(writer_mod.RunResultPolicyRefusal, match="run_result_policy_required"):
+        writer_mod.GocharaV5Writer().plan_substeps(_ctx({}, **config, result_policy=None))      # an explicit null is not a name either
+
+
+@pytest.mark.parametrize("policy", ["all_null_candidate/1", "window_qualification/1"])
+def test_a_final_rules_run_naming_either_policy_is_accepted_and_the_measuring_default_is_untouched(policy):
+    """Claim 8b: both NAMED policies are valid explicit choices (all-null stays valid); a measuring-profile unmarked run (final_rules False) keeps the default and needs none."""
+    named = _ctx({}, gochara_v5_final_rules=True, horizon=HORIZON, result_policy=policy)
+    assert writer_mod._resolve_run_config(named) is named
+    measuring = _ctx({}, gochara_v5_final_rules=False, horizon=HORIZON)
+    assert writer_mod._resolve_run_config(measuring) is measuring

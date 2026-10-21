@@ -151,11 +151,13 @@ def call_first_literals(path: Path, method: str) -> list[str]:
 
 
 def resolve_dynamic(resolver: str) -> list[str]:
-    """`const:<file>:<NAME>:<first|plain>` or `calls:<file>:<method>` -> sorted table names."""
+    """`const:<file>:<NAME>:<first|plain|scalar>` or `calls:<file>:<method>` -> sorted table names."""
     kind, *rest = resolver.split(':')
     if kind == 'const':
         path, name, mode = rest
         value = eval_constant([ROOT / p for p in path.split('+')], name)
+        if mode == 'scalar':                                    # a module constant that is one table name
+            return [value]
         return sorted({v[0] if mode == 'first' else v for v in value})
     if kind == 'calls':
         path, method = rest

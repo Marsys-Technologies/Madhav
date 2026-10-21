@@ -268,6 +268,8 @@ def _audit_snapshot(conn: Any, cur: Any, plan: dict, database: str, fixture: boo
         fail('published head moved outside the expected candidate transition')
     if is_published and not accepted:
         fail('published candidate lacks current independent verification')
+    # SR-W56-S3: the named L1 mudda boundary overlaps the dasha readers blank, counted from the governed read (disclosure only: not a gate)
+    from services.gochara_kernel.dasha_read import mudda_overlap_disclosure
     status = ('incomplete' if failures else
               ('fixture_passed' if fixture else 'published') if is_published else
               'awaiting_publication' if accepted else 'awaiting_verification')
@@ -276,7 +278,8 @@ def _audit_snapshot(conn: Any, cur: Any, plan: dict, database: str, fixture: boo
                 request=plan['request'], failures=failures, lineage=lineage, grains=grains,
                 candidate_input_digest=input_digest, published_generation=published,
                 verification=verification, operational_rehearsal_passed=None,
-                publication_path_verified=None, clear_before_verified=None)
+                publication_path_verified=None, clear_before_verified=None,
+                mudda_boundary_overlap=mudda_overlap_disclosure(conn, plan['chart_id']))
 
 
 def main() -> int:

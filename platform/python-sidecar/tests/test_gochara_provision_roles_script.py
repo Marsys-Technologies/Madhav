@@ -31,7 +31,8 @@ pytestmark = pytest.mark.skipif(not (BIN / "initdb").exists() or not (BIN / "pg_
                                 reason="NOT_RUN: PostgreSQL binaries (initdb, pg_ctl, psql) not found — set GOCHARA_PROVISION_TEST_PGBIN")
 TAIL = "@/amjis?host=/cloudsql/p:r:i"
 ADMIN_PW = "Zm4rk3rAdminPw"          # also the argv/output marker: it must appear in NO psql argument list and NO output
-DSN = ADMIN_URL = SUDSN = ""         # set by the `cluster` fixture
+MIGRATOR_PW = "Zm4rk3rMigratorPw"    # the same marker discipline for the protected data_plane_migrator route (stage grant-l1-reads)
+DSN = ADMIN_URL = MIGRATOR_URL = SUDSN = ""         # set by the `cluster` fixture
 
 
 def _admin():
@@ -44,7 +45,7 @@ def _admin():
 
 @pytest.fixture(scope="module")
 def cluster(tmp_path_factory):
-    global DSN, ADMIN_URL, SUDSN
+    global DSN, ADMIN_URL, MIGRATOR_URL, SUDSN
     data = tmp_path_factory.mktemp("pgscram") / "data"
     pwfile = tmp_path_factory.mktemp("pgpw") / "pw"
     pwfile.write_text("testsuperpw")
@@ -57,6 +58,7 @@ def cluster(tmp_path_factory):
                    check=True, capture_output=True, env=env)
     SUDSN = f"postgresql://postgres:testsuperpw@127.0.0.1:{port}/postgres"
     ADMIN_URL = f"postgresql://pgadmin:{ADMIN_PW}@127.0.0.1:{port}/postgres"
+    MIGRATOR_URL = f"postgresql://data_plane_migrator:{MIGRATOR_PW}@127.0.0.1:{port}/postgres"
     DSN = ADMIN_URL
     try:
         with _admin() as c:
@@ -98,9 +100,12 @@ esac
             c.execute(f"DROP ROLE IF EXISTS {r}")
 
 
-def run(world, stage="create-roles", *, url=None, tail=TAIL, extra=None, psql=None):
+def run(world, stage="create-roles", *, url=None, tail=TAIL, extra=None, psql=None, migrator=None):
+    """`migrator`: the protected data_plane_migrator URL (workflow env MIGRATOR_DATABASE_URL). Default: supplied for stage grant-l1-reads only (as the workflow does for that stage's run
+    step — the env block is the same for every stage, so the other stages' tests also pass it; "" omits it)."""
+    mig = MIGRATOR_URL if migrator is None else migrator
     env = {**{k: v for k, v in os.environ.items() if not k.startswith("PG")}, "STAGE": stage, "ADMIN_DATABASE_URL": url or ADMIN_URL, "GCLOUD_BIN": world["gcloud"], "PSQL_BIN": psql or PSQL,
-           "DSN_TAIL": tail, "GCLOUD_PROJECT": "madhav-astrology", **(extra or {})}
+           "DSN_TAIL": tail, "GCLOUD_PROJECT": "madhav-astrology", **({"MIGRATOR_DATABASE_URL": mig} if mig else {}), **(extra or {})}
     return subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=120)
 
 
@@ -502,18 +507,44 @@ L1_TABLES = ("chart_facts", "chart_dashas")
 PRIVS = ("SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER")
 
 
+OWNERS = ("data_plane_schema_owner", "data_plane_l1_owner")
+GOCHARA = ("gochara_verifier", "gochara_sealer")
+
+
 @pytest.fixture()
 def l1(world):
-    """The two L1 tables (owned by the script's admin role, as the data-plane ownership bootstrap leaves them) plus a third L1 table that must stay untouched."""
+    """The PRODUCTION TOPOLOGY after the data-plane cutover (STEP1_DIAG §2; platform/scripts/data-plane-ownership-preflight.ts:215-322,358-361): schema public is owned by the NOLOGIN
+    data_plane_schema_owner with PUBLIC revoked, the L1 tables by the NOLOGIN data_plane_l1_owner, and data_plane_migrator (NOINHERIT, USAGE on public and SELECT on the L1 tables, as the
+    cutover's fixed lists give it) is a MEMBER of both owner roles. The script's ownership admin (`pgadmin`, the Cloud SQL `postgres` stand-in) owns nothing and belongs to no owner
+    role. A third L1 table must stay untouched. The original schema owner and PUBLIC USAGE are restored afterwards."""
     with _admin() as c:
+        owner = c.execute("SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='public'").fetchone()[0]
+        for o in OWNERS:
+            c.execute(f"CREATE ROLE {o} NOLOGIN NOINHERIT")
+        c.execute(f"CREATE ROLE data_plane_migrator LOGIN NOINHERIT PASSWORD '{MIGRATOR_PW}'")
+        c.execute("GRANT data_plane_schema_owner, data_plane_l1_owner TO data_plane_migrator")
+        c.execute("ALTER SCHEMA public OWNER TO data_plane_schema_owner")
+        c.execute("REVOKE ALL ON SCHEMA public FROM PUBLIC")
+        c.execute("GRANT USAGE ON SCHEMA public TO data_plane_migrator")
+        c.execute("GRANT USAGE, CREATE ON SCHEMA public TO data_plane_l1_owner")          # preflight.ts:304,310: the L1 owner enters (and creates in) public — the schema owner needs no more
         for t in (*L1_TABLES, "chart_divisionals"):
             c.execute(f"DROP TABLE IF EXISTS public.{t}")
             c.execute(f"CREATE TABLE public.{t} (id int)")
-            c.execute(f"ALTER TABLE public.{t} OWNER TO pgadmin")
+            c.execute(f"ALTER TABLE public.{t} OWNER TO data_plane_l1_owner")
+            c.execute(f"GRANT SELECT ON public.{t} TO data_plane_migrator")
     yield
     with _admin() as c:
         for t in (*L1_TABLES, "chart_divisionals"):
             c.execute(f"DROP TABLE IF EXISTS public.{t}")
+        c.execute(f"ALTER SCHEMA public OWNER TO {owner}")                  # first: revoking from the OWNER would strip the owner's own entries
+        for r in (*GOCHARA, *OWNERS, "data_plane_migrator", "other_member"):   # a role holding a schema privilege cannot be dropped
+            c.execute(f"DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='{r}') THEN REVOKE ALL ON SCHEMA public FROM {r}; END IF; END $$")
+        c.execute(f"GRANT ALL ON SCHEMA public TO {owner}")
+        c.execute("GRANT USAGE ON SCHEMA public TO PUBLIC")
+        c.execute("DROP ROLE IF EXISTS other_member")
+        c.execute("DROP ROLE data_plane_migrator")
+        for o in OWNERS:
+            c.execute(f"DROP ROLE {o}")
 
 
 def held(role_name, table):
@@ -526,16 +557,113 @@ def grant_option(role_name, table):
         return any(c.execute("SELECT has_table_privilege(%s, %s, %s)", (role_name, f"public.{table}", f"{p} WITH GRANT OPTION")).fetchone()[0] for p in PRIVS)
 
 
-def test_grant_l1_reads_gives_both_principals_select_on_exactly_the_two_l1_tables_and_nothing_else(world, l1):  # claim G1 (1378 header lines 53-57)
+def schema_priv(role_name, priv):
+    with _admin() as c:
+        return c.execute("SELECT has_schema_privilege(%s, 'public', %s)", (role_name, priv)).fetchone()[0]
+
+
+def nothing_granted():
+    assert all(held(r, t) == set() for r in GOCHARA for t in L1_TABLES), "an L1 grant was committed"
+    assert all(schema_priv(r, "USAGE") is False for r in GOCHARA), "a schema grant was committed"
+
+
+def test_the_ownership_admin_login_cannot_grant_on_public_or_the_l1_tables_in_the_production_topology(world, l1):  # claim F1/F3 (STEP1_DIAG §2-3: why the old route was REFUSED)
+    """The topology oracle itself: the ownership admin owns nothing and is in no owner role, so PostgreSQL gives it neither the schema nor the table GRANT (PostgreSQL docs, GRANT: only the
+    owner, a member of the owner, or a holder of the grant option can grant). Grants to a Gochara role were never possible over ADMIN_DATABASE_URL — and then `public` is not even enterable."""
+    import psycopg as pg
+    assert run(world).returncode == 0
+    assert schema_priv("pgadmin", "USAGE") is False and held("pgadmin", "chart_facts") == set()
+    with psycopg.connect(ADMIN_URL, autocommit=True, connect_timeout=3) as a:
+        with pytest.raises(pg.errors.InsufficientPrivilege):
+            a.execute("GRANT SELECT ON public.chart_facts TO gochara_verifier")
+        with pytest.raises(pg.errors.InsufficientPrivilege):
+            a.execute("GRANT USAGE ON SCHEMA public TO gochara_verifier")
+        with pytest.raises(pg.errors.InsufficientPrivilege):
+            a.execute("SELECT to_regclass('public.chart_facts')")                  # the probe whose failure the old stage misreported as "does not exist"
+
+
+def test_grant_l1_reads_gives_both_principals_select_on_exactly_the_two_l1_tables_and_nothing_else(world, l1):  # claim G1 (1378 header lines 53-57) — over the migrator route, as the owners
     assert run(world).returncode == 0
     r = run(world, "grant-l1-reads")
     assert r.returncode == 0, r.stdout + r.stderr
-    for who in ("gochara_verifier", "gochara_sealer"):
+    for who in GOCHARA:
         for t in L1_TABLES:
             assert held(who, t) == {"SELECT"}, (who, t)           # read only: no write, no REFERENCES/TRIGGER
             assert grant_option(who, t) is False, (who, t)        # and no right to pass it on
         assert held(who, "chart_divisionals") == set(), who       # a third L1 table is not widened
     assert verbs(world) == ["add", "list"]                         # this stage touches no secret
+
+
+def test_the_grants_are_recorded_as_issued_by_the_owning_roles_not_by_the_migrator(world, l1):  # claim G5 (SR-STEP1-MIGRATOR-SETROLE: SET LOCAL ROLE to the owners; the deploy gate reads these ACLs)
+    assert run(world).returncode == 0
+    assert run(world, "grant-l1-reads").returncode == 0
+    with _admin() as c:
+        tbl = c.execute("SELECT DISTINCT pg_get_userbyid(a.grantor), r.rolname FROM pg_class cl CROSS JOIN LATERAL aclexplode(cl.relacl) a JOIN pg_roles r ON r.oid=a.grantee"
+                        " WHERE cl.relname IN ('chart_facts','chart_dashas') AND r.rolname = ANY(%s)", (list(GOCHARA),)).fetchall()
+        sch = c.execute("SELECT DISTINCT pg_get_userbyid(a.grantor), r.rolname FROM pg_namespace n CROSS JOIN LATERAL aclexplode(n.nspacl) a JOIN pg_roles r ON r.oid=a.grantee"
+                        " WHERE n.nspname='public' AND r.rolname = ANY(%s)", (list(GOCHARA),)).fetchall()
+    assert sorted(tbl) == [("data_plane_l1_owner", "gochara_sealer"), ("data_plane_l1_owner", "gochara_verifier")], tbl
+    assert sorted(sch) == [("data_plane_schema_owner", "gochara_sealer"), ("data_plane_schema_owner", "gochara_verifier")], sch
+
+
+def test_grant_l1_reads_without_the_migrator_route_refuses_and_changes_nothing(world, l1):  # claim G6 (the ownership-admin route is not accepted for this stage)
+    assert run(world).returncode == 0
+    r = run(world, "grant-l1-reads", migrator="")
+    assert r.returncode != 0 and "MIGRATOR_DATABASE_URL" in r.stderr, r.stdout + r.stderr
+    nothing_granted()
+    # ...and the admin URL offered AS the migrator route is refused by the identity guard, before any change
+    r = run(world, "grant-l1-reads", migrator=ADMIN_URL)
+    assert r.returncode == 2 and "data_plane_migrator" in r.stderr, r.stdout + r.stderr
+    nothing_granted()
+
+
+def test_grant_l1_reads_refuses_any_login_that_is_not_exactly_the_migrator_even_with_owner_membership(world, l1):  # claim G7 (identity guard, exit 2)
+    assert run(world).returncode == 0
+    with _admin() as c:
+        c.execute("CREATE ROLE other_member LOGIN PASSWORD 'testotherpw'")
+        c.execute("GRANT data_plane_schema_owner, data_plane_l1_owner TO other_member")
+    port = re.search(r":(\d+)/", ADMIN_URL).group(1)
+    r = run(world, "grant-l1-reads", migrator=f"postgresql://other_member:testotherpw@127.0.0.1:{port}/postgres")
+    assert r.returncode == 2 and "session_user 'other_member'" in r.stderr, r.stdout + r.stderr
+    nothing_granted()
+
+
+@pytest.mark.parametrize("owner_role", OWNERS)
+def test_grant_l1_reads_refuses_a_migrator_that_is_not_a_member_of_both_owner_roles_and_commits_nothing(world, l1, owner_role):  # claim G8 (SET ROLE to either owner needs membership)
+    assert run(world).returncode == 0
+    with _admin() as c:
+        c.execute(f"REVOKE {owner_role} FROM data_plane_migrator")
+    r = run(world, "grant-l1-reads")
+    assert r.returncode == 2 and "member of data_plane_schema_owner and data_plane_l1_owner" in r.stderr, r.stdout + r.stderr
+    nothing_granted()
+
+
+def test_a_migrator_that_cannot_enter_schema_public_is_refused_with_the_accurate_reason_not_does_not_exist(world, l1):  # claim F4 (honest message)
+    assert run(world).returncode == 0
+    with _admin() as c:
+        c.execute("REVOKE USAGE ON SCHEMA public FROM data_plane_migrator")
+    r = run(world, "grant-l1-reads")
+    assert r.returncode != 0 and "cannot enter schema public (no USAGE)" in r.stderr, r.stdout + r.stderr
+    assert "does not exist" not in r.stderr                       # a permission failure is never reported as a missing relation
+    nothing_granted()
+
+
+def test_the_migrator_password_is_in_no_psql_argument_list_and_no_output(world, l1):  # claim G9 (the secret stays in the environment, as for the admin URL)
+    shim, log = _argv_logger(world, "psql_argv_logger_migrator")
+    assert run(world).returncode == 0
+    r = run(world, "grant-l1-reads", psql=str(shim))
+    assert r.returncode == 0, r.stdout + r.stderr
+    argv = log.read_text()
+    assert argv.strip() and MIGRATOR_PW not in argv and "postgresql://" not in argv and "data_plane_migrator:" not in argv, argv[:400]
+    assert MIGRATOR_PW not in visible(r)
+
+
+def test_the_migrator_route_is_never_used_by_any_other_stage(world, l1):  # claim G10 ("this stage and only this stage": create-roles still runs as the ownership admin)
+    bad = MIGRATOR_URL.replace(MIGRATOR_PW, "wrong-password")      # present in the environment (the workflow passes it to every stage) but unusable: a stage that connected with it would fail
+    r = run(world, migrator=bad)
+    assert r.returncode == 0, r.stdout + r.stderr
+    with _admin() as c:
+        assert c.execute("SELECT count(*) FROM pg_roles WHERE rolname=ANY(%s)", (list(GOCHARA),)).fetchone()[0] == 2
 
 
 def test_grant_l1_reads_is_idempotent(world, l1):  # claim G4
@@ -567,29 +695,7 @@ def test_grant_l1_reads_refuses_a_wider_pre_existing_acl_and_commits_nothing(wor
     assert held("gochara_sealer", "chart_facts") == set()
 
 
-@pytest.fixture()
-def hardened_public(world):
-    """Schema public as the hardened production database reads it (J-4b-a55j readback: schema-usage false for both principals): PUBLIC holds nothing on it and the
-    script's admin role owns it, so its GRANT is effective. The original owner and PUBLIC USAGE are restored afterwards."""
-    with _admin() as c:
-        owner = c.execute("SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='public'").fetchone()[0]
-        c.execute("ALTER SCHEMA public OWNER TO pgadmin")
-        c.execute("REVOKE ALL ON SCHEMA public FROM PUBLIC")
-    yield
-    with _admin() as c:
-        c.execute(f"ALTER SCHEMA public OWNER TO {owner}")                  # first: revoking from the OWNER would strip the owner's own entries
-        for r in ("gochara_verifier", "gochara_sealer", "pgadmin"):         # a role holding a schema privilege cannot be dropped by the `world` teardown
-            c.execute(f"DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='{r}') THEN REVOKE ALL ON SCHEMA public FROM {r}; END IF; END $$")
-        c.execute(f"GRANT ALL ON SCHEMA public TO {owner}")
-        c.execute("GRANT USAGE ON SCHEMA public TO PUBLIC")
-
-
-def schema_priv(role_name, priv):
-    with _admin() as c:
-        return c.execute("SELECT has_schema_privilege(%s, 'public', %s)", (role_name, priv)).fetchone()[0]
-
-
-def test_grant_l1_reads_gives_both_principals_exactly_usage_on_schema_public_so_the_l1_select_is_usable(world, l1, hardened_public):  # claim U1 (C-04)
+def test_grant_l1_reads_gives_both_principals_exactly_usage_on_schema_public_so_the_l1_select_is_usable(world, l1):  # claim U1 (C-04)
     assert run(world).returncode == 0
     for who in ("gochara_verifier", "gochara_sealer"):
         assert schema_priv(who, "USAGE") is False, who            # the measured production state; without it the next assertions would be vacuous
@@ -612,7 +718,7 @@ def test_grant_l1_reads_gives_both_principals_exactly_usage_on_schema_public_so_
             c.execute("DROP ROLE canary_nsp")
 
 
-def test_without_the_schema_grant_the_l1_select_is_unusable_in_the_hardened_database(world, l1, hardened_public):  # claim U1 (the defect C-04 closes: SELECT without USAGE)
+def test_without_the_schema_grant_the_l1_select_is_unusable_in_the_hardened_database(world, l1):  # claim U1 (the defect C-04 closes: SELECT without USAGE)
     import psycopg as pg
     assert run(world).returncode == 0
     with _admin() as c:
@@ -623,7 +729,7 @@ def test_without_the_schema_grant_the_l1_select_is_unusable_in_the_hardened_data
             c.execute("SELECT count(*) FROM public.chart_facts")
 
 
-def test_grant_l1_reads_refuses_a_principal_that_can_create_in_public_and_commits_nothing(world, l1, hardened_public):  # claim U2 (USAGE only, atomic with the closure check)
+def test_grant_l1_reads_refuses_a_principal_that_can_create_in_public_and_commits_nothing(world, l1):  # claim U2 (USAGE only, atomic with the closure check)
     assert run(world).returncode == 0
     with _admin() as c:
         c.execute("GRANT CREATE ON SCHEMA public TO gochara_verifier")
@@ -631,16 +737,6 @@ def test_grant_l1_reads_refuses_a_principal_that_can_create_in_public_and_commit
     assert r.returncode != 0 and "postcondition" in r.stderr, r.stdout + r.stderr
     assert schema_priv("gochara_sealer", "USAGE") is False        # the whole transaction rolled back, the sealer included
     assert held("gochara_sealer", "chart_facts") == set() and held("gochara_verifier", "chart_facts") == set()
-
-
-def test_grant_l1_reads_refuses_when_the_grantor_cannot_grant_on_public_and_commits_nothing(world, l1, hardened_public):  # claim U3 (PostgreSQL only WARNs here)
-    assert run(world).returncode == 0
-    with _admin() as c:
-        c.execute("ALTER SCHEMA public OWNER TO postgres")
-        c.execute("GRANT USAGE ON SCHEMA public TO pgadmin")      # usable, but WITHOUT grant option: GRANT USAGE ... TO <role> then grants nothing and only warns
-    r = run(world, "grant-l1-reads")
-    assert r.returncode != 0 and "no USAGE on schema public" in r.stderr, r.stdout + r.stderr
-    assert held("gochara_verifier", "chart_facts") == set() and held("gochara_sealer", "chart_dashas") == set()    # the L1 SELECT rolled back with it
 
 
 def sealer_secret_name(world):

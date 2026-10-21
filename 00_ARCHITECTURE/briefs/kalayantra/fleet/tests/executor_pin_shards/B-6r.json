@@ -1,0 +1,13 @@
+{
+ "schema": "ky.executor_pin_shard/2",
+ "item": "B-6r",
+ "function_hashes": {
+  "W4": {
+   "CAPS_FRESH_S": "9159075620ccee33160b5f55337fa38fe73774dde0e3f58ec9a6f822d6c781df",
+   "CAPS_REFRESH_S": "52d8365d41590459d860c2202e4dc66bdb5607ff190db1c564263db42063e091",
+   "LOOP_TICK_S": "d217b0469cee50ed074eeb6f84517edf864fba11594e4a5d7b5f71a3f087f52c",
+   "capabilities_due": "9aad392d27c6318bbbe57ef1743c1e5059e6eec0714a37dd4927094f3c6bd3c8",
+   "main": "d0f42fd44735d10ff5955874aa799552d217f787491c7dd17b3f17374bda6ad3"
+  }
+ }
+}

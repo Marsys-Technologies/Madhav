@@ -3,7 +3,7 @@ import type { PoolClient } from 'pg'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { GOCHARA_MIGRATION_READBACKS, readBackGocharaMigration, runMigrations } from '../migrate'
+import { GOCHARA_MIGRATION_READBACKS, MigrationHashMismatchError, readBackGocharaMigration, runMigrations, sqlIdentityOf } from '../migrate'
 
 describe('P06b per-migration catalogue readbacks', () => {
   it('executes each real SELECT-only script in a read-only transaction and exposes its results', async () => {
@@ -108,6 +108,48 @@ describe('P06B-NB-03 guarded replay', () => {
     const {calls,result}=await invoke(rows,new Set(rows.map(r=>r.filename)))
     await expect(result).rejects.toThrow(/hash mismatch|sha256/i)
     expect(calls.every(sql => /^SELECT /i.test(sql))).toBe(true)
+  })
+})
+
+// NB-03: the SUPPORTED re-run is the ordinary ledger path (`--only`, no replay flag). Its contract is
+// migrate.ts's applied-file branch: hash-check, genuinely skip, then repeat the independent readback.
+describe('P06B-NB-03 supported ledger re-run', () => {
+  const filename = '1381_gochara_near_miss_seal_integration.sql'
+  const content = fs.readFileSync(path.resolve(import.meta.dirname, '../../migrations', filename), 'utf8')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'p06b-rerun-'))
+  fs.writeFileSync(path.join(dir, filename), content)
+  afterAll(() => fs.rmSync(dir, { recursive: true, force: true }))
+  async function rerun(sha256: string) {
+    const calls: string[] = []
+    const client = { query: async (sql: string) => {
+      calls.push(sql.trim())
+      if (sql.includes("to_regclass('public._migrations_applied')")) return { rows: [{ present: true }] }
+      if (sql.startsWith('SELECT filename, sha256, sql_identity'))
+        return { rows: [{ filename, sha256, sql_identity: sqlIdentityOf(content) }] }
+      return { rows: [] }
+    } }
+    const output = vi.spyOn(console, 'log').mockImplementation(() => {})
+    try {
+      const result = runMigrations(client as unknown as PoolClient, [dir], { only: new Set([filename]), disclosures: new Map(), renumberDisclosures: new Map() })
+      return { calls, result }
+    } finally { output.mockRestore() }
+  }
+  it('skips a hash-matching applied file on every re-run and repeats only the read-only readback', async () => {
+    const { createHash } = await import('crypto')
+    const sha256 = createHash('sha256').update(content).digest('hex')
+    for (let n = 0; n < 2; n++) {
+      const { calls, result } = await rerun(sha256)
+      await expect(result).resolves.toEqual([]) // nothing applied
+      expect(calls.some(sql => sql.includes('BEGIN READ ONLY;'))).toBe(true) // readback repeated
+      expect(calls.some(sql => sql.includes('1381 predecessor definition mismatch'))).toBe(false) // migration SQL never sent
+      expect(calls.some(sql => /INSERT INTO _migrations_applied|^COMMIT$/.test(sql))).toBe(false) // no second ledger row, no apply transaction
+    }
+  })
+  it('refuses a re-run whose on-disk SQL no longer matches the ledger, before any readback', async () => {
+    const { calls, result } = await rerun('0'.repeat(64))
+    await expect(result).rejects.toBeInstanceOf(MigrationHashMismatchError)
+    expect(calls.some(sql => sql.includes('BEGIN READ ONLY;'))).toBe(false)
+    expect(calls.some(sql => sql.includes('1381 predecessor definition mismatch'))).toBe(false)
   })
 })
 

@@ -141,6 +141,9 @@ def test_zero_row_grains_are_complete_but_unverified_candidate_is_not_published(
     assert len(report['lineage']) == 20
     assert report['operational_rehearsal_passed'] is None
     assert report['published_generation'] is None
+    # SR-W56-S3: the receipt discloses the named L1 mudda boundary overlaps; this fixture has no settled dasha read, so it says so
+    # (a typed null with its refusal code) rather than reporting a count of zero
+    assert report['mudda_boundary_overlap']['status'] == 'not_readable' and report['mudda_boundary_overlap']['reason']
 
 
 @pytest.mark.parametrize('mutation', ['missing_asset', 'error', 'stale', 'missing_detector',

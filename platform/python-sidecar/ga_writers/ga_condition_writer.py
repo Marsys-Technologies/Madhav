@@ -176,6 +176,70 @@ INTRINSICALLY_D1_AVASTHAS = [
 ]
 
 
+# ── L1 naisargika table (module-level, standalone) ───────────────────────────
+# L1's own graha→sign-lord relation table behind `dignity_d1_from_sign`. The node rows (Rahu/Ketu) are the
+# pre-1401 values; migration 1401 (SR-DOCTRINE-H, BPHS 3.55 translator note) corrected five node pairs in L0
+# `bg_graha_naisargika_friendship`, but whether L1 adopts them is an open L1-owner decision (see
+# `_l1_node_dignity_ref`), so this table, not the L0 rows, stays the node authority inside ga_condition.
+_NAISARGIKA_L1: dict[str, dict[str, str]] = {
+    "Sun":     {"Moon": "friend", "Mars": "friend", "Jupiter": "friend",
+                "Mercury": "neutral", "Venus": "enemy", "Saturn": "enemy",
+                "Rahu": "enemy", "Ketu": "neutral"},
+    "Moon":    {"Sun": "friend", "Mercury": "friend", "Mars": "neutral",
+                "Jupiter": "neutral", "Venus": "neutral", "Saturn": "neutral",
+                "Rahu": "enemy", "Ketu": "neutral"},
+    "Mars":    {"Sun": "friend", "Moon": "friend", "Jupiter": "friend",
+                "Venus": "neutral", "Saturn": "neutral", "Mercury": "enemy",
+                "Rahu": "neutral", "Ketu": "friend"},
+    "Mercury": {"Sun": "friend", "Venus": "friend", "Mars": "neutral",
+                "Jupiter": "neutral", "Saturn": "neutral", "Moon": "enemy",
+                "Rahu": "friend", "Ketu": "neutral"},
+    "Jupiter": {"Sun": "friend", "Moon": "friend", "Mars": "friend",
+                "Saturn": "neutral", "Mercury": "enemy", "Venus": "enemy",
+                "Rahu": "neutral", "Ketu": "neutral"},
+    "Venus":   {"Mercury": "friend", "Saturn": "friend", "Mars": "neutral",
+                "Jupiter": "neutral", "Sun": "enemy", "Moon": "enemy",
+                "Rahu": "friend", "Ketu": "friend"},
+    "Saturn":  {"Mercury": "friend", "Venus": "friend", "Jupiter": "neutral",
+                "Sun": "enemy", "Moon": "enemy", "Mars": "enemy",
+                "Rahu": "friend", "Ketu": "friend"},
+    "Rahu":    {"Venus": "friend", "Saturn": "friend", "Mercury": "friend",
+                "Sun": "enemy", "Moon": "enemy", "Mars": "neutral",
+                "Jupiter": "neutral", "Ketu": "enemy"},
+    "Ketu":    {"Mars": "friend", "Venus": "friend", "Saturn": "friend",
+                "Sun": "neutral", "Moon": "neutral", "Mercury": "neutral",
+                "Jupiter": "neutral", "Rahu": "enemy"},
+}
+
+
+_NODES = ("Rahu", "Ketu")
+
+
+def _l1_node_dignity_ref(graha: str, dref: Optional[dict]) -> Optional[dict]:
+    """The dignity reference ga_condition reads for ``graha``.
+
+    Migration 1401 (SR-DOCTRINE-H, BPHS ch.47) put a moolatrikona sign and an own sign for Rahu/Ketu into L0
+    ``bg_dignity_reference``. Whether L1 emits a node moolatrikona/own tier is an open L1-owner decision, so the
+    L0 change must not reach stored ``ga_condition_composite`` output: for the nodes, own/moolatrikona come from
+    the module constants (as before 1401), exaltation/debilitation from L0 unchanged. Other grahas: L0 as read.
+    """
+    if dref is None or graha not in _NODES:
+        return dref
+    return {**dref, "own_signs": list(_OWN_SIGNS.get(graha, [])), "moolatrikona_sign": _MOOLATRIKONA.get(graha)}
+
+
+def _l1_naisargika_relation(graha: str, sign_lord: str, naisargika_db: dict[str, dict[str, str]]) -> str:
+    """Graha→sign-lord naisargika relation stored beside ``dignity_d1``.
+
+    Non-nodes read the L0 friendship rows. The nodes read `_NAISARGIKA_L1`, the same table `dignity_d1_from_sign`
+    uses, so the stored relation cannot contradict the stored dignity in one row after the five 1401 pair
+    corrections (open L1-owner decision, as for `_l1_node_dignity_ref`).
+    """
+    if graha in _NODES:
+        return _NAISARGIKA_L1.get(graha, {}).get(sign_lord, "neutral")
+    return naisargika_db.get(graha, {}).get(sign_lord, "neutral")
+
+
 # ── Pure helper functions (testable without DB) ───────────────────────────────
 
 def dignity_d1_from_sign(
@@ -235,38 +299,8 @@ def dignity_d1_from_sign(
         return "neutral_sign"
 
     # Friend/enemy via naisargika table (module-level constants from ga_structural_writer)
-    # We use a local minimal lookup here so the function is standalone.
-    _NAISARGIKA: dict[str, dict[str, str]] = {
-        "Sun":     {"Moon": "friend", "Mars": "friend", "Jupiter": "friend",
-                    "Mercury": "neutral", "Venus": "enemy", "Saturn": "enemy",
-                    "Rahu": "enemy", "Ketu": "neutral"},
-        "Moon":    {"Sun": "friend", "Mercury": "friend", "Mars": "neutral",
-                    "Jupiter": "neutral", "Venus": "neutral", "Saturn": "neutral",
-                    "Rahu": "enemy", "Ketu": "neutral"},
-        "Mars":    {"Sun": "friend", "Moon": "friend", "Jupiter": "friend",
-                    "Venus": "neutral", "Saturn": "neutral", "Mercury": "enemy",
-                    "Rahu": "neutral", "Ketu": "friend"},
-        "Mercury": {"Sun": "friend", "Venus": "friend", "Mars": "neutral",
-                    "Jupiter": "neutral", "Saturn": "neutral", "Moon": "enemy",
-                    "Rahu": "friend", "Ketu": "neutral"},
-        "Jupiter": {"Sun": "friend", "Moon": "friend", "Mars": "friend",
-                    "Saturn": "neutral", "Mercury": "enemy", "Venus": "enemy",
-                    "Rahu": "neutral", "Ketu": "neutral"},
-        "Venus":   {"Mercury": "friend", "Saturn": "friend", "Mars": "neutral",
-                    "Jupiter": "neutral", "Sun": "enemy", "Moon": "enemy",
-                    "Rahu": "friend", "Ketu": "friend"},
-        "Saturn":  {"Mercury": "friend", "Venus": "friend", "Jupiter": "neutral",
-                    "Sun": "enemy", "Moon": "enemy", "Mars": "enemy",
-                    "Rahu": "friend", "Ketu": "friend"},
-        "Rahu":    {"Venus": "friend", "Saturn": "friend", "Mercury": "friend",
-                    "Sun": "enemy", "Moon": "enemy", "Mars": "neutral",
-                    "Jupiter": "neutral", "Ketu": "enemy"},
-        "Ketu":    {"Mars": "friend", "Venus": "friend", "Saturn": "friend",
-                    "Sun": "neutral", "Moon": "neutral", "Mercury": "neutral",
-                    "Jupiter": "neutral", "Rahu": "enemy"},
-    }
-
-    graha_relations = _NAISARGIKA.get(graha, {})
+    # We use the module-level minimal lookup (_NAISARGIKA_L1) so the function is standalone.
+    graha_relations = _NAISARGIKA_L1.get(graha, {})
     relation = graha_relations.get(sign_lord, "neutral")
 
     if relation == "friend":
@@ -1646,7 +1680,7 @@ def build_ga_condition_substep(
         dignity_score_d1: Optional[float] = None
         if sign and degree_in_sign is not None:
             dref = dignity_ref.get(graha)
-            dignity_d1 = dignity_d1_from_sign(graha, sign, degree_in_sign, dref)
+            dignity_d1 = dignity_d1_from_sign(graha, sign, degree_in_sign, _l1_node_dignity_ref(graha, dref))
             dignity_score_d1 = DIGNITY_SCORES.get(dignity_d1)
 
         # ── Combustion ────────────────────────────────────────────────────────
@@ -1688,7 +1722,7 @@ def build_ga_condition_substep(
         if sign_lord and sign_lord != graha:
             # Use DB-loaded friendships if available, else derive from dignity
             if naisargika_db:
-                naisargika_relation = naisargika_db.get(graha, {}).get(sign_lord, "neutral")
+                naisargika_relation = _l1_naisargika_relation(graha, sign_lord, naisargika_db)
             else:
                 # Fallback: derive from dignity
                 if dignity_d1 in ("friend_sign", "great_friend_sign"):
