@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020+close-now-bookkeeping-20261020+a55j-a55m-rescope-20261020+vc2-retire-20261020+drop-dka4b-na-20261021+build-first-reseq-20261021",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020+close-now-bookkeeping-20261020+a55j-a55m-rescope-20261020+vc2-retire-20261020+drop-dka4b-na-20261021+build-first-reseq-20261021+k8-reg-rest-20261019",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -5387,8 +5387,11 @@
       ],
       "mandatory": true,
       "detector": {
-        "type": "branch_merged",
-        "ref": "origin/kalayantra/k8-reg"
+        "type": "branch_file_contains",
+        "ref": "origin/main",
+        "path": "platform/scripts/governance/__tests__/test_k8_remainder.py",
+        "pattern": "^K8_REG_ELEMENTS = \\(\"integrity_engine_form\", \"produced_tables\", \"lifecycle\", \"writer_digest\", \"fingerprint\"\\)$",
+        "measures": "The whole-item oracle for K8-REG is on main: the five-element line names engine-form integrity, produced_tables disposition, lifecycle ledger, writer-digest membership and the further fingerprint declarations, and CI runs the file. #3557 alone (the former branch_merged reading) no longer satisfies it."
       },
       "brief": {
         "spec": [
@@ -5408,7 +5411,8 @@
         "tests": [
           "Build.dag agrees with the declared edges (parse the SQL)",
           "every count_sql is non-constant and chart-scoped",
-          "no ka_* registry row deleted; no new asset id (NR-KALA-R2)"
+          "no ka_* registry row deleted; no new asset id (NR-KALA-R2)",
+          "K8-REG remainder (SR-K8REG-OPEN): the five elements #3557 left open (engine-form integrity, produced_tables disposition, lifecycle ledger, writer-digest membership, further fingerprint declarations) are measured by platform/scripts/governance/__tests__/test_k8_remainder.py, which the detector names, and by its database half platform/python-sidecar/tests/l3/kala_db/registry/test_k8_remainder.py"
         ],
         "migration": "data migration on asset_registry, additive in effect (values corrected, no row removed)",
         "compat": "the cockpit keeps rendering every asset; counts read through count_sql stay chart-scoped",
