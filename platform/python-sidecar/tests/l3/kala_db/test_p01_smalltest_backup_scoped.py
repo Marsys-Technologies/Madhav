@@ -509,7 +509,7 @@ def test_the_dispatch_and_century_execute_policies_refuse_an_unmeasurable_scope(
         req = {**ref, 'kind': kind, 'args': {'run': 'one_class_full', 'classes': 'marriage'}}
         policy = small._smalltest_request_policy
     else:
-        req = {**ref, 'kind': kind, 'item_id': shared.CENTURY_ITEM, 'args': dict(zip(shared.CENTURY_ARG_KEYS, ('all', 'true', 'true', '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00')))}      # the four exact args (F-CHANNEL), synthetic bounds
+        req = {**ref, 'kind': kind, 'item_id': shared.CENTURY_ITEM, 'args': dict(zip(shared.CENTURY_ARG_KEYS, ('all', 'true', 'true', '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00', 'window_qualification/1')))}      # the five exact args (F-CHANNEL, OD-1), synthetic bounds
         policy = century._century_request_policy
     assert policy(req, root) is None                                                    # measurable and unchanged: admitted
     with psycopg.connect(dsn, autocommit=True) as conn:
