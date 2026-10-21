@@ -1025,9 +1025,13 @@ def _class_of_grain(key: str) -> str | None:
 # below verifies (`_plan_manifest`), so the three values are fixed at dispatch and a change mid-run is refused by name. The writer overlays them on
 # `ctx.config` (where the rest of the writer already reads them) and then REFUSES a run that is not a test slice and still has no explicit rule profile
 # or no explicit horizon — never a silent default to the measuring profile or to DEFAULT_HORIZON.
+# OD-1 (SR-OD1-NUMERICAL): the numeric-RESULT policy is a fourth staged value (schema /2). The century build is the first NUMERICAL-policy build, so its
+# policy is chosen by the dispatch and named in the config; `DEFAULT_RESULT_POLICY` (all-null) stays the default of measuring / test runs ONLY, and a final-rules
+# run that arrives with no explicit `result_policy` is refused by name (`run_result_policy_required`).
 CENTURY_CONFIG_KEY = "gochara_v5_century_config"
-CENTURY_CONFIG_SCHEMA = "gochara_v5_century_config/1"
-_CENTURY_CONFIG_FIELDS = frozenset({"schema", "final_rules", "defer_in_build_verify", "horizon"})
+CENTURY_CONFIG_SCHEMA = "gochara_v5_century_config/2"
+_CENTURY_CONFIG_FIELDS = frozenset({"schema", "final_rules", "defer_in_build_verify", "horizon", "result_policy"})
+_RESULT_POLICY_KEY = "result_policy"
 _FINAL_RULES_KEY = "gochara_v5_final_rules"
 _CENTURY_DEFER_KEY = "gochara_v5_defer_in_build_verify"
 
@@ -1038,6 +1042,10 @@ class CenturyConfigRefusal(ValueError):
 
 class RunProfileRefusal(CenturyConfigRefusal):
     """run_rule_profile_required: a run that is not a test slice arrived with no explicit gochara_v5_final_rules — it would have run the measuring profile."""
+
+
+class RunResultPolicyRefusal(CenturyConfigRefusal):
+    """run_result_policy_required: a final-rules run arrived with no explicit result_policy — it would have run the all-null default (OD-1)."""
 
 
 class RunHorizonRefusal(CenturyConfigRefusal):
@@ -1060,6 +1068,8 @@ def validate_century_config(raw) -> dict:
             refuse(f"{field} {raw[field]!r} is not a boolean")
     if raw["defer_in_build_verify"] and not raw["final_rules"]:
         refuse("defer_in_build_verify needs final_rules (only a final build may defer its in-build verify)")
+    if raw["result_policy"] not in gk_result_policy.RESULT_POLICIES:
+        refuse(f"result_policy {raw['result_policy']!r} is not one of {gk_result_policy.RESULT_POLICIES}")
     horizon = raw["horizon"]
     if not isinstance(horizon, (list, tuple)) or len(horizon) != 2 or not all(isinstance(x, str) for x in horizon):
         refuse(f"horizon {horizon!r} is not a pair of ISO timestamps")
@@ -1077,7 +1087,7 @@ def validate_century_config(raw) -> dict:
         refuse(f"horizon {horizon!r} is empty or inverted")
     gk_horizon.require_inside_substrate_domain((start, end))
     return {"schema": CENTURY_CONFIG_SCHEMA, "final_rules": raw["final_rules"], "defer_in_build_verify": raw["defer_in_build_verify"],
-            "horizon": [start.isoformat(), end.isoformat()]}
+            "horizon": [start.isoformat(), end.isoformat()], "result_policy": raw["result_policy"]}
 
 
 def _resolve_run_config(ctx: ContextSpec) -> ContextSpec:
@@ -1092,7 +1102,7 @@ def _resolve_run_config(ctx: ContextSpec) -> ContextSpec:
             raise CenturyConfigRefusal(f"{ASSET_ID}: {CENTURY_CONFIG_KEY}: a run carrying a {TEST_SLICE_KEY} marker takes no century config — refused, never guessed")
         staged = validate_century_config(manifest[CENTURY_CONFIG_KEY])
         wanted = {_FINAL_RULES_KEY: staged["final_rules"], _CENTURY_DEFER_KEY: staged["defer_in_build_verify"],
-                  "horizon": tuple(datetime.fromisoformat(x) for x in staged["horizon"])}
+                  "horizon": tuple(datetime.fromisoformat(x) for x in staged["horizon"]), _RESULT_POLICY_KEY: staged["result_policy"]}
         merged = dict(ctx.config)
         for key, value in wanted.items():
             present = merged.get(key)
@@ -1107,6 +1117,10 @@ def _resolve_run_config(ctx: ContextSpec) -> ContextSpec:
         if ctx.config.get("horizon") is None:
             raise RunHorizonRefusal(f"{ASSET_ID}: run_horizon_required: this run is not a test slice and names no horizon — it would run the "
                                     "code-default DEFAULT_HORIZON; stage it through the century dispatch (horizon)")
+        # OD-1: a final-rules run names its numeric-result policy; the all-null default belongs to measuring / test runs only (F-CHANNEL)
+        if ctx.config.get(_FINAL_RULES_KEY) is True and ctx.config.get(_RESULT_POLICY_KEY) is None:
+            raise RunResultPolicyRefusal(f"{ASSET_ID}: run_result_policy_required: this final-rules run is not a test slice and names no {_RESULT_POLICY_KEY} — "
+                                         "it would run the all-null default policy; stage it through the century dispatch (result_policy)")
     return ctx
 
 

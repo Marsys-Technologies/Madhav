@@ -48,7 +48,7 @@ def launch_plan(run_id: str) -> dict:
                 async_launch=True)
 
 
-def century_shape(*, run=None, classes=None, horizon_start=None, horizon_end=None, final_rules=None, defer_in_build_verify=None, horizon=None) -> dict:
+def century_shape(*, run=None, classes=None, horizon_start=None, horizon_end=None, final_rules=None, defer_in_build_verify=None, horizon=None, result_policy=None) -> dict:
     """The only request shape there is: all classes, no run name, no slice horizon (`horizon_start`/`horizon_end` are the small-test pair and stay refused),
     plus — F-CHANNEL, SR-W34-PREP-RULINGS 1 — the century config: the rule profile, the verify-deferral switch and the D-G9 horizon as the request's
     'true'/'false'/'start,end' strings. The three come together or not at all; given, they are validated by the WRITER's own validator and returned in its
@@ -56,11 +56,11 @@ def century_shape(*, run=None, classes=None, horizon_start=None, horizon_end=Non
     if run is not None or horizon_start is not None or horizon_end is not None or classes not in (None, "all"):
         raise shared.Refused("century dispatch takes only --classes all: no run name and no slice horizon (the century horizon is the one 'horizon' argument)")
     shape = {"classes": "all"}
-    given = (final_rules, defer_in_build_verify, horizon)
+    given = (final_rules, defer_in_build_verify, horizon, result_policy)
     if any(value is not None for value in given):
         if any(value is None for value in given):
-            raise shared.Refused("century dispatch takes final_rules, defer_in_build_verify and horizon together")
-        shape["century_config"] = shared.century_config_component(final_rules, defer_in_build_verify, horizon)
+            raise shared.Refused("century dispatch takes final_rules, defer_in_build_verify, horizon and result_policy together")
+        shape["century_config"] = shared.century_config_component(final_rules, defer_in_build_verify, horizon, result_policy)
     return shape
 
 
@@ -86,6 +86,7 @@ def parse_args(argv):
     p.add_argument("--classes", default="all", choices=("all",))
     p.add_argument("--final_rules", required=True, choices=("true", "false"), help="the rule profile: true = the final ND-H rules, false = the measuring rules")
     p.add_argument("--defer_in_build_verify", required=True, choices=("true", "false"), help="true = defer the in-build verify:<class> to the independent job (final rules only)")
+    p.add_argument("--result_policy", required=True, choices=shared.CENTURY_RESULT_POLICIES, help="OD-1: the numeric-result policy the century build is bound under (window_qualification/1 = numbers on)")
     p.add_argument("--horizon", required=True, help="the D-G9 derived horizon as 'start,end', each a tz-aware ISO timestamp (half-open)")
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true", help="the DEFAULT: stage, ROLL BACK, print the plan")
@@ -93,7 +94,7 @@ def parse_args(argv):
     a = p.parse_args(argv)
     # the attributes staging._main reads; a century run has no lookup mode, run name or horizon
     return argparse.Namespace(i_am_steward=a.i_am_steward, after_settled_1=a.after_settled_1, execute=a.execute, classes=a.classes,
-                              final_rules=a.final_rules, defer_in_build_verify=a.defer_in_build_verify, horizon=a.horizon,
+                              final_rules=a.final_rules, defer_in_build_verify=a.defer_in_build_verify, horizon=a.horizon, result_policy=a.result_policy,
                               list_runs=False, lookup=None, run=None, horizon_start=None, horizon_end=None)
 
 
@@ -137,16 +138,18 @@ def main(argv=None):
     problem = _century_request_policy(req, shared.evidence_root())
     if problem:
         raise shared.Refused(problem)
-    shape = century_shape(classes=args.classes, final_rules=args.final_rules, defer_in_build_verify=args.defer_in_build_verify, horizon=args.horizon)
+    shape = century_shape(classes=args.classes, final_rules=args.final_rules, defer_in_build_verify=args.defer_in_build_verify, horizon=args.horizon,
+                          result_policy=args.result_policy)
     bound = req.get("args") or {}
     if shape != century_shape(run=bound.get("run"), classes=bound.get("classes"), final_rules=bound.get("final_rules"),
-                              defer_in_build_verify=bound.get("defer_in_build_verify"), horizon=bound.get("horizon")):
+                              defer_in_build_verify=bound.get("defer_in_build_verify"), horizon=bound.get("horizon"),
+                              result_policy=bound.get("result_policy")):
         raise shared.Refused("century arguments differ from the accepted request")
 
     def marker_builder(*, run=None, classes=None, horizon_start=None, horizon_end=None):
         # staging._main passes only the small-test keywords; the century config is the request's, already compared with the bound request above
         return century_shape(run=run, classes=classes, horizon_start=horizon_start, horizon_end=horizon_end, final_rules=args.final_rules,
-                             defer_in_build_verify=args.defer_in_build_verify, horizon=args.horizon)
+                             defer_in_build_verify=args.defer_in_build_verify, horizon=args.horizon, result_policy=args.result_policy)
 
     def check_manifest(manifest, digest):
         if args.execute:

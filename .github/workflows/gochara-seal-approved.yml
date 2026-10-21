@@ -13,7 +13,7 @@
 #     4. reads the EXECUTED resource (`jobs executions describe`): image digest, service account, runner commit, arguments, the one secret binding, no retries (R13-3). Log labels are NOT
 #        producer attestation: Cloud Logging does not authenticate who writes an entry;
 #     5. reassembles the brief from the execution's logs (root jsonPayload; the chunk transport), CHECKS it (digest recomputed, persisted receipt, candidate gate clean, every grain
-#        VERIFIED, policy all_null_candidate/1, sealing revision = this commit), writes the retained ENVELOPE (execution id, image digest, run, attempt, commit, brief digest, brief id),
+#        VERIFIED, policy all_null_candidate/1 or window_qualification/1 with its frozen table bound, sealing revision = this commit), writes the retained ENVELOPE (execution id, image digest, run, attempt, commit, brief digest, brief id),
 #        DISPLAYS it in the run summary and RETAINS it under a name carrying run id + attempt. The approver reads THIS before approving.
 #   job `seal`   (environment `gochara-seal` — the approval gate; the sealer credential exists ONLY here)
 #     6. waits for the approval (one required reviewer: the owner's account; the steward approves on his authority — native ruling #2). The wait is not job time;
@@ -220,12 +220,15 @@ jobs:
           BRIEF_ID="$(python3 -c 'import json; print(json.load(open("brief.compact.json"))["persisted"]["brief_id"])')"
           echo "brief_digest=$DIGEST" >> "$GITHUB_OUTPUT"
           echo "brief_id=$BRIEF_ID" >> "$GITHUB_OUTPUT"
+          POLICY="$(python3 -c 'import json; print(json.load(open("brief.json"))["result_policy"])')"
+          NUMGATE="$(python3 -c 'import json; g = json.load(open("brief.json")).get("numerical_window_gate"); print("" if g is None else "numerical-window gate **%s**: %d of %d windows numbered, %d blank with an explicit reason code (honest nulls, listed in the brief)" % (g["status"], g["numbered_windows"], g["windows"], g["blank_windows"]))')"
           {
             echo "## Seal brief — read this BEFORE approving"
             echo
             echo "- chart \`$CHART_ID\`, generation \`$GENERATION\`, sealing revision \`$GITHUB_SHA\`"
             echo "- executed resource: execution \`$EXECUTION\`, image \`$IMAGE_DIGEST\`, verifier service account, runner commit = the sealing revision; the brief's own producer line (commit, image digest, execution id) is bound to it"
-            echo "- candidate gate: **clean (0 violations)**; policy **all_null_candidate/1**; every grain **VERIFIED**"
+            echo "- candidate gate: **clean (0 violations)**; policy **$POLICY**; every grain **VERIFIED**"
+            if [ -n "$NUMGATE" ]; then echo "- $NUMGATE"; fi
             echo "- persisted brief id: **$BRIEF_ID**; **brief digest: \`$DIGEST\`**"
             echo
             echo "Approve the \`gochara-seal\` deployment with a comment containing exactly this line:"

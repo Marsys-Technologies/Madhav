@@ -24,8 +24,9 @@ for path in (str(FLEET), str(SCRIPTS), str(SCRIPTS / '__tests__')):
 
 
 # F-CHANNEL: the century request's profile, deferral switch and horizon. SYNTHETIC bounds (the real D-G9 horizon is life-event derived).
-CENTURY_ARGS = dict(classes='all', final_rules='true', defer_in_build_verify='false', horizon='2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00')
-CENTURY_CLI = ['--classes', 'all', '--final_rules', 'true', '--defer_in_build_verify', 'false', '--horizon', CENTURY_ARGS['horizon']]
+CENTURY_ARGS = dict(classes='all', final_rules='true', defer_in_build_verify='false', horizon='2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00',
+                    result_policy='window_qualification/1')       # OD-1 (SR-OD1-NUMERICAL)
+CENTURY_CLI = ['--classes', 'all', '--final_rules', 'true', '--defer_in_build_verify', 'false', '--horizon', CENTURY_ARGS['horizon'], '--result_policy', 'window_qualification/1']
 
 
 @pytest.fixture(autouse=True)
@@ -60,8 +61,8 @@ def test_century_real_rollback_then_exact_unmarked_staged_launch(measuring_world
     assert plan['schema'] == 'ky.century_staging/1' and plan['status'] == 'ROLLED_BACK' and plan['rollback_confirmed'] is True
     assert 'gochara_v5_test_slice' not in plan['plan_manifest'] and plan['triggered_by'] == shared.CENTURY_TRIGGERED_BY
     # F-CHANNEL: the request's three values are STAGED in the manifest (so plan_manifest_digest covers them) in the writer's canonical form
-    assert plan['plan_manifest'][shared.CENTURY_CONFIG_KEY] == dict(schema='gochara_v5_century_config/1', final_rules=True, defer_in_build_verify=False,
-                                                                     horizon=['2001-01-01T00:00:00+00:00', '2051-01-01T00:00:00+00:00'])
+    assert plan['plan_manifest'][shared.CENTURY_CONFIG_KEY] == dict(schema='gochara_v5_century_config/2', final_rules=True, defer_in_build_verify=False,
+                                                                     horizon=['2001-01-01T00:00:00+00:00', '2051-01-01T00:00:00+00:00'], result_policy='window_qualification/1')
     assert plan['args'] == CENTURY_ARGS and plan['plan_manifest_digest'] == shared.evidence_digest(plan['plan_manifest'])
     assert plan['launch_plan'] == century.launch_plan(plan['run_id']) and plan['launch_plan']['async_launch'] is True
     assert runs(dw) == (0, 0)

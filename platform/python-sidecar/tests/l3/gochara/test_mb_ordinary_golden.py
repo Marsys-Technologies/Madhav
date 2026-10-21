@@ -187,7 +187,7 @@ def capture(template_db, raw: dict | None = None) -> dict:
             rec.statements.clear()
             ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-golden", db_conn=rec, dry_run=dry_run,
                               config={"chart_id": CHART_ID, "birth_params": BIRTH_PARAMS, "horizon": SHORT, "ephe_path": EPHE_PATH,
-                                    "gochara_v5_final_rules": True})   # (I) INTERPRETATION: main made the final rules opt-in; the accepted P06 capture IS the final-rule build
+                                    "gochara_v5_final_rules": True, "result_policy": "all_null_candidate/1"})   # OD-1: a final-rules run names its policy (the capture IS the all-NULL build). (I) INTERPRETATION: main made the final rules opt-in; the accepted P06 capture IS the final-rule build
             try:
                 with w.conn.transaction():
                     res = writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=key, label=key))

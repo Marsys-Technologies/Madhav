@@ -260,7 +260,7 @@ def test_the_launch_needs_a_dry_run_attestation_and_the_dry_run_does_not(table, 
 
 
 # ───────────── SR-PREBUILD-ALL: the century family (item J-4e, enabled_by J-4d) ─────────────
-@pytest.mark.parametrize("kind", CENTURY)
+@pytest.mark.parametrize("kind", live(CENTURY))      # a kind a pin shard re-binds (SR-OD1-NUMERICAL: result_policy) is judged against its shard's binding by the shard check below
 def test_century_exact_script_capability_and_argv(table, kind):
     op = table[kind]
     needs, script, fixed, allowed, item = CENTURY[kind]
@@ -292,7 +292,8 @@ def test_century_validate_refuses_unlisted_arguments_run_names_and_any_horizon(t
 def test_century_requests_reach_the_reviewed_century_policy_not_the_enablement_refusal(table, executor, kind):
     # the fixture's item is J-2a; the real century policy (loaded from the reviewed commit) must be what answers
     if "dispatch" in kind:
-        args = {"classes": "all", "final_rules": "true", "defer_in_build_verify": "true", "horizon": "2001-02-03T00:00:00+00:00,2002-02-03T00:00:00+00:00"}
+        args = {"classes": "all", "final_rules": "true", "defer_in_build_verify": "true", "horizon": "2001-02-03T00:00:00+00:00,2002-02-03T00:00:00+00:00",
+                "result_policy": "window_qualification/1"}
         req = request(executor, kind, args)
         # validate binds a dispatch to the committed century contract FIRST (century_contract_problem); the reviewed century policy answers behind it
         assert executor.validate(req, table, caps()).startswith("century_contract_sha256")

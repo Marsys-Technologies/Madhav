@@ -273,6 +273,8 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
         "near_miss_verification": near_miss_evidence(conn,chart_id,generation,vector),
         "near_miss_output_identity": "vacuous_under_policy" if manifest_policy(conn, chart_id, generation) == "all_null_candidate/1" else None,
         "result_policy": manifest_policy(conn, chart_id, generation),
+        **_qualification_table_entry(vector),
+        **_numerical_gate_entry(conn, chart_id, generation),
         "candidate_gate": {"source": "candidate_adapter/1 over ka_gochara_candidate_gate_violations",
                            "violations": sorted((f"{v['event_class']}/{v['path_id']}@{v['rule_version']}:{v['violation']}"
                                                  for v in violations))},
@@ -377,6 +379,24 @@ ALL_NULL_DISCLOSURE = (
     "this is a property the gate enforces at seal, not a property of the database's contents at every moment.")
 
 
+def _qualification_table_entry(vector: dict) -> dict:
+    """OD-1: under `window_qualification/1` the brief states the frozen table the manifest binds beside the one this code implements, and whether they agree; under
+    the all-NULL policy the key is absent (those briefs stay byte-identical to the ones produced before the table existed)."""
+    from .result_policy import POLICY_QUALIFICATION, qualification_table_component
+    if vector.get("result_policy") != POLICY_QUALIFICATION:
+        return {}
+    bound, implemented = vector.get("qualification_table"), qualification_table_component(POLICY_QUALIFICATION)
+    return {"qualification_table": {"bound": bound, "implemented": implemented, "agrees": bound == implemented}}
+
+
+def _numerical_gate_entry(conn, chart_id: str, generation: str) -> dict:
+    """OD-1: under `window_qualification/1` the brief carries the NUMERICAL-WINDOW GATE's verdict, recomputed from what is stored (PASSED / FAILED with its problems) with the count of
+    numbered windows and every honest-null window counted by path and reason code; under the all-NULL policy the key is absent (those briefs stay byte-identical)."""
+    from . import numerical_window_gate as nwg
+    verdict = nwg.generation_verdict(conn, chart_id, generation)
+    return {} if verdict["status"] == nwg.NOT_APPLICABLE else {"numerical_window_gate": verdict}
+
+
 def _policy_disclosure(policy: str) -> str:
     """The disclosure's wording follows the MANIFEST's policy name — it never asserts the all-NULL claim for a manifest that selects
     another policy (F-R13 / Stream B): the all-NULL sentence is said only under `all_null_candidate/1`, and even there only as what the gate
@@ -410,6 +430,13 @@ def _current_and_complete(payload: dict) -> list[str]:
     """Why this candidate cannot be briefed (empty = it can): a gate violation, a grain that is not VERIFIED, a class with no
     attestation at all, a runner that is not the manifest's pinned code."""
     problems = list(payload["candidate_gate"]["violations"])
+    gate = payload.get("numerical_window_gate")
+    if gate is not None and gate.get("status") != "PASSED":
+        problems.extend(f"numerical_window_gate: {p}" for p in gate.get("problems") or ["the gate did not pass"])
+    if payload.get("result_policy") == "window_qualification/1" and gate is None:
+        problems.append("numerical_window_gate: the brief carries no verdict under window_qualification/1")
+    if payload.get("qualification_table", {}).get("agrees") is False:
+        problems.append("qualification_table: the manifest binds a table other than the frozen one this code implements")
     if not payload["classes"]:
         problems.append("the generation has no search inventory")
     for c in payload["classes"]:

@@ -127,9 +127,10 @@ WRITER_REL = cc.WRITER
 def tree(tmp_path, *, start="datetime(2001, 2, 3, tzinfo=timezone.utc)", unmarked="POLICY_RAISE", final_key="gochara_v5_final_rules", birth="born 1990-03-04"):
     root = tmp_path / "repo"
     files = {
-        cc.WRITER: (f"DEFAULT_HORIZON = ({start},\n                   datetime(2030, 1, 1, tzinfo=timezone.utc))\nDEFER_VERIFY_KEY = \"gochara_v5_defer_in_build_verify\"\n"
+        cc.WRITER: (f"DEFAULT_HORIZON = ({start},\n                   datetime(2030, 1, 1, tzinfo=timezone.utc))\nDEFER_VERIFY_KEY = \"gochara_v5_defer_in_build_verify\"\n_RESULT_POLICY_KEY = \"result_policy\"\n"
                     f"policy = (gk_contact_certify.POLICY_SINK_ALL if slice_ is not None and slice_.run == \"x\" else gk_contact_certify.{unmarked})\n"
                     f"final = ctx.config.get(\"{final_key}\")\n"),
+        cc.SHARED: "CENTURY_RESULT_POLICIES = ('all_null_candidate/1', 'window_qualification/1')\n",
         cc.BIRTH_PATH: f"# Master\nThe synthetic subject, {birth}, somewhere.\n",
         cc.REGISTRY: "ROW_MEMBERSHIP: dict[str, str | None] = {\n    \"marriage\": \"m\",\n    \"birth_anchor\": None,\n    \"career_entry\": \"c\",\n    \"bereavement\": \"b\",\n}\n",
         cc.CERTIFY: "POLICY_RAISE = \"raise\"\nPOLICY_SINK_ALL = \"sink_all\"\n",
@@ -177,19 +178,26 @@ def test_p1_the_policy_is_the_writers_unmarked_arm(tmp_path):
     assert (unmarked["sink_policy"], unmarked["strict"]) == ("raise", True)
     flipped = cc.policy(tree(tmp_path / "b", unmarked="POLICY_SINK_ALL"), None)
     assert (flipped["certification"]["sink_policy"], flipped["certification"]["strict"]) == ("sink_all", False)
-    assert cc.policy(tree(tmp_path / "c"), None)["config_keys"] == {"final_rules": "gochara_v5_final_rules", "defer_in_build_verify": "gochara_v5_defer_in_build_verify"}
+    assert cc.policy(tree(tmp_path / "c"), None)["config_keys"] == {"final_rules": "gochara_v5_final_rules", "defer_in_build_verify": "gochara_v5_defer_in_build_verify",
+                                                                                 "result_policy": "result_policy"}
 
 
 def test_p2_final_rules_and_deferral_are_the_packs_with_its_sha(tmp_path):
     pack = tmp_path / "pack"
     pack.mkdir()
-    body = json.dumps({"carrier": {"args": {"final_rules": "true", "defer_in_build_verify": "false"}}}).encode()
+    body = json.dumps({"carrier": {"args": {"final_rules": "true", "defer_in_build_verify": "false", "result_policy": "window_qualification/1"}}}).encode()
     (pack / cc.PACK_FILE).write_bytes(body)
     p = cc.policy(tree(tmp_path), pack)
     assert (p["final_rules"], p["defer_in_build_verify"], p["source"]["sha256"]) == (True, False, hashlib.sha256(body).hexdigest())
-    (pack / cc.PACK_FILE).write_text(json.dumps({"carrier": {"args": {"final_rules": "yes", "defer_in_build_verify": "true"}}}))
+    assert p["result_policy"] == "window_qualification/1"                                       # OD-1: the policy is the pack's, like the other two
+    (pack / cc.PACK_FILE).write_text(json.dumps({"carrier": {"args": {"final_rules": "yes", "defer_in_build_verify": "true", "result_policy": "window_qualification/1"}}}))
     with pytest.raises(cc.ContractError, match="final_rules"):
         cc.policy(tree(tmp_path / "b"), pack)
+    for bad in (None, "all_null", "numeric/1"):                                                  # absent or unnamed policy: refused, never defaulted
+        args = {"final_rules": "true", "defer_in_build_verify": "true", **({} if bad is None else {"result_policy": bad})}
+        (pack / cc.PACK_FILE).write_text(json.dumps({"carrier": {"args": args}}))
+        with pytest.raises(cc.ContractError, match="result_policy"):
+            cc.policy(tree(tmp_path / "c"), pack)
 
 
 # ───────────────────────────── T1/T2 cap and timeout ─────────────────────────────

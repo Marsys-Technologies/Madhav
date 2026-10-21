@@ -26,7 +26,8 @@ import smalltest_safety_support as S
 # F-CHANNEL (SR-W34-PREP-RULINGS 1): the century request carries the rule profile, the verify-deferral switch and the horizon. SYNTHETIC bounds only —
 # the real D-G9 horizon is life-event derived and appears in no code, test or commit text.
 HORIZON = '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00'
-ARGS = {'classes': 'all', 'final_rules': 'true', 'defer_in_build_verify': 'false', 'horizon': HORIZON}
+# OD-1 (SR-OD1-NUMERICAL): the fifth required value is the numeric-result policy the century build is bound under.
+ARGS = {'classes': 'all', 'final_rules': 'true', 'defer_in_build_verify': 'false', 'horizon': HORIZON, 'result_policy': 'window_qualification/1'}
 
 
 def load(name):
@@ -188,7 +189,7 @@ def test_century_chooses_no_run_name_horizon_or_class_subset(kwargs):
 
 
 # ───────────────────────────── F-CHANNEL: the profile, the deferral switch and the horizon reach the writer ─────────────────────────────
-# Claims (SR-W34-PREP-RULINGS 1, option a): (1) the century request takes exactly classes + final_rules + defer_in_build_verify + horizon and refuses
+# Claims (SR-W34-PREP-RULINGS 1, option a; OD-1 adds result_policy): (1) the century request takes exactly classes + final_rules + defer_in_build_verify + horizon + result_policy and refuses
 # anything else; (2) the three new values are validated strictly; (3) they are STAGED in plan_manifest under the writer's key, inside plan_manifest_digest
 # (so the writer's every read verifies them), in the writer's canonical form; (4) the launcher stages and expects exactly that manifest; (5) the dispatch refuses
 # CLI values that differ from the accepted request. The request digest covers `args` (executor.request_digest), so the acceptance and the pack fill bind all four.
@@ -201,6 +202,9 @@ def test_century_chooses_no_run_name_horizon_or_class_subset(kwargs):
     ('no final_rules', {k: v for k, v in ARGS.items() if k != 'final_rules'}),
     ('no defer_in_build_verify', {k: v for k, v in ARGS.items() if k != 'defer_in_build_verify'}),
     ('no horizon', {k: v for k, v in ARGS.items() if k != 'horizon'}),
+    ('no result_policy', {k: v for k, v in ARGS.items() if k != 'result_policy'}),
+    ('an unknown result_policy', {**ARGS, 'result_policy': 'all_null'}),
+    ('a result_policy spelled without its version', {**ARGS, 'result_policy': 'window_qualification'}),
     ('a boolean spelled True', {**ARGS, 'final_rules': 'True'}),
     ('a JSON boolean', {**ARGS, 'defer_in_build_verify': False}),
     ('deferral without the final rules', {**ARGS, 'final_rules': 'false', 'defer_in_build_verify': 'true'}),
@@ -209,8 +213,8 @@ def test_century_chooses_no_run_name_horizon_or_class_subset(kwargs):
     ('one horizon bound', {**ARGS, 'horizon': '2001-01-01T00:00:00+00:00'}),
     ('three horizon bounds', {**ARGS, 'horizon': HORIZON + ',2052-01-01T00:00:00+00:00'}),
 ])
-def test_century_request_args_are_exactly_the_four_and_strictly_valued(name, args):
-    """Claims 1-2: the exact argument contract; a value that is not spelled exactly, or a horizon that is not two tz-aware ISO bounds in order, is refused by name."""
+def test_century_request_args_are_exactly_the_five_and_strictly_valued(name, args):
+    """Claims 1-2 (+ OD-1: the result policy is one of the two NAMED policies, required): the exact argument contract; a value that is not spelled exactly, or a horizon that is not two tz-aware ISO bounds in order, is refused by name."""
     assert shared.century_args_problem(dict(ARGS)) is None
     with pytest.raises(shared.Refused):
         shared.century_args_problem(args)
