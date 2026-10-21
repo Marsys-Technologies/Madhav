@@ -297,6 +297,48 @@ def publish_teardown_completions() -> None:
         except Exception: continue
 
 
+def publish_head_completions() -> None:
+    """M-W56-16: the head twin of publish_teardown_completions. Publish <op>.completion.json (schema ky.head_completion/1) for a COMMITTED
+    publish_head / rollback_head receipt (status AWAITING_READBACK) once the filing convention is met (fleet/OPS_CONTRACT.md "Head completion filing"):
+    the archived head request done/<op>.json, an acceptance acceptance/<op>.readback.json naming `readback_operation_id`, and that readback's archived
+    request done/<rb>.json, receipt receipts/<rb>.json and output receipts/<rb>.output.txt. The verdict is the reviewed policy's own `complete`
+    (head_operation.complete, loaded from the request's reviewed_commit like head_policy, never the working tree); for a rollback the policy's
+    request_problem is re-run too, so its `rollback_of` must still bind the original publish. Receipts only: never FENCE, never a request, never the
+    executor reading or requesting the readback itself. A receipt the policy refuses is skipped (no document, no exception); an existing document is never rewritten."""
+    for path in sorted(REC.glob("*.json")):
+        if path.name.endswith(".completion.json") or (REC / f"{path.stem}.completion.json").exists(): continue
+        try:
+            commit_raw = path.read_bytes()
+            committed = json.loads(commit_raw)
+            if (committed.get("kind") not in ("publish_head", "rollback_head") or committed.get("status") != "AWAITING_READBACK"
+                    or committed.get("operation_id") != path.stem): continue
+            accepted_path = ACC / f"{path.stem}.readback.json"
+            if not accepted_path.exists(): continue
+            accepted_raw = accepted_path.read_bytes()
+            accepted = json.loads(accepted_raw)
+            readback_op = accepted.get("readback_operation_id")
+            if not isinstance(readback_op, str) or not SAFE_ID.fullmatch(readback_op) or readback_op == path.stem: continue
+            req = json.loads((DONE / f"{path.stem}.json").read_bytes())
+            rb_req = json.loads((DONE / f"{readback_op}.json").read_bytes())
+            if rb_req.get("requested_by") == req.get("requested_by"): continue      # S-5: the readback is a v-lane's, never the head requester's
+            rb_raw = (REC / f"{readback_op}.json").read_bytes()
+            output_raw = (REC / f"{readback_op}.output.txt").read_bytes()
+            policy = head_policy(req)
+            if req.get("kind") == "rollback_head" and policy["request_problem"](req, OPS): continue
+            completion = dict(policy["complete"](req, commit_raw, rb_req, rb_raw, output_raw, accepted), schema="ky.head_completion/1",
+                readback_operation_id=readback_op,
+                source_digests=dict(commit_receipt=digest_bytes(commit_raw), readback_receipt=digest_bytes(rb_raw), acceptance=digest_bytes(accepted_raw)))
+        except Exception: continue
+        target = REC / f"{path.stem}.completion.json"
+        with _lock:
+            staged = target.with_suffix(".json.tmp")
+            with staged.open("w") as stream:
+                stream.write(json.dumps(completion, indent=1))
+                stream.flush(); os.fsync(stream.fileno())
+            os.replace(staged, target)
+        log(f"{path.stem} head completion published (readback {readback_op})")
+
+
 def refresh_state() -> str:
     try: return str(json.loads(REFRESH.read_text()).get("result", "UNKNOWN"))
     except (OSError, json.JSONDecodeError): return "UNKNOWN"
@@ -1657,6 +1699,7 @@ def main() -> int:
         if table is None or (KY_ROOT / "HOLD").exists(): time.sleep(LOOP_TICK_S); continue      # no table on main yet (before B-1), refs unreachable, or HOLD
         if FENCE.exists(): fence_quiescent()  # reconcile independent small-test completion; retain the owner-controlled fence
         publish_teardown_completions()        # SR-TEARDOWN-COMPLETION: a committed teardown + its accepted absence complete without a fence
+        publish_head_completions()            # M-W56-16: a committed head change + its independent readback and accepted digest complete without a fence
         for f in sorted(REQ.glob("*.json")):
             try: req = json.loads(f.read_text())
             except Exception as e:

@@ -1,0 +1,10 @@
+{
+ "schema": "ky.executor_pin_shard/2",
+ "item": "J-6",
+ "function_hashes": {
+  "W4": {
+   "publish_head_completions": "12d591a7a9f5d6cc618fdf82a0ff170a7f88996b07422b213b832bb6f565fc91",
+   "main": "329726d24640af20576890d7f35a2a8c0f38c132db261c5a5815bdc626dd4f76"
+  }
+ }
+}
