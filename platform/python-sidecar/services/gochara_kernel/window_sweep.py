@@ -704,12 +704,17 @@ class WindowDraft:
     objective_value: float | None = None   # that function's value at the peak — distinct from `score`
     affected_channels: tuple = ()          # the channels an UNQUALIFIED member feeds (an unknown channel feeds both)
     policy: str = "window_qualification/1"  # the result policy this window was drafted under (R9-1; the manifest's)
+    solver_certificate: dict | None = None  # R-7: the solver's piece tree (`window_solver.stored_certificate`) — numbered, or a budget-exhausted blank
 
     def qualification(self) -> dict:
-        """The structured provenance persisted with the window (1240 `qualification`; closed keys)."""
-        return {"policy": self.policy, "unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
-                "affected_channels": sorted(self.affected_channels), "members": self.members,
-                "qualified_members": self.qualified_members}
+        """The structured provenance persisted with the window (1240 `qualification`; closed keys — the `solver_certificate` key needs the
+        additive migration that admits it, see the R67 job notes)."""
+        q = {"policy": self.policy, "unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
+             "affected_channels": sorted(self.affected_channels), "members": self.members,
+             "qualified_members": self.qualified_members}
+        if self.solver_certificate is not None:
+            q["solver_certificate"] = self.solver_certificate
+        return q
 
 
 #: R8-4/R8-6: until a solver with a stated global-maximum guarantee exists for function-valued factors
@@ -846,7 +851,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                   vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
                   compute_valence: Callable | None = None,
                   allow_dynamic: bool = False,
-                  policy: str = POLICY_QUALIFICATION) -> tuple[list[WindowDraft], dict]:
+                  policy: str = POLICY_QUALIFICATION,
+                  window_solver: Callable[[dict], object] | None = None) -> tuple[list[WindowDraft], dict]:
     """The grain's windows (one path-version) and an exclusion ledger — every record accounted.
 
     Window construction (Codex round 6, R3): ONE window per MAXIMAL CONNECTED COMPONENT of the
@@ -881,7 +887,15 @@ def draft_windows(event_class: str, records: list[SweepRecord],
          max-min value); NULL when a live member at the peak is unqualified (its product is unknown);
       5. `evidence_against` is the per-instant against reduction at the peak: NULL iff the path cannot
          evaluate it, or a live unqualified against/unknown-channel member could feed it.
-    Admission and admitted support are unchanged; known partial subtotals are never stored as complete."""
+    Admission and admitted support are unchanged; known partial subtotals are never stored as complete.
+
+    SOLVER SEAM (R-6/R-7). `window_solver`, when given, solves a component that has a function-valued qualified member INSTEAD of the piece
+    sampler and lifts the dynamic switch for it. It is called with {path_id, lo, hi, objective, members (the qualified programs), event_class}
+    and returns an object with `.status` ('solved' | 'blank'), `.value`, `.instant` (an aware datetime), `.reason` and `.certificate` (the JSON
+    object `window_solver.stored_certificate` builds, or None). The budget is the callable's and is PER WINDOW: nothing is shared between
+    components, so an exhausted window never blanks the next. A blank outcome is a named blank (reason, `unresolved[reason] = 1`, unqualified
+    valence) that carries its certificate; a solved one flows through the common tail below with its certificate attached. The adapter that
+    turns programs into the solver's problem is the integration's (S3)."""
     from services.gochara_rules import valence as _valence_mod
     valence_fn = compute_valence or _valence_mod.compute_valence
     if policy not in RESULT_POLICIES:
@@ -987,7 +1001,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             continue
 
         qualified = [p for p in in_win if p.qualified]
-        if not allow_dynamic and any(p.constant is None for p in qualified):
+        if not allow_dynamic and window_solver is None and any(p.constant is None for p in qualified):
             n_dyn = sum(1 for p in qualified if p.constant is None)
             unresolved[DYNAMIC_SWITCH_REASON] = n_dyn
             base["unresolved"] = unresolved
@@ -1001,7 +1015,25 @@ def draft_windows(event_class: str, records: list[SweepRecord],
         unknown_pieces = 0
         reason_pieces: dict[str, int] = {}     # W0: unknown pieces per NAMED reason a factor passed through
         unnamed_pieces = 0                     # unknown pieces no factor gave a reason for
-        for a, b, live in _pieces(lo, hi, qualified):
+        solver_certificate = None
+        solved_by_solver = False
+        if window_solver is not None and any(p.constant is None for p in qualified):
+            out = window_solver({"path_id": path_id, "lo": lo, "hi": hi, "objective": objective_name, "members": qualified,
+                                 "event_class": event_class})
+            solver_certificate = out.certificate
+            if out.status != "solved":
+                if not out.reason:
+                    raise SweepRefusal("the window solver returned a blank without a reason")
+                base["unresolved"] = {**unresolved, out.reason: 1}
+                val = valence_fn(event_class, 0.0, 0.0, out.reason)
+                drafts.append(WindowDraft(
+                    peak_instant=None, score=None, evidence_for=None, evidence_against=None,
+                    outcome_valence_for_native=val.outcome_valence_for_native,
+                    unqualified_reason=out.reason, solver_certificate=solver_certificate, **base))
+                continue
+            cands.append((out.value, out.instant))
+            solved_by_solver = True
+        for a, b, live in (() if solved_by_solver else _pieces(lo, hi, qualified)):
             if path_id == "P4":
                 if {p.rec.agent for p in live} != {"jupiter", "saturn"}:
                     continue               # outside the joint support within this piece: not a candidate
@@ -1090,7 +1122,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                              else "evidence_against_channel_unqualified")
         drafts.append(WindowDraft(
             peak_instant=peak, score=score, evidence_for=ev_for, evidence_against=ev_against,
-            outcome_valence_for_native=val.outcome_valence_for_native, objective_value=best, **base))
+            outcome_valence_for_native=val.outcome_valence_for_native, objective_value=best,
+            solver_certificate=solver_certificate, **base))
     drafts = [d if d.policy == policy else dataclasses.replace(d, policy=policy) for d in drafts]
     return drafts, excluded
 

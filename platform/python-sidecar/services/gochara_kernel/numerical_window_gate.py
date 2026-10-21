@@ -17,6 +17,13 @@ Windows the policy cannot number (a time-varying factor, an unmapped categorical
 reason code, are counted by reason in the verdict and the brief, and are NEVER a refusal by themselves. What is a refusal: a blank without a reason, a number where the
 table yields none, a blank where it yields a value, a reason that names the all-NULL policy under this one (a stub), a table other than the frozen one.
 
+POPULATIONS AFTER CLASSIFICATION (R-6). The verifier's solver check gives every function-valued window one of three classes: AGREED, DISAGREEMENT (blocks the
+seal, always: `verify_window_semantics` raises) or INCONCLUSIVE (it could not settle the window inside its own budget, or R-1/R-3's tie refusals). An INCONCLUSIVE
+window that carries a number is DEMOTED: the attestation counts it as a BLANK under its named reason, not as numbered, and lists it under `demoted` (the stored row
+still carries the builder's number; what is attested and sealed is that the window is served as the named blank). The census the gate recounts is the STORED
+populations; the attested populations are the stored ones after classification, and every difference is a named, counted demotion. The demoted share of all windows
+is capped at 0.5 % (`INCONCLUSIVE_SHARE_CAP`); above it the verdict FAILS and the seal refuses. A stored blank the check could not confirm stays the blank it is.
+
 This module keeps its OWN literals (the frozen table's binding comes from the vector verifier's, not the builder's `result_policy`; a test asserts they are equal)."""
 from __future__ import annotations
 
@@ -45,6 +52,14 @@ REASON_GROUPS = {
     "orb_not_ratified": APPLICABILITY,
     "object_kind_not_covered_by_applicability": APPLICABILITY,
 }
+SOLVER = "solver_certificate"
+REASON_GROUPS.update({
+    "solver_budget_exhausted": SOLVER, "monotone_arc_not_established": SOLVER, "solver_certificate_incomplete": SOLVER,
+    "verifier_budget_exhausted": SOLVER, "tie_isolation_unresolved": SOLVER, "tie_ambiguous": SOLVER})
+#: the UNVERIFIED reasons the verifier's check demotes instead of blocking (R-6; restated, compared with `window_cert_check` by a test)
+INCONCLUSIVE_REASONS = frozenset({"verifier_budget_exhausted", "tie_isolation_unresolved", "tie_ambiguous"})
+#: the share of ALL windows that may be demoted: 0.5 % (R-6). Compared in integers (`demoted × 1000 > windows × 5`): no float edge.
+INCONCLUSIVE_SHARE_CAP_PER_MILLE = 5
 ALL_NULL_REASON = "all_null_candidate_policy"             # this module's own literal: under window_qualification/1 it can only mean a stub policy
 DISCLOSURE = ("Under window_qualification/1 a window is NUMBERED (strength, peak and valence re-derived from its stored members through the frozen table the manifest binds) or "
               "BLANK with an explicit reason code. Blank windows are honest nulls — counted by reason here, never a refusal by themselves; a blank without a reason, a "
@@ -121,9 +136,57 @@ def census(conn, chart_id: str, generation: str, event_class: str, path_id: str,
     return out
 
 
+def demotions(report: dict) -> dict:
+    """What the verifier's solver check demoted in a grain (R-6), from its re-derivation report: the windows that carried a number and could not be settled
+    (`demoted`: reason → windows; `demoted_valence`: the valence the stored number carried → windows; `demoted_without_score`) and the blanks it could not confirm."""
+    dem: dict[str, int] = {}
+    dem_valence: dict[str, int] = {}
+    without_score = unconfirmed = 0
+    for w in report.get("inconclusive_windows") or ():
+        if w.get("stored_numbered"):
+            dem[w["reason"]] = dem.get(w["reason"], 0) + 1
+            dem_valence[w["valence"]] = dem_valence.get(w["valence"], 0) + 1
+            without_score += 0 if w.get("had_score") else 1
+        else:
+            unconfirmed += 1
+    return {"demoted": dict(sorted(dem.items())), "demoted_valence": dict(sorted(dem_valence.items())), "demoted_without_score": without_score,
+            "unconfirmed_blank_windows": unconfirmed}
+
+
+def _after_classification(live: dict, d: dict) -> dict:
+    """The attested populations: the STORED ones less the demoted numbered windows, which join the blanks under their named reason."""
+    n = sum(d["demoted"].values())
+    valence = dict(live["valence"])
+    for v, k in d["demoted_valence"].items():
+        valence[v] = valence.get(v, 0) - k
+        if valence[v] == 0:
+            del valence[v]
+    blank = dict(live["blank"])
+    for r, k in d["demoted"].items():
+        blank[r] = blank.get(r, 0) + k
+    return {"numbered": live["numbered"] - n, "numbered_without_score": live["numbered_without_score"] - d["demoted_without_score"],
+            "valence": dict(sorted(valence.items())), "blank": dict(sorted(blank.items()))}
+
+
+def _demotion_problems(live: dict, d: dict) -> list[str]:
+    out: list[str] = []
+    n = sum(d["demoted"].values())
+    if any(r not in INCONCLUSIVE_REASONS for r in d["demoted"]):
+        out.append(f"windows were demoted under {sorted(r for r in d['demoted'] if r not in INCONCLUSIVE_REASONS)!r}: only {sorted(INCONCLUSIVE_REASONS)!r} may demote")
+    if any(not isinstance(k, int) or isinstance(k, bool) or k < 0 for k in (*d["demoted"].values(), *d["demoted_valence"].values(), d["demoted_without_score"])):
+        out.append("a demotion count is not a non-negative integer")
+        return out
+    if n != sum(d["demoted_valence"].values()):
+        out.append(f"{n} window(s) demoted but their valences account for {sum(d['demoted_valence'].values())}")
+    if n > live["numbered"] or any(k > live["valence"].get(v, 0) for v, k in d["demoted_valence"].items()) or d["demoted_without_score"] > min(n, live["numbered_without_score"]):
+        out.append(f"{n} window(s) demoted but only {live['numbered']} are numbered (by valence {live['valence']!r}, {live['numbered_without_score']} without a score)")
+    return out
+
+
 def grain_attestation(conn, *, chart_id: str, generation: str, event_class: str, path_id: str, rule_version: str, report: dict, policy: str) -> dict:
     """The attestation the verifier persists for ONE grain — built only after `verify_window_semantics` re-derived every window of it without a disagreement (it raises
-    otherwise), and only when the independent recount agrees with that re-derivation. Raises `NumericalGateDisagrees` on any difference."""
+    otherwise), and only when the independent recount agrees with that re-derivation AFTER CLASSIFICATION: the stored numbered windows are the reproduced numbered ones
+    plus the demoted ones, and the demoted ones are attested as blanks under their named reason. Raises `NumericalGateDisagrees` on any difference."""
     tag = f"{event_class}/{path_id}@{rule_version}"
     if policy != POLICY_QUALIFICATION:
         raise NumericalGateDisagrees(f"{tag}: a numerical attestation is only given under {POLICY_QUALIFICATION}, not {policy!r}")
@@ -131,16 +194,19 @@ def grain_attestation(conn, *, chart_id: str, generation: str, event_class: str,
         raise NumericalGateDisagrees(f"{tag}: the re-derivation ran under {report.get('policy_version')!r}, not {POLICY_QUALIFICATION}")
     c = census(conn, chart_id, generation, event_class, path_id, rule_version)
     problems = list(c["problems"])
+    d = demotions(report)
+    problems += _demotion_problems(c, d)
     if report.get("status") != "VERIFIED" or report.get("unverified_windows"):
         problems.append(f"the re-derivation is {report.get('status')!r} with {len(report.get('unverified_windows') or ())} window(s) it could not reproduce")
     if report.get("fully_reproduced") != c["windows"]:
         problems.append(f"{report.get('fully_reproduced')} of {c['windows']} stored windows were reproduced exactly")
-    if report.get("numeric_reproduced") != c["numbered"]:
-        problems.append(f"the re-derivation reproduced {report.get('numeric_reproduced')} numbered windows; {c['numbered']} carry a peak")
+    if report.get("numeric_reproduced", 0) + sum(d["demoted"].values()) != c["numbered"]:
+        problems.append(f"the re-derivation reproduced {report.get('numeric_reproduced')} numbered windows and demoted {sum(d['demoted'].values())}; {c['numbered']} carry a peak")
     if problems:
         raise NumericalGateDisagrees(f"{tag}: " + "; ".join(problems))
+    after = _after_classification(c, d)
     return {"schema": SCHEMA, "status": PASSED, "policy": POLICY_QUALIFICATION, "table": table_binding(), "windows": c["windows"], "reproduced": report["fully_reproduced"],
-            "numbered": c["numbered"], "numbered_without_score": c["numbered_without_score"], "valence": c["valence"], "blank": c["blank"]}
+            **after, **d, "stored_numbered": c["numbered"]}
 
 
 def runner_with_attestation(runner: dict, attestation: dict) -> dict:
@@ -168,7 +234,8 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None) -> di
     verification = {(c, p, v): (s, pol, ws, ri if isinstance(ri, dict) else json.loads(ri)) for c, p, v, s, pol, ws, ri in _rows(
         conn, "SELECT event_class, path_id, rule_version, status, policy_version, windows_stored, runner_identity FROM public.ka_gochara_eval_window_verification"
               " WHERE chart_id = %s AND generation = %s", (chart_id, generation))}
-    total = {"windows": 0, "numbered": 0, "numbered_without_score": 0}
+    total = {"windows": 0, "numbered": 0, "numbered_without_score": 0, "demoted": 0, "unconfirmed_blank_windows": 0}
+    demoted_by_reason: dict[str, int] = {}
     valence: dict[str, int] = {}
     by_path: dict[str, dict] = {}
     honest: dict[tuple, int] = {}
@@ -191,28 +258,49 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None) -> di
             problems.append(f"{tag}: {exc}")
             continue
         problems += [f"{tag}: {p}" for p in live["problems"]]
+        # R-6: the attested populations are the live (stored) ones after the verifier's classification. The demotions are the verifier's assertion (a stored row cannot
+        # say it); everything else in the attestation must equal what the stored windows say now, and the demotions must fit inside the stored numbered windows.
+        d = {"demoted": att.get("demoted", {}), "demoted_valence": att.get("demoted_valence", {}), "demoted_without_score": att.get("demoted_without_score", 0),
+             "unconfirmed_blank_windows": att.get("unconfirmed_blank_windows", 0)}
+        shape = [f"{tag}: {p}" for p in _demotion_problems(live, d)] if all(isinstance(d[k], dict) for k in ("demoted", "demoted_valence")) else [f"{tag}: the attested demotions are malformed"]
+        problems += shape
+        if shape:
+            continue
+        after = _after_classification(live, d)
         want = {"schema": SCHEMA, "status": PASSED, "policy": POLICY_QUALIFICATION, "table": binding, "windows": live["windows"], "reproduced": live["windows"],
-                "numbered": live["numbered"], "numbered_without_score": live["numbered_without_score"], "valence": live["valence"], "blank": live["blank"]}
+                **after, **d, "stored_numbered": live["numbered"]}
         if att != want:
-            problems.append(f"{tag}: the persisted attestation {att!r} is not what the stored windows now say {want!r}")
+            problems.append(f"{tag}: the persisted attestation {att!r} is not what the stored windows now say after classification {want!r}")
         if stored != live["windows"]:
             problems.append(f"{tag}: {stored} windows verified, {live['windows']} stored now")
-        for k in total:
-            total[k] += live[k]
-        for v, n in live["valence"].items():
+        n_dem = sum(d["demoted"].values())
+        total["windows"] += live["windows"]
+        total["numbered"] += after["numbered"]
+        total["numbered_without_score"] += after["numbered_without_score"]
+        total["demoted"] += n_dem
+        total["unconfirmed_blank_windows"] += d["unconfirmed_blank_windows"]
+        for v, n in after["valence"].items():
             valence[v] = valence.get(v, 0) + n
+        for r, n in d["demoted"].items():
+            demoted_by_reason[r] = demoted_by_reason.get(r, 0) + n
         slot = by_path.setdefault(path, {"windows": 0, "numbered": 0, "blank": 0})
         slot["windows"] += live["windows"]
-        slot["numbered"] += live["numbered"]
-        slot["blank"] += live["windows"] - live["numbered"]
-        for reason, n in live["blank"].items():
+        slot["numbered"] += after["numbered"]
+        slot["blank"] += live["windows"] - after["numbered"]
+        for reason, n in after["blank"].items():
             honest[(path, reason)] = honest.get((path, reason), 0) + n
     blank = total["windows"] - total["numbered"]
+    if total["demoted"] * 1000 > total["windows"] * INCONCLUSIVE_SHARE_CAP_PER_MILLE:
+        problems.append(f"{total['demoted']} of {total['windows']} windows are demoted to a named blank (the verifier could not settle them): above the "
+                        f"{INCONCLUSIVE_SHARE_CAP_PER_MILLE / 10:g} % cap — the seal refuses")
     return {"schema": SCHEMA, "status": FAILED if problems else PASSED, "policy": policy, "table": binding, "grains": len(pins), "windows": total["windows"],
             "numbered_windows": total["numbered"], "numbered_without_score": total["numbered_without_score"], "blank_windows": blank,
+            "demoted_windows": total["demoted"], "demoted_by_reason": dict(sorted(demoted_by_reason.items())),
+            "unconfirmed_blank_windows": total["unconfirmed_blank_windows"], "inconclusive_cap_per_mille": INCONCLUSIVE_SHARE_CAP_PER_MILLE,
             "valence_of_numbered": dict(sorted(valence.items())), "by_path": dict(sorted(by_path.items())),
             "honest_nulls": [{"path_id": p, "group": reason_group(r), "reason": r, "windows": n} for (p, r), n in sorted(honest.items())],
-            "judgment_flags": ["no_window_numbered_under_numerical_policy"] if total["windows"] and not total["numbered"] else [],
+            "judgment_flags": (["no_window_numbered_under_numerical_policy"] if total["windows"] and not total["numbered"] else [])
+            + (["windows_demoted_to_named_blank"] if total["demoted"] else []),
             "problems": problems, "disclosure": DISCLOSURE}
 
 

@@ -42,8 +42,13 @@ U2 (convex Taylor upper models about the midpoint, maximised at the interval end
 fall, or none) is MONOTONE: its sup is an endpoint, exact. (4) A MIXED piece (a rising and a falling term) is searched:
 pass 1 best-first on U proves M; pass 2 (pruning `U < M̂ − TIE`, never `U ≤ best`) resolves every alive stretch to a leaf where F is
 affine to LEAF_CURV, samples it, and finds each distinct local maximum. (5) All pieces' samples form ONE ordered sequence; its
-plateau-aware local maxima are the candidates; the earliest within TIE of the top is t*. (6) Budgets: `MAX_EVALS_WINDOW`, and a shared
-`Budget` per grain — exhaustion ⇒ blank `solver_budget_exhausted`.
+plateau-aware local maxima are the candidates; the earliest within TIE of the top is t*. (6) Budget: `MAX_EVALS_WINDOW` PER WINDOW and nothing
+shared across windows (R-6: a grain-level budget made a window's result depend on the windows solved before it) — exhaustion ⇒ blank
+`solver_budget_exhausted`. (7) CERTIFICATE (R-7): the piece tree the answer rests on — the cuts, the pieces with their kind, every cell with
+its claimed upper bound (monotone pieces, pass-1 pruned cells, pass-2 dead cells and the leaf brackets the maximum was located in), the
+evaluation count and the limits assumed — is returned as `SolveResult.tree`; `stored_certificate` turns it into the JSON object the window's
+`qualification` carries. A budget-exhausted blank carries the partial tree and its OPEN cells, so the independent verifier can check that the
+exhaustion was real. The verifier CHECKS the cells with its own first-order enclosure (`window_cert_check`); it never trusts a claimed bound.
 
 S0 findings used: the Swiss longitude is non-monotone by up to 3.9e-9° inside a stored (spline) segment next to a station, so a
 caller lists the Swiss stations in `Tent.stations` (extra cuts); `A_QUIET` + limb windows (`accel_bound_provider`) are the H4 table
@@ -80,6 +85,9 @@ LEAF_CURV = 4e-12            # an interval is a LEAF when each term is affine to
 MONO_TOL = 1e-11             # tent-value comparisons for the monotone-piece check
 H1_SPACING_S = 5.0 * 86400.0
 MAX_EVALS_WINDOW = 500_000   # ephemeris-call budget of ONE window (I: sized from S0 — 75.6 evals/record, 34,742 records, 6,629 windows)
+CERT_SCHEMA = "window_solver_certificate/1"   # the object the window's `qualification` carries under `solver_certificate` (R-7)
+MAX_OPEN_CELLS = 200         # an exhausted window's certificate lists the open cells of highest claimed bound, at most this many (`open_total` counts all)
+MAX_CERT_CELLS = 400         # a certificate is coarsened (adjacent closed cells merged, the claimed bound the max) to at most this many cells
 
 
 class SolverRefusal(RuntimeError):
@@ -156,24 +164,11 @@ class SolveResult:
     evals: int
     detail: str = ""
     certificate: Optional[dict] = None           # solved windows only: the facts the claim rests on
+    tree: Optional[dict] = None                  # the piece tree (solved, or budget-exhausted with its open cells): `stored_certificate` input
 
     @property
     def peak_value(self) -> Optional[float]:
         return None if self.certificate is None else self.certificate["value_at_instant"]
-
-
-class Budget:
-    """A shared evaluation budget (one per grain). `remaining` is decremented by every ephemeris call of every window solved
-    against it."""
-
-    def __init__(self, max_evals: int):
-        self.remaining = int(max_evals)
-        self.spent = 0
-
-
-def grain_budget_evals(allowance_seconds: float, n_grains: int, seconds_per_eval: float) -> int:
-    """MAX_EVALS_GRAIN = floor(allowance / (n_grains × c)) — S0 §1: 18,000 s, 104 grains; c = 2.1 µs … 100 µs."""
-    return int(allowance_seconds // (n_grains * seconds_per_eval))
 
 
 # ── H4: the audited kinematic-bound table (S0 §2.3; AUDIT + limb-window generation are S3) ───────────────────────────────────
@@ -203,22 +198,38 @@ def accel_bound_provider(graha: str, limb_windows: Optional[Sequence[tuple]]) ->
 
 # ── evaluation context (the ONLY place an ephemeris call is counted) ──────────────────────────────────────────────────────────
 
+class _Trace:
+    """The piece tree being built (R-7). `cells` are the CLOSED cells — `[kind, l, r, u]`, `u` the claimed upper bound of F on [l, r] —
+    of kind `piece` (a monotone/constant elementary piece: its supremum is an end value, exact), `pruned` (a pass-1 sub-interval whose bound
+    is within EPS_M of the incumbent), `dead` (a pass-2 interval whose bound is below the threshold M̂ − TIE) and `leaf` (a pass-2 interval
+    where F is affine to LEAF_CURV: the bracket a local maximum is located in). `open` are the cells still unresolved when the budget ran
+    out. `phase` is where the solver was."""
+
+    def __init__(self):
+        self.phase = "build"
+        self.cuts: list = []
+        self.pieces: list = []          # [a, b_eff, kind]
+        self.cells: list = []
+        self.heap = None                # pass 1: the live best-first heap (read at exhaustion)
+        self.stack = None               # pass 2: the live stack of the piece being explored
+        self.current = None             # the cell being split when the budget ran out
+        self.pending_pieces: list = []  # mixed pieces not yet started by the pass that was running
+
+
 class _Ctx:
-    def __init__(self, max_evals: int, grain: Optional[Budget]):
-        self.max_evals, self.grain, self.evals = int(max_evals), grain, 0
+    def __init__(self, max_evals: int):
+        self.max_evals, self.evals = int(max_evals), 0
         self._kin: dict = {}
+        self.trace = _Trace()
 
     def kin(self, tent: Tent, t: float):
         """(offset, velocity) of `tent` at `t`; ONE counted call per distinct (tent, t)."""
         key = (id(tent), t)
         got = self._kin.get(key)
         if got is None:
-            if self.evals >= self.max_evals or (self.grain is not None and self.grain.remaining <= 0):
+            if self.evals >= self.max_evals:
                 raise BudgetExhausted()
             self.evals += 1
-            if self.grain is not None:
-                self.grain.remaining -= 1
-                self.grain.spent += 1
             off = float(tent.offset(t))
             vel = None if tent.velocity is None else float(tent.velocity(t))
             if not math.isfinite(off) or (vel is not None and not math.isfinite(vel)):
@@ -490,6 +501,7 @@ def _build(problem: Problem, ctx: _Ctx):
                         if root is not None:
                             cuts.add(root)
     ordered = sorted(cuts)
+    ctx.trace.cuts = list(ordered)
     pieces = []
     for idx, (a, b) in enumerate(zip(ordered, ordered[1:])):
         live = [m for m, sup in members if any(s0 <= a < s1 for s0, s1 in sup)]
@@ -532,16 +544,27 @@ class _Sample:
 def _prove_max(mixed: list, best: float, ctx: _Ctx) -> float:
     """Pass 1: best-first branch-and-bound over the mixed pieces. Returns an incumbent M̂ with every interval's bound ≤ M̂ + EPS_M."""
     heap: list = []
+    tr = ctx.trace
+    tr.heap = heap
     seq = 0
-    for p in mixed:
+    for k, p in enumerate(mixed):
+        tr.pending_pieces = [(q.a, q.b_eff) for q in mixed[k:]]
         u = p.bound(p.a, p.b_eff)
         if u > best + EPS_M:
             heapq.heappush(heap, (-u, seq, p, p.a, p.b_eff))
             seq += 1
+        else:
+            tr.cells.append(["pruned", p.a, p.b_eff, u])
+    tr.pending_pieces = []
     while heap:
         negu, _s, p, l, r = heapq.heappop(heap)
         if -negu <= best + EPS_M:
+            tr.cells.append(["pruned", l, r, -negu])
+            for _n, _q, p2, l2, r2 in heap:
+                tr.cells.append(["pruned", l2, r2, -_n])
+            heap.clear()
             break
+        tr.current = (l, r)
         m = 0.5 * (l + r)
         if not l < m < r or r - l <= _min_width(l, r):
             raise _Blank(REASON_CERTIFICATE, "the bound did not converge before the float resolution")
@@ -551,25 +574,38 @@ def _prove_max(mixed: list, best: float, ctx: _Ctx) -> float:
             if u > best + EPS_M:
                 heapq.heappush(heap, (-u, seq, p, x, y))
                 seq += 1
+            else:
+                tr.cells.append(["pruned", x, y, u])
+        tr.current = None
     return best
 
 
-def _explore(p: _Piece, thresh: float) -> list:
-    """Pass 2 on one mixed piece: the leaves (time order) whose bound is NOT below `thresh` (pruning is strict: `U < thresh`)."""
+def _explore(p: _Piece, thresh: float, ctx: _Ctx) -> list:
+    """Pass 2 on one mixed piece: the leaves (time order) whose bound is NOT below `thresh` (pruning is strict: `U < thresh`). Every interval
+    it closes — dead (`U < thresh`) or a leaf — is recorded in the trace: together they tile the piece."""
+    tr = ctx.trace
     leaves, stack = [], [(p.a, p.b_eff)]
+    tr.stack = stack
     while stack:
         l, r = stack.pop()
+        tr.current = (l, r)
         u = p.bound(l, r)
         if u < thresh:
+            tr.cells.append(["dead", l, r, u])
+            tr.current = None
             continue
         if u - p.lower(l, r) <= EPS_PLATEAU or p.is_leaf(l, r):       # a flat plateau (e.g. the min objective pinned at 0) needs no refinement
             leaves.append((l, r))
+            tr.cells.append(["leaf", l, r, u])
+            tr.current = None
             continue
         m = 0.5 * (l + r)
         if not l < m < r:
             raise _Blank(REASON_CERTIFICATE, "an alive interval cannot be split")
         stack.append((m, r))
         stack.append((l, m))
+        tr.current = None
+    tr.stack = None
     return leaves
 
 
@@ -631,36 +667,130 @@ def _local_maxima(samples: list) -> list:
     return out
 
 
-def solve(problem: Problem, *, max_evals: int = MAX_EVALS_WINDOW, grain: Optional[Budget] = None) -> SolveResult:
-    """Solve one window: a certified number, or a named blank. Never a best-found value."""
-    ctx = _Ctx(max_evals, grain)
+def solve(problem: Problem, *, max_evals: int = MAX_EVALS_WINDOW) -> SolveResult:
+    """Solve one window: a certified number, or a named blank. Never a best-found value. The budget is this window's alone."""
+    ctx = _Ctx(max_evals)
     try:
         return _solve(problem, ctx)
     except _Blank as exc:
         return SolveResult(BLANK, None, None, exc.reason, ctx.evals, exc.detail)
     except BudgetExhausted:
-        return SolveResult(BLANK, None, None, REASON_BUDGET, ctx.evals, f"more than {ctx.max_evals} ephemeris calls needed")
+        return SolveResult(BLANK, None, None, REASON_BUDGET, ctx.evals, f"more than {ctx.max_evals} ephemeris calls needed",
+                           tree=_exhausted_tree(problem, ctx))
+
+
+def _tree(ctx: _Ctx, *, outcome: str, value=None, instant=None, upper=None, reason=None, open_cells=(), h4_used=False) -> dict:
+    tr = ctx.trace
+    cells = [c for c in tr.cells if outcome != "solved" or c[0] != "pruned"]      # a solved tree is tiled by pass 2; pass-1 cells are only a trace
+    return {"outcome": outcome, "reason": reason, "phase": "done" if outcome == "solved" else tr.phase, "value": value, "instant": instant,
+            "upper_bound": upper, "evals": ctx.evals, "max_evals": ctx.max_evals, "cuts": list(tr.cuts), "pieces": [list(x) for x in tr.pieces],
+            "cells": [list(c) for c in cells], "open": [[l, r] for l, r in open_cells], "h4_used": bool(h4_used)}
+
+
+def _exhausted_tree(problem: Problem, ctx: _Ctx) -> dict:
+    """The partial tree when the budget ran out: what is closed, and every cell still OPEN. In the build phase nothing is known, so the
+    whole window is open; later, the open cells are the live heap / stack / the cell being split / the pieces not yet started; in the
+    refinement phase the leaves are all open (the bound is proven, the instant is not located)."""
+    tr = ctx.trace
+    if tr.phase == "build":
+        return _tree(ctx, outcome="blank", reason=REASON_BUDGET, open_cells=[(problem.lo, problem.hi)])
+    opened: list = []
+    total_heap = len(tr.heap) if tr.heap else 0
+    if tr.heap:
+        opened += [(l, r) for _n, _q, _p, l, r in heapq.nsmallest(MAX_OPEN_CELLS, tr.heap, key=lambda e: (e[0], e[1]))]    # highest claimed bound first
+    n_heap_listed = len(opened)
+    if tr.stack:
+        opened += list(tr.stack)
+    if tr.current is not None:
+        opened.append(tr.current)
+    opened += list(tr.pending_pieces)
+    cells = tr.cells
+    if tr.phase == "refine":
+        opened += [(c[1], c[2]) for c in cells if c[0] == "leaf"]
+    for a, b, kind in tr.pieces:
+        if kind == "gap":
+            continue
+        if not any(c[1] < b and c[2] > a or (c[1] == a and c[2] == b) for c in cells) and not any(l < b and r > a or (l == a and r == b) for l, r in opened):
+            opened.append((a, b))
+    tree = _tree(ctx, outcome="blank", reason=REASON_BUDGET, open_cells=sorted(set(opened)))
+    tree["open_total"] = total_heap + len(set(opened[n_heap_listed:]))
+    return tree
+
+
+def _coarsen(cells: list, cap: int) -> tuple:
+    """At most `cap` cells: adjacent closed cells of one kind are merged (the claimed bound the larger — a bound of the union), `leaf` cells
+    only when that is not enough; if it still is not, the narrowest closed `pruned`/`dead` cells are dropped (the verifier searches an
+    uncovered stretch itself) and the result is flagged truncated. `piece` cells are never dropped."""
+    def merge(cs: list, kinds: tuple) -> list:
+        out: list = []
+        for c in sorted(cs, key=lambda c: (c[1], c[2])):
+            if out and out[-1][0] == c[0] and c[0] in kinds and c[1] - out[-1][2] <= 2.0 * QUANT + 1e-9:
+                out[-1] = [c[0], out[-1][1], max(c[2], out[-1][2]), max(c[3], out[-1][3])]
+            else:
+                out.append(list(c))
+        return out
+    out = merge(cells, ("dead", "pruned", "piece"))
+    if len(out) > cap:
+        out = merge(out, ("dead", "pruned", "piece", "leaf"))
+    if len(out) <= cap:
+        return out, False
+    keep = [c for c in out if c[0] in ("leaf", "piece")]
+    closed = sorted((c for c in out if c[0] in ("dead", "pruned")), key=lambda c: -(c[2] - c[1]))
+    return sorted(keep + closed[:max(0, cap - len(keep))], key=lambda c: (c[1], c[2])), True
+
+
+def stored_certificate(result: SolveResult, *, objective: str, t0_iso: str, max_evals: Optional[int] = None) -> Optional[dict]:
+    """The JSON object a window's `qualification` carries under `solver_certificate` (R-7), or None when the result has no tree (a blank
+    other than budget exhaustion). Times are SECONDS from `t0_iso` (the window start the caller used as its origin). It is split in two on
+    purpose: `geometry` (cuts and piece kinds — they depend on the tents and step boundaries only, so a re-evaluation under different
+    doctrine VALUES can reuse them, and the cells' time partition, as a search seed) and the value claims (`cells`' bounds, `value`,
+    `instant`), which a re-evaluation must re-check. `geometry_digest` is the sha256 of the canonical geometry."""
+    tree = result.tree
+    if tree is None:
+        return None
+    import hashlib
+    import json
+    cells, truncated = _coarsen(tree["cells"], MAX_CERT_CELLS)
+    geometry = {"cuts": tree["cuts"], "pieces": tree["pieces"]}
+    blob = json.dumps(geometry, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return {
+        "schema": CERT_SCHEMA, "objective": objective, "t0": t0_iso, "outcome": tree["outcome"], "reason": tree["reason"], "phase": tree["phase"],
+        "value": tree["value"], "instant": tree["instant"], "upper_bound": tree["upper_bound"],
+        "evals": tree["evals"], "max_evals": tree["max_evals"] if max_evals is None else int(max_evals), "budget_scope": "window",
+        "limits": {"QUANT": QUANT, "TIE": TIE, "EPS_M": EPS_M, "TIME_TOL": TIME_TOL, "LEAF_CURV": LEAF_CURV, "H1_SPACING_S": H1_SPACING_S,
+                   "h4_used": tree["h4_used"]},
+        "geometry": geometry, "geometry_digest": hashlib.sha256(blob.encode("utf-8")).hexdigest(),
+        "cells": cells, "open": tree["open"][:MAX_OPEN_CELLS], "open_total": tree.get("open_total", len(tree["open"])), "truncated": truncated}
 
 
 def _solve(problem: Problem, ctx: _Ctx) -> SolveResult:
+    tr = ctx.trace
     ordered, pieces = _build(problem, ctx)
+    tr.pieces = [[ordered[i], ordered[i + 1] - QUANT if ordered[i + 1] - ordered[i] > 2 * QUANT else ordered[i], "gap"]
+                 if p is None else [p.a, p.b_eff, p.kind] for i, p in enumerate(pieces)]
+    tr.phase = "prove"
     live = [p for p in pieces if p is not None]
     # incumbent from the exact values of every piece's ends (and the mixed pieces' midpoints)
     best = -1.0
     for p in live:
-        best = max(best, p.value(p.a), p.value(p.b_eff))
+        v0, v1 = p.value(p.a), p.value(p.b_eff)
+        best = max(best, v0, v1)
         if p.kind == "mixed":
             best = max(best, p.value(0.5 * (p.a + p.b_eff)))
+        else:
+            tr.cells.append(["piece", p.a, p.b_eff, max(v0, v1)])      # monotone / constant: the supremum IS an end value
     mixed = [p for p in live if p.kind == "mixed"]
     proven = _prove_max(mixed, best, ctx) if mixed else best
     thresh = proven - TIE
 
+    tr.phase = "explore"
     samples: list = []
     for p in pieces:
         if p is None:
             samples.append(_Sample(math.nan, -1.0, "gap", None))
         elif p.kind == "mixed":
-            leaves = _explore(p, thresh)
+            tr.pending_pieces = [(q.a, q.b_eff) for q in mixed[mixed.index(p) + 1:]]      # not yet started if the budget runs out inside this one
+            leaves = _explore(p, thresh, ctx)
             pts = sorted({p.a, p.b_eff} | {x for lf in leaves for x in lf})
             for t in pts:
                 samples.append(_Sample(t, p.value(t), "start" if t == p.a else ("end" if t == p.b_eff else "leaf"), p))
@@ -669,6 +799,7 @@ def _solve(problem: Problem, ctx: _Ctx) -> SolveResult:
             if p.b_eff != p.a:
                 samples.append(_Sample(p.b_eff, p.value(p.b_eff), "end", p))
 
+    tr.phase, tr.pending_pieces = "refine", []
     cands = []                                    # (value, instant)
     for i0, i1 in _local_maxima(samples):
         grp = samples[i0:i1 + 1]
@@ -690,16 +821,17 @@ def _solve(problem: Problem, ctx: _Ctx) -> SolveResult:
     top = max(v for v, _t in cands)
     t_star = min(t for v, t in cands if v >= top - TIE)
     at_star = max(v for v, t in cands if t == t_star)
+    h4_used = any(br.tent is not None and br.tent.accel_bound is not None for p in mixed for brs in p.groups.values() for br in brs)
     cert = {"upper_bound": top + (EPS_M if mixed else 0.0), "value_at_instant": at_star, "pieces": len(live),
             "mixed_pieces": len(mixed), "candidates": len(cands), "ties": sum(1 for v, _t in cands if v >= top - TIE),
-            "h4_used": any(br.tent is not None and br.tent.accel_bound is not None
-                           for p in mixed for brs in p.groups.values() for br in brs)}
-    return SolveResult(SOLVED, top, t_star, None, ctx.evals, certificate=cert)
+            "h4_used": h4_used}
+    tree = _tree(ctx, outcome="solved", value=top, instant=t_star, upper=cert["upper_bound"], h4_used=h4_used)
+    return SolveResult(SOLVED, top, t_star, None, ctx.evals, certificate=cert, tree=tree)
 
 
 __all__ = [
     "OBJECTIVE_SUM", "OBJECTIVE_MINMAX", "SOLVED", "BLANK", "REASON_BUDGET", "REASON_MONOTONE", "REASON_CERTIFICATE",
     "REASON_BOUNDARIES", "REASON_UNKNOWN", "REASON_UNDETERMINABLE", "QUANT", "TIE", "MAX_EVALS_WINDOW", "SolverRefusal", "BudgetExhausted", "Tent",
-    "Step", "Member", "Problem", "SolveResult", "Budget", "constant_step", "grain_budget_evals", "accel_bound_provider",
-    "A_QUIET_DEG_PER_DAY2", "H4_MARGIN", "objective_value", "solve",
+    "Step", "Member", "Problem", "SolveResult", "constant_step", "accel_bound_provider", "CERT_SCHEMA", "MAX_CERT_CELLS", "MAX_OPEN_CELLS",
+    "A_QUIET_DEG_PER_DAY2", "H4_MARGIN", "objective_value", "solve", "stored_certificate",
 ]

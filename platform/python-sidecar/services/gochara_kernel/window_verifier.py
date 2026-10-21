@@ -253,7 +253,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                             drishti_bound: bool = False, vedha_bound: bool = False,
                             dynamic_enabled: bool = False, policy: str | None = None,
                             solver_check: bool = True, channel_at=None, channel_boundaries=None, p1_check=None,
-                            vedha_overlay=None, moon_sign: int | None = None) -> dict:
+                            vedha_overlay=None, moon_sign: int | None = None, solver_check_fn=None) -> dict:
     """`solver_check` (W0, plan N-6): whether THIS call runs the solver check on a window whose numbers cannot be reproduced
     by the constant-window derivation (a function-valued member under `dynamic_enabled`). The in-build self-check in the writer
     passes False — the independent prover runs once, in the verification job, not twice inside the writer's cap — and then
@@ -262,6 +262,16 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
 
     `channel_at(record, t)` / `channel_boundaries(record, lo, hi)` (W0): the per-instant channel of a P1 record and its change
     instants, supplied by the caller's own derivation; absent ⇒ a P1 record has no channel derivation (refused, as before).
+
+    `solver_check_fn` (R-6/R-7): the verifier's check of a function-valued window's stored numbers and certificate. Called with ONE dict
+    {window, lo, hi, peak, score, evidence_for, evidence_against, valence, objective_value, qualification, records, qualified, event_class,
+    path_id, rule_version} per such window when `solver_check` is true; it returns a `window_cert_check.CertReport` (or any object with
+    `.classification` in AGREED / DISAGREEMENT / INCONCLUSIVE, `.findings` and `.inconclusive`), or None for a window it does not cover
+    (that window stays UNVERIFIED, as before). AGREED numbered ⇒ reproduced and numeric; AGREED blank (a justified `solver_budget_exhausted`) ⇒
+    reproduced; DISAGREEMENT ⇒ a problem (the report raises: the seal is blocked, always); INCONCLUSIVE ⇒ the window is DEMOTED — counted as
+    reproduced (as the named blank it will be served as), listed in `inconclusive_windows` with the stored valence, never in `numeric_reproduced`,
+    and capped by the numerical-window gate. The adapter that builds the checker's records from these rows is the integration's (S3), not this
+    function's; without a `solver_check_fn` nothing changes.
 
     `p1_check` (P1c): a `p1_operands_check.P1Check` — the verifier's own sky + L0 derivation of the P1 states. Bound to this
     path's factor rows it supplies the P1 records' value, side (`channel_at`), unknown reasons and change instants, replacing any
@@ -353,6 +363,8 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     fully_reproduced = 0            # windows whose stored fields were reproduced EXACTLY (incl. the NULL ones)
     unverified: list[str] = []      # windows with a function-valued member while the solver is enabled
     deferred: list[str] = []        # …of those, the ones whose solver check this call was told to leave to the verification job
+    inconclusive: list[dict] = []   # R-6: windows the solver check could not settle inside its budget — demoted to a named blank at seal
+    solver_checked = 0              # windows `solver_check_fn` verdicted
     detail: list[dict] = []         # the lossless qualification provenance, DERIVED here (1156 has no column)
 
     def expect_null_window(tag, stored, reason):
@@ -384,7 +396,8 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         want_q = {"policy": policy, "unqualified_reason": row["unqualified_reason"], "unresolved": row["unresolved"],
                   "affected_channels": row["affected_channels"], "members": row["members"],
                   "qualified_members": qualified_members}
-        if s_qual != want_q:
+        # R-7: the builder's `solver_certificate` rides in the same object; it is CHECKED by the solver check, never compared here
+        if {k: v for k, v in s_qual.items() if k != "solver_certificate"} != want_q:
             problems.append(f"{tag}: qualification {s_qual} != re-derived {want_q}")
 
     for (wid, lo, hi, peak, score, ev_for, ev_against, severity, null_states, valence,
@@ -471,11 +484,46 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                 fully_reproduced += 1
             detail.append(row)
             continue
-        if has_fn:                                   # the solver is enabled: numbers NOT reproduced here
+        if has_fn:                                   # the solver is enabled: numbers are not reproduced by the constant derivation below
             detail.append(row)
-            unverified.append(tag)
-            if not solver_check:
-                deferred.append(tag)
+            verdict = None
+            if solver_check and solver_check_fn is not None:
+                verdict = solver_check_fn({
+                    "window": row["window"], "lo": lo, "hi": hi, "peak": peak, "score": score, "evidence_for": ev_for,
+                    "evidence_against": ev_against, "valence": valence, "objective_value": s_objective_value,
+                    "qualification": s_qualification, "records": recs, "qualified": qualified, "event_class": event_class,
+                    "path_id": path_id, "rule_version": rule_version})
+            if verdict is None:
+                unverified.append(tag)
+                if not solver_check:
+                    deferred.append(tag)
+            else:
+                solver_checked += 1
+                cls = verdict.classification
+                if cls == "DISAGREEMENT":
+                    problems.append(f"{tag}: the independent solver check DISAGREES — " + "; ".join(
+                        f"{code}: {detail_}" for code, detail_ in verdict.findings))
+                elif cls == "INCONCLUSIVE":
+                    why = sorted(r for r, _d in verdict.inconclusive)[0]
+                    inconclusive.append({"window": row["window"], "reason": why, "stored_numbered": peak is not None,
+                                         "valence": valence, "had_score": score is not None})
+                    fully_reproduced += 1                  # reproduced as the named blank it will be served as
+                elif cls == "AGREED":
+                    if peak is not None:
+                        numeric += 1
+                        row["objective_value"] = s_objective_value
+                    else:                                  # a blank the solver check justified: it must be a NAMED blank carrying no number
+                        why = (s_qualification or {}).get("unqualified_reason")
+                        row["unqualified_reason"] = why
+                        row["unresolved"] = dict((s_qualification or {}).get("unresolved") or {})
+                        if why is None:
+                            problems.append(f"{tag}: a blank window carries no reason code")
+                        else:
+                            expect_null_window(tag, stored, why)
+                    check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+                    fully_reproduced += 1
+                else:
+                    problems.append(f"{tag}: the solver check returned the unknown class {cls!r}")
             # UNIVERSAL BOUNDS (hold for any factor value in [0,1], so they bind where numbers cannot be
             # reproduced): evidence is a Σ over roots of a per-root max of values ≤ 1; the score is a unit value
             if score is not None and not (0.0 <= score <= 1.0 + _TOL):
@@ -610,8 +658,8 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     return {"windows": len(windows), "numeric_reproduced": numeric,
             "fully_reproduced": fully_reproduced, "unverified_dynamic": len(unverified),
             "unverified_windows": unverified, "policy_version": policy,
-            "solver_check_requested": solver_check, "solver_checked_windows": 0,
-            "solver_check_deferred_windows": len(deferred),
+            "solver_check_requested": solver_check, "solver_checked_windows": solver_checked,
+            "solver_check_deferred_windows": len(deferred), "inconclusive_windows": inconclusive,
             "fields_verified": list(GOVERNED_FIELDS), "windows_detail": detail,
             **({"vedha_derivation": derived_vedha.summary()} if derived_vedha is not None else {}),
             # VERIFIED only when EVERY window's stored fields were reproduced exactly
