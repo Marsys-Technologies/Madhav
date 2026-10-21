@@ -466,6 +466,7 @@ def _final_ctx():
     writer tests below run under the explicit candidate profile."""
     ctx = _ctx()
     ctx.config['gochara_v5_final_rules'] = True
+    ctx.config['result_policy'] = 'all_null_candidate/1'       # OD-1: a final-rules run names its policy (the writer refuses an unnamed one); these tests are about rows, not numbers
     return ctx
 
 
@@ -511,6 +512,7 @@ def test_final_rules_are_opt_in_and_do_not_change_the_default_writer(_record_pha
     old = _record_phase_fakes['grain'][-1]['edges']
     assert old and {e.rule_version for e in old} == {'1.0.0'}
     ctx.config['gochara_v5_final_rules'] = True
+    ctx.config['result_policy'] = 'all_null_candidate/1'
     w.run_substep(ctx, SubStep(key='record:parental_event:P2', label=''))
     assert _record_phase_fakes['grain'][-1]['edges'] == []
 

@@ -49,7 +49,7 @@ def _plan(ctx):
 # ── C4: the plan never changes ──────────────────────────────────────────────────────────────────────────────────────
 
 def test_c4_the_flag_leaves_the_plan_byte_identical_298_substeps_verify_included():
-    steps, digest = _plan(_slice_ctx(None, gochara_v5_final_rules=True, **{FLAG: True}))
+    steps, digest = _plan(_slice_ctx(None, gochara_v5_final_rules=True, result_policy="all_null_candidate/1", **{FLAG: True}))
     assert len(steps) == GOLDEN_PLAN_STEPS == 298
     assert digest == GOLDEN_PLAN_DIGEST
     assert sum(s.key.startswith(writer_mod.VERIFY_SUBSTEP_PREFIX) for s in steps) == len(writer_mod.SCORED_CLASSES)
@@ -82,7 +82,7 @@ def test_c6_the_flag_is_refused_for_a_build_that_is_not_on_the_final_rules():
 @pytest.mark.parametrize("value", [1, 0, "true", "false", None, [True]])
 def test_c7_a_non_boolean_flag_value_is_refused_never_coerced(value):
     with pytest.raises(writer_mod.DeferVerifyRefusal, match="must be a boolean"):
-        writer_mod.GocharaV5Writer().plan_substeps(_slice_ctx(None, gochara_v5_final_rules=True, **{FLAG: value}))
+        writer_mod.GocharaV5Writer().plan_substeps(_slice_ctx(None, gochara_v5_final_rules=True, result_policy="all_null_candidate/1", **{FLAG: value}))
 
 
 def test_absent_and_false_are_the_default_path():
@@ -138,7 +138,7 @@ def chain(am5, monkeypatch, tmp_path):
     def step(key, **config):
         ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-w3", db_conn=am5,
                           config={"chart_id": CHART_ID, "horizon": (H0, H1), "ephe_path": ephe,
-                                  "gochara_v5_final_rules": True, **config}, dry_run=False)
+                                  "gochara_v5_final_rules": True, "result_policy": "all_null_candidate/1", **config}, dry_run=False)
         with am5.transaction():
             return w.run_substep(ctx, SubStep(key=key, label=key))
 

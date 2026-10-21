@@ -161,7 +161,7 @@ def test_p2_a_century_dispatch_demands_the_century_scopes_proof_and_the_default_
     monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)
     monkeypatch.setattr(shared, 'century_dryrun_evidence', lambda req, root, digest=None: None)
     base = {'kind': 'century_dispatch', 'item_id': shared.CENTURY_ITEM, 'args': {'classes': 'all', 'final_rules': 'true', 'defer_in_build_verify': 'true',
-                                                                                            'horizon': '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00'}}   # synthetic bounds (F-CHANNEL: the four exact args)
+                                                                                            'horizon': '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00', 'result_policy': 'window_qualification/1'}}   # synthetic bounds (F-CHANNEL: the four exact args)
     (tmp_path / 'small').mkdir()
     (tmp_path / 'century').mkdir()
     small = write_evidence(tmp_path / 'small', shared, label='p02_small')

@@ -127,8 +127,8 @@ def policy(root: Path, pack: Path | None) -> dict:
         raise ContractError(f"{WRITER}: the final-rules config key was not found")
     defer_key = _literal(WRITER, "DEFER_VERIFY_KEY", root)
     out = {"certification": {"sink_policy": sink, "strict": name == "POLICY_RAISE", "source": f"{WRITER} policy selection, unmarked arm ({name})"},
-           "config_keys": {"final_rules": final_key.group(1), "defer_in_build_verify": defer_key},
-           "final_rules": None, "defer_in_build_verify": None, "source": None}
+           "config_keys": {"final_rules": final_key.group(1), "defer_in_build_verify": defer_key, "result_policy": _literal(WRITER, "_RESULT_POLICY_KEY", root)},
+           "final_rules": None, "defer_in_build_verify": None, "result_policy": None, "source": None}
     if pack is not None:
         body = (pack / PACK_FILE).read_bytes()
         args = (json.loads(body).get("carrier") or {}).get("args") or {}
@@ -136,6 +136,9 @@ def policy(root: Path, pack: Path | None) -> dict:
             if args.get(key) not in ("true", "false"):
                 raise ContractError(f"{PACK_FILE} carrier.args.{key} is not 'true' or 'false'")
             out[key] = args[key] == "true"
+        if args.get("result_policy") not in _literal(SHARED, "CENTURY_RESULT_POLICIES", root):
+            raise ContractError(f"{PACK_FILE} carrier.args.result_policy is not one of the named result policies")
+        out["result_policy"] = args["result_policy"]
         out["source"] = {"file": PACK_FILE, "sha256": hashlib.sha256(body).hexdigest(), "ruling": "SR-W3-SHAPE 3; SR-W34-PREP-RULINGS 1"}
     return out
 
@@ -240,13 +243,14 @@ def _load(path: Path, name: str):
 
 
 def launch_args(shared, pol: dict, hz: dict) -> dict:
-    """The request's exact four `args` (F-CHANNEL, SR-W34-PREP-RULINGS 1; shared.CENTURY_ARG_KEYS): `classes` all, the two policy booleans as 'true'/'false' and the horizon as
-    '<start>,<end>' (the committed horizon, verbatim: SR-HORIZON-PUBLIC). The two policy values are pack-sourced and stay null without --pack. (I) INTERPRETATION: the launch
+    """The request's exact five `args` (F-CHANNEL, SR-W34-PREP-RULINGS 1, OD-1; shared.CENTURY_ARG_KEYS): `classes` all, the two policy booleans as 'true'/'false', the horizon as
+    '<start>,<end>' (the committed horizon, verbatim: SR-HORIZON-PUBLIC) and the numeric-result policy. The three policy values are pack-sourced and stay null without --pack. (I) INTERPRETATION: the launch
     args are derived from the facts the contract already commits, so a request that differs from them in any value is refused by `century_contract_problem`."""
-    if set(shared.CENTURY_ARG_KEYS) != {"classes", "final_rules", "defer_in_build_verify", "horizon"}:
+    if set(shared.CENTURY_ARG_KEYS) != {"classes", "final_rules", "defer_in_build_verify", "horizon", "result_policy"}:
         raise ContractError("the century request's argument keys changed; the contract's launch_args generator must be reviewed")
     flag = lambda value: None if value is None else ("true" if value else "false")
-    return {"classes": "all", "final_rules": flag(pol["final_rules"]), "defer_in_build_verify": flag(pol["defer_in_build_verify"]), "horizon": f"{hz['start']},{hz['end']}"}
+    return {"classes": "all", "final_rules": flag(pol["final_rules"]), "defer_in_build_verify": flag(pol["defer_in_build_verify"]), "horizon": f"{hz['start']},{hz['end']}",
+            "result_policy": pol["result_policy"]}
 
 
 def derive(root: Path = REPO, pack: Path | None = None, with_digest: bool = True) -> dict:
@@ -292,8 +296,11 @@ def compare(committed: dict, derived: dict, *, with_digest: bool, with_pack: boo
     if not with_digest:
         want["image"]["writer_source_digest"] = have.get("image", {}).get("writer_source_digest")
     if not with_pack:
-        for key in ("final_rules", "defer_in_build_verify", "source"):
+        for key in ("final_rules", "defer_in_build_verify", "result_policy", "source"):
             want["policy"][key] = have.get("policy", {}).get(key)
+        if have.get("launch_args", {}).get("result_policy") not in _literal(SHARED, "CENTURY_RESULT_POLICIES", REPO):
+            return ["launch_args.result_policy is not a named result policy"]
+        want["launch_args"]["result_policy"] = have["launch_args"]["result_policy"]
         for key in ("final_rules", "defer_in_build_verify"):
             if not isinstance(have.get("policy", {}).get(key), bool):
                 return [f"policy.{key} is not a boolean"]

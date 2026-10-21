@@ -9,6 +9,11 @@ A person (an operator) runs it, once per (chart, generation), AFTER the build. I
 identity self-check (`verification_job.check_identity`): it refuses to run as the builder, as a superuser, or as any login
 that can write a builder table. It does not `SET ROLE`.
 
+Under a manifest that selects `window_qualification/1` (OD-1, SR-OD1-NUMERICAL) this job is also the NUMERICAL-WINDOW GATE (`services.gochara_kernel.numerical_window_gate`): it re-derives the strength, peak
+and valence of EVERY window through the frozen qualification table the manifest binds, recounts the stored windows, refuses (DISAGREE, nothing persisted) on any mismatch, and persists a PASSED
+attestation per grain; the report carries the generation's verdict (`numerical_window_gate`) and `--brief` carries it, with the honest-null windows counted by reason code. Under the all-NULL policy
+nothing of this exists.
+
 `--brief` (R11-3) is the SEAL BRIEF mode, not a report: it evaluates the candidate adapter gate, reads the persisted attestations and persists
 the brief (`ka_gochara_seal_brief`, F-R12-4) and prints a COMPACT last line `{"status": "BRIEFED", "sha256", "persisted": {brief_id,
 manifest_id, state_digest}, "brief_bytes", "brief_file", "brief_chunks"}` — refusing (exit 3, the reasons named) unless the gate is clean

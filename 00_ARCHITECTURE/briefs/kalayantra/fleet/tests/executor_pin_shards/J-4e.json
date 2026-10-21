@@ -1,0 +1,93 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "J-4e",
+  "after": null,
+  "entries": {
+    "century_dispatch": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py",
+      "fixed_args": [],
+      "allowed_args": [
+        "classes",
+        "final_rules",
+        "defer_in_build_verify",
+        "horizon",
+        "result_policy"
+      ],
+      "production": true,
+      "remote_async": true,
+      "enabled_by": "J-4d",
+      "also_needs": [
+        "gcloud"
+      ],
+      "prepared_dry_run": {
+        "enabled": false,
+        "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/operation_dryrun.py",
+        "fixed_args": [
+          "--dry-run",
+          "--kind",
+          "century_dispatch"
+        ],
+        "allowed_args": [
+          "classes"
+        ],
+        "enable_at": "J-4d",
+        "attestation": "PREPARATION_ONLY; dry_run_passed=false; allocate a real child before binding or enablement"
+      }
+    },
+    "century_dispatch_dryrun": {
+      "enabled": true,
+      "needs": "builder",
+      "script": "platform/scripts/dispatch_v5_century_job.py",
+      "fixed_args": [
+        "--i-am-steward",
+        "--after-settled-1",
+        "--dry-run"
+      ],
+      "allowed_args": [
+        "classes",
+        "final_rules",
+        "defer_in_build_verify",
+        "horizon",
+        "result_policy"
+      ],
+      "production": false,
+      "enabled_by": "J-4d"
+    }
+  },
+  "w4_bindings": {
+    "century_dispatch_dryrun": [
+      "builder",
+      "platform/scripts/dispatch_v5_century_job.py",
+      [
+        "--i-am-steward",
+        "--after-settled-1",
+        "--dry-run"
+      ],
+      [
+        "classes",
+        "final_rules",
+        "defer_in_build_verify",
+        "horizon",
+        "result_policy"
+      ],
+      false,
+      null
+    ],
+    "century_dispatch": [
+      "builder",
+      "00_ARCHITECTURE/briefs/kalayantra/fleet/century_launch.py",
+      [],
+      [
+        "classes",
+        "final_rules",
+        "defer_in_build_verify",
+        "horizon",
+        "result_policy"
+      ],
+      true,
+      null
+    ]
+  }
+}

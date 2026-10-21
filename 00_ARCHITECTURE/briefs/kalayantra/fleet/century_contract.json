@@ -51,14 +51,15 @@
     "project": "madhav-astrology",
     "region": "asia-south1",
     "repository": "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline",
-    "writer_source_digest": "3b629c6ea2165cac4619192bd3a795ec95ba518fd8a7f967ec55b322c031caca"
+    "writer_source_digest": "cc69ab1b1db4697f2c520c09c623168cc07ff88a2e16e395b323a9af02d35a49"
   },
   "item": "J-4e",
   "launch_args": {
     "classes": "all",
     "defer_in_build_verify": "true",
     "final_rules": "true",
-    "horizon": "1998-01-01T00:00:00+00:00,2084-02-05T00:00:00+00:00"
+    "horizon": "1998-01-01T00:00:00+00:00,2084-02-05T00:00:00+00:00",
+    "result_policy": "window_qualification/1"
   },
   "output_tables": [
     {
@@ -136,10 +137,12 @@
     },
     "config_keys": {
       "defer_in_build_verify": "gochara_v5_defer_in_build_verify",
-      "final_rules": "gochara_v5_final_rules"
+      "final_rules": "gochara_v5_final_rules",
+      "result_policy": "result_policy"
     },
     "defer_in_build_verify": true,
     "final_rules": true,
+    "result_policy": "window_qualification/1",
     "source": {
       "file": "VERIFY_DEFERRAL.json",
       "ruling": "SR-W3-SHAPE 3; SR-W34-PREP-RULINGS 1",

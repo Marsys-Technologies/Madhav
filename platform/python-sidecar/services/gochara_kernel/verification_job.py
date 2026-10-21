@@ -394,6 +394,7 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     from . import contact_certify as cc
     from . import inventory_verifier as inv_v
     from . import record_verifier as rv
+    from . import numerical_window_gate as nwg
     from . import window_gate as wg
     from . import window_verifier as wv
 
@@ -494,8 +495,13 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
             conn, factor_rows=factor_rows_for(p, v), drishti_bound=drishti_bound, vedha_bound=vedha_bound, **g))
         entry = {"path_id": path_id, "rule_version": version, "status": report["status"],
                  "policy_version": report["policy_version"], "windows": report["windows"]}
+        attestation = None
+        if policy == nwg.POLICY_QUALIFICATION:
+            # OD-1: the NUMERICAL-WINDOW GATE — the recount of every window of this grain against the re-derivation just made; it raises on any difference
+            attestation = stage(f"numerical_window_gate {path_id}", lambda g=grain, r=report: nwg.grain_attestation(conn, report=r, policy=policy, **g))
+            entry["numerical_window_gate"] = {k: attestation[k] for k in ("status", "windows", "numbered", "blank")}
         windows.append(entry)
-        reports.append((grain, report, None if derived is None else derived["derived_windows"]))
+        reports.append((grain, report, None if derived is None else derived["derived_windows"], attestation))
     out["windows"] = windows
     if persist:
         # ORDER (Stream B's all-guards rehearsal): the WINDOW verifications first, the 1206 inventory row last — the class's
@@ -509,9 +515,11 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
             raise VerificationDisagrees(
                 "consistency", "the data this verification checked changed before it could be persisted — the report "
                 "no longer identifies the stored state (a writer replaced it outside the lock protocol); nothing is persisted")
-        for grain, report, derived_w in reports:
-            stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report, d=derived_w:
-                  wg.record_verification(conn, report=r, input_digest=snap, expected=d, runner=runner,
+        for grain, report, derived_w, attestation in reports:
+            # OD-1: under `window_qualification/1` the grain's PASSED attestation rides in the runner-identity object of its 1240 row (no migration needed)
+            row_runner = runner if attestation is None else nwg.runner_with_attestation(runner if runner is not None else wg.runner_identity(), attestation)
+            stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report, d=derived_w, rr=row_runner:
+                  wg.record_verification(conn, report=r, input_digest=snap, expected=d, runner=rr,
                                          checked_inputs_digest=fp0["grains"][f"{g['path_id']}@{g['rule_version']}"][0],
                                          **g))
         stage("inventory_verification", lambda: inv_v.write_verification(
@@ -633,6 +641,15 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     # generation-level violations carry event_class '*' (the completeness function) or None — BOTH are generation-level and
     # always in scope: a subset run must not be able to call a generation-level mismatch "outside its classes" (R11-cand-1)
     gate = [v for v in gate_all if full or v["event_class"] in (None, "*") or v["event_class"] in scope]
+    # OD-1: under `window_qualification/1` the NUMERICAL-WINDOW GATE's verdict is part of the gate — read back from what was persisted (a pure read of the 1240 rows'
+    # attestations and the live windows), so a run that persisted nothing (`--report-only`) reports it NOT evaluated rather than green
+    from . import numerical_window_gate as nwg
+    verdict = nwg.generation_verdict(conn, chart_id, generation, classes=None if full else scope)
+    if report_only and verdict["status"] != nwg.NOT_APPLICABLE:
+        verdict = {"schema": nwg.SCHEMA, "status": "NOT_EVALUATED", "policy": verdict["policy"], "detail": "report-only: nothing was persisted, so no attestation exists to read back"}
+    report["numerical_window_gate"] = verdict
+    if verdict["status"] == nwg.FAILED:
+        gate = gate + [{"event_class": "*", "path_id": None, "rule_version": None, "violation": "numerical_window_gate_failed", "detail": p} for p in verdict["problems"]]
     report["gate"] = gate
     report["gate_outside_scope"] = [v for v in gate_all if v not in gate]
     report["gate_source"] = "ka_gochara_candidate_gate_violations"

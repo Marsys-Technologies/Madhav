@@ -532,7 +532,7 @@ def test_the_century_execute_policy_measures_the_scope_and_refuses_a_backup_whos
     old = write_evidence(tmp_path, shared, scope_sha=shared.SCOPED_BACKUP_SCOPE_SHA256S['century'], started=datetime.now(timezone.utc) - timedelta(days=30))      # a century dispatch demands the CENTURY scope's proof (W3W4 pack verify E3)
     monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)
     monkeypatch.setattr(shared, 'century_dryrun_evidence', lambda req, root, digest=None: None)
-    req = {'kind': 'century_dispatch', 'item_id': shared.CENTURY_ITEM, 'args': {'classes': 'all', 'final_rules': 'true', 'defer_in_build_verify': 'true', 'horizon': '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00'}, **old}      # the four exact args (F-CHANNEL), synthetic bounds
+    req = {'kind': 'century_dispatch', 'item_id': shared.CENTURY_ITEM, 'args': {'classes': 'all', 'final_rules': 'true', 'defer_in_build_verify': 'true', 'horizon': '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00', 'result_policy': 'window_qualification/1'}, **old}      # the five exact args (F-CHANNEL, OD-1), synthetic bounds
     unchanged = now_measure()
     monkeypatch.setattr(backup, 'measure_scope_now', unchanged)
     assert century._century_request_policy(req, tmp_path) is None

@@ -22,13 +22,13 @@ and unsealable by construction, MEASURING_BUILD_CONTRACT_v1_0 MB-1).
 | `century_cancel_dryrun` | `fleet/century_cancel.py` (`--dry-run`) | gcloud | false | enabled (W3W4 pack verify E1) |
 | `century_cancel` | `fleet/century_cancel.py` | gcloud | true | enabled (W3W4 pack verify E1; signed-only; fence-exempt; `ky.century_cancel/1`) |
 
-Requests carry `item_id=J-4e`, the canonical chart and exactly four `args` (F-CHANNEL, SR-W34-PREP-RULINGS 1; all four required): `classes` = `all`,
-`final_rules` = `true`/`false`, `defer_in_build_verify` = `true`/`false` (`true` only with `final_rules` `true`) and `horizon` = `<start>,<end>`, the two derived
-D-G9 bounds as tz-aware ISO timestamps. No run name, no small-test horizon pair: **the launcher chooses no horizon, class set or rule version of its own** — the
-three values are the request's. The production orchestrator hands the writer `chart_id` and `birth_params` only, so the dispatch STAGES the three in
+Requests carry `item_id=J-4e`, the canonical chart and exactly five `args` (F-CHANNEL, SR-W34-PREP-RULINGS 1, OD-1 SR-OD1-NUMERICAL; all five required): `classes` = `all`,
+`final_rules` = `true`/`false`, `defer_in_build_verify` = `true`/`false` (`true` only with `final_rules` `true`), `horizon` = `<start>,<end>`, the two derived
+D-G9 bounds as tz-aware ISO timestamps, and `result_policy` = `all_null_candidate/1` or `window_qualification/1` (OD-1: the century build is the first NUMERICAL-policy build; the policy is named, never defaulted). No run name, no small-test horizon pair: **the launcher chooses no horizon, class set or rule version of its own** — the
+values are the request's. The production orchestrator hands the writer `chart_id` and `birth_params` only, so the dispatch STAGES the four in
 `plan_manifest["gochara_v5_century_config"]` (validated by the writer's own `validate_century_config`, canonical UTC form); that manifest is covered by
 `plan_manifest_digest`, which the writer verifies on every read, and the writer overlays the values on `ctx.config`. The request digest covers `args`, so the
-acceptance and the pack fill bind all four. The writer refuses (`run_rule_profile_required`, `run_horizon_required`) a run that is not a test slice and arrives
+acceptance and the pack fill bind all five. The writer refuses (`run_rule_profile_required`, `run_horizon_required`, and — for a final-rules run — `run_result_policy_required`) a run that is not a test slice and arrives
 without an explicit rule profile or horizon — it never defaults to the measuring profile or to `DEFAULT_HORIZON`. A test slice (the measuring build) is unaffected.
 The horizon pair is public (SR-HORIZON-PUBLIC: start = the writer's `DEFAULT_HORIZON[0]`, end = the §B birth date + 100 years) and is committed verbatim in `fleet/century_contract.json`; test fixtures use synthetic bounds.
 
@@ -65,8 +65,8 @@ sources makes the file stale by name until it is regenerated — the same discip
 
 **Binding.** A `century_dispatch` / `century_dispatch_dryrun` request carries `century_contract_sha256`; `executor.century_contract_problem` (at the tail of `validate`, so again right
 before execution) admits it only when it equals the sha256 of the contract file read with `git show <reviewed_commit>:…` — a fill built against any other contract is refused — and the
-file's `launch_args` are exactly the request's `args`. The pack's template pins the field (its fill is then bound to the same sha through its own digest). The contract's `launch_args` are the four request args (`classes` `all`, `final_rules` and
-`defer_in_build_verify` as `true`/`false` from the pack's VERIFY_DEFERRAL carrier, `horizon` as `<start>,<end>` from the committed horizon): a request whose args differ from them in any value is refused.
+file's `launch_args` are exactly the request's `args`. The pack's template pins the field (its fill is then bound to the same sha through its own digest). The contract's `launch_args` are the five request args (`classes` `all`, `final_rules`, `defer_in_build_verify` and
+`result_policy` as `true`/`false`/policy name from the pack's VERIFY_DEFERRAL carrier — which must therefore carry `result_policy` — and `horizon` as `<start>,<end>` from the committed horizon): a request whose args differ from them in any value is refused.
 
 ## Interpretations (I) and what is left open
 
