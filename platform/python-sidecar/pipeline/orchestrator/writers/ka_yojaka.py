@@ -42,7 +42,7 @@ from brahmagyan.graha_vocabulary import to_title
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_yojaka.classifier import classify_signal
 from services.ka_yojaka.binder import build_predicate
-from services.ka_yojaka.promise_adapter import build_bundle
+from services.ka_yojaka.promise_adapter import bind_signal_ids, build_bundle
 from services.kala_core.ontology import CLASS_ROSTER
 from services.kala_core.promise.candidate import building_candidate, natal_pin, pin_input_vector
 from pipeline.orchestrator.writers import SubStep
@@ -134,9 +134,12 @@ class KaYojakaWriter(WriterBase):
         event_class = step.key.removeprefix('class:')
         if event_class == 'unqualified':
             event_class = None
-        bundle = [r for r in build_bundle(facts, firings, signals, cgm=cgm, pratijna=pratijna,
-                                        served_locators=served_locators)
-                  if r['event_class_id'] == event_class]
+        full_bundle = build_bundle(facts, firings, signals, cgm=cgm, pratijna=pratijna,
+                                   served_locators=served_locators)
+        # Binding sees the whole bundle: a signal shared by rows of several
+        # class substeps must stay NULL in all of them, not bind in one.
+        signal_ids = bind_signal_ids(full_bundle)
+        bundle = [r for r in full_bundle if r['event_class_id'] == event_class]
         rows = []
         for row in bundle:
             row['input_vector'] = input_vector
@@ -149,7 +152,8 @@ class KaYojakaWriter(WriterBase):
             # trigger template or timing score is invented for this stage.
             dasha = {'constituent_lords': row['constituent_planets'], 'event_class_id': event_class,
                      'mechanism_id': row['mechanism_id'], 'effective_state': row['effective_state']}
-            rows.append((chart_id, row['ayanamsha_id'], None, 'YOGA' if row['canonical_id'] else 'CLASSIFY_RESIDUAL',
+            rows.append((chart_id, row['ayanamsha_id'], signal_ids.get((row['mechanism_id'], row['event_class_id'])),
+                         'YOGA' if row['canonical_id'] else 'CLASSIFY_RESIDUAL',
                          json.dumps(dasha), json.dumps(trigger), '{}', json.dumps(row), generation,
                          row['route'], json.dumps({k: row[k] for k in ('conclusion_id', 'formation_state',
                          'fact_state', 'effective_state', 'defeats', 'excepts', 'qualification', 'scored')}
