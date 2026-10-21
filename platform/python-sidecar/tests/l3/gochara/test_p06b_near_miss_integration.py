@@ -578,7 +578,8 @@ def test_direct_sql_replay_is_a_named_predecessor_refusal_and_leaves_state_uncha
             "'ka_gochara_near_miss_digest','ka_gochara_near_miss_violations') ORDER BY 1").fetchall()
     before=state()
     ledger=chain.execute('SELECT filename,sha256 FROM _migrations_applied ORDER BY filename').fetchall()
-    with pytest.raises(psycopg.Error,match='predecessor'):
+    # The named pin, not the earlier 'predecessor chain missing' check: the chain is present after a good apply.
+    with pytest.raises(psycopg.Error,match='predecessor definition mismatch: ka_gochara_candidate_gate_violations'):
         with chain.transaction():
             chain.execute((MIGRATIONS/MIGRATION).read_text())
     assert state()==before
