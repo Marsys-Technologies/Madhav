@@ -440,7 +440,7 @@ export async function readDataPlaneOwnershipStatus(
         FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
         WHERE n.nspname='public' AND c.relname=ANY($2::text[])
       ), actual AS (
-        SELECT p.relname,p.layer,COALESCE(r.rolname,'PUBLIC') grantee,owner.rolname owner_name,a.privilege_type
+        SELECT p.relname,p.layer,COALESCE(r.rolname,'PUBLIC') grantee,owner.rolname owner_name,a.privilege_type,a.is_grantable
         FROM protected p JOIN pg_class c ON c.oid=p.oid
         CROSS JOIN LATERAL aclexplode(COALESCE(c.relacl,acldefault('r',c.relowner))) a
         LEFT JOIN pg_roles r ON r.oid=a.grantee
@@ -456,6 +456,10 @@ export async function readDataPlaneOwnershipStatus(
           AND NOT (a.layer='L1' AND a.grantee='data_plane_l2_owner' AND a.privilege_type='SELECT')
           -- Suvarṇa D6 (native, 2026-09-29): the read-only campaign login may SELECT; nothing else.
           AND NOT (a.grantee='suvarna_reader' AND a.privilege_type='SELECT')
+          -- Gochara verifier/sealer L1 reads (gochara-provision-roles.sh stage grant-l1-reads, owner step 1, 2026-10-21): SELECT only, never grantable,
+          -- on these two L1 tables only. Tolerance, never a requirement: absent roles simply have no ACL row to tolerate.
+          AND NOT (a.grantee IN ('gochara_verifier','gochara_sealer') AND a.privilege_type='SELECT' AND NOT a.is_grantable
+                   AND a.relname IN ('chart_facts','chart_dashas'))
           AND a.grantee<>a.owner_name
       ) OR EXISTS (
         SELECT 1 FROM protected p CROSS JOIN allowed x
@@ -502,7 +506,7 @@ export async function readDataPlaneOwnershipStatus(
 
     const schemaAcl = await pool.query<{ unsafe: boolean }>(`
       WITH actual AS (
-        SELECT COALESCE(r.rolname,'PUBLIC') grantee,a.privilege_type
+        SELECT COALESCE(r.rolname,'PUBLIC') grantee,a.privilege_type,a.is_grantable
         FROM pg_namespace n
         CROSS JOIN LATERAL aclexplode(COALESCE(n.nspacl,acldefault('n',n.nspowner))) a
         LEFT JOIN pg_roles r ON r.oid=a.grantee WHERE n.nspname='public'
@@ -529,7 +533,11 @@ export async function readDataPlaneOwnershipStatus(
          WHERE to_regrole('verifier_principal') IS NOT NULL
       )
       SELECT EXISTS (SELECT 1 FROM actual a FULL JOIN expected e USING(grantee,privilege_type)
-                     WHERE a.grantee IS NULL OR e.grantee IS NULL) AS unsafe
+                     WHERE (a.grantee IS NULL OR e.grantee IS NULL)
+                       -- Gochara verifier/sealer (gochara-provision-roles.sh stage grant-l1-reads, owner step 1, 2026-10-21): TOLERATE (never require) a
+                       -- non-grantable USAGE on public for the two roles once they exist. CREATE, a grant option or any other grantee is still drift.
+                       AND NOT (e.grantee IS NULL AND a.grantee IN ('gochara_verifier','gochara_sealer') AND a.privilege_type='USAGE'
+                                AND NOT a.is_grantable AND to_regrole(a.grantee) IS NOT NULL)) AS unsafe
     `)
     if (schemaAcl.rows[0]?.unsafe) throw new Error('Public schema ACL allowlist drift detected.')
 
