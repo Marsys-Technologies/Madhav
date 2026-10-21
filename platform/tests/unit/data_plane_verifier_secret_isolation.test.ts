@@ -7,6 +7,7 @@ import {
   assertNoLiteralCredentials, canonicalResource, parseDeclaredExceptions, isThisProject,
   assertEffectiveIsolation, assertSealerSecretIsolation, assertVerifierInheritedControl, assertVerifierIsolation, assertVerifierServiceAccountPolicyExact, BUILDER_SECRET, BUILDER_SERVICE_ACCOUNT, grantsServiceAccountControl, VERIFIER_JOB,
   SEALER_SECRET, VERIFIER_SECRET, VERIFIER_SERVICE_ACCOUNT, type VerifierState,
+  GATED_SECRET_NAME, LAYER_VERIFIER_SECRET, assertLayerVerifierSecretIsolation,
 } from '../../scripts/data-plane-secret-isolation-preflight'
 
 type EffectivePolicies = Parameters<typeof assertVerifierInheritedControl>[0]
@@ -196,6 +197,80 @@ describe('J-4b-a55j: the sealer secret gochara-sealer-db-url', () => {
     expect(() => check(orphan)).toThrow(/without its dedicated service account/)
     const verifierSecretReadByDeployer = withSealer([]); verifierSecretReadByDeployer.secretPolicy = { bindings: [{ role: 'roles/secretmanager.secretAccessor', members: [verifier, DEPLOYER] }] }
     expect(() => check(verifierSecretReadByDeployer)).toThrow(/Verifier secret must grant accessor/)
+  })
+})
+
+// O-W56-C (M-W56-4; incident SEALER-SECRET-ISOLATION 2026-10-21: a credential provisioned by a reviewed stage blocked every main deploy because the isolation gate did not know its
+// secret). The executor's layer-verifier DSN lives in Secret Manager `kala-layer-verifier-db-url`, written by gochara-provision-roles.sh stage `layer-verifier-credential`. The gate
+// admits exactly that secret with exactly NO bindings; the same PR that adds the stage adds these oracles.
+describe('O-W56-C: the layer-verifier secret kala-layer-verifier-db-url', () => {
+  const withLayer = (bindings?: PolicyBindings): VerifierState => {
+    const state = good()
+    state.secretNames = [VERIFIER_SECRET, SEALER_SECRET, LAYER_VERIFIER_SECRET]
+    state.sealerSecretPolicy = {}
+    state.layerVerifierSecretPolicy = bindings === undefined ? {} : { bindings }
+    return state
+  }
+  const windowBinding = { role: 'roles/secretmanager.secretVersionManager', members: [DEPLOYER] }
+  let previous: string | undefined
+  beforeEach(() => { previous = process.env.DATA_PLANE_DEPLOY_PRINCIPAL; process.env.DATA_PLANE_DEPLOY_PRINCIPAL = DEPLOYER })
+  afterEach(() => { if (previous === undefined) delete process.env.DATA_PLANE_DEPLOY_PRINCIPAL; else process.env.DATA_PLANE_DEPLOY_PRINCIPAL = previous })
+
+  it('claim L1: the gate, the provisioning script and the workflow name the secret and the stage identically', () => {
+    expect(LAYER_VERIFIER_SECRET).toBe('kala-layer-verifier-db-url')
+    expect(readFileSync(resolve(__dirname, '../../scripts/gochara-provision-roles.sh'), 'utf8')).toContain(`LAYER_VERIFIER_SECRET="\${LAYER_VERIFIER_SECRET:-${LAYER_VERIFIER_SECRET}}"`)
+    expect(readFileSync(resolve(__dirname, '../../../.github/workflows/gochara-role-provisioning-oneshot.yml'), 'utf8')).toContain('layer-verifier-credential')
+    expect(GATED_SECRET_NAME.test(LAYER_VERIFIER_SECRET)).toBe(true)      // the live listing hands the gate this secret (otherwise its policy would never be measured)
+    // the live loader (not exported, needs gcloud) measures the policy of exactly this secret and filters the listing with the shared name pattern
+    const gate = readFileSync(resolve(__dirname, '../../scripts/data-plane-secret-isolation-preflight.ts'), 'utf8')
+    expect(gate).toContain("state.layerVerifierSecretPolicy = gcloud<IamPolicy>(['secrets', 'get-iam-policy', LAYER_VERIFIER_SECRET, '--project', project])")
+    expect(gate).toContain('.filter((name) => GATED_SECRET_NAME.test(name))')
+  })
+  it('claim L2: absent passes, and the secret with NO bindings at all (production after the window) passes beside the verifier pair and the sealer secret', () => {
+    expect(() => check(good())).not.toThrow()
+    expect(() => check(withLayer([]))).not.toThrow()
+    expect(() => check(withLayer())).not.toThrow()
+    expect(() => check({ serviceAccountEmails: [], secretNames: [LAYER_VERIFIER_SECRET], layerVerifierSecretPolicy: {} })).not.toThrow()
+  })
+  it('claim L3: ANY binding fails — a leftover provisioning-window secretVersionManager, the deployment principal, the verifier service account, the builder, a human, a conditional one', () => {
+    expect(() => check(withLayer([windowBinding]))).toThrow(/Layer-verifier secret.*NO IAM bindings.*secretVersionManager/)
+    expect(() => check(withLayer([{ role: 'roles/secretmanager.secretAccessor', members: [DEPLOYER] }]))).toThrow(/Layer-verifier secret/)
+    expect(() => check(withLayer([{ role: 'roles/secretmanager.secretAccessor', members: [verifier] }]))).toThrow(/Layer-verifier secret/)
+    expect(() => check(withLayer([{ role: 'roles/secretmanager.secretAccessor', members: [`serviceAccount:${BUILDER_SERVICE_ACCOUNT}`] }]))).toThrow(/Layer-verifier secret/)
+    expect(() => check(withLayer([{ role: 'roles/secretmanager.secretAccessor', members: ['user:someone@example.com'] }]))).toThrow(/Layer-verifier secret/)
+    expect(() => check(withLayer([{ ...windowBinding, condition: { expression: 'request.time < timestamp("2026-10-23T00:00:00Z")' } }]))).toThrow(/Layer-verifier secret/)
+  })
+  it('claim L4: the secret exists but its policy was never measured — fails (an honest null is not a pass)', () => {
+    const unmeasured = withLayer(); delete unmeasured.layerVerifierSecretPolicy
+    expect(() => check(unmeasured)).toThrow(/policy was not measured/)
+    expect(() => assertLayerVerifierSecretIsolation(unmeasured)).toThrow(/policy was not measured/)
+  })
+  it('claim L5: a look-alike secret is a violation, not a pair (the listing filter reaches it, the allow-list refuses it)', () => {
+    for (const name of ['kala-layer-verifier-db-url-2', 'layer_verifier_dsn', 'kala-layer-verifier-db-url-old']) {
+      expect(GATED_SECRET_NAME.test(name), name).toBe(true)
+      const state = withLayer([]); state.secretNames = [...state.secretNames, name]
+      expect(() => check(state), name).toThrow(new RegExp(`Unknown gochara/sealer secret.*${name}.*only .*${LAYER_VERIFIER_SECRET} are permitted`))
+    }
+  })
+  it('claim L6: no Cloud Run surface may reference the layer-verifier credential (secret, or the executor variable name), including the named verification job', () => {
+    const builderPolicy = { bindings: [{ role: 'roles/iam.serviceAccountUser', members: [DEPLOYER] }] }
+    const buildJob = { kind: 'job' as const, name: 'brahma-build-pipeline-job', definition: { serviceAccount: BUILDER_SERVICE_ACCOUNT, secretKeyRef: { name: 'data-plane-builder-db-url' } } }
+    const exact = { serviceAccount: VERIFIER_SERVICE_ACCOUNT, secretKeyRef: { name: VERIFIER_SECRET } }
+    const surfaces = (definition: unknown, name = 'web') => [buildJob, { kind: 'service' as never, name, definition }]
+    expect(() => assertEffectiveIsolation([], builderPolicy, surfaces({ serviceAccount: 'web@example', secretKeyRef: { name: LAYER_VERIFIER_SECRET } }))).toThrow(/Layer-verifier credential is referenced/)
+    expect(() => assertEffectiveIsolation([], builderPolicy, surfaces({ serviceAccount: 'web@example', env: [{ name: 'KY_LAYER_VERIFIER_DATABASE_URL', valueFrom: { secretKeyRef: { name: 'x', key: 'latest' } } }] })))
+      .toThrow(/Layer-verifier credential is referenced/)
+    expect(() => assertEffectiveIsolation([], builderPolicy, [buildJob, { kind: 'job', name: VERIFIER_JOB, definition: { ...exact, a: { secretKeyRef: { name: LAYER_VERIFIER_SECRET } } } }]))
+      .toThrow(/Layer-verifier credential is referenced/)
+    expect(() => assertEffectiveIsolation([], builderPolicy, [buildJob, { kind: 'job', name: VERIFIER_JOB, definition: exact }])).not.toThrow()      // the unrelated verifier job is unaffected
+  })
+  it('claim L7 (every gate against the post-stage state): the verifier pair, the sealer secret in its staged state and the layer-verifier secret together pass all three secret gates', () => {
+    const state = withLayer([])
+    expect(() => assertVerifierIsolation(projectPolicy, state, {}, DEPLOYER, 'deployable')).not.toThrow()
+    expect(() => assertSealerSecretIsolation(state, DEPLOYER)).not.toThrow()
+    expect(() => assertLayerVerifierSecretIsolation(state)).not.toThrow()
+    // and during the provisioning window the gate STOPS the deploy, by design (the sealer secret behaves the same): the owner removes the temporary binding first
+    expect(() => assertVerifierIsolation(projectPolicy, withLayer([windowBinding]), {}, DEPLOYER, 'deployable')).toThrow(/Layer-verifier secret/)
   })
 })
 

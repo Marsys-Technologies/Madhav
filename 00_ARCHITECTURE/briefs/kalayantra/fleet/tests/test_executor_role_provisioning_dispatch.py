@@ -19,7 +19,7 @@ Claims, one oracle each (a single planted reversion of the named line fails it):
 J-4b-a55j (SR-GRANTS-MINIMAL: "any grant act goes the same way"; the workflow's `stage` choice list and the runbook's DSN_TAIL rule, runbook line 62):
   N1 grant-l1-reads dispatches {stage, confirm} only: it has no tail, and a tail is refused rather than dropped    (plan: STAGES[...] needs_tail)
   N2 sealer-credential needs the SEALER's TCP-loopback tail @127.0.0.1:5432/<db>; the verifier's socket form, another host or port, and no tail are refused   (plan: SEALER_TAIL)
-  N3 every stage the dispatcher serves is a choice the workflow offers, and sealer-password stays the one the workflow offers that the dispatcher does not   (STAGES vs the workflow's options)
+  N3 every stage the dispatcher serves is a choice the workflow offers, and sealer-password and (O-W56-C) layer-verifier-credential stay the two the workflow offers that the dispatcher does not serve   (STAGES vs the workflow's options)
 """
 import json
 import re
@@ -223,7 +223,7 @@ def test_n2_sealer_credential_needs_the_sealers_loopback_tail(tmp_path):
         assert p.returncode == 1 and fake.calls() is None, (bad, p.stdout)
 
 
-def test_n3_the_served_stages_are_workflow_choices_and_sealer_password_is_the_one_left_out():
+def test_n3_the_served_stages_are_workflow_choices_and_sealer_password_and_layer_verifier_credential_are_the_two_left_out():
     m = re.search(r"options:\s*\[([^\]]+)\]", WORKFLOW.read_text())
     offered = {x.strip() for x in m.group(1).split(",")}
     sys.path.insert(0, str(FLEET))
@@ -231,4 +231,4 @@ def test_n3_the_served_stages_are_workflow_choices_and_sealer_password_is_the_on
         import role_provisioning_dispatch as rpd
     finally:
         sys.path.pop(0)
-    assert set(rpd.STAGES) <= offered and offered - set(rpd.STAGES) == {"sealer-password"}
+    assert set(rpd.STAGES) <= offered and offered - set(rpd.STAGES) == {"sealer-password", "layer-verifier-credential"}
