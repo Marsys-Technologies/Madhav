@@ -199,9 +199,13 @@ describe('P08 rebuilt operation boundary', () => {
       const python = join(dir, 'python3')
       writeFileSync(python, `#!/bin/sh\nprintf '%s\\n' '{"state":"${state}"}'\nexit ${exit}\n`)
       chmodSync(python, 0o755)
+      // C-02: the step now reads the sealer DSN with gcloud; stub it so the test never reaches a real gcloud (slow on a CI runner)
+      const gcloud = join(dir, 'gcloud')
+      writeFileSync(gcloud, `#!/bin/sh\nprintf '%s\\n' 'postgresql://gochara_sealer:fake-Zq9-marker@127.0.0.1:5432/amjis'\nexit 0\n`)
+      chmodSync(gcloud, 0o755)
       const result = spawnSync('bash', ['-c', step.run], {
         cwd: dir, encoding: 'utf8', timeout: 10_000,
-        env: { PATH: `${dir}:${process.env.PATH}`, CHART_ID: '482012f1-710e-4a25-994a-93821f5871aa',
+        env: { PATH: `${dir}:${process.env.PATH}`, SEALER_SECRET: 'gochara-sealer-db-url', CHART_ID: '482012f1-710e-4a25-994a-93821f5871aa',
           GENERATION: '5.0', BRIEF_DIGEST: 'a'.repeat(64), GITHUB_RUN_ID: '17', GITHUB_RUN_ATTEMPT: '1',
           GITHUB_STEP_SUMMARY: join(dir, 'summary.md') },
       })
