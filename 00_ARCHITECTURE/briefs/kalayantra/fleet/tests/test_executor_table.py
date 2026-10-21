@@ -1138,12 +1138,13 @@ def test_nonseed_child_does_not_inherit_caller_scratch_or_connections(tmp_path, 
 # ───────────────────────────── K9-23: the enabled layer / rebuild kinds are admitted only on their gates ─────────────────────────────
 
 K9_PRODUCTION = [k for k, e in K9_BINDINGS.items() if e["production"]]
-K9_ARGS = {"run-id": "6f1d3c1e-0000-4000-8000-000000000001", "generation": "g-1", "expected-head": "g-0", "assets": "ka_yojaka", "phase": "pre",
+K9_ARGS = {"run-id": "6f1d3c1e-0000-4000-8000-000000000001", "generation": "g-1", "expected-head": "g-0", "assets": "ka_yojaka",
            "independently-derived-digest": "0" * 64}
 
 
 def k9_args(kind):
-    return {name: K9_ARGS[name] for name in K9_BINDINGS[kind]["allowed_args"]}
+    bound = {**K9_BINDINGS, **executor_pin_shards.entries_after(SHARDS)}[kind]   # BASE plus the reviewed shards (K9-23.json narrows the two rebuild kinds' allowed_args)
+    return {name: K9_ARGS[name] for name in bound["allowed_args"]}
 
 
 @pytest.mark.parametrize("kind", K9_PRODUCTION)
@@ -1151,6 +1152,10 @@ def test_k9_production_kind_is_admitted_with_a_dry_run_attestation_and_refused_w
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     table = w.table()
     req = w.production_request(kind, args=k9_args(kind))
+    if kind == "orchestrator_rebuild":      # SR-K9-PUBLISHABLE D7: this kind's attestation is checked against the executor's own dry-run receipt
+        import test_executor_rebuild_dryrun_detector as D7
+        for d in (w.mod.REC, w.mod.DONE, w.mod.ACC): d.mkdir(parents=True, exist_ok=True)
+        req["dryrun_receipt"] = D7.archive_dry_run(w, req)
     assert w.mod.validate(w.accept(req), table, ALL_CAPS) is None, "control failed — the refusal below would be vacuous"
     checks = {"backup_taken": True, "restore_verified": True}
     assert w.mod.validate(w.accept(req, checks=checks), table, ALL_CAPS) == "required backup/restore/dry-run attestation missing"

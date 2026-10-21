@@ -4,7 +4,7 @@
     {
       "path": "platform/python-sidecar/services/kala_core/publication.py",
       "source_commit": "f19cab4f86dc699321784c37e5cccacd1614ab01",
-      "sha256": "1f3fad7ad60fc12c52afb27dad60b2f6c1926e8f875051d84566d2a755774c4a",
+      "sha256": "d92231ba25682cca8275e5c9794ac104eb12736b4991bb35c86f2e185c1fd834",
       "byte_exact": true
     },
     {
