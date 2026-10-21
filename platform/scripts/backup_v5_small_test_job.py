@@ -21,7 +21,7 @@ Archive/evidence lives at KY_ROOT/run/ops/backups/<label>/; labels are unique
 and capture refuses to overwrite. Source URL and client errors never print.
 Executor request/review/lease/backup gates remain separate from these receipts.
 
---scope small_test (scopes: 'full' (the default: the behaviour above, unchanged), 'small_test', 'century', 'verification_seal') is the J-2a
+--scope small_test (scopes: 'full' (the default: the behaviour above, unchanged), 'small_test', 'century', 'verification_seal', 'w5w6_union') is the J-2a
 SCOPED backup (surrogate ruling SR-J2A-BACKUP-SCOPE; spec
 00_ARCHITECTURE/briefs/kalayantra/fleet/J2A_SCOPED_BACKUP_v1_0.md). It archives
 the DEFINITIONS and DATA of exactly the tables the small test can write
@@ -44,9 +44,10 @@ archive's own definitions and data, and the same counts/digests are compared.
 scoped mode (REPEATABLE READ cannot make it differ); sequences, which are not
 transactional, are still measured before and after the dump.
 
-Three scopes share this one mechanism (W3W4 pack verify E3), each a reviewed scope file whose digest the executor-loaded policy pins (v5_small_test_shared.
+Four scopes share this one mechanism (W3W4 pack verify E3; M-W56-6), each a reviewed scope file whose digest the executor-loaded policy pins (v5_small_test_shared.
 SCOPED_BACKUP_SCOPE_SHA256S): small_test (the J-2a file above), century (the final candidate build: the same staged run without the test slice, so the same tables, under its own
-name and digest) and verification_seal (the tables the verification job and the sealing job may write: verification_job.VERIFIER_WRITE_TABLES + seal_flow.SEALER_WRITE_ALLOWED).
+name and digest), verification_seal (the tables the verification job and the sealing job may write: verification_job.VERIFIER_WRITE_TABLES + seal_flow.SEALER_WRITE_ALLOWED) and w5w6_union (the W5+W6 window's ONE dump: the union of the J-6 head-change tables and the K9 closed-plan rebuild,
+verify, publish, rollback and teardown tables, backup_v5_w5w6_union_scope.json).
 A receipt names its scope and a proof of one scope never admits a request for another.
 """
 from __future__ import annotations
@@ -73,7 +74,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     p.add_argument('--operation', choices=['snapshot', 'restore-verify'], required=True)
     p.add_argument('--label', required=True)
-    p.add_argument('--scope', choices=['full', 'small_test', 'century', 'verification_seal'], default='full')
+    p.add_argument('--scope', choices=['full', 'small_test', 'century', 'verification_seal', 'w5w6_union'], default='full')
     mode = p.add_mutually_exclusive_group()
     mode.add_argument('--dry-run', action='store_true')
     mode.add_argument('--execute', action='store_true')
@@ -195,9 +196,9 @@ def compare_restore(expected: dict, actual: dict) -> None:
 # mode above is untouched.
 # ---------------------------------------------------------------------------
 SCOPE_FILES = {'small_test': 'backup_v5_small_test_scope.json', 'century': 'backup_v5_century_scope.json',
-               'verification_seal': 'backup_v5_verification_seal_scope.json'}
+               'verification_seal': 'backup_v5_verification_seal_scope.json', 'w5w6_union': 'backup_v5_w5w6_union_scope.json'}
 SCOPE_FILE = Path(__file__).with_name(SCOPE_FILES['small_test'])
-SCOPE_PATHS = {name: Path(__file__).with_name(file) for name, file in SCOPE_FILES.items() if name != 'small_test'}   # the other two reviewed scope files
+SCOPE_PATHS = {name: Path(__file__).with_name(file) for name, file in SCOPE_FILES.items() if name != 'small_test'}   # the other reviewed scope files
 
 
 def scope_path(name: str) -> Path:
@@ -251,7 +252,7 @@ def scope_digest(name: str, tables: list[str]) -> str:
 
 def load_scope(path: Path | None = None, name: str = 'small_test') -> dict:
     """The reviewed scope file -> {name, tables (data), written, guarded_children, sha256}. `name` selects the reviewed file of that scope; a `path`
-    overrides the file, and the name inside it must then be one of the three scopes (the digest covers the name, so scopes never share one)."""
+    overrides the file, and the name inside it must then be one of the reviewed scopes (the digest covers the name, so scopes never share one)."""
     try:
         raw = json.loads((path or scope_path(name)).read_text())
         written = [e['table'] for e in raw['written']]

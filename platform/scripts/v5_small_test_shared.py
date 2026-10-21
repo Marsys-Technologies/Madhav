@@ -741,11 +741,12 @@ def absence_evidence(req, root, *, teardown_receipt=None):
 # FULL-form (/1) proof only (full_backup_window_problem); an old scoped capture's `validity.not_after` stays readable
 # and is never a gate.
 SCOPED_BACKUP_SCOPE_SHA256 = "1daf69d6e31279592947aa25e2b4f9a5c1c8137d6663ba039c27e7331ac7335a"
-# W3W4 pack verify E3: the other two reviewed scopes (backup_v5_century_scope.json, backup_v5_verification_seal_scope.json), pinned the same way and for the same reason.
+# W3W4 pack verify E3: the other reviewed scopes (backup_v5_century_scope.json, backup_v5_verification_seal_scope.json; M-W56-6: backup_v5_w5w6_union_scope.json), pinned the same way and for the same reason.
 # A dispatch names ITS scope (scoped_backup_problem(scope=...)); a proof of another scope never admits it (the digest covers the scope's name as well as its tables).
 SCOPED_BACKUP_SCOPE_SHA256S = {"small_test": SCOPED_BACKUP_SCOPE_SHA256,
                                "century": "eab44eef1ceb06604cab21fbcc464334a9253af1f320ca322b797cf3ff32b020",
-                               "verification_seal": "d20d37b36dad2c7707379415a3981dc434caf85bf952f2bb43546fe392fca7ad"}
+                               "verification_seal": "d20d37b36dad2c7707379415a3981dc434caf85bf952f2bb43546fe392fca7ad",
+                               "w5w6_union": "28f093154c6044fbffed64ef718caac3456d8b829932f70dbc6c36c5a065f6da"}
 SCOPED_BACKUP_VALIDITY_S = 4 * 3600
 SCOPED_MEASUREMENT_METHOD = 'sql_sum_sha256_rowjson/1'
 
