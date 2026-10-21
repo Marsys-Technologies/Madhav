@@ -749,6 +749,14 @@ def orchestrator_rebuild_cancel_problem(req: dict) -> str | None:
     return "the target run-id is not the run of an orchestrator_rebuild in flight"
 
 
+def orchestrator_rebuild_dryrun_problem(req: dict, table: dict) -> str | None:
+    """SR-K9-PUBLISHABLE D7 (N.8) admission for the production `orchestrator_rebuild`, run at the tail of validate (so on BOTH routes, signed or mechanical):
+    the request is admitted only if THIS executor's own receipt shows a COMPLETED `orchestrator_rebuild_dryrun` for the same identity (dry_run_check). A signer's
+    `dry_run_passed` attestation alone never admits it: that attestation has no detector behind it for this kind (the dry run reports a null by design)."""
+    if req.get("kind") != "orchestrator_rebuild": return None
+    return dry_run_check(req, table)[0]
+
+
 def measuring_cancel_proof(req: dict, rc: int | None, out: str) -> tuple[dict | None, str | None]:
     """(record, problem) for a cancel kind's (or its dry run's) complete output. `record` is the ONE ky.<family>_cancel/1 line when it names this
     operation, this request digest, this kind and exactly the targeted execution of the family's job (else None); `problem` is None only when the state
@@ -1074,6 +1082,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         lambda: head_policy_problem(req),
         lambda: measuring_cancel_problem(req),
         lambda: orchestrator_rebuild_cancel_problem(req),
+        lambda: orchestrator_rebuild_dryrun_problem(req, table),
         lambda: scheduler_policy_problem(req),
         lambda: served_probe_problem(req, op),
         lambda: smalltest_policy_problem(req),

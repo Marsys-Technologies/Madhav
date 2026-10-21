@@ -7,13 +7,15 @@ absence() of the K9-4 pack for the teardown; 1330 migration for the candidate ta
   R3  both operations are scoped to the canonical chart and to an explicit Kāla rebuild plan
   R4  teardown deletes the candidate, its grains, its verification and every table that references it (read from the catalog), and only that run's rows
   R5  teardown is refused for a non-terminal run, a published candidate, the head generation, a run without a candidate and a candidate whose previous head is gone
-  R6  a dependent whose key is not (chart_id, generation), or that is referenced by another table, is refused and nothing is deleted
+  R6  a dependent whose key is not (chart_id, generation), or that is referenced by another table and holds rows of the candidate, is refused and nothing is deleted
+      (the production schema with migration 1351: test_k9_teardown_production_schema.py)
   R7  each dry run changes nothing, passes only when its write was observed and rolled back, and reports a refusal as not passed
   R8  the real kinds commit and read the outcome back from the database; a refusal exits 2 and changes nothing
 """
 import json
 import uuid
 from datetime import timezone
+from pathlib import Path
 
 import pytest
 
@@ -26,9 +28,22 @@ from tests.l3.kala_db.manifest.test_publication_ops import accept, db, prepare, 
 CHART = publication.CANONICAL_CHART
 
 
+AUDIT_MIGRATION = Path(__file__).resolve().parents[5] / 'supabase/migrations/586_f152_asset_throughput_state_audit.sql'
+
+
+def asset_state_tables(conn):
+    """The orchestrator's asset_throughput and its REAL audit trail (migration 586: the table and the AFTER UPDATE OF state trigger)."""
+    conn.execute('ALTER TABLE build_runs ADD COLUMN started_at timestamptz, ADD COLUMN ended_at timestamptz')
+    conn.execute('CREATE TABLE asset_throughput (chart_id uuid, asset_id text NOT NULL, state text NOT NULL, last_error text, last_built_at timestamptz)')
+    conn.execute('CREATE UNIQUE INDEX ON asset_throughput (chart_id, asset_id) WHERE chart_id IS NOT NULL')
+    conn.execute(AUDIT_MIGRATION.read_text())
+    conn.commit()
+
+
 @pytest.fixture
 def ctl(db):
     db.execute('ALTER TABLE build_runs ADD COLUMN stop_requested_at timestamptz')
+    asset_state_tables(db)
     db.execute('CREATE TABLE ka_dep_candidate (chart_id uuid NOT NULL, generation text NOT NULL, v int NOT NULL, '
                'FOREIGN KEY (chart_id, generation) REFERENCES kala_layer_candidate (chart_id, generation))')
     db.commit()
