@@ -44,8 +44,9 @@ WHAT THE VALUE TABLE LOOKS LIKE (I) INTERPRETATION — nothing in the repository
 The value of a record at t is the product of the three factors' values (a combust lord takes the combustion cell and the dignity
 row contributes the neutral element 1); the side is the combustion cell's, else the dignity cell's.
 
-NAMED LIMITS. (1) The change instants are found under the smooth-motion guarantee of `contact_reconstruct` (an excursion shorter
-than `MIN_EXCURSION_SECONDS` is not excluded) and located to `BISECT_SECONDS`; two independent locations of one instant therefore
+NAMED LIMITS. (1) The change instants are found under the smooth-motion guarantee of `contact_reconstruct` at the STATE floor
+`STATE_MIN_EXCURSION_SECONDS` (1 s, SR-H2-1S; `NAMED_LIMIT` below — an excursion shorter than that is not excluded) and located to
+`BISECT_SECONDS`; the instant found is the first sample of the NEW state (it owns the boundary, half-open [change, next change)); two independent locations of one instant therefore
 agree within `PEAK_TOLERANCE_SECONDS`. (2) The retrograde flag is the sign of the longitude change over ±`RETRO_PROBE_SECONDS`
 (the verifier has positions, not Swiss speeds); it matters only for Mercury and Venus, whose combustion orb is tighter in
 retrograde (L1 M-19), and only when the arc lies between their two orbs at a station.
@@ -64,6 +65,8 @@ from services.gochara_rules.p1_inputs import StrictInputError
 from . import contact_reconstruct as _cr
 
 GeometryUnavailable = _cr.GeometryUnavailable
+#: the named limit of every change-instant list this module derives (verbatim, SR-H2-1S)
+NAMED_LIMIT = _cr.STATE_NAMED_LIMIT
 
 #: the P1 soft factors this module derives; `maitri_compound` is RETIRED from P1 (Q7 b) and has no derivation here
 P1_FACTORS = ("dignity_of_transit_sign", "combustion", "agent_nature")
@@ -230,7 +233,8 @@ class P1Check:
 
     # ── the change instants of each state inside [lo, hi) ────────────────────────────────────────────────────────
     def _search(self, state_at, edge_distance, vmax_dps: float, lo: datetime, hi: datetime) -> list[datetime]:
-        return [] if hi <= lo else _cr._core(state_at, edge_distance, vmax_dps, lo, hi)
+        return [] if hi <= lo else _cr._core(state_at, edge_distance, vmax_dps, lo, hi,
+                                                      min_excursion_seconds=_cr.STATE_MIN_EXCURSION_SECONDS)
 
     def dignity_boundaries(self, graha: str, lo: datetime, hi: datetime) -> list[datetime]:
         if self.dignity_problem(graha):

@@ -8,7 +8,7 @@ What this module supplies to the window sweep (through W0's `OperandSource`, nev
     with a malefic ("joined" = same sign, ND Q4 x; the waning Moon counts as a malefic at that instant) and benefic otherwise.
     Its CHANGE INSTANTS are found from the ephemeris alone: the Moon's elongation crossings of 0/180 degrees; for Mercury every
     instant at which Mercury, the Sun, Mars, Saturn, Rāhu, Ketu change sign, the Moon enters or leaves Mercury's sign, or the
-    Moon's pakṣa flips. The search is `contact_reconstruct._core` (speed-bounded, named limit `contact_reconstruct.NAMED_LIMIT`);
+    Moon's pakṣa flips. The search is `contact_reconstruct._core` (speed-bounded, floor `STATE_MIN_EXCURSION_SECONDS` = 1 s, named limit `contact_reconstruct.STATE_NAMED_LIMIT`);
     its answers are memoised per aligned chunk when the position source declares a `cache_key`.
   * `P1LordValence` — the lord's side and value at t: `p1_valence.LordRungRules` gives the effective rung (COMB > EX > MT > OWN >
     DEB > FR/NEU/INI) and the validated `SideValueMapping` (Form B, the registry's `category_mapping`) gives (side, value) for
@@ -138,7 +138,7 @@ class NatureOperands:
             return min(e % 180.0, 180.0 - e % 180.0)
 
         if self.graha == "Moon":
-            return _cr._core(paksa, paksa_edge_deg, vmoon + vsun, lo, hi)
+            return _cr._core(paksa, paksa_edge_deg, vmoon + vsun, lo, hi, min_excursion_seconds=_cr.STATE_MIN_EXCURSION_SECONDS)
 
         merc = src["Mercury"]
 
@@ -162,7 +162,7 @@ class NatureOperands:
 
         # `_core` compares edge_distance with vmax*dt; vmax = 1 deg/day and a distance expressed in DAYS make that "time to
         # the nearest possible change > dt"
-        return _cr._core(joined, days_to_event, 1.0, lo, hi)
+        return _cr._core(joined, days_to_event, 1.0, lo, hi, min_excursion_seconds=_cr.STATE_MIN_EXCURSION_SECONDS)
 
 
 @dataclass(frozen=True)
@@ -243,7 +243,7 @@ class P1LordValence:
 
     @property
     def complete(self) -> bool:
-        """Whether the combined list is complete: the nature list is (under `contact_reconstruct.NAMED_LIMIT`); the rung's
+        """Whether the combined list is complete: the nature list is (under `contact_reconstruct.STATE_NAMED_LIMIT`); the rung's
         only if a rung provider was supplied."""
         return self.rung_boundaries is not None
 

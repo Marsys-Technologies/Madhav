@@ -34,9 +34,11 @@ THE EFFECTIVE RUNG (owner ruling P1-MAPPING-DECISION = ANSWERS.md v2.1 §B.2; th
         `node_own_sign_variant_unresolved`; a rung that rests on one of the five pairs where L0 and the translator's note
         (bphs:PG40:C1) disagree carries `node_friendship_source_disputed`.
 
-BOUNDARIES (all located by the VMAX-bracketed device of `contact_reconstruct._core` — its NAMED LIMIT applies: smooth motion with speed at most
-`VMAX_DPS`, every excursion of at least `MIN_EXCURSION_SECONDS` found — then bisected to a microsecond, because the device stops at 1 s and the
-solver needs an exact step): sign ingress of the lord; its in-sign mūlatrikoṇa degree edges (N-2); the roots of Sun-lord elongation = orb and
+BOUNDARIES (all located by the VMAX-bracketed device of `contact_reconstruct._core` at the STATE floor `STATE_MIN_EXCURSION_SECONDS` (1 s,
+SR-H2-1S) — `STATE_NAMED_LIMIT` applies: smooth motion with speed at most `VMAX_DPS`, every state interval of at least 1 s found, a shorter one
+not excluded — then bisected to a microsecond, because the device stops at 1 s and the solver needs an exact step. A change instant is the
+FIRST microsecond of the new state: the new state owns it, half-open [change, next change), so `state(b - 1 µs)` is the old state and
+`state(b)` the new one): sign ingress of the lord; its in-sign mūlatrikoṇa degree edges (N-2); the roots of Sun-lord elongation = orb and
 = deep orb; and, for the two grahas L1 gives a retrograde orb (Mercury, Venus), the stations at which the orb regime flips (N-8). The station
 instants are the substrate's stored ones, handed in by the store; the retrograde state at t is their parity, anchored by a probe a safe distance
 from a station (never by a finite difference AT a station, where the speed is ~0).
@@ -65,8 +67,12 @@ from services.gochara_rules import p1_inputs as p1
 from services.gochara_rules import p1_valence as pv
 
 from . import p1_nature_operands as nat
-from .contact_reconstruct import VMAX_DPS, _angdiff, _cell, _core, _dist_to_cell_edge
+from .contact_reconstruct import (STATE_MIN_EXCURSION_SECONDS, STATE_NAMED_LIMIT, VMAX_DPS, _angdiff, _cell, _core,
+                                  _dist_to_cell_edge)
 from .window_sweep import OperandSource, SweepRecord, graha_title
+
+#: the named limit of every boundary list this module produces (verbatim, SR-H2-1S)
+NAMED_LIMIT = STATE_NAMED_LIMIT
 
 # ── the vocabulary ───────────────────────────────────────────────────────────────────────────────────────────
 
@@ -480,7 +486,7 @@ class P1Operands:
 
     def _exact(self, state_at, edge_distance, vmax: float, lo: datetime, hi: datetime) -> list[datetime]:
         out = []
-        for b in _core(state_at, edge_distance, vmax, lo, hi):
+        for b in _core(state_at, edge_distance, vmax, lo, hi, min_excursion_seconds=STATE_MIN_EXCURSION_SECONDS):
             a = max(lo, b - timedelta(seconds=1.001))
             out.append(self._refine(state_at, a, b) if state_at(a) != state_at(b) else b)
         return out
@@ -605,7 +611,7 @@ def form_b_mapping(factor_rows) -> "pv.SideValueMapping | None":
     return pv.mapping_from_rows(factor_rows) if pv.has_form_b(factor_rows) else None
 
 
-__all__ = ["FACTOR_COMBUSTION", "FACTOR_DIGNITY", "FACTOR_MAITRI", "FACTOR_NATURE", "form_b_mapping", "L0Table", "LordState", "NODE_FRIENDSHIP_DISPUTED", "NODE_RESERVED_SIGNS",
+__all__ = ["FACTOR_COMBUSTION", "FACTOR_DIGNITY", "FACTOR_MAITRI", "FACTOR_NATURE", "form_b_mapping", "L0Table", "LordState", "NAMED_LIMIT", "NODE_FRIENDSHIP_DISPUTED", "NODE_RESERVED_SIGNS",
            "NODE_VARIANT_OWN_SIGNS", "P1L0", "P1Operands", "RUNGS", "RetrogradeUnestablished", "SOURCE_FACTORS", "ValueRule",
            "category_rule", "combustion_orbs_from_rows", "dignity_reference_from_rows", "load_combustion_orbs", "load_dignity_reference",
            "load_naisargika", "load_p1_l0", "naisargika_from_rows"]

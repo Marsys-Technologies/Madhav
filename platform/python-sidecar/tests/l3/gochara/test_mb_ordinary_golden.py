@@ -402,13 +402,17 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # the verifier self-check), input_vector (p1_nature_operands / p1_operands / p1_valence / the P1 L0 consumption), rule_registry (the authored category_mapping read back and
     # persisted), inventory / inventory_verifier (P1 1.0.0 -> 1.3.0 supersession) and gochara_rules.registry (the P1@1.3.0 rows) changed. Re-derived from the merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 906763ec... is the pre-union W0 merge); no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "26e700048f7eacd536df6f02af8bf20fb49a088d717b395d92c4ccc7dec46dd9"
+    # Evaluation re-pinned for SR-OD1 R2 (SR-H2-1S): p1_operands and p1_nature_operands search the P1 state boundaries at the 1 s STATE floor and publish the state named limit.
+    # Re-derived the same way (the prior pin 26e70004... is the I1 union).
+    assert got["implementation"]["evaluation"] == "7e5c539af3215c11ca6c085f289c12349d3d77428b765d6d0fce74e1f15b4d47"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
     # Geometry re-pinned again for F-1305-INVENTED-SUPPORT (#3774): record_store's period-rows cache now carries the held-presence flag; the digest below is re-derived on the
     # merged tree (main's bytes give 0ecc897c...).
-    assert got["implementation"]["geometry"] == "a8cb08f07fa867e010109d8a236422e39ebf0b57cf9a149eae64e42c7547a3ff"
+    # Geometry re-pinned for SR-OD1 R2 (SR-H2-1S): contact_reconstruct gains the STATE floor / STATE_NAMED_LIMIT and `_core`'s `min_excursion_seconds` keyword (default unchanged, so the
+    # contact geometry's own behaviour and 60 s named limit are untouched). Re-derived the same way (the prior pin a8cb08f0... is the I1 union).
+    assert got["implementation"]["geometry"] == "0186cc0713d64905a8d9e31a39d05e4dc02e37af10f550960ae30161933d709c"
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. With P06b's window-stage changes the merged-tree
     # digest below is re-derived the same way (main alone gives 6c981eb8...; J-4c F-LEANNESS also changed window_store); evaluation and geometry are untouched by this change, and no golden component is re-captured.
     # Window re-pinned for the W3W4 strict-slice window-qualification fix: window_sweep.build_program no longer lists an OMITTED operand (karaka_agent, null_state omit)
@@ -421,4 +425,5 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned ONCE for the SR-OD1 I1 union: window_solver_check (S2), vedha_verifier (C2), p1_operands_check (P1c) join the window stage and window_sweep / window_store /
     # window_verifier / verification_job changed (S1, S2, P1a-c, C2, D2). Geometry is UNCHANGED by the union (P1a's `RecordStore.fetch_stations` read moved to
     # `WindowStore._fetch_stations` precisely so that it stays a8cb08f0...). Re-derived the same way (the prior pin 873236f3... is the pre-union W0 merge).
-    assert got["implementation"]["window"] == "fc0e7500f0f30d89ea0519102b568dfd2b7d466e4208e63f282610981014c60d"
+    # Window re-pinned for SR-OD1 R2 (SR-H2-1S): p1_operands_check searches at the STATE floor. Re-derived the same way (the prior pin fc0e7500... is the I1 union).
+    assert got["implementation"]["window"] == "618195ece47108b2b61628c4898bd41679a360df31600dc240a0eaa3f2c96c4d"
