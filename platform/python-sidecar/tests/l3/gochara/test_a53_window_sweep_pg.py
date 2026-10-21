@@ -700,6 +700,12 @@ def test_the_writer_stores_a_dynamic_window_as_named_null_and_the_verifier_repro
         {"saturn": [(T0 + 20 * DAY, T0 + 120 * DAY)]}, inside=15.0, outside=195.0))      # Saturn in Aries
     monkeypatch.setattr(writer_mod, "_verify_live_inputs", lambda ctx, chart_id: None)
     monkeypatch.setattr(writer_mod, "VEDHA_SOURCE", lambda rec, t: 0.5)
+    # C2: the writer's in-build self-check verifies with a vedha source bound, so the verifier derives its own overlay from the stored
+    # residence contacts and the L0 pairs — tables this migration-chain fixture does not carry (`bg_transit_rules`). That derivation has
+    # its own oracles (test_od1_c2_vedha_verifier*.py); this test is about the NULL window, so the verifier is handed the fixed overlay
+    # that says what the builder says here: a vedha source with no edge list ⇒ the edges are incomplete (R8-6)
+    from services.gochara_kernel import vedha_verifier as _vv
+    monkeypatch.setattr(_vv, "derive_overlay", lambda conn, **kw: _VEDHA_EDGES_INCOMPLETE)
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-dyn", db_conn=conn,
                       config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON, "gochara_v5_final_rules": False}, dry_run=False)
     with conn.transaction():
@@ -709,7 +715,7 @@ def test_the_writer_stores_a_dynamic_window_as_named_null_and_the_verifier_repro
     assert (row[2], row[3], row[4], row[5], row[6]) == (None, None, None, None, "unqualified")
     assert "UNVERIFIED" not in res.notes and "reproduced all 1 window(s) exactly" in res.notes
     from services.gochara_kernel import window_verifier as wv
-    out = _verify(conn, cls, "P2", vedha_bound=True, vedha_overlay=_VEDHA_FN)
+    out = _verify(conn, cls, "P2", vedha_bound=True, vedha_overlay=_VEDHA_EDGES_INCOMPLETE)
     assert out["status"] == "VERIFIED" and wv.satisfies_gate(out)
     (d,) = out["windows_detail"]
     # R8-6: with no source of vedha overlay edges the member is unqualified before the dynamic switch is reached
