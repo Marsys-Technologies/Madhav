@@ -620,10 +620,10 @@ def test_grant_l1_reads_without_the_migrator_route_refuses_and_changes_nothing(w
 def test_grant_l1_reads_refuses_any_login_that_is_not_exactly_the_migrator_even_with_owner_membership(world, l1):  # claim G7 (identity guard, exit 2)
     assert run(world).returncode == 0
     with _admin() as c:
-        c.execute("CREATE ROLE other_member LOGIN PASSWORD 'otherpw'")
+        c.execute("CREATE ROLE other_member LOGIN PASSWORD 'testotherpw'")
         c.execute("GRANT data_plane_schema_owner, data_plane_l1_owner TO other_member")
     port = re.search(r":(\d+)/", ADMIN_URL).group(1)
-    r = run(world, "grant-l1-reads", migrator=f"postgresql://other_member:otherpw@127.0.0.1:{port}/postgres")
+    r = run(world, "grant-l1-reads", migrator=f"postgresql://other_member:testotherpw@127.0.0.1:{port}/postgres")
     assert r.returncode == 2 and "session_user 'other_member'" in r.stderr, r.stdout + r.stderr
     nothing_granted()
 
