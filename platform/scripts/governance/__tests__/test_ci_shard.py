@@ -162,6 +162,25 @@ def test_a_skipped_or_cancelled_or_failed_shard_fails_the_aggregate_unless_docs_
     assert ("::error::" in p.stdout) is (not ok)
 
 
+@pytest.mark.parametrize("event,shards,readback,expected,run_combination,ok", [
+    ("pull_request", "skipped", "success", "true", "false", True),         # PR touched a readback: readbacks ran, shards deferred to the queue (SR-BOLD-08a)
+    ("pull_request", "skipped", "failure", "true", "false", False),        # the readback that ran failed
+    ("pull_request", "skipped", "skipped", "true", "false", False),        # an expected readback never ran
+    ("pull_request", "skipped", "success", "false", "false", False),       # a readback nothing selected is not evidence for a deferral
+    ("pull_request", "failure", "success", "true", "false", False),        # a shard that ran and failed is never "deferred"
+    ("merge_group", "skipped", "success", "true", "true", False),          # the queue never defers the shards
+    ("pull_request", "skipped", "success", "true", "true", False),         # shards run on this PR (scoper touched), so skipped is not the deferral
+])
+def test_a_pr_deferring_the_shards_still_passes_when_its_selected_readbacks_succeed(jobs, event, shards, readback, expected, run_combination, ok):
+    """SR-BOLD-08a: shards are merge_group-only on a PR; a PR whose diff selects governance-readback-tests must not fail the aggregate for that deferral."""
+    script = jobs["governance-tool-tests"]["steps"][0]["run"]
+    env = {**os.environ, "EVENT_NAME": event, "SHARDS_RESULT": shards, "READBACK_RESULT": readback, "READBACK_EXPECTED": expected, "RUN_COMBINATION": run_combination,
+           "CHANGES_RESULT": "success", "DOCS_ONLY": "false", "KALA_DB_RESULT": "skipped", "KALA_DB_EXPECTED": "false", "J5S_RESULT": "skipped", "J5S_EXPECTED": "false",
+           "GITHUB_STEP_SUMMARY": os.devnull}
+    p = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True)
+    assert (p.returncode == 0) is ok, (p.stdout, p.stderr)
+
+
 def test_the_aggregate_script_fails_when_the_result_is_not_even_set(jobs):
     script = jobs["governance-tool-tests"]["steps"][0]["run"]
     p = subprocess.run(["bash", "-c", script], env={"PATH": "/usr/bin:/bin"}, capture_output=True, text=True)
