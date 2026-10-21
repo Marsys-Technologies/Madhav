@@ -3,21 +3,25 @@
 ``publication.py`` stays the one reviewed, byte-pinned operation module (NB-KALA ``source_imports.json``); this module
 adds only what the executor kinds need on top of it and delegates every real operation to it:
 
-* ``rebuild`` / ``rebuild-dryrun`` -- the SR-BOLD-04 split. ``--phase pre`` admits only assets that do not depend on the
-  gochara surface the flip changes, ``--phase post`` only assets that are that surface or depend on it. The set is read
-  from ``asset_registry.depends_on`` at run time, never from a list kept here. The orchestrator's probe mode is its
+* ``rebuild`` / ``rebuild-dryrun`` -- ONE single-phase run over the whole in-scope plan (SR-K9-PUBLISHABLE D1: the SR-BOLD-04
+  pre/post split is withdrawn and its ``--phase`` code path is gone; a plan that mixes assets on both sides of the gochara flip
+  is the normal K9 rebuild). The kind admits a non-empty list of distinct assets that all exist in ``asset_registry``; the
+  delegated ``publication`` operation then requires them to equal the run's frozen plan. The orchestrator's probe mode is its
   default delta-skip gate (``asset_runner.py`` ``_run_data_writer``); it is switched off only by ``NIRMANA_FORCE_EXECUTE``.
   An ambient forcing environment is refused. SR-BOLD-04-WITHDRAWN / U-K9P-01 (option B): the executor's ``rebuild`` kind passes
   the explicit ``--force-execute`` flag, which makes this module -- not the caller's environment -- turn the gate off for
   the one in-process run, so every planned writer executes and attests its grain under the new generation. A probe-skipped
   writer cannot be admitted instead: its rows live only under the lit build's generation and serving reads the head
   generation, so carrying its old grain forward would publish a layer silently missing that writer's rows (N.7.6, N.8).
+  The delegated operation's stdout is ONE JSON document (SR-K9-PUBLISHABLE D5): the orchestrator's ``[event]`` lines and any
+  import-time print go to stderr, and the ``admission`` block (``probe_mode`` / ``force_execute``) is added to the result
+  document, so a receipt shows whether the run was forced.
 * ``verify-dryrun`` / ``publish-dryrun`` / ``rollback-dryrun`` -- the layer operations run for real inside a transaction
   that is then rolled back, with the rollback read back. ``dry_run_passed`` is true only when the operation ran, its
   write was observed inside the transaction, and the state read after the rollback equals the state read before it.
 * ``cancel`` / ``teardown`` (+ ``-dryrun``) -- ``rebuild_control``: the orchestrator's stop request for a run, and the deletion of
-  an unpublished candidate of a terminal run. Each is read back from the database after its commit; the ``-dryrun`` twin is
-  the same rehearsal as the layer ones.
+  an unpublished candidate of a terminal run (a FAILED run also has the asset states it wrote restored, SR-K9-PUBLISHABLE D8).
+  Each is read back from the database after its commit; the ``-dryrun`` twin is the same rehearsal as the layer ones.
 """
 from __future__ import annotations
 
@@ -26,6 +30,7 @@ import contextlib
 import io
 import json
 import os
+import sys
 from datetime import timezone
 from typing import Any, Callable, Iterable, Mapping
 from uuid import UUID
@@ -35,11 +40,6 @@ import psycopg
 from services.kala_core import publication, rebuild_control
 from services.kala_core.publication import CANONICAL_CHART
 
-# SR-BOLD-04 reading (J-bold04 GRAPH.json split_rule_used): "gochara-dependent" is one of the four gochara producers
-# OR a transitive dependent of one. The literal "depends on ka_gochara_v5" test is vacuous: nothing declares that edge.
-GOCHARA_SURFACE = frozenset({'ka_gochara', 'ka_gochara_v3_century_materialize',
-                             'ka_gochara_v4_41_candidate', 'ka_gochara_v5'})
-PHASES = ('pre', 'post')
 # runner.py execute_run: ``os.environ.get("NIRMANA_FORCE_EXECUTE", "").strip().lower() in ("1", "true", "yes")``
 FORCE_ENV = 'NIRMANA_FORCE_EXECUTE'
 FORCING_VALUES = ('1', 'true', 'yes')
@@ -67,37 +67,13 @@ def forced_execution():
         os.environ[FORCE_ENV] = previous
 
 
-def gochara_closure(edges: Mapping[str, Iterable[str]]) -> frozenset[str]:
-    """The gochara surface plus every asset that depends on a member of it, directly or transitively."""
-    members = set(GOCHARA_SURFACE)
-    grew = True
-    while grew:
-        grew = False
-        for asset, deps in edges.items():
-            if asset not in members and any(dep in members for dep in deps):
-                members.add(asset)
-                grew = True
-    return frozenset(members)
-
-
-def phase_refusal(edges: Mapping[str, Iterable[str]], assets: list[str], phase: str) -> str | None:
-    """A reason when ``assets`` does not belong to ``phase`` of the K9 rebuild split, else None."""
-    if phase not in PHASES:
-        return 'phase must be one of ' + ', '.join(PHASES)
+def assets_refusal(edges: Mapping[str, Iterable[str]], assets: list[str]) -> str | None:
+    """A reason when ``assets`` is not an admissible single-phase K9 rebuild list, else None."""
     if not assets or any(not a for a in assets) or len(set(assets)) != len(assets):
         return 'assets must be a non-empty list without blanks or duplicates'
     unknown = [a for a in assets if a not in edges]
     if unknown:
         return 'not in asset_registry: ' + ', '.join(unknown)
-    closure = gochara_closure(edges)
-    if phase == 'pre':
-        offenders = [a for a in assets if a in closure]
-        if offenders:
-            return 'pre-flip rebuild may not include gochara-dependent assets: ' + ', '.join(offenders)
-    else:
-        offenders = [a for a in assets if a not in closure]
-        if offenders:
-            return 'post-flip rebuild is limited to gochara-dependent assets; not dependent: ' + ', '.join(offenders)
     return None
 
 
@@ -180,7 +156,6 @@ def _parser() -> argparse.ArgumentParser:
             continue
         if operation in REBUILD_OPERATIONS:
             p.add_argument('--assets', required=True)
-            p.add_argument('--phase', required=True, choices=PHASES)
             if operation == 'rebuild':
                 p.add_argument('--force-execute', action='store_true')
         else:
@@ -208,23 +183,40 @@ def _admit_rebuild(dsn: str, args: argparse.Namespace) -> str | None:
         return forced
     with psycopg.connect(dsn, connect_timeout=5) as conn:
         conn.read_only = True
-        return phase_refusal(registry_edges(conn), args.assets.split(','), args.phase)
+        return assets_refusal(registry_edges(conn), args.assets.split(','))
+
+
+def split_output(text: str) -> tuple[dict | None, list[str]]:
+    """(the delegated operation's own result, every other line): the result is the last stdout line that is a JSON object."""
+    lines = text.splitlines()
+    for index in range(len(lines) - 1, -1, -1):
+        try:
+            document = json.loads(lines[index])
+        except ValueError:
+            continue
+        if isinstance(document, dict):
+            return document, lines[:index] + lines[index + 1:]
+    return None, lines
 
 
 def _delegate_rebuild(args: argparse.Namespace) -> int:
     captured = io.StringIO()
     # --force-execute applies to the real rebuild only; the dry run executes nothing.
     forcing = _forces(args) and args.operation == 'rebuild'
-    with contextlib.redirect_stdout(captured), (forced_execution() if forcing else contextlib.nullcontext()):
-        code = publication.main([args.operation, '--run-id', str(args.run_id), '--assets', args.assets])
-    text = captured.getvalue().strip()
+    code = 3
     try:
-        document = json.loads(text)
-    except ValueError:
-        print(text)
-        return code
+        with contextlib.redirect_stdout(captured), (forced_execution() if forcing else contextlib.nullcontext()):
+            code = publication.main([args.operation, '--run-id', str(args.run_id), '--assets', args.assets])
+    finally:
+        document, rest = split_output(captured.getvalue())
+        # Orchestrator [event] lines and import-time prints are evidence on stderr, never part of the proof on stdout.
+        if rest:
+            print('\n'.join(rest), file=sys.stderr)
+    if document is None:
+        print(json.dumps({'status': 'FAILED', 'reason': 'the delegated rebuild produced no JSON result document'}))
+        return code or 3
     if code == 0:
-        document['admission'] = {'phase': args.phase, 'assets': args.assets.split(','),
+        document['admission'] = {'assets': args.assets.split(','),
                                  'probe_mode': 'force_execute' if forcing else 'delta_skip_gate', 'force_execute': forcing}
     print(json.dumps(document, sort_keys=True))
     return code
@@ -247,8 +239,10 @@ def _control(dsn: str, args: argparse.Namespace) -> int:
             state, requested = rebuild_control.cancel_state(conn, run_id)
             result['readback'] = {'state': state, 'stop_requested_at': requested.astimezone(timezone.utc).isoformat() if requested else None}
         else:
+            states = dict(rebuild_control.asset_state_census(conn))
             result['readback'] = {'remaining_rows': rebuild_control.row_counts(conn, rebuild_control.CANONICAL_CHART, result['generation']),
-                                  'head_generation': rebuild_control.head_of(conn, rebuild_control.CANONICAL_CHART)}
+                                  'head_generation': rebuild_control.head_of(conn, rebuild_control.CANONICAL_CHART),
+                                  'asset_states': {r['asset_id']: states.get(r['asset_id']) for r in result['asset_states_restored']}}
         conn.rollback()
     print(json.dumps(result, sort_keys=True, default=str))
     return 0
