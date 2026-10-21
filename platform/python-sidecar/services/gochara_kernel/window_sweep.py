@@ -331,13 +331,38 @@ def graduated_drishti(row: dict, rec: SweepRecord,
 
 def vedha_attenuation(row: dict, rec: SweepRecord,
                       vedha: Callable[[SweepRecord, datetime], float | None] | None) -> Outcome:
-    """The vedha operand is the state of the overlay interval at t (§5). The overlay is NOT this
-    writer's substrate: until a source is bound (ruling pending: kala_vedha_gochara vs. derived) and
-    the registry carries the state→value mapping, the operand is a named missing input — never 1.0."""
+    """The vedha operand is the state of the overlay interval at t (§5). Two sources are understood:
+
+      * a STRUCTURED source (`vedha.overlay(rec, factor_ref)` — `vedha_source.VedhaProvider`, SR-OD1 C1): the factor is
+        declared not-applicable (`na`: adverse residence, an uncited pair, a node as the transiting body) or a step function
+        over the record's supports whose own change instants are COMPLETE and whose undeterminable stretches carry their named
+        reason (`obstructor_residence_unknown`, `node_residence_unknown`). Each segment's value must equal the row's declared
+        state→value mapping — a source that disagrees with the registry is refused, never trusted;
+      * a plain `(rec, t) -> float` callable (the pre-C1 contract, kept for the sweep's own tests): value only; its boundaries come
+        from the record-wide list or a per-factor `OperandSource`.
+
+    With no source bound the operand is a named missing input — never 1.0."""
     if vedha is None:
         return _missing(row, "vedha_overlay_not_bound")
-    return Outcome("fn", fn=lambda t, _r=rec: vedha(_r, t), null_state=row["null_state"],
-                   factor=row["factor_id"])
+    overlay_of = getattr(vedha, "overlay", None)
+    if overlay_of is None:
+        return Outcome("fn", fn=lambda t, _r=rec: vedha(_r, t), null_state=row["null_state"],
+                       factor=row["factor_id"])
+    ap = row.get("applicability")
+    if not ap:                    # the 1.0.0 row declares no mapping: there is nothing to apply a derived state to
+        return _missing(row, "applicability_undeclared")
+    mapping = ap["mapping"]
+    ov = overlay_of(rec, (row["factor_id"], row["rule_version"]))
+    if not ov.applicable:
+        return Outcome("na", factor=row["factor_id"], reason=ov.not_applicable_reason)
+    for seg in ov.segments:
+        if seg.state in mapping and seg.value != float(mapping[seg.state]):
+            raise SweepRefusal(f"record {rec.record_id}: the vedha source valued a {seg.state!r} stretch {seg.value!r}, but "
+                               f"{row['factor_id']}@{row['rule_version']} maps {seg.state!r} to {mapping[seg.state]!r}")
+        if seg.value is not None and seg.state not in mapping:
+            raise SweepRefusal(f"record {rec.record_id}: the vedha source valued a {seg.state!r} stretch, which the row does not map")
+    return Outcome("fn", fn=ov.value_at, null_state=row["null_state"], factor=row["factor_id"], state_valued=True,
+                   boundaries=ov.boundaries, boundaries_complete=ov.complete, unknown_reason=ov.unknown_reason_at)
 
 
 def categorical_factor(row: dict, rec: SweepRecord | None = None) -> Outcome:
@@ -362,7 +387,7 @@ def _stateful(out: Outcome, rec: SweepRecord) -> Outcome:
     """Attach the factor's own boundaries / completeness / channel / reason hooks to its function-valued outcome. A factor
     with an `OperandSource` uses it; a state-valued factor without one inherits the record-wide `state_boundaries` (the
     pre-W0 behaviour, unchanged)."""
-    if out.kind != "fn":
+    if out.kind != "fn" or out.boundaries is not None:     # an outcome that brings its own boundaries (C1 vedha) keeps them
         return out
     src = rec.operand_sources.get(out.factor)
     if src is not None:
@@ -704,12 +729,19 @@ class WindowDraft:
     objective_value: float | None = None   # that function's value at the peak — distinct from `score`
     affected_channels: tuple = ()          # the channels an UNQUALIFIED member feeds (an unknown channel feeds both)
     policy: str = "window_qualification/1"  # the result policy this window was drafted under (R9-1; the manifest's)
+    #: R4 (SR-Q6-L1-AMEND): the identity of the combustion authority a P1 grain's states were derived from — the `bg_combustion_orbs` row ids and
+    #: content digest, and the L1 combustion module's digest (`p1_operands.P1Operands.combustion_inheritance`). None for every other grain.
+    combustion_inheritance: dict | None = None
 
     def qualification(self) -> dict:
-        """The structured provenance persisted with the window (1240 `qualification`; closed keys)."""
-        return {"policy": self.policy, "unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
-                "affected_channels": sorted(self.affected_channels), "members": self.members,
-                "qualified_members": self.qualified_members}
+        """The structured provenance persisted with the window (1240 `qualification`; closed keys, plus `combustion_inheritance` for a P1
+        grain bound to the Form B operands — the shape check is amended by the migration the cockpit numbers for R4)."""
+        q = {"policy": self.policy, "unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
+             "affected_channels": sorted(self.affected_channels), "members": self.members,
+             "qualified_members": self.qualified_members}
+        if self.combustion_inheritance is not None:
+            q["combustion_inheritance"] = self.combustion_inheritance
+        return q
 
 
 #: R8-4/R8-6: until a solver with a stated global-maximum guarantee exists for function-valued factors
@@ -846,7 +878,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                   vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
                   compute_valence: Callable | None = None,
                   allow_dynamic: bool = False,
-                  policy: str = POLICY_QUALIFICATION) -> tuple[list[WindowDraft], dict]:
+                  policy: str = POLICY_QUALIFICATION,
+                  combustion_inheritance: dict | None = None) -> tuple[list[WindowDraft], dict]:
     """The grain's windows (one path-version) and an exclusion ledger — every record accounted.
 
     Window construction (Codex round 6, R3): ONE window per MAXIMAL CONNECTED COMPONENT of the
@@ -1092,6 +1125,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             peak_instant=peak, score=score, evidence_for=ev_for, evidence_against=ev_against,
             outcome_valence_for_native=val.outcome_valence_for_native, objective_value=best, **base))
     drafts = [d if d.policy == policy else dataclasses.replace(d, policy=policy) for d in drafts]
+    if combustion_inheritance is not None:        # R4: every window of the grain carries the identity of the combustion authority it consumed
+        drafts = [dataclasses.replace(d, combustion_inheritance=combustion_inheritance) for d in drafts]
     return drafts, excluded
 
 

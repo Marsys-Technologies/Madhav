@@ -378,15 +378,20 @@ def test_1_2_0_is_bound_and_selected_for_the_eight_classes_only():
     for pid in ("P1", "P3", "P4"):
         assert (pid, V) in rr.bound_path_refs()
     assert ("P2", V) not in rr.bound_path_refs() and ("P5", V) not in rr.bound_path_refs()
+    # SR-OD1 V1: the FINAL profile's default selection is P1/P3/P4@1.3.0 + P2@1.1.0 (AM-18); the eight classes
+    # still run P1/P3/P4 at 1.2.0 (re-derived in place), and P5 is held at 1.0.0
     for cls in EIGHT:
-        assert rr.selected_versions_for(cls) == {"P1": V, "P2": "1.0.0", "P3": V, "P4": V, "P5": "1.0.0"}
+        assert rr.selected_versions_for(cls) == {"P1": V, "P2": "1.1.0", "P3": V, "P4": V, "P5": "1.0.0"}
     for cls in OTHERS:
         if cls == "bereavement":          # ND-P2 rule 3: P3 and P4 only (its own tests below)
             continue
-        assert set(rr.selected_versions_for(cls).values()) == {"1.0.0"}
+        assert rr.selected_versions_for(cls) == {"P1": "1.3.0", "P2": "1.1.0", "P3": "1.3.0", "P4": "1.3.0",
+                                                 "P5": "1.0.0"}
     rr._membership_consistent()
     assert ("karaka_agent", V) in rr.bound_factor_refs()
-    assert not [r for r in rr.bound_path_refs() + rr.bound_factor_refs() if r[1] == "1.1.0"]      # 1.1.0 stays unbound
+    # 1.1.0 of P3/P4/P5 and activity_kernel@1.1.0 stay unbound (FB-30); only the AM-18 vedha rows are bound at 1.1.0
+    assert sorted(r for r in rr.bound_path_refs() + rr.bound_factor_refs() if r[1] == "1.1.0") == [
+        ("P2", "1.1.0"), ("graduated_drishti", "1.1.0"), ("vedha_attenuation", "1.1.0")]
 
 
 def test_the_bound_1_2_0_rows_carry_the_rulings_stamp_and_the_pre_existing_rows_are_unchanged():
@@ -457,23 +462,31 @@ def test_an_nd_h_class_plans_1_2_0_included_and_1_0_0_superseded_for_that_class(
 def test_a_class_outside_the_eight_plans_exactly_as_before_and_accounts_1_2_0_as_not_applicable():
     pins = _plan("marriage")
     for pid in ("P1", "P3", "P4"):
-        assert pins[(pid, "1.0.0")].disposition == "included"
+        # SR-OD1 V1: the class searches the 1.3.0 doctrine row; 1.0.0 is superseded by it (non-degrading)
+        assert pins[(pid, "1.3.0")].disposition == "included"
+        assert (pins[(pid, "1.0.0")].disposition, pins[(pid, "1.0.0")].exclusion_reason) == (
+            "excluded", "superseded_by_version")
         new = pins[(pid, V)]
         assert (new.disposition, new.exclusion_reason, new.basis, new.ruling_ref) == (
             "excluded", "not_applicable_to_class", f"ruling:{RULING}", None)
-    want = {o.canonical_bytes for p in ("P3", "P4")
+
+    def unversioned(canonical: str) -> str:               # the obligation 9-tuple without its rule_version field
+        parts = canonical.split("|")
+        return "|".join(parts[:2] + parts[3:])
+    want = {unversioned(o.canonical_bytes) for p in ("P3", "P4")
             for o in map(inv.obligation_of_edge, ev.enumerate_edges("marriage", p, CHART, rule_version="1.0.0"))}
-    assert {o.canonical_bytes for p in ("P3", "P4") for o in pins[(p, "1.0.0")].obligations} == want
+    assert {unversioned(o.canonical_bytes) for p in ("P3", "P4") for o in pins[(p, "1.3.0")].obligations} == want
 
 
 def test_p2_emits_no_parental_event_row_once_the_class_runs_under_its_nd_h_rows():
     assert ev.enumerate_edges("parental_event", "P2", CHART, "conv", rule_version="1.0.0") == []
     assert ev.ephemeral_tier_edges("parental_event", "P2", CHART, "conv", rule_version="1.0.0") == []
     assert ev.enumerate_edges("financial_deception", "P2", CHART, "conv", rule_version="1.0.0")
-    pin = _plan("parental_event")[("P2", "1.0.0")]
-    assert (pin.disposition, pin.exclusion_reason, pin.basis) == (
-        "excluded", "not_applicable_to_class", f"ruling:{RULING}")
-    assert _plan("financial_deception")[("P2", "1.0.0")].disposition == "included"     # the other adverse class keeps P2
+    for version in ("1.0.0", "1.1.0"):             # SR-OD1 V1: P2 is selected at 1.1.0 (AM-18); neither version is searched
+        pin = _plan("parental_event")[("P2", version)]
+        assert (pin.disposition, pin.exclusion_reason, pin.basis) == (
+            "excluded", "not_applicable_to_class", f"ruling:{RULING}")
+    assert _plan("financial_deception")[("P2", "1.1.0")].disposition == "included"     # the other adverse class keeps P2
 
 
 # ── 7. the admitted-day share and the 40% DVI guard, computed by the scorer ──────────────────────────────
@@ -621,7 +634,7 @@ def test_rule_3_leaves_houses_and_maraka_testimony_unchanged():
 
 
 def test_rule_3_reaches_p3_and_p4_only_and_no_other_class(monkeypatch):
-    assert rr.selected_versions_for("bereavement") == {"P1": "1.0.0", "P2": "1.0.0", "P3": V, "P4": V, "P5": "1.0.0"}
+    assert rr.selected_versions_for("bereavement") == {"P1": "1.3.0", "P2": "1.1.0", "P3": V, "P4": V, "P5": "1.0.0"}
     assert not [e for e in edges("bereavement", "P1") if e.object_role == "karaka"]
     assert reg.kb_targets("bereavement", "1.0.0") == ()                       # nothing before 1.2.0
     for cls in OTHERS:
@@ -650,9 +663,9 @@ def test_rule_3_inventory_bereavement_p3_p4_included_at_1_2_0_and_1_0_0_supersed
         old = pins[(pid, "1.0.0")]
         assert (old.disposition, old.exclusion_reason, old.basis) == (
             "excluded", "superseded_by_version", f"ruling:{P2_RULING}")
-    assert pins[("P1", "1.0.0")].disposition == "included"
+    assert pins[("P1", "1.3.0")].disposition == "included"                   # SR-OD1 V1: P1 follows the default selection
     assert (pins[("P1", V)].disposition, pins[("P1", V)].exclusion_reason) == ("excluded", "not_applicable_to_class")
-    assert pins[("P2", "1.0.0")].disposition == "included"                   # P2 for bereavement is untouched
+    assert pins[("P2", "1.1.0")].disposition == "included"                   # P2 for bereavement is untouched by ND-P2
 
 
 def test_rule_3_target_is_pinned_in_the_versioned_h_table():

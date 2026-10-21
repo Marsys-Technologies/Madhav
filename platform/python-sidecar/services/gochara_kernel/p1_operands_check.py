@@ -11,6 +11,9 @@ module derives those states AGAIN, from scratch, for the verifier:
     reconstruction device) — never the builder's stored crossings or its provider;
   * the value table: the factor rows' `category_mapping`, read by this module's own strict parser.
 
+`combustion_inheritance()` states, from this module's own reads and hashing, the identity of the combustion authority it derived from (the orb
+row ids and content digest, L1's module digest); the verifier compares it with the record the builder stored in each window's qualification (R4).
+
 It imports nothing from `window_sweep`, `window_solver` or `p1_operands` (the builder). What it SHARES with the builder, by
 design (CLAUDE.md §N.5 — L1 is the authority, a transit rule carries no second convention) are the pure rule functions behind
 `gochara_rules.p1_inputs` (combustion arc and orb rule, the strict L0 row validators, the mūlatrikoṇa-range authority check)
@@ -30,10 +33,17 @@ and its natural NATURE (BPHS 3.11: Sun, Mars, Saturn, waning Moon, Rāhu, Ketu m
 Mercury malefic iff in the same sign as a malefic — "joined" = same sign, Q4). Side and magnitude are then the Form B table
 (ANSWERS.md §B.3): the nature gives the default side; the dignity rung — or combustion — overrides it.
 
+THE SIDE RULE (SR-B1-Q3C-JOB; ANSWERS.md v2.1 §B.4, Q3 c), written HERE from the spec text and imported from nowhere — `spec_side` below:
+the natural nature sets the DEFAULT side (benefic favourable, malefic adverse); a BENEFIC lord goes ADVERSE "in an inimical sign, in
+debility, or combust"; a MALEFIC lord goes FAVOURABLE "in exaltation, mūlatrikoṇa or own sign"; nothing else changes a side. It is the
+verifier's own decider, and the factor rows' declared table is CHECKED against it: a table whose side contradicts the rule (a Q3(a)
+nature-only table, say) is refused by name, so the verifier is not a rubber stamp for the builder's data. Defined for rule version 1.3.0 only.
+
 NODES (ANSWERS.md §B.5). Rāhu's and Ketu's exaltation and debility come from L0 as seeded. Their mūlatrikoṇa and own signs are
-NOT in L0, and the verse puts them in Gemini and Aquarius (Rāhu) and Sagittarius (Ketu): a node there is UNDETERMINED
-(`node_dignity_unclassified`), never classified from friendship. The rule lifts for a sign L0 comes to hold as the node's own
-sign. Combustion is not applicable to a node (L1 M-19).
+NOT in the pre-1401 L0, and the verse puts them in Gemini and Aquarius (Rāhu) and Sagittarius (Ketu): a node there is UNDETERMINED
+(`node_dignity_unclassified`), never classified from friendship. The rule lifts for a sign L0 holds as the node's own sign or as its
+mūlatrikoṇa: migration 1401 (PR #3840) stores the latter as a SIGN with no degree range, which the strict reader takes as the WHOLE sign
+(ANSWERS.md v2.1 §B.5, SR-1401-VERIFIED: Rāhu in Gemini = MT, Ketu in Sagittarius = MT). Combustion is not applicable to a node (L1 M-19).
 
 WHAT THE VALUE TABLE LOOKS LIKE (I) INTERPRETATION — nothing in the repository fixes the shape of the P1 `category_mapping` yet
 (the data PR D2 writes it): this reader accepts, and refuses anything else by name,
@@ -42,7 +52,7 @@ WHAT THE VALUE TABLE LOOKS LIKE (I) INTERPRETATION — nothing in the repository
     combustion              {"combust": CELL, "not_combust": {"value": v}}           combust = the depression rung, adverse
     CELL = {"side": "favourable" | "adverse", "value": v}  with 0 < v ≤ 1 (spec §2.3 inv. 3: a modifier never removes a window)
 The value of a record at t is the product of the three factors' values (a combust lord takes the combustion cell and the dignity
-row contributes the neutral element 1); the side is the combustion cell's, else the dignity cell's.
+row contributes the neutral element 1); the side is `spec_side` of (nature, effective rung), and every declared side is checked against it.
 
 NAMED LIMITS. (1) The change instants are found under the smooth-motion guarantee of `contact_reconstruct` (an excursion shorter
 than `MIN_EXCURSION_SECONDS` is not excluded) and located to `BISECT_SECONDS`; two independent locations of one instant therefore
@@ -52,8 +62,12 @@ retrograde (L1 M-19), and only when the arc lies between their two orbs at a sta
 """
 from __future__ import annotations
 
+import hashlib
+import importlib.util
+import json
 import math
 from dataclasses import dataclass
+from decimal import Decimal
 from datetime import datetime, timedelta
 from typing import NamedTuple
 
@@ -78,6 +92,21 @@ SIDES = ("favourable", "adverse")
 NODE_UNCLASSIFIED_SIGNS = {"Rahu": ("Gemini", "Aquarius"), "Ketu": ("Sagittarius",)}
 NODE_DIGNITY_UNCLASSIFIED = "node_dignity_unclassified"
 
+SIDE_RULE_VERSION = "1.3.0"
+#: ANSWERS.md v2.1 §B.4, quoted: "Benefic → adverse side in an inimical sign, in debility, or combust. Malefic → favourable side in exaltation,
+#: mūlatrikoṇa or own sign." The nature's default is the side the lord's own kind gives: benefic favourable, malefic adverse (BPHS 3.11, §B.2).
+_SPEC_DEFAULT_SIDE = {"benefic": "favourable", "malefic": "adverse"}
+_SPEC_OVERRIDE = {"benefic": ("adverse", ("INI", "DEB", "COMB")), "malefic": ("favourable", ("EX", "MT", "OWN"))}
+
+
+def spec_side(nature: str, rung: str) -> str:
+    """The side of a period lord of natural `nature` at effective `rung` (an entry of RUNGS or "COMB"), read from the spec text above."""
+    if nature not in _SPEC_DEFAULT_SIDE or rung not in RUNGS + ("COMB",):
+        raise StrictInputError("side_rule_input_unknown", f"{nature}/{rung}")
+    side, rungs = _SPEC_OVERRIDE[nature]
+    return side if rung in rungs else _SPEC_DEFAULT_SIDE[nature]
+
+
 RETRO_PROBE_SECONDS = 60.0
 PEAK_TOLERANCE_SECONDS = 2.0 * _cr.BISECT_SECONDS
 
@@ -85,8 +114,8 @@ _SQL_DIGNITY = ("SELECT graha, exaltation_sign, debilitation_sign, moolatrikona_
                 " own_signs FROM public.bg_dignity_reference ORDER BY graha")
 _COLS_DIGNITY = ("graha", "exaltation_sign", "debilitation_sign", "moolatrikona_sign", "moolatrikona_from",
                  "moolatrikona_to", "own_signs")
-_SQL_ORBS = "SELECT graha, orb_degrees, deep_orb_degrees FROM public.bg_combustion_orbs ORDER BY graha"
-_COLS_ORBS = ("graha", "orb_degrees", "deep_orb_degrees")
+_SQL_ORBS = "SELECT graha, orb_degrees, deep_orb_degrees, id FROM public.bg_combustion_orbs ORDER BY graha"
+_COLS_ORBS = ("graha", "orb_degrees", "deep_orb_degrees", "id")
 _SQL_NAIS = ("SELECT graha, other_graha, relation FROM public.bg_graha_naisargika_friendship"
              " ORDER BY graha, other_graha")
 _COLS_NAIS = ("graha", "other_graha", "relation")
@@ -107,6 +136,21 @@ class Evaluation(NamedTuple):
 
 def _read(conn, sql: str, cols: tuple) -> list[dict]:
     return [r if isinstance(r, dict) else dict(zip(cols, r)) for r in conn.execute(sql).fetchall()]
+
+
+def _decimal_text(x) -> str:
+    """A NUMERIC as plain decimal text without trailing zeros (`15`, `15.0`, Decimal('15.00') are one value)."""
+    return format(Decimal(str(x)).normalize(), "f")
+
+
+def l1_module_digest() -> str:
+    """sha256 of the source text of the L1 module that holds the combustion function, located by the import machinery (this module's own read,
+    not the builder's)."""
+    spec = importlib.util.find_spec(_p1.L1_RULE_MODULE)
+    if spec is None or not spec.origin:
+        raise RuntimeError(f"combustion inheritance: {_p1.L1_RULE_MODULE} cannot be located")
+    with open(spec.origin, encoding="utf-8") as fh:
+        return hashlib.sha256(fh.read().encode("utf-8")).hexdigest()
 
 
 def needs_p1_check(factor_rows) -> bool:
@@ -148,6 +192,20 @@ class P1Check:
         """The verifier's OWN L0 reads (nothing is handed over by the builder)."""
         return cls(position_at, dignity_rows=_read(conn, _SQL_DIGNITY, _COLS_DIGNITY),
                    orb_rows=_read(conn, _SQL_ORBS, _COLS_ORBS), naisargika_rows=_read(conn, _SQL_NAIS, _COLS_NAIS))
+
+    def combustion_inheritance(self) -> dict:
+        """R4 (SR-Q6-L1-AMEND): the identity of the combustion authority this derivation reads — the orb rows' ids and content digest as THIS
+        reader read them, and the digest of L1's combustion module. The builder records its own in every window's qualification; the verifier
+        refuses a window whose record differs. The digest is the one `L0_CONSUMED` binds: sha256 of the canonical JSON of
+        [graha, orb, deep orb] in graha order (NUMERICs as plain decimal text). A row read without an id is refused: an identity is never invented."""
+        rows = sorted(self._orb_rows, key=lambda r: r["graha"])
+        missing = [r["graha"] for r in rows if r.get("id") is None]
+        if missing:
+            raise StrictInputError("l0_row_id_missing", f"bg_combustion_orbs: no id for {missing}")
+        pre = [[r["graha"], _decimal_text(r["orb_degrees"]), _decimal_text(r["deep_orb_degrees"])] for r in rows]
+        digest = hashlib.sha256(json.dumps(pre, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")).hexdigest()
+        return {"orb_digest": digest, "orb_row_ids": {r["graha"]: int(r["id"]) for r in rows}, "l1_module": _p1.L1_RULE_MODULE,
+                "l1_module_digest": l1_module_digest()}
 
     # ── the sky ──────────────────────────────────────────────────────────────────────────────────────────────────
     def lon(self, body: str, t: datetime) -> float:
@@ -321,9 +379,16 @@ def _require_keys(mapping, keys, factor: str) -> dict:
     return mapping
 
 
+def subject_of(rec: dict) -> str:
+    """The governed subject of a P1 record's factors, lower-case: its PERIOD ANCHOR LORD (migration 1233), else its own agent — the same
+    rule the builder applies (`p1_operands.P1Operands.attach`; SR-PLAN-REVIEW-RECONCILED R-5, Phaladīpikā XX.34-38: the period lord's
+    strength is judged where the period lord stands, however the delivery form reaches the native). The geometry stays on `rec["agent"]`."""
+    return (rec.get("anchor") or rec["agent"]).lower()
+
+
 class P1Binding:
     """The check bound to one path's factor rows and one event class: values, sides, channels, unknown reasons and change
-    instants of a stored record (a dict with at least `agent`)."""
+    instants of a stored record (a dict with at least `agent`; its `anchor`, when present, is the governed subject — `subject_of`)."""
 
     def __init__(self, check: P1Check, factor_rows, event_class: str):
         self.check, self.event_class = check, event_class
@@ -335,6 +400,8 @@ class P1Binding:
             try:
                 if fid not in by_id or not by_id[fid].get("category_mapping"):
                     raise StrictInputError("p1_factor_row_without_category_mapping", fid)
+                if by_id[fid].get("rule_version") != SIDE_RULE_VERSION:     # the side rule is defined for 1.3.0 only
+                    raise StrictInputError("side_rule_undefined_for_version", f"{fid}@{by_id[fid].get('rule_version')!r}")
                 parse(by_id[fid]["category_mapping"])
             except StrictInputError as e:
                 self._row_problem[fid] = e.reason
@@ -346,22 +413,32 @@ class P1Binding:
     def _parse_nature(self, m):
         m = _require_keys(m, NATURES, "agent_nature")
         self._nature = {n: _cell(m[n], f"agent_nature/{n}", side="required") for n in NATURES}
+        for n in NATURES:
+            if self._nature[n].side != _SPEC_DEFAULT_SIDE[n]:       # the agent_nature row declares the DEFAULT side
+                raise StrictInputError("category_mapping_side_contradicts_q3c", f"agent_nature/{n}: {self._nature[n].side!r}")
 
     def _parse_dignity(self, m):
         m = _require_keys(m, [f"{n}/{r}" for n in NATURES for r in RUNGS], "dignity_of_transit_sign")
         self._dignity = {k: _cell(v, f"dignity_of_transit_sign/{k}", side="required") for k, v in m.items()}
+        for k, cell in self._dignity.items():
+            nature, rung = k.split("/")
+            if cell.side != spec_side(nature, rung):
+                raise StrictInputError("category_mapping_side_contradicts_q3c", f"dignity_of_transit_sign/{k}: {cell.side!r}, the spec says {spec_side(nature, rung)!r}")
 
     def _parse_combustion(self, m):
         m = _require_keys(m, ("combust", "not_combust"), "combustion")
         self._comb = {"combust": _cell(m["combust"], "combustion/combust", side="required"),
                       "not_combust": _cell(m["not_combust"], "combustion/not_combust", side="forbidden")}
+        for n in NATURES:         # one combust cell serves both natures: the spec puts a combust lord on the adverse side whichever its kind
+            if self._comb["combust"].side != spec_side(n, "COMB"):
+                raise StrictInputError("category_mapping_side_contradicts_q3c", f"combustion/combust: {self._comb['combust'].side!r} for a {n} lord")
 
     def record_problem(self, factor_id: str, rec: dict) -> str | None:
         """The named reason this factor cannot be derived for this record at all (a mapping the reader refuses, or an L0 row the
         lord needs that is missing / divergent), else None. Static: it does not depend on t."""
         if factor_id in self._row_problem:
             return self._row_problem[factor_id]
-        graha = rec["agent"].title()
+        graha = subject_of(rec).title()
         if factor_id == "dignity_of_transit_sign":
             return self.check.dignity_problem(graha)
         if factor_id == "combustion":
@@ -370,11 +447,12 @@ class P1Binding:
 
     def evaluate(self, rec: dict, t: datetime):
         """`Evaluation` of the record at t, or `P1Unknown` (a named per-instant reason)."""
-        key = (rec["agent"], t)
+        subject = subject_of(rec)           # the cache key is the SUBJECT: two records of one agent under different anchors never share an entry
+        key = (subject, t)
         if key not in self._eval_cache:
             if len(self._eval_cache) > 500_000:
                 self._eval_cache.clear()
-            self._eval_cache[key] = self._evaluate(rec["agent"].title(), t)
+            self._eval_cache[key] = self._evaluate(subject.title(), t)
         return self._eval_cache[key]
 
     def _evaluate(self, graha: str, t: datetime):
@@ -386,13 +464,13 @@ class P1Binding:
             return comb
         if comb["applicable"] and comb["is_combust"]:
             cell = self._comb["combust"]
-            return Evaluation(cell.side, cell_n.value * cell.value, nat, "COMB", True)
+            return Evaluation(spec_side(nat, "COMB"), cell_n.value * cell.value, nat, "COMB", True)
         rung = chk.rung_at(graha, t)
         if isinstance(rung, P1Unknown):
             return rung
         cell = self._dignity[f"{nat}/{rung}"]
         value = cell_n.value * cell.value * (self._comb["not_combust"].value if comb["applicable"] else 1.0)
-        return Evaluation(cell.side, value, nat, rung, False)
+        return Evaluation(spec_side(nat, rung), value, nat, rung, False)
 
     def value_at(self, rec: dict, t: datetime):
         e = self.evaluate(rec, t)
@@ -410,8 +488,9 @@ class P1Binding:
 
     def channel_boundaries(self, rec: dict, lo: datetime, hi: datetime) -> list[datetime]:
         """The record's change instants inside [lo, hi): where its value OR side may change (the verifier cuts its pieces here)."""
-        return self.check.boundaries(rec["agent"].title(), lo, hi)
+        return self.check.boundaries(subject_of(rec).title(), lo, hi)
 
 
 __all__ = ["Evaluation", "MAITRI_RETIRED_REASON", "MAPPING_NOT_SUPPLIED_REASON", "NODE_DIGNITY_UNCLASSIFIED", "P1Binding", "P1Check",
-           "P1_FACTORS", "P1Unknown", "PEAK_TOLERANCE_SECONDS", "RETIRED_FACTORS", "RUNGS", "needs_p1_check"]
+           "P1_FACTORS", "P1Unknown", "PEAK_TOLERANCE_SECONDS", "RETIRED_FACTORS", "RUNGS", "SIDE_RULE_VERSION", "needs_p1_check", "spec_side",
+           "subject_of"]

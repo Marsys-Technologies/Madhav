@@ -89,9 +89,9 @@ DIGNITY_ROWS = [
     _dig("Rahu", "Taurus", "Scorpio", None, None, None, []),
     _dig("Ketu", "Scorpio", "Taurus", None, None, None, []),
 ]
-ORB_ROWS = [{"graha": g, "orb_degrees": o, "deep_orb_degrees": d} for g, o, d in (
+ORB_ROWS = [{"id": i, "graha": g, "orb_degrees": o, "deep_orb_degrees": d} for i, (g, o, d) in enumerate((      # id = the seed's insertion order
     ("Moon", 12, 10), ("Mars", 17, 15), ("Mercury", 14, 12), ("Jupiter", 11, 9), ("Venus", 10, 8), ("Saturn", 15, 12),
-    ("Rahu", 9, 7), ("Ketu", 9, 7))]
+    ("Rahu", 9, 7), ("Ketu", 9, 7)), start=1)]
 
 
 def _naisargika_from_migration() -> list[dict]:
@@ -123,11 +123,11 @@ COMB_MAP = {"combust": _c(ADV, 1.0), "not_combust": {"value": 1.0}}
 
 
 def _row(fid, mapping, **kw):
-    return {"factor_id": fid, "rule_version": "9.0.0", "null_state": "unqualified", "direction": "doctrine-ordered",
+    return {"factor_id": fid, "rule_version": "1.3.0", "null_state": "unqualified", "direction": "doctrine-ordered",
             "function": "step", "range": [0.0, 1.0], "units": "unitless", "category_mapping": mapping, **kw}
 
 
-def p1_rows(path="P1", version="9.0.0"):
+def p1_rows(path="P1", version="1.3.0"):
     return [_row("dignity_of_transit_sign", DIGNITY_MAP), _row("combustion", COMB_MAP), _row("agent_nature", NATURE_MAP)]
 
 
@@ -411,7 +411,7 @@ def test_v3_an_unreadable_value_table_is_refused_by_name_never_defaulted():
 def test_v4_maitri_is_retired_from_p1_so_no_derivation_exists_for_it():
     """Q7 b (P1-MAPPING-DECISION): `maitri_compound` is retired from P1 in the new version. A maitrī row that nevertheless
     declares a table is unqualified by name in the verifier. Planted reversion: it becomes a step factor."""
-    row = {"factor_id": "maitri_compound", "rule_version": "9.0.0", "null_state": "unqualified", "category_mapping": {"friend": 0.5}}
+    row = {"factor_id": "maitri_compound", "rule_version": "1.3.0", "null_state": "unqualified", "category_mapping": {"friend": 0.5}}
     rec = {"agent": "jupiter", "root": "r", "relation": "residence", "kind": "sign_span", "house": None, "supports": []}
     assert wv._row_state(row, rec, False, False, p1=_bound(Sky())) == ("unq", "maitri_compound_retired_not_derivable")
 
@@ -429,7 +429,7 @@ class _ReadConn:
             cols = ("graha", "exaltation_sign", "debilitation_sign", "moolatrikona_sign", "moolatrikona_from", "moolatrikona_to", "own_signs")
             return _Rows([tuple(r[c] for c in cols) for r in DIGNITY_ROWS])
         if "bg_combustion_orbs" in sql:
-            return _Rows([(r["graha"], r["orb_degrees"], r["deep_orb_degrees"]) for r in ORB_ROWS])
+            return _Rows([(r["graha"], r["orb_degrees"], r["deep_orb_degrees"], r["id"]) for r in ORB_ROWS])
         if "bg_graha_naisargika_friendship" in sql:
             m = re.search(r"SELECT (\w+), (\w+), (\w+) FROM", sql)
             assert m
@@ -476,7 +476,7 @@ def _jupiter_world():
 
 
 def _verify(conn, sky, *, rows=None, p1=True, **kw):
-    check = _check(sky) if p1 else None
+    check = kw.pop("check", None) or (_check(sky) if p1 else None)         # `check`: a verifier built over other L0 rows (R4 review B2)
     return wv.verify_window_semantics(conn, factor_rows=rows or p1_rows(), p1_check=check, dynamic_enabled=True,
                                       policy=wv.POLICY_VERSION, **{**GRAIN, "event_class": CLASS}, **kw)
 
@@ -516,7 +516,8 @@ def _rahu_world(stored_blank=True):
         stored = _stored("w", _d(0), _d(10), None, None, None, None, wv._expected_valence(CLASS, 0.0, 0.0, reason), [],
                          ("evidence_for_per_root_sum", None, {"policy": wv.POLICY_VERSION, "unqualified_reason": reason,
                                                               "unresolved": {reason: 1}, "affected_channels": [], "members": 1,
-                                                              "qualified_members": 1}))
+                                                              "qualified_members": 1,
+                                                              "combustion_inheritance": _check(sky).combustion_inheritance()}))
     else:
         stored = _stored("w", _d(0), _d(10), _d(0), 1.0, 0.0, None, wv._expected_valence(CLASS, 0.0, 0.0, "evidence_against_channel_not_evaluated"))
     return sky, _ProvConn([stored], [record], [("w", "r1")])
@@ -570,7 +571,7 @@ def test_w5_the_builders_w0_hooks_and_the_verifier_agree_on_one_world():
         return None if isinstance(v, P1Unknown) else v
     src = OperandSource(value_at=value, channel_at=side, complete=True, boundaries=lambda lo, hi: binding.channel_boundaries(agent, lo, hi))
     rec = _rec("r1", path="P1", root="root1", agent="jupiter", supports=((0, 10),), operand_sources={"agent_nature": src})
-    nature = {"factor_id": "agent_nature", "rule_version": "9.0.0", "null_state": "unqualified", "direction": "doctrine-ordered",
+    nature = {"factor_id": "agent_nature", "rule_version": "1.3.0", "null_state": "unqualified", "direction": "doctrine-ordered",
               "function": "step", "range": [0.0, 1.0], "units": "unitless"}       # the same `direction` as the P1 rows
     (draft,), _ = ws.draft_windows(CLASS, [rec], lambda p, v: [nature], allow_dynamic=True)
     assert abs((draft.peak_instant - _d(5)).total_seconds()) <= p1c.PEAK_TOLERANCE_SECONDS and draft.score == pytest.approx(0.125)

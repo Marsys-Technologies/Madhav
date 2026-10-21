@@ -23,11 +23,11 @@ the difference is pinned by a differential test, not hidden.
 
 Nodes (ANSWERS §B.5, ruling): Rāhu/Ketu are never combust (declared). Their exaltation/debilitation come from L0 as seeded; the
 mūlatrikoṇa and own signs the served verse names (BPHS 47.34-39, bphs:PG573:C2-PG574:C1) are NOT in L0, so a node in one of
-those signs has NO rung (`node_dignity_unclassified`, an honest null — not a guess) until L0 carries them. An own sign L0 later
-adds to a node's row is classified by that row and leaves the reserved set by itself; a node MŪLATRIKOṆA cannot, because the
-strict reader `p1_inputs.validated_dignity_row` deliberately drops a node's mūlatrikoṇa (it has no degree range) — carrying it
-needs that reader changed, not this module. The disputed node-friendship pairs and the variant own signs are DISCLOSED on the
-result, not silently resolved.
+those signs has NO rung (`node_dignity_unclassified`, an honest null — not a guess) until L0 carries them. Migration 1401 (PR #3840)
+carries them: an own sign and a node mūlatrikoṇa SIGN with NO degree range. The strict reader `p1_inputs.validated_dignity_row` reads a
+stored node mūlatrikoṇa as the WHOLE sign (0..30; ANSWERS.md v2.1 §B.5, SR-1401-VERIFIED: Rāhu in Gemini = MT, Ketu in Sagittarius = MT), so
+the sign leaves the reserved set by itself; where no sign is stored (a pre-1401 DB) it stays reserved. The disputed node-friendship pairs and
+the variant own signs are DISCLOSED on the result, not silently resolved.
 """
 from __future__ import annotations
 
@@ -56,6 +56,30 @@ NODE_FRIENDSHIP_DISPUTED = frozenset({("Rahu", "Mercury"), ("Rahu", "Mars"), ("R
 REASON_NODE_UNCLASSIFIED = "node_dignity_unclassified"
 DISCLOSE_FRIENDSHIP = "node_friendship_source_disputed"
 DISCLOSE_VARIANT_OWN = "node_own_sign_variant_unresolved"
+
+
+#: SR-B1-Q3C-JOB: the SIDE rule is code, not only table data. Q3(c) (ANSWERS.md v2.1 §B.4): the natural nature sets the DEFAULT side; dignity
+#: and combustion override it at the extremes the texts name and ONLY there — a benefic lord goes ADVERSE when combust, debilitated or in an
+#: inimical sign; a malefic lord goes FAVOURABLE when exalted, in mūlatrikoṇa or in its own sign. Every other rung (a benefic's EX/MT/OWN/FR/NEU,
+#: a malefic's COMB/DEB/INI/FR/NEU) keeps the nature's side. It is defined for rule version 1.3.0 only; the 1.0.0 rows declare no table.
+SIDE_RULE_VERSION = "1.3.0"
+DEFAULT_SIDE = {"benefic": "favourable", "malefic": "adverse"}
+BENEFIC_TURNS_ADVERSE = frozenset({"COMB", "DEB", "INI"})
+MALEFIC_TURNS_FAVOURABLE = frozenset({"EX", "MT", "OWN"})
+
+
+def q3c_side(nature: str, rung: str) -> str:
+    """The side of a period lord of natural `nature` at effective `rung` under Q3(c) / Form B (ANSWERS.md v2.1 §B.4). The rung is already the
+    effective rung (combustion > EX > MT > OWN > DEB > FR/NEU/INI), so each override is tested on it alone."""
+    if nature not in NATURES:
+        raise StrictInputError("nature_unknown", repr(nature))
+    if rung not in RUNGS:
+        raise StrictInputError("rung_unknown", repr(rung))
+    if nature == "benefic" and rung in BENEFIC_TURNS_ADVERSE:
+        return "adverse"
+    if nature == "malefic" and rung in MALEFIC_TURNS_FAVOURABLE:
+        return "favourable"
+    return DEFAULT_SIDE[nature]
 
 
 @dataclass(frozen=True)
@@ -98,6 +122,9 @@ def validate_mapping(raw: Mapping, *, ref: str | None = None) -> SideValueMappin
                 raise StrictInputError("mapping_side_invalid", f"{nature}/{rung}: {side!r}")
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0.0 < value <= 1.0:
                 raise StrictInputError("mapping_value_invalid", f"{nature}/{rung}: {value!r} (need a real in (0, 1])")
+            if side != q3c_side(nature, rung):
+                # the table may not contradict the side rule it is read under: a Q3(a) table (nature alone) is refused by name
+                raise StrictInputError("mapping_side_contradicts_q3c", f"{nature}/{rung}: table says {side!r}, Q3(c) says {q3c_side(nature, rung)!r}")
             cells[(nature, rung)] = (side, float(value))
     return SideValueMapping(cells=cells, ref=ref)
 
@@ -140,6 +167,8 @@ def mapping_from_rows(factor_rows: Iterable) -> SideValueMapping:
     for fid in FORM_B_FACTORS:
         if fid not in by_id or not by_id[fid].get("category_mapping"):
             raise StrictInputError("category_mapping_undeclared", fid)
+        if by_id[fid].get("rule_version") != SIDE_RULE_VERSION:      # the side rule is Q3(c) under 1.3.0 only; no other version defines one
+            raise StrictInputError("side_rule_undefined_for_version", f"{fid}@{by_id[fid].get('rule_version')!r}")
     dig, comb, nat = (by_id[f]["category_mapping"] for f in FORM_B_FACTORS)
     if not isinstance(dig, Mapping) or set(dig) != {f"{n}/{r}" for n in NATURES for r in _DIGNITY_RUNGS}:
         raise StrictInputError("mapping_rungs_invalid", "dignity_of_transit_sign: expected exactly the 14 nature/rung cells")
@@ -150,6 +179,8 @@ def mapping_from_rows(factor_rows: Iterable) -> SideValueMapping:
     _unit_cell(comb["not_combust"], "combustion/not_combust")
     for n in NATURES:
         _unit_cell(nat[n], f"agent_nature/{n}")
+        if nat[n].get("side") != DEFAULT_SIDE[n]:      # the agent_nature row declares the DEFAULT side: Q3(c) starts from the nature's
+            raise StrictInputError("mapping_side_contradicts_q3c", f"agent_nature/{n}: table says {nat[n].get('side')!r}, the default is {DEFAULT_SIDE[n]!r}")
     raw = {n: {**{r: dict(dig[f"{n}/{r}"]) for r in _DIGNITY_RUNGS}, "COMB": dict(comb["combust"])} for n in NATURES}
     return validate_mapping(raw, ref="+".join(f"{f}@{by_id[f].get('rule_version')}" for f in FORM_B_FACTORS))
 
@@ -175,9 +206,8 @@ class LordRungRules:
             dignity_boundaries(graha, dignity_rows)         # L0 and L1 must agree on the mūlatrikoṇa range (refused otherwise)
         nais = validated_naisargika(naisargika_rows)
         self.friendship = {other: rel for (g, other), rel in nais.items() if g == graha}
-        # an own sign L0 now DOES carry for the node is classified by L0 and is not reserved any more (see the module docstring
-        # for why a node mūlatrikoṇa cannot close this way)
-        self.reserved_signs = frozenset(set(NODE_RESERVED_SIGNS.get(graha, ())) - set(self.ref["own_signs"]))
+        # an own sign or a (whole-sign) mūlatrikoṇa L0 now DOES carry for the node is classified by L0 and is not reserved any more
+        self.reserved_signs = frozenset(set(NODE_RESERVED_SIGNS.get(graha, ())) - set(self.ref["own_signs"]) - {self.ref.get("moolatrikona_sign")})
 
     def rung(self, sign: str, degree_in_sign: float, combust: bool | None) -> RungResult:
         if sign not in SIGNS:
@@ -214,6 +244,6 @@ class LordRungRules:
         return RungResult(_FRIENDSHIP_RUNG[rel], disclosures=tuple(disclosures), basis=f"naisargika:{self.graha}->{lord}")
 
 
-__all__ = ["DISCLOSE_FRIENDSHIP", "FORM_B_FACTORS", "DISCLOSE_VARIANT_OWN", "LordRungRules", "NATURES", "NODES", "NODE_FRIENDSHIP_DISPUTED",
+__all__ = ["BENEFIC_TURNS_ADVERSE", "DEFAULT_SIDE", "DISCLOSE_FRIENDSHIP", "FORM_B_FACTORS", "MALEFIC_TURNS_FAVOURABLE", "SIDE_RULE_VERSION", "q3c_side", "DISCLOSE_VARIANT_OWN", "LordRungRules", "NATURES", "NODES", "NODE_FRIENDSHIP_DISPUTED",
            "NODE_RESERVED_SIGNS", "NODE_VARIANT_OWN_SIGNS", "REASON_NODE_UNCLASSIFIED", "RUNGS", "RungResult", "SIDES",
            "SideValueMapping", "has_form_b", "mapping_from_row", "mapping_from_rows", "validate_mapping"]

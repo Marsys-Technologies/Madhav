@@ -21,6 +21,7 @@ from scripts.kala_gochara_cutover import j4d_slice_qualify as q
 from services.gochara_kernel import contact_certify as cc
 from services.gochara_kernel import measuring_capture as mc
 from services.gochara_kernel import near_miss as nm
+from services.gochara_kernel import rule_registry as rr
 
 from .conftest import EPHE_PATH
 from .test_a53_inventory import CHART_ID
@@ -42,6 +43,16 @@ def _lane_guard_is_proven_elsewhere():
         assert re.fullmatch(r"a53t_[a-z0-9_]+", conn.execute("SELECT current_database()").fetchone()[0])
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(q, "require_lane", disposable_only)
+        # SR-OD1 V1: the doctrine rows (P1/P3/P4@1.3.0, P2@1.1.0) change every scored cell under the final rules, leaving no
+        # "unchanged" cell for this equality-with-the-golden scenario; it runs on the pre-doctrine final profile (ND-H / ND-P2 /
+        # parental suppression only), exactly like kala_db/test_j4d_slice_qualification.py. The TRIAL gates the doctrine rows.
+        patch.setattr(rr, "FINAL_SELECTED_PATH_REFS", rr.SELECTED_PATH_REFS)
+        patch.setattr(rr, "FINAL_ONLY_PATH_REFS", rr.ND_H_PATH_REFS)
+        # The REAL writer plans every row `bound_path_refs()` binds, and refuses ("neither the selected, nor superseded by an included
+        # successor") a bound 1.3.0 / P2@1.1.0 row the selection does not run; the catalogue reads these two tuples, so the profile
+        # is made consistent by emptying them too (selection and catalogue both pre-doctrine).
+        patch.setattr(rr, "DOCTRINE_PATH_REFS", ())
+        patch.setattr(rr, "VEDHA_PATH_REFS", ())
         yield
 
 

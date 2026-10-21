@@ -27,6 +27,10 @@ Claims (doctrine / analytic source in each oracle's docstring; D-OWNER-TESTS-202
   S-24 two fixed points close together give an exact plateau, proved without search (one body ⇒ convex in its longitude)
   S-25 the max-min objective exists only where both agents are live   S-26 the +-2e-10 grey band around the 1e-9 tie threshold
   S-27 a kinked crest narrower than a sample is located and proved   S-28 ties are read off the re-derived maximum, not the stored peak's value
+  R1-1 the stored instant is an actual qualifying extremum, never a point between candidates (GPT B1)
+  R1-2 the stored REAL is judged in its float4 rounding interval at its magnitude (GPT B2)
+  S-29 tied extrema closer than ISOLATION_S => `tie_isolation_unresolved` (INCONCLUSIVE; R-3), neither a pass nor a refutation
+  S-30 a close extremum that is NOT within the tie tolerance does not blank the window    S-31 tied extrema farther apart than ISOLATION_S are still decided
 plus guards without a reversion: independence of the module (an AST detector that is itself shown to read false on a planted import),
 the H1 sampling premise, and the S0-measured constants.
 """
@@ -35,6 +39,7 @@ from __future__ import annotations
 import ast
 import math
 import random
+import struct
 import sys
 import types
 from datetime import datetime, timedelta, timezone
@@ -172,13 +177,17 @@ def claim(cid: str, old: str, new: str):
     return deco
 
 
-@claim("V-1", "if f_star is None or abs(f_star - st.objective_value) > VALUE_TOL:", "if f_star is None:")
+@claim("V-1", "if f_star is None or abs(f_star - st.objective_value) > max(VALUE_TOL, _f4_tol(st.objective_value)):", "if f_star is None:")
 def oracle_value_at_peak(m):
     """The objective at the stored peak must be the stored value (plan §2.4 item 1; the float4 storage round-trip 1e-6)."""
     w = w_interior(m, 1.0)
     assert run(m, w, stored(m, T_INT, M_INT)).status == m.VERIFIED
     bad = run(m, w, stored(m, T_INT, M_INT + 1e-3))
     assert bad.status == m.REFUTED and chk.F_VALUE in codes(bad)
+    # the value is read AT THE STORED INSTANT: the true maximum stored with an instant 0.5 s past a kinked crest (inside Q12's second, so the
+    # instant check passes, and the stored maximum equals the re-derived one) is still no value of F there — the kink loses ~6e-6 by then
+    kink = run(m, w_p4(m), stored(m, at(T_P4, 0.5), M_P4))
+    assert kink.status == m.REFUTED and chk.F_VALUE in codes(kink), kink
 
 
 @claim("S-2", "pc.pure = (not (up and down)) or convex", "pc.pure = True")
@@ -206,7 +215,7 @@ def oracle_global_not_first_hump(m):
     assert run(m, w, stored(m, 0.75, 1.0)).status == m.VERIFIED
 
 
-@claim("S-4", "if t_star > t_hi + self.tol_s:", "if False:")
+@claim("S-4", "elif abs(t_star - e_mid) > self.tol_s:", "elif False:")
 def oracle_earliest_among_ties(m):
     """Spec §7.2 inv 2 plateau rule: exact ties take the EARLIEST instant. Two humps both exactly 1.0 (t = 0.25 d and 0.75 d): the later one
     is refuted as 'an earlier tie exists', the earlier one is proved."""
@@ -285,14 +294,113 @@ def oracle_ties_are_read_off_the_rederived_maximum(m):
 
 
 @claim("S-26", "GREY = 2e-10 ", "GREY = 0.0 ")
-def oracle_grey_band(m):
-    """Plan §2.4 item 3 / interpretation I-2: an earlier hump AT the 1e-9 tie boundary (here 9e-10 below the maximum — float-ambiguous, inside
-    the +-2e-10 grey band) does not make the later maximum a refutation; one clearly inside the tie (5e-10 below) does; one clearly outside
-    (1.1e-9 below) is no tie. Two humps on [0, 0.5) and [0.5, 1): the later one is the exact 1.0."""
-    assert run(m, w_humps(m, 1.0 - 9e-10, 1.0), stored(m, 0.75, 1.0)).status == m.VERIFIED
+def oracle_grey_band_is_only_an_ambiguity_detector(m):
+    """R-1 b / plan §2.4 item 3: the +-2e-10 band around the 1e-9 tie threshold never ACCEPTS a window, it only detects ambiguity. An earlier
+    hump inside the band (9e-10 and 1.1e-9 below the maximum: float-ambiguous) makes the earliest tie undecidable — UNVERIFIED
+    `tie_ambiguous`, whichever hump is stored, never VERIFIED; one clearly inside the tie (5e-10 below) is a refutation; one clearly outside
+    (1.3e-9 below) is no tie. Two humps on [0, 0.5) and [0.5, 1): the later one is the exact 1.0."""
+    for gap in (9e-10, 1.1e-9):
+        for t_s, v in ((0.75, 1.0), (0.25, 1.0 - gap)):
+            amb = run(m, w_humps(m, 1.0 - gap, 1.0), stored(m, t_s, v))
+            assert amb.status == m.UNVERIFIED and chk.U_AMBIG in codes(amb) and not amb.findings, (gap, t_s, amb)
     inside = run(m, w_humps(m, 1.0 - 5e-10, 1.0), stored(m, 0.75, 1.0))
     assert inside.status == m.REFUTED and chk.F_EARLIER_TIE in codes(inside)
-    assert run(m, w_humps(m, 1.0 - 1.1e-9, 1.0), stored(m, 0.75, 1.0)).status == m.VERIFIED
+    assert run(m, w_humps(m, 1.0 - 1.3e-9, 1.0), stored(m, 0.75, 1.0)).status == m.VERIFIED
+
+
+def _f4(x):
+    return struct.unpack("f", struct.pack("f", x))[0]
+
+
+def w_plateaus(m):
+    """GPT-6.1 review probe B1 (review_probes.py): a step objective on a 20 s window with three maximum plateaus, all boundaries supplied —
+    [2, 4) s at 1 - 1.1e-9, [8, 10) s at 1 - 5e-8, [14, 16) s at 1.0, and 0.5 elsewhere. No sky is involved."""
+    lo, hi = at(0), at(0, 20)
+    edges = (2, 4, 8, 10, 14, 16)
+
+    def value(d):
+        s_ = (d - lo).total_seconds()
+        return 1 - 1.1e-9 if 2 <= s_ < 4 else 1 - 5e-8 if 8 <= s_ < 10 else 1.0 if 14 <= s_ < 16 else 0.5
+    st = m.StepFactor(value, lambda a, b: [lo + timedelta(seconds=x) for x in edges if a <= lo + timedelta(seconds=x) < b], True)
+    return {"lo": lo, "hi": hi, "pos": no_sky, "records": [m.CheckRecord("one", "one", "sun", ((lo, hi),), steps=(st,))]}
+
+
+@claim("R1-1", "if not any(abs(t_star - t) <= self.tol_s for t in widest):",
+       "if abs(t_star - e_mid) > self.tol_s and not (e_lo - self.tol_s <= t_star <= e_hi + self.tol_s):")
+def oracle_instant_is_an_actual_qualifying_extremum(m):
+    """R-1 b (GPT B1, VERIFIED-wrong): the stored instant is compared with an ACTUAL qualifying extremum (unrounded value >= M-hat - 1e-9)
+    within Q12's 1 s, never with the span between the earliest candidates at different thresholds. In the probe's world the frozen
+    earliest-extremum rule gives 14 s (1.0); the 8 s plateau (5e-8 = 50 tie tolerances below) lies INSIDE the span [2 s, 14 s] of the two
+    candidates the grey band separates, and used to be accepted. It is REFUTED as `peak_instant_mismatch`, with the maximum stored exactly
+    and with the probe's own float4 value (where it is not VERIFIED either)."""
+    w = w_plateaus(m)
+    wrong = run(m, w, m.StoredWindow(at(0, 8), 1.0))
+    assert wrong.status == m.REFUTED and chk.F_INSTANT in codes(wrong), wrong
+    probe = run(m, w, m.StoredWindow(at(0, 8), _f4(1 - 5e-8)))
+    assert probe.status != m.VERIFIED, probe
+
+
+@claim("R1-2", "return math.ldexp(1.0, e - 25) + F4_ABS_SLACK", "return 1e-7")
+def oracle_stored_real_is_judged_in_its_float4_interval(m):
+    """R-1 a (GPT B2): the stored REAL is compared with the UNROUNDED maximum inside a magnitude-aware float4 interval — half a float4
+    spacing at the value (IEEE 754 binary32, 24-bit significand) plus 1e-10. Five constant roots summing to 4.1234567 store as
+    4.1234564781 (a rounding error of 2.2e-7, past a fixed 1e-7): the correct window is VERIFIED. At 40.1234567 the rounding error
+    (1.65e-6) is past even the 1e-6 value tolerance: still VERIFIED. A stored maximum three half-spacings low is still refuted."""
+    lo, hi = at(0), at(0, 20)
+    for total in (4.1234567, 40.1234567):
+        recs = [m.CheckRecord(str(i), str(i), "sun", ((lo, hi),), constant=total / 5) for i in range(5)]
+        w = {"lo": lo, "hi": hi, "pos": no_sky, "records": recs}
+        assert abs(total - _f4(total)) > 2e-7
+        ok = run(m, w, m.StoredWindow(lo, _f4(total)))
+        assert ok.status == m.VERIFIED, (total, ok)
+        half = 2.0 ** (math.frexp(total)[1] - 25)
+        low = run(m, w, m.StoredWindow(lo, _f4(total - 4 * half)))
+        assert low.status == m.REFUTED, (total, low)
+
+
+def w_close(m, gap_s, b_const=1.0):
+    """Two distinct crests of ONE root `gap_s` seconds apart on a fast body (lon = 100 + 0.01 s): record a (tent level 100.10, orb 0.05) crests at
+    s = 10 over its support [0, 10 + gap/2), record b (level 100 + 0.01 (10 + gap)) crests at s = 10 + gap over [10 + gap/2, 30 + gap) at height
+    `b_const`. Per-root max: F peaks at 1.0 twice with a dip to 0.8 (gap 2) between them — two distinct local maxima, tied when b_const = 1."""
+    pos = sky_s(A=lambda s: 100.0 + 0.01 * s)
+    split, end = 10.0 + gap_s / 2.0, 30.0 + gap_s
+    recs = [m.CheckRecord("a", "R", "A", ((at(0), at(0, split)),), tent=m.TentFactor("A", 100.10, 0.05)),
+            m.CheckRecord("b", "R", "A", ((at(0, split), at(0, end)),), constant=b_const,
+                          tent=m.TentFactor("A", 100.0 + 0.01 * (10.0 + gap_s), 0.05))]
+    return {"lo": at(0), "hi": at(0, end), "records": recs, "pos": pos}
+
+
+@claim("S-29", "if y - x <= ISOLATION_S]", "if False]")
+def oracle_close_ties_are_not_isolated(m):
+    """SR-PLAN-REVIEW-RECONCILED R-3 (GPT B4 / window_solver H5): two distinct maxima, both exactly 1.0, 2 s apart (inside ISOLATION_S = 2 x the
+    builder's LEAF, <= 4 s): the earliest distinct one is not something either side's sampling scale can certify, so the window is the named
+    INCONCLUSIVE blank `tie_isolation_unresolved` — whichever of the two the stored peak sits at, and never a REFUTED `earlier_tie_not_taken`
+    for the later one (that would be a verdict the enumeration cannot back)."""
+    w = w_close(m, 2.0)
+    for when in (10.0, 12.0):
+        rep = run(m, w, stored(m, at(0, when), 1.0))
+        assert rep.status == m.UNVERIFIED and chk.U_ISOLATION in codes(rep) and not rep.findings, (when, rep.status, codes(rep))
+    assert len(rep.rederived["tie_cluster"]) == 1
+
+
+@claim("S-30", "ties = sorted(t for t, f in cands if f >= theta)", "ties = sorted(t for t, f in cands)")
+def oracle_a_close_non_tie_does_not_blank(m):
+    """The frozen tie tolerance is 1e-9 (N-11, window_sweep._TIE): a second crest 2 s away but 1.1e-9 BELOW the maximum is no tie, so the
+    window is decided as before — the earlier, higher crest is proved, and the same peak stored at the lower later crest is refuted."""
+    w = w_close(m, 2.0, b_const=1.0 - 1.1e-9)
+    rep = run(m, w, stored(m, at(0, 10.0), 1.0))
+    assert rep.status == m.VERIFIED, (rep.status, codes(rep))
+    assert chk.U_ISOLATION not in codes(rep)
+
+
+@claim("S-31", "ISOLATION_S = 4.0 ", "ISOLATION_S = 1e9 ")
+def oracle_separated_ties_are_still_decided(m):
+    """The detector is a proximity test, not a blanket blank: two exact ties 20 s apart (farther than ISOLATION_S) keep the frozen rule — the
+    earliest is proved, the later one refuted as `earlier_tie_not_taken`."""
+    w = w_close(m, 20.0)
+    assert run(m, w, stored(m, at(0, 10.0), 1.0)).status == m.VERIFIED
+    late = run(m, w, stored(m, at(0, 30.0), 1.0))
+    assert late.status == m.REFUTED and chk.F_EARLIER_TIE in codes(late) and chk.U_ISOLATION not in codes(late)
 
 
 @claim("S-9", "cuts.update(c for c in (self._sec(x) for x in st.boundaries(self._dt(a), self._dt(b))) if a < c < b)", "pass")
@@ -445,7 +553,7 @@ def oracle_two_fixed_points_make_an_exact_plateau(m):
     rep = run(m, w, stored(m, 0.5, 1.5), max_evals=3000)
     assert rep.status == m.VERIFIED, rep
     late = run(m, w, stored(m, 1.0, 1.5), max_evals=3000)
-    assert late.status == m.REFUTED and chk.F_EARLIER_TIE in codes(late), late
+    assert late.status == m.REFUTED and chk.F_INSTANT in codes(late), late           # a plateau's instant is its start: a later point is no extremum
 
 
 @claim("S-25", "groups, defined = list(agents.values()), set(agents) == P4_AGENTS", "groups, defined = list(agents.values()), bool(agents)")
@@ -617,11 +725,11 @@ def _brute_truth(bodies, spec, p4):
     return top, min(t for f, t in found if f >= top - 1e-10)                       # the EARLIEST of exact ties (spec §7.2 inv 2)
 
 
-@claim("S-15", "BOUND_TOL = 1e-7 ", "BOUND_TOL = 1e-5 ")
+@claim("S-15", "F4_ABS_SLACK = 1e-10 ", "F4_ABS_SLACK = 1e-5 ")
 def oracle_differential_500_worlds(m):
     """The checker agrees with an independent dense brute force on 500 random analytic worlds (linear / quadratic bodies, 2-3 tents, step
     islands, sum and max-min objectives): the true (instant, value) is PROVED, and the same instant with a value 5e-7 too low — inside the
-    float4 storage round-trip, so only the 1e-7 bound threshold can see it — is REFUTED as 'the objective exceeds the stored maximum'."""
+    old 1e-6 storage tolerance, so only the float4 rounding interval (half a spacing, <= 1.2e-7 at these magnitudes, + 1e-10) can see it — is REFUTED as 'the objective exceeds the stored maximum'."""
     rng = random.Random(2026102101)
     worlds = checked = 0
     for k in range(500):
@@ -674,7 +782,8 @@ def test_the_single_planted_reversion_fails_the_oracle(cid):
 
 def test_every_claim_has_exactly_one_reversion_and_one_oracle():
     assert set(CLAIMS) == {"V-1", "S-2", "S-3", "S-4", "S-5", "S-6", "S-7", "S-8", "S-9", "S-10", "S-11", "S-12", "S-13", "S-14",
-                           "S-15", "S-16", "S-17", "S-18", "S-19", "S-20", "S-21", "S-22", "S-23", "S-24", "S-25", "S-26", "S-27", "S-28"}
+                           "S-15", "S-16", "S-17", "S-18", "S-19", "S-20", "S-21", "S-22", "S-23", "S-24", "S-25", "S-26", "S-27", "S-28", "S-29", "S-30", "S-31",
+                           "R1-1", "R1-2"}
     assert len({old for _, old, _ in CLAIMS.values()}) == len(CLAIMS)             # no two claims share a reversion site
 
 
@@ -719,7 +828,13 @@ def test_the_independence_detector_reads_false_on_a_planted_import():
 def test_importing_the_checker_does_not_load_the_builder():
     import subprocess
     root = str(Path(__file__).resolve().parents[3])
-    code = (f"import sys; sys.path.insert(0, {root!r}); from services.gochara_kernel import window_solver_check\n"
+    # the package `__init__` imports `knots`, which needs the Swiss Ephemeris binding at import time; a runner without it (the DB shards)
+    # gets a stand-in module so the question asked here — does the checker pull in the builder — is still answered there, not skipped.
+    # `-I` drops the user site and PYTHONPATH, where a CI runner's pip-installed pyswisseph can live: hand the child the parent's own import
+    # path, so what is measured is only which of OUR modules the checker pulls in
+    code = (f"import sys; sys.path[:0] = {[root, *sys.path]!r}\n"
+            "try:\n    import swisseph\nexcept ImportError:\n    from unittest import mock; sys.modules['swisseph'] = mock.MagicMock()\n"
+            "from services.gochara_kernel import window_solver_check\n"
             "bad = [m for m in ('services.gochara_kernel.window_sweep', 'services.gochara_kernel.window_solver') if m in sys.modules]\n"
             "print('LOADED', bad) if bad else print('CLEAN')\n")
     out = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True, cwd=root)
@@ -733,7 +848,7 @@ def test_h1_sampling_premise_and_the_s0_measured_constants():
     # S0_REPORT §2.2: the spline-vs-Swiss station offset reaches 16.7 s (Mercury); a cut window of E seconds must clear it with margin
     assert chk.NEAR_END_S >= 2 * 16.7
     assert chk.PEAK_INSTANT_TOLERANCE_S == 1.0                                    # SOLVER-TOLERANCES: Q12 a, to the second
-    assert chk.TIE == 1e-9 and chk.GREY == 2e-10 and chk.VALUE_TOL == 1e-6 and chk.BOUND_TOL == 1e-7
+    assert chk.TIE == 1e-9 and chk.GREY == 2e-10 and chk.VALUE_TOL == 1e-6 and chk.F4_ABS_SLACK == 1e-10
 
 
 def test_the_objective_names_and_channels_are_the_frozen_strings():

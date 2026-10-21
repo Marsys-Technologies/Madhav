@@ -462,6 +462,12 @@ def derive_path_pin(event_class: str, chart: Mapping[str, Any], path_id: str,
             and selected_versions is not None and selected_versions.get(p) != rule_version):
         return {"path": p, "version": rule_version, "disposition": "excluded",
                 "reason": "not_applicable_to_class", "ruling": "", "basis": "ruling:ND-H-20261005", "obligations": []}
+    # SR-OD1 V1: a class that runs the path at its ND-H / ND-P2 row (1.2.0) does not search the 1.3.0 doctrine row
+    if (rule_version == "1.3.0" and p in _H_DEPENDENT and selected_versions is not None
+            and selected_versions.get(p) == "1.2.0"):
+        ruling = "ND-P2-20261005" if event_class == "bereavement" else "ND-H-20261005"
+        return {"path": p, "version": rule_version, "disposition": "excluded",
+                "reason": "not_applicable_to_class", "ruling": "", "basis": f"ruling:{ruling}", "obligations": []}
     if p in _H_DEPENDENT and event_class in _UNKNOWN_H and not (rule_version == "1.2.0" and event_class in _ndh_EIGHT):
         if h_unknown_exclusion is None:
             raise Unverifiable(f"{event_class}/{p}: H is unknown and the verifier was given no "
@@ -515,8 +521,17 @@ def inventory_preimage(*, convention_id: str, horizon: tuple[str, str], input_di
 _SUPERSEDED = {("p1", "1.0.0"): "1.3.0", ("p2", "1.0.0"): "1.1.0", ("p3", "1.0.0"): "1.1.0",
                ("p4", "1.0.0"): "1.1.0", ("p5", "1.0.0"): "1.1.0"}
 
+#: SR-OD1 V1 — the verifier's OWN copy of the owner-confirmed doctrine chain (1.3.0): `(path, older) -> successor`, and
+#: the owner ruling each successor stands on (the basis of the `superseded_by_version` pin). Told what the owner
+#: decided (P1-MAPPING-DECISION: P1; AM-13-RATIFIED: P3/P4), not imported from the builder or the registry.
+_DOCTRINE_SUPERSEDED = {("p1", "1.0.0"): "1.3.0", ("p3", "1.0.0"): "1.3.0", ("p3", "1.1.0"): "1.3.0",
+                        ("p4", "1.0.0"): "1.3.0", ("p4", "1.1.0"): "1.3.0"}
+_DOCTRINE_RULING = {"p1": "P1-MAPPING-DECISION", "p3": "AM-13-RATIFIED", "p4": "AM-13-RATIFIED"}
+
 
 def _supersession_basis(path: str, old: str, new: str, event_class=None) -> str:
+    if new == "1.3.0":
+        return f"ruling:{_DOCTRINE_RULING[path]}"
     if new == "1.2.0":
         return "ruling:ND-P2-20261005" if event_class == "bereavement" else "ruling:ND-H-20261005"
     if (path, new) == ("p1", "1.3.0"):                        # SR-OD1 D2: the owner's Form B rule version (a ruling, not an amendment)
@@ -571,7 +586,7 @@ def derive_class_pins(event_class: str, chart: Mapping[str, Any], sealed_paths: 
                        "basis": _supersession_basis(path, v, chosen, event_class), "obligations": []}
             if v != chosen and pin["disposition"] == "included":
                 if pins[chosen]["disposition"] == "included" and (
-                        _SUPERSEDED.get((path, v)) == chosen or
+                        _SUPERSEDED.get((path, v)) == chosen or _DOCTRINE_SUPERSEDED.get((path, v)) == chosen or
                         (chosen == "1.2.0" and v == "1.0.0" and path in ("p1", "p3", "p4"))):
                     pin = {"path": path, "version": v, "disposition": "excluded",
                            "reason": "superseded_by_version", "ruling": "",

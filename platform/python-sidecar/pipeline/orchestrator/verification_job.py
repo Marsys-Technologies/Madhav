@@ -62,7 +62,7 @@ def _build_kwargs(conn, ephe_path: str | None) -> dict:
         position_at=position_at, ephe_path=ephe_path, modules=iv.IMPLEMENTATION_MODULES, path_refs=rr.bound_path_refs(),
         configured_selection_for=rr.selected_versions_for, path_rulings=w.VERIFIER_PATH_RULINGS,
         h_unknown=w.VERIFIER_H_UNKNOWN_RULING, moon_scope_domain=moon, factor_rows_for=bound_rows,
-        drishti_bound=w.DRISHTI_SOURCE is not None, vedha_bound=w.VEDHA_SOURCE is not None)
+        drishti_bound=w.DRISHTI_SOURCE is not None, vedha_bound=w.vedha_source() is not None)
 
 
 def _moon_scope_available(conn) -> bool:
@@ -84,6 +84,8 @@ def main(argv=None) -> int:
     ap.add_argument("--report-only", action="store_true")
     ap.add_argument("--final-rules", action="store_true",
                     help="verify an explicitly configured final-rule candidate; default keeps measuring rules")
+    ap.add_argument("--p1-form-b", action="store_true",
+                    help="SR-B1-Q3C-JOB: verify a build that selected P1@1.3.0 (owner's Form B, Q3(c) side rule); must match the build's flag; default keeps 1.0.0")
     ap.add_argument("--brief", action="store_true", help="produce, persist and digest the canonical seal approval payload; stdout ends in "
                     "{brief_chunk,...} lines then a COMPACT last line {status, sha256, persisted, brief_bytes, brief_file, brief_chunks}")
     ap.add_argument("--brief-out", default=None, help="also write the full brief (canonical JSON bytes; sha256 == the digest) to this file")
@@ -92,7 +94,7 @@ def main(argv=None) -> int:
     ap.add_argument("--ephe-path", default=os.environ.get("SE_EPHE_PATH"))
     args = ap.parse_args(argv)
     from services.gochara_kernel import rule_registry
-    with rule_registry.rule_profile(final_rules=args.final_rules):
+    with rule_registry.rule_profile(final_rules=args.final_rules, **({"p1_form_b": True} if args.p1_form_b else {})):
         return _run(args)
 
 

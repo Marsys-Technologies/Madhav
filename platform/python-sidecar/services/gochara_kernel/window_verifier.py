@@ -306,17 +306,20 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     # R9-2: the COMPLETE expected membership, derived here from the grain's own records — not read back from the stored
     # links. Every admitted scored record whose support overlaps a window is a member; no other record is; no admitted
     # record with a support sits in no window. The numeric derivation below runs over the EXPECTED members.
+    # R-5 (SR-PLAN-REVIEW-RECONCILED): a P1 record's governed subject is its PERIOD ANCHOR LORD (migration 1233), else its agent; the
+    # anchor is selected LAST so a caller's row without it still reads as "no anchor" (the agent). Other paths carry no anchor.
+    anchor_col = "r.period_anchor_lord" if path_id == "P1" else "NULL::text"
     record_rows = conn.execute(
         "SELECT r.record_id::text, COALESCE(r.contact_id, r.object_id)::text,"
-        " r.relation, r.object_kind, r.agent, r.house_from_frame, lower(s.x), upper(s.x)"
+        " r.relation, r.object_kind, r.agent, r.house_from_frame, lower(s.x), upper(s.x), " + anchor_col +
         " FROM public.ka_gochara_relationship_record r"
         " CROSS JOIN LATERAL unnest(r.temporal_support_intervals) AS s(x)"
         " WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s AND r.path_id = %s"
         " AND r.rule_version = %s AND r.admission_state = 'admitted' AND r.operator_role = 'scored'", grain).fetchall()
     grain_records: dict[str, dict] = {}
-    for rid, root, rel, kind, agent, house, lo, hi in record_rows:
+    for rid, root, rel, kind, agent, house, lo, hi, *anchor in record_rows:
         rec = grain_records.setdefault(rid, {"id": rid, "root": root, "relation": rel, "kind": kind, "agent": agent,
-                                             "house": house, "supports": []})
+                                             "anchor": anchor[0] if anchor else None, "house": house, "supports": []})
         rec["supports"].append((lo, hi))
     stored_links: dict[str, set] = {}
     for wid, rid in conn.execute(
@@ -354,6 +357,12 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     unverified: list[str] = []      # windows with a function-valued member while the solver is enabled
     deferred: list[str] = []        # …of those, the ones whose solver check this call was told to leave to the verification job
     detail: list[dict] = []         # the lossless qualification provenance, DERIVED here (1156 has no column)
+    inherited = None                # R4: the combustion authority THIS verifier read (None = no P1 binding ⇒ the window carries no such key)
+    if p1 is not None and has_prov:          # only a window table that persists the provenance carries it
+        try:
+            inherited = p1.check.combustion_inheritance()
+        except _p1c.StrictInputError as exc:
+            problems.append(f"combustion inheritance cannot be derived: {exc}")
 
     def expect_null_window(tag, stored, reason):
         """The window must carry no numeric result: NULL score/peak/evidence and the unqualified valence."""
@@ -384,6 +393,16 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         want_q = {"policy": policy, "unqualified_reason": row["unqualified_reason"], "unresolved": row["unresolved"],
                   "affected_channels": row["affected_channels"], "members": row["members"],
                   "qualified_members": qualified_members}
+        if inherited is not None:
+            want_q["combustion_inheritance"] = inherited
+            # R4 (SR-Q6-L1-AMEND): the combustion authority is compared FIELD BY FIELD, so a refusal names what differs (the orb rows, or the L1 code)
+            got = s_qual.get("combustion_inheritance")
+            if not isinstance(got, dict):
+                problems.append(f"{tag}: the window records no combustion inheritance (orb rows + L1 module digest)")
+            else:
+                for k in sorted(set(inherited) | set(got)):
+                    if got.get(k) != inherited.get(k):
+                        problems.append(f"{tag}: combustion inheritance {k} {got.get(k)!r} != re-derived {inherited.get(k)!r}")
         if s_qual != want_q:
             problems.append(f"{tag}: qualification {s_qual} != re-derived {want_q}")
 

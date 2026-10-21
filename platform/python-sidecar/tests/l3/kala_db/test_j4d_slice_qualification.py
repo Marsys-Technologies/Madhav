@@ -17,6 +17,17 @@ from scripts.kala_gochara_cutover import j4d_slice_qualify as q
 from services.gochara_kernel import measuring_capture as mc
 from services.gochara_kernel import rule_registry as rr
 
+@pytest.fixture(autouse=True)
+def _pre_doctrine_final_profile(monkeypatch):
+    """SR-OD1 V1: the owner-confirmed doctrine rows (P1/P3/P4@1.3.0, P2@1.1.0) change the version of EVERY scored cell under the
+    final rules, so with the real registry no cell is "unchanged" any more and this slice proof — equality with the measuring
+    golden for unchanged cells — has nothing to compare (the 4-class TRIAL under window_qualification/1 is the dispatch gate now,
+    SR-OD1-DESIGN). These oracles pin the proof's MECHANICS, so they run on the pre-doctrine final profile the module's docstring
+    describes (ND-H / ND-P2 / parental suppression only); the claim "no cell is unchanged" is pinned in test_od1_v1_versions."""
+    monkeypatch.setattr(rr, "FINAL_SELECTED_PATH_REFS", rr.SELECTED_PATH_REFS)
+    monkeypatch.setattr(rr, "FINAL_ONLY_PATH_REFS", rr.ND_H_PATH_REFS)
+
+
 SLICE = ["business_launch", "marriage", "parental_event"]
 HORIZON = ["1998-01-01T00:00:00+00:00", "2084-02-05T00:00:00+00:00"]
 RECEIPT = ('{"head":"' + "a" * 40 + '","item":"P06b","merged_on_main":true,"mutation_verified":true,'

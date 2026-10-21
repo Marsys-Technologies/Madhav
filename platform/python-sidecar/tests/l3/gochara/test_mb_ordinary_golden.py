@@ -123,6 +123,18 @@ PERIOD_GUARD_SELECT = " ".join("""
 """.split())
 
 
+FACTOR_READ_GOLDEN = ("SELECT operand_selector, null_state, function, direction FROM public.ka_gochara_factor"
+                      " WHERE factor_id = %s AND rule_version = %s")
+# OD-1 D2 (rule_registry.RuleRegistryStore, the persisted-membership read): the one per-factor read also returns `category_mapping`, so an authored
+# value table (the P1 Form B rows) is read back as persisted and checked against the declaration. Same statement, same parameters, one more column.
+FACTOR_READ_HEAD = ("SELECT operand_selector, null_state, function, direction, category_mapping FROM public.ka_gochara_factor"
+                    " WHERE factor_id = %s AND rule_version = %s")
+
+
+GRAIN_READ_GOLDEN_TAIL = "c.t_exact, c.convention_id FROM public.ka_gochara_relationship_record r"
+GRAIN_READ_HEAD_TAIL = "c.t_exact, c.convention_id, NULL::text FROM public.ka_gochara_relationship_record r"
+
+
 class _Rec:
     """A recording view of the connection: every `execute` is noted (whitespace-normalised SQL, parameter count) and delegated unchanged; everything else passes through."""
 
@@ -364,6 +376,18 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
             new = old[0].replace("AND start_iso < end_iso AND", "AND")
             assert rest.count([new, 13]) == 1
             rest = [[old[0], n] if sql == new else [sql, n] for sql, n in rest]
+        # OD-1 D2: follow the golden's per-factor read to the head's one extra column. Never silent or vacuous: every occurrence the golden carries must be matched by
+        # exactly as many head occurrences of the new text (and none of the old), and the rest of the sequence stays strictly compared.
+        golden_factor_reads = m["statements"]["shapes"].get(f"2|{FACTOR_READ_GOLDEN}", 0)
+        assert rest.count([FACTOR_READ_GOLDEN, 2]) == 0, f"{key}: the head still ran the pre-D2 factor read"
+        assert rest.count([FACTOR_READ_HEAD, 2]) == golden_factor_reads, f"{key}: the factor read ran {rest.count([FACTOR_READ_HEAD, 2])}x, the golden {golden_factor_reads}x"
+        rest = [[FACTOR_READ_GOLDEN, n] if sql == FACTOR_READ_HEAD else [sql, n] for sql, n in rest]
+        # OD-1 I1 (window_store.WindowStore.read_grain): the grain read carries one more select column, the P1 period-anchor lord; for every non-P1 path it is the constant
+        # `NULL::text`. Same follow-the-golden discipline: the golden's occurrences must be matched one for one by the head's new text, none of the old text may remain.
+        golden_grain_reads = sum(v for shape, v in m["statements"]["shapes"].items() if GRAIN_READ_GOLDEN_TAIL in shape)
+        assert not [s for s, _ in rest if GRAIN_READ_GOLDEN_TAIL in s], f"{key}: the head still ran the pre-I1 grain read"
+        assert len([s for s, _ in rest if GRAIN_READ_HEAD_TAIL in s]) == golden_grain_reads, f"{key}: the grain read count differs from the golden's {golden_grain_reads}"
+        rest = [[sql.replace(GRAIN_READ_HEAD_TAIL, GRAIN_READ_GOLDEN_TAIL), n] for sql, n in rest]
         if key.startswith("record:"):
             # J-4c F-LEANNESS (C5, test_a53_j4c_leanness_pipeline.py): the P1 anchor-column catalogue probe is read ONCE per store, no longer once per
             # record. The accepted capture ran it before every relationship-record INSERT; this build runs it once (before the first) plus the substep's
@@ -430,7 +454,14 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # the verifier self-check), input_vector (p1_nature_operands / p1_operands / p1_valence / the P1 L0 consumption), rule_registry (the authored category_mapping read back and
     # persisted), inventory / inventory_verifier (P1 1.0.0 -> 1.3.0 supersession) and gochara_rules.registry (the P1@1.3.0 rows) changed. Re-derived from the merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 906763ec... is the pre-union W0 merge); no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "26e700048f7eacd536df6f02af8bf20fb49a088d717b395d92c4ccc7dec46dd9"
+    # Evaluation re-pinned ONCE for SR-OD1 R9c-A10-1 (G-8): input_vector.py itself is an evaluation module and gained the comment/list entry that puts window_solver and
+    # window_solver_check into the window stage, so its bytes (hence this digest) moved; no evaluation behaviour changed. Re-derived with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 26e70004... is the I1 union before this change); no golden component is re-captured.
+    # Evaluation and window re-pinned ONCE more at the SR-OD1 merge-back (R1, R3, R5, R4, Q3C, D1 incl. V1, C1, implmods on one head): the evaluation stage moved by the
+    # lanes' kernel/rules edits (R4/R5/Q3C p1_operands*, p1_valence, p1_inputs, rule_registry, V1 registry rows, inventory(+_verifier), D1/V1 input_vector) and by `vedha_source`
+    # joining the window stage (implmods review, "Answer to check (2)"); geometry is asserted unchanged (a8cb08f0...). Re-derived with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) from the merged tree's real bytes; no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "bc1692181dc52b5515252be13be2a99fe663715ccbc8e54ea431c17b7263d15f"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
@@ -446,7 +477,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # same way from the merged tree's real bytes (main alone gives e0aea2fa...); no golden component is re-captured.
     # Window re-pinned for SR-OD1 W0 (#3832): window_sweep (per-factor boundaries, per-instant channel hook), window_verifier and window_store changed. Re-derived the same way from
     # the merged tree's real bytes (the prior pin 7dc92acc... is the pre-W0 merge); geometry is unchanged by W0 and no golden component is re-captured.
-    # Window re-pinned ONCE for the SR-OD1 I1 union: window_solver_check (S2), vedha_verifier (C2), p1_operands_check (P1c) join the window stage and window_sweep / window_store /
+    # Window re-pinned ONCE for the SR-OD1 I1 union: vedha_verifier (C2), p1_operands_check (P1c) join the window stage and window_sweep / window_store /
     # window_verifier / verification_job changed (S1, S2, P1a-c, C2, D2). Geometry is UNCHANGED by the union (P1a's `RecordStore.fetch_stations` read moved to
     # `WindowStore._fetch_stations` precisely so that it stays a8cb08f0...). Re-derived the same way (the prior pin 873236f3... is the pre-union W0 merge).
-    assert got["implementation"]["window"] == "fc0e7500f0f30d89ea0519102b568dfd2b7d466e4208e63f282610981014c60d"
+    # Window re-pinned ONCE for SR-OD1 R9c-A10-1 (G-8): window_solver (S1) and window_solver_check (S2) join the window stage (they were in no stage list; nothing imports
+    # them until the sweep calls the solver, so the import-closure test could not see them). Geometry is asserted unchanged above (a8cb08f0...). Re-derived the same way
+    # (the prior pin fc0e7500... is the I1 union before this change); no golden component is re-captured.
+    assert got["implementation"]["window"] == "e9e05bae78f71a6026ef0745241d9dad3d1c64e50d639f60ba54ad5f166ded73"
