@@ -1594,7 +1594,7 @@
        ],
        "key": "moolatrikona_sign"
       },
-      "why": "moolatrikona_sign: the committed seed literal of that key in DIGNITY_REFERENCE (platform/python-sidecar/brahmagyan/l0_dignity_reference.py:108); two grahas carry no moolatrikona sign"
+      "why": "moolatrikona_sign: the committed seed literal of that key in DIGNITY_REFERENCE (platform/python-sidecar/brahmagyan/l0_dignity_reference.py:108); all nine grahas carry a moolatrikona sign (Rahu and Ketu since migration 1401, without a degree range)"
      },
      {
       "column": "own_signs",
@@ -1668,15 +1668,6 @@
        "enemy"
       ],
       "why": "the three relation words friend, neutral and enemy of _NAISARGIKA_FRIENDSHIP (platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:67)"
-     },
-     {
-      "table": "bg_graha_naisargika_friendship",
-      "column": "classical_citation",
-      "values": [
-       "BPHS Ch.27",
-       "UK Ch.4 (Uttara Kalamrita — Rahu/Ketu tatva friendship schema)"
-      ],
-      "why": "the citation constants _BPHS_CH27 and _UK_CH4 bound by _NAISARGIKA_FRIENDSHIP (platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:56-59)"
      },
      {
       "table": "bg_avastha_schemes",
@@ -1874,7 +1865,7 @@
      "column": "notes",
      "mode": "equal",
      "count": 2,
-     "digest": "3a4937ebe6bdb57ef29766ac4005eb61237d67399e6fd42097e41ec91e76fd94",
+     "digest": "54578d943dcf357911a58751dfd8cd6faefc9e95658a032c1b630cc7605f8426",
      "seed": {
       "file": "platform/python-sidecar/brahmagyan/l0_dignity_reference.py",
       "constants": [
@@ -1918,6 +1909,15 @@
      "digest": "356496fb2ee7aae0a06dfba6f5dccfca6e1853f8d6fe1d4e903b36761fb892a9",
      "why": "the four retrograde notes are hand-curated classical notes typed in the committed seed (platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:321); the live table must hold exactly them; the seed holds them as tuple items, so the pin is checked against the seed object by the repository test instead",
      "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:321"
+    },
+    {
+     "table": "bg_graha_naisargika_friendship",
+     "column": "classical_citation",
+     "mode": "equal",
+     "count": 72,
+     "digest": "b2229f652e80afff87dd07d9ef752c3fa3b5ee9fdffc15bbf13b2f2a84842eee",
+     "why": "the 72 friendship citations (duplicates kept) are the committed seed's citation constants _BPHS_CH27, _UK_CH4 and, since migration 1401 (SR-DOCTRINE-H), the two hand-typed BPHS 3.55 translator-note citations _BPHS_355_RAHU and _BPHS_355_KETU (platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:56-63) that quote the served line; a quoted sentence is prose, so the column is pinned by count and digest, not closed as a word list; the seed holds them as tuple items, so the pin is checked against the seed object by the repository test instead",
+     "evidence": "platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py:67"
     }
    ]
   },
@@ -14476,7 +14476,7 @@
     "applies": "D3",
     "nature": "single_derivation",
     "why": "computed once by its writer; no independent second route exists; verified by integrity checks and internal consistency (the single tier)",
-    "evidence": "platform/python-sidecar/ga_writers/ga_condition_writer.py:1820",
+    "evidence": "platform/python-sidecar/ga_writers/ga_condition_writer.py:1854",
     "per_witness_values": false
    },
    "prose_fields": [
@@ -14490,7 +14490,7 @@
    "evidence": {
     "kind": "registry kind data (seed default, T0 data); writer-backed own table(s) ga_condition_composite; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): c",
     "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts:95 reads `ga_condition_composite` (`FROM ga_condition_composite`). Dens.served=PASS.",
-    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed avastha values (baladi, deeptaadi, lajjitadi, sayanadi with deg_in_sign). Composed at platform/python-sidecar/ga_writers/ga_condition_writer.py:1270, platform/python-sidecar/ga_writers/ga_condition_writer.py:1554. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_condition_writer.py): 5 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_condition_writer.py:1361 (column list); NOT served by a typed reader (SS N-344/N-345): citation_human is written and graded but not served by a typed reader (the typed L1 readers select citation_ref only; the chart_facts readers that select citation_human are unimported or unregistered)."
+    "prose_fields": "citation_human (SS ruling 2026-10-01: a composed string that states or grades a computed value is narration, counts included): citations state the computed avastha values (baladi, deeptaadi, lajjitadi, sayanadi with deg_in_sign). Composed at platform/python-sidecar/ga_writers/ga_condition_writer.py:1304, platform/python-sidecar/ga_writers/ga_condition_writer.py:1588. AST census of the writer's citation_human sites (platform/python-sidecar/ga_writers/ga_condition_writer.py): 5 composed, 0 constant, 0 forwarded, 0 other. Column bound at platform/python-sidecar/ga_writers/ga_condition_writer.py:1395 (column list); NOT served by a typed reader (SS N-344/N-345): citation_human is written and graded but not served by a typed reader (the typed L1 readers select citation_ref only; the chart_facts readers that select citation_human are unimported or unregistered)."
    },
    "evidence_kind": "writer",
    "source": {
@@ -14500,7 +14500,7 @@
     "method": "unified condition score on a 0 to 1 scale with the I-28 band table, one row per graha and ayanamsha",
     "version": "condition_formula_v1",
     "why": "the composite is computed by the writer from L1 facts at one declared condition formula version, so its source is the derivation rather than a citation",
-    "evidence": "platform/python-sidecar/ga_writers/ga_condition_writer.py:1780"
+    "evidence": "platform/python-sidecar/ga_writers/ga_condition_writer.py:1814"
    },
    "fidelity_tests": [
     {
@@ -17223,7 +17223,7 @@
        "friend_sign",
        "enemy_sign"
       ],
-      "why": "copied from ga_condition_composite.dignity_d1 (platform/python-sidecar/ga_writers/ga_vastu_writer.py:134-146, :160), whose only writer is ga_condition_writer: the return values of dignity_d1_from_sign (platform/python-sidecar/ga_writers/ga_condition_writer.py:181-276) are exactly these seven words, assigned at platform/python-sidecar/ga_writers/ga_condition_writer.py:1649"
+      "why": "copied from ga_condition_composite.dignity_d1 (platform/python-sidecar/ga_writers/ga_vastu_writer.py:134-146, :160), whose only writer is ga_condition_writer: the return values of dignity_d1_from_sign (platform/python-sidecar/ga_writers/ga_condition_writer.py:245-310) are exactly these seven words, assigned at platform/python-sidecar/ga_writers/ga_condition_writer.py:1683"
      },
      {
       "column": "direction_impact",
