@@ -207,7 +207,7 @@ def test_c2_5_a_node_in_the_vedha_house_obstructs_like_any_graha():
     # SR-OD1 merge-back: C2 pinned the PRE-ruling reading here (a node alone in the vedha house = `node_obstruction_undecided`). C1 carries the owner's
     # ND-NODE-VEDHA (i) — the nodes obstruct (Phaladipika XXVI.3-8, XXVI.2/24/45-46) — and the verifier's derivation is `vedha_derive.derive_vedha`, whose default
     # is now that ruling; the two readings must not disagree, so the expectation is the ruled one (0.0, no unknown reason). The pre-ruling reading stays
-    # selectable (`nodes=NODES_UNDECIDED`) and is pinned in test_od1_c1_vedha_provider.py.
+    # selectable (`nodes=NODES_UNDECIDED`) and is exercised by tests/l3/ka_vedha_gochara/test_overlays.py.
     ov = overlay([SUN], quiet("rahu") + [("rahu", "span:2", D(-5), D(22)), ("rahu", f"span:{SUN_VEDHA_SIGN_H9}", D(22), D(400))])("r-sun")
     assert ov.value_at(D(15)) == 1.0
     assert ov.value_at(D(30)) == 0.0 and ov.unknown_reason_at(D(30)) is None
