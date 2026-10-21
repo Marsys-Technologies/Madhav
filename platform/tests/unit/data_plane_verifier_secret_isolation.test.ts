@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   extractRunIdentityAndSecrets, parseSecretsAnnotation,
   assertNoLiteralCredentials, canonicalResource, parseDeclaredExceptions, isThisProject,
-  assertEffectiveIsolation, assertVerifierInheritedControl, assertVerifierIsolation, assertVerifierServiceAccountPolicyExact, BUILDER_SECRET, BUILDER_SERVICE_ACCOUNT, grantsServiceAccountControl, VERIFIER_JOB,
-  VERIFIER_SECRET, VERIFIER_SERVICE_ACCOUNT, type VerifierState,
+  assertEffectiveIsolation, assertSealerSecretIsolation, assertVerifierInheritedControl, assertVerifierIsolation, assertVerifierServiceAccountPolicyExact, BUILDER_SECRET, BUILDER_SERVICE_ACCOUNT, grantsServiceAccountControl, VERIFIER_JOB,
+  SEALER_SECRET, VERIFIER_SECRET, VERIFIER_SERVICE_ACCOUNT, type VerifierState,
 } from '../../scripts/data-plane-secret-isolation-preflight'
 
 type EffectivePolicies = Parameters<typeof assertVerifierInheritedControl>[0]
@@ -35,9 +35,11 @@ describe('assertVerifierIsolation', () => {
     const staged = good(); staged.secretNames = []; delete staged.secretPolicy
     expect(() => check(staged)).not.toThrow()
   })
-  it('refuses any gochara-named service account or secret that is not the pair (the sealer has none)', () => {
-    const sealerSecret = good(); sealerSecret.secretNames = [VERIFIER_SECRET, 'gochara-sealer-db-url']
-    expect(() => check(sealerSecret)).toThrow(/gochara-seal environment/)
+  it('refuses any gochara-named service account or secret that is not the pair or the one J-4b-a55j sealer secret', () => {
+    const thirdSecret = good(); thirdSecret.secretNames = [VERIFIER_SECRET, 'gochara-sealer-db-url-2']
+    expect(() => check(thirdSecret)).toThrow(/Unknown gochara\/sealer secret.*gochara-sealer-db-url-2/)
+    const otherSealer = good(); otherSealer.secretNames = [VERIFIER_SECRET, 'sealer-dsn']
+    expect(() => check(otherSealer)).toThrow(/Unknown gochara\/sealer secret/)
     const rogueAccount = good(); rogueAccount.serviceAccountEmails = [VERIFIER_SERVICE_ACCOUNT, 'gochara-sealer@x.iam.gserviceaccount.com']
     expect(() => check(rogueAccount)).toThrow(/Unknown gochara service account/)
   })
@@ -132,6 +134,68 @@ describe('assertEffectiveIsolation: verifier and sealer on Cloud Run surfaces', 
       .toThrow(/Sealer credential or identity/)
     expect(() => run({ kind: 'service' as never, name: 'web', definition: { serviceAccount: 'web@example', secretKeyRef: { name: 'gochara-sealer-db-url' } } }))
       .toThrow(/Sealer credential or identity/)
+  })
+})
+
+// J-4b-a55j SR-GRANTS-MINIMAL (#3820; OWNER_GUIDE_v2 steps 2-5, 12, 14): the sealer DSN lives in Secret Manager `gochara-sealer-db-url`.
+// Main deploys failed from 2026-10-21 19:22Z because the older gate refused ANY sealer-named secret ("Unknown gochara/sealer secret(s)").
+// The gate now admits exactly that one secret in its two production states and nothing else.
+describe('J-4b-a55j: the sealer secret gochara-sealer-db-url', () => {
+  const sealerAccessor = { role: 'roles/secretmanager.secretAccessor', members: [DEPLOYER] }
+  const withSealer = (bindings?: PolicyBindings): VerifierState => {
+    const state = good()
+    state.secretNames = [VERIFIER_SECRET, SEALER_SECRET]
+    state.sealerSecretPolicy = bindings === undefined ? {} : { bindings }
+    return state
+  }
+  it('names the secret exactly as the provisioning and seal workflows do', () => {
+    expect(SEALER_SECRET).toBe('gochara-sealer-db-url')
+    for (const workflow of ['gochara-seal-approved.yml']) {
+      expect(readFileSync(resolve(__dirname, '../../../.github/workflows', workflow), 'utf8')).toContain(`SEALER_SECRET: ${SEALER_SECRET}`)
+    }
+    expect(readFileSync(resolve(__dirname, '../../scripts/gochara-provision-roles.sh'), 'utf8')).toContain(`SEALER_SECRET="\${SEALER_SECRET:-${SEALER_SECRET}}"`)
+  })
+  it('state (a), production now: secret exists with NO bindings at all — passes (also with no verifier pair beside it)', () => {
+    expect(() => check(withSealer([]))).not.toThrow()
+    expect(() => check(withSealer())).not.toThrow()                       // policy object with no bindings key
+    expect(() => check({ serviceAccountEmails: [], secretNames: [SEALER_SECRET], sealerSecretPolicy: {} })).not.toThrow()
+  })
+  it('state (b), at sealing (owner step 12): exactly one secretAccessor for the seal workflow identity — passes with or without the time condition', () => {
+    expect(() => check(withSealer([sealerAccessor]))).not.toThrow()
+    expect(() => check(withSealer([{ ...sealerAccessor, condition: { title: 'gochara-seal-read-temporary', expression: 'request.time < timestamp("2026-10-23T00:00:00Z")' } }]))).not.toThrow()
+  })
+  it('the secret being absent still passes (staged, before owner step 2)', () => {
+    expect(() => check(good())).not.toThrow()
+  })
+  it('refuses a measured-nothing policy: the secret exists but its policy was never read', () => {
+    const unmeasured = withSealer(); delete unmeasured.sealerSecretPolicy
+    expect(() => check(unmeasured)).toThrow(/policy was not measured/)
+  })
+  it('refuses a second principal beside the seal identity (an extra accessor)', () => {
+    expect(() => check(withSealer([{ role: 'roles/secretmanager.secretAccessor', members: [DEPLOYER, 'serviceAccount:web@example'] }]))).toThrow(/Sealer secret/)
+    expect(() => check(withSealer([sealerAccessor, { role: 'roles/secretmanager.secretAccessor', members: ['user:someone@example.com'] }]))).toThrow(/Sealer secret/)
+  })
+  it('refuses the verifier service account reading the sealer secret (alone, or beside the seal identity)', () => {
+    expect(() => check(withSealer([{ role: 'roles/secretmanager.secretAccessor', members: [verifier] }]))).toThrow(/Sealer secret/)
+    expect(() => check(withSealer([{ role: 'roles/secretmanager.secretAccessor', members: [DEPLOYER, verifier] }]))).toThrow(/Sealer secret/)
+  })
+  it('refuses any other role on the sealer secret, including a leftover secretVersionManager (owner step 3 not undone by step 5) and an admin', () => {
+    expect(() => check(withSealer([{ role: 'roles/secretmanager.secretVersionManager', members: [DEPLOYER] }]))).toThrow(/Sealer secret/)
+    expect(() => check(withSealer([sealerAccessor, { role: 'roles/secretmanager.secretVersionManager', members: [DEPLOYER] }]))).toThrow(/Sealer secret/)
+    expect(() => check(withSealer([{ role: 'roles/secretmanager.admin', members: [DEPLOYER] }]))).toThrow(/Sealer secret/)
+  })
+  it('refuses a duplicated accessor binding for the seal identity (two bindings, even with the same member)', () => {
+    expect(() => check(withSealer([sealerAccessor, { ...sealerAccessor, condition: { expression: 'request.time < timestamp("2026-10-23T00:00:00Z")' } }]))).toThrow(/Sealer secret/)
+  })
+  it('refuses the accessor grant when the deployment principal is not declared (nothing can be matched, so only no-bindings passes)', () => {
+    expect(() => assertSealerSecretIsolation(withSealer([sealerAccessor]), undefined)).toThrow(/Sealer secret/)
+    expect(() => assertSealerSecretIsolation(withSealer([]), undefined)).not.toThrow()
+  })
+  it('does not loosen the verifier pair or the Cloud Run surfaces: the verifier secret still needs its service account, and no surface may reference the sealer', () => {
+    const orphan = withSealer([]); orphan.serviceAccountEmails = []
+    expect(() => check(orphan)).toThrow(/without its dedicated service account/)
+    const verifierSecretReadByDeployer = withSealer([]); verifierSecretReadByDeployer.secretPolicy = { bindings: [{ role: 'roles/secretmanager.secretAccessor', members: [verifier, DEPLOYER] }] }
+    expect(() => check(verifierSecretReadByDeployer)).toThrow(/Verifier secret must grant accessor/)
   })
 })
 

@@ -443,6 +443,9 @@ class KaGocharaWriter(WriterBase):
             f"{inserted} served, {collisions} collision(s) skipped, "
             f"horizon={horizon.start_date}..{horizon.end_date} ({horizon.status})"
         )
+        if result.mudda_overlap is not None:     # SR-W56-S3: counted per run, read back by the K9 receipts
+            notes += (f"; {result.mudda_overlap['reason']}={result.mudda_overlap['overlaps_named']} "
+                      f"(mudda lord unresolved inside each; {result.mudda_overlap['overlap_seconds_total']:g} s in all)")
         return WriterResult(asset_id=self.asset_id, rows_inserted=inserted,
                              duration_seconds=time.time() - t0, notes=notes)
 
