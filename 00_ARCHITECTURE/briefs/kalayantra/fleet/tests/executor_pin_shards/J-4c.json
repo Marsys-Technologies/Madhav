@@ -1,0 +1,19 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "J-4c",
+  "after": null,
+  "entries": {
+    "iam_policy_readback": {
+      "enabled": false,
+      "needs": "gcloud",
+      "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/iam_policy_readback.py",
+      "fixed_args": [],
+      "allowed_args": [],
+      "requesters": ["adhikarin", "v1", "v2"],
+      "production": false,
+      "read_only": true,
+      "timeout_s": 600,
+      "enabled_by": "J-4c-a55m"
+    }
+  }
+}
