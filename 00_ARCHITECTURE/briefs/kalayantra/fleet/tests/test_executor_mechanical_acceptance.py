@@ -459,12 +459,16 @@ import ast
 
 ROOT = FLEET.parents[3]
 PLATFORM_SCRIPTS = ROOT / "platform/scripts"
-TEARDOWN_KINDS = ("smalltest_teardown", "measuring_teardown", "century_teardown")
+sys.path.insert(0, str(FLEET))
+import executor_pin_shards as eps  # noqa: E402  (SR-CHURN-CUT 5: a later kind declares `teardown` / `marker_*` classes in its own shard, not on the lines below)
+BASE_TEARDOWN_KINDS = ("smalltest_teardown", "measuring_teardown", "century_teardown")   # frozen BASE
+SHARDS = eps.load_shards()
+TEARDOWN_KINDS = tuple(sorted(eps.kinds_with(eps.classes_after({k: ["teardown"] for k in BASE_TEARDOWN_KINDS}, SHARDS), "teardown")))
 ELIGIBLE = {kind for kind, entry in TABLE.items() if entry.get("enabled") is True and entry.get("production") is True and kind not in TEARDOWN_KINDS}
 # route "client_env": the op's own psycopg connections inherit PGAPPNAME and every pg_dump / pg_restore client it starts gets it through client_env().
 # route "in_process": every database connection is a psycopg connection opened inside the op's own process from DATABASE_URL (libpq applies PGAPPNAME);
 #   a dispatch's remote Cloud Run execution is not covered here — the execution readback covers it (MECHANICAL_ACCEPTANCE §2).
-MARKER_ROUTE = {
+BASE_MARKER_ROUTE = {   # frozen BASE
     "backup_snapshot": "client_env",
     "backup_restore_verify": "client_env",
     "smalltest_dispatch": "in_process",
@@ -483,6 +487,10 @@ MARKER_ROUTE = {
     "publish_head": "in_process",           # SR-HEAD-POLICY-KEEP: head_operation.py opens one psycopg connection from DATABASE_URL (libpq applies PGAPPNAME), imports no repository module and starts no process — the next test scans it
     "rollback_head": "in_process",          # (same script; signed-only, so it never takes the mechanical route, but the quiescence list is every enabled production kind)
 }
+MARKER_CLASS = {"client_env": "marker_client_env", "in_process": "marker_in_process", "no_database": "marker_no_database"}
+_marker_classes = eps.classes_after({k: [MARKER_CLASS[route]] for k, route in BASE_MARKER_ROUTE.items()}, SHARDS)
+MARKER_ROUTE = {k: route for route, name in MARKER_CLASS.items() for k in eps.kinds_with(_marker_classes, name)}
+assert len(MARKER_ROUTE) == sum(len(eps.kinds_with(_marker_classes, n)) for n in MARKER_CLASS.values()), "a kind declares two marker routes in its shard"
 # A8 §3 fences only remote_async kinds; the *_dryrun kinds are production:false in executor_ops.json, so they are not eligible and carry no row.
 # Teardowns (smalltest_teardown, measuring_teardown, century_teardown) stay excluded by TEARDOWN_KINDS: executor.py `target_is_not_a_teardown` still refuses them.
 BACKUP_CARRY = "        env['PGAPPNAME'] = os.environ['PGAPPNAME']"
