@@ -464,7 +464,7 @@ def test_b5_the_capability_is_the_executors_possession_of_the_key(tmp_path, monk
 def test_b5_no_other_kinds_child_receives_the_key(tmp_path, monkeypatch, kind, args):
     monkeypatch.setenv(CP.KEY_ENV, KEY)
     for name in ("KY_BUILDER_DATABASE_URL", "KY_OWNER_DATABASE_URL", "KY_LAYER_VERIFIER_DATABASE_URL"):
-        monkeypatch.setenv(name, "postgresql://u:fixture@h/db")
+        monkeypatch.setenv(name, "postgresql://u:testpw@h/db")
     envs = real_execute_envs(tmp_path, monkeypatch, kind, args)
     assert envs and all(CP.KEY_ENV not in e and KEY not in "".join(map(str, e.values())) for e in envs)
 
@@ -472,7 +472,7 @@ def test_b5_no_other_kinds_child_receives_the_key(tmp_path, monkeypatch, kind, a
 def test_b5_the_consumer_probe_child_alone_receives_the_key_under_one_fixed_name(tmp_path, monkeypatch):
     monkeypatch.setenv(CP.KEY_ENV, KEY)
     for name in ("KY_BUILDER_DATABASE_URL", "KY_OWNER_DATABASE_URL", "KY_LAYER_VERIFIER_DATABASE_URL"):
-        monkeypatch.setenv(name, "postgresql://u:fixture@h/db")
+        monkeypatch.setenv(name, "postgresql://u:testpw@h/db")
     (env,) = real_execute_envs(tmp_path, monkeypatch, "consumer_probe", {"probe": "kala_view_2"})
     assert env[CP.KEY_ENV] == KEY and CP.KEY_ENV == "KY_CONSUMER_PROBE_KEY"
     assert [k for k, v in env.items() if v == KEY] == [CP.KEY_ENV]
