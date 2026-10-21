@@ -1883,12 +1883,16 @@ class GocharaV5Writer(WriterBase):
         reasons: dict = {}
         unqualified = unverified = reproduced = solver_deferred = 0
         for version in versions:        # the path→version map comes from the records, not a constant
+            p1_ops = p1_operands_for(version)
             records = store.read_grain(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
-                path_id=path_id, rule_version=version, position_at=position_at, p1=p1_operands_for(version))
+                path_id=path_id, rule_version=version, position_at=position_at, p1=p1_ops)
+            # R4 (SR-Q6-L1-AMEND): a Form B grain records the combustion authority its states were derived from (orb row ids + digest, the
+            # L1 module's digest) in every window's qualification provenance; the verifier re-derives the same record from its own reads
+            inherited = gk_p1_operands.grain_inheritance(p1_ops)
             drafts, ex = gk_window_sweep.draft_windows(
                 event_class, records, bound_rows, drishti=DRISHTI_SOURCE, vedha=VEDHA_SOURCE,
-                policy=policy)
+                policy=policy, combustion_inheritance=inherited)
             counts = store.replace_grain_windows(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version, drafts=drafts)

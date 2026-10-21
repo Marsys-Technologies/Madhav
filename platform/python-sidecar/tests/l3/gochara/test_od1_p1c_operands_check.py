@@ -89,9 +89,9 @@ DIGNITY_ROWS = [
     _dig("Rahu", "Taurus", "Scorpio", None, None, None, []),
     _dig("Ketu", "Scorpio", "Taurus", None, None, None, []),
 ]
-ORB_ROWS = [{"graha": g, "orb_degrees": o, "deep_orb_degrees": d} for g, o, d in (
+ORB_ROWS = [{"id": i, "graha": g, "orb_degrees": o, "deep_orb_degrees": d} for i, (g, o, d) in enumerate((      # id = the seed's insertion order
     ("Moon", 12, 10), ("Mars", 17, 15), ("Mercury", 14, 12), ("Jupiter", 11, 9), ("Venus", 10, 8), ("Saturn", 15, 12),
-    ("Rahu", 9, 7), ("Ketu", 9, 7))]
+    ("Rahu", 9, 7), ("Ketu", 9, 7)), start=1)]
 
 
 def _naisargika_from_migration() -> list[dict]:
@@ -429,7 +429,7 @@ class _ReadConn:
             cols = ("graha", "exaltation_sign", "debilitation_sign", "moolatrikona_sign", "moolatrikona_from", "moolatrikona_to", "own_signs")
             return _Rows([tuple(r[c] for c in cols) for r in DIGNITY_ROWS])
         if "bg_combustion_orbs" in sql:
-            return _Rows([(r["graha"], r["orb_degrees"], r["deep_orb_degrees"]) for r in ORB_ROWS])
+            return _Rows([(r["graha"], r["orb_degrees"], r["deep_orb_degrees"], r["id"]) for r in ORB_ROWS])
         if "bg_graha_naisargika_friendship" in sql:
             m = re.search(r"SELECT (\w+), (\w+), (\w+) FROM", sql)
             assert m
@@ -516,7 +516,8 @@ def _rahu_world(stored_blank=True):
         stored = _stored("w", _d(0), _d(10), None, None, None, None, wv._expected_valence(CLASS, 0.0, 0.0, reason), [],
                          ("evidence_for_per_root_sum", None, {"policy": wv.POLICY_VERSION, "unqualified_reason": reason,
                                                               "unresolved": {reason: 1}, "affected_channels": [], "members": 1,
-                                                              "qualified_members": 1}))
+                                                              "qualified_members": 1,
+                                                              "combustion_inheritance": _check(sky).combustion_inheritance()}))
     else:
         stored = _stored("w", _d(0), _d(10), _d(0), 1.0, 0.0, None, wv._expected_valence(CLASS, 0.0, 0.0, "evidence_against_channel_not_evaluated"))
     return sky, _ProvConn([stored], [record], [("w", "r1")])

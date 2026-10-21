@@ -11,6 +11,9 @@ module derives those states AGAIN, from scratch, for the verifier:
     reconstruction device) — never the builder's stored crossings or its provider;
   * the value table: the factor rows' `category_mapping`, read by this module's own strict parser.
 
+`combustion_inheritance()` states, from this module's own reads and hashing, the identity of the combustion authority it derived from (the orb
+row ids and content digest, L1's module digest); the verifier compares it with the record the builder stored in each window's qualification (R4).
+
 It imports nothing from `window_sweep`, `window_solver` or `p1_operands` (the builder). What it SHARES with the builder, by
 design (CLAUDE.md §N.5 — L1 is the authority, a transit rule carries no second convention) are the pure rule functions behind
 `gochara_rules.p1_inputs` (combustion arc and orb rule, the strict L0 row validators, the mūlatrikoṇa-range authority check)
@@ -52,8 +55,12 @@ retrograde (L1 M-19), and only when the arc lies between their two orbs at a sta
 """
 from __future__ import annotations
 
+import hashlib
+import importlib.util
+import json
 import math
 from dataclasses import dataclass
+from decimal import Decimal
 from datetime import datetime, timedelta
 from typing import NamedTuple
 
@@ -85,8 +92,8 @@ _SQL_DIGNITY = ("SELECT graha, exaltation_sign, debilitation_sign, moolatrikona_
                 " own_signs FROM public.bg_dignity_reference ORDER BY graha")
 _COLS_DIGNITY = ("graha", "exaltation_sign", "debilitation_sign", "moolatrikona_sign", "moolatrikona_from",
                  "moolatrikona_to", "own_signs")
-_SQL_ORBS = "SELECT graha, orb_degrees, deep_orb_degrees FROM public.bg_combustion_orbs ORDER BY graha"
-_COLS_ORBS = ("graha", "orb_degrees", "deep_orb_degrees")
+_SQL_ORBS = "SELECT graha, orb_degrees, deep_orb_degrees, id FROM public.bg_combustion_orbs ORDER BY graha"
+_COLS_ORBS = ("graha", "orb_degrees", "deep_orb_degrees", "id")
 _SQL_NAIS = ("SELECT graha, other_graha, relation FROM public.bg_graha_naisargika_friendship"
              " ORDER BY graha, other_graha")
 _COLS_NAIS = ("graha", "other_graha", "relation")
@@ -107,6 +114,21 @@ class Evaluation(NamedTuple):
 
 def _read(conn, sql: str, cols: tuple) -> list[dict]:
     return [r if isinstance(r, dict) else dict(zip(cols, r)) for r in conn.execute(sql).fetchall()]
+
+
+def _decimal_text(x) -> str:
+    """A NUMERIC as plain decimal text without trailing zeros (`15`, `15.0`, Decimal('15.00') are one value)."""
+    return format(Decimal(str(x)).normalize(), "f")
+
+
+def l1_module_digest() -> str:
+    """sha256 of the source text of the L1 module that holds the combustion function, located by the import machinery (this module's own read,
+    not the builder's)."""
+    spec = importlib.util.find_spec(_p1.L1_RULE_MODULE)
+    if spec is None or not spec.origin:
+        raise RuntimeError(f"combustion inheritance: {_p1.L1_RULE_MODULE} cannot be located")
+    with open(spec.origin, encoding="utf-8") as fh:
+        return hashlib.sha256(fh.read().encode("utf-8")).hexdigest()
 
 
 def needs_p1_check(factor_rows) -> bool:
@@ -148,6 +170,20 @@ class P1Check:
         """The verifier's OWN L0 reads (nothing is handed over by the builder)."""
         return cls(position_at, dignity_rows=_read(conn, _SQL_DIGNITY, _COLS_DIGNITY),
                    orb_rows=_read(conn, _SQL_ORBS, _COLS_ORBS), naisargika_rows=_read(conn, _SQL_NAIS, _COLS_NAIS))
+
+    def combustion_inheritance(self) -> dict:
+        """R4 (SR-Q6-L1-AMEND): the identity of the combustion authority this derivation reads — the orb rows' ids and content digest as THIS
+        reader read them, and the digest of L1's combustion module. The builder records its own in every window's qualification; the verifier
+        refuses a window whose record differs. The digest is the one `L0_CONSUMED` binds: sha256 of the canonical JSON of
+        [graha, orb, deep orb] in graha order (NUMERICs as plain decimal text). A row read without an id is refused: an identity is never invented."""
+        rows = sorted(self._orb_rows, key=lambda r: r["graha"])
+        missing = [r["graha"] for r in rows if r.get("id") is None]
+        if missing:
+            raise StrictInputError("l0_row_id_missing", f"bg_combustion_orbs: no id for {missing}")
+        pre = [[r["graha"], _decimal_text(r["orb_degrees"]), _decimal_text(r["deep_orb_degrees"])] for r in rows]
+        digest = hashlib.sha256(json.dumps(pre, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")).hexdigest()
+        return {"orb_digest": digest, "orb_row_ids": {r["graha"]: int(r["id"]) for r in rows}, "l1_module": _p1.L1_RULE_MODULE,
+                "l1_module_digest": l1_module_digest()}
 
     # ── the sky ──────────────────────────────────────────────────────────────────────────────────────────────────
     def lon(self, body: str, t: datetime) -> float:

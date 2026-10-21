@@ -704,12 +704,19 @@ class WindowDraft:
     objective_value: float | None = None   # that function's value at the peak — distinct from `score`
     affected_channels: tuple = ()          # the channels an UNQUALIFIED member feeds (an unknown channel feeds both)
     policy: str = "window_qualification/1"  # the result policy this window was drafted under (R9-1; the manifest's)
+    #: R4 (SR-Q6-L1-AMEND): the identity of the combustion authority a P1 grain's states were derived from — the `bg_combustion_orbs` row ids and
+    #: content digest, and the L1 combustion module's digest (`p1_operands.P1Operands.combustion_inheritance`). None for every other grain.
+    combustion_inheritance: dict | None = None
 
     def qualification(self) -> dict:
-        """The structured provenance persisted with the window (1240 `qualification`; closed keys)."""
-        return {"policy": self.policy, "unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
-                "affected_channels": sorted(self.affected_channels), "members": self.members,
-                "qualified_members": self.qualified_members}
+        """The structured provenance persisted with the window (1240 `qualification`; closed keys, plus `combustion_inheritance` for a P1
+        grain bound to the Form B operands — the shape check is amended by the migration the cockpit numbers for R4)."""
+        q = {"policy": self.policy, "unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
+             "affected_channels": sorted(self.affected_channels), "members": self.members,
+             "qualified_members": self.qualified_members}
+        if self.combustion_inheritance is not None:
+            q["combustion_inheritance"] = self.combustion_inheritance
+        return q
 
 
 #: R8-4/R8-6: until a solver with a stated global-maximum guarantee exists for function-valued factors
@@ -846,7 +853,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                   vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
                   compute_valence: Callable | None = None,
                   allow_dynamic: bool = False,
-                  policy: str = POLICY_QUALIFICATION) -> tuple[list[WindowDraft], dict]:
+                  policy: str = POLICY_QUALIFICATION,
+                  combustion_inheritance: dict | None = None) -> tuple[list[WindowDraft], dict]:
     """The grain's windows (one path-version) and an exclusion ledger — every record accounted.
 
     Window construction (Codex round 6, R3): ONE window per MAXIMAL CONNECTED COMPONENT of the
@@ -1092,6 +1100,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             peak_instant=peak, score=score, evidence_for=ev_for, evidence_against=ev_against,
             outcome_valence_for_native=val.outcome_valence_for_native, objective_value=best, **base))
     drafts = [d if d.policy == policy else dataclasses.replace(d, policy=policy) for d in drafts]
+    if combustion_inheritance is not None:        # R4: every window of the grain carries the identity of the combustion authority it consumed
+        drafts = [dataclasses.replace(d, combustion_inheritance=combustion_inheritance) for d in drafts]
     return drafts, excluded
 
 
