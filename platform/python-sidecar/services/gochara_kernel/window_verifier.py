@@ -32,8 +32,9 @@ _TITLE = {"sun": "Sun", "moon": "Moon", "mars": "Mars", "mercury": "Mercury", "j
           "venus": "Venus", "saturn": "Saturn", "rahu": "Rahu", "ketu": "Ketu"}
 
 
-def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
-    """('na',) | ('const', v) | ('fn',) | ('unq', reason) for one factor on one record."""
+def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool, vedha_overlay=None):
+    """('na',) | ('const', v) | ('fn',) | ('unq', reason) for one factor on one record. A vedha factor's `fn` carries
+    (complete, wholly_unknown): `('fn', complete, wholly_unknown)` from the verifier's own derivation (C2)."""
     fid, ap = row["factor_id"], row.get("applicability")
     if fid == "activity_kernel":
         if not ap:
@@ -51,7 +52,15 @@ def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
             return ("na",)
         return ("fn",) if drishti_bound else ("unq", "graduated_drishti_source_not_landed")
     if fid == "vedha_attenuation":
-        return ("fn",) if vedha_bound else ("unq", "vedha_overlay_not_bound")
+        if not vedha_bound:
+            return ("unq", "vedha_overlay_not_bound")
+        if vedha_overlay is None:
+            raise RuntimeError("window verifier: a vedha source is bound but no independent vedha derivation was supplied "
+                               "(derive one with vedha_verifier.derive_overlay)")
+        derived = vedha_overlay(rec["id"])
+        if not derived.applicable:
+            return ("na",)             # adverse residence / a house with no cited pair: declared not-applicable, never a silent 1
+        return ("fn", derived.complete, derived.wholly_unknown)
     if fid in ("dignity_of_transit_sign", "combustion", "agent_nature", "maitri_compound"):
         if row.get("value_mapping"):
             raise RuntimeError(f"window verifier: {fid} declares a value_mapping it cannot derive from")
@@ -72,9 +81,9 @@ def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool):
 #: R8-6: a record with a STATE-valued operand (a dṛṣṭi source, a vedha overlay) is solved piecewise between the
 #: instants the operand's state changes, so those instants must be known COMPLETELY — otherwise it is unqualified.
 #: The verifier's own statement of what the substrate can supply: a dṛṣṭi record's changes are the body's sign
-#: ingresses, complete only where the class's coverage partition completed the whole support; NO source of vedha
-#: overlay edges exists, so any record carrying a vedha factor is incomplete. (The builder's SweepRecord asserts the
-#: same through `state_boundaries_complete`; these are two derivations.)
+#: ingresses, complete only where the class's coverage partition completed the whole support; a vedha record's changes
+#: are the edges of the verifier's OWN derivation (`vedha_verifier`, C2), complete when its segments tile the supports.
+#: (The builder's per-factor `OperandSource.complete` asserts the same; these are two derivations.)
 _STATE_VALUED = ("graduated_drishti", "vedha_attenuation")
 STATE_BOUNDARIES_REASON = "state_boundaries_incomplete"
 
@@ -92,13 +101,21 @@ def _boundaries_complete(relation, supports, completed) -> bool:
     return all(completed.lower <= a and b <= completed.upper for a, b in supports)
 
 
-def _record_state(factor_rows, rec, drishti_bound, vedha_bound):
-    states = [_row_state(r, rec, drishti_bound, vedha_bound) for r in factor_rows]
+def _record_state(factor_rows, rec, drishti_bound, vedha_bound, vedha_overlay=None):
+    # the overlay concerns the vedha row alone: every other row keeps the four-argument `_row_state` contract
+    states = [_row_state(r, rec, drishti_bound, vedha_bound, vedha_overlay) if r["factor_id"] == "vedha_attenuation"
+              else _row_state(r, rec, drishti_bound, vedha_bound) for r in factor_rows]
     if any(s[0] == "unq" for s in states):
         return ("unq", sorted({s[1] for s in states if s[0] == "unq"}))
-    state_valued_fn = any(s[0] == "fn" and r["factor_id"] in _STATE_VALUED for s, r in zip(states, factor_rows))
-    if state_valued_fn and not rec.get("boundaries_complete"):
+    state_valued = [(s, r) for s, r in zip(states, factor_rows) if s[0] == "fn" and r["factor_id"] in _STATE_VALUED]
+    # completeness is judged PER FACTOR: a vedha factor by its own derivation's tiling, every other by the record-wide rule
+    if any(not (s[1] if r["factor_id"] == "vedha_attenuation" and len(s) > 1 else rec.get("boundaries_complete"))
+           for s, r in state_valued):
         return ("unq", [STATE_BOUNDARIES_REASON])
+    # a vedha value undeterminable over EVERY instant of the supports makes the record itself unqualified (the sweep's §2.1 rule)
+    if any(len(s) > 2 and s[2] for s, r in state_valued if r["factor_id"] == "vedha_attenuation"):
+        from .vedha_verifier import WHOLLY_UNKNOWN_REASON
+        return ("unq", [WHOLLY_UNKNOWN_REASON])
     if any(s[0] == "fn" for s in states):
         return ("fn", None)
     value = 1.0
@@ -202,7 +219,8 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                             rule_version: str, factor_rows: list[dict],
                             drishti_bound: bool = False, vedha_bound: bool = False,
                             dynamic_enabled: bool = False, policy: str | None = None,
-                            solver_check: bool = True, channel_at=None, channel_boundaries=None) -> dict:
+                            solver_check: bool = True, channel_at=None, channel_boundaries=None,
+                            vedha_overlay=None, moon_sign: int | None = None) -> dict:
     """`solver_check` (W0, plan N-6): whether THIS call runs the solver check on a window whose numbers cannot be reproduced
     by the constant-window derivation (a function-valued member under `dynamic_enabled`). The in-build self-check in the writer
     passes False — the independent prover runs once, in the verification job, not twice inside the writer's cap — and then
@@ -210,8 +228,20 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     (`solver_checked_windows` is 0): the report says what ran. A deferral never satisfies a gate — the windows stay UNVERIFIED.
 
     `channel_at(record, t)` / `channel_boundaries(record, lo, hi)` (W0): the per-instant channel of a P1 record and its change
-    instants, supplied by the caller's own derivation; absent ⇒ a P1 record has no channel derivation (refused, as before)."""
+    instants, supplied by the caller's own derivation; absent ⇒ a P1 record has no channel derivation (refused, as before).
+
+    `vedha_overlay` / `moon_sign` (C2): with a vedha source bound, a record's vedha factor is read from `vedha_overlay(record_id)`
+    — by default the overlay this verifier derives itself from the stored residence contacts (`vedha_verifier.derive_overlay`,
+    given the janma-rāśi sign `moon_sign` 1..12 when the caller has it from the L1 snapshot). Not applicable ⇒ the factor takes no
+    part; undeterminable throughout ⇒ the record is unqualified; otherwise a complete-edged step function (a `fn`, so the window
+    stays UNVERIFIED until the solver check exists)."""
     grain = (chart_id, generation, event_class, path_id, rule_version)
+    derived_vedha = None
+    if vedha_bound and vedha_overlay is None and any(r["factor_id"] == "vedha_attenuation" for r in factor_rows):
+        from . import vedha_verifier as _vv
+        vedha_overlay = derived_vedha = _vv.derive_overlay(
+            conn, chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
+            rule_version=rule_version, moon_sign=moon_sign)
     # R9-1: the policy is the MANIFEST's. An explicit `policy` is only for a generation without a manifest row (the
     # solver's own fixtures); against a manifest it must agree — it never overrides it.
     manifest_policy = _manifest_policy(conn, grain)
@@ -243,7 +273,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         " AND r.rule_version = %s AND r.admission_state = 'admitted' AND r.operator_role = 'scored'", grain).fetchall()
     grain_records: dict[str, dict] = {}
     for rid, root, rel, kind, agent, house, lo, hi in record_rows:
-        rec = grain_records.setdefault(rid, {"root": root, "relation": rel, "kind": kind, "agent": agent,
+        rec = grain_records.setdefault(rid, {"id": rid, "root": root, "relation": rel, "kind": kind, "agent": agent,
                                              "house": house, "supports": []})
         rec["supports"].append((lo, hi))
     stored_links: dict[str, set] = {}
@@ -319,7 +349,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
          s_objective, s_objective_value, s_qualification) in windows:
         recs = by_window.get(wid, {})
         tag = f"window {lo.astimezone(timezone.utc).isoformat()}"
-        states = {rid: _record_state(factor_rows, r, drishti_bound, vedha_bound) for rid, r in recs.items()}
+        states = {rid: _record_state(factor_rows, r, drishti_bound, vedha_bound, vedha_overlay) for rid, r in recs.items()}
         unq_ids = [rid for rid, s in states.items() if s[0] == "unq"]
         qualified = {rid: s for rid, s in states.items() if s[0] != "unq"}
         null_states = list(null_states or [])
@@ -513,6 +543,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             "solver_check_requested": solver_check, "solver_checked_windows": 0,
             "solver_check_deferred_windows": len(deferred),
             "fields_verified": list(GOVERNED_FIELDS), "windows_detail": detail,
+            **({"vedha_derivation": derived_vedha.summary()} if derived_vedha is not None else {}),
             # VERIFIED only when EVERY window's stored fields were reproduced exactly
             "status": "UNVERIFIED_DYNAMIC" if unverified else "VERIFIED"}
 
@@ -896,12 +927,17 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
 
 def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
                               rule_version: str, factor_rows: list[dict],
-                              drishti_bound: bool = False, vedha_bound: bool = False) -> dict:
+                              drishti_bound: bool = False, vedha_bound: bool = False,
+                              vedha_overlay=None, moon_sign: int | None = None) -> dict:
     """{window_id: {affected_channels, reasons: {record_id: [reason...]}}} — the qualification a window
     carries, RECONSTRUCTED from its stored members and the bound factor rows (1156 has no column for it;
     persistence is not required, reconstruction is). Serving reads this; a channel is affected when an
     unqualified member feeds it (a channel-less one feeds both)."""
     grain = (chart_id, generation, event_class, path_id, rule_version)
+    if vedha_bound and vedha_overlay is None and any(r["factor_id"] == "vedha_attenuation" for r in factor_rows):
+        from . import vedha_verifier as _vv
+        vedha_overlay = _vv.derive_overlay(conn, chart_id=chart_id, generation=generation, event_class=event_class,
+                                           path_id=path_id, rule_version=rule_version, moon_sign=moon_sign)
     rows = conn.execute(
         "SELECT m.window_id::text, r.record_id::text, r.relation, r.object_kind, r.agent, r.house_from_frame,"
         " (SELECT array_agg(ARRAY[lower(x)::text, upper(x)::text]) FROM unnest(r.temporal_support_intervals) x)"
@@ -914,10 +950,10 @@ def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_cla
     for wid, rid, rel, kind, agent, house, sup in rows:
         from datetime import datetime as _dt
         supports = [(_dt.fromisoformat(a), _dt.fromisoformat(b)) for a, b in (sup or [])]
-        rec = {"relation": rel, "kind": kind, "agent": agent, "house": house,
+        rec = {"id": rid, "relation": rel, "kind": kind, "agent": agent, "house": house,
                "boundaries_complete": _boundaries_complete(rel, supports, completed)}
         slot = out.setdefault(wid, {"affected_channels": set(), "reasons": {}})
-        state = _record_state(factor_rows, rec, drishti_bound, vedha_bound)
+        state = _record_state(factor_rows, rec, drishti_bound, vedha_bound, vedha_overlay)
         if state[0] != "unq":
             continue
         slot["reasons"][rid] = list(state[1])
