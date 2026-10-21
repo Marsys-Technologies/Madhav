@@ -766,7 +766,9 @@ def test_the_independence_detector_reads_false_on_a_planted_import():
 def test_importing_the_checker_does_not_load_the_builder():
     import subprocess
     root = str(Path(__file__).resolve().parents[3])
-    code = (f"import sys; sys.path.insert(0, {root!r}); from services.gochara_kernel import window_solver_check\n"
+    # `-I` drops the user site and PYTHONPATH, where a CI runner's pip-installed pyswisseph can live (the package `__init__` imports it): hand
+    # the child the parent's own import path, so what is measured is only which of OUR modules the checker pulls in
+    code = (f"import sys; sys.path[:0] = {[root, *sys.path]!r}; from services.gochara_kernel import window_solver_check\n"
             "bad = [m for m in ('services.gochara_kernel.window_sweep', 'services.gochara_kernel.window_solver') if m in sys.modules]\n"
             "print('LOADED', bad) if bad else print('CLEAN')\n")
     out = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True, cwd=root)

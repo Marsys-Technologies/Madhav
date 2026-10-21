@@ -705,7 +705,11 @@ def test_the_writer_stores_a_dynamic_window_as_named_null_and_the_verifier_repro
     # its own oracles (test_od1_c2_vedha_verifier*.py); this test is about the NULL window, so the verifier is handed the fixed overlay
     # that says what the builder says here: a vedha source with no edge list ⇒ the edges are incomplete (R8-6)
     from services.gochara_kernel import vedha_verifier as _vv
-    monkeypatch.setattr(_vv, "derive_overlay", lambda conn, **kw: _VEDHA_EDGES_INCOMPLETE)
+    class _Incomplete(_vv.Overlay):                    # the real Overlay's `summary()`, the fixed per-record answer
+        def __call__(self, record_id):
+            return _VEDHA_EDGES_INCOMPLETE(record_id)
+    _derived = _Incomplete({}, moon_sign=None, pairs_digest="fixture", census={})
+    monkeypatch.setattr(_vv, "derive_overlay", lambda conn, **kw: _derived)
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-dyn", db_conn=conn,
                       config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON, "gochara_v5_final_rules": False}, dry_run=False)
     with conn.transaction():
