@@ -79,6 +79,9 @@ def test_no_rule_module_and_no_p1_code_path_mentions_the_descriptor():
     # window_gate.py hashes the stored descriptor as one record field of the verification-inputs preimage (R9-2)
     allowed = {"record_store.py", "window_store.py", "window_verifier.py", "window_sweep.py",
                "record_verifier.py", "window_gate.py",
+               # C1: the builder's vedha source reads the stored house of a P2 record to derive that record's vedha overlay (the factor is
+               # P2's alone; the janma-rāśi sign it implies is cross-checked across records) — it never reads a P1 record's descriptor
+               "vedha_source.py",
                # the verifier's independent record derivation SELECTs the stored column to compare it with its own derivation (R10-1/R11-2):
                # it reads the stored value as a field of the record, it does not use it to derive anything
                "record_derivation.py"}

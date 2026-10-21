@@ -120,7 +120,8 @@
         "tests/l3/gochara/test_nd_h*.py",
         "tests/l3/gochara/test_near_miss*.py",
         "tests/l3/gochara/test_p06*.py",
-        "tests/l3/gochara/test_j6_bindings*.py"
+        "tests/l3/gochara/test_j6_bindings*.py",
+        "tests/l3/gochara/test_od1_c1*.py"
       ],
       "discover_db": true
     },
