@@ -664,7 +664,22 @@ def make_period_rows_for_snapshot(conn, chart_id: str, generation: str) -> tuple
     return rows_for, contract
 
 
+def mudda_overlap_disclosure(conn, chart_id: str) -> dict:
+    """SR-W56-S3: the named L1 Tājika mudda boundary overlaps of the chart's governed read, COUNTED (the seal brief and the K9
+    rehearsal receipt disclose this; `ka_gochara` carries the same census per run). Read-only, through the same governed
+    reader every Kāla consumer uses, so the count is of what a run actually reads — never a second reading of the table.
+    A chart with no governed read (no settlement, mixed build, a conflict that is NOT a named overlap) is
+    `status: not_readable` with the typed refusal code — an honest null, never a count of zero."""
+    try:
+        with conn.transaction():      # a savepoint: a failed read must not abort the caller's snapshot
+            rows = load_governed_dasha_periods(
+                conn, chart_id, systems=["mudda"], levels=(DD.MUDDA_YEAR_LEVEL,), level_tier_policy=True)
+    except DD.DashaReadConflict as exc:
+        return {"status": "not_readable", "reason": getattr(exc, "code", "dasha_read_conflict")}
+    return {"status": "counted", **DD.mudda_overlap_census(rows)}
+
+
 __all__ = ["PINNED_SYSTEM", "load_pinned_vimshottari", "make_period_rows_for", "make_period_rows_for_snapshot",
            "select_dasha_read_contract", "load_dasha_settlement", "DashaBuildRefused",
            "load_governed_dasha_periods", "dasha_query", "execute_governed_dasha_query",
-           "observe_dasha_tiers", "validate_live_dasha_periods"]
+           "observe_dasha_tiers", "validate_live_dasha_periods", "mudda_overlap_disclosure"]

@@ -1916,6 +1916,7 @@ def _compute_permission_from_context(
             "active": hit["active"],
             "weight": SYSTEM_WEIGHTS[sid],
             "detail": hit["detail"],
+            **({"state": hit["state"]} if "state" in hit else {}),
         })
 
     # 9: Sade Sati (pre-fetched phases, pure datetime comparison)
@@ -2062,6 +2063,12 @@ def _dasha_contributions_from_context(
                 ),
             },
         }
+    # SR-W56-S3: inside a named L1 mudda boundary overlap the lord is unresolved — blank, with the reason
+    overlap = DD.unresolved_mudda_overlap_at(context.dasha_periods, t_iso)
+    if overlap is not None and not out["mudda"]["active"]:
+        out["mudda"] = {"active": False, "state": "unavailable",
+                        "detail": {"reason": DD.MUDDA_OVERLAP_REASON, "overlap_start_iso": str(overlap["start_iso"]),
+                                   "overlap_end_iso": str(overlap["end_iso"]), "overlap_seconds": overlap["seconds"]}}
     return out
 
 
