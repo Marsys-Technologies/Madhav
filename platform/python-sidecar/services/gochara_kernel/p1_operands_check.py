@@ -30,6 +30,12 @@ and its natural NATURE (BPHS 3.11: Sun, Mars, Saturn, waning Moon, Rāhu, Ketu m
 Mercury malefic iff in the same sign as a malefic — "joined" = same sign, Q4). Side and magnitude are then the Form B table
 (ANSWERS.md §B.3): the nature gives the default side; the dignity rung — or combustion — overrides it.
 
+THE SIDE RULE (SR-B1-Q3C-JOB; ANSWERS.md v2.1 §B.4, Q3 c), written HERE from the spec text and imported from nowhere — `spec_side` below:
+the natural nature sets the DEFAULT side (benefic favourable, malefic adverse); a BENEFIC lord goes ADVERSE "in an inimical sign, in
+debility, or combust"; a MALEFIC lord goes FAVOURABLE "in exaltation, mūlatrikoṇa or own sign"; nothing else changes a side. It is the
+verifier's own decider, and the factor rows' declared table is CHECKED against it: a table whose side contradicts the rule (a Q3(a)
+nature-only table, say) is refused by name, so the verifier is not a rubber stamp for the builder's data. Defined for rule version 1.3.0 only.
+
 NODES (ANSWERS.md §B.5). Rāhu's and Ketu's exaltation and debility come from L0 as seeded. Their mūlatrikoṇa and own signs are
 NOT in L0, and the verse puts them in Gemini and Aquarius (Rāhu) and Sagittarius (Ketu): a node there is UNDETERMINED
 (`node_dignity_unclassified`), never classified from friendship. The rule lifts for a sign L0 comes to hold as the node's own
@@ -42,7 +48,7 @@ WHAT THE VALUE TABLE LOOKS LIKE (I) INTERPRETATION — nothing in the repository
     combustion              {"combust": CELL, "not_combust": {"value": v}}           combust = the depression rung, adverse
     CELL = {"side": "favourable" | "adverse", "value": v}  with 0 < v ≤ 1 (spec §2.3 inv. 3: a modifier never removes a window)
 The value of a record at t is the product of the three factors' values (a combust lord takes the combustion cell and the dignity
-row contributes the neutral element 1); the side is the combustion cell's, else the dignity cell's.
+row contributes the neutral element 1); the side is `spec_side` of (nature, effective rung), and every declared side is checked against it.
 
 NAMED LIMITS. (1) The change instants are found under the smooth-motion guarantee of `contact_reconstruct` (an excursion shorter
 than `MIN_EXCURSION_SECONDS` is not excluded) and located to `BISECT_SECONDS`; two independent locations of one instant therefore
@@ -77,6 +83,21 @@ SIDES = ("favourable", "adverse")
 #: ANSWERS.md §B.5 — the signs the verse (BPHS 47.34-39) reserves for the nodes' mūlatrikoṇa / own signs, which L0 does not hold
 NODE_UNCLASSIFIED_SIGNS = {"Rahu": ("Gemini", "Aquarius"), "Ketu": ("Sagittarius",)}
 NODE_DIGNITY_UNCLASSIFIED = "node_dignity_unclassified"
+
+SIDE_RULE_VERSION = "1.3.0"
+#: ANSWERS.md v2.1 §B.4, quoted: "Benefic → adverse side in an inimical sign, in debility, or combust. Malefic → favourable side in exaltation,
+#: mūlatrikoṇa or own sign." The nature's default is the side the lord's own kind gives: benefic favourable, malefic adverse (BPHS 3.11, §B.2).
+_SPEC_DEFAULT_SIDE = {"benefic": "favourable", "malefic": "adverse"}
+_SPEC_OVERRIDE = {"benefic": ("adverse", ("INI", "DEB", "COMB")), "malefic": ("favourable", ("EX", "MT", "OWN"))}
+
+
+def spec_side(nature: str, rung: str) -> str:
+    """The side of a period lord of natural `nature` at effective `rung` (an entry of RUNGS or "COMB"), read from the spec text above."""
+    if nature not in _SPEC_DEFAULT_SIDE or rung not in RUNGS + ("COMB",):
+        raise StrictInputError("side_rule_input_unknown", f"{nature}/{rung}")
+    side, rungs = _SPEC_OVERRIDE[nature]
+    return side if rung in rungs else _SPEC_DEFAULT_SIDE[nature]
+
 
 RETRO_PROBE_SECONDS = 60.0
 PEAK_TOLERANCE_SECONDS = 2.0 * _cr.BISECT_SECONDS
@@ -335,6 +356,8 @@ class P1Binding:
             try:
                 if fid not in by_id or not by_id[fid].get("category_mapping"):
                     raise StrictInputError("p1_factor_row_without_category_mapping", fid)
+                if by_id[fid].get("rule_version") != SIDE_RULE_VERSION:     # the side rule is defined for 1.3.0 only
+                    raise StrictInputError("side_rule_undefined_for_version", f"{fid}@{by_id[fid].get('rule_version')!r}")
                 parse(by_id[fid]["category_mapping"])
             except StrictInputError as e:
                 self._row_problem[fid] = e.reason
@@ -346,15 +369,25 @@ class P1Binding:
     def _parse_nature(self, m):
         m = _require_keys(m, NATURES, "agent_nature")
         self._nature = {n: _cell(m[n], f"agent_nature/{n}", side="required") for n in NATURES}
+        for n in NATURES:
+            if self._nature[n].side != _SPEC_DEFAULT_SIDE[n]:       # the agent_nature row declares the DEFAULT side
+                raise StrictInputError("category_mapping_side_contradicts_q3c", f"agent_nature/{n}: {self._nature[n].side!r}")
 
     def _parse_dignity(self, m):
         m = _require_keys(m, [f"{n}/{r}" for n in NATURES for r in RUNGS], "dignity_of_transit_sign")
         self._dignity = {k: _cell(v, f"dignity_of_transit_sign/{k}", side="required") for k, v in m.items()}
+        for k, cell in self._dignity.items():
+            nature, rung = k.split("/")
+            if cell.side != spec_side(nature, rung):
+                raise StrictInputError("category_mapping_side_contradicts_q3c", f"dignity_of_transit_sign/{k}: {cell.side!r}, the spec says {spec_side(nature, rung)!r}")
 
     def _parse_combustion(self, m):
         m = _require_keys(m, ("combust", "not_combust"), "combustion")
         self._comb = {"combust": _cell(m["combust"], "combustion/combust", side="required"),
                       "not_combust": _cell(m["not_combust"], "combustion/not_combust", side="forbidden")}
+        for n in NATURES:         # one combust cell serves both natures: the spec puts a combust lord on the adverse side whichever its kind
+            if self._comb["combust"].side != spec_side(n, "COMB"):
+                raise StrictInputError("category_mapping_side_contradicts_q3c", f"combustion/combust: {self._comb['combust'].side!r} for a {n} lord")
 
     def record_problem(self, factor_id: str, rec: dict) -> str | None:
         """The named reason this factor cannot be derived for this record at all (a mapping the reader refuses, or an L0 row the
@@ -386,13 +419,13 @@ class P1Binding:
             return comb
         if comb["applicable"] and comb["is_combust"]:
             cell = self._comb["combust"]
-            return Evaluation(cell.side, cell_n.value * cell.value, nat, "COMB", True)
+            return Evaluation(spec_side(nat, "COMB"), cell_n.value * cell.value, nat, "COMB", True)
         rung = chk.rung_at(graha, t)
         if isinstance(rung, P1Unknown):
             return rung
         cell = self._dignity[f"{nat}/{rung}"]
         value = cell_n.value * cell.value * (self._comb["not_combust"].value if comb["applicable"] else 1.0)
-        return Evaluation(cell.side, value, nat, rung, False)
+        return Evaluation(spec_side(nat, rung), value, nat, rung, False)
 
     def value_at(self, rec: dict, t: datetime):
         e = self.evaluate(rec, t)
@@ -414,4 +447,4 @@ class P1Binding:
 
 
 __all__ = ["Evaluation", "MAITRI_RETIRED_REASON", "MAPPING_NOT_SUPPLIED_REASON", "NODE_DIGNITY_UNCLASSIFIED", "P1Binding", "P1Check",
-           "P1_FACTORS", "P1Unknown", "PEAK_TOLERANCE_SECONDS", "RETIRED_FACTORS", "RUNGS", "needs_p1_check"]
+           "P1_FACTORS", "P1Unknown", "PEAK_TOLERANCE_SECONDS", "RETIRED_FACTORS", "RUNGS", "SIDE_RULE_VERSION", "needs_p1_check", "spec_side"]

@@ -259,7 +259,7 @@ def ensure_near_miss_layer(conn: Any) -> str:
 def build_slice(conn: Any, *, chart_id: str, horizon: tuple, classes: list[str], ephe_path: str, birth_params: dict | None = None,
                 build_id: str = "j4d-slice", head: tuple | None = None, kinds: tuple | None = None,
                 paths: tuple | None = None, on_step: Callable[[str, Any], None] | None = None,
-                final_rules: bool = True, result_policy: str | None = None) -> dict:
+                final_rules: bool = True, result_policy: str | None = None, p1_form_b: bool = False) -> dict:
     """Drive the writer's real plan, restricted to `classes`, under the FINAL rules (or, `final_rules=False`, the measuring rules: the re-derivation of
     the golden), one transaction per substep.
 
@@ -279,6 +279,8 @@ def build_slice(conn: Any, *, chart_id: str, horizon: tuple, classes: list[str],
         # OD-1 (SR-OD1-NUMERICAL): the writer refuses a final-rules run that names no result policy. This slice lane has always run (and proved) the all-NULL
         # policy, so it now NAMES it; a numerical slice is asked for with `result_policy`.
         config["result_policy"] = "all_null_candidate/1"
+    if p1_form_b:
+        config["gochara_v5_p1_form_b"] = True
     if birth_params:
         config["birth_params"] = birth_params
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id=build_id, db_conn=conn, dry_run=False, config=config)
@@ -886,6 +888,7 @@ def main(argv=None) -> int:
     q.add_argument("--rederived", help="a golden bundle re-derived locally by j4d_rederive_golden.py; the slice's unchanged cells must equal it byte for byte")
     q.add_argument("--result-policy", help="the generation's numeric result policy for the build (the writer's default when absent); window_qualification/1 "
                                            "admits peaks, which the peak-windows row then requires")
+    q.add_argument("--p1-form-b", action="store_true", help="SR-B1-Q3C-JOB: select P1@1.3.0 (owner's Form B, Q3(c) side rule) for the build; default = 1.0.0, unchanged")
     q.add_argument("--output", required=True)
     args = parser.parse_args(argv)
     try:
@@ -898,7 +901,7 @@ def main(argv=None) -> int:
         rederived = load_golden(args.rederived) if args.rederived else None
         with psycopg.connect(args.dsn, autocommit=True, connect_timeout=5) as conn:
             build = build_slice(conn, chart_id=args.chart_id, horizon=golden["horizon"], classes=choice["classes"], ephe_path=args.ephe_path,
-                                result_policy=args.result_policy)
+                                result_policy=args.result_policy, p1_form_b=args.p1_form_b)
             sliced = read_slice(conn, chart_id=args.chart_id, classes=choice["classes"])
             measured = measure_certification(conn, chart_id=args.chart_id, classes=choice["classes"], ephe_path=args.ephe_path)
             peak = peak_windows_row(conn, chart_id=args.chart_id, classes=choice["classes"], observed=build["observed"])
