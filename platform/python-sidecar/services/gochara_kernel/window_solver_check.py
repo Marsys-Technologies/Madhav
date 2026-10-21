@@ -22,7 +22,11 @@ WHAT IT PROVES for one numbered window (a stored peak instant `t*` and objective
                   UNROUNDED maximum. The tie rule is between distinct extrema, never on the shoulder of one smooth hump. The
                   +-2e-10 grey band around that threshold is ONLY an ambiguity detector (R-1 b): when the earliest qualifying
                   extremum differs across the band the window is UNVERIFIED `tie_ambiguous` (INCONCLUSIVE), never VERIFIED —
-                  a window is never accepted because its stored instant lies between two candidates;
+                  a window is never accepted because its stored instant lies between two candidates. ISOLATION IS DETECTED, NOT
+                  PROVED (SR-PLAN-REVIEW-RECONCILED R-3): when two or more extrema within the tie tolerance of the maximum lie within
+                  ISOLATION_S of each other, neither side can say which of them is the earliest distinct one (the enumeration, like
+                  the builder's, resolves extrema only down to its own sampling scale); the window is UNVERIFIED
+                  `tie_isolation_unresolved` (INCONCLUSIVE, a named blank at the seal, never a pass and never a refutation);
   4. INSTANT      the stored `t*` lies within PEAK_INSTANT_TOLERANCE (owner decision SOLVER-TOLERANCES, Q12 a: the strongest
                   moment exact to the second) of an ACTUAL qualifying extremum (one whose unrounded value reaches the tie
                   threshold), never of a point between extrema;
@@ -81,6 +85,7 @@ NEAR_END_S = 120.0            # a station this close to a support end is a Swiss
 VEL_H_S = 600.0               # half-width of the centred-difference velocity (the speed is read, never assumed)
 MIN_WIDTH_S = 1e-3            # the bound search stops bisecting here (UNVERIFIED if still not certified)
 LEAF_S = 0.0864               # resolution (1e-6 d) of the extremum enumeration; each extremum is then located to a microsecond
+ISOLATION_S = 4.0             # R-3: tied extrema closer than this (2 x the builder's LEAF, <= 2 s on the real sky: window_solver H5) are not isolated
 LOCATE_XTOL_S = 1e-6           # an extremum is located to a microsecond: a kinked peak loses < 1e-10 of value at that distance
 US = 1e-6
 H2_FRACTIONS = (1 / 7, 2 / 7, 3 / 7, 4 / 7, 5 / 7, 6 / 7)
@@ -109,6 +114,7 @@ U_BUDGET = "verifier_budget_exhausted"
 U_CERT = "solver_certificate_incomplete"
 U_TIE = "tie_scan_inconclusive"
 U_AMBIG = "tie_ambiguous"            # INCONCLUSIVE (R-6): the earliest qualifying extremum differs across theta +- GREY
+U_ISOLATION = "tie_isolation_unresolved"
 
 #: the claim each finding falsifies (plan §2.4 numbering; the prover's own list is in the tests)
 CLAIM_OF = {F_VALUE: "value_at_peak", F_ABOVE: "upper_bound", F_EARLIER_TIE: "earliest_tie", F_INSTANT: "peak_instant",
@@ -802,21 +808,31 @@ class _Engine:
                 # the earliest QUALIFYING extremum (unrounded value >= theta) at the strict, nominal and lenient end of the grey band
                 e_lo, e_mid, e_hi = (min(t for t, f in cands if f >= th) for th in (theta - GREY, theta, theta + GREY))
                 self.rederived["earliest_tie"] = {"t": self._dt(e_mid), "grey": (self._dt(e_lo), self._dt(e_hi))}
-                widest = [t for t, f in cands if f >= theta - GREY]
-                if not any(abs(t_star - t) <= self.tol_s for t in widest):
-                    self.findings.append(Finding(F_INSTANT, (
-                        f"the stored peak {st.peak_instant.isoformat()} is within {self.tol_s} s of no extremum that reaches the tie "
-                        f"threshold of the maximum (the earliest qualifying one is {self._dt(e_mid).isoformat()}, "
-                        f"{t_star - e_mid:+.3f} s away)")))
-                elif e_hi - e_lo > self.tol_s:
-                    self.unverified.append((U_AMBIG, (
-                        f"the earliest extremum within the tie tolerance of the maximum is {self._dt(e_lo).isoformat()} at the strict "
-                        f"end of the +-{GREY} grey band and {self._dt(e_hi).isoformat()} at the lenient end — which instant is the "
-                        "frozen earliest tie is not decidable at this precision")))
-                elif abs(t_star - e_mid) > self.tol_s:
-                    self.findings.append(Finding(F_EARLIER_TIE, (
-                        f"a distinct local extremum within the tie tolerance of the maximum sits at {self._dt(e_mid).isoformat()}, "
-                        f"before the stored peak {st.peak_instant.isoformat()}")))
+                # R-3: which of several near-coincident tied extrema is the earliest DISTINCT one is not decided by either side's
+                # sampling scale: a named blank, not a verdict (the value / bound / at-the-peak findings still stand).
+                ties = sorted(t for t, f in cands if f >= theta)
+                close = [(x, y) for x, y in zip(ties, ties[1:]) if y - x <= ISOLATION_S]
+                if close:
+                    self.rederived["tie_cluster"] = [(self._dt(x), self._dt(y)) for x, y in close]
+                    self.unverified.append((U_ISOLATION, (
+                        f"{len(ties)} extrema within the tie tolerance of the maximum, two of them {close[0][1] - close[0][0]:.3f} s "
+                        f"apart from {self._dt(close[0][0]).isoformat()} (limit {ISOLATION_S} s): isolation is unresolved")))
+                else:
+                    widest = [t for t, f in cands if f >= theta - GREY]
+                    if not any(abs(t_star - t) <= self.tol_s for t in widest):
+                        self.findings.append(Finding(F_INSTANT, (
+                            f"the stored peak {st.peak_instant.isoformat()} is within {self.tol_s} s of no extremum that reaches the tie "
+                            f"threshold of the maximum (the earliest qualifying one is {self._dt(e_mid).isoformat()}, "
+                            f"{t_star - e_mid:+.3f} s away)")))
+                    elif e_hi - e_lo > self.tol_s:
+                        self.unverified.append((U_AMBIG, (
+                            f"the earliest extremum within the tie tolerance of the maximum is {self._dt(e_lo).isoformat()} at the strict "
+                            f"end of the +-{GREY} grey band and {self._dt(e_hi).isoformat()} at the lenient end — which instant is the "
+                            "frozen earliest tie is not decidable at this precision")))
+                    elif abs(t_star - e_mid) > self.tol_s:
+                        self.findings.append(Finding(F_EARLIER_TIE, (
+                            f"a distinct local extremum within the tie tolerance of the maximum sits at {self._dt(e_mid).isoformat()}, "
+                            f"before the stored peak {st.peak_instant.isoformat()}")))
             self._at_peak(t_star, f_star)
 
 

@@ -133,6 +133,18 @@ PERIOD_GUARD_SELECT = " ".join("""
 """.split())
 
 
+FACTOR_READ_GOLDEN = ("SELECT operand_selector, null_state, function, direction FROM public.ka_gochara_factor"
+                      " WHERE factor_id = %s AND rule_version = %s")
+# OD-1 D2 (rule_registry.RuleRegistryStore, the persisted-membership read): the one per-factor read also returns `category_mapping`, so an authored
+# value table (the P1 Form B rows) is read back as persisted and checked against the declaration. Same statement, same parameters, one more column.
+FACTOR_READ_HEAD = ("SELECT operand_selector, null_state, function, direction, category_mapping FROM public.ka_gochara_factor"
+                    " WHERE factor_id = %s AND rule_version = %s")
+
+
+GRAIN_READ_GOLDEN_TAIL = "c.t_exact, c.convention_id FROM public.ka_gochara_relationship_record r"
+GRAIN_READ_HEAD_TAIL = "c.t_exact, c.convention_id, NULL::text FROM public.ka_gochara_relationship_record r"
+
+
 class _Rec:
     """A recording view of the connection: every `execute` is noted (whitespace-normalised SQL, parameter count) and delegated unchanged; everything else passes through."""
 
@@ -348,6 +360,18 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
             new = old[0].replace("AND start_iso < end_iso AND", "AND")
             assert rest.count([new, 13]) == 1
             rest = [[old[0], n] if sql == new else [sql, n] for sql, n in rest]
+        # OD-1 D2: follow the golden's per-factor read to the head's one extra column. Never silent or vacuous: every occurrence the golden carries must be matched by
+        # exactly as many head occurrences of the new text (and none of the old), and the rest of the sequence stays strictly compared.
+        golden_factor_reads = m["statements"]["shapes"].get(f"2|{FACTOR_READ_GOLDEN}", 0)
+        assert rest.count([FACTOR_READ_GOLDEN, 2]) == 0, f"{key}: the head still ran the pre-D2 factor read"
+        assert rest.count([FACTOR_READ_HEAD, 2]) == golden_factor_reads, f"{key}: the factor read ran {rest.count([FACTOR_READ_HEAD, 2])}x, the golden {golden_factor_reads}x"
+        rest = [[FACTOR_READ_GOLDEN, n] if sql == FACTOR_READ_HEAD else [sql, n] for sql, n in rest]
+        # OD-1 I1 (window_store.WindowStore.read_grain): the grain read carries one more select column, the P1 period-anchor lord; for every non-P1 path it is the constant
+        # `NULL::text`. Same follow-the-golden discipline: the golden's occurrences must be matched one for one by the head's new text, none of the old text may remain.
+        golden_grain_reads = sum(v for shape, v in m["statements"]["shapes"].items() if GRAIN_READ_GOLDEN_TAIL in shape)
+        assert not [s for s, _ in rest if GRAIN_READ_GOLDEN_TAIL in s], f"{key}: the head still ran the pre-I1 grain read"
+        assert len([s for s, _ in rest if GRAIN_READ_HEAD_TAIL in s]) == golden_grain_reads, f"{key}: the grain read count differs from the golden's {golden_grain_reads}"
+        rest = [[sql.replace(GRAIN_READ_HEAD_TAIL, GRAIN_READ_GOLDEN_TAIL), n] for sql, n in rest]
         if key.startswith("record:"):
             # J-4c F-LEANNESS (C5, test_a53_j4c_leanness_pipeline.py): the P1 anchor-column catalogue probe is read ONCE per store, no longer once per
             # record. The accepted capture ran it before every relationship-record INSERT; this build runs it once (before the first) plus the substep's
