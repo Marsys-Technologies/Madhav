@@ -223,6 +223,13 @@ def _dasha_contributions(
             **(tier_evidence(period.get("verification_pass_status"))
                if "verification_pass_status" in period else {}),
         }}
+    # SR-W56-S3: inside a named L1 mudda boundary overlap no row covers t, and "inactive" would
+    # assert a checked negative. The lord is UNRESOLVED: the system is unavailable, with the reason.
+    overlap = DD.unresolved_mudda_overlap_at(dasha_periods, t_iso)
+    if overlap is not None and not out["mudda"]["active"]:
+        out["mudda"] = {"active": False, "state": STATE_UNAVAILABLE,
+                        "detail": {"reason": DD.MUDDA_OVERLAP_REASON, "overlap_start_iso": str(overlap["start_iso"]),
+                                   "overlap_end_iso": str(overlap["end_iso"]), "overlap_seconds": overlap["seconds"]}}
     return out
 
 
