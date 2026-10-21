@@ -21,6 +21,15 @@ def registrar_contract(root):
         'never updates, reclassifies or deletes', 'Idem', 'R-10',
     ):
         assert required in text, f'missing registrar contract: {required}'
+    # Preserved limitation (ka_bhavishya_lekha.py:727, :795): typed inputs stay behind the
+    # fixture manifest boundary and nothing here admits a live producer or publication.
+    for limit in (
+        'Both entries refuse every non-fixture manifest',
+        'the conductor must admit actual producer, delivery-confirmation and ontology bindings',
+        'Live qualification, protected upstream application, independent acceptance, '
+        'parent completion, deployment and K9-4b publication are not established',
+    ):
+        assert limit in text, f'missing preserved limitation: {limit}'
     assert 'default writer continues legacy computation' not in text
     assert 'protective read remains required until' not in text
 
