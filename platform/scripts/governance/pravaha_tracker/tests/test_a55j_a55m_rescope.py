@@ -18,8 +18,13 @@ Claims, one oracle each (the reversion named after it fails that test):
      before re-scoping (reversion: drop either item's edge)
   7. this file is run by required CI: some include glob of a profile in ci_test_suites.json matches it (A5 D-33)
      (reversion: remove the test_a55j*.py glob from governance-tool-tests-shard-7-0)
+  8. OWNER-BUILD-FIRST-20261021: the pre-century chain and the century build do not wait on the owner's provisioning acts:
+     neither J-4b-a55j nor J-4c-a55m is in the transitive upstream of J-4b, J-4c, J-4d, D-CLOUD or J-4e
+     (reversion: restore the J-4b -> J-4b-a55j edge, or the J-4c -> J-4c-a55m edge)
+  9. the same decision makes them gates before SEALING: J-5s, and what seals or publishes after it (J-6, D-FLIP), have both in
+     their transitive upstream (reversion: drop either edge from J-5s)
 
-Sources: SR-A55J-A55M-RESCOPE and OWNER-GRANTS-MINIMAL-20261018 in /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl;
+Sources: OWNER-BUILD-FIRST-20261021 (claims 8-9), SR-A55J-A55M-RESCOPE and OWNER-GRANTS-MINIMAL-20261018 in /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl;
 platform/migrations/1378_gochara_verifier_sealer_inventory_grants.sql (header lines 4 and 53-57); runbook
 ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md acts 12-14; fleet/CLOUDRUN_READBACK_v1_0.md.
 """
@@ -130,8 +135,30 @@ def test_rescoping_retires_nothing_and_the_headline_is_unchanged(model):  # clai
         item = _item(model, iid)
         assert item["mandatory"] is True and iid in closure["closure"]
         assert item["steps"] and item["detector"]["path"].endswith(f"/{iid}.json")
-    assert _item(model, "J-4c-a55m")["depends_on"] == ["J-0m", "J-4b", "J-4c-a55l"]
+    # OWNER-BUILD-FIRST-20261021: a55m now also waits on a55j (its judge binds the a55j step receipt); a55j's own edges are unchanged
+    assert _item(model, "J-4c-a55m")["depends_on"] == ["J-0m", "J-4b", "J-4c-a55l", "J-4b-a55j"]
     assert _item(model, "J-4b-a55j")["depends_on"] == ["J-0m", "J-4a"]
+
+
+def _upstream(model, iid):
+    by_id = {i["id"]: i for i in model["items"]}
+    seen, stack = set(), [iid]
+    while stack:
+        for dep in by_id[stack.pop()]["depends_on"]:
+            if dep not in seen:
+                seen.add(dep)
+                stack.append(dep)
+    return seen
+
+
+def test_the_century_chain_does_not_wait_on_the_owner_provisioning_acts(model):  # claim 8
+    for iid in ("J-4b", "J-4c", "J-4c-a55l", "J-4d", "D-CLOUD", "J-4e"):
+        assert not set(ITEMS) & _upstream(model, iid), iid
+
+
+def test_the_owner_provisioning_acts_gate_sealing_and_what_follows_it(model):  # claim 9
+    for iid in ("J-5s", "J-6", "D-FLIP"):
+        assert set(ITEMS) <= _upstream(model, iid), iid
 
 
 def test_this_file_is_matched_by_a_ci_suite_glob():  # claim 7

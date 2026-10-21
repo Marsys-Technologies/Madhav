@@ -15,7 +15,7 @@ import re
 import sys
 
 DECLARATIONS = Path(__file__).with_name('operations.json')
-DECLARATIONS_SHA256 = '87d3d71594348b34b880f7a7e16f7c62bce680682805a3184ce6a108cf710d31'
+DECLARATIONS_SHA256 = 'ab22361a6fc9eb4b2dcf3c92493ebe485741cc786e9fc979fcebda5e0f797580'
 SHA256 = re.compile(r'[0-9a-f]{64}\Z')
 SHA1 = re.compile(r'[0-9a-f]{40}\Z')
 IDENTIFIER = re.compile(r'[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}\Z')

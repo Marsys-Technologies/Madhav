@@ -32,10 +32,10 @@
 # CAPACITY: the verification job's own task timeout is 7200 s (#2976), so the brief job waits up to 125 min for it (job limit 150 min); the seal job is 30 min — Stream A's ESTIMATES (not
 # measured on a real build; the first seal's own timings are the first measurement) for the sealing transaction are ~0.7 s at the expected size and ~35 s at 50x, behind a 15 min statement_timeout and a 2 min lock_timeout. The approval wait does not count against either.
 # DEPENDENCIES before any dispatch: Stream A's pipeline/orchestrator/seal_job.py; the verification job defined by #2976 at THIS SAME commit (same-commit rule); acts 12/13/14 (the workflow
-# identity reads ONLY that job's logs through a log view, may execute that one job with overrides, and holds the Cloud SQL client right); the sealer DSN (GOCHARA_SEALER_DB_URL in
-# `gochara-seal`) must use the runner's loopback proxy tail (@127.0.0.1:5432/<db>).
+# identity reads ONLY that job's logs through a log view, may execute that one job with overrides, and holds the Cloud SQL client right); the sealer DSN (Secret Manager secret
+# `gochara-sealer-db-url`, read at run time by the seal job; no GitHub secret) must use the runner's loopback proxy tail (@127.0.0.1:5432/<db>).
 # WIRE (ST-WIRE-2): the compact line carries contract_version seal_brief_transport/1 and producer {commit, image_digest, execution_id}; the approval file is seal_approval/2 with the REQUIRED brief_id and
-# producer_execution_id; the seal job runs from THIS checkout of github.sha and first checks its own implementation digest against the registry lock (exit 4: own_checkout_digest_mismatch / own_checkout_digest_unregistered); the verification job's definition carries GOCHARA_RUNNER_IMAGE_DIGEST (set by #2976 from the digest it resolves) or the verifier refuses to brief (producer_identity_absent).
+# producer_execution_id; the seal job runs from THIS checkout of github.sha and first checks its own implementation digest against the registry lock (exit 4: own_checkout_digest_mismatch / own_checkout_digest_unregistered). The lock is machine-owned (SR-CHURN-CUT 3: CI regenerates it, a PR never carries it), so BOTH jobs first apply the verified `ci-generated` artifact of a successful ci.yml run for github.sha (.github/actions/apply-generated-overlay; platform/scripts/governance/apply_generated_overlay.py) — the bytes deploy.yml bakes into the image — and fail closed, named, if it is absent or unverified (the brief job also runs the own-checkout check before any approval is requested); the verification job's definition carries GOCHARA_RUNNER_IMAGE_DIGEST (set by #2976 from the digest it resolves) or the verifier refuses to brief (producer_identity_absent).
 name: Gochara approved seal (P08; operator dispatched)
 
 on:
@@ -99,6 +99,11 @@ jobs:
           git fetch --no-tags origin main
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
 
+      - name: Apply the verified ci-generated overlay for this commit (the raw checkout's generated files, the implementation lock included, are stale by design)
+        uses: ./.github/actions/apply-generated-overlay
+        with:
+          sha: ${{ github.sha }}
+
       - name: Refuse every chart or generation except the full candidate
         id: candidate
         env:
@@ -114,6 +119,11 @@ jobs:
           set -euo pipefail
           python3 -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
           PYTHONPATH=platform/python-sidecar python3 -c "import psycopg, swisseph; from pipeline.orchestrator import seal_job, verification_job; from services.gochara_kernel import seal_flow, seal_brief; print('S-DEP OK')"
+
+      - name: Check the sealing job's own checkout against the registered lock (the seal's first act), BEFORE any approval is requested
+        run: |
+          set -euo pipefail
+          PYTHONPATH=platform/python-sidecar python3 -c "from services.gochara_kernel import seal_flow; print('own checkout OK', seal_flow.check_own_checkout()['implementation_digest'])"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -271,6 +281,12 @@ jobs:
           git fetch --no-tags origin main
           git merge-base --is-ancestor "$EXPECTED_SEALING_COMMIT" origin/main
 
+      # Straight after the checkout: ci_generated.py verify refuses a tree changed since its reviewed commit, so this must precede the brief/approval downloads.
+      - name: Apply the verified ci-generated overlay for this commit (the same bytes deploy bakes into the image; the seal's own-checkout lock must equal the image's)
+        uses: ./.github/actions/apply-generated-overlay
+        with:
+          sha: ${{ needs.brief.outputs.sealing_commit }}
+
       - name: Retrieve the retained brief OF THIS RUN AND ATTEMPT (a seal-only re-run has none and fails; it must not reuse an older attempt's brief, start a fresh run)
         uses: actions/download-artifact@v4
         with:
@@ -312,7 +328,7 @@ jobs:
       - name: Verify the approval and call the seal job (one transaction)
         id: seal
         env:
-          GOCHARA_SEALER_DB_URL: ${{ secrets.GOCHARA_SEALER_DB_URL }}
+          SEALER_SECRET: gochara-sealer-db-url
           BRIEF_FILE: brief.json
           BRIEF_COMPACT_FILE: brief.compact.json
           BRIEF_ENVELOPE_FILE: brief.envelope.json
@@ -323,18 +339,41 @@ jobs:
           EXPECTED_BRIEF_DIGEST: ${{ needs.brief.outputs.brief_digest }}
           TRIGGERING_ACTOR: ${{ github.triggering_actor }}
           PYTHONPATH: platform/python-sidecar
-        run: bash platform/scripts/gochara-seal-approved.sh
+        run: |
+          set -euo pipefail
+          # C-02: the sealer DSN is read from Secret Manager (WIF identity needs secretAccessor on this ONE secret), exists only in this step's process, is masked, and is never echoed.
+          if ! GOCHARA_SEALER_DB_URL="$(gcloud secrets versions access latest --secret="$SEALER_SECRET" --project=madhav-astrology 2>/dev/null)" || [ -z "$GOCHARA_SEALER_DB_URL" ]; then
+            echo "::error::sealer-dsn-unavailable: could not read an enabled version of Secret Manager secret $SEALER_SECRET (needs roles/secretmanager.secretAccessor on that secret for the workflow identity, and an enabled version written by the sealer-credential stage); refusing before any database contact"
+            exit 1
+          fi
+          echo "::add-mask::$GOCHARA_SEALER_DB_URL"
+          SEALER_PASSWORD="${GOCHARA_SEALER_DB_URL#*://*:}"
+          SEALER_PASSWORD="${SEALER_PASSWORD%%@*}"
+          if [ -n "$SEALER_PASSWORD" ]; then echo "::add-mask::$SEALER_PASSWORD"; fi
+          export GOCHARA_SEALER_DB_URL
+          bash platform/scripts/gochara-seal-approved.sh
 
       - name: Reconcile — READ the publication, seal and receipt state (a failed or cancelled status does not prove the transaction rolled back)
         if: ${{ always() && steps.seal.conclusion != 'skipped' }}
         env:
-          GOCHARA_SEALER_DB_URL: ${{ secrets.GOCHARA_SEALER_DB_URL }}
+          SEALER_SECRET: gochara-sealer-db-url
           CHART_ID: ${{ inputs.chart_id }}
           GENERATION: ${{ inputs.generation }}
           BRIEF_DIGEST: ${{ needs.brief.outputs.brief_digest }}
           PYTHONPATH: platform/python-sidecar
         run: |
           set +e
+          # C-02: same read as the seal step. On failure the variable stays unset, so the reconcile script itself reports UNREADABLE (exit 12): the state is unknown, never "not sealed".
+          if GOCHARA_SEALER_DB_URL="$(gcloud secrets versions access latest --secret="$SEALER_SECRET" --project=madhav-astrology 2>/dev/null)" && [ -n "$GOCHARA_SEALER_DB_URL" ]; then
+            echo "::add-mask::$GOCHARA_SEALER_DB_URL"
+            SEALER_PASSWORD="${GOCHARA_SEALER_DB_URL#*://*:}"
+            SEALER_PASSWORD="${SEALER_PASSWORD%%@*}"
+            if [ -n "$SEALER_PASSWORD" ]; then echo "::add-mask::$SEALER_PASSWORD"; fi
+            export GOCHARA_SEALER_DB_URL
+          else
+            unset GOCHARA_SEALER_DB_URL
+            echo "::error::sealer-dsn-unavailable: could not read an enabled version of Secret Manager secret $SEALER_SECRET; the reconciliation cannot read the database and will report UNREADABLE"
+          fi
           OUT="$(python3 platform/scripts/gochara_seal_reconcile.py --chart-id "$CHART_ID" --generation "$GENERATION" --brief-digest "$BRIEF_DIGEST" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT")"
           RC=$?
           printf '%s\n' "$OUT" > reconcile.json
