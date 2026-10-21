@@ -113,7 +113,7 @@ def test_the_pin_is_not_regenerated_from_the_table_it_checks():  # claim 4
     grown["ops"]["brand_new_kind"] = new_kind
     with pytest.raises(AssertionError, match="set of kinds"):            # no shard names it: refused, as before
         mod.assert_table_matches_pin(grown)
-    named = [shard("K9-TEST", {"brand_new_kind": new_kind})]
+    named = [*eps.load_shards(), shard("K9-TEST", {"brand_new_kind": new_kind})]       # the shards in the tree plus the one under test: a real kind shard explains its own kind
     mod.assert_table_matches_pin(grown, named)                          # the reviewed shard excuses exactly that kind
     sneaky = copy.deepcopy(grown)
     sneaky["ops"]["brand_new_kind"]["script"] = "other.py"
@@ -126,9 +126,9 @@ def test_the_pin_is_not_regenerated_from_the_table_it_checks():  # claim 4
     ordered = list(now["ops"])
     placed = copy.deepcopy(now)
     placed["ops"] = {k: (new_kind if k == "brand_new_kind" else now["ops"][k]) for k in ordered[:2] + ["brand_new_kind"] + ordered[2:]}
-    mod.assert_table_matches_pin(placed, [shard("K9-TEST", {"brand_new_kind": new_kind}, after=ordered[1])])
+    mod.assert_table_matches_pin(placed, [*eps.load_shards(), shard("K9-TEST", {"brand_new_kind": new_kind}, after=ordered[1])])
     with pytest.raises(AssertionError, match="order"):                   # the anchor is part of the pin
-        mod.assert_table_matches_pin(placed, [shard("K9-TEST", {"brand_new_kind": new_kind}, after=ordered[0])])
+        mod.assert_table_matches_pin(placed, [*eps.load_shards(), shard("K9-TEST", {"brand_new_kind": new_kind}, after=ordered[0])])
 
 
 def test_merged_shards_load_and_name_real_plan_items():  # claim 5
