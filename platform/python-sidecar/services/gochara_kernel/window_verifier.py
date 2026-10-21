@@ -19,6 +19,13 @@ and the factor rows the path is sealed against:
 A window with a non-constant member (an angular kernel) is checked structurally only and reported as
 `numeric_reproduced = False` — never claimed as reproduced.
 
+S3 (SR-OD1): a window with a qualified FUNCTION-valued member (a point-kernel tent, a graduated dṛṣṭi, a vedha overlay) is no longer "structural only". The
+builder SOLVES it (`window_solver`); this module re-proves the stored numbers with the INDEPENDENT prover `window_solver_check` (`window_solver_check.check_window`
+over plain data adapted here from the stored rows and the verifier's OWN derivations: the kernel geometry, the dṛṣṭi offset, the vedha overlay, the ephemeris
+`position_at`). VERIFIED ⇒ the window is reproduced; REFUTED ⇒ a disagreement (the stored maximum, its instant or the numbers at the peak are wrong);
+UNVERIFIED ⇒ the prover could not settle it inside its budget (the window stays UNVERIFIED and blocks the seal). A BLANK solver window is confirmed the same
+way: the prover must find the structural defect (H1 / H2 / an undeterminable operand) that the stored reason names.
+
 P1c (SR-OD1): a P1 record whose factor rows declare a `category_mapping` is STEP-valued — constant between the instants its
 dignity / combustion / nature state changes, which `p1_operands_check` derives independently from `position_at` and L0. Such a
 window IS reproduced (pieces cut at those instants, value read at each piece's start) once `dynamic_enabled`; without a
@@ -30,6 +37,7 @@ from datetime import timezone
 
 from . import boundary_match as bm
 from . import p1_operands_check as _p1c
+from . import window_solver_check as _chk
 
 _TOL = 1e-6                                 # REAL (float4) storage round-trip — NOT the peak tie
 _TIE = 1e-9                                 # the frozen measurement contract's peak-tie tolerance
@@ -210,6 +218,123 @@ def _live(recs, t):
     return [rid for rid, r in recs.items() if any(a <= t < b for a, b in r["supports"])]
 
 
+
+# ── S3: the adapter from stored rows to the independent prover (`window_solver_check`) ─────────────────────────────────────────────
+
+#: the named reasons a SOLVER window may be blank under — this verifier's OWN literals (the builder's live in `window_solver`; a test asserts equality)
+SOLVER_STRUCTURAL = {"monotone_arc_not_established": _chk.F_H1, "state_boundaries_incomplete": _chk.F_H2}
+SOLVER_BUDGET_REASONS = ("solver_budget_exhausted", "solver_certificate_incomplete")
+SOLVER_UNKNOWN_REASONS = ("objective_unknown_over_component", "objective_undeterminable")
+_SPAN_KERNEL_VALUE_KEY = "inside"
+
+
+def _point_levels(rec: dict, target: str | None):
+    """(target longitude, rays) of a POINT record: the verifier's own statement of the kernel geometry — the directed dṛṣṭi angles are the record's body's
+    (`_ASPECT_ANGLES`), a conjunction has the single ray 0."""
+    if target is None or not target.startswith("point:"):
+        raise RuntimeError(f"window verifier: point record {rec['id']} carries the target {target!r}, not point:<longitude>")
+    lam = float(target.split(":", 1)[1]) % 360.0
+    if rec["relation"] == "aspect":
+        rays = _ASPECT_ANGLES[rec["agent"]]
+        if not rays:
+            raise RuntimeError(f"window verifier: record {rec['id']}: a node casts no dṛṣṭi (N-14) — an aspect record on {rec['agent']!r} cannot be checked")
+        return lam, tuple(rays)
+    return lam, (None,)
+
+
+def _record_targets(conn, rids) -> dict:
+    """{record_id: canonical_target} by this verifier's own SQL (a separate read, so the member read keeps its column contract)."""
+    if not rids:
+        return {}
+    rows = conn.execute(
+        "SELECT r.record_id::text, o.canonical_target FROM public.ka_gochara_relationship_record r"
+        " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id WHERE r.record_id::text = ANY(%s)", (sorted(rids),)).fetchall()
+    return {(r["record_id"] if isinstance(r, dict) else r[0]): (list(r.values())[1] if isinstance(r, dict) else r[1]) for r in rows}
+
+
+def _ingress_instants(conn, rid: str, agent: str) -> list:
+    """The stored sign-ingress instants of the record's body under the record's contact convention (the dṛṣṭi offset's change instants)."""
+    rows = conn.execute(
+        "SELECT e.t_exact FROM public.ka_gochara_sky_event e WHERE e.event_kind = 'sign_ingress' AND e.t_exact IS NOT NULL AND e.body = %s"
+        " AND e.convention_id = (SELECT c.convention_id FROM public.ka_gochara_relationship_record r"
+        "   JOIN public.ka_gochara_contact c ON (c.chart_id, c.generation, c.contact_id) = (r.chart_id, r.generation, r.contact_id)"
+        "   WHERE r.record_id::text = %s) ORDER BY e.t_exact", (agent, rid)).fetchall()
+    return [next(iter(r.values())) if isinstance(r, dict) else r[0] for r in rows]
+
+
+def _drishti_step(conn, rec: dict, row: dict, target: str, position_at):
+    """The graduated-dṛṣṭi factor as a `StepFactor`: the whole-sign inclusive house offset from the aspecting body's sign to the target's sign, read from the
+    ephemeris at each instant, through Stream B's cited table (the rule authority, shared by design). Its change instants are the body's stored sign
+    ingresses, asserted complete only where the coverage rule says so."""
+    from services.gochara_rules import drishti as _rules_drishti
+    ref = (row["factor_id"], row["rule_version"])
+    title = _TITLE[rec["agent"]]
+    if target.startswith("span:"):
+        tgt_sign = int(target.split(":", 1)[1]) - 1
+    elif target.startswith("point:"):
+        tgt_sign = int(float(target.split(":", 1)[1]) // 30.0) % 12
+    else:
+        raise RuntimeError(f"window verifier: record {rec['id']}: no dṛṣṭi offset for the target {target!r}")
+
+    def value_at(t):
+        src_sign = int(position_at(rec["agent"], t) // 30.0) % 12
+        out = _rules_drishti.graduated_drishti(title, (tgt_sign - src_sign) % 12 + 1, factor_ref=ref)
+        if tuple(out.get("factor") or ()) != ref:
+            raise RuntimeError(f"window verifier: graduated_drishti answered for {out.get('factor')!r}, asked for {ref!r}")
+        return out["value"]
+    ingress = _ingress_instants(conn, rec["id"], rec["agent"])
+    return _chk.StepFactor(value_at=value_at, boundaries=lambda lo, hi, _i=ingress: [c for c in _i if lo < c < hi],
+                           complete=bool(rec.get("boundaries_complete")))
+
+
+def _checker_records(conn, *, recs: dict, qualified: dict, chans: dict, factor_rows: list, position_at, vedha_overlay, channel_at, channel_boundaries):
+    """The window's members as the prover's plain data. A record with several directed rays becomes one `CheckRecord` per ray (the kernel is the best ray: a max
+    inside the record's root / agent group). Every factor is derived here from the stored row, the factor rows and the ephemeris — never read from the builder."""
+    targets = _record_targets(conn, [rid for rid, r in recs.items() if rid in qualified and r["relation"] in ("residence", "aspect", "conjunction")])
+    out = []
+    for rid, rec in recs.items():
+        chan = chans[rid]
+        per_instant = chan == PER_INSTANT
+        kw = dict(root=rec["root"], agent=rec["agent"], supports=tuple((a, b) for a, b in rec["supports"]),
+                  channel=None if per_instant else chan,
+                  channel_at=(lambda t, _r=rec: channel_at(_r, t)) if per_instant and channel_at is not None else None,
+                  channel_boundaries=(lambda lo, hi, _r=rec: channel_boundaries(_r, lo, hi)) if per_instant and channel_boundaries is not None else None)
+        if rid not in qualified:
+            out.append(_chk.CheckRecord(record_id=rid, qualified=False, **kw))
+            continue
+        constant, steps, tent = 1.0, [], None
+        for row in factor_rows:
+            fid, ap = row["factor_id"], row.get("applicability")
+            if fid == "activity_kernel":
+                span, ang = (ap or {}).get("span") or {}, (ap or {}).get("angular") or {}
+                if rec["kind"] in (span.get("object_kinds") or ()):
+                    constant *= float(span["inside"])
+                elif rec["kind"] in (ang.get("object_kinds") or ()):
+                    tent = (float(ang["orb_deg"]), *_point_levels(rec, targets.get(rid)))
+            elif fid == "graduated_drishti":
+                if rec["relation"] in ((ap or {}).get("relations") or ()):
+                    steps.append(_drishti_step(conn, rec, row, targets.get(rid) or "", position_at))
+            elif fid == "vedha_attenuation":
+                derived = vedha_overlay(rid)
+                if derived.applicable:
+                    steps.append(_chk.StepFactor(value_at=derived.value_at, boundaries=derived.boundaries, complete=derived.complete))
+            elif fid == "karaka_agent" and row.get("null_state") == "omit":
+                continue
+            else:
+                raise RuntimeError(f"window verifier: factor {fid!r} has no solver-check derivation")
+        if tent is None:
+            out.append(_chk.CheckRecord(record_id=rid, constant=constant, steps=tuple(steps), **kw))
+            continue
+        orb, lam, rays = tent
+        for k, ray in enumerate(rays):
+            out.append(_chk.CheckRecord(record_id=f"{rid}#{k}", constant=constant, steps=tuple(steps),
+                                        tent=_chk.TentFactor(body=rec["agent"], level_deg=lam, orb_deg=orb, ray_deg=ray), **kw))
+    return out
+
+
+def _structural_codes(report) -> set:
+    return {f.code for f in report.findings if f.code in (_chk.F_H1, _chk.F_H2, _chk.F_UNDET)}
+
 #: the frozen qualification policy this verifier implements (R8-4) — the builder's `window_sweep.draft_windows`
 #: documents the same table; the two are separate code and the DB gate binds the version
 POLICY_VERSION = "window_qualification/1"
@@ -251,14 +376,19 @@ def _expected_valence(event_class, ev_for, ev_against, reason):
 def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
                             rule_version: str, factor_rows: list[dict],
                             drishti_bound: bool = False, vedha_bound: bool = False,
-                            dynamic_enabled: bool = False, policy: str | None = None,
+                            dynamic_enabled: bool | None = None, policy: str | None = None,
                             solver_check: bool = True, channel_at=None, channel_boundaries=None, p1_check=None,
-                            vedha_overlay=None, moon_sign: int | None = None) -> dict:
-    """`solver_check` (W0, plan N-6): whether THIS call runs the solver check on a window whose numbers cannot be reproduced
-    by the constant-window derivation (a function-valued member under `dynamic_enabled`). The in-build self-check in the writer
+                            vedha_overlay=None, moon_sign: int | None = None, position_at=None) -> dict:
+    """`dynamic_enabled` (S3): whether a window with a function-valued member is SOLVED (the `window_qualification_table/2` rule 2) or still blank under the
+    retired dynamic switch. None (the default) follows the table this code implements: solved under `window_qualification/1`. `False` answers a build made
+    with the legacy switch (tests of the retired behaviour only).
+
+    `solver_check` (W0, plan N-6; S3): whether THIS call runs the independent prover (`window_solver_check`) on a window whose numbers cannot be reproduced
+    by the constant-window derivation (a function-valued member under `dynamic_enabled`), over the ephemeris `position_at`. The in-build self-check in the writer
     passes False — the independent prover runs once, in the verification job, not twice inside the writer's cap — and then
-    reports those windows as DEFERRED (`solver_check_deferred_windows`), never as checked. No call here performs a solver check yet
-    (`solver_checked_windows` is 0): the report says what ran. A deferral never satisfies a gate — the windows stay UNVERIFIED.
+    reports those windows as DEFERRED (`solver_check_deferred_windows`), never as checked. A call with `solver_check=True` but no `position_at` has no
+    ephemeris to prove against: the windows stay UNVERIFIED (`solver_check_unavailable_windows`). `solver_checked_windows` counts the windows the prover
+    settled (VERIFIED); the report says what ran. A deferral never satisfies a gate — the windows stay UNVERIFIED.
 
     `channel_at(record, t)` / `channel_boundaries(record, lo, hi)` (W0): the per-instant channel of a P1 record and its change
     instants, supplied by the caller's own derivation; absent ⇒ a P1 record has no channel derivation (refused, as before).
@@ -293,6 +423,8 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         raise RuntimeError(f"window verifier: policy {policy!r} != the manifest's {manifest_policy!r}")
     if policy not in POLICIES:
         raise RuntimeError(f"window verifier: no result policy selected (the generation has no manifest row)")
+    if dynamic_enabled is None:
+        dynamic_enabled = policy == POLICY_VERSION
     prov_cols = conn.execute(
         "SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka_gochara_eval_window'::regclass"
         " AND attname IN ('objective', 'objective_value', 'qualification') AND NOT attisdropped").fetchone()
@@ -353,6 +485,10 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     fully_reproduced = 0            # windows whose stored fields were reproduced EXACTLY (incl. the NULL ones)
     unverified: list[str] = []      # windows with a function-valued member while the solver is enabled
     deferred: list[str] = []        # …of those, the ones whose solver check this call was told to leave to the verification job
+    unavailable: list[str] = []     # …and the ones it was asked to check but had no ephemeris to prove against
+    solver_checked = 0              # windows the independent prover SETTLED (a numbered window VERIFIED, or a blank window's defect CONFIRMED)
+    solver_blank: dict[str, int] = {}   # …of which blank windows, by the stored reason the prover confirmed
+    unverified_why: dict[str, list] = {}
     detail: list[dict] = []         # the lossless qualification provenance, DERIVED here (1156 has no column)
 
     def expect_null_window(tag, stored, reason):
@@ -471,11 +607,8 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                 fully_reproduced += 1
             detail.append(row)
             continue
-        if has_fn:                                   # the solver is enabled: numbers NOT reproduced here
+        if has_fn:                                   # the solver is enabled: the constant-window derivation cannot reproduce these numbers
             detail.append(row)
-            unverified.append(tag)
-            if not solver_check:
-                deferred.append(tag)
             # UNIVERSAL BOUNDS (hold for any factor value in [0,1], so they bind where numbers cannot be
             # reproduced): evidence is a Σ over roots of a per-root max of values ≤ 1; the score is a unit value
             if score is not None and not (0.0 <= score <= 1.0 + _TOL):
@@ -492,6 +625,66 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             if not against_ok and ev_against is not None:
                 problems.append(f"{tag}: evidence_against is stored but the registry row declares no way to "
                                 "evaluate that channel (expected NULL)")
+            # S3: the INDEPENDENT prover (`window_solver_check`). Not run in the writer's in-build self-check (N-6: deferred, never a pass), and not
+            # runnable without an ephemeris (unavailable, never a pass).
+            if not solver_check:
+                unverified.append(tag)
+                deferred.append(tag)
+                continue
+            if position_at is None:
+                unverified.append(tag)
+                unavailable.append(tag)
+                continue
+            records = _checker_records(conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at,
+                                       vedha_overlay=vedha_overlay, channel_at=channel_at, channel_boundaries=channel_boundaries)
+            objective = _chk.OBJ_MAXMIN if path_id == "P4" else _chk.OBJ_SUM
+            if peak is not None:
+                ov = s_objective_value if s_objective_value is not None else (score if path_id == "P4" else None)
+                if ov is None:
+                    problems.append(f"{tag}: a numbered window carries no objective_value — its maximum cannot be proved")
+                    continue
+                got = _chk.check_window(
+                    lo=lo, hi=hi, records=records, objective=objective, position_at=position_at, event_class=event_class, against_evaluated=against_ok,
+                    stored=_chk.StoredWindow(peak_instant=peak, objective_value=ov, score=score, evidence_for=ev_for, evidence_against=ev_against,
+                                             outcome_valence=valence))
+                if got.status == _chk.REFUTED:
+                    problems.append(f"{tag}: the independent solver check refutes the stored numbers: "
+                                    + "; ".join(f"{f.code} ({f.detail})" for f in got.findings))
+                elif got.status == _chk.UNVERIFIED:
+                    unverified.append(tag)
+                    unverified_why[tag] = [reason for reason, _detail in got.unverified]
+                else:
+                    solver_checked += 1
+                    numeric += 1
+                    fully_reproduced += 1
+                    row["objective_value"] = got.rederived.get("maximum", got.rederived.get("value_at_peak"))
+                    check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+                continue
+            # a BLANK solver window: its stored reason must name a defect the prover finds for itself
+            reason = (s_qualification or {}).get("unqualified_reason")
+            stored_unresolved = dict((s_qualification or {}).get("unresolved") or {})
+            if reason is None or reason not in stored_unresolved:
+                problems.append(f"{tag}: a blank window with a function-valued member carries no usable reason ({reason!r}, unresolved {stored_unresolved!r})")
+                continue
+            if not expect_null_window(tag, stored, reason):
+                continue
+            if reason in SOLVER_BUDGET_REASONS:
+                unverified.append(tag)               # a budget blank is justified by its certificate — not independently checkable here
+                unverified_why[tag] = [reason]
+                continue
+            probe = _chk.check_window(lo=lo, hi=hi, records=records, objective=objective, position_at=position_at, event_class=event_class,
+                                      against_evaluated=against_ok, stored=_chk.StoredWindow(peak_instant=lo, objective_value=0.0))
+            want_code = SOLVER_STRUCTURAL.get(reason, _chk.F_UNDET)
+            if want_code not in _structural_codes(probe):
+                problems.append(f"{tag}: blank under {reason!r}, but the independent prover finds no such defect "
+                                f"(it found {sorted(f.code for f in probe.findings) or 'none'}) — a blank where the table yields a value")
+                continue
+            solver_checked += 1
+            solver_blank[reason] = solver_blank.get(reason, 0) + 1
+            fully_reproduced += 1
+            row["unqualified_reason"] = reason
+            row["unresolved"] = dict(sorted({**row["unresolved"], **{k: v for k, v in stored_unresolved.items() if k not in row["unresolved"]}}.items()))
+            check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
             continue
         # ── policy 3–5: every live member is a constant — re-derive piecewise ─────────────────────────────
         def val(rid, t):
@@ -610,8 +803,9 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     return {"windows": len(windows), "numeric_reproduced": numeric,
             "fully_reproduced": fully_reproduced, "unverified_dynamic": len(unverified),
             "unverified_windows": unverified, "policy_version": policy,
-            "solver_check_requested": solver_check, "solver_checked_windows": 0,
-            "solver_check_deferred_windows": len(deferred),
+            "dynamic_enabled": bool(dynamic_enabled), "solver_check_requested": solver_check, "solver_checked_windows": solver_checked,
+            "solver_check_deferred_windows": len(deferred), "solver_check_unavailable_windows": len(unavailable),
+            "solver_blank_windows": dict(sorted(solver_blank.items())), "unverified_why": unverified_why,
             "fields_verified": list(GOVERNED_FIELDS), "windows_detail": detail,
             **({"vedha_derivation": derived_vedha.summary()} if derived_vedha is not None else {}),
             # VERIFIED only when EVERY window's stored fields were reproduced exactly

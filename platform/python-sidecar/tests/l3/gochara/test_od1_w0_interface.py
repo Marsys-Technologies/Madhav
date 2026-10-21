@@ -301,6 +301,7 @@ def test_w7_with_the_dynamic_switch_off_the_writers_switch_changes_nothing():
     (draft,), _ = _draft([rec], lambda p, v: _rows_declared(p, v, orb=5.0), allow_dynamic=False)
     conn = _Conn([_stored(draft)], [("k", "root-k", "conjunction", "house_lord", "jupiter", None, _d(0), _d(10))],
                  [("w", "k")])
-    report = wv.verify_window_semantics(conn, factor_rows=_rows_declared("P3", "1.0.0", orb=5.0), solver_check=False,
+    # S3: `dynamic_enabled` now follows the table (solved under window_qualification/1); the RETIRED switch is asked for by name
+    report = wv.verify_window_semantics(conn, factor_rows=_rows_declared("P3", "1.0.0", orb=5.0), solver_check=False, dynamic_enabled=False,
                                         policy=wv.POLICY_VERSION, **{**GRAIN, "path_id": "P3", "rule_version": "1.0.0"})
     assert report["solver_check_deferred_windows"] == 0 and report["status"] == "VERIFIED"

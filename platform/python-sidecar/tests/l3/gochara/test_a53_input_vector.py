@@ -346,7 +346,7 @@ def test_the_independent_input_check_binds_the_frozen_qualification_table_to_the
     named in `derived`); a different digest, a missing component, or a table beside the all-NULL policy DISAGREES. (revert: drop the verifier's comparison — the
     three refusals below pass silently)"""
     stored = _vector(db, ephe, result_policy="window_qualification/1")
-    assert stored["qualification_table"] == {"schema": "window_qualification_table/1", "digest": ivv.QUALIFICATION_TABLE_BINDING["digest"]}
+    assert stored["qualification_table"] == {"schema": "window_qualification_table/2", "digest": ivv.QUALIFICATION_TABLE_BINDING["digest"]}
     assert "qualification_table" in _ivv(db, stored, ephe)["derived"]
     other = {**stored, "qualification_table": {**stored["qualification_table"], "digest": "0" * 64}}
     with pytest.raises(RuntimeError, match="qualification_table"):

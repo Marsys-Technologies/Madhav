@@ -575,7 +575,8 @@ def test_the_build_observer_records_the_policy_at_the_call_and_restores_the_modu
         cc.certify_contact_geometry(None, sink_policy=cc.POLICY_SINK_ALL)
         cc.certify_contact_geometry(None)                                                 # the default is the strict policy
         ws.maximise_earliest(None, None, None)
-    assert seen == {"certification_policies": [cc.POLICY_SINK_ALL, cc.POLICY_RAISE], "maximise_earliest_calls": 1}
+    assert seen == {"certification_policies": [cc.POLICY_SINK_ALL, cc.POLICY_RAISE], "maximise_earliest_calls": 1,
+                    "solver": {"calls": 0, "certified": 0, "blank": {}, "evals": 0, "max_window_evals": 0}}
     assert (cc.certify_contact_geometry, ws.maximise_earliest) == stubbed and len(calls) == 2
 
 
@@ -608,11 +609,13 @@ def _row(policy, with_peak, edges):
     return q.peak_windows_row(_PeakConn(policy, with_peak), chart_id="c", classes=["marriage"], observed={"maximise_earliest_calls": edges})
 
 
-def test_peak_windows_and_maximise_earliest_edges_must_both_be_positive_where_the_policy_admits_peaks():
-    ok = _row(QUALIFICATION, 4, 9)
-    assert ok["passed"] and ok["admitted"] and ok["windows_with_peak_fields_set"] == 4 and ok["maximise_earliest_edges"] == 9
-    assert _row(QUALIFICATION, 0, 9)["problems"][0].startswith("peak_windows_zero")             # 0 is a defect, not a pass
-    assert _row(QUALIFICATION, 4, 0)["problems"][0].startswith("maximise_earliest_edges_zero")
+def test_peak_windows_must_be_positive_and_the_legacy_search_unused_where_the_policy_admits_peaks():
+    """SR-OD1 S3 (N-7): a time-varying window is SOLVED under window_qualification_table/2, so the gate no longer demands `maximise_earliest` edges > 0 (a constants-only
+    slice has none); it demands the opposite — a window numbered by the sampler carries no certificate, so any such call is a defect."""
+    ok = _row(QUALIFICATION, 4, 0)
+    assert ok["passed"] and ok["admitted"] and ok["windows_with_peak_fields_set"] == 4 and ok["legacy_search_calls"] == 0
+    assert _row(QUALIFICATION, 0, 0)["problems"][0].startswith("peak_windows_zero")             # 0 is a defect, not a pass
+    assert _row(QUALIFICATION, 4, 9)["problems"][0].startswith("legacy_search_used")
 
 
 def test_under_the_all_null_policy_no_peak_is_admitted_and_one_that_appears_is_a_defect():

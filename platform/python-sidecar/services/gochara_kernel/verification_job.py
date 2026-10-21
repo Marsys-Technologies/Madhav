@@ -500,7 +500,7 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
         p1_check = p1c.P1Check.from_conn(conn, position_at) if path_id == "P1" and p1c.needs_p1_check(rows) else None
         report = stage(f"window_semantics {path_id}", lambda g=grain, r=rows, c=p1_check: wv.verify_window_semantics(
             conn, factor_rows=r, drishti_bound=drishti_bound, vedha_bound=vedha_bound,
-            solver_check=True, p1_check=c, moon_sign=moon_sign, **g))
+            solver_check=True, p1_check=c, moon_sign=moon_sign, position_at=position_at, **g))
         entry = {"path_id": path_id, "rule_version": version, "status": report["status"],
                  "policy_version": report["policy_version"], "windows": report["windows"]}
         attestation = None

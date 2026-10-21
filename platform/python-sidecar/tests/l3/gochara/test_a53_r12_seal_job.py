@@ -616,7 +616,7 @@ def test_n10_the_stdlib_brief_check_agrees_with_the_sidecar_and_refuses_what_the
         with pytest.raises(check.Refused):
             check.check_numerical_gate(p)
     refuses(lambda p: p["numerical_window_gate"].update(status="FAILED", problems=["x"]))
-    refuses(lambda p: p["numerical_window_gate"].update(table={"schema": "window_qualification_table/1", "digest": "0" * 64}))
+    refuses(lambda p: p["numerical_window_gate"].update(table={"schema": "window_qualification_table/2", "digest": "0" * 64}))
     refuses(lambda p: p["numerical_window_gate"].update(blank_windows=p["numerical_window_gate"]["blank_windows"] + 1))
     refuses(lambda p: p["numerical_window_gate"].update(honest_nulls=[{"path_id": "P3", "group": "g", "reason": "", "windows": 0}]))
     refuses(lambda p: p.pop("numerical_window_gate"))

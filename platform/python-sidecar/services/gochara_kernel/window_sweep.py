@@ -45,6 +45,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Iterable
 
+from . import window_solver as _solver
 from .result_policy import ALL_NULL_REASON, POLICY_ALL_NULL, POLICY_QUALIFICATION, RESULT_POLICIES
 from .substrate import DB_BODY
 
@@ -159,6 +160,11 @@ class SweepRecord:
     # gap that a piece would bridge, or an island that would score 0.
     state_boundaries_complete: bool = False
     peak_hints: Callable[[datetime, datetime], list[datetime]] | None = None
+    # S3 (the solver's seams): the body's longitude AND its longitudinal speed (degrees, degrees per DAY — the Swiss speed output) from ONE ephemeris call, and the
+    # Swiss station instants of the body (the stored, ephemeris-refined `t_exact`s: extra cuts, S0 K-2). Absent ⇒ the speed is a centred
+    # difference of `longitude_at` and no station is listed (the solver then proves monotonicity from the velocity sign alone).
+    longitude_speed_at: Callable[[datetime], tuple] | None = field(default=None, compare=False)
+    station_instants: Callable[[], list] | None = field(default=None, compare=False)
     # W0: per-factor operand sources, keyed by factor_id. `state_boundaries` / `state_boundaries_complete` above are the
     # record-wide DEFAULT a state-valued factor (dṛṣṭi, vedha) falls back to when it has no source of its own here.
     operand_sources: dict = field(default_factory=dict, compare=False)
@@ -232,6 +238,8 @@ class Outcome:
     boundaries_complete: bool = False
     channel_at: Callable[[datetime], str | None] | None = None
     unknown_reason: Callable[[datetime], str | None] | None = None
+    # S3: a POINT kernel's geometry for the solver — (target longitude, ratified orb) in degrees; the value is `max(0, 1 − d/orb)` along each directed ray
+    tent: tuple | None = None
 
 
 def _check_unit(value, what: str) -> float:
@@ -299,7 +307,8 @@ def activity_kernel(row: dict, rec: SweepRecord) -> Outcome:
     if probe["reason"] == "orb_not_ratified":
         return _missing(row, "orb_not_ratified")
     return Outcome("fn", fn=lambda t, _ref=ref: _kernel_value_at(rec, _ref, t),
-                   null_state=row["null_state"], factor=row["factor_id"])
+                   null_state=row["null_state"], factor=row["factor_id"],
+                   tent=(float(parsed[1]), float(ap["angular"]["orb_deg"])))
 
 
 def graduated_drishti(row: dict, rec: SweepRecord,
@@ -712,12 +721,126 @@ class WindowDraft:
                 "qualified_members": self.qualified_members}
 
 
-#: R8-4/R8-6: until a solver with a stated global-maximum guarantee exists for function-valued factors
-#: (a point kernel with a ratified orb, a dṛṣṭi source, a vedha overlay), EVERY window with a qualified
-#: function-valued member is unqualified — peak, score and evidence NULL — under this named reason. It is a
-#: switch, not a limit: `draft_windows(allow_dynamic=True)` exists for the solver's own tests and is never
-#: passed by the writer.
+#: R8-4/R8-6 (RETIRED for the writer by S3): a window with a qualified function-valued member used to be unqualified under this named reason
+#: until a solver with a stated global-maximum guarantee existed. The writer now passes `solver=PRODUCTION_SOLVER` and the window is SOLVED (a
+#: certified number) or blank under one of the solver's named reasons (`window_qualification_table/2`, rule 2). The switch still answers a caller
+#: that supplies NEITHER `solver` nor `allow_dynamic` (so a stale caller blanks rather than numbers), and `allow_dynamic=True` stays as the LEGACY
+#: SAMPLER (`maximise_earliest`) that the solver's tests use as a weak oracle; the writer never passes it.
 DYNAMIC_SWITCH_REASON = "dynamic_objective_solver_guarantee_not_available"
+
+#: the audited minimum spacing of two consecutive Swiss stations of one body (Mercury, 19.7585 d: S0 §2.3, `window_verifier._junction_problem`), rounded DOWN —
+#: the premise of the solver's H1 (a hidden reversal pair cannot fit between samples taken at most 5 d apart)
+AUDITED_MIN_STATION_SPACING_S = 19.75 * 86400.0
+
+
+@dataclass(frozen=True)
+class SolverConfig:
+    """How the sweep calls the window solver. The budget is PER WINDOW only (R-6: no grain-level budget, so no order dependence)."""
+    max_evals: int = _solver.MAX_EVALS_WINDOW
+    min_station_spacing_s: float = AUDITED_MIN_STATION_SPACING_S
+    fd_half_seconds: float = 30.0          # the centred-difference half-width of the speed when the record carries no speed seam
+
+
+PRODUCTION_SOLVER = SolverConfig()
+
+
+def _wrap180(x: float) -> float:
+    return (x + 180.0) % 360.0 - 180.0
+
+
+def _kinematics(rec: "SweepRecord", origin: datetime, cfg: SolverConfig):
+    """`s (seconds from origin) -> (longitude deg, speed deg/s)` for the record's body: ONE ephemeris call when the record carries the speed seam (deg/day), else a centred
+    difference of `longitude_at`. The last few instants are memoised so the solver's offset and velocity reads of one instant cost one evaluation."""
+    cache: dict = {}
+
+    def at(s: float):
+        got = cache.get(s)
+        if got is None:
+            t = origin + timedelta(seconds=s)
+            if rec.longitude_speed_at is not None:
+                lon, per_day = rec.longitude_speed_at(t)
+                spd = None if per_day is None else float(per_day) / 86400.0
+            else:
+                h = timedelta(seconds=cfg.fd_half_seconds)
+                lon = rec.longitude_at(t)
+                a, b = rec.longitude_at(t - h), rec.longitude_at(t + h)
+                spd = None if a is None or b is None else _wrap180(float(b) - float(a)) / (2.0 * cfg.fd_half_seconds)
+            if lon is None or spd is None:
+                raise SweepRefusal(f"record {rec.record_id}: the ephemeris seam returned no longitude/speed at {t.isoformat()} — refused, never defaulted")
+            if len(cache) > 16:
+                cache.clear()
+            got = cache[s] = (float(lon), float(spd))
+        return got
+    return at
+
+
+def _solver_steps(p: "RecordProgram", origin: datetime) -> list:
+    """The record's non-tent factors as solver steps: constants, state-valued functions (their own change instants, completeness and named reasons), and the
+    per-instant channel as a 1/0 multiplier (a record on the against side adds nothing to the for-sum)."""
+    def at(s: float) -> datetime:
+        return origin + timedelta(seconds=s)
+
+    def secs(t: datetime) -> float:
+        return (t - origin).total_seconds()
+
+    steps: list = []
+    for o in p.outcomes:
+        if o.kind == "na":
+            continue
+        if o.kind == "missing":
+            if o.null_state == OMIT:
+                continue
+            raise SweepRefusal(f"record {p.rec.record_id}: a qualified record carries a missing operand {o.factor!r} (null_state {o.null_state!r}) — refused")
+        if o.kind == "const":
+            steps.append(_solver.constant_step(o.value))
+            continue
+        if o.tent is not None:
+            continue
+        steps.append(_solver.Step(
+            value_at=lambda s, _o=o: _o.fn(at(s)),
+            boundaries=None if o.boundaries is None else (lambda lo_s, hi_s, _o=o: [secs(c) for c in _o.boundaries(at(lo_s), at(hi_s))]),
+            complete=bool(o.boundaries_complete),
+            unknown_reason=None if o.unknown_reason is None else (lambda s, _o=o: _o.unknown_reason(at(s)))))
+    decider = next((o for o in p.outcomes if o.channel_at is not None), None)
+    if decider is not None:
+        steps.append(_solver.Step(
+            value_at=lambda s: (lambda c: None if c is None else (1.0 if c == CHANNEL_FOR else 0.0))(p.channel_at(at(s))),
+            boundaries=None if decider.boundaries is None else (lambda lo_s, hi_s, _o=decider: [secs(c) for c in _o.boundaries(at(lo_s), at(hi_s))]),
+            complete=bool(decider.boundaries_complete),
+            unknown_reason=None if decider.unknown_reason is None else (lambda s, _o=decider: _o.unknown_reason(at(s)))))
+    return steps
+
+
+def solver_problem(path_id: str, programs: list, lo: datetime, hi: datetime, cfg: SolverConfig):
+    """The `window_solver.Problem` for ONE window: the qualified members' factors, time in seconds from `lo`. A point-kernel record becomes one tent member per
+    directed ray (the kernel is the best ray: a max inside the record's root/agent group); a record on the against channel is not a member of a for-channel
+    objective. Pure: the only ephemeris contact is through the records' own seams."""
+    origin = lo
+    L = (hi - lo).total_seconds()
+    members: list = []
+    for p in programs:
+        rec = p.rec
+        if not p.has_channel_fn and p.channel == CHANNEL_AGAINST:
+            continue
+        steps = tuple(_solver_steps(p, origin))
+        supports = tuple(((a - origin).total_seconds(), (b - origin).total_seconds()) for a, b in rec.supports)
+        group = rec.agent if path_id == "P4" else rec.root_id
+        tent_o = next((o for o in p.outcomes if o.tent is not None), None)
+        if tent_o is None:
+            members.append(_solver.Member(key=rec.record_id, group=group, supports=supports, steps=steps))
+            continue
+        level, orb = tent_o.tent
+        at = _kinematics(rec, origin, cfg)
+        stations = () if rec.station_instants is None else tuple(sorted((t - origin).total_seconds() for t in rec.station_instants()
+                                                                        if 0.0 < (t - origin).total_seconds() < L))
+        for k, ray in enumerate(rec.aspect_rays or (None,)):
+            shift = 0.0 if ray is None else float(ray)
+            members.append(_solver.Member(
+                key=f"{rec.record_id}#{k}", group=group, supports=supports, steps=steps,
+                tent=_solver.Tent(offset=lambda s, _a=at, _sh=shift, _lv=level: _wrap180(_a(s)[0] + _sh - _lv), orb=orb,
+                                  velocity=lambda s, _a=at: _a(s)[1], stations=stations,
+                                  min_station_spacing=cfg.min_station_spacing_s)))
+    return _solver.Problem(lo=0.0, hi=L, objective=_solver.OBJECTIVE_MINMAX if path_id == "P4" else _solver.OBJECTIVE_SUM, members=tuple(members))
 
 OBJECTIVE_P4 = "max_min_agent_activity"          # S:321-323, O-RP-3
 OBJECTIVE_EVIDENCE = "evidence_for_per_root_sum"  # Σ over roots of the per-root max, for-channel
@@ -846,6 +969,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                   vedha: Callable[[SweepRecord, datetime], float | None] | None = None,
                   compute_valence: Callable | None = None,
                   allow_dynamic: bool = False,
+                  solver: SolverConfig | None = None,
                   policy: str = POLICY_QUALIFICATION) -> tuple[list[WindowDraft], dict]:
     """The grain's windows (one path-version) and an exclusion ledger — every record accounted.
 
@@ -872,8 +996,9 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     (for / against / unknown) and is qualified or not:
       1. an UNQUALIFIED member whose channel is `for` or unknown ⇒ the objective is unqualified: peak, score,
          evidence_for and evidence_against are NULL (reason = the first unresolved reason, sorted);
-      2. else, a QUALIFIED FUNCTION-VALUED member ⇒ unqualified under `dynamic_objective_solver_guarantee_not_
-         available` (the named switch; `allow_dynamic` lifts it for the solver's own tests only);
+      2. else, a QUALIFIED FUNCTION-VALUED member ⇒ the window is SOLVED by the certified solver (`solver=`, `window_qualification_table/2`):
+         a proven global maximum and its earliest tie instant, or no number and a named solver reason (`window_solver` reasons). A caller that passes
+         neither `solver` nor the legacy sampler (`allow_dynamic`) is answered with the retired switch `dynamic_objective_solver_guarantee_not_available`;
       3. else the objective Σ-over-roots-of-the-per-root-max FOR-channel value is determined — a population with
          no for-channel member (against-only) has the identically-zero objective, whose earliest maximum is the
          component start — and `peak`, `evidence_for` are stored;
@@ -886,6 +1011,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     valence_fn = compute_valence or _valence_mod.compute_valence
     if policy not in RESULT_POLICIES:
         raise SweepRefusal(f"result policy {policy!r} is not one of {RESULT_POLICIES}")
+    if solver is not None and allow_dynamic:
+        raise SweepRefusal("`solver` and `allow_dynamic` (the legacy sampler) are mutually exclusive — a window is numbered by exactly one engine")
 
     excluded = {"not_admitted": 0, "admission_unqualified": 0, "testimony": 0, "no_support": 0}
     members: list[SweepRecord] = []
@@ -987,7 +1114,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             continue
 
         qualified = [p for p in in_win if p.qualified]
-        if not allow_dynamic and any(p.constant is None for p in qualified):
+        use_solver = solver is not None and any(p.constant is None for p in qualified)
+        if not allow_dynamic and solver is None and any(p.constant is None for p in qualified):
             n_dyn = sum(1 for p in qualified if p.constant is None)
             unresolved[DYNAMIC_SWITCH_REASON] = n_dyn
             base["unresolved"] = unresolved
@@ -1006,7 +1134,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                 if {p.rec.agent for p in live} != {"jupiter", "saturn"}:
                     continue               # outside the joint support within this piece: not a candidate
             elif not live:
-                cands.append((0.0, a))     # no for-channel contributor: the objective is identically 0 here
+                if not use_solver:
+                    cands.append((0.0, a))     # no for-channel contributor: the objective is identically 0 here (the solver models it the same way)
                 continue
             # membership comes from the CONTACT GEOMETRY across the whole component, not only at the
             # chosen peak (R7 [8]): at every piece start, and just inside its end, a live member's
@@ -1032,7 +1161,15 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             if any(o.unknown_reason is not None for p in live for o in p.outcomes):
                 # W0 reason pass-through: at every instant the objective is unknown, ask the live factors why
                 f = _noting_unknown(f, live, seen)
-            if all(p.constant is not None for p in live):
+            if use_solver:
+                # S3: the objective's MAXIMUM over the whole component is the solver's; this loop keeps the geometry checks above and the legacy
+                # per-piece UNKNOWN classification (an operand undeterminable at a piece's start, with the factor's own named reasons), so a
+                # blank window's reasons and counts are exactly what the independent verifier derives
+                v = f(a)
+                got = None if v is None else (v, a)
+                if got is not None:
+                    continue
+            elif all(p.constant is not None for p in live):
                 v = f(a)
                 got = None if v is None else (v, a)
             else:
@@ -1047,7 +1184,21 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                     unnamed_pieces += 1
             else:
                 cands.append(got)
-        if unknown_pieces or not cands:
+        solved = None
+        if use_solver and not unknown_pieces:
+            problem = solver_problem(path_id, qualified, lo, hi, solver)
+            try:
+                res = _solver.solve(problem, max_evals=solver.max_evals)
+            except _solver.SolverRefusal as exc:
+                raise SweepRefusal(f"window {lo.isoformat()}: {exc}") from exc
+            if res.status == _solver.BLANK:
+                unknown_pieces, unnamed_pieces = 1, 0
+                reason_pieces = {res.reason: 1}
+            else:
+                solved = (res.value, lo + timedelta(seconds=res.instant))
+                if not lo <= solved[1] < hi:
+                    raise SweepRefusal(f"window {lo.isoformat()}: the solver's instant {solved[1].isoformat()} lies outside the window")
+        if unknown_pieces or (solved is None and not cands):
             # R7 [1]: a peak is qualified only when the objective's maximum AND its earliest maximising
             # instant are established over the ENTIRE component — an unknown portion is never dropped
             if reason_pieces:
@@ -1067,8 +1218,11 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                 outcome_valence_for_native=val.outcome_valence_for_native,
                 unqualified_reason=first, **base))
             continue
-        best = max(v for v, _ in cands)
-        peak = min(t for v, t in cands if v >= best - _TIE)
+        if solved is not None:
+            best, peak = solved
+        else:
+            best = max(v for v, _ in cands)
+            peak = min(t for v, t in cands if v >= best - _TIE)
         live_at_peak = [p for p in in_win if _contains(p.rec.supports, peak)]
         red = reduce_at(live_at_peak, peak, event_class)
         ev_for = red[CHANNEL_FOR]

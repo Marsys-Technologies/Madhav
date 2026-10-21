@@ -37,7 +37,7 @@ POLICY = "all_null_candidate/1"
 POLICY_QUALIFICATION = "window_qualification/1"
 ACCEPTED_POLICIES = (POLICY, POLICY_QUALIFICATION)
 #: this script's OWN literal of the frozen `window_qualification/1` table binding (stdlib only: nothing imported from the sidecar)
-QUALIFICATION_TABLE_BINDING = {"schema": "window_qualification_table/1", "digest": "5bbc65bb5fc98547bf0bea5d1ff90c76965155f3166a7042a11ab34772e6a80f"}
+QUALIFICATION_TABLE_BINDING = {"schema": "window_qualification_table/2", "digest": "f2c831a46c32ddb534cb07443e798f6c0fdce448c1b191570565f698ff5de3a9"}
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 FULL_GENERATION = "5.0"
 _DIGEST = re.compile(r"[0-9a-f]{64}")
@@ -90,6 +90,7 @@ def _inventory_attests_class(payload: dict, cls: dict) -> bool:
 
 
 NUMERICAL_GATE_SCHEMA = "numerical_window_gate/1"
+RETIRED_SWITCH_REASON = "dynamic_objective_solver_guarantee_not_available"      # this script's own literal (window_qualification_table/2 retired the dynamic switch)
 
 
 def _count(value, what):
@@ -125,6 +126,17 @@ def check_numerical_gate(p: dict) -> None:
             raise Refused(f"an honest null carries no reason code / group: {h!r}")
     if sum(_count(h.get("windows"), "honest-null windows") for h in honest) != blank:
         raise Refused(f"the honest nulls account for {sum(h['windows'] for h in honest)} blank windows, the gate counts {blank}: a blank window has no reason")
+    if any(h["reason"] == RETIRED_SWITCH_REASON for h in honest):
+        raise Refused(f"an honest null carries the retired reason {RETIRED_SWITCH_REASON!r}: those windows were built without the solver the bound table requires")
+    # S3: the blank windows are also counted per GRAIN (class x path x version) and reason, and those counts must account for every blank window
+    by_grain = gate.get("honest_nulls_by_grain")
+    if not isinstance(by_grain, list):
+        raise Refused("the numerical-window gate lists no per-grain honest nulls (an empty list is `[]`)")
+    for h in by_grain:
+        if not (isinstance(h, dict) and all(isinstance(h.get(k), str) and h[k] for k in ("event_class", "path_id", "rule_version", "reason", "group"))):
+            raise Refused(f"a per-grain honest null carries no class / path / version / reason / group: {h!r}")
+    if sum(_count(h.get("windows"), "per-grain honest-null windows") for h in by_grain) != blank:
+        raise Refused(f"the per-grain honest nulls account for {sum(h['windows'] for h in by_grain)} blank windows, the gate counts {blank}")
     rows = (p.get("attestations") or {}).get("ka_gochara_eval_window_verification")
     if not isinstance(rows, list):
         raise Refused("the brief carries no persisted window-verification rows to check the numerical-window gate against")
