@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020+close-now-bookkeeping-20261020+a55j-a55m-rescope-20261020+vc2-retire-20261020+build-first-reseq-20261021",
+  "model_version": "1.3+v2.0-regroup+packet-exits-parallel+brief-audit-20261008+v3-reconcile-20261011+j0m-registration-20261014+step-detectors-20261015+a2-children-20261015+a2-batch2-20261015+w4-reconcile-20261015+p06b-hard-edge+a4-batch3-20261015+a4-batch4-20261016+k5-2-nb-02-decomposition-20261016+p01-a55h-scope-20261015+no-conflict-20261016+sr-a6-edges-20261016+production-edges-20261016+testing-standard-20261016+a9-plan-20261018+p1-ledger-child-20261017+p06-code-edges-20261016+j3-substep-log-20261018+k9-1-skips-20261016+sr-detector-refs-closure-272-20261018+sr-detector-refs-2-20261019+k5-g1b-n1-narrow-20261019+sr-j3d-report-step-20261019+close-prep-20261019+bookkeeping-20261020+close-now-bookkeeping-20261020+a55j-a55m-rescope-20261020+vc2-retire-20261020+drop-dka4b-na-20261021+build-first-reseq-20261021",
   "campaign": "KĀLA-YANTRA",
   "subtitle": "the Kāla layer built as one engine; Gochara 5.0 absorbed to its flip; fully autonomous",
   "plan_ref": "00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_CAMPAIGN_CHARTER_v1_0.md",
@@ -27395,8 +27395,7 @@
       "title": "acharya dispute: unconditional Mars-in-eighth cancellation",
       "owner": "K",
       "depends_on": [
-        "KA-4b",
-        "D-KA4B-NB02-NA"
+        "KA-4b"
       ],
       "mandatory": true,
       "detector": {
@@ -27430,13 +27429,7 @@
       "producer": "K",
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
-        "class": "retired",
-        "decision": "D-KA4B-NB02-NA",
-        "reason": "KA-4b is parked (its election view waits on a producer of evaluated scoped cancellations), so this finding on its cancellation reading cannot be acted on; SR-CLOSE-NOW item 7",
-        "re_entry": "KA-4b is re-entered: a sidecar producer of evaluated scoped cancellations (ALGO 3.17 steps 1-3/5) with a typed source contract is registered, so the election view can read its stored cancelled+locator rows"
-      },
-      "requires_outcome": {
-        "D-KA4B-NB02-NA": "approved"
+        "class": "a"
       }
     },
     {
@@ -29437,23 +29430,6 @@
         "class": "retire_decision",
         "retires": "J-4c-pr2907"
       }
-    },
-    {
-      "id": "D-KA4B-NB02-NA",
-      "track": "N",
-      "lane": "N · decisions",
-      "title": "Not applicable: KA4B-NB-02 — KA-4b is parked, so its cancellation-reading finding has nothing to act on",
-      "owner": "N",
-      "depends_on": [
-        "B-7"
-      ],
-      "mandatory": true,
-      "done_by": "decision",
-      "decision": "D-KA4B-NB02-NA",
-      "triage": {
-        "class": "retire_decision",
-        "retires": "KA4B-NB-02"
-      }
     }
   ],
   "decisions": [
@@ -29630,12 +29606,6 @@
       "title": "Not applicable (J-4c-pr2907): content already landed through #2901",
       "owner": "ADHIKĀRIN (N); the cockpit records the outcome (`ky decide D-J4C-PR2907-NA --outcome refused`) on the evidence of independent review X-20261019T150725Z-review-3596-pr2907 (NOT_APPLICABLE)",
       "default": "refused — #2907's content already landed through #2901 (squash 2e16dbdab, 2026-10-02); its owned files (drishti.py, test_drishti.py) are byte-identical to the #2907 head b598ee302; review X-20261019T150725Z-review-3596-pr2907 concluded NOT_APPLICABLE"
-    },
-    {
-      "id": "D-KA4B-NB02-NA",
-      "title": "Not applicable (KA4B-NB-02): KA-4b is parked, so its cancellation-reading finding has nothing to act on",
-      "owner": "ADHIKĀRIN (N); the cockpit records the outcome (`ky decide D-KA4B-NB02-NA --outcome refused`) under SR-CLOSE-NOW item 7",
-      "default": "refused — KA-4b is parked (SR-CLOSE-NOW item 7); re-entry: KA-4b is re-entered: a sidecar producer of evaluated scoped cancellations (ALGO 3.17 steps 1-3/5) with a typed source contract is registered, so the election view can read its stored cancelled+locator rows"
     }
   ],
   "coordination": {
