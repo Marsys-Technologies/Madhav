@@ -9,8 +9,10 @@ import sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3]))
 
 from pipeline.orchestrator.output_digest import (
+    _component_key_preflight,
     _component_statement,
     compute_output_digest,
+    _validate_spec,
     load_output_digest_spec,
 )
 from pipeline.orchestrator.provenance import canonical_digest
@@ -199,6 +201,92 @@ def test_one_relation_can_be_split_into_disjoint_reviewed_null_scopes():
     topic_sql = _component_statement(split["components"][1])
     assert 'source."topic_id" IS NULL' in chapter_sql
     assert 'source."chapter_num" IS NULL' in topic_sql
+
+
+def _not_null_spec(**extra):
+    component = {
+        "name": "candidates",
+        "relation": "kala_activation_predicates",
+        "key_columns": ["chart_id", "mechanism_id"],
+        "value_columns": ["chart_id", "mechanism_id", "signal_id"],
+        "where_not_null": ["mechanism_id"],
+    }
+    component.update(extra)
+    return {"version": "nirmana-output-digest-spec-v1", "components": [component]}
+
+
+def test_where_not_null_scopes_both_the_row_scan_and_the_null_key_preflight():
+    """K9 D10/D6: legacy rows (NULL mechanism_id) must be scoped out of the scan AND of the NULL-key preflight."""
+    spec = _not_null_spec(where_equals={"chart_id": "c"})
+    component = spec["components"][0]
+    cursor = _Cursor(row={"spec": spec, "spec_sha256": canonical_digest(spec)})
+    assert load_output_digest_spec(cursor, "ka_yojaka") is not None
+    assert 'source."mechanism_id" IS NOT NULL' in _component_statement(component)
+    preflight = _component_key_preflight(component)
+    assert '(source."chart_id" = %s AND source."mechanism_id" IS NOT NULL) AND (' in preflight
+
+
+def test_where_not_null_rejects_empty_duplicate_non_identifier_and_contradictory_scopes():
+    for bad in ([], ["mechanism_id", "mechanism_id"], ["Mechanism-Id"], "mechanism_id"):
+        spec = _not_null_spec(where_not_null=bad)
+        cursor = _Cursor(row={"spec": spec, "spec_sha256": canonical_digest(spec)})
+        try:
+            load_output_digest_spec(cursor, "ka_yojaka")
+        except ValueError:
+            continue
+        raise AssertionError(f"invalid where_not_null was accepted: {bad!r}")
+    both = _not_null_spec(where_is_null=["mechanism_id"])
+    cursor = _Cursor(row={"spec": both, "spec_sha256": canonical_digest(both)})
+    try:
+        load_output_digest_spec(cursor, "ka_yojaka")
+    except ValueError as exc:
+        assert "NULL and NOT NULL" in str(exc)
+    else:
+        raise AssertionError("a column scoped both NULL and NOT NULL was accepted")
+
+
+def test_components_differing_only_in_where_not_null_are_distinct_scopes():
+    """The classed/classless split of the ka_yojaka v2 spec relies on NULL / NOT NULL being different scopes."""
+    spec = _not_null_spec()
+    twin = dict(spec["components"][0], name="twin", where_not_null=["chart_id"])
+    spec["components"].append(twin)
+    cursor = _Cursor(row={"spec": spec, "spec_sha256": canonical_digest(spec)})
+    assert load_output_digest_spec(cursor, "ka_yojaka") is not None
+    spec["components"][1]["where_not_null"] = ["mechanism_id"]
+    cursor = _Cursor(row={"spec": spec, "spec_sha256": canonical_digest(spec)})
+    try:
+        load_output_digest_spec(cursor, "ka_yojaka")
+    except ValueError as exc:
+        assert "repeats a component" in str(exc)
+    else:
+        raise AssertionError("two components with the identical scope were accepted")
+
+
+def test_unknown_component_key_is_refused_by_name_so_a_spec_never_means_less_than_it_says():
+    """K9 D10 (N.8): a misspelt or unsupported filter key would otherwise be silently ignored."""
+    for key in ("where_not_nul", "where_ne", "where_like", "limit"):
+        spec = _not_null_spec(**{key: ["mechanism_id"]})
+        cursor = _Cursor(row={"spec": spec, "spec_sha256": canonical_digest(spec)})
+        try:
+            load_output_digest_spec(cursor, "ka_yojaka")
+        except ValueError as exc:
+            assert "unknown key" in str(exc) and key in str(exc)
+        else:
+            raise AssertionError(f"unknown component key {key!r} was accepted")
+
+
+def test_every_registered_migration_spec_still_validates_under_the_closed_key_set():
+    """The closed key set must not retire any spec already registered by a migration."""
+    migrations = pathlib.Path(__file__).resolve().parents[4] / "migrations"
+    decoder = json.JSONDecoder()
+    checked = 0
+    for path in sorted(migrations.glob("*.sql")):
+        text = path.read_text(errors="ignore")
+        for match in re.finditer(r'\{"version":"nirmana-output-digest-spec-v1"', text):
+            spec, _ = decoder.raw_decode(text[match.start():])
+            _validate_spec("asset", spec, canonical_digest(spec))
+            checked += 1
+    assert checked >= 50, f"expected the registered specs to be found, saw {checked}"
 
 
 def test_digest_uses_a_named_server_cursor_instead_of_client_buffering():

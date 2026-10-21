@@ -5,8 +5,13 @@
 Read-only: one SELECT inside a READ ONLY transaction against `kala_gochara_windows` (the DSN comes from the environment variable
 GOCHARA_EVAL_READONLY_DSN or, with --libpq-env, the libpq PG* variables — never from the command line). It REFUSES to run unless the Stage-1 freeze verifies (no placeholders,
 every pre-extract input hash and the running-code hashes match) — so no candidate extract can be generated before the freeze is
-committed. Governed generations ('5.x') are refused outright: they live in the eval-window tables, which have no reader yet
-(review packet v1_10 §C2).
+committed. Governed generation '5.0' lives in the eval-window table `ka_gochara_eval_window` and is read there (J-5q): the same READ ONLY
+discipline, a total ORDER BY, and the same freeze gate. Its stored columns map to the candidate adapter's row (SI addendum §1):
+`si := evidence_for` (a NULL stays NULL — the unqualified state, never 0), `pk := peak_instant`, `ws`/`we` the first/last IST
+calendar day of the half-open admitted interval, and the STORED `outcome_valence_for_native` (the governed enum, never the 4.x
+gain/loss label) beside `path_id` (the ablation grain) and `null_reason` (the stored `qualification.unqualified_reason`, so a null
+carries its reason). The '5.0' build span (1998..2084) is longer than the scored horizon: windows entirely outside
+[1998-01-01, 2026-04-18) are EXCLUDED and counted in the header, never silently dropped.
 
 si := raw_intensity, the UNSIGNED magnitude (protocol §4.5: si is stored non-negative for every class). The 4.x writer stores
 signed_intensity = raw_intensity * (-1 if adverse else 1), which the §4.5 adapter would reject on every adverse window; the pinned
@@ -30,6 +35,7 @@ import json
 import os
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 from services.gochara_kernel.dasha_read import observe_dasha_tiers
@@ -39,12 +45,19 @@ from .freeze import (EPHEMERIS_KEYS, FreezeRefused, bind_dump_run, ephemeris_com
 
 H_START = "1998-01-01"
 H_END_EXCL = "2026-04-18"
-CANDIDATE_GENERATIONS = ("4.1",)
+CANDIDATE_GENERATIONS = ("4.1", "5.0")
+#: candidates stored in the governed eval-window tables (the rest live in `kala_gochara_windows`)
+GOVERNED_GENERATIONS = ("5.0",)
 BASELINE_GENERATIONS = ("3.0",)
 DSN_ENV = "GOCHARA_EVAL_READONLY_DSN"
 CANONICAL_COMMAND = ("python3 -m services.gochara_eval.dump_extract --generation {generation} --stage1 {stage1} "
                      "--pinned-at {pinned_at} --out {out}")
 COLUMNS = ["event_class", "ws", "we", "pk", "si", "valence", "adv", "resolution", "temporal_shape"]
+GOVERNED_COLUMNS = ["event_class", "ws", "we", "pk", "si", "outcome_valence_for_native", "path_id", "null_reason"]
+#: the numeric-result policies a governed manifest may select (an independent copy of the kernel's, by design)
+GOVERNED_RESULT_POLICIES = ("all_null_candidate/1", "window_qualification/1")
+#: what a governed Stage-1 freezes of the manifest and the dump re-reads live (an altered manifest is a different candidate)
+GOVERNED_MANIFEST_KEYS = ("manifest_status", "result_policy", "ephemeris", "orb_policy", "registry_digest", "implementation")
 TZ_CONVENTION = "dates converted to IST civil dates via (ts at time zone 'Asia/Kolkata')::date"
 
 SQL_HORIZON = """SELECT COUNT(*) FROM kala_gochara_windows
@@ -59,7 +72,24 @@ SQL_DUMP = """SELECT event_class,
   FROM kala_gochara_windows
  WHERE chart_id = %s AND generation = %s
  ORDER BY event_class, ws, we, pk, si, valence, adv, resolution, temporal_shape"""
-
+# '5.0': ws/we are the first/last IST day of the half-open [lower, upper) interval (an upper bound at exactly 00:00 IST belongs to the
+# NEXT day, so the last instant is upper - 1 microsecond: the same day convention as density_extract._day_span). The scored-horizon
+# filter is on those IST days and keeps a window that merely overlaps it whole.
+SQL_GOVERNED_DUMP = """SELECT event_class, ws, we, pk, si, outcome_valence_for_native, path_id, null_reason
+  FROM (SELECT w.event_class,
+               (lower(w.interval) at time zone 'Asia/Kolkata')::date AS ws,
+               ((upper(w.interval) - interval '1 microsecond') at time zone 'Asia/Kolkata')::date AS we,
+               (w.peak_instant at time zone 'Asia/Kolkata')::date AS pk,
+               w.evidence_for AS si, w.outcome_valence_for_native, w.path_id,
+               w.qualification ->> 'unqualified_reason' AS null_reason
+          FROM public.ka_gochara_eval_window w
+         WHERE w.chart_id = %s AND w.generation = %s) t
+ WHERE we >= %s::date AND ws < %s::date
+ ORDER BY event_class, ws, we, pk, si, outcome_valence_for_native, path_id, null_reason"""
+SQL_GOVERNED_TOTAL = "SELECT COUNT(*) FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s"
+SQL_GOVERNED_MANIFEST = """SELECT status, input_generation_vector -> 'result_policy', input_generation_vector -> 'ephemeris',
+       input_generation_vector -> 'orb_policy', input_generation_vector #> '{registry,digest}', input_generation_vector -> 'implementation'
+  FROM kala_gochara_publication WHERE chart_id = %s AND generation = %s"""
 
 SQL_SIGN_CHECK = """SELECT COUNT(*) FILTER (WHERE abs(signed_intensity) <> raw_intensity) AS sign_mismatch,
        COUNT(*) FILTER (WHERE raw_intensity < 0) AS negative_raw
@@ -93,15 +123,19 @@ def _cell(v):
     return v
 
 
-def header(generation: str, pinned_at: str, row_count: int, *, chart_id: str) -> dict:
+def header(generation: str, pinned_at: str, row_count: int, *, chart_id: str, columns: list[str] | None = None,
+           extra: dict | None = None) -> dict:
+    table = "ka_gochara_eval_window" if generation in GOVERNED_GENERATIONS else "kala_gochara_windows"
     return {"artifact": f"baseline_{generation.replace('.', '_')}_extract", "version": "1.0", "pinned_at": pinned_at,
-            "predicate": f"kala_gochara_windows where chart_id='{chart_id}' and generation='{generation}'",
-            "tz_convention": TZ_CONVENTION, "row_count": row_count, "columns": COLUMNS}
+            "predicate": f"{table} where chart_id='{chart_id}' and generation='{generation}'",
+            "tz_convention": TZ_CONVENTION, "row_count": row_count, "columns": columns or COLUMNS, **(extra or {})}
 
 
 def dump_rows(conn, generation: str, horizon_check: bool, *, chart_id: str) -> list[dict]:
     """READ ONLY transaction; returns the rows as dicts keyed by COLUMNS. `horizon_check`: assert nothing outside the scored horizon."""
     _require_read_only(conn)
+    if generation in GOVERNED_GENERATIONS:
+        return dump_governed(conn, generation, chart_id=chart_id)[0]
     with conn.cursor() as cur:
         # si := raw_intensity (the unsigned magnitude; protocol §4.5: si is stored non-negative for every class). The 4.x writer
         # stores signed_intensity = raw * (-1 if adverse else 1), which the §4.5 adapter would reject; the two columns must agree
@@ -120,14 +154,42 @@ def dump_rows(conn, generation: str, horizon_check: bool, *, chart_id: str) -> l
         return [dict(zip(COLUMNS, (_cell(c) for c in r))) for r in cur.fetchall()]
 
 
+def null_census(rows: list[dict]) -> dict:
+    """What the governed rows leave unknown, and WHY: counts only, from the rows themselves (a null is reported with the stored reason;
+    a null with no stored reason is counted apart as `si_null_without_reason`, never given an invented one)."""
+    reasons: dict[str, int] = {}
+    for r in rows:
+        if r["si"] is None and r["null_reason"] is not None:
+            reasons[r["null_reason"]] = reasons.get(r["null_reason"], 0) + 1
+    return {"si_null": sum(r["si"] is None for r in rows), "pk_null": sum(r["pk"] is None for r in rows),
+            "si_null_without_reason": sum(r["si"] is None and r["null_reason"] is None for r in rows),
+            "si_null_reasons": dict(sorted(reasons.items())),
+            "valence": dict(sorted(Counter(r["outcome_valence_for_native"] for r in rows).items())),
+            "paths": dict(sorted(Counter(r["path_id"] for r in rows).items()))}
+
+
+def dump_governed(conn, generation: str, *, chart_id: str) -> tuple[list[dict], dict]:
+    """(rows, header extras) of a governed generation inside the scored horizon. READ ONLY; the windows outside the horizon are COUNTED, not read."""
+    _require_read_only(conn)
+    with conn.cursor() as cur:
+        cur.execute(SQL_GOVERNED_TOTAL, (chart_id, generation))
+        total = cur.fetchone()[0]
+        cur.execute(SQL_GOVERNED_DUMP, (chart_id, generation, H_START, H_END_EXCL))
+        rows = [dict(zip(GOVERNED_COLUMNS, (_cell(c) for c in r))) for r in cur.fetchall()]
+    return rows, {"scored_horizon": [H_START, H_END_EXCL], "windows_stored": total,
+                  "windows_outside_scored_horizon_excluded": total - len(rows), "null_census": null_census(rows)}
+
+
 def rows_multiset_equal(a: list[dict], b: list[dict]) -> bool:
     key = lambda r: json.dumps(r, sort_keys=True)          # noqa: E731
     return sorted(map(key, a)) == sorted(map(key, b))
 
 
-def render(generation: str, pinned_at: str, rows: list[dict], *, chart_id: str) -> bytes:
-    """Byte layout of the pinned '3.0' extract: indent=1, header key order, no trailing newline."""
-    return json.dumps({**header(generation, pinned_at, len(rows), chart_id=chart_id), "rows": rows}, indent=1).encode()
+def render(generation: str, pinned_at: str, rows: list[dict], *, chart_id: str, extra: dict | None = None) -> bytes:
+    """Byte layout of the pinned '3.0' extract: indent=1, header key order, no trailing newline. A governed generation names its own columns."""
+    columns = GOVERNED_COLUMNS if generation in GOVERNED_GENERATIONS else None
+    return json.dumps({**header(generation, pinned_at, len(rows), chart_id=chart_id, columns=columns, extra=extra), "rows": rows},
+                      indent=1).encode()
 
 
 def read_manifest_orb(conn, generation: str, *, chart_id: str) -> dict:
@@ -142,6 +204,24 @@ def read_manifest_orb(conn, generation: str, *, chart_id: str) -> dict:
     status, deg, ruling, eph = rows[0]
     return {"generation": generation, "manifest_status": status, "orb_max_deg": deg, "orb_ruling": ruling,
             "ephemeris": eph, "ephemeris_problems": ephemeris_component_problems(eph)}
+
+
+def read_governed_manifest(conn, generation: str, *, chart_id: str) -> dict:
+    """What a GOVERNED ('5.x') manifest declares: the result policy, the ephemeris component (checked against the AM-16 definition), the orb policy,
+    the registry digest and the implementation identity (`kala_gochara_publication.input_generation_vector`). Read-only; touches no window row.
+    The 4.x `orb_max_deg` / `orb_ruling` keys do not exist in a governed vector."""
+    _require_read_only(conn)
+    with conn.cursor() as cur:
+        cur.execute(SQL_GOVERNED_MANIFEST, (chart_id, generation))
+        rows = cur.fetchall()
+    if len(rows) != 1:
+        raise RuntimeError(f"expected exactly one manifest for generation {generation}, found {len(rows)}")
+    status, policy, eph, orb, registry_digest, impl = rows[0]
+    problems = ephemeris_component_problems(eph)
+    if policy not in GOVERNED_RESULT_POLICIES:
+        problems.append(f"result_policy {policy!r} is not one of {GOVERNED_RESULT_POLICIES}")
+    return {"generation": generation, "manifest_status": status, "result_policy": policy, "ephemeris": eph, "orb_policy": orb,
+            "registry_digest": registry_digest, "implementation": impl, "ephemeris_problems": problems}
 
 
 def read_av_donor_identity(conn, *, chart_id: str) -> dict:
@@ -210,8 +290,13 @@ def read_coverage_summary(conn, generation: str, *, chart_id: str) -> dict:
     kinds = {r[0]: {"partitions": r[1], "full_horizon": r[2], "unsearched": r[3], "targets_requested": int(r[4]),
                     "targets_resolved": int(r[5]), "targets_unresolved": int(r[6]), "first_key_segment": list(r[7])}
              for r in rows}
-    return {"generation": generation, "partition_kinds": kinds,
-            "event_class_partitions": kinds.get("event_class", {}).get("partitions", 0),
+    n_class = kinds.get("event_class", {}).get("partitions", 0)
+    if generation in GOVERNED_GENERATIONS:
+        return {"generation": generation, "partition_kinds": kinds, "event_class_partitions": n_class,
+                "per_class_year_cells_derivable": n_class > 0,
+                "note": "a governed generation records one completed horizon per event_class partition: per-(class, year) cells are read by "
+                        "services.gochara_eval.coverage_cells (protocol §6.5c)"}
+    return {"generation": generation, "partition_kinds": kinds, "event_class_partitions": n_class,
             "per_class_year_cells_derivable": False,
             "note": "per-(class, year) computation coverage (protocol §6.5c) cannot be derived from body_target partitions"}
 
@@ -256,12 +341,18 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
         if chart_id is None:
             print("REFUSED: --chart-id is required for readbacks", file=sys.stderr)
             return 2
+        governed = args.generation in GOVERNED_GENERATIONS
+        if governed and (args.read_av_donor_rows or args.read_dasha_tiers):
+            print(f"REFUSED: the donor-row and daśā-tier readbacks belong to the 4.x chain's freeze; generation {args.generation!r} pins its "
+                  "implementation, registry and ephemeris in the manifest (--read-manifest-orb)", file=sys.stderr)
+            return 2
         conn = _connect(args, conn_factory)
         if conn is None:
             return 2
         try:
             if args.read_manifest_orb:
-                print(json.dumps(read_manifest_orb(conn, args.generation, chart_id=chart_id)))
+                reader = read_governed_manifest if governed else read_manifest_orb
+                print(json.dumps(reader(conn, args.generation, chart_id=chart_id)))
             if args.read_coverage_summary:
                 print(json.dumps(read_coverage_summary(conn, args.generation, chart_id=chart_id)))
             if args.read_av_donor_rows:
@@ -286,8 +377,8 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
         horizon_check = False
     else:
         if args.generation not in CANDIDATE_GENERATIONS:
-            print(f"REFUSED: no extract path for generation {args.generation!r} (candidate generations: "
-                  f"{CANDIDATE_GENERATIONS}; governed '5.x' needs the eval-window reader first)", file=sys.stderr)
+            print(f"REFUSED: no extract path for generation {args.generation!r} (candidate generations: {CANDIDATE_GENERATIONS})",
+                  file=sys.stderr)
             return 2
         if not args.stage1:
             print("REFUSED: a candidate extract needs --stage1 (the committed Stage-1 freeze)", file=sys.stderr)
@@ -313,7 +404,18 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
     if conn is None:
         return 2
     try:
-        if horizon_check:                         # reconcile the LIVE manifest with the frozen read-back before any window row is read
+        extra = None
+        if horizon_check and args.generation in GOVERNED_GENERATIONS:      # reconcile the LIVE governed manifest with the frozen read-back first
+            live = read_governed_manifest(conn, args.generation, chart_id=chart_id)
+            rb = frozen["ephemeris_requirement"]["manifest_readback"]
+            diffs = [k for k in GOVERNED_MANIFEST_KEYS if live.get(k) != rb.get(k)]
+            if live["ephemeris_problems"] or diffs:
+                print("FREEZE REFUSED: the live manifest differs from the frozen read-back "
+                      f"(fields {diffs}; live problems {live['ephemeris_problems']})", file=sys.stderr)
+                return 2
+            rows, extra = dump_governed(conn, args.generation, chart_id=chart_id)
+            extra = {"result_policy": live["result_policy"], **extra}
+        elif horizon_check:                       # reconcile the LIVE manifest with the frozen read-back before any window row is read
             live = read_manifest_orb(conn, args.generation, chart_id=chart_id)
             rb = frozen["ephemeris_requirement"]["manifest_readback"]
             diffs = [k for k in ("ephemeris", "orb_max_deg", "orb_ruling", "manifest_status") if live.get(k) != rb.get(k)]
@@ -333,11 +435,12 @@ def main(argv: list[str] | None = None, conn_factory=None) -> int:
                 print("FREEZE REFUSED: the live daśā tiers/counts differ from the frozen `observed_tiers` — a different measurement (DR-15(d)): stop, report",
                       file=sys.stderr)
                 return 2
-        rows = dump_rows(conn, args.generation, horizon_check, chart_id=chart_id)
+        if extra is None:
+            rows = dump_rows(conn, args.generation, horizon_check, chart_id=chart_id)
     finally:
         conn.rollback()
         conn.close()
-    blob = render(args.generation, args.pinned_at, rows, chart_id=chart_id)
+    blob = render(args.generation, args.pinned_at, rows, chart_id=chart_id, extra=extra)
     Path(args.out).write_bytes(blob)
     sha = hashlib.sha256(blob).hexdigest()
     print(f"rows={len(rows)} sha256={sha} out={args.out}")

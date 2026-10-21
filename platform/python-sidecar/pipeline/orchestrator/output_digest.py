@@ -24,6 +24,12 @@ _BATCH_SIZE = 512
 # (100 positional arguments = 50 column/value pairs). 45 leaves comfortable
 # headroom for future width growth on any one relation.
 _JSONB_BUILD_OBJECT_COLUMN_BATCH = 45
+# Every key a reviewed component may carry. A key outside this set is refused
+# rather than ignored: a spec can never mean less than it says (N.8).
+_COMPONENT_KEYS = frozenset({
+    "name", "relation", "key_columns", "value_columns",
+    "where_equals", "where_in", "where_is_null", "where_not_null",
+})
 
 
 @dataclass(frozen=True)
@@ -80,6 +86,21 @@ def _where_is_null(component: dict[str, Any]) -> str:
     return " AND ".join(f"source.{_quoted(column)} IS NULL" for column in columns)
 
 
+def _where_not_null(component: dict[str, Any]) -> str:
+    """Compose an optional reviewed ``IS NOT NULL`` scope (e.g. exclude legacy rows without a candidate identity)."""
+    raw = component.get("where_not_null")
+    if raw is None:
+        return ""
+    if not isinstance(raw, list) or not raw:
+        raise ValueError("output digest spec component requires non-empty where_not_null")
+    columns = [_identifier(value, field="where_not_null") for value in raw]
+    if len(set(columns)) != len(columns):
+        raise ValueError("output digest spec component repeats a where_not_null value")
+    if set(columns) & set(component.get("where_is_null") or ()):
+        raise ValueError("output digest spec component requires a column to be both NULL and NOT NULL")
+    return " AND ".join(f"source.{_quoted(column)} IS NOT NULL" for column in columns)
+
+
 def _where_in(component: dict[str, Any]) -> tuple[str, tuple[object, ...]]:
     """Compose reviewed finite-set filters as parameterized PostgreSQL arrays."""
     raw = component.get("where_in")
@@ -108,8 +129,9 @@ def _where_filter(component: dict[str, Any]) -> tuple[str, tuple[object, ...]]:
     equals_sql, equals_values = _where_equals(component)
     in_sql, in_values = _where_in(component)
     null_sql = _where_is_null(component)
+    not_null_sql = _where_not_null(component)
     return (
-        " AND ".join(part for part in (equals_sql, in_sql, null_sql) if part),
+        " AND ".join(part for part in (equals_sql, in_sql, null_sql, not_null_sql) if part),
         equals_values + in_values,
     )
 
@@ -128,6 +150,11 @@ def _validate_spec(asset_id: str, raw: object, expected_sha: object) -> OutputDi
     for component in components:
         if not isinstance(component, dict):
             raise ValueError("output digest spec component must be an object")
+        unknown = sorted(str(key) for key in component if key not in _COMPONENT_KEYS)
+        if unknown:
+            raise ValueError(
+                f"output digest spec component has unknown key(s) {', '.join(unknown)}"
+            )
         name = _identifier(component.get("name"), field="component name")
         relation = _identifier(component.get("relation"), field="relation")
         _columns(component, "key_columns")
@@ -138,6 +165,7 @@ def _validate_spec(asset_id: str, raw: object, expected_sha: object) -> OutputDi
             "where_equals": component.get("where_equals"),
             "where_in": component.get("where_in"),
             "where_is_null": component.get("where_is_null"),
+            "where_not_null": component.get("where_not_null"),
         })
         if name in seen_names or scope in seen_scopes:
             raise ValueError("output digest spec repeats a component")
