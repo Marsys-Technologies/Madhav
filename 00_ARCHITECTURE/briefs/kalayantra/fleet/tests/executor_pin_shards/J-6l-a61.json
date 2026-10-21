@@ -1,0 +1,37 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "J-6l-a61",
+  "after": "http_probe",
+  "entries": {
+    "consumer_probe": {
+      "enabled": true,
+      "needs": "consumer_reader",
+      "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/consumer_probe.py",
+      "fixed_args": [],
+      "allowed_args": [
+        "probe"
+      ],
+      "requesters": [
+        "adhikarin",
+        "v1",
+        "v2"
+      ],
+      "production": false,
+      "read_only": true,
+      "timeout_s": 120,
+      "enabled_by": "J-6l"
+    }
+  },
+  "function_hashes": {
+    "K9": {
+      "capabilities": "fde1920ad769a7052490493a9a5decb78dd5936506c9262a4f2e78f3ed13ca35",
+      "execute": "54773f4380b5b39972166d357f16cb9f5ccd73ece2a6653a3678b9780a1cca6f"
+    },
+    "W4": {
+      "CONSUMER_PROBE_KEY": "febda3c0a3947c958ff0d88589c3c6186d47afea459b621390444b63d6877fa2",
+      "consumer_probe_proof": "dae01072204e18ae8843664763cdda42e786f04b5c13562aab495c0f951f1dbb",
+      "redact": "8ebd1acf9cd8ecfe29628f114c0072c60f76cb807f31ef5a3e8cc33b1405f06d",
+      "run_one": "114e25276f74f2784a80c299ab6d8099f31c2cbd003b9cb69c39008d37c13f2e"
+    }
+  }
+}
