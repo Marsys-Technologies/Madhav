@@ -108,7 +108,14 @@ def _record_state(factor_rows, rec, drishti_bound, vedha_bound):
     return ("const", value)
 
 
-def _channel(event_class: str, path_id: str, rec: dict) -> str:
+#: W0: the marker for a record whose side is decided PER INSTANT by a factor (P1 agent_nature, Q3(a)); the channel at t then
+#: comes from the caller-supplied `channel_at`, never from this module's static derivation
+PER_INSTANT = "per_instant"
+
+
+def _channel(event_class: str, path_id: str, rec: dict, *, per_instant: bool = False) -> str:
+    if path_id == "P1" and per_instant:
+        return PER_INSTANT
     if path_id in ("P3", "P4"):
         return "evidence_for_occurrence"
     if path_id == "P2":
@@ -135,13 +142,16 @@ def earliest_max(cands):
     return best, min(t for v, t in cands if v >= best - _TIE)
 
 
-def _pieces(lo, hi, recs):
-    """Elementary pieces of [lo, hi): between consecutive clipped support endpoints."""
+def _pieces(lo, hi, recs, extra_cuts=None):
+    """Elementary pieces of [lo, hi): between consecutive clipped support endpoints, and — W0 — at the instants
+    `extra_cuts(rid, record, a, b)` lists inside each clipped support (a per-instant channel's change instants)."""
     cuts = {lo, hi}
-    for r in recs.values():
+    for rid, r in recs.items():
         for a, b in r["supports"]:
             if a < hi and b > lo:
                 cuts.update((max(a, lo), min(b, hi)))
+                if extra_cuts is not None:
+                    cuts.update(c for c in extra_cuts(rid, r, max(a, lo), min(b, hi)) if lo < c < hi)
     ordered = sorted(cuts)
     return list(zip(ordered, ordered[1:]))
 
@@ -191,7 +201,16 @@ def _expected_valence(event_class, ev_for, ev_against, reason):
 def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
                             rule_version: str, factor_rows: list[dict],
                             drishti_bound: bool = False, vedha_bound: bool = False,
-                            dynamic_enabled: bool = False, policy: str | None = None) -> dict:
+                            dynamic_enabled: bool = False, policy: str | None = None,
+                            solver_check: bool = True, channel_at=None, channel_boundaries=None) -> dict:
+    """`solver_check` (W0, plan N-6): whether THIS call runs the solver check on a window whose numbers cannot be reproduced
+    by the constant-window derivation (a function-valued member under `dynamic_enabled`). The in-build self-check in the writer
+    passes False — the independent prover runs once, in the verification job, not twice inside the writer's cap — and then
+    reports those windows as DEFERRED (`solver_check_deferred_windows`), never as checked. No call here performs a solver check yet
+    (`solver_checked_windows` is 0): the report says what ran. A deferral never satisfies a gate — the windows stay UNVERIFIED.
+
+    `channel_at(record, t)` / `channel_boundaries(record, lo, hi)` (W0): the per-instant channel of a P1 record and its change
+    instants, supplied by the caller's own derivation; absent ⇒ a P1 record has no channel derivation (refused, as before)."""
     grain = (chart_id, generation, event_class, path_id, rule_version)
     # R9-1: the policy is the MANIFEST's. An explicit `policy` is only for a generation without a manifest row (the
     # solver's own fixtures); against a manifest it must agree — it never overrides it.
@@ -261,6 +280,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     numeric = 0
     fully_reproduced = 0            # windows whose stored fields were reproduced EXACTLY (incl. the NULL ones)
     unverified: list[str] = []      # windows with a function-valued member while the solver is enabled
+    deferred: list[str] = []        # …of those, the ones whose solver check this call was told to leave to the verification job
     detail: list[dict] = []         # the lossless qualification provenance, DERIVED here (1156 has no column)
 
     def expect_null_window(tag, stored, reason):
@@ -314,12 +334,22 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
 
         def chan(rid, must=False):
             try:
-                return _channel(event_class, path_id, recs[rid])
+                c = _channel(event_class, path_id, recs[rid], per_instant=channel_at is not None)
             except RuntimeError:
                 if must:
                     raise
                 return None                      # unknown channel: affects BOTH
+            return c if c != PER_INSTANT or rid in qualified else None
         chans = {rid: chan(rid, must=(rid in qualified)) for rid in recs}
+
+        def chan_at(rid, t):
+            """The record's channel at t: the static one, or — a per-instant record — the caller's derivation."""
+            if chans[rid] != PER_INSTANT:
+                return chans[rid]
+            c = channel_at(recs[rid], t)
+            if c not in ("evidence_for_occurrence", "evidence_against_occurrence"):
+                raise RuntimeError(f"window verifier: the per-instant channel of record {rid} at {t.isoformat()} is {c!r}")
+            return c
         reasons: dict[str, int] = {}
         for rid in unq_ids:
             for r in states[rid][1]:
@@ -371,12 +401,16 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         if has_fn:                                   # the solver is enabled: numbers NOT reproduced here
             detail.append(row)
             unverified.append(tag)
+            if not solver_check:
+                deferred.append(tag)
             # UNIVERSAL BOUNDS (hold for any factor value in [0,1], so they bind where numbers cannot be
             # reproduced): evidence is a Σ over roots of a per-root max of values ≤ 1; the score is a unit value
             if score is not None and not (0.0 <= score <= 1.0 + _TOL):
                 problems.append(f"{tag}: score {score} outside [0,1]")
-            for_roots = {recs[rid]["root"] for rid in qualified if chans[rid] == "evidence_for_occurrence"}
-            against_roots = {recs[rid]["root"] for rid in qualified if chans[rid] == "evidence_against_occurrence"}
+            for_roots = {recs[rid]["root"] for rid in qualified
+                         if chans[rid] in ("evidence_for_occurrence", PER_INSTANT)}
+            against_roots = {recs[rid]["root"] for rid in qualified
+                             if chans[rid] in ("evidence_against_occurrence", PER_INSTANT)}
             if ev_for is not None and (ev_for < -_TOL or ev_for > len(for_roots) + _TOL):
                 problems.append(f"{tag}: evidence_for {ev_for} is outside [0, {len(for_roots)}] — {len(for_roots)} "
                                 "root(s) feed the channel and every per-root value is ≤ 1")
@@ -395,7 +429,8 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             problems.append(f"{tag}: evidence_against is stored but the registry row declares no way to "
                             "evaluate that channel (expected NULL)")
         cands = []
-        for a, b in _pieces(lo, hi, recs):
+        for a, b in _pieces(lo, hi, recs, None if channel_boundaries is None else
+                            lambda rid, r, x, y: channel_boundaries(r, x, y) if chans[rid] == PER_INSTANT else []):
             live = [rid for rid in _live(recs, a) if rid in qualified]
             if path_id == "P4":
                 act = {}
@@ -406,7 +441,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             else:
                 per_root: dict[str, float] = {}
                 for rid in live:
-                    if chans[rid] == "evidence_for_occurrence":
+                    if chan_at(rid, a) == "evidence_for_occurrence":
                         per_root[recs[rid]["root"]] = max(per_root.get(recs[rid]["root"], 0.0), qualified[rid][1])
                 cands.append((sum(per_root.values()), a))     # no for-channel member live ⇒ the objective is 0
         if not cands:
@@ -423,7 +458,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         want_against_null = (not against_ok) or bool(live_unq_against)
         sums = {"evidence_for_occurrence": {}, "evidence_against_occurrence": {}}
         for rid in live_q:
-            slot = sums[chans[rid]]
+            slot = sums[chan_at(rid, want_peak)]
             slot[recs[rid]["root"]] = max(slot.get(recs[rid]["root"], 0.0), qualified[rid][1])
         want_for = sum(sums["evidence_for_occurrence"].values())
         if path_id == "P4":
@@ -475,6 +510,8 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     return {"windows": len(windows), "numeric_reproduced": numeric,
             "fully_reproduced": fully_reproduced, "unverified_dynamic": len(unverified),
             "unverified_windows": unverified, "policy_version": policy,
+            "solver_check_requested": solver_check, "solver_checked_windows": 0,
+            "solver_check_deferred_windows": len(deferred),
             "fields_verified": list(GOVERNED_FIELDS), "windows_detail": detail,
             # VERIFIED only when EVERY window's stored fields were reproduced exactly
             "status": "UNVERIFIED_DYNAMIC" if unverified else "VERIFIED"}

@@ -1850,7 +1850,7 @@ class GocharaV5Writer(WriterBase):
         windows = memberships = 0
         excluded: dict = {}
         reasons: dict = {}
-        unqualified = unverified = reproduced = 0
+        unqualified = unverified = reproduced = solver_deferred = 0
         for version in versions:        # the path→version map comes from the records, not a constant
             records = store.read_grain(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
@@ -1875,8 +1875,10 @@ class GocharaV5Writer(WriterBase):
                 ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
                 path_id=path_id, rule_version=version,
                 factor_rows=bound_rows(path_id, version),
-                drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=VEDHA_SOURCE is not None)
+                drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=VEDHA_SOURCE is not None,
+                solver_check=False)             # N-6: the independent prover runs once, in the verification job
             unverified += report["unverified_dynamic"]
+            solver_deferred += report["solver_check_deferred_windows"]
             reproduced += report["fully_reproduced"]
             windows += counts["windows"]
             memberships += counts["memberships"]
@@ -1899,8 +1901,10 @@ class GocharaV5Writer(WriterBase):
                 else f"reproduced all {reproduced} window(s) exactly")
         stored_note = ("; verification result NOT persisted by the builder — verification_pending_verifier_principal "
                        "(the separate verification job writes it; the candidate gate stays closed until it has run)")
+        deferral = (f"; solver check deferred to the verification job for {solver_deferred} window(s)"
+                    if solver_deferred else "")
         return WriterResult(asset_id=self.asset_id, rows_inserted=windows + memberships,
-                            notes=head + tail + stored_note)
+                            notes=head + tail + deferral + stored_note)
 
     @staticmethod
     def _take_chart_lock(ctx: ContextSpec, chart_id: str) -> None:

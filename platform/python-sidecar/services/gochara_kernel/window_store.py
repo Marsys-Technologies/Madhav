@@ -20,7 +20,7 @@ from . import targets
 from .convention import drishti_angles
 from .evaluator import record_uuid
 from .record_store import RecordStore, pipelined
-from .window_sweep import SweepRecord, WindowDraft, graha_title
+from .window_sweep import OperandSource, SweepRecord, WindowDraft, graha_title
 
 _SIGN_DEG = 30.0
 
@@ -122,15 +122,20 @@ class WindowStore:
                     and g["target"].startswith("point:"):
                 te = g["t_exact"].astimezone(timezone.utc)
                 hints = (lambda lo, hi, _te=te: [_te] if lo <= _te < hi else [])
+            # the completeness of the ingress list over this record's supports (R8-6, above)
+            bounds_complete = bounds is not None and completed is not None and bool(g["supports"]) \
+                and all(completed.lower <= a and b <= completed.upper for a, b in g["supports"])
             out.append(SweepRecord(
                 record_id=rid, root_id=g["root"], path_id=g["pid"], rule_version=g["ver"],
                 relation=g["rel"], object_kind=g["kind"], agent=g["agent"],
                 operator_role=g["role"], admission_state=g["adm"],
                 supports=tuple(g["supports"]), longitude_at=lon, aspect_rays=rays or (),
                 aspect_offset_at=offset, house_from_frame=g["house"], canonical_target=g["target"],
-                state_boundaries=bounds, peak_hints=hints,
-                state_boundaries_complete=bounds is not None and completed is not None and bool(g["supports"])
-                and all(completed.lower <= a and b <= completed.upper for a, b in g["supports"])))
+                state_boundaries=bounds, peak_hints=hints, state_boundaries_complete=bounds_complete,
+                # W0: the same boundaries, now also stated PER FACTOR — they are the dṛṣṭi offset's, and say nothing
+                # about any other state-valued factor of the record
+                operand_sources={} if bounds is None else {
+                    "graduated_drishti": OperandSource(boundaries=bounds, complete=bounds_complete)}))
         return out
 
     # ── write ───────────────────────────────────────────────────────────────

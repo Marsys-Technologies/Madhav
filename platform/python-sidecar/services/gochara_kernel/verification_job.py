@@ -492,7 +492,8 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
         stage(f"member_support {path_id}", lambda g=grain: wv.verify_member_support(conn, **g))
         stage(f"member_geometry {path_id}", lambda g=grain: wv.verify_member_geometry(conn, position_at=position_at, **g))
         report = stage(f"window_semantics {path_id}", lambda g=grain, p=path_id, v=version: wv.verify_window_semantics(
-            conn, factor_rows=factor_rows_for(p, v), drishti_bound=drishti_bound, vedha_bound=vedha_bound, **g))
+            conn, factor_rows=factor_rows_for(p, v), drishti_bound=drishti_bound, vedha_bound=vedha_bound,
+            solver_check=True, **g))
         entry = {"path_id": path_id, "rule_version": version, "status": report["status"],
                  "policy_version": report["policy_version"], "windows": report["windows"]}
         attestation = None

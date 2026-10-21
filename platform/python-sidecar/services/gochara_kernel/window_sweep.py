@@ -93,6 +93,30 @@ class SweepRefusal(RuntimeError):
 
 
 @dataclass(frozen=True)
+class OperandSource:
+    """What the store supplies for ONE factor of a record (W0, SR-OD1 plan §2.7): the factor's change instants and their
+    completeness are PER FACTOR, so a record carrying a dṛṣṭi offset, a vedha overlay and a P1 state is not made complete
+    by whichever one of them happens to have a provider.
+
+      boundaries     the instants inside `[lo, hi)` at which THIS factor's operand state changes (None = no provider)
+      complete       the store asserts that list is complete over every support of the record
+      value_at       the factor's value in [0,1] at t (None = undeterminable). Read ONLY for a categorical factor the
+                     sweep cannot derive itself; dṛṣṭi / activity_kernel / vedha values stay the sweep's own
+      channel_at     the channel this factor assigns the record at t (`CHANNEL_FOR` / `CHANNEL_AGAINST`; None =
+                     undeterminable) — P1's agent_nature decides the side per instant (Q3(a)); absent ⇒ the record's
+                     channel is the static one `record_channel` gives
+      unknown_reason the named reason this factor's operand is undeterminable at t (None = it is not this factor's
+                     operand that is unknown); passed through to the window's reason instead of the generic
+                     `objective_unknown_over_component`
+    """
+    boundaries: Callable[[datetime, datetime], list[datetime]] | None = None
+    complete: bool = False
+    value_at: Callable[[datetime], float | None] | None = None
+    channel_at: Callable[[datetime], str | None] | None = None
+    unknown_reason: Callable[[datetime], str | None] | None = None
+
+
+@dataclass(frozen=True)
 class SweepRecord:
     record_id: str
     root_id: str                       # contact_id on transit rows (§2.1 amendment 2)
@@ -127,6 +151,9 @@ class SweepRecord:
     # gap that a piece would bridge, or an island that would score 0.
     state_boundaries_complete: bool = False
     peak_hints: Callable[[datetime, datetime], list[datetime]] | None = None
+    # W0: per-factor operand sources, keyed by factor_id. `state_boundaries` / `state_boundaries_complete` above are the
+    # record-wide DEFAULT a state-valued factor (dṛṣṭi, vedha) falls back to when it has no source of its own here.
+    operand_sources: dict = field(default_factory=dict, compare=False)
 
 
 # ── R4: the boundary adapters and the geometry contract ──────────────────────
@@ -190,6 +217,13 @@ class Outcome:
     null_state: str | None = None
     reason: str | None = None
     factor: str | None = None
+    # W0: a STATE-valued factor (a step function of the sky) is solved piecewise between its change instants, which
+    # must be known completely; they are carried PER FACTOR, with the other `OperandSource` hooks.
+    state_valued: bool = False
+    boundaries: Callable[[datetime, datetime], list[datetime]] | None = None
+    boundaries_complete: bool = False
+    channel_at: Callable[[datetime], str | None] | None = None
+    unknown_reason: Callable[[datetime], str | None] | None = None
 
 
 def _check_unit(value, what: str) -> float:
@@ -298,15 +332,39 @@ def vedha_attenuation(row: dict, rec: SweepRecord,
                    factor=row["factor_id"])
 
 
-def categorical_factor(row: dict) -> Outcome:
+def categorical_factor(row: dict, rec: SweepRecord | None = None) -> Outcome:
     """A categorical/step factor with no declared value mapping cannot yield a number in [0,1]:
     the operand is a named missing input (`value_mapping_undeclared`), never a default. A row that
-    DOES declare a `value_mapping` has a shape this sweep cannot interpret yet — refused by name."""
+    DOES declare a `value_mapping` has a shape this sweep cannot interpret yet — refused by name.
+    W0: a record whose store supplies an `OperandSource` WITH a `value_at` for this factor gets a function-valued
+    outcome — the source (not the sweep) applied the factor's value rule; the sweep never maps a category itself."""
     if row.get("value_mapping"):
         raise SweepRefusal(
             f"factor {row['factor_id']!r} declares a value_mapping; the sweep has no reader for it yet "
             "— refused, never ignored")
+    src = None if rec is None else rec.operand_sources.get(row["factor_id"])
+    if src is not None and src.value_at is not None:
+        return _stateful(Outcome("fn", fn=src.value_at, null_state=row["null_state"], factor=row["factor_id"]), rec)
     return _missing(row, "value_mapping_undeclared")
+
+
+def _stateful(out: Outcome, rec: SweepRecord) -> Outcome:
+    """Attach the factor's own boundaries / completeness / channel / reason hooks to its function-valued outcome. A factor
+    with an `OperandSource` uses it; a state-valued factor without one inherits the record-wide `state_boundaries` (the
+    pre-W0 behaviour, unchanged)."""
+    if out.kind != "fn":
+        return out
+    src = rec.operand_sources.get(out.factor)
+    if src is not None:
+        b, done = src.boundaries, src.complete
+    else:
+        b, done = rec.state_boundaries, rec.state_boundaries_complete
+    # dṛṣṭi / vedha are state-valued by name; a categorical factor is so by having a source that supplies its values
+    return dataclasses.replace(
+        out, state_valued=out.factor in STATE_VALUED_FACTORS or (src is not None and src.value_at is not None),
+        boundaries=b, boundaries_complete=bool(done and b is not None),
+        channel_at=None if src is None else src.channel_at,
+        unknown_reason=None if src is None else src.unknown_reason)
 
 
 def evaluate_factors(rec: SweepRecord, factor_rows: list[dict], *,
@@ -320,11 +378,11 @@ def evaluate_factors(rec: SweepRecord, factor_rows: list[dict], *,
         if fid == "activity_kernel":
             out.append(activity_kernel(row, rec))
         elif fid == "graduated_drishti":
-            out.append(graduated_drishti(row, rec, drishti))
+            out.append(_stateful(graduated_drishti(row, rec, drishti), rec))
         elif fid == "vedha_attenuation":
-            out.append(vedha_attenuation(row, rec, vedha))
+            out.append(_stateful(vedha_attenuation(row, rec, vedha), rec))
         elif fid in CATEGORICAL_FACTORS:
-            out.append(categorical_factor(row))
+            out.append(categorical_factor(row, rec))
         else:
             raise SweepRefusal(
                 f"path {rec.path_id}: factor {fid!r} has no sweep evaluator yet "
@@ -342,6 +400,35 @@ class RecordProgram:
     reasons: list                       # [(factor_id, reason)] of every missing operand
     outcomes: list = field(default_factory=list)
     channel: str = CHANNEL_FOR
+
+    @property
+    def has_channel_fn(self) -> bool:
+        """True iff one of this record's factors assigns the side PER INSTANT (P1 agent_nature, Q3(a))."""
+        return any(o.channel_at is not None for o in self.outcomes)
+
+    def channel_at(self, t: datetime) -> str | None:
+        """The record's channel at t: its deciding factor's per-instant side when it has one (None = undeterminable at
+        t), else the static channel. A value that is not a channel is refused, never coerced."""
+        for o in self.outcomes:
+            if o.channel_at is not None:
+                c = o.channel_at(t)
+                if c is not None and c not in (CHANNEL_FOR, CHANNEL_AGAINST):
+                    raise SweepRefusal(f"{o.factor}: channel {c!r} at {t.isoformat()} is neither the for nor the "
+                                       "against channel")
+                return c
+        return self.channel
+
+    def undeterminable_at(self, t: datetime) -> bool:
+        return self.value_at(t) is None or self.channel_at(t) is None
+
+    def unknown_reason_at(self, t: datetime) -> str | None:
+        """The named reason a factor of this record gives for being undeterminable at t (None = no factor names one)."""
+        for o in self.outcomes:
+            if o.unknown_reason is not None:
+                r = o.unknown_reason(t)
+                if r is not None:
+                    return r
+        return None
 
     @property
     def checks(self) -> list:
@@ -446,8 +533,13 @@ def build_program(rec: SweepRecord, factor_rows: list[dict], *,
                 qualified = False
             # an OMITTED operand (a rank factor, K-A) takes no part in the product and breaks no qualification:
             # it is not an unresolved reason of the member (`unresolved` classifies unqualified members only)
-    if qualified and any(o.kind == "fn" and o.factor in STATE_VALUED_FACTORS for o in outcomes) \
-            and not (rec.state_boundaries is not None and rec.state_boundaries_complete):
+    if sum(1 for o in outcomes if o.channel_at is not None) > 1:
+        raise SweepRefusal(f"record {rec.record_id}: more than one factor assigns the channel — the side is "
+                           "decided by exactly one factor")
+    # W0: completeness is judged PER FACTOR — every state-valued function-valued factor (a channel-deciding one is
+    # state-valued) must carry its own complete boundary list; one factor's provider never vouches for another's
+    if qualified and any(o.state_valued and o.kind == "fn"
+                         and not (o.boundaries is not None and o.boundaries_complete) for o in outcomes):
         null_states.add(UNQUALIFIED)
         reasons.append(("state_boundaries", STATE_BOUNDARIES_REASON))
         qualified = False
@@ -656,9 +748,12 @@ def _pieces(lo: datetime, hi: datetime, progs: list[RecordProgram]):
             if a < hi and b > lo:
                 cuts.add(max(a, lo))
                 cuts.add(min(b, hi))
-                # R7 [7]: the EXACT instants at which an operand's state changes inside the support
-                if p.rec.state_boundaries is not None:
-                    cuts.update(c for c in p.rec.state_boundaries(max(a, lo), min(b, hi)) if lo < c < hi)
+                # R7 [7]: the EXACT instants at which an operand's state changes inside the support — the record-wide
+                # list and, W0, each factor's own
+                providers = ([] if p.rec.state_boundaries is None else [p.rec.state_boundaries]) + \
+                    [o.boundaries for o in p.outcomes if o.boundaries is not None]
+                for provider in providers:
+                    cuts.update(c for c in provider(max(a, lo), min(b, hi)) if lo < c < hi)
     ordered = sorted(cuts)
     return [(a, b, [p for p in progs if _contains(p.rec.supports, a)])
             for a, b in zip(ordered, ordered[1:])]
@@ -675,13 +770,15 @@ def reduce_at(progs: list[RecordProgram], t: datetime, event_class: str) -> dict
     evals: dict[str, dict] = {}
     for p in progs:
         v = p.value_at(t) if p.qualified else None
-        if p.qualified and v is not None:
-            evals[p.rec.record_id] = {c: (v if c == p.channel else 0.0) for c in _score.CHANNELS}
+        ch = p.channel_at(t)               # W0: per instant when a factor decides the side, else the static channel
+        if p.qualified and v is not None and ch in _score.CHANNELS:
+            evals[p.rec.record_id] = {c: (v if c == ch else 0.0) for c in _score.CHANNELS}
         else:
             ev = {"unqualified": True,
-                  "unqualified_reasons": [r for _f, r in p.reasons] or ["operand_undeterminable_at_instant"]}
-            if p.channel in _score.CHANNELS:
-                ev["unqualified_channel"] = p.channel
+                  "unqualified_reasons": [r for _f, r in p.reasons]
+                  or [p.unknown_reason_at(t) or "operand_undeterminable_at_instant"]}
+            if ch in _score.CHANNELS:
+                ev["unqualified_channel"] = ch
             evals[p.rec.record_id] = ev
     return _score.path_channel_scores([p.rec for p in progs], event_class, evals)
 
@@ -694,6 +791,20 @@ def _agent_activity(live: list[RecordProgram], agent: str, t: datetime) -> float
     if not vals or any(v is None for v in vals):
         return None          # R8-6: an unknown record is never dropped before the max — the true maximum may be ITS value
     return max(vals)
+
+
+UNKNOWN_OVER_COMPONENT = "objective_unknown_over_component"
+
+
+def _noting_unknown(f, live: list[RecordProgram], seen: set):
+    """`f` unchanged, plus: whenever it is undeterminable at t, the named reasons the live records' factors give for t are
+    added to `seen` (W0 reason pass-through). It adds no evaluation of `f` and changes none of its values."""
+    def noted(t):
+        v = f(t)
+        if v is None:
+            seen.update(r for p in live if p.undeterminable_at(t) for r in [p.unknown_reason_at(t)] if r is not None)
+        return v
+    return noted
 
 
 def _objective_fn(path_id: str, live: list[RecordProgram], event_class: str):
@@ -792,7 +903,9 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                 prog.null_states.add(UNQUALIFIED)
                 prog.reasons.append(("operand", "operand_undeterminable_over_support"))
     for prog in programs.values():
-        prog.channel = _program_channel(event_class, prog.rec, prog.qualified)
+        # W0: a record whose side is decided per instant by a factor has no static channel (None = both, for an
+        # unqualified one); every other record's channel is the static `record_channel`
+        prog.channel = None if prog.has_channel_fn else _program_channel(event_class, prog.rec, prog.qualified)
 
     if path_id == "P4":
         by_agent: dict[str, list] = {}
@@ -859,6 +972,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             continue
         cands: list[tuple[float, datetime]] = []
         unknown_pieces = 0
+        reason_pieces: dict[str, int] = {}     # W0: unknown pieces per NAMED reason a factor passed through
+        unnamed_pieces = 0                     # unknown pieces no factor gave a reason for
         for a, b, live in _pieces(lo, hi, qualified):
             if path_id == "P4":
                 if {p.rec.agent for p in live} != {"jupiter", "saturn"}:
@@ -883,8 +998,13 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                             geometry_unknown = True
             if geometry_unknown:
                 unknown_pieces += 1
+                unnamed_pieces += 1
                 continue
             f = _objective_fn(path_id, live, event_class)
+            seen: set = set()
+            if any(o.unknown_reason is not None for p in live for o in p.outcomes):
+                # W0 reason pass-through: at every instant the objective is unknown, ask the live factors why
+                f = _noting_unknown(f, live, seen)
             if all(p.constant is not None for p in live):
                 v = f(a)
                 got = None if v is None else (v, a)
@@ -893,13 +1013,26 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                 got = maximise_earliest(f, a, b, hints=hints)
             if got is None:
                 unknown_pieces += 1
+                if seen:
+                    for reason in seen:
+                        reason_pieces[reason] = reason_pieces.get(reason, 0) + 1
+                else:
+                    unnamed_pieces += 1
             else:
                 cands.append(got)
         if unknown_pieces or not cands:
             # R7 [1]: a peak is qualified only when the objective's maximum AND its earliest maximising
             # instant are established over the ENTIRE component — an unknown portion is never dropped
-            first = "objective_unknown_over_component" if unknown_pieces else "objective_undeterminable"
-            unresolved[first] = unknown_pieces or 1
+            if reason_pieces:
+                # W0: the factors' own reasons are carried through; the generic one stays only for pieces none named
+                for reason, n in reason_pieces.items():
+                    unresolved[reason] = unresolved.get(reason, 0) + n
+                if unnamed_pieces:
+                    unresolved[UNKNOWN_OVER_COMPONENT] = unnamed_pieces
+                first = sorted(reason_pieces)[0]
+            else:
+                first = UNKNOWN_OVER_COMPONENT if unknown_pieces else "objective_undeterminable"
+                unresolved[first] = unknown_pieces or 1
             base["unresolved"] = unresolved
             val = valence_fn(event_class, 0.0, 0.0, first)
             drafts.append(WindowDraft(
@@ -953,7 +1086,7 @@ __all__ = [
     "CHANNEL_AGAINST", "CHANNEL_FOR", "DIRECTIONAL_PATHS", "ALL_NULL_REASON", "POLICY_ALL_NULL", "POLICY_QUALIFICATION", "STATE_BOUNDARIES_REASON", "STATE_VALUED_FACTORS", "FOR_ONLY_PATHS", "Outcome",
     "RecordProgram", "SWEEP_PATHS", "SweepRecord", "SweepRefusal", "WindowDraft",
     "activity_kernel", "against_channel_state", "build_program", "draft_windows",
-    "CATEGORICAL_PATHS", "DYNAMIC_SWITCH_REASON", "GRAHA_TITLE", "KIND_TARGET_FORM", "categorical_factor", "graha_title",
+    "CATEGORICAL_PATHS", "DYNAMIC_SWITCH_REASON", "GRAHA_TITLE", "KIND_TARGET_FORM", "OperandSource", "UNKNOWN_OVER_COMPONENT", "categorical_factor", "graha_title",
     "validate_geometry", "p2_direction", "record_channel", "vedha_attenuation",
     "evaluate_factors", "graduated_drishti", "intersect_components", "maximise_earliest",
     "reduce_at", "registry_factor_rows", "union_components",
