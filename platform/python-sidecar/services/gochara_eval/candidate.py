@@ -63,6 +63,12 @@ class CandExtract:
     row_count: int
     unknown_rows: int
     meta: dict = field(default_factory=dict)
+    #: why each unknown-si row is unknown (the stored reason of a governed row; a row with none stored is counted apart, never given one)
+    null_reasons: dict = field(default_factory=dict)
+
+
+#: the label for an unknown-si row whose reason was not stored (a count of absence, not a reason)
+NO_REASON_STORED = "no_reason_stored"
 
 
 def _finite(x) -> bool:
@@ -70,13 +76,16 @@ def _finite(x) -> bool:
 
 
 def load_candidate_extract(path: str | Path, declared_pin: str | None = None) -> CandExtract:
+    """`load_candidate_extract_bytes` over a file."""
+    return load_candidate_extract_bytes(Path(path).read_bytes(), declared_pin)
+
+
+def load_candidate_extract_bytes(raw: bytes, declared_pin: str | None = None) -> CandExtract:
     """Hash-check (MEASURED, never asserted), class-check, sign-check, then merge with unknown handling.
 
     INPUT_REJECTED: sha mismatch; class outside the 27; known si < 0 (§4.5) or non-finite (NaN/inf is not a number);
     a missing `si` key (NULL must be explicit `null`, absence is a malformed extract); a window whose we < ws.
     """
-    path = Path(path)
-    raw = path.read_bytes()
     measured = measure_sha256(raw)
     sha_block = {"declared_pin": declared_pin, "measured": measured,
                  "match": declared_pin is None or measured == declared_pin}
@@ -104,16 +113,22 @@ def load_candidate_extract(path: str | Path, declared_pin: str | None = None) ->
 
     valence_domain: dict = {}
     raw_counts: dict[str, int] = {}
+    null_reasons: dict[str, int] = {}
     for r in rows:
-        valence_domain[r.get("valence")] = valence_domain.get(r.get("valence"), 0) + 1
+        # a governed ('5.x') row carries the STORED outcome_valence_for_native (its own enum), a 4.x row the legacy `valence` label
+        val = r["valence"] if "valence" in r else r.get("outcome_valence_for_native")
+        valence_domain[val] = valence_domain.get(val, 0) + 1
         raw_counts[r["event_class"]] = raw_counts.get(r["event_class"], 0) + 1
+        if r["si"] is None:
+            why = r.get("null_reason") or NO_REASON_STORED
+            null_reasons[why] = null_reasons.get(why, 0) + 1
 
     merged = merge_candidates(rows)
     dedup = {c: [raw_counts[c], len(merged[c])] for c in sorted(merged)}
     return CandExtract(merged=merged, raw_counts=raw_counts, sha256=sha_block, valence_domain=valence_domain,
                        dedup_table=dedup, row_count=len(rows),
                        unknown_rows=sum(1 for r in rows if r["si"] is None),
-                       meta={k: v for k, v in doc.items() if k != "rows"})
+                       meta={k: v for k, v in doc.items() if k != "rows"}, null_reasons=dict(sorted(null_reasons.items())))
 
 
 def merge_candidates(rows: list[dict]) -> dict[str, list[CandWindow]]:
@@ -312,6 +327,7 @@ def score_candidate(registry: Registry, cext: CandExtract, coverage_manifest: di
         p.pop("target_pk", None)
     unknown_block = {
         "unknown_rows": cext.unknown_rows,
+        "unknown_row_reasons": cext.null_reasons,
         "unqualified_merged_candidates": sum(1 for ws in merged.values() for w in ws if w.si is None),
         "events_with_unknown_competitors": [p["eid"] for p in per_event if p["unknown_in_set"]],
         "budget_exceeded_events": [p["eid"] for p in per_event if p["bounds_status"] == "BUDGET_EXCEEDED"],

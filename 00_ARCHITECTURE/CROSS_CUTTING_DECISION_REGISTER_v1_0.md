@@ -602,3 +602,13 @@ coordination lease that produced it.
 - **Proposed addition for the owner (NOT authored; new content needs its own decision):** one K1 remedy row `dosha_koota_parihara_dana_mc34` (MC Vivāha v.34 ṭīkā, muhurta_chintamani:PG97:C1: Mṛtyuñjaya japa and a golden nāḍī for nāḍī-doṣa; cow, grain, cloth and gold for the other kūṭas, when the parihāras of vv.32-37 obtain), the record §6 item 1. Remedies stay 316 until decided; the other §6 recommended additions (Rahu/Ketu 10th-from-Moon transit rows, an eclipse-birth doṣa and śānti, a classical Pitṛ-śāpa row, re-pointing 7 vastu rows) are likewise not among the 215 and not done.
 - **Still open for SS:** the nine japa rows' tantric bīja strings (K1_UNVERIFIED: Mantra Mahodadhi not in the library).
 - **Boundaries:** no scholarship beyond the decision file; no re-deciding; no production or database access; no credential; no change to the frozen orchestrator contract.
+
+## CCD-028 — Cross-campaign freeze on the canonical chart from century dispatch to seal (SR-XC-FREEZE-482012f1)
+
+- **Date/tool/session:** 2026-10-21; Claude Code, KĀLA-YANTRA cockpit (madhav-b6), ruled by the owner surrogate (madhav-88) under `OWNER-SPEC-ALL-SURROGATE`.
+- **Decision:** from the Gochara 5.0 century build's dispatch until its seal, **no L1 rebuild, no registry change and no corpus change** for chart `482012f1-710e-4a25-994a-93821f5871aa`, by any campaign.
+- **Why:** the century build binds an input vector. A consumed input that changes raises `InputDrift`. At seal time the seal re-derives the registry digest and census under the seal locks (`seal_registry_drift`, exit 3) and recomputes the consumed-row digests. Any of these changes during the window would therefore make the build unsealable and force a second century run.
+- **Scope:** chart `482012f1` only; L1 (`chart_facts`, `chart_dashas` and other `ga_*` outputs), `asset_registry` rows the build consumes, and the ephemeris/classical corpus the build reads. Other charts and unrelated assets are not frozen.
+- **Start and end:** the START event is recorded in the KĀLA-YANTRA ledger at dispatch, and the W3W4 lease row carries the same note. The END event is recorded at seal, or at an abandoned/aborted window. Until the START event exists, the freeze is announced, not in force.
+- **Authority:** `SR-XC-FREEZE-482012f1` in the campaign ledger (`run/DECISIONS_SURROGATE.jsonl`), under `SR-BEFORE-SEAL` item 4; context `BEFORE_SEAL` B-03.
+- **Supersession:** none; append-only entry.

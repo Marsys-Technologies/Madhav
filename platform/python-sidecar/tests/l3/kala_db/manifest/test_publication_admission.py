@@ -1,8 +1,8 @@
 """K9-23 admission layer (SR-PREBUILD-ALL, SR-BOLD-04, SR-TEARDOWN-AUTHORITY-GATE 2).
 
-Claims, one doctrine-grounded oracle each (the ruling is the source; B.10 -- measured, never a list kept in the code):
-  C1  pre admits only assets outside the gochara surface and its dependents, post only inside it
-  C2  the dependent set is transitive (ka_vighnakara via ka_sangam) and read from the registry rows
+Claims, one doctrine-grounded oracle each (the ruling is the source; B.10 -- measured, never a list kept in the code).
+The single-phase admission (D1), the one-document output (D5), the named grain refusal (D4) and the failed-run restore (D8) of
+SR-K9-PUBLISHABLE have their oracles, each with a planted reversion that fails, in test_k9_publication_hardening.py.
   C3  an unknown, blank, duplicated or empty asset list is refused
   C4  an AMBIENT forcing NIRMANA_FORCE_EXECUTE is refused before any database or orchestrator call, flag or not
   C4b the rebuild kind's explicit --force-execute (SR-BOLD-04-WITHDRAWN / U-K9P-01, option B) makes the orchestrator force for
@@ -32,41 +32,22 @@ POST = ['ka_gochara', 'ka_gochara_v3_century_materialize', 'ka_gochara_v4_41_can
         'ka_sangam', 'ka_vighnakara', 'ph_muhurta']
 
 
+# ---------------------------------------------------------------- C3: the asset list
+
+
 @pytest.fixture(scope='module')
 def edges():
-    # The committed registry reconstruction; the bold04 graph job measured this split on it (pre = ka_yojaka, ka_vedha_gochara).
+    # The committed registry reconstruction (a real asset graph, not a list kept in the code).
     return {row['asset_id']: row['depends_on'] for row in json.loads(DRAFT.read_text())}
 
 
-# ---------------------------------------------------------------- C1, C2, C3: the phase split
+@pytest.mark.parametrize('assets', [['ka_not_in_registry'], [], [''], ['ka_yojaka', 'ka_yojaka']])
+def test_unknown_blank_duplicate_and_empty_assets_are_refused(edges, assets):
+    assert ADMISSION.assets_refusal(edges, assets)
 
 
-@pytest.mark.parametrize('asset', PRE)
-def test_pre_admits_and_post_refuses_an_asset_outside_the_gochara_surface(edges, asset):
-    assert ADMISSION.phase_refusal(edges, [asset], 'pre') is None
-    assert asset in ADMISSION.phase_refusal(edges, [asset], 'post')
-
-
-@pytest.mark.parametrize('asset', POST)
-def test_post_admits_and_pre_refuses_the_gochara_surface_and_its_dependents(edges, asset):
-    assert ADMISSION.phase_refusal(edges, [asset], 'post') is None
-    assert asset in ADMISSION.phase_refusal(edges, [asset], 'pre')
-
-
-def test_dependence_is_transitive_and_read_from_the_registry_rows():
-    # ka_c reaches the surface only through ka_b; removing the ka_b edge from the rows must move it out of the post set.
-    rows = {'ka_gochara_v5': [], 'ka_b': ['ka_gochara_v5'], 'ka_c': ['ka_b'], 'ka_d': []}
-    assert ADMISSION.gochara_closure(rows) >= {'ka_b', 'ka_c'} and 'ka_d' not in ADMISSION.gochara_closure(rows)
-    assert ADMISSION.phase_refusal(rows, ['ka_c'], 'post') is None
-    rows['ka_b'] = []
-    assert ADMISSION.phase_refusal(rows, ['ka_c'], 'post') is not None
-
-
-@pytest.mark.parametrize('assets,phase', [
-    (['ka_not_in_registry'], 'pre'), ([], 'pre'), ([''], 'pre'), (['ka_yojaka', 'ka_yojaka'], 'pre'), (['ka_yojaka'], 'both'),
-])
-def test_unknown_blank_duplicate_empty_assets_and_unknown_phase_are_refused(edges, assets, phase):
-    assert ADMISSION.phase_refusal(edges, assets, phase)
+def test_a_plan_on_both_sides_of_the_gochara_flip_is_one_admissible_list(edges):
+    assert ADMISSION.assets_refusal(edges, PRE + POST[:1]) is None
 
 
 # ---------------------------------------------------------------- C4: probe mode
@@ -121,10 +102,10 @@ def test_admitted_rebuild_delegates_once_with_the_exact_run_and_assets(wired, mo
         print(json.dumps({'status': 'BUILD_COMPLETED', 'run_id': c.build_id}))
         return 0
     monkeypatch.setattr(publication, 'main', delegate)
-    code, out = run(['rebuild', '--run-id', c.build_id, '--assets', 'ka_gochara,ka_sangam', '--phase', 'post'], capsys)
+    code, out = run(['rebuild', '--run-id', c.build_id, '--assets', 'ka_gochara,ka_sangam', ], capsys)
     assert code == 0 and calls == [['rebuild', '--run-id', c.build_id, '--assets', 'ka_gochara,ka_sangam']]
     assert out['status'] == 'BUILD_COMPLETED'
-    assert out['admission'] == {'phase': 'post', 'assets': ['ka_gochara', 'ka_sangam'],
+    assert out['admission'] == {'assets': ['ka_gochara', 'ka_sangam'],
                                 'probe_mode': 'delta_skip_gate', 'force_execute': False}
 
 
@@ -143,7 +124,7 @@ def test_the_force_flag_alone_decides_whether_the_orchestrator_probe_is_off(wire
     c = prepare(wired, writers=('ka_yojaka',))
     seen = []
     monkeypatch.setattr(publication, 'main', _recording_delegate(seen, c))
-    code, out = run(['rebuild', '--run-id', c.build_id, '--assets', 'ka_yojaka', '--phase', 'pre', *flag], capsys)
+    code, out = run(['rebuild', '--run-id', c.build_id, '--assets', 'ka_yojaka', *flag], capsys)
     assert code == 0 and seen == [forces]
     assert out['admission']['force_execute'] is forces
     assert out['admission']['probe_mode'] == ('force_execute' if forces else 'delta_skip_gate')
@@ -156,22 +137,22 @@ def test_the_forced_environment_is_restored_when_the_run_raises(wired, monkeypat
     def boom(argv): raise RuntimeError('orchestrator crashed')
     monkeypatch.setattr(publication, 'main', boom)
     with pytest.raises(RuntimeError):
-        ADMISSION.main(['rebuild', '--run-id', c.build_id, '--assets', 'ka_yojaka', '--phase', 'pre', '--force-execute'])
+        ADMISSION.main(['rebuild', '--run-id', c.build_id, '--assets', 'ka_yojaka', '--force-execute'])
     assert ADMISSION.force_refusal(ADMISSION.os.environ) is None
 
 
 def test_the_dry_run_does_not_take_the_force_flag(capsys):
     with pytest.raises(SystemExit):
-        ADMISSION.main(['rebuild-dryrun', '--run-id', str(uuid.uuid4()), '--assets', 'ka_yojaka', '--phase', 'pre', '--force-execute'])
+        ADMISSION.main(['rebuild-dryrun', '--run-id', str(uuid.uuid4()), '--assets', 'ka_yojaka', '--force-execute'])
     capsys.readouterr()
 
 
-def test_phase_violation_is_refused_and_nothing_is_delegated(wired, monkeypatch, capsys):
-    registry(wired, {'ga_positions': [], 'ka_gochara': ['ga_positions'], 'ka_sangam': ['ka_gochara']})
-    c = prepare(wired, writers=('ka_gochara', 'ka_sangam'))
+def test_an_unknown_asset_is_refused_and_nothing_is_delegated(wired, monkeypatch, capsys):
+    registry(wired, {'ga_positions': [], 'ka_gochara': ['ga_positions']})
+    c = prepare(wired, writers=('ka_gochara',))
     monkeypatch.setattr(publication, 'main', lambda argv: pytest.fail('a refused rebuild must not be delegated'))
-    code, out = run(['rebuild', '--run-id', c.build_id, '--assets', 'ka_gochara,ka_sangam', '--phase', 'pre'], capsys)
-    assert code == 2 and out['status'] == 'REFUSED' and 'ka_gochara' in out['reason']
+    code, out = run(['rebuild', '--run-id', c.build_id, '--assets', 'ka_gochara,ka_nowhere'], capsys)
+    assert code == 2 and out['status'] == 'REFUSED' and 'ka_nowhere' in out['reason']
 
 
 @pytest.mark.parametrize('operation', ['rebuild', 'rebuild-dryrun', 'rebuild+flag'])
@@ -182,7 +163,7 @@ def test_forcing_environment_is_refused_before_any_connection(operation, monkeyp
     monkeypatch.setenv('NIRMANA_FORCE_EXECUTE', '1')
     monkeypatch.setattr(ADMISSION.psycopg, 'connect', lambda *a, **k: pytest.fail('refusal precedes any connection'))
     monkeypatch.setattr(publication, 'main', lambda argv: pytest.fail('refusal precedes delegation'))
-    code, out = run([operation, '--run-id', str(uuid.uuid4()), '--assets', 'ka_yojaka', '--phase', 'pre', *flag], capsys)
+    code, out = run([operation, '--run-id', str(uuid.uuid4()), '--assets', 'ka_yojaka', *flag], capsys)
     assert code == 2 and out['status'] == 'REFUSED' and 'NIRMANA_FORCE_EXECUTE' in out['reason']
 
 
@@ -191,18 +172,15 @@ def test_rebuild_dryrun_stays_plan_only_through_the_admission_layer(wired, monke
     c = prepare(wired, writers=('ka_yojaka',), chart=publication.CANONICAL_CHART)
     from pipeline.orchestrator import runner
     monkeypatch.setattr(runner, 'execute_run', lambda run_id: pytest.fail('a dry run never executes the orchestrator'))
-    code, out = run(['rebuild-dryrun', '--run-id', c.build_id, '--assets', 'ka_yojaka', '--phase', 'pre'], capsys)
+    code, out = run(['rebuild-dryrun', '--run-id', c.build_id, '--assets', 'ka_yojaka'], capsys)
     assert code == 0 and out['status'] == 'PLAN_ONLY' and out['dry_run_passed'] is None
-    assert out['admission']['phase'] == 'pre'
+    assert out['admission']['probe_mode'] == 'delta_skip_gate'
     wired.read_only = False
 
 
-def test_phase_and_database_url_are_required(monkeypatch, capsys):
-    with pytest.raises(SystemExit):
-        ADMISSION.main(['rebuild', '--run-id', str(uuid.uuid4()), '--assets', 'ka_yojaka'])
-    capsys.readouterr()
+def test_database_url_is_required(monkeypatch, capsys):
     monkeypatch.delenv('DATABASE_URL', raising=False)
-    code, out = run(['rebuild', '--run-id', str(uuid.uuid4()), '--assets', 'ka_yojaka', '--phase', 'pre'], capsys)
+    code, out = run(['rebuild', '--run-id', str(uuid.uuid4()), '--assets', 'ka_yojaka'], capsys)
     assert code == 2 and out['status'] == 'REFUSED'
 
 

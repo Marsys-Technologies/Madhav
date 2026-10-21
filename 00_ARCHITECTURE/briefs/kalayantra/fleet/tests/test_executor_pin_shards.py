@@ -113,7 +113,7 @@ def test_the_pin_is_not_regenerated_from_the_table_it_checks():  # claim 4
     grown["ops"]["brand_new_kind"] = new_kind
     with pytest.raises(AssertionError, match="set of kinds"):            # no shard names it: refused, as before
         mod.assert_table_matches_pin(grown)
-    named = [*eps.load_shards(), shard("K9-TEST", {"brand_new_kind": new_kind})]       # the shards in the tree (they re-bind live kinds) plus the one under test
+    named = [*eps.load_shards(), shard("K9-TEST", {"brand_new_kind": new_kind})]       # the shards in the tree plus the one under test: a real kind shard explains its own kind
     mod.assert_table_matches_pin(grown, named)                          # the reviewed shard excuses exactly that kind
     sneaky = copy.deepcopy(grown)
     sneaky["ops"]["brand_new_kind"]["script"] = "other.py"

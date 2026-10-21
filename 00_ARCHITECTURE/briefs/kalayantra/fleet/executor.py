@@ -34,7 +34,8 @@ table's `remote_async: true`, or a named dispatch / century / verification job) 
 RETAINED afterwards — success, failure or interruption — because a dispatch returns while its remote job still runs. Only the
 owner surrogate removes it, after the quiescence receipt for that request. Synchronous production kinds take no fence (the one
 production worker serialises them); read-only operations are not fenced and run in parallel. A production operation in flight
-at a restart is NEVER re-run: its receipt says INTERRUPTED. A refused executor refresh (HOLD, STOP, queued or in-flight work,
+at a restart is NEVER re-run: its receipt says INTERRUPTED, and the restart takes the fence for it. A read-only kind or a `*_dryrun` (`production: false`)
+interrupted at a restart takes none; an unknown kind, an unreadable request or an unreadable table fences (W3W4 rehearsal D10). A refused executor refresh (HOLD, STOP, queued or in-flight work,
 an unproven fence) is logged as REFRESH_REFUSED and recorded in run/ops/EXECUTOR_REFRESH.json; this snapshot keeps serving.
 A child process receives an allow-listed environment plus, at most, the ONE connection its operation needs.
 
@@ -748,6 +749,14 @@ def orchestrator_rebuild_cancel_problem(req: dict) -> str | None:
     return "the target run-id is not the run of an orchestrator_rebuild in flight"
 
 
+def orchestrator_rebuild_dryrun_problem(req: dict, table: dict) -> str | None:
+    """SR-K9-PUBLISHABLE D7 (N.8) admission for the production `orchestrator_rebuild`, run at the tail of validate (so on BOTH routes, signed or mechanical):
+    the request is admitted only if THIS executor's own receipt shows a COMPLETED `orchestrator_rebuild_dryrun` for the same identity (dry_run_check). A signer's
+    `dry_run_passed` attestation alone never admits it: that attestation has no detector behind it for this kind (the dry run reports a null by design)."""
+    if req.get("kind") != "orchestrator_rebuild": return None
+    return dry_run_check(req, table)[0]
+
+
 def measuring_cancel_proof(req: dict, rc: int | None, out: str) -> tuple[dict | None, str | None]:
     """(record, problem) for a cancel kind's (or its dry run's) complete output. `record` is the ONE ky.<family>_cancel/1 line when it names this
     operation, this request digest, this kind and exactly the targeted execution of the family's job (else None); `problem` is None only when the state
@@ -1073,6 +1082,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         lambda: head_policy_problem(req),
         lambda: measuring_cancel_problem(req),
         lambda: orchestrator_rebuild_cancel_problem(req),
+        lambda: orchestrator_rebuild_dryrun_problem(req, table),
         lambda: scheduler_policy_problem(req),
         lambda: served_probe_problem(req, op),
         lambda: smalltest_policy_problem(req),
@@ -1590,21 +1600,35 @@ def pool_for(req: dict, production: bool, readers, builder, cancel_lane):
     return (builder if production else readers), run_one
 
 
+def interrupted_takes_fence(req: dict, table: dict | None) -> bool:
+    """W3W4 rehearsal D10: an operation interrupted by a restart holds the production slot only when its kind is a production kind in the table.
+    A read-only kind or a `*_dryrun` (`production: false`) leaves nothing to reconcile, so it never fences. Fail closed: no table, an unknown
+    kind or an entry that does not say `production: false` fences."""
+    entry = table.get(req.get("kind")) if isinstance(table, dict) else None
+    return not (isinstance(entry, dict) and entry.get("production") is False)
+
+
 def main() -> int:
     for d in (REQ, REC, DONE, ACC, INFLIGHT, TMP, OPS / "sql", EXEC, KY_ROOT / "logs"): d.mkdir(parents=True, exist_ok=True)
     instance_lock = (OPS / "executor.lock").open("a+")
     try: fcntl.flock(instance_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError: return 0                       # another executor owns the boundary
     interrupted = sorted(f.name for f in INFLIGHT.glob("*.json"))
-    lane_interrupted = set()
+    unfenced = set(); restart_table = None; restart_table_read = False
     for name in interrupted:                               # a restart never re-runs an operation, and never frees the production slot
         f = INFLIGHT / name
         try: req = json.loads(f.read_text())
         except Exception: req = {"operation_id": f.stem}
-        if lane_selected(req): lane_interrupted.add(name)
+        if lane_selected(req): unfenced.add(name)
+        else:
+            if not restart_table_read:
+                try: restart_table = load_table()
+                except Exception: restart_table = None     # an unreadable table fences every interrupted non-lane operation
+                restart_table_read = True
+            if not interrupted_takes_fence(req, restart_table): unfenced.add(name)
         receipt(req, "INTERRUPTED", "the executor restarted while this operation was in flight; it was NOT re-run — read the postconditions")
         shutil.move(str(f), DONE / f.name)
-    production_interrupted = [name for name in interrupted if name not in lane_interrupted]
+    production_interrupted = [name for name in interrupted if name not in unfenced]
     if production_interrupted and not FENCE.exists(): FENCE.write_text(json.dumps({"interrupted": production_interrupted, "ts": now()}))
     table = None; caps = capabilities(False); last_caps = 0.0; last_sync = 0.0
     log("executor up")
