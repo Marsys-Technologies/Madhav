@@ -259,6 +259,31 @@ def _follow_p1_ledger(golden: dict) -> dict:
     return json.loads(text.replace(GOLDEN_SNAPSHOT_DASHA_ROWS, P1L_SNAPSHOT_DASHA_ROWS))
 
 
+# SR-OD1 I1 (OD-1 D2 / P1a): two READ shapes of the window and rule-registry stages gained one selected column each. The accepted P06 capture predates both, so its two
+# shapes are compared through this adaptation and nothing else is relaxed: each pair below is (the golden's fragment, the head's fragment); every statement is otherwise
+# byte-compared, in order, with the same parameter counts, and the head must issue the new fragment EXACTLY as often as the golden issued the old one (never silently or vacuously).
+#   * RuleRegistryStore.persisted_factors reads the authored `category_mapping` back (rule_registry.py), so the persisted Form B value table is checked against the declaration.
+#   * WindowStore.read_grain selects the P1 period-anchor column, `NULL::text` for every path except a P1 grain with P1 operand sources bound (window_store.py).
+OD1_READ_ADAPTATIONS = (
+    (" direction FROM public.ka_gochara_factor WHERE factor_id = %s",
+     " direction, category_mapping FROM public.ka_gochara_factor WHERE factor_id = %s"),
+    ("c.t_exact, c.convention_id FROM public.ka_gochara_relationship_record r JOIN",
+     "c.t_exact, c.convention_id, NULL::text FROM public.ka_gochara_relationship_record r JOIN"),
+)
+
+
+def _follow_od1_reads(rest: list, golden_shapes: dict, key: str, seen: list) -> list:
+    """`rest` with the head's OD-1 read shapes mapped back to the golden's, after proving the golden carried each old shape exactly as often as the head issues the new one."""
+    for i, (old, new) in enumerate(OD1_READ_ADAPTATIONS):
+        golden_n = sum(n for shape, n in golden_shapes.items() if old in shape.split("|", 1)[1])
+        head_n = sum(1 for sql, _ in rest if new in sql)
+        assert head_n == golden_n, f"{key}: the head issues the OD-1 read shape {i} {head_n} times, the golden's old shape {golden_n}"
+        assert not any(old in sql for sql, _ in rest), f"{key}: the old read shape {i} must not survive at the head"
+        rest = [[sql.replace(new, old), n] if new in sql else [sql, n] for sql, n in rest]
+        seen[i] += golden_n
+    return rest
+
+
 def test_b4_baseline_preserves_final_main_settlement_amendments():
     """Keep final J-4p's outcomes and transcript alongside B4's baseline.
 
@@ -308,6 +333,7 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
     got, raw = head
     want = _follow_p1_ledger(_follow_settlement(_load()))
     assert [s["key"] for s in got["substeps"]] == [s["key"] for s in want["substeps"]]
+    adapted = [0] * len(OD1_READ_ADAPTATIONS)
     kinds = {s["key"].split(":")[0].split(" ")[0] for s in want["substeps"]}
     assert kinds >= {"rules", "convention", "body", "manifest", "snapshot", "inventory", "coverage", "record", "window", "verify"}, kinds
     for g, m in zip(got["substeps"], want["substeps"]):
@@ -352,7 +378,9 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
                         expanded.append([P1_GATE_SELECT, 1])
                 expanded.append([sql, n])
             rest = expanded
+        rest = _follow_od1_reads(rest, m["statements"]["shapes"], key, adapted)
         assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards and layer probe differ from the accepted P06 baseline"
+    assert all(adapted), f"every OD-1 read adaptation must have been exercised by the run (never vacuous): {adapted}"
 
 
 def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the_implementation_identity(head):
