@@ -78,6 +78,7 @@ from services.gochara_kernel import inventory as gk_inventory
 from services.gochara_kernel import input_vector as gk_input_vector
 from services.gochara_kernel import input_vector_verifier as gk_input_vector_verifier
 from services.gochara_kernel import window_sweep as gk_window_sweep
+from services.gochara_kernel import p1_operands as gk_p1_operands
 from services.gochara_kernel import result_policy as gk_result_policy
 from services.gochara_kernel import contact_certify as gk_contact_certify
 from services.gochara_kernel import near_miss as gk_near_miss
@@ -130,6 +131,10 @@ def _drishti_source(agent: str, offset: int, factor_ref: tuple):
 # handed to the independent window verifier, so builder and verifier cannot disagree on it.
 DRISHTI_SOURCE = _drishti_source
 VEDHA_SOURCE = None         # the overlay binding is a pending steward ruling (kala_vedha_gochara vs derived)
+# SR-OD1 P1a: P1's dignity / combustion / maitrī operand sources are bound when the owner-table PR (D2) supplies the value rules
+# `{factor_id: p1_operands.ValueRule}`. None = unbound: P1 windows keep their named blank (`value_mapping_undeclared`) and the three L0
+# reference tables are not a dependency of the build (`_l0_consumed`).
+P1_VALUE_RULES = None
 # AM-5 (v1.5 amendments; migration 1206): the search-completeness chain.
 MANIFEST_SUBSTEP = "manifest"
 SNAPSHOT_SUBSTEP = "snapshot"
@@ -919,8 +924,10 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
 def _l0_consumed() -> tuple[str, ...]:
     """The L0 authorities this build ACTUALLY consumes (R8-1). The vedha pairs feed P2's vedha operand only;
     while `VEDHA_SOURCE` is unbound nothing reads them, so `bg_transit_rules` is not a dependency of the
-    build and is neither loaded nor bound."""
-    return ("bg_transit_rules",) if VEDHA_SOURCE is not None else ()
+    build and is neither loaded nor bound. The same rule holds for P1's three reference tables: they are consumed only when the P1 operand
+    sources are bound (`P1_VALUE_RULES`)."""
+    return (("bg_transit_rules",) if VEDHA_SOURCE is not None else ()) \
+        + (("bg_combustion_orbs", "bg_dignity_reference", "bg_graha_naisargika_friendship") if P1_VALUE_RULES is not None else ())
 
 
 class ChartRefusal(Exception):
@@ -1831,6 +1838,9 @@ class GocharaV5Writer(WriterBase):
             return lon
 
         store = WindowStore(ctx.db_conn)
+        # SR-OD1 P1a: the P1 operand sources, only when bound (the L0 tables are read through the validated loaders, never a fallback)
+        p1_operands = None if P1_VALUE_RULES is None or path_id != "P1" else gk_p1_operands.P1Operands(
+            gk_p1_operands.load_p1_l0(ctx.db_conn.cursor()), position_at, rules=P1_VALUE_RULES)
         # R9-1: the result policy is read BACK from the generation's manifest (the vector the build was bound to) —
         # this writer holds no policy constant of its own
         policy = gk_result_policy.manifest_policy(ctx.db_conn, chart_id, GENERATION)
@@ -1854,7 +1864,7 @@ class GocharaV5Writer(WriterBase):
         for version in versions:        # the path→version map comes from the records, not a constant
             records = store.read_grain(
                 chart_id=chart_id, generation=GENERATION, event_class=event_class,
-                path_id=path_id, rule_version=version, position_at=position_at)
+                path_id=path_id, rule_version=version, position_at=position_at, p1=p1_operands)
             drafts, ex = gk_window_sweep.draft_windows(
                 event_class, records, bound_rows, drishti=DRISHTI_SOURCE, vedha=VEDHA_SOURCE,
                 policy=policy)

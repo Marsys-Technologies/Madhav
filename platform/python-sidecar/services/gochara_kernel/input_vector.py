@@ -58,10 +58,12 @@ IMPLEMENTATION_MODULES = {
     "evaluation": tuple(_K + m for m in (
         "chart_context", "coverage", "dasha_read", "rehearsal_settlement", "ephemeris_pins", "evaluator", "horizon", "input_vector", "input_vector_verifier",
         "inventory", "inventory_store", "inventory_verifier", "nd_h_tables", "ledger", "lifecycle", "native_conn",
-        "record_derivation", "record_verifier", "scope_response",
-        "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",) + tuple(_R + m for m in (
+        "p1_operands", "record_derivation", "record_verifier", "scope_response",
+        "rule_registry")) + ("pipeline.orchestrator.writers.ka_gochara_v5",
+                         # the L1 rule functions P1 CALLS by name (`p1_inputs._l1`, CLAUDE.md §N.5): not in the writer's import closure by design
+                         "ga_writers.ga_condition_writer") + tuple(_R + m for m in (
         "admission", "ashtakavarga", "dignity", "drishti", "favourable_houses", "flat_selector", "frames",
-        "kernel_factor", "nature", "p6", "permission", "predicates", "records", "registry", "score", "strength",
+        "kernel_factor", "nature", "p1_inputs", "p6", "permission", "predicates", "records", "registry", "score", "strength",
         "valence", "vedha", "vedha_derive")),
     # R10-4: the VERIFICATION JOB (the library and the operator entry point) is part of the governed implementation identity —
     # the pinned job is part of the trusted system (AM-24 item 4), so a different job is a different manifest vector
@@ -75,7 +77,14 @@ IMPLEMENTATION_MODULES = {
 # loader's `content_digest` — never a selection of this module's own. It is a build dependency ONLY when the
 # build actually consumes it (the vedha operand bound — `VEDHA_SOURCE`); an unconsumed authority is not an
 # input (`bg_transit_av_gates` would be consumed by P5 only — held by ruling ST-P5-HOLD — so it is not bound).
-L0_CONSUMED = {"bg_transit_rules": ("P2", "services.gochara_rules.vedha_derive.load_pairs")}
+#
+# P1 (SR-OD1 P1a): its three reference tables are consumed through `p1_operands`' validated loaders (the strict `p1_inputs` validators, no
+# fallback), so each identity is that loader's `content_digest` over the rows consumed. Like the vedha pairs they are a build dependency ONLY
+# when the build actually binds the P1 operand sources (`ka_gochara_v5._l0_consumed`).
+L0_CONSUMED = {"bg_transit_rules": ("P2", "services.gochara_rules.vedha_derive.load_pairs"),
+               "bg_dignity_reference": ("P1", "services.gochara_kernel.p1_operands.load_dignity_reference"),
+               "bg_combustion_orbs": ("P1", "services.gochara_kernel.p1_operands.load_combustion_orbs"),
+               "bg_graha_naisargika_friendship": ("P1", "services.gochara_kernel.p1_operands.load_naisargika")}
 
 
 class InputDrift(RuntimeError):
@@ -410,20 +419,29 @@ def l0_identities(conn, consumed: Iterable[str]) -> dict:
     """{asset_id: content digest of the rows the build CONSUMES} for exactly the L0 authorities named in
     `consumed` (the build's actual consumption — never "every table a path could read"). `bg_transit_rules` is
     read through B's validated loader: an absent table, an empty/incomplete/changed authority, an uncited or
-    fabricated row is refused by name; the digest is the loader's own `content_digest` (all 42 consumed rows)."""
-    from services.gochara_rules import vedha_derive
+    fabricated row is refused by name; the digest is the loader's own `content_digest` (all 42 consumed rows). The three P1 reference
+    tables are read through `p1_operands`' validated loaders the same way (an incomplete table, a duplicate row or an L0/L1 mūlatrikoṇa
+    divergence is refused by name)."""
+    from services.gochara_kernel import p1_operands
+    from services.gochara_rules import p1_inputs, vedha_derive
+    p1_loaders = {"bg_dignity_reference": p1_operands.load_dignity_reference, "bg_combustion_orbs": p1_operands.load_combustion_orbs,
+                  "bg_graha_naisargika_friendship": p1_operands.load_naisargika}
     out = {}
     for asset in sorted(set(consumed)):
         if asset not in L0_CONSUMED:
             raise InputDrift(f"l0: {asset!r} is not a known consumed authority (known: {sorted(L0_CONSUMED)})")
         try:
             with conn.transaction():                  # a savepoint: a missing table must not poison the caller
-                pairs = vedha_derive.load_pairs(conn.cursor())
+                if asset in p1_loaders:
+                    out[asset] = p1_loaders[asset](conn.cursor()).content_digest
+                else:
+                    out[asset] = vedha_derive.load_pairs(conn.cursor()).content_digest
         except vedha_derive.VedhaPairsError as exc:
             raise InputDrift(f"l0: {asset} is not the validated authority the pair loader consumes: {exc}") from exc
+        except p1_inputs.StrictInputError as exc:
+            raise InputDrift(f"l0: {asset} is not the validated authority the P1 loader consumes: {exc}") from exc
         except Exception as exc:  # noqa: BLE001 - a missing L0 table must name itself, not leak a driver error
             raise InputDrift(f"l0: {asset} is not readable ({type(exc).__name__}) — nothing to bind") from exc
-        out[asset] = pairs.content_digest
     return out
 
 

@@ -618,6 +618,15 @@ class RecordStore:
                              delta_lambda=r[3], delta_t=r[4],
                              precision_regime=r[5]) for r in rows]
 
+    def fetch_stations(self, body: str, convention_id: str) -> list[datetime]:
+        """The substrate's STORED station instants of `body` (the ephemeris-refined `t_exact`, ascending). P1's Mercury / Venus combustion
+        reads the retrograde regime from them (L1 gives those two a smaller orb while retrograde)."""
+        rows = self.conn.execute(
+            "SELECT t_exact FROM public.ka_gochara_sky_event WHERE event_kind = 'station' AND body = %s"
+            " AND convention_id = %s AND t_exact IS NOT NULL ORDER BY t_exact",
+            (DB_BODY.get(body, body.lower()), convention_id)).fetchall()
+        return [r[0] if not isinstance(r, dict) else next(iter(r.values())) for r in rows]
+
     # ── conventions (kala coverage FK + the F7 bridge) ────────────────────
 
     def ensure_kala_convention(self, vector: dict | None = None,

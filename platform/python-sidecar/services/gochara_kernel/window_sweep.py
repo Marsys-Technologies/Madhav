@@ -108,12 +108,16 @@ class OperandSource:
       unknown_reason the named reason this factor's operand is undeterminable at t (None = it is not this factor's
                      operand that is unknown); passed through to the window's reason instead of the generic
                      `objective_unknown_over_component`
+      not_applicable the factor is DECLARED not applicable to this record (P1 combustion of a node / the Sun: L1 M-19,
+                     BPHS 7.28-29 translator's note PG99:C1) — it takes no part in the product (`na`), which is not the
+                     same statement as "contributes 1.0"
     """
     boundaries: Callable[[datetime, datetime], list[datetime]] | None = None
     complete: bool = False
     value_at: Callable[[datetime], float | None] | None = None
     channel_at: Callable[[datetime], str | None] | None = None
     unknown_reason: Callable[[datetime], str | None] | None = None
+    not_applicable: bool = False
 
 
 @dataclass(frozen=True)
@@ -141,6 +145,10 @@ class SweepRecord:
     # factor is evaluated) and, when the store has a position probe, whether the contact geometry
     # actually places the target inside/under the body's ray at t (None = not determinable).
     canonical_target: str | None = None
+    # P1 only (migration 1233): the period lord whose strength the P1 factors judge. It is the TRANSITING `agent` for the lord's own
+    # transit and a different graha for the AM-21 delivery forms (Sun / Jupiter through another lord's exaltation or debility
+    # sign), so the factor sources read the ANCHOR's sky, never the agent's (`record_store._anchor`: anchor or agent). Lowercase token.
+    period_anchor_lord: str | None = None
     # R7 [7]: instants INSIDE the support at which an operand's STATE changes (a dṛṣṭi source sign
     # ingress, a vedha interval edge): the objective is solved piecewise between them. And the instants
     # at which a smooth kernel is exactly maximal (a point contact's exact instant).
@@ -343,6 +351,8 @@ def categorical_factor(row: dict, rec: SweepRecord | None = None) -> Outcome:
             f"factor {row['factor_id']!r} declares a value_mapping; the sweep has no reader for it yet "
             "— refused, never ignored")
     src = None if rec is None else rec.operand_sources.get(row["factor_id"])
+    if src is not None and src.not_applicable:
+        return Outcome("na", factor=row["factor_id"], reason="not_applicable_by_declaration")
     if src is not None and src.value_at is not None:
         return _stateful(Outcome("fn", fn=src.value_at, null_state=row["null_state"], factor=row["factor_id"]), rec)
     return _missing(row, "value_mapping_undeclared")
@@ -740,6 +750,18 @@ def _known_nowhere(prog: "RecordProgram", a: datetime, b: datetime, samples: int
     return all(prog.value_at(a + timedelta(seconds=span * k / samples)) is None for k in range(samples))
 
 
+def _named_reason_everywhere(prog: "RecordProgram", supports, samples: int = 24) -> str | None:
+    """The ONE reason the record's factors name for the operand being undeterminable at every sampled instant of `supports` (P1a: a node
+    in a sign the verse reserves, `node_dignity_unclassified`; a Mercury / Venus without stored stations); None when no factor names one or
+    the names differ — the generic reason then stands, a reason is never picked among several."""
+    seen: set = set()
+    for a, b in supports:
+        span = (b - a).total_seconds()
+        for k in range(samples):
+            seen.add(prog.unknown_reason_at(a + timedelta(seconds=span * k / samples)))
+    return next(iter(seen)) if len(seen) == 1 and None not in seen else None
+
+
 def _pieces(lo: datetime, hi: datetime, progs: list[RecordProgram]):
     """Elementary pieces of [lo, hi): between consecutive support endpoints the live set is constant."""
     cuts = {lo, hi}
@@ -901,7 +923,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             if all(_known_nowhere(prog, a, b) for a, b in prog.rec.supports):
                 prog.qualified = False
                 prog.null_states.add(UNQUALIFIED)
-                prog.reasons.append(("operand", "operand_undeterminable_over_support"))
+                prog.reasons.append(("operand", _named_reason_everywhere(prog, prog.rec.supports) or "operand_undeterminable_over_support"))
     for prog in programs.values():
         # W0: a record whose side is decided per instant by a factor has no static channel (None = both, for an
         # unqualified one); every other record's channel is the static `record_channel`
