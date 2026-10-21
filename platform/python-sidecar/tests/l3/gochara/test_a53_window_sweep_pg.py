@@ -705,16 +705,13 @@ def test_the_writer_stores_a_dynamic_window_as_named_null_and_the_verifier_repro
     # its own oracles (test_od1_c2_vedha_verifier*.py); this test is about the NULL window, so the verifier is handed the fixed overlay
     # that says what the builder says here: a vedha source with no edge list ⇒ the edges are incomplete (R8-6)
     from services.gochara_kernel import vedha_verifier as _vv
-    # `derive_overlay` returns a `vedha_verifier.Overlay`, which the verifier also summarises into its report (`.summary()`), so the
-    # fixed stand-in carries that part of the Overlay interface too
-    class _FixedOverlay:
+    # the verifier reports `derived_overlay.summary()` for an overlay it derived itself, so the stand-in is a real `Overlay` (a callable
+    # that also summarises) whose every lookup says "applicable, edges incomplete"
+    class _IncompleteOverlay(_vv.Overlay):
         def __call__(self, rid):
             return _VEDHA_EDGES_INCOMPLETE(rid)
-
-        def summary(self):
-            return {"records": 1, "applicable": 1, "not_applicable": 0, "wholly_unknown": 0, "scopes": [], "moon_sign": None,
-                    "pairs_digest": "fixed-overlay-stand-in", "pairs_census": {}, "open_contacts_without_horizon": 0}
-    monkeypatch.setattr(_vv, "derive_overlay", lambda conn, **kw: _FixedOverlay())
+    monkeypatch.setattr(_vv, "derive_overlay", lambda conn, **kw: _IncompleteOverlay(
+        {}, moon_sign=None, pairs_digest="fixture", census={}))
     ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-dyn", db_conn=conn,
                       config={"chart_id": uuid.UUID(CHART_ID), "horizon": HORIZON, "gochara_v5_final_rules": False}, dry_run=False)
     with conn.transaction():

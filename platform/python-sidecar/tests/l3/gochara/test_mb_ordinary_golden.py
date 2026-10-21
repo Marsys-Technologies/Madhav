@@ -110,6 +110,16 @@ P1_GATE_SELECT = ("SELECT count(*) FROM pg_attribute WHERE attrelid = 'public.ka
 # before the comparison.
 COPY_PROBE_SELECT = ("SELECT count(*) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ka_gochara_search_input_snapshot'"
                      " AND column_name IN ('consumed_fact_rows', 'consumed_dasha_rows', 'l1_facts_metadata_digest', 'dasha_metadata_digest')")
+# SR-OD1 I1: (accepted-capture text, widened text, parameter count) of the two reads the union widened; see the loop in the comparison below.
+_FACTOR_READ = "SELECT operand_selector, null_state, function, direction{} FROM public.ka_gochara_factor WHERE factor_id = %s AND rule_version = %s"
+_RECORD_READ = ("SELECT r.record_id::text, COALESCE(r.contact_id, r.object_id)::text, r.path_id, r.rule_version, r.relation, r.object_kind, r.agent, r.operator_role, "
+                "r.admission_state, o.canonical_target, r.house_from_frame, lower(s.x), upper(s.x), lower_inc(s.x), upper_inc(s.x), c.t_exact, c.convention_id{} "
+                "FROM public.ka_gochara_relationship_record r JOIN public.ka_gochara_physical_object o ON o.physical_object_id = r.object_id "
+                "LEFT JOIN public.ka_gochara_contact c ON (c.chart_id, c.generation, c.contact_id) = (r.chart_id, r.generation, r.contact_id) "
+                "LEFT JOIN LATERAL unnest(r.temporal_support_intervals) AS s(x) ON true WHERE r.chart_id = %s AND r.generation = %s AND r.event_class = %s "
+                "AND r.path_id = %s AND r.rule_version = %s ORDER BY r.record_id, lower(s.x)")
+P1A_D2_WIDENED_READS = ((_FACTOR_READ.format(""), _FACTOR_READ.format(", category_mapping"), 2),
+                        (_RECORD_READ.format(""), _RECORD_READ.format(", NULL::text"), 5))
 PERIOD_GUARD_SELECT = " ".join("""
     WITH governed_chart_dashas AS (
         SELECT * FROM public.chart_dashas
@@ -352,6 +362,15 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
                         expanded.append([P1_GATE_SELECT, 1])
                 expanded.append([sql, n])
             rest = expanded
+        # SR-OD1 I1 (D2 / P1a): two production reads are deliberately wider than the accepted capture's. rule_registry reads the factor's authored category_mapping back
+        # (D2, owner's Form B table), and WindowStore.read_grain selects one more column - the period-anchor lord, `NULL::text` for every path but a P1 run with operand
+        # sources bound (P1a). Each is mapped back to its accepted-capture text ONLY when the number of widened statements equals the number of accepted statements of that
+        # shape in the golden (so a reverted widening, or an extra widened read, still fails) and no accepted-shape statement is left over.
+        for narrow, wide, n_params in P1A_D2_WIDENED_READS:
+            want_n = m["statements"]["shapes"].get(f"{n_params}|{narrow}", 0)
+            assert rest.count([wide, n_params]) == want_n, f"{key}: expected exactly the golden's {want_n} widened read(s) of {narrow[:60]!r}"
+            assert rest.count([narrow, n_params]) == 0, f"{key}: an unwidened read of {narrow[:60]!r} remains"
+            rest = [[narrow, n] if (sql, n) == (wide, n_params) else [sql, n] for sql, n in rest]
         assert _summarise(rest) == m["statements"], f"{key}: statements other than the explicitly counted guards and layer probe differ from the accepted P06 baseline"
 
 
