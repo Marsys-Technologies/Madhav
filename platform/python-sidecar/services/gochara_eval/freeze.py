@@ -29,7 +29,11 @@ FROZEN_CODE_FILES = (            # the adapter, scorer and everything they impor
     "services/gochara_eval/metrics.py", "services/gochara_eval/registry.py", "services/gochara_eval/controls.py",
     "services/gochara_eval/freeze.py", "services/gochara_eval/dump_extract.py", "services/gochara_eval/candidate_score.py",
 )
-CANDIDATE_GENERATIONS = ("4.1",)
+CANDIDATE_GENERATIONS = ("4.1", "5.0")
+#: generations stored in the governed eval-window tables: their Stage-1 freezes the MANIFEST's result policy / orb policy / registry digest /
+#: implementation identity instead of the 4.x chain's `orb_max_deg`, donor-row identity and daśā-plurality policy (which they do not have)
+GOVERNED_GENERATIONS = ("5.0",)
+GOVERNED_RESULT_POLICIES = ("all_null_candidate/1", "window_qualification/1")
 #: the pre-extract inputs whose identity (path + sha256) every freeze MUST carry — fixed identifiers, not free text
 REQUIRED_INPUTS = (
     "event_registry", "random_controls", "baseline_3_0_extract", "scorer_3_0", "recorded_result_3_0", "recorded_per_event_3_0",
@@ -231,6 +235,23 @@ def _dasha_plurality_problems(blk, sidecar_root: Path) -> list[str]:
     return p
 
 
+def _governed_manifest_problems(rb: dict) -> list[str]:
+    """The manifest read-back a governed ('5.x') candidate freezes: what the dump re-reads live and must find unchanged. The ephemeris component
+    is checked beside it (the ONE AM-16 definition); a result policy outside the two named ones is not a bound policy."""
+    p: list[str] = []
+    _str_fields(rb, ("manifest_status",), p, "ephemeris_requirement.manifest_readback")
+    if rb.get("result_policy") not in GOVERNED_RESULT_POLICIES:
+        p.append(f"ephemeris_requirement.manifest_readback.result_policy {rb.get('result_policy')!r} is not one of {GOVERNED_RESULT_POLICIES}")
+    if not isinstance(rb.get("orb_policy"), dict) or not rb.get("orb_policy"):
+        p.append("ephemeris_requirement.manifest_readback.orb_policy is missing, not an object, or empty")
+    if not SHA64.match(str(rb.get("registry_digest", ""))):
+        p.append("ephemeris_requirement.manifest_readback.registry_digest is not a sha256")
+    impl = rb.get("implementation")
+    if not (isinstance(impl, dict) and impl and all(SHA64.match(str(v)) for v in impl.values())):
+        p.append("ephemeris_requirement.manifest_readback.implementation must map each stage to a sha256")
+    return p
+
+
 def stage1_problems(doc: dict, inputs_root: Path, canonical_command: str,
                     sidecar_root: Path = SIDECAR_ROOT) -> list[str]:
     probs: list[str] = []
@@ -299,42 +320,46 @@ def stage1_problems(doc: dict, inputs_root: Path, canonical_command: str,
         probs += [f"ephemeris_requirement: {p}" for p in ephemeris_component_problems(comp)]          # RE-DERIVED, never trusted
         if rb.get("ephemeris_problems") not in (None, []):
             probs.append("ephemeris_requirement.manifest_readback.ephemeris_problems is not empty")
-        if not (isinstance(rb.get("orb_max_deg"), (int, float)) and not isinstance(rb.get("orb_max_deg"), bool)
-                and rb["orb_max_deg"] > 0):
-            probs.append("ephemeris_requirement.manifest_readback.orb_max_deg is missing or not a positive number")
-        _str_fields(rb, ("orb_ruling", "manifest_status"), probs, "ephemeris_requirement.manifest_readback")
+        if doc.get("generation") in GOVERNED_GENERATIONS:
+            probs += _governed_manifest_problems(rb)
+        else:
+            if not (isinstance(rb.get("orb_max_deg"), (int, float)) and not isinstance(rb.get("orb_max_deg"), bool)
+                    and rb["orb_max_deg"] > 0):
+                probs.append("ephemeris_requirement.manifest_readback.orb_max_deg is missing or not a positive number")
+            _str_fields(rb, ("orb_ruling", "manifest_status"), probs, "ephemeris_requirement.manifest_readback")
         if isinstance(comp, dict):
             probs += [f"ephemeris_requirement: {p}" for p in
                       ephemeris_coverage_problems(comp, er.get("consumed_bodies"), er.get("horizon"))]
-    # ---- the donor-row identity: WHICH behaviour of the '4.1' chain this frozen run uses (steward M20261002T121926-da0b) ----
-    av = _dict(doc, "av_donor_rows", probs)
-    per = av.get("per_ayanamsha")
-    if not isinstance(per, dict) or not per:
-        probs.append("av_donor_rows.per_ayanamsha is missing or empty (the row count and digest per ayanamsha, read at freeze time)")
-        per = {}
-    for aid, ent in per.items():
-        n = ent.get("row_count") if isinstance(ent, dict) else None
-        if not (isinstance(n, int) and not isinstance(n, bool) and n >= 0):
-            probs.append(f"av_donor_rows.per_ayanamsha[{aid!r}].row_count is not a non-negative integer")
-        elif n > 0 and not SHA64.match(str(ent.get("digest", ""))):
-            probs.append(f"av_donor_rows.per_ayanamsha[{aid!r}] has {n} rows but no sha256 digest")
-        elif n == 0 and ent.get("digest") is not None:
-            probs.append(f"av_donor_rows.per_ayanamsha[{aid!r}] has no rows, so its digest must be null")
-    behaviour = av.get("behaviour")
-    if behaviour not in AV_DONOR_BEHAVIOURS:
-        probs.append(f"av_donor_rows.behaviour {behaviour!r} is not one of {AV_DONOR_BEHAVIOURS}")
-    lahiri = per.get(AV_DONOR_AYANAMSHA)
-    if not isinstance(lahiri, dict):
-        probs.append(f"av_donor_rows.per_ayanamsha lacks the candidate's own ayanamsha {AV_DONOR_AYANAMSHA!r}")
-    elif isinstance(lahiri.get("row_count"), int):
-        if behaviour == "donor_resolved" and lahiri["row_count"] == 0:
-            probs.append("av_donor_rows.behaviour is 'donor_resolved' but the candidate's ayanamsha has no donor rows")
-        if behaviour == "sign_grain_interim" and lahiri["row_count"] > 0:
-            probs.append("av_donor_rows.behaviour is 'sign_grain_interim' but donor rows EXIST (the run would be donor-resolved)")
-    _str_fields(av, ("comparability",), probs, "av_donor_rows")
-    probs += _dasha_plurality_problems(doc.get("dasha_plurality_tier_policy"), sidecar_root)
-    ostate = _dict(doc, "orb_state", probs)
-    _str_fields(ostate, ("text", "manifest_location"), probs, "orb_state")
+    if doc.get("generation") not in GOVERNED_GENERATIONS:       # 4.x chain only: a governed manifest pins these through its implementation identity
+        # ---- the donor-row identity: WHICH behaviour of the '4.1' chain this frozen run uses (steward M20261002T121926-da0b) ----
+        av = _dict(doc, "av_donor_rows", probs)
+        per = av.get("per_ayanamsha")
+        if not isinstance(per, dict) or not per:
+            probs.append("av_donor_rows.per_ayanamsha is missing or empty (the row count and digest per ayanamsha, read at freeze time)")
+            per = {}
+        for aid, ent in per.items():
+            n = ent.get("row_count") if isinstance(ent, dict) else None
+            if not (isinstance(n, int) and not isinstance(n, bool) and n >= 0):
+                probs.append(f"av_donor_rows.per_ayanamsha[{aid!r}].row_count is not a non-negative integer")
+            elif n > 0 and not SHA64.match(str(ent.get("digest", ""))):
+                probs.append(f"av_donor_rows.per_ayanamsha[{aid!r}] has {n} rows but no sha256 digest")
+            elif n == 0 and ent.get("digest") is not None:
+                probs.append(f"av_donor_rows.per_ayanamsha[{aid!r}] has no rows, so its digest must be null")
+        behaviour = av.get("behaviour")
+        if behaviour not in AV_DONOR_BEHAVIOURS:
+            probs.append(f"av_donor_rows.behaviour {behaviour!r} is not one of {AV_DONOR_BEHAVIOURS}")
+        lahiri = per.get(AV_DONOR_AYANAMSHA)
+        if not isinstance(lahiri, dict):
+            probs.append(f"av_donor_rows.per_ayanamsha lacks the candidate's own ayanamsha {AV_DONOR_AYANAMSHA!r}")
+        elif isinstance(lahiri.get("row_count"), int):
+            if behaviour == "donor_resolved" and lahiri["row_count"] == 0:
+                probs.append("av_donor_rows.behaviour is 'donor_resolved' but the candidate's ayanamsha has no donor rows")
+            if behaviour == "sign_grain_interim" and lahiri["row_count"] > 0:
+                probs.append("av_donor_rows.behaviour is 'sign_grain_interim' but donor rows EXIST (the run would be donor-resolved)")
+        _str_fields(av, ("comparability",), probs, "av_donor_rows")
+        probs += _dasha_plurality_problems(doc.get("dasha_plurality_tier_policy"), sidecar_root)
+        ostate = _dict(doc, "orb_state", probs)
+        _str_fields(ostate, ("text", "manifest_location"), probs, "orb_state")
 
     code = _dict(doc, "code", probs)
     for k in ("adapter_commit", "scorer_commit"):
