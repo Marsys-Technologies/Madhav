@@ -49,6 +49,11 @@ sha256 of the canonical JSON (sorted keys, no whitespace, UTF-8) of the rows the
   bg_graha_naisargika_friendship     [graha, other_graha, relation]                 ORDER BY graha, other_graha
 with every NUMERIC rendered as its plain decimal text without trailing zeros (`15.0` and `15` are one value: `trim_scale(x)::text`). Surrogate
 ids, citations and notes are not consumed and do not move the digest.
+
+COMBUSTION INHERITANCE (R4, SR-Q6-L1-AMEND). The combustion STATE at an instant is not an L1 fact (L1 holds no time-indexed state for a century of
+transits): the orb ROWS (`bg_combustion_orbs`) and the L1 combustion FUNCTION are what is inherited, by identity. `combustion_inheritance` names them —
+the orb row ids, the content digest `L0_CONSUMED` binds, and the digest of L1's module — and a Form B grain's windows carry that record in their
+qualification provenance (`grain_inheritance`); the verifier derives the same record from its own L0 read and refuses a window that differs.
 """
 from __future__ import annotations
 
@@ -107,7 +112,7 @@ class RetrogradeUnestablished(p1.StrictInputError):
 
 DIGNITY_SQL = ("SELECT graha, exaltation_sign, debilitation_sign, moolatrikona_sign, moolatrikona_from, moolatrikona_to, own_signs"
                " FROM public.bg_dignity_reference ORDER BY graha")
-COMBUSTION_SQL = "SELECT graha, orb_degrees, deep_orb_degrees FROM public.bg_combustion_orbs ORDER BY graha"
+COMBUSTION_SQL = "SELECT graha, orb_degrees, deep_orb_degrees, id FROM public.bg_combustion_orbs ORDER BY graha"
 NAISARGIKA_SQL = ("SELECT graha, other_graha, relation FROM public.bg_graha_naisargika_friendship"
                   " ORDER BY graha, other_graha")
 _COLUMNS = {
@@ -116,6 +121,9 @@ _COLUMNS = {
     "bg_combustion_orbs": ("graha", "orb_degrees", "deep_orb_degrees"),
     "bg_graha_naisargika_friendship": ("graha", "other_graha", "relation"),
 }
+#: columns read when present and never consumed (they do not move the content digest): the orb rows' surrogate ids, so the rows a derivation
+#: used can be NAMED (R4, `combustion_inheritance`)
+_IDENTITY_COLUMNS = {"bg_combustion_orbs": ("id",)}
 
 
 @dataclass(frozen=True)
@@ -124,6 +132,15 @@ class L0Table:
     asset: str
     rows: tuple
     content_digest: str
+
+    def row_ids(self) -> dict:
+        """{graha: surrogate id} of the rows consumed; a row handed in without an id is refused by name (B.10 — an identity is never invented)."""
+        out = {}
+        for r in self.rows:
+            if r.get("id") is None:
+                raise p1.StrictInputError("l0_row_id_missing", f"{self.asset}: the {r.get('graha')} row carries no id")
+            out[r["graha"]] = int(r["id"])
+        return dict(sorted(out.items()))
 
 
 def _dec(x):
@@ -135,15 +152,15 @@ def _dec(x):
 
 
 def _dicts(asset: str, raw: Iterable) -> list[dict]:
-    cols = _COLUMNS[asset]
+    cols, ident = _COLUMNS[asset], _IDENTITY_COLUMNS.get(asset, ())
     out = []
     for r in raw:
         if isinstance(r, Mapping):
-            out.append({c: r.get(c) for c in cols})
+            out.append({**{c: r.get(c) for c in cols}, **{c: r[c] for c in ident if c in r}})
         else:
-            if len(r) != len(cols):
-                raise p1.StrictInputError("l0_row_shape", f"{asset}: {len(r)} column(s), expected {cols}")
-            out.append(dict(zip(cols, r)))
+            if len(r) not in (len(cols), len(cols) + len(ident)):
+                raise p1.StrictInputError("l0_row_shape", f"{asset}: {len(r)} column(s), expected {cols} (+ optional {ident})")
+            out.append(dict(zip(cols + ident, r)))
     return out
 
 
@@ -212,6 +229,33 @@ class P1L0:
 
 def load_p1_l0(cursor) -> P1L0:
     return P1L0(load_dignity_reference(cursor), load_combustion_orbs(cursor), load_naisargika(cursor))
+
+
+# ── the combustion authority a derivation inherits (R4, SR-Q6-L1-AMEND) ──────────────────────────────────────────
+
+def l1_module_digest(module=None) -> str:
+    """sha256 of the source of the L1 module whose combustion function the state is computed by (`p1_inputs.L1_RULE_MODULE`) — the file of the
+    module the process has LOADED, so a monkey-patched or shadowed module moves it (the same hash `input_vector_verifier.module_digests` takes
+    per module)."""
+    with open((module or p1._l1()).__file__, encoding="utf-8") as fh:
+        return hashlib.sha256(fh.read().encode("utf-8")).hexdigest()
+
+
+def combustion_inheritance(table: L0Table) -> dict:
+    """The identity of the combustion authority a P1 state is derived from: the `bg_combustion_orbs` row ids and their content digest (the
+    digest `L0_CONSUMED` binds into the manifest), and the digest of L1's combustion module. Recorded in every window's qualification provenance;
+    the verifier derives the same record from its own reads and the two must be equal.
+
+    WHAT IS INHERITED, AND HOW (ruling SR-Q6-L1-AMEND): the ORB ROWS and the L1 FUNCTION are inherited by identity. The per-instant combust
+    state is not a stored L1 fact — L1 holds no time-indexed state for a century of transits — so it is DERIVED at Kāla from the pinned
+    ephemeris, by L1's function, over exactly these rows; this record is what makes that derivation attributable."""
+    return {"orb_digest": table.content_digest, "orb_row_ids": table.row_ids(), "l1_module": p1.L1_RULE_MODULE, "l1_module_digest": l1_module_digest()}
+
+
+def grain_inheritance(ops: "P1Operands | None") -> dict | None:
+    """The record a grain's windows carry: only a grain bound to the Form B operands (the verifier's `needs_p1_check` rows) derives its states
+    from the orb rows; no operands, or the per-factor legacy rules, carry none (nothing moves for them)."""
+    return ops.combustion_inheritance() if ops is not None and ops.form_b is not None else None
 
 
 # ── the state of the period lord at an instant ────────────────────────────────────────────────────────────────
@@ -417,6 +461,10 @@ class P1Operands:
         self._friend = p1.validated_naisargika(l0.naisargika.rows)
         self._ref = {g: p1.validated_dignity_row(l0.dignity.rows, g) for g in p1.GRAHAS}
 
+    def combustion_inheritance(self) -> dict:
+        """The combustion authority this operand set derives from (see the module function)."""
+        return combustion_inheritance(self.l0.combustion)
+
     # ── the sky ──
     def lon(self, graha: str, t: datetime) -> float:
         key = (graha, t)
@@ -605,7 +653,7 @@ def form_b_mapping(factor_rows) -> "pv.SideValueMapping | None":
     return pv.mapping_from_rows(factor_rows) if pv.has_form_b(factor_rows) else None
 
 
-__all__ = ["FACTOR_COMBUSTION", "FACTOR_DIGNITY", "FACTOR_MAITRI", "FACTOR_NATURE", "form_b_mapping", "L0Table", "LordState", "NODE_FRIENDSHIP_DISPUTED", "NODE_RESERVED_SIGNS",
+__all__ = ["combustion_inheritance", "grain_inheritance", "l1_module_digest", "FACTOR_COMBUSTION", "FACTOR_DIGNITY", "FACTOR_MAITRI", "FACTOR_NATURE", "form_b_mapping", "L0Table", "LordState", "NODE_FRIENDSHIP_DISPUTED", "NODE_RESERVED_SIGNS",
            "NODE_VARIANT_OWN_SIGNS", "P1L0", "P1Operands", "RUNGS", "RetrogradeUnestablished", "SOURCE_FACTORS", "ValueRule",
            "category_rule", "combustion_orbs_from_rows", "dignity_reference_from_rows", "load_combustion_orbs", "load_dignity_reference",
            "load_naisargika", "load_p1_l0", "naisargika_from_rows"]
