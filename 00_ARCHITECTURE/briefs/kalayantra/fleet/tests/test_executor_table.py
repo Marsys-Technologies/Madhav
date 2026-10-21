@@ -1143,7 +1143,8 @@ K9_ARGS = {"run-id": "6f1d3c1e-0000-4000-8000-000000000001", "generation": "g-1"
 
 
 def k9_args(kind):
-    return {name: K9_ARGS[name] for name in K9_BINDINGS[kind]["allowed_args"]}
+    bound = {**K9_BINDINGS, **executor_pin_shards.entries_after(SHARDS)}[kind]   # BASE plus the reviewed shards (K9-23.json narrows the two rebuild kinds' allowed_args)
+    return {name: K9_ARGS[name] for name in bound["allowed_args"]}
 
 
 @pytest.mark.parametrize("kind", K9_PRODUCTION)

@@ -828,6 +828,36 @@ def test_public_execute_query_checks_the_public_acl_without_a_public_role(dispos
         disposable_pg.psql(f"DROP FUNCTION public.{name}()")
 
 
+def migration_derived_grants():
+    """What migrations 1305, 1308 and 1381 grant, read from their TEXT (not from the readback's own spec), for the C-05 oracle.
+
+    Returns {'functions': [sig...] for BOTH principals, 'tables': {role: [(table, privilege)...]}}. Sources: 1305 section 8 (the FOREACH fn list granted to
+    data_plane_builder, gochara_verifier, gochara_sealer), 1308 section 4 (SELECT on the near-miss tables to the verifier and the sealer), 1381 (the FOREACH f list
+    and SELECT to the three roles; INSERT,DELETE to the verifier only)."""
+    mig = REPO / 'platform/migrations'
+    m1305 = (mig / '1305_gochara_snapshot_owns_l1_copy.sql').read_text()
+    sec = m1305[m1305.index('-- ── 8. grants'):m1305.index('-- ── Presence checks')]
+    functions = re.findall(r"'public\.(ka_gochara_[a-z0-9_]+\([^']*\))'", sec)
+    m1308 = (mig / '1308_gochara_near_miss_storage.sql').read_text()
+    tables = {'gochara_verifier': [], 'gochara_sealer': []}
+    for role in tables:
+        grant = re.search(r'GRANT SELECT ON ([a-z_., ]+) TO ' + role + ';', m1308)
+        tables[role] += [(t.strip().removeprefix('public.'), 'SELECT') for t in grant.group(1).split(',')]
+    m1381 = (mig / '1381_gochara_near_miss_seal_integration.sql').read_text()
+    block = m1381[m1381.index("FOREACH r IN ARRAY ARRAY['data_plane_builder','gochara_verifier','gochara_sealer'] LOOP"):]
+    block = block[:block.index('END;')]
+    functions += re.findall(r"'(ka_gochara_[a-z0-9_]+\([^']*\))'", re.search(r'FOREACH f IN ARRAY ARRAY\[(.*?)\] LOOP', block, re.S).group(1))
+    for role in tables:
+        tables[role].append(('ka_gochara_near_miss_verification', 'SELECT'))
+    only = re.search(r"GRANT (INSERT,DELETE) ON public\.(ka_gochara_near_miss_verification) TO gochara_verifier;", block)
+    tables['gochara_verifier'] += [(only.group(2), priv) for priv in only.group(1).split(',')]
+    # a parse that matched nothing would make every assertion below vacuous
+    assert len(functions) == 15 and len(set(functions)) == 15, functions
+    assert sorted(tables['gochara_verifier']) == sorted(tables['gochara_sealer'] + [('ka_gochara_near_miss_verification', 'INSERT'), ('ka_gochara_near_miss_verification', 'DELETE')])
+    assert len(tables['gochara_sealer']) == 4
+    return {'functions': functions, 'tables': tables}
+
+
 # J4B post-provisioning audit: real catalog privileges, no attempted writes.
 @pytest.fixture(scope="module")
 def provisioning_world(disposable_pg):
@@ -851,6 +881,11 @@ def provisioning_world(disposable_pg):
             created.append(mapped)
         tables = {'chart_facts': {'id'}, 'chart_dashas': {'id'}, '_migrations_applied': {'filename', 'sha256', 'applied_at'}}
         functions = set(spec['builder_backfill']['functions'])
+        derived = migration_derived_grants()
+        functions.update(derived['functions'])
+        for rows in derived['tables'].values():
+            for name, _ in rows:
+                tables.setdefault(name, {'id'})
         for body in spec['roles'].values():
             for name, _, cols, _ in body['tables']:
                 tables.setdefault(name, {'id'}).update(cols or [])
@@ -875,6 +910,11 @@ def provisioning_world(disposable_pg):
                 grants.append(f'SELECT ON public.{name} TO {mapping[role]}')
         for sig in spec['builder_backfill']['functions']:
             grants.append(f'EXECUTE ON FUNCTION public.{sig} TO {mapping["data_plane_builder"]}')
+        for role, rows in derived['tables'].items():                      # 1308 / 1381, from the migration text
+            for name, priv in rows:
+                grants.append(f'{priv} ON public.{name} TO {mapping[role]}')
+            for sig in derived['functions']:                              # 1305 / 1381: the same functions for both principals
+                grants.append(f'EXECUTE ON FUNCTION public.{sig} TO {mapping[role]}')
         for grant in grants:
             conn.execute('GRANT ' + grant)
         for filename in ('1204_gochara_av_qualifier_object_role.sql', '1206_gochara_search_inventory_completeness.sql',
@@ -919,6 +959,31 @@ def test_provisioning_readback_enumerates_every_principal_and_grant(provisioning
     assert len({(r['kind'], r['principal'], r['object'], r['privilege']) for r in rows}) == len(rows)
 
 
+def test_provisioning_readback_expects_every_grant_migrations_1305_1308_1381_gave_both_principals(provisioning_world):
+    """C-05: the reviewed expected list must KNOW the near-miss/search grants, so the final readback reads ok on them instead of 'unexpected'.
+
+    The oracle is the migration text (migration_derived_grants), not the readback's own spec; each grant must be expected True AND observed True."""
+    rows = provisioning_readback(provisioning_world)
+    names = provisioning_world[1]
+    by_key = {(r['kind'], r['principal'], r['object'].split('.')[-1], r['privilege']): r for r in rows}
+    derived = migration_derived_grants()
+    seen = 0
+    for role, entries in derived['tables'].items():
+        for table, priv in entries:
+            row = by_key[('table', names[role], table, priv)]
+            assert row['expected'] is True and row['observed'] is True and row['ok'] is True, (role, table, priv, row)
+            seen += 1
+        for sig in derived['functions']:
+            row = by_key[('function', names[role], sig, 'EXECUTE')]
+            assert row['expected'] is True and row['observed'] is True and row['ok'] is True, (role, sig, row)
+            seen += 1
+    assert seen == (4 + 15) + (6 + 15)                      # sealer: 4 table + 15 function grants; verifier: 6 table + 15 function grants
+    # least privilege: the verifier-only writes are NOT expected for the sealer
+    for priv in ('INSERT', 'DELETE'):
+        row = by_key[('table', names['gochara_sealer'], 'ka_gochara_near_miss_verification', priv)]
+        assert row['expected'] is False and row['observed'] is False and row['ok'] is True
+
+
 def test_provisioning_readback_detects_each_individually_missing_grant(provisioning_world):
     conn, _, grants = provisioning_world
     for grant in grants:
@@ -935,6 +1000,8 @@ def test_provisioning_readback_detects_each_individually_missing_grant(provision
     'GRANT SELECT(id) ON public.kala_gochara_windows TO {sealer}',
     'GRANT SELECT ON public.ka_gochara_seal_brief TO {verifier} WITH GRANT OPTION',
     'GRANT EXECUTE ON FUNCTION public.ka_gochara_seal_generation(uuid,text) TO {verifier}',
+    'GRANT INSERT ON public.ka_gochara_near_miss_verification TO {sealer}',
+    'GRANT UPDATE ON public.ka_gochara_near_miss TO {verifier}',
     'GRANT {verifier} TO {builder}',
     'ALTER ROLE {verifier} CREATEDB',
     'ALTER ROLE {sealer} INHERIT',

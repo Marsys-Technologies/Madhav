@@ -567,6 +567,82 @@ def test_grant_l1_reads_refuses_a_wider_pre_existing_acl_and_commits_nothing(wor
     assert held("gochara_sealer", "chart_facts") == set()
 
 
+@pytest.fixture()
+def hardened_public(world):
+    """Schema public as the hardened production database reads it (J-4b-a55j readback: schema-usage false for both principals): PUBLIC holds nothing on it and the
+    script's admin role owns it, so its GRANT is effective. The original owner and PUBLIC USAGE are restored afterwards."""
+    with _admin() as c:
+        owner = c.execute("SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname='public'").fetchone()[0]
+        c.execute("ALTER SCHEMA public OWNER TO pgadmin")
+        c.execute("REVOKE ALL ON SCHEMA public FROM PUBLIC")
+    yield
+    with _admin() as c:
+        c.execute(f"ALTER SCHEMA public OWNER TO {owner}")                  # first: revoking from the OWNER would strip the owner's own entries
+        for r in ("gochara_verifier", "gochara_sealer", "pgadmin"):         # a role holding a schema privilege cannot be dropped by the `world` teardown
+            c.execute(f"DO $$ BEGIN IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='{r}') THEN REVOKE ALL ON SCHEMA public FROM {r}; END IF; END $$")
+        c.execute(f"GRANT ALL ON SCHEMA public TO {owner}")
+        c.execute("GRANT USAGE ON SCHEMA public TO PUBLIC")
+
+
+def schema_priv(role_name, priv):
+    with _admin() as c:
+        return c.execute("SELECT has_schema_privilege(%s, 'public', %s)", (role_name, priv)).fetchone()[0]
+
+
+def test_grant_l1_reads_gives_both_principals_exactly_usage_on_schema_public_so_the_l1_select_is_usable(world, l1, hardened_public):  # claim U1 (C-04)
+    assert run(world).returncode == 0
+    for who in ("gochara_verifier", "gochara_sealer"):
+        assert schema_priv(who, "USAGE") is False, who            # the measured production state; without it the next assertions would be vacuous
+    with _admin() as c:
+        c.execute("CREATE ROLE canary_nsp NOLOGIN")
+    try:
+        r = run(world, "grant-l1-reads")
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert run(world, "grant-l1-reads").returncode == 0       # idempotent
+        for who in ("gochara_verifier", "gochara_sealer"):
+            assert schema_priv(who, "USAGE") is True, who
+            assert schema_priv(who, "CREATE") is False, who       # USAGE only: no object creation in public
+            assert schema_priv(who, "USAGE WITH GRANT OPTION") is False and schema_priv(who, "CREATE WITH GRANT OPTION") is False, who
+            with _admin() as c, c.transaction():                  # the point of the grant: the table SELECT is now usable as the principal
+                c.execute(f"SET LOCAL ROLE {who}")
+                assert c.execute("SELECT count(*) FROM public.chart_facts").fetchone()[0] == 0
+        assert schema_priv("canary_nsp", "USAGE") is False        # nobody else was widened
+    finally:
+        with _admin() as c:
+            c.execute("DROP ROLE canary_nsp")
+
+
+def test_without_the_schema_grant_the_l1_select_is_unusable_in_the_hardened_database(world, l1, hardened_public):  # claim U1 (the defect C-04 closes: SELECT without USAGE)
+    import psycopg as pg
+    assert run(world).returncode == 0
+    with _admin() as c:
+        c.execute("GRANT SELECT ON public.chart_facts TO gochara_verifier")      # what the stage did before C-04
+    with _admin() as c:
+        with pytest.raises(pg.errors.InsufficientPrivilege, match="schema public"), c.transaction():
+            c.execute("SET LOCAL ROLE gochara_verifier")
+            c.execute("SELECT count(*) FROM public.chart_facts")
+
+
+def test_grant_l1_reads_refuses_a_principal_that_can_create_in_public_and_commits_nothing(world, l1, hardened_public):  # claim U2 (USAGE only, atomic with the closure check)
+    assert run(world).returncode == 0
+    with _admin() as c:
+        c.execute("GRANT CREATE ON SCHEMA public TO gochara_verifier")
+    r = run(world, "grant-l1-reads")
+    assert r.returncode != 0 and "postcondition" in r.stderr, r.stdout + r.stderr
+    assert schema_priv("gochara_sealer", "USAGE") is False        # the whole transaction rolled back, the sealer included
+    assert held("gochara_sealer", "chart_facts") == set() and held("gochara_verifier", "chart_facts") == set()
+
+
+def test_grant_l1_reads_refuses_when_the_grantor_cannot_grant_on_public_and_commits_nothing(world, l1, hardened_public):  # claim U3 (PostgreSQL only WARNs here)
+    assert run(world).returncode == 0
+    with _admin() as c:
+        c.execute("ALTER SCHEMA public OWNER TO postgres")
+        c.execute("GRANT USAGE ON SCHEMA public TO pgadmin")      # usable, but WITHOUT grant option: GRANT USAGE ... TO <role> then grants nothing and only warns
+    r = run(world, "grant-l1-reads")
+    assert r.returncode != 0 and "no USAGE on schema public" in r.stderr, r.stdout + r.stderr
+    assert held("gochara_verifier", "chart_facts") == set() and held("gochara_sealer", "chart_dashas") == set()    # the L1 SELECT rolled back with it
+
+
 def sealer_secret_name(world):
     return (world["tmp"] / "gcloud_argv.txt").read_text()
 
