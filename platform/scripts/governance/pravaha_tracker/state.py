@@ -565,7 +565,9 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     for iid, it in items.items():
         s = status[iid]
         start_blockers = [d for d in s["deps_open"] if d not in merged_accepted]
-        if s.pop("soft", False) and start_blockers:
+        # a recorded not_applicable ruling is not overridden by an unmerged branch's running/blocked reading (K5-2b);
+        # merged evidence (a detector reading "done") never reaches here as soft and governs as before
+        if s.pop("soft", False) and start_blockers and s["status"] != "not_applicable":
             s["status"] = "waiting"
         # An unmeasured detector on an item that cannot start yet is not an alarm: show it as waiting,
         # keep "unmeasured" in the detail, and raise it only once the item becomes startable.

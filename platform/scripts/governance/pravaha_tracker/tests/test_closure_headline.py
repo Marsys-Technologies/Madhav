@@ -164,6 +164,30 @@ def test_refused_d_vc_makes_the_k5_2_trial_g2_and_compact_stage_not_applicable(t
     assert rows["VC-2"]["status"] == "not_applicable" and rows["VC-2"]["skip_origin"] == ["D-VC"]
 
 
+def test_an_unmerged_branch_does_not_override_the_recorded_not_applicable_ruling_on_k5_2b(tmp_path):
+    # K5-2b (K5-2b tracker rule): D-COMPACT refused makes K5-2b not_applicable by the recorded decision
+    # (CONTROL_PLANE.md: "a final incompatible outcome makes dependent executable work not_applicable"). Its branch is
+    # NOT merged, so the live detector reads "running"; that unmerged reading must not turn the ruling back into waiting.
+    model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+    log = tmp_path / "EVENTS.jsonl"
+    saved = cli.EVENTS, cli.load_model
+    cli.EVENTS, cli.load_model = str(log), lambda: model
+    try:
+        for dec in ("D-VC", "D-COMPACT"):
+            assert cli.main(["decide", dec, "--outcome", "refused", "--as", "steward", "--delegated",
+                             "--detail", f"K5-2b {dec}"]) == 0
+    finally:
+        cli.EVENTS, cli.load_model = saved
+    events = [json.loads(line) for line in log.read_text().splitlines()]
+    running = {"K5-2b": {"status": "running", "detail": "branch kalayantra/k5-2b not merged",
+                         "checked_at": NOW.isoformat()}}
+    rows = _rows(build_snapshot(model, events, running, {}, {}, now=NOW, closure=_closure(model)))
+    assert rows["K5-2b"]["status"] == "not_applicable" and rows["K5-2b"]["skip_origin"]
+    # earned by the ruling, not by the reading: with no ruling the same unmerged reading still shows waiting
+    undecided = _rows(build_snapshot(model, [], running, {}, {}, now=NOW, closure=_closure(model)))
+    assert undecided["K5-2b"]["status"] == "waiting"
+
+
 def test_approved_d_vc_leaves_the_k5_2_trial_open(tmp_path):
     # N.8: the not_applicable above is earned by the refused outcome, not by the family's mere presence
     model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
