@@ -272,3 +272,33 @@ def test_a_service_that_never_disappears_fails_before_bootstrap(w):
     r = w.install(FAKE_BOOTOUT_LAG="1000", KY_BOOTOUT_WAIT_S="3")
     assert r.returncode != 0 and "E_TRACKER_BOOTOUT" in r.stderr, (r.stdout, r.stderr)
     assert w.calls("bootstrap") == []
+
+
+def plist_env(w):
+    return plistlib.loads(w.plist.read_bytes())["EnvironmentVariables"]
+
+
+def test_the_plist_carries_a_20_second_call_timeout_by_default(w):
+    """Incident 2026-10-21 11:14Z: gh calls took ~6 s, above the tracker's built-in 5 s, so 115 branch_merged detectors timed out."""
+    assert w.install(**{}).returncode == 0
+    assert plist_env(w)["PRAVAHA_CALL_TIMEOUT_S"] == "20"
+
+
+def test_the_call_timeout_is_overridable_by_the_installers_environment(w):
+    assert w.install(PRAVAHA_CALL_TIMEOUT_S="45.5").returncode == 0
+    assert plist_env(w)["PRAVAHA_CALL_TIMEOUT_S"] == "45.5"
+    assert w.install(PRAVAHA_CALL_TIMEOUT_S="120").returncode == 0, "the tracker's MAX_CONFIGURED_S itself is allowed"
+    assert plist_env(w)["PRAVAHA_CALL_TIMEOUT_S"] == "120"
+
+
+@pytest.mark.parametrize("bad", ["121", "0", "-5", "abc", "20; x", "1e1", "<x/>"])
+def test_a_call_timeout_the_tracker_would_reject_is_refused_before_anything_is_written(w, bad):
+    r = w.install(PRAVAHA_CALL_TIMEOUT_S=bad)
+    assert r.returncode == 1 and "E_TRACKER_CALL_TIMEOUT" in r.stderr, (r.stdout, r.stderr)
+    assert w.untouched()
+
+
+def test_the_installers_limit_matches_the_trackers_own_maximum():
+    detectors = FLEET.parents[3] / "platform" / "scripts" / "governance" / "pravaha_tracker" / "detectors.py"
+    assert re.search(r"^MAX_CONFIGURED_S = 120\.0$", detectors.read_text(), re.M)
+    assert "<= 120" in INSTALLER.read_text()

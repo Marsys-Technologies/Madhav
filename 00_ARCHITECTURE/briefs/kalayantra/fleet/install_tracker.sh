@@ -12,6 +12,9 @@
 #   E_TRACKER_SOURCE_DIVERGED   HEAD is an ancestor-or-equal of origin/main (a checkout with its own commits is not the live model);
 #   E_TRACKER_SOURCE_STALE      HEAD is at most KY_STALE_MAX_COMMITS (default 20) commits behind origin/main;
 #   E_TRACKER_MODEL_STALE       at most KY_MODEL_MAX_COMMITS (default 3) commits that change plan_model.json are missing from HEAD.
+# v1.3 (2026-10-21, incident 11:14Z): the plist carries PRAVAHA_CALL_TIMEOUT_S (default 20, the installer's own PRAVAHA_CALL_TIMEOUT_S overrides it)
+# because the tracker's built-in 5 s is below real GitHub latency (~6 s per gh call) and timed out 115 branch_merged detectors. A value
+# outside 0 < s <= 120 (the tracker's MAX_CONFIGURED_S) is refused (E_TRACKER_CALL_TIMEOUT, before anything is touched), never silently dropped by the tracker.
 # After bootout it waits for the service to disappear, retries bootstrap once, and exits non-zero unless health answers 200 within
 # KY_HEALTH_WAIT_S (default 60) — the tracker is never left down silently.
 set -euo pipefail
@@ -24,6 +27,9 @@ MODEL_REL="00_ARCHITECTURE/control/kalayantra/plan_model.json"; MODEL="$KY_SOURC
 FLEET_REL="00_ARCHITECTURE/briefs/kalayantra/fleet"
 die() { echo "install_tracker: $1: $2" >&2; exit "${3:-1}"; }
 if [ "${1:-}" = "--stop" ]; then launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true; rm -f "$PLIST"; echo "tracker stopped"; exit 0; fi
+CALL_TIMEOUT_S="${PRAVAHA_CALL_TIMEOUT_S:-20}"
+[[ "$CALL_TIMEOUT_S" =~ ^[0-9]+(\.[0-9]+)?$ ]] && awk -v v="$CALL_TIMEOUT_S" 'BEGIN { exit !(v > 0 && v <= 120) }' \
+  || die E_TRACKER_CALL_TIMEOUT "PRAVAHA_CALL_TIMEOUT_S='$CALL_TIMEOUT_S' rejected (need 0 < seconds <= 120, the tracker's MAX_CONFIGURED_S)"
 # Source check (runs before the package selection, snapshot, plist or tracker is touched): the live model must come from a current checkout of origin/main.
 [ -f "$MODEL" ] || die E_TRACKER_SOURCE_MISSING "plan model missing: $MODEL (KY_SOURCE_REPO=$KY_SOURCE_REPO)"
 git -C "$KY_SOURCE_REPO" rev-parse --git-dir >/dev/null 2>&1 || die E_TRACKER_SOURCE_MISSING "$KY_SOURCE_REPO is not a git checkout"
@@ -72,6 +78,7 @@ cat > "$PLIST" <<EOF
     <key>PRAVAHA_REPO</key><string>$KY_SOURCE_REPO</string>
     <key>PRAVAHA_PGENV</key><string>/Users/Dev/.config/pravaha/pgenv.sh</string>
     <key>PRAVAHA_HOLD</key><string>$KY_ROOT/HOLD</string>
+    <key>PRAVAHA_CALL_TIMEOUT_S</key><string>$CALL_TIMEOUT_S</string>
     <key>PYTHONUNBUFFERED</key><string>1</string>
   </dict>
   <key>RunAtLoad</key><true/><key>KeepAlive</key><true/><key>ProcessType</key><string>Background</string><key>ThrottleInterval</key><integer>2</integer>
