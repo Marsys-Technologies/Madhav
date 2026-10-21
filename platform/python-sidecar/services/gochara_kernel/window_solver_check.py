@@ -406,9 +406,13 @@ class _Engine:
                                         "completely (no provider, or not asserted complete)")
                         break
                     cuts.update(c for c in (self._sec(x) for x in st.boundaries(self._dt(a), self._dt(b))) if a < c < b)
-                if rec.channel_at is not None and rec.channel_boundaries is not None:
-                    cuts.update(c for c in (self._sec(x) for x in rec.channel_boundaries(self._dt(a), self._dt(b)))
-                                if a < c < b)
+                if rec.channel_at is not None:
+                    if rec.channel_boundaries is None:       # H2, as for a step factor: an unlisted side-flip cannot be certified
+                        self._add(F_H2, f"record {rec.record_id}: its side is decided per instant but its change instants "
+                                        "are not listed (no provider)")
+                    else:
+                        cuts.update(c for c in (self._sec(x) for x in rec.channel_boundaries(self._dt(a), self._dt(b)))
+                                    if a < c < b)
                 if rec.tent is not None:
                     cuts.update(self._tent_cuts(rec.tent, a, b, rec.record_id))
         return sorted(c for c in cuts if 0.0 <= c <= self.L)
@@ -428,7 +432,7 @@ class _Engine:
             if not any(a <= l < b for a, b in rc.sup):
                 continue
             if not rec.qualified:
-                if self.objective == OBJ_SUM and rec.channel != CH_AGAINST:
+                if rec.channel != CH_AGAINST:             # rule 1 holds on every path, P4 included
                     self._add(F_UNQ, f"record {rec.record_id} is unqualified yet live on the for/unknown "
                                      "channel in a numbered window")
                 continue
@@ -706,10 +710,10 @@ class _Engine:
         unq_against = [r for r in unq if r.channel != CH_FOR]
         against_null = (not self.against_evaluated) or bool(unq_against)
         want_against = None if against_null else sum(against_roots.values())
-        if self.objective == OBJ_MAXMIN:
-            want_score = f_peak
-        elif unq:
+        if unq:                                   # rule 4: a live unqualified member at the peak leaves the score unknown, on every path
             want_score = None
+        elif self.objective == OBJ_MAXMIN:
+            want_score = f_peak
         else:
             want_score = max((v for _, _, v in lv), default=0.0)
         self.rederived.update(score=want_score, evidence_for=want_for, evidence_against=want_against)

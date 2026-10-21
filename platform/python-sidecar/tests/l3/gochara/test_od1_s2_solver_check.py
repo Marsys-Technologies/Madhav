@@ -398,7 +398,7 @@ def oracle_score_over_all_channels(m):
     assert wrong.status == m.REFUTED and chk.F_SCORE in codes(wrong)
 
 
-@claim("S-20", "if rec.channel_at is not None and rec.channel_boundaries is not None:", "if False:")
+@claim("S-20", "                    else:\n                        cuts.update(c for c in (self._sec(x) for x in rec.channel_boundaries", "                    elif False:\n                        cuts.update(c for c in (self._sec(x) for x in rec.channel_boundaries")
 def oracle_channel_flip_is_a_cut(m):
     """W-3 / BPHS 3.11 (the Moon's paksa flips at 180 deg elongation): a record whose side is decided PER INSTANT counts for the for-channel
     only after the flip; the flip instant (0.4 d) is a piece boundary and the earliest maximum."""
@@ -411,7 +411,7 @@ def oracle_channel_flip_is_a_cut(m):
     assert early.status == m.REFUTED and chk.F_VALUE in codes(early)
 
 
-@claim("S-21", "if self.objective == OBJ_SUM and rec.channel != CH_AGAINST:\n                    self._add(F_UNQ", "if False:\n                    self._add(F_UNQ")
+@claim("S-21", 'self._add(F_UNQ, f"record {rec.record_id} is unqualified yet live', '(lambda *a: None)(F_UNQ, f"record {rec.record_id} is unqualified yet live')
 def oracle_unqualified_for_member(m):
     """QUALIFICATION_TABLE rule 1: an unqualified member on the for / unknown channel makes the objective unqualified — a window carrying a
     number while such a member is live is refuted."""
@@ -639,6 +639,44 @@ def oracle_differential_500_worlds(m):
     assert checked == worlds and worlds >= 450, worlds
 
 
+@claim("S-29", 'self._add(F_H2, f"record {rec.record_id}: its side is decided', '(lambda *a: None)(F_H2, f"record {rec.record_id}: its side is decided')
+def oracle_channel_without_provider_is_not_certified(m):
+    """H2 parity with the step factors (review B-1; W-3 / BPHS 3.11: a per-instant side is a cut at each flip): a record whose side is decided
+    per instant but which lists no change instants cannot be certified. Its for-side holds only on [0.4 d, 0.45 d) — narrower than any
+    piece the checker would read at a piece start — where the true maximum is 1.0 + 0.5 = 1.5; the stored 0.5 at t = 0 must NOT be VERIFIED."""
+    on = lambda d: FOR if at(0.4) <= d < at(0.45) else AGAINST
+    recs = [m.CheckRecord("x", "r1", "Moon", ((at(0), at(1)),), constant=1.0, channel=None, channel_at=on),
+            m.CheckRecord("y", "r2", "Sun", ((at(0), at(1)),), constant=0.5)]
+    rep = run(m, {"lo": at(0), "hi": at(1), "pos": no_sky, "records": recs}, stored(m, 0.0, 0.5))
+    assert rep.status != m.VERIFIED and chk.F_H2 in codes(rep), rep
+
+
+@claim("S-30", "                if rec.channel != CH_AGAINST:             # rule 1", "                if self.objective == OBJ_SUM and rec.channel != CH_AGAINST:             # rule 1")
+def oracle_rule_1_holds_on_p4(m):
+    """QUALIFICATION_TABLE rule 1 (result_policy.py QUALIFICATION_TABLE, 'objective unqualified ... on every path'; window_sweep.draft_windows
+    applies it to P4 too): an unqualified for-channel member in a P4 window makes it unqualified. Jupiter 0.5 (qualified) + Jupiter 0.9
+    (unqualified, for channel) + Saturn 0.8, stored 0.5 -> refuted, never VERIFIED."""
+    sup = ((at(0), at(1)),)
+    recs = [m.CheckRecord("j", "RJ", "jupiter", sup, constant=0.5),
+            m.CheckRecord("u", "RJ2", "jupiter", sup, constant=0.9, qualified=False, channel=FOR),
+            m.CheckRecord("s", "RS", "saturn", sup, constant=0.8)]
+    rep = run(m, {"lo": at(0), "hi": at(1), "pos": no_sky, "records": recs, "objective": m.OBJ_MAXMIN}, stored(m, 0.0, 0.5))
+    assert rep.status == m.REFUTED and chk.F_UNQ in codes(rep), rep
+
+
+@claim("S-31", "        if unq:                                   # rule 4", "        if unq and self.objective != OBJ_MAXMIN:  # rule 4")
+def oracle_rule_4_score_null_on_p4(m):
+    """QUALIFICATION_TABLE rule 4: the score is NULL when a live member at the peak is unqualified, P4 included. An unqualified AGAINST-channel
+    Saturn record (rule 1 does not fire on it) is live at the P4 peak: the max-min value 0.4 must not be stored as the score; NULL is."""
+    sup = ((at(0), at(1)),)
+    recs = [m.CheckRecord("j", "RJ", "jupiter", sup, constant=1.0), m.CheckRecord("s", "RS", "saturn", sup, constant=0.4),
+            m.CheckRecord("u", "RS2", "saturn", sup, constant=0.7, qualified=False, channel=AGAINST)]
+    w = {"lo": at(0), "hi": at(1), "pos": no_sky, "records": recs, "objective": m.OBJ_MAXMIN}
+    assert run(m, w, stored(m, 0.0, 0.4, score=None)).status == m.VERIFIED
+    wrong = run(m, w, stored(m, 0.0, 0.4, score=0.4))
+    assert wrong.status == m.REFUTED and chk.F_SCORE in codes(wrong), wrong
+
+
 # ═══════════════════════════════ the harness ════════════════════════════════════════════════════════════════════════════════
 
 _COUNT = [0]
@@ -674,7 +712,7 @@ def test_the_single_planted_reversion_fails_the_oracle(cid):
 
 def test_every_claim_has_exactly_one_reversion_and_one_oracle():
     assert set(CLAIMS) == {"V-1", "S-2", "S-3", "S-4", "S-5", "S-6", "S-7", "S-8", "S-9", "S-10", "S-11", "S-12", "S-13", "S-14",
-                           "S-15", "S-16", "S-17", "S-18", "S-19", "S-20", "S-21", "S-22", "S-23", "S-24", "S-25", "S-26", "S-27", "S-28"}
+                           "S-15", "S-16", "S-17", "S-18", "S-19", "S-20", "S-21", "S-22", "S-23", "S-24", "S-25", "S-26", "S-27", "S-28", "S-29", "S-30", "S-31"}
     assert len({old for _, old, _ in CLAIMS.values()}) == len(CLAIMS)             # no two claims share a reversion site
 
 
