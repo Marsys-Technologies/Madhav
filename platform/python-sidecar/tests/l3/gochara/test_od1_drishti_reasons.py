@@ -214,3 +214,33 @@ def test_c_every_undeterminable_operand_the_authority_names_reaches_the_window_u
                    state_boundaries=lambda lo, hi: [], state_boundaries_complete=True)
         (w,), _ = _draft([rec], _rows_declared, drishti=_source())
         assert w.score is None and w.unqualified_reason == reason != GENERIC, (agent, offset, w.unqualified_reason)
+
+
+# ── (b2v) the verifier's production refusal, driven through verify_window_semantics ────────────────────────────────────
+
+def test_b2v_verify_window_semantics_refuses_a_stored_blank_that_dropped_the_dristi_reason():
+    """The only production path that turns `_unknown_name_problem` into a refusal is the structural-blank branch of `verify_window_semantics`. World: Jupiter
+    drifts 0.01 deg/day and leaves Aries for Taurus on day 5; the target point 180.3 deg is in Libra (sign 6), so the whole-sign offset is 7 before day 5
+    (defined: full aspect) and (6 - 1) % 12 + 1 = 6 after it — an offset the bound rule (BPHS 1:16496-16502: 3-10 only) leaves undefined, which the rule
+    authority names `no_aspect_rule_defined_at_offset`.
+    The builder's blank (the rule's own name) is VERIFIED; the same blank stored under the generic code (the dropped name — the exact defect this lane exists to
+    stop) is REFUSED, the problem naming the reason the independent derivation gives.
+    Planted reversion: `window_verifier.verify_window_semantics` does not act on `_unknown_name_problem` (`name_problem = None`) -> the generic blank is
+    'reproduced' and the pytest.raises below fails."""
+    from pipeline.orchestrator.writers import ka_gochara_v5 as writer
+    from .test_od1_s3_integration import GRAIN_P3, ROWS, _Cov, _d, _position, _verify
+
+    def jup(t):
+        return 29.95 + 0.01 * (t - _d(0)).total_seconds() / 86400.0
+    pos = _position({"jupiter": jup})
+    rec = _rec("A", path="P3", agent="jupiter", root="RA", supports=((0, 10),), relation="aspect", kind="degree_point", target="point:180.3",
+               longitude_at=jup, aspect_rays=(240.0,), state_boundaries=lambda lo, hi: [c for c in (_d(5),) if lo < c < hi], state_boundaries_complete=True,
+               aspect_offset_at=lambda t: 7 if t < _d(5) else 6)
+    (draft,) = ws.draft_windows("marriage", [rec], ROWS, drishti=writer.DRISHTI_SOURCE, solver=ws.PRODUCTION_SOLVER)[0]
+    assert draft.peak_instant is None and draft.unqualified_reason == NO_RULE
+    kw = dict(grain=GRAIN_P3, ingress={"jupiter": [_d(5)]}, completed=_Cov(_d(-100), _d(100)), drishti_bound=True)
+    ok = _verify([draft], [rec], ROWS("P3", "1.0.0"), pos, **kw)
+    assert ok["status"] == "VERIFIED" and ok["solver_blank_windows"] == {NO_RULE: 1}
+    dropped = draft.__class__(**{**draft.__dict__, "unqualified_reason": GENERIC, "unresolved": {GENERIC: 1}})
+    with pytest.raises(RuntimeError, match=rf"the independent derivation names the undeterminable operand \['{NO_RULE}'\]"):
+        _verify([dropped], [rec], ROWS("P3", "1.0.0"), pos, **kw)
