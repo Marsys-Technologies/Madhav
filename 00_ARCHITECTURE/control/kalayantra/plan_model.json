@@ -5592,7 +5592,7 @@
       },
       "triage": {
         "class": "b",
-        "reason": "deferred with re-entry by SR-W34-PREP-RULINGS (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl, 2026-10-19T12:20Z) item 5b (overrides A9 D-52 for these two items; the rest of the post-flip phase stays in the campaign)",
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
         "re_entry": "post-flip: after V-J6 is accepted and the served layer has run one week on 5.0 (as the J-7a family)"
       }
     },
@@ -20310,7 +20310,7 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
         "re_entry": "after V-J6 is accepted and the served layer has run one week on 5.0"
       }
     },
@@ -20320,10 +20320,7 @@
       "lane": "N · decisions",
       "title": "Tier-2 admissions in the enrichment order: Sudarśana as a judge method first; Tājaka and KP only after the corpus counts (G5)",
       "owner": "N",
-      "depends_on": [
-        "J-6l",
-        "L0-K"
-      ],
+      "depends_on": [],
       "mandatory": true,
       "brief": {
         "spec": [
@@ -20462,8 +20459,8 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
-        "re_entry": "at campaign close, as documentation"
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
+        "re_entry": "post-campaign, as documentation (was: at campaign close)"
       }
     },
     {
@@ -20503,8 +20500,8 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
-        "re_entry": "at campaign close, as documentation"
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
+        "re_entry": "post-campaign, as documentation (was: at campaign close)"
       }
     },
     {
@@ -20910,7 +20907,7 @@
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
         "re_entry": "after V-J6 is accepted and the served layer has run one week on 5.0"
       }
     },
@@ -20953,7 +20950,7 @@
       "reviewer_rule": "v_exact_head_then_deploy_containment",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
         "re_entry": "after V-J6 is accepted and the served layer has run one week on 5.0"
       }
     },
@@ -24234,7 +24231,7 @@
       "reviewer_rule": "v_exact_head_then_post_deploy_at_merge_commit",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
         "re_entry": "after V-J6 is accepted and the served layer has run one week on 5.0"
       },
       "packet_code_coverage": "P10",
@@ -25684,7 +25681,7 @@
       "reviewer_rule": "v_pre_acceptance_then_receipt_readback_digest",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 (SR-A9-INTERP, A9-NB-04): no consuming phase brief reads its output (FINAL_BUILD_SCOPE_v1_0 and the J-4a brief are silent on A2.5/A2.6)",
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
         "re_entry": "when the owner/surrogate records the approved Q6 disposition of the historical 4.1 build, or a phase brief names the 4.1 build as a measured input"
       }
     },
@@ -25738,7 +25735,7 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 (SR-A9-INTERP, A9-NB-04): no consuming phase brief reads its output (FINAL_BUILD_SCOPE_v1_0 and the J-4a brief are silent on A2.5/A2.6)",
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
         "re_entry": "when J-4a-a25 re-enters and the 4.1 evidence (Link-2, gates, PRAMĀṆIN, benchmark) is wanted by a phase brief"
       }
     },
@@ -26647,7 +26644,7 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
         "re_entry": "after V-J6 is accepted and the served layer has run one week on 5.0"
       },
       "steps": [
@@ -26764,7 +26761,7 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 (SR-A9-INTERP, A9-NB-04): its '4.1' baseline cannot exist while J-4a-a25 is parked; no consuming phase brief reads its output (FINAL_BUILD_SCOPE_v1_0 and the J-4a brief are silent on A2.5/A2.6) — SR-A9-NB-04-B44 (SR-CLOSURE-272)",
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
         "re_entry": "when the owner/surrogate records the approved Q6 disposition of the historical 4.1 build, or a phase brief names the 4.1 build as a measured input"
       }
     },
@@ -27012,8 +27009,8 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
-        "re_entry": "at campaign close, as documentation"
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
+        "re_entry": "post-campaign, as documentation (was: at campaign close)"
       }
     },
     {
@@ -27124,8 +27121,8 @@
       "reviewer_rule": "v_artifact_digest_reviewer_not_author",
       "triage": {
         "class": "b",
-        "reason": "deferred by A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md)",
-        "re_entry": "at campaign close, as documentation"
+        "reason": "deferred out of this campaign by SR-PARKED-OUT-OF-CAMPAIGN (owner surrogate madhav-44, 2026-10-22, owner direction OWNER-WRAP-NOW-20261022); carried to 00_ARCHITECTURE/briefs/kalayantra/POST_CAMPAIGN_v1_0.md",
+        "re_entry": "post-campaign, as documentation (was: at campaign close)"
       }
     },
     {

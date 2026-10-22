@@ -2522,10 +2522,17 @@ jobs:
             --service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com \
             --update-secrets=DATABASE_URL=data-plane-builder-db-url:latest \
             --task-timeout=86400 \
-            --memory=16Gi \
-            --cpu=4 \
+            --memory=8Gi \
+            --cpu=2 \
             --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
+          # SR-RIGHT-SIZE (owner approval OWNER-CLOUD-RUNS-APPROVED-20261023,
+          # amend-1): --memory=8Gi --cpu=2 above (was 16Gi / 4) for BOTH the
+          # century build and the K9-4b rebuild, which share this one job (an
+          # execution cannot override cpu/memory; there is no second job
+          # definition). The century's peak RSS is <= 427 MiB and it is
+          # single-threaded; 8Gi still clears the F-185 /tmp spill (~3-4.2GB)
+          # plus the working set.
 
       - name: Verify ga_writers is importable in the pushed image
         run: |

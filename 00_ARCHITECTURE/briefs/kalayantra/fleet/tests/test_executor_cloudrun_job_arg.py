@@ -51,7 +51,7 @@ def verification_job(**overrides):
         {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": DIGEST},
         {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"key": "latest", "name": "gochara-verifier-db-url"}}},
     ]
-    container["resources"] = {"limits": {"cpu": "2", "memory": "8Gi"}}
+    container["resources"] = {"limits": {"cpu": "1", "memory": "4Gi"}}
     task.update(maxRetries=0, serviceAccountName=SERVICE_ACCOUNT, timeoutSeconds="28800")
     job.update(overrides)
     return job
@@ -144,7 +144,7 @@ def test_j3_the_definition_is_measured_with_the_fields_the_packs_job_gate_reads(
     assert job["name"] == VJOB
     assert job["image"] == {"reference": REF, "tag": None, "digest": DIGEST}                  # immutable: the digest IS the reference's; no registry call exists for it
     assert (job["timeout_seconds"], job["max_retries"], job["service_account"]) == (28800, 0, SERVICE_ACCOUNT)
-    assert (job["cpu"], job["memory"]) == ("2", "8Gi")
+    assert (job["cpu"], job["memory"]) == ("1", "4Gi")
     by = {e["name"]: e for e in job["environment"]}
     assert set(by) == {"GOCHARA_RUNNER_COMMIT", "GOCHARA_RUNNER_IMAGE_DIGEST", "GOCHARA_VERIFIER_DB_URL"}
     assert by["GOCHARA_VERIFIER_DB_URL"]["source"] == "secret" and by["GOCHARA_VERIFIER_DB_URL"]["secret"] == "gochara-verifier-db-url" and "value" not in by["GOCHARA_VERIFIER_DB_URL"]
