@@ -19,7 +19,9 @@ instant within tolerance on a smooth hump's shoulder").
 THE GUARANTEE (G) — under hypotheses H1–H4, the result is either a number or a NAMED BLANK; never a best-found value:
 
   H1 monotone arcs      every tent term's offset is monotone between listed Swiss stations (checked here: velocity sign at
-                        spacing ≤ 5 d and the audited minimum station spacing > that spacing, `monotone_arc_not_established`)
+                        spacing ≤ 5 d and the audited minimum station spacing > that spacing, `monotone_arc_not_established`);
+                        a stretch/piece ≤ NEAR_STATION_S touching a listed station is a cut, read monotone within the S0 noise
+                        NEAR_STATION_NOISE_DEG (N-3b, SR-STATION-NEAR-END)
   H2 complete steps     every non-constant step factor lists its change instants and asserts the list complete
                         (`state_boundaries_incomplete`); the piece values are cross-sampled as a second detector
   H3 the pinned ephemeris  `Tent.offset` is a deterministic continuous function (the caller's seam)
@@ -83,6 +85,14 @@ EPS_M = 1e-11                # branch-and-bound stops when no interval can beat 
 TIME_TOL = 5e-8              # root / extremum location (≈ float resolution of a 10^8 s window offset)
 LEAF_CURV = 4e-12            # an interval is a LEAF when each term is affine to this much
 MONO_TOL = 1e-11             # tent-value comparisons for the monotone-piece check
+# SR-STATION-NEAR-END (N-3b). A stored (spline) station and the Swiss station of the same contact differ by up to 16.7 s (S0 K-2), and
+# inside that stretch the Swiss speed is ~1e-8 °/day with a noisy sign and the longitude is non-monotone by up to 3.9e-9° (S0 K-2).
+# So a stretch or piece NO LONGER than NEAR_STATION_S that touches a LISTED station is a cut for H1 and is read monotone within the
+# S0 noise bound (kernel units: NEAR_STATION_NOISE_DEG / orb). The value (120 s ≈ 7 × the 16.7 s measured offset) is EQUAL to the independent checker's NEAR_END_S
+# (window_solver_check.py:42-44) by owner ruling, but it is this module's OWN constant and code (K12: nothing is imported from it;
+# `test_od1_n3b_station_cut` pins the two equal by reading the checker's source text).
+NEAR_STATION_S = 120.0
+NEAR_STATION_NOISE_DEG = 3.9e-9
 H1_SPACING_S = 5.0 * 86400.0
 MAX_EVALS_WINDOW = 500_000   # ephemeris-call budget of ONE window (I: sized from S0 — 75.6 evals/record, 34,742 records, 6,629 windows)
 CERT_SCHEMA = "window_solver_certificate/1"   # the object the window's `qualification` carries under `solver_certificate` (R-7)
@@ -431,15 +441,22 @@ def _bisect_root(tent: Tent, level: float, x: float, y: float, ctx: _Ctx) -> Opt
     return 0.5 * (lo + hi)
 
 
+def _touches_station(tent: Tent, x: float, y: float) -> bool:
+    """The interval [x, y] is NO LONGER than NEAR_STATION_S and one of its ends is a LISTED station of the tent (N-3b)."""
+    return y - x <= NEAR_STATION_S and (x in tent.stations or y in tent.stations)
+
+
 def _check_arc(tent: Tent, x: float, y: float, ctx: _Ctx, who: str) -> None:
     """H1 on one stretch between listed stations: the velocity keeps one sign at spacing ≤ 5 d, and the audited station spacing
-    exceeds that spacing (so a reversal pair cannot hide between samples). The station-adjacent instants are inset."""
+    exceeds that spacing (so a reversal pair cannot hide between samples). The station-adjacent instants are inset. A stretch of at
+    most NEAR_STATION_S next to a listed station is the Swiss/spline offset of that station (S0 K-2): a cut, its velocity sign is
+    noise, so it is not sampled — the kernel on it is read monotone within NEAR_STATION_NOISE_DEG by `_classify_tent`."""
     if tent.velocity is None:
         raise _Blank(REASON_MONOTONE, f"{who}: no velocity operand")
     if tent.min_station_spacing is None or not tent.min_station_spacing > H1_SPACING_S:
         raise _Blank(REASON_MONOTONE, f"{who}: audited station spacing absent or ≤ the sampling spacing")
     length = y - x
-    if length <= 2 * TIME_TOL:
+    if length <= 2 * TIME_TOL or _touches_station(tent, x, y):
         return
     n = max(1, math.ceil(length / H1_SPACING_S))
     inset = min(60.0, length / 4.0)
@@ -448,13 +465,17 @@ def _check_arc(tent: Tent, x: float, y: float, ctx: _Ctx, who: str) -> None:
         raise _Blank(REASON_MONOTONE, f"{who}: the velocity changes sign (or vanishes) inside [{x}, {y}] with no listed station")
 
 
-def _classify_tent(tent: Tent, c: float, group: str, a: float, b_eff: float, ctx: _Ctx, who: str) -> _Branch:
-    """The branch a tent term is on one piece: constant zero, rising or falling — verified, never assumed."""
+def _classify_tent(tent: Tent, c: float, group: str, a: float, b_eff: float, ctx: _Ctx, who: str, near_station: bool = False) -> _Branch:
+    """The branch a tent term is on one piece: constant zero, rising or falling — verified, never assumed. `near_station`: the piece is
+    no longer than NEAR_STATION_S and touches a listed station — the kernel is then read monotone within the S0 near-station noise
+    (NEAR_STATION_NOISE_DEG / orb on top of the usual tolerance)."""
     mid = 0.5 * (a + b_eff)
     kins = [ctx.kin(tent, t) for t in (a, mid, b_eff)]
     u_a, u_m, u_b = (_u(off, tent.orb) for off, _v in kins)
     # a piece next to a bisected root cut starts/ends up to speed × TIME_TOL/orb away from the exact level: that much is tolerated
     tol = MONO_TOL + 2.0 * max(abs(kins[0][1] or 0.0), abs(kins[2][1] or 0.0)) * TIME_TOL / tent.orb
+    if near_station:
+        tol += NEAR_STATION_NOISE_DEG / tent.orb
     if u_m <= 0.0:
         if max(u_a, u_b) > tol:
             raise _Blank(REASON_MONOTONE, f"{who}: the kernel is zero mid-piece but positive at an end")
@@ -523,7 +544,7 @@ def _build(problem: Problem, ctx: _Ctx):
             if m.tent is None or c == 0.0:
                 branches.append(_Branch(m.group, c if m.tent is None else 0.0, None, FLAT))
             else:
-                branches.append(_classify_tent(m.tent, c, m.group, a, b_eff, ctx, m.key))
+                branches.append(_classify_tent(m.tent, c, m.group, a, b_eff, ctx, m.key, near_station=_touches_station(m.tent, a, b)))
         if problem.objective == OBJECTIVE_MINMAX and len({br.group for br in branches}) < 2:
             pieces.append(None)                                  # outside the joint support: not part of the domain
         elif not branches:
@@ -758,7 +779,7 @@ def stored_certificate(result: SolveResult, *, objective: str, t0_iso: str, max_
         "value": tree["value"], "instant": tree["instant"], "upper_bound": tree["upper_bound"],
         "evals": tree["evals"], "max_evals": tree["max_evals"] if max_evals is None else int(max_evals), "budget_scope": "window",
         "limits": {"QUANT": QUANT, "TIE": TIE, "EPS_M": EPS_M, "TIME_TOL": TIME_TOL, "LEAF_CURV": LEAF_CURV, "H1_SPACING_S": H1_SPACING_S,
-                   "h4_used": tree["h4_used"]},
+                   "NEAR_STATION_S": NEAR_STATION_S, "NEAR_STATION_NOISE_DEG": NEAR_STATION_NOISE_DEG, "h4_used": tree["h4_used"]},
         "geometry": geometry, "geometry_digest": hashlib.sha256(blob.encode("utf-8")).hexdigest(),
         "cells": cells, "open": tree["open"][:MAX_OPEN_CELLS], "open_total": tree.get("open_total", len(tree["open"])), "truncated": truncated}
 
