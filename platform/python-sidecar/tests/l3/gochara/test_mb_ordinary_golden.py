@@ -398,7 +398,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Evaluation re-pinned for SR-W56-S3 (honest-null for Tajika mudda boundary overlaps, #3850): gochara_kernel.dasha_read changed (the boundary-overlap honest null). Re-derived
     # from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (main alone gives e5fae125...); geometry is unchanged
     # and no golden component is re-captured (this fixture's chart has no consecutive-boundary overlap).
-    assert got["implementation"]["evaluation"] == "91aabdc86860ce079518edd573e90585aa64bfaf7f19f99c4ef9a90a6a575da6"
+    # Evaluation re-pinned for SR-DASHA-SINGLE-TIER (#3883): gochara_kernel.dasha_read and gochara_grammar.read_tier_policy changed (the governed dasha reader admits tier
+    # single for five systems into flagging consumers only). Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (main alone gives 91aabdc8...); geometry and window are unchanged and no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "16cea5f44ba816b06fb20be5844c611b796263499123868c21431d38ea58ad9b"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
