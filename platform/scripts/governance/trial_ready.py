@@ -12,8 +12,11 @@ Semantics (the whole point; each is pinned by `__tests__/test_trial_ready.py`):
   * Skipped tests are not passes: a test oracle that skipped (a missing database, say) reads null.
 
 The detectors live in the registry (`trial_ready_checks.json`, read at the evaluated commit): per check a list of `parts`, all of which must read true.
-Part kinds: `pytest`, `git_file`, `db_sql`, `db_migrations`, `json_keys`, `unbound`. A part reads false when its detector ran and the claim failed, null when
-the detector could not run or its evidence is unreadable. Parts combine three-valued: any false -> false; else any null -> null; else true.
+Part kinds: `pytest`, `git_file`, `db_sql`, `db_migrations`, `json_keys`, `json_field_eq`, `unbound`. A part reads false when its detector ran and the claim
+failed, null when the detector could not run or its evidence is unreadable. A `pytest` part may carry `env` (values may use `{repo}`, the evaluated work tree) and
+`deselect` (node ids a known environment-dependent test is excluded by, each named and justified in the registry). A `db_migrations` part either lists `prefixes`
+or sets `mode: "all"` (every migration file at the commit must be recorded). A `json_field_eq` part reads a JSON record outside the repository (TR-BIND: T21, T24).
+Parts combine three-valued: any false -> false; else any null -> null; else true.
 A lane that merges adds the binding of its own oracle to the registry in its PR; until then its check is `unbound` and reads null.
 
 The output carries exactly {predicate, head_sha, evaluated_at, checks[{id, claim, value, evidence_ref, sha256}], ready}. The evaluator holds no credential
@@ -171,18 +174,21 @@ def _d_pytest(ctx: "Ctx", part: Part) -> Outcome:
     shutil.rmtree(str(out), ignore_errors=True)
     out.mkdir(parents=True)
     junit = out / "junit.xml"
+    deselect = [d for d in part.get("deselect", []) if isinstance(d, str) and d]
     cmd = [ctx.python, "-m", "pytest", "-p", "no:cacheprovider", "--basetemp=%s" % (out / "tmp"), "--junitxml=%s" % junit, "-q", *tests]
+    for d in deselect:
+        cmd += ["--deselect", d]
     env = scrubbed()
     env["TMPDIR"] = str(out)
     for k, v in (part.get("env") or {}).items():
-        env[str(k)] = str(v)
+        env[str(k)] = str(v).replace("{repo}", str(ctx.repo))
     try:
         r = subprocess.run(cmd, cwd=str(cwd), env=env, capture_output=True, timeout=int(part.get("timeout_s", PYTEST_TIMEOUT_S)))
         rc = r.returncode
     except (OSError, subprocess.SubprocessError) as exc:
         return None, ref, None, "pytest could not run: %s" % type(exc).__name__
     value, cases, detail = _pytest_outcome(junit, rc)
-    return value, ref, _sha256(_canon({"tests": tests, "cases": cases})), detail
+    return value, ref, _sha256(_canon({"tests": tests, "deselect": deselect, "cases": cases})), detail
 
 
 def _loopback_dsn(spec: Part) -> Tuple[Optional[str], Optional[str], str]:
@@ -240,26 +246,33 @@ def _d_db_sql(ctx: "Ctx", part: Part) -> Outcome:
 
 
 def _d_db_migrations(ctx: "Ctx", part: Part) -> Outcome:
-    """Every migration file at the commit whose name starts with one of `prefixes` must exist AND be recorded in `_migrations_applied`
-    (platform/scripts/migrate.ts TRACKER_DDL). A prefix with no file at the commit reads false: the commit's list and the ledger differ."""
+    """Every migration file at the commit whose name starts with one of `prefixes` (or, with `mode: "all"`, EVERY `.sql` file in `dir`) must exist AND be recorded
+    in `_migrations_applied` (platform/scripts/migrate.ts TRACKER_DDL). A prefix with no file at the commit reads false: the commit's list and the ledger differ.
+    `all` presumes a lane DB built with the protected files applied (TR-BIND B4): a protected file that was skipped reads as missing, never as fine."""
     dsn, label, why = _loopback_dsn(part)
     ref = label or "db:unconfigured"
+    mode = part.get("mode", "prefixes")
     prefixes = [p for p in part.get("prefixes", []) if isinstance(p, str) and p]
     names = tree_names(ctx.repo, ctx.sha, part.get("dir", "platform/migrations"))
-    if dsn is None or not prefixes or names is None:
-        return None, ref, None, why if dsn is None else "migration list at the commit is unreadable"
+    if mode not in ("prefixes", "all") or dsn is None or names is None or (mode == "prefixes" and not prefixes):
+        return None, ref, None, why if dsn is None else "migration list at the commit is unreadable or the part declares nothing to compare"
     wanted: List[str] = []
-    for p in prefixes:
-        hit = sorted(n for n in names if n.startswith(p) and n.endswith(".sql"))
-        if not hit:
-            return False, ref, _sha256(_canon({"prefixes": prefixes, "files": []})), "no migration file %s* at the commit" % p
-        wanted.extend(hit)
+    if mode == "all":
+        wanted = sorted(n for n in names if n.endswith(".sql"))
+        if not wanted:                                    # an empty list at the commit is no evidence that the ledger is complete
+            return None, ref, None, "the commit lists no migration file"
+    else:
+        for p in prefixes:
+            hit = sorted(n for n in names if n.startswith(p) and n.endswith(".sql"))
+            if not hit:
+                return False, ref, _sha256(_canon({"prefixes": prefixes, "files": []})), "no migration file %s* at the commit" % p
+            wanted.extend(hit)
     out, why = _run_sql(dsn, "SELECT filename FROM _migrations_applied ORDER BY filename")
     if out is None:
         return None, ref, None, why
     applied = set(out.splitlines())
     missing = [w for w in wanted if w not in applied]
-    return not missing, ref, _sha256(_canon({"wanted": wanted, "missing": missing})), "%d missing" % len(missing)
+    return not missing, ref, _sha256(_canon({"mode": mode, "wanted": wanted, "missing": missing})), "%d of %d missing" % (len(missing), len(wanted))
 
 
 def _d_json_keys(ctx: "Ctx", part: Part) -> Outcome:
@@ -278,6 +291,40 @@ def _d_json_keys(ctx: "Ctx", part: Part) -> Outcome:
     return all(bool(node.get(k)) for k in keys), ref, _sha256(data), "ledger read"
 
 
+def _dig(obj: Any, dotted: str) -> Tuple[bool, Any]:
+    for key in dotted.split("."):
+        if not isinstance(obj, dict) or key not in obj:
+            return False, None
+        obj = obj[key]
+    return True, obj
+
+
+def _d_json_field_eq(ctx: "Ctx", part: Part) -> Outcome:
+    """A JSON record outside the repository (a readiness report, a verdict) must hold each named field with the declared value. `equals_head: true` compares the
+    field with the commit the evaluator resolved, so a record made for ANY other head reads false; `{head}` in `path` names a per-head file. A missing or
+    unparsable file, a missing field and a JSON null all read null (no evidence); a present field with another value (or another type: 1 is not true) reads false."""
+    raw = part.get("path")
+    path = raw.replace("{head}", ctx.sha) if isinstance(raw, str) else None
+    ref = "file:%s" % path
+    fields = [f for f in part.get("fields", []) if isinstance(f, dict) and isinstance(f.get("field"), str) and f["field"]]
+    try:
+        data = Path(path).read_bytes()                    # type: ignore[arg-type]
+        obj = json.loads(data.decode("utf-8"))
+    except (OSError, TypeError, ValueError):
+        return None, ref, None, "record unreadable"
+    if not fields or any(("equals" in f) == bool(f.get("equals_head")) for f in fields):
+        return None, ref, _sha256(data), "json_field_eq part declares each field with exactly one of equals / equals_head"
+    verdicts: List[Optional[bool]] = []
+    for f in fields:
+        found, got = _dig(obj, f["field"])
+        want = ctx.sha if f.get("equals_head") else f["equals"]
+        if not found or got is None:
+            verdicts.append(None)
+        else:
+            verdicts.append(type(got) is type(want) and got == want)
+    return combine(verdicts), ref, _sha256(data), "%d field(s) read" % len(fields)
+
+
 DETECTORS = {
     "unbound": _d_unbound,
     "git_file": _d_git_file,
@@ -285,6 +332,7 @@ DETECTORS = {
     "db_sql": _d_db_sql,
     "db_migrations": _d_db_migrations,
     "json_keys": _d_json_keys,
+    "json_field_eq": _d_json_field_eq,
 }
 
 
@@ -348,7 +396,7 @@ def evaluate(repo: Path, ref: str, workdir: Path, python: Optional[str] = None, 
     sha = resolve_sha(repo, ref)
     if sha is None:
         raise ValueError("cannot resolve %r to a commit in %s" % (ref, repo))
-    workdir = Path(workdir)
+    workdir = Path(workdir).resolve()                     # a pytest part runs with another cwd: a relative scratch path would put its junit file somewhere else (null)
     workdir.mkdir(parents=True, exist_ok=True)
     tree_ok, reason = worktree_state(repo, sha)
     ctx = Ctx(repo, sha, workdir, python or sys.executable, tree_ok, reason)
