@@ -412,6 +412,8 @@ def test_verification_job_refuses_final_metadata_before_window_verification(monk
             return self
         def fetchone(self):
             return (['snapshot-fact'],)
+        def fetchall(self):              # merge-back wave 3c-a: the geometry stage now reconciles near-misses (the stub's truthy fetchone says the layer exists) and reads the stored rows: none here
+            return []
     with pytest.raises(job.VerificationDisagrees, match='karaka_agent_mismatch'):
         job._verify_class(Conn(), chart_id='chart', generation='candidate', event_class='business_launch',
             position_at=None, configured_selection={'P3': '1.2.0'}, path_rulings={}, h_unknown={},
