@@ -3040,6 +3040,13 @@ jobs:
         run: >-
           python "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-shard-5-0 --
           -q -p no:cacheprovider
+      - name: KĀLA-YANTRA seal/dispatch input-freshness detectors (seal job's own digest needs the sidecar dependency set)
+        if: matrix.shard == 1
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m pip install -r platform/python-sidecar/requirements-ci.txt --quiet
+          python -B "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-seal-inputs -- -q -rs -p no:cacheprovider
       - name: KĀLA-YANTRA operation adapter acceptance harness (OPS-NB-01)
         if: matrix.shard == 1
         run: python -B "$GITHUB_WORKSPACE/platform/scripts/governance/ci_discovery.py" pytest governance-tool-tests-shard-6-0 -- -q -p no:cacheprovider

@@ -294,6 +294,12 @@ jobs:
           )"
           gcloud logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$VERIFICATION_JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$EXECUTION\" AND timestamp>=\"$START\"" \
             --project madhav-astrology --bucket=_Default --location=global --view=gochara_verification_job --order=asc --format=json > execution_logs.json
+          # Step-10 POSITIVE log-view proof (N.8), under this workflow's own github-actions@ identity (never impersonated): the SAME view, read once more with NO resource filter (the read above is
+          # filtered by its own query, so it can only prove the positive side). Bounded by the same timestamp and 200 entries. HOLD (exit 2, named reason) if the view returns no job entry, or any
+          # entry that is not resource.type=cloud_run_job / job_name=$VERIFICATION_JOB. The outside-refusal row is recorded NULL (SR-LOGVIEW-NARROW-KEEP), never green.
+          gcloud logging read "timestamp>=\"$START\"" --project madhav-astrology --bucket=_Default --location=global --view=gochara_verification_job --order=desc --limit=200 --format=json > view_probe_logs.json
+          python3 00_ARCHITECTURE/briefs/kalayantra/fleet/log_view_proof.py check --probe-file view_probe_logs.json --execution-logs-file execution_logs.json \
+            --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --execution "$EXECUTION" --out logview_proof.json
           python3 platform/scripts/gochara_seal_brief_extract.py --logs-file execution_logs.json --out-brief brief.json --out-compact brief.compact.json
 
       - name: Check the brief (digest recomputed, persisted receipt, gate clean, policy, revision) and bind it to the executed resource
@@ -343,6 +349,7 @@ jobs:
             brief.json
             brief.compact.json
             brief.envelope.json
+            logview_proof.json
           retention-days: 90
           if-no-files-found: error
 
