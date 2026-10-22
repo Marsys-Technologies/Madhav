@@ -571,6 +571,7 @@
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_iam_policy_readback*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_http_probe*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_seal_controller*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_dispatch_chain*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_equivalence_record*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_consumer_probe*.py"
       ]
