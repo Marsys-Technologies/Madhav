@@ -149,6 +149,7 @@ class TestNearSelfScoping:
         import types
         w._native_ctx = types.SimpleNamespace(moon_sign="Aries")
         w._record_substep = lambda *a, **k: None
+        w._conv_generation = "legacy"      # migration 1405: run_substep resolves it before any substep
         w._substep_near(conn, "cid", dry_run=False)
         return [sql for sql, _ in conn.cur.executed if "DELETE FROM kala_convergence" in sql]
 

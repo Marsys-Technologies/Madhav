@@ -79,7 +79,7 @@ class KaKalasutraWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT signal_id, mode, peak_date, orb_strength, convergence_score
-                FROM kala_convergence
+                FROM kala_convergence_served
                 WHERE chart_id = %s AND signal_id IS NOT NULL
             """, (chart_id,))
             convergence_rows = cur.fetchall()

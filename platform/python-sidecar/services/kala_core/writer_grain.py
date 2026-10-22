@@ -17,10 +17,11 @@ import hashlib
 import json
 from typing import Any, Iterable, Mapping
 
-from psycopg.rows import tuple_row
+from psycopg.rows import dict_row, tuple_row
 
 from pipeline.orchestrator.writers import SubStep
 from services.kala_core.manifest import Candidate, attest_grain, lock_candidate_inputs
+from services.kala_core.promise.candidate import building_candidate
 
 GRAIN_STEP = 'grain:inputs'
 _RESERVED = ('legacy', 'current', 'published', 'retained')
@@ -72,6 +73,24 @@ def predicate_generation(conn: Any, chart_id: Any, candidate: Candidate | None) 
         return candidate.generation
     row = _first(conn, 'SELECT generation FROM kala_layer_head WHERE chart_id = %s', (chart_id,))
     return row[0] if row else 'legacy'
+
+
+def convergence_generation(conn: Any, chart_id: Any, candidate: Candidate | None) -> str:
+    """Generation of `kala_convergence` a writer may WRITE and DELETE (migration 1405).
+
+    A candidate-bound build owns exactly its candidate generation: the candidate row is read AND locked
+    (`building_candidate`, as ka_yojaka does), so only a registered, still-building, unpublished candidate of THIS build
+    can be written, and a publish or teardown of it waits. An ordinary rebuild keeps the served partition (published head,
+    else 'legacy'). The table's foreign keys cascade, so a delete scoped to anything wider than this generation would
+    reach the children of served rows (kala_darshana, kala_obstruction, phala_anchors, kala_bhavishya).
+    """
+    if candidate is None:
+        with conn.cursor() as cur:      # a cursor, not conn.execute: the legacy writers run on cursor-only connections too
+            cur.execute('SELECT generation FROM kala_layer_head WHERE chart_id = %s', (chart_id,))
+            row = cur.fetchone()
+        return 'legacy' if row is None else (row['generation'] if isinstance(row, dict) else row[0])
+    with conn.cursor(row_factory=dict_row) as cur:
+        return building_candidate(cur, candidate.chart_id, candidate.generation, candidate.build_id)['generation']
 
 
 def _prior_vector(conn: Any, candidate: Candidate, key: str) -> str | None:

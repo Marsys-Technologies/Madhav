@@ -303,7 +303,7 @@ class PhMuhurtaWriter(WriterBase):
                            c.window_start AS obstruction_start,
                            c.window_end   AS obstruction_end
                     FROM kala_obstruction o
-                    JOIN kala_convergence c ON c.convergence_id = o.convergence_id
+                    JOIN kala_convergence_served c ON c.convergence_id = o.convergence_id
                     WHERE o.chart_id = %s
                     """,
                     (chart_id,),

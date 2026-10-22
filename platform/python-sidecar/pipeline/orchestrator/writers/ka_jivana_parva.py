@@ -119,7 +119,7 @@ class KaJivanaParvaWriter(WriterBase):
             cur.execute("""
                 SELECT kc.peak_date, kc.convergence_score, kap.signature_class,
                        COALESCE(kd.effective_score, kc.convergence_score) AS effective_score
-                FROM kala_convergence kc
+                FROM kala_convergence_served kc
                 LEFT JOIN kala_darshana kd ON kc.convergence_id = kd.convergence_id
                 LEFT JOIN LATERAL (
                     SELECT signature_class

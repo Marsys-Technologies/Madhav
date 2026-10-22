@@ -61,7 +61,8 @@ def conn(kala_db_dsn):
                   'PRIMARY KEY(chart_id, asset_id, substep_key))')
         c.execute('CREATE TABLE kala_convergence (convergence_id serial, chart_id uuid, signal_id text, mode text, '
                   'peak_date date, convergence_score numeric, orb_strength numeric, window_start date, '
-                  'window_end date, horizon_tier text)')
+                  'window_end date, horizon_tier text, generation text NOT NULL DEFAULT \'legacy\')')
+        c.execute('CREATE VIEW kala_convergence_served AS SELECT * FROM kala_convergence')    # migration 1405: readers take the served view
         c.execute('CREATE TABLE kala_obstruction (id serial, chart_id uuid, convergence_id integer, signal_id text, '
                   'obstruction_type text, severity text, severity_score numeric, override_score numeric, '
                   'obstruction_detail jsonb, source_citation text, generation text)')
@@ -113,8 +114,8 @@ def sangam(conn, monkeypatch):
     def near(self, c, ch, dry):
         # Stands in for the windowing: it only leaves the rows the test plants.
         for _ in range(getattr(self, 'planted_rows', 0)):
-            c.execute("INSERT INTO kala_convergence (chart_id, signal_id, peak_date, horizon_tier) "
-                      "VALUES (%s, 'S-CAND', '2032-02-02', 'near')", (ch,))
+            c.execute("INSERT INTO kala_convergence (chart_id, signal_id, peak_date, horizon_tier, generation) "
+                      "VALUES (%s, 'S-CAND', '2032-02-02', 'near', %s)", (ch, self._write_generation()))
         return WriterResult('ka_sangam', getattr(self, 'planted_rows', 0))
     monkeypatch.setattr(cls, '_substep_near', near)
     monkeypatch.setattr(cls, '_substep_lifetime', lambda self, c, ch, i, dry: WriterResult('ka_sangam', 0))
@@ -187,8 +188,9 @@ def vighnakara(conn, monkeypatch):
 
 
 def convergence(conn):
-    conn.execute("INSERT INTO kala_convergence (chart_id, signal_id, mode, peak_date, convergence_score) "
-                 "VALUES (%s, 'S-CONV', 'A', '2030-03-03', 0.9)", (CHART,))
+    # the SERVED partition of this chart: it has a published head, so the served generation is the head's (migration 1405)
+    conn.execute("INSERT INTO kala_convergence (chart_id, signal_id, mode, peak_date, convergence_score, generation) "
+                 "VALUES (%s, 'S-CONV', 'A', '2030-03-03', 0.9, %s)", (CHART, HEAD))
 
 
 def test_vighnakara_reads_candidate_predicates_and_attests_under_the_candidate(conn, vighnakara):

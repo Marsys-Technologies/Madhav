@@ -230,7 +230,7 @@ class _LegacyKaVighnakaraWriter(WriterBase):
             cur.execute("""
                 SELECT convergence_id, signal_id, mode, peak_date,
                        convergence_score, orb_strength, window_start, window_end
-                FROM kala_convergence
+                FROM kala_convergence_served
                 WHERE chart_id = %s AND peak_date IS NOT NULL
                 ORDER BY convergence_score DESC NULLS LAST
                 LIMIT 500
