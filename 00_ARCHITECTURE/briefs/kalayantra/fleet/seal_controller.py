@@ -15,6 +15,8 @@ THE CHAIN (each stage re-evaluates from evidence on every poll; the persisted ma
                 definition workflow (and owner step 11a, the package build with ci_gate=require-ci-green, only when the definition finds no pipeline image), job outcomes read back, surrogate paged.
   2 BRIEF       the MAIN-produced brief (`gochara_seal_brief_check.py` green; the retained execution envelope `check-envelope` green for THIS run/attempt/commit/brief digest/brief id;
                 the head is an ancestor of origin/main; the brief's own numerical gate equals the aggregate).  No brief yet => the exact dispatch command is prepared and the surrogate paged.
+  2b LOG VIEW   step 10 positive proof: the retained `logview_proof.json` of the brief run is RE-MEASURED (the view returned >= 1 `gochara-verification-job` entry and ONLY such entries); false / missing /
+                unreadable => HOLD with a named reason.  `view_refusal_outside` is carried as NULL (SR-LOGVIEW-NARROW-KEEP; re-evaluated by LOGVIEW-NARROW-IAC) — never green.
   3 APPROVAL    all of the above + (when named) the executor's quiescence record => the evidence bundle + the exact approval comment/command are written and the surrogate is paged, ONCE per
                 (generation, head, run, attempt).  Nothing is approved by this program: the gochara-seal required reviewer approves.
   4 SEALER      the approval history of THIS run is checked by the reviewed `gochara_seal_approval.py` (the grammar line, run/attempt, digest, brief id) and the approver is the expected
@@ -26,7 +28,7 @@ Adopted-generation file (JSON, written by the cockpit; default /Users/Dev/kalaya
   chart_id, generation, head (40-hex sealing commit), verification_operation_id, aggregate_file, expected_classes [26 names] (+ optional expected_class_count),
   repo (a checkout whose origin/main contains the head; scripts default to <repo>/platform/scripts), brief_run {run_id, attempt}, brief_file, compact_file, envelope_file,
   optional: approval_history_file, seal_run_file, quiescence_operation_id, expected_approver (default the gochara-seal required reviewer), triggering_actor, readback_epoch,
-  item_id, kyd, reviewed_commit, scripts_dir, aggregate_readback_operation_id.
+  item_id, kyd, reviewed_commit, scripts_dir, aggregate_readback_operation_id, logview_proof_file (REQUIRED once the brief exists: the brief job's `logview_proof.json`, step 10).
 """
 from __future__ import annotations
 
@@ -35,6 +37,7 @@ import contextlib
 import datetime as dt
 import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -71,11 +74,23 @@ _CLASS = re.compile(r"[A-Za-z0-9_.-]{1,80}")
 # the approval comment line — pinned equal to platform/scripts/gochara_seal_approval.py `_LINE` by a parity test
 APPROVAL_LINE = "brief-digest: {digest}  run: {run}  attempt: {attempt}  brief-id: {brief_id}"
 
+def _sibling(name: str):
+    """The reviewed sibling module next to this file, loaded by path (this program is run as a script AND loaded by path in its tests)."""
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+lvp = _sibling("log_view_proof")                           # step-10 positive log-view proof (SR-LOGVIEW-NARROW-KEEP); pure, no gcloud
+
 READY, NOT_READY = "READY", "NOT_READY"
 NO_INPUT, STALE_HEAD, REFUSED, NOT_PASSED = "NO_INPUT", "STALE_HEAD", "REFUSED", "NOT_PASSED"
 OVER_CAP, DISAGREEMENT, AWAITING_READBACK = "INCONCLUSIVE_OVER_CAP", "DISAGREEMENT", "AWAITING_READBACK"
 AWAITING_BRIEF, AWAITING_APPROVAL, AWAITING_SEAL = "AWAITING_BRIEF", "AWAITING_APPROVAL", "AWAITING_SEAL"
 RETRY_NEEDED, HALTED, SEALED = "RETRY_NEEDED", "HALTED", "SEALED"
+HOLD = "HOLD"                                              # a named pre-seal check read false or could not be read: no approval is prepared
 STAGES = ("START", "AGGREGATE", "REDEPLOY", "BRIEF", "APPROVAL_REQUESTED", "APPROVED", "SEALED")
 
 # owner step 11 (OWNER_GUIDE_v2 §6): the checking job redeployed at the sealing version.  Every name below is pinned to the workflow file it reads by a parity test.
@@ -484,6 +499,23 @@ def check_brief(a: dict, agg: dict, sdir: Path, python: str, main_ref: str) -> d
             "scripts": {n: {"path": str(sdir / n), "sha256": sha256_file(sdir / n)} for n in ("gochara_seal_brief_check.py", "gochara_seal_execution_check.py")}}
 
 
+def check_logview_proof(a: dict, brief: dict) -> dict:
+    """Step 10, the POSITIVE log-view proof: the retained proof of the brief run (adopted `logview_proof_file`, uploaded by the brief job) is RE-MEASURED here from its groups, never trusted.
+    Missing / unreadable / of another run / false => HOLD with a named reason.  `view_refusal_outside` is carried as NULL with its reason and is never counted as a pass (SR-LOGVIEW-NARROW-KEEP)."""
+    name = "positive_log_view_proof"
+    path = a.get("logview_proof_file")
+    if not path or not Path(path).is_file():
+        raise NotReady(HOLD, f"{name}: no retained proof (adopted `logview_proof_file` {path!r}); the brief job's view read has not been proven, so no approval is prepared")
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+        res = lvp.verify(doc, run_id=brief["run_id"], attempt=brief["attempt"])
+    except (OSError, ValueError, lvp.ViewUnreadable) as exc:
+        raise NotReady(HOLD, f"{name}: unreadable — {exc}") from None
+    if not res["passed"]:
+        raise NotReady(HOLD, f"{name}: {res['reason']}")
+    return {"path": str(path), "sha256": sha256_file(Path(path)), "rows": res["rows"], "view": doc["view"], "execution": doc.get("execution")}
+
+
 # ── stage 3: the approval preparation (emission, exactly once per generation × head × run × attempt) ───────────────────────────
 
 def approval_comment(brief: dict) -> str:
@@ -497,7 +529,7 @@ def approval_command(a: dict, brief: dict) -> str:
             f"  -f comment='{approval_comment(brief)}'")
 
 
-def bundle_doc(a: dict, agg: dict, brief: dict, quiescence: dict | None, out: Path, now, redeploy: dict | None = None) -> dict:
+def bundle_doc(a: dict, agg: dict, brief: dict, quiescence: dict | None, out: Path, now, redeploy: dict | None = None, logview: dict | None = None) -> dict:
     n = agg["aggregate"]
     return {"schema": SCHEMA, "kind": "approval_bundle", "key": key_of(a), "run": {"run_id": brief["run_id"], "attempt": brief["attempt"]}, "chart_id": a["chart_id"],
             "generation": a["generation"], "head": a["head"], "approver": approver_of(a), "approval_comment": approval_comment(brief), "brief_digest": brief["brief_digest"],
@@ -508,6 +540,7 @@ def bundle_doc(a: dict, agg: dict, brief: dict, quiescence: dict | None, out: Pa
             "evidence": {"aggregate_sha256": agg["aggregate_sha256"], "brief": brief["brief_path"], "compact": brief["compact_path"], "envelope": brief["envelope_path"],
                          "grain_readback": agg["grain_readback"], "verification": agg["verification"], "scripts": brief["scripts"],
                          "redeploy": redeploy,                                                          # owner step 11: the definition run (and package run) read back at the sealing head
+                         "logview": logview,                                                            # step 10: positive log-view proof (+ the outside-refusal row, NULL)
                          "quiescence": quiescence if quiescence is not None else None,
                          "quiescence_note": "measured and ACCEPTED" if quiescence is not None else "NOT MEASURED: the adopted file names no quiescence operation"},
             "prepared_at": utc(now), "bundle_dir": str(out)}
@@ -521,6 +554,7 @@ def surrogate_text(doc: dict, cmd: str) -> str:
             f"  G-6 {v['g6']}; windows {v['windows']}, numbered {v['numbered']}, blank-with-reason {v['blank']}; INCONCLUSIVE {v['inconclusive']} of {v['windows']} = {v['share_percent']} (cap {v['cap_percent']}).\n"
             f"  brief digest {doc['brief_digest']}, brief id {doc['brief_id']}, producer execution {doc['producer_execution_id']}.\n"
             f"  checking job redeployed at the sealing head: definition run {((doc['evidence'].get('redeploy') or {}).get('definition') or {}).get('run_id')} read back green (owner step 11).\n"
+            f"  step 10 log view: PROVEN positive (view returned only {lvp.JOB} entries, at least one); {lvp.OUTSIDE} = NULL ({lvp.OUTSIDE_REASON}) — not green.\n"
             f"  quiescence: {doc['evidence']['quiescence_note']}.\n"
             f"  evidence bundle: {doc['bundle_dir']}/APPROVAL_BUNDLE.json\n\n"
             f"Approval comment (exactly this line):\n  {doc['approval_comment']}\n\n"
@@ -574,7 +608,7 @@ def emit_dispatch(a: dict, out: Path, pages_log: Path, now) -> str:
         return "NEW"
 
 
-def emit_approval(a: dict, agg: dict, brief: dict, quiescence: dict | None, out: Path, pages_log: Path, now, redeploy: dict | None = None) -> tuple[str, dict]:
+def emit_approval(a: dict, agg: dict, brief: dict, quiescence: dict | None, out: Path, pages_log: Path, now, redeploy: dict | None = None, logview: dict | None = None) -> tuple[str, dict]:
     key = key_of(a)
     run_key = f"{key} run={brief['run_id']} attempt={brief['attempt']}"
     bdir = out / "approval" / a["generation"] / f"{a['head'][:12]}-r{brief['run_id']}a{brief['attempt']}"
@@ -588,7 +622,7 @@ def emit_approval(a: dict, agg: dict, brief: dict, quiescence: dict | None, out:
         if existing is not None and existing.get("brief_digest") != brief["brief_digest"]:
             raise NotReady(REFUSED, f"the approval prepared for {run_key} names brief digest {existing.get('brief_digest')!r}, the retained brief is now {brief['brief_digest']!r}: "
                                     "a stale or altered brief is never re-approved; start a fresh run")
-        doc = existing if existing is not None else bundle_doc(a, agg, brief, quiescence, bdir, now, redeploy)
+        doc = existing if existing is not None else bundle_doc(a, agg, brief, quiescence, bdir, now, redeploy, logview)
         if marker.exists():
             return "ALREADY", doc
         if existing is None:                                                          # the bundle is complete on disk BEFORE any page or marker
@@ -1072,8 +1106,9 @@ def advance(a: dict, ops: Path, out: Path, pages_log: Path, sdir: Path, python: 
             exc.reason += f" ({'dispatch paged' if how == 'NEW' else 'dispatch already paged'})"
         raise
     status["stage"] = "BRIEF"
+    logview = check_logview_proof(a, brief)
     quiescence = check_quiescence(ops, a)
-    how, doc = emit_approval(a, agg, brief, quiescence, out, pages_log, now, redeploy)
+    how, doc = emit_approval(a, agg, brief, quiescence, out, pages_log, now, redeploy, logview)
     status["stage"] = "APPROVAL_REQUESTED"
     status["approval_emission"] = "paged" if how == "NEW" else "already_paged"
     run = (brief["run_id"], brief["attempt"])
