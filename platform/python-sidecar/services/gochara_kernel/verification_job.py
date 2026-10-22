@@ -267,7 +267,7 @@ def check_preconditions(conn, *, chart_id: str, generation: str, classes=None, e
     try:
         ivv.verify_inputs(conn, vec, ephe_path=ephe_path, modules=modules, path_refs=path_refs,
                           jd_range=iv.consumed_jd_range((manifest_horizon.lower, manifest_horizon.upper)),
-                          require_scored_classes=True)
+                          require_scored_classes=True, require_scored_until=True)
     except RuntimeError as exc:
         raise VerificationRefused("stale_inputs", str(exc)) from exc
     out["inputs"] = "independently re-derived"

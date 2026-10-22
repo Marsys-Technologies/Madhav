@@ -414,6 +414,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     """
     got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
     assert "horizon_basis" not in got and "test_slice" not in got
+    # OD-1 / D-FLIP F-10: the ONE component added since the golden was captured — the scored edge, derived from the protocol's H1 (2026-04-17, inclusive IST) → the next IST midnight.
+    # It is asserted here by value and set aside below; every other component is still compared to the accepted baseline unchanged.
+    assert got["scored_until"] == "2026-04-18T00:00:00+05:30" and "scored_until" not in want
+    got = {k: v for k, v in got.items() if k != "scored_until"}
 
     same_host = got["ephemeris"]["platform"] == want["ephemeris"]["platform"]
     host_bound = () if same_host else ("platform", "library_sha256", "probe_digest")
@@ -479,6 +483,9 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Evaluation re-pinned at the SR-OD1 merge-back wave 3c-b (vedha-residence + ndh + g6-resolver + nearmiss on the wave-3c-a head): ka_gochara_v5 (vedha-residence: the writer binds the pinned
     # ephemeris path to the vedha source) and rule_registry (ndh: changelog 1.2.0 hook) are evaluation-stage modules. Re-derived ONCE from the final merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 1f37c1f0... is the wave-3c-a head); no golden component is re-captured.
+    # Evaluation re-pinned for OD-1 / D-FLIP F-10 (kalayantra/od1-scored-until): input_vector pins `scored_until` (derived from gochara_eval.registry.H1), input_vector_verifier re-derives it
+    # and the ka_gochara_v5 writer supplies it and requires it. Re-derived from the real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin
+    # 3fe1142e... is the wave-3a head); geometry is unchanged; no golden component is re-captured (the one new vector key is asserted separately above).
     assert got["implementation"]["evaluation"] == "cdcefd54289da6e3ba39d113ac670aa781856ee631efaeb71d1907efb4876408"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
@@ -545,4 +552,5 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned at the SR-OD1 merge-back wave 3c-b (vedha-residence + ndh + g6-resolver + nearmiss): vedha_source / vedha_verifier / window_verifier (vedha-residence, g6-resolver), verification_job and g6_plan
     # (g6-resolver) move the window stage. Re-derived ONCE from the final merged tree's real bytes the same way (the prior pin 75887439... is the wave-3c-a head; the lanes' own pins (g6-resolver 3d346c27...)
     # were derived on earlier trees and are superseded; the intermediate merge steps carried the wave-3c-a pin and are not final); no golden component is re-captured.
+    # Window re-pinned for OD-1 / D-FLIP F-10: verification_job asks the independent verifier to REQUIRE the scored-edge pin (the prior pin ba0588e6... is the wave-3a head); re-derived the same way.
     assert got["implementation"]["window"] == "b656893609d17b6f7de0fdb0712d074f5db5952b2b3054a2a2b01b7caf421d82"
