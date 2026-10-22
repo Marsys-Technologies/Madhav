@@ -271,6 +271,34 @@ def _kernel_value_at(rec: SweepRecord, ref: tuple, t: datetime) -> float | None:
     return best
 
 
+_JD_UNIX_EPOCH = 2440587.5       # the same JD <-> datetime convention the store writes boundaries under (record_store._JD_UNIX_EPOCH)
+
+
+def jd_ulp_tolerance(t: datetime) -> timedelta:
+    """ONE JD-ulp at `t`: the spacing of the double that carries the instant's Julian Day (≈ 4.7e-10 d ≈ 40 µs at JD 2.46e6), rounded UP to the
+    datetime's microsecond, plus that one microsecond (the stored edge and the probe instant are each a whole-µs datetime). The substrate stores a contact boundary as a Julian-Day double that Swiss bisected to 1e-9 d (`swiss_bisect_tol_1e-9d`)
+    and `record_store` converts to a datetime; a stored edge therefore sits at most one JD-ulp from the sign / orb edge it names (measured 19–22 µs
+    on the real sky, AR_DIAG §2). This is the only slack the support/geometry check grants; a 1 s disagreement is 25,000 times larger."""
+    jd = t.timestamp() / 86400.0 + _JD_UNIX_EPOCH
+    return timedelta(microseconds=math.ceil(math.ulp(jd) * 86400.0 * 1e6) + 1)
+
+
+def _geometry_at_edge(check, instant: datetime, side: str, lo: datetime, hi: datetime) -> bool | None:
+    """The geometry check at one END of a stored piece `[lo, hi)`, under the boundary convention of the platform (half-open: a change instant is the
+    FIRST microsecond of the NEW state, which owns it — p1_operands.py BOUNDARIES, p1_operands_check.py NAMED LIMITS; SR-OD1 R-2 / SR-H2-1S).
+    A stored edge is exact only to one JD-ulp (`jd_ulp_tolerance`), so a `False` AT the edge is accepted iff the target is inside at the first
+    instant one ulp INSIDE the piece (`start`: `instant + ulp`; `end`: `instant - ulp`), i.e. the true edge lies within one ulp of the stored one.
+    Never looser: a `False` there too (the edge is further than one ulp off), or an undeterminable probe, keeps the `False`; a `True` or `None`
+    at the edge itself is returned unchanged. The probe never leaves the piece (clamped to its midpoint when the piece is shorter than 2 ulp)."""
+    g = check(instant)
+    if g is not False:
+        return g
+    tol = jd_ulp_tolerance(instant)
+    mid = lo + (hi - lo) / 2
+    probe = min(instant + tol, mid) if side == "start" else max(instant - tol, mid)
+    return check(probe) is True
+
+
 def activity_kernel(row: dict, rec: SweepRecord) -> Outcome:
     """Routed through the validated row/geometry contract (Codex round 7 [8]): the factor row addressed by
     ITS membership reference declares applicability, the physical target is validated against the object
@@ -1207,8 +1235,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             geometry_unknown = False
             for p in live:
                 for check in p.checks:
-                    for instant in (a, b - timedelta(microseconds=1)):
-                        g = check(instant)
+                    for instant, side in ((a, "start"), (b - timedelta(microseconds=1), "end")):
+                        g = _geometry_at_edge(check, instant, side, a, b)
                         if g is False:
                             raise SweepRefusal(
                                 f"record {p.rec.record_id}: its stored support contains {instant.isoformat()} "

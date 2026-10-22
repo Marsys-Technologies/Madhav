@@ -519,4 +519,6 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned at the SR-OD1 merge-back wave 3b (R8X on R67+S3+D3+R2+R8): g6_plan joins the window stage and numerical_window_gate / verification_job changed (aggregate T16 universe, T18 G-6
     # plan, B4 wall rule); geometry is unchanged. Re-derived from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin
     # ba0588e6... is the wave-3a head); R8X's own lane pin 0e4f173d... was derived without R67's window_cert_check and is superseded; no golden component is re-captured.
-    assert got["implementation"]["window"] == "a7d186891c5e1b9b2a66851c8ef0093fbf838a6e69e38feaa1e99a3ddf3dc855"
+    # Window re-pinned for SR-OD1 achievement_recognition (2): window_sweep's support/geometry check honours the half-open boundary convention at JD-ulp precision. Re-derived from the tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin a7d18689... is the wave-3b head; the lane's own pin 67aac6d5... was derived on the wave-3a tree and is superseded); evaluation and geometry are unchanged; no golden component is re-captured.
+    assert got["implementation"]["window"] == "17d93221309c1b74e0c91f5b6cf8097b48348715742b4f065fd032e66ca9e7aa"
