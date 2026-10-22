@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 
 import { describe, expect, it } from 'vitest'
 
@@ -7,6 +7,7 @@ import {
   ASSET_REGISTRY_UPSERT_SQL,
   ASSETS,
 } from '../seed/asset_registry_seed'
+import { computeWaves, type RegistryEntry } from '../../src/lib/build/plan'
 
 // Production at migration 615 plus the deterministic dependency rewrites in
 // migrations 619, 626, and 1030, plus the direct read edges declared by
@@ -390,6 +391,14 @@ describe('asset_registry_seed — migration-governed DAG parity', () => {
   })
 })
 
+// The 1403 migration is placed under platform/migrations/ by the cockpit; KALA_MIGRATION_1403 may name it before that.
+function k8Edge1403(): { asset_id: string; producer: string; from: string[]; to: string[] } {
+  const named = process.env.KALA_MIGRATION_1403
+  const dir = new URL('../../migrations/', import.meta.url)
+  const file = named ?? new URL(readdirSync(dir).filter(f => /^1403_.*\.sql$/.test(f)).sort()[0] ?? '1403_MISSING.sql', dir)
+  return JSON.parse(readFileSync(file, 'utf8').split('$k8_edge$')[1])
+}
+
 // K8: bootstrap agrees with the migration without activating candidate writers.
 describe('K8 registry truth', () => {
   const byId = new Map(ASSETS.map(a => [a.asset_id, a]))
@@ -412,15 +421,30 @@ describe('K8 registry truth', () => {
       expect(byId.get(id)?.is_active,id).toBe(false)
     }
   })
+  it('1403: ka_gochara_v5 reads its L0 dignity producer, the whole seed DAG is acyclic and the planner builds the producer first', () => {
+    const edge = k8Edge1403()
+    expect(edge.to).toEqual([...edge.from, edge.producer])
+    expect(byId.get(edge.asset_id)?.depends_on).toEqual(edge.to)
+    expect(byId.get(edge.producer)).toMatchObject({ scope: 'global', is_active: true, depends_on: [] })
+    const registry: RegistryEntry[] = ASSETS.map(a => ({ asset_id: a.asset_id, layer: a.layer, depends_on: a.depends_on, estimated_seconds: null }))
+    // computeWaves -> topoSort THROWS on any cycle, so this is the real planner's acyclicity check over every seed asset
+    const waves = computeWaves(registry.map(r => r.asset_id), registry, 'global', null)
+    const waveOf = (id: string) => waves.findIndex(w => w.includes(id))
+    expect(waveOf(edge.producer)).toBeGreaterThanOrEqual(0)
+    expect(waveOf(edge.producer)).toBeLessThan(waveOf(edge.asset_id))
+  })
   it('keeps bootstrap equal to the K8 migration, including generation-aware counters', () => {
     const migration = readFileSync(new URL('../../migrations/1392_k8_registry_truth.sql', import.meta.url),'utf8')
     const rows = JSON.parse(migration.split('$k8_rows$')[1]) as {
       asset_id:string; depends_on:string[]; has_writer:boolean; has_substeps:boolean; count_sql?:string
     }[]
     expect(rows.map(r=>r.asset_id).sort()).toEqual(ASSETS.filter(a=>a.asset_id.startsWith('ka_')).map(a=>a.asset_id).sort())
+    // Registry truth is the 1392 rows plus the LATER one-element edge of 1403 (SR-K8-EDGE-1403), chained: its `from` must be the 1392 array.
+    const edge = k8Edge1403()
+    expect(rows.find(r => r.asset_id === edge.asset_id)?.depends_on, '1403 starts from the 1392 array').toEqual(edge.from)
     for (const row of rows) {
       const asset = byId.get(row.asset_id)!
-      expect(asset.depends_on,row.asset_id).toEqual(row.depends_on)
+      expect(asset.depends_on,row.asset_id).toEqual(row.asset_id === edge.asset_id ? edge.to : row.depends_on)
       expect(asset.has_writer,row.asset_id).toEqual(row.has_writer)
       expect(asset.has_substeps ?? false,row.asset_id).toEqual(row.has_substeps)
       if (row.count_sql) expect(asset.count_sql,row.asset_id).toEqual(row.count_sql)

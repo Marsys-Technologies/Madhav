@@ -2,6 +2,7 @@
 import ast
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -17,9 +18,34 @@ def sources():
     seed=(ROOT/'platform/scripts/seed/asset_registry_seed.ts').read_text()
     graph={r['asset_id']:r['depends_on'] for r in mod.parse_seed_text(seed)}
     correction=json.loads((ROOT/'platform/migrations/1392_k8_registry_truth.sql').read_text().split('$k8_rows$')[1])
-    for row in correction:
+    # Registry truth = the 1392 rows + the later one-element edge of 1403 (SR-K8-EDGE-1403), chained: its `from` must be the 1392 array.
+    # The requirement is NOT relaxed: the reads test below still compares every row to what its writer really reads.
+    edge=edge_1403()
+    truth=[dict(r,depends_on=edge['to']) if r['asset_id']==edge['asset_id'] else r for r in correction]
+    assert next(r for r in correction if r['asset_id']==edge['asset_id'])['depends_on']==edge['from'],'1403 starts from the 1392 array'
+    for row in truth:
         assert graph[row['asset_id']]==row['depends_on']
-    return seed,graph,correction
+    return seed,graph,truth
+
+
+def table_owners(seed):
+    ownership=[]
+    for block in re.findall(r'^  \{\n(.*?)^  \},',seed,re.M|re.S):
+        aid=re.search(r"(?m)^    asset_id: '([^']+)'",block)
+        if not aid or 'is_active: false' in block or aid[1]=='bg_sarvatobhadra_grid':continue
+        def literal(field):
+            found=re.search(r'\b'+field+r''': (null|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")''',block)
+            return None if not found or found[1]=='null' else ast.literal_eval(found[1])
+        ownership.append((aid[1],literal('target_table'),literal('count_sql')))
+    return ac.build_table_owners(ownership)
+
+
+def edge_1403():
+    """The 1403 migration is placed under platform/migrations/ by the cockpit; KALA_MIGRATION_1403 may name it before that."""
+    named=os.environ.get('KALA_MIGRATION_1403')
+    found=sorted((ROOT/'platform/migrations').glob('1403_*.sql'))
+    assert named or len(found)==1,'exactly one 1403 migration expected under platform/migrations/ (or KALA_MIGRATION_1403)'
+    return json.loads((Path(named) if named else found[0]).read_text().split('$k8_edge$')[1])
 
 
 def test_k8_whole_registry_graph_resolves_and_is_acyclic():
@@ -34,15 +60,7 @@ def test_k8_whole_registry_graph_resolves_and_is_acyclic():
 
 def test_k8_reads_match_the_actual_known_active_producers_with_one_disclosed_back_read():
     seed,graph,rows=sources()
-    ownership=[]
-    for block in re.findall(r'^  \{\n(.*?)^  \},',seed,re.M|re.S):
-        aid=re.search(r"(?m)^    asset_id: '([^']+)'",block)
-        if not aid or 'is_active: false' in block or aid[1]=='bg_sarvatobhadra_grid':continue
-        def literal(field):
-            found=re.search(r'\b'+field+r''': (null|'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")''',block)
-            return None if not found or found[1]=='null' else ast.literal_eval(found[1])
-        ownership.append((aid[1],literal('target_table'),literal('count_sql')))
-    owners=ac.build_table_owners(ownership)
+    owners=table_owners(seed)
     # These are lifecycle/selector inputs, not products of Avadhi or K6.
     # The current census count_sql owner inference over-attributes nested FROMs;
     # that detector gap is disclosed, never repaired with fictitious writer edges.
@@ -127,3 +145,18 @@ def test_k8_counter_bootstrap_matches_the_existing_generation_aware_migrations()
         literal=re.search(r'''\bcount_sql: ('(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")''',block)[1]
         assert ast.literal_eval(literal)==query,aid
         assert next(r for r in rows if r['asset_id']==aid)['count_sql']==query
+
+
+def test_k8_edge_1403_is_one_producer_and_the_seed_nirmana_rule_and_census_agree():
+    """The edge adds exactly the single census producer of the three L0 tables ka_gochara_v5 reads; the seed and the Nirmana staged-inert rule carry the same set."""
+    seed,graph,_=sources()
+    edge=edge_1403()
+    assert edge['to']==edge['from']+[edge['producer']]
+    # the producer is derived from the real registry ownership (target_table / count_sql), never asserted here
+    owners=table_owners(seed)
+    for table in ('bg_dignity_reference','bg_graha_naisargika_friendship','bg_combustion_orbs'):
+        assert owners[table]==[edge['producer']],table
+    assert graph[edge['asset_id']]==edge['to']
+    definitions=(ROOT/'platform/src/lib/nirmana-elevation/definitions.ts').read_text()
+    declared=re.search(r"\['"+edge['asset_id']+r"', \{ declaredDependsOn: \[([^\]]*)\]",definitions)[1]
+    assert set(re.findall(r"'([^']+)'",declared))==set(edge['to'])

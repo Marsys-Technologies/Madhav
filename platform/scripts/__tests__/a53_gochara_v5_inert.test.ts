@@ -21,12 +21,12 @@ import { ASSETS } from '../seed/asset_registry_seed'
 const A53_ASSET_ID = 'ka_gochara_v5'
 
 describe('A5.3 ka_gochara_v5 asset planner inertness', () => {
-  it('the seed row exists, is inactive, and carries the migration-1392 dependencies (inactive rows are never planned)', () => {
+  it('the seed row exists, is inactive, and carries the migration-1392 dependencies plus the 1403 L0 dignity producer (inactive rows are never planned)', () => {
     const row = ASSETS.find((a) => a.asset_id === A53_ASSET_ID)
     expect(row, 'seed row missing').toBeDefined()
     expect(row!.is_active).toBe(false)
-    // K8-REG adds the direct rule read; the planner still excludes this inactive row.
-    expect(row!.depends_on ?? []).toEqual(['ga_positions', 'ga_dashas', 'bg_transit_rules'])
+    // K8-REG adds the direct rule read, SR-K8-EDGE-1403 the L0 dignity producer; the planner still excludes this inactive row.
+    expect(row!.depends_on ?? []).toEqual(['ga_positions', 'ga_dashas', 'bg_transit_rules', 'bg_dignity_reference'])
     expect(row!.has_writer).toBe(true)
   })
 
