@@ -13,7 +13,7 @@ Claims — each with ONE oracle (the classical/analytic source is cited) and ONE
 
   N3B-1 a stretch <= NEAR_STATION_S touching a listed station is not sign-tested (S0 K-2; checker `_stations`: `ts - a <= e or b - ts <= e` is a cut)
         oracle: REAL Swiss Jupiter station, window ending 3 ms after it, the station listed; the builder numbers, the independent checker VERIFIES the
-        builder's value and instant (R1: the peak lies inside 120 s of the station).          reversion: drop the skip in `_check_arc`
+        builder's value and instant (the one isolated crest lies outside the zone; SR-NEAR-STATION-TIE).   reversion: drop the skip in `_check_arc`
   N3B-2 the builder's convention is EQUAL in value to the verifier's 120 s (owner ruling SR-STATION-NEAR-END)
         oracle: the same real-sky window agrees AND the constants are equal.                reversion: a 0 s convention (R2: the 9 DISAGREEs return)
   N3B-3 a piece <= NEAR_STATION_S touching a listed station is read monotone within the S0 noise bound
@@ -53,7 +53,8 @@ def _problem(m, tent, hi, lo=0.0):
 
 def _station_world(m, wiggle: float):
     """A body sitting at offset 0.5 (orb 1) whose support starts 60 s before its LISTED station S: in that 60 s stretch it is disturbed by a `wiggle`-sized
-    noise (a V in the kernel: -w, +w, -w at the start, middle and end of the piece) and its speed sign flips (Swiss speed noise). After S it is a clean slow drift."""
+    noise (a V in the kernel: -w, +w, -w at the start, middle and end of the piece) and its speed sign flips (Swiss speed noise). After S it climbs cleanly toward the
+    target (offset 0.5 -> 0.4, kernel 0.5 -> 0.6): the window's one maximum is its END, ~880 s past the zone, so the zone's comb does not touch it (SR-NEAR-STATION-TIE)."""
     s, hi = 1000.0, 2000.0
 
     def noise(t):
@@ -62,8 +63,8 @@ def _station_world(m, wiggle: float):
     def vel(t):
         if s - 60.0 <= t <= s:
             return 1e-9 if math.cos(2.0 * math.pi * (t - s + 30.0) / 7.0) > 0 else -1e-9      # a noisy sign
-        return 1e-12
-    tent = m.Tent(offset=lambda t: 0.5 + 1e-12 * (t - s) + noise(t), orb=1.0, velocity=vel, stations=(s,), min_station_spacing=20 * 86400.0)
+        return -1e-4
+    tent = m.Tent(offset=lambda t: 0.5 - 1e-4 * max(0.0, t - s) + noise(t), orb=1.0, velocity=vel, stations=(s,), min_station_spacing=20 * 86400.0)
     return _problem(m, tent, hi, lo=s - 60.0)
 
 
@@ -136,14 +137,16 @@ def _continuous_kin(origin: datetime):
     return at
 
 
-def _real_sky_window(m):
-    """R1: Jupiter's first 2030-03 station S; the window [S - 2 d, S + 3 ms) (the support ends 3 ms after the Swiss station, the station is LISTED — the
-    stretch between them is 3 ms); the tent's level is the station longitude 1e-9° short, so the crest (kernel 1.0) lies ~70 s from the station."""
+def _real_sky_window(m, short: float = 1e-7):
+    """Jupiter's first 2030-03 station S; the window [S - 2 d, S + 3 ms) (the support ends 3 ms after the Swiss station, the station is LISTED — the
+    stretch between them is 3 ms); the tent's level is the station longitude `short` degrees short. With the default 1e-7° the crest (kernel 1.0) lies
+    ~650 s from the station: ONE isolated maximum outside the 120 s zone, whose value is 2e-8 above the zone's, so the window still NUMBERS
+    (SR-NEAR-STATION-TIE amends SR-STATION-NEAR-END: with `short` = 1e-9° the crest, ~70 s out, is inside the zone and the window is the named blank)."""
     assert_real_ephemeris()
     st = _jupiter_station(datetime(2030, 3, 1, tzinfo=timezone.utc))
     lo, hi = st - timedelta(days=2), st + timedelta(seconds=0.003)
     origin, length = lo, (hi - lo).total_seconds()
-    level, orb = _lon_dt("Jupiter", st) - 1e-9, 5.0
+    level, orb = _lon_dt("Jupiter", st) - short, 5.0
     at = _continuous_kin(origin)
     listed = (st - origin).total_seconds()
     tent = m.Tent(offset=lambda s: _wrap180(at(s)[0] - level), orb=orb, velocity=lambda s: at(s)[1], stations=(listed,), min_station_spacing=19.75 * 86400.0)
@@ -168,7 +171,7 @@ def _builder_equals_verifier(m):
     res, st, lo, hi, origin, level, orb, listed = _real_sky_window(m)
     assert res.status == m.SOLVED, (res.reason, res.detail)                       # the builder numbers
     peak = origin + timedelta(seconds=res.instant)
-    assert abs((peak - st).total_seconds()) < 120.0, (peak, st)                    # R1: the peak lies inside 120 s of the station
+    assert 120.0 < (st - peak).total_seconds() < 1500.0, (peak, st)               # the isolated crest lies OUTSIDE the zone, before the station
     rec = chk.CheckRecord("a", "r", "jupiter", ((lo, hi),), tent=chk.TentFactor("Jupiter", level, orb))
     rep = chk.check_window(lo=lo, hi=hi, records=[rec], objective=chk.OBJ_SUM, position_at=_lon_dt, stored=chk.StoredWindow(peak, res.value), max_evals=300_000)
     assert rep.status == chk.VERIFIED, rep                                           # the independent verifier AGREES on value and instant
@@ -190,7 +193,7 @@ def oracle_the_convention_equals_the_verifiers(m):
 def oracle_piece_next_to_a_listed_station_is_monotone_within_the_s0_bound(m):
     res = _solve(m, _station_world(m, wiggle=1e-9))
     assert res.status == m.SOLVED, (res.reason, res.detail)
-    assert res.value == pytest.approx(0.5, abs=1e-8)                              # kernel 1 - 0.5/1 on the whole window, to the wiggle
+    assert res.value == pytest.approx(0.6, abs=1e-8)                              # kernel 1 - 0.4/1 at the window end, to the wiggle
 
 
 @claim("N3B-4", "NEAR_STATION_NOISE_DEG = 3.9e-9\n", "NEAR_STATION_NOISE_DEG = 1e-6\n")

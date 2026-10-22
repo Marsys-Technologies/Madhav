@@ -444,12 +444,14 @@ def oracle_h1_station_inside(m):
 def oracle_near_end_station_is_a_cut(m):
     """S0 finding K-2: the stored arcs end at a SPLINE station that differs from the Swiss one by up to 16.7 s, so the Swiss function turns
     back a few seconds before the support end. Analytic world: the body touches its level (value 1.0) at the station, 10 s before the end;
-    the end value is 1 - 5e-5. The value taken at the support end is refuted, the station's 1.0 is proved."""
+    the end value is 1 - 5e-5. The value taken at the support end is refuted; the station's 1.0 is not (no value finding) — since SR-NEAR-STATION-TIE it is
+    the named INCONCLUSIVE `tie_isolation_unresolved` (the maximum sits inside the station's zone), where it used to be VERIFIED."""
     w = w_station(m, 3590.0, 3600.0)
     end_value = 1.0 - 0.5e-6 * 10.0 ** 2
     low = run(m, w, stored(m, at(0, 3600.0 - 1e-6), end_value))
     assert low.status == m.REFUTED and chk.F_ABOVE in codes(low)
-    assert run(m, w, stored(m, at(0, 3590.0), 1.0)).status == m.VERIFIED
+    at_station = run(m, w, stored(m, at(0, 3590.0), 1.0))
+    assert at_station.status == m.UNVERIFIED and codes(at_station) == ["tie_isolation_unresolved"], at_station
 
 
 @claim("S-14", 'self.unverified.append((U_BUDGET, f"more than {self.max_evals} ephemeris evaluations needed"))', "pass")

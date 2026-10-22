@@ -21,7 +21,8 @@ THE GUARANTEE (G) — under hypotheses H1–H4, the result is either a number or
   H1 monotone arcs      every tent term's offset is monotone between listed Swiss stations (checked here: velocity sign at
                         spacing ≤ 5 d and the audited minimum station spacing > that spacing, `monotone_arc_not_established`);
                         a stretch/piece ≤ NEAR_STATION_S touching a listed station is a cut, read monotone within the S0 noise
-                        NEAR_STATION_NOISE_DEG (N-3b, SR-STATION-NEAR-END)
+                        NEAR_STATION_NOISE_DEG (N-3b, SR-STATION-NEAR-END) — AMENDED by SR-NEAR-STATION-TIE: such a window numbers UNLESS the
+                        station zone can host a tied maximum (see KNOWN LIMIT H6)
   H2 complete steps     every non-constant step factor lists its change instants and asserts the list complete
                         (`state_boundaries_incomplete`); the piece values are cross-sampled as a second detector
   H3 the pinned ephemeris  `Tent.offset` is a deterministic continuous function (the caller's seam)
@@ -35,6 +36,13 @@ THE GUARANTEE (G) — under hypotheses H1–H4, the result is either a number or
 KNOWN LIMIT (H5, stated, not hidden): two distinct interior stationary maxima closer together than one LEAF (K·h²/2 ≤ LEAF_CURV;
 ≈ 0.3–2 s on the real sky) and within TIE of each other are reported as the one the refinement finds. The independent
 verifier derives its own earliest extremum; a disagreement there is UNVERIFIED (a seal blocker), not silent.
+
+KNOWN LIMIT (H6, SR-NEAR-STATION-TIE): within NEAR_STATION_S of a listed station the real curve is a noise COMB (the Swiss longitude steps by
+~1e-9°, S0 K-2): dozens of local maxima, 0.3–1.3 s apart, ALL within TIE of the zone's top. The zone is read monotone (above), so the builder sees ONE
+candidate there, and which instant of the comb is "the earliest distinct maximum within TIE" is not decidable — to the second (Q12) or at all. So when
+the zone's value can reach within TIE + the zone's noise bound of the window's maximum, the window is the named blank `tie_isolation_unresolved`
+(INCONCLUSIVE class, R-6), never a number. A zone clearly below the maximum does not interfere: that window numbers as before. The independent
+checker applies the same rule from its own code (K12).
 
 METHOD (plan §2.3). (1) CUTS: window ends, support ends, step boundaries, listed stations, and — for every tent on every monotone
 stretch — the three roots of its monotone offset (`d = orb`, crest, exit) by BISECTION on a monotone function; a stored `t_exact`
@@ -77,6 +85,7 @@ REASON_CERTIFICATE = "solver_certificate_incomplete"
 REASON_BOUNDARIES = "state_boundaries_incomplete"          # the sweep's existing code, same string
 REASON_UNKNOWN = "objective_unknown_over_component"        # the sweep's existing code, same string
 REASON_UNDETERMINABLE = "objective_undeterminable"         # the sweep's existing code: the window has no determinable instant at all
+REASON_TIE_ISOLATION = "tie_isolation_unresolved"          # SR-NEAR-STATION-TIE: a station zone can host the earliest tie (the verifier's R-3 code, same string)
 
 QUANT = 1e-6                 # the µs quantisation: a right-open end is evaluated at b − QUANT
 TIE = 1e-9                   # frozen peak-tie tolerance between DISTINCT local maxima (window_sweep._TIE)
@@ -231,6 +240,7 @@ class _Ctx:
         self.max_evals, self.evals = int(max_evals), 0
         self._kin: dict = {}
         self.trace = _Trace()
+        self.zones: list = []           # SR-NEAR-STATION-TIE: (lo, hi, noise_F) of each listed station's zone, per support of each tent member
 
     def kin(self, tent: Tent, t: float):
         """(offset, velocity) of `tent` at `t`; ONE counted call per distinct (tent, t)."""
@@ -515,6 +525,8 @@ def _build(problem: Problem, ctx: _Ctx):
                     raise SolverRefusal(f"{m.key}: orb must be finite and positive")
                 stops = [a] + sorted(s for s in tent.stations if a < s < b) + [b]
                 cuts.update(stops)
+                ctx.zones.extend((max(a, st - NEAR_STATION_S), min(b, st + NEAR_STATION_S), NEAR_STATION_NOISE_DEG / tent.orb)
+                                 for st in tent.stations if st - NEAR_STATION_S <= b and st + NEAR_STATION_S >= a)
                 for x, y in zip(stops, stops[1:]):
                     _check_arc(tent, x, y, ctx, m.key)
                     for level in (tent.orb, 0.0, -tent.orb):          # entry, crest, exit: re-derived, never `exact_hint`
@@ -688,6 +700,39 @@ def _local_maxima(samples: list) -> list:
     return out
 
 
+def _zone_clusters(zones: list, objective: str) -> list:
+    """The listed stations' zones merged where they overlap: [(lo, hi, noise_F)], noise_F the kernel-unit noise bound of F over the merged zone —
+    the SUM of the member bounds for the sum objective (their noises can add), the largest for the min objective (a min moves by at most its larger leg)."""
+    out: list = []
+    for lo, hi, noise in sorted(zones):
+        if out and lo <= out[-1][1]:
+            prev = out[-1]
+            out[-1] = (prev[0], max(prev[1], hi), prev[2] + noise if objective == OBJECTIVE_SUM else max(prev[2], noise))
+        else:
+            out.append((lo, hi, noise))
+    return out
+
+
+def _station_zone_tie(problem: Problem, ctx: _Ctx, pieces: list, samples: list, top: float) -> Optional[str]:
+    """SR-NEAR-STATION-TIE (H6). A description when some listed station's zone (±NEAR_STATION_S, within the support) can host a maximum tied with the
+    window's: the zone's value (the largest F read there, the zone being read monotone) is within TIE + the zone's noise bound of `top`. None otherwise."""
+    for lo, hi, noise in _zone_clusters(ctx.zones, problem.objective):
+        zone_top = -1.0
+        for p in pieces:
+            if p is None:
+                continue
+            x, y = max(p.a, lo), min(p.b_eff, hi)
+            if x > y:
+                continue
+            pts = {x, y} | ({0.5 * (x + y)} if p.kind == "mixed" else set())
+            zone_top = max(zone_top, max(p.value(t) for t in pts))
+        zone_top = max([zone_top] + [s.v for s in samples if s.piece is not None and lo <= s.t <= hi])
+        if zone_top >= top - TIE - noise:
+            return (f"a station zone [{lo:.3f}, {hi:.3f}] s reaches {zone_top!r}, within TIE + {noise:.3g} of the maximum {top!r}: its noise comb of "
+                    "tied maxima is not isolated (SR-NEAR-STATION-TIE)")
+    return None
+
+
 def solve(problem: Problem, *, max_evals: int = MAX_EVALS_WINDOW) -> SolveResult:
     """Solve one window: a certified number, or a named blank. Never a best-found value. The budget is this window's alone."""
     ctx = _Ctx(max_evals)
@@ -841,6 +886,9 @@ def _solve(problem: Problem, ctx: _Ctx) -> SolveResult:
         raise _Blank(REASON_UNDETERMINABLE, "no instant of the window has both agents live")
     top = max(v for v, _t in cands)
     t_star = min(t for v, t in cands if v >= top - TIE)
+    zone_tie = _station_zone_tie(problem, ctx, pieces, samples, top)
+    if zone_tie is not None:
+        raise _Blank(REASON_TIE_ISOLATION, zone_tie)
     at_star = max(v for v, t in cands if t == t_star)
     h4_used = any(br.tent is not None and br.tent.accel_bound is not None for p in mixed for brs in p.groups.values() for br in brs)
     cert = {"upper_bound": top + (EPS_M if mixed else 0.0), "value_at_instant": at_star, "pieces": len(live),
@@ -852,7 +900,7 @@ def _solve(problem: Problem, ctx: _Ctx) -> SolveResult:
 
 __all__ = [
     "OBJECTIVE_SUM", "OBJECTIVE_MINMAX", "SOLVED", "BLANK", "REASON_BUDGET", "REASON_MONOTONE", "REASON_CERTIFICATE",
-    "REASON_BOUNDARIES", "REASON_UNKNOWN", "REASON_UNDETERMINABLE", "QUANT", "TIE", "MAX_EVALS_WINDOW", "SolverRefusal", "BudgetExhausted", "Tent",
+    "REASON_BOUNDARIES", "REASON_UNKNOWN", "REASON_UNDETERMINABLE", "REASON_TIE_ISOLATION", "QUANT", "TIE", "MAX_EVALS_WINDOW", "SolverRefusal", "BudgetExhausted", "Tent",
     "Step", "Member", "Problem", "SolveResult", "constant_step", "accel_bound_provider", "CERT_SCHEMA", "MAX_CERT_CELLS", "MAX_OPEN_CELLS",
     "A_QUIET_DEG_PER_DAY2", "H4_MARGIN", "objective_value", "solve", "stored_certificate",
 ]

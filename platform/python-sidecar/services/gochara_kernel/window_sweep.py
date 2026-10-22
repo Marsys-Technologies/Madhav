@@ -43,7 +43,7 @@ import dataclasses
 import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Mapping, Sequence
 
 from . import window_solver as _solver
 from .result_policy import ALL_NULL_REASON, POLICY_ALL_NULL, POLICY_QUALIFICATION, RESULT_POLICIES
@@ -894,8 +894,10 @@ def solver_problem(path_id: str, programs: list, lo: datetime, hi: datetime, cfg
             continue
         level, orb = tent_o.tent
         at = _kinematics(rec, origin, cfg)
+        # a station just OUTSIDE the window still leaves its noise comb in the window's end (SR-NEAR-STATION-TIE): listed within NEAR_STATION_S of it
+        # (the solver cuts only at the ones inside; the others only mark a zone)
         stations = () if rec.station_instants is None else tuple(sorted((t - origin).total_seconds() for t in rec.station_instants()
-                                                                        if 0.0 < (t - origin).total_seconds() < L))
+                                                                        if -_solver.NEAR_STATION_S <= (t - origin).total_seconds() <= L + _solver.NEAR_STATION_S))
         for k, ray in enumerate(rec.aspect_rays or (None,)):
             shift = 0.0 if ray is None else float(ray)
             members.append(_solver.Member(
@@ -1346,6 +1348,29 @@ def draft_windows(event_class: str, records: list[SweepRecord],
     return drafts, excluded
 
 
+#: SR-NEAR-STATION-TIE (madhav-44): the share of ALL windows that may be blanked by the station-zone tie rule before the run must stop and tell the surrogate:
+#: 0.5 %, compared in integers (`blanked × 1000 > windows × 5`) like the gate's INCONCLUSIVE cap. The harness-side refusal is the cockpit's; this is its number.
+NEAR_STATION_TIE_CAP_PER_MILLE = 5
+NEAR_STATION_TIE_SCHEMA = "near_station_tie_blanked/1"
+
+
+def near_station_tie_report(drafts_by_class: Mapping[str, Sequence[WindowDraft]]) -> dict:
+    """SR-NEAR-STATION-TIE: how many windows the builder blanked under `tie_isolation_unresolved` (the solver's station-zone rule), per class and in all.
+    `drafts_by_class` maps a class label (the caller's: event class, path-version…) to the drafts `draft_windows` returned for it. The count is READ FROM THE
+    DRAFTS' OWN `unqualified_reason` — the stored rows themselves, not a side counter — so it reads false when no window carries the reason. The named field
+    is `near_station_tie_blanked`; `cap_exceeded` is the 0.5 % test over all the windows given (a numbered window the VERIFIER later demotes under the same
+    reason is counted by the gate's `demoted`, not here)."""
+    per_class = {}
+    for cls in sorted(drafts_by_class):
+        ds = list(drafts_by_class[cls])
+        per_class[cls] = {"windows": len(ds), "blanked": sum(1 for d in ds if d.unqualified_reason == _solver.REASON_TIE_ISOLATION)}
+    windows = sum(v["windows"] for v in per_class.values())
+    blanked = sum(v["blanked"] for v in per_class.values())
+    return {"schema": NEAR_STATION_TIE_SCHEMA, "rule": "SR-NEAR-STATION-TIE", "near_station_tie_blanked": blanked, "windows": windows,
+            "per_class": per_class, "cap_per_mille": NEAR_STATION_TIE_CAP_PER_MILLE,
+            "cap_exceeded": blanked * 1000 > windows * NEAR_STATION_TIE_CAP_PER_MILLE}
+
+
 def registry_factor_rows(path_id: str, rule_version: str) -> list[dict]:
     """The path-version's declared soft-factor rows, from the registry the path is sealed against
     (the path→version map comes from the RECORDS' own `rule_version`, never a global constant)."""
@@ -1367,5 +1392,5 @@ __all__ = [
     "CATEGORICAL_PATHS", "DYNAMIC_SWITCH_REASON", "GRAHA_TITLE", "KIND_TARGET_FORM", "OperandSource", "UNKNOWN_OVER_COMPONENT", "categorical_factor", "graha_title",
     "validate_geometry", "p2_direction", "record_channel", "vedha_attenuation",
     "evaluate_factors", "graduated_drishti", "intersect_components", "maximise_earliest",
-    "reduce_at", "registry_factor_rows", "union_components",
+    "reduce_at", "registry_factor_rows", "union_components", "near_station_tie_report", "NEAR_STATION_TIE_CAP_PER_MILLE", "NEAR_STATION_TIE_SCHEMA",
 ]
