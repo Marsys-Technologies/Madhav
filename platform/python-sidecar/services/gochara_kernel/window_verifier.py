@@ -423,7 +423,8 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                             drishti_bound: bool = False, vedha_bound: bool = False,
                             dynamic_enabled: bool | None = None, policy: str | None = None,
                             solver_check: bool = True, channel_at=None, channel_boundaries=None, p1_check=None,
-                            vedha_overlay=None, moon_sign: int | None = None, position_at=None, solver_check_fn=None) -> dict:
+                            vedha_overlay=None, moon_sign: int | None = None, position_at=None, solver_check_fn=None,
+                            ephe_path: str | None = None) -> dict:
     """`dynamic_enabled` (S3): whether a window with a function-valued member is SOLVED (the `window_qualification_table/2` rule 2) or still blank under the
     retired dynamic switch. None (the default) follows the table this code implements: solved under `window_qualification/1`. `False` answers a build made
     with the legacy switch (tests of the retired behaviour only).
@@ -454,7 +455,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     `channel_at` / `channel_boundaries` passed in. A P1 path whose rows declare no `category_mapping` is unchanged by it.
 
     `vedha_overlay` / `moon_sign` (C2): with a vedha source bound, a record's vedha factor is read from `vedha_overlay(record_id)`
-    — by default the overlay this verifier derives itself from the stored residence contacts (`vedha_verifier.derive_overlay`,
+    — by default the overlay this verifier derives itself, the obstructors' residence from the ephemeris (`vedha_verifier.derive_overlay`,
     given the janma-rāśi sign `moon_sign` 1..12 when the caller has it from the L1 snapshot). Not applicable ⇒ the factor takes no
     part; undeterminable throughout ⇒ the record is unqualified; otherwise a complete-edged step function (a `fn`, so the window
     stays UNVERIFIED until the solver check exists).
@@ -467,9 +468,13 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     derived_vedha = None
     if vedha_bound and vedha_overlay is None and any(r["factor_id"] == "vedha_attenuation" for r in factor_rows):
         from . import vedha_verifier as _vv
+        # SR-VEDHA-RESIDENCE-SOURCE: the verifier reads the ephemeris itself (its own reader); the directory is the caller's `ephe_path`, else the one
+        # the caller's position probe declares (`cache_key`), else the environment's `SE_EPHE_PATH` — the probe's CODE is never used
+        declared = getattr(position_at, "cache_key", None)
         vedha_overlay = derived_vedha = _vv.derive_overlay(
             conn, chart_id=chart_id, generation=generation, event_class=event_class, path_id=path_id,
-            rule_version=rule_version, moon_sign=moon_sign)
+            rule_version=rule_version, moon_sign=moon_sign,
+            ephe_path=ephe_path or (declared[1] if isinstance(declared, tuple) and len(declared) == 2 else None))
     # R9-1: the policy is the MANIFEST's. An explicit `policy` is only for a generation without a manifest row (the
     # solver's own fixtures); against a manifest it must agree — it never overrides it.
     manifest_policy = _manifest_policy(conn, grain)
@@ -1283,7 +1288,7 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
 def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_class: str, path_id: str,
                               rule_version: str, factor_rows: list[dict],
                               drishti_bound: bool = False, vedha_bound: bool = False,
-                              vedha_overlay=None, moon_sign: int | None = None) -> dict:
+                              vedha_overlay=None, moon_sign: int | None = None, ephe_path: str | None = None) -> dict:
     """{window_id: {affected_channels, reasons: {record_id: [reason...]}}} — the qualification a window
     carries, RECONSTRUCTED from its stored members and the bound factor rows (1156 has no column for it;
     persistence is not required, reconstruction is). Serving reads this; a channel is affected when an
@@ -1292,7 +1297,7 @@ def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_cla
     if vedha_bound and vedha_overlay is None and any(r["factor_id"] == "vedha_attenuation" for r in factor_rows):
         from . import vedha_verifier as _vv
         vedha_overlay = _vv.derive_overlay(conn, chart_id=chart_id, generation=generation, event_class=event_class,
-                                           path_id=path_id, rule_version=rule_version, moon_sign=moon_sign)
+                                           path_id=path_id, rule_version=rule_version, moon_sign=moon_sign, ephe_path=ephe_path)
     rows = conn.execute(
         "SELECT m.window_id::text, r.record_id::text, r.relation, r.object_kind, r.agent, r.house_from_frame,"
         " (SELECT array_agg(ARRAY[lower(x)::text, upper(x)::text]) FROM unnest(r.temporal_support_intervals) x)"

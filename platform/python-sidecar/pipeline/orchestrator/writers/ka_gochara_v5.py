@@ -134,7 +134,8 @@ def _drishti_source(agent: str, offset: int, factor_ref: tuple):
 DRISHTI_SOURCE = _drishti_source
 VEDHA_SOURCE = None         # an EXPLICIT binding (a steward ruling, or a test's); None ⇒ the active rule profile decides — `vedha_source()`
 #: SR-OD1 C1 (VEDHA-SOURCE, ND-NODE-VEDHA, ND-VIPAREETA — owner-confirmed 2026-10-21): the vedha operand of the FINAL (doctrine)
-#: rule profile is DERIVED from the stored residence contacts (Phaladīpikā XXVI house-vedha only; nodes obstruct). The measuring
+#: rule profile is DERIVED (Phaladīpikā XXVI house-vedha only; nodes obstruct) from the obstructors' sign residence, itself derived at the
+#: instant from the pinned ephemeris (SR-VEDHA-RESIDENCE-SOURCE) — no longer from the stored residence contacts. The measuring
 #: profile keeps its pre-doctrine contract byte for byte: the overlay stays unbound there (`vedha_overlay_not_bound`).
 FINAL_VEDHA_SOURCE = gk_vedha_source.SOURCE
 
@@ -1930,8 +1931,9 @@ class GocharaV5Writer(WriterBase):
             inherited = gk_p1_operands.grain_inheritance(p1_ops)
             vedha = vedha_source()
             if hasattr(vedha, "for_grain"):    # C1: a source bound to this grain (its reads are lazy: only a vedha-bearing record triggers them)
+                # SR-VEDHA-RESIDENCE-SOURCE: the obstructors' residence is derived from THIS substep's ephemeris probe, not read from stored contacts
                 vedha = vedha.for_grain(ctx.db_conn, chart_id=chart_id, generation=GENERATION, event_class=event_class,
-                                        records=records)
+                                        records=records, position_at=position_at)
             # S3: a window with a qualified function-valued member is SOLVED (certified maximum + earliest tie instant) or blank under a named solver reason —
             # never the retired dynamic switch. The budget is per window; the independent solver check runs once, in the verification job (N-6, below).
             drafts, ex = gk_window_sweep.draft_windows(
@@ -1960,7 +1962,7 @@ class GocharaV5Writer(WriterBase):
                 path_id=path_id, rule_version=version,
                 factor_rows=rows,
                 drishti_bound=DRISHTI_SOURCE is not None, vedha_bound=vedha_source() is not None,
-                solver_check=False, p1_check=p1_check)             # N-6: the independent prover runs once, in the verification job
+                solver_check=False, p1_check=p1_check, ephe_path=ephe_path)             # N-6: the independent prover runs once, in the verification job
             unverified += report["unverified_dynamic"]
             solver_deferred += report["solver_check_deferred_windows"]
             reproduced += report["fully_reproduced"]

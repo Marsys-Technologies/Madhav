@@ -35,6 +35,7 @@ from services.gochara_kernel import window_sweep as ws
 from services.gochara_rules import registry as reg
 from services.gochara_rules import vedha_derive as vd
 
+from ._vedha_sky import longitude_at_for, position_at_for
 from .test_od1_c1_vedha_provider import CHART, CLS, GEN, MOON_SIGN, D, _Conn, p2 as _p2, sign_of, world
 from .test_od1_c2_vedha_verifier import FakeConn
 
@@ -55,7 +56,7 @@ def final():
 
 
 def _provider(contacts, records):
-    return vs.SOURCE.for_grain(_Conn(contacts), chart_id=CHART, generation=GEN, event_class=CLS, records=records)
+    return vs.SOURCE.for_grain(_Conn(), chart_id=CHART, generation=GEN, event_class=CLS, records=records, position_at=position_at_for(contacts))
 
 
 # ── one world, two sides ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -63,8 +64,8 @@ def _both(records, contacts):
     """(builder overlays by record id, verifier overlay) over the SAME stored world. `records`: SweepRecords of path P2."""
     conn_rows = [(r.record_id, r.agent, r.house_from_frame, r.canonical_target, lo, hi) for r in records for lo, hi in r.supports]
     builder = _provider(contacts, records)
-    verifier = vv.derive_overlay(FakeConn(records=conn_rows, residence=contacts), chart_id=CHART, generation=GEN, event_class=CLS,
-                                 path_id="P2", rule_version=DOC, moon_sign=MOON_SIGN)
+    verifier = vv.derive_overlay(FakeConn(records=conn_rows), chart_id=CHART, generation=GEN, event_class=CLS,
+                                 path_id="P2", rule_version=DOC, moon_sign=MOON_SIGN, longitude_at=longitude_at_for(contacts))
     return {r.record_id: builder.overlay(r, VREF) for r in records}, verifier, builder
 
 
@@ -217,7 +218,8 @@ def test_d3_7_no_vedha_bearing_window_is_blank_vedha_overlay_not_bound_under_the
     recs = _trial_records()
     src = writer.vedha_source()
     assert src is vs.SOURCE
-    bound = src.for_grain(_Conn(world(rahu=[(V9, -5, 400)])), chart_id=CHART, generation=GEN, event_class=CLS, records=recs)
+    bound = src.for_grain(_Conn(), chart_id=CHART, generation=GEN, event_class=CLS, records=recs,
+                          position_at=position_at_for(world(rahu=[(V9, -5, 400)])))
     assert _not_bound_count(recs, bound) == 0
     # control: with no source (the measuring profile) every one of them is blank for exactly that reason
     assert _not_bound_count(recs, None) == len(recs)
