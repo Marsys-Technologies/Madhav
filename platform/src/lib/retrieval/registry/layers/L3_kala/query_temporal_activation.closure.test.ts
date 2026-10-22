@@ -35,6 +35,7 @@ const ROWS = [
 function routeQueries(options: { activations: Record<string, unknown>[]; totalMatching: number; sourceTotal?: number; sourceDated?: number; predicates?: Record<string, unknown>[] }) {
   queryMock.mockImplementation((sql: unknown) => {
     const text = typeof sql === 'string' ? sql : ''
+    if (text.includes('FROM kala_layer_head')) return Promise.resolve({ rows: [{ generation: 'g-head' }] })
     if (text.includes('FROM kala_activation_predicates')) return Promise.resolve({ rows: options.predicates ?? [] })
     if (text.includes('SELECT id, signal_id, ayanamsha_id, signature_class')) {
       return Promise.resolve({ rows: options.activations.map((row) => ({ ...row, total_matching: options.totalMatching })) })

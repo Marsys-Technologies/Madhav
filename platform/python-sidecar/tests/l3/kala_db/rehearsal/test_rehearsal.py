@@ -16,17 +16,19 @@ from services.kala_core.manifest import attest_grain, open_candidate, publish_ca
 
 
 # Independent contract roster from PLAN §4.1 / §6.4. Removing a writer, admitting
-# the delivery registrar, or placing Avadhi before F1 must break these tests.
+# the delivery registrar, placing Avadhi before F1, or dropping ka_gochara_resonance (K9 r4:
+# registry edges ka_yojaka -> ka_gochara_resonance -> ka_gochara/ka_kshetra, migration 1392)
+# must break these tests.
 WAVES = [
     ['ka_dasha_kala', 'ka_vedha_gochara', 'ka_moorti_nirnaya', 'ka_kota_chakra',
      'ka_tithi_pravesha', 'ka_sudarshana_varsha'],
-    ['ka_yojaka'], ['ka_avadhi'], ['ka_gochara_v5'], ['ka_vighnakara'],
+    ['ka_yojaka'], ['ka_gochara_resonance'], ['ka_avadhi'], ['ka_gochara_v5'], ['ka_vighnakara'],
     ['ka_sangam'], ['ka_kshetra'],
     ['ka_kalasutra', 'ka_kala_darshana', 'ka_taranga', 'ka_jivana_parva'],
     ['ka_tulana', 'ka_muhurta_seva', 'ka_graha_sancara'],
 ]
 ASSETS = [asset for wave in WAVES for asset in wave]
-MATERIALIZED = ['ka_yojaka', 'ka_avadhi', 'ka_gochara_v5', 'ka_vighnakara',
+MATERIALIZED = ['ka_yojaka', 'ka_gochara_resonance', 'ka_avadhi', 'ka_gochara_v5', 'ka_vighnakara',
                 'ka_sangam', 'ka_kshetra', 'ka_kalasutra', 'ka_kala_darshana',
                 'ka_taranga', 'ka_jivana_parva']
 CODE = 'a' * 64
@@ -53,10 +55,11 @@ def test_preparation_has_safe_real_api_request_and_explicit_grains():
     assert 'ka_bhavishya_lekha' not in plan['request']['scope_target']
 
 
-@pytest.mark.parametrize('mutation', ['missing', 'empty', 'duplicate', 'extra', 'current', 'same_head'])
+@pytest.mark.parametrize('mutation', ['missing', 'missing_resonance', 'empty', 'duplicate', 'extra', 'current', 'same_head'])
 def test_preparation_refuses_unpinned_or_incomplete_workload(mutation):
     args = spec()
     if mutation == 'missing': del args['grains_by_asset']['ka_taranga']
+    if mutation == 'missing_resonance': del args['grains_by_asset']['ka_gochara_resonance']
     if mutation == 'empty': args['grains_by_asset']['ka_taranga'] = []
     if mutation == 'duplicate': args['grains_by_asset']['ka_taranga'] = ['ka_yojaka:fixture']
     if mutation == 'extra': args['grains_by_asset']['ka_bhavishya_lekha'] = ['delivery']
@@ -135,7 +138,7 @@ def audit(stored):
 def test_zero_row_grains_are_complete_but_unverified_candidate_is_not_published(stored):
     report = audit(stored)
     assert report['status'] == 'awaiting_verification'
-    assert len(report['lineage']) == 19
+    assert len(report['lineage']) == 20
     assert report['operational_rehearsal_passed'] is None
     assert report['published_generation'] is None
     # SR-W56-S3: the receipt discloses the named L1 mudda boundary overlaps; this fixture has no settled dasha read, so it says so
@@ -190,7 +193,7 @@ def test_audit_runs_detectors_read_only_and_never_moves_the_head(stored):
     conn.commit()
     report = audit(stored)
     assert report['status'] == 'incomplete'
-    assert conn.execute('SELECT count(*) FROM detector_values').fetchone() == (19,)
+    assert conn.execute('SELECT count(*) FROM detector_values').fetchone() == (20,)
     assert conn.execute('SELECT count(*) FROM kala_layer_head').fetchone() == (0,)
     conn.commit()
 
