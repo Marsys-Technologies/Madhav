@@ -53,10 +53,13 @@ class _Conn:
         return self.cur
 
 
-def _writer(pred_signal_ids=("s1", "s2", "s3"), birth_year=1984, lt_count=None):
+def _writer(pred_signal_ids=("s1", "s2", "s3"), birth_year=1984, lt_count=None,
+            generation="legacy", run_id="run-1"):
     w = ks.KaSangamWriter()
     w._pred_dicts = [{"signal_id": s} for s in pred_signal_ids]
     w._birth_year = birth_year
+    w._ledger_generation = generation
+    w._ledger_run_id = run_id
     w._lt_preds = w._pred_dicts[: (lt_count if lt_count is not None else len(pred_signal_ids))]
     return w
 
@@ -78,6 +81,18 @@ class TestFingerprint:
         base = _writer()._compute_build_fingerprint("chartX")
         assert _writer(birth_year=1990)._compute_build_fingerprint("chartX") != base
         assert _writer()._compute_build_fingerprint("chartY") != base
+
+    def test_changes_with_run_id(self):
+        # K9-WRITE-SCOPE F4: a second run over the same signal set is a new build.
+        a = _writer(run_id="run-1")._compute_build_fingerprint("chartX")
+        b = _writer(run_id="run-2")._compute_build_fingerprint("chartX")
+        assert a != b
+
+    def test_changes_with_predicate_generation(self):
+        # K9-WRITE-SCOPE F4: a different candidate generation is a new build.
+        a = _writer(generation="candidate:b1")._compute_build_fingerprint("chartX")
+        b = _writer(generation="candidate:b2")._compute_build_fingerprint("chartX")
+        assert a != b
 
     def test_changes_with_resume_version(self):
         base = _writer()._compute_build_fingerprint("chartX")
@@ -244,3 +259,136 @@ class TestApplyTriggerSuppression:
             vedha_rules=None, moon_sign_idx=3,
         )
         assert out[0]["convergence_score"] == pytest.approx(0.5)
+
+
+# ── K9-WRITE-SCOPE F4: plan_substeps against a stateful ledger ───────────────
+#
+# Drives the real KaSangamWriter.plan_substeps (predicate load, fingerprint,
+# resume/replan decision) against an in-memory build_substep_progress, with the
+# heavy collaborators stubbed. Doctrine: CLAUDE.md §N.3 (a rebuild REPLACES, never
+# accretes — so a rebuild whose run differs must not skip substeps over an earlier
+# run's rows) and §N.2 (the candidate is resolved from the DB, not ctx.config).
+
+class _LedgerCur:
+    def __init__(self, db):
+        self.db = db
+        self._last = ""
+        self._params = None
+
+    def execute(self, sql, params=None):
+        self._last, self._params = sql, params
+        if "INSERT INTO build_substep_progress" in sql:
+            _cid, key, fp, _rows = params
+            self.db.ledger[key] = fp
+        elif "DELETE FROM build_substep_progress" in sql:
+            self.db.ledger.clear()
+        elif "DELETE FROM kala_convergence" in sql:
+            self.db.convergence_deletes += 1
+
+    def fetchall(self):
+        if "FROM build_substep_progress" in self._last:
+            return [{"substep_key": k, "build_fingerprint": v} for k, v in self.db.ledger.items()]
+        if "FROM kala_activation_predicates" in self._last:
+            return [dict(r) for r in self.db.predicates]
+        return []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _LedgerDb:
+    def __init__(self, predicates):
+        self.ledger: dict[str, str] = {}
+        self.convergence_deletes = 0
+        self.predicates = predicates
+
+    def cursor(self, *a, **k):
+        return _LedgerCur(self)
+
+
+def _predicates(n=3):
+    return [{
+        "id": i, "chart_id": "cid", "ayanamsha_id": "lahiri", "signal_id": f"sig{i}",
+        "signature_class": "DIGNITY", "dasha_eligibility_rule_jsonb": {},
+        "transit_trigger_jsonb": {}, "strength_affliction_hook_jsonb": {},
+        "derivation_ledger_jsonb": {}, "content_hash": f"h{i}",
+    } for i in range(n)]
+
+
+@pytest.fixture
+def plan_env(monkeypatch):
+    """Stubs for everything plan_substeps does besides the ledger decision."""
+    state = {"candidate": None}
+    monkeypatch.setattr(ks, "bound_candidate", lambda conn, build_id, chart_id: state["candidate"])
+    monkeypatch.setattr(ks, "predicate_generation", lambda conn, chart_id, cand: cand.generation)
+    monkeypatch.setattr(ks, "grain_steps", lambda *a, **k: [])   # attestation substep is not under test
+    for name in ("KaDashaKalaService", "KaMuhurtaSevaService"):
+        monkeypatch.setattr(ks, name, lambda *a, **k: object())
+    monkeypatch.setattr(ks, "KaGocharaService", lambda *a, **k: object())
+    monkeypatch.setattr(ks.KaSangamWriter, "_build_house_lord_map", lambda self, conn, cid: {})
+    monkeypatch.setattr(ks.KaSangamWriter, "_build_enrichment_context", lambda self, conn, cid: None)
+    monkeypatch.setattr(ks.KaSangamWriter, "_resolve_native_chart_context", lambda self, conn, cid, bp: None)
+    monkeypatch.setattr(ks.KaSangamWriter, "_derive_birth_year", lambda self, conn, cid: 1984)
+    return state
+
+
+def _candidate(generation):
+    from services.kala_core.manifest import Candidate
+    return Candidate("cid", generation, "run-1", None)
+
+
+def _ctx(db, build_id):
+    return types.SimpleNamespace(
+        db_conn=db, build_id=build_id, dry_run=False,
+        config={"chart_id": "cid", "birth_params": {}},
+    )
+
+
+def _plan_and_complete(db, build_id, complete=True):
+    """Plan one run; optionally commit every planned substep to the ledger."""
+    w = ks.KaSangamWriter()
+    steps = w.plan_substeps(_ctx(db, build_id))
+    if complete:
+        for s in steps:
+            w._record_substep(db, "cid", s.key, 1)
+    return w, steps
+
+
+class TestSameDaySecondRebuild:
+    def test_second_run_same_day_same_signals_runs_every_substep(self, plan_env):
+        """THE F4 oracle: run 1 completes; run 2 (new run id, same day, same MSR
+        signal set) must plan ALL substeps, not skip them against run 1's ledger."""
+        db = _LedgerDb(_predicates())
+        _, first = _plan_and_complete(db, "run-1")
+        assert first and first[0].key == "near"
+        w2, second = _plan_and_complete(db, "run-2", complete=False)
+        assert [s.key for s in second] == [s.key for s in first]
+        assert w2._resume_skipped == 0
+        assert w2._reset_pending is True, "a fresh run replaces the chart's rows (§N.3)"
+
+    def test_second_run_over_a_new_candidate_generation_runs_every_substep(self, plan_env):
+        db = _LedgerDb(_predicates())
+        plan_env["candidate"] = _candidate("candidate:b1")
+        _, first = _plan_and_complete(db, "run-1")
+        plan_env["candidate"] = _candidate("candidate:b2")
+        w2, second = _plan_and_complete(db, "run-1", complete=False)  # same run id on purpose
+        assert [s.key for s in second] == [s.key for s in first]
+        assert w2._resume_skipped == 0
+
+
+class TestSameRunResume:
+    def test_same_run_resumes_and_skips_only_committed_substeps(self, plan_env):
+        db = _LedgerDb(_predicates())
+        w1 = ks.KaSangamWriter()
+        steps = w1.plan_substeps(_ctx(db, "run-1"))
+        assert len(steps) > 2
+        for s in steps[:2]:                      # connection drops after two substeps
+            w1._record_substep(db, "cid", s.key, 1)
+        w2 = ks.KaSangamWriter()
+        remaining = w2.plan_substeps(_ctx(db, "run-1"))   # retry of the SAME run
+        assert [s.key for s in remaining] == [s.key for s in steps[2:]]
+        assert w2._resume_skipped == 2
+        assert w2._reset_pending is False, "a resume must not wipe the committed substeps' rows"
