@@ -128,3 +128,25 @@ def test_m5_applying_1402_twice_is_a_noop_and_windows_without_the_new_keys_still
     assert first == second
     assert _ok(world, base) is True
     assert _ok(world, {**base, "policy": "other/1"}) is False and _ok(world, {"policy": base["policy"]}) is False       # the old rules still hold
+
+
+def test_m6_the_certificate_the_production_sweep_stores_is_admitted_and_the_sweeps_own_objective_name_is_not(world):    # noqa: F811
+    """Merge-back wave 3a (R67 x S3 seam): the window the PRODUCTION sweep (S3's solver adapter, `solver=PRODUCTION_SOLVER`) builds carries the R-7 certificate named by the SOLVER's
+    objective (`min_of_group_max` for P4), which 1402's `ka_gochara_solver_certificate_ok` admits — a solved window and a budget-exhausted blank. The sweep's own objective label
+    (`max_min_agent_activity`) is a different string the migration refuses: naming the certificate by it would make the first Form B/P4 window INSERT fail. (revert:
+    `window_sweep` passes `objective=objective_name` to `stored_certificate`.)"""
+    from . import test_od1_s3_integration as s3
+    from services.gochara_kernel import window_sweep as ws
+    _window_id, _base = _window(world)
+    world.conn.execute(_migration())
+    recs = s3._p4_records()
+    (solved,) = ws.draft_windows("marriage", recs, s3.ROWS, solver=ws.PRODUCTION_SOLVER)[0]
+    q = solved.qualification()
+    assert q["solver_certificate"]["outcome"] == "solved" and q["solver_certificate"]["objective"] == "min_of_group_max"
+    assert _ok(world, q) is True
+    (blank,) = ws.draft_windows("marriage", recs, s3.ROWS, solver=ws.SolverConfig(max_evals=3))[0]
+    qb = blank.qualification()
+    assert qb["solver_certificate"]["outcome"] == "blank" and qb["solver_certificate"]["reason"] == "solver_budget_exhausted"
+    assert _ok(world, qb) is True
+    assert _ok(world, {**q, "solver_certificate": {**q["solver_certificate"], "objective": ws.OBJECTIVE_P4}}) is False
+

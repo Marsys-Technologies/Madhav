@@ -318,6 +318,20 @@ def test_c4_a_budget_blank_is_never_a_pass_at_the_verifier():
         _verify(drafts, recs, ROWS("P3", "1.0.0"), _p3_pos(0, 100), grain=GRAIN_P3)
 
 
+def test_c11_the_production_sweep_stores_the_solvers_certificate_on_the_solved_window_and_on_the_budget_blank():
+    """Merge-back wave 3a (R-7 x S3): the window the PRODUCTION sweep builds carries the piece tree of the very solve that numbered it (its stored maximum is the certificate's, the objective
+    is the solver's own name) — and a budget-exhausted window keeps its partial tree with the cells still open. Revert: the sweep does not attach `solver_certificate`."""
+    recs = _p4_records()
+    (draft,) = _solve(recs)
+    cert = draft.solver_certificate
+    assert cert is not None and cert["outcome"] == "solved" and cert["objective"] == sol.OBJECTIVE_MINMAX and cert["budget_scope"] == "window"
+    assert cert["value"] == pytest.approx(draft.objective_value, abs=1e-12) and cert["max_evals"] == ws.PRODUCTION_SOLVER.max_evals
+    assert draft.qualification()["solver_certificate"] is cert
+    (blank,) = _solve(recs, cfg=ws.SolverConfig(max_evals=3))
+    assert blank.peak_instant is None and blank.unqualified_reason == "solver_budget_exhausted"
+    assert blank.solver_certificate["outcome"] == "blank" and blank.solver_certificate["max_evals"] == 3 and blank.solver_certificate["open"]
+
+
 # ═════ C5: a deferral or a missing ephemeris is never a pass ════════════════════════════════════════════════════════
 
 @pytest.mark.parametrize("kw,counter", [({"solver_check": False}, "solver_check_deferred_windows"), ({"position_at": None}, "solver_check_unavailable_windows")])
