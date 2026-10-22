@@ -190,6 +190,17 @@ def _tamper(draft, **fields):
     return dataclasses.replace(draft, **fields)
 
 
+def _lie(draft, **fields):
+    """A builder that lies CONSISTENTLY: the stored fields and its own certificate agree on the false peak / maximum (R-7: the certificate is the builder's claim, never evidence).
+    The certificate check's agreement test (`certificate_disagrees_with_stored_window`) then passes, so only the verifier's OWN proof can refute it."""
+    cert = dict(draft.solver_certificate)
+    if "peak_instant" in fields:
+        cert["instant"] = (fields["peak_instant"] - datetime.fromisoformat(cert["t0"])).total_seconds()
+    if "objective_value" in fields:
+        cert["value"] = fields["objective_value"]
+    return _tamper(draft, solver_certificate=cert, **fields)
+
+
 @pytest.mark.parametrize("what,fields,match", [
     ("a peak 30 s from the crest (Q12: exact to the second)", {"peak_instant": _d(0) + timedelta(hours=80, seconds=30)}, "earlier_tie_not_taken|peak_instant_mismatch|peak_value_mismatch"),
     ("a stored maximum below the true one", {"objective_value": P4_MAX - 1e-3, "score": P4_MAX - 1e-3}, "objective_exceeds_stored_maximum|peak_value_mismatch"),
@@ -199,15 +210,20 @@ def test_c2_the_verifier_refutes_a_wrong_stored_peak_or_maximum(what, fields, ma
     recs = _p4_records()
     (draft,) = _solve(recs)
     with pytest.raises(RuntimeError, match=match):
+        _verify([_lie(draft, **fields)], recs, ROWS("P4", "1.0.0"), _position({"jupiter": _jup, "saturn": _sat}))
+    # merge-back (R67): a stored value that merely disagrees with the builder's own certificate is refused one step earlier, by the certificate check
+    with pytest.raises(RuntimeError, match="certificate_disagrees_with_stored_window"):
         _verify([_tamper(draft, **fields)], recs, ROWS("P4", "1.0.0"), _position({"jupiter": _jup, "saturn": _sat}))
 
 
 def test_c2_reverted_a_verifier_that_skips_the_prover_would_reproduce_the_wrong_window(monkeypatch):
-    """Planted reversion of C2: `check_window` always says VERIFIED. The wrong window is then 'reproduced' — and the C2 refutation test above would fail."""
+    """Planted reversion of C2: the prover (`window_solver_check`, reached through the certificate check) always says VERIFIED. The wrong window is then 'reproduced' — and the C2
+    refutation test above would fail."""
     recs = _p4_records()
     (draft,) = _solve(recs)
-    wrong = _tamper(draft, peak_instant=_d(0) + timedelta(hours=80, seconds=30))
+    wrong = _lie(draft, peak_instant=_d(0) + timedelta(hours=80, seconds=30))
     monkeypatch.setattr(wv._chk, "check_window", lambda **kw: chk.CheckReport(chk.VERIFIED, (), (), 0, {"maximum": wrong.objective_value}))
+    monkeypatch.setattr(wv._cc.chk._Engine, "run", lambda self: chk.CheckReport(chk.VERIFIED, (), (), 0, {"maximum": wrong.objective_value}))
     report = _verify([wrong], recs, ROWS("P4", "1.0.0"), _position({"jupiter": _jup, "saturn": _sat}))
     assert report["solver_checked_windows"] == 1                       # the reverted verifier "reproduced" a window whose peak is 30 s off the true one
 
@@ -293,13 +309,13 @@ def test_c4_reverted_with_one_budget_shared_by_the_grain_the_easy_window_depends
 
 
 def test_c4_a_budget_blank_is_never_a_pass_at_the_verifier():
-    """A budget blank is justified by its certificate (R-6/R-7, a later item): until then the verifier cannot check it, so it stays UNVERIFIED and blocks the seal."""
+    """A budget blank is justified by its certificate (R-6/R-7; merge-back R67 wires that check): a blank that declares a per-window budget below the policy's (here 400
+    evaluations, a builder blanking a window cheaply) is a DISAGREEMENT, so the verifier raises and nothing is sealed. The genuine 500,000-evaluation blank and its demotion
+    are measured end to end in `test_od1_r67_certificate.py`."""
     recs = _p3_records(4, 0, 100)
     drafts = ws.draft_windows("marriage", recs, ROWS, solver=ws.SolverConfig(max_evals=400))[0]
-    report = _verify(drafts, recs, ROWS("P3", "1.0.0"), _p3_pos(0, 100), grain=GRAIN_P3)
-    assert report["status"] == "UNVERIFIED_DYNAMIC" and not wv.satisfies_gate(report)
-    hard = next(tag for tag, why in report["unverified_why"].items() if why == ["solver_budget_exhausted"])
-    assert hard in report["unverified_windows"] and report["solver_checked_windows"] == 1        # the easy window was checked, the hard one was not
+    with pytest.raises(RuntimeError, match="budget_declared_below_policy"):
+        _verify(drafts, recs, ROWS("P3", "1.0.0"), _p3_pos(0, 100), grain=GRAIN_P3)
 
 
 # ═════ C5: a deferral or a missing ephemeris is never a pass ════════════════════════════════════════════════════════
@@ -311,6 +327,19 @@ def test_c5_a_window_whose_independent_check_did_not_run_is_unverified(kw, count
     pos = _position({"jupiter": _jup, "saturn": _sat})
     report = _verify([draft], recs, ROWS("P4", "1.0.0"), kw.pop("position_at", pos), **kw)
     assert report[counter] == 1 and report["solver_checked_windows"] == 0 and report["status"] == "UNVERIFIED_DYNAMIC" and not wv.satisfies_gate(report)
+
+
+def test_c5_the_verifiers_own_budget_running_out_demotes_the_window_to_a_named_blank_end_to_end(monkeypatch):
+    """S3 lane review N1, adapted at the merge-back to R-6: when the independent prover cannot settle a window inside ITS budget (here 5 evaluations of the real prover) the
+    window is neither a pass nor a refusal — it is INCONCLUSIVE: listed among `inconclusive_windows` with its stored window_id and the named reason `verifier_budget_exhausted`,
+    reproduced as the blank it will be served as, never numeric, and the report stays VERIFIED (the numerical gate then caps the share at 0.5 %)."""
+    recs = _p4_records()
+    (draft,) = _solve(recs)
+    real = wv._cc.check_numbered
+    monkeypatch.setattr(wv._cc, "check_numbered", lambda **kw: real(**{**kw, "max_evals": 5}))
+    report = _verify([draft], recs, ROWS("P4", "1.0.0"), _position({"jupiter": _jup, "saturn": _sat}))
+    assert [w["reason"] for w in report["inconclusive_windows"]] == ["verifier_budget_exhausted"] and report["inconclusive_windows"][0]["stored_numbered"] is True
+    assert (report["numeric_reproduced"], report["fully_reproduced"], report["status"]) == (0, 1, "VERIFIED")
 
 
 # ═════ C6: a step factor times a tent ════════════════════════════════════════════════════════════════════════════════
@@ -447,7 +476,8 @@ def test_c8_the_verdict_counts_blank_windows_per_grain_and_per_reason_group(monk
     from services.gochara_kernel import window_gate as wg
     table = nwg.table_binding()
     att = {"schema": nwg.SCHEMA, "status": nwg.PASSED, "policy": nwg.POLICY_QUALIFICATION, "table": table, "windows": 5, "reproduced": 5, "numbered": 3,
-           "numbered_without_score": 0, "valence": {"favourable": 3}, "blank": {"solver_budget_exhausted": 2}}
+           "numbered_without_score": 0, "valence": {"favourable": 3}, "blank": {"solver_budget_exhausted": 2}, "stored_numbered": 3,
+           "demoted": {}, "demoted_valence": {}, "demoted_without_score": 0, "unconfirmed_blank_windows": 0, "demoted_windows": []}
     impl = {"evaluation": "e" * 64, "geometry": "g" * 64, "window": "w" * 64}
     pinned = hashlib.sha256(wg._canon(impl).encode("utf-8")).hexdigest()
     head, image, execution = "h" * 40, "sha256:" + "a" * 64, "exec-1"
@@ -456,6 +486,8 @@ def test_c8_the_verdict_counts_blank_windows_per_grain_and_per_reason_group(monk
         def execute(self, sql, params=()):
             if "kala_gochara_publication" in sql:
                 return _Rows([("manifest-1",)])
+            if "SELECT window_id::text" in sql:                                       # R67 B-1: the grain's stored NUMBERED windows (no demotion here, so none are listed)
+                return _Rows([("w0",), ("w1",), ("w2",)])
             if "ka_gochara_search_input_snapshot" in sql:
                 return _Rows([("input-digest-1",)])
             if "ka_gochara_search_inventory_verification" in sql:
@@ -565,6 +597,7 @@ def _brief_check():
 def _payload(bc, **gate_over):
     gate = {"schema": bc.NUMERICAL_GATE_SCHEMA, "status": "PASSED", "problems": [], "policy": bc.POLICY_QUALIFICATION, "table": bc.QUALIFICATION_TABLE_BINDING,
             "windows": 5, "numbered_windows": 3, "blank_windows": 2,
+            "demoted_windows": 0, "demoted_by_reason": {}, "unconfirmed_blank_windows": 0, "inconclusive_cap_per_mille": 5,       # R-6 (R67)
             "honest_nulls": [{"path_id": "P4", "group": "solver_certificate", "reason": "solver_budget_exhausted", "windows": 2}],
             "honest_nulls_by_grain": [{"event_class": "marriage", "path_id": "P4", "rule_version": "1.0.0", "group": "solver_certificate",
                                        "reason": "solver_budget_exhausted", "windows": 2}]}

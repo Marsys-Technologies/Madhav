@@ -91,6 +91,7 @@ def _inventory_attests_class(payload: dict, cls: dict) -> bool:
 
 NUMERICAL_GATE_SCHEMA = "numerical_window_gate/1"
 RETIRED_SWITCH_REASON = "dynamic_objective_solver_guarantee_not_available"      # this script's own literal (window_qualification_table/2 retired the dynamic switch)
+INCONCLUSIVE_CAP_PER_MILLE = 5          # R-6: the share of windows that may be demoted (0.5 %); this script keeps its own literal (a test compares it with the gate's)
 
 
 def _count(value, what):
@@ -140,7 +141,18 @@ def check_numerical_gate(p: dict) -> None:
     rows = (p.get("attestations") or {}).get("ka_gochara_eval_window_verification")
     if not isinstance(rows, list):
         raise Refused("the brief carries no persisted window-verification rows to check the numerical-window gate against")
-    seen_windows = seen_numbered = 0
+    # R-6: the windows the verifier could not settle are DEMOTED to a named blank and capped at 0.5 % of all windows; the gate summary, the persisted attestations and the
+    # honest nulls must agree on them, and the cap is re-checked here (a brief that claims PASSED above the cap is refused)
+    demoted = _count(gate.get("demoted_windows"), "demoted_windows")
+    by_reason = gate.get("demoted_by_reason")
+    if not isinstance(by_reason, dict) or sum(_count(v, "demoted windows of a reason") for v in by_reason.values()) != demoted:
+        raise Refused(f"the numerical-window gate says {demoted} windows are demoted but its reasons account for {by_reason!r}")
+    if demoted * 1000 > windows * INCONCLUSIVE_CAP_PER_MILLE:
+        raise Refused(f"{demoted} of {windows} windows are demoted to a named blank: above the {INCONCLUSIVE_CAP_PER_MILLE / 10:g} % cap")
+    for reason, n in by_reason.items():
+        if sum(h["windows"] for h in honest if h["reason"] == reason) < n:
+            raise Refused(f"the {n} windows demoted under {reason!r} are not all disclosed among the honest nulls")
+    seen_windows = seen_numbered = seen_demoted = 0
     for line in rows:
         try:
             att = (json.loads(line).get("runner_identity") or {}).get("numerical_window_gate")
@@ -150,8 +162,10 @@ def check_numerical_gate(p: dict) -> None:
             raise Refused(f"a persisted window-verification row carries no PASSED attestation of the frozen table: {att!r}")
         seen_windows += _count(att.get("windows"), "attested windows")
         seen_numbered += _count(att.get("numbered"), "attested numbered windows")
-    if (seen_windows, seen_numbered) != (windows, numbered):
-        raise Refused(f"the persisted attestations count {seen_numbered} numbered of {seen_windows} windows; the gate summary says {numbered} of {windows}")
+        seen_demoted += sum(_count(v, "attested demoted windows") for v in (att.get("demoted") or {}).values())
+    if (seen_windows, seen_numbered, seen_demoted) != (windows, numbered, demoted):
+        raise Refused(f"the persisted attestations count {seen_numbered} numbered of {seen_windows} windows with {seen_demoted} demoted; the gate summary says "
+                      f"{numbered} of {windows} with {demoted}")
 
 
 def check(raw: bytes, compact: dict, *, chart_id: str, generation: str, sealing_commit: str) -> str:

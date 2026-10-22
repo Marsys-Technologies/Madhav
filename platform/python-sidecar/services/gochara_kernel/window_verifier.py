@@ -37,6 +37,7 @@ from datetime import timezone
 
 from . import boundary_match as bm
 from . import p1_operands_check as _p1c
+from . import window_cert_check as _cc
 from . import window_solver_check as _chk
 
 _TOL = 1e-6                                 # REAL (float4) storage round-trip — NOT the peak tie
@@ -335,6 +336,21 @@ def _checker_records(conn, *, recs: dict, qualified: dict, chans: dict, factor_r
 def _structural_codes(report) -> set:
     return {f.code for f in report.findings if f.code in (_chk.F_H1, _chk.F_H2, _chk.F_UNDET)}
 
+
+def _certificate_verdict(window: dict, *, records: list, objective: str, position_at, against_evaluated: bool, ov):
+    """The verifier's own check of ONE function-valued window against the builder's stored `solver_certificate` (R-6/R-7): `window_cert_check.check_numbered`
+    for a numbered window (its stored maximum, instant and the numbers at the peak, with the search seeded from the certificate), `check_budget_blank` for a
+    `solver_budget_exhausted` blank. Returns a `CertReport` (AGREED / DISAGREEMENT / INCONCLUSIVE). A window with no certificate is a DISAGREEMENT (the
+    sweep always stores one for a solved or budget-exhausted window) — never a pass."""
+    certificate = (window["qualification"] or {}).get("solver_certificate")
+    if window["peak"] is None:
+        return _cc.check_budget_blank(lo=window["lo"], hi=window["hi"], records=records, objective=objective, position_at=position_at, certificate=certificate,
+                                      event_class=window["event_class"])
+    stored = _chk.StoredWindow(peak_instant=window["peak"], objective_value=ov, score=window["score"], evidence_for=window["evidence_for"],
+                               evidence_against=window["evidence_against"], outcome_valence=window["valence"])
+    return _cc.check_numbered(lo=window["lo"], hi=window["hi"], records=records, objective=objective, stored=stored, position_at=position_at,
+                              certificate=certificate, event_class=window["event_class"], against_evaluated=against_evaluated)
+
 #: the frozen qualification policy this verifier implements (R8-4) — the builder's `window_sweep.draft_windows`
 #: documents the same table; the two are separate code and the DB gate binds the version
 POLICY_VERSION = "window_qualification/1"
@@ -378,7 +394,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                             drishti_bound: bool = False, vedha_bound: bool = False,
                             dynamic_enabled: bool | None = None, policy: str | None = None,
                             solver_check: bool = True, channel_at=None, channel_boundaries=None, p1_check=None,
-                            vedha_overlay=None, moon_sign: int | None = None, position_at=None) -> dict:
+                            vedha_overlay=None, moon_sign: int | None = None, position_at=None, solver_check_fn=None) -> dict:
     """`dynamic_enabled` (S3): whether a window with a function-valued member is SOLVED (the `window_qualification_table/2` rule 2) or still blank under the
     retired dynamic switch. None (the default) follows the table this code implements: solved under `window_qualification/1`. `False` answers a build made
     with the legacy switch (tests of the retired behaviour only).
@@ -392,6 +408,17 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
 
     `channel_at(record, t)` / `channel_boundaries(record, lo, hi)` (W0): the per-instant channel of a P1 record and its change
     instants, supplied by the caller's own derivation; absent ⇒ a P1 record has no channel derivation (refused, as before).
+
+    `solver_check_fn` (R-6/R-7): the verifier's check of a function-valued window's stored numbers and certificate. Called with ONE dict
+    {window, lo, hi, peak, score, evidence_for, evidence_against, valence, objective_value, qualification, records, qualified, event_class,
+    path_id, rule_version} per such window when `solver_check` is true; it returns a `window_cert_check.CertReport` (or any object with
+    `.classification` in AGREED / DISAGREEMENT / INCONCLUSIVE, `.findings` and `.inconclusive`), or None for a window it does not cover
+    (that window stays UNVERIFIED, as before). AGREED numbered ⇒ reproduced and numeric; AGREED blank (a justified `solver_budget_exhausted`) ⇒
+    reproduced; DISAGREEMENT ⇒ a problem (the report raises: the seal is blocked, always); INCONCLUSIVE ⇒ the window is DEMOTED — counted as
+    reproduced (as the named blank it will be served as), listed in `inconclusive_windows` with its stored `window_id`, reason and valence, never in `numeric_reproduced`,
+    and capped by the numerical-window gate. Without a `solver_check_fn`, a call that has `position_at` runs the verifier's own adapter
+    (`_certificate_verdict`: `_checker_records` + `window_cert_check`) — the same classes, from the stored certificate; a call with neither leaves the
+    window UNVERIFIED (`solver_check_unavailable_windows`).
 
     `p1_check` (P1c): a `p1_operands_check.P1Check` — the verifier's own sky + L0 derivation of the P1 states. Bound to this
     path's factor rows it supplies the P1 records' value, side (`channel_at`), unknown reasons and change instants, replacing any
@@ -489,8 +516,9 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     unverified: list[str] = []      # windows with a function-valued member while the solver is enabled
     deferred: list[str] = []        # …of those, the ones whose solver check this call was told to leave to the verification job
     unavailable: list[str] = []     # …and the ones it was asked to check but had no ephemeris to prove against
-    solver_checked = 0              # windows the independent prover SETTLED (a numbered window VERIFIED, or a blank window's defect CONFIRMED)
-    solver_blank: dict[str, int] = {}   # …of which blank windows, by the stored reason the prover confirmed
+    inconclusive: list[dict] = []   # R-6: windows the certificate check could not settle inside the verifier's own budget — demoted to a named blank at seal
+    solver_checked = 0              # windows the independent check SETTLED (a numbered window AGREED, a blank window's certificate or defect CONFIRMED) or demoted
+    solver_blank: dict[str, int] = {}   # …of which blank windows, by the stored reason the check confirmed
     unverified_why: dict[str, list] = {}
     detail: list[dict] = []         # the lossless qualification provenance, DERIVED here (1156 has no column)
     inherited = None                # R4: the combustion authority THIS verifier read (None = no P1 binding ⇒ the window carries no such key)
@@ -539,7 +567,8 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                 for k in sorted(set(inherited) | set(got)):
                     if got.get(k) != inherited.get(k):
                         problems.append(f"{tag}: combustion inheritance {k} {got.get(k)!r} != re-derived {inherited.get(k)!r}")
-        if s_qual != want_q:
+        # R-7: the builder's `solver_certificate` rides in the same object; it is CHECKED by the solver check, never compared here
+        if {k: v for k, v in s_qual.items() if k != "solver_certificate"} != want_q:
             problems.append(f"{tag}: qualification {s_qual} != re-derived {want_q}")
 
     for (wid, lo, hi, peak, score, ev_for, ev_against, severity, null_states, valence,
@@ -644,66 +673,80 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             if not against_ok and ev_against is not None:
                 problems.append(f"{tag}: evidence_against is stored but the registry row declares no way to "
                                 "evaluate that channel (expected NULL)")
-            # S3: the INDEPENDENT prover (`window_solver_check`). Not run in the writer's in-build self-check (N-6: deferred, never a pass), and not
-            # runnable without an ephemeris (unavailable, never a pass).
+            # S3 + R67: the INDEPENDENT check. Not run in the writer's in-build self-check (N-6: deferred, never a pass), and not runnable without an
+            # ephemeris or an injected `solver_check_fn` (unavailable, never a pass).
             if not solver_check:
                 unverified.append(tag)
                 deferred.append(tag)
                 continue
-            if position_at is None:
+            reason = (s_qualification or {}).get("unqualified_reason")
+            stored_unresolved = dict((s_qualification or {}).get("unresolved") or {})
+            if peak is None:                         # a BLANK window with a function-valued member: it must be a named blank carrying no number
+                if reason is None or reason not in stored_unresolved:
+                    problems.append(f"{tag}: a blank window with a function-valued member carries no usable reason ({reason!r}, unresolved {stored_unresolved!r})")
+                    continue
+                if not expect_null_window(tag, stored, reason):
+                    continue
+            # a structural blank (H1/H2/undeterminable) is confirmed by the prover's own probe; a numbered window and a budget blank are checked against the
+            # builder's certificate (`solver_check_fn`, else the verifier's `window_cert_check` adapter)
+            structural_blank = peak is None and reason not in SOLVER_BUDGET_REASONS
+            if (solver_check_fn is None or structural_blank) and position_at is None:
                 unverified.append(tag)
                 unavailable.append(tag)
                 continue
-            records = _checker_records(conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at,
-                                       vedha_overlay=vedha_overlay, channel_at=channel_at, channel_boundaries=channel_boundaries)
+            records = None if position_at is None else _checker_records(
+                conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at, vedha_overlay=vedha_overlay,
+                channel_at=channel_at, channel_boundaries=channel_boundaries)
             objective = _chk.OBJ_MAXMIN if path_id == "P4" else _chk.OBJ_SUM
-            if peak is not None:
-                ov = s_objective_value if s_objective_value is not None else (score if path_id == "P4" else None)
-                if ov is None:
-                    problems.append(f"{tag}: a numbered window carries no objective_value — its maximum cannot be proved")
+            if structural_blank:
+                probe = _chk.check_window(lo=lo, hi=hi, records=records, objective=objective, position_at=position_at, event_class=event_class,
+                                          against_evaluated=against_ok, stored=_chk.StoredWindow(peak_instant=lo, objective_value=0.0))
+                want_code = SOLVER_STRUCTURAL.get(reason, _chk.F_UNDET)
+                if want_code not in _structural_codes(probe):
+                    problems.append(f"{tag}: blank under {reason!r}, but the independent prover finds no such defect "
+                                    f"(it found {sorted(f.code for f in probe.findings) or 'none'}) — a blank where the table yields a value")
                     continue
-                got = _chk.check_window(
-                    lo=lo, hi=hi, records=records, objective=objective, position_at=position_at, event_class=event_class, against_evaluated=against_ok,
-                    stored=_chk.StoredWindow(peak_instant=peak, objective_value=ov, score=score, evidence_for=ev_for, evidence_against=ev_against,
-                                             outcome_valence=valence))
-                if got.status == _chk.REFUTED:
-                    problems.append(f"{tag}: the independent solver check refutes the stored numbers: "
-                                    + "; ".join(f"{f.code} ({f.detail})" for f in got.findings))
-                elif got.status == _chk.UNVERIFIED:
-                    unverified.append(tag)
-                    unverified_why[tag] = [reason for reason, _detail in got.unverified]
-                else:
-                    solver_checked += 1
-                    numeric += 1
-                    fully_reproduced += 1
-                    row["objective_value"] = got.rederived.get("maximum", got.rederived.get("value_at_peak"))
-                    check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+                solver_checked += 1
+                solver_blank[reason] = solver_blank.get(reason, 0) + 1
+                fully_reproduced += 1
+                row["unqualified_reason"] = reason
+                row["unresolved"] = dict(sorted({**row["unresolved"], **{k: v for k, v in stored_unresolved.items() if k not in row["unresolved"]}}.items()))
+                check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
                 continue
-            # a BLANK solver window: its stored reason must name a defect the prover finds for itself
-            reason = (s_qualification or {}).get("unqualified_reason")
-            stored_unresolved = dict((s_qualification or {}).get("unresolved") or {})
-            if reason is None or reason not in stored_unresolved:
-                problems.append(f"{tag}: a blank window with a function-valued member carries no usable reason ({reason!r}, unresolved {stored_unresolved!r})")
+            ov = s_objective_value if s_objective_value is not None else (score if path_id == "P4" else None)
+            if peak is not None and ov is None and solver_check_fn is None:
+                problems.append(f"{tag}: a numbered window carries no objective_value — its maximum cannot be proved")
                 continue
-            if not expect_null_window(tag, stored, reason):
-                continue
-            if reason in SOLVER_BUDGET_REASONS:
-                unverified.append(tag)               # a budget blank is justified by its certificate — not independently checkable here
-                unverified_why[tag] = [reason]
-                continue
-            probe = _chk.check_window(lo=lo, hi=hi, records=records, objective=objective, position_at=position_at, event_class=event_class,
-                                      against_evaluated=against_ok, stored=_chk.StoredWindow(peak_instant=lo, objective_value=0.0))
-            want_code = SOLVER_STRUCTURAL.get(reason, _chk.F_UNDET)
-            if want_code not in _structural_codes(probe):
-                problems.append(f"{tag}: blank under {reason!r}, but the independent prover finds no such defect "
-                                f"(it found {sorted(f.code for f in probe.findings) or 'none'}) — a blank where the table yields a value")
+            window = {"window": row["window"], "lo": lo, "hi": hi, "peak": peak, "score": score, "evidence_for": ev_for, "evidence_against": ev_against,
+                      "valence": valence, "objective_value": s_objective_value, "qualification": s_qualification, "records": recs, "qualified": qualified,
+                      "event_class": event_class, "path_id": path_id, "rule_version": rule_version}
+            if solver_check_fn is not None:
+                verdict = solver_check_fn(window)
+            else:
+                verdict = _certificate_verdict(window, records=records, objective=objective, position_at=position_at, against_evaluated=against_ok, ov=ov)
+            if verdict is None:                      # the seam does not cover this window: UNVERIFIED, never a pass
+                unverified.append(tag)
                 continue
             solver_checked += 1
-            solver_blank[reason] = solver_blank.get(reason, 0) + 1
-            fully_reproduced += 1
-            row["unqualified_reason"] = reason
-            row["unresolved"] = dict(sorted({**row["unresolved"], **{k: v for k, v in stored_unresolved.items() if k not in row["unresolved"]}}.items()))
-            check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+            cls = verdict.classification
+            if cls == "DISAGREEMENT":
+                problems.append(f"{tag}: the independent solver check DISAGREES — " + "; ".join(f"{code}: {detail_}" for code, detail_ in verdict.findings))
+            elif cls == "INCONCLUSIVE":
+                why = sorted(r for r, _d in verdict.inconclusive)[0]
+                inconclusive.append({"window": row["window"], "window_id": wid, "reason": why, "stored_numbered": peak is not None,
+                                     "valence": valence, "had_score": score is not None})
+                fully_reproduced += 1                  # reproduced as the named blank it will be served as
+            elif cls == "AGREED":
+                if peak is not None:
+                    numeric += 1
+                    row["objective_value"] = s_objective_value
+                else:                                  # a blank the certificate justified: a NAMED blank carrying no number
+                    row["unqualified_reason"] = reason
+                    row["unresolved"] = stored_unresolved
+                check_provenance(tag, row, len(qualified), s_objective, s_objective_value, s_qualification)
+                fully_reproduced += 1
+            else:
+                problems.append(f"{tag}: the solver check returned the unknown class {cls!r}")
             continue
         # ── policy 3–5: every live member is a constant — re-derive piecewise ─────────────────────────────
         def val(rid, t):
@@ -824,7 +867,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             "unverified_windows": unverified, "policy_version": policy,
             "dynamic_enabled": bool(dynamic_enabled), "solver_check_requested": solver_check, "solver_checked_windows": solver_checked,
             "solver_check_deferred_windows": len(deferred), "solver_check_unavailable_windows": len(unavailable),
-            "solver_blank_windows": dict(sorted(solver_blank.items())), "unverified_why": unverified_why,
+            "solver_blank_windows": dict(sorted(solver_blank.items())), "unverified_why": unverified_why, "inconclusive_windows": inconclusive,
             "fields_verified": list(GOVERNED_FIELDS), "windows_detail": detail,
             **({"vedha_derivation": derived_vedha.summary()} if derived_vedha is not None else {}),
             # VERIFIED only when EVERY window's stored fields were reproduced exactly

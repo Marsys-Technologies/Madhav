@@ -563,6 +563,13 @@ class _Engine:
                 per_root[rec.root] = max(per_root.get(rec.root, 0.0), v)
         return sum(per_root.values())
 
+    # ── where the search over a mixed piece starts (R-7: `window_cert_check` seeds it with the builder's cells) ─────────────
+    def _seeds(self, pc: "_Piece") -> list:
+        """The initial stack of a search over the mixed piece `pc`, LAST ELEMENT FIRST: the whole piece. Any partition of the piece into
+        sub-intervals is equally sound here (the first-order bound holds on every sub-interval of a monotone piece); a subclass supplies
+        the builder's certificate cells as such a partition, so the search starts where the builder ended."""
+        return [(pc.l, pc.r, pc.vl, pc.vr)]
+
     # ── check 2: the first-order upper bound ────────────────────────────────────────────────────────────────────────────
     def _witness(self, t: float, thr: float):
         v = self._objective_at(t)
@@ -588,7 +595,7 @@ class _Engine:
                     if w is not None:
                         self._above(t, w, m_stored)
                         return
-            stack = [(pc.l, pc.r, pc.vl, pc.vr)]
+            stack = self._seeds(pc)
             while stack:
                 l, r, vl, vr = stack.pop()
                 if self._reduce_upper(pc, vl, vr) <= thr:
@@ -632,7 +639,7 @@ class _Engine:
                 yield (pc.l, pc.F_l, "start")
                 yield (pc.r, pc.F_r, "end")
                 continue
-            stack = [(pc.l, pc.r, pc.vl, pc.vr)]
+            stack = self._seeds(pc)
             prev_end = None
             while stack:
                 l, r, vl, vr = stack.pop()

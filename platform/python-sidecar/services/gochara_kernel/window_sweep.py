@@ -741,15 +741,18 @@ class WindowDraft:
     #: R4 (SR-Q6-L1-AMEND): the identity of the combustion authority a P1 grain's states were derived from — the `bg_combustion_orbs` row ids and
     #: content digest, and the L1 combustion module's digest (`p1_operands.P1Operands.combustion_inheritance`). None for every other grain.
     combustion_inheritance: dict | None = None
+    solver_certificate: dict | None = None  # R-7: the solver's piece tree (`window_solver.stored_certificate`) — numbered, or a budget-exhausted blank
 
     def qualification(self) -> dict:
-        """The structured provenance persisted with the window (1240 `qualification`; closed keys, plus `combustion_inheritance` for a P1
-        grain bound to the Form B operands — the shape check is amended by the migration the cockpit numbers for R4)."""
+        """The structured provenance persisted with the window (1240 `qualification`; closed keys, plus `combustion_inheritance` for a P1 grain bound
+        to the Form B operands and `solver_certificate` for a solved or budget-exhausted window — both admitted by migration 1402)."""
         q = {"policy": self.policy, "unqualified_reason": self.unqualified_reason, "unresolved": dict(sorted(self.unresolved.items())),
              "affected_channels": sorted(self.affected_channels), "members": self.members,
              "qualified_members": self.qualified_members}
         if self.combustion_inheritance is not None:
             q["combustion_inheritance"] = self.combustion_inheritance
+        if self.solver_certificate is not None:
+            q["solver_certificate"] = self.solver_certificate
         return q
 
 
@@ -1003,7 +1006,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                   allow_dynamic: bool = False,
                   solver: SolverConfig | None = None,
                   policy: str = POLICY_QUALIFICATION,
-                  combustion_inheritance: dict | None = None) -> tuple[list[WindowDraft], dict]:
+                  combustion_inheritance: dict | None = None,
+                  window_solver: Callable[[dict], object] | None = None) -> tuple[list[WindowDraft], dict]:
     """The grain's windows (one path-version) and an exclusion ledger — every record accounted.
 
     Window construction (Codex round 6, R3): ONE window per MAXIMAL CONNECTED COMPONENT of the
@@ -1039,13 +1043,21 @@ def draft_windows(event_class: str, records: list[SweepRecord],
          max-min value); NULL when a live member at the peak is unqualified (its product is unknown);
       5. `evidence_against` is the per-instant against reduction at the peak: NULL iff the path cannot
          evaluate it, or a live unqualified against/unknown-channel member could feed it.
-    Admission and admitted support are unchanged; known partial subtotals are never stored as complete."""
+    Admission and admitted support are unchanged; known partial subtotals are never stored as complete.
+
+    SOLVER SEAM (R-6/R-7). `window_solver`, when given, solves a component that has a function-valued qualified member INSTEAD of the piece
+    sampler and lifts the dynamic switch for it. It is called with {path_id, lo, hi, objective, members (the qualified programs), event_class}
+    and returns an object with `.status` ('solved' | 'blank'), `.value`, `.instant` (an aware datetime), `.reason` and `.certificate` (the JSON
+    object `window_solver.stored_certificate` builds, or None). The budget is the callable's and is PER WINDOW: nothing is shared between
+    components, so an exhausted window never blanks the next. A blank outcome is a named blank (reason, `unresolved[reason] = 1`, unqualified
+    valence) that carries its certificate; a solved one flows through the common tail below with its certificate attached. The adapter that
+    turns programs into the solver's problem is the integration's (S3)."""
     from services.gochara_rules import valence as _valence_mod
     valence_fn = compute_valence or _valence_mod.compute_valence
     if policy not in RESULT_POLICIES:
         raise SweepRefusal(f"result policy {policy!r} is not one of {RESULT_POLICIES}")
-    if solver is not None and allow_dynamic:
-        raise SweepRefusal("`solver` and `allow_dynamic` (the legacy sampler) are mutually exclusive — a window is numbered by exactly one engine")
+    if sum(x for x in (solver is not None, allow_dynamic, window_solver is not None)) > 1:
+        raise SweepRefusal("`solver`, `allow_dynamic` (the legacy sampler) and `window_solver` (the callable seam) are mutually exclusive — a window is numbered by exactly one engine")
 
     excluded = {"not_admitted": 0, "admission_unqualified": 0, "testimony": 0, "no_support": 0}
     members: list[SweepRecord] = []
@@ -1148,7 +1160,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
 
         qualified = [p for p in in_win if p.qualified]
         use_solver = solver is not None and any(p.constant is None for p in qualified)
-        if not allow_dynamic and solver is None and any(p.constant is None for p in qualified):
+        if not allow_dynamic and solver is None and window_solver is None and any(p.constant is None for p in qualified):
             n_dyn = sum(1 for p in qualified if p.constant is None)
             unresolved[DYNAMIC_SWITCH_REASON] = n_dyn
             base["unresolved"] = unresolved
@@ -1162,7 +1174,25 @@ def draft_windows(event_class: str, records: list[SweepRecord],
         unknown_pieces = 0
         reason_pieces: dict[str, int] = {}     # W0: unknown pieces per NAMED reason a factor passed through
         unnamed_pieces = 0                     # unknown pieces no factor gave a reason for
-        for a, b, live in _pieces(lo, hi, qualified):
+        solver_certificate = None
+        solved_by_solver = False
+        if window_solver is not None and any(p.constant is None for p in qualified):
+            out = window_solver({"path_id": path_id, "lo": lo, "hi": hi, "objective": objective_name, "members": qualified,
+                                 "event_class": event_class})
+            solver_certificate = out.certificate
+            if out.status != "solved":
+                if not out.reason:
+                    raise SweepRefusal("the window solver returned a blank without a reason")
+                base["unresolved"] = {**unresolved, out.reason: 1}
+                val = valence_fn(event_class, 0.0, 0.0, out.reason)
+                drafts.append(WindowDraft(
+                    peak_instant=None, score=None, evidence_for=None, evidence_against=None,
+                    outcome_valence_for_native=val.outcome_valence_for_native,
+                    unqualified_reason=out.reason, solver_certificate=solver_certificate, **base))
+                continue
+            cands.append((out.value, out.instant))
+            solved_by_solver = True
+        for a, b, live in (() if solved_by_solver else _pieces(lo, hi, qualified)):
             if path_id == "P4":
                 if {p.rec.agent for p in live} != {"jupiter", "saturn"}:
                     continue               # outside the joint support within this piece: not a candidate
@@ -1224,6 +1254,9 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                 res = _solver.solve(problem, max_evals=solver.max_evals)
             except _solver.SolverRefusal as exc:
                 raise SweepRefusal(f"window {lo.isoformat()}: {exc}") from exc
+            # R-7 (the one engine): the certificate is the piece tree of THIS solve, named by the solver's own objective (the migration admits `sum_of_group_max` /
+            # `min_of_group_max`, not the sweep's `objective_name`); None for a blank that has no tree (only budget exhaustion keeps one)
+            solver_certificate = _solver.stored_certificate(res, objective=problem.objective, t0_iso=lo.isoformat(), max_evals=solver.max_evals)
             if res.status == _solver.BLANK:
                 unknown_pieces, unnamed_pieces = 1, 0
                 reason_pieces = {res.reason: 1}
@@ -1249,7 +1282,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             drafts.append(WindowDraft(
                 peak_instant=None, score=None, evidence_for=None, evidence_against=None,
                 outcome_valence_for_native=val.outcome_valence_for_native,
-                unqualified_reason=first, **base))
+                unqualified_reason=first, solver_certificate=solver_certificate, **base))
             continue
         if solved is not None:
             best, peak = solved
@@ -1277,7 +1310,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                              else "evidence_against_channel_unqualified")
         drafts.append(WindowDraft(
             peak_instant=peak, score=score, evidence_for=ev_for, evidence_against=ev_against,
-            outcome_valence_for_native=val.outcome_valence_for_native, objective_value=best, **base))
+            outcome_valence_for_native=val.outcome_valence_for_native, objective_value=best,
+            solver_certificate=solver_certificate, **base))
     drafts = [d if d.policy == policy else dataclasses.replace(d, policy=policy) for d in drafts]
     if combustion_inheritance is not None:        # R4: every window of the grain carries the identity of the combustion authority it consumed
         drafts = [dataclasses.replace(d, combustion_inheritance=combustion_inheritance) for d in drafts]

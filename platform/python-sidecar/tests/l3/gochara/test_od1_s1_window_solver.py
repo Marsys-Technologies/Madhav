@@ -183,7 +183,7 @@ def test_cs5_the_stored_exact_instant_is_not_the_crest(error):
 # ── C-S6 the bound is rigorous on decreasing and increasing terms ─────────────────────────────────────────────────────────────────
 
 def _piece_of(problem):
-    ctx = sol._Ctx(10 ** 7, None)
+    ctx = sol._Ctx(10 ** 7)
     _ordered, pieces = sol._build(problem, ctx)
     return [p for p in pieces if p is not None], ctx
 
@@ -327,15 +327,18 @@ def test_cs11_a_hard_world_with_a_tiny_budget_is_blank_not_best_found():
     assert r.evals == 40
 
 
-def test_cs11_the_grain_budget_is_shared_across_windows():
-    ms, _m, _t = hump_world(1.0, T=T)
-    need = run(ms, 0.0, T).evals
-    grain = sol.Budget(int(need * 1.5))
-    first = run(ms, 0.0, T, grain=grain)
-    second = run(ms, 0.0, T, grain=grain)
-    assert first.status == sol.SOLVED
-    assert (second.status, second.reason, second.value) == (sol.BLANK, sol.REASON_BUDGET, None)
-    assert grain.spent == first.evals + second.evals
+def test_cs11_the_budget_is_per_window_an_exhausted_window_does_not_blank_the_next():
+    """R-6: a window's result must not depend on the windows solved before it. The first window exhausts its own budget; the second, easy,
+    window is solved with the same budget exactly as it is when solved alone."""
+    hard, _m, _t = hump_world(1.0, T=T)
+    easy = (member("e", "r", ((0.0, 100.0),), poly_tent(1.0, 0.0, 0.005, 0.0, t0=50.0)),)
+    need_easy = run(easy, 0.0, 100.0).evals
+    budget = max(need_easy * 2, 60)
+    first = run(hard, 0.0, T, max_evals=budget)
+    second = run(easy, 0.0, 100.0, max_evals=budget)
+    alone = run(easy, 0.0, 100.0, max_evals=budget)
+    assert (first.status, first.reason) == (sol.BLANK, sol.REASON_BUDGET)
+    assert second.status == sol.SOLVED and (second.value, second.instant, second.evals) == (alone.value, alone.instant, alone.evals)
 
 
 # ── supporting behaviour the integration (S3) relies on ───────────────────────────────────────────────────────────────────────────
@@ -376,11 +379,9 @@ def test_a_malformed_step_value_is_refused_loudly():
         run(ms, 0.0, 10.0)
 
 
-def test_grain_budget_sizing_matches_the_s0_measurements():
-    """S0 §1: MAX_EVALS_GRAIN = floor(18,000 s / (104 grains × c)) — c = 100 µs → 1.7e6, 48 µs → 3.6e6, 2.1 µs → 8.2e7."""
-    assert sol.grain_budget_evals(18000.0, 104, 100e-6) == 1_730_769
-    assert sol.grain_budget_evals(18000.0, 104, 48e-6) // 10 ** 5 == 36
-    assert sol.grain_budget_evals(18000.0, 104, 2.1e-6) // 10 ** 6 == 82
+def test_the_grain_level_budget_is_retired():
+    assert not hasattr(sol, "Budget") and not hasattr(sol, "grain_budget_evals")
+    assert "grain" not in sol.solve.__code__.co_varnames
 
 
 def test_the_kinematic_bound_is_withheld_without_a_limb_window_list_and_inside_one():

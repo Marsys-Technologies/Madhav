@@ -4,8 +4,8 @@ Why a database oracle: `window_sweep.qualification()` puts the key `combustion_i
 and 1240's CHECK `kgew_qualification_shape_ck` (→ `ka_gochara_window_qualification_ok`) is a CLOSED key list — the first Form B window INSERT would fail. The
 unit tests cannot see that; only the real constraint on a real window can.
 
-The migration text is placed under `platform/migrations/` by the cockpit (this job may not write there). The test reads it through the environment variable
-`KALA_MIGRATION_1402` (a path to the file) and SKIPS honestly when it is not set or the file is missing. It runs on the disposable cluster
+The migration text is `platform/migrations/1402_gochara_qualification_provenance_certificate.sql` (placed by the cockpit; on the integration branch since merge-back wave 3a, so the
+oracle no longer needs an override). `KALA_MIGRATION_1402` (a path to the file) still overrides it, and the test SKIPS honestly only when the file is missing. It runs on the disposable cluster
 (`GOCHARA_A53_ADMIN_DSN`, like the other A5.3 database suites) on a built world whose chain stops at 1240 — so the "before" half is the real 1240 function.
 
 Claims, each with its single planted reversion:
@@ -28,9 +28,9 @@ from .test_a53_p1_support import world  # noqa: F401
 from .test_a53_window_verification_gate import _boot_p3, _consistent_sky, _windows  # noqa: F401
 
 ENV = "KALA_MIGRATION_1402"
-_PATH = os.environ.get(ENV)
+_PATH = os.environ.get(ENV) or str(Path(__file__).resolve().parents[4] / "migrations" / "1402_gochara_qualification_provenance_certificate.sql")
 pytestmark = pytest.mark.skipif(not _PATH or not Path(_PATH).is_file(),
-                                reason=f"NOT_RUN: {ENV} does not name the migration 1402 file (the cockpit places it under platform/migrations)")
+                                reason=f"NOT_RUN: the migration 1402 file is missing ({_PATH})")
 
 CHECK = "kgew_qualification_shape_ck"
 RECORD = {"orb_digest": "ab" * 32, "orb_row_ids": {"Moon": 1, "Mars": 2, "Saturn": 6}, "l1_module": "ga_writers.ga_condition_writer",
