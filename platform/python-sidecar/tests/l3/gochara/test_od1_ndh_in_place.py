@@ -295,3 +295,18 @@ def test_n7_a_database_with_no_gochara_table_is_not_clean():
     finally:
         if admin is not None:
             drop_am5_database(admin, name)
+
+
+def test_n8_the_census_never_connects_to_a_non_loopback_database(monkeypatch):
+    """Nothing touches production (job header, Databases rule; R-2026-10-15-01): `census --dsn` refuses any host that is not loopback BEFORE a connection is attempted.
+    (revert: the `_loopback_connect` host refusal removed → `psycopg.connect` is reached, which this test fails on)"""
+    import psycopg
+
+    def _no_connection(*args, **kwargs):
+        raise AssertionError(f"a connection was attempted: {args!r}")
+
+    monkeypatch.setattr(psycopg, "connect", _no_connection)
+    for dsn in ("postgresql://u@db.example.invalid/x", "postgresql://u@127.0.0.1,db.example.invalid/x", "postgresql://u@10.0.0.5/x"):
+        with pytest.raises(SystemExit) as exc:
+            tool.main(["census", "--dsn", dsn])
+        assert "refused" in str(exc.value)
