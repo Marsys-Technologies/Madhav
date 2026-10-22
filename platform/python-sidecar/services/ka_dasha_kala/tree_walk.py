@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Callable, List, Optional, Set
 
+from services.gochara_grammar.read_tier_policy import SINGLE
 from .eligibility import EligibilityBand, score_eligibility, is_eligible_for_pruning
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,14 @@ class DashaInterval:
     eligibility_score: float = 0.20
     kp_sublevel: Optional[str] = None
     kp_sub_lord: Optional[str] = None
+    # SR-DASHA-SINGLE-TIER: the stored tier of THIS row, and whether the interval was derived from any `single`
+    # row (its own or an ancestor's) -- counted and flagged separately, never presented as verified (§N.6).
+    verification_pass_status: Optional[str] = None
+    single_tier_input: bool = False
+
+
+def _tier_of(row: dict) -> Optional[str]:
+    return row.get("verification_pass_status")
 
 
 def _fetch_level1(
@@ -74,16 +83,18 @@ def _fetch_level1(
     date_start: date,
     date_end: date,
     query_counter: Optional[list] = None,
+    admit_single_tier: bool = False,
 ) -> list[dict]:
     """Fetch all level-1 (MD) rows that overlap [date_start, date_end]."""
     if query_counter is not None:
         query_counter.append(f"level1:{system_id}")
 
-    sql = dasha_query('tree_level1')
+    sql = dasha_query('tree_level1_tiered')
     rows = execute_governed_dasha_query(conn, chart_id, sql, [chart_id, ayanamsha_id, system_id,
-                               date_end, date_start], ayanamsha_id=ayanamsha_id).fetchall()
+                               date_end, date_start], ayanamsha_id=ayanamsha_id,
+                               admit_single_tier=admit_single_tier).fetchall()
     cols = ["dasha_row_id", "lord_graha", "start_date", "end_date",
-            "kp_sublevel", "kp_sub_lord"]
+            "kp_sublevel", "kp_sub_lord", "verification_pass_status"]
     return [dict(zip(cols, r)) if not isinstance(r, dict) else r for r in rows]
 
 
@@ -94,16 +105,17 @@ def _fetch_children(
     date_end: date,
     query_counter: Optional[list] = None,
     system_id: str = "",
-    *, chart_id: str, ayanamsha_id: str,
+    *, chart_id: str, ayanamsha_id: str, admit_single_tier: bool = False,
 ) -> list[dict]:
     """Fetch direct children of a given parent row that overlap [date_start, date_end]."""
     if query_counter is not None:
         query_counter.append(f"children:{system_id}:{parent_row_id}")
 
-    sql = dasha_query('tree_children')
-    rows = execute_governed_dasha_query(conn, chart_id, sql, [parent_row_id, date_end, date_start], ayanamsha_id=ayanamsha_id).fetchall()
+    sql = dasha_query('tree_children_tiered')
+    rows = execute_governed_dasha_query(conn, chart_id, sql, [parent_row_id, date_end, date_start], ayanamsha_id=ayanamsha_id,
+                                        admit_single_tier=admit_single_tier).fetchall()
     cols = ["dasha_row_id", "lord_graha", "start_date", "end_date", "level_n",
-            "parent_row_id", "kp_sublevel", "kp_sub_lord"]
+            "parent_row_id", "kp_sublevel", "kp_sub_lord", "verification_pass_status"]
     return [dict(zip(cols, r)) if not isinstance(r, dict) else r for r in rows]
 
 
@@ -146,6 +158,8 @@ def _subdivide_prana(interval: DashaInterval, n_subdivisions: int = 9) -> list[D
             ancestor_lords=interval.ancestor_lords + [interval.lord_graha],
             eligibility_band=interval.eligibility_band,
             eligibility_score=interval.eligibility_score,
+            verification_pass_status=interval.verification_pass_status,
+            single_tier_input=interval.single_tier_input,
         ))
     return result
 
@@ -163,6 +177,7 @@ def walk_eligible_intervals(
     min_band: EligibilityBand = EligibilityBand.RELATED,
     prana_grain: bool = False,
     query_counter: Optional[list] = None,
+    admit_single_tier: bool = False,
 ) -> list[DashaInterval]:
     """
     Lazy pruning tree-walk for one (system_id, ayanamsha_id) pair.
@@ -192,6 +207,10 @@ def walk_eligible_intervals(
         If provided, each DB query appends a label to this list.
         Used by tests to assert pruning (ineligible subtrees' children
         should NOT appear in this list).
+    admit_single_tier : bool
+        SR-DASHA-SINGLE-TIER. Also read the `single` rows of the five ruled
+        systems; every interval derived from one (directly or through an
+        ancestor) carries ``single_tier_input=True``. Default False: unchanged.
 
     Returns
     -------
@@ -202,11 +221,12 @@ def walk_eligible_intervals(
     # -- Level-1: Maha-dasa ------------------------------------------------
     md_rows = _fetch_level1(
         conn, chart_id, ayanamsha_id, system_id,
-        date_start, date_end, query_counter,
+        date_start, date_end, query_counter, admit_single_tier=admit_single_tier,
     )
 
     for md in md_rows:
         md_lord = md["lord_graha"]
+        md_single = _tier_of(md) == SINGLE
         md_band, md_score = score_eligibility(md_lord, target_lords, related_lords)
         md_eligible = is_eligible_for_pruning(md_lord, target_lords, related_lords, min_band)
 
@@ -233,6 +253,8 @@ def walk_eligible_intervals(
                 eligibility_score=md_score,
                 kp_sublevel=md.get("kp_sublevel"),
                 kp_sub_lord=md.get("kp_sub_lord"),
+                verification_pass_status=_tier_of(md),
+                single_tier_input=md_single,
             )
             results.append(interval)
             continue
@@ -241,10 +263,12 @@ def walk_eligible_intervals(
         ad_rows = _fetch_children(
             conn, str(md["dasha_row_id"]), date_start, date_end,
             query_counter, system_id, chart_id=chart_id, ayanamsha_id=ayanamsha_id,
+            admit_single_tier=admit_single_tier,
         )
 
         for ad in ad_rows:
             ad_lord = ad["lord_graha"]
+            ad_single = md_single or _tier_of(ad) == SINGLE
             ad_band, ad_score = score_eligibility(ad_lord, target_lords, related_lords)
             ad_eligible = is_eligible_for_pruning(ad_lord, target_lords, related_lords, min_band)
 
@@ -269,6 +293,8 @@ def walk_eligible_intervals(
                     eligibility_score=ad_score,
                     kp_sublevel=ad.get("kp_sublevel"),
                     kp_sub_lord=ad.get("kp_sub_lord"),
+                    verification_pass_status=_tier_of(ad),
+                    single_tier_input=ad_single,
                 )
                 results.append(interval)
                 continue
@@ -277,10 +303,12 @@ def walk_eligible_intervals(
             pd_rows = _fetch_children(
                 conn, str(ad["dasha_row_id"]), date_start, date_end,
                 query_counter, system_id, chart_id=chart_id, ayanamsha_id=ayanamsha_id,
+                admit_single_tier=admit_single_tier,
             )
 
             for pd in pd_rows:
                 pd_lord = pd["lord_graha"]
+                pd_single = ad_single or _tier_of(pd) == SINGLE
                 pd_band, pd_score = score_eligibility(pd_lord, target_lords, related_lords)
                 pd_eligible = is_eligible_for_pruning(pd_lord, target_lords, related_lords, min_band)
 
@@ -305,6 +333,8 @@ def walk_eligible_intervals(
                         eligibility_score=pd_score,
                         kp_sublevel=pd.get("kp_sublevel"),
                         kp_sub_lord=pd.get("kp_sub_lord"),
+                        verification_pass_status=_tier_of(pd),
+                        single_tier_input=pd_single,
                     )
                     results.append(interval)
                     continue
@@ -313,10 +343,12 @@ def walk_eligible_intervals(
                 sk_rows = _fetch_children(
                     conn, str(pd["dasha_row_id"]), date_start, date_end,
                     query_counter, system_id, chart_id=chart_id, ayanamsha_id=ayanamsha_id,
+                    admit_single_tier=admit_single_tier,
                 )
 
                 for sk in sk_rows:
                     sk_lord = sk["lord_graha"]
+                    sk_single = pd_single or _tier_of(sk) == SINGLE
                     sk_band, sk_score = score_eligibility(sk_lord, target_lords, related_lords)
 
                     interval = DashaInterval(
@@ -334,6 +366,8 @@ def walk_eligible_intervals(
                         eligibility_score=sk_score,
                         kp_sublevel=sk.get("kp_sublevel"),
                         kp_sub_lord=sk.get("kp_sub_lord"),
+                        verification_pass_status=_tier_of(sk),
+                        single_tier_input=sk_single,
                     )
 
                     if prana_grain:
