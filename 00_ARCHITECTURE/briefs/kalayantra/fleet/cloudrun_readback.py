@@ -37,7 +37,7 @@ record — status REFUSED, exit 1 — so a partial record can never be mistaken 
              `--metrics` the record is the plain job record and carries no `checks`). It reads the definition .github/workflows/gochara-verification-job-deploy.yml deploys; each check
              computed from the describe response and false when the field differs (§N.8): image BY DIGEST of the pipeline repository, the verifier's own runtime identity,
              the verifier entry point as the container command, exactly the three contract environment variables (one secret, by name), GOCHARA_RUNNER_IMAGE_DIGEST equal to
-             the deployed digest, GOCHARA_RUNNER_COMMIT a 40-hex commit, one task, Cloud SQL instance, max-retries 0, 8Gi/2cpu/28800s. This kind never starts, schedules or executes anything,
+             the deployed digest, GOCHARA_RUNNER_COMMIT a 40-hex commit, one task, Cloud SQL instance, max-retries 0, 4Gi/1cpu/28800s. This kind never starts, schedules or executes anything,
              and it does not read the executor table (this file runs standalone).
 Honest nulls (CLAUDE.md §N.7.6 / §N.8): the corpus (Swiss Ephemeris files) cannot be measured without running the image, so the record
 says so in `corpus.status` rather than carrying a green; `provenance.image_attests_commit` is false because the image itself carries no
@@ -76,10 +76,10 @@ VERIFIER_SECRET = ("GOCHARA_VERIFIER_DB_URL", "gochara-verifier-db-url", "latest
 VERIFIER_PLAIN_ENV = frozenset({"GOCHARA_RUNNER_COMMIT", "GOCHARA_RUNNER_IMAGE_DIGEST"})
 CLOUDSQL_INSTANCE = "madhav-astrology:asia-south1:amjis-postgres"
 CLOUDSQL_ANNOTATION = "run.googleapis.com/cloudsql-instances"
-# The verification job's resources as deployed: gochara-verification-job-deploy.yml `--memory 8Gi --cpu 2 --task-timeout 28800`. The timeout is the ruled 28,800 s
+# The verification job's resources as deployed: gochara-verification-job-deploy.yml `--memory 4Gi --cpu 1 --task-timeout 28800` (SR-RIGHT-SIZE amend-1; was 8Gi/2). The timeout is the ruled 28,800 s
 # (#3747 via #3789; PRECENTURY_PLAN §9 D-2, F-VERIFY-TIMEOUT). This file is copied out alone so it cannot import gochara_seal_execution_check.JOB_TIMEOUT_SECONDS;
 # tests/test_cloudrun_readback_verification_job.py pins these equal to it, to both deploy flags and to the launch preparation, and the check name is derived from them.
-VERIFIER_MEMORY, VERIFIER_CPU, VERIFIER_TIMEOUT_SECONDS = "8Gi", "2", 28800
+VERIFIER_MEMORY, VERIFIER_CPU, VERIFIER_TIMEOUT_SECONDS = "4Gi", "1", 28800
 VERIFIER_RESOURCES_CHECK = f"resources_{VERIFIER_MEMORY}_{VERIFIER_CPU}cpu_{VERIFIER_TIMEOUT_SECONDS}s"
 COMMIT_40 = re.compile(r"[0-9a-f]{40}")
 EXECUTION = re.compile(r"brahma-build-pipeline-job-[a-z0-9]+(?:-[a-z0-9]+)*")      # smalltest_launch.EXECUTION, byte for byte

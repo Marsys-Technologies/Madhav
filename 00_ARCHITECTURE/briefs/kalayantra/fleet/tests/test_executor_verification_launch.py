@@ -59,7 +59,7 @@ TOKEN = "ya29.TOKEN-VALUE-NEVER-PRINTED"
 
 def container(args):
     return {"image": f"{REPO_IMAGE}@{DIGEST}", "command": ["python", "-m", "pipeline.orchestrator.verification_job"], "args": list(args),
-            "resources": {"limits": {"memory": "8Gi", "cpu": "2"}},
+            "resources": {"limits": {"memory": "4Gi", "cpu": "1"}},
             "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": COMMIT}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": DIGEST},
                     {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": SECRET, "key": "latest"}}}]}
 

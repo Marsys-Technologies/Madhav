@@ -67,7 +67,7 @@ def verification_job():
                         {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"key": "latest", "name": "gochara-verifier-db-url"}}},
                         {"name": "GOCHARA_RUNNER_COMMIT", "value": SHA},
                         {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": DIGEST}],
-                    "resources": {"limits": {"cpu": "2", "memory": "8Gi"}}}],
+                    "resources": {"limits": {"cpu": "1", "memory": "4Gi"}}}],
                 "maxRetries": 0, "serviceAccountName": SA, "timeoutSeconds": str(execchk.JOB_TIMEOUT_SECONDS)}}}}},
     }
 
@@ -118,7 +118,8 @@ def test_v2_the_image_is_read_by_digest_and_a_tag_reference_is_refused():
     (lambda c, t: c.__setitem__("command", ["python", "-m", "pipeline.orchestrator.main"]), "command_is_the_verifier_entry_point"),
     (lambda c, t: c["env"].append({"name": "DATABASE_URL", "valueFrom": {"secretKeyRef": {"key": "latest", "name": "data-plane-builder-db-url"}}}), "environment_is_exactly_the_contract"),
     (lambda c, t: c["env"][0]["valueFrom"]["secretKeyRef"].__setitem__("name", "data-plane-builder-db-url"), "environment_is_exactly_the_contract"),
-    (lambda c, t: c["resources"]["limits"].__setitem__("memory", "16Gi"), "resources_8Gi_2cpu_28800s"),
+    (lambda c, t: c["resources"]["limits"].__setitem__("memory", "16Gi"), "resources_4Gi_1cpu_28800s"),
+    (lambda c, t: c["resources"]["limits"].update(memory="8Gi", cpu="2"), "resources_4Gi_1cpu_28800s"),      # SR-RIGHT-SIZE: the pre-ruling 8Gi/2cpu definition reads false
 ])
 def test_v3_each_identity_entry_point_and_environment_field_is_checked(mutate, name):
     job = verification_job()
@@ -202,12 +203,12 @@ def test_v8_the_kind_is_read_only():
 
 def test_v9_the_resources_check_demands_the_ruled_28800_s_timeout_and_a_7200_s_job_reads_false():
     base, _ = measure()
-    row = checks(base)["resources_8Gi_2cpu_28800s"]
-    assert row["observed"] == {"memory": "8Gi", "cpu": "2", "timeout_seconds": RULED_TIMEOUT_SECONDS} and row["ok"] is True and base["all_checks_ok"] is True
+    row = checks(base)["resources_4Gi_1cpu_28800s"]
+    assert row["observed"] == {"memory": "4Gi", "cpu": "1", "timeout_seconds": RULED_TIMEOUT_SECONDS} and row["ok"] is True and base["all_checks_ok"] is True
     old = verification_job()
     old["spec"]["template"]["spec"]["template"]["spec"]["timeoutSeconds"] = "7200"                    # the value #3802 expected before the ruling was applied to it
     record, _ = measure(old)
-    assert checks(record)["resources_8Gi_2cpu_28800s"]["ok"] is False and record["all_checks_ok"] is False
+    assert checks(record)["resources_4Gi_1cpu_28800s"]["ok"] is False and record["all_checks_ok"] is False
 
 
 def test_v9_the_timeout_pins_cannot_drift_from_the_seal_checks_constant():
