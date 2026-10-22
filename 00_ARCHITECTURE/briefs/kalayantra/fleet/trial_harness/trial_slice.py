@@ -52,6 +52,7 @@ sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))                  # `python -I` does not put the script directory on sys.path
 import crosscheck as cx                        # noqa: E402
+import g5_cpu                                  # noqa: E402  (G5-CPU)
 import gates                                   # noqa: E402
 import trial_eval as te                        # noqa: E402
 
@@ -397,6 +398,11 @@ def make_clock(state: dict) -> "te.StageClock":
     return clock
 
 
+def make_cpu_meter(state: dict):
+    """G5-CPU: one attributed-CPU meter per stage loop (SR-G5-LOAD), restored from state.json on a resume; a seam like `make_clock`."""
+    return g5_cpu.make_meter(ADMIN_DSN, state.get("db"), state)
+
+
 def build(state: dict, out: Path, deadline: float | None) -> bool:
     """Returns True when the plan is complete (every substep done or its class closed by a defect).  `deadline` = an absolute time.time(), or None."""
     import psycopg
@@ -430,14 +436,15 @@ def build(state: dict, out: Path, deadline: float | None) -> bool:
     obs.setdefault("solver_calls", {})
     complete = False
     clock = make_clock(state)
-    with contextlib.closing(clock), psycopg.connect(dsn, autocommit=True, connect_timeout=5) as conn:       # closing(clock) releases the lock probe's admin connection (N4)
+    meter = make_cpu_meter(state)                                                                            # G5-CPU: attributed CPU per stage (SR-G5-LOAD)
+    with contextlib.closing(clock), contextlib.closing(meter), psycopg.connect(dsn, autocommit=True, connect_timeout=5) as conn:       # closing(clock) releases the lock probe's admin connection (N4)
         while True:
             if deadline is not None and time.time() >= deadline:
                 break
             notes: dict = {}
             t0 = time.time()
             box: dict = {}
-            with clock.measure(lambda: "build:" + box.get("kind", "empty")):                  # T17: compute and lock wait, per stage
+            with clock.measure(lambda: "build:" + box.get("kind", "empty")), meter.measure(lambda: "build:" + box.get("kind", "empty")) as cpu_box:       # T17: compute and lock wait, per stage; G5-CPU
                 with probe_solver(obs["solver_calls"], state.get("solver_module") or SOLVER_MODULE) as present:
                     obs["solver_module_present"] = bool(present)
                     res = q.build_slice(conn, chart_id=CHART, horizon=horizon, classes=classes, ephe_path=EPHE, build_id="trial-slice", final_rules=True,
@@ -446,6 +453,7 @@ def build(state: dict, out: Path, deadline: float | None) -> bool:
                     box["kind"] = res["steps"][0]["step"].split(":")[0]
             secs = round(time.time() - t0, 2)
             state["effective_wall"] = clock.record()
+            state["g5_cpu"] = meter.record()                                                  # G5-CPU
             if not res["steps"] and not res["defects"]:
                 complete = True
                 break
@@ -453,7 +461,7 @@ def build(state: dict, out: Path, deadline: float | None) -> bool:
             obs["maximise_earliest_calls"] += res["observed"]["maximise_earliest_calls"]
             obs["near_miss_layer"].append(res["near_miss_layer"])
             for s in res["steps"]:
-                state["steps"].append({"step": s["step"], "rows": s["rows"], "secs": secs})
+                state["steps"].append({"step": s["step"], "rows": s["rows"], "secs": secs, "cpu_s": cpu_box["cpu_s"]})
                 done.add(s["step"])
                 print(f"{secs:9.2f}s  {s['step']}", flush=True)
             for d in res["defects"]:
@@ -802,6 +810,7 @@ def verify_stage(state: dict, out: Path, conn, deadline: float | None) -> bool:
     real_census = vj._enforce_class_census
     trial_census = make_trial_census(vj, state["classes"])
     clock = make_clock(state)
+    meter = make_cpu_meter(state)                                                            # G5-CPU
     for cls in pending:
         if deadline is not None and time.time() >= deadline:
             break
@@ -810,7 +819,7 @@ def verify_stage(state: dict, out: Path, conn, deadline: float | None) -> bool:
         wv.verify_window_semantics = timed
         vj._enforce_class_census = trial_census                          # CENSUS_DIAG §3: the slice is judged against the TRIAL universe
         try:
-            with clock.measure(f"verify:{cls}"), rule_registry.rule_profile(final_rules=True):
+            with clock.measure(f"verify:{cls}"), meter.measure(f"verify:{cls}"), rule_registry.rule_profile(final_rules=True):
                 rep = vj.run(conn, chart_id=CHART, generation=GENERATION, classes=[cls], enforce_identity=False, report_only=False,
                              **vjob._build_kwargs(conn, EPHE))
             entry = rep["classes"].get(cls) or {}
@@ -830,8 +839,11 @@ def verify_stage(state: dict, out: Path, conn, deadline: float | None) -> bool:
             vj._enforce_class_census = real_census
         print(f"{v['classes'][cls]['seconds']:9.2f}s  verify {cls}: {v['classes'][cls]['status']}", flush=True)
         state["effective_wall"] = clock.record()
+        state["g5_cpu"] = meter.record()                                                      # G5-CPU
         write_json(out / "state.json", state)
     state["effective_wall"] = clock.record()
+    state["g5_cpu"] = meter.record()                                                          # G5-CPU
+    meter.close()                                                                             # G5-CPU
     clock.close()                                                            # the lock probe's admin connection (N4); every exception of the loop is caught above
     finished = all(c in v["classes"] for c in state["classes"] if c not in dead) or bool(v.get("not_run_reason"))
     if finished and not v.get("final"):
@@ -912,10 +924,13 @@ def equivalence_stage(state: dict, out: Path, eq_repo: str | None, eq_tool: str 
     except (OSError, ValueError):
         pass
     extra = json.loads(Path(extra_path).read_text(encoding="utf-8")) if extra_path else None
+    g5 = g5_cpu.equivalence_fields(state)                                                     # G5-CPU: the method inputs ride the runtime block
+    extra = {**(extra or {}), "runtime": {**((extra or {}).get("runtime") or {}), **g5}}
     pinned = None if vec is None else te.pinned_inputs(vec, trial_horizon=(state.get("horizon") or {}).get("days") and [state["horizon"]["start"], state["horizon"]["end"]],
                                                        provenance={"branch": state["code"].get("branch") or "", "image_digest": image_digest or ""}, extra=extra)
-    return te.emit_equivalence_record(Path(eq_repo) if eq_repo else None, state["code"]["head"], pinned, out / "equivalence", python=sys.executable,
-                                      tool=Path(eq_tool) if eq_tool else None)
+    rec = te.emit_equivalence_record(Path(eq_repo) if eq_repo else None, state["code"]["head"], pinned, out / "equivalence", python=sys.executable,
+                                     tool=Path(eq_tool) if eq_tool else None)
+    return {**rec, **g5}                                                                      # G5-CPU
 
 
 def attach_to_report(out: Path, key: str, value) -> list:
@@ -1183,6 +1198,7 @@ def build_report(state: dict, out: Path, conn, sidecar: Path, gate_entry: str | 
         "digests_record": state.get("digests_record"),
         "noninterference": state.get("noninterference"),
         "effective_wall": state.get("effective_wall"),
+        "g5_cpu": state.get("g5_cpu"),                                                        # G5-CPU: attributed CPU per stage (SR-G5-LOAD)
         "trial_ready": state.get("trial_ready"),
         "equivalence_record": state.get("equivalence_record"),
         "decision_table": state.get("decision_table"),
@@ -1200,7 +1216,7 @@ def build_report(state: dict, out: Path, conn, sidecar: Path, gate_entry: str | 
                         "by_class_build": by_class, "by_step_kind": dict(sorted(by_kind.items())), "gate": gate.get("gate_s"), "report_and_gate": report_s,
                         "verification_by_class": {c: {"seconds": x.get("seconds"), "window_check_s": x.get("window_check_s")}
                                                   for c, x in (state.get("verification") or {}).get("classes", {}).items()},
-                        "steps": [{"step": s["step"], "secs": s["secs"], "rows": s["rows"]} for s in steps],
+                        "steps": [{"step": s["step"], "secs": s["secs"], "rows": s["rows"], "cpu_s": s.get("cpu_s")} for s in steps],
                         "load_average_at_report": [round(x, 1) for x in load],
                         "note": "local-Mac wall seconds on a shared machine; not Cloud Run seconds and not a projection of the century build (see `project`)"}
     rep["database"] = {"name": state["db"], "dropped": False}
