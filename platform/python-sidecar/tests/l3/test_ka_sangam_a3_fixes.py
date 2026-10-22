@@ -208,6 +208,7 @@ class TestB4SrcDomainPropagation:
 
         from pipeline.orchestrator.writers.ka_sangam import KaSangamWriter
         writer = KaSangamWriter.__new__(KaSangamWriter)
+        writer._conv_generation = 'legacy'   # migration 1405: the generation run_substep resolves
 
         writer._insert_windows(mock_cur, 'test-chart-id', [w], 'near')
 
@@ -246,6 +247,7 @@ class TestB4SrcDomainPropagation:
         mock_cur.fetchone.return_value = (False,)  # (I) INTERPRETATION: legacy fixture models pre-1376 absence
         from pipeline.orchestrator.writers.ka_sangam import KaSangamWriter
         writer = KaSangamWriter.__new__(KaSangamWriter)
+        writer._conv_generation = 'legacy'   # migration 1405: the generation run_substep resolves
         writer._insert_windows(mock_cur, 'test-chart-id', [w], 'near')
 
         call_args = mock_cur.execute.call_args

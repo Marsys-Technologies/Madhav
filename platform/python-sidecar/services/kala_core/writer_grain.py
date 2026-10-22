@@ -17,10 +17,11 @@ import hashlib
 import json
 from typing import Any, Iterable, Mapping
 
-from psycopg.rows import tuple_row
+from psycopg.rows import dict_row, tuple_row
 
 from pipeline.orchestrator.writers import SubStep
 from services.kala_core.manifest import Candidate, attest_grain, lock_candidate_inputs
+from services.kala_core.promise.candidate import building_candidate
 
 GRAIN_STEP = 'grain:inputs'
 _RESERVED = ('legacy', 'current', 'published', 'retained')
@@ -72,6 +73,65 @@ def predicate_generation(conn: Any, chart_id: Any, candidate: Candidate | None) 
         return candidate.generation
     row = _first(conn, 'SELECT generation FROM kala_layer_head WHERE chart_id = %s', (chart_id,))
     return row[0] if row else 'legacy'
+
+
+UNBOUND_REWRITE_REFUSED = 'unbound-rewrite-of-published-head'
+
+
+class UnboundRewriteRefused(ValueError):
+    """An ordinary (candidate-unbound) rebuild was asked to rewrite a chart that already has a published generation (SR-K9-BIND B1b)."""
+
+
+def _head_generation(conn: Any, chart_id: Any) -> str | None:
+    with conn.cursor() as cur:      # a cursor, not conn.execute: the legacy writers run on cursor-only connections too
+        cur.execute('SELECT generation FROM kala_layer_head WHERE chart_id = %s', (chart_id,))
+        row = cur.fetchone()
+    return None if row is None else (row['generation'] if isinstance(row, dict) else row[0])
+
+
+def refuse_unbound_rewrite(conn: Any, chart_id: Any, asset_id: str) -> None:
+    """Once ANY generation is published for the chart, a build bound to no candidate may not rewrite its derived rows (SR-K9-BIND B1b).
+
+    The published head is served data: the only write that touches it is the publish step, and a delete of its `kala_convergence` rows
+    cascades into the head's own children (kala_darshana, kala_obstruction, phala_anchors; kala_bhavishya is nulled). Read-only, so a
+    writer may call it while planning. The reason is named (`UNBOUND_REWRITE_REFUSED`) so a caller can tell a refusal from a fault."""
+    head = _head_generation(conn, chart_id)
+    if head is not None:
+        raise UnboundRewriteRefused(
+            f'{UNBOUND_REWRITE_REFUSED}: {asset_id} refused for chart {chart_id}: generation {head!r} is published and this build is bound to no '
+            f'candidate; a rebuild goes through a candidate generation and the publish step, never in place')
+
+
+def served_convergence_generation(conn: Any, chart_id: Any) -> str:
+    """The generation `kala_convergence_served` serves: the published head, else 'legacy' (the same rule as the view)."""
+    head = _head_generation(conn, chart_id)
+    return 'legacy' if head is None else head
+
+
+def convergence_read_generation(conn: Any, chart_id: Any, candidate: Candidate | None) -> str:
+    """Generation of `kala_convergence` a writer READS (SR-K9-BIND B1a).
+
+    A candidate-bound build reads ONLY its own candidate's upstream rows, never the served view: otherwise its output (and, after publish, the
+    head's served rows) would reference another generation's window ids, and a delete of that generation would cascade across generations. An
+    ordinary build reads the served generation."""
+    return candidate.generation if candidate is not None else served_convergence_generation(conn, chart_id)
+
+
+def convergence_generation(conn: Any, chart_id: Any, candidate: Candidate | None) -> str:
+    """Generation of `kala_convergence` a writer may WRITE and DELETE (migration 1405).
+
+    A candidate-bound build owns exactly its candidate generation: the candidate row is read AND locked
+    (`building_candidate`, as ka_yojaka does), so only a registered, still-building, unpublished candidate of THIS build
+    can be written, and a publish or teardown of it waits. A build bound to no candidate may write only the 'legacy'
+    partition, and only while the chart has no published generation: with a head it REFUSES (`refuse_unbound_rewrite`, SR-K9-BIND B1b).
+    The table's foreign keys cascade, so a delete scoped to anything wider than this generation would
+    reach the children of served rows (kala_darshana, kala_obstruction, phala_anchors, kala_bhavishya).
+    """
+    if candidate is None:
+        refuse_unbound_rewrite(conn, chart_id, 'ka_sangam')
+        return 'legacy'
+    with conn.cursor(row_factory=dict_row) as cur:
+        return building_candidate(cur, candidate.chart_id, candidate.generation, candidate.build_id)['generation']
 
 
 def _prior_vector(conn: Any, candidate: Candidate, key: str) -> str | None:

@@ -100,14 +100,15 @@ class JuryRead:
 def read_jury(ctx, *, generation=None) -> JuryRead:
     """Read stored legacy values or one explicitly bound private fixture.
 
-    The legacy table has no generation column; private rows reside exclusively
+    The legacy read is the SERVED partition of kala_convergence (migration 1405:
+    the published head's generation, else legacy); private rows reside exclusively
     in kala_jury_candidate. Never coalesce, union or fall back between them.
     All queries are SELECTs; the caller owns the connection and transaction.
     """
     chart = str(ctx.config['chart_id'])
     with ctx.db_conn.cursor(row_factory=dict_row) as cur:
         if generation is None:
-            cur.execute('SELECT * FROM kala_convergence WHERE chart_id=%s', (chart,))
+            cur.execute('SELECT * FROM kala_convergence_served WHERE chart_id=%s', (chart,))
             return JuryRead('legacy', tuple(cur.fetchall()))
         if not isinstance(generation, str) or not generation.startswith('candidate:') or generation == 'candidate:':
             raise ValueError('explicit private candidate generation required')

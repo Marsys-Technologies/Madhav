@@ -337,7 +337,7 @@ class PhNimittaWriter(WriterBase):
                                         kc.rarity_years DESC NULLS LAST,
                                         kc.convergence_id ASC
                            ) AS rn
-                    FROM kala_convergence kc
+                    FROM kala_convergence_served kc
                     WHERE kc.chart_id = %s
                 ) ranked
                 WHERE rn <= %s
@@ -707,7 +707,7 @@ class PhNimittaWriter(WriterBase):
                         cur.execute(
                             """
                             SELECT convergence_id, peak_date, domain
-                            FROM kala_convergence
+                            FROM kala_convergence_served
                             WHERE chart_id = %s
                               AND ABS(EXTRACT(EPOCH FROM (peak_date - %s::date))) < 7776000
                             ORDER BY ABS(EXTRACT(EPOCH FROM (peak_date - %s::date)))

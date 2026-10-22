@@ -214,7 +214,7 @@ def test_default_dispatch_defers_retirement_without_failing_build_or_changing_le
         def __enter__(self): return self
         def __exit__(self, *args): pass
         def execute(self, query, params):
-            assert query == 'SELECT * FROM kala_convergence WHERE chart_id=%s'
+            assert query == 'SELECT * FROM kala_convergence_served WHERE chart_id=%s'     # migration 1405: the stored legacy read is the served partition
             assert params == (CHART,)
         def fetchall(self): return [{'legacy_value': 'published-stored-value', 'confidence_label': 'strong'}]
     ctx.db_conn = SimpleNamespace(cursor=lambda **kwargs: StoredCursor())
