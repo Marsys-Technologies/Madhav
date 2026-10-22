@@ -45,7 +45,7 @@ def apply_table_alters(conn, table, path, columns_only=False):
     assert statements, f'missing table alterations: {path}:{table}'
     for statement in statements:
         if not columns_only or 'ADD COLUMN' in statement:
-            conn.execute(without_external_fks(statement))
+            conn.execute(without_external_fks(statement).replace('public.', ''))  # TEMP tables live in pg_temp, not public
 
 
 def apply_temp_verification(conn):
@@ -70,6 +70,8 @@ def legacy_schema(conn):
         create_table(conn, table, migrations / name)
     apply_table_alters(conn, 'kala_jivana_parva', PLATFORM / 'migrations/679_nirmana_l3_f_parva_1_level_column.sql', columns_only=True)
     create_table(conn, 'kala_obstruction', Path(__file__).with_name('e2e') / 'legacy_schema.sql')
+    # The production table carries the K0a-4 `generation` partition column (1338); the legacy writer now binds it.
+    apply_table_alters(conn, 'kala_obstruction', PLATFORM / 'migrations/1338_kala_assertion_vertical_slice.sql', columns_only=True)
     create_table(conn, 'kala_gochara_contacts', PLATFORM / 'migrations/1081_nirmana_l3_gochara_ledger_coverage_publication.sql')
     apply_table_alters(conn, 'kala_gochara_contacts', PLATFORM / 'migrations/1087_nirmana_l3_gochara_contacts_inclusivity_completeness_tier_basis.sql', columns_only=True)
 
