@@ -45,7 +45,9 @@ async function fixture(source: string) {
   return { root, executable, definition }
 }
 
-describe('governed CLI runner', () => {
+// Every test here spawns real node child processes; a loaded CI runner can exceed the 5s default
+// on cold spawn (flaked on #3874 with the file untouched). Assertions are unchanged.
+describe('governed CLI runner', { timeout: 30_000 }, () => {
   it('discovers paginated Codex subscription models and efforts without submitting a prompt', async () => {
     const { definition } = await fixture(`
       const rl=require('node:readline').createInterface({input:process.stdin});
