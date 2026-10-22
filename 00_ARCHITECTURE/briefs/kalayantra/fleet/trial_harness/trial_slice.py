@@ -841,7 +841,10 @@ def verify_stage(state: dict, out: Path, conn, deadline: float | None) -> bool:
         else:
             args = (CHART, GENERATION, state["classes"])
             v["source"] = "harness_inline: services.gochara_kernel.verification_job.run(enforce_identity=False), per class"
-            v["generation_verdict"] = nwg.generation_verdict(conn, CHART, GENERATION)
+            v["generation_verdict"] = nwg.generation_verdict(conn, CHART, GENERATION, classes=state["classes"])        # D-9: the verdict of THIS trial's classes, not of the 26-class universe
+            v["generation_verdict_scope"] = {"classes": sorted(state["classes"]), "scoped": True,
+                                             "not_part_of_this_reading": "the aggregate-only checks of numerical_window_gate.generation_verdict (pinned-universe coverage, shard stamps, G-6 evidence, wall "
+                                                                         "rule; DEFECT_MAP D-9) — a subset verdict does not carry them; the R8/R8X fixtures and the seal verification job cover them"}
             att_w, att_n, unattested = conn.execute(VERIFY_ATTESTED_SQL, args).fetchone()
             live_w, live_n = conn.execute(LIVE_COUNT_SQL, args).fetchone()
             v["attestation_recount"] = {"attested": {"windows": int(att_w), "numbered": int(att_n)}, "live": {"windows": live_w, "numbered": live_n},
@@ -951,17 +954,45 @@ class _CrosscheckEnv:
             return lon
         self.position_at = position_at
 
+    def _p1_operands(self, path_id: str, rows: list):
+        """The writer's P1 operand sources (`_run_window_phase.p1_operands_for`): the Form B table the grain's version declares, else the writer's per-factor rules; None when
+        neither is bound.  A P1 record built without them is unqualified, which this stage would report as a defect of the window."""
+        if path_id != "P1":
+            return None
+        from services.gochara_kernel import p1_operands as p1o
+        form_b = p1o.form_b_mapping(rows)
+        if form_b is None and self.w.P1_VALUE_RULES is None:
+            return None
+        return p1o.P1Operands(p1o.load_p1_l0(self.conn.cursor()), self.position_at, rules=None if form_b is not None else self.w.P1_VALUE_RULES, form_b=form_b)
+
+    def _vedha_for(self, key: tuple):
+        """The vedha operand source bound to THIS grain, exactly as the writer binds it (`vedha_source()` of the active rule profile, then `for_grain(..., position_at=)` — the
+        post-vedha-residence signature, SR-VEDHA-RESIDENCE-SOURCE).  Never the module constant `VEDHA_SOURCE` (None unless explicitly bound)."""
+        source_of = getattr(self.w, "vedha_source", None)
+        if source_of is None:
+            raise RuntimeError("the checkout's writer has no vedha_source(): the cross-check needs the head that carries od1-vedha-residence")
+        vedha = source_of()
+        if hasattr(vedha, "for_grain"):
+            vedha = vedha.for_grain(self.conn, chart_id=CHART, generation=GENERATION, event_class=key[0], records=list(self.records[key].values()), position_at=self.position_at)
+        return vedha
+
     def pieces(self, win: dict) -> list:
+        from services.gochara_kernel import rule_registry
+        with rule_registry.rule_profile(final_rules=True):               # the profile the trial's build and verification ran under (`verify_stage`): final-profile factor rows and vedha source
+            return self._pieces_under_profile(win)
+
+    def _pieces_under_profile(self, win: dict) -> list:
         ws = self.ws
         key = (win["event_class"], win["path_id"], win["rule_version"])
+        rows = self.bound_rows(key[1], key[2])
         if key not in self.records:
             self.records[key] = {r.record_id: r for r in self.store.read_grain(chart_id=CHART, generation=GENERATION, event_class=key[0], path_id=key[1],
-                                                                              rule_version=key[2], position_at=self.position_at)}
+                                                                              rule_version=key[2], position_at=self.position_at, p1=self._p1_operands(key[1], rows))}
         ids = [r[0] for r in self.conn.execute("SELECT record_id::text FROM public.ka_gochara_eval_window_record WHERE window_id = %s", (win["window_id"],)).fetchall()]
-        rows = self.bound_rows(key[1], key[2])
+        vedha = self._vedha_for(key)
         progs = []
         for rid in ids:
-            p = ws.build_program(self.records[key][rid], rows, drishti=self.w.DRISHTI_SOURCE, vedha=self.w.VEDHA_SOURCE)
+            p = ws.build_program(self.records[key][rid], rows, drishti=self.w.DRISHTI_SOURCE, vedha=vedha)
             p.channel = ws._program_channel(key[0], p.rec, p.qualified) if hasattr(ws, "_program_channel") else p.channel
             if not p.qualified:
                 raise RuntimeError(f"member {rid} is unqualified although the window is numbered")

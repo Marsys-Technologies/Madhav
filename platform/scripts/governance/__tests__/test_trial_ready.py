@@ -485,7 +485,9 @@ def test_c11_a_relative_scratch_directory_still_lets_a_passing_oracle_read_true(
 HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # v3.1 (review X-20261022T075423Z-review-t1b-harness2, ACCEPTED round 2 = efb0922a...787c) + the cockpit's B4 lane-db overlay (TR_GAPS B4.3: run_trial.sh, trial_slice.py,
 # tests/test_lane_db_overlay.py) = the harness the trial actually runs (installed copy of job X-20261021T105440Z-od1-T1-harness; PR #3874 review N-1)
-HARNESS_V31_DIGEST = "7d8fbd87f5412c0954c2a294a799f36ae975f807114a53e505bab93736921f91"
+# HARNESS-3.2 (item H-1, PRETR-3a D-8/D-9/D-10; previous pin 7d8fbd87...1f91): the cross-check rebuilds P2/P1 windows with the writer's own sources under the final profile,
+# G-4 is scoped to the trial classes, G-5 reads NOT_EVALUATED for a slice or a loaded machine (tests/test_harness_32.py, mutants_h32.py)
+HARNESS_V31_DIGEST = "7c3218b8a94b45a30439c671aa4e020acadf1152aa756509d5a7e53d2b702c8b"
 
 
 def harness_digest(root):

@@ -115,7 +115,9 @@
   "century_classes": 26,
   "speed_factor": 1.0,
   "century_horizon": null,
-  "verifier_solver_check_s_per_class": 600
+  "verifier_solver_check_s_per_class": 600,
+  "max_load_per_core": 1.0,
+  "max_load_per_core_ruling": "PLACEHOLDER-SURROGATE-RULING-G5-MAX-LOAD-PER-CORE: 1.0 is an (I) INTERPRETATION default (HARNESS-3.2, D-10); the final value is a surrogate ruling not yet made"
  },
  "crosscheck": {
   "sample_rate": 0.03,

@@ -250,7 +250,7 @@ def g4_verification(report: dict, verification: dict | None) -> dict:
     not_verified = {c: s.get("status") for c, s in cls.items() if s.get("status") != "VERIFIED"}
     checks.append(check("UNVERIFIED windows = 0", None if un is None else un == 0, un, 0))
     checks.append(check("every class VERIFIED", None if not cls else not not_verified, not_verified or "all VERIFIED", "VERIFIED"))
-    return gate("G-4", "Independent verification", checks, source=verification.get("source"))
+    return gate("G-4", "Independent verification", checks, source=verification.get("source"), verdict_scope=verification.get("generation_verdict_scope"))
 
 
 def runtime_projection(report: dict, profile: dict) -> dict:
@@ -291,14 +291,60 @@ def runtime_projection(report: dict, profile: dict) -> dict:
     return out
 
 
+#: HARNESS-3.2 (D-10) (I) INTERPRETATION: the default load bound (1-minute load average per core) of a profile that does not state one.  A FINAL profile must state it
+#: (`runtime.max_load_per_core`); the surrogate's ruling sets the final value.  The shipped profiles carry a named PLACEHOLDER for it.
+DEFAULT_MAX_LOAD_PER_CORE = 1.0
+
+
+def load_validity(report: dict, profile: dict) -> tuple[bool | None, dict, str | None]:
+    """Was the writer's runtime measured on a machine quiet enough to mean something?  (True = valid, False = loaded, None = cannot tell; the observed record; why).
+    Reads the per-stage `max_load_per_core` of the writer's `build:` stages (the stages the projection sums).  A run that did not record it is unknown, never quiet."""
+    rt = profile.get("runtime") or {}
+    bound = rt.get("max_load_per_core")
+    source = "profile.runtime.max_load_per_core"
+    if bound is None:
+        if profile.get("final"):
+            return None, {"bound": None}, "a final profile states runtime.max_load_per_core"
+        bound, source = DEFAULT_MAX_LOAD_PER_CORE, "DEFAULT (I) INTERPRETATION 1.0 — the profile states none"
+    stages = _get(report, "effective_wall", "stages", default=None)
+    build = {s: v for s, v in sorted(stages.items()) if s.startswith("build:")} if isinstance(stages, dict) else {}
+    obs = {"bound_per_core": bound, "bound_source": source, "stages_measured": len(build)}
+    if not build:
+        return None, obs, "no per-stage load was recorded for the writer's build stages"
+    unmeasured = sorted(s for s, v in build.items() if not isinstance(v, dict) or v.get("max_load_per_core") is None)
+    over = {s: v["max_load_per_core"] for s, v in build.items() if s not in unmeasured and v["max_load_per_core"] > bound}
+    worst = max((v["max_load_per_core"] for s, v in build.items() if s not in unmeasured), default=None)
+    obs.update({"max_load_per_core": worst, "stages_over_bound": over, "stages_unmeasured": unmeasured})
+    if over:
+        return False, obs, f"{len(over)} build stage(s) ran above {bound} load per core"
+    if unmeasured:
+        return None, obs, f"load was not measured for build stage(s) {unmeasured[:5]}"
+    return True, obs, None
+
+
 def g5_runtime(report: dict, profile: dict, verification: dict | None) -> dict:
     proj = runtime_projection(report, profile)
     rt = profile.get("runtime") or {}
     checks = []
-    if proj.get("projected_writer_s") is None or proj.get("limit_s") is None:
-        checks.append(check("projected century writer time ≤ limit", None, proj, "needs step timings, horizon and class counts"))
+    n_required = len(profile.get("trial_classes") or TRIAL_CLASSES_12)
+    proj["trial_classes_required"] = n_required
+    n_trial = proj.get("trial_classes", 0)
+    valid, load_obs, load_why = load_validity(report, profile)
+    proj["load"] = load_obs
+    claim = "projected century writer time ≤ limit"
+    if n_trial < n_required:
+        # D-10: the formula scales the class-less head by n_century/n_trial; with a slice of the trial it multiplies the head by 26 and reads FAIL for the slice, not the build
+        checks.append(check(claim, None, {"trial_classes": n_trial, "required": n_required}, f"a trial of {n_required} classes",
+                            note="not evaluated: the projection is only meaningful for the full trial it was written for"))
+    elif valid is not True:
+        checks.append(check(claim, None, load_obs, f"1-minute load average per core ≤ {load_obs.get('bound_per_core')} over every measured build stage",
+                            note=f"not evaluated: {load_why}" + ("; re-run on a quiet machine" if valid is False else "")))
+    elif proj.get("projected_writer_s") is None or proj.get("limit_s") is None:
+        checks.append(check(claim, None, proj, "needs step timings, horizon and class counts"))
     else:
-        checks.append(check("projected century writer time ≤ limit", proj["projected_writer_s"] <= proj["limit_s"], proj["projected_writer_s"], proj["limit_s"]))
+        checks.append(check(claim, proj["projected_writer_s"] <= proj["limit_s"], proj["projected_writer_s"], proj["limit_s"]))
+    if rt.get("max_load_per_core") is None and profile.get("final"):
+        checks.append(check("the load bound is explicit in a final profile", False, None, "profile.runtime.max_load_per_core"))
     if rt.get("century_horizon") is None and profile.get("final"):
         checks.append(check("the century horizon is explicit in a final profile", False, None, "profile.runtime.century_horizon"))
     per_class_cap = rt.get("verifier_solver_check_s_per_class", 600)

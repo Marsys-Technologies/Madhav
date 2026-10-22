@@ -25,6 +25,9 @@ def baseline():
     return {"schema": "ky.trial_baseline/2", "classes": {c: {"windows_total": 150, "blank": 150} for c in CLASSES}, "totals": {"windows_total": 1800}}
 
 
+QUIET_LOAD = 0.2         # 1-minute load average per core during every writer stage of the synthetic trial (HARNESS-3.2, D-10: the G-5 validity detector reads it)
+
+
 def report():
     classes = {c: {"windows_total": 150} for c in CLASSES}
     paths = {p: {"windows": PATH_WINDOWS[p], "numbered": PATH_NUMBERED[p]} for p in PATH_WINDOWS}
@@ -45,6 +48,8 @@ def report():
         "horizon": {"start": "1998-01-01T00:00:00+00:00", "end": "2084-02-05T00:00:00+00:00", "days": (datetime(2084, 2, 5) - datetime(1998, 1, 1)).total_seconds() / 86400.0},
         "runtime_s": {"by_step_kind": {"rules": 5.0, "convention": 3.0, "body": 330.0, "manifest": 2.0, "snapshot": 3.0, "inventory": 6.0, "record": 800.0,
                                        "window": 50.0, "verify": 1.0}},
+        "effective_wall": {"schema": "ky.effective_wall/1", "stages": {f"build:{k}": {"wall_s": 1.0, "lock_wait_s": 0.0, "compute_s": 1.0, "max_load_per_core": QUIET_LOAD}
+                                                                     for k in ("rules", "body", "record", "window")}},
         "code": {"head": "a" * 40, "implementation_modules": {"services.gochara_kernel.window_sweep": "1" * 64, "services.gochara_kernel.window_verifier": "2" * 64}},
         "window_rows_digest": {"sha256": "d" * 64, "windows": 1800},
         "verification": {"ran": True, "source": "synthetic",
@@ -121,7 +126,8 @@ def a10_report():
     r["digests_record"] = digests()
     r["noninterference"] = snapshot()
     kinds = r["runtime_s"]["by_step_kind"]
-    stages = {f"build:{k}": {"wall_s": v, "lock_wait_s": round(v * 0.1, 3), "compute_s": round(v - round(v * 0.1, 3), 3)} for k, v in kinds.items() if k != "verify"}
+    stages = {f"build:{k}": {"wall_s": v, "lock_wait_s": round(v * 0.1, 3), "compute_s": round(v - round(v * 0.1, 3), 3), "max_load_per_core": QUIET_LOAD}
+              for k, v in kinds.items() if k != "verify"}
     r["effective_wall"] = {"schema": "ky.effective_wall/1", "stages": stages}
     r["trial_ready"] = trial_ready()
     return r

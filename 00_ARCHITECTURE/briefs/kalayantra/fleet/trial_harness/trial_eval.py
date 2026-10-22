@@ -141,27 +141,42 @@ def capture_noninterference(conn, chart: str, generation: str, classes: list, ge
 class StageClock:
     """Accumulates, per named stage, `wall_s`, `lock_wait_s` (the time at least one database session of the trial was waiting on a lock, sampled every
     `interval_s`) and `compute_s = wall_s − lock_wait_s`.  `probe()` returns True/False for 'someone is waiting on a lock now', or None when it cannot be asked —
-    a stage with an unanswerable probe has `lock_wait_s = None` (unknown, never zero)."""
+    a stage with an unanswerable probe has `lock_wait_s = None` (unknown, never zero).
 
-    def __init__(self, probe: Callable[[], bool | None], interval_s: float = 0.25):
+    HARNESS-3.2 (D-10): each stage also records `max_load_per_core`, the highest 1-minute load average per core sampled during the stage (at its start, at every probe tick and at
+    its end) — the validity detector of G-5: a runtime measured on a machine that was busier than the profile's bound is not a measurement of the build.  No answered sample = null."""
+
+    def __init__(self, probe: Callable[[], bool | None], interval_s: float = 0.25, load_probe: Callable[[], float | None] | None = None):
         self.probe, self.interval_s = probe, interval_s
+        self.load_probe = load_probe if load_probe is not None else load_per_core
         self.stages: dict = {}
 
-    def add(self, stage: str, wall_s: float, waiting_samples: int, samples: int, unanswered: int = 0) -> None:
-        s = self.stages.setdefault(stage, {"wall_s": 0.0, "lock_wait_s": 0.0, "samples": 0, "waiting_samples": 0, "unanswered_samples": 0})
+    def add(self, stage: str, wall_s: float, waiting_samples: int, samples: int, unanswered: int = 0, max_load: float | None = None, load_samples: int = 0) -> None:
+        s = self.stages.setdefault(stage, {"wall_s": 0.0, "lock_wait_s": 0.0, "samples": 0, "waiting_samples": 0, "unanswered_samples": 0,
+                                           "max_load_per_core": None, "load_samples": 0})
         s["wall_s"] += wall_s
         s["samples"] += samples
         s["waiting_samples"] += waiting_samples
         s["unanswered_samples"] += unanswered
         s["lock_wait_s"] += min(wall_s, waiting_samples * self.interval_s)
+        s["load_samples"] += load_samples
+        if max_load is not None:
+            s["max_load_per_core"] = max_load if s["max_load_per_core"] is None else max(s["max_load_per_core"], max_load)
 
     @contextlib.contextmanager
     def measure(self, stage: str | Callable[[], str]):
         """Time a block.  `stage` may be a callable resolved AFTER the block (the build learns a step's kind only when the call returns)."""
-        stop, tally = threading.Event(), {"samples": 0, "waiting": 0, "unanswered": 0}
+        stop, tally = threading.Event(), {"samples": 0, "waiting": 0, "unanswered": 0, "load_max": None, "load_n": 0}
+
+        def sample_load():
+            ld = self.load_probe()
+            if ld is not None:
+                tally["load_n"] += 1
+                tally["load_max"] = ld if tally["load_max"] is None else max(tally["load_max"], ld)
 
         def loop():
             while not stop.wait(self.interval_s):
+                sample_load()
                 v = self.probe()
                 tally["samples"] += 1
                 if v is None:
@@ -170,13 +185,15 @@ class StageClock:
                     tally["waiting"] += 1
         t = threading.Thread(target=loop, daemon=True)
         t0 = time.time()
+        sample_load()
         t.start()
         try:
             yield
         finally:
             stop.set()
             t.join(timeout=5)
-            self.add(stage() if callable(stage) else stage, time.time() - t0, tally["waiting"], tally["samples"], tally["unanswered"])
+            sample_load()
+            self.add(stage() if callable(stage) else stage, time.time() - t0, tally["waiting"], tally["samples"], tally["unanswered"], tally["load_max"], tally["load_n"])
 
     def close(self) -> None:
         """Release the probe's admin connection (N4); a probe without one is left alone."""
@@ -193,8 +210,12 @@ class StageClock:
             stages[name] = {"wall_s": wall, "lock_wait_s": lock, "compute_s": None if lock is None else round(wall - lock, 3), "samples": s["samples"],
                             "waiting_samples": s["waiting_samples"], "unanswered_samples": s["unanswered_samples"],
                             # what WAS observed, reported beside the unknown: a lower bound (answered waiting samples only)
-                            "lock_wait_observed_s": round(s["lock_wait_s"], 3)}
+                            "lock_wait_observed_s": round(s["lock_wait_s"], 3),
+                            # HARNESS-3.2 (D-10): the busiest the machine was during the stage, per core (null = no answered sample)
+                            "max_load_per_core": None if s["max_load_per_core"] is None else round(s["max_load_per_core"], 3), "load_samples": s["load_samples"]}
         return {"schema": "ky.effective_wall/1", "method": "pg_stat_activity wait_event_type = 'Lock' on the trial database, sampled",
+                "load_method": "os.getloadavg()[0] / os.cpu_count(), sampled at stage start, every interval and stage end (the kernel's 1-minute average: a stage shorter than a minute "
+                               "also reads the minute before it)", "cpu_count": os.cpu_count(),
                 "interval_s": self.interval_s, "stages": stages,
                 "note": "lock_wait_s is a SAMPLED lower-resolution estimate (± one interval); wall = compute + lock wait by construction; a stage with ANY unanswered probe sample is null "
                         "(unknown, never zero) and reports what was observed in lock_wait_observed_s / unanswered_samples"}
@@ -202,13 +223,22 @@ class StageClock:
     def load(self, rec: dict | None) -> None:
         """Resume: restore the accumulators from a previously saved `record()` (resumable runs keep one clock)."""
         for name, s in ((rec or {}).get("stages") or {}).items():
+            load = {"max_load_per_core": s.get("max_load_per_core"), "load_samples": s.get("load_samples") or 0}
             if s.get("lock_wait_s") is None:                                   # it was unknown, it stays unknown
                 n = max(s.get("samples") or 0, 1)
                 self.stages[name] = {"wall_s": s["wall_s"], "lock_wait_s": s.get("lock_wait_observed_s") or 0.0, "samples": n, "waiting_samples": s.get("waiting_samples") or 0,
-                                     "unanswered_samples": max(s.get("unanswered_samples") or 0, 1)}
+                                     "unanswered_samples": max(s.get("unanswered_samples") or 0, 1), **load}
             else:
                 self.stages[name] = {"wall_s": s["wall_s"], "lock_wait_s": s["lock_wait_s"], "samples": s["samples"], "waiting_samples": s["waiting_samples"],
-                                     "unanswered_samples": s["unanswered_samples"]}
+                                     "unanswered_samples": s["unanswered_samples"], **load}
+
+
+def load_per_core() -> float | None:
+    """The kernel's 1-minute load average divided by the core count; None when the platform cannot answer (an unanswerable sample is unknown, never zero)."""
+    try:
+        return os.getloadavg()[0] / max(os.cpu_count() or 1, 1)
+    except (OSError, AttributeError):
+        return None
 
 
 def lock_probe(admin_dsn: str, database: str) -> Callable[[], bool | None]:
