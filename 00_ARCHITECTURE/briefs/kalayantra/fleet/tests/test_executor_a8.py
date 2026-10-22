@@ -9,7 +9,7 @@ execute_lane against test_executor_overlay's fixture repository.
   2. request_digest excludes acceptance_receipt, expires_at and any *_expires_at field — an extension voids no acceptance — and
      the signer's (kyd_kinds_ops) and the children's (v5_small_test_shared) mirrors agree byte for byte;
   3. no acceptance age cap: an acceptance is valid from its timestamp until the request's expires_at;
-  4. preconditions: required_rows and restore_verified retired; backup_taken only for *_teardown; dry_run_passed for a mutating kind;
+  4. preconditions: required_rows and restore_verified retired; backup_taken retired too (SR-A12-BACKUP-REMOVAL: no dump is taken, so a *_teardown needs no backup attestation); dry_run_passed for a mutating kind;
   5. *_dryrun kinds are production:false — admitted with no lease, acceptance, chart_id or fence; refused without a merged
      reviewed_commit; run in that reviewed tree with the generated overlay; the receipt still fails without the rollback proof;
   6. the fence is set only for a remote-asynchronous kind (the table's remote_async flag or a named kind); a synchronous kind takes none;
@@ -174,16 +174,17 @@ def _attestation_world(tmp_path, monkeypatch):
     return w, w.table()
 
 
-def test_preconditions_are_dry_run_passed_and_backup_taken_for_a_teardown_only(tmp_path, monkeypatch):
+def test_preconditions_are_dry_run_passed_only_and_a_teardown_needs_no_backup(tmp_path, monkeypatch):
     w, table = _attestation_world(tmp_path, monkeypatch)
     publish = w.production_request("fixture_publish")
     assert w.mod.validate(w.accept(publish, rows={}, checks={"dry_run_passed": True}), table, ALL_CAPS) is None               # no rows, backup_taken or restore_verified
     assert w.mod.validate(w.accept(publish, rows={"2": False, "3": False}, checks={"dry_run_passed": True}), table, ALL_CAPS) is None   # required_rows ignored
     assert w.mod.validate(w.accept(publish, checks={"backup_taken": True, "restore_verified": True}), table, ALL_CAPS) == MISSING    # dry_run_passed still earned
     teardown = w.production_request("fixture_teardown")
-    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": True}), table, ALL_CAPS) == MISSING                           # a teardown needs backup_taken
-    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": True, "backup_taken": True}), table, ALL_CAPS) is None
-    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": True, "backup_taken": "true"}), table, ALL_CAPS) == MISSING   # the boolean, never prose
+    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": True}), table, ALL_CAPS) is None                              # SR-A12-BACKUP-REMOVAL: a teardown with no backup attestation is ADMITTED
+    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": True, "backup_taken": True}), table, ALL_CAPS) is None        # a stray backup attestation changes nothing
+    assert w.mod.validate(w.accept(teardown, checks={"backup_taken": True}), table, ALL_CAPS) == MISSING                             # the teardown's dry run stays mandatory
+    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": "true"}), table, ALL_CAPS) == MISSING                         # the boolean, never prose
 
 
 def test_the_signers_required_checks_are_exactly_what_the_executor_demands(tmp_path, monkeypatch):
@@ -208,7 +209,7 @@ def test_the_signers_required_checks_are_exactly_what_the_executor_demands(tmp_p
         for dropped in required:
             partial = {k: True for k in required if k != dropped}
             assert w.mod.validate(w.accept(req, checks=partial), table, ALL_CAPS) == MISSING, (kind, dropped)              # nothing less
-    assert kyd.required_checks("smalltest_teardown") == ["backup_taken", "dry_run_passed"]
+    assert kyd.required_checks("smalltest_teardown") == ["dry_run_passed"]            # SR-A12-BACKUP-REMOVAL: no backup attestation
     assert kyd.required_checks("smalltest_dispatch") == ["dry_run_passed"]
     assert kyd.required_checks("backup_snapshot") == [] and kyd.required_checks("smalltest_teardown_dryrun") == []
 

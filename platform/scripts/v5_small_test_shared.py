@@ -1051,8 +1051,9 @@ def century_config_component(final_rules, defer_in_build_verify, horizon, result
 
 def century_request_problem(req, root, measure=None):
     """Century-only file evidence admission, loaded from reviewed source (the executor loads this module alone, from the reviewed commit).
-    `measure` is the fresh read-only scoped-content measurement (see scoped_backup_problem): the executor's admission has none; the century
-    dispatch script supplies it at --execute, so a backup whose scoped content has changed since capture is refused (SR-BACKUP-VALIDITY-A8 §3.10)."""
+    `measure()` is the dispatch script's fresh read-only measurement of the reviewed century scope's relations (the executor's admission has none and
+    passes nothing). SR-A12-BACKUP-REMOVAL removed the scoped-backup freshness check it used to feed (SR-BACKUP-VALIDITY-A8 §3.10) but NOT the exact-scope
+    measurability: a scoped relation that cannot be found or read now still refuses (never admits) a `century_dispatch`."""
     try:
         kind = req.get('kind')
         if kind in ('century_dispatch', 'century_dispatch_dryrun'):
@@ -1062,7 +1063,14 @@ def century_request_problem(req, root, measure=None):
             # Even a staging rollback may not bypass the previous lifecycle: generation '5.0' must be independently absent.
             absence_evidence(req, root)
             if kind == 'century_dispatch':
-                scoped_backup_problem(req, root, measure=measure, scope='century')       # the CENTURY scope's proof (W3W4 pack verify E3), not the small-test one
+                # SR-A12-BACKUP-REMOVAL: a century dispatch no longer names a scoped backup (no dump is taken): the scoped_backup_problem call that stood here
+                # is gone and every other check of this branch (item, args, absence, completed staging dry run) stays. smalltest_dispatch keeps its own call.
+                # The exact-scope measurability stays too (the ruling keeps dry run, exact scope and absence readback): a relation that cannot be measured now refuses.
+                if measure is not None:
+                    try:
+                        measure()
+                    except Exception:
+                        raise Refused('scoped content could not be measured now; the century scope is not shown to be present') from None
                 century_dryrun_evidence(req, root)
         elif kind in ('century_teardown', 'century_teardown_dryrun'):
             scope = staged_scope(req, root)

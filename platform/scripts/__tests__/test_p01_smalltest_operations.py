@@ -247,10 +247,10 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     path = accepted_dir / 'receipt.json'
     request['acceptance_receipt'] = str(path)
     path.write_text(json.dumps(receipt))
-    if kind in ('smalltest_dispatch', 'smalltest_teardown'):    # A8 §5: dry_run_passed for a mutating kind, backup_taken for a teardown; nothing else
+    if kind in ('smalltest_dispatch', 'smalltest_teardown'):    # A8 §5: dry_run_passed for a mutating kind; nothing else (SR-A12-BACKUP-REMOVAL: not backup_taken either)
         assert 'attestation missing' in validate(request, table, caps)
     else:
         assert validate(request, table, caps) is None
-    receipt.update(checks={'backup_taken': True, 'dry_run_passed': True})
+    receipt.update(checks={'dry_run_passed': True})
     path.write_text(json.dumps(receipt))
     assert validate(request, table, caps) is None

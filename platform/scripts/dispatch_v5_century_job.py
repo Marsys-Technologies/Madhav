@@ -120,11 +120,16 @@ def prepare_report(*, dry_run, run_id, manifest, manifest_digest, existing, note
 
 
 def _century_request_policy(req, root):
-    """The century evidence policy with its fresh, read-only scoped-content measurement (SR-BACKUP-VALIDITY-A8): the named scoped backup
-    admits this dispatch only while the database's scoped content still has the digest the backup recorded. The executor's admission has
-    no database; this is the check that reads it, at --execute and before anything is staged."""
+    """The century evidence policy with its read-only exact-scope measurement. SR-A12-BACKUP-REMOVAL: no backup is named or judged any more, but the
+    reviewed scope's relations must still be found and measurable in the database (a missing or unreadable one refuses `UNMEASURABLE`). The executor's
+    admission has no database; this is the check that reads it, at --execute and before anything is staged.
+    (I) INTERPRETATION A12-M1: the relations are the reviewed scope file's tables (`backup.load_scope()`, the small-test file, whose table lists are
+    identical to the century file's: pinned by test_century_scope_relations_equal_the_small_test_scope); alternative: load the century file itself."""
     import backup_v5_small_test_job as backup
-    return shared.century_request_problem(req, root, measure=backup.measure_scope_now)
+
+    def measure_scope():
+        return backup.measure_scope_now(backup.load_scope()['tables'], [])
+    return shared.century_request_problem(req, root, measure=measure_scope)
 
 
 def main(argv=None):

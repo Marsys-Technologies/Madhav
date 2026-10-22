@@ -14,8 +14,8 @@ is the child's stdout alone, in <operation_id>.output.txt, and its stderr alone 
 
 Production approval binds the request (A8 §3.9): ONE verifier lane's acceptance receipt carries the sha256 of the request as
 sorted compact JSON without the fields that may lawfully change after signing — `acceptance_receipt`, `expires_at` and any
-`*_expires_at` lease-expiry field (see request_digest) — plus the attestations the kind needs: `dry_run_passed` for a mutating
-kind and `backup_taken` for a `*_teardown`. It is valid from its timestamp until the request's `expires_at`; there is no age cap.
+`*_expires_at` lease-expiry field (see request_digest) — plus the attestation the kind needs: `dry_run_passed` for a mutating
+kind (SR-A12-BACKUP-REMOVAL: a `*_teardown` no longer needs `backup_taken`; its dry run, exact scope and absence readback stay mandatory). It is valid from its timestamp until the request's `expires_at`; there is no age cap.
 The lease must be the ONLY unexpired ACTIVE row of the shared lease table.
 
 Mechanical acceptance of a production write (OWNER-MINIMAL-PROTECTION-NOW-20261018; SR-MINIMAL-PROTECTION §2): a request with NO `acceptance_receipt` but a
@@ -1161,8 +1161,7 @@ def signer_acceptance_problem(req: dict) -> str | None:
         if not issued <= current < expires: return "approval expired or not yet valid"      # A8 §4: no age cap — valid until the request's own expiry
     except (KeyError, TypeError, ValueError): return "valid approval timestamp and a timezone-qualified request expires_at required"
     if a.get("request_sha256") != request_digest(req): return "approval does not bind the complete request"
-    kind = req["kind"]; required = []                                        # A8 §5: `required_rows` and `restore_verified` are retired as preconditions
-    if kind.endswith("_teardown"): required.append("backup_taken")
+    kind = req["kind"]; required = []                                        # A8 §5: `required_rows` and `restore_verified` are retired as preconditions; SR-A12-BACKUP-REMOVAL: so is `backup_taken` (no dump is taken)
     if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"): required.append("dry_run_passed")
     if any((a.get("checks") or {}).get(k) is not True for k in required): return "required backup/restore/dry-run attestation missing"
     return None

@@ -8,7 +8,7 @@ edit of the fixture's copy, anchor unique), a stand-in overlay generator (the re
   S1 isolation: nothing outside the sandbox is read or written; a sandbox in the live KY_ROOT, in the repository or in an unmarked non-empty folder is refused
   S2 the clean templates are ADMITTED (the base of every control), and a set rendered at an older pin shows `stale_pin` until it is repinned
   S3 stale pin refused                         reversion: the pin gate admits a pin that is not main
-  S4 missing / unknown scope refused           reversion: the scope gate takes a request without a scope / a scope the script does not offer
+  S4 scope controls retired (SR-A12-BACKUP-REMOVAL)    the overlay and reviewed_commit controls are based on orchestrator_rebuild, not backup_snapshot
   S5 absent overlay refused                    reversion: the executor's overlay step ignores a generator that exits non-zero
   S6 disabled kind refused                     reversion: the executor ignores `enabled`
   S7 missing completion refused                reversion: the executor's dry_run_check admits without a receipt / the head policy does not require the dry-run receipt
@@ -203,22 +203,18 @@ def test_s3_reversion_a_pin_gate_that_admits_a_stale_pin_is_flagged(fx, monkeypa
     assert_flagged(run_control(fx, "stale_pin"))
 
 
-# ---- S4 scope -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-def test_s4_a_backup_without_its_scope_and_one_with_a_scope_the_script_does_not_offer_are_refused(fx):
-    assert_refused(run_control(fx, "scope_missing"), "scope_missing")
-    assert_refused(run_control(fx, "scope_unknown", sub="sb2"), "scope_unknown")
+# ---- S4 scope (SR-A12-BACKUP-REMOVAL: the dump is gone, so the `scope_missing` / `scope_unknown` controls retired with it) ----------------------------------------------------------------------
+def test_s4_the_scope_controls_retired_with_the_dump_and_the_scope_gate_still_reads_a_backup_template_that_remains(fx):
+    names = {row["control"] for row in fx.rehearsal("all").controls(fx.staged, fx.sql, repin=True)}
+    assert not {"scope_missing", "scope_unknown"} & names, "no window takes a backup_snapshot: its scope controls are not run"
+    rh = fx.rehearsal("gate")
+    assert rh.scope_problem({"kind": "backup_snapshot", "args": {}})[0] == "scope_missing"       # the gate itself is unchanged for a template that still names a dump
+    assert rh.scope_problem({"kind": "orchestrator_rebuild", "args": {}}) is None
 
 
-def test_s4_reversion_a_scope_gate_that_takes_a_request_without_a_scope_is_flagged(fx, monkeypatch):
-    original = ar.Rehearsal.scope_problem
-    monkeypatch.setattr(ar.Rehearsal, "scope_problem", lambda self, req: None if not (req.get("args") or {}).get("scope") else original(self, req))
-    assert_flagged(run_control(fx, "scope_missing"))
-
-
-def test_s4_reversion_a_scope_gate_that_takes_a_scope_the_script_does_not_offer_is_flagged(fx, monkeypatch):
-    original = ar.Rehearsal.scope_problem
-    monkeypatch.setattr(ar.Rehearsal, "scope_problem", lambda self, req: None if str((req.get("args") or {}).get("scope", "")).endswith("_typo") else original(self, req))
-    assert_flagged(run_control(fx, "scope_unknown"))
+def test_s4_the_overlay_and_reviewed_commit_controls_no_longer_ride_on_a_backup_snapshot(fx):
+    assert run_control(fx, "overlay_absent")["base_kind"] == "orchestrator_rebuild"
+    assert run_control(fx, "reviewed_commit_mismatch", sub="sb2")["base_kind"] == "orchestrator_rebuild"
 
 
 # ---- S5 overlay -----------------------------------------------------------------------------------------------------------------------------------------------------------------------

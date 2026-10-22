@@ -46,7 +46,7 @@ def approve(executor, req):
     acceptance.write_text(json.dumps(dict(result='ACCEPTED', by='v1', operation_id=req['operation_id'],
         reviewed_commit=req['reviewed_commit'], ts=executor.now(), request_sha256=executor.request_digest(req),
         rows={k: True for k in ['2', '3', '7', '9', '11']},
-        checks=dict(backup_taken=True, restore_verified=True, dry_run_passed=True))))
+        checks=dict(dry_run_passed=True))))     # SR-A12-BACKUP-REMOVAL: no backup_taken, no restore_verified: the one attestation a mutating kind needs
     return req
 
 
