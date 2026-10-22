@@ -77,7 +77,7 @@ describe('governed CLI runner', () => {
     ])
     expect(JSON.stringify(result)).not.toMatch(/private|credential|hidden/i)
     expect(runner.inspectForTests()).toEqual({ active: 0, queued: 0 })
-  })
+  }, 30_000) // spawns a real child process; the 5 s default timed out under merge-queue CI load (run 39778225416)
 
   it('rejects Codex API-key authentication before requesting its model catalogue', async () => {
     const { definition } = await fixture(`
