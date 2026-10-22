@@ -66,7 +66,8 @@ M = [
 
 from mutants_a10 import M10                                  # noqa: E402  the A10.1 (T1B) claims
 from mutants_h32 import M32                                  # noqa: E402  the HARNESS-3.2 claims (D-8, D-9, D-10)
-M = M + M10 + M32
+from mutants_h33 import M33                                  # noqa: E402  the HARNESS-3.3 claims (PRETR-early O-1, O-2)
+M = M + M10 + M32 + M33
 
 
 def main():
