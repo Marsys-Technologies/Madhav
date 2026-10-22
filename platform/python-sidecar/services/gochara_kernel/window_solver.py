@@ -713,9 +713,11 @@ def _zone_clusters(zones: list, objective: str) -> list:
     return out
 
 
-def _station_zone_tie(problem: Problem, ctx: _Ctx, pieces: list, samples: list, top: float) -> Optional[str]:
+def _station_zone_tie(problem: Problem, ctx: _Ctx, pieces: list, samples: list, top: float, ties: tuple) -> Optional[str]:
     """SR-NEAR-STATION-TIE (H6). A description when some listed station's zone (±NEAR_STATION_S, within the support) can host a maximum tied with the
-    window's: the zone's value (the largest F read there, the zone being read monotone) is within TIE + the zone's noise bound of `top`. None otherwise."""
+    window's: the zone's value (the largest F read there, the zone being read monotone) is within TIE + the zone's noise bound of `top`, AND every tied
+    maximum (`ties`, the instants of the candidates within TIE of `top`) lies inside that zone cluster — the ruling's "tie set lies inside the zone". A tie set
+    that reaches outside it (a plateau over the window) is not a noise comb: it numbers. None otherwise."""
     for lo, hi, noise in _zone_clusters(ctx.zones, problem.objective):
         zone_top = -1.0
         for p in pieces:
@@ -727,7 +729,7 @@ def _station_zone_tie(problem: Problem, ctx: _Ctx, pieces: list, samples: list, 
             pts = {x, y} | ({0.5 * (x + y)} if p.kind == "mixed" else set())
             zone_top = max(zone_top, max(p.value(t) for t in pts))
         zone_top = max([zone_top] + [s.v for s in samples if s.piece is not None and lo <= s.t <= hi])
-        if zone_top >= top - TIE - noise:
+        if zone_top >= top - TIE - noise and all(lo <= t <= hi for t in ties):
             return (f"a station zone [{lo:.3f}, {hi:.3f}] s reaches {zone_top!r}, within TIE + {noise:.3g} of the maximum {top!r}: its noise comb of "
                     "tied maxima is not isolated (SR-NEAR-STATION-TIE)")
     return None
@@ -886,7 +888,7 @@ def _solve(problem: Problem, ctx: _Ctx) -> SolveResult:
         raise _Blank(REASON_UNDETERMINABLE, "no instant of the window has both agents live")
     top = max(v for v, _t in cands)
     t_star = min(t for v, t in cands if v >= top - TIE)
-    zone_tie = _station_zone_tie(problem, ctx, pieces, samples, top)
+    zone_tie = _station_zone_tie(problem, ctx, pieces, samples, top, tuple(t for v, t in cands if v >= top - TIE))
     if zone_tie is not None:
         raise _Blank(REASON_TIE_ISOLATION, zone_tie)
     at_star = max(v for v, t in cands if t == t_star)
