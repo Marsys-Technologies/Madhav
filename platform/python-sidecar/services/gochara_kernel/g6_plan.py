@@ -13,10 +13,11 @@ THE PLAN (`PLAN`, its sha256 `PLAN_DIGEST` is stored in every evidence object, s
   * PASS        a selected window passes iff the from-scratch re-solve classifies it AGREED. DISAGREEMENT blocks the seal always (the verifier raises); INCONCLUSIVE or an
                 unread result is "not shown" and the aggregate refuses (§N.8: nothing here is green unless a re-solve ran and agreed).
 
-WHO RESOLVES. The from-scratch re-solve needs the window's records, factor rows and the sky: the adapter that builds `window_cert_check.check_numbered`'s inputs from the stored rows is
-the integration's (S3), not this module's. The contract this module fixes (against R67's interface, `window_cert_check.CertReport`): a RESOLVER is `resolver(request: dict) -> report | None`
-with `request = {"resolve": True, "window_key", "window_id", "event_class", "path_id", "rule_version", "chart_id", "generation", "selected_by"}`; the report has `.classification` in
-AGREED / DISAGREEMENT / INCONCLUSIVE (None: the resolver does not cover the window). With NO resolver the evidence records every selected window as unresolved and the aggregate refuses.
+WHO RESOLVES. The from-scratch re-solve needs the window's records, factor rows and the sky: the production adapter is `window_verifier.g6_resolver` (SR-OD1 R8X S-1), which builds
+`window_cert_check.check_numbered(resolve=True)`'s inputs from the stored rows the way the certificate check does and is bound by `verification_job` per grain. The contract this module fixes
+(against R67's interface, `window_cert_check.CertReport`): a RESOLVER is `resolver(request: dict) -> report | None` with `request = {"resolve": True, "window_key", "window_id", "event_class",
+"path_id", "rule_version", "chart_id", "generation", "selected_by"}`; the report has `.classification` in AGREED / DISAGREEMENT / INCONCLUSIVE (None: the resolver does not cover the window).
+A resolver that covers nothing records every selected window as unresolved and the aggregate refuses.
 
 (I) INTERPRETATIONS: "generation-wide top-five mixed pieces" is read as the five WINDOWS with the most mixed pieces (alternative: the five widest mixed pieces); a window that is both
 sampled and top-mixed is re-solved once and carries both reasons; the population is read from stored `solver_certificate`s (a numbered function-valued window WITHOUT one is refused by the

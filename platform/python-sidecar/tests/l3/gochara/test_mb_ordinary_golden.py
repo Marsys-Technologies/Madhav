@@ -528,4 +528,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # (ar-verifier) and pipeline/orchestrator/verification_job (RV-INT B3) all move the window stage. The final pin is re-derived from the merged tree's real bytes with input_vector_verifier.module_digests(
     # input_vector.IMPLEMENTATION_MODULES); the lanes' own pins (ar-sweep 67aac6d5..., rvint1-fix 74056e90...) were derived on the wave-3a tree and are superseded, and the intermediate merge steps' pins
     # (17d93221..., 40f65b7c...) are not the final one; evaluation and geometry are unchanged by all four lanes; no golden component is re-captured.
+    # Window re-pinned for SR-OD1 R8X review S-1 (od1-g6-resolver): window_verifier gains `resolve_inputs` and the production `g6_resolver`, verification_job binds it per grain, g6_plan's
+    # "who resolves" text changed. Evaluation and geometry are asserted unchanged above. Re-derived from the tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin a7d18689... is the wave-3b head); no golden component is re-captured.
+    # Window re-pinned again for the od1-g6-resolver review fix B-1: window_verifier derives a P1 Form-B record's G-6 inputs from the verifier's own P1 binding (a P1 `StepFactor`) and a factor with
+    # no derivation is a named refusal (`NoSolverDerivation`, G-6 answers None). Evaluation and geometry unchanged; re-derived from the real bytes (the prior pin 2e7a0b6a... is the lane's first head).
+    # (wave 3c-b merge step 3 — g6-resolver: both comment histories kept; this pin is NOT final and is re-derived once on the final merged tree after the nearmiss step.)
     assert got["implementation"]["window"] == "75887439850c1d931ef109385a0d387ca333b0aa2e9a19a6a007d23a090aa131"

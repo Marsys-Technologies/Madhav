@@ -597,9 +597,10 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
         rows = factor_rows_for(path_id, version)
         # P1c: a P1 path whose rows declare a value table is re-derived from the verifier's own sky + L0 reads
         p1_check = p1c.P1Check.from_conn(conn, position_at) if path_id == "P1" and p1c.needs_p1_check(rows) else None
-        report = stage(f"window_semantics {path_id}", lambda g=grain, r=rows, c=p1_check: wv.verify_window_semantics(
+        g6_inputs: dict = {}                    # SR-OD1 R8X S-1: the numbered windows of THIS grain, as the re-solve inputs the production G-6 resolver builds on demand
+        report = stage(f"window_semantics {path_id}", lambda g=grain, r=rows, c=p1_check, gi=g6_inputs: wv.verify_window_semantics(
             conn, factor_rows=r, drishti_bound=drishti_bound, vedha_bound=vedha_bound,
-            solver_check=True, p1_check=c, moon_sign=moon_sign, position_at=position_at, **g))
+            solver_check=True, p1_check=c, moon_sign=moon_sign, position_at=position_at, resolve_inputs=gi, **g))
         entry = {"path_id": path_id, "rule_version": version, "status": report["status"],
                  "policy_version": report["policy_version"], "windows": report["windows"]}
         attestation = None
@@ -611,7 +612,10 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
             # seal) and the evidence rides in the row beside the attestation; a window the plan selects and nothing re-solved is recorded as such, and the aggregate refuses it
             if g6_sel is None:
                 g6_sel = g6_plan.selection(conn, chart_id, generation)
-            g6_evidence = stage(f"g6_resample {path_id}", lambda g=grain: g6_plan.collect(chart_id=chart_id, generation=generation, grain=g, sel=g6_sel, resolver=g6_resolver))
+            # the PRODUCTION resolver (`window_verifier.g6_resolver`): the verifier's own `check_numbered(resolve=True)` over the inputs this grain's verification just built. An injected
+            # `g6_resolver` replaces it (tests only; the entry point passes none)
+            g6_evidence = stage(f"g6_resample {path_id}", lambda g=grain, gi=g6_inputs: g6_plan.collect(
+                chart_id=chart_id, generation=generation, grain=g, sel=g6_sel, resolver=g6_resolver if g6_resolver is not None else wv.g6_resolver(gi)))
             entry["g6"] = {"selected": len(g6_evidence["windows"]), "agreed": sum(1 for w in g6_evidence["windows"].values() if w["result"] == g6_plan.PASS_CLASS)}
         else:
             g6_evidence = None
@@ -727,8 +731,9 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     are read from the job's environment and are None where it names none. A SUBSET run also reports `aggregate`: what the generation-wide verdict reads now, so the cockpit
     sees which classes are still missing — it never changes this run's own status (the sealer and the brief read the aggregate, not a shard's report).
 
-    SR-OD1 R8X: G-6 is part of the pinned plan (`g6_plan`). `g6_resolver(request) -> report | None` is the from-scratch re-solve of one selected window (the integration's adapter
-    over `window_cert_check.check_numbered(resolve=True)`); without one every selected window is recorded unresolved and the aggregate refuses a generation that has any. Each class's
+    SR-OD1 R8X: G-6 is part of the pinned plan (`g6_plan`). `g6_resolver(request) -> report | None` is the from-scratch re-solve of one selected window; the default (None) is the PRODUCTION resolver,
+    `window_verifier.g6_resolver` — `window_cert_check.check_numbered(resolve=True)` over the grain's own verified inputs (R8X S-1). A resolver that covers no window (returns None)
+    records every selected window unresolved and the aggregate refuses a generation that has any. Each class's
     measured wall (lock wait apart from compute) rides in its rows for the wall rule (`numerical_window_gate.wall_rule`)."""
     from . import window_gate as wg
     report: dict[str, Any] = {"chart_id": chart_id, "generation": generation, "report_only": report_only, "classes": {}}

@@ -23,6 +23,8 @@ from services.gochara_kernel import g6_plan
 from services.gochara_kernel import input_vector_verifier as ivv
 from services.gochara_kernel import numerical_window_gate as nwg
 from services.gochara_kernel import verification_job as vj
+from services.gochara_kernel import window_cert_check as cc
+from services.gochara_kernel import window_verifier as wv
 
 from .test_a53_inventory import CHART_ID
 from .test_a53_p1_support import GEN
@@ -182,8 +184,9 @@ def test_t18c_the_aggregate_refuses_a_generation_whose_g6_sample_is_missing(buil
     assert any("certified window(s)" in p for p in verdict["problems"]), verdict["problems"]    # the evidence counted none; the windows now stored say otherwise
     with pytest.raises(nwg.NumericalGateNotPassed):
         nwg.require_passed(w.conn, CHART_ID, GEN)
-    # the verifier running the plan WITHOUT a resolver records every selected window unresolved: still refused (nothing here is green unless a re-solve ran and agreed)
-    assert _run_with(w)["status"] == "VERIFIED"
+    # a resolver that covers no window (None; the PRODUCTION resolver, wired by default since R8X S-1, is tested in test_od1_g6_resolver.py) records every selected window unresolved:
+    # still refused (nothing here is green unless a re-solve ran and agreed)
+    assert _run_with(w, g6_resolver=lambda req: None)["status"] == "VERIFIED"
     verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)
     assert verdict["status"] == "FAILED" and any("is None, not AGREED" in p for p in verdict["problems"]), verdict["problems"]
     # …and with a resolver that AGREES the generation passes; the evidence names every selected window, the aggregate reports the plan
@@ -216,6 +219,71 @@ def test_t18e_the_population_is_the_stored_numbered_windows_that_carry_a_certifi
     assert sorted(x["window_id"] for x in pop) == sorted(r[0] for r in numbered)                # blanks (no peak) are not in the population, though they carry one too
     assert all(x["mixed"] == 2 for x in pop)
     assert sorted(x["key"] for x in pop) == sorted(g6_plan.window_key(CHART_ID, GEN, c, pth, v, lo, hi) for _wid, c, pth, v, lo, hi in numbered)
+
+
+# ── R8X review S-1 — the PRODUCTION G-6 resolver, end to end (`window_verifier.g6_resolver`; the pure-Python half is test_od1_g6_resolver.py) ─────────────────────────────────────────────
+
+def _certify_db(w):
+    """Give the stored NUMBERED windows a builder certificate (this world's windows are constant, so the real sweep stores none: the certificate's only part in the plan is its
+    `geometry.pieces`, which ranks the top-mixed; the re-solve never reads it). The 1240 shape check predates R67 and is lifted for this disposable database, as in `test_t18e`."""
+    _bypass(w, ("ALTER TABLE public.ka_gochara_eval_window DROP CONSTRAINT IF EXISTS kgew_qualification_shape_ck", ()),
+            ("UPDATE public.ka_gochara_eval_window SET qualification = qualification || jsonb_build_object('solver_certificate', jsonb_build_object('geometry', jsonb_build_object("
+             "'pieces', '[[0, 1, \"mixed\"], [1, 2, \"up\"], [2, 3, \"mixed\"]]'::jsonb))) WHERE peak_instant IS NOT NULL", ()))
+
+
+def _g6_rows(w):
+    rows = w.conn.execute("SELECT path_id, runner_identity FROM public.ka_gochara_eval_window_verification ORDER BY path_id").fetchall()
+    return {p: (r if isinstance(r, dict) else json.loads(r)).get(g6_plan.KEY) for p, r in rows}
+
+
+def test_g3_g5_a_certified_generation_passes_with_the_production_resolver_and_its_disagreement_blocks(built_numbers, one_class_universe, monkeypatch):
+    w = built_numbers
+    assert _run_with(w)["status"] == "VERIFIED"
+    assert nwg.generation_verdict(w.conn, CHART_ID, GEN)["status"] == "PASSED"             # uncertified: the plan selects nothing
+    _certify_db(w)
+    numbered = _numbered_windows(w)
+    assert numbered and len(g6_plan.population(w.conn, CHART_ID, GEN)) == len(numbered)
+    assert nwg.generation_verdict(w.conn, CHART_ID, GEN)["status"] == "FAILED"             # certificates arrived after the last run: that run's sample is stale
+    calls = []
+    real = cc.check_numbered
+    monkeypatch.setattr(wv._cc, "check_numbered", lambda **k: calls.append(k) or real(**k))
+    report = _run_with(w)                                                                   # NO injected resolver: the entry point's own path
+    assert report["status"] == "VERIFIED", report["classes"]
+    verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)
+    assert verdict["status"] == "PASSED", verdict["problems"]
+    sel = g6_plan.selection(w.conn, CHART_ID, GEN)
+    evidence = _g6_rows(w)
+    selected = {k for g in sel.required.values() for k in g}
+    assert selected and len(selected) == min(g6_plan.TOP_MIXED, len(numbered)) + sum(1 for _w in selected if g6_plan.sampled(_w) and _w not in sel.top_mixed)
+    stored = {k: v for ev in evidence.values() for k, v in ev["windows"].items()}
+    assert set(stored) == selected and all(v["result"] == "AGREED" for v in stored.values())         # persisted where the aggregate reads it, every selected window re-solved
+    assert len(calls) == len(selected) and all(c["resolve"] is True and c["certificate"] is None for c in calls)    # one from-scratch solve per selected window, the certificate never used
+    assert verdict["aggregate"]["g6"]["population"] == len(numbered)
+    # G5 — a re-solve that disagrees blocks the class at the G-6 stage, and nothing of it is persisted
+    monkeypatch.setattr(wv._cc, "check_numbered", lambda **k: SimpleNamespace(classification="DISAGREEMENT", findings=(("objective_exceeds_stored_maximum", "planted"),), inconclusive=())
+                        if k.get("resolve") else real(**k))
+    bad = _run_with(w)
+    assert bad["status"] == "DISAGREE" and bad["classes"][CLS]["stage"].startswith("g6_resample"), bad["classes"]
+
+
+def test_g4_an_omitted_or_stale_sample_is_refused_by_the_aggregate(built_numbers, one_class_universe):
+    w = built_numbers
+    _certify_db(w)
+    assert _run_with(w)["status"] == "VERIFIED" and nwg.generation_verdict(w.conn, CHART_ID, GEN)["status"] == "PASSED"
+    # omitted: a resolver that covers no window (the sample is drawn, nothing re-solved) is recorded unresolved and refused
+    assert _run_with(w, g6_resolver=lambda req: None)["status"] == "VERIFIED"
+    verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)
+    assert verdict["status"] == "FAILED" and any("is None, not AGREED" in p for p in verdict["problems"]), verdict["problems"]
+    assert _run_with(w)["status"] == "VERIFIED" and nwg.generation_verdict(w.conn, CHART_ID, GEN)["status"] == "PASSED"
+    # omitted: the evidence is gone from the rows
+    _bypass(w, ("UPDATE public.ka_gochara_eval_window_verification SET runner_identity = runner_identity - %s", (g6_plan.KEY,)))
+    verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)
+    assert verdict["status"] == "FAILED" and any("carries no G-6 evidence" in p for p in verdict["problems"]), verdict["problems"]
+    assert _run_with(w)["status"] == "VERIFIED" and nwg.generation_verdict(w.conn, CHART_ID, GEN)["status"] == "PASSED"
+    # stale: the stored windows changed after the run (the certificate is gone: the population shrank), so the stored sample no longer is the plan's
+    _bypass(w, ("UPDATE public.ka_gochara_eval_window SET qualification = qualification - 'solver_certificate'", ()))
+    verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)
+    assert verdict["status"] == "FAILED" and any("certified window(s)" in p for p in verdict["problems"]), verdict["problems"]
 
 
 # ── B4 — the wall rule ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
