@@ -276,9 +276,14 @@ def test_a_timeout_reads_partial_and_the_census_continues(pg, monkeypatch, tmp_p
          a client kill (CheckTimeout) carries neither;
       3. A LOOSE CLOCK BOUND: the statement ended before the client kill (budget + 30 s) minus a wide margin (< 20 s): this alone would not tell a 6 s
          cancel from a 10 s one, which is exactly why (1) exists.
+    WHY THE CLOCK WAS LOOSE: the planner prices `generate_series(1, 2000000000)` far above jit_above_cost, so on a JIT-enabled server (the CI postgres:16 has
+    jit = on; Homebrew's has no LLVM and never shows it) the statement first spends its time in an LLVM compile, which no statement_timeout can interrupt: the
+    1 s cancel lands only AFTER the compile (6-20 s on a loaded runner). The test therefore sends `jit=off` (PGOPTIONS, test-local; the census runner copies
+    os.environ) so the wall clock measures the cancel and not the compiler; (1)-(2) still decide WHAT was sent and WHO cancelled.
     Mutations (checked by hand): `SET LOCAL statement_timeout` removed -> the statement runs to the client kill (~31 s): (1), (2) and (3) all fail;
     the budget multiplier changed (x10000) -> the server cancels at 10 s: (1) fails; the budget not applied -> same as the first."""
     monkeypatch.setattr(ac, "INTEGRITY_BUDGET_SECS", 1)
+    monkeypatch.setenv("PGOPTIONS", (os.environ.get("PGOPTIONS", "") + " -c jit=off").strip())      # no uninterruptible LLVM compile ahead of the cancel (see above)
     seen, sent = [], []
     real, real_run = ac.psql_read_only, ac._psql_run
 
