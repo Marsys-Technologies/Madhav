@@ -75,6 +75,7 @@ VERIFIER_COMMAND = ["python", "-m", "pipeline.orchestrator.verification_job"]
 VERIFIER_SECRET = ("GOCHARA_VERIFIER_DB_URL", "gochara-verifier-db-url", "latest")
 VERIFIER_PLAIN_ENV = frozenset({"GOCHARA_RUNNER_COMMIT", "GOCHARA_RUNNER_IMAGE_DIGEST"})
 CLOUDSQL_INSTANCE = "madhav-astrology:asia-south1:amjis-postgres"
+CLOUDSQL_ANNOTATION = "run.googleapis.com/cloudsql-instances"
 # The verification job's resources as deployed: gochara-verification-job-deploy.yml `--memory 4Gi --cpu 1 --task-timeout 28800` (SR-RIGHT-SIZE amend-1; was 8Gi/2). The timeout is the ruled 28,800 s
 # (#3747 via #3789; PRECENTURY_PLAN §9 D-2, F-VERIFY-TIMEOUT). This file is copied out alone so it cannot import gochara_seal_execution_check.JOB_TIMEOUT_SECONDS;
 # tests/test_cloudrun_readback_verification_job.py pins these equal to it, to both deploy flags and to the launch preparation, and the check name is derived from them.
@@ -805,11 +806,30 @@ def _check(name: str, observed, ok) -> dict:
     return {"name": name, "observed": observed, "ok": ok}
 
 
+def cloudsql_annotation_levels(job: dict) -> dict:
+    """Every level at which the job carries the Cloud SQL annotation, as {level path: value}; empty when none does (never an invented value, §N.8).
+    The levels and the rule are those of platform/scripts/gochara_verification_job_readback.py (`_annotations` / `check`), the deploy checker: Cloud Run puts
+    the annotation of `gcloud run jobs deploy --set-cloudsql-instances` on the execution template, `spec.template.metadata`; the task template and the job
+    metadata are read too, and one present level that differs fails the check (a later level cannot hide an earlier one). A level whose annotations are not an object is skipped."""
+    found = {}
+    for level, path in (("spec.template.metadata", ("spec", "template", "metadata", "annotations")),
+                        ("spec.template.spec.template.metadata", ("spec", "template", "spec", "template", "metadata", "annotations")),
+                        ("metadata", ("metadata", "annotations"))):
+        node = job
+        for key in path:
+            node = node.get(key) if isinstance(node, dict) else None
+        if isinstance(node, dict) and CLOUDSQL_ANNOTATION in node:
+            found[level] = node[CLOUDSQL_ANNOTATION]
+    return found
+
+
 def verification_checks(job: dict) -> tuple[list[dict], bool | None]:
     """J-4b-a55j: the verification job's definition against the contract its deploy workflow sets. Every check is computed from the ONE describe response."""
     outer = job.get("spec", {}).get("template", {}) if isinstance(job.get("spec"), dict) else {}
     task_count = parse_int64(outer.get("spec", {}).get("taskCount")) if isinstance(outer.get("spec"), dict) else None
-    template_annotations = ((outer.get("spec") or {}).get("template") or {}).get("metadata", {}).get("annotations", {}) if isinstance(outer.get("spec"), dict) else {}
+    sql_levels = cloudsql_annotation_levels(job)
+    sql_values = list(sql_levels.values())
+    sql_observed = None if not sql_levels else (sql_values[0] if all(v == sql_values[0] for v in sql_values) else sql_levels)
     task = job_task_spec(job)
     container = only_container(task, "verification job")
     reference = need(container, "image", "verification job")
@@ -838,8 +858,7 @@ def verification_checks(job: dict) -> tuple[list[dict], bool | None]:
         _check("runner_commit_is_a_full_commit", isinstance(runner_commit, str) and bool(COMMIT_40.fullmatch(runner_commit)),
                isinstance(runner_commit, str) and bool(COMMIT_40.fullmatch(runner_commit))),
         _check("task_count_is_one", task_count, task_count == 1),
-        _check("cloudsql_instance_is_the_amjis_instance", template_annotations.get("run.googleapis.com/cloudsql-instances") if isinstance(template_annotations, dict) else None,
-               isinstance(template_annotations, dict) and template_annotations.get("run.googleapis.com/cloudsql-instances") == CLOUDSQL_INSTANCE),
+        _check("cloudsql_instance_is_the_amjis_instance", sql_observed, bool(sql_levels) and all(v == CLOUDSQL_INSTANCE for v in sql_values)),
         _check("max_retries_is_zero", retries, None if retries is None else retries == 0),        # proto3 omits a zero: unknown here, settled by the v2 REST read (workflow F-R15-3)
         _check(VERIFIER_RESOURCES_CHECK, {"memory": limits.get("memory"), "cpu": limits.get("cpu"), "timeout_seconds": timeout},
                limits.get("memory") == VERIFIER_MEMORY and limits.get("cpu") == VERIFIER_CPU and timeout == VERIFIER_TIMEOUT_SECONDS),
