@@ -182,7 +182,8 @@ def slice_world(cluster, conn, pid, n_burn, load_fn):
     r = fx.a10_report()
     kinds = {k: rec["stages"][f"build:{k}"]["wall_s"] for k in KINDS}
     r["runtime_s"]["by_step_kind"] = kinds
-    r["effective_wall"] = {"schema": "ky.effective_wall/1", "stages": {f"build:{k}": {"wall_s": w, "lock_wait_s": 0.0, "compute_s": w} for k, w in kinds.items()}}
+    r["effective_wall"] = {"schema": "ky.effective_wall/1", "stages": {f"build:{k}": {"wall_s": w, "lock_wait_s": 0.0, "compute_s": w, "max_load_per_core": rec["stages"][f"build:{k}"]["load_per_core_max"]}      # HARNESS-3.2 D-10: the per-stage load the real stage record carries
+                                                                              for k, w in kinds.items()}}
     r["g5_cpu"] = rec
     return r
 

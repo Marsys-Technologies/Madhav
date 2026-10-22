@@ -295,6 +295,7 @@
       "tests/test_crosscheck.py",
       "tests/test_driver.py",
       "tests/test_gates.py",
+      "tests/test_harness_32.py",
       "tests/test_launcher.py",
       "tests/test_lane_db_overlay.py",
       "tests/test_t1b_fix.py",

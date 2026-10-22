@@ -135,7 +135,7 @@ def _verify_world(monkeypatch, seen):
     wv = _Fake("services.gochara_kernel.window_verifier")
     wv.verify_window_semantics = lambda *a, **k: None
     nwg = _Fake("services.gochara_kernel.numerical_window_gate")
-    nwg.generation_verdict = lambda conn, chart, gen: {"status": "PASSED", "numbered_windows": 1}
+    nwg.generation_verdict = lambda conn, chart, gen, classes=None: {"status": "PASSED", "numbered_windows": 1}        # the real signature: numerical_window_gate.py:151
     pkg = {"pipeline": _Fake("pipeline"), "services": _Fake("services"), "services.gochara_kernel": _Fake("services.gochara_kernel"),
            "pipeline.orchestrator": _Fake("pipeline.orchestrator")}
     pkg["pipeline.orchestrator"].verification_job = vjob

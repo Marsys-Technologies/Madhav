@@ -262,3 +262,36 @@ def test_k_cert_carries_no_deferral_so_its_real_artifact_acceptance_can_count():
     assert (kcert.get("triage") or {}).get("class") == "a" and "re_entry" not in (kcert.get("triage") or {})
     assert "K-CERT" in load_closure(model)["closure"]
     assert kcert["detector"]["path"].endswith("K-CERT_ASSESSMENT_REVIEW.md")
+
+
+# SR-PARKED-OUT-OF-CAMPAIGN / SR-DT2-CANDIDATE (2026-10-22). Source: the two rulings in DECISIONS_SURROGATE.jsonl; mechanism: A9 D-51.3
+# (deferred items are listed apart, never counted) and CONTROL_PLANE.md (a recorded decision item reads done once its gates are done).
+PARKED_OUT = ["KR-1", "KR-2", "J-7a", "J-7a-pr3099", "J-7a-a62", "J-8", "J-8a", "J-8-b63", "J-8-j3", "J-4a-a25", "J-4a-a26",
+              "J-3a-b44", "L0-K"]
+
+
+def test_the_parked_items_read_deferred_with_re_entry_and_never_done_or_in_the_headline(tmp_path):
+    model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+    snap = _decide(model, tmp_path, {"D-T2": "approved"})
+    o = snap["overall"]
+    listed = {d["id"]: d for d in o["deferred"]}
+    rows = _rows(snap)
+    members = set(_closure(model)["closure"])
+    for iid in PARKED_OUT:
+        assert iid in listed and listed[iid]["re_entry"], iid          # listed apart, with the condition to come back
+        assert iid not in members, iid                                    # outside the headline count
+        assert rows[iid]["status"] != "done", iid                         # never shown as done
+    # all thirteen sit in the reconciliation's deferred group, none in the finish path or side work
+    by_class = {r["id"] for r in o["deferred"]}
+    assert set(PARKED_OUT) <= by_class
+    assert o["reconciliation"]["deferred"]["total"] >= len(PARKED_OUT) and o["reconciliation"]["unclassified"]["total"] == 0
+    assert o["reconciliation"]["sum_of_parts"] == o["reconciliation"]["plan_items"]
+
+
+def test_d_t2_reads_done_once_its_decision_is_recorded(tmp_path):
+    model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+    rows = _rows(_decide(model, tmp_path, {"D-T2": "approved"}))
+    assert rows["D-T2"]["status"] == "done" and rows["D-T2"]["outcome"] == "approved"
+    # earned by the record: with no decision event the same item is not done (N.8)
+    assert _rows(build_snapshot(model, [], {}, {}, {}, now=NOW, closure=_closure(model)))["D-T2"]["status"] != "done"
+

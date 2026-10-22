@@ -18,6 +18,7 @@ from typing import Any, Literal, Optional, Set
 
 from .eligibility import EligibilityBand
 from .tree_walk import DashaInterval, walk_eligible_intervals, ALL_DASHA_SYSTEMS
+from services.gochara_grammar.read_tier_policy import SINGLE_TIER_INPUT_FLAG
 from services.kala_core import clocks
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,13 @@ class CrossDashaAgreement:
     """How many of the 7 systems independently flag a window as eligible."""
     count: int
     systems_agreeing: list[str]
+    # SR-DASHA-SINGLE-TIER: which of ``systems_agreeing`` contributed a window derived from a `single`-tier row.
+    # ``count`` is unchanged (all agreeing systems); ``verified_count`` is the part nothing flags.
+    single_tier_systems: list[str] = field(default_factory=list)
+
+    @property
+    def verified_count(self) -> int:
+        return self.count - len(self.single_tier_systems)
 
 
 @dataclass
@@ -48,6 +56,9 @@ class EligibleWindow:
     kp_sublevel: Optional[str] = None
     kp_sub_lord: Optional[str] = None
     is_prana_computed: bool = False   # True if this is an in-memory level-5 row
+    # SR-DASHA-SINGLE-TIER (§N.6): derived from a row stored at `single` (its own or an ancestor's) -- never verified.
+    verification_pass_status: Optional[str] = None
+    single_tier_input: bool = False
 
 
 @dataclass
@@ -67,6 +78,9 @@ class KaDashaKalaResult:
     kp_windows: list[EligibleWindow] = field(default_factory=list)
     total_windows: int = 0
     high_agreement_count: int = 0   # windows where cross_dasha_agreement.count >= 2
+    # SR-DASHA-SINGLE-TIER: windows carrying ``single_tier_input`` are counted apart and named in the judgment flags.
+    single_tier_windows: int = 0
+    judgment_flags: list[str] = field(default_factory=list)
 
 
 def _build_overlap_key(interval: DashaInterval) -> tuple[date, date]:
@@ -129,6 +143,7 @@ class KaDashaKalaService:
         prana_grain: bool = False,
         systems: Optional[Set[str]] = None,
         _query_counter: Optional[list] = None,
+        admit_single_tier: bool = False,
     ) -> KaDashaKalaResult:
         """Compatibility shim for Saṅgam/Phala until their consumer items land.
 
@@ -138,6 +153,7 @@ class KaDashaKalaService:
         return self.legacy_query(
             chart_id, ayanamsha_id, target_lords, related_lords, date_start, date_end,
             max_level, min_band, prana_grain, systems, _query_counter,
+            admit_single_tier=admit_single_tier,
         )
 
     def legacy_query(
@@ -145,7 +161,7 @@ class KaDashaKalaService:
         related_lords: Set[str], date_start: date, date_end: date,
         max_level: int = 4, min_band: EligibilityBand = EligibilityBand.RELATED,
         prana_grain: bool = False, systems: Optional[Set[str]] = None,
-        _query_counter: Optional[list] = None,
+        _query_counter: Optional[list] = None, admit_single_tier: bool = False,
     ) -> KaDashaKalaResult:
         """
         Run the dasa-eligibility query.
@@ -174,6 +190,13 @@ class KaDashaKalaService:
             If provided, restrict to these system_ids.  Default: all 7.
         _query_counter : list | None
             Internal testing hook -- see tree_walk.walk_eligible_intervals.
+        admit_single_tier : bool
+            SR-DASHA-SINGLE-TIER. Also read the `single` rows of ashtottari,
+            chara_karaka, kalachakra, naisargika and yogini. Every window derived
+            from one carries ``single_tier_input=True``; ``single_tier_windows``
+            counts them and ``judgment_flags`` names the flag. Default False:
+            those rows stay refused, exactly as before (a caller that cannot
+            read the flag must not pass True).
 
         Returns
         -------
@@ -217,6 +240,7 @@ class KaDashaKalaService:
                     min_band=min_band,
                     prana_grain=prana_grain,
                     query_counter=_query_counter,
+                    admit_single_tier=admit_single_tier,
                 )
                 all_intervals.extend(intervals)
                 logger.info(
@@ -238,11 +262,14 @@ class KaDashaKalaService:
         # -- Cross-dasa agreement --------------------------------------------
         # For each (start_date, end_date) pair, count how many systems agree
         window_systems: dict[tuple[date, date], set[str]] = {}
+        window_single_systems: dict[tuple[date, date], set[str]] = {}
         for iv in all_intervals:
             key = _build_overlap_key(iv)
             if key not in window_systems:
                 window_systems[key] = set()
             window_systems[key].add(iv.system_id)
+            if iv.single_tier_input:
+                window_single_systems.setdefault(key, set()).add(iv.system_id)
 
         # -- Build result windows --------------------------------------------
         windows: list[EligibleWindow] = []
@@ -254,6 +281,7 @@ class KaDashaKalaService:
             agreement = CrossDashaAgreement(
                 count=len(agreeing),
                 systems_agreeing=agreeing,
+                single_tier_systems=sorted(window_single_systems.get(key, ())),
             )
 
             is_prana = (iv.level_n == 5)
@@ -273,6 +301,8 @@ class KaDashaKalaService:
                 kp_sublevel=iv.kp_sublevel,
                 kp_sub_lord=iv.kp_sub_lord,
                 is_prana_computed=is_prana,
+                verification_pass_status=iv.verification_pass_status,
+                single_tier_input=iv.single_tier_input,
             )
             windows.append(ew)
 
@@ -281,6 +311,7 @@ class KaDashaKalaService:
                 kp_windows.append(ew)
 
         high_agreement = sum(1 for w in windows if w.cross_dasha_agreement.count >= 2)
+        single_tier_windows = sum(1 for w in windows if w.single_tier_input)
 
         return KaDashaKalaResult(
             chart_id=chart_id,
@@ -296,7 +327,31 @@ class KaDashaKalaService:
             kp_windows=kp_windows,
             total_windows=len(windows),
             high_agreement_count=high_agreement,
+            single_tier_windows=single_tier_windows,
+            judgment_flags=[SINGLE_TIER_INPUT_FLAG] if single_tier_windows else [],
         )
+
+    def confirm_systems_present_by_tier(
+        self,
+        chart_id: str,
+        ayanamsha_id: str = "lahiri_chitrapaksha",
+        *,
+        admit_single_tier: bool = False,
+    ) -> dict[str, dict[str, int]]:
+        """{system_id: {verification_pass_status: row_count}} over the governed read.
+
+        With ``admit_single_tier`` (SR-DASHA-SINGLE-TIER) the `single` rows of the five ruled
+        systems are present in the counts, under their own tier -- never merged into a verified one.
+        """
+        sql = dasha_query('dasha_system_tier_counts')
+        rows = execute_governed_dasha_query(
+            self._conn, chart_id, sql, [chart_id, ayanamsha_id], ayanamsha_id=ayanamsha_id,
+            admit_single_tier=admit_single_tier).fetchall()
+        out: dict[str, dict[str, int]] = {}
+        for r in rows:
+            system, tier, cnt = (r["system_id"], r["verification_pass_status"], r["cnt"]) if isinstance(r, dict) else r
+            out.setdefault(system, {})[tier] = int(cnt)
+        return out
 
     def confirm_systems_present(
         self,
