@@ -365,6 +365,73 @@ def _inventory_header(conn, chart_id, generation, event_class):
     return None if row is None else (tuple(row.values()) if isinstance(row, dict) else tuple(row))
 
 
+# ── contact geometry and the near-miss layer ─────────────────────────────────────────────────────────
+
+#: the verifier's OWN statements (no builder code, no `near_miss` import): the class's concrete POINT obligations — the objects a
+#: near-miss can exist for — and the generation's stored near-miss rows of those objects
+_NM_LAYER_SQL = ("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL"
+                 " AND to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL")
+_NM_OBLIGATIONS_SQL = (
+    "SELECT DISTINCT o.agent, o.relation, o.target FROM public.ka_gochara_search_obligation o"
+    " JOIN public.ka_gochara_search_path_pin p ON (p.chart_id, p.generation, p.event_class, p.path_id, p.rule_version)"
+    "   = (o.chart_id, o.generation, o.event_class, o.path_id, o.rule_version) AND p.disposition = 'included'"
+    " WHERE o.chart_id = %s AND o.generation = %s AND o.event_class = %s AND o.relation IN ('conjunction', 'aspect')"
+    "   AND o.target LIKE 'point:%%' AND o.agent <> 'moon' AND o.agent NOT LIKE 'period_lord:%%'")
+_NM_STORED_SQL = (
+    "SELECT o.body, o.relation_kind, o.canonical_target, n.near_miss_id, n.t_in, n.t_out, n.clearance_deg"
+    " FROM public.ka_gochara_near_miss n JOIN public.ka_gochara_near_miss_object o ON o.near_miss_object_id = n.near_miss_object_id"
+    " WHERE n.chart_id = %s AND n.generation = %s")
+
+
+def _row_tuple(r):
+    return tuple(r.values()) if isinstance(r, dict) else tuple(r)
+
+
+def near_miss_reconcile_problems(conn, *, chart_id: str, generation: str, event_class: str, reported: list, horizon) -> list[str]:
+    """The graze sink is NOT a forgiveness. A near-miss is an in-band stretch that never crosses the exact aspect level; the builder mints a
+    point contact only around an exact root (ND-P2-20261005 rules 1-2, AM-13), so its ledger rightly holds none and the near-miss layer holds
+    the stretch instead. What the certifier classified as a graze from the ephemeris alone (`reported`, whole stretches) must therefore pair one
+    to one — by (body, relation, target) and overlap — with the near-miss rows stored for the class's point obligations, in both directions.
+    Agreement of the bounds is `near_miss_verifier`'s duty. Named problems (empty = they agree)."""
+    keys = {_row_tuple(r) for r in conn.execute(_NM_OBLIGATIONS_SQL, (chart_id, generation, event_class)).fetchall()}
+    free = []
+    for body, relation, target, nm_id, t_in, t_out, clearance in map(_row_tuple, conn.execute(_NM_STORED_SQL, (chart_id, generation)).fetchall()):
+        if (body, relation, target) in keys and t_in < horizon[1] and t_out > horizon[0]:
+            free.append({"key": (body, relation, target), "id": str(nm_id), "t_in": t_in, "t_out": t_out, "clearance": clearance})
+    problems = []
+    from datetime import datetime
+    for g in reported:
+        a, b = (datetime.fromisoformat(x) for x in g["interval"])
+        match = next((s for s in free if s["key"] == (g["body"], g["relation"], g["target"]) and s["t_in"] < b and a < s["t_out"]), None)
+        if match is None:
+            problems.append(f"near_miss_reported_but_unstored: {g['body']} {g['relation']} {g['target']} [{g['interval'][0]}, {g['interval'][1]}) "
+                            f"closest {g.get('closest_approach_deg')} deg")
+        else:
+            free.remove(match)
+    for s in free:
+        problems.append(f"near_miss_stored_but_unreported: {' '.join(s['key'])} [{s['t_in'].isoformat()}, {s['t_out'].isoformat()}) "
+                        f"clearance {s['clearance']} deg (id {s['id']})")
+    return problems
+
+
+def certify_geometry(conn, *, chart_id: str, generation: str, event_class: str, position_at, horizon) -> dict:
+    """The contact-geometry stage. Where the near-miss layer exists the certifier gets a graze sink (a rootless in-band stretch is not an omitted
+    contact) and the grazes it reports are reconciled with the stored near-miss rows (`near_miss_reconcile_problems`); a graze with no stored row
+    and a stored row with no graze both raise by name. Anything else the certifier finds (omission, anomaly, unresolved) still raises. Without
+    the layer there is nowhere to keep a near-miss: no sink, exactly as before."""
+    from . import contact_certify as cc
+    layer = bool(_one(conn.execute(_NM_LAYER_SQL).fetchone()))
+    graze_sink: list | None = [] if layer else None
+    geometry = cc.certify_contact_geometry(conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at,
+                                           graze_sink=graze_sink)
+    if layer:
+        problems = near_miss_reconcile_problems(conn, chart_id=chart_id, generation=generation, event_class=event_class,
+                                                reported=graze_sink, horizon=horizon)
+        if problems:
+            raise RuntimeError(f"near-miss reconciliation failed {event_class}: " + "; ".join(problems))
+    return geometry
+
+
 def verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
                  path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
                  drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None, shard: dict | None = None) -> dict:
@@ -391,7 +458,6 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
 
     UNVERIFIED (the verifier cannot derive every path) is a RESULT, not an error. Any independent DISAGREEMENT raises
     `VerificationDisagrees` and writes nothing for the class."""
-    from . import contact_certify as cc
     from . import inventory_verifier as inv_v
     from . import record_verifier as rv
     from . import numerical_window_gate as nwg
@@ -446,8 +512,8 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     out["inventory_digest"], out["ledger_digest"] = res["digest"], led
     # R10-6: the fixed 3 s / 6 h aspect-span precheck is GONE — `contact_certify` (next) certifies the aspect-to-span contacts,
     # like every other, under the DERIVED tolerance (accuracy / |speed| + 1 s) and the union-of-contacts contract
-    out["geometry"] = stage("contact_geometry", lambda: cc.certify_contact_geometry(
-        conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at))
+    out["geometry"] = stage("contact_geometry", lambda: certify_geometry(
+        conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at, horizon=horizon))
     from . import record_derivation as rd
     has_snapshot = _one(conn.execute("SELECT count(*) FROM public.ka_gochara_search_input_snapshot"
                                      " WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchone())

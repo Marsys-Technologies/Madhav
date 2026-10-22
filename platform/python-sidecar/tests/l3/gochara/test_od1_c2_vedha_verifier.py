@@ -198,7 +198,8 @@ def test_c2_4_a_missing_residence_is_unknown_never_inactive_and_a_known_obstruct
     assert nothing.wholly_unknown and nothing.value_at(D(25)) is None
     rows = [{"factor_id": "vedha_attenuation", "rule_version": "9.0.0", "null_state": "unqualified"}]
     r = {"id": "r-sun", "relation": "residence", "kind": "sign_span", "agent": "sun", "house": 3, "boundaries_complete": False}
-    assert wv._record_state(rows, r, False, True, lambda rid: nothing) == ("unq", [vv.WHOLLY_UNKNOWN_REASON])
+    # ... under the ONE reason its unknown stretches name (the builder's rule, SR-OD1 AR_DIAG 1b): no stored residence is a graha's gap first
+    assert wv._record_state(rows, r, False, True, lambda rid: nothing) == ("unq", ["obstructor_residence_unknown"])
     assert wv._record_state(rows, r, False, True, lambda rid: ov) == ("fn", None)      # partly known: a complete-edged step function
 
 
@@ -281,12 +282,12 @@ def test_c2_10_verify_window_semantics_derives_the_overlay_itself_and_reproduces
 
 
 def test_c2_10_a_record_unknown_throughout_makes_the_window_blank_under_the_named_reason():
-    conn = _window_world([], reason=vv.WHOLLY_UNKNOWN_REASON, unqualified=True)      # no residence contacts at all
+    conn = _window_world([], reason="obstructor_residence_unknown", unqualified=True)      # no residence contacts at all: the named reason (AR_DIAG 1b)
     rows = [{"factor_id": "vedha_attenuation", "rule_version": "9.0.0", "null_state": "unqualified"}]
     out = wv.verify_window_semantics(conn, chart_id=CHART, generation=GEN, event_class=CLS, path_id="P2", rule_version="1.0.0",
                                      factor_rows=rows, vedha_bound=True, policy=wv.POLICY_VERSION, moon_sign=MOON)
-    assert out["windows_detail"][0]["unqualified_reason"] == vv.WHOLLY_UNKNOWN_REASON
-    assert out["windows_detail"][0]["unresolved"] == {vv.WHOLLY_UNKNOWN_REASON: 1}
+    assert out["windows_detail"][0]["unqualified_reason"] == "obstructor_residence_unknown"
+    assert out["windows_detail"][0]["unresolved"] == {"obstructor_residence_unknown": 1}
 
 
 def test_c2_10_without_a_bound_source_nothing_is_derived_and_the_record_stays_blank():

@@ -50,8 +50,8 @@ _TITLE = {"sun": "Sun", "moon": "Moon", "mars": "Mars", "mercury": "Mercury", "j
 def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool, p1=None, vedha_overlay=None):
     """('na',) | ('const', v) | ('fn',) | ('step',) | ('unq', reason) for one factor on one record. `p1` is the
     `p1_operands_check.P1Binding` of a P1 path (P1c): the verifier's own derivation of the period lord's step-valued states.
-    A vedha factor's `fn` carries (complete, wholly_unknown): `('fn', complete, wholly_unknown)` from the verifier's own
-    derivation (C2, `vedha_overlay`)."""
+    A vedha factor's `fn` carries (complete, wholly_unknown, blank_reason): `('fn', complete, wholly_unknown, blank_reason)` from the
+    verifier's own derivation (C2, `vedha_overlay`)."""
     fid, ap = row["factor_id"], row.get("applicability")
     if fid == "activity_kernel":
         if not ap:
@@ -77,7 +77,7 @@ def _row_state(row: dict, rec: dict, drishti_bound: bool, vedha_bound: bool, p1=
         derived = vedha_overlay(rec["id"])
         if not derived.applicable:
             return ("na",)             # adverse residence / a house with no cited pair: declared not-applicable, never a silent 1
-        return ("fn", derived.complete, derived.wholly_unknown)
+        return ("fn", derived.complete, derived.wholly_unknown, derived.blank_reason)
     if fid in ("dignity_of_transit_sign", "combustion", "agent_nature", "maitri_compound"):
         if row.get("value_mapping"):
             raise RuntimeError(f"window verifier: {fid} declares a value_mapping it cannot derive from")
@@ -143,10 +143,10 @@ def _record_state(factor_rows, rec, drishti_bound, vedha_bound, vedha_overlay=No
     if any(not (s[1] if r["factor_id"] == "vedha_attenuation" and len(s) > 1 else rec.get("boundaries_complete"))
            for s, r in state_valued):
         return ("unq", [STATE_BOUNDARIES_REASON])
-    # a vedha value undeterminable over EVERY instant of the supports makes the record itself unqualified (the sweep's §2.1 rule)
-    if any(len(s) > 2 and s[2] for s, r in state_valued if r["factor_id"] == "vedha_attenuation"):
-        from .vedha_verifier import WHOLLY_UNKNOWN_REASON
-        return ("unq", [WHOLLY_UNKNOWN_REASON])
+    # a vedha value undeterminable over EVERY instant of the supports makes the record itself unqualified (the sweep's §2.1 rule), under the reason it names
+    blank = [s[3] for s, r in state_valued if r["factor_id"] == "vedha_attenuation" and len(s) > 3 and s[2]]
+    if blank:
+        return ("unq", sorted(set(blank)))
     if any(s[0] == "fn" for s in states):
         return ("fn", None)
     if any(s[0] == "step" for s in states):
