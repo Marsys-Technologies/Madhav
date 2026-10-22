@@ -32,6 +32,7 @@ import collections
 import datetime as dt
 import json
 import os
+import re
 from pathlib import Path
 
 from . import merged_deployed
@@ -47,6 +48,45 @@ STATUS_ORDER = ["done", "not_applicable", "running", "review", "ready", "waiting
 
 # A7 D-46: only code/artifact items may complete (be *implemented*) while a gate is open.
 D46_KINDS = ("code", "artifact")
+
+_REVIEW_PR = re.compile(r"\bPR #(\d+)")
+
+
+def review_pr(event: dict) -> int | None:
+    """The pull request a `review` item event is about: its `pr` number, else the `PR #N` its detail names."""
+    pr = event.get("pr")
+    if isinstance(pr, int) and not isinstance(pr, bool) and pr > 0:
+        return pr
+    match = _REVIEW_PR.search(str(event.get("detail") or ""))
+    return int(match.group(1)) if match else None
+
+
+def stale_review_prs(events: list[dict]) -> set[int]:
+    """Pull requests named by an item's latest `review` event: the ones whose merge the tracker must look up
+    (SR-AUDIT-BOOKKEEPING). The server asks GitHub about exactly these."""
+    latest: dict[str, dict] = {}
+    for e in events:
+        if e.get("kind") == "item" and not e.get("step"):
+            latest[e.get("item")] = e
+    return {pr for e in latest.values() if e.get("state") == "review" and (pr := review_pr(e)) is not None}
+
+
+def drop_merged_reviews(evs: list[dict], merged_prs) -> list[dict]:
+    """SR-AUDIT-BOOKKEEPING: a trailing `review` event on a PR that has since MERGED is over, so it no longer reads
+    as work in progress; the item reads from the event before it, else from its dependencies. `merged_prs` is the
+    set of PR numbers observed MERGED; None (not observed) leaves every review as written, never assumes a merge."""
+    evs = list(evs)
+    while merged_prs and evs and evs[-1].get("state") == "review" and review_pr(evs[-1]) in merged_prs:
+        evs.pop()
+    return evs
+
+
+def completes_at_merge(item: dict) -> bool:
+    """True when the item is complete once its PR merges: a code item (or one that declares no kind) whose detector
+    reads a merge. Only then is a pre-merge ACCEPTED verdict a real start condition for its dependants; an
+    operation, a packet or a code item measured by a receipt/file still has its own output to produce."""
+    return ((item.get("detector") or {}).get("type") in ("branch_merged", "pr_merged")
+            and item.get("completion_kind") in (None, "code"))
 
 
 def _terminal(item: dict) -> set[str]:
@@ -157,9 +197,10 @@ def recorded_na_steps(item: dict, decisions: dict, outcomes: dict | None = None)
 
 
 def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool = False,
-                decision_outcomes: dict | None = None, derived: dict | None = None) -> dict:
+                decision_outcomes: dict | None = None, derived: dict | None = None,
+                merged_prs=None) -> dict:
     all_evs = ix["items"].get(item["id"], [])
-    evs = [e for e in all_evs if not e.get("step")]
+    evs = drop_merged_reviews([e for e in all_evs if not e.get("step")], merged_prs)
     step_evs = [e for e in all_evs if e.get("step")]
     last = evs[-1] if evs else None
     completed = next((e for e in reversed(evs) if e.get("state") == "done" and
@@ -467,10 +508,13 @@ def closure_headline(overall: dict, flat: list[dict], items: dict, closure: dict
 
 def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: dict,
                    health: dict, activity: dict | None = None, now: dt.datetime | None = None,
-                   closure: dict | None = None, derived_done: dict | None = None) -> dict:
+                   closure: dict | None = None, derived_done: dict | None = None,
+                   merged_prs=None) -> dict:
     """Pure function: everything the dashboard shows. det_results maps item id → detector result dict;
     activity maps stream id → git activity dict; closure (load_closure) scopes the headline (A9 D-51);
-    derived_done maps code item id → merged+deployed proof (merged_deployed.derive, SR-BOLD-07)."""
+    derived_done maps code item id → merged+deployed proof (merged_deployed.derive, SR-BOLD-07); merged_prs is the
+    set of PR numbers observed MERGED (None = not observed), so a `review` event on a merged PR stops reading as
+    work in progress (SR-AUDIT-BOOKKEEPING)."""
     now = now or dt.datetime.now(dt.timezone.utc)
     activity = activity or {}
     ix = index_events(events)
@@ -479,7 +523,8 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     decision_outcomes = model.get("control_plane", {}).get("decision_outcomes")
     derived_done = derived_done or {}
     status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded,
-                               decision_outcomes=decision_outcomes, derived=derived_done.get(iid))
+                               decision_outcomes=decision_outcomes, derived=derived_done.get(iid),
+                               merged_prs=merged_prs)
               for iid, it in items.items()}
 
     # A final ruling is recorded independently of each consuming item's completion.
@@ -506,7 +551,10 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             for e in events:
                 if e.get("kind") == "verdict" and e.get("phase", "pre_merge") == "pre_merge" and e.get("item") in items:
                     latest[e["item"]] = e.get("result")
-            merged_accepted |= {iid for iid, res in latest.items() if res == "ACCEPTED"}
+            # SR-AUDIT-BOOKKEEPING: only for a dependency that is complete once its PR merges. A K9-4a operation or a
+            # K9-6 live acceptance has output a pre-merge verdict does not supply, so K9-4b / V-K9 are not ready.
+            merged_accepted |= {iid for iid, res in latest.items()
+                                if res == "ACCEPTED" and completes_at_merge(items[iid])}
     for s_ in status.values():
         s_["activation_pending"] = []
     # Resolve joins, recorded decisions and D-46 activation together until their strict gates stabilise.
@@ -663,8 +711,9 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                        if it.get("done_by") == "decision" and it.get("decision")}
     for d in decisions:
         d["due"] = d["status"] == "requested" or dec_item_status.get(d["id"]) not in ("waiting",)
+    # a decision whose own item reads not_applicable (its required outcome is refused) is not a question for the native
     pending_native = sorted([d for d in decisions if d["status"] in ("requested", "pending") and d["due"]
-                             and not d.get("staged")],
+                             and not d.get("staged") and dec_item_status.get(d["id"]) != "not_applicable"],
                             key=lambda d: (rank[d["status"]], -sum(1 for x in d["needed_by"] if status.get(x, {}).get("status") in ("ready", "waiting"))))
 
     overall = {"total": total, "done": counts.get("done", 0),

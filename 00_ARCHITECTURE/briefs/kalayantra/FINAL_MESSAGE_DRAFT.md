@@ -32,10 +32,12 @@ These are outside the close, each with a re-entry condition. They are listed in 
 | Predecessor paperwork (Pravāha close report and archive): J-8, J-8-b63, J-8-j3, J-8a | post-campaign, as documentation |
 | Rehearsal census: K9-5, K9-5-NB-01 | when Suvarṇa schedules its certification census |
 | The 4.1 historical build and its baseline: J-4a-a25, J-4a-a26, J-3a-b44 | when the approved disposition of the 4.1 build is recorded, or a phase brief names it as a measured input |
-| The single materializer timeout ruling: D-GOCHARA-TIMEOUT | ruled when the century build's measured duration exists |
 
 Items that ended `not_applicable` by decision (each with its decision id in the report) are gaps or retirements as the report states them; none
 is counted as closed.
+
+The two materializer-timeout items (D-GOCHARA-TIMEOUT, J-GOCHARA-TIMEOUT) ended `not_applicable` by D-GOCHARA-TIMEOUT-NA (SR-AUDIT-NA-TIMEOUT, 2026-10-22):
+the century runs on ka_gochara_v5, whose writer timeout migration 1395 set and read back; re-entry only if J-4f shows a timeout binding.
 
 ## Decisions the owner may want to look at
 

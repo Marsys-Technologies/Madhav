@@ -367,6 +367,7 @@ class CodeDone:
         self.on_change = on_change or (lambda: None)
         self._lock = threading.Lock()
         self._result: dict[str, dict] = {}
+        self._merged: set[int] | None = None     # None until a pass has observed GitHub (SR-AUDIT-BOOKKEEPING)
         self._due = 0.0
         self._running = False
         self.error: str | None = None
@@ -375,26 +376,42 @@ class CodeDone:
         with self._lock:
             return dict(self._result)
 
+    def merged_prs(self) -> frozenset | None:
+        """PR numbers observed MERGED among those a pass was asked to watch; None before the first pass (a merge
+        cannot un-happen, so a number once seen stays)."""
+        with self._lock:
+            return None if self._merged is None else frozenset(self._merged)
+
     def due(self) -> bool:
         with self._lock:
             return not self._running and time.time() >= self._due
 
-    def poll(self, model: dict, skip=frozenset()) -> bool:
+    def poll(self, model: dict, skip=frozenset(), watch_prs=frozenset()) -> bool:
         """Start a refresh when due; returns whether one was started."""
         with self._lock:
             if self._running or time.time() < self._due:
                 return False
             self._running = True
-        threading.Thread(target=self._work, args=(model, frozenset(skip)), name="code-done", daemon=True).start()
+        threading.Thread(target=self._work, args=(model, frozenset(skip), frozenset(watch_prs)), name="code-done",
+                         daemon=True).start()
         return True
 
-    def run_once(self, model: dict, skip=frozenset()) -> None:
+    def run_once(self, model: dict, skip=frozenset(), watch_prs=frozenset()) -> None:
         """One synchronous pass (the worker body; tests call it directly)."""
         with D.external_context(self.sources):
             if hasattr(self.source, "refresh"):
                 self.source.refresh()
             fresh = derive(model, self.source, skip=skip)
+            merged = set()
+            for number in sorted(watch_prs):
+                try:
+                    pr = self.source.pr(number)
+                except (subprocess.SubprocessError, OSError):
+                    continue        # an unreadable PR stays unobserved, never assumed merged
+                if isinstance(pr, dict) and pr.get("state") == "MERGED":
+                    merged.add(number)
         with self._lock:
+            self._merged = (self._merged or set()) | merged
             changed = {k: v["deploy_run_id"] for k, v in fresh.items()} != \
                       {k: v["deploy_run_id"] for k, v in self._result.items()}
             # a pass that could not reach GitHub finds fewer items; never let it un-derive a done item
@@ -403,9 +420,9 @@ class CodeDone:
         if changed:
             self.on_change()
 
-    def _work(self, model: dict, skip) -> None:
+    def _work(self, model: dict, skip, watch_prs=frozenset()) -> None:
         try:
-            self.run_once(model, skip)
+            self.run_once(model, skip, watch_prs)
         except (subprocess.SubprocessError, OSError, ValueError) as exc:
             with self._lock:
                 self.error = f"{type(exc).__name__}: {exc}"[:200]

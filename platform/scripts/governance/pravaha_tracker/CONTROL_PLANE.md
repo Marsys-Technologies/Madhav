@@ -73,6 +73,18 @@ owned path. A bundle child counts only when at least one of its owned paths is i
 path is in its merged tree. The row reads `source: derived:merged+deployed` with `merged_pr` and `deploy_run_id`; an
 earlier guarded completion event still wins. Operation items close from executor receipts, decisions from the ledger.
 
+## SR-AUDIT-BOOKKEEPING: labels that outlived their cause
+
+- A `review` item event on a PR that has since MERGED no longer reads `review` / "in progress": the item reads from the event before it,
+  else from its dependencies (`state.drop_merged_reviews`). The server asks GitHub about exactly the PRs the latest `review` events name
+  (`stale_review_prs`, `CodeDone.merged_prs`); a merge that was not observed changes nothing (never assumed).
+- `ready_at_accepted` (a dependency's pre-merge ACCEPTED verdict lets dependants start) applies only to a dependency that is complete
+  once its PR merges (`state.completes_at_merge`: a `branch_merged`/`pr_merged` detector on a code or undeclared item). An operation, a
+  packet, or a code item measured by a receipt or file still has its own output to produce, so its dependants wait.
+- A decision whose own item reads `not_applicable` is not listed in `native_queue`.
+- `branch_merged` on a branch that is not on origin yet reads `pending` ("does not exist on origin yet"); any other fetch failure is
+  still a detector error.
+
 ## A7 D-46: implemented vs. activated
 
 A code or artifact item (declared `completion_kind`, else the proof's type) is *implemented* — `done` — once merged,
