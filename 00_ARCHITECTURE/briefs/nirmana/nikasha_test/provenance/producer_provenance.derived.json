@@ -2626,7 +2626,7 @@
         {
           "asset_id": "ka_vighnakara",
           "table": "kala_obstruction",
-          "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:74-94",
+          "source_ref": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:69-95",
           "disposition": "derived_from_source_query",
           "via_helper": null,
           "shared": false
