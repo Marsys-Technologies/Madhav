@@ -404,7 +404,10 @@ def make_cpu_meter(state: dict):
 
 
 def build(state: dict, out: Path, deadline: float | None) -> bool:
-    """Returns True when the plan is complete (every substep done or its class closed by a defect).  `deadline` = an absolute time.time(), or None."""
+    """Returns True when the plan is complete (every substep done or its class closed by a defect).  `deadline` = an absolute time.time(), or None.
+
+    Two modes (HARNESS-3.3, O-2).  Default = stop-at-first (the TR shape): a class's first defect closes the class, its later grains are never run.  `state["collect"]` = COLLECT (a diagnostic /
+    PRETR run): a defect does NOT close the class; every remaining grain of it is still evaluated and the class is marked dead only at the END, with the full defect list."""
     import psycopg
     from pipeline.orchestrator.writers import ka_gochara_v5 as writer_mod
     from scripts.kala_gochara_cutover import j4d_slice_qualify as q
@@ -414,7 +417,9 @@ def build(state: dict, out: Path, deadline: float | None) -> bool:
     horizon = ruled_horizon()
     state["horizon"] = {"start": horizon[0].isoformat(), "end": horizon[1].isoformat(), "days": (horizon[1] - horizon[0]).total_seconds() / 86400.0}
     done = {s["step"] for s in state["steps"]} | {d["step"] for d in state["defects"]}
-    dead = set(state.get("dead_classes", []))
+    collect = bool(state.get("collect"))
+    dead = set() if collect else set(state.get("dead_classes", []))                    # COLLECT never skips a class on a defect: dead_classes is written once, at the end
+    stage: dict = {}                                                                    # O-1: the kind of the step about to run, set BEFORE it runs so a failed step is booked under its own kind
     real_plan = writer_mod.GocharaV5Writer.plan_substeps
     real_run = writer_mod.GocharaV5Writer.run_substep
     plan_seen: list = []
@@ -423,6 +428,8 @@ def build(state: dict, out: Path, deadline: float | None) -> bool:
         steps = [s for s in real_plan(self, ctx) if writer_mod._class_of_grain(s.key) in set(classes) | {None}]
         plan_seen[:] = [s.key for s in steps]
         pending = [s for s in steps if s.key not in done and writer_mod._class_of_grain(s.key) not in dead]
+        if pending:
+            stage["kind"] = pending[0].key.split(":")[0]
         return pending[:1]
 
     def run_deferring(self, ctx, step):                                   # the final build's own shape: verify:<class> is the named deferral no-op
@@ -443,14 +450,12 @@ def build(state: dict, out: Path, deadline: float | None) -> bool:
                 break
             notes: dict = {}
             t0 = time.time()
-            box: dict = {}
-            with clock.measure(lambda: "build:" + box.get("kind", "empty")), meter.measure(lambda: "build:" + box.get("kind", "empty")) as cpu_box:       # T17: compute and lock wait, per stage; G5-CPU
+            stage.clear()
+            with clock.measure(lambda: "build:" + stage.get("kind", "empty")), meter.measure(lambda: "build:" + stage.get("kind", "empty")) as cpu_box:       # T17: compute and lock wait, per stage; G5-CPU
                 with probe_solver(obs["solver_calls"], state.get("solver_module") or SOLVER_MODULE) as present:
                     obs["solver_module_present"] = bool(present)
                     res = q.build_slice(conn, chart_id=CHART, horizon=horizon, classes=classes, ephe_path=EPHE, build_id="trial-slice", final_rules=True,
                                         result_policy=policy, on_step=lambda k, r: notes.update({k: (r.notes or "")}))
-                if res["steps"]:
-                    box["kind"] = res["steps"][0]["step"].split(":")[0]
             secs = round(time.time() - t0, 2)
             state["effective_wall"] = clock.record()
             state["g5_cpu"] = meter.record()                                                  # G5-CPU
@@ -465,19 +470,22 @@ def build(state: dict, out: Path, deadline: float | None) -> bool:
                 done.add(s["step"])
                 print(f"{secs:9.2f}s  {s['step']}", flush=True)
             for d in res["defects"]:
-                state["defects"].append({"step": d["step"], "defect": d["defect"], "detail": scrub(d.get("detail", "")), "secs": secs})
+                state["defects"].append({"step": d["step"], "kind": d["step"].split(":")[0], "status": "failed" if d["defect"] == "substep_raised" else d["defect"],
+                                         "defect": d["defect"], "detail": scrub(d.get("detail", "")), "secs": secs})
                 done.add(d["step"])
                 cls = writer_mod._class_of_grain(d["step"])
                 print(f"{secs:9.2f}s  {d['step']}  DEFECT {d['defect']}", flush=True)
                 if cls is None:
                     state["aborted"] = f"class-less substep {d['step']} raised"
                     complete = True
-                else:
+                elif not collect:
                     dead.add(cls)
                     state["dead_classes"] = sorted(dead)
             write_json(out / "state.json", state)
             if state.get("aborted"):
                 break
+    if collect and complete:                                                            # the END: every class that carries a defect is failed, with all its defects in state["defects"]
+        state["dead_classes"] = sorted({writer_mod._class_of_grain(d["step"]) for d in state["defects"]} - {None})
     state["plan_substeps"] = list(plan_seen) or state.get("plan_substeps", [])
     write_json(out / "state.json", state)
     return complete
@@ -1199,6 +1207,42 @@ def baseline_oracle(rep: dict, state: dict) -> dict:
             "prior_4class_reproduced": reproduced, "passed": not problems, "problems": problems}
 
 
+def build_mode(state: dict) -> str:
+    """The defect-handling mode the build ran in, as the report names it (HARNESS-3.3, O-2)."""
+    return "collect" if state.get("collect") else "stop_at_first_defect"
+
+
+def failed_steps_by_kind(state: dict) -> dict:
+    """O-1: the substeps that raised, counted and timed under their OWN kind (`window`, `record`, …) — never under `empty`, never dropped from the table."""
+    out: dict = {}
+    for d in state["defects"]:
+        if d.get("status", "failed") == "failed":
+            f = out.setdefault(d.get("kind") or d["step"].split(":")[0], {"steps": 0, "secs": 0.0})
+            f["steps"] += 1
+            f["secs"] = round(f["secs"] + d.get("secs", 0), 2)
+    return out
+
+
+def _grain_class(state: dict, key: str) -> str | None:
+    parts = key.split(":")
+    return parts[1] if len(parts) > 1 and parts[1] in state["classes"] else None
+
+
+def defects_by_class(state: dict) -> dict:
+    """Every defect of the build, grouped by class — the full list in COLLECT mode, the first only (per class) in stop-at-first mode."""
+    out: dict = {}
+    for d in state["defects"]:
+        out.setdefault(_grain_class(state, d["step"]) or "(class-less)", []).append({"step": d["step"], "defect": d["defect"], "status": d.get("status")})
+    return dict(sorted(out.items()))
+
+
+def untested_after_defect(state: dict) -> list:
+    """Planned grains of a dead class that were never run (stop-at-first mode): the 'first defect only; later paths untested' statement, as data.  Empty in COLLECT mode."""
+    ran = {s["step"] for s in state["steps"]} | {d["step"] for d in state["defects"]}
+    dead = set(state.get("dead_classes", []))
+    return [k for k in state.get("plan_substeps", []) if k not in ran and _grain_class(state, k) in dead]
+
+
 def build_report(state: dict, out: Path, conn, sidecar: Path, gate_entry: str | None, baseline_path: str | None) -> dict:
     from services.gochara_kernel import result_policy
     t0 = time.time()
@@ -1211,17 +1255,19 @@ def build_report(state: dict, out: Path, conn, sidecar: Path, gate_entry: str | 
     for s in steps:
         k = s["step"].split(":")[0]
         by_kind[k] = round(by_kind.get(k, 0) + s["secs"], 2)
+    failed_by_kind = failed_steps_by_kind(state)
     obs = state["observed"]
     search_calls = obs["maximise_earliest_calls"] + sum(obs.get("solver_calls", {}).values())
     rep["anomalies"]["peaks_without_search_calls"] = 0 if (search_calls or not rep["totals"]["with_peak"]) else rep["totals"]["with_peak"]
     rep.update({
         "schema": "ky.trial_slice_report/2", "marker": MARKER, "not_evidence": True, "label": state["label"], "generated_utc": now(),
-        "code": state["code"], "config": {"requested_result_policy": state["requested_policy"],
+        "code": state["code"], "config": {"requested_result_policy": state["requested_policy"], "collect": bool(state.get("collect")),
                                            "policy_passed_to_build": None if state["requested_policy"] == "default" else state["requested_policy"],
                                            "classes": state["classes"], "final_rules": True, "in_build_verify_deferred": True, "chart": "canonical (482012f1-…)"},
         "horizon": state.get("horizon"),
         "lane": state["lane"],
         "build": {"substeps_planned": len(state.get("plan_substeps", [])), "substeps_done": len(steps), "defects": state["defects"],
+                  "mode": build_mode(state), "defects_by_class": defects_by_class(state), "untested_after_defect": untested_after_defect(state),
                   "dead_classes": state.get("dead_classes", []), "aborted": state.get("aborted"),
                   "observed": {"certification_policies": obs["certification_policies"], "maximise_earliest_calls": obs["maximise_earliest_calls"],
                                "solver_module_present": obs.get("solver_module_present", False), "solver_calls": obs.get("solver_calls", {}),
@@ -1246,7 +1292,7 @@ def build_report(state: dict, out: Path, conn, sidecar: Path, gate_entry: str | 
     report_s = round(time.time() - t0, 2)
     load = os.getloadavg()
     rep["runtime_s"] = {"setup": state["lane"]["setup_s"], "build_substeps_sum": round(sum(s["secs"] for s in steps), 2), "head_substeps": head_s, "head_kinds": HEAD_KINDS,
-                        "by_class_build": by_class, "by_step_kind": dict(sorted(by_kind.items())), "gate": gate.get("gate_s"), "report_and_gate": report_s,
+                        "by_class_build": by_class, "by_step_kind": dict(sorted(by_kind.items())), "failed_by_step_kind": dict(sorted(failed_by_kind.items())), "gate": gate.get("gate_s"), "report_and_gate": report_s,
                         "verification_by_class": {c: {"seconds": x.get("seconds"), "window_check_s": x.get("window_check_s")}
                                                   for c, x in (state.get("verification") or {}).get("classes", {}).items()},
                         "steps": [{"step": s["step"], "secs": s["secs"], "rows": s["rows"], "cpu_s": s.get("cpu_s")} for s in steps],
@@ -1298,6 +1344,11 @@ def per_path_table(rep: dict) -> str:
     return "\n".join(lines)
 
 
+def collect_requested(a) -> bool:
+    """HARNESS-3.3 (O-2): COLLECT is asked for explicitly (`--collect` or TRIAL_COLLECT=1); the default is stop-at-first, the TR shape."""
+    return bool(getattr(a, "collect", False)) or os.environ.get("TRIAL_COLLECT") == "1"
+
+
 def cmd_run(a) -> int:
     started = time.time()
     deadline = None if a.budget_s is None else started + a.budget_s
@@ -1307,6 +1358,7 @@ def cmd_run(a) -> int:
     if a.result_policy not in POLICIES:
         raise Refused(f"--result-policy must be one of {POLICIES}, not {a.result_policy!r}")
     classes = [c for c in a.classes.split(",") if c]
+    collect = collect_requested(a)
     profile = load_profile(a.profile)
     table = load_decision_table(a.decision_table)                    # A10.1: the G-3 table is checked on EVERY run; an unusable table refuses before any work
     sidecar = bind_checkout(checkout)
@@ -1315,6 +1367,8 @@ def cmd_run(a) -> int:
         state = json.loads(state_path.read_text())
         if (state["requested_policy"], state["code"]["checkout"], state["classes"]) != (a.result_policy, str(checkout), classes):
             raise Refused("state.json in --out belongs to another policy / checkout / class list: use a fresh --out")
+        if bool(state.get("collect")) != collect:
+            raise Refused(f"state.json in --out was started in {build_mode(state)} mode, this run asks for {'collect' if collect else 'stop_at_first_defect'}: use a fresh --out")
         if (state.get("decision_table") or {}).get("sha256") != table["sha256"]:
             raise Refused("state.json in --out was started under another G-3 decision table: use a fresh --out")
         if state.get("dropped"):
@@ -1330,13 +1384,13 @@ def cmd_run(a) -> int:
                           "branch": git(checkout, "rev-parse", "--abbrev-ref", "HEAD"), "implementation_modules": mods,
                           "implementation_modules_missing": sorted(m for m, d in mods.items() if d == "MISSING")},
                  "decision_table": {"id": table["table_id"], "sha256": table["sha256"]}, "image_digest": a.image_digest,
-                 "solver_module": a.solver_module, "started_utc": now(), "load_average_at_start": [round(x, 1) for x in os.getloadavg()], "steps": [], "defects": [], "db": None}
+                 "solver_module": a.solver_module, "started_utc": now(), "load_average_at_start": [round(x, 1) for x in os.getloadavg()], "steps": [], "defects": [], "db": None, "collect": collect}
         write_json(state_path, state)
     if state["db"] is None:
         print(f"[{now()}] setup: creating the throwaway lane database", flush=True)
         setup_lane(state, checkout, out)
         print(f"[{now()}] setup done in {state['lane']['setup_s']}s: {state['db']}", flush=True)
-    print(f"[{now()}] build: policy={a.result_policy} classes={len(classes)} head={state['code']['head'][:12]} budget={a.budget_s}", flush=True)
+    print(f"[{now()}] build: mode={build_mode(state)} policy={a.result_policy} classes={len(classes)} head={state['code']['head'][:12]} budget={a.budget_s}", flush=True)
     if not build(state, out, deadline):
         print(f"RESUME: budget reached with {len(state['steps'])} substeps done; run the same command again", flush=True)
         return EX_RESUME
@@ -1372,7 +1426,7 @@ def cmd_run(a) -> int:
     write_json(state_path, state)
     t = rep["totals"]
     print(f"[{now()}] {MARKER} report: {rep_path}\n  windows={t['windows_total']} peak={t['with_peak']} score={t['with_score']} blank={t['blank']} valence={t['valence']}\n"
-          f"  gate={rep['gate']['status']} defects={len(rep['build']['defects'])} oracle={None if rep['oracle'] is None else rep['oracle']['passed']} db_dropped={rep['database']['dropped']}\n"
+          f"  mode={rep['build']['mode']} gate={rep['gate']['status']} defects={len(rep['build']['defects'])} oracle={None if rep['oracle'] is None else rep['oracle']['passed']} db_dropped={rep['database']['dropped']}\n"
           + per_path_table(rep))
     if a.baseline and a.result_policy == "window_qualification/1":
         verdict = gates.evaluate(rep, json.loads(Path(a.baseline).read_text()), profile,
@@ -1551,6 +1605,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--label", default="trial")
     r.add_argument("--budget-s", type=float, default=None)
     r.add_argument("--keep-db", action="store_true")
+    r.add_argument("--collect", action="store_true", help="COLLECT mode (diagnostic / PRETR runs; env TRIAL_COLLECT=1): a class's first defect does not stop it — every remaining grain is evaluated and the class "
+                                                         "is failed at the END with the full defect list.  Default (TR): stop at the class's first defect")
     r.add_argument("--baseline", default=None, help="baseline_12.json: windows per class compared in the report; with a numerical policy the gates are evaluated too")
     r.add_argument("--gate-entry", default=None, help="module:function of the numerical-window gate (default: numerical_window_gate.generation_verdict when present)")
     r.add_argument("--code-head", default=None)

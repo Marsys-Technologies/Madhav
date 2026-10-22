@@ -18,6 +18,7 @@
 #          TRIAL_IMAGE_DIGEST=sha256:..  provenance of the image the run executed in
 #          TRIAL_LANE_DB=ky_lane_head  the named head-chain database the TRIAL_READY/1 evaluator reads (only ky_lane_* names). The harness itself exports TRIAL_READY_LANE_DSN (that
 #                                      database) and TRIAL_READY_TRIAL_DSN (this run's ky_trial_* database, while it exists) around the trial-ready stage — loopback, no credential.
+#          TRIAL_COLLECT=1            COLLECT mode (diagnostic / PRETR): do not stop a class at its first defect; run every remaining grain, fail the class at the END with the full list (default: stop-at-first, the TR shape)
 #          TRIAL_DRY_RUN=1            print the command (one argument per line) and exit 0
 # Portable: bash or zsh can run it (arguments are built as an ARRAY — the v1 launcher relied on zsh-only word handling and lost `--gate-entry`/`--budget-s`).
 # Writes <out_dir>/trial_report.json (+ report.json, state.json, gate_verdict.json for a numerical policy with a baseline).  The throwaway database is dropped at
@@ -52,5 +53,6 @@ if [ -n "${TRIAL_IMAGE_DIGEST:-}" ]; then args+=(--image-digest "$TRIAL_IMAGE_DI
 if [ "${TRIAL_VERIFY:-}" = "1" ]; then args+=(--verify); fi
 if [ "${TRIAL_CROSSCHECK:-}" = "1" ]; then args+=(--crosscheck); fi
 if [ "${TRIAL_KEEP_DB:-}" = "1" ]; then args+=(--keep-db); fi
+if [ "${TRIAL_COLLECT:-}" = "1" ]; then args+=(--collect); fi
 if [ "${TRIAL_DRY_RUN:-}" = "1" ]; then printf '%s\n' "$PY" -I -X utf8 "$HERE/trial_slice.py" "${args[@]}"; exit 0; fi
 exec "$PY" -I -X utf8 "$HERE/trial_slice.py" "${args[@]}"
