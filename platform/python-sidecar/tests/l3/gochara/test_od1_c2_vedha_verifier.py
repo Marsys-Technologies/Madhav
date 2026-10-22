@@ -9,6 +9,8 @@ residence over the primary span is missing data, never "inactive" (Codex round 7
 
 World used throughout: the native Moon in Aquarius (sign 11) ⇒ house h is sign (10 + h − 1) % 12 + 1, so the Sun in the 3rd is in Aries
 (1) and its vedha place, the 9th, is Libra (7). No DB: a recording connection returns the rows the verifier's own SQL asks for.
+SR-VEDHA-RESIDENCE-SOURCE: the obstructors' residence is DERIVED from a position source, not read from stored contacts — here a synthetic sky
+(`_vedha_sky.py`; a connection that is asked for a stored contact FAILS the test). The real-ephemeris oracles are in `test_od1_vedha_residence.py`.
 
 Claims, each with ONE oracle (the single planted reversion that must fail it is named):
 
@@ -24,8 +26,8 @@ Claims, each with ONE oracle (the single planted reversion that must fail it is 
        (revert: an empty residence list read as "not in the vedha house");
   C2-5 a node in the vedha house OBSTRUCTS like any graha (ND-NODE-VEDHA i; SR-OD1 D3 — the pre-ruling reading was `node_obstruction_undecided`)
        (revert: a node in the vedha house is ignored / undecided);
-  C2-6 a contact stored with no end and no horizon to close it is left out — a coverage gap, never inactivity
-       (revert: the open contact is dropped from the gap check by closing it at the primary span's end);
+  C2-6 an obstructor the ephemeris cannot answer is a coverage gap — never inactivity, and said in the summary
+       (revert: the unanswered stretch is read as "not in the vedha house");
   C2-7 the janma-rāśi sign is cross-checked against every stored house; disagreeing records are refused
        (revert: the stored house is trusted);
   C2-8 completeness is COMPUTED: segments that do not tile the record's supports raise
@@ -53,6 +55,8 @@ from services.gochara_kernel import window_verifier as wv
 from services.gochara_rules import vedha_derive as vd
 from services.gochara_rules import vedha_oracle
 
+from ._vedha_sky import longitude_at_for
+
 FIXTURE = pathlib.Path(__file__).resolve().parents[1] / "gochara_rules" / "fixtures" / "l0_vedha_rows_2026_10_02.json"
 PAIR_ROWS = [tuple(r) for r in json.loads(FIXTURE.read_text())]
 MOON = 11
@@ -79,8 +83,8 @@ class _Cursor:
 class FakeConn:
     """Answers the verifier's own queries from literal rows; records every statement it was asked."""
 
-    def __init__(self, *, records=(), residence=(), pairs=PAIR_ROWS, windows=(), window_records=(), links=()):
-        self.records, self.residence, self.pairs = list(records), list(residence), list(pairs)
+    def __init__(self, *, records=(), pairs=PAIR_ROWS, windows=(), window_records=(), links=()):
+        self.records, self.pairs = list(records), list(pairs)
         self.windows, self.window_records, self.links = list(windows), list(window_records), list(links)
         self.statements: list[str] = []
 
@@ -89,7 +93,9 @@ class FakeConn:
         if "bg_transit_rules" in sql:
             return _Cursor(self.pairs)
         if "ka_gochara_contact" in sql:
-            return _Cursor(self.residence)
+            raise AssertionError("the verifier must not read stored contacts for the obstructors' residence")
+        if "ka_gochara_sky_convention" in sql:
+            return _Cursor([("lahiri_chitrapaksha", "mean")])
         if "canonical_target" in sql and "house_from_frame" in sql:
             return _Cursor(self.records)
         if "kala_gochara_publication" in sql:
@@ -118,9 +124,9 @@ def rec(rid, agent, house, sign, lo, hi):
 
 
 def overlay(records, residence, **kw):
-    conn = FakeConn(records=records, residence=residence)
+    conn = FakeConn(records=records)
     return vv.derive_overlay(conn, chart_id=CHART, generation=GEN, event_class=CLS, path_id="P2", rule_version="1.0.0",
-                             moon_sign=kw.get("moon_sign", MOON))
+                             moon_sign=kw.get("moon_sign", MOON), longitude_at=longitude_at_for(residence))
 
 
 SUN = rec("r-sun", "sun", 3, SUN_SIGN_H3, 10, 40)
@@ -211,12 +217,13 @@ def test_c2_5_a_node_in_the_vedha_house_obstructs_like_any_graha():
 
 
 # ── C2-6 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
-def test_c2_6_an_open_contact_without_a_horizon_is_a_coverage_gap_not_inactivity():
-    # the SQL closes a truncated contact at the class horizon; where there is none the row arrives with no end
-    ov = overlay([SUN], quiet("jupiter") + [("jupiter", "span:2", D(-5), None)])
-    assert ov.summary()["open_contacts_without_horizon"] == 1
+def test_c2_6_an_obstructor_the_ephemeris_cannot_answer_is_a_coverage_gap_not_inactivity():
+    ov = overlay([SUN], quiet("jupiter") + [("jupiter", "span:2", D(-5), D(20))])      # the sky answers for Jupiter until day 20, not after
     r = ov("r-sun")
+    assert r.value_at(D(15)) == 1.0
     assert r.value_at(D(25)) is None and r.unknown_reason_at(D(25)) == "obstructor_residence_unknown"
+    assert ov.summary()["residence_unanswered_seconds"].get("Jupiter", 0) > 0 and "Mars" not in ov.summary()["residence_unanswered_seconds"]
+    assert ov.summary()["residence_source"] == vv.RESIDENCE_SOURCE
 
 
 # ── C2-7 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -258,30 +265,35 @@ def test_c2_9_the_record_wide_boundary_flag_never_vouches_for_the_vedha_factor()
 
 
 # ── C2-10 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────
-def _window_world(residence, *, reason=wv.DYNAMIC_SWITCH_REASON, unqualified=False):
+def _window_world(_sky, *, reason=wv.DYNAMIC_SWITCH_REASON, unqualified=False):
     """One P2 record (Sun in the 3rd, days 10–40) and its one stored window, NULL under `reason` (the dynamic switch, or an unqualified member)."""
     lo, hi = D(10), D(40)
     null_valence = wv._expected_valence(CLS, 0.0, 0.0, reason)
     window = ("w1", lo, hi, None, None, None, None, None, ["unqualified"] if unqualified else [], null_valence, None, None, None)
-    return FakeConn(records=[SUN], residence=residence, windows=[window], links=[("w1", "r-sun")],
+    return FakeConn(records=[SUN], windows=[window], links=[("w1", "r-sun")],
                     window_records=[("r-sun", "c-sun", "residence", "sign_span", "sun", 3, lo, hi)])
 
 
-def test_c2_10_verify_window_semantics_derives_the_overlay_itself_and_reproduces_the_window():
-    conn = _window_world(quiet("mars") + [("mars", "span:2", D(-5), D(20)), ("mars", f"span:{SUN_VEDHA_SIGN_H9}", D(20), D(30)),
-                                          ("mars", "span:8", D(30), D(400))])
+def test_c2_10_verify_window_semantics_derives_the_overlay_itself_and_reproduces_the_window(monkeypatch):
+    sky = quiet("mars") + [("mars", "span:2", D(-5), D(20)), ("mars", f"span:{SUN_VEDHA_SIGN_H9}", D(20), D(30)), ("mars", "span:8", D(30), D(400))]
+    seen = []
+    monkeypatch.setattr(vv, "swiss_longitude", lambda path, convention: seen.append((path, convention)) or longitude_at_for(sky))    # the Swiss reader has its own oracles
+    conn = _window_world(sky)
     rows = [{"factor_id": "vedha_attenuation", "rule_version": "9.0.0", "null_state": "unqualified"}]
     # S3: the stored window is the RETIRED switch's blank, so this is the legacy-switch world (`dynamic_enabled=False`); the solver world is test_od1_s3_integration
     out = wv.verify_window_semantics(conn, chart_id=CHART, generation=GEN, event_class=CLS, path_id="P2", rule_version="1.0.0",
-                                     factor_rows=rows, vedha_bound=True, policy=wv.POLICY_VERSION, moon_sign=MOON, dynamic_enabled=False)
+                                     factor_rows=rows, vedha_bound=True, policy=wv.POLICY_VERSION, moon_sign=MOON, dynamic_enabled=False,
+                                     ephe_path="/ephe/under/test")
+    assert seen == [("/ephe/under/test", {"ayanamsha": "lahiri_chitrapaksha", "node_convention": "mean"})]   # the PINNED convention, the caller's directory
     assert out["status"] == "VERIFIED" and out["fully_reproduced"] == 1
     assert out["vedha_derivation"]["applicable"] == 1 and out["vedha_derivation"]["moon_sign"] == MOON
     assert out["vedha_derivation"]["scopes"] == [vd.MOON_SCOPE] and len(out["vedha_derivation"]["pairs_digest"]) == 64
-    assert any("bg_transit_rules" in s for s in conn.statements) and any("ka_gochara_contact" in s for s in conn.statements)
+    assert any("bg_transit_rules" in s for s in conn.statements) and not any("ka_gochara_contact" in s for s in conn.statements)
 
 
-def test_c2_10_a_record_unknown_throughout_makes_the_window_blank_under_the_named_reason():
-    conn = _window_world([], reason=vv.WHOLLY_UNKNOWN_REASON, unqualified=True)      # no residence contacts at all
+def test_c2_10_a_record_unknown_throughout_makes_the_window_blank_under_the_named_reason(monkeypatch):
+    monkeypatch.setattr(vv, "swiss_longitude", lambda path, convention: longitude_at_for([]))           # a sky that answers for nobody
+    conn = _window_world([], reason=vv.WHOLLY_UNKNOWN_REASON, unqualified=True)
     rows = [{"factor_id": "vedha_attenuation", "rule_version": "9.0.0", "null_state": "unqualified"}]
     out = wv.verify_window_semantics(conn, chart_id=CHART, generation=GEN, event_class=CLS, path_id="P2", rule_version="1.0.0",
                                      factor_rows=rows, vedha_bound=True, policy=wv.POLICY_VERSION, moon_sign=MOON)
@@ -307,6 +319,7 @@ def test_c2_11_the_module_imports_no_builder_code_and_its_reason_literal_is_the_
             imported.add(("." * node.level) + (node.module or ""))
         elif isinstance(node, ast.Import):
             imported.update(a.name for a in node.names)
-    assert imported <= {"__future__", "re", "dataclasses", "datetime", "typing", "services.gochara_rules"}, imported
+    assert imported <= {"__future__", "os", "re", "dataclasses", "datetime", "typing", "swisseph", "panchang_engine.swiss_state",
+                        "services.gochara_rules"}, imported          # the Swiss library, its process lock, the L0/doctrine module: no kernel (builder) module
     from services.gochara_kernel import window_sweep as ws
     assert f'"{vv.WHOLLY_UNKNOWN_REASON}"' in inspect.getsource(ws)

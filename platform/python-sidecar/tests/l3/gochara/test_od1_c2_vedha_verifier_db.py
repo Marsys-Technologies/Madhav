@@ -1,13 +1,15 @@
-"""SR-OD1 C2 — the verifier's OWN SQL (`vedha_verifier._RECORDS_SQL`, `_RESIDENCE_SQL`, `_PAIRS_SQL`) against a throwaway database.
+"""SR-OD1 C2 — the verifier's OWN SQL (`vedha_verifier._RECORDS_SQL`, `_CONVENTION_SQL`, `_PAIRS_SQL`) against a throwaway database.
 
 The recording-connection tests (`test_od1_c2_vedha_verifier.py`) cannot execute SQL, so what only SQL does is checked here on stand-in
 tables carrying the real column names (the full A5 migration chain is not needed to read them):
 
-  C2-S1 a contact stored with no end (`coverage.truncated`) is closed at the completed horizon of THE EVENT CLASS being verified — another
-        class's horizon is not used (revert: the horizon join drops the partition_key filter ⇒ the other class's later horizon closes it);
-  C2-S2 only RESIDENCE contacts in a numbered sign of the listed bodies are read; only ADMITTED SCORED records of the grain are derived
-        (revert: the relation filter is dropped ⇒ a conjunction contact at a sign-like target would count).
+  C2-S1 the sky convention the verifier reproduces is THE GENERATION'S OWN row for THE EVENT CLASS being verified — another class' convention
+        is not used, a class with none is refused, and a convention the verifier cannot reproduce (the true node) is refused, never replaced
+        (revert: the convention join drops the partition_key filter ⇒ two rows ⇒ refused for the class that has one);
+  C2-S2 only ADMITTED SCORED records of the grain are derived (revert: the admission / role filter is dropped ⇒ three records are derived);
+  C2-S3 no stored contact is read for the obstructors' residence (the table is absent from the fixture: reading it would fail the statement).
 
+The residence itself is derived from the real ephemeris (`SE_EPHE_PATH`): see `test_od1_vedha_residence.py`.
 Skipped (NOT_RUN) when the disposable server is unreachable; a hostile admin DSN is an error, never a skip.
 """
 from __future__ import annotations
@@ -33,9 +35,10 @@ D = lambda day: T0 + timedelta(days=day)           # noqa: E731
 DDL = """
 CREATE TABLE public.bg_transit_rules (graha text, primary_house int, vedha_house int, classical_citation text, rule_type text);
 CREATE TABLE public.ka_gochara_physical_object (physical_object_id uuid PRIMARY KEY, body text, relation_kind text, canonical_target text);
-CREATE TABLE public.ka_gochara_contact (chart_id uuid, generation text, contact_id uuid, physical_object_id uuid, body text,
-  relation_kind text, t_in timestamptz, t_out timestamptz);
-CREATE TABLE public.kala_gochara_coverage (chart_id uuid, generation text, partition_kind text, partition_key text, completed_horizon tstzrange);
+CREATE TABLE public.ka_gochara_sky_convention (convention_id text PRIMARY KEY, ayanamsha text, node_convention text);
+CREATE TABLE public.ka_gochara_convention_bridge (kala_convention_id text PRIMARY KEY, sky_convention_id text);
+CREATE TABLE public.kala_gochara_coverage (chart_id uuid, generation text, partition_kind text, partition_key text, completed_horizon tstzrange,
+  convention_id text);
 CREATE TABLE public.ka_gochara_relationship_record (record_id uuid, chart_id uuid, generation text, event_class text, path_id text,
   rule_version text, agent text, house_from_frame int, object_id uuid, temporal_support_intervals tstzmultirange,
   admission_state text, operator_role text);
@@ -73,16 +76,6 @@ def _object(conn, body, relation, target):
     return oid
 
 
-def _contact(conn, body, relation, target, t_in, t_out):
-    conn.execute("INSERT INTO public.ka_gochara_contact VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                 (CHART, GEN, str(uuid.uuid4()), _object(conn, body, relation, target), body, relation, t_in, t_out))
-
-
-def _horizon(conn, cls, lo, hi):
-    conn.execute("INSERT INTO public.kala_gochara_coverage VALUES (%s, %s, 'event_class', %s, tstzrange(%s, %s, '[)'))",
-                 (CHART, GEN, cls, lo, hi))
-
-
 def _record(conn, agent, house, sign, lo, hi, *, admission="admitted", role="scored"):
     conn.execute("INSERT INTO public.ka_gochara_relationship_record VALUES (%s, %s, %s, %s, 'P2', '1.0.0', %s, %s, %s,"
                  " ('{[' || %s::text || ',' || %s::text || ')}')::tstzmultirange, %s, %s)",
@@ -96,29 +89,33 @@ def _world(conn):
     _record(conn, "sun", 3, 1, D(10), D(40))                                         # the Sun in the 3rd (Aries) from an Aquarius Moon
     _record(conn, "sun", 6, 4, D(10), D(40), admission="not_admitted")               # not an admitted record: never derived
     _record(conn, "sun", 6, 4, D(10), D(40), role="testimony")                       # not a scored record: never derived
-    for b in ("sun", "mercury", "jupiter", "venus", "saturn", "rahu", "ketu"):
-        _contact(conn, b, "residence", "span:2", D(-5), D(400))
-    _contact(conn, "mars", "residence", "span:2", D(-5), D(20))
-    _contact(conn, "mars", "residence", "span:7", D(20), None)                        # Mars in Libra, stored with no end (truncated)
-    _contact(conn, "mercury", "conjunction", "point:200", D(0), D(400))              # not a residence contact: never read
-    _horizon(conn, CLS, D(-5), D(30))
-    _horizon(conn, OTHER, D(-5), D(500))
+    conn.execute("INSERT INTO public.ka_gochara_sky_convention VALUES ('sky-mean', 'lahiri_chitrapaksha', 'mean')")
+    conn.execute("INSERT INTO public.ka_gochara_sky_convention VALUES ('sky-true', 'lahiri_chitrapaksha', 'true')")
+    conn.execute("INSERT INTO public.ka_gochara_convention_bridge VALUES ('mean', 'sky-mean'), ('true', 'sky-true')")
+    conn.execute("INSERT INTO public.kala_gochara_coverage VALUES (%s, %s, 'event_class', %s, tstzrange(%s, %s), 'mean')", (CHART, GEN, CLS, D(-5), D(400)))
+    conn.execute("INSERT INTO public.kala_gochara_coverage VALUES (%s, %s, 'event_class', %s, tstzrange(%s, %s), 'true')", (CHART, GEN, OTHER, D(-5), D(400)))
 
 
-def test_c2_s1_a_truncated_contact_is_closed_at_the_horizon_of_the_class_being_verified(db):
+def _derive(conn, cls):
+    return vv.derive_overlay(conn, chart_id=CHART, generation=GEN, event_class=cls, path_id="P2", rule_version="1.0.0", moon_sign=11)
+
+
+def test_c2_s1_the_convention_is_the_generations_own_for_the_class_being_verified(db):
     _world(db)
-    ov = vv.derive_overlay(db, chart_id=CHART, generation=GEN, event_class=CLS, path_id="P2", rule_version="1.0.0", moon_sign=11)
-    r = ov(next(iter(ov._records)))
-    assert r.value_at(D(25)) == 0.0                                                   # Mars [20, horizon 30) in the vedha house
-    assert r.value_at(D(35)) is None and r.unknown_reason_at(D(35)) == "obstructor_residence_unknown"   # beyond CLS's horizon: unknown
-    assert ov.summary()["open_contacts_without_horizon"] == 0
+    ov = _derive(db, CLS)
+    assert ov.summary()["convention"] == {"ayanamsha": "lahiri_chitrapaksha", "node_convention": "mean"}
+    assert ov.summary()["residence_source"] == vv.RESIDENCE_SOURCE
+    db.execute("UPDATE public.ka_gochara_relationship_record SET event_class = %s", (OTHER,))
+    with pytest.raises(vv.VedhaDerivationError, match="pinned sky convention"):      # the other class was built on the TRUE node: no switch, no substitution
+        _derive(db, OTHER)
+    db.execute("UPDATE public.ka_gochara_relationship_record SET event_class = 'unbuilt'")
+    with pytest.raises(vv.VedhaDerivationError, match="not readable"):
+        _derive(db, "unbuilt")
 
 
-def test_c2_s2_only_admitted_scored_records_and_residence_contacts_are_read(db):
+def test_c2_s2_only_admitted_scored_records_are_derived_and_no_contact_is_read(db):
     _world(db)
-    ov = vv.derive_overlay(db, chart_id=CHART, generation=GEN, event_class=CLS, path_id="P2", rule_version="1.0.0", moon_sign=11)
+    ov = _derive(db, CLS)
     assert ov.summary()["records"] == 1
-    # with no horizon row for the class the open contact cannot be closed: it is left out and counted
-    db.execute("DELETE FROM public.kala_gochara_coverage WHERE partition_key = %s", (CLS,))
-    ov = vv.derive_overlay(db, chart_id=CHART, generation=GEN, event_class=CLS, path_id="P2", rule_version="1.0.0", moon_sign=11)
-    assert ov.summary()["open_contacts_without_horizon"] == 1
+    r = ov(next(iter(ov._records)))
+    assert r.applicable and r.complete and r.segments           # derived from the real sky; no `ka_gochara_contact` table even exists here
