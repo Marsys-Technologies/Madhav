@@ -51,7 +51,8 @@ from services.gochara_kernel import vedha_verifier as vv
 from services.gochara_kernel import window_verifier as wv
 
 from .test_member_geometry_seam import DAY, RAY, T0, curve, curve_graze
-from .test_od1_c2_vedha_verifier import CLS, GEN, MOON, SUN, _window_world, D, overlay, quiet
+from ._vedha_sky import longitude_at_for
+from .test_od1_c2_vedha_verifier import CHART, CLS, FakeConn, GEN, MOON, SUN, _window_world, D, quiet
 
 UTC = timezone.utc
 
@@ -67,16 +68,35 @@ def _without(*bodies):
     return [r for r in quiet() if r[0] not in bodies]
 
 
-def _obstructor_gap():          # Mars has no stored residence: a graha's gap
-    return _without("mars")
+def _sky(rows, gaps=None):
+    """The verifier's position source (SR-VEDHA-RESIDENCE-SOURCE: residence is DERIVED from the sky, no longer read from stored contacts) over `rows`, with `gaps` =
+    {body: [(from, to)]} stretches where the sky cannot answer for that body. The shared synthetic sky can only run out AFTER a body's last row, so a gap EARLY in
+    the support (the mixed case below) is stated here, not by omitting rows."""
+    base = longitude_at_for(rows)
+
+    def longitude_at(graha, t):
+        if any(lo <= t < hi for lo, hi in (gaps or {}).get(graha.lower(), ())):
+            raise vv.EphemerisUnavailable(f"synthetic sky: {graha} cannot be answered at {t.isoformat()}")
+        return base(graha, t)
+    longitude_at.max_speed_dps = base.max_speed_dps
+    return longitude_at
+
+
+def _overlay(records, longitude_at):
+    return vv.derive_overlay(FakeConn(records=records), chart_id=CHART, generation=GEN, event_class=CLS, path_id="P2", rule_version="1.0.0",
+                             moon_sign=MOON, longitude_at=longitude_at)
+
+
+def _obstructor_gap():          # Mars has no residence the sky can answer: a graha's gap
+    return _sky(_without("mars"))
 
 
 def _node_gap():                # Rāhu has none: a node's gap (ND-NODE-VEDHA: the nodes obstruct, so their residence is needed)
-    return _without("rahu")
+    return _sky(_without("rahu"))
 
 
-def _mixed_gap():               # days 10-25 only Mars is missing, days 25-40 only Rāhu: two names over one support
-    return _without("mars", "rahu") + [("mars", "span:2", D(25), D(400)), ("rahu", "span:2", D(-5), D(25))]
+def _mixed_gap():               # days 10-25 only Mars is unanswered, days 25-40 only Rāhu: two names over one support
+    return _sky(quiet(), {"mars": [(D(-1000), D(25))], "rahu": [(D(25), D(1000))]})
 
 
 def _builder_name(ov):
@@ -88,22 +108,23 @@ def _builder_name(ov):
 
 @pytest.mark.parametrize("residence,named", [(_obstructor_gap, OBSTRUCTOR_GAP), (_node_gap, NODE_GAP)])
 def test_v1_a_wholly_unknown_record_is_blank_under_the_one_reason_its_stretches_name(residence, named):
-    ov = overlay([SUN], residence())("r-sun")
+    ov = _overlay([SUN], residence())("r-sun")
     assert ov.wholly_unknown
     assert wv._record_state(ROWS, RECORD, False, True, lambda rid: ov) == ("unq", [named])
     assert _builder_name(ov) == named                                  # the verifier and the builder name the same thing
 
 
 def test_v2_stretches_that_name_different_reasons_stay_under_the_generic_reason():
-    ov = overlay([SUN], _mixed_gap())("r-sun")
+    ov = _overlay([SUN], _mixed_gap())("r-sun")
     assert ov.wholly_unknown and {s.reason for s in ov.segments} == {OBSTRUCTOR_GAP, NODE_GAP}
     assert wv._record_state(ROWS, RECORD, False, True, lambda rid: ov) == ("unq", [vv.WHOLLY_UNKNOWN_REASON])
     assert _builder_name(ov) == vv.WHOLLY_UNKNOWN_REASON               # sampled, the builder lands on the same answer here
 
 
 @pytest.mark.parametrize("residence,named", [(_obstructor_gap, OBSTRUCTOR_GAP), (_node_gap, NODE_GAP), (_mixed_gap, vv.WHOLLY_UNKNOWN_REASON)])
-def test_v3_the_window_stored_under_the_named_reason_is_reproduced_end_to_end(residence, named):
-    conn = _window_world(residence(), reason=named, unqualified=True)
+def test_v3_the_window_stored_under_the_named_reason_is_reproduced_end_to_end(residence, named, monkeypatch):
+    monkeypatch.setattr(vv, "swiss_longitude", lambda path, convention: residence())      # the Swiss reader has its own oracles (test_od1_vedha_residence)
+    conn = _window_world(None, reason=named, unqualified=True)
     out = wv.verify_window_semantics(conn, chart_id="c", generation=GEN, event_class=CLS, path_id="P2", rule_version="1.0.0",
                                      factor_rows=ROWS, vedha_bound=True, policy=wv.POLICY_VERSION, moon_sign=MOON)
     assert out["windows_detail"][0]["unqualified_reason"] == named

@@ -72,7 +72,7 @@ REVERSIONS = [
     ("W1", "position_at=position_at, p1=p1_ops, speed_at=speed_at)", "position_at=position_at, speed_at=speed_at)", "read_grain(p1"),
     ("W2", "position_at=position_at, p1=p1_ops, speed_at=speed_at)", "position_at=position_at, p1=p1_ops)", "read_grain(speed_at"),
     ("W3", "policy=policy, combustion_inheritance=inherited)", "policy=policy)", "draft_windows(combustion_inheritance"),
-    ("W4", "solver_check=False, p1_check=p1_check)", "solver_check=False)", "verify_window_semantics(p1_check"),
+    ("W4", "solver_check=False, p1_check=p1_check, ephe_path=ephe_path)", "solver_check=False, ephe_path=ephe_path)", "verify_window_semantics(p1_check"),   # + the vedha lane's ephe_path (SR-VEDHA-RESIDENCE-SOURCE) on the same line
     ("W5", 'if hasattr(vedha, "for_grain"):', 'if False and hasattr(vedha, "for_grain"):', "for_grain"),
     ("W6", "solver=gk_window_sweep.PRODUCTION_SOLVER, ", "", "draft_windows(solver"),
     ("W7", "drishti=DRISHTI_SOURCE, vedha=vedha,", "drishti=DRISHTI_SOURCE,", "draft_windows(vedha"),
