@@ -104,6 +104,29 @@ def test_read_through_served_view_is_a_read_of_its_base_table():
     assert g.evaluate(reg, real, [("ph_pratikara.py", src)])["hard"] == []
 
 
+def test_read_through_resonance_map_served_view_is_a_read_of_its_base_table():
+    """Migration 1404 added `gochara_resonance_map_served`; same claim as the kala_convergence view above (N.8): a reader of the
+    view must be checked against the producer of gochara_resonance_map, not skipped because no asset owns the view name."""
+    reg = {
+        "ka_gochara_resonance": {
+            "asset_id": "ka_gochara_resonance", "scope": "per_chart",
+            "target_table": "gochara_resonance_map", "count_sql": "SELECT count(*) FROM gochara_resonance_map",
+            "depends_on": [],
+        },
+        "ka_kshetra": {
+            "asset_id": "ka_kshetra", "scope": "per_chart",
+            "target_table": "kshetra_out", "count_sql": "SELECT count(*) FROM kshetra_out",
+            "depends_on": [],  # MISSING ka_gochara_resonance
+        },
+    }
+    src = "@register('ka_kshetra')\nSQL = 'SELECT * FROM gochara_resonance_map_served WHERE chart_id=%s'\n"
+    real = {"gochara_resonance_map", "kshetra_out", "gochara_resonance_map_served"}
+    res = g.evaluate(reg, real, [("ka_kshetra.py", src)])
+    assert any("ka_kshetra" in h and "gochara_resonance_map" in h and "ka_gochara_resonance" in h for h in res["hard"]), res
+    reg["ka_kshetra"]["depends_on"] = ["ka_gochara_resonance"]
+    assert g.evaluate(reg, real, [("ka_kshetra.py", src)])["hard"] == []
+
+
 def test_every_served_view_in_migrations_is_mapped():
     """A new `*_served` view (a later K9 generation scope) must be added to _VIEW_BASE_TABLES, or its readers are
     invisible to the guard again. Scans the committed migrations for the view definitions."""
