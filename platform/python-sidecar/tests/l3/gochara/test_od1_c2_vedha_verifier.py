@@ -320,7 +320,7 @@ def test_c2_11_the_module_imports_no_builder_code_and_its_reason_literal_is_the_
             imported.add(("." * node.level) + (node.module or ""))
         elif isinstance(node, ast.Import):
             imported.update(a.name for a in node.names)
-    assert imported <= {"__future__", "os", "re", "dataclasses", "datetime", "typing", "swisseph", "panchang_engine.swiss_state",
+    assert imported <= {"__future__", "os", "re", "threading", "dataclasses", "datetime", "typing", "swisseph", "panchang_engine.swiss_state",
                         "services.gochara_rules"}, imported          # the Swiss library, its process lock, the L0/doctrine module: no kernel (builder) module
     from services.gochara_kernel import window_sweep as ws
     assert f'"{vv.WHOLLY_UNKNOWN_REASON}"' in inspect.getsource(ws)

@@ -32,13 +32,14 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 import swisseph as swe
 
-from panchang_engine.swiss_state import serialized_swiss_state
+from panchang_engine.swiss_state import ephe_path_generation, serialized_swiss_state
 from services.gochara_rules import vedha_derive as vd
 
 #: the reason a record whose vedha value is undeterminable over EVERY instant of its supports carries (the verifier's own literal;
@@ -213,9 +214,16 @@ def swiss_longitude(ephe_path: str | None, convention: dict) -> Callable:
                                    f"(ayanāṃśa {sorted(_SIDEREAL_MODE)}; node convention {sorted(_NODE_ID)})")
     sid_mode, node_id = _SIDEREAL_MODE[convention["ayanamsha"]], _NODE_ID[convention["node_convention"]]
 
+    memo = threading.local()    # SR-EPHE-PATH-ONCE: this verifier's own memo — the path is set once per thread
+
     @serialized_swiss_state
     def longitude_at(graha: str, t: datetime) -> float:
-        swe.set_ephe_path(path)
+        # `set_ephe_path` closes the library's files (≈75 µs against ≈0.24 µs for a probe): set it only when this thread has not set
+        # THIS path since any caller last did (the process-wide counter moves on every set); the sidereal mode (≈0.1 µs) is set on every probe
+        if getattr(memo, "state", None) != (path, ephe_path_generation()):
+            before = ephe_path_generation()
+            swe.set_ephe_path(path)
+            memo.state = (path, before + 1) if ephe_path_generation() == before + 1 else None
         swe.set_sid_mode(sid_mode)
         ipl = node_id if graha in vd.NODES else _BODY_ID[graha]
         try:

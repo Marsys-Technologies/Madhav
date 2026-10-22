@@ -666,16 +666,24 @@ def _scalar(conn, sql, params):
 def _ephemeris_position(ephe_path):
     """Independent Swiss probe; serialized state and a backend check on EVERY call."""
     import swisseph as swe
-    from panchang_engine.swiss_state import serialized_swiss_state
+    import threading
+    from panchang_engine.swiss_state import ephe_path_generation, serialized_swiss_state
     ids = {"sun": swe.SUN, "moon": swe.MOON, "mercury": swe.MERCURY, "venus": swe.VENUS,
            "mars": swe.MARS, "jupiter": swe.JUPITER, "saturn": swe.SATURN,
            "rahu": swe.MEAN_NODE, "ketu": swe.MEAN_NODE}
     if not ephe_path:
         raise NearMissError("near_miss_ephemeris_missing")
 
+    memo = threading.local()    # SR-EPHE-PATH-ONCE: this verifier's own memo (not the builder's) — the path is set once per thread
+
     @serialized_swiss_state
     def at(body, t):
-        swe.set_ephe_path(ephe_path)
+        # `set_ephe_path` closes the library's files (≈75 µs against ≈0.24 µs for a probe): set it only when this thread has not set
+        # THIS path since any caller last did (the process-wide counter moves on every set); the sidereal mode (≈0.1 µs) is set on every probe
+        if getattr(memo, "state", None) != (ephe_path, ephe_path_generation()):
+            before = ephe_path_generation()
+            swe.set_ephe_path(ephe_path)
+            memo.state = (ephe_path, before + 1) if ephe_path_generation() == before + 1 else None
         swe.set_sid_mode(swe.SIDM_LAHIRI)
         xx, flags = swe.calc_ut(t.timestamp()/86400.0 + 2440587.5, ids[body], swe.FLG_SWIEPH | swe.FLG_SIDEREAL)
         if flags & swe.FLG_MOSEPH or not flags & swe.FLG_SWIEPH:
