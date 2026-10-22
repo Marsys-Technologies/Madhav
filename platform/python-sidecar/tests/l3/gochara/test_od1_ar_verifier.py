@@ -28,7 +28,17 @@ Claims, each with ONE oracle (the single planted reversion that must fail it is 
   G-4  a stretch with a real crossing and no contact is still an omission, even beside a stored near-miss row (revert: collect-all policy);
   G-5  without the near-miss layer there is no sink — the old behaviour (revert: always pass a sink);
   G-6  `verify_class` runs the geometry stage through `certify_geometry` with the inventory horizon, and its failure is a named DISAGREEMENT
-       (revert: `_verify_class` calls the bare certifier again)."""
+       (revert: `_verify_class` calls the bare certifier again).
+
+Review B1 (lane review of this branch): the verifier's graduated-dṛṣṭi step reads the sky at a stored sign ingress, a JD double exact to one JD-ulp, so it
+applies the platform's boundary convention (half-open, the NEW state owns the boundary instant, `p1_operands_check` NAMED LIMITS; SR-H2-1S / R-2) at
+that precision, with its OWN code (K12):
+
+  B-1  a stored ingress 20 µs either side of the true edge (inside one JD-ulp, ~40 µs) is VERIFIED
+       (revert: `_drishti_step` reads the ephemeris at the raw instant, no ownership clamp);
+  B-2  an ingress listed 1 s off still REFUTES (H2) (revert: the clamp becomes seconds-wide);
+  B-3  an ingress listed 1 ms off still REFUTES (H2) — never looser than one ulp
+       (revert: the tolerance becomes 1 ms)."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -211,3 +221,55 @@ def test_g6_verify_class_runs_the_geometry_stage_through_the_reconciling_functio
                          vedha_bound=False, persist=False)
     assert exc.value.stage == "contact_geometry" and "sentinel" in str(exc.value)
     assert seen["horizon"] == horizon and seen["event_class"] == CLS and seen["position_at"] is curve_graze
+
+
+# ── review B1: the half-open, new-state-owns-the-boundary convention at one JD-ulp, verifier side ──────────────────────────────────
+
+TRUE_EDGE = datetime(2011, 6, 4, 12, 0, 0, tzinfo=UTC)          # JD ~2455717.0: one JD-ulp is ~40 µs here (math.ulp(2455717) * 86400e6)
+
+
+def _crossing_longitude(body, t):
+    """A body at 0.1 deg/day whose sidereal longitude reaches 30 deg (Aries -> Taurus) at TRUE_EDGE: sign(t) = 0 before, 1 from TRUE_EDGE on."""
+    return 30.0 + (t - TRUE_EDGE).total_seconds() / 86400.0 * 0.1
+
+
+class _IngressConn:
+    def __init__(self, ingress):
+        self.ingress = ingress
+
+    def execute(self, sql, params=()):
+        rows = [(x,) for x in self.ingress]
+        return type("C", (), {"fetchall": lambda s: rows})()
+
+
+def _check_with_listed_ingress(listed):
+    """The verifier's prover over one 4-day support that contains the real sign change, the change instant listed as `listed`."""
+    from services.gochara_kernel import window_solver_check as chk
+    st = wv._drishti_step(_IngressConn([listed]), {"id": "r", "agent": "jupiter", "boundaries_complete": True},
+                          {"factor_id": "graduated_drishti", "rule_version": "1.0.0"}, "span:5", _crossing_longitude)
+    lo, hi = TRUE_EDGE - timedelta(days=2), TRUE_EDGE + timedelta(days=2)
+    before, after = st.value_at(lo), st.value_at(hi - timedelta(seconds=1))
+    assert before != after                                          # the oracle can read false: the dṛṣṭi value really steps at the sign change
+    best, peak = (before, lo) if before >= after else (after, TRUE_EDGE)
+    return chk, chk.check_window(
+        lo=lo, hi=hi, records=[chk.CheckRecord(record_id="r", root="R", agent="jupiter", supports=((lo, hi),), steps=(st,))],
+        objective=chk.OBJ_SUM, stored=chk.StoredWindow(peak_instant=peak, objective_value=best), position_at=_crossing_longitude)
+
+
+@pytest.mark.parametrize("off_us", [-20, 20])
+def test_b1_an_ingress_within_one_jd_ulp_of_the_true_edge_is_verified(off_us):
+    chk, rep = _check_with_listed_ingress(TRUE_EDGE + timedelta(microseconds=off_us))
+    assert rep.status == chk.VERIFIED, [f.detail for f in rep.findings]
+
+
+@pytest.mark.parametrize("off", [timedelta(seconds=-1), timedelta(seconds=1), timedelta(milliseconds=-1), timedelta(milliseconds=1)])
+def test_b1_an_ingress_listed_a_millisecond_or_more_off_is_still_refuted_never_looser_than_one_ulp(off):
+    chk, rep = _check_with_listed_ingress(TRUE_EDGE + off)
+    assert rep.status != chk.VERIFIED and chk.F_H2 in {f.code for f in rep.findings}
+
+
+def test_b1_the_edge_ulp_is_the_jd_double_spacing_in_whole_microseconds_widened_by_the_storage_grain():
+    import math
+    jd = 2440587.5 + TRUE_EDGE.timestamp() / 86400.0
+    assert wv._edge_ulp(TRUE_EDGE) == timedelta(microseconds=math.ceil(math.ulp(jd) * 86400e6) + 1)
+    assert timedelta(microseconds=39) < wv._edge_ulp(TRUE_EDGE) < timedelta(microseconds=50)

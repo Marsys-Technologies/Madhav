@@ -33,7 +33,9 @@ window IS reproduced (pieces cut at those instants, value read at each piece's s
 """
 from __future__ import annotations
 
-from datetime import timezone
+import bisect
+import math
+from datetime import datetime, timedelta, timezone
 
 from . import boundary_match as bm
 from . import p1_operands_check as _p1c
@@ -263,6 +265,33 @@ def _ingress_instants(conn, rid: str, agent: str) -> list:
     return [next(iter(r.values())) if isinstance(r, dict) else r[0] for r in rows]
 
 
+_UNIX_EPOCH_JD = 2440587.5                  # JD of 1970-01-01T00:00:00 UTC (the verifier's own statement of the calendar anchor)
+
+
+def _edge_ulp(c) -> timedelta:
+    """One JD-ulp at the stored edge `c`, in whole microseconds, rounded UP and widened by 1 µs (the storage grain). A stored change instant is a JD double
+    bisected to 1e-9 d and written as a µs datetime, so it is exact to this and no better (SR-H2-1S / R-2). Never looser: ~40 µs at today's JD."""
+    jd = _UNIX_EPOCH_JD + (c - datetime(1970, 1, 1, tzinfo=c.tzinfo)).total_seconds() / 86400.0
+    return timedelta(microseconds=math.ceil(math.ulp(jd) * 86400e6) + 1)
+
+
+def _read_instant(edges, t):
+    """The instant at which the state owning `t` is read. The convention is half-open, the NEW state owns the boundary instant (`p1_operands_check` NAMED
+    LIMITS), compared at the stored edge's own precision: `t` within one ulp after a stored edge `c` is read at `c + ulp` (the new state), and `t` within
+    one ulp before the next edge `c'` is read at `c' - ulp` (still the old state). Anything farther from an edge is read where it stands, so an edge
+    listed seconds from the real change still leaves a piece whose state steps and is refuted."""
+    k = bisect.bisect_right(edges, t)
+    if k:
+        u = _edge_ulp(edges[k - 1])
+        if t - edges[k - 1] < u:
+            return edges[k - 1] + u
+    if k < len(edges):
+        u = _edge_ulp(edges[k])
+        if edges[k] - t <= u:
+            return edges[k] - u
+    return t
+
+
 def _drishti_step(conn, rec: dict, row: dict, target: str, position_at):
     """The graduated-dṛṣṭi factor as a `StepFactor`: the whole-sign inclusive house offset from the aspecting body's sign to the target's sign, read from the
     ephemeris at each instant, through Stream B's cited table (the rule authority, shared by design). Its change instants are the body's stored sign
@@ -284,7 +313,7 @@ def _drishti_step(conn, rec: dict, row: dict, target: str, position_at):
             raise RuntimeError(f"window verifier: graduated_drishti answered for {out.get('factor')!r}, asked for {ref!r}")
         return out["value"]
     ingress = _ingress_instants(conn, rec["id"], rec["agent"])
-    return _chk.StepFactor(value_at=value_at, boundaries=lambda lo, hi, _i=ingress: [c for c in _i if lo < c < hi],
+    return _chk.StepFactor(value_at=lambda t, _i=ingress: value_at(_read_instant(_i, t)), boundaries=lambda lo, hi, _i=ingress: [c for c in _i if lo < c < hi],
                            complete=bool(rec.get("boundaries_complete")))
 
 
