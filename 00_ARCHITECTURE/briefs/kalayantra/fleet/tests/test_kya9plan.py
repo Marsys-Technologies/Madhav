@@ -138,3 +138,36 @@ def test_prep_deferred_items_are_deferred_outside_c1_and_the_closure(items, clos
         assert items[iid]["triage"]["class"] == "b" and items[iid]["triage"]["re_entry"].startswith("post-flip"), iid
     for iid, cut in kya9plan.PREP_CUT_EDGES.items():
         assert not set(cut) & set(items[iid]["depends_on"]) and not set(cut) & set(items[iid].get("requires_outcome") or {}), iid
+
+
+# SR-PARKED-OUT-OF-CAMPAIGN (2026-10-22): the ruling names exactly these thirteen; the ruling text is the source, not the script
+PARKED_RULING = ["KR-1", "KR-2", "J-7a", "J-7a-pr3099", "J-7a-a62", "J-8", "J-8a", "J-8-b63", "J-8-j3",
+                 "J-4a-a25", "J-4a-a26", "J-3a-b44", "L0-K"]
+
+
+def test_the_thirteen_parked_items_are_deferred_out_of_the_campaign_with_their_re_entry(items, closure):  # SR-PARKED-OUT-OF-CAMPAIGN
+    # Fail-on-revert: drop an item from kya9plan.PARKED_OUT_OF_CAMPAIGN (or put it back to class a / empty re-entry) and this reads false.
+    assert sorted(kya9plan.PARKED_OUT_OF_CAMPAIGN) == sorted(PARKED_RULING)
+    for iid in PARKED_RULING:
+        triage = items[iid]["triage"]
+        assert triage["class"] == "b" and triage["re_entry"] == kya9plan.PARKED_OUT_OF_CAMPAIGN[iid], iid
+        assert "SR-PARKED-OUT-OF-CAMPAIGN" in triage["reason"], iid
+        assert iid not in closure["closure"], iid
+    assert [(i, d) for i in closure["closure"] for d in items[i]["depends_on"] if d in PARKED_RULING] == []
+
+
+def test_the_parked_items_are_carried_to_the_post_campaign_list_with_the_same_re_entry(items):  # SR-PARKED-OUT-OF-CAMPAIGN
+    # The list is read back, not trusted: every item has a table row ending in its re_entry text from the model.
+    rows = {}
+    for line in (FLEET.parent / "POST_CAMPAIGN_v1_0.md").read_text(encoding="utf-8").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if line.startswith("| ") and len(cells) == 3:
+            rows[cells[0]] = cells[2]
+    for iid in PARKED_RULING:
+        assert rows.get(iid) == items[iid]["triage"]["re_entry"], iid
+
+
+def test_d_t2_is_closed_by_its_recorded_decision_and_waits_on_nothing(items, closure):  # SR-DT2-CANDIDATE
+    # The tracker reads a recorded decision item done only while every dependency is done; L0-K leaves the campaign, so the edges go.
+    assert items["D-T2"]["depends_on"] == [] and "D-T2" not in closure["closure"]
+
