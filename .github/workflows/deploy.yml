@@ -2492,12 +2492,17 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # `load: true` keeps the just-built image in the runner's Docker so the
+      # verify steps below run it locally. Without it, each `docker run` pulled
+      # the ~3.7 GB image back out of Artifact Registry, billed as internet
+      # egress (615 GiB / ~₹5,566 in the 30 days to 2026-10-22).
       - name: Build and push pipeline job image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./platform/python-sidecar/Dockerfile.pipeline
           push: true
+          load: true
           tags: |
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }}
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:latest
@@ -2527,9 +2532,11 @@ jobs:
             --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
 
+      # `--pull=never`: if the local image is ever missing, fail here instead
+      # of silently re-downloading it from Artifact Registry.
       - name: Verify ga_writers is importable in the pushed image
         run: |
-          docker run --rm --entrypoint python \
+          docker run --rm --pull=never --entrypoint python \
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
             -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
 
@@ -2538,10 +2545,10 @@ jobs:
       # the image never COPYed). Also smoke the chain's imports.
       - name: Verify the gochara century runner exists in the pushed image
         run: |
-          docker run --rm --entrypoint /bin/sh \
+          docker run --rm --pull=never --entrypoint /bin/sh \
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
             -n /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh
-          docker run --rm --entrypoint python \
+          docker run --rm --pull=never --entrypoint python \
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
             -c "import sys; sys.path.insert(0, '/app/platform/python-sidecar/scripts/kala_gochara_cutover'); import common; print('cutover common OK:', common.__file__)"
 
