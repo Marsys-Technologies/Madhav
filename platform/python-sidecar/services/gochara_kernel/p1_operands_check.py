@@ -56,8 +56,9 @@ row contributes the neutral element 1); the side is `spec_side` of (nature, effe
 
 NAMED LIMITS. (1) The change instants are found under the smooth-motion guarantee of `contact_reconstruct` at the STATE floor
 `STATE_MIN_EXCURSION_SECONDS` (1 s, SR-H2-1S; `NAMED_LIMIT` below — an excursion shorter than that is not excluded) and located to
-`BISECT_SECONDS`; the instant found is the first sample of the NEW state (it owns the boundary, half-open [change, next change)); two independent locations of one instant therefore
-agree within `PEAK_TOLERANCE_SECONDS`. (2) The retrograde flag is the sign of the longitude change over ±`RETRO_PROBE_SECONDS`
+`BISECT_SECONDS`, then refined here to the first MICROSECOND of the new state (`_search`; a 1 s bracket lost a 19 microsecond sliver at a support end);
+the instant found is the first sample of the NEW state (it owns the boundary, half-open [change, next change)); two independent locations of one instant therefore
+agree within a few microseconds (`PEAK_TOLERANCE_SECONDS` stays the looser bound the peak comparison is allowed). (2) The retrograde flag is the sign of the longitude change over ±`RETRO_PROBE_SECONDS`
 (the verifier has positions, not Swiss speeds); it matters only for Mercury and Venus, whose combustion orb is tighter in
 retrograde (L1 M-19), and only when the arc lies between their two orbs at a station.
 """
@@ -291,8 +292,27 @@ class P1Check:
 
     # ── the change instants of each state inside [lo, hi) ────────────────────────────────────────────────────────
     def _search(self, state_at, edge_distance, vmax_dps: float, lo: datetime, hi: datetime) -> list[datetime]:
-        return [] if hi <= lo else _cr._core(state_at, edge_distance, vmax_dps, lo, hi,
-                                                      min_excursion_seconds=_cr.STATE_MIN_EXCURSION_SECONDS)
+        if hi <= lo:
+            return []
+        out = []
+        for c in _cr._core(state_at, edge_distance, vmax_dps, lo, hi, min_excursion_seconds=_cr.STATE_MIN_EXCURSION_SECONDS):
+            # `_core` answers with the upper bracket of a <= BISECT_SECONDS interval (up to 1 s after the real change). The cut is then
+            # located to the first microsecond of the NEW state, so it cannot fall past the end of a support it belongs to and be
+            # dropped by `window_verifier._pieces` (`lo < c < hi`) — a located-late cut hid a 19 microsecond sliver (P1 self-check).
+            a = max(lo, c - timedelta(seconds=_cr.BISECT_SECONDS + 0.001))
+            if state_at(a) != state_at(c):
+                base, b = state_at(a), c
+                while b - a > timedelta(microseconds=1):
+                    m = a + (b - a) / 2
+                    if m == a:
+                        break
+                    if state_at(m) == base:
+                        a = m
+                    else:
+                        b = m
+                c = b
+            out.append(c)
+        return out
 
     def dignity_boundaries(self, graha: str, lo: datetime, hi: datetime) -> list[datetime]:
         if self.dignity_problem(graha):

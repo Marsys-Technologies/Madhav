@@ -473,7 +473,9 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Evaluation re-pinned at the SR-OD1 merge-back wave 3a (R67, l0verify on the wave-2 head): input_vector (window_cert_check joins the window stage list) and input_vector_verifier (P1's L0
     # authorities get an independent digest) are evaluation-stage modules. Re-derived from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES)
     # (the prior pin 65ba9ca9... is the wave-2 head); geometry is unchanged; no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "3fe1142e2cbeefa4e571a9d39e50a798c0db91a74ffeda9a492bcd8da4788a5a"
+    # Evaluation re-pinned at the P1 self-check fix (od1-p1-boundary): p1_nature_operands (the lord's nature-change instants are located to the first microsecond) is an evaluation-stage module. Re-derived from the
+    # tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 3fe1142e... is the wave-3a head); geometry is unchanged; no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "daa9b514ddd4ea8dbd4f7cb75d0c9f41bdef611c94eac3faa71a93850d4d46d5"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
@@ -510,4 +512,6 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned at the SR-OD1 merge-back wave 3a (R67): window_cert_check joins the window stage; window_sweep (the production solver path stores the certificate), window_verifier (the
     # certificate check and the demotion path), window_solver (stored_certificate), window_solver_check and numerical_window_gate (demotions, the cap) changed. Re-derived from the merged tree's
     # real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin bb608cda... is the wave-2 head); geometry is unchanged; no golden component is re-captured.
-    assert got["implementation"]["window"] == "ba0588e639ba46447b10de31a7321f97ce0df58f457609beb7898d3a98a5eda5"
+    # Window re-pinned at the P1 self-check fix (od1-p1-boundary): p1_operands_check (the verifier's change instants are located to the first microsecond) is a window-stage module. Re-derived from the tree's real
+    # bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin ba0588e6... is the wave-3a head); geometry is unchanged; no golden component is re-captured.
+    assert got["implementation"]["window"] == "a8b438a343e6de3af419cce267d7bb010fae29191d765121fc31d9c8399c70cf"

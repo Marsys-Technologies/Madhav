@@ -9,7 +9,7 @@ What this module supplies to the window sweep (through W0's `OperandSource`, nev
     Its CHANGE INSTANTS are found from the ephemeris alone: the Moon's elongation crossings of 0/180 degrees; for Mercury every
     instant at which Mercury, the Sun, Mars, Saturn, Rāhu, Ketu change sign, the Moon enters or leaves Mercury's sign, or the
     Moon's pakṣa flips. The search is `contact_reconstruct._core` (speed-bounded, floor `STATE_MIN_EXCURSION_SECONDS` = 1 s, named limit `contact_reconstruct.STATE_NAMED_LIMIT`);
-    its answers are memoised per aligned chunk when the position source declares a `cache_key`.
+    its answers are refined to the first MICROSECOND of the new state (`_microsecond`: the window solver's H2 probe sits 1 microsecond before every piece end) and memoised per aligned chunk when the position source declares a `cache_key`.
   * `P1LordValence` — the lord's side and value at t: `p1_valence.LordRungRules` gives the effective rung (COMB > EX > MT > OWN >
     DEB > FR/NEU/INI), `p1_valence.q3c_side` decides the SIDE (Q3(c): the nature's default, overridden at the extremes the rung names —
     benefic adverse in COMB/DEB/INI, malefic favourable in EX/MT/OWN) and the validated `SideValueMapping` (Form B, the registry's
@@ -45,6 +45,7 @@ REASON_COMBUSTION_UNAVAILABLE = "p1_combustion_state_undeterminable"
 _CHUNK = timedelta(days=96)
 _EPOCH = datetime(1900, 1, 1, tzinfo=timezone.utc)
 _MEMO: dict = {}
+_REFINE_TO = timedelta(microseconds=1)
 
 
 def _sign(lon: float) -> int:
@@ -139,7 +140,8 @@ class NatureOperands:
             return min(e % 180.0, 180.0 - e % 180.0)
 
         if self.graha == "Moon":
-            return _cr._core(paksa, paksa_edge_deg, vmoon + vsun, lo, hi, min_excursion_seconds=_cr.STATE_MIN_EXCURSION_SECONDS)
+            return _microsecond(paksa, lo, _cr._core(paksa, paksa_edge_deg, vmoon + vsun, lo, hi,
+                                                     min_excursion_seconds=_cr.STATE_MIN_EXCURSION_SECONDS))
 
         merc = src["Mercury"]
 
@@ -163,7 +165,33 @@ class NatureOperands:
 
         # `_core` compares edge_distance with vmax*dt; vmax = 1 deg/day and a distance expressed in DAYS make that "time to
         # the nearest possible change > dt"
-        return _cr._core(joined, days_to_event, 1.0, lo, hi, min_excursion_seconds=_cr.STATE_MIN_EXCURSION_SECONDS)
+        return _microsecond(joined, lo, _cr._core(joined, days_to_event, 1.0, lo, hi,
+                                                  min_excursion_seconds=_cr.STATE_MIN_EXCURSION_SECONDS))
+
+
+def _microsecond(state_at, lo: datetime, located: list[datetime]) -> list[datetime]:
+    """Refine `_core`'s answers to the first microsecond of the new state.
+
+    `_core` answers with the UPPER bracket of an interval of up to `BISECT_SECONDS` (1 s), i.e. up to 1 s after the real change. The window
+    solver (`window_solver._build`) probes the step factors at `piece end - QUANT` (1 microsecond) and refuses a window as
+    `state_boundaries_incomplete` when a listed change is later than that, so a listed instant must be exact to ~1 microsecond. Same device as the
+    rung list's (`p1_operands.P1Operands._exact`); the verifier (`p1_operands_check.P1Check._search`) refines with its own code (K12)."""
+    out = []
+    for c in located:
+        a = max(lo, c - timedelta(seconds=_cr.BISECT_SECONDS + 0.001))
+        if state_at(a) != state_at(c):
+            base, b = state_at(a), c
+            while b - a > _REFINE_TO:
+                m = a + (b - a) / 2
+                if m == a:
+                    break
+                if state_at(m) == base:
+                    a = m
+                else:
+                    b = m
+            c = b
+        out.append(c)
+    return out
 
 
 @dataclass(frozen=True)
