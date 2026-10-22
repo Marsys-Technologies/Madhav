@@ -67,7 +67,7 @@ from services.gochara_kernel import stretch_sink as gk_stretch_sink
 from services.gochara_kernel import ephemeris_pins as gk_ephemeris_pins
 from services.gochara_kernel.native_conn import native_connection
 from services.gochara_kernel import arcs as gk_arcs
-from services.gochara_kernel.dasha_read import make_period_rows_for, make_period_rows_for_snapshot
+from services.gochara_kernel.dasha_read import PERIOD_TABLE_ENDS_REASON, make_period_rows_for, make_period_rows_for_snapshot
 from services.gochara_kernel.chart_context import (fetch_chart_context, fetch_chart_context_from_snapshot,
                                                    require_complete)
 from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots
@@ -1773,6 +1773,9 @@ class GocharaV5Writer(WriterBase):
             # AM-20 (revised): the stored house descriptor is the count from the lagna
             verify_p1_house_descriptor(ctx.db_conn, chart_id=chart_id, generation=GENERATION,
                                        event_class=event_class)
+        blanked = counts.get(PERIOD_TABLE_ENDS_REASON, 0)
+        table_end_note = (f"; {blanked} P1 supports reach past the end of the stored daśā table: unknown, "
+                          f"reason {PERIOD_TABLE_ENDS_REASON}" if blanked else "")
         gate_note = (f"; P1 transit records NOT minted — {p1_closed}" if path_id == "P1" and p1_closed else "")
         return WriterResult(
             asset_id=self.asset_id, rows_inserted=inserted,
@@ -1788,7 +1791,7 @@ class GocharaV5Writer(WriterBase):
                    f"{counts['prereq_evaluated']} prerequisite results "
                    f"evaluated; dasha_build="
                    f"{dasha_contract['build_id'] if dasha_contract['read'] else 'not_read'}"
-                   f"{gate_note}{nm_note}"))
+                   f"{table_end_note}{gate_note}{nm_note}"))
 
     @staticmethod
     def _store_near_misses(ctx: ContextSpec, *, chart_id: str, edges, arc_index_for, horizon, position_at,

@@ -70,6 +70,7 @@ from . import ledger as gk_ledger
 from . import targets
 from .contacts import _refine_root, find_roots
 from .convention import ORB_TABLE
+from .dasha_read import PERIOD_TABLE_ENDS_REASON
 from .evaluator import RULE_VERSION, RecordEdge, record_uuid
 from .materialise import (BoundaryCrossing, ResidenceSpan, aspect_spans, mint_natal_record,
                           mint_transit_records, residence_spans)
@@ -1340,9 +1341,27 @@ def materialise_record_grain(
             _period_rows_cache[key] = ([_dasharow(r) for r in raw] if raw else None,
                                        bool(raw) or _held_outside_horizon(key))
         rows, held = _period_rows_cache[key]
+        if (rows or held) and _table_ends_before(key, support):
+            # N-8 / T13: the stored daśā table stops short of this support — the part past its end is UNMEASURED, so no running set (and no
+            # `false`) can be claimed for it; the support stays the contact span with an explicit `unknown`, the reason named in the counts
+            counts[PERIOD_TABLE_ENDS_REASON] = counts.get(PERIOD_TABLE_ENDS_REASON, 0) + 1
+            return "unrestricted", None
         if not rows:
             return ("restricted", []) if held else ("unrestricted", None)
         return "restricted", period_running_support(support, rows)
+
+    _coverage_cache: dict[tuple, object] = {}
+
+    def _table_ends_before(key, support: tuple[datetime, datetime]) -> bool:
+        """Does `support` reach past the END of the pinned table at the anchor level? Only a reader that can say where its table ends
+        (both production readers) is asked; a reader that cannot keeps the prior behaviour. No row at the level at all ⇒ ended before."""
+        coverage_end = getattr(dasha_rows_for, "coverage_end", None)
+        if coverage_end is None:
+            return False
+        if key not in _coverage_cache:
+            _coverage_cache[key] = coverage_end(key[1]) if key[1] else coverage_end()
+        end = _coverage_cache[key]
+        return end is None or support[1] > end
 
     def _held_outside_horizon(key) -> bool:
         holds = getattr(dasha_rows_for, "holds", None)          # only the snapshot-copy reader can know a held-but-not-running lord
