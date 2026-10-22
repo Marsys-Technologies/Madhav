@@ -38,8 +38,8 @@ The horizon pair is public (SR-HORIZON-PUBLIC: start = the writer's `DEFAULT_HOR
   N-137 end state, no generation '5.0' output) and **rolls it back**: zero cloud writes. It prints `ky.century_staging/1` — status `ROLLED_BACK`,
   the plan manifest and digest, `triggered_by='gochara-v5-century'`, and `launch_plan`: the exact `gcloud run jobs execute` argv the real kind will run
   (a test pins it to the launcher's actual argv). The previous (measuring) lifecycle must already be independently absent.
-* `century_dispatch` demands, from reviewed source (`v5_small_test_shared.century_request_problem`): that absence, a fresh scoped backup restore
-  proof, and the receipt of a `century_dispatch_dryrun` whose manifest digest, args and source equal the new staging (a measuring dry run, a marked
+* `century_dispatch` demands, from reviewed source (`v5_small_test_shared.century_request_problem`): that absence, ~~a fresh scoped backup restore
+  proof~~ (removed by SR-A12-BACKUP-REMOVAL), and the receipt of a `century_dispatch_dryrun` whose manifest digest, args and source equal the new staging (a measuring dry run, a marked
   manifest, another trigger or a different digest refuse). The executor adds the lease, the single V acceptance, `dry_run_passed`, the production
   fence and the merged reviewed commit. The wrapper stages once and launches exactly that run with `PUBSUB_DISABLED=1` for that execution only (so the
   J-3 log read sees the sub-step lines); `ky.century_launch/1` is the executor's launch evidence. Completion is never the launch: it is read back by
@@ -77,6 +77,7 @@ file's `launch_args` are exactly the request's `args`. The pack's template pins 
   `measuring_dispatch`; W4_EXECUTOR_BINDINGS asked "confirm any staging builder requirement"). Alternative: launch an already-staged run, gcloud only.
 * **(I) INTERPRETATION C3:** request item is `J-4e` (the plan's dispatch item, `op: century_dispatch`); the table's `enabled_by` stays `J-4d` as pinned.
   The teardown kinds use the same item.
+* **SUPERSEDED by SR-A12-BACKUP-REMOVAL (2026-10-22):** a century dispatch no longer requires or judges a scoped backup (`century_request_problem` no longer calls `scoped_backup_problem`); every other check of that policy stays. The text below is the historical reading.
 * **(I) INTERPRETATION C4:** a real century dispatch requires the scoped backup proof (`scoped_backup_problem`) as `smalltest_dispatch` does, because
   SR-PREBUILD-ALL lists "scoped backup by content hash" among the J3C gates; `measuring_dispatch` does not. Alternative: drop it to match measuring.
 * **(I) INTERPRETATION C6 (W3W4 pack verify E1/E3):** `century_teardown` is now **enabled** because its dry-run twin exists and the W3W4 pack's bind predicate (`century/rebind_pins.py`) needs all six century kinds enabled; every `*_teardown` stays signed-only, and the pack's own teardown gate still reads the owner authority named in C5. `century_cancel(+dryrun)` bind to the `century_dispatch` receipt (J-4e) and an ABORT/stall verdict, exactly as `measuring_cancel` does for the measuring build. The scoped backup of C4 is now the **`century` scope** (`backup_v5_century_scope.json`, digest pinned in `v5_small_test_shared.SCOPED_BACKUP_SCOPE_SHA256S`): same tables as the small-test scope (the unmarked run writes no other table), its own name and digest, so a small-test proof no longer admits a century dispatch. Alternative: keep accepting the small-test scope's proof.

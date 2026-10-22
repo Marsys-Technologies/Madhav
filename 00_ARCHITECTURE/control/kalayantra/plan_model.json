@@ -18431,6 +18431,12 @@
       },
       "triage": {
         "class": "a"
+      },
+      "not_applicable_steps": {
+        "backup_restore_verified": {
+          "decision": "SR-A12-BACKUP-REMOVAL",
+          "reason": "waived: the pre-operation dump and its restore proof are removed by SR-A12-BACKUP-REMOVAL (Amendment A12 SOLE-USER, SR-A12 cut 3, DECISIONS_SURROGATE.jsonl:411); dry run, exact scope and absence readback stay mandatory"
+        }
       }
     },
     {
@@ -19685,6 +19691,12 @@
       },
       "triage": {
         "class": "a"
+      },
+      "not_applicable_steps": {
+        "backup_restore_verified": {
+          "decision": "SR-A12-BACKUP-REMOVAL",
+          "reason": "waived: the pre-operation dump and its restore proof are removed by SR-A12-BACKUP-REMOVAL (Amendment A12 SOLE-USER, SR-A12 cut 3, DECISIONS_SURROGATE.jsonl:411); dry run, exact scope and absence readback stay mandatory"
+        }
       }
     },
     {
@@ -20178,6 +20190,12 @@
       },
       "triage": {
         "class": "a"
+      },
+      "not_applicable_steps": {
+        "backup_restore_verified": {
+          "decision": "SR-A12-BACKUP-REMOVAL",
+          "reason": "waived: the pre-operation dump and its restore proof are removed by SR-A12-BACKUP-REMOVAL (Amendment A12 SOLE-USER, SR-A12 cut 3, DECISIONS_SURROGATE.jsonl:411); dry run, exact scope and absence readback stay mandatory"
+        }
       }
     },
     {
@@ -20665,6 +20683,12 @@
       },
       "triage": {
         "class": "a"
+      },
+      "not_applicable_steps": {
+        "backup_restore_verified": {
+          "decision": "SR-A12-BACKUP-REMOVAL",
+          "reason": "waived: the pre-operation dump and its restore proof are removed by SR-A12-BACKUP-REMOVAL (Amendment A12 SOLE-USER, SR-A12 cut 3, DECISIONS_SURROGATE.jsonl:411); dry run, exact scope and absence readback stay mandatory"
+        }
       }
     },
     {
@@ -29604,6 +29628,12 @@
       "title": "Operation-item steps: lease row as evidence, restore proof not applicable for J-3c, one verifier at most",
       "owner": "ADHIKĀRIN (N); surrogate madhav-6d, 2026-10-19T03:20:12Z",
       "default": "Approved — /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:229 (SR-OP-STEPS) and :230 (SR-OP-STEPS-2). Item 2: a lease_held step is evidenced by the lease row on origin/campaign-coordination (commit sha + row id), read mechanically by the tracker. Item 3: J-3c backup_restore_verified is not applicable (OWNER-MINIMAL-PROTECTION-NOW-20261018), not a gap. SR-OP-STEPS-2: the executor's own recorded acceptance is the accepted verdict at the receipt's digest. Recording this decision (ky decide SR-OP-STEPS --as steward --delegated) is what makes a cited not-applicable step count as satisfied."
+    },
+    {
+      "id": "SR-A12-BACKUP-REMOVAL",
+      "title": "Backups removed from the production windows: teardown attestation, century dispatch admission and the backup_restore_verified plan step",
+      "owner": "ADHIKĀRIN (N); surrogate madhav-44 / cockpit madhav-9a, 2026-10-22",
+      "default": "Approved — /Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl:411 (SR-A12, cut 3) on :410 (OWNER-SOLE-USER-CONTEXT-20261022): (1) a *_teardown signer attestation no longer requires backup_taken; dry-run, exact scope and absence readback stay mandatory. (2) The century dispatch admission no longer requires a scoped backup (backup_label / backup_restore_sha256); every other admission check stays. (3) The step backup_restore_verified is WAIVED, never deleted, on J-2a, J-4e, J-6 and K9-4a through `not_applicable_steps`; J-3c keeps its earlier SR-OP-STEPS waiver (a backup really was taken there). (4) The admission rehearsal's overlay_absent and reviewed_commit_mismatch controls are re-based off backup_snapshot; scope_missing and scope_unknown retire with the dump. Recording this decision (ky decide SR-A12-BACKUP-REMOVAL --as steward --delegated) is what makes a cited waived step count as satisfied."
     },
     {
       "id": "D-J4C-PR2907-NA",

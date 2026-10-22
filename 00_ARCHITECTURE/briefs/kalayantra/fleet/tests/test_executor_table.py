@@ -693,7 +693,7 @@ def test_executor_py_remaining_line_diff_is_the_git_line_only():
     ("MAX_TIMEOUT = 6 * 3600", "MAX_TIMEOUT = 7 * 3600"),
     ('if not issued <= current < expires: return "approval expired or not yet valid"', 'if not issued <= current: return "approval expired or not yet valid"'),
     ('return op.get("remote_async") is True or kind in REMOTE_ASYNC_KINDS', 'return op.get("remote_async") is True'),
-    ('if kind.endswith("_teardown"): required.append("backup_taken")', 'pass'),
+    ('if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"): required.append("dry_run_passed")', 'pass'),
     ('if k not in UNBOUND_REQUEST_FIELDS and not k.endswith("_expires_at")', 'if k not in UNBOUND_REQUEST_FIELDS'),
     ('"HOME", "PATH", "LANG"', '"HOME", "PATH", "LANG", "KY_BUILDER_DATABASE_URL"'),
     ('return f"kind {req[\'kind\']} is not enabled', 'return f"kind {req[\'kind\']} is disabled'),

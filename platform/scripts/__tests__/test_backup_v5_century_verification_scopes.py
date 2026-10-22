@@ -157,7 +157,7 @@ def test_p2_a_scoped_proof_admits_only_a_dispatch_of_its_own_scope(shared, tmp_p
             shared.scoped_backup_problem(req, tmp_path, scope=dispatch_scope)
 
 
-def test_p2_a_century_dispatch_demands_the_century_scopes_proof_and_the_default_stays_small_test(shared, tmp_path, monkeypatch):
+def test_p2_a_century_dispatch_names_no_backup_and_the_default_scope_stays_small_test(shared, tmp_path, monkeypatch):
     monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)
     monkeypatch.setattr(shared, 'century_dryrun_evidence', lambda req, root, digest=None: None)
     base = {'kind': 'century_dispatch', 'item_id': shared.CENTURY_ITEM, 'args': {'classes': 'all', 'final_rules': 'true', 'defer_in_build_verify': 'true',
@@ -166,8 +166,9 @@ def test_p2_a_century_dispatch_demands_the_century_scopes_proof_and_the_default_
     (tmp_path / 'century').mkdir()
     small = write_evidence(tmp_path / 'small', shared, label='p02_small')
     century = write_evidence(tmp_path / 'century', shared, label='p02_century', scope_sha=shared.SCOPED_BACKUP_SCOPE_SHA256S['century'])
-    assert shared.century_request_problem({**base, **small}, tmp_path / 'small') == 'scoped backup covers a scope other than the reviewed one'
+    assert shared.century_request_problem({**base, **small}, tmp_path / 'small') is None      # SR-A12-BACKUP-REMOVAL: a century dispatch no longer judges a backup, of any scope
     assert shared.century_request_problem({**base, **century}, tmp_path / 'century') is None
+    assert shared.century_request_problem(base, tmp_path) is None                              # ... and needs none
     with pytest.raises(shared.Refused, match='scope other than the reviewed'):
         shared.scoped_backup_problem(century, tmp_path / 'century')                                          # no `scope=`: the small-test default, as every earlier caller
 

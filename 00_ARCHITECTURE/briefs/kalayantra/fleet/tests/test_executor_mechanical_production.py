@@ -318,7 +318,7 @@ def oracle_b1_signer_route_is_untouched(w, table):
     assert w.mod.mechanical_problem(signed, table)[0] is not None, "premise: the mechanical route refuses this request"
     assert w.mod.validate(signed, table, ALL_CAPS) is None, "a signer-accepted request must be judged by its signer, whatever else it carries"
     assert json.loads(Path(signed["acceptance_receipt"]).read_text())["by"] == "v1", "the signer's record is never replaced by a mechanical one"
-    teardown = w.accept(w.production_request("smalltest_teardown", operation_id="op-td"), checks={"backup_taken": True, "dry_run_passed": True})
+    teardown = w.accept(w.production_request("smalltest_teardown", operation_id="op-td"), checks={"dry_run_passed": True})
     assert w.mod.signer_acceptance_problem(teardown) is None, "a deletion is still accepted through its V1 signer"
     unsigned = w.production_request("scheduler_resume", operation_id="op-nosign")
     assert w.mod.validate(unsigned, table, ALL_CAPS) == "pre-acceptance receipt missing (must live under run/ops/acceptance/)"
