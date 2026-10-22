@@ -243,7 +243,7 @@ def verify_p1_anchors(conn, *, chart_id: str, generation: str, event_class: str,
                  for lv in ("md", "ad", "pd")}
 
     stored = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
-        "SELECT c.contact_id::text, c.body, o.canonical_target, c.t_in, c.t_out, c.delta_lambda"
+        "SELECT c.contact_id::text, c.body, o.canonical_target, c.t_in, c.t_out, c.delta_lambda::float8"
         " FROM public.ka_gochara_contact c JOIN public.ka_gochara_physical_object o"
         "   ON o.physical_object_id = c.physical_object_id"
         " WHERE c.chart_id = %s AND c.generation = %s AND c.relation_kind = 'residence'"

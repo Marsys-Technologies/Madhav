@@ -225,7 +225,7 @@ def _window_qualification(conn: Any, chart_id: str, generation: str, windows: Se
     ids = [str(w['window_id']) for w in windows if isinstance(w, dict) and w.get('window_id') is not None]
     if batch and ids:
         rows = conn.execute(
-            "SELECT window_id::text, objective, objective_value, qualification, path_id"
+            "SELECT window_id::text, objective, objective_value::float8, qualification, path_id"
             " FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s"
             " AND window_id = ANY(%s::uuid[]) ORDER BY window_id", (chart_id, generation, ids)).fetchall()
         batched = {r[0]: r[1:] for r in (_one(row) for row in rows)}
@@ -236,7 +236,7 @@ def _window_qualification(conn: Any, chart_id: str, generation: str, windows: Se
         if wid is not None:
             try:
                 row = batched.get(str(wid)) if batch else _one(conn.execute(
-                    "SELECT objective, objective_value, qualification, path_id FROM public.ka_gochara_eval_window"
+                    "SELECT objective, objective_value::float8, qualification, path_id FROM public.ka_gochara_eval_window"
                     " WHERE chart_id = %s AND generation = %s AND window_id = %s", (chart_id, generation, str(wid))
                 ).fetchone())
             except Exception as exc:  # noqa: BLE001 — pre-1240 schema: no provenance columns

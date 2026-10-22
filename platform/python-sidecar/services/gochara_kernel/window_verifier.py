@@ -571,9 +571,12 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         " AND attname IN ('objective', 'objective_value', 'qualification') AND NOT attisdropped").fetchone()
     has_prov = (next(iter(prov_cols.values())) if isinstance(prov_cols, dict) else prov_cols[0]) == 3
     windows = [tuple(r.values()) if isinstance(r, dict) else tuple(r) for r in conn.execute(
-        "SELECT window_id::text, lower(interval), upper(interval), peak_instant, score,"
-        " evidence_for, evidence_against, severity, null_states_used, outcome_valence_for_native,"
-        + (" objective, objective_value, qualification" if has_prov else " NULL, NULL, NULL") +
+        # SR-F4-STORE-EXACT: every REAL is read as float8. The driver's default text read of a float4 is the SHORTEST decimal that round-trips it (1.9420573 for the
+        # stored 1.94205725…), a double up to half a float4 spacing away from the number the database holds; compared against the independent re-derivation inside
+        # `_f4_tol` (half a spacing) it stacked a second half-spacing on the builder's own rounding and read a correct store as a disagreement. `::float8` is exact.
+        "SELECT window_id::text, lower(interval), upper(interval), peak_instant, score::float8,"
+        " evidence_for::float8, evidence_against::float8, severity::float8, null_states_used, outcome_valence_for_native,"
+        + (" objective, objective_value::float8, qualification" if has_prov else " NULL, NULL, NULL") +
         " FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s"
         " AND event_class = %s AND path_id = %s AND rule_version = %s ORDER BY 2", grain).fetchall()]
     # R9-2: the COMPLETE expected membership, derived here from the grain's own records — not read back from the stored
@@ -1314,7 +1317,7 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
     grain = (chart_id, generation, event_class, path_id, rule_version)
     rows = conn.execute(
         "SELECT DISTINCT c.contact_id::text, c.body, c.relation_kind, c.t_in, c.t_out, c.t_exact, o.canonical_target,"
-        " lower(cov.completed_horizon), upper(cov.completed_horizon), c.delta_lambda"
+        " lower(cov.completed_horizon), upper(cov.completed_horizon), c.delta_lambda::float8"
         " FROM public.ka_gochara_eval_window_record m"
         " JOIN public.ka_gochara_relationship_record r ON r.record_id = m.record_id"
         " JOIN public.ka_gochara_contact c ON (c.chart_id, c.generation, c.contact_id)"

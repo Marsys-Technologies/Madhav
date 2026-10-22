@@ -819,7 +819,7 @@ def verify_generation(conn, *, chart_id, generation, ephe_path, persist=False):
             problems.append("near_miss_convention")
         angles=(0.0,) if relation=="conjunction" else _ASPECT_ANGLES[body]
         centres=[(float(s["canonical_target"].split(':')[1])-a)%360 for a in angles]
-        stored=_rows(conn.execute("SELECT *,near_miss_object_id AS object_id FROM public.ka_gochara_near_miss "
+        stored=_rows(conn.execute("SELECT *,near_miss_object_id AS object_id,delta_t::float8 AS delta_t FROM public.ka_gochara_near_miss "
             "WHERE chart_id=%s AND generation=%s AND near_miss_object_id=%s ORDER BY ordinal",(chart_id,generation,s["near_miss_object_id"])))
         for row in stored:
             problems += precision_problems(row)

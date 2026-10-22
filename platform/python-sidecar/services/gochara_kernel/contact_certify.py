@@ -414,7 +414,7 @@ def certify_contact_geometry(conn, *, chart_id: str, generation: str, event_clas
                       if not a.startswith("period_lord:") and r in _TRANSIT and a != "moon")
     ledger: dict[tuple, list[tuple]] = {}
     for body, rel, target, t_in, t_out, dl in (tuple(x.values()) if isinstance(x, dict) else tuple(x) for x in conn.execute(
-            "SELECT c.body, c.relation_kind, o.canonical_target, c.t_in, c.t_out, c.delta_lambda"
+            "SELECT c.body, c.relation_kind, o.canonical_target, c.t_in, c.t_out, c.delta_lambda::float8"
             " FROM public.ka_gochara_contact c"
             " JOIN public.ka_gochara_physical_object o ON o.physical_object_id = c.physical_object_id"
             " WHERE c.chart_id = %s AND c.generation = %s", (chart_id, generation)).fetchall()):
