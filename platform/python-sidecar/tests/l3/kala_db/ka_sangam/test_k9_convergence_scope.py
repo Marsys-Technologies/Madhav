@@ -531,6 +531,7 @@ def test_w2_unbound_rebuild_after_publish_is_refused_and_leaves_the_head_and_its
         return oracle_unbound_rebuild_after_publish(world, real_writer(), writer_grain.UnboundRewriteRefused)
     # reversion: the refusal is removed ('allow'); the unbound build proceeds
     copy = mutated(writer_grain, tmp_path, 'if head is not None:\n        raise UnboundRewriteRefused(', 'if False:\n        raise UnboundRewriteRefused(')
+    copy.refuse_unbound_cascade = lambda *a, **k: None      # N2 guards the same served legacy children; this claim is the head refusal alone
     monkeypatch.setattr(ka_sangam, 'convergence_generation', copy.convergence_generation)
     monkeypatch.setattr(ka_sangam, 'refuse_unbound_rewrite', copy.refuse_unbound_rewrite)
     with pytest.raises(AssertionError, match='was allowed'):
@@ -806,6 +807,7 @@ def test_r1_no_reader_reads_the_base_table():
     owners = {'pipeline/orchestrator/writers/ka_sangam.py',           # the writer of the partitions
               'pipeline/orchestrator/writers/ka_vighnakara.py',       # candidate-bound: reads WHERE generation = its candidate's (SR-K9-BIND B1a, oracle B1a)
               'services/kala_core/rebuild_control.py',                 # teardown: reads the candidate's rows to prove what a cascade would reach
+              'services/kala_core/writer_grain.py',                    # N2: counts the referencing rows of the legacy partition before an unbound rewrite
               'services/kala_core/idempotency/__init__.py'}            # the generation-scoped delete map (never called by the plan)
     offenders = [str(p.relative_to(SIDECAR)) for base in ('pipeline/orchestrator/writers', 'services') for p in (SIDECAR / base).rglob('*.py')
                  if str(p.relative_to(SIDECAR)) not in owners and base_table_reads(p.read_text())]
