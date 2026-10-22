@@ -925,6 +925,8 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
         ephe_path=_ephe_path(ctx), path_refs=gk_rule_registry.bound_path_refs(),
         rulings=_applicable_rulings(),
         stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
+        # D-FLIP F-10: the expected scored edge comes from the governed source, never from the stored vector being checked (a forged pin drifts by name)
+        scored_until=gk_input_vector.scored_until_instant(),
         # SR-W3-SHAPE 3: the expected deferral comes from the run's VALIDATED config, never from the stored vector (Codex P1-2)
         in_build_verify=_verify_component(_defer_in_build_verify(ctx, slice_)),
         test_slice=_slice_component(slice_) if slice_ is not None else None,
@@ -936,7 +938,7 @@ def _verify_live_inputs(ctx: ContextSpec, chart_id: str) -> None:
     gk_input_vector_verifier.verify_inputs(
         ctx.db_conn, _scope_normalised(stored, slice_), ephe_path=_ephe_path(ctx),
         modules=gk_input_vector.IMPLEMENTATION_MODULES, path_refs=gk_rule_registry.bound_path_refs(),
-        require_scored_classes=True)
+        require_scored_classes=True, require_scored_until=True)
 
 
 def _p1_form_b_bound() -> bool:
@@ -1388,6 +1390,9 @@ class GocharaV5Writer(WriterBase):
                 # re-derives it from the verifier's own universe and the seal-time completeness function (migration 1306) compares
                 # the claimed classes with it
                 scored_classes=SCORED_CLASSES,
+                # D-FLIP F-10: the exclusive end of the scored horizon, from the evaluation protocol's observation-mask end (never a constant here); the served surface
+                # marks windows past it unscored, and the independent verifier re-derives it from the same governed source
+                scored_until=gk_input_vector.scored_until_instant(),
                 # C46: a sliced build is unsealable by construction — stored_scope no verifier
                 # vocabulary knows, plus the marker digest; absent marker = the default, unchanged
                 stored_scope=TEST_SLICE_SCOPE if slice_ is not None else gk_input_vector.STORED_SCOPE,
@@ -1402,7 +1407,7 @@ class GocharaV5Writer(WriterBase):
             gk_input_vector_verifier.verify_inputs(
                 ctx.db_conn, _scope_normalised(vector, slice_), ephe_path=ephe_path, modules=gk_input_vector.IMPLEMENTATION_MODULES,
                 path_refs=gk_rule_registry.bound_path_refs(),
-                jd_range=gk_input_vector.consumed_jd_range(horizon), require_scored_classes=True)
+                jd_range=gk_input_vector.consumed_jd_range(horizon), require_scored_classes=True, require_scored_until=True)
             jd = horizon[0].timestamp() / 86400.0 + _JD_UNIX_EPOCH
             _lon, retflag = calc_sidereal_lon("Sun", jd, ephe_path)
             if not (retflag & 2):

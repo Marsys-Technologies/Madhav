@@ -227,6 +227,16 @@ SCORED_CLASS_UNIVERSE = (
 ANNOTATION_ONLY_CLASSES = ("birth_anchor",)
 
 
+def derive_scored_until() -> str:
+    """OD-1 / D-FLIP F-10: this verifier's OWN derivation of the scored edge the manifest must pin (nothing imported from the builder): the evaluation
+    protocol's observation-mask end `gochara_eval.registry.H1` is an INCLUSIVE IST calendar date (protocol v2.3 §1/§3), so the exclusive edge is the
+    IST midnight that follows it. Read from the registry at call time, never restated (CLAUDE.md §N.7.3)."""
+    import datetime as dt
+    from services.gochara_eval.registry import H1
+    ist = dt.timezone(dt.timedelta(hours=5, minutes=30))
+    return (dt.datetime(H1.year, H1.month, H1.day, tzinfo=ist) + dt.timedelta(days=1)).isoformat()
+
+
 def derive_opened_file_census(ephe_path: str, jd_lo: float, jd_hi: float, *, bodies=None) -> dict:
     """{file name: sha256} of the `.se1` files the Swiss library OPENS for the consumed bodies over [jd_lo, jd_hi],
     established HERE: this verifier's own sampling (every `_CENSUS_STEP_DAYS` days plus both ends, for every body of its
@@ -323,7 +333,7 @@ NOT_INDEPENDENTLY_DERIVED = ("orb_policy", "rulings_digest", "consumed_range", "
 
 def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_refs=None, census=None,
                   jd_range=None, census_probe=None, series_probe=None, backend_probe=None, absolute_probe=None,
-                  require_scored_classes: bool = False) -> dict:
+                  require_scored_classes: bool = False, require_scored_until: bool = False, scored_until_probe=None) -> dict:
     """Independently re-derive every component of the stored vector that CAN be derived without the builder's
     code, and refuse any disagreement by name. Returns {"derived": [...components], "not_derived": [...]}.
     `census` (replay) restates the original sealed-version census for the registry component."""
@@ -407,6 +417,15 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
         else:
             check("scored_classes", sorted(SCORED_CLASS_UNIVERSE), stored["scored_classes"])
         derived.append("scored_classes")
+    # D-FLIP F-10: the scored edge the manifest pins (the instant past which the served surface marks windows unscored) must equal the edge this verifier
+    # derives from the protocol's observation-mask end. REQUIRED for a real candidate (same two callers as the class census); a vector that predates the
+    # key is judged only when it carries one. A pin that is not a string, or that differs in any character (a shifted day, a zone dropped), is refused.
+    if require_scored_until or "scored_until" in stored:
+        if "scored_until" not in stored:
+            problems.append("scored_until: the vector pins no scored edge (a candidate must pin the exclusive end of the scored horizon)")
+        else:
+            check("scored_until", (scored_until_probe or derive_scored_until)(), stored["scored_until"])
+        derived.append("scored_until")
     if "near_miss_layer_version" in stored:
         if type(stored["near_miss_layer_version"]) is not int or stored["near_miss_layer_version"] != 1:
             problems.append("near_miss_layer_version: unsupported layer version")
@@ -421,6 +440,6 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
 
 
 __all__ = ["ABSOLUTE_PROBE_JD", "ABSOLUTE_PROBE_SUN_LAHIRI_DEG", "ABSOLUTE_PROBE_TOLERANCE_DEG", "derive_absolute_probe",
-           "NOT_INDEPENDENTLY_DERIVED", "derive_backend_and_version", "derive_opened_file_census",
+           "NOT_INDEPENDENTLY_DERIVED", "derive_backend_and_version", "derive_opened_file_census", "derive_scored_until",
            "derive_series_probe_digest", "module_digests", "runtime_library_digest", "runtime_platform", "sql_l0_digest", "sql_l0_asset_digest", "sql_p1_l0_digest",
            "sql_registry_digest", "sql_sky_convention_digest", "verify_inputs", "verify_registry_digest"]

@@ -529,6 +529,7 @@ def test_the_blank_is_applied_by_read_v5_itself_reverting_it_serves_the_number(w
 
 def test_without_a_pinned_scored_edge_the_status_is_null_with_the_reason(world):
     w = _sealed(world)
+    _set_vector(w, "input_generation_vector - %s::text", (rd.SCORED_UNTIL_VECTOR_KEY,))      # the writer now pins the edge (OD-1 / F-10): strip it to read the unpinned manifest
     env = _read(w, event_classes=[CLS])
     assert env["scored_until"] is None and env["scored_until_reason"] == "scored_until_not_pinned"
     assert env["windows"][0]["scoring_status"] is None

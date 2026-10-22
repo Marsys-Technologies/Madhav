@@ -64,7 +64,7 @@ SERVED_NOT_SCORED = "served_not_scored"
 SCORING_STATUSES = (SCORED_HORIZON, STRADDLES_SCORED_EDGE, SERVED_NOT_SCORED)
 REASON_SCORED_UNTIL_NOT_PINNED = "scored_until_not_pinned"
 REASON_SCORED_UNTIL_NOT_AN_INSTANT = "scored_until_not_an_instant"
-#: the input-vector key the scored edge is read from (work item W10 adds the pin; nothing is assumed until it exists)
+#: the input-vector key the scored edge is read from (the candidate manifest pins it: `input_vector.scored_until_instant`, re-derived by the verifier; a manifest without it reads null)
 SCORED_UNTIL_VECTOR_KEY = "scored_until"
 
 NUMBERS_DISCLOSURE = {
