@@ -34,6 +34,7 @@ def ctx(kala_db_dsn):
             sql = (ROOT / 'migrations' / name).read_text().replace('public.', 'jury_writer_fixture.')
             conn.execute(sql.replace('verifier_principal', verifier_role))
         conn.execute('CREATE TABLE kala_convergence(chart_id uuid, legacy_value text)')
+        conn.execute('CREATE VIEW kala_convergence_served AS SELECT * FROM kala_convergence')   # migration 1405: the legacy read is the served partition
         conn.execute('INSERT INTO kala_convergence VALUES (%s,%s)', (CHART, 'legacy-published-value'))
         conn.execute('INSERT INTO kala_layer_head(chart_id,generation) VALUES (%s,%s)',
                      (CHART, 'published:unchanged'))
