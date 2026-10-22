@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 from uuid import UUID
 
+from .n4_reader import DEFER_HEADER
 from .qualification import endpoint_records, engineering_diagnostics, record
 
 GENERATIONS = ("3.0", "4.1", "5.0")
@@ -131,7 +132,7 @@ def assemble(doc: dict, root: Path) -> dict:
             rows = data["rows"]
         else:
             cells = data["cells"]
-    return {"schema": "ky.qualification_preparation/1", "build_state": "built_waiting_on_gate",
+    return {"schema": "ky.qualification_preparation/1", "header": DEFER_HEADER, "build_state": "built_waiting_on_gate",
             "chart_id": chart, "protocol": "EVALUATION_PROTOCOL_v2_3", "si_addendum": "1.5",
             "generation_authors": authors, "sources": sources,
             "diagnostic_sources": {k: doc[k] for k in ("diagnostic_extract", "coverage_cells") if k in doc},
@@ -143,7 +144,7 @@ def assemble(doc: dict, root: Path) -> dict:
 
 
 def render_markdown(result: dict) -> str:
-    lines = ["# J5Q qualification preparation", "", "State: **built, waiting on gate**.", "", result["limits"], "",
+    lines = ["# J5Q qualification preparation", "", f"**{result['header']}**", "", "State: **built, waiting on gate**.", "", result["limits"], "",
              "Missing evidence retains a null measured value. Original scorer statuses and all measured fields are retained below.", ""]
     for gen, data in result["generations"].items():
         lines += [f"## Generation {gen}", "", "| Endpoint | Status |", "|---|---|"]

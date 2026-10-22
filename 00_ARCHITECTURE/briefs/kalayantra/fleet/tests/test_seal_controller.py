@@ -32,6 +32,25 @@ Claims (root CLAUDE.md §N.8: each is measured by a detector that can read false
   E3  an unreadable / failed readback is UNKNOWN, never "not sealed" => HALT
   E4  a successful sealer run with nothing sealed => HALT (not a retry)
   P1  `classify` equals gochara_seal_reconcile.classify and the approval line equals gochara_seal_approval's grammar
+  R1  owner step 11 done = a completed `success` definition run at the head whose job AND four named steps read back `success`; then one REDEPLOY-DONE page and the evidence in the bundle
+  R2  a run that concluded `success` but whose readback/preflight step did not read back `success` is NOT accepted                                                           (OWNER_GUIDE_v2 step 11)
+  R3  main moved off the sealing head => STALE_HEAD and nothing is dispatched; after the brief is produced a later merge no longer stales the seal chain
+  R4  CI not green at the head (failed / absent / still running) => nothing is dispatched                                                                                    (deploy.yml dispatch gate)
+  R5  without --execute-redeploy the dispatch is only PREPARED (exact command) and paged once; no gh write
+  R6  with --execute-redeploy and the delegated login: exactly ONE definition dispatch, never repeated while the run is not yet visible / running; success advances
+  R7  a gh login other than the delegated one => REFUSED, nothing dispatched
+  R8  the definition failing AT the digest step => owner step 11a: ONE deploy.yml dispatch with ci_gate=require-ci-green (never the override), then the definition again; a second digest failure HALTS
+  R9  a definition run failing at any other step, a failed or pipeline-job-skipped package run, or a dispatch whose run never appears => HALT marker + one page, nothing else is done
+  R10 the gh allow-list: reads + the two dispatches only — never the seal workflow, an approval, the override choice, a POST or gcloud
+  R11 run evidence for another commit is refused, never used
+  R12 the names the controller reads (workflow files, confirm phrase, job, steps, deploy jobs, ci_gate) exist in the real workflow files
+  L1  a retained step-10 proof (view returned >= 1 job entry, only job entries) is re-measured, reaches approval requested, and the bundle + surrogate message carry `view_refusal_outside` = NULL   (surrogate ruling 09:2xZ)
+  L2  no retained proof => HOLD (named), no approval prepared
+  L3  a non-job entry in the retained view => HOLD naming it
+  L4  an empty view => HOLD
+  L5  a retained proof that reports `view_refusal_outside` green (or any recorded row/verdict the groups do not give) => HOLD: a signal without a detector is null, never green   (§N.8)
+  L6  a proof of another run / attempt is never reused => HOLD
+(the detector's own claims V1–V8 are in test_log_view_proof.py)
 """
 from __future__ import annotations
 
@@ -61,6 +80,7 @@ def _load(name, path):
 
 import os  # noqa: E402
 
+lvp_real = _load("log_view_proof_real", HERE.parent / "log_view_proof.py")        # fixtures are always built by the REAL detector; the controller under test loads its own sibling
 sc = _load("seal_controller_under_test", Path(os.environ.get("SEAL_CONTROLLER", HERE.parent / "seal_controller.py")))
 chk = _load("seal_check_real", SCRIPTS / "gochara_seal_brief_check.py")
 exe = _load("seal_exec_real", SCRIPTS / "gochara_seal_execution_check.py")
@@ -86,12 +106,99 @@ def git(repo: Path, *args: str) -> str:
     return p.stdout.strip()
 
 
+NOW = __import__("datetime").datetime(2026, 10, 22, 10, 0, 0, tzinfo=__import__("datetime").timezone.utc)
+OLD_SHA = "9" * 40
+
+
+def run_row(rid, head, *, status="completed", conclusion="success", event="workflow_dispatch", branch="main", created="2026-10-22T09:00:00Z"):
+    return {"id": rid, "head_sha": head, "status": status, "conclusion": conclusion if status == "completed" else None, "event": event, "head_branch": branch,
+            "created_at": created, "html_url": f"https://github.example/runs/{rid}"}
+
+
+def def_jobs(*, fail=None, skip=None):
+    """The definition workflow's steps (names as in the real file, long forms), one job.  `fail` = a DEF_STEPS prefix that fails (later steps skipped); `skip` = a prefix that reads skipped."""
+    steps, failed = [], False
+    for name in ("Set up job", "Checkout the dispatched commit", "Authenticate to Google Cloud"):
+        steps.append({"name": name, "conclusion": "success"})
+    for prefix in sc.DEF_STEPS:
+        full = prefix + " (long form as in the workflow)"
+        if failed:
+            steps.append({"name": full, "conclusion": "skipped"})
+        elif fail == prefix:
+            steps.append({"name": full, "conclusion": "failure"})
+            failed = True
+        elif skip == prefix:
+            steps.append({"name": full, "conclusion": "skipped"})
+        else:
+            steps.append({"name": full, "conclusion": "success"})
+    return [{"name": sc.DEF_JOB, "status": "completed", "conclusion": "failure" if failed else "success", "steps": steps}]
+
+
+def pkg_jobs(*, pipeline="success", outcome="success"):
+    return [{"name": "Gate & detect changed paths", "status": "completed", "conclusion": "success", "steps": []},
+            {"name": sc.PKG_JOBS[0], "status": "completed", "conclusion": pipeline, "steps": []},
+            {"name": sc.PKG_JOBS[1], "status": "completed", "conclusion": outcome, "steps": []}]
+
+
+def view_entry(job="gochara-verification-job", typ="cloud_run_job"):
+    return {"insertId": "x", "resource": {"type": typ, "labels": {"job_name": job, "project_id": "madhav-astrology"}}, "jsonPayload": {"message": "not retained"}}
+
+
+GOOD_VIEW = [view_entry(), view_entry(), view_entry()]
+
+
+class FakeGh:
+    """The delegated gh login: answers only what the controller's allow-list lets it ask, from fixture state; records every call."""
+
+    def __init__(self, head):
+        self.head, self.tip, self.login = head, head, APPROVER
+        self.runs = {sc.CI_WORKFLOW: [run_row(100, head, event="push")], sc.DEF_WORKFLOW: [run_row(9001, head)], sc.PKG_WORKFLOW: []}
+        self.jobs = {9001: def_jobs()}
+        self.calls, self.dispatched = [], []
+        self.next_id, self.appear, self.dispatch_rc, self.no_filter = 9100, True, 0, False
+
+    def __call__(self, argv):
+        self.calls.append(list(argv))
+        assert sc.gh_allowed(argv), f"gh call off the allow-list: {argv}"
+        done = lambda doc: subprocess.CompletedProcess(argv, 0, json.dumps(doc), "")          # noqa: E731
+        if argv[0] == "workflow":
+            self.dispatched.append(list(argv))
+            if self.dispatch_rc:
+                return subprocess.CompletedProcess(argv, self.dispatch_rc, "", "denied")
+            if self.appear:
+                wf = argv[2]
+                self.runs[wf].append(run_row(self.next_id, self.head, status="queued", created="2026-10-22T10:00:00Z"))
+                self.jobs[self.next_id] = []
+                self.next_id += 1
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        path = argv[3]
+        if path == "user":
+            return done({"login": self.login})
+        if path.endswith("git/ref/heads/main"):
+            return done({"ref": "refs/heads/main", "object": {"sha": self.tip}})
+        m = re.search(r"workflows/([\w.-]+)/runs\?head_sha=([0-9a-f]{40})", path)
+        if m:
+            rows = [r for r in self.runs[m.group(1)] if self.no_filter or r["head_sha"] == m.group(2)]
+            return done({"total_count": len(rows), "workflow_runs": rows})
+        m = re.search(r"actions/runs/(\d+)/jobs", path)
+        jobs = self.jobs.get(int(m.group(1)), [])
+        return done({"total_count": len(jobs), "jobs": jobs})
+
+    def complete(self, wf, rid, conclusion, jobs):
+        row = next(r for r in self.runs[wf] if r["id"] == rid)
+        row.update(status="completed", conclusion=conclusion)
+        self.jobs[rid] = jobs
+
+    def writes(self):
+        return [c for c in self.calls if c[0] == "workflow"]
+
+
 class World:
     """A disposable cockpit: a git repo whose main holds the head, adopted file, aggregate, retained brief + compact + envelope, executor receipts, output dir, PAGES.log."""
 
     def __init__(self, root: Path, *, windows=1000, numbered=400, inconclusive=5, g6=True, brief_gate_shift=0, head_on_main=True, grain_commit=None,
                  drop_class=False, grain_status="VERIFIED", attestation="PASSED", live_extra=0, with_brief=True, env_run=RUN, env_attempt=ATT, brief_producer_head=None,
-                 quiescence=None, verification=True, candidate_violations=()):
+                 quiescence=None, verification=True, candidate_violations=(), logview="ok"):
         self.root = root
         self.ops, self.out, self.pages = root / "ops", root / "out", root / "fast" / "PAGES.log"
         (self.ops / "receipts").mkdir(parents=True)
@@ -153,12 +260,17 @@ class World:
                     "expected_classes": CLASSES, "repo": str(self.repo), "approval_history_file": str(self.history), "seal_run_file": str(self.run_file)}
         if with_brief:
             self.cfg.update(brief_run={"run_id": RUN, "attempt": ATT}, brief_file=str(self.brief), compact_file=str(self.compact), envelope_file=str(self.envelope))
+            self.proof = root / "logview_proof.json"
+            if logview is not None:
+                self.write_proof(**({} if logview == "ok" else logview))
+                self.cfg["logview_proof_file"] = str(self.proof)
         if quiescence is not None:
             self.cfg["quiescence_operation_id"] = "q-op"
             doc = {"schema": "ky.mechanical_quiescence/1", "by": "executor-mechanical", "operation_id": "q-op", "result": "ACCEPTED", "checks": quiescence, "reviewed_commit": self.head,
                    "ts": "2026-10-22T01:00:00Z"}
             (self.ops / "acceptance" / "q-op.quiescence.json").write_text(json.dumps(doc))
         self.write_cfg()
+        self.gh = FakeGh(self.head)
         if verification:
             self.receipt(VERIF_OP, "verification_job", "COMPLETED", 0, "ok\n", self.head)
         # the live grain readback
@@ -177,6 +289,11 @@ class World:
         self.answer(sc.op_id("seal-controller-grains", self.cfg), "\t".join(sc.GRAIN_HEADER) + "\n" + "\n".join(rows) + "\n")
 
     # -- fixture plumbing
+    def write_proof(self, *, probe=None, execution=None, run=RUN, attempt=ATT):
+        doc = lvp_real.build({"probe": GOOD_VIEW if probe is None else probe, "execution": GOOD_VIEW if execution is None else execution}, run_id=run, attempt=attempt, execution="gochara-verification-job-7bwpr")
+        self.proof.write_text(json.dumps(doc))
+        return doc
+
     def write_cfg(self):
         (self.root / "ADOPTED.json").write_text(json.dumps(self.cfg))
 
@@ -205,6 +322,8 @@ class World:
         return "\t".join(sc.SEAL_HEADER) + f"\n{pub}\t{seals}\t{r}\n"
 
     def run(self, **kw):
+        kw.setdefault("gh", self.gh)
+        kw.setdefault("now", NOW)
         return sc.run(self.root / "ADOPTED.json", self.ops, self.out, self.pages, scripts_override=str(SCRIPTS), python=sys.executable, main_ref="main", **kw)
 
     def pages_lines(self, tag=None):
@@ -294,7 +413,7 @@ def test_a8_no_grain_readback_requests_one_and_passes_nothing(w, tmp_path):
 def test_b1_no_brief_prepares_the_dispatch_command_and_pages_once(w):
     world = w(with_brief=False)
     st = world.run()
-    assert st["kind"] == sc.AWAITING_BRIEF and st["stage"] == "AGGREGATE", st
+    assert st["kind"] == sc.AWAITING_BRIEF and st["stage"] == "REDEPLOY", st
     world.run()
     pages = world.pages_lines("SEAL-BRIEF-DISPATCH")
     assert len(pages) == 1
@@ -305,33 +424,33 @@ def test_b1_no_brief_prepares_the_dispatch_command_and_pages_once(w):
 def test_b2_brief_the_reviewed_check_refuses_is_refused(w):
     world = w(candidate_violations=[{"violation": "x"}])                # internally consistent (digest, envelope) but the candidate gate has a violation: only the check sees it
     st = world.run()
-    not_passed(world, st, sc.REFUSED, "AGGREGATE")
+    not_passed(world, st, sc.REFUSED, "REDEPLOY")
     assert "seal brief check exit 2" in st["reason"]
 
 
 def test_b3_head_not_on_main_is_refused(w):
     world = w(head_on_main=False)
     st = world.run()
-    not_passed(world, st, sc.REFUSED, "AGGREGATE")
+    not_passed(world, st, sc.REFUSED, "REDEPLOY")
     assert "not main-produced" in st["reason"]
 
 
 def test_b4_envelope_of_another_run_is_refused(w):
     world = w(env_run=RUN + 1)
     st = world.run()
-    not_passed(world, st, sc.REFUSED, "AGGREGATE")
+    not_passed(world, st, sc.REFUSED, "REDEPLOY")
     assert "envelope" in st["reason"]
 
 
 def test_b5_brief_verdict_must_equal_the_aggregate(w):
     world = w(brief_gate_shift=2)
     st = world.run()
-    not_passed(world, st, sc.DISAGREEMENT, "AGGREGATE")
+    not_passed(world, st, sc.DISAGREEMENT, "REDEPLOY")
 
 
 def test_b6_brief_produced_for_another_head_is_stale(w):
     world = w(brief_producer_head="b" * 40)
-    not_passed(world, world.run(), sc.STALE_HEAD, "AGGREGATE")
+    not_passed(world, world.run(), sc.STALE_HEAD, "REDEPLOY")
 
 
 # ── C: the approval preparation ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -401,7 +520,7 @@ def test_c4_brief_changed_after_preparation_is_refused_not_reapproved(w):
     assert st["kind"] == sc.REFUSED and "start a fresh run" in st["reason"], st
 
 
-def test_c5_the_controller_runs_only_python_and_git(w, monkeypatch):
+def test_c5_the_controller_itself_runs_only_python_and_git_and_gh_only_through_the_allow_list(w, monkeypatch):
     world = w()
     seen = []
     real = subprocess.run
@@ -414,9 +533,11 @@ def test_c5_the_controller_runs_only_python_and_git(w, monkeypatch):
     world.run()
     world.approve()
     world.run()
-    assert seen and set(seen) <= {"git", Path(sys.executable).name}, seen
+    assert seen and set(seen) <= {"git", Path(sys.executable).name}, seen             # gh is only ever called through the injected runner
+    assert world.gh.calls and all(sc.gh_allowed(c) for c in world.gh.calls)
     src = (HERE.parent / "seal_controller.py").read_text()
-    assert not re.search(r"subprocess\.\w+\(\s*\[\s*[\"'](gh|gcloud|claude|codex)[\"']", src)
+    assert not re.search(r"subprocess\.\w+\(\s*\[\s*[\"'](gcloud|claude|codex)[\"']", src)
+    assert len(re.findall(r"subprocess\.\w+\(\s*\[\s*[\"']gh[\"']", src)) == 1       # the one default runner; every other gh call goes through gh_allowed
 
 
 # ── D: approval and sealer ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -518,6 +639,299 @@ def test_e5_not_yet_sealed_while_the_run_is_pending_waits(w):
     world.answer_latest_request(world.seal_row(pub="candidate", seals=0, receipts=False))
     st = world.run()
     assert st["kind"] == sc.AWAITING_SEAL and world.pages_lines("SEAL-HALT") == [] and world.pages_lines("SEAL-RETRY-NEEDED") == [], st
+
+
+# ── R: owner step 11 — the checking job redeployed at the sealing version (A11 item 9) ────────────────────────────────────────────
+
+def digest_failed(world, rid=9001, created="2026-10-22T09:00:00Z"):
+    """The only definition run at the head failed at the digest step: no pipeline image exists for the sealing commit."""
+    world.gh.runs[sc.DEF_WORKFLOW] = [run_row(rid, world.head, conclusion="failure", created=created)]
+    world.gh.jobs[rid] = def_jobs(fail=sc.DEF_STEPS[0])
+
+
+def no_definition(world):
+    world.gh.runs[sc.DEF_WORKFLOW] = []
+
+
+def test_r1_done_is_a_success_run_at_the_head_whose_job_and_named_steps_read_back_then_one_page_and_the_bundle_carries_it(w):
+    world = w()
+    st = world.run()
+    assert st["stage"] == "APPROVAL_REQUESTED" and st["kind"] == sc.AWAITING_APPROVAL, st
+    assert len(world.pages_lines("SEAL-REDEPLOY-DONE")) == 1 and "reread_step8_permission=required" in world.pages_lines("SEAL-REDEPLOY-DONE")[0]
+    ev = json.loads((world.out / "REDEPLOY.json").read_text())["evidence"]["definition"]
+    assert ev["run_id"] == 9001 and ev["job_conclusion"] == "success" and set(ev["steps"]) == set(sc.DEF_STEPS) and set(ev["steps"].values()) == {"success"}
+    bundle = json.loads(next((world.out / "approval").rglob("APPROVAL_BUNDLE.json")).read_text())
+    assert bundle["evidence"]["redeploy"]["definition"]["run_id"] == 9001
+    world.run()
+    assert len(world.pages_lines("SEAL-REDEPLOY-DONE")) == 1 and world.gh.writes() == []        # evidence found => nothing is dispatched, the page is not repeated
+
+
+@pytest.mark.parametrize("skipped_step", [sc.DEF_STEPS[2], sc.DEF_STEPS[3]])
+def test_r2_a_success_run_whose_readback_or_preflight_did_not_read_back_is_not_accepted(w, skipped_step):
+    world = w()
+    world.gh.jobs[9001] = def_jobs(skip=skipped_step)                                      # the run itself concluded `success`
+    st = world.run()
+    not_passed(world, st, sc.NOT_PASSED, "AGGREGATE")
+    assert skipped_step in st["reason"] and world.gh.writes() == [] and world.pages_lines("SEAL-REDEPLOY-DONE") == []
+
+
+def test_r3_main_moved_stales_step_11_and_nothing_is_dispatched(w):
+    world = w()
+    no_definition(world)
+    world.gh.tip = "b" * 40
+    st = world.run(execute_redeploy=True)
+    not_passed(world, st, sc.STALE_HEAD, "AGGREGATE")
+    assert "main moved" in st["reason"] and world.gh.writes() == []
+
+
+def test_r3b_a_finished_redeploy_is_stale_when_main_moves_before_the_brief_but_not_after(tmp_path):
+    before = World(tmp_path / "a", with_brief=False)
+    before.gh.tip = "b" * 40
+    not_passed(before, before.run(), sc.STALE_HEAD, "AGGREGATE")
+    after = World(tmp_path / "b")                                                          # the brief is produced: later merges no longer stale the seal chain
+    after.gh.tip = "b" * 40
+    assert after.run()["stage"] == "APPROVAL_REQUESTED"
+
+
+@pytest.mark.parametrize("ci,kind", [([], sc.NOT_PASSED), ([("failure", "completed", "2026-10-22T08:00:00Z")], sc.NOT_PASSED),
+                                     ([("success", "completed", "2026-10-22T08:00:00Z"), (None, "in_progress", "2026-10-22T08:30:00Z")], sc.AWAITING_CI)])
+def test_r4_ci_not_green_at_the_head_dispatches_nothing(w, ci, kind):
+    world = w()
+    no_definition(world)
+    world.gh.runs[sc.CI_WORKFLOW] = [run_row(200 + i, world.head, status=stt, conclusion=c, event="push", created=t) for i, (c, stt, t) in enumerate(ci)]
+    st = world.run(execute_redeploy=True)
+    not_passed(world, st, kind, "AGGREGATE")
+    assert world.gh.writes() == []
+
+
+def test_r5_without_the_execute_flag_the_dispatch_is_prepared_and_paged_once_and_nothing_is_written_to_github(w):
+    world = w()
+    no_definition(world)
+    st = world.run()
+    assert st["kind"] == sc.AWAITING_REDEPLOY and st["stage"] == "AGGREGATE", st
+    text = (world.out / "REDEPLOY_DISPATCH.txt").read_text()
+    assert f"gh workflow run {sc.DEF_WORKFLOW} --repo {sc.REPO_SLUG} --ref main -f confirm=DEFINE-GOCHARA-VERIFICATION-JOB" in text
+    world.run()
+    assert len(world.pages_lines("SEAL-REDEPLOY-DISPATCH-NEEDED")) == 1 and world.gh.writes() == []
+
+
+def test_r6_execute_dispatches_the_definition_exactly_once_and_advances_on_the_read_back(w):
+    world = w()
+    no_definition(world)
+    world.gh.appear = False                                                                # the run is not visible yet
+    st = world.run(execute_redeploy=True)
+    assert st["kind"] == sc.AWAITING_REDEPLOY and world.gh.writes() == [sc.def_dispatch_argv()], st
+    assert len(world.pages_lines("SEAL-REDEPLOY-DISPATCHED")) == 1
+    world.run(execute_redeploy=True)
+    assert world.gh.writes() == [sc.def_dispatch_argv()], "a dispatch that is not visible yet must not be repeated"
+    world.gh.runs[sc.DEF_WORKFLOW].append(run_row(9100, world.head, status="in_progress", created="2026-10-22T10:00:30Z"))
+    st = world.run(execute_redeploy=True)
+    assert st["kind"] == sc.AWAITING_REDEPLOY and "9100" in st["reason"] and len(world.gh.writes()) == 1
+    world.gh.complete(sc.DEF_WORKFLOW, 9100, "success", def_jobs())
+    st = world.run(execute_redeploy=True)
+    assert st["stage"] == "APPROVAL_REQUESTED" and len(world.gh.writes()) == 1
+    assert len(world.pages_lines("SEAL-REDEPLOY-DONE")) == 1
+
+
+def test_r7_a_gh_login_other_than_the_delegated_one_dispatches_nothing(w):
+    world = w()
+    no_definition(world)
+    world.gh.login = "someone-else"
+    st = world.run(execute_redeploy=True)
+    not_passed(world, st, sc.REFUSED, "AGGREGATE")
+    assert world.gh.writes() == [] and not list((world.out / "markers").glob("REDEPLOY_*"))
+
+
+def test_r8_no_pipeline_image_builds_the_package_with_the_ci_gate_then_defines_again(w):
+    world = w()
+    digest_failed(world)
+    st = world.run(execute_redeploy=True)
+    assert st["kind"] == sc.AWAITING_REDEPLOY and world.gh.writes() == [sc.pkg_dispatch_argv()], st
+    argv = world.gh.writes()[0]
+    assert "ci_gate=require-ci-green" in argv and not any("EMERGENCY" in x or "OVERRIDE" in x.upper() for x in argv)
+    world.run(execute_redeploy=True)
+    assert len(world.gh.writes()) == 1, "the package build is dispatched once"
+    world.gh.complete(sc.PKG_WORKFLOW, 9100, "success", pkg_jobs())
+    st = world.run(execute_redeploy=True)
+    assert st["kind"] == sc.AWAITING_REDEPLOY and world.gh.writes() == [sc.pkg_dispatch_argv(), sc.def_dispatch_argv()], st
+    world.gh.complete(sc.DEF_WORKFLOW, 9101, "success", def_jobs())
+    st = world.run(execute_redeploy=True)
+    assert st["stage"] == "APPROVAL_REQUESTED", st
+    ev = json.loads((world.out / "REDEPLOY.json").read_text())["evidence"]
+    assert ev["definition"]["run_id"] == 9101 and ev["package"]["run_id"] == 9100 and ev["package"]["jobs"][sc.PKG_JOBS[0]] == "success"
+
+
+def test_r8b_a_second_digest_failure_after_the_package_build_halts(w):
+    world = w()
+    digest_failed(world)
+    world.run(execute_redeploy=True)
+    world.gh.complete(sc.PKG_WORKFLOW, 9100, "success", pkg_jobs())
+    world.run(execute_redeploy=True)
+    world.gh.complete(sc.DEF_WORKFLOW, 9101, "failure", def_jobs(fail=sc.DEF_STEPS[0]))
+    st = world.run(execute_redeploy=True)
+    assert st["kind"] == sc.HALTED and len(world.gh.writes()) == 2, st
+    assert len(world.pages_lines("SEAL-HALT")) == 1 and (world.out / "markers" / f"HALT.{GEN}.{world.head}").exists()
+    world.run(execute_redeploy=True)
+    assert len(world.gh.writes()) == 2 and len(world.pages_lines("SEAL-HALT")) == 1
+
+
+def test_r8c_the_definition_is_dispatched_at_most_twice_per_key_even_after_a_person_rebuilds_the_package(w):
+    world = w()
+    digest_failed(world)
+    world.run(execute_redeploy=True)                                                       # package build (9100)
+    world.gh.complete(sc.PKG_WORKFLOW, 9100, "success", pkg_jobs())
+    world.run(execute_redeploy=True)                                                       # definition #1 (9101)
+    world.gh.complete(sc.DEF_WORKFLOW, 9101, "failure", def_jobs(fail=sc.DEF_STEPS[0]))
+    world.gh.runs[sc.PKG_WORKFLOW].append(run_row(9200, world.head, created="2026-10-22T10:30:00Z"))      # a person rebuilt the package by hand
+    world.gh.jobs[9200] = pkg_jobs()
+    world.run(execute_redeploy=True)                                                       # definition #2 (9102)
+    world.gh.complete(sc.DEF_WORKFLOW, 9102, "failure", def_jobs(fail=sc.DEF_STEPS[0]))
+    world.gh.runs[sc.PKG_WORKFLOW].append(run_row(9201, world.head, created="2026-10-22T10:45:00Z"))
+    world.gh.jobs[9201] = pkg_jobs()
+    st = world.run(execute_redeploy=True)
+    assert st["kind"] == sc.HALTED and "twice" in st["reason"] and len(world.gh.writes()) == 3, st.get("reason")
+
+
+def test_r9a_a_definition_failing_after_the_digest_step_halts_and_is_never_retried(w):
+    world = w()
+    world.gh.runs[sc.DEF_WORKFLOW] = [run_row(9001, world.head, conclusion="failure")]
+    world.gh.jobs[9001] = def_jobs(fail=sc.DEF_STEPS[1])
+    st = world.run(execute_redeploy=True)
+    assert st["kind"] == sc.HALTED and world.gh.writes() == [] and len(world.pages_lines("SEAL-HALT")) == 1, st
+
+
+@pytest.mark.parametrize("pkg_conclusion,jobs", [("failure", pkg_jobs(pipeline="failure", outcome="failure")), ("success", pkg_jobs(pipeline="skipped"))])
+def test_r9b_a_failed_or_image_less_package_run_halts(w, pkg_conclusion, jobs):
+    world = w()
+    digest_failed(world)
+    world.gh.runs[sc.PKG_WORKFLOW] = [run_row(9050, world.head, conclusion=pkg_conclusion, created="2026-10-22T09:30:00Z")]
+    world.gh.jobs[9050] = jobs
+    st = world.run(execute_redeploy=True)
+    assert st["kind"] == sc.HALTED and world.gh.writes() == [] and len(world.pages_lines("SEAL-HALT")) == 1, st
+
+
+def test_r9c_a_dispatch_whose_run_never_appears_waits_then_halts_after_twenty_minutes(w):
+    import datetime
+    world = w()
+    no_definition(world)
+    world.gh.appear = False
+    world.run(execute_redeploy=True)
+    st = world.run(execute_redeploy=True, now=NOW + datetime.timedelta(minutes=5))
+    assert st["kind"] == sc.AWAITING_REDEPLOY and len(world.gh.writes()) == 1
+    st = world.run(execute_redeploy=True, now=NOW + datetime.timedelta(minutes=25))
+    assert st["kind"] == sc.HALTED and len(world.gh.writes()) == 1 and len(world.pages_lines("SEAL-HALT")) == 1, st
+
+
+def test_r9d_a_dispatch_that_gh_refuses_leaves_no_marker_and_is_not_counted(w):
+    world = w()
+    no_definition(world)
+    world.gh.dispatch_rc = 1
+    st = world.run(execute_redeploy=True)
+    assert st["kind"] == sc.NO_INPUT and not list((world.out / "markers").glob("REDEPLOY_DEF*")), st
+    world.gh.dispatch_rc = 0
+    world.run(execute_redeploy=True)
+    assert len(world.gh.writes()) == 2 and len(list((world.out / "markers").glob("REDEPLOY_DEF*"))) == 1
+
+
+def test_r10_the_gh_allow_list_is_reads_and_the_two_dispatches_only():
+    slug, head = sc.REPO_SLUG, "a" * 40
+    allowed = [["api", "-X", "GET", "user"], ["api", "-X", "GET", f"repos/{slug}/git/ref/heads/main"], sc.def_dispatch_argv(), sc.pkg_dispatch_argv(),
+               ["api", "-X", "GET", sc.runs_path("ci.yml", head)], ["api", "-X", "GET", sc.jobs_path(123)]]
+    assert all(sc.gh_allowed(a) for a in allowed)
+    refused = [["workflow", "run", sc.WORKFLOW, "--repo", slug, "--ref", "main", "-f", f"confirm={sc.CONFIRM}"],                    # the seal / brief workflow
+               sc.def_dispatch_argv() + ["-f", "x=y"],
+               [x.replace("require-ci-green", "EMERGENCY-OVERRIDE-CI-NOT-GREEN") for x in sc.pkg_dispatch_argv()],                  # the CI-gate override choice
+               [x for x in sc.pkg_dispatch_argv() if x != "force_all_services=true"],
+               ["api", "-X", "POST", f"repos/{slug}/actions/runs/1/pending_deployments"], ["api", "-X", "GET", f"repos/{slug}/environments/{sc.ENVIRONMENT}"],
+               ["api", "-X", "GET", f"repos/{slug}/actions/workflows/ci.yml/runs?head_sha=main&per_page=50"], ["pr", "merge", "1"], ["run", "jobs", "execute"],
+               ["workflow", "run", sc.PKG_WORKFLOW, "--repo", "other/repo", "--ref", "main", "-f", "ci_gate=require-ci-green", "-f", "force_all_services=true"]]
+    assert not any(sc.gh_allowed(a) for a in refused), [a for a in refused if sc.gh_allowed(a)]
+    src = (HERE.parent / "seal_controller.py").read_text()
+    assert "EMERGENCY" not in src and sc.CI_GATE == "require-ci-green"
+
+
+def test_r11_run_evidence_for_another_commit_or_branch_is_never_used(w):
+    world = w()
+    world.gh.runs[sc.DEF_WORKFLOW] = [run_row(9001, OLD_SHA)]
+    world.gh.no_filter = True                                                              # a response about another commit is refused outright
+    not_passed(world, world.run(), sc.NO_INPUT, "AGGREGATE")
+    world.gh.no_filter = False
+    world.gh.runs[sc.DEF_WORKFLOW] = [run_row(9001, world.head, branch="feature/x")]       # a success run from another branch is not the main definition
+    st = world.run()
+    assert st["kind"] == sc.AWAITING_REDEPLOY and "prepared" in st["reason"] and world.pages_lines("SEAL-REDEPLOY-DONE") == []
+
+
+def test_r12_the_names_the_controller_reads_exist_in_the_real_workflow_files():
+    wf = REPO / ".github" / "workflows"
+    d, dep, ci = (wf / sc.DEF_WORKFLOW).read_text(), (wf / sc.PKG_WORKFLOW).read_text(), (wf / sc.CI_WORKFLOW).read_text()
+    assert sc.DEF_CONFIRM in d and f"name: {sc.DEF_JOB}" in d and "name: Gochara verification job (definition, reviewed)" in d
+    assert re.search(r"on:\s*\n\s*workflow_dispatch:", d)
+    for prefix in sc.DEF_STEPS:
+        assert re.search(rf"^\s*- name: {re.escape(prefix)}", d, re.M), prefix
+    for job in sc.PKG_JOBS:
+        assert re.search(rf"^\s*name: {re.escape(job)}\s*$", dep, re.M), job
+    assert re.search(r"ci_gate:.*?default: require-ci-green", dep, re.S) and "force_all_services:" in dep and 'workflows: ["CI — Ganga Quality Gate"]' in dep
+    assert "name: CI — Ganga Quality Gate" in ci
+
+
+
+# ── L: step 10, the positive log-view proof ───────────────────────────────────────────────────────────────────────────────────────
+
+def test_l1_a_proven_view_reaches_approval_requested_and_the_outside_refusal_is_carried_as_null(w):
+    world = w()
+    world.to_approval_requested()
+    bundle = json.loads(next((world.out / "approval").rglob("APPROVAL_BUNDLE.json")).read_text())
+    rows = {r["check"]: r for r in bundle["evidence"]["logview"]["rows"]}
+    assert rows["view_returns_job_entries"]["result"] is True and rows["view_only_job_entries"]["result"] is True
+    assert rows["view_refusal_outside"]["result"] is None                                  # null, never green
+    assert "SR-LOGVIEW-NARROW-KEEP" in rows["view_refusal_outside"]["reason"] and "LOGVIEW-NARROW-IAC" in rows["view_refusal_outside"]["reason"]
+    msg = (world.out / "SURROGATE_MESSAGE.txt").read_text()
+    assert "view_refusal_outside = NULL" in msg and "not green" in msg
+
+
+def test_l2_no_retained_proof_holds_with_a_named_reason_and_prepares_no_approval(w):
+    world = w(logview=None)
+    st = world.run()
+    not_passed(world, st, sc.HOLD, "BRIEF")
+    assert "positive_log_view_proof" in st["reason"] and "no retained proof" in st["reason"]
+    assert not (world.out / "approval").exists()
+
+
+def test_l3_a_non_job_entry_in_the_view_holds_naming_it(w):
+    world = w(logview={"probe": GOOD_VIEW + [view_entry(job="some-other-job"), view_entry(typ="gce_instance")]})
+    st = world.run()
+    not_passed(world, st, sc.HOLD, "BRIEF")
+    assert "positive_log_view_proof" in st["reason"] and "view_only_job_entries" in st["reason"] and "some-other-job" in st["reason"]
+
+
+@pytest.mark.parametrize("kw", [{"probe": []}, {"execution": []}])
+def test_l4_an_empty_view_holds(w, kw):
+    world = w(logview=kw)
+    st = world.run()
+    not_passed(world, st, sc.HOLD, "BRIEF")
+    assert "view_returns_job_entries" in st["reason"] and "empty view proves nothing" in st["reason"], st
+
+
+def test_l5_a_proof_that_reports_the_outside_refusal_green_holds(w):
+    world = w()
+    doc = json.loads(world.proof.read_text())
+    doc["rows"][-1]["result"] = True                                                       # a green signal with no detector behind it
+    world.proof.write_text(json.dumps(doc))
+    st = world.run()
+    not_passed(world, st, sc.HOLD, "BRIEF")
+    assert "recorded rows differ" in st["reason"], st
+    doc["rows"][-1]["result"] = None
+    doc["passed"] = False                                                                    # a recorded verdict the rows do not give
+    world.proof.write_text(json.dumps(doc))
+    assert "recorded verdict differs" in world.run()["reason"]
+
+
+@pytest.mark.parametrize("kw", [{"run": RUN + 1}, {"attempt": ATT + 1}])
+def test_l6_a_proof_of_another_run_or_attempt_is_never_reused(w, kw):
+    world = w(logview=kw)
+    st = world.run()
+    not_passed(world, st, sc.HOLD, "BRIEF")
+    assert "not the brief run" in st["reason"], st
 
 
 # ── P: parity with the reviewed scripts the controller must agree with ─────────────────────────────────────────────────────────────

@@ -1415,6 +1415,16 @@ def _build_writer_class():
             with conn.cursor() as cur:
                 cur.executemany(_INSERT_SQL, all_rows)
 
+            # K9 (SR-K9-PUBLISHABLE, r4 N4): ka_yojaka -> this map -> ka_gochara, so the K9 plan carries this
+            # writer, and a plan writer owes its candidate an input grain (publication.py _candidate). Only a
+            # complete map reaches here (an incomplete one returned above, leaving the grain absent and the
+            # publication refused); an ordinary rebuild is bound to no candidate and attests nothing.
+            from services.kala_core.writer_grain import attest_inputs, bound_candidate
+            candidate = bound_candidate(conn, getattr(ctx, "build_id", None), chart_id)
+            if candidate is not None:
+                attest_inputs(conn, candidate, self.asset_id,
+                              sources={"gochara_resonance_map": all_rows}, produced_rows=len(all_rows))
+
             logger.info("[ka_gochara_resonance] %d resonance-map rows for chart %s across %d event classes",
                         len(all_rows), chart_id, len(TARGET_EVENT_CLASSES))
             return WriterResult(

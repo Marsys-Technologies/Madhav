@@ -98,3 +98,24 @@ def test_the_cli_reports_over_the_scored_span_by_default(tmp_path, monkeypatch):
     assert dx.main(["--chart-id", "c", "--generation", "5.0", "--dsn-env", "J5Q_TEST_DSN", "--span", "build", "--output", str(out2)],
                    connect=lambda dsn, autocommit: conn) == 0
     assert json.loads(out2.read_text())["horizon_kind"] == "build"
+
+
+# ── J-5q tooling for generation 5.0: the report's span label states BOTH spans ─────────────────────────────────────────────────────
+
+def test_the_span_label_states_the_scored_and_the_build_span_and_which_one_the_shares_are_over():
+    """Claim: the label names the scored span (protocol §1: 1998-01-01..2026-04-17, 10,334 days) AND the century build's span (1998..2084), so a share
+    over one is never read as a share over the other (the dry run's F3: 0.9970 over the build span vs 0.9988 over the scored span)."""
+    rep = dx.report_from_store(_Conn(WINDOW, BUILD), chart_id="c", generation="5.0")
+    assert rep["span_label"] == ("shares over the SCORED span 1998-01-01..2026-04-17 (10,334 days); "
+                                 "scored span 1998-01-01..2026-04-17; build span 1998-01-01..2084-12-31")
+    built = dx.report_from_store(_Conn(WINDOW, BUILD), chart_id="c", generation="5.0", span="build")
+    assert built["span_label"].startswith("shares over the BUILD span 1998-01-01..2084-12-31 (31,777 days)")
+    assert "scored span 1998-01-01..2026-04-17" in built["span_label"] and built["span_label"].endswith("build span 1998-01-01..2084-12-31")
+
+
+def test_the_span_label_of_an_override_still_names_both_spans_and_a_build_span_that_was_not_read_is_said_so():
+    over = dx.report_from_store(_Conn(WINDOW, BUILD), chart_id="c", generation="5.0", horizon=(dt.date(2026, 1, 1), dt.date(2026, 12, 31)))
+    assert over["span_label"] == ("shares over the OVERRIDE span 2026-01-01..2026-12-31 (365 days); "
+                                  "scored span 1998-01-01..2026-04-17; build span 1998-01-01..2084-12-31")
+    unread = dx.report_from_store(_Conn(WINDOW, []), chart_id="c", generation="5.0", horizon=(dt.date(2026, 1, 1), dt.date(2026, 12, 31)))
+    assert unread["build_span"] is None and unread["span_label"].endswith("build span not read (explicit override)")
