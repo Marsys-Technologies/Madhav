@@ -93,8 +93,17 @@ def _world(monkeypatch, tmp_path, faithful, apply_1305=True, apply_held=False):
         filled with a filler lord (Ketu) INSIDE the right parent, so the named periods are unchanged and the rest of the horizon is simply 'another lord running'. A legacy
         world (1305 not applied) keeps the gaps and the parentless rows."""
         if not apply_1305:
+            # N-8 / T13: the legacy stub still keeps its gaps and parentless rows, but the TABLE must reach the horizon end at levels 2 and 3 as the
+            # real L1 does — a stub that stops at its last named period would be a table that ENDS before the contact, which now blanks to unknown
+            for level in (2, 3):
+                end = conn.execute("SELECT max(end_iso) FROM public.chart_dashas WHERE level_n = %s", (level,)).fetchone()[0]
+                if end is None or end < H1:
+                    conn.execute(
+                        "INSERT INTO public.chart_dashas(dasha_row_id, chart_id, ayanamsha_id, system_id, level_n, parent_row_id, lord_graha, start_iso, end_iso,"
+                        " build_id, verification_pass_status) VALUES (%s,%s,'lahiri_chitrapaksha','vimshottari',%s,NULL,'Ketu',%s,%s,%s,'two_pass_verified')",
+                        (str(uuid.UUID(int=2000 + level)), CHART_ID, level, end or H0, H1, base_build()))
             return
-        md = conn.execute("SELECT dasha_row_id FROM public.chart_dashas WHERE level_n = 1 ORDER BY start_iso LIMIT 1").fetchone()[0]
+        md =conn.execute("SELECT dasha_row_id FROM public.chart_dashas WHERE level_n = 1 ORDER BY start_iso LIMIT 1").fetchone()[0]
         conn.execute("UPDATE public.chart_dashas SET parent_row_id = %s WHERE level_n = 2 AND parent_row_id IS NULL", (md,))
         counter = [0]
 
@@ -621,3 +630,55 @@ def test_the_seal_time_population_check_accepts_the_ledgered_snapshot(legacy_wor
     w.boot()
     assert str(uuid.UUID(int=900)) in _snapshot_ids(w.conn)
     assert inv.validate_consumed_dasha_population(w.conn, chart_id=CHART_ID, generation=GEN)["consumed"] > 0
+
+
+# ── N-8 / TRIAL_READY T13: a record past the END of the stored daśā table blanks with a named reason; it never fails the build ──────────────────
+# The claims (each with its classical/doctrine ground): (1) coverage is the TABLE's end — the latest end over every lord at the level (Vimśottarī periods
+# are one contiguous chain per level, Parāśara BPHS 46: a lord's own rows end earlier than the chain); (2) a contact whose support reaches past that end is
+# UNMEASURED there, so P1's `period_running_at` is `unknown` with the named reason, never a stored `false` (§N.7.6 honest null; B.10 no invented lord);
+# (3) the independent verifier derives the same blank, so the build does not fail on it; (4) a support ending exactly AT the table end is covered
+# (§4.0 half-open [start, end)).
+
+def _end_table_before_horizon(w):
+    """Remove the fixture's horizon-reaching Ketu fillers: the table now ENDS at the last named period (the state of a short L1 read by the legacy arm)."""
+    w.conn.execute("DELETE FROM public.chart_dashas WHERE lord_graha = 'Ketu' AND dasha_row_id = ANY(%s)",
+                   ([str(uuid.UUID(int=2002)), str(uuid.UUID(int=2003))],))
+
+
+def test_the_coverage_end_is_the_latest_end_over_every_lord_at_the_level():
+    from services.gochara_kernel.dasha_read import table_coverage_end
+    rows = [{"level_n": 2, "lord_graha": "Venus", "end_iso": _t(1, 5)}, {"level_n": 2, "lord_graha": "Ketu", "end_iso": _t(1, 9)},
+            {"level_n": 3, "lord_graha": "Venus", "end_iso": _t(1, 3)}]
+    assert table_coverage_end(rows, "ad") == _t(1, 9) and table_coverage_end(rows, 3) == _t(1, 3)   # the chain's end, not the anchor lord's own
+    assert table_coverage_end(rows, "md") is None                                                   # no row at the level ⇒ nothing is covered
+    assert table_coverage_end(rows, None) == _t(1, 3)                                                # all levels: the shortest level bounds it
+
+
+def test_a_support_past_the_end_of_the_stored_table_blanks_to_unknown_with_the_named_reason(legacy_world):
+    """Venus's only antardaśā and the whole level-2/3 table end in 2023; the contact is in 2025. Nothing is known about who runs then: unrestricted contact
+    span, `unknown` (NOT `false` / computed_empty as for a table that reaches the contact), reason counted — and the build does not fail."""
+    from services.gochara_kernel.dasha_read import PERIOD_TABLE_ENDS_REASON
+    w = legacy_world
+    w.set_periods([(2, datetime(2023, 3, 1, tzinfo=UTC), datetime(2023, 6, 1, tzinfo=UTC))])
+    _end_table_before_horizon(w)
+    w.boot()
+    w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+    counts = w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+    assert _supports(w.conn) == [[(_t(1, 10), _t(1, 25))]] and _results(w.conn) == ["unknown"]
+    assert w.conn.execute("SELECT temporal_support_state FROM public.ka_gochara_relationship_record WHERE path_id = 'P1'").fetchone()[0] == "computed"
+    assert counts[PERIOD_TABLE_ENDS_REASON] == 1
+    # the independent verifier derives the same blank (and counts it as not restricted), so the build is not failed by it
+    assert verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage") == {"records": 1, "restricted": 0}
+
+
+def test_a_support_ending_exactly_at_the_table_end_is_still_covered(legacy_world):
+    """§4.0 half-open [start, end): a table whose last period ends at the contact's end covers all of it, so Venus's running piece is restricted and `true`."""
+    from services.gochara_kernel.dasha_read import PERIOD_TABLE_ENDS_REASON
+    w = legacy_world
+    w.set_periods([(2, _t(1, 1), _t(1, 25))])
+    _end_table_before_horizon(w)
+    w.boot()
+    w.seed("venus", [(180.0, _t(1, 10)), (210.0, _t(1, 25))])
+    counts = w.grain("venus", lambda t: _t(1, 10) <= t < _t(1, 25))
+    assert _supports(w.conn) == [[(_t(1, 10), _t(1, 25))]] and _results(w.conn) == ["true"] and PERIOD_TABLE_ENDS_REASON not in counts
+    assert verify_p1_support(w.conn, chart_id=CHART_ID, generation=GEN, event_class="marriage") == {"records": 1, "restricted": 1}

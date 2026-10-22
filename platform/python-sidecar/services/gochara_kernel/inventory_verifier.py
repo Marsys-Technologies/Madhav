@@ -1300,12 +1300,15 @@ runs AS (
   SELECT lord, level_n, range_agg(tstzrange(s, e, '[)')) AS m
   FROM src WHERE level_n IN (1, 2, 3)
   GROUP BY 1, 2),
+cover AS (                                                    -- where the stored table ENDS at each level (every lord): N-8 / T13
+  SELECT level_n, max(e) AS cend FROM src WHERE level_n IN (1, 2, 3) GROUP BY 1),
 @@HELD@@rec AS (
   SELECT r.record_id, r.period_anchor_lord AS lord,
          CASE r.period_anchor_level WHEN 'md' THEN 1 WHEN 'ad' THEN 2 WHEN 'pd' THEN 3 END AS level_n,
          r.temporal_support_state AS state,
          COALESCE((SELECT range_agg(x) FROM unnest(r.temporal_support_intervals) x), '{}'::tstzmultirange) AS stored,
          tstzrange(c.t_in, COALESCE(c.t_out, upper(cov.completed_horizon)), '[)')::tstzmultirange AS contact,
+         COALESCE(c.t_out, upper(cov.completed_horizon)) AS contact_end,
          (SELECT p.result FROM public.ka_gochara_record_prerequisite p
            WHERE p.record_id = r.record_id AND p.predicate_id = 'period_running_at') AS result
   FROM public.ka_gochara_relationship_record r
@@ -1317,12 +1320,13 @@ runs AS (
   WHERE r.chart_id = %(chart)s AND r.generation = %(gen)s AND r.event_class = %(cls)s
     AND r.path_id = 'P1' AND r.contact_id IS NOT NULL)
 SELECT rec.record_id::text, rec.stored::text,
-       (CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END)::text AS expected_text,
-       rec.stored = (CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS equal,
-       isempty(CASE WHEN held.lord IS NULL THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS expected_empty,
-       rec.result, held.lord IS NOT NULL AS has_rows
+       (CASE WHEN @@UNRESTRICTED@@ THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END)::text AS expected_text,
+       rec.stored = (CASE WHEN @@UNRESTRICTED@@ THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS equal,
+       isempty(CASE WHEN @@UNRESTRICTED@@ THEN rec.contact ELSE rec.contact * COALESCE(runs.m, '{}'::tstzmultirange) END) AS expected_empty,
+       rec.result, NOT (@@UNRESTRICTED@@) AS has_rows
 FROM rec LEFT JOIN held ON (held.lord, held.level_n) = (rec.lord, rec.level_n)
          LEFT JOIN runs ON (runs.lord, runs.level_n) = (rec.lord, rec.level_n)
+         LEFT JOIN cover ON cover.level_n = rec.level_n
 """
 
 # A snapshot WITH a copy (1305, G12) is read from the copy ALONE: the statement must not even NAME the live relation (so it runs with live L1 gone, and
@@ -1348,5 +1352,9 @@ RECORD_SUPPORT_HELD_COPY = """held AS (
   FROM snap, jsonb_array_elements(snap.held_rec) AS e(value)
   WHERE jsonb_typeof(snap.held_rec) = 'array'),
 """
+# "unrestricted + unknown" for a record: the build holds no row for its anchor (lord, level) ANYWHERE, OR the stored table ENDS before the contact does
+# (the part past the table's end is unmeasured: never a `false` — N-8 / T13, §N.7.6). The verifier's OWN statement of it, shared with nothing in the builder.
+RECORD_SUPPORT_UNRESTRICTED = "(held.lord IS NULL OR cover.cend IS NULL OR rec.contact_end > cover.cend)"
+RECORD_SUPPORT_SQL_TEMPLATE = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@UNRESTRICTED@@", RECORD_SUPPORT_UNRESTRICTED)
 RECORD_SUPPORT_SQL_COPY = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", "").replace("@@HELD@@", RECORD_SUPPORT_HELD_COPY)
 RECORD_SUPPORT_SQL = RECORD_SUPPORT_SQL_TEMPLATE.replace("@@LEGACY_ARM@@", RECORD_SUPPORT_LEGACY_ARM).replace("@@HELD@@", RECORD_SUPPORT_HELD_LIVE)

@@ -30,6 +30,24 @@ from services.gochara_grammar.read_tier_policy import (
 PINNED_SYSTEM = "vimshottari"
 #: the period LEVEL tokens a P1 anchor carries → the chart_dashas `level_n` (§4.0: 1 MD, 2 AD, 3 PD)
 LEVEL_N = {"md": 1, "ad": 2, "pd": 3}
+#: the named blank for a P1 record whose support reaches past the END of the stored daśā table (N-8 / TRIAL_READY T13): the running set is
+#: UNMEASURED there, so the prerequisite is `unknown` with this reason — never a stored `false`, never an invented lord, never a failed build (§N.7.6)
+PERIOD_TABLE_ENDS_REASON = "dasha_table_ends_before_support"
+
+
+def table_coverage_end(rows, level: str | int | None = None):
+    """Where the stored table ENDS at `level` (`'md'|'ad'|'pd'` or 1–3): the latest `end_iso` over the rows of EVERY lord at that level
+    (a lord's own rows end earlier than the table; coverage is the table's). `level=None`: the earliest of the per-level ends (a legacy
+    all-level read is covered only as far as its shortest level). None = the table holds no row there. L1 is read, never recomputed (§N.5)."""
+    want = LEVEL_N[level] if isinstance(level, str) else level
+    ends: dict[int, object] = {}
+    for r in rows:
+        lv = r.get("level_n")
+        if lv in (1, 2, 3) and (want is None or lv == want):
+            ends[lv] = r["end_iso"] if lv not in ends else max(ends[lv], r["end_iso"])
+    if not ends:
+        return None
+    return min(ends.values()) if want is None else ends.get(want)
 
 
 SETTLEMENT_PATH = Path(__file__).with_name("dasha_settlement.json")
@@ -213,6 +231,11 @@ def make_period_rows_for(
             and (want_level is None or r.get("level_n") == want_level)
         ]
 
+    def coverage_end(level: str | int | None = None):
+        """Where the pinned table ends at `level` (every lord): see `table_coverage_end`."""
+        rows_for("", level)                       # the lazy pinned read, once
+        return table_coverage_end(state["rows"], level)
+    rows_for.coverage_end = coverage_end
     return rows_for, contract
 
 
@@ -661,10 +684,16 @@ def make_period_rows_for_snapshot(conn, chart_id: str, generation: str) -> tuple
             return True
         return any(lord == want and (want_level is None or lv == want_level) for lord, lv in held_pairs)
     rows_for.holds = holds
+
+    def coverage_end(level: str | int | None = None):
+        """Where the pinned table ends at `level`, read from the copy: the copy holds every row overlapping the horizon (the database refuses
+        one outside it), so a table that runs past the horizon end shows an end at or beyond it and one that stops short shows its true end."""
+        return table_coverage_end(rows, level)
+    rows_for.coverage_end = coverage_end
     return rows_for, contract
 
 
-__all__ = ["PINNED_SYSTEM", "load_pinned_vimshottari", "make_period_rows_for", "make_period_rows_for_snapshot",
+__all__ = ["PERIOD_TABLE_ENDS_REASON", "table_coverage_end", "PINNED_SYSTEM", "load_pinned_vimshottari", "make_period_rows_for", "make_period_rows_for_snapshot",
            "select_dasha_read_contract", "load_dasha_settlement", "DashaBuildRefused",
            "load_governed_dasha_periods", "dasha_query", "execute_governed_dasha_query",
            "observe_dasha_tiers", "validate_live_dasha_periods"]

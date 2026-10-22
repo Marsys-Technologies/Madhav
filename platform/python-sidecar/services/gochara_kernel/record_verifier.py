@@ -8,6 +8,9 @@ what was stored, and the stored `period_running_at` result with what that suppor
 
   anchor with running rows : stored support == contact ∩ D(anchor lord, anchor level); result == true iff non-empty
   anchor with NO rows      : stored support == the contact span (unrestricted);        result == 'unknown'
+  contact past the table end: the same — the stored table ENDS (latest end over every lord at the anchor level) before the contact does:
+                              the part past the end is unmeasured, so stored support == the contact span and result == 'unknown'
+                              (N-8 / TRIAL_READY T13: a record past the table end blanks with a named reason; it never fails the build)
 
 "NO rows" = the pinned settled build holds no row for the anchor (lord, level) ANYWHERE. The snapshot binds only the rows
 overlapping the horizon, so an anchor held in the build but running wholly outside the horizon is NOT "no rows": its
@@ -57,7 +60,7 @@ def verify_p1_support(conn, *, chart_id: str, generation: str, event_class: str)
     for rid, stored, expected, equal, expected_empty, result, has_rows in rows:
         if not equal:
             what = ("the contact restricted to the running periods" if has_rows else
-                    "the unrestricted contact span (no daśā row for the anchor in the pinned build)")
+                    "the unrestricted contact span (no daśā row for the anchor in the pinned build, or the stored table ends before the contact)")
             problems.append(f"record {rid}: stored support {stored} != {what} {expected}")
         want = ("unknown" if not has_rows else ("false" if expected_empty else "true"))
         if result != want:
