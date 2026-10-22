@@ -5,8 +5,9 @@ reversion that fails (root CLAUDE.md §N.8: a signal is measured by a detector t
       otherwise publishes; the two-source stall / re-projection gates read the log source) -- real and dry-run entries, environment restored
   C4a teardown removes EVERY candidate-keyed row of a terminal run's generation, including the resonance writer's ``kala_f1_*`` candidate tables (no foreign key to the candidate;
       relationship_storage.store_projection / migration 1342), and never another run's rows, another chart's rows or the head (SR-K9-PUBLISHABLE D8)
-  C4b ``gochara_resonance_map`` has no generation column (migration 459 + 1080) and the legacy resonance path rewrites the whole chart: teardown never deletes it and
-      names it, with its row count, in the result (N.7.6: an honest report, not a silent pass)
+  C4b ``gochara_resonance_map`` carries the generation (migration 1404) and the resonance writer writes its candidate's partition: a candidate teardown removes exactly the
+      rows of (chart, candidate generation) and every SERVED row is byte-identical before and after (SR-K9-RESONANCE-MAP; sealed rule: served rows survive a failed candidate)
+  C4c the failed-run receipt records the resonance rows removed (count) and the writer run id (N.7.6: an honest report, not a silent pass)
   C5a a cancel on a running run sets the stop request and the run loop starts nothing further: the run ends ``stopped`` at an asset boundary
       (runner.py check_signals / execute_dag / execute_run -> mark_run_state 'stopped')
   C5b the honest limit: an asset already in flight is NOT interrupted (execute_dag drains it), so a cancel acts only between assets
@@ -90,20 +91,22 @@ def test_c3_an_ambient_pubsub_disabled_is_restored_after_the_run(wired, monkeypa
 
 @pytest.fixture
 def plan_tables(ctl):
-    """The write targets of the closed K9 plan that carry the candidate generation without a foreign key to kala_layer_candidate, as migrations 243/1339/1342 and 459 define them."""
+    """The write targets of the closed K9 plan that carry the candidate generation without a foreign key to kala_layer_candidate, as migrations 243/1339/1342 and 459+1404 define them."""
     ctl.execute("CREATE TABLE kala_activation_predicates (id serial PRIMARY KEY, chart_id uuid NOT NULL, generation text NOT NULL DEFAULT 'legacy')")
     ctl.execute('CREATE TABLE kala_f1_target_object (chart_id uuid NOT NULL, ayanamsha_id text NOT NULL, generation text NOT NULL, object_id text NOT NULL, '
                 'PRIMARY KEY (chart_id, ayanamsha_id, generation, object_id))')
     ctl.execute('CREATE TABLE kala_f1_relationship (chart_id uuid NOT NULL, ayanamsha_id text NOT NULL, generation text NOT NULL, edge_id text NOT NULL, object_id text, '
                 'PRIMARY KEY (chart_id, ayanamsha_id, generation, edge_id), '
                 'FOREIGN KEY (chart_id, ayanamsha_id, generation, object_id) REFERENCES kala_f1_target_object (chart_id, ayanamsha_id, generation, object_id))')
-    ctl.execute('CREATE TABLE gochara_resonance_map (id serial PRIMARY KEY, chart_id uuid NOT NULL, event_class text NOT NULL)')
+    ctl.execute("CREATE TABLE gochara_resonance_map (id serial PRIMARY KEY, chart_id uuid NOT NULL, generation text NOT NULL DEFAULT 'legacy', event_class text NOT NULL, "
+                "computed_at timestamptz NOT NULL DEFAULT clock_timestamp())")
     ctl.commit()
     return ctl
 
 
 def seed(conn, chart, generation):
     conn.execute('INSERT INTO kala_activation_predicates (chart_id, generation) VALUES (%s, %s), (%s, %s)', (chart, generation, chart, generation))
+    conn.execute("INSERT INTO gochara_resonance_map (chart_id, generation, event_class) VALUES (%s, %s, 'career'), (%s, %s, 'wealth')", (chart, generation, chart, generation))
     for ayanamsha in ('lahiri', 'raman'):
         conn.execute('INSERT INTO kala_f1_target_object VALUES (%s, %s, %s, %s)', (chart, ayanamsha, generation, 'graha:sun'))
         for edge in ('e1', 'e2'):
@@ -111,7 +114,7 @@ def seed(conn, chart, generation):
     conn.commit()
 
 
-TABLES = ('kala_layer_candidate', 'ka_dep_candidate', 'kala_activation_predicates', 'kala_f1_target_object', 'kala_f1_relationship')
+TABLES = ('kala_layer_candidate', 'ka_dep_candidate', 'kala_activation_predicates', 'kala_f1_target_object', 'kala_f1_relationship', 'gochara_resonance_map')
 
 
 def held(conn, chart, generation):
@@ -119,7 +122,7 @@ def held(conn, chart, generation):
 
 
 def world(conn, plan=PLAN):
-    """Run A (failed, torn down), a later run B of the same chart, and a run of another chart that reuses A's generation name; the legacy resonance table holds the chart's rows."""
+    """Run A (failed, torn down), a later run B of the same chart, and a run of another chart that reuses A's generation name; the resonance table also holds the chart's served ('legacy') rows."""
     a = make_run(conn, 'failed', generation='a', plan=plan)
     b = make_run(conn, 'completed', generation='b', plan=plan)
     other = make_run(conn, 'completed', generation='a', chart=OTHER_CHART, plan=plan)
@@ -130,10 +133,16 @@ def world(conn, plan=PLAN):
     return a, b, other
 
 
+def served_state(conn, chart=CHART, generation='a'):
+    """Every column (id and computed_at included) of every resonance row that is NOT the torn-down run's: the byte-level state of everything else."""
+    return conn.execute('SELECT md5(coalesce(string_agg(t::text, $$|$$ ORDER BY id), $$$$)), count(*) FROM gochara_resonance_map t '
+                        'WHERE NOT (chart_id = %s AND generation = %s)', (chart, generation)).fetchone()
+
+
 def c4a(module, conn):
     a, _b, _other = world(conn)
     assert module.census(conn, a.build_id) == {'kala_layer_candidate': 1, 'ka_dep_candidate': 2, 'kala_activation_predicates': 2,
-                                               'kala_f1_target_object': 2, 'kala_f1_relationship': 4, 'kala_layer_candidate_grain': 2, 'kala_layer_verification': 0}
+                                               'kala_f1_target_object': 2, 'kala_f1_relationship': 4, 'gochara_resonance_map': 2, 'kala_layer_candidate_grain': 2, 'kala_layer_verification': 0}
     kept_b, kept_other = held(conn, CHART, 'b'), held(conn, OTHER_CHART, 'a')
     head = conn.execute('SELECT chart_id, generation FROM kala_layer_head ORDER BY chart_id').fetchall()
     result = module.teardown(conn, run_id=a.build_id)
@@ -142,6 +151,7 @@ def c4a(module, conn):
     assert held(conn, CHART, 'b') == kept_b and held(conn, OTHER_CHART, 'a') == kept_other      # a later run's rows and another chart's rows are untouched
     assert conn.execute('SELECT chart_id, generation FROM kala_layer_head ORDER BY chart_id').fetchall() == head
     assert result['deleted']['kala_f1_relationship'] == 4 and result['deleted']['kala_f1_target_object'] == 2 and result['deleted']['kala_activation_predicates'] == 2
+    assert result['deleted']['gochara_resonance_map'] == 2
 
 
 @BOTH
@@ -153,25 +163,39 @@ def test_c4a_teardown_removes_every_candidate_row_of_the_run_and_only_those(plan
 
 def c4b(module, conn):
     a, _b, _other = world(conn)
+    before = served_state(conn)
+    assert before[1] == 2 + 2 + 3        # run b's rows, the other chart's same-named generation, the chart's served ('legacy') rows
     result = module.teardown(conn, run_id=a.build_id)
-    left = result['chart_scoped_writes_left_alone']
-    assert [(r['asset_id'], r['table'], r['rows_for_chart']) for r in left] == [('ka_gochara_resonance', 'gochara_resonance_map', 3)]
-    assert conn.execute('SELECT count(*) FROM gochara_resonance_map WHERE chart_id = %s', (CHART,)).fetchone()[0] == 3      # never deleted
+    assert result['deleted']['gochara_resonance_map'] == 2
+    assert conn.execute('SELECT count(*) FROM gochara_resonance_map WHERE chart_id = %s AND generation = %s', (CHART, 'a')).fetchone()[0] == 0
+    assert served_state(conn) == before, 'a candidate teardown changed a row that is not the run\'s own (served rows must be byte-identical)'
 
 
 @BOTH
-def test_c4b_the_chart_scoped_resonance_table_is_never_deleted_and_is_named(plan_tables, tmp_path, reverted):
-    # reversion: the writer is no longer named as a chart-scoped write
+def test_c4b_a_candidate_teardown_removes_its_own_resonance_rows_and_leaves_every_other_row_byte_identical(plan_tables, tmp_path, reverted):
+    # reversion: the unlinked-table delete is not scoped to the generation (it takes the chart's whole partition set)
     verdict(reverted, c4b, rebuild_control, tmp_path,
-            "CHART_SCOPED_WRITES = {'ka_gochara_resonance': 'gochara_resonance_map'}", 'CHART_SCOPED_WRITES = {}', plan_tables)
+            "sql.SQL('DELETE FROM {} WHERE chart_id = %s AND generation = %s')", "sql.SQL('DELETE FROM {} WHERE chart_id = %s AND %s::text IS NOT NULL')", plan_tables)
 
 
-def test_c4b_a_plan_without_the_resonance_writer_names_nothing(plan_tables):
+def c4c(module, conn):
+    a, _b, _other = world(conn)
+    result = module.teardown(conn, run_id=a.build_id)
+    assert result['generation_scoped_writes_removed'] == [{'asset_id': 'ka_gochara_resonance', 'table': 'gochara_resonance_map', 'generation': 'a',
+                                                           'rows_deleted': 2, 'writer_run_id': a.build_id}]
+    assert result['chart_scoped_writes_left_alone'] == []       # the receipt keeps its shape; no writer's rows are left alone any more
+
+
+@BOTH
+def test_c4c_the_receipt_records_the_rows_removed_and_the_writer_run_id(plan_tables, tmp_path, reverted):
+    # reversion: the receipt does not carry the writer's run id
+    verdict(reverted, c4c, rebuild_control, tmp_path, "'rows_deleted': deleted[table], 'writer_run_id': run_id}", "'rows_deleted': deleted[table], 'writer_run_id': None}", plan_tables)
+
+
+def test_c4c_a_plan_without_the_resonance_writer_names_nothing(plan_tables):
     a = make_run(plan_tables, 'failed', generation='a', plan=('ka_yojaka', 'ka_sangam'))
     seed(plan_tables, CHART, 'a')
-    plan_tables.execute("INSERT INTO gochara_resonance_map (chart_id, event_class) VALUES (%s, 'career')", (CHART,))
-    plan_tables.commit()
-    assert rebuild_control.teardown(plan_tables, run_id=a.build_id)['chart_scoped_writes_left_alone'] == []
+    assert rebuild_control.teardown(plan_tables, run_id=a.build_id)['generation_scoped_writes_removed'] == []
 
 
 def test_c4_the_dry_run_counts_the_resonance_candidate_rows_and_changes_nothing(plan_tables, wired, capsys):

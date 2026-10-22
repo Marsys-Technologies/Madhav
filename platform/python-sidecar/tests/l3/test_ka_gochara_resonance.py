@@ -449,7 +449,8 @@ def test_writer_inserts_expected_rows_for_fixture_chart():
     assert result.rows_inserted == per_class * len(TARGET_EVENT_CLASSES) + m6_rows
     assert len(sink["inserted"]) == result.rows_inserted
     assert len(sink["deletes"]) == 1
-    assert sink["deletes"][0] == (CHART_ID,)
+    assert sink["deletes"][0] == (CHART_ID, "legacy")      # migration 1404: per-(chart, generation); a run bound to no candidate replaces the legacy partition
+    assert {r["generation"] for r in sink["inserted"]} == {"legacy"}
 
 
 def test_writer_emits_zero_birth_anchor_rows():

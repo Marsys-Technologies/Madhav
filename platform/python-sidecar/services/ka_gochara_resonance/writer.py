@@ -45,8 +45,11 @@ Contract adherence (FROZEN orchestrator contract, ORCHESTRATOR_CONVERGENCE_CLOSE
   - Uses ctx.db_conn (caller-owned) for all DB access
   - NEVER calls commit or rollback on ctx.db_conn
   - NEVER writes asset_throughput
-  - Idempotency: per-chart delete-then-insert (§N.3) — DELETE FROM
-    gochara_resonance_map WHERE chart_id = %s immediately before INSERT.
+  - Idempotency: per-(chart, generation) delete-then-insert (§N.3) — DELETE FROM
+    gochara_resonance_map WHERE chart_id = %s AND generation = %s immediately
+    before INSERT (migration 1404). generation is the run's bound K9 candidate,
+    'legacy' for a run bound to none; the served partition of a chart is never
+    rewritten by a candidate run.
 
 WP3c corrections (N-12 pre-approved honesty fixes, ruling sheet 2026-09-23;
 GOCHARA_FAMILY_ELEVATION_PLAN_v2_1 §WP3c; implements the writer side of
@@ -922,25 +925,77 @@ WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'panchanga_nakshat
 
 # R-3: the prior build's yoga target_refs, read BEFORE the DELETE so a yoga
 # id that stopped firing (F-21) surfaces as dropped_since_prior_build in
-# THIS build's notes — never silently.
+# THIS build's notes — never silently. Migration 1404: the table holds one
+# partition per generation. The prior build of a generation is that
+# generation's own rows; a first candidate run has none, so its prior build
+# is the SERVED partition (gochara_resonance_map_served).
 _FETCH_PRIOR_YOGA_REFS_SQL = """
 SELECT DISTINCT target_ref
 FROM gochara_resonance_map
+WHERE chart_id = %s AND generation = %s AND target_type = 'yoga_constituent'
+"""
+
+_FETCH_SERVED_YOGA_REFS_SQL = """
+SELECT DISTINCT target_ref
+FROM gochara_resonance_map_served
 WHERE chart_id = %s AND target_type = 'yoga_constituent'
 """
 
-_DELETE_SQL = "DELETE FROM gochara_resonance_map WHERE chart_id = %s"
+# The replacement is scoped to (chart, generation) — never the whole chart —
+# so a candidate (K9) run cannot touch the rows serving reads (migration 1404).
+_DELETE_SQL = "DELETE FROM gochara_resonance_map WHERE chart_id = %s AND generation = %s"
+
+# A run bound to a candidate writes that candidate's partition; a run with no
+# candidate (a non-K9 build) keeps writing the 'legacy' partition.
+LEGACY_GENERATION = "legacy"
+
+_FETCH_HEAD_SQL = "SELECT generation FROM kala_layer_head WHERE chart_id = %s"
 
 _INSERT_SQL = """
 INSERT INTO gochara_resonance_map (
-    chart_id, event_class, target_type, target_ref, weight,
+    chart_id, generation, event_class, target_type, target_ref, weight,
     classical_citation, uncited_extension, source_rule_id,
     target_resolution_state, target_qualifier
-) VALUES (%(chart_id)s, %(event_class)s, %(target_type)s, %(target_ref)s, %(weight)s,
+) VALUES (%(chart_id)s, %(generation)s, %(event_class)s, %(target_type)s, %(target_ref)s, %(weight)s,
           %(classical_citation)s, %(uncited_extension)s, %(source_rule_id)s,
           %(target_resolution_state)s, %(target_qualifier)s)
-ON CONFLICT (chart_id, event_class, target_type, target_ref) DO NOTHING
+ON CONFLICT (chart_id, generation, event_class, target_type, target_ref) DO NOTHING
 """
+
+
+def _resolve_generation(conn, ctx, chart_id: str) -> str:
+    """The partition this run writes: its bound candidate's generation, 'legacy' when no candidate is bound to the build (a non-K9 run).
+
+    A published (head) generation is immutable: a run bound to it is refused rather than allowed to rewrite served rows."""
+    import psycopg.rows
+    from types import SimpleNamespace
+    from services.kala_core.manifest import candidate_generation
+
+    build_id = getattr(ctx, "build_id", None)
+    if not build_id:
+        return LEGACY_GENERATION
+    with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+        try:
+            generation = candidate_generation(SimpleNamespace(db_conn=cur, build_id=build_id))
+        except LookupError:
+            return LEGACY_GENERATION
+        if generation == LEGACY_GENERATION:
+            raise ValueError("a candidate generation named 'legacy' is not permitted: it is the retained partition")
+        head = cur.execute(_FETCH_HEAD_SQL, (chart_id,)).fetchone()
+    if head is not None and head[0] == generation:
+        raise ValueError("the candidate generation is the published head: its resonance rows are immutable")
+    return generation
+
+
+def _fetch_prior_yoga_refs(conn, chart_id: str, generation: str) -> list[str]:
+    import psycopg.rows
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(_FETCH_PRIOR_YOGA_REFS_SQL, (chart_id, generation))
+        refs = [str(r["target_ref"]) for r in cur.fetchall()]
+        if not refs and generation != LEGACY_GENERATION:
+            cur.execute(_FETCH_SERVED_YOGA_REFS_SQL, (chart_id,))
+            refs = [str(r["target_ref"]) for r in cur.fetchall()]
+    return refs
 
 
 def _fetch_event_class_rows(conn, chart_id: str, event_class: str,
@@ -1280,13 +1335,14 @@ def _build_writer_class():
                 count, notes = build_candidate_projection(ctx)
                 return WriterResult(asset_id=self.asset_id, rows_inserted=count, notes=notes)
 
+            # Migration 1404: write only this run's partition (its candidate's
+            # generation; 'legacy' for a run bound to no candidate).
+            generation = _resolve_generation(conn, ctx, chart_id)
+
             # R-3: capture the prior build's yoga target set BEFORE any
             # DELETE, so an id that no longer fires surfaces in THIS build's
             # notes (dropped_since_prior_build) — never silently.
-            import psycopg.rows
-            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                cur.execute(_FETCH_PRIOR_YOGA_REFS_SQL, (chart_id,))
-                prior_yoga_refs = [str(r["target_ref"]) for r in cur.fetchall()]
+            prior_yoga_refs = _fetch_prior_yoga_refs(conn, chart_id, generation)
 
             # R-4/R-6: per-chart resolution inputs verified at build time.
             resolution_ctx = _fetch_chart_resolution_context(conn, chart_id)
@@ -1351,8 +1407,10 @@ def _build_writer_class():
             # An honest-empty upstream result must not erase the prior servable
             # chart partition.  The orchestrator still owns atomic rollback for
             # any later INSERT failure.
+            for row in all_rows:
+                row["generation"] = generation
             with conn.cursor() as cur:
-                cur.execute(_DELETE_SQL, (chart_id,))
+                cur.execute(_DELETE_SQL, (chart_id, generation))
 
             with conn.cursor() as cur:
                 cur.executemany(_INSERT_SQL, all_rows)
