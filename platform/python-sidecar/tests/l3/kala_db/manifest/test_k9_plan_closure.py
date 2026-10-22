@@ -34,7 +34,7 @@ from tests.l3.kala_db.manifest.test_publication_ops import db, prepare  # noqa: 
 ADMISSION = importlib.import_module('services.kala_core.publication_admission')
 REPO = Path(__file__).resolve().parents[6]
 MIGRATIONS = REPO / 'platform/migrations'
-# The D-13 / K9-4a plan as the rehearsal ran it (the order the cockpit gives the executor).
+# The D-13 / K9-4a plan as the rehearsal ran it (the set the cockpit gives the executor; its order is derived).
 PLAN = ['ka_yojaka', 'ka_vedha_gochara', 'ka_gochara', 'ka_sangam', 'ka_vighnakara']
 MIDDLE = 'ka_gochara_resonance'
 
@@ -71,9 +71,12 @@ def test_the_closed_plan_is_admitted_with_the_asset_ahead_of_the_writer_that_dec
     assert ADMISSION.assets_refusal(edges, closed) is None
 
 
-def test_closing_a_plan_keeps_a_valid_order_unchanged(edges):
-    good = ['ka_yojaka', MIDDLE, 'ka_vedha_gochara', 'ka_gochara', 'ka_sangam', 'ka_vighnakara']
-    assert ADMISSION.closed_plan(edges, good) == good
+def test_closing_a_plan_gives_the_derived_order_whatever_order_it_was_listed_in(edges):
+    # SR-K9-WAVE-ORDER: the order is derived from depends_on (levels, ties by asset id), never kept from the caller's list.
+    derived = ['ka_vedha_gochara', 'ka_yojaka', MIDDLE, 'ka_gochara', 'ka_sangam', 'ka_vighnakara']
+    listed = ['ka_yojaka', MIDDLE, 'ka_vedha_gochara', 'ka_gochara', 'ka_sangam', 'ka_vighnakara']   # valid, but hand-ordered
+    assert ADMISSION.closed_plan(edges, listed) == derived
+    assert ADMISSION.closed_plan(edges, list(reversed(listed))) == derived
 
 
 def test_a_planned_asset_listed_before_its_dependency_is_refused(edges):

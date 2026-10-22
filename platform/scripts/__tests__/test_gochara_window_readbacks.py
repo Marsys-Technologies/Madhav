@@ -442,6 +442,24 @@ def test_ledger_diff_passes_when_the_db_order_is_not_the_c_order(tmp_path: Path)
     assert "0 new" in r.stdout
 
 
+# ── B2: the predecessor lookup must not depend on pipe timing (main push CI 3ccd992bf) ──
+
+def test_routine_predecessors_pass_on_a_ledger_larger_than_a_pipe_buffer(tmp_path: Path) -> None:
+    # main's push CI stopped R2-routine-predecessors on "1031_... missing" although the ledger held it:
+    # `echo "$ledger" | grep -q` under `set -o pipefail` reads grep's early exit (after the first
+    # match) as a failed lookup once echo is still writing (SIGPIPE, status 141). A ledger far above
+    # the 64 KiB pipe capacity makes that deterministic: every predecessor sitting at the head of the
+    # ledger must still be found (the present predecessors are the first lines; the padding follows).
+    padding = [f"9{n:05d}_ledger_padding_to_exceed_the_pipe_buffer.sql" for n in range(6000)]
+    ledger = sorted(PRE_LEDGER + padding)
+    assert len("\n".join(ledger)) > 256 * 1024
+    r = run_script(tmp_path, "pre-window",
+                   overrides={"SELECT filename FROM public._migrations_applied": "\n".join(ledger)})
+    assert r.returncode == 0, r.stderr
+    assert "PASS R2-routine-predecessors" in r.stdout
+    assert "STOP R2-routine-predecessors" not in r.stderr
+
+
 # ── C44: W2a-recheck / W6-post sort BOTH sides LC_ALL=C; RUNNER_SHA256 ───────
 
 def _manifest_verifies(out_dir: Path) -> bool:

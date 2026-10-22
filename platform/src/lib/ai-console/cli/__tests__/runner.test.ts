@@ -45,7 +45,9 @@ async function fixture(source: string) {
   return { root, executable, definition }
 }
 
-describe('governed CLI runner', () => {
+// Every test here spawns real node child processes; a loaded CI runner can exceed the 5s default
+// on cold spawn (flaked on #3874 with the file untouched). Assertions are unchanged.
+describe('governed CLI runner', { timeout: 30_000 }, () => {
   it('discovers paginated Codex subscription models and efforts without submitting a prompt', async () => {
     const { definition } = await fixture(`
       const rl=require('node:readline').createInterface({input:process.stdin});
@@ -77,7 +79,7 @@ describe('governed CLI runner', () => {
     ])
     expect(JSON.stringify(result)).not.toMatch(/private|credential|hidden/i)
     expect(runner.inspectForTests()).toEqual({ active: 0, queued: 0 })
-  }, 30_000) // spawns real node child processes; the 5 s default is not enough on a loaded CI runner
+  }, 30_000) // spawns a real child process; the 5 s default timed out under merge-queue CI load (run 39778225416)
 
   it('rejects Codex API-key authentication before requesting its model catalogue', async () => {
     const { definition } = await fixture(`
