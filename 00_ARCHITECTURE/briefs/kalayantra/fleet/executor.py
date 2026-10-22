@@ -89,6 +89,8 @@ TEARDOWN_KINDS = (   # the committed teardowns that wait for an independent abse
     "smalltest_teardown",
 )
 LAUNCH_SCHEMAS = {"smalltest_dispatch": "ky.smalltest_launch/1", "measuring_dispatch": "ky.measuring_launch/1", "century_dispatch": "ky.century_launch/1"}
+RUN_OPERATION_KINDS = ("orchestrator_rebuild", "orchestrator_rebuild_cancel")      # the operations that act on a K9 rebuild run's writers
+RAN_TO_AN_END = ("COMPLETED", "FAILED", "INTERRUPTED")      # receipt statuses of an operation whose child was started and has ended (INTERRUPTED: the executor restarted; the child may live on, so only the session readback proves it)
 REMOTE_ASYNC_KINDS = frozenset({   # A8 §3.11: work continues remotely after the child returns — fenced even if a table drops `remote_async`
     "century_dispatch",
     "measuring_dispatch",
@@ -798,6 +800,65 @@ def orchestrator_rebuild_cancel_problem(req: dict) -> str | None:
     return "the target run-id is not the run of an orchestrator_rebuild in flight"
 
 
+def writer_absence_problem(rebuild: dict) -> str | None:
+    """None only when an ACCEPTED quiescence_check of this rebuild shows, measured AFTER the rebuild's terminal receipt, that no database session carries the rebuild's
+    PGAPPNAME marker (every connection the rebuild's writers open carries it, see execute()) and that the readback could see every role's sessions. A readback taken
+    while a writer still ran lists its session and does not count: the run row reading `stopped` proves nothing about the writer thread (Round A N10)."""
+    op = str(rebuild["operation_id"]); marker = session_marker(op)
+    if rebuild.get("session_marker") not in (None, marker): return f"the receipt of {op} names a different session marker than its operation id derives"
+    try: ended = utc_time(rebuild["ts"])
+    except (KeyError, TypeError, ValueError): return f"the receipt of {op} has no readable terminal time"
+    for path in sorted(DONE.glob("*.json")):
+        try:
+            check = json.loads(path.read_text()); got = accepted_readback(str(check["operation_id"]), "quiescence_check")
+            if got is None or check.get("kind") != "quiescence_check" or (check.get("args") or {}).get("operation") != op: continue
+            lines = [json.loads(line) for line in got[1].decode().splitlines() if line.startswith("{")]
+            found = [v for v in lines if isinstance(v, dict) and v.get("schema") == "ky.session_readback/1"]
+            seen = found[0] if len(found) == 1 else {}
+            if (seen.get("status") == "MEASURED" and seen.get("marker") == marker and seen.get("sees_all_sessions") is True
+                    and seen.get("sessions") == [] and utc_time(seen["measured_at"]) >= ended): return None
+        except (OSError, ValueError, KeyError, TypeError, AttributeError): continue
+    return (f"no accepted session readback of {op} taken after it ended shows zero live sessions carrying its marker {marker}: "
+            "file a quiescence_check for it once the rebuild has ended")
+
+
+def orchestrator_rebuild_teardown_problem(req: dict) -> str | None:
+    """Round A N10 (deletion safety; SR-K9-RESONANCE-MAP, N10 part) admission for `orchestrator_rebuild_teardown` and its dry run, run at the tail of validate (so again
+    immediately before execution): a teardown is admitted only when (1) no orchestrator_rebuild or orchestrator_rebuild_cancel of the run-id is in flight, (2) every
+    one of them that was started has a TERMINAL receipt (a cancel's run row reads `stopped` seconds before its writer thread ends; the rebuild's own receipt is written
+    only when its process has ended), (3) at least one orchestrator_rebuild of the run-id was started, and (4) each of those has proof of process absence
+    (writer_absence_problem). The run's state in the database is never consulted: it is the very signal that can read `stopped` beside a live writer. The absence
+    readback of a deletion therefore runs after all of this, because the teardown cannot start before it holds."""
+    if req.get("kind") not in ("orchestrator_rebuild_teardown", "orchestrator_rebuild_teardown_dryrun"): return None
+    run_id = (req.get("args") or {}).get("run-id")
+    if not (isinstance(run_id, str) and SAFE_ID.fullmatch(run_id)): return "run-id required: the run of the orchestrator_rebuild to tear down"
+    named = []
+    for folder in (INFLIGHT, DONE):
+        for path in sorted(folder.glob("*.json")):
+            try: other = json.loads(path.read_text())
+            except (OSError, ValueError):
+                if folder is INFLIGHT: return f"an unreadable in-flight entry ({path.name}) is unproven quiet: the run's writer cannot be shown to have ended"
+                continue
+            if not (isinstance(other, dict) and other.get("kind") in RUN_OPERATION_KINDS and isinstance(other.get("args"), dict) and other["args"].get("run-id") == run_id): continue
+            if folder is INFLIGHT: return f"{other['kind']} {other.get('operation_id')} of this run is still in flight: a teardown never starts beside a live writer"
+            named.append(other)
+    started = []
+    for other in named:
+        op = str(other.get("operation_id"))
+        try: record = json.loads((REC / f"{op}.json").read_text())
+        except (OSError, ValueError): return f"the receipt of {other['kind']} {op} is unreadable: its end is not proven"
+        if not (isinstance(record, dict) and record.get("operation_id") == op and record.get("kind") == other["kind"]): return f"the receipt of {other['kind']} {op} does not bind it"
+        if record.get("status") == "REFUSED": continue      # refused before its child was started: nothing ran
+        if record.get("status") not in RAN_TO_AN_END: return f"{other['kind']} {op} has no terminal receipt (status {record.get('status')}): the cancelled writer may still be running"
+        started.append(record)
+    rebuilds = [r for r in started if r["kind"] == "orchestrator_rebuild"]
+    if not rebuilds: return "no started orchestrator_rebuild of this run-id has a terminal receipt: the run's writer is not shown to have ended"
+    for rebuild in rebuilds:
+        why = writer_absence_problem(rebuild)
+        if why: return why
+    return None
+
+
 def orchestrator_rebuild_dryrun_problem(req: dict, table: dict) -> str | None:
     """SR-K9-PUBLISHABLE D7 (N.8) admission for the production `orchestrator_rebuild`, run at the tail of validate (so on BOTH routes, signed or mechanical):
     the request is admitted only if THIS executor's own receipt shows a COMPLETED `orchestrator_rebuild_dryrun` for the same identity (dry_run_check). A signer's
@@ -1132,6 +1193,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         lambda: measuring_cancel_problem(req),
         lambda: orchestrator_rebuild_cancel_problem(req),
         lambda: orchestrator_rebuild_dryrun_problem(req, table),
+        lambda: orchestrator_rebuild_teardown_problem(req),
         lambda: scheduler_policy_problem(req),
         lambda: served_probe_problem(req, op),
         lambda: smalltest_policy_problem(req),
@@ -1529,6 +1591,22 @@ def accepted_cloudrun_execution(readback_id: str, execution_name: str) -> dict |
     if measured.get("name") != execution_name or measured.get("outcome") not in ("SUCCEEDED", "FAILED"): return None
     return {"readback_operation_id": readback_id, "execution": execution_name, "outcome": measured["outcome"],
             "completion_time": measured.get("completion_time"), "readback_output_sha256": record["output_sha256"]}
+
+
+def accepted_readback(readback_id: str, kind: str) -> tuple[dict, bytes] | None:
+    """(receipt, output bytes) of a read-only `kind` operation that COMPLETED with exit 0, whose output file still has the receipt's sha256 and that an ACCEPTED post
+    record binds (None when not provable). An unreadable file raises: the callers treat that as not provable. Same bar as accepted_cloudrun_execution, which is a pinned
+    function and so is left untouched."""
+    if not SAFE_ID.fullmatch(readback_id): return None
+    record = json.loads((REC / f"{readback_id}.json").read_text()); body = (REC / f"{readback_id}.output.txt").read_bytes()
+    accepted = json.loads((ACC / f"{readback_id}.post.json").read_text())
+    if not (record.get("kind") == kind and record.get("status") == "COMPLETED" and record.get("exit_code") == 0 and digest_bytes(body) == record.get("output_sha256")): return None
+    if not (accepted.get("result") == "ACCEPTED" and accepted.get("operation_id") == readback_id and accepted.get("request_sha256") == record.get("request_sha256")): return None
+    if accepted.get("by") in ("v1", "v2", "v3", "v4"): return record, body
+    checks = accepted.get("checks")      # the executor's own mechanical acceptance: its schema, and every check present and true
+    if accepted.get("by") == "executor-mechanical" and accepted.get("schema") == "ky.mechanical_acceptance/1" and isinstance(checks, dict) and checks and all(v is True for v in checks.values()):
+        return record, body
+    return None
 
 
 def mechanical_quiescence(req: dict, archived: pathlib.Path) -> str | None:
