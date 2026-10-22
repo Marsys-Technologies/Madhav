@@ -522,7 +522,9 @@ def seed_convergence(
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM kala_convergence WHERE chart_id = %s::uuid",
+                # Migration 1405: the seed owns only the legacy partition; the table's FKs cascade, so a
+                # chart-wide delete would reach a K9 candidate's rows and their children.
+                "DELETE FROM kala_convergence WHERE chart_id = %s::uuid AND generation = 'legacy'",
                 (chart_id,),
             )
             inserted = 0
@@ -585,7 +587,7 @@ def query_convergence(
             sql = f"""
                 SELECT window_start::text, window_end::text,
                        convergence_score, constituent_factors, source_citation
-                FROM kala_convergence
+                FROM kala_convergence_served
                 WHERE {' AND '.join(clauses)}
                 ORDER BY window_start
             """

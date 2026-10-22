@@ -154,6 +154,7 @@ def test_actual_reader_queries_ignore_candidates_across_repeated_builds(db, read
 def test_chapter_reader_cannot_attach_an_unpublished_candidate_when_legacy_is_empty(db):
     db.execute('''CREATE TABLE kala_convergence(convergence_id bigint,chart_id uuid,signal_id uuid,
                  peak_date date,convergence_score numeric);
+                 CREATE VIEW kala_convergence_served AS SELECT * FROM kala_convergence;
                  CREATE TABLE kala_darshana(convergence_id bigint,effective_score numeric);''')
     db.execute("INSERT INTO kala_convergence VALUES (1,%s,%s,'2000-01-01',0.8)", (CHART, SIGNAL))
     db.execute("DELETE FROM kala_activation_predicates")

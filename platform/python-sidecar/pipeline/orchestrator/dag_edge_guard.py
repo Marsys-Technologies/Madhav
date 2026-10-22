@@ -89,6 +89,13 @@ _UNGATED_EXACT = {"ephemeris_daily"}
 _EXTERNAL_TABLES = {"life_event_log", "life_events"}
 _SHARED_SOFT_TABLES = {"chart_facts"}  # multi-producer -> best-effort warn only
 
+# Served views (a view selects the served generation of a producer table; it has no producer of its own). A read of
+# the view is a read of its base table, so `_reads()` records the base: otherwise the view name, which no asset owns,
+# is skipped by evaluate() and the readers moved onto it vanish from the edge-completeness check (#3869 verifier F1).
+_VIEW_BASE_TABLES = {
+    "kala_convergence_served": "kala_convergence",   # migration 1405
+}
+
 _REGISTER_RE = re.compile(r"@register\(\s*['\"]([a-z0-9_]+)['\"]")
 _READ_RE = re.compile(r"\b(?:FROM|JOIN)\s+([a-z_][a-z0-9_]*)", re.IGNORECASE)
 _FROM_IN_SQL_RE = re.compile(r"\bFROM\s+([a-z_][a-z0-9_]*)", re.IGNORECASE)
@@ -161,6 +168,7 @@ def _asset_for_file(text: str) -> str | None:
 
 def _reads(text: str) -> set[str]:
     """All table names appearing after FROM/JOIN, lowercased (over-approximates; filtered later).
+    A served view is recorded as its base table (`_VIEW_BASE_TABLES`).
 
     Strips SQL/Python comment lines first — a commented-out query or an
     explanatory `# reads old_table` note otherwise reads as a real dependency
@@ -169,7 +177,7 @@ def _reads(text: str) -> set[str]:
     """
     stripped = _strip_sql_comments(text)
     stripped = re.sub(r"#.*", " ", stripped)
-    return {t.lower() for t in _READ_RE.findall(stripped)}
+    return {_VIEW_BASE_TABLES.get(t.lower(), t.lower()) for t in _READ_RE.findall(stripped)}
 
 
 def evaluate(reg: dict, real_tables: set[str], writer_items: list[tuple[str, str]]) -> dict:
