@@ -927,9 +927,9 @@ def o_s5_passed_aggregate_writes_the_adopted_file_and_pages_once(m, tmp):
     assert a["head"] == c.M and a["generation"] == "5.0" and a["verification_operation_id"] == "verify-5-0-s1" and len(a["expected_classes"]) == 26
     c.poll(apply=True)
     assert len(c.pages_lines("CHAIN-HANDOFF")) == 1
-    # and the seal controller takes over from the file: the aggregate stage passes and it waits for the brief
-    s = seal_h.sc.run(target, c.ops, c.tmp / "seal-out", c.pages, scripts_override=str(SCRIPTS), python=sys.executable, main_ref="main")
-    assert s["stage"] == "AGGREGATE" and s["kind"] == seal_h.sc.AWAITING_BRIEF, s
+    # and the seal controller takes over from the file: the aggregate stage and owner step 11 (the redeploy, read from the seal world's fake gh login) pass and it waits for the brief
+    s = seal_h.sc.run(target, c.ops, c.tmp / "seal-out", c.pages, scripts_override=str(SCRIPTS), python=sys.executable, main_ref="main", gh=c.seal.gh, now=seal_h.NOW)
+    assert s["stage"] == "REDEPLOY" and s["kind"] == seal_h.sc.AWAITING_BRIEF, s
 
 
 def o_s5_adopted_file_of_another_generation_is_never_overwritten(m, tmp):
