@@ -120,6 +120,14 @@ def read_spans(conn, chart_id: str, generation: str, tz: dt.tzinfo = IST) -> tup
     return spans, {c: next(iter(v)) for c, v in p4_version.items()}
 
 
+def span_label(kind: str, shares: tuple[dt.date, dt.date], days: int, build: tuple[dt.date, dt.date] | None) -> str:
+    """One sentence that states BOTH spans (J-5q): what the shares are over, the scored span, and the build span (or that it was not read)."""
+    scored = f"{SCORED_SPAN[0].isoformat()}..{SCORED_SPAN[1].isoformat()}"
+    built = "not read (explicit override)" if build is None else f"{build[0].isoformat()}..{build[1].isoformat()}"
+    over = f"{kind.upper()} span {shares[0].isoformat()}..{shares[1].isoformat()} ({days:,} days)"
+    return f"shares over the {over}; scored span {scored}; build span {built}"
+
+
 def report_from_store(conn, *, chart_id: str, generation: str, tz: dt.tzinfo = IST,
                       horizon: tuple[dt.date, dt.date] | None = None, span: str = "scored") -> dict:
     """The admitted-day-share report of one stored generation. The shares are over `horizon` when given (an explicit override, labelled
@@ -165,6 +173,7 @@ def report_from_store(conn, *, chart_id: str, generation: str, tz: dt.tzinfo = I
     out["horizon_kind"] = kind
     out["scored_span"] = [SCORED_SPAN[0].isoformat(), SCORED_SPAN[1].isoformat()]
     out["build_span"] = None if build is None else [build[0].isoformat(), build[1].isoformat()]
+    out["span_label"] = span_label(kind, h, out["horizon_days"], build)
     out["source"] = {"kind": "stored_windows", "chart_id": chart_id, "day_timezone": str(tz),
                      "tables": ["ka_gochara_eval_window", "ka_gochara_eval_window_record",
                                 "ka_gochara_relationship_record", "kala_gochara_coverage"],
