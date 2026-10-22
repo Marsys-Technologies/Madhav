@@ -98,22 +98,35 @@ jobs:
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: |
           set -euo pipefail
-          gcloud run jobs deploy "$VERIFICATION_JOB" \
-            --project madhav-astrology \
-            --region "$GOOGLE_CLOUD_REGION" \
-            --image "${PIPELINE_IMAGE_REPO}@${IMAGE_DIGEST}" \
-            --service-account "$VERIFIER_SERVICE_ACCOUNT" \
-            --command "python,-m,pipeline.orchestrator.verification_job" \
-            --clear-args \
-            --set-secrets "GOCHARA_VERIFIER_DB_URL=${VERIFIER_SECRET}:latest" \
-            --set-env-vars "GOCHARA_RUNNER_COMMIT=${GITHUB_SHA},GOCHARA_RUNNER_IMAGE_DIGEST=${IMAGE_DIGEST}" \
-            --set-cloudsql-instances "$CLOUDSQL_INSTANCE" \
-            --max-retries 0 \
-            --tasks 1 \
-            --task-timeout 28800 \
-            --memory 8Gi \
-            --cpu 2 \
+          # Neither `gcloud run jobs deploy` nor `gcloud run jobs update` has a clear-args flag (run 39736105931 died on the one named for it:
+          # "unrecognized arguments"). Create and update therefore branch: a new job has no args to clear; an existing
+          # one has its args reset with the documented empty-string form (`--args ""`: "To reset this field to its default, pass an
+          # empty string"). The flag-drift guard (gcloud-flag-drift.yml, platform/scripts/governance/gcloud_flag_drift.py) fails CI
+          # if any flag used here is absent from the runner's `gcloud run jobs {deploy,update} --help`.
+          DEFINITION_FLAGS=(
+            --project madhav-astrology
+            --region "$GOOGLE_CLOUD_REGION"
+            --image "${PIPELINE_IMAGE_REPO}@${IMAGE_DIGEST}"
+            --service-account "$VERIFIER_SERVICE_ACCOUNT"
+            --command "python,-m,pipeline.orchestrator.verification_job"
+            --set-secrets "GOCHARA_VERIFIER_DB_URL=${VERIFIER_SECRET}:latest"
+            --set-env-vars "GOCHARA_RUNNER_COMMIT=${GITHUB_SHA},GOCHARA_RUNNER_IMAGE_DIGEST=${IMAGE_DIGEST}"
+            --set-cloudsql-instances "$CLOUDSQL_INSTANCE"
+            --max-retries 0
+            --tasks 1
+            --task-timeout 28800
+            --memory 8Gi
+            --cpu 2
             --quiet
+          )
+          if EXISTING="$(gcloud run jobs describe "$VERIFICATION_JOB" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" --format='value(name)' 2>&1)"; then
+            gcloud run jobs update "$VERIFICATION_JOB" "${DEFINITION_FLAGS[@]}" --args ""
+          elif [[ "$EXISTING" == *"Cannot find"* || "$EXISTING" == *NOT_FOUND* ]]; then
+            gcloud run jobs deploy "$VERIFICATION_JOB" "${DEFINITION_FLAGS[@]}"
+          else
+            echo "::error::Could not tell whether ${VERIFICATION_JOB} exists; refusing to create or update it: ${EXISTING}"
+            exit 1
+          fi
 
       - name: Read the WHOLE definition back (image digest, identity, entry point, environment, Cloud SQL, tasks, retries, resources)
         env:

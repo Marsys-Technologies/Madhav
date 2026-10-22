@@ -1,0 +1,44 @@
+name: gcloud flag drift (workflows vs the runner's gcloud --help)
+
+# Run 39736105931 (2026-10-22) failed in production on `gcloud run jobs deploy --clear-args` — a flag the runner's gcloud does not have.
+# This workflow asks the runner's own gcloud, BEFORE merge, about every flag any workflow passes to it:
+#   static  every flag is in the per-command reference (platform/scripts/governance/gcloud_flag_reference_v1.json)
+#   live    every flag appears in `gcloud <command> --help` of the gcloud preinstalled on this runner image (ubuntu-latest, the image
+#           the deploy and definition workflows run on). `--help` makes no API call: no authentication, no cloud access, no secret.
+# It also runs weekly, because the runner's gcloud moves without any change in this repository. Not a deploy gate and not chained to one.
+# Tool: platform/scripts/governance/gcloud_flag_drift.py (tests: platform/scripts/governance/__tests__/test_gcloud_flag_drift.py).
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - 'platform/scripts/governance/gcloud_flag_drift.py'
+      - 'platform/scripts/governance/gcloud_flag_reference_v1.json'
+  schedule:
+    - cron: '23 5 * * 1'   # Mondays 05:23 UTC — off the hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gcloud-flag-drift-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    name: gcloud flags used by workflows exist in the runner's gcloud
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the guard's one dependency
+        run: python3 -m pip install pyyaml --quiet
+
+      - name: Static — every flag is in the reference
+        run: python3 platform/scripts/governance/gcloud_flag_drift.py static
+
+      - name: Live — every flag is in this runner's `gcloud ... --help`
+        run: python3 platform/scripts/governance/gcloud_flag_drift.py live
