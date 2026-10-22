@@ -217,7 +217,11 @@
      "cwd": ".",
      "tests": [
       "platform/scripts/governance/__tests__/test_sr_doctrine_h_node_dignity_1401.py"
-     ]
+     ],
+     "env": {
+      "LC_ALL": "en_US.UTF-8",
+      "LANG": "en_US.UTF-8"
+     }
     },
     {
      "kind": "db_sql",
@@ -292,6 +296,7 @@
       "tests/test_driver.py",
       "tests/test_gates.py",
       "tests/test_launcher.py",
+      "tests/test_lane_db_overlay.py",
       "tests/test_t1b_fix.py",
       "tests/test_trial_census.py"
      ],
@@ -457,7 +462,7 @@
   },
   {
    "id": "T20",
-   "claim": "I1-FINAL: main merged up, pins and goldens re-derived **once** (geometry pin re-derived once after R2 + near-miss, SR-GEOMETRY-PIN-ONCE; the golden asserts every pin at the head), DB suites green locally, `lc_collate`/`lc_ctype` unchanged = C/C (SR-DB-LOCALE-CHECK)",
+   "claim": "I1-FINAL: main merged up, pins and goldens re-derived **once** (geometry pin re-derived once after R2 + near-miss, SR-GEOMETRY-PIN-ONCE, recorded in the EQUIVALENCE_RECORD changelog with both causes; any further geometry change refuses; the golden asserts every pin at the head), DB suites green locally, `lc_collate`/`lc_ctype` unchanged = C/C (SR-DB-LOCALE-CHECK)",
    "detector": "the golden/horizon pins differ from the head's bytes, a DB suite fails, or the lane DB's collation is not C/C → STOP, tell the surrogate (the 'once' rule is the surrogate's, not machine-read)",
    "owner_lane": "I1-FINAL",
    "parts": [
@@ -493,7 +498,13 @@
       "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
       "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
      },
-     "timeout_s": 3600
+     "timeout_s": 3600,
+     "deselect": [
+      "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id"
+     ],
+     "deselect_why": {
+      "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id": "the test skips by design (pytest.skip at test_a53_input_vector.py:670) because ka_gochara_sky_convention carries the insert-only trigger ka_gochara_sky_convention_immutable (platform/migrations/1153_gochara_sky_event_substrate.sql:609-611) in every chain-built database, so it can never run to a pass; the evaluator reads any skip as null, which would hold T20 null forever"
+     }
     },
     {
      "kind": "db_sql",
@@ -520,6 +531,10 @@
       {
        "field": "proposed_verdict.head",
        "equals_head": true
+      },
+      {
+       "field": "proposed_verdict.patch_id",
+       "equals_patch_id_of": "origin/main"
       }
      ]
     }
@@ -569,29 +584,57 @@
   },
   {
    "id": "T24",
-   "claim": "linux/amd64 image available for the qualifying run (SR-AMD64-PER-HEAD)",
-   "detector": "the amd64 slice cannot start",
+   "claim": "linux/amd64 image available for the qualifying run (SR-AMD64-PER-HEAD): the amd64_slice run itself ran on linux/amd64 at the evaluated head and produced a complete qualifying EQUIVALENCE_RECORD",
+   "detector": "the amd64 slice did not run to a complete record: its own report, pinned runtime or EQUIVALENCE_RECORD names another head, another arch, a non-qualifying runtime kind or an incomplete record (a readiness record, which only checks that inputs are named, is never read)",
    "owner_lane": "T1B / ops",
    "parts": [
     {
      "kind": "json_field_eq",
-     "path": "/Users/Dev/kalayantra/run/TR/amd64_readiness.json",
+     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/amd64_slice_report.json",
      "fields": [
       {
-       "field": "schema",
-       "equals": "ky.amd64_slice_readiness/1"
-      },
-      {
-       "field": "ready",
-       "equals": true
-      },
-      {
-       "field": "inputs.head.value",
+       "field": "code.head",
        "equals_head": true
       },
       {
-       "field": "inputs.image_digest.present",
+       "field": "equivalence_record.status",
+       "equals": "COMPLETE"
+      },
+      {
+       "field": "equivalence_record.head",
+       "equals_head": true
+      }
+     ]
+    },
+    {
+     "kind": "json_field_eq",
+     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/equivalence/eq_pinned_inputs.json",
+     "fields": [
+      {
+       "field": "runtime.kind",
+       "equals": "qualifying_run"
+      },
+      {
+       "field": "runtime.arch",
+       "equals": "linux/amd64"
+      }
+     ]
+    },
+    {
+     "kind": "json_field_eq",
+     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/equivalence/equivalence_record.json",
+     "fields": [
+      {
+       "field": "complete",
        "equals": true
+      },
+      {
+       "field": "runtime_kind",
+       "equals": "qualifying_run"
+      },
+      {
+       "field": "E6.commit",
+       "equals_head": true
       }
      ]
     }

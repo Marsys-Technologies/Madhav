@@ -46,6 +46,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
@@ -76,6 +77,17 @@ BASELINE_INFO = {"window_records": 24380, "contacts": 10644, "near_miss": 40}   
 MIGRATIONS = ["1306_gochara_expected_class_census.sql", "1308_gochara_near_miss_storage.sql",
               "1381_gochara_near_miss_seal_integration.sql", "1398_gochara_snapshot_dasha_held.sql"]
 LANE_FILES = ["1305_gochara_snapshot_owns_l1_copy.sql"] + MIGRATIONS
+#: TR_GAPS B4.3 / F3: the AM5 stub has no L0 reference tables and no 1402 CHECK, so the merged P1 loaders (bg_dignity_reference, bg_combustion_orbs,
+#: bg_graha_naisargika_friendship) raise UndefinedTable and any Form B window INSERT is unchecked.  After the stub and MIGRATIONS these real files are applied, in this order:
+#: 250 seeds the three L0 tables (9 + 72 + 8 rows), 1401 is the node-dignity correction (its guard demands the 250 rows), 1402 is the solver-certificate CHECK.
+#: 1403 edits the ka_gochara_v5 asset_registry row; the stub has no asset_registry, so it is applied only where its table exists and is otherwise RECORDED as skipped
+#: (its ledger row is the lane database's business, T23).  (name, mandatory, table the file edits)
+OVERLAY_MIGRATIONS = (("250_bg_dignity_reference.sql", True, None),
+                      ("1401_l0_node_dignity_friendship.sql", True, None),
+                      ("1402_gochara_qualification_provenance_certificate.sql", True, None),
+                      ("1403_ka_gochara_v5_depends_on_l0_dignity.sql", False, "asset_registry"))
+LANE_DB_DEFAULT = "ky_lane_head"            # TR_GAPS B4.1: the named, persistent head-chain database T10/T23/T25 read (built by the ops job, rebuilt after each integration advance)
+LANE_DB_RE = re.compile(r"ky_lane_[a-z0-9_]{1,40}")
 LANE_SHA_PROOFS = {      # the proofs job's lane.tsv (J-4c): informational drift detector for the lane's migration files
     "1305_gochara_snapshot_owns_l1_copy.sql": "b7ad2ba40ae81b29a2672c41a9f44212c67347e382dabefa153227a93da19a31",
     "1306_gochara_expected_class_census.sql": "b55e244e0e76fe783ad10e25656ecace29ead19ef7625a0668098e6529b2c574",
@@ -178,6 +190,74 @@ LANE_EFFECTS = {      # the migration's OWN effect, read back (the recipe applie
     "1308": ("SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relname='ka_gochara_near_miss'",),
     "1381": ("SELECT count(*) FROM pg_class WHERE relnamespace='public'::regnamespace AND relname='ka_gochara_near_miss_verification'",),
     "1398": ("SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='ka_gochara_search_input_snapshot' AND column_name='consumed_dasha_held'",)}
+OVERLAY_EFFECTS = {      # each overlay file's OWN effect, read back as a boolean (a ledger row would be vacuous: the overlay applies file text)
+    "250": "SELECT (SELECT count(*) FROM public.bg_dignity_reference) = 9 AND (SELECT count(*) FROM public.bg_graha_naisargika_friendship) = 72 AND (SELECT count(*) FROM public.bg_combustion_orbs) = 8",
+    "1401": ("SELECT (SELECT count(*) FROM public.bg_graha_naisargika_friendship WHERE (graha, other_graha, relation) IN (('Rahu','Mercury','neutral'),('Rahu','Mars','enemy'),"
+             "('Rahu','Jupiter','friend'),('Ketu','Sun','enemy'),('Ketu','Moon','enemy'))) = 5 AND (SELECT count(*) FROM public.bg_dignity_reference WHERE (graha, moolatrikona_sign) "
+             "IN (('Rahu','Gemini'),('Ketu','Sagittarius'))) = 2 AND (SELECT count(*) FROM public.bg_dignity_reference WHERE (graha, exaltation_sign) IN (('Rahu','Taurus'),('Ketu','Scorpio'))) = 2"),
+    "1402": "SELECT to_regprocedure('public.ka_gochara_solver_certificate_ok(jsonb)') IS NOT NULL AND to_regprocedure('public.ka_gochara_window_qualification_ok(jsonb)') IS NOT NULL",
+    "1403": "SELECT (SELECT depends_on FROM public.asset_registry WHERE asset_id = 'ka_gochara_v5') @> ARRAY['bg_dignity_reference']::text[]"}
+
+
+def plan_overlay(mig_dir: Path, has_table) -> tuple[list[str], dict]:
+    """(overlay files to apply, in order; {file: why it is skipped}).  A mandatory file missing from the checkout REFUSES — a trial database without the L0 seeds and the 1402 CHECK cannot
+    run the merged P1 code — while an optional one is skipped BY NAME and recorded, never silently."""
+    todo: list[str] = []
+    skipped: dict = {}
+    for f, mandatory, table in OVERLAY_MIGRATIONS:
+        if not (mig_dir / f).is_file():
+            if mandatory:
+                raise Refused(f"overlay migration file missing in the checkout: {f}")
+            skipped[f] = "absent in the checkout"
+        elif table is not None and not has_table(table):
+            skipped[f] = f"table {table} is absent from the trial database"
+        else:
+            todo.append(f)
+    return todo, skipped
+
+
+def dsn_for(db: str) -> str:
+    """The loopback DSN (no credential) of database `db` on the lane cluster named by ADMIN_DSN."""
+    return urlunsplit(urlsplit(ADMIN_DSN)._replace(path="/" + db))
+
+
+def lane_dsn(name: str | None = None) -> str:
+    """The DSN of the named lane database T10/T23/T25 read (TR_GAPS B4): `name`, else $TRIAL_LANE_DB, else ky_lane_head.  Only ky_lane_* names are accepted, so the evaluator can never be
+    pointed at a trial, test or foreign database by a typo."""
+    name = name or os.environ.get("TRIAL_LANE_DB") or LANE_DB_DEFAULT
+    if not LANE_DB_RE.fullmatch(name):
+        raise Refused(f"the lane database name {name!r} is not ky_lane_<name>: refusing to point the TRIAL_READY/1 evaluator at it")
+    return dsn_for(name)
+
+
+def dsn_label(dsn: str) -> str:
+    u = urlsplit(dsn)
+    return f"db:{u.hostname}:{u.port}/{(u.path or '').lstrip('/')}"
+
+
+@contextlib.contextmanager
+def trial_ready_dsns(state: dict):
+    """Export TRIAL_READY_LANE_DSN (the named lane database) and TRIAL_READY_TRIAL_DSN (THIS run's trial database, only while it still exists) for the evaluator, for the duration of the
+    stage only.  A TRIAL_READY_TRIAL_DSN inherited from the caller is removed when this run has no live trial database, so a stale value can never stand in for it.  Yields the credential-free
+    labels (host:port/db)."""
+    keys = ("TRIAL_READY_LANE_DSN", "TRIAL_READY_TRIAL_DSN")
+    want = {"TRIAL_READY_LANE_DSN": lane_dsn()}
+    if state.get("db") and not state.get("dropped"):
+        want["TRIAL_READY_TRIAL_DSN"] = dsn_for(state["db"])
+    saved = {k: os.environ.get(k) for k in keys}
+    try:
+        for k in keys:
+            if k in want:
+                os.environ[k] = want[k]
+            else:
+                os.environ.pop(k, None)
+        yield {k: dsn_label(v) for k, v in want.items()}
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
 
 def setup_lane(state: dict, checkout: Path, out: Path) -> None:
@@ -196,6 +276,7 @@ def setup_lane(state: dict, checkout: Path, out: Path) -> None:
     for f in MIGRATIONS:
         if not (mig_dir / f).is_file():
             raise Refused(f"migration file missing in the checkout: {f}")
+    plan_overlay(mig_dir, lambda _t: True)                               # a mandatory overlay file missing in the checkout refuses BEFORE a database is created
     t0 = time.time()
     name = f"{DB_PREFIX}{uuid.uuid4().hex[:8]}"
     admin = guarded_admin_connect(ADMIN_DSN, autocommit=True, connect_timeout=5)
@@ -208,6 +289,11 @@ def setup_lane(state: dict, checkout: Path, out: Path) -> None:
     with psycopg.connect(dsn, autocommit=True, connect_timeout=5) as conn:
         _populate_am5_database(conn, apply_1305=True)
         for f in MIGRATIONS:                                              # the real files, one transaction each, lane connection only
+            q.require_lane(conn)
+            with conn.transaction():
+                conn.execute((mig_dir / f).read_text(encoding="utf-8"))
+        overlay, overlay_skipped = plan_overlay(mig_dir, lambda t: conn.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{t}",)).fetchone()[0])
+        for f in overlay:                                                 # TR_GAPS B4.3: the L0 P1 seeds (250), node dignity (1401), the 1402 CHECK, and 1403 where its table exists
             q.require_lane(conn)
             with conn.transaction():
                 conn.execute((mig_dir / f).read_text(encoding="utf-8"))
@@ -242,6 +328,13 @@ def setup_lane(state: dict, checkout: Path, out: Path) -> None:
         if not all(effects.values()):
             raise Refused(f"the lane lacks the effect of migration(s) {[k for k, v in effects.items() if not v]}: it is not the final build's database")
         lane["migration_effects_present"] = effects
+        overlay_effects = {f.split("_", 1)[0]: bool(conn.execute(OVERLAY_EFFECTS[f.split("_", 1)[0]]).fetchone()[0]) for f in overlay}
+        if not all(overlay_effects.values()):
+            raise Refused(f"the trial database lacks the effect of overlay migration(s) {[k for k, v in overlay_effects.items() if not v]}")
+        lane["overlay_applied"] = overlay
+        lane["overlay_skipped"] = overlay_skipped
+        lane["overlay_effects_present"] = overlay_effects
+        lane["overlay_sha256"] = {f: sha_file(mig_dir / f) for f in overlay}
         lane["migration_sha256_equal_to_proofs_job"] = {f: sha_file(mig_dir / f) == LANE_SHA_PROOFS[f] for f in LANE_FILES if (mig_dir / f).is_file()}
         lane["server_version"] = conn.execute("SHOW server_version").fetchone()[0]
         lane["port"] = conn.execute("SELECT inet_server_port()").fetchone()[0]
@@ -1182,7 +1275,9 @@ def cmd_run(a) -> int:
             from services.gochara_kernel import result_policy
             capture_a10(state, out, conn, {"result_policy": result_policy})
         if "trial_ready" not in state:
-            state["trial_ready"] = trial_ready_stage(state, out, a.trial_ready_repo, a.trial_ready_json, a.trial_ready_timeout_s)
+            with trial_ready_dsns(state) as dsn_labels:                  # TR_GAPS B4.3: the evaluator reads the lane DB and THIS trial DB, which is dropped only after this stage
+                state["trial_ready"] = trial_ready_stage(state, out, a.trial_ready_repo, a.trial_ready_json, a.trial_ready_timeout_s)
+            state["trial_ready_dsn_labels"] = dsn_labels
             write_json(state_path, state)
         if "equivalence_record" not in state:
             state["equivalence_record"] = equivalence_stage(state, out, a.eq_repo, a.eq_tool, a.eq_pinned_extra, a.image_digest)

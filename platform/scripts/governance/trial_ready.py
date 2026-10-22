@@ -6,7 +6,9 @@ Semantics (the whole point; each is pinned by `__tests__/test_trial_ready.py`):
   * `ready` is true iff all 25 required checks T01..T25 are present and every one reads `true`. A check that is missing from the registry, or whose
     evidence cannot be read, is `null` and counts as NOT ready (§N.7.6). `null` is never a pass.
   * A check reads true only from its DETECTOR'S OWN RUN at the commit: the oracle tests ran and passed, the file at the commit says what it must, the
-    database answered the question. Never from a lane state, a PR state or a review verdict (§N.8). A check with no bound detector part is `null`.
+    database answered the question. Never from a lane state, a PR state or a review verdict (§N.8) -- with ONE named exception: T21 (RV-INT scoped integration
+    review passed) IS a review verdict, so it reads the cockpit-copied RV-INT result, bound to this head AND to a patch-id recomputed here from the repository.
+    A check with no bound detector part is `null`.
   * ONE commit: the ref is resolved to a full sha; the work tree must be at that sha with no modified tracked file before AND after the detectors
     ran, else every check reads null (the evidence cannot be attributed to one commit). The registry itself is read from that commit.
   * Skipped tests are not passes: a test oracle that skipped (a missing database, say) reads null.
@@ -15,7 +17,8 @@ The detectors live in the registry (`trial_ready_checks.json`, read at the evalu
 Part kinds: `pytest`, `git_file`, `db_sql`, `db_migrations`, `json_keys`, `json_field_eq`, `unbound`. A part reads false when its detector ran and the claim
 failed, null when the detector could not run or its evidence is unreadable. A `pytest` part may carry `env` (values may use `{repo}`, the evaluated work tree) and
 `deselect` (node ids a known environment-dependent test is excluded by, each named and justified in the registry). A `db_migrations` part either lists `prefixes`
-or sets `mode: "all"` (every migration file at the commit must be recorded). A `json_field_eq` part reads a JSON record outside the repository (TR-BIND: T21, T24).
+or sets `mode: "all"` (every migration file at the commit must be recorded). A `json_field_eq` part reads a JSON record outside the repository (TR-BIND: T21, T24);
+each field declares exactly one of `equals` (a constant), `equals_head` (the evaluated sha) or `equals_patch_id_of` (a base ref: `git diff <base>...<head> | git patch-id --stable`).
 Parts combine three-valued: any false -> false; else any null -> null; else true.
 A lane that merges adds the binding of its own oracle to the registry in its PR; until then its check is `unbound` and reads null.
 
@@ -299,6 +302,24 @@ def _dig(obj: Any, dotted: str) -> Tuple[bool, Any]:
     return True, obj
 
 
+def _patch_id(repo: Path, base: str, sha: str) -> Optional[str]:
+    """`git patch-id --stable` of base...sha, recomputed from the repository (None when the base does not resolve or the range is empty)."""
+    base_sha = resolve_sha(repo, base)
+    if base_sha is None:
+        return None
+    try:
+        d = _git(repo, "diff", "%s...%s" % (base_sha, sha))
+        if d.returncode != 0 or not d.stdout:
+            return None
+        env = scrubbed()
+        env["GIT_OPTIONAL_LOCKS"] = "0"
+        r = subprocess.run(["git", "-C", str(repo), "patch-id", "--stable"], input=d.stdout, capture_output=True, env=env, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    out = r.stdout.decode("utf-8", "replace").split()
+    return out[0] if r.returncode == 0 and out and re.fullmatch(r"[0-9a-f]{40}", out[0]) else None
+
+
 def _d_json_field_eq(ctx: "Ctx", part: Part) -> Outcome:
     """A JSON record outside the repository (a readiness report, a verdict) must hold each named field with the declared value. `equals_head: true` compares the
     field with the commit the evaluator resolved, so a record made for ANY other head reads false; `{head}` in `path` names a per-head file. A missing or
@@ -312,12 +333,20 @@ def _d_json_field_eq(ctx: "Ctx", part: Part) -> Outcome:
         obj = json.loads(data.decode("utf-8"))
     except (OSError, TypeError, ValueError):
         return None, ref, None, "record unreadable"
-    if not fields or any(("equals" in f) == bool(f.get("equals_head")) for f in fields):
-        return None, ref, _sha256(data), "json_field_eq part declares each field with exactly one of equals / equals_head"
+    if not fields or any(sum(1 for k in ("equals", "equals_head", "equals_patch_id_of") if k in f and (k != "equals_head" or f[k])) != 1 for f in fields):
+        return None, ref, _sha256(data), "json_field_eq part declares each field with exactly one of equals / equals_head / equals_patch_id_of"
     verdicts: List[Optional[bool]] = []
     for f in fields:
         found, got = _dig(obj, f["field"])
-        want = ctx.sha if f.get("equals_head") else f["equals"]
+        if f.get("equals_head"):
+            want: Any = ctx.sha
+        elif "equals_patch_id_of" in f:
+            want = _patch_id(ctx.repo, str(f["equals_patch_id_of"]), ctx.sha)
+            if want is None:
+                verdicts.append(None)                      # the patch-id cannot be recomputed here: no evidence
+                continue
+        else:
+            want = f["equals"]
         if not found or got is None:
             verdicts.append(None)
         else:

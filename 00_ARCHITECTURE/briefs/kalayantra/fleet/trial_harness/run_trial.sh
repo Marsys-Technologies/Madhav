@@ -16,6 +16,8 @@
 #          TRIAL_READY_REPO=<clean work tree at the head>  run the merged TRIAL_READY/1 evaluator   TRIAL_READY_JSON=<trial_ready.json>  or supply its result   TRIAL_READY_TIMEOUT_S
 #          TRIAL_EQ_REPO=<git repo containing the head>  emit EQUIVALENCE_RECORD/1   TRIAL_EQ_TOOL=<equivalence_record.py>   TRIAL_EQ_PINNED_EXTRA=<json>
 #          TRIAL_IMAGE_DIGEST=sha256:..  provenance of the image the run executed in
+#          TRIAL_LANE_DB=ky_lane_head  the named head-chain database the TRIAL_READY/1 evaluator reads (only ky_lane_* names). The harness itself exports TRIAL_READY_LANE_DSN (that
+#                                      database) and TRIAL_READY_TRIAL_DSN (this run's ky_trial_* database, while it exists) around the trial-ready stage — loopback, no credential.
 #          TRIAL_DRY_RUN=1            print the command (one argument per line) and exit 0
 # Portable: bash or zsh can run it (arguments are built as an ARRAY — the v1 launcher relied on zsh-only word handling and lost `--gate-entry`/`--budget-s`).
 # Writes <out_dir>/trial_report.json (+ report.json, state.json, gate_verdict.json for a numerical policy with a baseline).  The throwaway database is dropped at

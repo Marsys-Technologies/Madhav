@@ -16,7 +16,11 @@ ready (N.7.6)"; "a check reads true only from its detector's run" (§N.8); "TR1/
   C10 `db_migrations` with `mode: "all"` (T25) reads false when the ledger lacks ANY file the commit lists, null when the commit lists none.
   C11 a `pytest` part passes `env` with `{repo}` expanded and `--deselect` for each named node id (T14); a part whose every test is deselected is null;
      a relative scratch directory is resolved first (the part runs in another cwd, so its junit file would otherwise be written elsewhere and read null).
-  C12 the trial harness landed under fleet/trial_harness is the accepted v3.1 (content digest pinned), not a later or edited copy.
+  C12 the trial harness landed under fleet/trial_harness is the accepted v3.1 + B4 overlay the trial runs (content digest pinned), not a later or edited copy.
+  C13 (PR #3874 review B-1) T24 reads true only from the amd64_slice run's OWN evidence (report, pinned runtime, EQUIVALENCE_RECORD) at this head -- never from a
+     readiness record, which only says the inputs are named.
+  C14 (review B-2) T20's a53 DB-suite part deselects the one test that skips by design, so the part can read true.
+  C15 (review N-2) T21 also matches the verdict's patch_id to a patch-id recomputed from the repository; N-3/N-4 T10 part 2 pins its locale, T20 names the geometry-pin rule.
 Every test builds a throw-away git repository; none touches the shared repository or a database (the database answer is replaced where the claim is
 about how the evaluator READS it).
 """
@@ -326,7 +330,7 @@ def test_c8_the_shipped_registry_names_the_25_checks_and_points_only_at_real_ora
             if p["kind"] == "git_file":
                 assert (REPO_ROOT / p["path"]).is_file(), (c["id"], p["path"])
             if p["kind"] == "json_field_eq":
-                assert p["fields"] and all(("equals" in f) != bool(f.get("equals_head")) for f in p["fields"]), (c["id"], p)
+                assert p["fields"] and all(sum(1 for k in ("equals", "equals_head", "equals_patch_id_of") if k in f and (k != "equals_head" or f[k])) == 1 for f in p["fields"]), (c["id"], p)
             if p["kind"] == "db_migrations":
                 assert p.get("mode") == "all" or p.get("prefixes"), (c["id"], p)
 
@@ -479,7 +483,9 @@ def test_c11_a_relative_scratch_directory_still_lets_a_passing_oracle_read_true(
 # ── C12 the landed harness is the accepted v3.1 ──────────────────────────────────────────────────────────────────────────────────────
 
 HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
-HARNESS_V31_DIGEST = "efb0922aa74aaefb07b981fd019fa334301448a37d877536802657020569787c"     # review X-20261022T075423Z-review-t1b-harness2 (ACCEPTED, round 2)
+# v3.1 (review X-20261022T075423Z-review-t1b-harness2, ACCEPTED round 2 = efb0922a...787c) + the cockpit's B4 lane-db overlay (TR_GAPS B4.3: run_trial.sh, trial_slice.py,
+# tests/test_lane_db_overlay.py) = the harness the trial actually runs (installed copy of job X-20261021T105440Z-od1-T1-harness; PR #3874 review N-1)
+HARNESS_V31_DIGEST = "7d8fbd87f5412c0954c2a294a799f36ae975f807114a53e505bab93736921f91"
 
 
 def harness_digest(root):
@@ -502,3 +508,133 @@ def test_c12_the_digest_moves_when_any_harness_byte_changes(tmp_path):
     gates = copy / "gates.py"
     gates.write_bytes(gates.read_bytes() + b"\n")
     assert harness_digest(copy) != HARNESS_V31_DIGEST
+
+
+# ── C13-C15 PR #3874 review fixes ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+RUN_TR = "/Users/Dev/kalayantra/run/TR"
+
+
+def shipped():
+    return json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))
+
+
+def shipped_check(cid):
+    return next(c for c in shipped()["checks"] if c["id"] == cid)
+
+
+def retarget(check, run_dir):
+    """The shipped check with its external record directory moved under a scratch directory (the parts are otherwise exactly the shipped ones)."""
+    return json.loads(json.dumps(check).replace(RUN_TR, str(run_dir)))
+
+
+def slice_records(run_dir, sha, *, head=None, arch="linux/amd64", kind="qualifying_run", status="COMPLETE", complete=True, eq_head=None):
+    """What a finished amd64_slice run leaves: <label>_report.json, equivalence/eq_pinned_inputs.json and equivalence/equivalence_record.json (trial_slice.py / equivalence_record.py)."""
+    base = Path(run_dir) / "amd64_slice"
+    (base / "equivalence").mkdir(parents=True, exist_ok=True)
+    (base / "amd64_slice_report.json").write_text(json.dumps({"code": {"head": head or sha}, "equivalence_record": {"status": status, "head": eq_head or head or sha}}))
+    (base / "equivalence" / "eq_pinned_inputs.json").write_text(json.dumps({"runtime": {"kind": kind, "arch": arch}}))
+    (base / "equivalence" / "equivalence_record.json").write_text(json.dumps({"complete": complete, "runtime_kind": kind, "E6": {"commit": head or sha}}))
+
+
+def t24_value(tmp_path, name, write):
+    repo, sha = make(tmp_path, registry({"T24": retarget(shipped_check("T24"), tmp_path / name)["parts"]}), name=name)
+    write(tmp_path / name, sha)
+    return values(run(repo, tmp_path))["T24"]
+
+
+def test_c13_a_readiness_record_alone_never_reads_true_for_t24(tmp_path):
+    """Review B-1: `trial_slice.py amd64-readiness` writes ready:true for any well-formed 64-hex digest with no image and no run (it says `not_run: true`).
+    Reversion: bind T24 back to amd64_readiness.json -> this record reads true and the assertion fails."""
+    def only_readiness(d, sha):
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "amd64_readiness.json").write_text(json.dumps({"schema": "ky.amd64_slice_readiness/1", "not_run": True, "ready": True,
+                                                            "inputs": {"head": {"value": sha, "present": True}, "image_digest": {"value": "sha256:" + "0" * 64, "present": True}}}))
+    assert t24_value(tmp_path, "ro", only_readiness) is None
+
+
+def test_c13_t24_reads_true_from_the_complete_qualifying_amd64_run_of_this_head(tmp_path):
+    assert t24_value(tmp_path, "ok", lambda d, sha: slice_records(d, sha)) is True
+
+
+@pytest.mark.parametrize("name,over", [("arm64", {"arch": "linux/arm64"}), ("rolling", {"kind": "rolling_diagnostic"}), ("incomplete", {"complete": False}),
+                                       ("refused", {"status": "REFUSED"}), ("other_head", {"head": "1" * 40}), ("eq_other_head", {"eq_head": "2" * 40})])
+def test_c13_t24_reads_false_when_the_slice_ran_elsewhere_or_for_another_head(tmp_path, name, over):
+    """Each field the claim names (arch, runtime kind, completeness, status, head) is measured: a record that says otherwise reads false, not true."""
+    assert t24_value(tmp_path, name, lambda d, sha: slice_records(d, sha, **over)) is False
+
+
+def test_c13_t24_is_null_without_the_slice_run(tmp_path):
+    assert t24_value(tmp_path, "none", lambda d, sha: None) is None
+
+
+T20_SKIP_NODE = "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id"
+
+
+def test_c14_t20_deselects_the_one_test_that_skips_by_design_and_says_why():
+    """Review B-2. Source: platform/migrations/1153_gochara_sky_event_substrate.sql:609-611 (insert-only trigger on ka_gochara_sky_convention)."""
+    part = shipped_check("T20")["parts"][1]
+    assert part["deselect"] == [T20_SKIP_NODE]
+    why = part["deselect_why"][T20_SKIP_NODE]
+    assert "1153_gochara_sky_event_substrate.sql:609-611" in why and "insert-only" in why
+    mig = (REPO_ROOT / "platform/migrations/1153_gochara_sky_event_substrate.sql").read_text(encoding="utf-8").splitlines()[608:611]
+    assert any("ka_gochara_sky_convention_immutable" in l for l in mig) and any("BEFORE UPDATE OR DELETE" in l for l in mig) and any("ka_gochara_insert_only" in l for l in mig)
+    src = (REPO_ROOT / "platform/python-sidecar" / T20_SKIP_NODE.split("::")[0]).read_text(encoding="utf-8")
+    assert "def " + T20_SKIP_NODE.split("::")[1] + "(" in src and "refuses an in-place edit" in src
+
+
+def test_c14_with_that_node_deselected_a_part_whose_only_skip_it_is_reads_true(tmp_path):
+    """The shipped T20 part 2 deselect applied to a stand-in file with the same node id (one skip-by-design test, one passing test).
+    Reversion: drop the deselect -> the skip makes the part null forever."""
+    rel = T20_SKIP_NODE.split("::")[0]
+    body = "import pytest\n\ndef %s():\n    pytest.skip('the convention table refuses an in-place edit here')\n\ndef test_other():\n    assert True\n" % T20_SKIP_NODE.split("::")[1]
+    part = {k: v for k, v in shipped_check("T20")["parts"][1].items() if k not in ("env", "tests")}
+    part["tests"] = [rel]
+    repo, _ = make(tmp_path, registry({"T20": [part]}), files={"platform/python-sidecar/" + rel: body})
+    assert values(run(repo, tmp_path))["T20"] is True
+    part.pop("deselect")
+    repo, _ = make(tmp_path, registry({"T20": [part]}), files={"platform/python-sidecar/" + rel: body}, name="nodeselect")
+    assert values(run(repo, tmp_path))["T20"] is None
+
+
+def test_c14_t20_claim_states_the_pin_once_rule_in_full():
+    """Review N-4; ruling SR-GEOMETRY-PIN-ONCE (DECISIONS_SURROGATE 2026-10-22T09:15:49Z)."""
+    claim = shipped_check("T20")["claim"]
+    assert "SR-GEOMETRY-PIN-ONCE" in claim and "recorded in the EQUIVALENCE_RECORD changelog with both causes; any further geometry change refuses" in claim
+
+
+def test_c14_t10_locale_sensitive_part_pins_its_locale():
+    """Review N-3: the throwaway postgres of test_sr_doctrine_h_node_dignity_1401.py refuses to start without a valid locale ('postmaster became multithreaded')."""
+    part = next(p for p in shipped_check("T10")["parts"] if p["kind"] == "pytest" and "test_sr_doctrine_h_node_dignity_1401.py" in p["tests"][0])
+    assert part["env"]["LC_ALL"] == "en_US.UTF-8" and part["env"]["LANG"] == "en_US.UTF-8"
+
+
+def _t21_repo(tmp_path, name):
+    repo = tmp_path / name
+    repo.mkdir()
+    git(repo, "init", "-q")
+    base = commit(repo, {"a.txt": "one\n"})
+    git(repo, "update-ref", "refs/remotes/origin/main", base)
+    head = commit(repo, {"a.txt": "one\ntwo\n", tr.DEFAULT_REGISTRY: json.dumps(registry({"T21": retarget(shipped_check("T21"), tmp_path / name / "..")["parts"]}))})
+    return repo, head
+
+
+def test_c15_t21_matches_the_verdict_patch_id_against_one_recomputed_from_the_repo(tmp_path):
+    """Review N-2. Source: the reviewer's recipe `git patch-id --stable` of base...head. Reversion: drop the patch_id field -> a verdict naming another patch reads true."""
+    repo, head = _t21_repo(tmp_path, "r")
+    real = tr._patch_id(repo, "origin/main", head)
+    assert real and len(real) == 40
+    verdict = tmp_path / "r" / ".." / "RVINT_VERDICT.json"
+    verdict.write_text(json.dumps({"proposed_verdict": {"verdict": "ACCEPTED", "head": head, "patch_id": real}}))
+    assert values(run(repo, tmp_path))["T21"] is True
+    verdict.write_text(json.dumps({"proposed_verdict": {"verdict": "ACCEPTED", "head": head, "patch_id": "f" * 40}}))
+    assert values(run(repo, tmp_path))["T21"] is False                            # a verdict for another patch with the right head label
+    verdict.write_text(json.dumps({"proposed_verdict": {"verdict": "ACCEPTED", "head": head}}))
+    assert values(run(repo, tmp_path))["T21"] is None                             # no patch_id recorded: no evidence
+
+
+def test_c15_an_unresolvable_base_makes_the_patch_id_field_null(tmp_path):
+    repo, head = _t21_repo(tmp_path, "r2")
+    git(repo, "update-ref", "-d", "refs/remotes/origin/main")
+    (tmp_path / "RVINT_VERDICT.json").write_text(json.dumps({"proposed_verdict": {"verdict": "ACCEPTED", "head": head, "patch_id": "a" * 40}}))
+    assert values(run(repo, tmp_path))["T21"] is None
