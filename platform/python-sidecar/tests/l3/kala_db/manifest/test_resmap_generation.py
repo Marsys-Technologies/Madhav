@@ -477,8 +477,11 @@ def w2(module, conn, monkeypatch, head_sql=None):
         monkeypatch.setattr(module, '_FETCH_HEAD_SQL', head_sql)
     try:
         run_writer(module, conn, c.build_id)
-    except ValueError:
+    except ValueError as exc:
         conn.rollback()
+        # Only the writer's own refusal counts: another ValueError (e.g. the candidate-grain step refusing a candidate that is not building) is a
+        # different reason and must not let a run that skipped the head check pass as refused.
+        assert 'immutable' in str(exc), f'refused for another reason: {exc}'
         return
     raise AssertionError('a run bound to the published head rewrote its resonance rows')
 
