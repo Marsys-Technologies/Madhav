@@ -2811,6 +2811,9 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     asset_kind: 'data',
     has_substeps: false,
     has_writer: true,
+    // SR-VEDHA-WRITER-BUDGET / migration 1408: 120 -> 600 s (rehearsal walls 120.8 s and 196.3 s on a loaded machine; 3.06x the larger).
+    // The seed's ON CONFLICT preserves live values, so this governs a fresh registry only; the audit is tests/l3/kala_db/writer_budget_audit_1408.json.
+    writer_timeout_seconds: 600,
   },
 
   // ── PHALA (8) ────────────────────────────────────────────────────────────────────────────
