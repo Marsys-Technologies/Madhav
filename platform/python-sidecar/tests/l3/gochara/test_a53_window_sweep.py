@@ -539,7 +539,7 @@ def test_a_drishti_step_inside_one_aspect_record_peaks_at_the_offset_change():
 
 def test_a_drishti_source_returning_none_makes_that_instant_undeterminable():
     rec = _rec("a", relation="aspect", supports=((0, 10),), aspect_offset_at=lambda t: 6)
-    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o, r: None)   # e.g. 'no_aspect_at_this_offset'
+    (w,), _ = _draft([rec], _rows_declared, drishti=lambda a, o, r: None)   # e.g. 'no_aspect_rule_defined_at_offset'
     assert w.score is None and w.unresolved == {"operand_undeterminable_over_support": 1}
     assert w.qualified_members == 0
 

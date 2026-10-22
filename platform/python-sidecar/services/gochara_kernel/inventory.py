@@ -34,7 +34,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import Mapping, Sequence
 
-from .evaluator import RecordEdge, enumerate_edges
+from .evaluator import RecordEdge, enumerate_edges, node_aspect_declined
 from .substrate import _uuid8_of
 from services.gochara_rules import registry as _rules
 from services.gochara_rules.registry import signature_houses
@@ -187,12 +187,35 @@ class SearchCapability:
     moon_scope_domain: bool = False
 
 
+#: SR-D6-OBJECTIVE-UNKNOWN (a): a node as the ASPECTING agent is DECLARED not-applicable (N-14, O-CF-DRISHTI: nodes cast no dṛṣṭi) — excluded from
+#: the product at the inventory, counted per class and path, and never a window-level blank. The reason is `gochara_rules.drishti`'s own name for it.
+NODE_CASTS_NO_DRISHTI = "node_casts_no_drishti"
+
+
+@dataclass(frozen=True)
+class NotApplicable:
+    """`count` enumerated candidate edges of `agent` under `path_id` that the rule declares not-applicable (`reason`)."""
+
+    reason: str
+    path_id: str
+    agent: str
+    count: int
+
+
 @dataclass(frozen=True)
 class ClassInventory:
     event_class: str
     horizon: tuple[datetime, datetime]
     pins: tuple[PinPlan, ...]
     intervals: tuple[IntervalPlan, ...]
+    #: the declared not-applicable candidates of the SEARCHED versions (not obligations: nothing is searched for them). Not part of
+    #: the stored ledger — an accounting beside it, so no digest moves.
+    not_applicable: tuple[NotApplicable, ...] = ()
+
+    @property
+    def node_aspect_not_applicable(self) -> int:
+        """The class's total of node-as-aspecting-agent edges declared not-applicable."""
+        return sum(n.count for n in self.not_applicable if n.reason == NODE_CASTS_NO_DRISHTI)
 
     @property
     def obligations(self) -> list[Obligation]:
@@ -392,6 +415,8 @@ def plan_class_inventory(
                 f"{event_class}/{path_id}: {len(versions)} sealed versions {sorted(versions)} and no "
                 "selected version — the planner never searches (or double-counts) them all")
 
+    na_by_version: dict = {(p, v): [] for p, vs in by_path.items() for v in vs}
+
     def disposition(path_id: str, rule_version: str):
         """(PinPlan, [IntervalPlan]) of `path@version` as if it were the searched version."""
         excl = _exclusion_for(path_id, rule_version, path_exclusions)
@@ -439,7 +464,11 @@ def plan_class_inventory(
                 return PinPlan(path_id, rule_version, "included", ob_plan), list(iv_plan)
             return PinPlan(path_id, rule_version, "computed_empty",
                            basis="spec:GOCHARA_DESIGN_SPECS@1.4#2.2-p1-empty-qualified-set"), []
-        edges = enumerate_edges(event_class, path_id, chart, rule_version=rule_version)
+        with node_aspect_declined() as declined:
+            edges = enumerate_edges(event_class, path_id, chart, rule_version=rule_version)
+        for agent in sorted(set(declined)):
+            na_by_version[(path_id, rule_version)].append(
+                NotApplicable(NODE_CASTS_NO_DRISHTI, path_id, agent, declined.count(agent)))
         seen: dict[str, Obligation] = {}
         for edge in edges:
             ob = obligation_of_edge(edge)
@@ -517,11 +546,13 @@ def plan_class_inventory(
             detail['final_rule_context'] = context
         annotated.append(replace(iv, detail=detail))
     intervals = annotated
+    # the declared not-applicable account follows the SEARCHED version of each path (a non-selected version is accounted by its pin only)
+    not_applicable = tuple(n for path_id in sorted(by_path) for n in na_by_version[(path_id, selected[path_id])])
     return ClassInventory(event_class=event_class, horizon=(lo, hi),
-                          pins=tuple(pins), intervals=tuple(intervals))
+                          pins=tuple(pins), intervals=tuple(intervals), not_applicable=not_applicable)
 
 
-__all__ = ["supersession_basis", "ClassInventory", "DEGRADING_REASONS", "DashaRow", "H_UNKNOWN_RULING",
+__all__ = ["supersession_basis", "ClassInventory", "NODE_CASTS_NO_DRISHTI", "NotApplicable", "DEGRADING_REASONS", "DashaRow", "H_UNKNOWN_RULING",
            "P5_HOLD_RULING", "PERIOD_ROLE_LEVEL", "standing_exclusions", "EXCLUSION_REASONS", "Exclusion",
            "H_DEPENDENT_PATHS", "IntervalPlan", "InventoryBlocked", "Obligation",
            "PinPlan", "STATE_COMPLETE", "STATE_EXCLUDED_MOON", "STATE_MISSING", "SearchCapability",
