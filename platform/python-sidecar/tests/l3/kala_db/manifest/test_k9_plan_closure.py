@@ -138,10 +138,22 @@ def conn(kala_db_dsn):
         q = sql.Identifier(schema).as_string(c) + '.'
         c.execute((MIGRATIONS / '1330_kala_layer_manifest_candidates.sql').read_text()
                   .split('-- A separately dispatched verifier')[0].replace('public.', q))
-        c.execute('CREATE TABLE gochara_resonance_map (chart_id uuid, event_class text, target_type text, '
-                  'target_ref text, weight numeric, classical_citation text, uncited_extension boolean, '
-                  'source_rule_id text, target_resolution_state text, target_qualifier text, '
+        # The map as migrations 459/550/1080 leave it (the columns and the 4-column key migration 1404 widens), then migration 1404 itself,
+        # applied verbatim: the writer under test writes (chart, generation) partitions and reads the served view, so a fixture table without
+        # them would test a database that no longer exists. The orchestrator's run tables and the registry rows 1404 measures and edits are
+        # stand-ins with only the columns it reads.
+        c.execute('CREATE TABLE gochara_resonance_map (id BIGSERIAL PRIMARY KEY, chart_id uuid NOT NULL, event_class text NOT NULL, '
+                  'target_type text NOT NULL, target_ref text NOT NULL, weight numeric NOT NULL, classical_citation text, '
+                  'uncited_extension boolean, source_rule_id text, computed_at timestamptz NOT NULL DEFAULT now(), '
+                  'target_resolution_state text NOT NULL DEFAULT \'resolved\', target_qualifier text, '
                   'UNIQUE (chart_id, event_class, target_type, target_ref))')
+        c.execute('CREATE TABLE build_runs (id uuid PRIMARY KEY, chart_id uuid)')
+        c.execute('CREATE TABLE build_run_assets (run_id uuid, asset_id text, state text, started_at timestamptz, ended_at timestamptz)')
+        c.execute('CREATE TABLE asset_registry (asset_id text PRIMARY KEY, count_sql text)')
+        c.execute("INSERT INTO asset_registry VALUES ('ka_gochara_resonance', 'SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=$1')")
+        c.execute('CREATE TABLE asset_output_digest_specs (asset_id text NOT NULL, spec_sha256 text NOT NULL, spec jsonb NOT NULL, '
+                  'reviewed_at timestamptz NOT NULL DEFAULT now(), retired_at timestamptz, PRIMARY KEY (asset_id, spec_sha256))')
+        c.execute(next(iter(sorted(MIGRATIONS.glob('1404_*.sql')))).read_text())     # no schema-qualified name in the file: the search path decides
         try:
             yield c
         finally:

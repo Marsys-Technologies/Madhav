@@ -76,6 +76,8 @@ from services.ka_gochara_resonance.writer import (  # noqa: E402
     build_resonance_rows,
 )
 
+from tests.l3.kala_db.manifest._resmap_1404 import BUILDER_WORLD_STUBS, migration_sql  # noqa: E402
+
 DSN = os.environ.get("C7_BUILDER_ROLE_TEST_DATABASE_URL")
 
 pytestmark = pytest.mark.skipif(not DSN, reason="NOT_RUN: set C7_BUILDER_ROLE_TEST_DATABASE_URL to the disposable Postgres")
@@ -149,6 +151,11 @@ def builder_world():
         BR.provision(admin)
         applied = _build_schema_as_owner(admin)
         applied["grant_migrations"] = BR.apply_grant_migrations(admin)
+        # Migration 1404 (SR-K9-RESONANCE-MAP) comes after 1231 in production: the served view copies the base table's SELECT grantees at the moment
+        # it is created, so the builder's grant must already be in force. Applied verbatim, as the owner.
+        with BR.as_owner(admin):
+            admin.execute(BUILDER_WORLD_STUBS)
+            admin.execute(migration_sql())
         yield {"admin": admin, "applied": applied}
     finally:
         # Best-effort teardown: leave the disposable database empty of this
@@ -175,6 +182,7 @@ def _resonance_rows() -> list[dict]:
     assert rows, "the writer's row build produced no rows for 'marriage'"
     for row in rows:
         row["chart_id"] = CHART
+        row["generation"] = "legacy"      # the partition a run bound to no candidate writes (migration 1404)
     return rows
 
 
@@ -205,13 +213,21 @@ def test_resonance_writer_insert_path_succeeds_as_builder(builder_world):
     with BR.connect_as_builder(DSN, connect_timeout=5) as conn:
         with conn.cursor() as cur:
             # The writer's exact replacement path: scoped delete, then insert.
-            cur.execute(_DELETE_SQL, (CHART,))
+            cur.execute(_DELETE_SQL, (CHART, "legacy"))
             cur.executemany(_INSERT_SQL, rows)
         conn.commit()
         count = conn.execute(
             "SELECT count(*) FROM gochara_resonance_map WHERE chart_id = %s", (CHART,)
         ).fetchone()[0]
     assert count == len(rows)
+
+
+def test_builder_reads_the_served_view_under_the_production_acl(builder_world):
+    # 1404: the readers that run as the builder (ka_gochara, ka_kshetra) read gochara_resonance_map_served; it copies the base table's SELECT grantees.
+    with BR.connect_as_builder(DSN, connect_timeout=5) as conn:
+        served = conn.execute("SELECT count(*) FROM gochara_resonance_map_served WHERE chart_id = %s", (CHART,)).fetchone()[0]
+        total = conn.execute("SELECT count(*) FROM gochara_resonance_map WHERE chart_id = %s", (CHART,)).fetchone()[0]
+    assert served == total          # only the legacy partition exists in this world, and it is the served one
 
 
 def test_forbidden_create_table_in_public_fails_as_builder(builder_world):
@@ -231,6 +247,6 @@ def test_grant_migrations_idempotent(builder_world):
     rows = _resonance_rows()
     with BR.connect_as_builder(DSN, connect_timeout=5) as conn:
         with conn.cursor() as cur:
-            cur.execute(_DELETE_SQL, (CHART,))
+            cur.execute(_DELETE_SQL, (CHART, "legacy"))
             cur.executemany(_INSERT_SQL, rows)
         conn.commit()

@@ -243,13 +243,15 @@ def test_vighnakara_unbound_build_without_a_head_keeps_the_served_read_and_attes
 
 @pytest.fixture
 def gochara(conn, monkeypatch):
-    conn.execute('CREATE TABLE gochara_resonance_map (chart_id uuid, event_class text)')
+    conn.execute("CREATE TABLE gochara_resonance_map (chart_id uuid, generation text NOT NULL DEFAULT 'legacy', event_class text)")
+    # stand-in for the served view of migration 1404 (its real definition is tested in test_resmap_generation.py): an unbound build reads the served partition
+    conn.execute("CREATE VIEW gochara_resonance_map_served AS SELECT * FROM gochara_resonance_map WHERE generation = 'legacy'")
     conn.execute('CREATE TABLE kala_gochara_windows_v2 (chart_id uuid, generation text)')
     conn.execute('CREATE TABLE bg_gochara_arcs (body text, arc_fingerprint text, substrate_version text)')
     conn.execute('CREATE TABLE kala_gochara_v2_build_state (chart_id uuid, event_class text, generation text, '
                  'class_fingerprint text)')
     monkeypatch.setattr(gochara_mod.RM, 'fetch_resonance_targets',
-                        lambda c, chart, ec: [SimpleNamespace(target_ref=f'{ec}:t1')])
+                        lambda c, chart, ec, generation=None: [SimpleNamespace(target_ref=f'{ec}:t1')])
     monkeypatch.setattr(gochara_mod.KaGocharaWriter, 'run_substep', _class_substep(gochara_mod.KaGocharaWriter.run_substep))
     return gochara_mod.KaGocharaWriter()
 
@@ -272,16 +274,25 @@ def test_gochara_empty_plan_still_attests_a_zero_rows_grain_under_the_candidate(
 
 
 def test_gochara_with_windows_attests_rows_and_every_class_fingerprint_is_in_the_vector(conn, gochara):
-    conn.execute("INSERT INTO gochara_resonance_map VALUES (%s, 'career'), (%s, 'health')", (CHART, CHART))
+    conn.execute("INSERT INTO gochara_resonance_map VALUES (%s, %s, 'career'), (%s, %s, 'health')", (CHART, CAND, CHART, CAND))     # the candidate's own partition (migration 1404)
     conn.execute("INSERT INTO kala_gochara_windows_v2 VALUES (%s, '2.0')", (CHART,))
     drive(conn, gochara, 'ka_gochara')
     state, vector = grains(conn)[(CAND, 'ka_gochara:inputs')]
     assert state == 'rows'
     # A third populated class changes the writer's own input identity.
     conn.execute('DELETE FROM kala_layer_candidate_grain')
-    conn.execute("INSERT INTO gochara_resonance_map VALUES (%s, 'wealth')", (CHART,))
+    conn.execute("INSERT INTO gochara_resonance_map VALUES (%s, %s, 'wealth')", (CHART, CAND))
     drive(conn, gochara_mod.KaGocharaWriter(), 'ka_gochara')
     assert grains(conn)[(CAND, 'ka_gochara:inputs')][1] != vector
+
+
+def test_gochara_candidate_bound_build_plans_from_its_own_resonance_rows_not_the_served_ones(conn, gochara):
+    # SR-K9-RESONANCE-MAP: the served partition ('legacy') holds a class the candidate does not; the candidate-bound plan ignores it (the candidate pairs its windows with its own targets)
+    conn.execute("INSERT INTO gochara_resonance_map VALUES (%s, 'legacy', 'marriage'), (%s, %s, 'career')", (CHART, CHART, CAND))
+    ctx = ContextSpec(asset_id='ka_gochara', build_id=BUILD, db_conn=conn, config={'chart_id': CHART, 'birth_params': BIRTH})
+    assert [s.key for s in gochara._plan_event_classes(ctx)] == ['career']
+    unbound = ContextSpec(asset_id='ka_gochara', build_id=str(uuid.uuid4()), db_conn=conn, config={'chart_id': CHART, 'birth_params': BIRTH})
+    assert [s.key for s in gochara._plan_event_classes(unbound)] == ['marriage']      # an ordinary rebuild reads what is served
 
 
 def test_gochara_unbound_build_attests_nothing_and_plans_as_before(conn, gochara):
