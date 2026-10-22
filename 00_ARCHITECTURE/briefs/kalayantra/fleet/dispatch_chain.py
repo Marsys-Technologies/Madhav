@@ -7,7 +7,10 @@ Speed without lowering a gate: no stage is skipped, no stage advances on a proxy
 
 THE CHAIN (each poll re-evaluates S0..S5 from evidence, in order, and stops at the first stage whose detector does not read true; markers only make the EMISSIONS exactly-once):
   S0 TRIAL_READY   `trial_ready.json` (platform/scripts/governance/trial_ready.py) at the trial head H: predicate TRIAL_READY/1, exactly T01..T25, every value `true` (recounted here;
-                   the file's own `ready` is cross-checked, never trusted), each true check names its evidence.  -> ACTION arm the 12-class TR (writes the harness command; never runs it).
+                   the file's own `ready` is cross-checked, never trusted), each true check names its evidence;
+                   AND precondition `k9_migrations_applied`: 1404_*, 1405_kala_convergence_generation.sql and 1406_kala_obstruction_generation_scope.sql (names read from the repo at H) are all in the
+                   target DB's `public._migrations_applied` (executor `migration_readback` receipts; absent from the repo, missing from the ledger or an unreadable ledger = no advance; SR-K9-MIGRATION-WINDOW).
+                   -> ACTION arm the 12-class TR (writes the harness command; never runs it).
   S1 TR_PASS_MERGE the TR verdict (`ky.tr_verdict/1`) at H binds THIS trial_ready file by digest, is qualifying (not DIAGNOSTIC), has G-1..G-7 each `true` (recounted; its own verdict is
                    cross-checked) AND the RV-INT part 2 reviewer result is ACCEPTED at H with claims and no blocking finding; the PR (#3841) head is still H, based on main, not a draft.
                    -> ACTION `gh pr merge --auto` (bound to H with --match-head-commit).  Then waits for MERGED.
@@ -78,6 +81,10 @@ PRODUCTION_KINDS = DISPATCH_KINDS + (VERIFY_KIND,)
 FORBIDDEN_GH_TOKENS = ("--admin", "ci_gate", "data_plane_cutover", "--delete-branch", "--force", "EMERGENCY-OVERRIDE-CI-NOT-GREEN")
 CAPS_MAX_AGE_S = 900
 STALL_S = 7200
+K9_PRECONDITION = "k9_migrations_applied"
+K9_MIGRATION_DIR = "platform/migrations"
+K9_MIGRATIONS = (("1404", None), ("1405", "1405_kala_convergence_generation.sql"), ("1406", "1406_kala_obstruction_generation_scope.sql"))   # (number, exact name | None = the repo names it)
+MIGRATION_LEDGER_HEADER = ["filename", "applied_at", "sha256"]       # readback_sql.sh --migration: SELECT filename, applied_at, sha256 FROM public._migrations_applied
 
 _SHA = re.compile(r"[0-9a-f]{40}")
 _HEX64 = re.compile(r"[0-9a-f]{64}")
@@ -97,6 +104,9 @@ ACTIONS = (
     {"id": "A0.ARM_TR", "stage": "S0", "kind": "harness_command", "performed_by": "cockpit",
      "what": "write the 12-class TR harness command (config trial.arm: where cloud|mac, argv)", "retry_safe": True,
      "authority": "TRIAL_READY/1 true at H (G-0: the TR refuses to start without it); the cockpit starts the TR on the cloud box or the Mac"},
+    {"id": "A0.K9_MIGRATION_READBACK", "stage": "S0", "kind": "executor_request", "performed_by": "cockpit",
+     "what": "migration_readback --migration <1404|1405|1406 file name> (read-only ledger read), a fresh document every readback_every_s while the ledger is not known to hold the file", "retry_safe": True,
+     "authority": "executor_ops.json: migration_readback enabled, production false, requesters adhikarin/v1/v2/sutradhara (the cockpit places the document under a listed lane); SR-K9-MIGRATION-WINDOW"},
     {"id": "A1.PR_UNHOLD", "stage": "S1", "kind": "gh_call", "performed_by": "chain --apply", "retry_safe": True,
      "what": "gh pr edit <N> --repo <R> --remove-label <hold label>",
      "authority": "PLAN_A10_1 §0.1 (#3841 HELD, unhold at TR pass); the cockpit's gh login (PR write)"},
@@ -217,15 +227,26 @@ class GhCli:
 
 
 class Tools:
-    """Local read-only tools (equivalence_record.py, admission_rehearsal.py): `python3 -I -B script args`."""
+    """Local read-only tools (equivalence_record.py, admission_rehearsal.py): `python3 -I -B script args`; and one read-only `git ls-tree` of the cockpit's checkout."""
 
     def __init__(self, python: str = sys.executable, run=subprocess.run):
         self.python, self._run = python, run
 
-    def run(self, script: str, args: list[str], timeout: int = 3600):
+    def _exec(self, argv: list[str], timeout: int, extra_env: dict | None = None):
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-        p = self._run([self.python, "-I", "-B", str(FLEET / script), *args], capture_output=True, text=True, timeout=timeout, env=env)
+        env.update(extra_env or {})
+        return self._run(argv, capture_output=True, text=True, timeout=timeout, env=env)
+
+    def run(self, script: str, args: list[str], timeout: int = 3600):
+        p = self._exec([self.python, "-I", "-B", str(FLEET / script), *args], timeout)
         return p.returncode, (p.stdout or "")[-4000:], (p.stderr or "")[-2000:]
+
+    def tree_names(self, repo: str, commit: str, directory: str, timeout: int = 60) -> list[str]:
+        """The file names directly under `directory` at `commit`.  OSError when git cannot read the commit (an unknown commit is not an empty directory)."""
+        p = self._exec(["git", "-C", repo, "ls-tree", "--name-only", commit, directory.rstrip("/") + "/"], timeout, {"GIT_OPTIONAL_LOCKS": "0"})
+        if p.returncode != 0:
+            raise OSError(f"git ls-tree exited {p.returncode}")
+        return [Path(x).name for x in (p.stdout or "").splitlines() if x.strip()]
 
 
 def forbidden(argv: list[str]) -> bool:
@@ -444,9 +465,9 @@ def emit_request(ctx: Ctx, action_id: str, op: str, doc_bytes: bytes, what: str)
     return "NEW"
 
 
-def readback_request(ctx: Ctx, action_id: str, op: str, args: dict) -> str:
-    doc = {"operation_id": op, "kind": "cloudrun_job_readback", "item_id": ctx.cfg.get("item_id") or DEFAULT_ITEM, "idempotency_key": op, "requested_by": "dispatch-chain",
-           "kyd": ctx.cfg.get("kyd") or DEFAULT_ITEM, "args": args, "reviewed_commit": ctx.M}
+def readback_request(ctx: Ctx, action_id: str, op: str, args: dict, kind: str = "cloudrun_job_readback", commit: str | None = None) -> str:
+    doc = {"operation_id": op, "kind": kind, "item_id": ctx.cfg.get("item_id") or DEFAULT_ITEM, "idempotency_key": op, "requested_by": "dispatch-chain",
+           "kyd": ctx.cfg.get("kyd") or DEFAULT_ITEM, "args": args, "reviewed_commit": commit or ctx.M}
     return emit_request(ctx, action_id, op, (json.dumps(doc, indent=1, sort_keys=True) + "\n").encode(), f"readback {op}")
 
 
@@ -475,6 +496,58 @@ def check_trial_ready(ctx: Ctx) -> dict:
     if doc.get("ready") is not True:
         raise Hold("S0_DISAGREEMENT", "all 25 checks read true but the file's own `ready` is not true: the evaluator and the recount disagree")
     return {"head": ctx.H, "trial_ready_sha256": sc.sha256_file(p), "true_checks": 25, "evaluated_at": doc.get("evaluated_at")}
+
+
+def k9_files_in_repo(ctx: Ctx) -> dict[str, str]:
+    """number -> exact migration file name, read from the repo at the evaluated head H (never a literal where the repo can supply it)."""
+    try:
+        names = ctx.tools.tree_names(ctx.cfg["repo"], ctx.H, K9_MIGRATION_DIR)
+    except (OSError, subprocess.SubprocessError):
+        raise Hold("S0_K9_REPO_UNREADABLE", f"{K9_PRECONDITION}: {K9_MIGRATION_DIR} cannot be read from the repo at the trial head {ctx.H[:12]}; the migration names are unknown, no advance") from None
+    found, absent = {}, []
+    for num, exact in K9_MIGRATIONS:
+        hit = sorted(n for n in names if n.endswith(".sql") and n.startswith(num + "_") and (exact is None or n == exact))
+        if len(hit) > 1:
+            raise Hold("S0_K9_FILE_AMBIGUOUS", f"{K9_PRECONDITION}: {len(hit)} files {hit} carry the number {num} at {ctx.H[:12]}")
+        if hit:
+            found[num] = hit[0]
+        else:
+            absent.append(exact or f"{num}_*.sql")
+    if absent:
+        raise Hold("S0_K9_FILE_NOT_IN_REPO", f"{K9_PRECONDITION}: {', '.join(absent)} not present in {K9_MIGRATION_DIR} at the trial head {ctx.H[:12]}: the head does not carry the K9 migrations it is to be dispatched with")
+    return found
+
+
+def check_k9_migrations_applied(ctx: Ctx) -> dict:
+    """Precondition `k9_migrations_applied` (SR-K9-MIGRATION-WINDOW): true ONLY when every K9 migration file the repo names at H has a row in the target DB's public._migrations_applied.
+    The ledger is read through the executor's `migration_readback` (receipt, never a connection here); a missing or unreadable receipt/ledger is a hold, never a pass (N.8, N.7.6)."""
+    files = k9_files_in_repo(ctx)
+    gen = re.sub("[^0-9A-Za-z]+", "-", ctx.cfg["generation"])
+    epoch = int(ctx.now.timestamp() // int(ctx.cfg.get("readback_every_s", 300)))
+    rdir = ctx.ops / "receipts"
+    plan = {}
+    for num, name in files.items():
+        base = f"chain-k9mig-{gen}-{ctx.H[:12]}-{num}-e"
+        have = sorted((int(f.name[len(base):-len(".json")]) for f in rdir.glob(base + "*.json") if f.name[len(base):-len(".json")].isdigit()), reverse=True) if rdir.is_dir() else []
+        if not have or have[0] < epoch:                                                  # a fresh read-only readback every period while the ledger is not known to hold the file
+            readback_request(ctx, "A0.K9_MIGRATION_READBACK", base + str(epoch), {"migration": name}, kind="migration_readback", commit=ctx.H)
+        plan[name] = (base, have)
+    waiting = sorted(n for n, (_, have) in plan.items() if not have)
+    if waiting:
+        raise Hold("S0_K9_AWAITING_RECEIPT", f"{K9_PRECONDITION}: no ledger readback yet for {', '.join(waiting)}", soft=True)
+    missing, receipts = [], {}
+    for name, (base, have) in plan.items():
+        _, text, rsha = need_receipt(ctx, base + str(have[0]), f"migration ledger readback of {name}", "S0", "migration_readback")
+        try:
+            rows = sc.parse_table(text, MIGRATION_LEDGER_HEADER, f"ledger readback of {name}")
+        except sc.NotReady as exc:
+            raise Hold("S0_K9_LEDGER_UNREADABLE", f"{K9_PRECONDITION}: {exc.reason}") from None
+        if name not in {r["filename"] for r in rows}:
+            missing.append(name)
+        receipts[name] = rsha
+    if missing:
+        raise Hold("S0_K9_MIGRATIONS_NOT_APPLIED", f"{K9_PRECONDITION}: not in public._migrations_applied of the target DB: {', '.join(missing)}")
+    return {"files": files, "receipts": receipts}
 
 
 def act_arm_tr(ctx: Ctx) -> None:
@@ -1014,6 +1087,7 @@ def evaluate(ctx: Ctx, report: list[dict]) -> str:
 
     def s0():
         ev = check_trial_ready(ctx)
+        ev[K9_PRECONDITION] = check_k9_migrations_applied(ctx)
         act_arm_tr(ctx)
         return ev
 
