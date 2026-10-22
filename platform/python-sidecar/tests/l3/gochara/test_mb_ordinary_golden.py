@@ -504,7 +504,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Geometry re-pinned for SR-OD1 R2 (SR-H2-1S): contact_reconstruct gains the STATE floor / STATE_NAMED_LIMIT and `_core`'s `min_excursion_seconds` keyword (default unchanged, so the
     # contact geometry's own behaviour and 60 s named limit are untouched). Re-derived the same way (the prior pin a8cb08f0... is the I1 union).
     # Geometry re-pinned at the SR-OD1 merge-back wave 3b (DASH, T13): record_store gains the table-end blank (a P1 support that reaches past the end of the stored daśā table stays the contact span with
-    # `unknown`, reason dasha_table_ends_before_support). Re-derived from the merged tree's real bytes the same way (the prior pin 0186cc07... is the wave-3a head); the near-miss / contact geometry
+    # `unknown`, reason dasha_horizon_exhausted, the one name per SR-REASON-ONE-NAME). Re-derived from the merged tree's real bytes the same way (the prior pin 0186cc07... is the wave-3a head); the near-miss / contact geometry
     # is untouched and no golden component is re-captured: this capture's SQL shapes, counts and outcomes do not depend on the table-end arm. (Geometry has now moved once after R2: recorded for T20.)
     # Geometry re-pinned for SR-NEARMISS-BISECT (od1-nearmiss): near_miss._bisect narrows the band-edge instants to a 1e-6-day time bracket with no |f| early exit (near_miss.py
     # EDGE_BRACKET_DAYS). Re-derived by the script (never hand-edited) with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES); the prior pin a8cb08f0... is

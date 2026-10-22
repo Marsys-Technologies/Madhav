@@ -32,7 +32,7 @@ PINNED_SYSTEM = "vimshottari"
 LEVEL_N = {"md": 1, "ad": 2, "pd": 3}
 #: the named blank for a P1 record whose support reaches past the END of the stored daśā table (N-8 / TRIAL_READY T13): the running set is
 #: UNMEASURED there, so the prerequisite is `unknown` with this reason — never a stored `false`, never an invented lord, never a failed build (§N.7.6)
-PERIOD_TABLE_ENDS_REASON = "dasha_table_ends_before_support"
+PERIOD_TABLE_ENDS_REASON = "dasha_horizon_exhausted"
 
 
 def table_coverage_end(rows, level: str | int | None = None):
