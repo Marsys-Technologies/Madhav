@@ -22057,7 +22057,8 @@
       "title": "Rule the single materializer timeout from independently measured registry and completed-run evidence",
       "owner": "N",
       "depends_on": [
-        "B-7"
+        "B-7",
+        "D-GOCHARA-TIMEOUT-NA"
       ],
       "mandatory": true,
       "done_by": "decision",
@@ -22075,9 +22076,12 @@
         "notes": "Formal outcome binding for one existing J source item, not another implementation or K0a gate. KYD68 is deferred; source registration does not approve5400 or a production action."
       },
       "triage": {
-        "class": "b",
-        "reason": "outside the closure per A9 D-53 (00_ARCHITECTURE/briefs/kalayantra/KALAYANTRA_V3_OWNER_DECISIONS_AMENDMENT_A9_SCOPE.md); classification fixed by SR-W34-PREP-RULINGS (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl, 2026-10-19T12:20Z) item 5f",
-        "re_entry": "ruled when the century build's measured duration exists"
+        "class": "retired",
+        "decision": "D-GOCHARA-TIMEOUT-NA",
+        "reason": "Not applicable. The only target of J-GOCHARA-TIMEOUT is the legacy v3 century materializer row (writer timeout 3600 s). No retained item consumes it (plan-model triage text for D-GOCHARA-TIMEOUT); the century is built by ka_gochara_v5, whose writer timeout migration 1395 set to 72,000 s and read back (EXEC-1395-READBACK; receipts J-3c.1395-migration-readback-20261018T101656Z, J-3c.1395-registry-readback-20261018T101656Z); the v3 writer is retired by J-7a. KYD-108 deferral stands; the receipts it asked for were never produced. Re-entry: if J-4f shows a timeout binding. (SR-AUDIT-NA-TIMEOUT, owner surrogate madhav-44, 2026-10-22)"
+      },
+      "requires_outcome": {
+        "D-GOCHARA-TIMEOUT-NA": "approved"
       }
     },
     {
@@ -22088,10 +22092,12 @@
       "owner": "K",
       "depends_on": [
         "B-7",
-        "D-GOCHARA-TIMEOUT"
+        "D-GOCHARA-TIMEOUT",
+        "D-GOCHARA-TIMEOUT-NA"
       ],
       "requires_outcome": {
-        "D-GOCHARA-TIMEOUT": "approved"
+        "D-GOCHARA-TIMEOUT": "approved",
+        "D-GOCHARA-TIMEOUT-NA": "approved"
       },
       "mandatory": true,
       "steps": [
@@ -22178,9 +22184,9 @@
         }
       },
       "triage": {
-        "class": "b",
-        "reason": "applies D-GOCHARA-TIMEOUT; no retained item consumes it",
-        "re_entry": "with D-GOCHARA-TIMEOUT"
+        "class": "retired",
+        "decision": "D-GOCHARA-TIMEOUT-NA",
+        "reason": "Not applicable. The only target of J-GOCHARA-TIMEOUT is the legacy v3 century materializer row (writer timeout 3600 s). No retained item consumes it (plan-model triage text for D-GOCHARA-TIMEOUT); the century is built by ka_gochara_v5, whose writer timeout migration 1395 set to 72,000 s and read back (EXEC-1395-READBACK; receipts J-3c.1395-migration-readback-20261018T101656Z, J-3c.1395-registry-readback-20261018T101656Z); the v3 writer is retired by J-7a. KYD-108 deferral stands; the receipts it asked for were never produced. Re-entry: if J-4f shows a timeout binding. (SR-AUDIT-NA-TIMEOUT, owner surrogate madhav-44, 2026-10-22)"
       }
     },
     {
@@ -26358,7 +26364,7 @@
       "id": "J-4c-a55m",
       "track": "J",
       "lane": "J · Gochara 5.0 absorbed",
-      "title": "Phase 8 — keep inherited Pravāha A5.5m: Second protected window applied and qualified: 1378 (supersedes 1241 v7), L1 read grants, act 2b, verification job and acts 12-14, publication refusal for a test-slice vector, G8 seal-time census, 1303 and the dormant-role revokes, runner set (plan: runbooks/SECOND_WINDOW_PLAN_v1_0.md)",
+      "title": "Phase 8 — keep inherited Pravāha A5.5m: Second protected window applied and qualified: 1378 (supersedes 1241 v7), L1 read grants, act 2b, verification job and acts 12-14, publication refusal for a test-slice vector, G8 seal-time census, runner set (plan: runbooks/SECOND_WINDOW_PLAN_v1_0.md)",
       "owner": "N",
       "depends_on": [
         "J-0m",
@@ -26394,7 +26400,7 @@
           "equality proof: unchanged classes byte-identical to the measuring build's golden capture",
           "non-interference: the measuring rules' outputs unchanged",
           "Stacking and ledger (readback_sql, the window2 readback ky-j4c-a55m-window2): ledger rows for 1302/1305/1306/1308/1378/1381/1398 applied and 1303 absent (1241 superseded by 1378, never applied); 1305 → 1306 → 1308 function stacking markers (copy_drift_block, class_census, path_census) and the completeness function's definition sha; migration hashes. Already true: 1305/1306/1308 applied (receipts sutradhara-srw2route-20261019T102659Z-1305/6/8), 1381 and 1398 applied.",
-          "1303 and the dormant-role revokes: OPEN. MEASURED: 1303 is not in the production ledger (never merged) and 1378 revokes nothing, so 1378 does not cover the revokes; the window2 readback's dormant_writer rows (NOLOGIN, memberless roles holding INSERT/UPDATE/DELETE/TRUNCATE on Gochara tables) decide: zero rows → retire the act as not_applicable by a declared decision citing that receipt; any row → an additive REVOKE migration in the W5W6 set (no number is allocated to this item; 1399 is withdrawn and reusable).",
+          "1303 and the dormant-role revokes: NOT APPLICABLE by D-J4B-1303-NA (DECISIONS_SURROGATE.jsonl, 2026-10-21T03:17Z; SR-AUDIT-BOOKKEEPING declares it here). MEASURED: 1303 is not in the production ledger (never merged) and 1378 revokes nothing; the window2 readback J-4c-a55m.window2-20261021T0315Z shows 13 dormant-writer rows (NOLOGIN, memberless roles holding INSERT/UPDATE/DELETE/TRUNCATE on Gochara tables) - a security-posture item with no effect on any result, not done in this campaign (OWNER-MINIMAL-PROTECTION-20261018, SR-GRANTS-MINIMAL); finding F-DORMANT-ROLES is on the native's post-campaign list. This step no longer requires the revokes.",
           "Act 12 (log view of the verification job's logs + roles/logging.viewAccessor on that view for github-actions@, narrow form only): runbook /Users/Dev/madhav-l3/pravaha/00_ARCHITECTURE/briefs/pravaha/runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md 'Act 12'. Evidence: gcloud logging views describe/get-iam-policy gochara_verification_job (exactly one binding) and the negative read with the workflow identity. NO existing readback kind measures it (cloudrun_job_readback describes the pipeline job only). Needed by J-5s: yes (gochara-seal-approved.yml reads the brief from these logs). Cut: the project-level roles/logging.viewer alternative.",
           "Act 13 (github-actions@ may execute the verification job with overrides, on that one job): runbook 'Act 13'. Evidence: gcloud run jobs get-iam-policy gochara-verification-job (binding on that job only, no project-level roles/run.*). NO existing readback kind measures it (cloudrun_job_readback reads a job definition, not its IAM policy). Needed by J-5s: yes (the brief job runs gcloud run jobs execute --args).",
           "Act 14 (github-actions@ holds roles/cloudsql.client for the proxy): runbook 'Act 14'. Evidence: gcloud projects get-iam-policy filtered to the role; indirectly, a successful one-shot provisioning run through the same proxy identity (github_run_readback, currently enabled:false). No grant is added unless the binding is absent; removal none for a pre-existing binding.",
@@ -26405,7 +26411,7 @@
           "Measure this residual itself at its declared phase; a carrying packet code merge never satisfies it. Independent acceptance binds the evidence digest and every original dependency."
         ],
         "compat": "candidate-only; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
-        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix). SR-A55J-A55M-RESCOPE (2026-10-20): 1241 v7 is superseded by 1378; acts 12-14 are named above with their evidence paths; 1303 / the dormant-role revokes stay OPEN (1378 revokes nothing) until the window2 readback is run. No new executor kind is assumed; acts 12 and 13 (and 14 directly) have no existing readback. OWNER-BUILD-FIRST-20261021 (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl): no longer gates J-4c, J-4d, D-CLOUD or the century build; it is a gate before SEALING (J-5s depends on it). Edge added: J-4c-a55m -> J-4b-a55j (its judge binds the J-4b-a55j step receipt, which the removed J-4b -> J-4b-a55j edge used to supply transitively). Acts 6/6b/12/13/14 are owner acts required before sealing."
+        "notes": "Wave 4 reconciliation replaces the J-0m placeholder code/branch declaration. Evidence class operation; producer N. Owns names evidence paths only for operations/artifacts and grants no production authority. Original prerequisite edges are unchanged. See /Users/Dev/kalayantra/run/WAVE4_COMPLETION_PATH.md:749 (J DAG appendix). SR-A55J-A55M-RESCOPE (2026-10-20): 1241 v7 is superseded by 1378; acts 12-14 are named above with their evidence paths; 1303 / the dormant-role revokes are not_applicable by D-J4B-1303-NA (the window2 readback was run; 1378 revokes nothing; F-DORMANT-ROLES is post-campaign). No new executor kind is assumed; acts 12 and 13 (and 14 directly) have no existing readback. OWNER-BUILD-FIRST-20261021 (/Users/Dev/kalayantra/run/DECISIONS_SURROGATE.jsonl): no longer gates J-4c, J-4d, D-CLOUD or the century build; it is a gate before SEALING (J-5s depends on it). Edge added: J-4c-a55m -> J-4b-a55j (its judge binds the J-4b-a55j step receipt, which the removed J-4b -> J-4b-a55j edge used to supply transitively). Acts 6/6b/12/13/14 are owner acts required before sealing."
       },
       "completion_kind": "operation",
       "producer": "N",
@@ -26793,7 +26799,7 @@
       "id": "J-5q-b54",
       "track": "J",
       "lane": "J · Gochara 5.0 absorbed",
-      "title": "Phase 10 — keep inherited Pravāha B5.4: Retrodiction report: '5.0' vs '3.0' vs '4.1' on held-out events, per-mechanism attribution",
+      "title": "Phase 10 — keep inherited Pravāha B5.4: Retrodiction report: '5.0' vs '3.0' on held-out events, per-mechanism attribution (4.1 was not built for this campaign: SR-F5-41-DEFER)",
       "owner": "K",
       "depends_on": [
         "J-0m",
@@ -26828,7 +26834,7 @@
           "Before landing, independently prove inherited prerequisite: B5.3",
           "Before landing, independently prove inherited prerequisite: A5.6",
           "Before landing, independently prove inherited prerequisite: B4.3",
-          "Before landing, independently prove inherited prerequisite: B4.4",
+          "4.1 is not a comparator (SR-F5-41-DEFER, owner surrogate madhav-44, 2026-10-21): the report states in its header that 4.1 was not built for this campaign (deferred by this ruling), compares 5.0 vs 3.0 only and never substitutes another baseline; the B4.4 prerequisite (the 4.1 baseline) is post-campaign EVAL-41-ON-SEALED, not proven here",
           "Measure this residual itself at its declared phase; a carrying packet code merge never satisfies it. Independent acceptance binds the evidence digest and every original dependency."
         ],
         "compat": "documentation/declaration only — no runtime effect; landing retains the twelve-phase sequence, G8 evidence, protected-window controls and candidate/published separation.",
@@ -29455,6 +29461,43 @@
         "class": "retire_decision",
         "retires": "J-4c-pr2907"
       }
+    },
+    {
+      "id": "D-GOCHARA-TIMEOUT-NA",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Not applicable: D-GOCHARA-TIMEOUT, J-GOCHARA-TIMEOUT — legacy v3 materializer timeout superseded by the v5 writer timeout (migration 1395)",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "done_by": "decision",
+      "decision": "D-GOCHARA-TIMEOUT-NA",
+      "triage": {
+        "class": "retire_decision",
+        "retires": [
+          "D-GOCHARA-TIMEOUT",
+          "J-GOCHARA-TIMEOUT"
+        ]
+      }
+    },
+    {
+      "id": "D-J4B-1303-NA",
+      "track": "N",
+      "lane": "N · decisions",
+      "title": "Not applicable (J-4c-a55m, the 1303 clause): 1303 and the dormant-role revokes",
+      "owner": "N",
+      "depends_on": [
+        "B-7"
+      ],
+      "mandatory": true,
+      "done_by": "decision",
+      "decision": "D-J4B-1303-NA",
+      "triage": {
+        "class": "retire_decision",
+        "retires": "J-4c-a55m (the 1303 clause only)"
+      }
     }
   ],
   "decisions": [
@@ -29637,6 +29680,18 @@
       "title": "Not applicable (J-4c-pr2907): content already landed through #2901",
       "owner": "ADHIKĀRIN (N); the cockpit records the outcome (`ky decide D-J4C-PR2907-NA --outcome refused`) on the evidence of independent review X-20261019T150725Z-review-3596-pr2907 (NOT_APPLICABLE)",
       "default": "refused — #2907's content already landed through #2901 (squash 2e16dbdab, 2026-10-02); its owned files (drishti.py, test_drishti.py) are byte-identical to the #2907 head b598ee302; review X-20261019T150725Z-review-3596-pr2907 concluded NOT_APPLICABLE"
+    },
+    {
+      "id": "D-GOCHARA-TIMEOUT-NA",
+      "title": "Not applicable (D-GOCHARA-TIMEOUT, J-GOCHARA-TIMEOUT): legacy v3 materializer timeout, superseded by migration 1395",
+      "owner": "ADHIKĀRIN (N); the cockpit records the outcome (`ky decide D-GOCHARA-TIMEOUT-NA --outcome refused`) under SR-AUDIT-NA-TIMEOUT",
+      "default": "refused — Not applicable. The only target of J-GOCHARA-TIMEOUT is the legacy v3 century materializer row (writer timeout 3600 s). No retained item consumes it (plan-model triage text for D-GOCHARA-TIMEOUT); the century is built by ka_gochara_v5, whose writer timeout migration 1395 set to 72,000 s and read back (EXEC-1395-READBACK; receipts J-3c.1395-migration-readback-20261018T101656Z, J-3c.1395-registry-readback-20261018T101656Z); the v3 writer is retired by J-7a. KYD-108 deferral stands; the receipts it asked for were never produced. Re-entry: if J-4f shows a timeout binding. (SR-AUDIT-NA-TIMEOUT, owner surrogate madhav-44, 2026-10-22)"
+    },
+    {
+      "id": "D-J4B-1303-NA",
+      "title": "Not applicable (J-4c-a55m, the 1303 clause): 1303 and the dormant-role revokes",
+      "owner": "ADHIKĀRIN (N); surrogate madhav-88, 2026-10-21T03:17Z (DECISIONS_SURROGATE.jsonl D-J4B-1303-NA); declared by SR-AUDIT-BOOKKEEPING",
+      "default": "approved — the 1303 and dormant-role revokes clause of J-4c-a55m is not applicable: 13 dormant-writer rows (receipt J-4c-a55m.window2-20261021T0315Z) are a security-posture item with no effect on any result, not done in this campaign (OWNER-MINIMAL-PROTECTION-20261018, SR-GRANTS-MINIMAL); finding F-DORMANT-ROLES is recorded for the native's post-campaign list (DECISIONS_SURROGATE.jsonl D-J4B-1303-NA, madhav-88, 2026-10-21T03:17Z)"
     }
   ],
   "coordination": {

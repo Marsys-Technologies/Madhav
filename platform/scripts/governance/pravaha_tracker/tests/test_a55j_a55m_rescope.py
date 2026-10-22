@@ -90,7 +90,10 @@ def test_the_repository_1378_is_what_production_applied_and_the_plan_cites_it(mo
     assert LEDGER_SHA_1378 in _text(_item(model, "J-4b-a55j"))
 
 
-def test_the_dormant_role_revoke_act_is_retired_only_if_a_migration_revokes(model):  # claim 3
+def test_the_dormant_role_revoke_clause_is_dropped_only_by_the_declared_decision(model):  # claim 3
+    # SR-AUDIT-BOOKKEEPING (audit R3): D-J4B-1303-NA (DECISIONS_SURROGATE.jsonl, 2026-10-21T03:17Z) declares the revokes not applicable
+    # on the window2 readback receipt; the plan carries the declaration and the step no longer lists 1303 / the revokes as OPEN. The
+    # ruling rests on two measured facts, asserted here: 1378 revokes nothing and 1303 never merged - a migration that revokes would void it.
     sql = "\n".join(line for line in M1378.read_text(encoding="utf-8").splitlines() if not line.lstrip().startswith("--"))
     revoked_by_a_migration = any(
         re.search(r"(?im)^\s*REVOKE\b", p.read_text(encoding="utf-8", errors="replace"))
@@ -99,11 +102,13 @@ def test_the_dormant_role_revoke_act_is_retired_only_if_a_migration_revokes(mode
     )
     assert not re.search(r"(?im)^\s*REVOKE\b", sql)          # 1378 revokes nothing
     assert not list((REPO / "platform/migrations").glob("1303_*"))   # 1303 was never merged
-    retired = [d["id"] for d in model["decisions"] if d["id"] in ("D-J4B-1303-NA", "D-J4C-DORMANT-NA")]
-    if not revoked_by_a_migration:
-        assert retired == []
-        assert "dormant-role revokes" in _item(model, "J-4c-a55m")["title"]
-        assert "OPEN" in _text(_item(model, "J-4c-a55m"))
+    assert not revoked_by_a_migration
+    declared = [d["id"] for d in model["decisions"] if d["id"] in ("D-J4B-1303-NA", "D-J4C-DORMANT-NA")]
+    assert declared == ["D-J4B-1303-NA"]
+    item = _item(model, "J-4c-a55m")
+    assert "dormant-role revokes" not in item["title"] and "1303" not in item["title"]
+    clause = next(t for t in item["brief"]["tests"] if t.startswith("1303 and the dormant-role revokes"))
+    assert "NOT APPLICABLE by D-J4B-1303-NA" in clause and "OPEN" not in clause
 
 
 def test_acts_12_13_14_are_named_with_evidence_and_measurability(model):  # claim 4

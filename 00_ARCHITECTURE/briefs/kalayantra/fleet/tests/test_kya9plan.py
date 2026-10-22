@@ -171,3 +171,25 @@ def test_d_t2_is_closed_by_its_recorded_decision_and_waits_on_nothing(items, clo
     # The tracker reads a recorded decision item done only while every dependency is done; L0-K leaves the campaign, so the edges go.
     assert items["D-T2"]["depends_on"] == [] and "D-T2" not in closure["closure"]
 
+
+
+def test_the_committed_model_is_the_fixed_point_of_the_plan_script(model):  # SR-AUDIT-NA-TIMEOUT / SR-AUDIT-BOOKKEEPING
+    # Fail-on-revert: drop an `if ... not in items` guard in kya9plan (a second run then appends the retirement items again) or
+    # hand-edit the model away from the script's output, and this reads false.
+    once = kya9plan.apply_model_edits(model)
+    assert once == model
+    assert kya9plan.apply_model_edits(once) == once
+    ids = [i["id"] for i in model["items"]]
+    assert len(ids) == len(set(ids)) and len([d["id"] for d in model["decisions"]]) == len({d["id"] for d in model["decisions"]})
+
+
+def test_the_two_timeout_items_are_retired_by_one_decision_outside_the_closure(items, model, closure):  # SR-AUDIT-NA-TIMEOUT (R1)
+    # Source: audit R1 text, carried verbatim as the reason. Fail-on-revert: put either item back to class b (deferred) or drop the
+    # decision declaration and this reads false.
+    for iid in kya9plan.TIMEOUT_NA_TARGETS:
+        assert items[iid]["triage"] == {"class": "retired", "decision": "D-GOCHARA-TIMEOUT-NA", "reason": kya9plan.TIMEOUT_NA_REASON}, iid
+        assert items[iid]["requires_outcome"]["D-GOCHARA-TIMEOUT-NA"] == "approved" and iid not in closure["closure"], iid
+    assert "Re-entry: if J-4f shows a timeout binding" in kya9plan.TIMEOUT_NA_REASON and "1395" in kya9plan.TIMEOUT_NA_REASON
+    assert items["D-GOCHARA-TIMEOUT-NA"]["triage"]["class"] == "retire_decision"
+    assert "D-GOCHARA-TIMEOUT-NA" in {d["id"] for d in model["decisions"]}
+    assert [(i, d) for i in closure["closure"] for d in items[i]["depends_on"] if d in kya9plan.TIMEOUT_NA_TARGETS] == []

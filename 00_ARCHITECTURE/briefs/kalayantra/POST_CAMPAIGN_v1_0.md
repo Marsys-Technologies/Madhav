@@ -32,4 +32,5 @@ Work the campaign does not do. Each row is deferred, not closed: the tracker sho
 ## Related post-campaign work recorded elsewhere
 
 - **D-T2 admission work.** The decision item closed under SR-DT2-CANDIDATE (2026-10-22): Sudarśana is admitted as a CANDIDATE judge method; Tājaka and KP each wait for their own review and corpus count. The admission work itself is post-campaign (`DECISIONS_SURROGATE.jsonl`, SR-DT2-CANDIDATE).
-- **Earlier A9 deferrals** (K9-5, K9-5-NB-01, D-GOCHARA-TIMEOUT, J-GOCHARA-TIMEOUT) keep their own re-entry conditions in `FINAL_MESSAGE_DRAFT.md` and the plan model.
+- **Earlier A9 deferrals** (K9-5, K9-5-NB-01) keep their own re-entry conditions in `FINAL_MESSAGE_DRAFT.md` and the plan model.
+- **The materializer-timeout pair** (D-GOCHARA-TIMEOUT, J-GOCHARA-TIMEOUT) ended `not_applicable` by D-GOCHARA-TIMEOUT-NA (SR-AUDIT-NA-TIMEOUT, 2026-10-22); the century's writer timeout is set by migration 1395. Re-entry only if J-4f shows a timeout binding.
