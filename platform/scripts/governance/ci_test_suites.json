@@ -571,8 +571,17 @@
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_iam_policy_readback*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_http_probe*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_seal_controller*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_log_view_proof*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_equivalence_record*.py",
-        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_consumer_probe*.py"
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_consumer_probe*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_dispatch_chain*.py"
+      ]
+    },
+    "governance-tool-tests-seal-inputs": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_seal_inputs*.py"
       ]
     },
     "governance-tool-tests-shard-6-0": {
@@ -781,7 +790,8 @@
         "src/lib/vidhi/inquiry/migration_contract*.test.ts",
         "scripts/__tests__/generate_capability*.test.ts",
         "src/app/api/mcp/inquiry/__tests__/route*.test.ts",
-        "src/app/api/mcp/prashna_ask/__tests__/route*.test.ts"
+        "src/app/api/mcp/prashna_ask/__tests__/route*.test.ts",
+        "src/app/api/mcp/health/__tests__/migrations_route*.test.ts"
       ]
     },
     "density-census-29-0": {

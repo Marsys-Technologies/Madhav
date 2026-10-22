@@ -35,7 +35,7 @@ class _LegacyKaKalaDarshanaWriter(WriterBase):
                        kc.peak_date, kc.window_start, kc.window_end,
                        kc.convergence_score, kc.confidence_label,
                        kc.orb_strength, kc.rarity_years
-                FROM kala_convergence kc
+                FROM kala_convergence_served kc
                 WHERE kc.chart_id = %s
                 ORDER BY kc.convergence_score DESC NULLS LAST
                 LIMIT 750

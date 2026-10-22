@@ -38,7 +38,8 @@ from ga_writers.ga_sensitive_degree_writer import GANDANTA_CITATION, check_ganda
 import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
-from services.kala_core.writer_grain import attest_inputs, bound_candidate, predicate_generation
+from services.kala_core.writer_grain import (
+    attest_inputs, bound_candidate, convergence_read_generation, predicate_generation, refuse_unbound_rewrite)
 from services.ka_temporal import (
     load_dasha_timeline,
     resolve_activation_windows,
@@ -217,6 +218,8 @@ class _LegacyKaVighnakaraWriter(WriterBase):
         # and attests its input grain under it; an ordinary rebuild does neither.
         candidate = bound_candidate(conn, getattr(ctx, 'build_id', None), chart_id)
         predicate_gen = predicate_generation(conn, chart_id, candidate)
+        if candidate is None:      # SR-K9-BIND B1b: no in-place rewrite once a generation is published (before the delete below)
+            refuse_unbound_rewrite(conn, chart_id, 'ka_vighnakara')
 
         # Idempotency: delete-then-insert scoped to (chart, partition). SR-K9-WRITE-SCOPE: a candidate-bound build owns ONLY its candidate generation (served rows untouched); an ordinary rebuild rewrites the legacy NULL partition.
         write_generation = _owned_generation(conn, chart_id, candidate)
@@ -225,16 +228,18 @@ class _LegacyKaVighnakaraWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("DELETE FROM kala_obstruction WHERE chart_id = %s AND generation IS NOT DISTINCT FROM %s", (chart_id, write_generation))
 
-        # Read convergence windows
+        # Read convergence windows. SR-K9-BIND B1a: a candidate-bound build reads ONLY its own candidate's convergence rows (never the
+        # served view, whose ids belong to another generation); an unbound build reads the served generation.
+        conv_generation = convergence_read_generation(conn, chart_id, candidate)
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT convergence_id, signal_id, mode, peak_date,
                        convergence_score, orb_strength, window_start, window_end
                 FROM kala_convergence
-                WHERE chart_id = %s AND peak_date IS NOT NULL
+                WHERE chart_id = %s AND generation = %s AND peak_date IS NOT NULL
                 ORDER BY convergence_score DESC NULLS LAST
                 LIMIT 500
-            """, (chart_id,))
+            """, (chart_id, conv_generation))
             convergence_rows = cur.fetchall()
 
         if not convergence_rows:

@@ -845,6 +845,18 @@
   {
    "table": "public.mimamsa_predictions",
    "why": "FK ON DELETE SET NULL from build_runs; no scanned site deletes a build_runs row (test U5), so the action never fires"
+  },
+  {
+   "table": "public.kala_darshana",
+   "why": "FK from kala_convergence(convergence_id), ON DELETE CASCADE (production readback k9-fk-cascade-readback-20261022T0710Z). Migration 1405 partitions kala_convergence by generation: ka_sangam deletes only rows of its own bound candidate generation (or the served one on an ordinary rebuild) and rebuild_control.teardown REFUSES, deleting nothing, when a delete of the candidate's convergence rows would cascade into a row that is not the candidate's (tests/l3/kala_db/ka_sangam/test_k9_convergence_scope.py W1, T1, T3), so on the closed plan the action reaches no served row of this table"
+  },
+  {
+   "table": "public.phala_anchors",
+   "why": "FK from kala_convergence(convergence_id), ON DELETE CASCADE (production readback k9-fk-cascade-readback-20261022T0710Z). Migration 1405 partitions kala_convergence by generation: ka_sangam deletes only rows of its own bound candidate generation (or the served one on an ordinary rebuild) and rebuild_control.teardown REFUSES, deleting nothing, when a delete of the candidate's convergence rows would cascade into a row that is not the candidate's (tests/l3/kala_db/ka_sangam/test_k9_convergence_scope.py W1, T1, T3), so on the closed plan the action reaches no served row of this table"
+  },
+  {
+   "table": "public.kala_bhavishya",
+   "why": "FK from kala_convergence(convergence_id), ON DELETE SET NULL (production readback k9-fk-cascade-readback-20261022T0710Z). Migration 1405 partitions kala_convergence by generation: ka_sangam deletes only rows of its own bound candidate generation (or the served one on an ordinary rebuild) and rebuild_control.teardown REFUSES, deleting nothing, when a delete of the candidate's convergence rows would null a row that is not the candidate's (tests/l3/kala_db/ka_sangam/test_k9_convergence_scope.py W1, T1, T3), so on the closed plan the action reaches no served row of this table"
   }
  ],
  "unreached": [
@@ -989,6 +1001,7 @@
    "resolver": "const:platform/python-sidecar/services/kala_core/rebuild_control.py:UNLINKED_CANDIDATE_TABLES:plain",
    "tables": [
     "kala_activation_predicates",
+    "kala_convergence",
     "kala_f1_relationship",
     "kala_f1_target_object",
     "kala_obstruction"

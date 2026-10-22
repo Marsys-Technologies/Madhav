@@ -172,7 +172,7 @@ export const queryLifeArcCapability: CapabilityDescriptor = {
                start_year, end_year, parva_quality, theme_keywords,
                high_convergence_count, avg_effective_score,
                narrative, source_citation, computed_at,
-               EXISTS (SELECT 1 FROM kala_convergence WHERE chart_id = $1::uuid) AS convergence_source_available
+               EXISTS (SELECT 1 FROM kala_convergence WHERE chart_id = $1::uuid AND COALESCE(to_jsonb(kala_convergence)->>'generation', 'legacy') = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = $1::uuid), 'legacy')) AS convergence_source_available
         FROM deduped
         ORDER BY parva_index
         LIMIT ${topKPh} OFFSET ${offsetPh}

@@ -3055,6 +3055,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    constituent_factors, source_citation
               FROM kala_convergence
              WHERE chart_id = $1::uuid
+               AND COALESCE(to_jsonb(kala_convergence)->>'generation', 'legacy') = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = $1::uuid), 'legacy')
                AND (NULL::date IS NULL OR window_end >= NULL::date)
                AND (NULL::date IS NULL OR window_start <= NULL::date)
                AND (0::numeric <= 0 OR convergence_score >= 0::numeric)
@@ -3063,6 +3064,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM kala_convergence
              WHERE chart_id = $1::uuid
+               AND COALESCE(to_jsonb(kala_convergence)->>'generation', 'legacy') = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = $1::uuid), 'legacy')
                AND (NULL::date IS NULL OR window_end >= NULL::date)
                AND (NULL::date IS NULL OR window_start <= NULL::date)
                AND (0::numeric <= 0 OR convergence_score >= 0::numeric)

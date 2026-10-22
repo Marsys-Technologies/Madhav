@@ -98,7 +98,7 @@ CREATE TEMP TABLE kala_darshana (id bigint, chart_id uuid, generation text, asse
 CREATE TEMP TABLE kala_obstruction (LIKE kala_darshana);
 CREATE TEMP TABLE kala_gochara_contacts (chart_id uuid, generation text, contact_id text, t_in timestamptz, t_out timestamptz);
 CREATE TEMP TABLE kala_bhavishya (id bigint, chart_id uuid, window_start date, window_end date);
-CREATE TEMP TABLE kala_convergence (convergence_id bigint, chart_id uuid, window_start date, window_end date);
+CREATE TEMP TABLE kala_convergence (convergence_id bigint, chart_id uuid, window_start date, window_end date, generation text DEFAULT '4.1');
 CREATE TEMP TABLE kala_jivana_parva (id bigint, chart_id uuid, start_year int, end_year int,
   high_convergence_count int, avg_effective_score numeric, narrative jsonb);
 INSERT INTO kala_layer_head VALUES ('${fixtureChart}', '4.1', '2026-10-09T00:00:00Z');

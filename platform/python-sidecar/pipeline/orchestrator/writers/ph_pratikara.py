@@ -223,7 +223,7 @@ class PhPratikaraWriter(WriterBase):
                     c.domain AS convergence_domain,
                     c.constituent_factors->>'planet' AS afflicting_graha
                 FROM kala_obstruction o
-                LEFT JOIN kala_convergence c ON o.convergence_id = c.convergence_id
+                LEFT JOIN kala_convergence_served c ON o.convergence_id = c.convergence_id
                 WHERE o.chart_id = %s AND """ + served_obstruction_predicate('o') + """
                 ORDER BY o.severity_score DESC
                 """,

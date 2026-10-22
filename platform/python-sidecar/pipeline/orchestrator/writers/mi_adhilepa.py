@@ -294,7 +294,7 @@ class MiAdhilepaWriter(WriterBase):
         if _table_exists(conn, "kala_convergence"):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
-                    "SELECT convergence_id FROM kala_convergence WHERE chart_id = %s LIMIT 500",
+                    "SELECT convergence_id FROM kala_convergence_served WHERE chart_id = %s LIMIT 500",
                     (chart_id,),
                 )
                 convergences = cur.fetchall()

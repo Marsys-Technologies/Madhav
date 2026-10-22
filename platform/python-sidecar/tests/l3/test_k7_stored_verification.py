@@ -20,6 +20,7 @@ class Capture:
     def __exit__(self, *args): pass
     def execute(self, sql, params=()):
         self.probing = 'FROM pg_attribute' in str(sql)
+        self.head_read = 'FROM kala_layer_head' in str(sql)      # the unbound-rewrite refusal (SR-K9-BIND B1b): this chart has no published head
         if self.probing:
             self.probes += 1
             if self.db is not None:
@@ -35,6 +36,7 @@ class Capture:
             raise UndefinedColumn('column verification_pass_status does not exist')
         self.writes.extend((sql, tuple(row)) for row in rows)
     def fetchone(self):
+        if getattr(self, 'head_read', False): return None
         return self.probe_row if self.db is not None and self.probing else (self.has_tier,)
     def fetchall(self):
         rows, self.rows = self.rows, []
@@ -71,7 +73,9 @@ def test_darshana_persists_single_despite_high_scores_and_roots():
 def test_sangam_persists_single_for_every_mode_without_promoting_confidence():
     from pipeline.orchestrator.writers.ka_sangam import KaSangamWriter
     c = Capture()
-    KaSangamWriter()._insert_windows(c, 'chart', [dict(mode=m, window_start=date(2026,10,9),
+    writer = KaSangamWriter()
+    writer._conv_generation = 'legacy'   # migration 1405: the generation run_substep resolves
+    writer._insert_windows(c, 'chart', [dict(mode=m, window_start=date(2026,10,9),
         window_end=date(2026,10,10), peak_date=date(2026,10,9), convergence_score=.99,
         orb_strength=.99, constituent_factors={}, source_citation='fixture:sangam') for m in ('A','B','C','D')], 'near')
     assert [r.get('verification_pass_status') for r in bound_rows(c, 'kala_convergence')] == [UNVERIFIED_DEFAULT if Capture.has_tier else None]*4

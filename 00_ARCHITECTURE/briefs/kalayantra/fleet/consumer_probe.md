@@ -45,14 +45,17 @@ no_obstruction_state, sentinel_negative_space, unstated, refused`.
 * The probe kind for these ids is `consumer_probe`, not `http_probe`: `pack/readiness.probe_ids_of_tree` currently reads `ops["http_probe"]["script"]` and must also read
   `ops["consumer_probe"]["script"]` (its `PROBES` keys) in the pack revision. The pack's templates `29-probe-before`, `31-probe-after`, `31-probe-after-rollback` ask for
   `consumer_probe probe=<id>` for these ids and stay `http_probe probe=mcp_health` for the credential-free health/image/migration read.
-* `image` and `migration_set` are **always null** here: neither response states them. The deployed image digest and migration set come from `http_probe mcp_health`.
+* `image` and `migration_set` are **always null** here: neither response states them. The deployed image digest and the migration-set **digest** come from `http_probe mcp_health`,
+  because the MCP service's `/health` states `image_digest` (the image build step's immutable digest, set at deploy time as `NIRMANA_IMAGE_DIGEST`) and `migration_set`
+  (`{count, sha256, algorithm}`: a digest of the applied-ledger **filenames**, not the per-file list). Each is `null` with a `*_reason` when the service cannot state it (for example
+  before the first deploy that carries this change); a null there is `null` in the probe record, not a pass.
 
 ## Mapping to `fleet/j6_live_readback.py` (J-6l)
 
 | J-6l input | from `consumer_probe` | note |
 |---|---|---|
 | `ky.j6_consumer_path/1` (`mode:'authority'`, `result:'ACCEPTED'`, `by` ∈ v1..v4, `binding`, `deployment_sha256`, `evidence_sha256`) | **not produced here.** `evidence_sha256` may be the sha256 of the verifier-accepted receipt of a `consumer_probe` run (`output_sha256` of the receipt); the ACCEPTED verdict and `by` are the independent verifier's | the probe is the *measurement*; acceptance stays with a V signer (`j6_live_readback.py` header: "owed by an independent verifier") |
-| `ky.j6_deployment_observation/1` (`image_digest`, `commit`, `migrations`, `url`, `observed_at`) | `url` = `https://amjis-mcp-qm256lasva-el.a.run.app/mcp` is the consumer URL; **`image_digest`/`commit`/`migrations` come from `http_probe mcp_health`**, not from here | `observed_at` ↔ record `measured_at` |
+| `ky.j6_deployment_observation/1` (`image_digest`, `commit`, `migrations`, `url`, `observed_at`) | `url` = `https://amjis-mcp-qm256lasva-el.a.run.app/mcp` is the consumer URL; **`image_digest`/`commit` come from `http_probe mcp_health`** (`image`, `deployed_sha`), not from here; **`migrations`** is the per-file `{filename, sha256}` list, which `/health` does NOT state (it states only the filename digest as `migration_set`) — take the list from `migration_readback` and cross-check its filename digest against the probe's `migration_set` | `observed_at` ↔ record `measured_at` |
 | `response.status` | record `http_status` | |
 | `response.sha256`, `response.bytes` | record `body_sha256` (**canonical digest of the tool result object**), `body_bytes` (raw HTTP bytes) | **not equal to `raw_sha(body)`** — see below |
 | `response.served_generation`, `served_manifest_id` | record `generation`, `manifest_id` | |
@@ -68,7 +71,7 @@ this change assumes; nothing in it depends on the choice.
 
 ## Fields stated nowhere stay null (CLAUDE.md §N.7.6)
 
-`image`, `migration_set`: never stated by either response → always null. `generation`/`manifest_id`: only as the response states them (Kāla snapshot top level; Gochara
+`image`, `migration_set`: never stated by either of THESE responses → always null here (the `http_probe mcp_health` record carries them). `generation`/`manifest_id`: only as the response states them (Kāla snapshot top level; Gochara
 `coverage.coverage_manifest.generation` / window rows); a Kāla `manifest_id` that is not a UUID is not recorded. `effective_states`: only the closed vocabulary of
 `arrival_state.ts`, only for the two NOW probes.
 

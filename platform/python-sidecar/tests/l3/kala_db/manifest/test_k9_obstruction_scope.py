@@ -68,7 +68,7 @@ def seed_served(conn):
 # ── O1, O2, O3: the writer ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def test_o1_candidate_bound_build_writes_only_its_generation_and_leaves_served_rows_byte_identical(conn, vighnakara):
-    convergence(conn)
+    convergence(conn, CAND)      # a candidate-bound build reads only its own candidate's convergence rows (SR-K9-BIND B1a)
     seed_served(conn)
     served = snapshot_of(conn, 'generation IS DISTINCT FROM %s', CAND)
     assert len(served) == 3 and {row['convergence_id'] for row in served} == {SERVED_CONV}
@@ -79,7 +79,7 @@ def test_o1_candidate_bound_build_writes_only_its_generation_and_leaves_served_r
 
 
 def test_o1_a_second_candidate_build_replaces_its_own_partition_instead_of_accreting(conn, vighnakara):
-    convergence(conn)
+    convergence(conn, CAND)
     drive(conn, vighnakara, 'ka_vighnakara')
     first = len(snapshot_of(conn, 'generation = %s', CAND))
     drive(conn, vighnakara, 'ka_vighnakara')
@@ -87,7 +87,8 @@ def test_o1_a_second_candidate_build_replaces_its_own_partition_instead_of_accre
 
 
 def test_o2_an_ordinary_rebuild_replaces_the_legacy_partition_in_place_and_touches_no_generation(conn, vighnakara):
-    convergence(conn)
+    conn.execute('DELETE FROM kala_layer_head')      # an unbound rewrite is refused once a generation is published (SR-K9-BIND B1b): the ordinary path is the pre-publication one
+    convergence(conn, 'legacy')
     seed_served(conn)
     obs(conn, CAND, 'candidate_seed')
     kept = snapshot_of(conn, 'generation IS NOT NULL')
@@ -99,7 +100,7 @@ def test_o2_an_ordinary_rebuild_replaces_the_legacy_partition_in_place_and_touch
 
 @pytest.mark.parametrize('defect', ['complete', 'head'])
 def test_o3_a_candidate_that_is_not_building_or_is_the_head_cannot_have_its_rows_replaced(conn, vighnakara, defect):
-    convergence(conn)
+    convergence(conn, CAND)
     seed_served(conn)
     obs(conn, CAND, 'candidate_seed')
     if defect == 'complete':
@@ -175,13 +176,23 @@ def test_o5_served_partition_is_the_head_when_it_holds_rows_else_legacy_and_neve
 
 # ── O6: the Python readers ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
+def serve_convergence(conn, *, drop_only=False):
+    """(Re)create the served view as the writers' fixture defines it (migration 1405): ``SELECT k.*`` is expanded when the view is created, so a column added
+    to or retyped on kala_convergence afterwards needs the view dropped first and created again."""
+    conn.execute('DROP VIEW IF EXISTS kala_convergence_served')
+    if not drop_only:
+        conn.execute('CREATE VIEW kala_convergence_served AS SELECT k.* FROM kala_convergence k WHERE k.generation = '
+                     "COALESCE((SELECT h.generation FROM kala_layer_head h WHERE h.chart_id = k.chart_id), 'legacy')")
+
+
 def readers_world(conn):
-    """Two windows; legacy rows on window 1, the head's rows on window 2, a candidate's rows on window 1."""
+    """Two windows (the head's convergence rows, which the readers join through the served view); legacy rows on window 1, the head's rows on window 2, a candidate's rows on window 1."""
     conn.execute('ALTER TABLE kala_convergence ADD COLUMN domain text, ADD COLUMN constituent_factors jsonb, '
                  'ADD COLUMN confidence_label text, ADD COLUMN rarity_years numeric')
+    serve_convergence(conn)
     for peak, start, end in (('2030-03-03', '2030-03-01', '2030-03-05'), ('2031-04-04', '2031-04-01', '2031-04-07')):
-        conn.execute("INSERT INTO kala_convergence (chart_id, signal_id, mode, peak_date, window_start, window_end, convergence_score, orb_strength) "
-                     "VALUES (%s, 'S-CONV', 'C', %s, %s, %s, 0.8, 0.5)", (CHART, peak, start, end))
+        conn.execute("INSERT INTO kala_convergence (chart_id, signal_id, mode, peak_date, window_start, window_end, convergence_score, orb_strength, generation) "
+                     "VALUES (%s, 'S-CONV', 'C', %s, %s, %s, 0.8, 0.5, %s)", (CHART, peak, start, end, HEAD))
     first, second = [r['convergence_id'] if isinstance(r, dict) else r[0]
                      for r in conn.execute('SELECT convergence_id FROM kala_convergence ORDER BY convergence_id').fetchall()]
     obs(conn, None, 'legacy_row', conv=first)
@@ -204,7 +215,9 @@ def test_o6_ph_muhurta_reads_the_served_partition_only(conn):
 def test_o6_ka_kala_darshana_consumes_the_served_partition_only(conn):
     readers_world(conn)
     conn.execute('ALTER TABLE kala_obstruction ALTER COLUMN override_score TYPE double precision, ALTER COLUMN severity_score TYPE double precision')
+    serve_convergence(conn, drop_only=True)
     conn.execute('ALTER TABLE kala_convergence ALTER COLUMN convergence_score TYPE double precision')
+    serve_convergence(conn)
     conn.execute('CREATE TABLE kala_darshana (id serial PRIMARY KEY, chart_id uuid, convergence_id integer, signal_id text, effective_score numeric, '
                  'net_label text, peak_date text, window_start text, window_end text, obstruction_summary jsonb, narrative jsonb, '
                  'source_citation text, generation text)')
@@ -212,7 +225,7 @@ def test_o6_ka_kala_darshana_consumes_the_served_partition_only(conn):
     summaries = {r['convergence_id']: [o['type'] for o in r['obstruction_summary']]
                  for r in conn.execute('SELECT convergence_id, obstruction_summary FROM kala_darshana').fetchall()}
     by_peak = {r['peak_date'].isoformat(): r['convergence_id']
-               for r in conn.execute('SELECT convergence_id, peak_date FROM kala_convergence').fetchall()}
+               for r in conn.execute('SELECT convergence_id, peak_date FROM kala_convergence_served').fetchall()}
     assert summaries[by_peak['2030-03-03']] == [], 'a legacy or candidate row leaked into the served read'
     assert summaries[by_peak['2031-04-04']] == ['head_row']
 

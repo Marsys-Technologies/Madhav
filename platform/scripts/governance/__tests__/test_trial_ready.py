@@ -9,12 +9,24 @@ ready (N.7.6)"; "a check reads true only from its detector's run" (§N.8); "TR1/
   C5 one commit: a work tree that is not the evaluated commit, is dirty, or moves while the detectors run yields no true.
   C6 a database part never reads true from a remote host, an unset DSN, or an unreadable database.
   C7 a stale trial_ready.json never survives a failed run; exit codes follow `ready`.
-  C8 the shipped registry names the 25 required checks and points only at oracle files that exist (nothing invented).
+  C8 the shipped registry names the 25 required checks and points only at oracle files that exist (nothing invented) -- or, for a lane not yet on this branch,
+     says which branch lands the file (`lands_with`) -- and keeps no check unbound except the four whose detector is another job's (TR-BIND).
+  C9 `json_field_eq` (TR-BIND: a record outside the repository -- T21 verdict, T24 readiness) reads true only when every field holds, false when a field is
+     present and differs (a record made for another head, 1 for true), null when the record, a field or a value is absent.
+  C10 `db_migrations` with `mode: "all"` (T25) reads false when the ledger lacks ANY file the commit lists, null when the commit lists none.
+  C11 a `pytest` part passes `env` with `{repo}` expanded and `--deselect` for each named node id (T14); a part whose every test is deselected is null;
+     a relative scratch directory is resolved first (the part runs in another cwd, so its junit file would otherwise be written elsewhere and read null).
+  C12 the trial harness landed under fleet/trial_harness is the accepted v3.1 + B4 overlay the trial runs (content digest pinned), not a later or edited copy.
+  C13 (PR #3874 review B-1) T24 reads true only from the amd64_slice run's OWN evidence (report, pinned runtime, EQUIVALENCE_RECORD) at this head -- never from a
+     readiness record, which only says the inputs are named.
+  C14 (review B-2) T20's a53 DB-suite part deselects the one test that skips by design, so the part can read true.
+  C15 (review N-2) T21 also matches the verdict's patch_id to a patch-id recomputed from the repository; N-3/N-4 T10 part 2 pins its locale, T20 names the geometry-pin rule.
 Every test builds a throw-away git repository; none touches the shared repository or a database (the database answer is replaced where the claim is
 about how the evaluator READS it).
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -297,6 +309,10 @@ def test_c7_exit_code_follows_ready_and_a_stale_file_never_survives_a_failed_run
 
 # ── C8 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+# the checks whose detector is another job's (TR_GAPS B1 NDH, B2 SELECT-130, B7 DASH-READBACK, B6 LANE-LEDGER); binding one removes it from this set, a new unbound check fails
+STILL_UNBOUND = {"T11", "T12", "T13", "T22"}
+
+
 def test_c8_the_shipped_registry_names_the_25_checks_and_points_only_at_real_oracles():
     doc = json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))
     assert [c["id"] for c in doc["checks"]] == IDS
@@ -307,9 +323,22 @@ def test_c8_the_shipped_registry_names_the_25_checks_and_points_only_at_real_ora
             if p["kind"] == "pytest":
                 for t in p["tests"]:
                     cwd = p.get("cwd", ".")
-                    assert (REPO_ROOT / cwd / t.split("::")[0]).is_file(), (c["id"], t)
+                    present = (REPO_ROOT / cwd / t.split("::")[0]).is_file()
+                    # an oracle of a lane that has not reached this branch is named with the branch that lands it; once it is here the name must resolve
+                    assert present or p.get("lands_with"), (c["id"], t)
+                    assert "NOT-FOUND" not in str(p.get("lands_with")), (c["id"], t)
             if p["kind"] == "git_file":
                 assert (REPO_ROOT / p["path"]).is_file(), (c["id"], p["path"])
+            if p["kind"] == "json_field_eq":
+                assert p["fields"] and all(sum(1 for k in ("equals", "equals_head", "equals_patch_id_of") if k in f and (k != "equals_head" or f[k])) == 1 for f in p["fields"]), (c["id"], p)
+            if p["kind"] == "db_migrations":
+                assert p.get("mode") == "all" or p.get("prefixes"), (c["id"], p)
+
+
+def test_c8_only_the_four_checks_that_wait_for_another_job_are_unbound():
+    doc = json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))
+    unbound = {c["id"] for c in doc["checks"] if any(p["kind"] == "unbound" for p in c["parts"])}
+    assert unbound <= STILL_UNBOUND, sorted(unbound - STILL_UNBOUND)
 
 
 def test_c8_a_check_with_no_bound_detector_cannot_read_true_from_the_shipped_registry(tmp_path):
@@ -320,3 +349,292 @@ def test_c8_a_check_with_no_bound_detector_cannot_read_true_from_the_shipped_reg
     unbound_only = [c["id"] for c in doc["checks"] if all(p["kind"] == "unbound" for p in c["parts"])]
     assert unbound_only and all(v[i] is None for i in unbound_only)
     assert not tr.is_ready(run(repo, tmp_path)["checks"])
+
+
+# ── C9 json_field_eq (TR-BIND) ───────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def _jf(tmp_path, record, fields, path="rec.json", repo_name="jf", raw=None):
+    f = tmp_path / path
+    if raw is not None:
+        f.write_text(raw)
+    elif record is not None:
+        f.write_text(json.dumps(record))
+    part = {"kind": "json_field_eq", "path": str(f), "fields": fields}
+    repo, sha = make(tmp_path, registry({"T24": [part]}), name=repo_name)
+    return values(run(repo, tmp_path))["T24"], sha
+
+
+def test_c9_a_record_reads_true_only_when_every_field_holds_for_this_head(tmp_path):
+    fields = [{"field": "ready", "equals": True}, {"field": "inputs.head.value", "equals_head": True}]
+    repo, sha = make(tmp_path, registry(), name="probe")                         # any commit: its sha is what the record must name
+    rec = {"ready": True, "inputs": {"head": {"value": sha}}}
+    (tmp_path / "rec.json").write_text(json.dumps(rec))
+    part = {"kind": "json_field_eq", "path": str(tmp_path / "rec.json"), "fields": fields}
+    repo, sha2 = make(tmp_path, registry({"T24": [part]}), name="r2")
+    assert sha2 != sha
+    assert values(run(repo, tmp_path))["T24"] is False                           # the record names ANOTHER head: stale evidence is false, not true
+    rec["inputs"]["head"]["value"] = sha2
+    (tmp_path / "rec.json").write_text(json.dumps(rec))
+    assert values(run(repo, tmp_path))["T24"] is True
+    rec["ready"] = False
+    (tmp_path / "rec.json").write_text(json.dumps(rec))
+    assert values(run(repo, tmp_path))["T24"] is False
+
+
+def test_c9_the_type_must_match_so_one_is_not_true(tmp_path):
+    assert _jf(tmp_path, {"ready": 1}, [{"field": "ready", "equals": True}])[0] is False
+    assert _jf(tmp_path, {"ready": "true"}, [{"field": "ready", "equals": True}], repo_name="b")[0] is False
+    assert _jf(tmp_path, {"ready": True}, [{"field": "ready", "equals": True}], repo_name="c")[0] is True
+
+
+def test_c9_unreadable_evidence_is_null_never_true(tmp_path):
+    f = [{"field": "a.b", "equals": "x"}]
+    assert _jf(tmp_path, None, f)[0] is None                                      # no record at all
+    assert _jf(tmp_path, None, f, raw="{not json", repo_name="b")[0] is None
+    assert _jf(tmp_path, {"a": {}}, f, repo_name="c")[0] is None                  # field absent
+    assert _jf(tmp_path, {"a": {"b": None}}, f, repo_name="d")[0] is None        # JSON null is no evidence
+    assert _jf(tmp_path, {"a": "scalar"}, f, repo_name="e")[0] is None           # the path runs through a non-object
+    assert _jf(tmp_path, {"a": {"b": "x"}}, [], repo_name="f")[0] is None         # a part that declares no field proves nothing
+    both = [{"field": "a.b", "equals": "x", "equals_head": True}]
+    assert _jf(tmp_path, {"a": {"b": "x"}}, both, repo_name="g")[0] is None      # ambiguous declaration
+    neither = [{"field": "a.b"}]
+    assert _jf(tmp_path, {"a": {"b": "x"}}, neither, repo_name="h")[0] is None
+
+
+def test_c9_a_false_field_beside_a_missing_one_is_false(tmp_path):
+    f = [{"field": "a", "equals": 1}, {"field": "missing", "equals": 2}]
+    assert _jf(tmp_path, {"a": 9}, f)[0] is False
+    assert _jf(tmp_path, {"a": 1}, f, repo_name="b")[0] is None
+
+
+def test_c9_the_head_placeholder_names_a_per_head_file(tmp_path):
+    repo, sha = make(tmp_path, registry({"T24": [{"kind": "json_field_eq", "path": str(tmp_path / "{head}.json"), "fields": [{"field": "ok", "equals": True}]}]}))
+    assert values(run(repo, tmp_path))["T24"] is None                             # no file for this head yet
+    (tmp_path / (sha + ".json")).write_text(json.dumps({"ok": True}))
+    assert values(run(repo, tmp_path))["T24"] is True
+
+
+# ── C10 db_migrations mode all (TR-BIND) ─────────────────────────────────────────────────────────────────────────────────────────────
+
+def test_c10_every_file_the_commit_lists_must_be_in_the_ledger(monkeypatch, tmp_path):
+    monkeypatch.setenv("TRIAL_READY_TEST_DSN4", "postgresql://u@127.0.0.1:55433/lane")
+    part = {"kind": "db_migrations", "dsn_env": "TRIAL_READY_TEST_DSN4", "mode": "all"}
+    files = {"platform/migrations/001_a.sql": "--", "platform/migrations/1401_b.sql": "--", "platform/migrations/README.md": "not a migration"}
+    repo, _ = make(tmp_path, registry({"T25": [part]}), files)
+
+    def applied(names):
+        monkeypatch.setattr(tr, "_run_sql", lambda d, s: ("\n".join(names), "ok"))
+        return values(run(repo, tmp_path))["T25"]
+    assert applied(["001_a.sql", "1401_b.sql", "extra_from_an_older_head.sql"]) is True
+    assert applied(["001_a.sql"]) is False                                       # a protected file that was skipped reads as missing
+    assert applied([""]) is False
+
+
+def test_c10_an_empty_list_an_unknown_mode_or_a_prefix_less_part_is_null(monkeypatch, tmp_path):
+    monkeypatch.setenv("TRIAL_READY_TEST_DSN5", "postgresql://u@127.0.0.1:55433/lane")
+    monkeypatch.setattr(tr, "_run_sql", lambda d, s: ("001_a.sql", "ok"))
+    base = {"kind": "db_migrations", "dsn_env": "TRIAL_READY_TEST_DSN5"}
+    repo, _ = make(tmp_path, registry({"T25": [dict(base, mode="all")]}), name="empty")        # the commit lists no migration at all
+    assert values(run(repo, tmp_path))["T25"] is None
+    repo2, _ = make(tmp_path, registry({"T25": [dict(base, mode="everything")]}), {"platform/migrations/001_a.sql": "--"}, name="mode")
+    assert values(run(repo2, tmp_path))["T25"] is None
+    repo3, _ = make(tmp_path, registry({"T25": [dict(base)]}), {"platform/migrations/001_a.sql": "--"}, name="noprefix")
+    assert values(run(repo3, tmp_path))["T25"] is None
+    monkeypatch.delenv("TRIAL_READY_TEST_DSN5")
+    repo4, _ = make(tmp_path, registry({"T25": [dict(base, mode="all")]}), {"platform/migrations/001_a.sql": "--"}, name="nodsn")
+    assert values(run(repo4, tmp_path))["T25"] is None
+
+
+# ── C11 pytest env and deselect (TR-BIND) ────────────────────────────────────────────────────────────────────────────────────────────
+
+TWO = "def test_good():\n    assert True\n\ndef test_env_dependent():\n    assert False\n"
+
+
+def test_c11_a_deselected_test_is_not_run_and_the_rest_decide(tmp_path):
+    part = {"kind": "pytest", "tests": ["t_two.py"], "deselect": ["t_two.py::test_env_dependent"]}
+    repo, _ = make(tmp_path, registry({"T14": [part]}), {"t_two.py": TWO})
+    assert values(run(repo, tmp_path))["T14"] is True
+    repo2, _ = make(tmp_path, registry({"T14": [{"kind": "pytest", "tests": ["t_two.py"]}]}), {"t_two.py": TWO}, name="plain")
+    assert values(run(repo2, tmp_path))["T14"] is False                          # without the deselect the same file fails: the option is what changes the verdict
+
+
+def test_c11_a_part_whose_every_test_is_deselected_is_null_not_true(tmp_path):
+    part = {"kind": "pytest", "tests": ["t_one.py"], "deselect": ["t_one.py::test_only"]}
+    repo, _ = make(tmp_path, registry({"T14": [part]}), {"t_one.py": "def test_only():\n    assert True\n"})
+    assert values(run(repo, tmp_path))["T14"] is None
+
+
+def test_c11_the_repo_placeholder_in_env_is_the_evaluated_work_tree(tmp_path):
+    probe = "import os\nfrom pathlib import Path\n\ndef test_env():\n    assert Path(os.environ['KY_TEST_CHECKOUT']).resolve() == Path(__file__).resolve().parent\n"
+    part = {"kind": "pytest", "tests": ["t_env.py"], "env": {"KY_TEST_CHECKOUT": "{repo}"}}
+    repo, _ = make(tmp_path, registry({"T14": [part]}), {"t_env.py": probe})
+    assert values(run(repo, tmp_path))["T14"] is True
+    repo2, _ = make(tmp_path, registry({"T14": [dict(part, env={"KY_TEST_CHECKOUT": "/nowhere"})]}), {"t_env.py": probe}, name="lit")
+    assert values(run(repo2, tmp_path))["T14"] is False
+
+
+def test_c11_a_relative_scratch_directory_still_lets_a_passing_oracle_read_true(tmp_path, monkeypatch):
+    repo, _ = make(tmp_path, registry({"T14": [{"kind": "pytest", "cwd": "sub", "tests": ["t_ok.py"]}]}), {"sub/t_ok.py": PASSING})
+    monkeypatch.chdir(tmp_path)
+    res = tr.evaluate(repo, "HEAD", Path("rel_work"), python=sys.executable)
+    assert values(res)["T14"] is True
+
+
+# ── C12 the landed harness is the accepted v3.1 ──────────────────────────────────────────────────────────────────────────────────────
+
+HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
+# v3.1 (review X-20261022T075423Z-review-t1b-harness2, ACCEPTED round 2 = efb0922a...787c) + the cockpit's B4 lane-db overlay (TR_GAPS B4.3: run_trial.sh, trial_slice.py,
+# tests/test_lane_db_overlay.py) = the harness the trial actually runs (installed copy of job X-20261021T105440Z-od1-T1-harness; PR #3874 review N-1)
+HARNESS_V31_DIGEST = "7d8fbd87f5412c0954c2a294a799f36ae975f807114a53e505bab93736921f91"
+
+
+def harness_digest(root):
+    """The reviewer's recipe: sha256 over the sorted `sha256sum`-style per-file lines ('<hash>  ./<path>'), `__pycache__` excluded."""
+    root = Path(root)
+    rels = sorted("./" + p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file() and "__pycache__" not in p.parts)
+    lines = "".join("%s  %s\n" % (hashlib.sha256((root / r).read_bytes()).hexdigest(), r) for r in rels)
+    return hashlib.sha256(lines.encode("utf-8")).hexdigest()
+
+
+def test_c12_the_landed_trial_harness_is_the_accepted_v3_1():
+    assert harness_digest(REPO_ROOT / HARNESS_DIR) == HARNESS_V31_DIGEST
+
+
+def test_c12_the_digest_moves_when_any_harness_byte_changes(tmp_path):
+    import shutil
+    copy = tmp_path / "h"
+    shutil.copytree(str(REPO_ROOT / HARNESS_DIR), str(copy), ignore=shutil.ignore_patterns("__pycache__"))
+    assert harness_digest(copy) == HARNESS_V31_DIGEST
+    gates = copy / "gates.py"
+    gates.write_bytes(gates.read_bytes() + b"\n")
+    assert harness_digest(copy) != HARNESS_V31_DIGEST
+
+
+# ── C13-C15 PR #3874 review fixes ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+RUN_TR = "/Users/Dev/kalayantra/run/TR"
+
+
+def shipped():
+    return json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))
+
+
+def shipped_check(cid):
+    return next(c for c in shipped()["checks"] if c["id"] == cid)
+
+
+def retarget(check, run_dir):
+    """The shipped check with its external record directory moved under a scratch directory (the parts are otherwise exactly the shipped ones)."""
+    return json.loads(json.dumps(check).replace(RUN_TR, str(run_dir)))
+
+
+def slice_records(run_dir, sha, *, head=None, arch="linux/amd64", kind="qualifying_run", status="COMPLETE", complete=True, eq_head=None):
+    """What a finished amd64_slice run leaves: <label>_report.json, equivalence/eq_pinned_inputs.json and equivalence/equivalence_record.json (trial_slice.py / equivalence_record.py)."""
+    base = Path(run_dir) / "amd64_slice"
+    (base / "equivalence").mkdir(parents=True, exist_ok=True)
+    (base / "amd64_slice_report.json").write_text(json.dumps({"code": {"head": head or sha}, "equivalence_record": {"status": status, "head": eq_head or head or sha}}))
+    (base / "equivalence" / "eq_pinned_inputs.json").write_text(json.dumps({"runtime": {"kind": kind, "arch": arch}}))
+    (base / "equivalence" / "equivalence_record.json").write_text(json.dumps({"complete": complete, "runtime_kind": kind, "E6": {"commit": head or sha}}))
+
+
+def t24_value(tmp_path, name, write):
+    repo, sha = make(tmp_path, registry({"T24": retarget(shipped_check("T24"), tmp_path / name)["parts"]}), name=name)
+    write(tmp_path / name, sha)
+    return values(run(repo, tmp_path))["T24"]
+
+
+def test_c13_a_readiness_record_alone_never_reads_true_for_t24(tmp_path):
+    """Review B-1: `trial_slice.py amd64-readiness` writes ready:true for any well-formed 64-hex digest with no image and no run (it says `not_run: true`).
+    Reversion: bind T24 back to amd64_readiness.json -> this record reads true and the assertion fails."""
+    def only_readiness(d, sha):
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "amd64_readiness.json").write_text(json.dumps({"schema": "ky.amd64_slice_readiness/1", "not_run": True, "ready": True,
+                                                            "inputs": {"head": {"value": sha, "present": True}, "image_digest": {"value": "sha256:" + "0" * 64, "present": True}}}))
+    assert t24_value(tmp_path, "ro", only_readiness) is None
+
+
+def test_c13_t24_reads_true_from_the_complete_qualifying_amd64_run_of_this_head(tmp_path):
+    assert t24_value(tmp_path, "ok", lambda d, sha: slice_records(d, sha)) is True
+
+
+@pytest.mark.parametrize("name,over", [("arm64", {"arch": "linux/arm64"}), ("rolling", {"kind": "rolling_diagnostic"}), ("incomplete", {"complete": False}),
+                                       ("refused", {"status": "REFUSED"}), ("other_head", {"head": "1" * 40}), ("eq_other_head", {"eq_head": "2" * 40})])
+def test_c13_t24_reads_false_when_the_slice_ran_elsewhere_or_for_another_head(tmp_path, name, over):
+    """Each field the claim names (arch, runtime kind, completeness, status, head) is measured: a record that says otherwise reads false, not true."""
+    assert t24_value(tmp_path, name, lambda d, sha: slice_records(d, sha, **over)) is False
+
+
+def test_c13_t24_is_null_without_the_slice_run(tmp_path):
+    assert t24_value(tmp_path, "none", lambda d, sha: None) is None
+
+
+T20_SKIP_NODE = "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id"
+
+
+def test_c14_t20_deselects_the_one_test_that_skips_by_design_and_says_why():
+    """Review B-2. Source: platform/migrations/1153_gochara_sky_event_substrate.sql:609-611 (insert-only trigger on ka_gochara_sky_convention)."""
+    part = shipped_check("T20")["parts"][1]
+    assert part["deselect"] == [T20_SKIP_NODE]
+    why = part["deselect_why"][T20_SKIP_NODE]
+    assert "1153_gochara_sky_event_substrate.sql:609-611" in why and "insert-only" in why
+    mig = (REPO_ROOT / "platform/migrations/1153_gochara_sky_event_substrate.sql").read_text(encoding="utf-8").splitlines()[608:611]
+    assert any("ka_gochara_sky_convention_immutable" in l for l in mig) and any("BEFORE UPDATE OR DELETE" in l for l in mig) and any("ka_gochara_insert_only" in l for l in mig)
+    src = (REPO_ROOT / "platform/python-sidecar" / T20_SKIP_NODE.split("::")[0]).read_text(encoding="utf-8")
+    assert "def " + T20_SKIP_NODE.split("::")[1] + "(" in src and "refuses an in-place edit" in src
+
+
+def test_c14_with_that_node_deselected_a_part_whose_only_skip_it_is_reads_true(tmp_path):
+    """The shipped T20 part 2 deselect applied to a stand-in file with the same node id (one skip-by-design test, one passing test).
+    Reversion: drop the deselect -> the skip makes the part null forever."""
+    rel = T20_SKIP_NODE.split("::")[0]
+    body = "import pytest\n\ndef %s():\n    pytest.skip('the convention table refuses an in-place edit here')\n\ndef test_other():\n    assert True\n" % T20_SKIP_NODE.split("::")[1]
+    part = {k: v for k, v in shipped_check("T20")["parts"][1].items() if k not in ("env", "tests")}
+    part["tests"] = [rel]
+    repo, _ = make(tmp_path, registry({"T20": [part]}), files={"platform/python-sidecar/" + rel: body})
+    assert values(run(repo, tmp_path))["T20"] is True
+    part.pop("deselect")
+    repo, _ = make(tmp_path, registry({"T20": [part]}), files={"platform/python-sidecar/" + rel: body}, name="nodeselect")
+    assert values(run(repo, tmp_path))["T20"] is None
+
+
+def test_c14_t20_claim_states_the_pin_once_rule_in_full():
+    """Review N-4; ruling SR-GEOMETRY-PIN-ONCE (DECISIONS_SURROGATE 2026-10-22T09:15:49Z)."""
+    claim = shipped_check("T20")["claim"]
+    assert "SR-GEOMETRY-PIN-ONCE" in claim and "recorded in the EQUIVALENCE_RECORD changelog with both causes; any further geometry change refuses" in claim
+
+
+def test_c14_t10_locale_sensitive_part_pins_its_locale():
+    """Review N-3: the throwaway postgres of test_sr_doctrine_h_node_dignity_1401.py refuses to start without a valid locale ('postmaster became multithreaded')."""
+    part = next(p for p in shipped_check("T10")["parts"] if p["kind"] == "pytest" and "test_sr_doctrine_h_node_dignity_1401.py" in p["tests"][0])
+    assert part["env"]["LC_ALL"] == "en_US.UTF-8" and part["env"]["LANG"] == "en_US.UTF-8"
+
+
+def _t21_repo(tmp_path, name):
+    repo = tmp_path / name
+    repo.mkdir()
+    git(repo, "init", "-q")
+    base = commit(repo, {"a.txt": "one\n"})
+    git(repo, "update-ref", "refs/remotes/origin/main", base)
+    head = commit(repo, {"a.txt": "one\ntwo\n", tr.DEFAULT_REGISTRY: json.dumps(registry({"T21": retarget(shipped_check("T21"), tmp_path / name / "..")["parts"]}))})
+    return repo, head
+
+
+def test_c15_t21_matches_the_verdict_patch_id_against_one_recomputed_from_the_repo(tmp_path):
+    """Review N-2. Source: the reviewer's recipe `git patch-id --stable` of base...head. Reversion: drop the patch_id field -> a verdict naming another patch reads true."""
+    repo, head = _t21_repo(tmp_path, "r")
+    real = tr._patch_id(repo, "origin/main", head)
+    assert real and len(real) == 40
+    verdict = tmp_path / "r" / ".." / "RVINT_VERDICT.json"
+    verdict.write_text(json.dumps({"proposed_verdict": {"verdict": "ACCEPTED", "head": head, "patch_id": real}}))
+    assert values(run(repo, tmp_path))["T21"] is True
+    verdict.write_text(json.dumps({"proposed_verdict": {"verdict": "ACCEPTED", "head": head, "patch_id": "f" * 40}}))
+    assert values(run(repo, tmp_path))["T21"] is False                            # a verdict for another patch with the right head label
+    verdict.write_text(json.dumps({"proposed_verdict": {"verdict": "ACCEPTED", "head": head}}))
+    assert values(run(repo, tmp_path))["T21"] is None                             # no patch_id recorded: no evidence
+
+
+def test_c15_an_unresolvable_base_makes_the_patch_id_field_null(tmp_path):
+    repo, head = _t21_repo(tmp_path, "r2")
+    git(repo, "update-ref", "-d", "refs/remotes/origin/main")
+    (tmp_path / "RVINT_VERDICT.json").write_text(json.dumps({"proposed_verdict": {"verdict": "ACCEPTED", "head": head, "patch_id": "a" * 40}}))
+    assert values(run(repo, tmp_path))["T21"] is None

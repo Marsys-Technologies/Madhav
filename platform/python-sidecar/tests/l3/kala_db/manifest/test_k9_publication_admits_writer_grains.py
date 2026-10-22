@@ -70,7 +70,8 @@ def conn(kala_db_dsn):
             'PRIMARY KEY(chart_id, asset_id, substep_key))',
             'CREATE TABLE kala_convergence (convergence_id serial, chart_id uuid, signal_id text, mode text, '
             'peak_date date, convergence_score numeric, orb_strength numeric, window_start date, window_end date, '
-            'horizon_tier text)',
+            'horizon_tier text, generation text NOT NULL DEFAULT \'legacy\')',
+            'CREATE VIEW kala_convergence_served AS SELECT * FROM kala_convergence',     # migration 1405: readers take the served view
             'CREATE TABLE kala_obstruction (id serial, chart_id uuid, convergence_id integer, signal_id text, '
             'obstruction_type text, severity text, severity_score numeric, override_score numeric, '
             'obstruction_detail jsonb, source_citation text, generation text)',

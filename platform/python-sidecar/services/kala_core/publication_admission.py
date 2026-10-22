@@ -82,6 +82,20 @@ def _upstream(edges: Mapping[str, Iterable[str]], asset: str, memo: dict[str, fr
     return memo[asset]
 
 
+def upstream_of(edges: Mapping[str, Iterable[str]], asset: str) -> frozenset[str]:
+    """Every asset ``asset`` transitively declares as an upstream (public form of ``_upstream``)."""
+    return _upstream(edges, asset, {})
+
+
+def merge_edges(*graphs: Mapping[str, Iterable[str]]) -> dict[str, list[str]]:
+    """The union of dependency graphs (e.g. the pinned preparation edges and the edges a run was frozen with)."""
+    merged: dict[str, set[str]] = {}
+    for graph in graphs:
+        for asset, deps in graph.items():
+            merged.setdefault(asset, set()).update(deps)
+    return {asset: sorted(deps) for asset, deps in merged.items()}
+
+
 def plan_gaps(edges: Mapping[str, Iterable[str]], assets: list[str]) -> list[tuple[str, str, str]]:
     """(missing, upstream planned, downstream planned) for each asset the plan leaves out BETWEEN two planned assets.
 
@@ -104,29 +118,36 @@ def plan_gaps(edges: Mapping[str, Iterable[str]], assets: list[str]) -> list[tup
     return gaps
 
 
-def closed_plan(edges: Mapping[str, Iterable[str]], assets: list[str]) -> list[str]:
-    """``assets`` plus every missing intermediate, each placed after everything it depends on inside the plan.
+def derived_waves(edges: Mapping[str, Iterable[str]], assets: Iterable[str], *, close: bool = True) -> list[list[str]]:
+    """The plan's dependency levels, derived from the registry ``depends_on`` and from nothing else (SR-K9-WAVE-ORDER).
 
-    The given order is kept wherever it already respects the dependencies (depth-first emission in the given order;
-    an added intermediate sorts after the given assets).
+    A writer's level is one more than the deepest planned asset it transitively depends on (through unplanned assets too);
+    the writers of one level are listed by asset id. No order is read from the caller's list, so the same registry and the
+    same set of assets always give the same plan, and a writer can never be placed ahead of an upstream it declares.
+    ``close`` adds every missing intermediate (``plan_gaps``); ``close=False`` orders exactly ``assets``.
+    A registry cycle among the planned assets has no order: it raises ``ValueError`` naming them.
     """
+    planned = list(assets)
     memo: dict[str, frozenset[str]] = {}
-    members = set(assets) | {middle for middle, _, _ in plan_gaps(edges, assets)}
-    rank = {asset: (int(asset not in assets), assets.index(asset) if asset in assets else 0, asset) for asset in members}
-    ordered: list[str] = []
-    visiting: set[str] = set()      # a registry cycle must end the walk, not recurse
+    members = set(planned) | ({middle for middle, _, _ in plan_gaps(edges, planned)} if close else set())
+    above = {asset: _upstream(edges, asset, memo) & (members - {asset}) for asset in members}
+    waves: list[list[str]] = []
+    placed: set[str] = set()
+    while len(placed) < len(members):
+        level = sorted(asset for asset in members - placed if not (above[asset] - placed))
+        if not level:
+            raise ValueError('registry dependency cycle among: ' + ', '.join(sorted(members - placed)))
+        waves.append(level)
+        placed.update(level)
+    return waves
 
-    def emit(asset: str) -> None:
-        if asset in ordered or asset in visiting:
-            return
-        visiting.add(asset)
-        for dep in sorted(_upstream(edges, asset, memo) & members, key=rank.__getitem__):
-            emit(dep)
-        ordered.append(asset)
 
-    for asset in sorted(members, key=rank.__getitem__):
-        emit(asset)
-    return ordered
+def closed_plan(edges: Mapping[str, Iterable[str]], assets: list[str]) -> list[str]:
+    """``assets`` plus every missing intermediate, in the order the registry derives (``derived_waves``, flattened).
+
+    The caller's order is not an input: a hand-listed order is never kept, only checked (``order_violations``).
+    """
+    return [asset for wave in derived_waves(edges, assets) for asset in wave]
 
 
 def order_violations(edges: Mapping[str, Iterable[str]], assets: list[str]) -> list[tuple[str, str]]:
@@ -154,12 +175,20 @@ def pubsub_disabled():
 
 
 def assets_refusal(edges: Mapping[str, Iterable[str]], assets: list[str]) -> str | None:
-    """A reason when ``assets`` is not an admissible single-phase K9 rebuild list, else None."""
+    """A reason when ``assets`` is not an admissible single-phase K9 rebuild list, else None.
+
+    Admissible = every asset registered, the plan closed under its dependencies, and no writer listed ahead of an upstream it
+    declares (SR-K9-WAVE-ORDER: the registry's ``depends_on`` is the only source of order; the refusal carries the derived plan).
+    """
     if not assets or any(not a for a in assets) or len(set(assets)) != len(assets):
         return 'assets must be a non-empty list without blanks or duplicates'
     unknown = [a for a in assets if a not in edges]
     if unknown:
         return 'not in asset_registry: ' + ', '.join(unknown)
+    try:
+        derived_waves(edges, assets)
+    except ValueError as exc:
+        return str(exc)
     gaps = plan_gaps(edges, assets)
     if gaps:
         return ('plan is not closed under its dependencies; add ' + ', '.join(

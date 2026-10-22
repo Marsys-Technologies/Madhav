@@ -13,7 +13,7 @@ a `ky.http_probe/1` record (EXPECTED_TABLE.json `http_probe.record` of the W5/W6
                  this kind can measure, or the response is not readable as the thing it claims to be. Only MEASURED carries `http_status`.
   generation / image / migration_set
                  what the response itself states, else null. `generation` is the body's own `generation` string; `image` the body's own
-                 `image_digest` (sha256:<64 hex>); `migration_set` the body's own list of {filename, sha256}. A field the response does not state
+                 `image_digest` (sha256:<64 hex>); `migration_set` the body's own list of {filename, sha256} or the digest {count, sha256, algorithm} of the applied-ledger filenames (the MCP /health states the digest). A field the response does not state
                  is null, never inferred from the URL or the clock (CLAUDE.md §N.7.6 / §N.8).
   body_sha256    sha256 of the CANONICAL body: a JSON object is re-serialised with sorted keys and compact separators after every volatile key
                  (`*_at`, `timestamp`, `time`, `uptime*`) is dropped, so two reads of an unchanged surface hash equal and the J-6r "served response
@@ -42,7 +42,7 @@ SCHEMA = "ky.http_probe/1"
 MAX_BODY = 1024 * 1024
 TIMEOUT_S = 20
 PROBES = {
-    # The MCP service's own liveness route (platform-mcp/src/server.ts `app.get('/health')`: status, deployed_sha, revision, tools); the same route
+    # The MCP service's own liveness route (platform-mcp/src/server.ts `app.get('/health')`: status, deployed_sha, revision, image_digest, migration_set, tools; image_digest/migration_set are null with a *_reason when the service cannot state them); the same route
     # the deploy workflow's candidate smoke reads (.github/workflows/deploy.yml `$SMOKE_MCP_URL/health`). Host: the service URL the repository's
     # audit scripts use as their default target (platform/scripts/audit/doctrine_harness/run.ts DEFAULT_TARGET, minus `/mcp`).
     "mcp_health": "https://amjis-mcp-qm256lasva-el.a.run.app/health",
@@ -101,6 +101,21 @@ def digest(body: bytes) -> tuple[str, str]:
     return hashlib.sha256(body).hexdigest(), "raw"
 
 
+def migration_list(value) -> bool:
+    """The full applied set: a non-empty list of exactly {filename, sha256}."""
+    return isinstance(value, list) and bool(value) and all(
+        isinstance(m, dict) and set(m) == {"filename", "sha256"} and isinstance(m["filename"], str) and MIGRATION_FILE.fullmatch(m["filename"])
+        and isinstance(m["sha256"], str) and HEX64.fullmatch(m["sha256"]) for m in value)
+
+
+def migration_digest(value) -> bool:
+    """The digest the MCP /health states (platform-mcp/src/lib/deploy_identity.ts): exactly {count, sha256, algorithm}, count a positive int."""
+    return (isinstance(value, dict) and set(value) == {"count", "sha256", "algorithm"}
+            and isinstance(value["count"], int) and not isinstance(value["count"], bool) and value["count"] >= 1
+            and isinstance(value["sha256"], str) and bool(HEX64.fullmatch(value["sha256"]))
+            and isinstance(value["algorithm"], str) and bool(value["algorithm"]))
+
+
 def stated(body: bytes) -> dict:
     """What the response says about itself; every field null unless it is stated in the exact shape."""
     try:
@@ -113,9 +128,7 @@ def stated(body: bytes) -> dict:
     deployed = doc.get("deployed_sha")
     revision = doc.get("revision")
     migrations = doc.get("migration_set")
-    if not (isinstance(migrations, list) and migrations and all(
-            isinstance(m, dict) and set(m) == {"filename", "sha256"} and isinstance(m["filename"], str) and MIGRATION_FILE.fullmatch(m["filename"])
-            and isinstance(m["sha256"], str) and HEX64.fullmatch(m["sha256"]) for m in migrations)):
+    if not (migration_list(migrations) or migration_digest(migrations)):
         migrations = None
     return {
         "generation": generation if isinstance(generation, str) and generation else None,

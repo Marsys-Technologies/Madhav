@@ -158,6 +158,7 @@ import { registerPrashnaAskTool } from './tools/register_prashna_ask.js'
 import { registerPrashnaStatusTool } from './tools/register_prashna_status.js'
 // EL-13 — mcp_server_info: catalog_version/tools_changed_at + tools/list_changed staleness kill
 import { registerServerInfoTool, MCP_SERVER_NAME, MCP_SERVER_VERSION } from './tools/register_server_info.js'
+import { createHealthHandler } from './lib/deploy_identity.js'
 
 const app = express()
 app.use(express.json())
@@ -743,17 +744,7 @@ app.get('/mcp', (_req: Request, res: Response) => {
 // server's own registered-tool count rather than hand-maintaining it further.
 const REGISTERED_TOOL_COUNT = 88
 
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    service: 'marsys-mcp',
-    version: '1.0.0',
-    deployed_sha: process.env['NIRMANA_DEPLOYED_SHA'] ?? null,
-    revision: process.env['K_REVISION'] ?? null,
-    tools: REGISTERED_TOOL_COUNT,
-    stream_g_capabilities: ['compute_natal_positions', 'query_dasha_periods', 'query_special_lagnas'],
-  })
-})
+app.get('/health', createHealthHandler({ toolCount: REGISTERED_TOOL_COUNT }))
 
 // ── Start server ──────────────────────────────────────────────────────────────
 

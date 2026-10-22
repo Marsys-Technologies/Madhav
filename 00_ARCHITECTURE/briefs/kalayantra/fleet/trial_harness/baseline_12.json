@@ -1,0 +1,117 @@
+{
+ "classes": {
+  "achievement_recognition": {
+   "blank": null,
+   "group": "new_8",
+   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
+   "windows_total": null
+  },
+  "bereavement": {
+   "blank": 397,
+   "by_path_windows": {
+    "P1": 215,
+    "P2": 154,
+    "P3": 1,
+    "P4": 27
+   },
+   "group": "prior_4class",
+   "source": "previous harness, origin/main d7552d029",
+   "windows_total": 397
+  },
+  "business_launch": {
+   "blank": null,
+   "group": "new_8",
+   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
+   "windows_total": null
+  },
+  "chronic_onset": {
+   "blank": 447,
+   "by_path_windows": {
+    "P1": 138,
+    "P2": 154,
+    "P3": 18,
+    "P4": 137
+   },
+   "group": "prior_4class",
+   "source": "previous harness, origin/main d7552d029",
+   "windows_total": 447
+  },
+  "financial_deception": {
+   "blank": null,
+   "group": "new_8",
+   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
+   "windows_total": null
+  },
+  "foreign_settlement": {
+   "blank": null,
+   "group": "new_8",
+   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
+   "windows_total": null
+  },
+  "illness_acute": {
+   "blank": 447,
+   "by_path_windows": {
+    "P1": 138,
+    "P2": 154,
+    "P3": 18,
+    "P4": 137
+   },
+   "group": "prior_4class",
+   "source": "previous harness, origin/main d7552d029",
+   "windows_total": 447
+  },
+  "major_loss": {
+   "blank": 381,
+   "by_path_windows": {
+    "P1": 63,
+    "P2": 154,
+    "P3": 55,
+    "P4": 109
+   },
+   "group": "prior_4class",
+   "source": "previous harness, origin/main d7552d029",
+   "windows_total": 381
+  },
+  "parental_event": {
+   "blank": null,
+   "group": "new_8",
+   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
+   "windows_total": null
+  },
+  "property_acquisition": {
+   "blank": null,
+   "group": "new_8",
+   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
+   "windows_total": null
+  },
+  "psychological_arc": {
+   "blank": null,
+   "group": "new_8",
+   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
+   "windows_total": null
+  },
+  "spiritual_turn": {
+   "blank": null,
+   "group": "new_8",
+   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
+   "windows_total": null
+  }
+ },
+ "generated_utc": "2026-10-21T11:35:33+00:00",
+ "marker": "TRIAL_SLICE",
+ "not_evidence": true,
+ "note": "PARTIAL: the 12-class all-null run on origin/main (89071f3040c0) could not be made \u2014 the local lane cluster 127.0.0.1:55433 was unreachable for the whole job (connection refused; machine up ~45 min, no process listening). The 4 ruled classes carry the previous harness measurement (origin/main d7552d029); the 8 decision-pending classes are UNMEASURED (null). Produce the real baseline with harness/make_baseline.sh, which overwrites this file only after its oracle passes.",
+ "oracle": null,
+ "policy": "all_null_candidate/1",
+ "prior_4class_baseline": {
+  "file_sha256": "80456dad84f17288b733fd4fdd3990e407dc85147e2c762a889667c7b20abb15",
+  "windows": 1672
+ },
+ "schema": "ky.trial_baseline/2",
+ "status": "PARTIAL_PRIOR_ONLY",
+ "totals": {
+  "new_8_windows": null,
+  "prior_4class_windows": 1672,
+  "windows_total": null
+ }
+}
