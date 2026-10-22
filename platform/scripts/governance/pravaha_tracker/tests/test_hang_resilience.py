@@ -315,26 +315,34 @@ def test_detector_change_during_collection_is_not_lost(engine):
                     "items": [{"id": "x", "track": "t", "title": "X", "owner": "steward",
                                "depends_on": [], "detector": spec}]}
     engine._dirty = True
-    engine.cfg["tick_budget_s"] = 2
+    # The claim is about notification ordering, never about speed: a loaded runner must not turn this
+    # into a timeout test (an abandoned first tick leaves its collector alive and the follow-up tick returns early).
+    engine.cfg["tick_budget_s"] = 60
     entered, release = threading.Event(), threading.Event()
     original = S.Engine._sample_health
 
     def slow_sample(self):
-        entered.set()
-        release.wait(3)
+        # Patched on the class: only this engine's collector (a staged copy sharing its detectors) gates the test.
+        if self.det is engine.det:
+            entered.set()
+            release.wait(30)
         return original(self)
 
     with patch.object(S.Engine, "_sample_health", slow_sample):
         tick = threading.Thread(target=engine.tick)
         tick.start()
         try:
-            assert entered.wait(1)
+            assert entered.wait(30)
             with engine.det._lock:
                 engine.det.results[engine.det.key(spec)] = D.DetectorResult("done", "found", "now", "test")
             engine._mark_dirty()
         finally:
             release.set()
-            tick.join(2)
+            tick.join(30)
+    assert not tick.is_alive(), "the first tick never finished"
+    assert not engine._tick_abandoned, "the first tick was abandoned, so nothing was published to lose"
+    assert engine.snapshot["tracks"][0]["items"][0]["status"] == "unknown", \
+        "the published snapshot predates the detector change"
     assert engine._dirty, "publishing a tick lost a detector's concurrent change notification"
     engine.tick()
     assert engine.snapshot["tracks"][0]["items"][0]["status"] == "done"

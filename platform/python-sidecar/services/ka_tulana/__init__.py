@@ -363,14 +363,14 @@ CERTIFICATION_MAPPING = json.loads(r'''
     "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts": "73b4ea74e3b3e57ea3a6a1992df6cfa6842301087472f797f147d448e73c8635",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ahead.ts": "8b86d0fea6b3a802dab0dbbd40313e660fae360841c34b0561b7718aac515938",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.test.ts": "af171fd981ca01a3f4f6322968499da6a3cf419abff67307db3eed2afcbcf2e3",
-    "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts": "5e5aad6f57d52d3c9dbbb38582f8c99db4aba8b4b72b37dff6341a3410c8d530",
+    "platform/src/lib/retrieval/registry/layers/L3_kala/view_common.ts": "8823281c190f856bd364657a831c667a8e9d5571e56a886362122faf2e45043e",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_elect.ts": "6103e4c92fc78b47561ee1e86ff1a4c325e6b4f80f13d185a35aa6c1d68500c7",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_explain.ts": "f561265b6c922fac0084f5317ebd3af1851c4b58926563bf948bb4a9c25a3c33",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_now.ts": "4c8266893b1cd10b5b687b8cfe1344460b23d841ad6bcbf77954c2e63af75bcd",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_priority.ts": "e593c623cdd70ff65e09f1283264354c7b527d82f743d53b522fa76cd11bb66a",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_ritual.ts": "602628753eae5b79a8969e507965f8252a6cd4b4d814bae87e6fef83a503096b",
     "platform/src/lib/retrieval/registry/layers/L3_kala/view_story.ts": "c1d75b5a097bc4b315bbad19c2c1059aeba20a65ce8b653736382b4e25fc2c23",
-    "platform/src/lib/retrieval/registry/layers/L3_kala/views_registry.integration.test.ts": "dcb6f6f7f2a4ff36c5d0ce62331669b34f47404a45c032ecf075f272f6fe2318"
+    "platform/src/lib/retrieval/registry/layers/L3_kala/views_registry.integration.test.ts": "01e39c4d079db7426f711ab2e7bb72c59f482abb77c1d0a43b8dbb1c1d543fb7"
   },
   "declaration_sha256": "45538005b9d0c2074744f80c1924f64edbf4fb8719f70503332d7c36494ba340",
   "interpretations": [

@@ -92,8 +92,8 @@ export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
     const top_k              = Math.min(Number(args['top_k'] ?? 30), 200)
 
     try {
-      // kala_convergence has no ayanamsha_id column — filter on chart_id only.
-      const conds: string[] = ['chart_id = $1']
+      // No ayanamsha_id column: filter on chart_id and the SERVED generation (migration 1405: the published head's, else legacy), never a K9 candidate's rows.
+      const conds: string[] = ['chart_id = $1', SERVED_GENERATION]
       const params: unknown[] = [chart_id]
       let p = 2
 
@@ -176,3 +176,8 @@ export const queryConvergenceWindowsCapability: CapabilityDescriptor = {
     }
   },
 }
+
+/** The partition this tool serves (migration 1405): kala_convergence also holds a K9 candidate's rows. $1 is the chart.
+ * The row's generation is read through to_jsonb so the query is also valid before the protected migration is applied
+ * (an absent column reads NULL = legacy), as the K7 stored-tier reads are. */
+const SERVED_GENERATION = "COALESCE(to_jsonb(kala_convergence)->>'generation', 'legacy') = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = $1), 'legacy')"

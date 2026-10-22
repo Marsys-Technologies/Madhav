@@ -144,6 +144,7 @@ def test_l4_pratikara_keeps_reading_only_legacy_obstructions(conn):
     from pipeline.orchestrator.writers.ph_pratikara import PhPratikaraWriter
     conn.execute("CREATE TEMP TABLE kala_convergence (convergence_id bigint, window_start date, "
                  "window_end date, domain text, constituent_factors jsonb)")
+    conn.execute("CREATE TEMP VIEW kala_convergence_served AS SELECT * FROM kala_convergence")   # migration 1405: readers take the served view
     seed(conn)
     candidate(conn)
     before = PhPratikaraWriter()._load_obstructions(conn, CHART)

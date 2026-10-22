@@ -488,6 +488,7 @@ DERIVED_ONLY_MIGRATIONS = {"1026_nirmana_l3_ka_service_selftest_clock_timestamp_
                            "1339_k2_1b_promise_graph_columns.sql",
                            "1341_k1_2_avadhi_candidate_dossiers.sql",
                            "1397_k8_registry_remainder.sql",
+                           "1405_kala_convergence_generation.sql",
                            "902_nirmana_l1_ga_condition_integrity_check_scope.sql"}
 
 

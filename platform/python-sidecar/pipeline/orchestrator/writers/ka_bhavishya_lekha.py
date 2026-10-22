@@ -177,7 +177,7 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                        kc.confidence_label, kc.rarity_years, kc.mode, kc.tier_basis,
                        {domain_select}
                 FROM kala_darshana kd
-                JOIN kala_convergence kc ON kd.convergence_id = kc.convergence_id
+                JOIN kala_convergence_served kc ON kd.convergence_id = kc.convergence_id
                 WHERE kd.chart_id = %s
                   AND kd.peak_date >= %s
                   AND kd.peak_date <= %s
