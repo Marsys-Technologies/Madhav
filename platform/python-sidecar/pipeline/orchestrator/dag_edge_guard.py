@@ -94,6 +94,7 @@ _SHARED_SOFT_TABLES = {"chart_facts"}  # multi-producer -> best-effort warn only
 # is skipped by evaluate() and the readers moved onto it vanish from the edge-completeness check (#3869 verifier F1).
 _VIEW_BASE_TABLES = {
     "kala_convergence_served": "kala_convergence",   # migration 1405
+    "gochara_resonance_map_served": "gochara_resonance_map",   # migration 1404
 }
 
 _REGISTER_RE = re.compile(r"@register\(\s*['\"]([a-z0-9_]+)['\"]")
