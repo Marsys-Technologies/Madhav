@@ -150,10 +150,13 @@ class StepFactor:
 
     value_at     the factor's value in [0,1] at an instant (None = undeterminable)
     boundaries   (lo, hi) -> the instants inside [lo, hi) at which THIS factor's state changes (None = no provider)
-    complete     the store asserts that list is complete over every support of the record (H2)"""
+    complete     the store asserts that list is complete over every support of the record (H2)
+    unknown_reason  the factor's OWN named reason for being undeterminable at an instant (None = it names none): carried onto the
+                 operand_undeterminable finding so a verifier can compare the NAME, not only the fact (SR-D6-OBJECTIVE-UNKNOWN)"""
     value_at: Callable[[datetime], Optional[float]]
     boundaries: Optional[Callable[[datetime, datetime], list]] = None
     complete: bool = False
+    unknown_reason: Optional[Callable[[datetime], Optional[str]]] = None
 
 
 @dataclass(frozen=True)
@@ -202,6 +205,7 @@ class StoredWindow:
 class Finding:
     code: str
     detail: str
+    reason: Optional[str] = None            # the named reason behind an operand_undeterminable finding, when the factor names one
 
     @property
     def claim(self) -> str:
@@ -282,6 +286,7 @@ class _Engine:
         self.event_class, self.against_evaluated = event_class, against_evaluated
         self.evals = 0
         self.findings: list = []
+        self._undet_reason: Optional[str] = None      # the named reason of the step factor that raised `_Undet`, if it names one
         self.unverified: list = []
         self._lon_cache: dict = {}
         self._h1_cache: dict = {}
@@ -450,6 +455,7 @@ class _Engine:
     def _step_value(self, rec: CheckRecord, st: StepFactor, t: float) -> float:
         x = st.value_at(self._dt(t))
         if x is None:
+            self._undet_reason = None if st.unknown_reason is None else st.unknown_reason(self._dt(t))     # read by `run`; the raise ends the run
             raise _Undet(f"record {rec.record_id}: a step factor is undeterminable at {self._dt(t).isoformat()}")
         if not (-1e-12 <= x <= 1.0 + 1e-12):
             self._add(F_RANGE, f"record {rec.record_id}: a step factor reads {x} outside [0, 1]")
@@ -868,7 +874,7 @@ class _Engine:
         except _Budget:
             self.unverified.append((U_BUDGET, f"more than {self.max_evals} ephemeris evaluations needed"))
         except _Undet as u:
-            self.findings.append(Finding(F_UNDET, u.what))
+            self.findings.append(Finding(F_UNDET, u.what, self._undet_reason))
         status = REFUTED if self.findings else UNVERIFIED if self.unverified else VERIFIED
         return CheckReport(status, tuple(self.findings), tuple(self.unverified), self.evals, dict(self.rederived))
 

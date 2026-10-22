@@ -58,6 +58,8 @@ Deferrals:
 """
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import json
 from dataclasses import dataclass, replace
 
@@ -97,6 +99,28 @@ IMPLEMENTED_PATHS = ("P1", "P2", "P3", "P4", "P5")
 _CLASS_AFFECTED_PERSON = {"bereavement": "father", "parental_event": "father"}
 
 _NODE_AGENTS = frozenset({"Rahu", "Ketu"})
+
+#: N-14 (nodes cast no dṛṣṭi, O-CF-DRISHTI) is a DECLARED not-applicable state, not a silent omission (ruling SR-D6-OBJECTIVE-UNKNOWN (a)):
+#: the enumerators decline every node-as-aspecting-agent edge below, and while a sink is open (`node_aspect_declined`, the inventory's)
+#: each decline is recorded, so the planner can COUNT what was declared. With no sink open the enumeration is exactly what it was.
+_NODE_ASPECT_SINK: contextvars.ContextVar = contextvars.ContextVar("node_aspect_declined", default=None)
+
+
+def _decline_node_aspect(agent_lc: str) -> None:
+    sink = _NODE_ASPECT_SINK.get()
+    if sink is not None:
+        sink.append(agent_lc)
+
+
+@contextlib.contextmanager
+def node_aspect_declined():
+    """Yield the list the enumerators append the aspecting-agent token (lowercase) to for every edge they decline under N-14."""
+    sink: list = []
+    token = _NODE_ASPECT_SINK.set(sink)
+    try:
+        yield sink
+    finally:
+        _NODE_ASPECT_SINK.reset(token)
 
 _OBJECT_KIND = {"span": "house_span", "point": "degree_point"}
 
@@ -254,6 +278,7 @@ def enumerate_p3_edges(event_class: str, chart: dict,
         for h in sorted(houses):
             for relation in ("residence", "aspect"):
                 if relation == "aspect" and agent in _NODE_AGENTS:
+                    _decline_node_aspect(agent_lc)
                     continue  # N-14: nodes cast no dṛṣṭi
                 edges.append(RecordEdge(
                     event_class=event_class, affected_person=person,
@@ -273,6 +298,7 @@ def enumerate_p3_edges(event_class: str, chart: dict,
                 continue   # operand missing ⇒ named upstream, never solved
             for relation in ("conjunction", "aspect"):
                 if relation == "aspect" and agent in _NODE_AGENTS:
+                    _decline_node_aspect(agent_lc)
                     continue
                 edges.append(RecordEdge(
                     event_class=event_class, affected_person=person,
@@ -378,6 +404,7 @@ def support_annotation_edges(event_class: str, chart: dict,
         for h in sorted(tiers[rules_registry.TIER_SUPPORT]):
             for relation in ("residence", "aspect"):
                 if relation == "aspect" and agent in _NODE_AGENTS:
+                    _decline_node_aspect(agent_lc)
                     continue
                 out.append(RecordEdge(
                     event_class=event_class, affected_person=person,
@@ -809,6 +836,7 @@ __all__ = [
     "enumerate_p3_edges",
     "enumerate_p4_edges",
     "enumerate_p5_edges",
+    "node_aspect_declined",
     "record_uuid",
     "support_annotation_edges",
 ]

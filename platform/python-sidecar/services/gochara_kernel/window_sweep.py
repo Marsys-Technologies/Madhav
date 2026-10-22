@@ -364,7 +364,16 @@ def graduated_drishti(row: dict, rec: SweepRecord,
         v = drishti(_a, off, _ref)         # None = an operand the source cannot classify (unqualified)
         return None if v is None else _check_unit(v, "graduated_drishti")
 
-    return Outcome("fn", fn=_fn, null_state=row["null_state"], factor=row["factor_id"])
+    # SR-D6-OBJECTIVE-UNKNOWN: the source's OWN reason for a None value (`drishti.reason`, optional) is passed through as the
+    # factor's `unknown_reason` (W0), so an undeterminable dṛṣṭi read is NAMED, never the generic code
+    reason_of = getattr(drishti, "reason", None)
+
+    def _why(t: datetime, _o=off_at, _a=rec.agent, _ref=ref):
+        off = _o(t)
+        return None if off is None or reason_of is None else reason_of(_a, off, _ref)
+
+    return Outcome("fn", fn=_fn, null_state=row["null_state"], factor=row["factor_id"],
+                   unknown_reason=None if reason_of is None else _why)
 
 
 def vedha_attenuation(row: dict, rec: SweepRecord,
@@ -437,7 +446,8 @@ def _stateful(out: Outcome, rec: SweepRecord) -> Outcome:
         out, state_valued=out.factor in STATE_VALUED_FACTORS or (src is not None and src.value_at is not None),
         boundaries=b, boundaries_complete=bool(done and b is not None),
         channel_at=None if src is None else src.channel_at,
-        unknown_reason=None if src is None else src.unknown_reason)
+        # a source's reason wins; else the outcome's OWN (dṛṣṭi's: the rule authority's name, SR-D6-OBJECTIVE-UNKNOWN) is kept, never erased
+        unknown_reason=out.unknown_reason if src is None or src.unknown_reason is None else src.unknown_reason)
 
 
 def evaluate_factors(rec: SweepRecord, factor_rows: list[dict], *,

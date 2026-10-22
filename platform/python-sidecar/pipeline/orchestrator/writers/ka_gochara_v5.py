@@ -113,19 +113,35 @@ COVERAGE_SUBSTEP_PREFIX = "coverage:"
 RECORD_SUBSTEP_PREFIX = "record:"
 # design v1.5: the window sweep — `window:<class>:<path>` after the class's record grains.
 WINDOW_SUBSTEP_PREFIX = "window:"
-def _drishti_source(agent: str, offset: int, factor_ref: tuple):
+def _drishti_answer(agent: str, offset: int, factor_ref: tuple) -> dict:
     """Stream B's `gochara_rules.drishti.graduated_drishti` (cited table; CALLED, never copied), called
     with the MEMBERSHIP's own factor ref (a 1.1.0 path calls the 1.1.0 row). The returned `factor` is
     verified against the ref asked for — a source answering for a different row is a refusal, never
-    re-labelled. Its `value` is None for an operand it cannot classify (a node, a non-aspect offset) —
-    the sweep reads that as an undeterminable instant (unqualified), never a default."""
+    re-labelled."""
     from services.gochara_rules import drishti as rules_drishti
     ref = tuple(factor_ref)
     out = rules_drishti.graduated_drishti(gk_window_sweep.graha_title(agent), offset, factor_ref=ref)
     if tuple(out.get("factor") or ()) != ref:
         raise gk_window_sweep.SweepRefusal(
             f"graduated_drishti answered for {out.get('factor')!r}, asked for {ref!r}")
-    return out["value"]
+    return out
+
+
+def _drishti_source(agent: str, offset: int, factor_ref: tuple):
+    """The graduated-dṛṣṭi value. It is None for an operand the table cannot classify (an offset the bound rule does
+    not define, a node) — the sweep reads that as an undeterminable instant (unqualified), never a default."""
+    return _drishti_answer(agent, offset, factor_ref)["value"]
+
+
+def _drishti_reason(agent: str, offset: int, factor_ref: tuple):
+    """Why `_drishti_source` is None at this operand — the table's own named reason (SR-D6-OBJECTIVE-UNKNOWN; None when the
+    value is known). The sweep passes it through as the factor's `unknown_reason` instead of its generic code."""
+    return _drishti_answer(agent, offset, factor_ref).get("reason")
+
+
+# an optional attribute on the source (the pattern the vedha source uses with `.overlay`): the `(agent, offset, ref) -> value`
+# signature every caller and test relies on is unchanged
+_drishti_source.reason = _drishti_reason
 
 
 # The two operand SOURCES the sweep calls but this writer does not own. None = a named missing input

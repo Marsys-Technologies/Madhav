@@ -232,6 +232,9 @@ SOLVER_BUDGET_REASONS = ("solver_budget_exhausted", "solver_certificate_incomple
 #: (`window_solver_check.confirm_tie_isolation`), not by a finding code: the window has no stored peak to refute.
 SOLVER_TIE_ZONE_REASON = "tie_isolation_unresolved"
 SOLVER_UNKNOWN_REASONS = ("objective_unknown_over_component", "objective_undeterminable")
+#: the named reasons a dṛṣṭi read may be undeterminable under (the rule authority's `graduated_drishti` reasons, restated here; SR-D6-OBJECTIVE-UNKNOWN —
+#: the generic code never stands for one of them, and a node as the aspecting agent is not a window blank at all: N-14, declared not-applicable at the inventory)
+DRISHTI_UNKNOWN_REASONS = ("agent_unrecognised", "node_casts_no_drishti", "offset_not_an_inclusive_house_count_1_12", "no_aspect_rule_defined_at_offset")
 _SPAN_KERNEL_VALUE_KEY = "inside"
 
 
@@ -310,15 +313,18 @@ def _drishti_step(conn, rec: dict, row: dict, target: str, position_at):
     else:
         raise RuntimeError(f"window verifier: record {rec['id']}: no dṛṣṭi offset for the target {target!r}")
 
-    def value_at(t):
+    def answer(t):
         src_sign = int(position_at(rec["agent"], t) // 30.0) % 12
         out = _rules_drishti.graduated_drishti(title, (tgt_sign - src_sign) % 12 + 1, factor_ref=ref)
         if tuple(out.get("factor") or ()) != ref:
             raise RuntimeError(f"window verifier: graduated_drishti answered for {out.get('factor')!r}, asked for {ref!r}")
-        return out["value"]
+        return out
     ingress = _ingress_instants(conn, rec["id"], rec["agent"])
-    return _chk.StepFactor(value_at=lambda t, _i=ingress: value_at(_read_instant(_i, t)), boundaries=lambda lo, hi, _i=ingress: [c for c in _i if lo < c < hi],
-                           complete=bool(rec.get("boundaries_complete")))
+    # SR-D6-OBJECTIVE-UNKNOWN: the factor's own NAMED reason for an undeterminable read comes from this verifier's own call of the rule
+    # authority (never from the builder), so the prover's operand_undeterminable finding carries a name the stored blank can be held to
+    return _chk.StepFactor(value_at=lambda t, _i=ingress: answer(_read_instant(_i, t))["value"], boundaries=lambda lo, hi, _i=ingress: [c for c in _i if lo < c < hi],
+                           complete=bool(rec.get("boundaries_complete")),
+                           unknown_reason=lambda t, _i=ingress: answer(_read_instant(_i, t)).get("reason"))
 
 
 class NoSolverDerivation(RuntimeError):
@@ -391,6 +397,16 @@ def _checker_records(conn, *, recs: dict, qualified: dict, chans: dict, factor_r
 
 def _structural_codes(report) -> set:
     return {f.code for f in report.findings if f.code in (_chk.F_H1, _chk.F_H2, _chk.F_UNDET)}
+
+
+def _unknown_name_problem(reason: str, report) -> str | None:
+    """The NAME of an undeterminable-operand blank is held to the prover's own (SR-D6-OBJECTIVE-UNKNOWN): a blank stored under the generic code where
+    the independent derivation names the operand's reason, or under one dṛṣṭi reason where the prover reads another, is a builder that dropped or
+    changed the name. None when the stored reason is consistent (or the prover names nothing, or the reason is not a dṛṣṭi/generic one)."""
+    named = sorted({f.reason for f in report.findings if f.code == _chk.F_UNDET and f.reason})
+    if named and (reason in SOLVER_UNKNOWN_REASONS or (reason in DRISHTI_UNKNOWN_REASONS and reason not in named)):
+        return f"blank under {reason!r}, but the independent derivation names the undeterminable operand {named} — the reason is dropped or changed"
+    return None
 
 
 def _certificate_verdict(window: dict, *, records: list, objective: str, position_at, against_evaluated: bool, ov):
@@ -817,6 +833,10 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                 if want_code is not None and want_code not in _structural_codes(probe):
                     problems.append(f"{tag}: blank under {reason!r}, but the independent prover finds no such defect "
                                     f"(it found {sorted(f.code for f in probe.findings) or 'none'}) — a blank where the table yields a value")
+                    continue
+                name_problem = _unknown_name_problem(reason, probe) if want_code == _chk.F_UNDET else None
+                if name_problem:
+                    problems.append(f"{tag}: {name_problem}")
                     continue
                 solver_checked += 1
                 solver_blank[reason] = solver_blank.get(reason, 0) + 1
