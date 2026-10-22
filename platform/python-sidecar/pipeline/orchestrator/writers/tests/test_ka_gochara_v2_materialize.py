@@ -533,7 +533,7 @@ def test_plan_substeps_mixed_classes_only_remaining_survive(monkeypatch):
     arc_fps = {row["body"]: row["arc_fingerprint"] for row in ARC_FP_ROWS}
     done_fp = class_fingerprint("marriage", GRAMMAR_VERSION, [t.target_ref for t in targets], mod.BODIES, arc_fps)
 
-    def fetch(conn, chart_id, event_class):
+    def fetch(conn, chart_id, event_class, generation=None):
         return [] if event_class == "no_targets" else targets
 
     monkeypatch.setattr(mod.RM, "fetch_resonance_targets", fetch)

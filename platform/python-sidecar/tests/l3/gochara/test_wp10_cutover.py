@@ -192,8 +192,11 @@ CREATE TABLE gochara_resonance_map (
   target_resolution_state TEXT NOT NULL DEFAULT 'resolved'
     CHECK (target_resolution_state IN ('resolved','unavailable','unqualified')),
   target_qualifier TEXT,
-  UNIQUE(chart_id, event_class, target_type, target_ref)
+  generation TEXT NOT NULL DEFAULT 'legacy',
+  UNIQUE(chart_id, generation, event_class, target_type, target_ref)
 );
+-- stand-in for the served view of migration 1404 (its real definition is tested in tests/l3/kala_db/manifest/test_resmap_generation.py): readers read the served partition
+CREATE VIEW gochara_resonance_map_served AS SELECT * FROM gochara_resonance_map WHERE generation = 'legacy';
 DROP TABLE IF EXISTS kala_vedha_gochara CASCADE;
 CREATE TABLE kala_vedha_gochara (id BIGSERIAL PRIMARY KEY);
 DROP TABLE IF EXISTS kala_moorti_nirnaya CASCADE;
