@@ -230,6 +230,16 @@ def _dasha_contributions(
         out["mudda"] = {"active": False, "state": STATE_UNAVAILABLE,
                         "detail": {"reason": DD.MUDDA_OVERLAP_REASON, "overlap_start_iso": str(overlap["start_iso"]),
                                    "overlap_end_iso": str(overlap["end_iso"]), "overlap_seconds": overlap["seconds"]}}
+    # SR-MUDDA-HORIZON: a system whose rows all ended at or before t was not measured at t -- named blank, never "inactive"
+    # (§N.7.6). A system with no rows keeps REASON_NO_READABLE_ROWS above; a covering row (any lord) is never exhausted.
+    for sid in DASHA_SYSTEM_IDS:
+        if out[sid]["state"] != STATE_INACTIVE:
+            continue
+        exhausted = DD.dasha_horizon_exhausted_at(dasha_periods, sid, t_iso)
+        if exhausted is not None:
+            out[sid] = {"active": False, "state": STATE_UNAVAILABLE,
+                        "detail": {"reason": exhausted["reason"], "table_end_iso": exhausted["table_end_iso"],
+                                   "levels": exhausted["levels"]}}
     return out
 
 
@@ -423,6 +433,7 @@ def compute_permission(
     detail = {
         "systems_unavailable": systems_unavailable,
         "permission_partial": bool(systems_unavailable),
+        "dasha_horizon_exhausted": DD.horizon_exhausted_entries(systems),
         "systems": systems,
         "systems_active": systems_active,
         "systems_considered": [s["system_id"] for s in systems],
