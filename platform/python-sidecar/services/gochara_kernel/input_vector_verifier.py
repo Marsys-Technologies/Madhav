@@ -91,6 +91,49 @@ def sql_l0_digest(conn) -> str:
     return digest
 
 
+#: P1's three L0 authorities (SR-OD1 plan §3.3, P1a), each the verifier's OWN statement of what the build consumes: the row
+#: normalisation (an array per row, in a total order under the C collation) and the NUMERIC rendering (`trim_scale(x)::text`, so
+#: `15.0` and `15` are one value). Surrogate ids, citations and notes are not consumed. Nothing is imported from the builder.
+_P1_L0_SQL = {
+    "bg_dignity_reference": (
+        "jsonb_build_array(graha, exaltation_sign, debilitation_sign, moolatrikona_sign,"
+        " trim_scale(moolatrikona_from)::text, trim_scale(moolatrikona_to)::text,"
+        " COALESCE(to_jsonb(own_signs), '[]'::jsonb))",
+        'graha COLLATE "C"'),
+    "bg_combustion_orbs": (
+        "jsonb_build_array(graha, trim_scale(orb_degrees)::text, trim_scale(deep_orb_degrees)::text)",
+        'graha COLLATE "C"'),
+    "bg_graha_naisargika_friendship": (
+        "jsonb_build_array(graha, other_graha, relation)",
+        'graha COLLATE "C", other_graha COLLATE "C"'),
+}
+
+
+def sql_p1_l0_digest(conn, asset: str) -> str:
+    """The identity of one of P1's three L0 reference tables, derived entirely in Postgres through the database's canonical JSON
+    + sha256 over the verifier's own normalisation of the rows it reads. Equals `p1_operands.L0Table.content_digest`; an empty
+    table is refused (nothing to derive an identity from)."""
+    if asset not in _P1_L0_SQL:
+        raise RuntimeError(f"l0: {asset!r} is not one of P1's L0 authorities {sorted(_P1_L0_SQL)}")
+    expr, order = _P1_L0_SQL[asset]
+    row = conn.execute(
+        f"SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(COALESCE(jsonb_agg({expr} ORDER BY {order}),"
+        f" '[]'::jsonb))), count(*) FROM public.{asset}").fetchone()
+    digest, n = tuple(row.values()) if isinstance(row, dict) else (row[0], row[1])
+    if not n:
+        raise RuntimeError(f"l0: {asset} has no rows — nothing to derive an identity from")
+    return digest
+
+
+def sql_l0_asset_digest(conn, asset: str) -> str:
+    """The independent digest of a consumed L0 authority, or a refusal naming the authority that has no derivation."""
+    if asset == "bg_transit_rules":
+        return sql_l0_digest(conn)
+    if asset in _P1_L0_SQL:
+        return sql_p1_l0_digest(conn, asset)
+    raise RuntimeError(f"l0.{asset}: no independent derivation exists for this authority")
+
+
 def sql_sky_convention_digest(conn, convention_id: str) -> str:
     row = conn.execute(
         "SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(to_jsonb(t) - %s::text[]))"
@@ -296,10 +339,10 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
         derived.append("registry")
     # L0: ONLY the authorities the manifest says it consumes (an unconsumed authority is not an input)
     for asset in sorted(stored.get("l0", {})):
-        if asset != "bg_transit_rules":
+        if asset != "bg_transit_rules" and asset not in _P1_L0_SQL:
             problems.append(f"l0.{asset}: no independent derivation exists for this authority")
             continue
-        check(f"l0.{asset}", sql_l0_digest(conn), stored["l0"][asset])
+        check(f"l0.{asset}", sql_l0_asset_digest(conn, asset), stored["l0"][asset])
     derived.append("l0")
     check("sky_convention.content_digest", sql_sky_convention_digest(conn, stored["sky_convention"]["id"]),
           stored["sky_convention"]["content_digest"])
@@ -379,5 +422,5 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
 
 __all__ = ["ABSOLUTE_PROBE_JD", "ABSOLUTE_PROBE_SUN_LAHIRI_DEG", "ABSOLUTE_PROBE_TOLERANCE_DEG", "derive_absolute_probe",
            "NOT_INDEPENDENTLY_DERIVED", "derive_backend_and_version", "derive_opened_file_census",
-           "derive_series_probe_digest", "module_digests", "runtime_library_digest", "runtime_platform", "sql_l0_digest",
+           "derive_series_probe_digest", "module_digests", "runtime_library_digest", "runtime_platform", "sql_l0_digest", "sql_l0_asset_digest", "sql_p1_l0_digest",
            "sql_registry_digest", "sql_sky_convention_digest", "verify_inputs", "verify_registry_digest"]
