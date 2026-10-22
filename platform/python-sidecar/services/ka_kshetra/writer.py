@@ -2474,7 +2474,7 @@ class KaKshetraWriter(WriterBase):
                     "  COALESCE(COUNT(*)::text, '0') || '|'"
                     "  || COALESCE(MAX(computed_at)::text, '') || '|'"
                     "  || COALESCE(MAX(id)::text, '')) AS digest"
-                    " FROM gochara_resonance_map WHERE chart_id = %s",
+                    " FROM gochara_resonance_map_served WHERE chart_id = %s",
                     (chart_id,),
                 )
                 rows = S4._rows(cur)

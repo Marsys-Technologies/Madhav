@@ -27,12 +27,31 @@ logger = logging.getLogger(__name__)
 CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 
+# Migration 1404: `gochara_resonance_map` holds one partition per generation. Serving
+# reads go through the served view (the chart head's generation when it holds rows,
+# else the latest published generation that does, else 'legacy'); only a build that
+# is itself writing a candidate generation reads that generation's own partition.
+SERVED_RELATION = "gochara_resonance_map_served"
+BASE_RELATION = "gochara_resonance_map"
+
+
+def event_classes_query(chart_id: str, generation: Optional[str] = None) -> tuple[str, list]:
+    """(sql, params) listing the populated event classes of the chart's served resonance map, or of one generation's partition."""
+    if generation is None:
+        return (f"SELECT DISTINCT event_class FROM {SERVED_RELATION} WHERE chart_id = %s ORDER BY event_class", [chart_id])
+    return (f"SELECT DISTINCT event_class FROM {BASE_RELATION} WHERE chart_id = %s AND generation = %s ORDER BY event_class",
+            [chart_id, generation])
+
+
 def fetch_resonance_targets(
-    conn, chart_id: str, event_class: Optional[str] = None
+    conn, chart_id: str, event_class: Optional[str] = None,
+    generation: Optional[str] = None,
 ) -> list[ResonanceTarget]:
     """
-    Read rows from `gochara_resonance_map` for `chart_id` (optionally filtered
-    to one `event_class`). Returns [] on ANY of:
+    Read rows from the served resonance map for `chart_id` (optionally filtered
+    to one `event_class`); with `generation` given, the rows of exactly that
+    generation of `gochara_resonance_map` (a candidate build reading what its own
+    resonance step wrote). Returns [] on ANY of:
       - the table does not exist yet (G-1 not merged in this environment)
       - the table exists but has no rows for this chart/event_class
       - the query itself fails for a connectivity/permission reason
@@ -44,13 +63,16 @@ def fetch_resonance_targets(
     forever -- but the function contract is "empty list on any DB-shape
     surprise", so G-2 code that free-runs ahead of G-1's data never crashes.
     """
-    sql = """
+    sql = f"""
         SELECT chart_id, event_class, target_type, target_ref, weight,
                classical_citation, uncited_extension, source_rule_id
-          FROM gochara_resonance_map
+          FROM {SERVED_RELATION if generation is None else BASE_RELATION}
          WHERE chart_id = %s
     """
     params: list = [chart_id]
+    if generation is not None:
+        sql += " AND generation = %s"
+        params.append(generation)
     if event_class is not None:
         sql += " AND event_class = %s"
         params.append(event_class)

@@ -242,16 +242,23 @@
      "file": "platform/python-sidecar/services/ka_gochara_resonance/writer.py",
      "function": "<module>",
      "kind": "DELETE",
-     "line": 932
+     "line": 946
     },
     {
      "file": "platform/python-sidecar/services/ka_gochara_resonance/writer.py",
      "function": "<module>",
      "kind": "INSERT",
-     "line": 934
+     "line": 954
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "teardown",
+     "kind": "DELETE",
+     "line": 323,
+     "via": "dynamic"
     }
    ],
-   "note": "ka_gochara_resonance output, per chart (no generation): rebuild_control.teardown does NOT remove it (K9 rehearsal r5 N8)"
+   "note": "ka_gochara_resonance output, per (chart, generation) since migration 1404 (SR-K9-RESONANCE-MAP): the writer replaces its candidate's partition only, and rebuild_control.teardown deletes the run's partition by (chart_id, generation) through UNLINKED_CANDIDATE_TABLES; the served partition is never touched"
   },
   {
    "table": "public.kala_f1_relationship",
@@ -988,6 +995,7 @@
    "function": "teardown",
    "resolver": "const:platform/python-sidecar/services/kala_core/rebuild_control.py:UNLINKED_CANDIDATE_TABLES:plain",
    "tables": [
+    "gochara_resonance_map",
     "kala_activation_predicates",
     "kala_f1_relationship",
     "kala_f1_target_object"
