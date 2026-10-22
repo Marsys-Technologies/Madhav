@@ -17,7 +17,7 @@
 #   never retried (max-retries 0), one task; dispatched by an OPERATOR only — nothing here chains it to a build.
 #   Environment: `--set-env-vars` REPLACES every Cloud Run env var, leaving only GOCHARA_RUNNER_COMMIT and GOCHARA_RUNNER_IMAGE_DIGEST (two variables since 1e735d265; the readback expects three names with the secret); the image's own ENV (SE_EPHE_PATH=/app/ephe, PYTHONPATH) is separate and survives.
 #   `--command` overrides the image ENTRYPOINT (python -m pipeline.orchestrator.main): this workflow does NOT execute the job, so the first operator execution is the real test that
-#   `python -m pipeline.orchestrator.verification_job` imports from the image's working directory. Resources (8Gi/2cpu/28800s) are a starting point; a timeout is a refusal (max-retries 0):
+#   `python -m pipeline.orchestrator.verification_job` imports from the image's working directory. Resources (4Gi/1cpu/28800s; SR-RIGHT-SIZE amend-1 — was 8Gi/2cpu, the timeout is unchanged) are a starting point; a timeout is a refusal (max-retries 0):
 #   run per class (`--class`, supported) or raise the timeout — either way EVERY class must be verified after the last build (R10-2).
 #   SAME-COMMIT RULE (F-R13-8): dispatch this workflow and the sealing workflow (gochara-seal-approved.yml) from the SAME `main` commit; the verifier's kernel modules and the sealing
 #   commit's must be byte-identical or the sealing recompute refuses (exit 3). Re-dispatch THIS workflow whenever any of them changes.
@@ -115,8 +115,8 @@ jobs:
             --max-retries 0
             --tasks 1
             --task-timeout 28800
-            --memory 8Gi
-            --cpu 2
+            --memory 4Gi
+            --cpu 1
             --quiet
           )
           if EXISTING="$(gcloud run jobs describe "$VERIFICATION_JOB" --project madhav-astrology --region "$GOOGLE_CLOUD_REGION" --format='value(name)' 2>&1)"; then
@@ -138,7 +138,7 @@ jobs:
           curl -fsS -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://run.googleapis.com/v2/projects/madhav-astrology/locations/${GOOGLE_CLOUD_REGION}/jobs/${VERIFICATION_JOB}" > job.v2.json
           python3 platform/scripts/gochara_verification_job_readback.py --v2-job-file job.v2.json --job-file job.json --image-repo "$PIPELINE_IMAGE_REPO" --image-digest "$IMAGE_DIGEST" \
             --service-account "$VERIFIER_SERVICE_ACCOUNT" --runner-commit "$GITHUB_SHA" --secret-name "$VERIFIER_SECRET" --cloudsql-instance "$CLOUDSQL_INSTANCE" \
-            --timeout-seconds 28800 --memory 8Gi --cpu 2
+            --timeout-seconds 28800 --memory 4Gi --cpu 1
 
       - name: Set up Node.js for the isolation preflight
         uses: actions/setup-node@v4
