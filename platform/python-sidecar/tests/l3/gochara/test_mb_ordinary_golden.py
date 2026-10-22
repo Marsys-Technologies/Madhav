@@ -518,7 +518,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Geometry re-pinned at the SR-OD1 merge-back wave 3c-e (the pin 7a841aa4... was expected to hold; it does not): f4-exact (SR-F4-STORE-EXACT amend-1) touches two geometry-stage modules, both VERIFIER read paths -
     # contact_certify (`c.delta_lambda::float8`) and near_miss_verifier (`delta_t::float8 AS delta_t`); neither builder nor any geometry computation moves. Re-derived ONCE from the final merged tree's real bytes the same way
     # (the prior pin 7a841aa4... is the wave-3c-d head, reproduced by the same script on that tree); no golden component is re-captured: this capture's SQL shapes, counts and outcomes do not depend on the verifiers' read casts.
-    assert got["implementation"]["geometry"] == "1a82172371326f2d20b93c772503152447e8286707a834aca716a4673bf84d9e"
+    # Geometry re-pinned at the SR-OD1 merge-back wave 3c-f (ephe-once, SR-EPHE-PATH-ONCE under ruling SR-EPHE-PATH-ONCE-AMEND-1; GEOMETRY-PIN-ONCE cause amend-3): knots (the Swiss ephemeris path is set once per thread, not once per probe)
+    # and near_miss_verifier (its probes go through the once-per-thread path) are the only geometry-stage modules that move; no other lane in this wave touches a geometry module. Re-derived ONCE from the final merged tree's real bytes
+    # with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 1a821723... is the wave-3c-e head, reproduced by the same script on that tree); no golden component is re-captured.
+    assert got["implementation"]["geometry"] == "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7"
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. With P06b's window-stage changes the merged-tree
     # digest below is re-derived the same way (main alone gives 6c981eb8...; J-4c F-LEANNESS also changed window_store); evaluation and geometry are untouched by this change, and no golden component is re-captured.
     # Window re-pinned for the W3W4 strict-slice window-qualification fix: window_sweep.build_program no longer lists an OMITTED operand (karaka_agent, null_state omit)
@@ -579,4 +582,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned at the SR-OD1 merge-back wave 3c-e (f4-exact + early-defects): window_verifier (f4-exact: the stored REAL window columns are read ::float8) and window_sweep (early-defects D-B: the support/geometry ulp
     # probe is bounded by the record's own support) move the window stage. Re-derived ONCE from the final merged tree's real bytes the same way (the prior pin c869027f... is the wave-3c-d head; the intermediate merge steps
     # carried other digests and are not final); geometry moved only by f4-exact (see above).
-    assert got["implementation"]["window"] == "50695734791da1ea7cef41d4065df097e6c2b6b828af01fbb61c9fcedca7ffce"
+    # Window re-pinned at the SR-OD1 merge-back wave 3c-f (ephe-once + tie-literal): vedha_verifier (ephe-once: probes use the once-per-thread ephemeris path) and window_solver / window_solver_check (tie-literal, SR-NEAR-STATION-TIE applied
+    # literally: a station zone blanks only a tie set that lies inside it) move the window stage. Re-derived ONCE from the final merged tree's real bytes the same way (the prior pin 50695734... is the wave-3c-e head, reproduced
+    # by the same script on that tree); evaluation is unchanged (b3baf81f...); no golden component is re-captured.
+    assert got["implementation"]["window"] == "a5f05e4c26cae7f71d39e63c0ef6bcc6e00e07eff75ae2e6ce608943ec13ef1c"
