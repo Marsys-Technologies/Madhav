@@ -292,6 +292,7 @@ class PhMuhurtaWriter(WriterBase):
         always errored and was silently swallowed, so obstruction overlap was permanently
         empty. Corrected to the real table + JOIN.
         """
+        from services.kala_core.served_generation import served_obstruction_predicate
         result: dict = {}
         try:
             with conn.cursor() as sp:
@@ -304,7 +305,7 @@ class PhMuhurtaWriter(WriterBase):
                            c.window_end   AS obstruction_end
                     FROM kala_obstruction o
                     JOIN kala_convergence c ON c.convergence_id = o.convergence_id
-                    WHERE o.chart_id = %s
+                    WHERE o.chart_id = %s AND """ + served_obstruction_predicate('o') + """
                     """,
                     (chart_id,),
                 )

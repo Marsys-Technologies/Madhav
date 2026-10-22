@@ -15,7 +15,7 @@ Both operations take ONE argument, the run id, and are scoped to the canonical c
   referenced only by tables keyed by the same ``(chart_id, generation)`` (the vedha writer's ``kala_vedha_gochara_candidate`` and
   its ``kala_vedha_gochara_interval``, migration 1383) is the failed run's OWN candidate output: those referencing rows go first,
   then the dependent (K9 round 3 D8). ``kala_activation_predicates`` carries the candidate generation without a foreign key, so
-  its rows of the run's generation and chart are removed too (round 3 N1), as are the ``kala_f1_*`` rows the resonance writer's candidate path leaves
+  its rows of the run's generation and chart are removed too (round 3 N1), as are the ``kala_f1_*`` rows the resonance writer's candidate path leaves and the ``kala_obstruction`` rows of the run's generation (never the legacy NULL partition or a served generation)
 (W5/W6 N8). ``gochara_resonance_map`` has no generation column, so it is never deleted and the result names it with its row count. A published
   candidate, the head generation and a candidate whose retained previous head is gone are refused. The head is read before and
   after and must be equal. The caller owns the transaction: nothing here commits.
@@ -48,7 +48,9 @@ SETTLED_BEFORE = ('lit', 'service_ok', 'mature', 'dormant')     # runner.py's se
 # Carry (chart_id, generation) with no foreign key to kala_layer_candidate, listed child first (the delete runs in this order). Derived from the write targets of the
 # closed K9 plan's writers (W5/W6 N8): ka_yojaka writes kala_activation_predicates; ka_gochara_resonance's candidate path (relationship_storage.store_projection, migration
 # 1342) writes kala_f1_relationship, whose foreign key points at kala_f1_target_object, both keyed by (chart_id, ayanamsha_id, generation) with generation LIKE 'candidate:%'.
-UNLINKED_CANDIDATE_TABLES = ('kala_activation_predicates', 'kala_f1_relationship', 'kala_f1_target_object')
+# ka_vighnakara's candidate path (SR-K9-WRITE-SCOPE) writes kala_obstruction rows under the candidate generation; the table carries NO foreign key to the candidate and its served rows
+# (the head's generation, the legacy NULL partition) share the table, so the delete is aimed at (chart_id, this run's generation) and can never match a NULL or a served generation.
+UNLINKED_CANDIDATE_TABLES = ('kala_activation_predicates', 'kala_f1_relationship', 'kala_f1_target_object', 'kala_obstruction')
 # A plan writer whose rows are NOT held per candidate generation: the table has no generation column (migration 459 + 1080), so a teardown can neither find the run's rows
 # nor restore the previous ones. ka_gochara_resonance's legacy path (no ``candidate_generation`` in its config, services/ka_gochara_resonance/writer.py) deletes and
 # re-inserts the whole chart. Teardown never deletes it (it would empty the table serving reads); it names it in the result with the rows it left (N.7.6).

@@ -81,7 +81,9 @@ it('old temporal tools still return their golden shapes and isolate private cand
     expect((await getCapability(`marsys://tool/L3/${name}`)!.handler!({ chart_id: 'chart' }, {})).content)
       .toMatchObject({ chart_id: 'chart', [field]: [{ id: 'legacy-1' }], count: 1, total_matching: 1, more_available: false })
   }
-  for (const [sql] of db.mock.calls) expect(sql).toContain('generation IS NULL')
+  // temporal view: the legacy NULL partition. Obstruction periods (SR-K9-WRITE-SCOPE): the SERVED partition (the head's rows
+  // when it holds any, else the legacy rows); both exclude every unpublished candidate generation from data and counts.
+  for (const [sql] of db.mock.calls) expect(sql).toMatch(/generation IS NULL|o\.generation IS NOT DISTINCT FROM \(SELECT h\.generation FROM kala_layer_head h/)
 })
 
 // Real SQL oracle, explicitly enabled by the item's precheck. All writes are
