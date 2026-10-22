@@ -1,7 +1,7 @@
 {
     "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v32",
     "campaign_id": "madhav-purna-anvesana",
-    "packet_id": "K9-WRITE-SCOPE-CONVERGENCE",
+    "packet_id": "K9-D6-SPEC-V3",
     "predecessor": {
         "artifact": "BEYOND_ACARYA_ACCEPTANCE_v31.json",
         "artifact_hash": "sha256:bf23a135ce5d202678fd22d715e981cef628f1e35ec799d2135994664dcdfa36",
@@ -17,14 +17,14 @@
     "generated_snapshot": {
         "path": "platform/src/generated/capability_knowledge.snapshot.json",
         "generated_at": "2026-10-02T02:18:40.000Z",
-        "snapshot_file_sha256": "sha256:28d09ed44d572128b88b7377641b9442888f32e0f9a42978f98fc2b1218cd753",
-        "capability_content_hash": "sha256:ea48418388749a6992878fd19f43ee4843e08682d7a6ee138bb0f1bf1a8d9403",
+        "snapshot_file_sha256": "sha256:b6a6346f9a9957343552c1624602614942e799b457175fffd1194f34d66befea",
+        "capability_content_hash": "sha256:1b9786f908bfbb75b40e9c80ca86e021b08b8e8222c9b199c64ffa2b964b9b6d",
         "source_catalog_fingerprint": "sha256:22a4e465250e449da99ea19b45c00b7ebd20359c95644995c6cf63266c808e32",
-        "semantic_review_fingerprint": "sha256:7e74f6f538ae553af5e937713b99f9349a53e5cfb9883ff3be8a508cd80cecbe",
-        "producer_contract_fingerprint": "sha256:376445eddf4826507e51a27eb60fe3a7f1431c27c080bc980dc64289abaf3fe2"
+        "semantic_review_fingerprint": "sha256:d782318a9450e3b6d3bc47a943a9808c0ced87bdd7081a75614148ed6ac8a2d6",
+        "producer_contract_fingerprint": "sha256:92e842e6a36671186ca21e828f96996464e12f3c643cd11a4e9c3859d9eb033f"
     },
-    "capability_content_hash": "sha256:ea48418388749a6992878fd19f43ee4843e08682d7a6ee138bb0f1bf1a8d9403",
-    "report_hash": "sha256:a1634b3a7a6bfa6b6465a8f2a3a2c440b4fa5e622a7161ccbc68b4ddf649bc59",
+    "capability_content_hash": "sha256:1b9786f908bfbb75b40e9c80ca86e021b08b8e8222c9b199c64ffa2b964b9b6d",
+    "report_hash": "sha256:9f534d08ec7176d47be81a54fcd9979500e6a3657460d700ea2c2dd2329af7f7",
     "evidence_kind": "synthetic_source_local",
     "source_status": "SOURCE_ONLY_NOT_LIVE",
     "verdict": "ACCEPTED_SOURCE_LOCAL",
@@ -79,5 +79,5 @@
     "production_validation": "NOT_RUN",
     "deployed_route_validation": "NOT_RUN",
     "candidate_validation": "NOT_RUN",
-    "provenance_note": "K9-WRITE-SCOPE convergence generation scope (migration 1405, PR #3869), evaluator-derived successor of immutable v31; v2..v31 are preserved byte-identical. The served query_convergence_windows source-query availability contract (platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts) now filters kala_convergence to the chart's served generation, so the authored source-query availability review text moves semantic_review_fingerprint, capability_content_hash moves with it, snapshot_file_sha256 moves with the snapshot bytes, and the evaluator report_hash moves with capability_content_hash. Neither source_catalog_fingerprint nor producer_contract_fingerprint moves. Every metric JSON value is identical to v31. Values were taken from the evaluator over the regenerated snapshot (platform/scripts/regenerate_generated.sh, the CI generator chain), not typed. Source-only: no live, deployed, empirical or expert acceptance is claimed; expert domain review remains owed."
+    "provenance_note": "K9 D6 spec v3 (migration 1400, ka_yojaka output-digest v3), evaluator-derived successor of immutable v31; v2..v31 are preserved byte-identical. Migration 1400 retires the 1399 ka_yojaka output-digest spec and inserts the v3 spec; the nirmana capability estate census records the migration that holds each producer asset's active output-digest spec (ka_yojaka: 1399 becomes 1400), so producer_contract_fingerprint moves in the regenerated snapshot, capability_content_hash moves with it, snapshot_file_sha256 moves with the snapshot bytes, and the evaluator report_hash moves with capability_content_hash. Neither source_catalog_fingerprint nor semantic_review_fingerprint moves. Every metric JSON value is identical to v31. Values were taken from the evaluator over the regenerated snapshot (platform/scripts/regenerate_generated.sh, the CI generator chain via ci_generated.py generate), not typed. Source-only: no live, deployed, empirical or expert acceptance is claimed; expert domain review remains owed."
 }

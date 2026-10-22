@@ -28,7 +28,7 @@ _JSONB_BUILD_OBJECT_COLUMN_BATCH = 45
 # rather than ignored: a spec can never mean less than it says (N.8).
 _COMPONENT_KEYS = frozenset({
     "name", "relation", "key_columns", "value_columns",
-    "where_equals", "where_in", "where_is_null", "where_not_null",
+    "where_equals", "where_in", "where_is_null", "where_not_null", "newest_candidate_generation",
 })
 
 
@@ -101,6 +101,32 @@ def _where_not_null(component: dict[str, Any]) -> str:
     return " AND ".join(f"source.{_quoted(column)} IS NOT NULL" for column in columns)
 
 
+def _where_newest_candidate(component: dict[str, Any]) -> tuple[str, tuple[object, ...]]:
+    """Compose the optional reviewed generation scope: only the generation of the NEWEST layer candidate of the pinned chart.
+
+    A rebuild writes its rows under a fresh candidate generation and retains the older ones, so a digest over every
+    generation (and over the generation label itself) changes on every rebuild whatever the content (K9 D6). With this
+    key the digest reads only the generation the running build wrote -- the newest candidate of the chart, as the single
+    build slot makes it -- and the generation column is scope, not content: it may be neither a key nor a value column,
+    so an identical rebuild digests identically and a changed row digests differently. The pinned chart comes from the
+    component's own ``where_equals`` chart_id; with no candidate at all the scope is empty (an honest empty digest).
+    """
+    raw = component.get("newest_candidate_generation")
+    if raw is None:
+        return "", ()
+    column = _identifier(raw, field="newest_candidate_generation")
+    if column in (component.get("key_columns") or ()) or column in (component.get("value_columns") or ()):
+        raise ValueError("output digest spec newest_candidate_generation column is scope, not content")
+    chart = (component.get("where_equals") or {}).get("chart_id") if isinstance(component.get("where_equals"), dict) else None
+    if not isinstance(chart, str) or not chart:
+        raise ValueError("output digest spec newest_candidate_generation requires a where_equals chart_id")
+    return (
+        f"source.{_quoted(column)} = (SELECT candidate.generation FROM public.kala_layer_candidate AS candidate "
+        "WHERE candidate.chart_id = %s::uuid ORDER BY candidate.created_at DESC, candidate.generation DESC LIMIT 1)",
+        (chart,),
+    )
+
+
 def _where_in(component: dict[str, Any]) -> tuple[str, tuple[object, ...]]:
     """Compose reviewed finite-set filters as parameterized PostgreSQL arrays."""
     raw = component.get("where_in")
@@ -130,9 +156,10 @@ def _where_filter(component: dict[str, Any]) -> tuple[str, tuple[object, ...]]:
     in_sql, in_values = _where_in(component)
     null_sql = _where_is_null(component)
     not_null_sql = _where_not_null(component)
+    newest_sql, newest_values = _where_newest_candidate(component)
     return (
-        " AND ".join(part for part in (equals_sql, in_sql, null_sql, not_null_sql) if part),
-        equals_values + in_values,
+        " AND ".join(part for part in (equals_sql, in_sql, null_sql, not_null_sql, newest_sql) if part),
+        equals_values + in_values + newest_values,
     )
 
 
@@ -166,6 +193,7 @@ def _validate_spec(asset_id: str, raw: object, expected_sha: object) -> OutputDi
             "where_in": component.get("where_in"),
             "where_is_null": component.get("where_is_null"),
             "where_not_null": component.get("where_not_null"),
+            "newest_candidate_generation": component.get("newest_candidate_generation"),
         })
         if name in seen_names or scope in seen_scopes:
             raise ValueError("output digest spec repeats a component")

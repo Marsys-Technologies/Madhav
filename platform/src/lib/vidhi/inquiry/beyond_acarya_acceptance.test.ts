@@ -228,11 +228,18 @@ const historicalV30 = {
   artifact_hash: 'sha256:0026d03ec89847381b634468b14c91ef56250c152718a03545762f2f15b5641b',
 } as const
 
-// K9-WRITE-SCOPE: v31 is the immutable predecessor of the convergence-generation-scope (migration 1405) evaluator-derived v32.
+// K9 D6: v31 is the immutable predecessor of the output-digest-v3 (migration 1400) evaluator-derived v32.
 const historicalV31 = {
   capability_content_hash: 'sha256:51ff201a392b71a0a03f904a339991c45d07fa34b05aeecc0151dbfb70c01c9c',
   report_hash: 'sha256:0fd4a7e8615ac2e8b3a905c4bd92346ec73ec53f9d50960758db97c02df1b24a',
   artifact_hash: 'sha256:bf23a135ce5d202678fd22d715e981cef628f1e35ec799d2135994664dcdfa36',
+} as const
+
+// K9-WRITE-SCOPE: v32 is the immutable predecessor of the convergence-generation-scope (migration 1405) evaluator-derived v33.
+const historicalV32 = {
+  capability_content_hash: 'sha256:1b9786f908bfbb75b40e9c80ca86e021b08b8e8222c9b199c64ffa2b964b9b6d',
+  report_hash: 'sha256:9f534d08ec7176d47be81a54fcd9979500e6a3657460d700ea2c2dd2329af7f7',
+  artifact_hash: 'sha256:9cb6962af255b4da95902a95e86cb9ddbba138a285d00a297a0617e9c6362f0d',
 } as const
 
 describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
@@ -336,8 +343,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // OSR-013: Tulana into PRIORITY moves catalog provenance only; metrics and protected fingerprints stay fixed.
     // K9-6 (v30): the explicit published_request input, density_contract and published-stage text on the seven public kala_*_get views move catalog provenance only; metrics and protected fingerprints stay fixed.
     // K9 D10 (v31): migration 1399 moves the ka_yojaka output-digest spec path in the producer census, which moves producer_contract_fingerprint, hence capability_content_hash and report_hash; metrics, source_catalog_fingerprint and semantic_review_fingerprint stay fixed.
-    // K9-WRITE-SCOPE (v32): query_convergence_windows now reads only the served generation of kala_convergence (migration 1405); the authored source-query availability review text moves semantic_review_fingerprint, hence capability_content_hash and report_hash; metrics, source_catalog_fingerprint and producer_contract_fingerprint stay fixed.
-    expect(report.report_hash).toBe('sha256:a1634b3a7a6bfa6b6465a8f2a3a2c440b4fa5e622a7161ccbc68b4ddf649bc59')
+    // K9 D6 (v32): migration 1400 moves the ka_yojaka output-digest spec path again (1399 -> 1400), which moves producer_contract_fingerprint, hence capability_content_hash and report_hash; metrics, source_catalog_fingerprint and semantic_review_fingerprint stay fixed.
+    // K9-WRITE-SCOPE (v33): query_convergence_windows now reads only the served generation of kala_convergence (migration 1405); the authored source-query availability review text moves semantic_review_fingerprint, hence capability_content_hash and report_hash; metrics, source_catalog_fingerprint and producer_contract_fingerprint stay fixed.
+    expect(report.report_hash).toBe('sha256:baa25bc5aff864e948a697403d085dcf9ebcaafc896fdf1f78869baf56d9e7dc')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -1063,7 +1071,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('keeps the v31 source-successor artifact immutable after the K9-WRITE-SCOPE convergence generation scope advance', () => {
+  it('keeps the v31 source-successor artifact immutable after the K9 D6 output-digest-v3 producer-census advance', () => {
     const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v31.json',
       import.meta.url,
@@ -1084,9 +1092,30 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v32 source-successor artifact to the current executable report without claiming live acceptance (K9-WRITE-SCOPE convergence generation scope)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v32 source-successor artifact immutable after the K9-WRITE-SCOPE convergence generation scope advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v32.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV32.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v32',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v31.json',
+        capability_content_hash: historicalV31.capability_content_hash,
+        report_hash: historicalV31.report_hash,
+      },
+      capability_content_hash: historicalV32.capability_content_hash,
+      report_hash: historicalV32.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v33 source-successor artifact to the current executable report without claiming live acceptance (K9-WRITE-SCOPE convergence generation scope)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v33.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -1094,24 +1123,24 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     const predecessor = JSON.parse(readFileSync(new URL(
-      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v31.json',
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v32.json',
       import.meta.url,
     ), 'utf8'))
     expect(artifact.metrics).toEqual(report.metrics)
     expect(artifact.metrics).toEqual(predecessor.metrics)
-    // v32 is the one step where the semantic review moves (the served-generation predicate in the query_convergence_windows availability contract); the catalog and producer fingerprints coincide with v31's.
+    // v33 is the one step where the semantic review moves (the served-generation predicate in the query_convergence_windows availability contract); the catalog and producer fingerprints coincide with v32's.
     expect(snapshot.source_catalog_fingerprint).toBe(predecessor.generated_snapshot.source_catalog_fingerprint)
     expect(snapshot.producer_contract_fingerprint).toBe(predecessor.generated_snapshot.producer_contract_fingerprint)
     expect(snapshot.semantic_review_fingerprint).not.toBe(predecessor.generated_snapshot.semantic_review_fingerprint)
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v32',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v33',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v31.json',
-        artifact_hash: historicalV31.artifact_hash,
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v32.json',
+        artifact_hash: historicalV32.artifact_hash,
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV31.capability_content_hash,
-        report_hash: historicalV31.report_hash,
+        capability_content_hash: historicalV32.capability_content_hash,
+        report_hash: historicalV32.report_hash,
       },
       preserves_historical_predecessor: true,
       acceptance_version: report.acceptance_version,
