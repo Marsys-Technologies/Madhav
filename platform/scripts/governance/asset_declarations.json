@@ -17954,12 +17954,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:389",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:398",
    "read_table": "kala_activation_predicates",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_activation_predicates; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k; K8-REG remainder, produced_tables not declared: rows_inserted is len(rows) of kala_activation_predicates only (pipeline/orchestrator/writers/ka_yojaka.py); kala_layer_candidate_grain is candidate bookkeeping written by the shared partition helper and is not counted, so a two-table SUM would read Build.completion FAIL for a correct build",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:389 reads `kala_activation_predicates` (`FROM kala_activation_predicates`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:398 reads `kala_activation_predicates` (`FROM kala_activation_predicates`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },
