@@ -954,6 +954,12 @@ export interface GocharaCoverage {
     note: string
     materialized_through: string | null
   }
+  /** Migration 1404 (N.6.3 / N.7.6): present only when the SERVED generation of gochara_resonance_map holds no rows for the chart,
+   *  so an empty coverage is never read as "every domain is uncovered" without the reason. 'served_generation_holds_no_rows' =
+   *  resonance rows exist, but only in generations that are not served (a candidate rebuild's, never promoted);
+   *  'no_resonance_rows_for_chart' = the chart has none in any generation. Absent when the served generation has rows, and absent
+   *  (null, never guessed) when the check itself could not run. */
+  resonance_map_empty_reason?: 'served_generation_holds_no_rows' | 'no_resonance_rows_for_chart'
   /** C3 (SAMPŪRTI-γ): first-class "thin ≠ rich silence" facet.
    *  Derived from event_classes_covered — thin/moderate/rich signals whether the covered set
    *  is sparse (0–3 classes), mid-range (4–9), or broad (10+).
@@ -1024,7 +1030,7 @@ export interface GocharaNotCovered {
 }
 
 const COVERAGE_UNIVERSE_SOURCE =
-  'event_classes_covered = DISTINCT gochara_resonance_map.event_class for this chart_id (G-1\'s own ' +
+  'event_classes_covered = DISTINCT gochara_resonance_map_served.event_class (the served generation of gochara_resonance_map, migration 1404) for this chart_id (G-1\'s own ' +
   'record of which event classes the D-5 sweep populated targets for, and therefore substepped over — ' +
   'the writer\'s docstring: "one substep per populated gochara_resonance_map event_class x decade" — ' +
   'more precise than kala_gochara_windows itself, which can under-report a class that was swept but ' +
@@ -1034,6 +1040,26 @@ const COVERAGE_UNIVERSE_SOURCE =
   'NOT counted as covered. Covered classes are resolved to brahma_event_ontology.domain; ' +
   'domains_not_covered = DISTINCT brahma_event_ontology.domain minus that covered set. Mechanically ' +
   'derived fresh every call from live table state — never hand-maintained.'
+
+/** Why an empty resonance map is empty (migration 1404). Called only when the served view returned no class for the chart: counts the chart's rows in the base
+ *  table across every generation. Returns undefined when the check could not run — an honest null, never a guessed reason. */
+async function resonanceMapEmptyReason(
+  chartId: string,
+  principal: Principal
+): Promise<GocharaCoverage['resonance_map_empty_reason'] | undefined> {
+  try {
+    const r = await platformQuery(
+      `SELECT COUNT(*)::int AS n FROM gochara_resonance_map WHERE chart_id = $1`,
+      [chartId],
+      principal
+    )
+    const n = Number(r.rows[0]?.['n'])
+    if (!Number.isFinite(n)) return undefined
+    return n > 0 ? 'served_generation_holds_no_rows' : 'no_resonance_rows_for_chart'
+  } catch {
+    return undefined
+  }
+}
 
 /** Chart-scoped: which event classes did THIS chart's sweep actually look at, which domains does
  *  that leave structurally dark, and how much of the sweep's own execution has committed. Never
@@ -1162,7 +1188,7 @@ export async function computeGocharaCoverage(
     const [classesRespU, universeRespU] = await Promise.all([
       platformQuery(
         `SELECT DISTINCT rm.event_class AS event_class, eo.domain AS domain
-           FROM gochara_resonance_map rm
+           FROM gochara_resonance_map_served rm
            LEFT JOIN brahma_event_ontology eo ON eo.event_class_id = rm.event_class
           WHERE rm.chart_id = $1
           ORDER BY 1`,
@@ -1175,6 +1201,7 @@ export async function computeGocharaCoverage(
         principal
       ).then((r) => ({ rows: r.rows, ok: true as const })).catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
     ])
+    const emptyReasonU = classesRespU.ok && classesRespU.rows.length === 0 ? await resonanceMapEmptyReason(chartId, principal) : undefined
     const universeDomainsU = universeRespU.rows.map((r) => r['domain']).filter((d): d is string => typeof d === 'string').sort()
     const eventClassDomainsU = Object.fromEntries(
       classesRespU.rows.flatMap((row) => {
@@ -1205,6 +1232,7 @@ export async function computeGocharaCoverage(
         event_classes_targeted_not_swept: [],
         domains_not_covered: universeDomainsU,
         universe_source: COVERAGE_UNIVERSE_SOURCE,
+        ...(emptyReasonU != null ? { resonance_map_empty_reason: emptyReasonU } : {}),
         sweep_completeness: {
           substeps_committed: 0,
           source: withheld != null ? `unpublished — authority names ${authGen}, which is not served (${withheld.refusal})` : 'unpublished — no kala_gochara_authority row for this chart',
@@ -1227,7 +1255,7 @@ export async function computeGocharaCoverage(
   const [classesResp, universeResp, substepResp, horizonResp, coverageRowsResp] = await Promise.all([
     platformQuery(
       `SELECT DISTINCT rm.event_class AS event_class, eo.domain AS domain
-         FROM gochara_resonance_map rm
+         FROM gochara_resonance_map_served rm
          LEFT JOIN brahma_event_ontology eo ON eo.event_class_id = rm.event_class
         WHERE rm.chart_id = $1
         ORDER BY 1`,
@@ -1271,6 +1299,7 @@ export async function computeGocharaCoverage(
       : Promise.resolve({ rows: [] as Record<string, unknown>[], ok: true as const }),
   ])
 
+  const emptyReason = classesResp.ok && classesResp.rows.length === 0 ? await resonanceMapEmptyReason(chartId, principal) : undefined
   const targetedClasses = [...new Set(classesResp.rows.map((r) => r['event_class']).filter((v): v is string => typeof v === 'string'))].sort()
   const substepsCommitted = Number(substepResp.rows[0]?.['substeps_committed'] ?? 0)
   const sweptClasses = new Set(
@@ -1393,6 +1422,7 @@ export async function computeGocharaCoverage(
       event_classes_targeted_not_swept: targetedNotSwept,
       domains_not_covered: domainsNotCovered,
       universe_source: COVERAGE_UNIVERSE_SOURCE,
+      ...(emptyReason != null ? { resonance_map_empty_reason: emptyReason } : {}),
       coverage_quality: {
         tier: coverageTier,
         covered_class_count: coveredClassCount,

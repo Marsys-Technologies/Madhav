@@ -15,6 +15,8 @@ import json
 import math
 from typing import Any
 
+import g5_cpu                                   # G5-CPU (SR-G5-LOAD): the attributed-CPU method of G-5; pure helpers, no import-time effect
+
 PASS, FAIL, NOT_EVALUATED = "PASS", "FAIL", "NOT_EVALUATED"
 #: a KNOWN shortfall the G-3 decision table sends to the surrogate for a dispatch ruling (PLAN v2 §5): not a pass, not a refusal.  Outranked by FAIL and by NOT_EVALUATED.
 REPORT = "REPORT"
@@ -651,6 +653,7 @@ def evaluate(report: dict, baseline: dict, profile: dict, *, second_report: dict
                          (g8, g8_digest_checks(report, dispatch_digests))):
             g["checks"] = g["checks"] + extra
             g["status"] = roll_up(g["checks"])
+    g5 = g5_cpu.apply_to_gate(g5, report, profile, check=check, roll_up=roll_up, runtime_projection=runtime_projection)         # G5-CPU hook: wall | attributed_cpu | neither
     gates = [g1_integrity(report, baseline, profile), g2, g3, g4_verification(report, verification), g5, g6_crosscheck(report, crosscheck, profile), g7, g8]
     if a10:
         gates.insert(0, g0_trial_ready(report))

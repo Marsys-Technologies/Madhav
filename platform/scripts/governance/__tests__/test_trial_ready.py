@@ -485,7 +485,8 @@ def test_c11_a_relative_scratch_directory_still_lets_a_passing_oracle_read_true(
 HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # v3.1 (review X-20261022T075423Z-review-t1b-harness2, ACCEPTED round 2 = efb0922a...787c) + the cockpit's B4 lane-db overlay (TR_GAPS B4.3: run_trial.sh, trial_slice.py,
 # tests/test_lane_db_overlay.py) = the harness the trial actually runs (installed copy of job X-20261021T105440Z-od1-T1-harness; PR #3874 review N-1)
-HARNESS_V31_DIGEST = "7d8fbd87f5412c0954c2a294a799f36ae975f807114a53e505bab93736921f91"
+# + the G5-CPU attributed-CPU method for TR gate G-5 (fleet/trial_harness/g5_cpu.py, SR-G5-LOAD; PR #3880) = c38d93f5... (tr-bind's pin was 7d8fbd87...)
+HARNESS_V31_DIGEST = "c38d93f5289be87b54362555780a78c8b00c3ef83ee27eb094cba7b049f4c9be"
 
 
 def harness_digest(root):

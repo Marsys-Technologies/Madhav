@@ -1,0 +1,91 @@
+{
+  "schema": "ky.writer_budget_audit/1",
+  "ruling": "SR-VEDHA-WRITER-BUDGET (madhav-44 owner surrogate, 2026-10-22T16:44:41Z), migration 1408",
+  "rule": "a K9 / century-path writer's asset_registry.writer_timeout_seconds must be >= 2 x its recorded measured wall; no measurement recorded -> NOT_MEASURED and the budget is left as it is",
+  "registry_before_source": "K9B_REHEARSAL.md section 5 (production-shaped registry of the fixture: vedha 120, resonance 600, ka_gochara 1800, yojaka/sangam/vighnakara 10800); ka_gochara_v5 from migration 1395 (EXEC-1395-READBACK, 2026-10-18). ka_dasha_kala's production value is recorded in no source.",
+  "century_path_note": "The W3W4-v1.7 pack (PACK/century/*) names one century writer, ka_gochara_v5 (all_classes_full, 26 classes). Its PROJECTION_INPUT.json carries no production wall yet (measuring_production_s null, status awaiting_j4d_figures); the only recorded basis is the 34,593 s projection quoted by migration 1395.",
+  "writers": [
+    {
+      "asset_id": "ka_vedha_gochara",
+      "registry_before_s": 120,
+      "registry_after_s": 600,
+      "measured_wall_s": 196.26,
+      "observations_s": [120.77, 196.26],
+      "kind": "measured_upper_bound",
+      "source": "K9B_REHEARSAL jobs/X-20261022T151858Z-k9b-rehearse results/size-r3.json throughput.ka_vedha_gochara.writer_duration_s = 120.77194 and results/size-r4.json = 196.25800 (budget lifted on the throwaway DB; loaded Mac, load 33-104 on 18 cores; ka_yojaka building in the same process). Reps r1/r2 at the 120 s budget: TIMEOUT.",
+      "two_x_s": 392.52,
+      "decision": "RAISE 120 -> 600 (migration 1408): 120 s was below the measured wall itself"
+    },
+    {
+      "asset_id": "ka_yojaka",
+      "registry_before_s": 10800,
+      "registry_after_s": 10800,
+      "measured_wall_s": null,
+      "lower_bound_s": 1000.07,
+      "kind": "NOT_MEASURED",
+      "source": "K9B_REHEARSAL sections 5 and 1: ka_yojaka had not finished after 200 / 420 / 1000 s (r1-r4, load 50-60); no complete repetition exists. 1000.07 s is a lower bound only, not a wall.",
+      "two_x_s": null,
+      "decision": "NOT_MEASURED, unchanged (2 x the lower bound, 2,000 s, is below 10,800 s but proves nothing about the real wall)"
+    },
+    {
+      "asset_id": "ka_gochara_resonance",
+      "registry_before_s": 600,
+      "registry_after_s": 600,
+      "measured_wall_s": null,
+      "kind": "NOT_MEASURED",
+      "source": "K9B_REHEARSAL section 5: wave 2, never reached in any repetition (waits for ka_yojaka)",
+      "two_x_s": null,
+      "decision": "NOT_MEASURED, unchanged"
+    },
+    {
+      "asset_id": "ka_gochara",
+      "registry_before_s": 1800,
+      "registry_after_s": 1800,
+      "measured_wall_s": null,
+      "kind": "NOT_MEASURED",
+      "source": "K9B_REHEARSAL section 5: wave 3, never reached; blocked_dependency while ka_vedha_gochara sat at its 120 s budget",
+      "two_x_s": null,
+      "decision": "NOT_MEASURED, unchanged"
+    },
+    {
+      "asset_id": "ka_sangam",
+      "registry_before_s": 10800,
+      "registry_after_s": 10800,
+      "measured_wall_s": null,
+      "kind": "NOT_MEASURED",
+      "source": "K9B_REHEARSAL section 5: wave 4, never reached",
+      "two_x_s": null,
+      "decision": "NOT_MEASURED, unchanged"
+    },
+    {
+      "asset_id": "ka_vighnakara",
+      "registry_before_s": 10800,
+      "registry_after_s": 10800,
+      "measured_wall_s": null,
+      "kind": "NOT_MEASURED",
+      "source": "K9B_REHEARSAL section 5: wave 5, never reached",
+      "two_x_s": null,
+      "decision": "NOT_MEASURED, unchanged"
+    },
+    {
+      "asset_id": "ka_dasha_kala",
+      "registry_before_s": null,
+      "registry_after_s": null,
+      "measured_wall_s": null,
+      "kind": "NOT_MEASURED",
+      "source": "K9B_REHEARSAL section 3 K-13 / section 4: not in the closed plan; its inputs (chart_dashas ashtottari, chara_karaka, kalachakra, naisargika, yogini) cannot be rebuilt on the Mac, so it failed; no wall exists. Production budget recorded in no source (seed default 600).",
+      "two_x_s": null,
+      "decision": "NOT_MEASURED, unchanged"
+    },
+    {
+      "asset_id": "ka_gochara_v5",
+      "registry_before_s": 72000,
+      "registry_after_s": 72000,
+      "measured_wall_s": 34593,
+      "kind": "projected_production",
+      "source": "migration 1395 header: the measuring build (all_classes_full, MEASURING_BUILD_CONTRACT_v1_0.md) is projected at 34,593 s; 72,000 s is its 2x headroom (SR-J3-CAP-LIVE). Not a completed production wall; the J-3c production execution time is still null in W3W4-v1.7 PROJECTION_INPUT.json.",
+      "two_x_s": 69186,
+      "decision": "KEEP 72,000 s (2.08 x the projection). Open point, not acted on: the PRETR-3a diagnostic projected the FINAL-RULES century at 107,185.8 s (X-20261022T084618Z-pretr-3a PRETR_3a.md D-10) from a slice built at load 40-75 on a head where 8 of 12 classes still die; the report itself calls it 'not a clean measurement' and asks for a quiet-machine re-measure. 2 x 107,186 s also exceeds the 86,400 s Cloud Run task timeout, so no registry value could meet it without a platform change. Re-audit after the J-4d cap qualification."
+    }
+  ]
+}
