@@ -10,8 +10,17 @@
    "owner_lane": "R1",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane R1 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: #3844 in review)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_s2_solver_check.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
     }
    ]
   },
@@ -22,8 +31,17 @@
    "owner_lane": "R2",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane R2 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: running)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r2_state_boundaries.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
     }
    ]
   },
@@ -34,8 +52,17 @@
    "owner_lane": "R3",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane R3 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: #3843 accepted, CI repair)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_s2_solver_check.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
     }
    ]
   },
@@ -46,8 +73,18 @@
    "owner_lane": "R4 + migration 1402",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane R4 + migration 1402 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: fix running, number needed)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r4_combustion_inheritance.py",
+      "tests/l3/gochara/test_od1_r4_migration_1402.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
     }
    ]
   },
@@ -58,8 +95,17 @@
    "owner_lane": "R5",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane R5 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: review running)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r5_p1_subject.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
     }
    ]
   },
@@ -70,8 +116,19 @@
    "owner_lane": "R67",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane R67 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: running)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r67_certificate.py",
+      "tests/l3/gochara/test_od1_r4_migration_1402.py",
+      "tests/l3/gochara/test_w1_serving_reader.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
     }
    ]
   },
@@ -82,8 +139,17 @@
    "owner_lane": "Q3C",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane Q3C is not bound in this registry yet; the lane's PR adds its binding (state at plan time: review not started)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_q3c_side.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
     }
    ]
   },
@@ -94,8 +160,17 @@
    "owner_lane": "D1",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane D1 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: #3842 accepted)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_d1_orb_values.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
     }
    ]
   },
@@ -106,8 +181,21 @@
    "owner_lane": "C1, D3",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane C1, D3 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: review / running)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_c1_vedha_provider.py",
+      "tests/l3/gochara/test_od1_c1_vedha_provider_db.py",
+      "tests/l3/gochara/test_od1_c2_vedha_verifier.py",
+      "tests/l3/gochara/test_od1_c2_vedha_verifier_db.py",
+      "tests/l3/gochara/test_od1_d3_vedha_rulings.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
     }
    ]
   },
@@ -129,7 +217,11 @@
      "cwd": ".",
      "tests": [
       "platform/scripts/governance/__tests__/test_sr_doctrine_h_node_dignity_1401.py"
-     ]
+     ],
+     "env": {
+      "LC_ALL": "en_US.UTF-8",
+      "LANG": "en_US.UTF-8"
+     }
     },
     {
      "kind": "db_sql",
@@ -142,6 +234,12 @@
      "dsn_env": "TRIAL_READY_TRIAL_DSN",
      "expect": "t",
      "sql": "SELECT (SELECT count(*) FROM bg_graha_naisargika_friendship WHERE (graha, other_graha, relation) IN (('Rahu','Mercury','neutral'),('Rahu','Mars','enemy'),('Rahu','Jupiter','friend'),('Ketu','Sun','enemy'),('Ketu','Moon','enemy'))) = 5 AND (SELECT count(*) FROM bg_dignity_reference WHERE (graha, moolatrikona_sign) IN (('Rahu','Gemini'),('Ketu','Sagittarius'))) = 2"
+    },
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "expect": "t",
+     "sql": "SELECT count(*) = 2 FROM bg_dignity_reference WHERE (graha, exaltation_sign) IN (('Rahu','Taurus'),('Ketu','Scorpio'))"
     }
    ]
   },
@@ -153,7 +251,7 @@
    "parts": [
     {
      "kind": "unbound",
-     "needs": "the oracle of lane NDH is not bound in this registry yet; the lane's PR adds its binding (state at plan time: pending)"
+     "needs": "lane NDH (TR_GAPS B1, od1-ndh) adds the pytest oracle and a retained-row census db_sql here; none exists on any branch yet"
     }
    ]
   },
@@ -165,7 +263,7 @@
    "parts": [
     {
      "kind": "unbound",
-     "needs": "the oracle of lane SELECT-130 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: to start)"
+     "needs": "lane SELECT-130 (TR_GAPS B2) adds the oracle that flips the selection to 1.2.0 and reads G-2 refusing; test_od1_v1_versions only asserts the default selection and never flips it"
     }
    ]
   },
@@ -177,7 +275,7 @@
    "parts": [
     {
      "kind": "unbound",
-     "needs": "the oracle of lane DASH is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not started)"
+     "needs": "DASH-READBACK (TR_GAPS B7) adds the coverage readback db_sql and the DASH pytest; the dasha tables end at different dates per system (kalachakra, mudda stop before 2084-02-05)"
     }
    ]
   },
@@ -188,8 +286,38 @@
    "owner_lane": "T1B",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane T1B is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not started)"
+     "kind": "pytest",
+     "cwd": "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness",
+     "tests": [
+      "tests/test_a10_gates.py",
+      "tests/test_a10_stages.py",
+      "tests/test_analyse.py",
+      "tests/test_crosscheck.py",
+      "tests/test_driver.py",
+      "tests/test_gates.py",
+      "tests/test_launcher.py",
+      "tests/test_lane_db_overlay.py",
+      "tests/test_t1b_fix.py",
+      "tests/test_trial_census.py"
+     ],
+     "env": {
+      "KY_TEST_CHECKOUT": "{repo}",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe",
+      "PYTHONDONTWRITEBYTECODE": "1"
+     },
+     "deselect": [
+      "tests/test_driver.py::test_probe_reports_absence_when_the_checkout_has_no_solver"
+     ],
+     "deselect_why": "test_driver.py::test_probe_reports_absence_when_the_checkout_has_no_solver asserts the checkout has NO window_solver (true of the SR-OD1 export it was written on); the integration head has one, so the test reads false there for a reason that is not a product claim. The positive probe test (fake solver) stays."
+    },
+    {
+     "kind": "pytest",
+     "cwd": ".",
+     "tests": [
+      "platform/scripts/governance/__tests__/test_trial_ready.py"
+     ],
+     "timeout_s": 3600
     }
    ]
   },
@@ -200,8 +328,30 @@
    "owner_lane": "S3",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane S3 is not bound in this registry yet; the lane's PR adds its binding (state at plan time: lane started 16:30Z)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_s3_integration.py",
+      "tests/l3/gochara/test_od1_s1_window_solver.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    },
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/test_gochara_seal_approval_scripts.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     }
     }
    ]
   },
@@ -212,8 +362,18 @@
    "owner_lane": "R8, R8X",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane R8, R8X is not bound in this registry yet; the lane's PR adds its binding (state at plan time: R8 running)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r8_sharded_aggregate.py",
+      "tests/l3/gochara/test_od1_r8x_aggregate.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration+od1-r8x"
     }
    ]
   },
@@ -224,8 +384,30 @@
    "owner_lane": "T1B / R8X",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane T1B / R8X is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not started)"
+     "kind": "pytest",
+     "cwd": "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness",
+     "tests": [
+      "tests/test_a10_gates.py"
+     ],
+     "env": {
+      "KY_TEST_CHECKOUT": "{repo}",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe",
+      "PYTHONDONTWRITEBYTECODE": "1"
+     }
+    },
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r8x_overlap.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-r8x"
     }
    ]
   },
@@ -236,8 +418,17 @@
    "owner_lane": "R8X",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane R8X is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not started)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r8x_aggregate.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-r8x"
     }
    ]
   },
@@ -248,20 +439,78 @@
    "owner_lane": "EQR",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane EQR is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not started)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_a53_od1_implmods.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    },
+    {
+     "kind": "pytest",
+     "cwd": ".",
+     "tests": [
+      "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_equivalence_record.py"
+     ]
     }
    ]
   },
   {
    "id": "T20",
-   "claim": "I1-FINAL: main merged up, pins and goldens re-derived **once**, DB suites green locally, `lc_collate`/`lc_ctype` unchanged, geometry pin `a8cb08f0` unchanged (SR-DB-LOCALE-CHECK)",
-   "detector": "any of those moves → STOP, tell the surrogate",
+   "claim": "I1-FINAL: main merged up, pins and goldens re-derived **once** (geometry pin re-derived once after R2 + near-miss, SR-GEOMETRY-PIN-ONCE, recorded in the EQUIVALENCE_RECORD changelog with both causes; any further geometry change refuses; the golden asserts every pin at the head), DB suites green locally, `lc_collate`/`lc_ctype` unchanged = C/C (SR-DB-LOCALE-CHECK)",
+   "detector": "the golden/horizon pins differ from the head's bytes, a DB suite fails, or the lane DB's collation is not C/C → STOP, tell the surrogate (the 'once' rule is the surrogate's, not machine-read)",
    "owner_lane": "I1-FINAL",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane I1-FINAL is not bound in this registry yet; the lane's PR adds its binding (state at plan time: to start)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_mb_ordinary_golden.py",
+      "tests/l3/gochara/test_mb_horizon_shape_guard.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "timeout_s": 3600
+    },
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_a53_window_evaluator.py",
+      "tests/l3/gochara/test_a53_window_sweep.py",
+      "tests/l3/gochara/test_a53_window_sweep_pg.py",
+      "tests/l3/gochara/test_a53_window_verification_gate.py",
+      "tests/l3/gochara/test_a53_window_verification_roles.py",
+      "tests/l3/gochara/test_a53_all_null_policy.py",
+      "tests/l3/gochara/test_a53_all_null_policy_db.py",
+      "tests/l3/gochara/test_a53_input_vector.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "timeout_s": 3600,
+     "deselect": [
+      "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id"
+     ],
+     "deselect_why": {
+      "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id": "the test skips by design (pytest.skip at test_a53_input_vector.py:670) because ka_gochara_sky_convention carries the insert-only trigger ka_gochara_sky_convention_immutable (platform/migrations/1153_gochara_sky_event_substrate.sql:609-611) in every chain-built database, so it can never run to a pass; the evaluator reads any skip as null, which would hold T20 null forever"
+     }
+    },
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "expect": "t",
+     "sql": "SELECT datcollate = 'C' AND datctype = 'C' FROM pg_database WHERE datname = current_database()"
     }
    ]
   },
@@ -272,8 +521,22 @@
    "owner_lane": "RV-INT",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane RV-INT is not bound in this registry yet; the lane's PR adds its binding (state at plan time: to start)"
+     "kind": "json_field_eq",
+     "path": "/Users/Dev/kalayantra/run/TR/RVINT_VERDICT.json",
+     "fields": [
+      {
+       "field": "proposed_verdict.verdict",
+       "equals": "ACCEPTED"
+      },
+      {
+       "field": "proposed_verdict.head",
+       "equals_head": true
+      },
+      {
+       "field": "proposed_verdict.patch_id",
+       "equals_patch_id_of": "origin/main"
+      }
+     ]
     }
    ]
   },
@@ -285,7 +548,7 @@
    "parts": [
     {
      "kind": "unbound",
-     "needs": "the oracle of lane conductor is not bound in this registry yet; the lane's PR adds its binding (state at plan time: per lane)"
+     "needs": "LANE-LEDGER (TR_GAPS B6): needs a recomputing detector (ledger patch-ids against the merge parents' diffs, zero open BLOCKING); a self-reported ledger summary would read true from a lane state (N.8)"
     }
    ]
   },
@@ -321,19 +584,65 @@
   },
   {
    "id": "T24",
-   "claim": "linux/amd64 image available for the qualifying run (SR-AMD64-PER-HEAD)",
-   "detector": "the amd64 slice cannot start",
+   "claim": "linux/amd64 image available for the qualifying run (SR-AMD64-PER-HEAD): the amd64_slice run itself ran on linux/amd64 at the evaluated head and produced a complete qualifying EQUIVALENCE_RECORD",
+   "detector": "the amd64 slice did not run to a complete record: its own report, pinned runtime or EQUIVALENCE_RECORD names another head, another arch, a non-qualifying runtime kind or an incomplete record (a readiness record, which only checks that inputs are named, is never read)",
    "owner_lane": "T1B / ops",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "the oracle of lane T1B / ops is not bound in this registry yet; the lane's PR adds its binding (state at plan time: not built)"
+     "kind": "json_field_eq",
+     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/amd64_slice_report.json",
+     "fields": [
+      {
+       "field": "code.head",
+       "equals_head": true
+      },
+      {
+       "field": "equivalence_record.status",
+       "equals": "COMPLETE"
+      },
+      {
+       "field": "equivalence_record.head",
+       "equals_head": true
+      }
+     ]
+    },
+    {
+     "kind": "json_field_eq",
+     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/equivalence/eq_pinned_inputs.json",
+     "fields": [
+      {
+       "field": "runtime.kind",
+       "equals": "qualifying_run"
+      },
+      {
+       "field": "runtime.arch",
+       "equals": "linux/amd64"
+      }
+     ]
+    },
+    {
+     "kind": "json_field_eq",
+     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/equivalence/equivalence_record.json",
+     "fields": [
+      {
+       "field": "complete",
+       "equals": true
+      },
+      {
+       "field": "runtime_kind",
+       "equals": "qualifying_run"
+      },
+      {
+       "field": "E6.commit",
+       "equals_head": true
+      }
+     ]
     }
    ]
   },
   {
    "id": "T25",
-   "claim": "lane DB at 55433 up, C collation, all head migrations present",
+   "claim": "lane DB at 55433 up, C collation, **every** head migration file recorded in its ledger (built with MIGRATE_APPLY_PROTECTED=1 on loopback, so no file is skipped)",
    "detector": "`SHOW lc_collate` ≠ recorded or a migration is missing",
    "owner_lane": "ops",
    "parts": [
@@ -344,8 +653,10 @@
      "sql": "SELECT datcollate = 'C' AND datctype = 'C' FROM pg_database WHERE datname = current_database()"
     },
     {
-     "kind": "unbound",
-     "needs": "every head migration present on the lane DB: needs the protected-window selector parity (platform/scripts/migrate.ts discoverKalaProtectedMigrations) so protected-skipped files are not read as missing"
+     "kind": "db_migrations",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "dir": "platform/migrations",
+     "mode": "all"
     }
    ]
   }
