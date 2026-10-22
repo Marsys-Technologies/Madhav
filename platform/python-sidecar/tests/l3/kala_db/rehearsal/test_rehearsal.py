@@ -15,18 +15,48 @@ from services.kala_core import rehearsal
 from services.kala_core.manifest import attest_grain, open_candidate, publish_candidate
 
 
-# Independent contract roster from PLAN §4.1 / §6.4. Removing a writer, admitting
-# the delivery registrar, placing Avadhi before F1, or dropping ka_gochara_resonance (K9 r4:
-# registry edges ka_yojaka -> ka_gochara_resonance -> ka_gochara/ka_kshetra, migration 1392)
-# must break these tests.
-WAVES = [
-    ['ka_dasha_kala', 'ka_vedha_gochara', 'ka_moorti_nirnaya', 'ka_kota_chakra',
-     'ka_tithi_pravesha', 'ka_sudarshana_varsha'],
-    ['ka_yojaka'], ['ka_gochara_resonance'], ['ka_avadhi'], ['ka_gochara_v5'], ['ka_vighnakara'],
-    ['ka_sangam'], ['ka_kshetra'],
-    ['ka_kalasutra', 'ka_kala_darshana', 'ka_taranga', 'ka_jivana_parva'],
-    ['ka_tulana', 'ka_muhurta_seva', 'ka_graha_sancara'],
-]
+# The roster is a SET (PLAN §4.1 / §6.4): removing a writer, admitting the delivery registrar, or dropping
+# ka_gochara_resonance (K9 r4: registry edges ka_yojaka -> ka_gochara_resonance -> ka_gochara/ka_kshetra, migration 1392)
+# must break these tests. Its ORDER is not listed anywhere: SR-K9-WAVE-ORDER derives it from the registry depends_on, and the
+# expected waves below are recomputed from the same committed registry reconstruction by a separate longest-path walk.
+REPO = Path(__file__).resolve().parents[6]
+ROSTER = {
+    'ka_dasha_kala', 'ka_vedha_gochara', 'ka_moorti_nirnaya', 'ka_kota_chakra', 'ka_tithi_pravesha', 'ka_sudarshana_varsha',
+    'ka_yojaka', 'ka_gochara_resonance', 'ka_avadhi', 'ka_gochara_v5', 'ka_vighnakara', 'ka_sangam', 'ka_kshetra',
+    'ka_kalasutra', 'ka_kala_darshana', 'ka_taranga', 'ka_jivana_parva', 'ka_tulana', 'ka_muhurta_seva', 'ka_graha_sancara',
+}
+
+
+def registry_edges():
+    """The registry as migration 1392 (K8-REG) leaves it, over the committed reconstruction of the rest."""
+    base = {row['asset_id']: list(row['depends_on'] or [])
+            for row in json.loads((REPO / '00_ARCHITECTURE/control/registry_input_draft.json').read_text())}
+    corrections = json.loads((REPO / 'platform/migrations/1392_k8_registry_truth.sql').read_text().split('$k8_rows$')[1])
+    base.update({row['asset_id']: list(row['depends_on']) for row in corrections if 'depends_on' in row})
+    return base
+
+
+EDGES = registry_edges()
+
+
+def expected_waves(edges, roster):
+    """Level = 1 + the deepest roster asset it transitively depends on (through unplanned assets too); ties by asset id."""
+    def reach(asset, seen=None):
+        seen = set() if seen is None else seen
+        for dep in edges.get(asset, ()):
+            if dep not in seen:
+                seen.add(dep)
+                reach(dep, seen)
+        return seen
+    level = {}
+    def depth(asset):
+        if asset not in level:
+            level[asset] = 1 + max([depth(dep) for dep in reach(asset) & roster] or [-1])
+        return level[asset]
+    return [sorted(a for a in roster if depth(a) == k) for k in range(max(depth(a) for a in roster) + 1)]
+
+
+WAVES = expected_waves(EDGES, ROSTER)
 ASSETS = [asset for wave in WAVES for asset in wave]
 MATERIALIZED = ['ka_yojaka', 'ka_gochara_resonance', 'ka_avadhi', 'ka_gochara_v5', 'ka_vighnakara',
                 'ka_sangam', 'ka_kshetra', 'ka_kalasutra', 'ka_kala_darshana',
@@ -39,7 +69,7 @@ def spec():
                 generation='k9-fixture', build_id=str(uuid4()), expected_head_generation=None,
                 model_digest='fixture-model', rule_registry_version='fixture-rules',
                 conventions={'fixture': True},
-                grains_by_asset={asset: [asset + ':fixture'] for asset in MATERIALIZED})
+                grains_by_asset={asset: [asset + ':fixture'] for asset in MATERIALIZED}, registry_edges=deepcopy(EDGES))
 
 
 def test_preparation_has_safe_real_api_request_and_explicit_grains():
@@ -96,7 +126,7 @@ def stored(kala_db_dsn):
             ('chart_id', 'generation', 'build_id', 'model_digest', 'rule_registry_version', 'conventions')})
         manifest = dict(version='nirmana-run-manifest/v1', **{
             key: plan['request'][key] for key in ('chart_id', 'scope', 'scope_target', 'action')},
-            waves=WAVES, assets=[dict(asset_id=asset, scope='per_chart', depends_on=[],
+            waves=WAVES, assets=[dict(asset_id=asset, scope='per_chart', depends_on=EDGES[asset],
                 natural_key_partition='chart_id', has_cowriters=False, expected_code_digest=CODE)
                 for asset in ASSETS])
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
@@ -171,7 +201,8 @@ def test_no_green_from_incomplete_or_stale_evidence(stored, mutation):
         'incomplete_run': "UPDATE build_runs SET state='running'",
         'bad_manifest': "UPDATE build_runs SET plan_manifest_digest=repeat('0',64)",
         'wrong_order': "UPDATE build_run_assets SET started_at='2026-10-01 00:00Z' WHERE asset_id='ka_avadhi'",
-        'overlap': "UPDATE build_run_assets SET ended_at='2026-10-01 08:30Z' WHERE asset_id='ka_kshetra'",
+        # ka_sangam runs at level 2 (02:00-02:30); its dependents ka_vighnakara/ka_kalasutra start at 03:00
+        'overlap': "UPDATE build_run_assets SET ended_at='2026-10-01 04:30Z' WHERE asset_id='ka_sangam'",
         'stale_freshness': "UPDATE asset_freshness SET freshness_state='stale' WHERE asset_id=%s",
         'missing_freshness': 'DELETE FROM asset_freshness WHERE asset_id=%s',
     }
@@ -184,6 +215,24 @@ def test_no_green_from_incomplete_or_stale_evidence(stored, mutation):
     assert report['operational_rehearsal_passed'] is None
     assert conn.execute('SELECT count(*) FROM kala_layer_head').fetchone() == (0,)
     conn.commit()
+
+
+def test_audit_refuses_a_frozen_plan_that_lists_a_writer_ahead_of_its_declared_upstream(stored):
+    # SR-K9-WAVE-ORDER: the run is re-signed (digest valid) with ka_vighnakara frozen ahead of ka_sangam, which it declares.
+    conn, _, _ = stored
+    plan, manifest = conn.execute('SELECT plan, plan_manifest FROM build_runs').fetchone()
+    first, second = plan.index('ka_sangam'), plan.index('ka_vighnakara')
+    plan[first], plan[second] = 'ka_vighnakara', 'ka_sangam'
+    by_asset = {row['asset_id']: row for row in manifest['assets']}
+    manifest['waves'] = [[asset] for asset in plan]
+    manifest['assets'] = [by_asset[asset] for asset in plan]
+    digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    conn.execute('UPDATE build_runs SET plan=%s, plan_manifest=%s, plan_manifest_digest=%s',
+                 (Jsonb(plan), Jsonb(manifest), digest))
+    conn.commit()
+    report = audit(stored)
+    assert report['status'] == 'incomplete'
+    assert any('ka_sangam must precede ka_vighnakara' in failure for failure in report['failures']), report['failures']
 
 
 def test_audit_runs_detectors_read_only_and_never_moves_the_head(stored):

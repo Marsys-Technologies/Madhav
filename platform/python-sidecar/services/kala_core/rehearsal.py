@@ -21,26 +21,42 @@ from psycopg.rows import dict_row, tuple_row
 
 from pipeline.orchestrator.runner import validate_frozen_run_manifest
 from pipeline.orchestrator.service_probes import run_health_probe
+from services.kala_core.publication_admission import derived_waves, merge_edges, order_violations, plan_gaps, upstream_of
 
 
-# PLAN §4.1 / §6.4: F1 precedes the F1-consuming Avadhi read model. The
-# chart-independent sky has no separate registry id: the judge owns its grains.
-# Registrar issuance is delivery-only and is never in this replaceable set.
+# PLAN §4.1 / §6.4: the replaceable layer roster. The chart-independent sky has no separate registry id: the judge owns its
+# grains. Registrar issuance is delivery-only and is never in this replaceable set.
 # K9 r4: ka_gochara_resonance sits between ka_yojaka (its dependency) and the writers that read it
 # (ka_gochara_v5, ka_sangam, ka_vighnakara, ka_kshetra); leaving it out of the plan lets the transit
 # writers run against a stale resonance map. The registry edges are in migration 1392.
-WAVES = (
-    ('ka_dasha_kala', 'ka_vedha_gochara', 'ka_moorti_nirnaya', 'ka_kota_chakra',
-     'ka_tithi_pravesha', 'ka_sudarshana_varsha'),
-    ('ka_yojaka',), ('ka_gochara_resonance',), ('ka_avadhi',), ('ka_gochara_v5',), ('ka_vighnakara',),
-    ('ka_sangam',), ('ka_kshetra',),
-    ('ka_kalasutra', 'ka_kala_darshana', 'ka_taranga', 'ka_jivana_parva'),
-    ('ka_tulana', 'ka_muhurta_seva', 'ka_graha_sancara'),
-)
-ASSETS = tuple(asset for wave in WAVES for asset in wave)
-MATERIALIZED = frozenset(asset for wave in WAVES[1:9] for asset in wave)
+# SR-K9-WAVE-ORDER: this is a SET. The order and the waves are derived from the registry ``depends_on`` (``derived_waves``) and
+# pinned into the plan as ``registry_edges``; there is no hand-listed order here to disagree with the registry (the old list
+# placed ka_vighnakara ahead of ka_sangam, and ka_sangam ahead of ka_muhurta_seva, against both declared edges).
+ROSTER = frozenset((
+    'ka_dasha_kala', 'ka_vedha_gochara', 'ka_moorti_nirnaya', 'ka_kota_chakra', 'ka_tithi_pravesha', 'ka_sudarshana_varsha',
+    'ka_yojaka', 'ka_gochara_resonance', 'ka_avadhi', 'ka_gochara_v5', 'ka_vighnakara', 'ka_sangam', 'ka_kshetra',
+    'ka_kalasutra', 'ka_kala_darshana', 'ka_taranga', 'ka_jivana_parva',
+    'ka_tulana', 'ka_muhurta_seva', 'ka_graha_sancara',
+))
+# The stages and read models that need an explicit grain plan: the roster less the first-level readers and the delivery tail.
+MATERIALIZED = frozenset((
+    'ka_yojaka', 'ka_gochara_resonance', 'ka_avadhi', 'ka_gochara_v5', 'ka_vighnakara', 'ka_sangam', 'ka_kshetra',
+    'ka_kalasutra', 'ka_kala_darshana', 'ka_taranga', 'ka_jivana_parva',
+))
 _INPUTS = ('lane', 'chart_id', 'generation', 'build_id', 'expected_head_generation',
-           'model_digest', 'rule_registry_version', 'conventions', 'grains_by_asset')
+           'model_digest', 'rule_registry_version', 'conventions', 'grains_by_asset', 'registry_edges')
+
+
+def order_edges(edges: dict) -> dict[str, list[str]]:
+    """The registry ``depends_on`` that bears on the roster's order: the roster and every unplanned asset between two of its
+    members, each with its dependencies among those. Idempotent, so a pinned copy re-prepares to itself."""
+    if (not isinstance(edges, dict) or any(not isinstance(deps, list) or any(not isinstance(dep, str) for dep in deps)
+                                           for deps in edges.values())):
+        raise ValueError('registry_edges must map each asset id to its depends_on list')
+    if not ROSTER <= set(edges):
+        raise ValueError('registry_edges lacks roster assets: ' + ', '.join(sorted(ROSTER - set(edges))))
+    relevant = set(ROSTER) | {middle for middle, _, _ in plan_gaps(edges, sorted(ROSTER))}
+    return {asset: sorted(dep for dep in set(edges[asset]) if dep in relevant) for asset in sorted(relevant)}
 
 
 def _digest(value: Any) -> str:
@@ -50,7 +66,7 @@ def _digest(value: Any) -> str:
 def prepare_rehearsal(*, lane: str, chart_id: str, generation: str, build_id: str,
                       expected_head_generation: str | None, model_digest: str,
                       rule_registry_version: str, conventions: dict,
-                      grains_by_asset: dict[str, list[str]]) -> dict:
+                      grains_by_asset: dict[str, list[str]], registry_edges: dict[str, list[str]]) -> dict:
     """Prepare an inert request for the existing cockpit runs API.
 
     The request is NOT submitted. Candidate opening and its pins remain a
@@ -63,6 +79,8 @@ def prepare_rehearsal(*, lane: str, chart_id: str, generation: str, build_id: st
     if (not generation or generation == 'current' or generation == expected_head_generation
             or not model_digest or not rule_registry_version or not conventions):
         raise ValueError('new candidate identity and all input pins are required')
+    edges = order_edges(registry_edges)
+    waves = derived_waves(edges, sorted(ROSTER), close=False)
     if set(grains_by_asset) != MATERIALIZED:
         raise ValueError('every materialized stage/read model needs its explicit grain plan')
     if any(not isinstance(values, list) or not values for values in grains_by_asset.values()):
@@ -74,12 +92,12 @@ def prepare_rehearsal(*, lane: str, chart_id: str, generation: str, build_id: st
     pins = dict(lane=lane, chart_id=chart_id, generation=generation, build_id=build_id,
                 expected_head_generation=expected_head_generation, model_digest=model_digest,
                 rule_registry_version=rule_registry_version, conventions=conventions,
-                grains_by_asset=grains_by_asset)
+                grains_by_asset=grains_by_asset, registry_edges=edges)
     return deepcopy(dict(
         schema='kala.rehearsal/1', status='prepared', **pins,
-        request=dict(chart_id=chart_id, scope='asset_set', scope_target=','.join(ASSETS),
+        request=dict(chart_id=chart_id, scope='asset_set', scope_target=','.join(asset for wave in waves for asset in wave),
                      action='rebuild', clear_before=False),
-        waves=[list(wave) for wave in WAVES],
+        waves=waves,
         operational_rehearsal_passed=None, publication_path_verified=None,
     ))
 
@@ -141,16 +159,14 @@ def _audit_snapshot(conn: Any, cur: Any, plan: dict, database: str, fixture: boo
                 or run['scope_target'] != plan['request']['scope_target']):
             fail('run identity, rebuild scope or completion does not match')
         if frozen is not None:
-            levels = {asset: level for level, wave in enumerate(WAVES) for asset in wave}
             flattened = frozen.plan
-            if set(flattened) != set(ASSETS):
+            if set(flattened) != set(ROSTER):
                 fail('frozen plan does not contain exactly the replaceable layer roster')
             else:
-                wave_levels = [[levels[asset] for asset in wave] for wave in run['plan_manifest']['waves'] if wave]
-                if any(len(set(wave)) != 1 for wave in wave_levels) or any(
-                    max(left) > min(right) for left, right in zip(wave_levels, wave_levels[1:])
-                ):
-                    fail('frozen plan violates stage order')
+                # Order truth is the registry depends_on: the pinned preparation edges and the edges the run was frozen with.
+                wrong = order_violations(merge_edges(plan['registry_edges'], frozen.asset_deps), flattened)
+                if wrong:
+                    fail('frozen plan violates stage order: ' + ', '.join(f'{dep} must precede {asset}' for dep, asset in wrong))
 
     cur.execute('''SELECT * FROM kala_layer_candidate
                    WHERE chart_id=%s AND generation=%s''', (plan['chart_id'], plan['generation']))
@@ -166,25 +182,23 @@ def _audit_snapshot(conn: Any, cur: Any, plan: dict, database: str, fixture: boo
     cur.execute('SELECT * FROM build_run_assets WHERE run_id=%s', (plan['build_id'],))
     runs = cur.fetchall()
     by_asset = {row['asset_id']: row for row in runs}
-    if len(runs) != len(ASSETS) or set(by_asset) != set(ASSETS):
+    if len(runs) != len(ROSTER) or set(by_asset) != set(ROSTER):
         fail('per-run writer results are missing, duplicated or extra')
-    previous_end = None
-    for wave in WAVES:
-        ends = []
-        for asset in wave:
-            observed = by_asset.get(asset)
-            if (observed is None or observed['state'] != 'complete'
-                    or observed['started_at'] is None or observed['ended_at'] is None
-                    or observed['ended_at'] < observed['started_at']):
-                fail(asset + ': writer did not complete with measured timestamps')
-            else:
-                if previous_end is not None and observed['started_at'] < previous_end:
-                    fail(asset + ': writer started before its upstream stage completed')
-                ends.append(observed['ended_at'])
-        if ends:
-            previous_end = max(ends + ([previous_end] if previous_end else []))
+    union = merge_edges(plan['registry_edges'], frozen.asset_deps if frozen is not None else {})
+    for asset in sorted(ROSTER):
+        observed = by_asset.get(asset)
+        if (observed is None or observed['state'] != 'complete'
+                or observed['started_at'] is None or observed['ended_at'] is None
+                or observed['ended_at'] < observed['started_at']):
+            fail(asset + ': writer did not complete with measured timestamps')
+            continue
+        for upstream in sorted(upstream_of(union, asset) & set(ROSTER)):
+            before = by_asset.get(upstream)
+            if (before is not None and before['ended_at'] is not None
+                    and observed['started_at'] < before['ended_at']):
+                fail(asset + ': writer started before its upstream ' + upstream + ' completed')
 
-    for asset in ASSETS:
+    for asset in sorted(ROSTER):
         cur.execute('SELECT asset_kind, integrity_check_sql, health_probe FROM asset_registry WHERE asset_id=%s', (asset,))
         registry = cur.fetchone()
         service = registry is not None and registry['asset_kind'] == 'service'
