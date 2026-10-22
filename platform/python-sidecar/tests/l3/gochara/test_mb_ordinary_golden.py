@@ -510,4 +510,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned at the SR-OD1 merge-back wave 3a (R67): window_cert_check joins the window stage; window_sweep (the production solver path stores the certificate), window_verifier (the
     # certificate check and the demotion path), window_solver (stored_certificate), window_solver_check and numerical_window_gate (demotions, the cap) changed. Re-derived from the merged tree's
     # real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin bb608cda... is the wave-2 head); geometry is unchanged; no golden component is re-captured.
-    assert got["implementation"]["window"] == "ba0588e639ba46447b10de31a7321f97ce0df58f457609beb7898d3a98a5eda5"
+    # Window re-pinned for RV-INT part 1 (B3): pipeline/orchestrator/verification_job.py prints the R8 producer-identity refusal through seal_brief.canonical_json (the ONE serializer, as the brief
+    # refusals above it do) instead of json.dumps. Re-derived from the tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin ba0588e6... is
+    # the wave 3a head); evaluation and geometry are unchanged; no golden component is re-captured.
+    assert got["implementation"]["window"] == "74056e90fe713e2993ea464e48d20354474fe5df9879b89b2be53362f425fe7e"

@@ -425,6 +425,8 @@ def test_verification_cli_uses_the_same_explicit_candidate_profile(final, monkey
     from pipeline.orchestrator import verification_job as cli
     from services.gochara_kernel import rule_registry as rr
     monkeypatch.setenv(cli.ENV_URL, 'postgresql://postgres@127.0.0.1:55433/postgres')
+    monkeypatch.setenv('GOCHARA_RUNNER_IMAGE_DIGEST', 'sha256:' + '1' * 64)      # SR-OD1 R8: a persisting launch names its image and execution
+    monkeypatch.setenv('CLOUD_RUN_EXECUTION', 'projects/p/locations/l/jobs/gochara-verification-job/executions/e1')
     monkeypatch.setattr(cli, '_moon_scope_available', lambda conn: False)
     closed, observed = [], []
     class Conn:

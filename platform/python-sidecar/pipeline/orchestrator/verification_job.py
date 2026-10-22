@@ -154,7 +154,7 @@ def _run(args):
             try:
                 producer = seal_brief.producer_identity()
             except seal_brief.BriefRefused as exc:
-                print(json.dumps({"status": "REFUSED", "code": exc.code, "detail": exc.detail}))
+                print(seal_brief.canonical_json({"status": "REFUSED", "code": exc.code, "detail": exc.detail}))
                 return vj.EXIT_REFUSED
         classes = None if args.classes is None else list(dict.fromkeys(args.classes))      # a repeated --class names it once
         report = vj.run(conn, chart_id=args.chart, generation=args.generation, classes=classes,

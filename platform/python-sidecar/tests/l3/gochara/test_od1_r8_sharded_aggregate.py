@@ -39,13 +39,11 @@ from .test_a53_r11_seal_brief import _brief_as_verifier, _verified  # noqa: F401
 from .test_a53_r12_seal_job import built_numbers  # noqa: F401
 from .test_a53_verification_job import PASSWORD
 
-@pytest.fixture(autouse=True)
-def _job_census_only(monkeypatch):
-    """The one-class world's manifest pins all 26 classes, so the JOB's own census (the G8 refusal) is set aside as in the older job-mechanics suites — but, unlike them, the AGGREGATE's
-    coverage is NOT: each test narrows the pinned universe itself after the run (`_pin_universe`), and A2 shows that a pinned class with nothing built refuses."""
-    from services.gochara_kernel import verification_job as _vj
-    monkeypatch.setattr(_vj, "_enforce_class_census", lambda *a, **k: None)
-    monkeypatch.setattr(_vj, "class_census_violations", lambda *a, **k: [])
+# G8: the one-class world's manifest pins all 26 classes, so the JOB's own census refusal is set aside BY NAME (conftest.g8_job_census_only, closed list + this reason) — but, unlike the older
+# job-mechanics suites (the full opt-out), the AGGREGATE's coverage is NOT: each test narrows the pinned universe itself after the run (`_pin_universe`), and A2 shows that a pinned
+# class with nothing built refuses.
+G8_JOB_CENSUS_ONLY_REASON = "the aggregate's own coverage check is under test on a deliberate one-class marriage world, so only the job's census refusal is set aside"
+pytestmark = pytest.mark.usefixtures("g8_job_census_only")
 
 
 def _pin_universe(w, classes=(CLS,)):

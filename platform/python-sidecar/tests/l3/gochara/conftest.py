@@ -245,6 +245,29 @@ def g8_census_opt_out(request, monkeypatch):
         "SELECT DISTINCT event_class FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchall()}))
 
 
+# G8 (RV-INT part 1, B4): a suite that tests the generation-wide AGGREGATE's coverage needs the JOB's census set aside but the aggregate's coverage check ON, which
+# `g8_census_opt_out` cannot give (it sets both aside). Same closed-list + stated-reason discipline: a module-level `G8_JOB_CENSUS_ONLY_REASON` string and
+# `pytestmark = pytest.mark.usefixtures("g8_job_census_only")`; test_g8_class_census.py enforces that the tree matches this list and that this fixture touches nothing but the job's census.
+G8_JOB_CENSUS_ONLY_ALLOWLIST = frozenset({"test_od1_r8_sharded_aggregate.py"})
+
+
+@pytest.fixture()
+def g8_job_census_only(request, monkeypatch):
+    here = Path(__file__).resolve().parent
+    try:
+        rel = Path(request.module.__file__).resolve().relative_to(here).as_posix()
+    except ValueError:
+        rel = str(request.module.__file__)
+    if rel not in G8_JOB_CENSUS_ONLY_ALLOWLIST:
+        raise pytest.UsageError(f"{rel} is not on the G8 job-census-only allowlist (conftest.G8_JOB_CENSUS_ONLY_ALLOWLIST); adding a suite there is a reviewed decision")
+    reason = getattr(request.module, "G8_JOB_CENSUS_ONLY_REASON", None)
+    if not isinstance(reason, str) or len(reason.strip()) < 20:
+        raise pytest.UsageError(f"{rel} sets the job's G8 class census aside without a stated reason (G8_JOB_CENSUS_ONLY_REASON, at least 20 characters)")
+    from services.gochara_kernel import verification_job as _vj
+    monkeypatch.setattr(_vj, "_enforce_class_census", lambda *a, **k: None)
+    monkeypatch.setattr(_vj, "class_census_violations", lambda *a, **k: [])
+
+
 @pytest.fixture(autouse=True, scope="module")
 def p06_legacy_disposable_guard(request):
     """Ported WP6 suites must run, on the dedicated CI service, before destructive setup."""
