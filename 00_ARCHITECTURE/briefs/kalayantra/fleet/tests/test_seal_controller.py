@@ -44,6 +44,13 @@ Claims (root CLAUDE.md §N.8: each is measured by a detector that can read false
   R10 the gh allow-list: reads + the two dispatches only — never the seal workflow, an approval, the override choice, a POST or gcloud
   R11 run evidence for another commit is refused, never used
   R12 the names the controller reads (workflow files, confirm phrase, job, steps, deploy jobs, ci_gate) exist in the real workflow files
+  L1  a retained step-10 proof (view returned >= 1 job entry, only job entries) is re-measured, reaches approval requested, and the bundle + surrogate message carry `view_refusal_outside` = NULL   (surrogate ruling 09:2xZ)
+  L2  no retained proof => HOLD (named), no approval prepared
+  L3  a non-job entry in the retained view => HOLD naming it
+  L4  an empty view => HOLD
+  L5  a retained proof that reports `view_refusal_outside` green (or any recorded row/verdict the groups do not give) => HOLD: a signal without a detector is null, never green   (§N.8)
+  L6  a proof of another run / attempt is never reused => HOLD
+(the detector's own claims V1–V8 are in test_log_view_proof.py)
 """
 from __future__ import annotations
 
@@ -73,6 +80,7 @@ def _load(name, path):
 
 import os  # noqa: E402
 
+lvp_real = _load("log_view_proof_real", HERE.parent / "log_view_proof.py")        # fixtures are always built by the REAL detector; the controller under test loads its own sibling
 sc = _load("seal_controller_under_test", Path(os.environ.get("SEAL_CONTROLLER", HERE.parent / "seal_controller.py")))
 chk = _load("seal_check_real", SCRIPTS / "gochara_seal_brief_check.py")
 exe = _load("seal_exec_real", SCRIPTS / "gochara_seal_execution_check.py")
@@ -132,6 +140,13 @@ def pkg_jobs(*, pipeline="success", outcome="success"):
             {"name": sc.PKG_JOBS[1], "status": "completed", "conclusion": outcome, "steps": []}]
 
 
+def view_entry(job="gochara-verification-job", typ="cloud_run_job"):
+    return {"insertId": "x", "resource": {"type": typ, "labels": {"job_name": job, "project_id": "madhav-astrology"}}, "jsonPayload": {"message": "not retained"}}
+
+
+GOOD_VIEW = [view_entry(), view_entry(), view_entry()]
+
+
 class FakeGh:
     """The delegated gh login: answers only what the controller's allow-list lets it ask, from fixture state; records every call."""
 
@@ -183,7 +198,7 @@ class World:
 
     def __init__(self, root: Path, *, windows=1000, numbered=400, inconclusive=5, g6=True, brief_gate_shift=0, head_on_main=True, grain_commit=None,
                  drop_class=False, grain_status="VERIFIED", attestation="PASSED", live_extra=0, with_brief=True, env_run=RUN, env_attempt=ATT, brief_producer_head=None,
-                 quiescence=None, verification=True, candidate_violations=()):
+                 quiescence=None, verification=True, candidate_violations=(), logview="ok"):
         self.root = root
         self.ops, self.out, self.pages = root / "ops", root / "out", root / "fast" / "PAGES.log"
         (self.ops / "receipts").mkdir(parents=True)
@@ -245,6 +260,10 @@ class World:
                     "expected_classes": CLASSES, "repo": str(self.repo), "approval_history_file": str(self.history), "seal_run_file": str(self.run_file)}
         if with_brief:
             self.cfg.update(brief_run={"run_id": RUN, "attempt": ATT}, brief_file=str(self.brief), compact_file=str(self.compact), envelope_file=str(self.envelope))
+            self.proof = root / "logview_proof.json"
+            if logview is not None:
+                self.write_proof(**({} if logview == "ok" else logview))
+                self.cfg["logview_proof_file"] = str(self.proof)
         if quiescence is not None:
             self.cfg["quiescence_operation_id"] = "q-op"
             doc = {"schema": "ky.mechanical_quiescence/1", "by": "executor-mechanical", "operation_id": "q-op", "result": "ACCEPTED", "checks": quiescence, "reviewed_commit": self.head,
@@ -270,6 +289,11 @@ class World:
         self.answer(sc.op_id("seal-controller-grains", self.cfg), "\t".join(sc.GRAIN_HEADER) + "\n" + "\n".join(rows) + "\n")
 
     # -- fixture plumbing
+    def write_proof(self, *, probe=None, execution=None, run=RUN, attempt=ATT):
+        doc = lvp_real.build({"probe": GOOD_VIEW if probe is None else probe, "execution": GOOD_VIEW if execution is None else execution}, run_id=run, attempt=attempt, execution="gochara-verification-job-7bwpr")
+        self.proof.write_text(json.dumps(doc))
+        return doc
+
     def write_cfg(self):
         (self.root / "ADOPTED.json").write_text(json.dumps(self.cfg))
 
@@ -849,6 +873,65 @@ def test_r12_the_names_the_controller_reads_exist_in_the_real_workflow_files():
     assert re.search(r"ci_gate:.*?default: require-ci-green", dep, re.S) and "force_all_services:" in dep and 'workflows: ["CI — Ganga Quality Gate"]' in dep
     assert "name: CI — Ganga Quality Gate" in ci
 
+
+
+# ── L: step 10, the positive log-view proof ───────────────────────────────────────────────────────────────────────────────────────
+
+def test_l1_a_proven_view_reaches_approval_requested_and_the_outside_refusal_is_carried_as_null(w):
+    world = w()
+    world.to_approval_requested()
+    bundle = json.loads(next((world.out / "approval").rglob("APPROVAL_BUNDLE.json")).read_text())
+    rows = {r["check"]: r for r in bundle["evidence"]["logview"]["rows"]}
+    assert rows["view_returns_job_entries"]["result"] is True and rows["view_only_job_entries"]["result"] is True
+    assert rows["view_refusal_outside"]["result"] is None                                  # null, never green
+    assert "SR-LOGVIEW-NARROW-KEEP" in rows["view_refusal_outside"]["reason"] and "LOGVIEW-NARROW-IAC" in rows["view_refusal_outside"]["reason"]
+    msg = (world.out / "SURROGATE_MESSAGE.txt").read_text()
+    assert "view_refusal_outside = NULL" in msg and "not green" in msg
+
+
+def test_l2_no_retained_proof_holds_with_a_named_reason_and_prepares_no_approval(w):
+    world = w(logview=None)
+    st = world.run()
+    not_passed(world, st, sc.HOLD, "BRIEF")
+    assert "positive_log_view_proof" in st["reason"] and "no retained proof" in st["reason"]
+    assert not (world.out / "approval").exists()
+
+
+def test_l3_a_non_job_entry_in_the_view_holds_naming_it(w):
+    world = w(logview={"probe": GOOD_VIEW + [view_entry(job="some-other-job"), view_entry(typ="gce_instance")]})
+    st = world.run()
+    not_passed(world, st, sc.HOLD, "BRIEF")
+    assert "positive_log_view_proof" in st["reason"] and "view_only_job_entries" in st["reason"] and "some-other-job" in st["reason"]
+
+
+@pytest.mark.parametrize("kw", [{"probe": []}, {"execution": []}])
+def test_l4_an_empty_view_holds(w, kw):
+    world = w(logview=kw)
+    st = world.run()
+    not_passed(world, st, sc.HOLD, "BRIEF")
+    assert "view_returns_job_entries" in st["reason"] and "empty view proves nothing" in st["reason"], st
+
+
+def test_l5_a_proof_that_reports_the_outside_refusal_green_holds(w):
+    world = w()
+    doc = json.loads(world.proof.read_text())
+    doc["rows"][-1]["result"] = True                                                       # a green signal with no detector behind it
+    world.proof.write_text(json.dumps(doc))
+    st = world.run()
+    not_passed(world, st, sc.HOLD, "BRIEF")
+    assert "recorded rows differ" in st["reason"], st
+    doc["rows"][-1]["result"] = None
+    doc["passed"] = False                                                                    # a recorded verdict the rows do not give
+    world.proof.write_text(json.dumps(doc))
+    assert "recorded verdict differs" in world.run()["reason"]
+
+
+@pytest.mark.parametrize("kw", [{"run": RUN + 1}, {"attempt": ATT + 1}])
+def test_l6_a_proof_of_another_run_or_attempt_is_never_reused(w, kw):
+    world = w(logview=kw)
+    st = world.run()
+    not_passed(world, st, sc.HOLD, "BRIEF")
+    assert "not the brief run" in st["reason"], st
 
 
 # ── P: parity with the reviewed scripts the controller must agree with ─────────────────────────────────────────────────────────────
