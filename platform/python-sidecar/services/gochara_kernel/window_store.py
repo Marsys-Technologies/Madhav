@@ -12,6 +12,7 @@ code with `window_sweep.union_components`.
 """
 from __future__ import annotations
 
+import bisect
 import json as _json
 from datetime import datetime, timezone
 from typing import Callable
@@ -21,7 +22,7 @@ from .convention import drishti_angles
 from .evaluator import record_uuid
 from .record_store import RecordStore, pipelined
 from .substrate import DB_BODY
-from .window_sweep import OperandSource, SweepRecord, WindowDraft, graha_title
+from .window_sweep import OperandSource, SweepRecord, WindowDraft, graha_title, jd_ulp_tolerance
 
 _SIGN_DEG = 30.0
 
@@ -41,8 +42,33 @@ def _wrap180(x: float) -> float:
     return (x + 180.0) % 360.0 - 180.0
 
 
-def _aspect_offset_provider(target: str, agent: str, position_at: Callable[[str, datetime], float]):
-    """Inclusive whole-sign house offset of the target from the aspecting graha's sign at t."""
+def _read_instant(t: datetime, stored: list[datetime]) -> datetime:
+    """The instant at which the sign is READ for `t`, under the platform's boundary convention (half-open: the NEW state owns the change instant —
+    p1_operands.py BOUNDARIES; SR-OD1 R-2 / SR-H2-1S), the same convention and the same slack as the sweep's support/geometry check
+    (`window_sweep._geometry_at_edge`, `jd_ulp_tolerance`). A stored ingress is a Julian-Day double Swiss bisected to 1e-9 d, so it names the true
+    sign edge only to one JD-ulp; `t` within one ulp of a stored ingress `c` is therefore read one ulp INSIDE the state that owns it:
+    `t` in `[c, c + ulp)` reads at `c + ulp` (the new sign owns `c`), `t` in `[c - ulp, c)` reads at `c - ulp` (the old sign). Never looser: a stored edge
+    further than one ulp from the true one is still read as the wrong sign at its own piece, which the solver's H2 detector refuses. The read never
+    leaves the state (clamped to the midpoint to the neighbouring stored ingress when the state is shorter than 2 ulp)."""
+    i = bisect.bisect_right(stored, t)                 # stored[i-1] <= t < stored[i]
+    if i > 0:
+        c = stored[i - 1]
+        tol = jd_ulp_tolerance(c)
+        if t < c + tol:
+            far = c + tol if i == len(stored) else min(c + tol, c + (stored[i] - c) / 2)
+            return far
+    if i < len(stored):
+        c = stored[i]
+        tol = jd_ulp_tolerance(c)
+        if t >= c - tol:
+            return c - tol if i == 0 else max(c - tol, c - (c - stored[i - 1]) / 2)
+    return t
+
+
+def _aspect_offset_provider(target: str, agent: str, position_at: Callable[[str, datetime], float],
+                            ingresses: list[datetime] | None = None):
+    """Inclusive whole-sign house offset of the target from the aspecting graha's sign at t. `ingresses` = the body's STORED sign-ingress instants
+    (ascending); when given, the sign is read under the boundary convention at those edges (`_read_instant`) — absent, at `t` itself."""
     if target.startswith("span:"):
         tgt_sign = targets.span_sign_index(target) - 1
     elif target.startswith("point:"):
@@ -51,9 +77,10 @@ def _aspect_offset_provider(target: str, agent: str, position_at: Callable[[str,
         return None
 
     name = graha_title(agent)
+    stored = sorted(ingresses) if ingresses else []
 
     def offset(t: datetime) -> int:
-        src_sign = int(position_at(name, t) // _SIGN_DEG) % 12
+        src_sign = int(position_at(name, _read_instant(t, stored) if stored else t) // _SIGN_DEG) % 12
         return (tgt_sign - src_sign) % 12 + 1
 
     return offset
@@ -143,13 +170,15 @@ class WindowStore:
                 if g["rel"] in ("conjunction", "aspect") and g["target"].startswith("point:") and g["conv"]:
                     tent_stations = (lambda _n=name, _c=g["conv"]: stations_of(_n, _c))
             if position_at is not None and g["rel"] == "aspect":
-                offset = _aspect_offset_provider(g["target"], g["agent"], position_at)
                 # the dṛṣṭi offset (a house-offset STEP function) changes only where the body changes
                 # sign: the exact ingress instants inside the support are the state boundaries
                 key = (g["agent"], g["conv"])
                 if key not in crossings:
                     crossings[key] = sorted(c.t for c in self._records.fetch_crossings(g["agent"], g["conv"])) \
                         if g["conv"] else []
+                # the sign is read at those stored edges under the half-open boundary convention at JD-ulp precision (a stored ingress names the
+                # true sign edge only to one ulp; a zero-slack read at it saw the OLD sign on the new state's first instant → H2 blank)
+                offset = _aspect_offset_provider(g["target"], g["agent"], position_at, crossings[key])
                 bounds = (lambda lo, hi, _c=crossings[key]: [c for c in _c if lo < c < hi])
             if g["t_exact"] is not None and g["rel"] in ("conjunction", "aspect") \
                     and g["target"].startswith("point:"):
