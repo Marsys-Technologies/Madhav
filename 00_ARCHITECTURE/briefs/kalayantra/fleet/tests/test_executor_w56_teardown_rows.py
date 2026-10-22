@@ -10,6 +10,7 @@ import json
 import pytest
 
 from test_executor_cancel_lane import RUN
+from test_executor_k9_teardown_writer_gate import quiet_writer
 from test_executor_w56_cancel_kinds import ShippedWorld, TEARDOWN_KINDS
 
 SIGNER_ONLY = "needs a V1 signer's acceptance, never a mechanical one"
@@ -35,6 +36,7 @@ def c2(w):
     kind = "orchestrator_rebuild_teardown"
     assert w.mod.mechanical_exempt(kind) and w.mod.mechanical_exempt("orchestrator_rebuild_teardown_dryrun") is False   # the dry run deletes nothing: it is not a deletion
     both = {"backup_taken": True, "dry_run_passed": True}
+    quiet_writer(w, RUN)           # Round A N10: a teardown is admitted only beside a rebuild that ended with no live writer session (test_executor_k9_teardown_writer_gate.py)
     assert w.validate(teardown_request(w, kind, oid="op-td-ok", checks=both)) is None                                    # positive control: a signer's complete acceptance admits it
     req = teardown_request(w, kind, oid="op-td-mech", checks=both)
     req.pop("acceptance_receipt"); req["pack_fill"] = {"pack_manifest_sha256": "0" * 64, "template": {}, "fill_sha256": "0" * 64}

@@ -49,11 +49,14 @@ SETTLED_BEFORE = ('lit', 'service_ok', 'mature', 'dormant')     # runner.py's se
 # Carry (chart_id, generation) with no foreign key to kala_layer_candidate, listed child first (the delete runs in this order). Derived from the write targets of the
 # closed K9 plan's writers (W5/W6 N8): ka_yojaka writes kala_activation_predicates; ka_gochara_resonance's candidate path (relationship_storage.store_projection, migration
 # 1342) writes kala_f1_relationship, whose foreign key points at kala_f1_target_object, both keyed by (chart_id, ayanamsha_id, generation) with generation LIKE 'candidate:%'.
-UNLINKED_CANDIDATE_TABLES = ('kala_activation_predicates', 'kala_f1_relationship', 'kala_f1_target_object', 'gochara_resonance_map')
+UNLINKED_CANDIDATE_TABLES = ('kala_activation_predicates', 'kala_f1_relationship', 'kala_f1_target_object', 'gochara_resonance_map', 'kala_convergence')
 # gochara_resonance_map (migration 1404): ka_gochara_resonance writes the rows of its bound candidate generation (services/ka_gochara_resonance/writer.py), so the unlinked-table
 # delete above removes exactly that run's partition and never the served one (the retained partition is 'legacy', refused below). The receipt names each plan writer whose rows were
 # removed, with the count and the writer's run id (a candidate is bound to one build run: ``kala_layer_candidate.build_id``), so the removal is an honest report, not a silent pass (N.7.6).
 GENERATION_SCOPED_WRITES = {'ka_gochara_resonance': 'gochara_resonance_map'}
+# kala_convergence (migration 1405, ka_sangam's candidate output) is one of the unlinked tables above, and the only one other tables reference: its foreign keys cascade
+# (kala_darshana, kala_obstruction, phala_anchors) or null (kala_bhavishya), so `cascade_reach` must show that the candidate's rows are referenced by nothing
+# but rows of the candidate itself before they are deleted (K9-WRITE-SCOPE F1).
 ORCHESTRATOR = 'asset_runner'                                   # pipeline/orchestrator/db.py: marsys.triggered_by on every build connection
 
 
@@ -191,6 +194,35 @@ def generation_scoped_writes(plan: list[str], deleted: dict[str, int], generatio
             for asset, table in GENERATION_SCOPED_WRITES.items() if asset in plan and table in deleted]
 
 
+def cascade_reach(conn: Any, chart_id: str, generation: str) -> list[tuple[str, str, int]]:
+    """(table, action, rows) of every row OUTSIDE the candidate that a delete of the candidate's kala_convergence rows would delete or null.
+
+    Read from ``pg_constraint`` (the live foreign keys onto kala_convergence, never a list kept here). A referencing row is the candidate's own when its
+    table carries a ``generation`` column equal to the candidate's; any other referencing row (another generation, or a table that cannot say) is served or
+    unattributable and would be destroyed by the cascade, so the teardown refuses (N.7.6)."""
+    oid = conn.execute("SELECT to_regclass('kala_convergence')::oid").fetchone()[0]
+    if oid is None:
+        return []
+    reach = []
+    for schema, table, child_oid, columns, referenced in _referrers(conn, oid):
+        if referenced != ['convergence_id'] or len(columns) != 1:
+            raise ValueError(f'{table} references kala_convergence by {columns}: only convergence_id can be torn down safely')
+        action = conn.execute('SELECT confdeltype FROM pg_constraint WHERE contype = %s AND conrelid = %s AND confrelid = %s',
+                              ('f', child_oid, oid)).fetchone()[0]
+        if action not in ('c', 'n', 'd'):      # cascade, set null, set default: the delete reaches the referencing row
+            continue
+        has_generation = conn.execute("SELECT 1 FROM pg_attribute WHERE attrelid = %s AND attname = 'generation' AND NOT attisdropped",
+                                      (child_oid,)).fetchone() is not None
+        outside = sql.SQL(' AND generation IS DISTINCT FROM %s') if has_generation else sql.SQL('')
+        n = conn.execute(sql.SQL('SELECT count(*) FROM {}.{} WHERE {} IN (SELECT convergence_id FROM kala_convergence '
+                                 'WHERE chart_id = %s AND generation = %s)').format(
+                             sql.Identifier(schema), sql.Identifier(table), sql.Identifier(columns[0])) + outside,
+                         (chart_id, generation, *((generation,) if has_generation else ()))).fetchone()[0]
+        if n:
+            reach.append((table, {'c': 'cascade', 'n': 'set null', 'd': 'set default'}[action], n))
+    return reach
+
+
 def row_counts(conn: Any, chart_id: str, generation: str) -> dict[str, int]:
     """Rows of one candidate generation in the candidate table, in every table that references it, in what hangs below those and in the unlinked tables."""
     counts = {'kala_layer_candidate': conn.execute('SELECT count(*) FROM kala_layer_candidate WHERE chart_id = %s AND generation = %s',
@@ -312,6 +344,10 @@ def teardown(conn: Any, *, run_id: str, chart_id: str = CANONICAL_CHART) -> dict
                                    f'issued history is never torn down' for table, n, by in held))
     if generation == 'legacy':      # the unlinked tables default every row to 'legacy': never aim a delete at the retained partition
         raise ValueError('the legacy partition is not a candidate generation')
+    reached = cascade_reach(conn, chart_id, generation) if 'kala_convergence' in unlinked_tables(conn) else []
+    if reached:       # the foreign keys onto kala_convergence would destroy rows that are not this candidate's: refuse before anything is deleted
+        raise ValueError('; '.join(f"deleting this candidate's kala_convergence rows would {action} {n} row(s) of {table} that are not this candidate's"
+                                   for table, action, n in reached))
     deleted: dict[str, int] = {}
     for dep in deps:
         if dep['referenced_by']:

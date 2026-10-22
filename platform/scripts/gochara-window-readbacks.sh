@@ -325,7 +325,9 @@ check_routine_predecessors() { # B2 (row 2): every repo migration numbered <= 12
     n="${base%%_*}"
     [ "$((10#$n))" -le 1240 ] || continue
     case "$base" in 1204_*|1206_*|1232_*|1233_*|1235_*|1240_*) continue ;; esac
-    echo "$ledger" | grep -qxF "$base" || missing="$missing $base"
+    # here-string, not `echo | grep -q`: under pipefail grep's early exit after the first match can
+    # SIGPIPE a still-writing echo (status 141) and read a present predecessor as missing
+    grep -qxF "$base" <<< "$ledger" || missing="$missing $base"
   done
   if [ -z "$missing" ]; then
     _pass R2-routine-predecessors "every routine migration numbered <= 1240 (the six window files excluded) is recorded applied"

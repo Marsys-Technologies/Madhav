@@ -44,7 +44,8 @@ from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
 from services.kala_core.writer_grain import (
-    GRAIN_STEP, attest_inputs, bound_candidate, grain_steps, predicate_generation)
+    GRAIN_STEP, attest_inputs, bound_candidate, convergence_generation, grain_steps, predicate_generation,
+    refuse_unbound_rewrite)
 from panchang_engine.swiss_backend import records_swiss_backend
 
 # ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
@@ -253,6 +254,11 @@ class _LegacyKaSangamWriter(WriterBase):
         # K9 (SR-K9-PUBLISHABLE): a build bound to a layer candidate reads the
         # predicates of THAT candidate generation, never the published head.
         self._candidate = bound_candidate(conn, getattr(ctx, 'build_id', None), chart_id)
+        if self._candidate is None:
+            # SR-K9-BIND B1b: a build bound to no candidate never rewrites a published head in place (read-only check, before any ledger
+            # or delete); the same check guards every kala_convergence DELETE/INSERT through `convergence_generation` in run_substep.
+            refuse_unbound_rewrite(conn, chart_id, 'ka_sangam')
+
         # K9-WRITE-SCOPE F4: the resume ledger is keyed by the generation this
         # build reads (resolved from the DATABASE, never from ctx.config — the
         # FROZEN config carries no candidate) and by the run that owns it.
@@ -505,16 +511,32 @@ class _LegacyKaSangamWriter(WriterBase):
         )
         return remaining
 
+    # ── generation scope (migration 1405) ────────────────────────────────────
+
+    def _write_generation(self) -> str:
+        """The kala_convergence generation this build writes and deletes (resolved in run_substep).
+        No default: a delete or insert reached without it must fail, never fall back to the served copy."""
+        generation = getattr(self, '_conv_generation', None)
+        if not generation:
+            raise RuntimeError('ka_sangam: kala_convergence generation was not resolved for this substep')
+        return generation
+
     # ── dispatch ─────────────────────────────────────────────────────────────
 
     def run_substep(self, ctx, step: SubStep) -> WriterResult:
         conn     = ctx.db_conn
         chart_id = self._chart_id
         dry_run  = getattr(ctx, 'dry_run', False)
+        # Resolved from the DATABASE each substep (the FROZEN ctx.config carries no candidate): the bound candidate
+        # (read + lock), or 'legacy' for an unbound build that REFUSES once a head exists (SR-K9-BIND B1b). Every kala_convergence delete below is scoped to this generation, so
+        # the FK cascade out of kala_convergence (migration 1405 header) can only reach the children of this
+        # build's own rows (K9-WRITE-SCOPE F1).
+        self._conv_generation = convergence_generation(conn, chart_id, getattr(self, '_candidate', None))
 
         if self._reset_pending and not dry_run:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s", (chart_id,))
+                cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s",
+                            (chart_id, self._write_generation()))
                 cur.execute(
                     "DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'",
                     (chart_id,),
@@ -597,8 +619,8 @@ class _LegacyKaSangamWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("SET LOCAL statement_timeout = 0")
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'near'",
-                        (chart_id,))
+            cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s AND horizon_tier = 'near'",
+                        (chart_id, self._write_generation()))
             # Self-scoped delete: only bulk-clear lifetime rows when there are NO
             # lifetime substeps to clear their own (each _substep_lifetime clears
             # its own signal's rows). Making every substep touch only its own rows
@@ -607,8 +629,8 @@ class _LegacyKaSangamWriter(WriterBase):
             # resumed run byte-identical to an uninterrupted one.
             if not self._lt_preds:
                 cur.execute(
-                    "DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'lifetime'",
-                    (chart_id,),
+                    "DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s AND horizon_tier = 'lifetime'",
+                    (chart_id, self._write_generation()),
                 )
 
         today        = date.today()
@@ -648,8 +670,8 @@ class _LegacyKaSangamWriter(WriterBase):
         with conn.cursor() as cur:
             if signal_id:
                 cur.execute(
-                    "DELETE FROM kala_convergence WHERE chart_id = %s AND signal_id = %s::uuid AND horizon_tier = 'lifetime'",
-                    (chart_id, str(signal_id)),
+                    "DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s AND signal_id = %s::uuid AND horizon_tier = 'lifetime'",
+                    (chart_id, self._write_generation(), str(signal_id)),
                 )
 
         if self._birth_year is None:
@@ -962,6 +984,7 @@ class _LegacyKaSangamWriter(WriterBase):
     def _insert_windows(self, cur, chart_id, deduped: list[dict], horizon_tier: str) -> int:
         """Insert a tier's deduped windows into kala_convergence; return count."""
         store_tier = has_stored_verification(cur, 'kala_convergence')
+        generation = self._write_generation()
         rows_inserted = 0
         # JL-014: within-chart relative tier, computed once over this batch's
         # convergence_score distribution (additive to I-21's absolute confidence_label).
@@ -1014,7 +1037,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         confidence_score, confidence_label,
                         independent_current_count, is_off_dasha_discovery,
                         horizon_tier, domain,
-                        confidence_label_relative, tier_basis{", verification_pass_status" if store_tier else ""}
+                        confidence_label_relative, tier_basis, generation{", verification_pass_status" if store_tier else ""}
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -1022,7 +1045,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         %s, %s,
                         %s, %s,
                         %s, %s,
-                        %s, %s{", %s" if store_tier else ""}
+                        %s, %s, %s{", %s" if store_tier else ""}
                     )
                     """,
                     (
@@ -1047,6 +1070,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         # JL-014: interim within-chart percentile tier + provenance flag
                         c_label_relative,
                         'relative_uncalibrated',
+                        generation,
                         *((UNVERIFIED_DEFAULT,) if store_tier else ()),
                     ),
                 )
@@ -1258,7 +1282,8 @@ class KaSangamWriter(_LegacyKaSangamWriter):
         class/lifetime substep). 'rows' only when kala_convergence holds rows."""
         conn = ctx.db_conn
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
-            cur.execute("SELECT count(*) FROM kala_convergence WHERE chart_id = %s", (self._chart_id,))
+            cur.execute("SELECT count(*) FROM kala_convergence WHERE chart_id = %s AND generation = %s",
+                        (self._chart_id, self._candidate.generation))
             produced = int(cur.fetchone()[0])
         attest_inputs(conn, self._candidate, 'ka_sangam',
                       sources={'kala_activation_predicates': self._grain_sources},

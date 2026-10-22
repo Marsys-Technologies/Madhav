@@ -124,6 +124,7 @@ def test_legacy_writer_binds_its_build_and_preserves_legacy_detector(db, asset, 
         CREATE TABLE kala_convergence(chart_id uuid,convergence_id uuid,signal_id uuid,mode text,
         peak_date date,window_start date,window_end date,convergence_score numeric,
         confidence_label text,orb_strength numeric,rarity_years numeric);
+        CREATE VIEW kala_convergence_served AS SELECT * FROM kala_convergence;
         CREATE TABLE chart_dashas(chart_id uuid,lord_graha text,start_date date,end_date date,
         level_n int,system_id text,ayanamsha_id text);
         ALTER TABLE kala_darshana ADD COLUMN generation text;''')

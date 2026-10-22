@@ -62,6 +62,10 @@ def legacy_schema(conn):
     for name in ('244_l3_ka_sangam.sql', '340_kala_convergence_horizon_tier.sql',
                  '361_kala_convergence_domain.sql', '409_kala_convergence_relative_tier.sql'):
         apply_table_alters(conn, 'kala_convergence', migrations / name)
+    # Migration 1405 is a prerequisite of the Python writers (they run in operator-driven builds, after the protected schema window): the generation
+    # column and the served view the readers take. The view is the plain projection here; its head-or-legacy definition is pinned by test_k9_convergence_scope.py.
+    conn.execute("ALTER TABLE kala_convergence ADD COLUMN generation text NOT NULL DEFAULT 'legacy'")
+    conn.execute('CREATE TEMP VIEW kala_convergence_served AS SELECT * FROM kala_convergence')
     for table, name in (
         ('kala_darshana', '247_l3_ka_kala_darshana.sql'),
         ('kala_bhavishya', '249_l3_ka_bhavishya_lekha.sql'),

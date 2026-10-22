@@ -145,6 +145,32 @@ def test_readback_target_matches_only_the_exact_published_non_slice_manifest(db)
     assert got['head']['generation'] == '5.0' and got['target_matches'] is False
 
 
+def test_driver_readback_of_the_real_query_decodes_and_equals_expected(db, tmp_path, monkeypatch, capsys):
+    """J-6 rehearsal defect: readback_sql.sh writes each cell through csv.writer, so a jsonb cell reached decode_readback as a Python
+    repr (single quotes, True/None), JSONDecodeError, and publish_head / rollback_head never published a completion.json. This runs the
+    real embedded driver (only the connection is the guarded fixture's, read-only) on the real head_operation.readback_sql and requires
+    the bytes it prints to decode to exactly expected_readback (the comparison head_operation.complete makes before it publishes).
+    Reversion that must FAIL it: the `::text` cast on head_readback in readback_sql (the cell comes back a dict, not JSON text)."""
+    conn, mids = db
+    request = req(conn, mids, 'publish_head')
+    row = head.replacement(request)         # the head exactly as the committed publish leaves it, so the readback must equal expected_readback
+    conn.execute('UPDATE public.kala_gochara_authority SET authoritative_generation=%s, flipped_at=%s, flipped_by=%s, evidence_ref=%s'
+                 ' WHERE chart_id=%s', (row['generation'], row['flipped_at'], row['flipped_by'], row['evidence_ref'], CHART_ID))
+    root = tmp_path / 'ky'; sql = root / 'run/ops/sql/j6.sql'; sql.parent.mkdir(parents=True)
+    sql.write_text(head.readback_sql(request))
+    source = (FLEET / 'readback_sql.sh').read_text().split("<<'KYPY'\n", 1)[1].split('\nKYPY', 1)[0]
+    class SameSession:      # the fixture's head update is uncommitted, so the driver must read it on this session; its close/read-only are no-ops
+        read_only = False
+        def __enter__(self): return self
+        def __exit__(self, *exc): return False
+        def cursor(self): return conn.cursor()
+    monkeypatch.setattr(psycopg, 'connect', lambda *a, **kw: SameSession())
+    monkeypatch.setattr(sys, 'argv', ['readback_sql', str(root), str(sql), '', head.raw_sha(sql.read_bytes())])
+    exec(compile(source, 'readback_sql.sh embedded Python', 'exec'), {'__name__': '__main__'})
+    raw = capsys.readouterr().out.encode()
+    assert head.decode_readback(raw) == head.expected_readback(request)
+
+
 # ── SR-HEAD-POLICY-KEEP: the executor's own entry point (the enabled ops-table script) on the guarded fixture ──────────────────────────
 def _decision(outcome='approved'):
     return dict(kind='decision', decision='D-FLIP', state='delegated', actor='steward', ts='2026-10-16T00:00:00+00:00',

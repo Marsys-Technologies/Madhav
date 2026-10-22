@@ -2084,6 +2084,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push MCP image (Artifact Registry, not gcr.io)
+        id: mcp-image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -2144,6 +2145,9 @@ jobs:
             --tag=${{ steps.mcp-candidate.outputs.tag }}
           env_vars: |
             NIRMANA_DEPLOYED_SHA=${{ env.DEPLOY_SHA }}
+            # D-FLIP F-12: the pushed image's immutable digest (the build step's `digest` output), never the
+            # mutable `:DEPLOY_SHA` / `:latest` tag. /health states it as image_digest (platform-mcp/src/lib/deploy_identity.ts).
+            NIRMANA_IMAGE_DIGEST=${{ steps.mcp-image.outputs.digest }}
             PLATFORM_URL=https://amjis-web-938361928218.asia-south1.run.app
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
             # M5: MCP_BASE_URL used for OAuth discovery + callback URL construction.
@@ -2273,11 +2277,13 @@ jobs:
           SMOKE_MCP_URL: ${{ steps.mcp-candidate-url.outputs.url }}
           EXPECTED_SHA: ${{ env.DEPLOY_SHA }}
           EXPECTED_REVISION: ${{ steps.mcp-candidate.outputs.revision }}
+          EXPECTED_IMAGE_DIGEST: ${{ steps.mcp-image.outputs.digest }}
         run: |
           curl --fail --silent --show-error --max-time 15 \
             "$SMOKE_MCP_URL/health" > "$RUNNER_TEMP/mcp-candidate-health.json"
-          jq -e --arg sha "$EXPECTED_SHA" --arg revision "$EXPECTED_REVISION" \
-            '.status == "ok" and .deployed_sha == $sha and .revision == $revision' \
+          jq -e --arg sha "$EXPECTED_SHA" --arg revision "$EXPECTED_REVISION" --arg digest "$EXPECTED_IMAGE_DIGEST" \
+            '.status == "ok" and .deployed_sha == $sha and .revision == $revision
+             and ($digest | test("^sha256:[0-9a-f]{64}$")) and .image_digest == $digest' \
             "$RUNNER_TEMP/mcp-candidate-health.json" >/dev/null || {
               echo "::error::MCP health did not attest the exact zero-traffic candidate."
               exit 1
