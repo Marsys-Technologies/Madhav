@@ -140,6 +140,7 @@ SCHEDULER_STATES = ("ENABLED", "PAUSED", "DISABLED", "UPDATE_FAILED")   # google
 SCHEDULER_UTC = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|\+00:00)")
 SCHEDULER_BACKSTOP = OPS / "scheduler_backstop"
 PROBE_SCHEMA = "ky.served_probe/1"
+CONSUMER_PROBE_KEY = "KY_CONSUMER_PROBE_KEY"   # J-6l-a61: the executor-held consumer credential; `execute` hands it to a `consumer_probe` child ONLY, under exactly this name
 PROBE_SHA256 = re.compile(r"[0-9a-f]{64}")
 _lock = threading.Lock()
 
@@ -147,7 +148,8 @@ _lock = threading.Lock()
 def now() -> str: return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 def redact(s: str) -> str:
     for rx in REDACT: s = rx.sub("[REDACTED]", s)
-    return s
+    key = os.environ.get(CONSUMER_PROBE_KEY)
+    return s.replace(key, "[REDACTED]") if key else s
 def log(msg: str) -> None:
     with _lock, (KY_ROOT / "logs" / "executor.log").open("a") as f: f.write(f"{now()} {redact(msg)}\n")
 def git(*args: str, timeout: int = 120) -> subprocess.CompletedProcess:
@@ -182,6 +184,7 @@ def capabilities_due(last_caps: float, now_s: float) -> bool:
 def capabilities(table_on_main: bool) -> dict:
     caps = {"builder": bool(os.environ.get("KY_BUILDER_DATABASE_URL")), "owner": bool(os.environ.get("KY_OWNER_DATABASE_URL")),
             "layer_verifier": bool(os.environ.get("KY_LAYER_VERIFIER_DATABASE_URL")),
+            "consumer_reader": bool(os.environ.get(CONSUMER_PROBE_KEY)),
             "pgenv": pathlib.Path("/Users/Dev/.config/pravaha/pgenv.sh").exists(),
             "gcloud": subprocess.run(["gcloud", "auth", "list", "--format=value(account)"], capture_output=True, text=True).stdout.strip() != "",
             "none": True, "ops_table_on_main": table_on_main, "production_slot": "PENDING" if FENCE.exists() else "free",
@@ -930,6 +933,31 @@ def served_probe_proof(req: dict, op: dict, rc: int | None, out: str) -> tuple[d
     return rec, None
 
 
+def consumer_probe_proof(req: dict, rc: int | None, out: str, stderr: str = "") -> tuple[dict | None, str | None]:
+    """(record, problem) for a `consumer_probe`'s complete output (J-6l-a61). `record` is the ONE ky.consumer_probe/1 line when it names this operation, this request
+    digest and the requested probe id (else None); `problem` is None only when the record is MEASURED with HTTP 200, states `credentials_sent: true` (the header was
+    sent) and `credential_echoed: false`, carries its body digest and length, and neither stdout nor stderr contains the credential itself. An exit status alone proves nothing."""
+    key = os.environ.get(CONSUMER_PROBE_KEY)
+    if key and (key in out or key in stderr): return None, "the credential appears in the probe's output"
+    found = []
+    for line in out.splitlines():
+        try: value = json.loads(line)
+        except ValueError: continue
+        if isinstance(value, dict) and value.get("schema") == "ky.consumer_probe/1": found.append(value)
+    if len(found) != 1: return None, "consumer probe record missing or not unique"
+    rec = found[0]
+    if (rec.get("probe") != (req.get("args") or {}).get("probe") or rec.get("operation_id") != req.get("operation_id") or rec.get("request_sha256") != request_digest(req)):
+        return None, "consumer probe record does not bind this operation, request and probe"
+    if rec.get("credential_echoed") is not False: return rec, "probe record does not state that the credential was not echoed"
+    if rec.get("status") != "MEASURED": return rec, f"probe record status is {rec.get('status')}, not MEASURED"
+    if rec.get("credentials_sent") is not True: return rec, "probe record does not state that the credential was sent in the header"
+    code, length, digest = rec.get("http_status"), rec.get("body_bytes"), rec.get("body_sha256")
+    if not (type(code) is int and code == 200): return rec, f"the consumer path answered HTTP {code}, not 200"
+    if not (type(length) is int and length >= 0 and isinstance(digest, str) and HEX64.fullmatch(digest)): return rec, "probe record lacks the body length and sha256"
+    if "body" in rec: return rec, "probe record carries a body"
+    return rec, None
+
+
 def receipt(req: dict, status: str, reason: str = "", rc: int | None = None, out: str | None = None, extra: dict | None = None, stderr: str = "", *, preserve_existing: bool = False) -> None:
     """SR-EXECUTOR-FRAMING: `out` is the child's stdout alone and `stderr` its stderr alone; the executor adds no byte of its own to either. A proof is
     parsed from `out` only (a child may lawfully print advisory lines on stderr). `<op>.output.txt` holds stdout exactly (after redaction) and
@@ -1473,6 +1501,7 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
     if op["needs"] == "builder": env["DATABASE_URL"] = os.environ["KY_BUILDER_DATABASE_URL"]
     elif op["needs"] == "owner": env["DATABASE_URL"] = os.environ["KY_OWNER_DATABASE_URL"]
     elif op["needs"] == "layer_verifier": env["DATABASE_URL"] = os.environ["KY_LAYER_VERIFIER_DATABASE_URL"]
+    elif op["needs"] == "consumer_reader": env[CONSUMER_PROBE_KEY] = os.environ[CONSUMER_PROBE_KEY]      # J-6l-a61: this kind's child alone receives the consumer credential
     env["KY_OPERATION_REQUEST"] = json.dumps(req, sort_keys=True, separators=(",", ":"))
     env["PGAPPNAME"] = session_marker(oid)                                      # A7 D-44: libpq tags every connection this child opens, so quiescence can see them
     env["SE_EPHE_PATH"] = os.environ.get("SE_EPHE_PATH", str(KY_ROOT / "ephe")); env["KY_ROOT"] = str(KY_ROOT)
@@ -1697,6 +1726,9 @@ def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
         if cancelled is not None: extra["cancel"] = cancelled   # likewise: the execution state read back after the cancel (CANCELLED, or the observed state beside a FAILED receipt)
         probed, probe_problem = served_probe_proof(req, op, rc, out) if extra is not None and req["kind"] == "served_probe" else (None, None)
         if probed is not None: extra["probe"] = probed          # SR-TEARDOWN-AUTHORITY-GATE: status, content type, length and sha256 of the served body (the body only where the table allows)
+        consumed, consumer_problem = consumer_probe_proof(req, rc, out, stderr) if extra is not None and req["kind"] == "consumer_probe" else (None, None)
+        if consumed is not None: extra["consumer_probe"] = consumed      # J-6l-a61: typed fields only (no body, no credential) — the authenticated consumer-path measurement
+        probe_problem = probe_problem or consumer_problem
         ok = rc == 0 and problem is None and cancel_problem is None and probe_problem is None
         receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or probe_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra, stderr)
         if ok and req["kind"] == "scheduler_resume": scheduler_backstop_satisfy(req)
