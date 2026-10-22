@@ -86,6 +86,11 @@
     ]
    },
    "source": "PLAN \u00a74.2 P2 rows"
+  },
+  {
+   "reason": "no_aspect_rule_defined_at_offset",
+   "when": {},
+   "source": "SR-D6-OBJECTIVE-UNKNOWN (b)"
   }
  ],
  "share_floors": {

@@ -498,6 +498,35 @@ def _reason_census(report: dict) -> tuple[dict, dict]:
     return dict(report.get("reason_windows_any") or {}), dict(_get(report, "totals", "blank_reasons", default={}) or {})
 
 
+#: SR-NEAR-STATION-TIE (option A): the trial STOPS when more than 0.5 % of ANY class's windows are blanked by the near-station tie rule (per mille, integer arithmetic).
+NEAR_STATION_TIE_CAP_PER_MILLE = 5
+NEAR_STATION_TIE_REFUSAL = "near_station_tie_cap_exceeded"
+
+
+def near_station_tie_check(report: dict) -> dict:
+    """SR-NEAR-STATION-TIE: the report's `near_station_tie` section (`window_sweep.near_station_tie_report`, lane od1-plateau-tie) carries the per-class count of windows
+    blanked by the near-station tie rule; a class above 0.5 % of its windows is the named refusal `near_station_tie_cap_exceeded`.  The section is null where the checkout has no such
+    function (it exists only on the od1 integration line): the check then reads NOT_EVALUATED — never a pass for a count nobody took (§N.8).  The cap is the harness's own constant,
+    judged per class from the section's `per_class` counts; the function's own aggregate `cap_exceeded` is read only as a second stop."""
+    claim = f"near-station tie blanks at most {NEAR_STATION_TIE_CAP_PER_MILLE / 10:.1f} % of every class's windows ({NEAR_STATION_TIE_REFUSAL}; SR-NEAR-STATION-TIE)"
+    sec = report.get("near_station_tie")
+    per = sec.get("per_class") if isinstance(sec, dict) else None
+    if not isinstance(per, dict) or not per or sec.get("near_station_tie_blanked") is None:
+        return check(claim, None, report.get("near_station_tie_unavailable") or "the report carries no near-station tie count", "per-class counts from window_sweep.near_station_tie_report",
+                     note="not evaluated: the count could not be taken (the function is absent from this checkout)")
+    counts = {c: {"windows": v.get("windows"), "blanked": v.get("blanked")} for c, v in sorted(per.items()) if isinstance(v, dict)}
+    if len(counts) != len(per) or any(not isinstance(v["windows"], int) or not isinstance(v["blanked"], int) for v in counts.values()):
+        return check(claim, None, per, "an integer windows and blanked per class", note="not evaluated: the per-class counts are malformed")
+    over = {c: v for c, v in counts.items() if v["windows"] and v["blanked"] * 1000 > v["windows"] * NEAR_STATION_TIE_CAP_PER_MILLE}
+    stop = bool(over) or sec.get("cap_exceeded") is True
+    if stop:
+        return check(claim, False, {"refusal": NEAR_STATION_TIE_REFUSAL, "classes_over_cap": over, "per_class": counts, "near_station_tie_blanked": sec["near_station_tie_blanked"]},
+                     NEAR_STATION_TIE_CAP_PER_MILLE / 1000, note=f"REFUSE: {NEAR_STATION_TIE_REFUSAL}")
+    if not any(v["windows"] for v in counts.values()):
+        return check(claim, None, counts, "windows>0")
+    return check(claim, True, {"near_station_tie_blanked": sec["near_station_tie_blanked"], "per_class": counts}, NEAR_STATION_TIE_CAP_PER_MILLE / 1000)
+
+
 def g3_decision_table(report: dict, table: dict) -> dict:
     """PLAN v2 §5 as data: (1) no forbidden reason anywhere (REFUSE); (2) no reason outside the closed allowed set (REFUSE); (3) each floor row: PASS at or above
     the floor, REPORT (to the surrogate) below it when every blank reason of the row is allowed, FAIL when the row carries a forbidden/unknown reason; (4) each
@@ -550,6 +579,7 @@ def g3_decision_table(report: dict, table: dict) -> dict:
         else:
             checks.append(check(label, n / total <= cap["max_share"], {"windows": n, "of": total, "share": round(n / total, 5)}, cap["max_share"],
                                 note="REFUSE above the cap"))
+    checks.append(near_station_tie_check(report))
     return gate("G-3", "Share floors and caps (decision table)", checks, shares=path_shares(report), table={"id": table["table_id"], "sha256": table.get("sha256")})
 
 

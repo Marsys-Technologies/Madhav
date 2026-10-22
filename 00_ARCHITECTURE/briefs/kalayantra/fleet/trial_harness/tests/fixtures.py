@@ -110,8 +110,19 @@ def digests(**over):
     return te.digests_record(vec)
 
 
+def near_station_tie(blanked=None, windows=150):
+    """The report's `near_station_tie` section in the shape of `window_sweep.near_station_tie_report` (schema near_station_tie_blanked/1): `blanked` maps class → windows
+    blanked by the near-station tie rule (default none), `windows` the windows per class."""
+    blanked = blanked or {}
+    per = {c: {"windows": windows, "blanked": blanked.get(c, 0)} for c in sorted(CLASSES)}
+    total, n = sum(v["windows"] for v in per.values()), sum(v["blanked"] for v in per.values())
+    return {"schema": "near_station_tie_blanked/1", "rule": "SR-NEAR-STATION-TIE", "near_station_tie_blanked": n, "windows": total, "per_class": per,
+            "cap_per_mille": 5, "cap_exceeded": n * 1000 > total * 5}
+
+
 def a10_report():
     r = report()
+    r["near_station_tie"], r["near_station_tie_unavailable"] = near_station_tie(), None
     n = A10_PATH_NUMBERED
     r["paths"] = {p: {"windows": PATH_WINDOWS[p], "numbered": n[p]} for p in PATH_WINDOWS}
     r["totals"]["with_peak"] = sum(n.values())

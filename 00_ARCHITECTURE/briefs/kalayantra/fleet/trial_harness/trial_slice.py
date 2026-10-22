@@ -581,6 +581,37 @@ def window_rows_digest(conn, state: dict) -> dict:
             "per_class": {c: h.hexdigest() for c, h in sorted(per_class.items())}, "memberships_sha256": mem.hexdigest(), "memberships": pairs}
 
 
+TIE_ISOLATION_REASON = "tie_isolation_unresolved"          # the blank reason the near-station tie rule writes (SR-NEAR-STATION-TIE; window_solver.REASON_TIE_ISOLATION)
+
+
+class _StoredBlank:
+    """A stored window as `near_station_tie_report` reads it: only its `unqualified_reason` (the function counts from the drafts' own reason, nothing else)."""
+    __slots__ = ("unqualified_reason",)
+
+    def __init__(self, reason):
+        self.unqualified_reason = reason
+
+
+def near_station_tie_section(per: dict, report_fn=None) -> tuple[dict | None, str | None]:
+    """SR-NEAR-STATION-TIE: the per-class count of windows blanked by the near-station tie rule, from `window_sweep.near_station_tie_report` fed the STORED windows of each class
+    (one stand-in per window carrying its stored `unqualified_reason`; numbered windows carry none).  `report_fn` None = import it from the checkout; the function exists only on the
+    od1 integration line, so when it cannot be imported the section is None with the reason — the gate then reads NOT_EVALUATED, never a pass (§N.8)."""
+    if report_fn is None:
+        try:
+            from services.gochara_kernel import window_sweep as _ws
+            report_fn = _ws.near_station_tie_report
+        except (ImportError, AttributeError) as exc:
+            return None, f"window_sweep.near_station_tie_report is not importable from this checkout ({type(exc).__name__})"
+    drafts = {}
+    for ec, c in sorted(per.items()):
+        blank = c["blank_reasons"]
+        stubs = [_StoredBlank(None)] * max(c["windows_total"] - sum(blank.values()), 0)
+        for reason, n in sorted(blank.items()):
+            stubs += [_StoredBlank(reason)] * n
+        drafts[ec] = stubs
+    return report_fn(drafts), None
+
+
 def analyse(conn, state: dict, sidecar_mods: dict) -> dict:
     classes = state["classes"]
     args = (CHART, GENERATION, classes)
@@ -675,8 +706,10 @@ def analyse(conn, state: dict, sidecar_mods: dict) -> dict:
     else:
         policy_effect["took_effect"] = None
         policy_effect["note"] = "default policy requested: the checkout's own default applies; the baseline oracle below judges the outcome"
+    tie, tie_why = near_station_tie_section(per)
     return {"classes": per, "totals": totals, "paths": dict(sorted(paths.items())), "by_class_path": by_class_path, "grains": [grains[k] for k in sorted(grains)],
-            "reason_windows_any": dict(sorted(reason_any.items())), "slice_counts": counts, "anomalies": anomalies, "policy_effect": policy_effect}
+            "reason_windows_any": dict(sorted(reason_any.items())), "slice_counts": counts, "anomalies": anomalies, "policy_effect": policy_effect,
+            "near_station_tie": tie, "near_station_tie_unavailable": tie_why}
 
 
 # ── the builder's numerical-window gate (read back after the build) ─────────────────────────────────────────────

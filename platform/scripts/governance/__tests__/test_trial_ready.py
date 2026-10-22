@@ -488,7 +488,9 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # + the G5-CPU attributed-CPU method for TR gate G-5 (fleet/trial_harness/g5_cpu.py, SR-G5-LOAD; PR #3880) = c38d93f5... (tr-bind's pin was 7d8fbd87...)
 # HARNESS-3.2 (item H-1, PRETR-3a D-8/D-9/D-10; previous pins 7d8fbd87...1f91, 7c3218b8...2c8b, c38d93f5...9be): the cross-check rebuilds P2/P1 windows with the writer's own sources under the final profile,
 # G-4 is scoped to the trial classes, G-5 reads NOT_EVALUATED for a slice or a loaded machine (tests/test_harness_32.py, mutants_h32.py), on top of the G5-CPU harness
-HARNESS_V31_DIGEST = "f8f7180580d8f11ef2330141e841ac0b48790a058c170bf312f887fc2583fd0e"
+# HARNESS-3.2b (item harness-32b; previous pin f8f71805...fd0e): the closed G-2 set carries no_aspect_rule_defined_at_offset (SR-D6-OBJECTIVE-UNKNOWN), and G-3 stops with
+# near_station_tie_cap_exceeded above 0.5 % of a class's windows, NOT_EVALUATED where the count is unavailable (SR-NEAR-STATION-TIE; tests/test_harness_32b.py)
+HARNESS_V31_DIGEST = "2cf47ce95abd99dbde9a68d141b0612fa035da4309274537f59ab986325c7c29"
 
 
 def harness_digest(root):
