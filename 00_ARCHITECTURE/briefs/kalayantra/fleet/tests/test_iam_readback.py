@@ -46,6 +46,7 @@ OTHER = "serviceAccount:someone-else@madhav-astrology.iam.gserviceaccount.com"
 PERSON = "user:person@example.invalid"
 FILTER = 'resource.type="cloud_run_job" AND resource.labels.job_name="gochara-verification-job"'
 SECRET = "gochara-sealer-db-url"
+OTHER_SECRET = "some-other-secret"                      # a secret id outside the allow-list
 VIEW_RESOURCE = f"projects/madhav-astrology/locations/global/buckets/_Default/views/{VIEW}"
 LOG_FLAGS = ["--bucket=_Default", "--location=global", "--project=madhav-astrology", "--format=json"]
 
@@ -102,7 +103,7 @@ def refusal(probe, args, gcloud):
 
 def test_r1_each_probe_takes_exactly_its_own_arguments_in_closed_shapes():
     assert IR.PROBES == ("logging_view", "run_job_iam", "project_iam_member_role", "secret_version_exists")
-    assert IR.validate_args("secret_version_exists", {"secret": "gochara-sealer-db-url", "view": None}) == {"secret": "gochara-sealer-db-url"}
+    assert IR.validate_args("secret_version_exists", {"secret": SECRET, "view": None}) == {"secret": SECRET}
     assert IR.validate_args("logging_view", {"view": VIEW, "job": None}) == {"view": VIEW}
     assert IR.validate_args("run_job_iam", {"job": JOB}) == {"job": JOB}
     ok = {"member": GH, "role": "roles/cloudsql.client"}
@@ -111,8 +112,8 @@ def test_r1_each_probe_takes_exactly_its_own_arguments_in_closed_shapes():
     for probe, args in (("logging_view", {}), ("logging_view", {"view": VIEW, "job": JOB}), ("run_job_iam", {"view": VIEW}), ("run_job_iam", {"job": JOB, "role": "roles/x"}),
                         ("project_iam_member_role", {"member": GH}), ("project_iam_member_role", {"role": "roles/owner"}),
                         ("project_iam_member_role", {"member": GH, "role": "roles/owner", "view": VIEW}), ("get_everything", {"view": VIEW}), ("", {}),
-                        ("secret_version_exists", {}), ("secret_version_exists", {"secret": "gochara-sealer-db-url", "job": JOB}), ("secret_version_exists", {"secret": "some-other-secret"}),
-                        ("secret_version_exists", {"secret": "gochara-sealer-db-url --version=latest"}), ("secret_version_exists", {"secret": "projects/1/secrets/gochara-sealer-db-url"})):
+                        ("secret_version_exists", {}), ("secret_version_exists", {"secret": SECRET, "job": JOB}), ("secret_version_exists", {"secret": OTHER_SECRET}),
+                        ("secret_version_exists", {"secret": f"{SECRET} --version=latest"}), ("secret_version_exists", {"secret": f"projects/1/secrets/{SECRET}"})):
         with pytest.raises(IR.Refused):
             IR.validate_args(probe, args)
 
