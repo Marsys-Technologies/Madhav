@@ -416,6 +416,12 @@ def _dollar_blobs(text):
 
 _SELECTISH = None
 
+# Derived-only migrations whose dollar-quoted bodies are replace() search / replacement FRAGMENTS (`c_old_x text := $o$..$o$`), not complete
+# registered queries: a fragment may legitimately open or close a parenthesis the surrounding stored text balances (1406: the count fragment
+# ends in the `)` that closes the stored text's enclosing call). They are never validated as literals; the migration's own md5 pre/post
+# conditions and the stored-SQL DB tests cover the derived result.
+FRAGMENT_ONLY_MIGRATIONS = {"1406_kala_obstruction_generation_scope.sql"}
+
 
 def _migration_literals(migration_dir=None):
     """([(file, sql)], [files that ASSIGN integrity_check_sql but whose literal cannot be resolved statically]). Resolved: every dollar-quoted body
@@ -428,6 +434,9 @@ def _migration_literals(migration_dir=None):
     for f in sorted((migration_dir or HERE.parents[2] / "migrations").glob("*.sql")):
         t = f.read_text(encoding="utf-8", errors="replace")
         if "integrity_check_sql" not in t:
+            continue
+        if f.name in FRAGMENT_ONLY_MIGRATIONS:
+            unresolved.append(f.name)
             continue
         got = [b for b in _dollar_blobs(t) if _SELECTISH.match(b)]
         # A concatenated prefix is not the complete registered query. Its
@@ -489,6 +498,7 @@ DERIVED_ONLY_MIGRATIONS = {"1026_nirmana_l3_ka_service_selftest_clock_timestamp_
                            "1341_k1_2_avadhi_candidate_dossiers.sql",
                            "1397_k8_registry_remainder.sql",
                            "1405_kala_convergence_generation.sql",
+                           "1406_kala_obstruction_generation_scope.sql",
                            "902_nirmana_l1_ga_condition_integrity_check_scope.sql"}
 
 
