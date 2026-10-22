@@ -284,12 +284,12 @@ def jd_ulp_tolerance(t: datetime) -> timedelta:
 
 
 def _geometry_at_edge(check, instant: datetime, side: str, lo: datetime, hi: datetime) -> bool | None:
-    """The geometry check at one END of a stored piece `[lo, hi)`, under the boundary convention of the platform (half-open: a change instant is the
+    """The geometry check at one END of a stored support `[lo, hi)` (the record's own, which holds the piece the end belongs to), under the boundary convention of the platform (half-open: a change instant is the
     FIRST microsecond of the NEW state, which owns it — p1_operands.py BOUNDARIES, p1_operands_check.py NAMED LIMITS; SR-OD1 R-2 / SR-H2-1S).
     A stored edge is exact only to one JD-ulp (`jd_ulp_tolerance`), so a `False` AT the edge is accepted iff the target is inside at the first
-    instant one ulp INSIDE the piece (`start`: `instant + ulp`; `end`: `instant - ulp`), i.e. the true edge lies within one ulp of the stored one.
+    instant one ulp INSIDE the support (`start`:`instant + ulp`; `end`: `instant - ulp`), i.e. the true edge lies within one ulp of the stored one.
     Never looser: a `False` there too (the edge is further than one ulp off), or an undeterminable probe, keeps the `False`; a `True` or `None`
-    at the edge itself is returned unchanged. The probe never leaves the piece (clamped to its midpoint when the piece is shorter than 2 ulp)."""
+    at the edge itself is returned unchanged. The probe never leaves the support (clamped to its midpoint when the support is shorter than 2 ulp)."""
     g = check(instant)
     if g is not False:
         return g
@@ -1234,9 +1234,13 @@ def draft_windows(event_class: str, records: list[SweepRecord],
             # geometry makes the piece unknown (never affirmative membership)
             geometry_unknown = False
             for p in live:
+                # the probe is bounded by the record's OWN stored support holding this piece, never by the piece: a neighbour's edge one JD-ulp away
+                # (Rahu / Ketu cross a sign 180 deg apart, their stored edges differ by an ulp) cuts a sliver piece shorter than 2 ulp, and a clamp to
+                # ITS midpoint stops the probe short of the true edge (OD1-EARLY D-B)
+                s_lo, s_hi = next((s, e) for s, e in p.rec.supports if s <= a < e)
                 for check in p.checks:
                     for instant, side in ((a, "start"), (b - timedelta(microseconds=1), "end")):
-                        g = _geometry_at_edge(check, instant, side, a, b)
+                        g = _geometry_at_edge(check, instant, side, s_lo, s_hi)
                         if g is False:
                             raise SweepRefusal(
                                 f"record {p.rec.record_id}: its stored support contains {instant.isoformat()} "
