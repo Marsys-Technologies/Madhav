@@ -42,6 +42,7 @@ import dataclasses
 
 import math
 from dataclasses import dataclass, field
+from fractions import Fraction
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Iterable
 
@@ -811,25 +812,72 @@ def _wrap180(x: float) -> float:
     return (x + 180.0) % 360.0 - 180.0
 
 
+#: the Julian-Day double the ephemeris seam reads on (`ka_gochara_v5.speed_at`: `jd = t.timestamp() / 86400 + 2440587.5`). A JD near 2.46e6 is a double on a grid of
+#: 2^-31 d = 40.2 µs, so a seam read is a STEP function of time with that step (a stored/probed instant is exact only to one JD-ulp: D-2/D-3/D-12).
+_JD_UNIX_EPOCH = 2440587.5
+_UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+_US = timedelta(microseconds=1)
+
+
+def _jd_to_datetime(jd: float) -> datetime:
+    """The µs-quantised instant of a JD double. The seam maps it back to the SAME double (the µs error is ≤ 0.5 µs against a half-grid of 20 µs)."""
+    return _UNIX_EPOCH + timedelta(microseconds=round((jd - _JD_UNIX_EPOCH) * 86_400_000_000.0))
+
+
+def _split_jd(origin: datetime) -> tuple:
+    """The JD of `origin` as a double-double `(hi, lo)`: `hi` its nearest JD double (the seam's own grid), `lo` the remainder (|lo| ≤ 2.3e-10 d). Positioning an instant
+    by `hi` alone would lose up to 20 µs — half a JD-ulp — of the true time."""
+    exact = Fraction((origin - _UNIX_EPOCH) // _US, 86_400_000_000) + Fraction(_JD_UNIX_EPOCH)
+    hi = float(exact)
+    return hi, float(exact - Fraction(hi))
+
+
 def _kinematics(rec: "SweepRecord", origin: datetime, cfg: SolverConfig):
-    """`s (seconds from origin) -> (longitude deg, speed deg/s)` for the record's body: ONE ephemeris call when the record carries the speed seam (deg/day), else a centred
-    difference of `longitude_at`. The last few instants are memoised so the solver's offset and velocity reads of one instant cost one evaluation."""
+    """`s (seconds from origin) -> (longitude deg, speed deg/s)` for the record's body: the record's speed seam (deg/day) read CONTINUOUSLY in `s`, else a centred difference of
+    `longitude_at`. The last few instants are memoised so the solver's offset and velocity reads of one instant cost one evaluation.
+
+    H3 (`window_solver`): `Tent.offset` is a deterministic CONTINUOUS function. The seam is not: it reads the ephemeris at a JD double, a step function of time (steps of one
+    JD-ulp, 40.2 µs), so the tent kernel jumped by up to |speed|/orb × 40 µs at every step — more than the solver's 1e-11 tolerances at a sliver where a support ends within one ulp
+    of its own orb crossing (DIAG_P34 clusters A + D: 51 of 55 first failures on major_loss P3/P4). The offset and the speed are therefore the LINEAR INTERPOLATION, at the exact
+    float time, between the seam's reads at the two JD doubles that bracket it (the longitude interpolated wrap-safe), which keeps the solver's stated limits (`MONO_TOL`, `EPS_M`)."""
     cache: dict = {}
+    if rec.longitude_speed_at is not None:
+        # the origin's JD as a double-double (hi, lo): the position of s on the JD axis is then exact to ~1 ns, not to the 20 µs the rounded JD alone would lose
+        base, base_lo = _split_jd(origin)
+        seam = rec.longitude_speed_at
+
+        def _read(jd: float):
+            t = _jd_to_datetime(jd)
+            lon, per_day = seam(t)
+            if lon is None or per_day is None:
+                raise SweepRefusal(f"record {rec.record_id}: the ephemeris seam returned no longitude/speed at {t.isoformat()} — refused, never defaulted")
+            return float(lon), float(per_day)
 
     def at(s: float):
         got = cache.get(s)
         if got is None:
-            t = origin + timedelta(seconds=s)
             if rec.longitude_speed_at is not None:
-                lon, per_day = rec.longitude_speed_at(t)
-                spd = None if per_day is None else float(per_day) / 86400.0
+                x = s / 86400.0
+                j0 = base + x
+                f0 = (base - j0) + base_lo + x                    # the true JD minus j0, days (exact to ~1e-14 d)
+                if f0 < 0.0:
+                    j0 = math.nextafter(j0, -math.inf)
+                    f0 = (base - j0) + base_lo + x
+                j1 = math.nextafter(j0, math.inf)
+                step = j1 - j0
+                frac = f0 / step                                  # in [0, 1)
+                l0, v0 = _read(j0)
+                l1, v1 = _read(j1)
+                lon = (l0 + frac * _wrap180(l1 - l0)) % 360.0
+                spd = (v0 + frac * (v1 - v0)) / 86400.0
             else:
+                t = origin + timedelta(seconds=s)
                 h = timedelta(seconds=cfg.fd_half_seconds)
                 lon = rec.longitude_at(t)
                 a, b = rec.longitude_at(t - h), rec.longitude_at(t + h)
                 spd = None if a is None or b is None else _wrap180(float(b) - float(a)) / (2.0 * cfg.fd_half_seconds)
-            if lon is None or spd is None:
-                raise SweepRefusal(f"record {rec.record_id}: the ephemeris seam returned no longitude/speed at {t.isoformat()} — refused, never defaulted")
+                if lon is None or spd is None:
+                    raise SweepRefusal(f"record {rec.record_id}: the ephemeris seam returned no longitude/speed at {t.isoformat()} — refused, never defaulted")
             if len(cache) > 16:
                 cache.clear()
             got = cache[s] = (float(lon), float(spd))
