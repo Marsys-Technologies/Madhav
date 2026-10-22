@@ -54,10 +54,15 @@ def snapshot_of(conn, where, *params):
             conn.execute(f'SELECT to_jsonb(o) AS j FROM kala_obstruction o WHERE {where} ORDER BY id', params).fetchall()]
 
 
+# The served rows are convergence-anchored: ``snapshot_of`` compares the WHOLE row (``to_jsonb``), so a NULL link here would make the
+# "byte-identical" claim vacuous for ``convergence_id``, the one column a convergence-side delete or rewrite changes (N.8).
+SERVED_CONV = 4242
+
+
 def seed_served(conn):
-    obs(conn, None, 'legacy_a')
-    obs(conn, None, 'legacy_b')
-    obs(conn, HEAD, 'head_a')
+    obs(conn, None, 'legacy_a', conv=SERVED_CONV)
+    obs(conn, None, 'legacy_b', conv=SERVED_CONV)
+    obs(conn, HEAD, 'head_a', conv=SERVED_CONV)
 
 
 # ── O1, O2, O3: the writer ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -66,7 +71,7 @@ def test_o1_candidate_bound_build_writes_only_its_generation_and_leaves_served_r
     convergence(conn)
     seed_served(conn)
     served = snapshot_of(conn, 'generation IS DISTINCT FROM %s', CAND)
-    assert len(served) == 3
+    assert len(served) == 3 and {row['convergence_id'] for row in served} == {SERVED_CONV}
     drive(conn, vighnakara, 'ka_vighnakara')
     assert snapshot_of(conn, 'generation IS DISTINCT FROM %s', CAND) == served, 'a served row was changed or deleted'
     written = snapshot_of(conn, "obstruction_type = 'planted'")
@@ -131,11 +136,12 @@ def test_o4_teardown_deletes_exactly_the_runs_obstruction_generation_and_no_serv
     make_run(ctl, 'completed', generation='a', chart=OTHER_CHART)
     for chart, generation, count in ((CANONICAL, None, 3), (CANONICAL, 'head', 2), (CANONICAL, 'a', 2), (CANONICAL, 'b', 2), (OTHER_CHART, 'a', 1)):
         for index in range(count):
-            obs(ctl, generation, f'{generation}-{index}', chart=chart)
+            obs(ctl, generation, f'{generation}-{index}', chart=chart, conv=SERVED_CONV)
     ctl.commit()
     served = snapshot_of(ctl, 'generation IS NULL OR generation = %s', 'head')
     others = snapshot_of(ctl, "generation = 'b' OR chart_id = %s", OTHER_CHART)
-    assert len(served) == 5 and rebuild_control.census(ctl, failed.build_id)['kala_obstruction'] == 2
+    assert len(served) == 5 and {row['convergence_id'] for row in served} == {SERVED_CONV}
+    assert rebuild_control.census(ctl, failed.build_id)['kala_obstruction'] == 2
 
     result = rebuild_control.teardown(ctl, run_id=failed.build_id)
 

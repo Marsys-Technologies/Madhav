@@ -4,14 +4,19 @@ The migration under test is drafted (its number is allocated and the file placed
 ``platform/migrations/*_kala_obstruction_generation_scope.sql``. One oracle per distinct production claim, each with a "before" leg that
 shows the detector can read false (root CLAUDE.md §N.8; D-OWNER-TESTS-20261016):
 
-  M1  after the migration a K9 run's whole-chart delete of ``kala_convergence`` no longer deletes the served obstruction rows through
-      the foreign key (migration 245 made it ON DELETE CASCADE); the rows survive with a NULL link
+  M1  the migration leaves migration 245's ON DELETE CASCADE foreign key and every obstruction row (``convergence_id`` included) as it
+      found them. The SET NULL switch was WITHDRAWN (review of #3864): it left served orphans that no reader can filter out and that
+      turned the 670 clause (e) RED for every later build. Migration 1405 (scoped ka_sangam delete) is the prerequisite that keeps the
+      cascade away from served rows
   M2  the ka_vighnakara integrity contract (migration 670, accretion clause (a)) reads TRUE when a served and a candidate partition hold
       the same windows, and still reads FALSE for a real duplicate inside ONE partition
   M3  ``count_sql`` counts the served partition only (head's generation when it holds rows, else the legacy rows)
   M4  the digest spec is replaced (1212 retired, one current spec), validates through the real ``_validate_spec`` and hashes the legacy
       partition and each generation separately: a candidate row never moves the legacy digest
   M5  the migration is idempotent and refuses a live registry text it was not written against
+  M6  ph_pratikara's 1:1 tiling (migration 1259) reads the SERVED obstruction partition only, and still reads FALSE for a served gap
+  M7  ka_kala_darshana's clause (e) (migration 670, live through 1356/1375) counts the SERVED obstruction partition only, and still
+      reads FALSE for a summary that disagrees with it
 """
 import os
 import re
@@ -44,6 +49,28 @@ def integrity_670():
     return match.group(1)
 
 
+def pratikara_1259():
+    text = (MIGRATIONS / '1259_integrity_checks_claim_only_own_output.sql').read_text()
+    match = re.search(r"SET integrity_check_sql = \$rk\$(.*?)\$rk\$\nWHERE asset_id = 'ph_pratikara'", text, re.S)
+    assert match, 'migration 1259 ph_pratikara integrity text not found'
+    return match.group(1)
+
+
+def darshana_statement(filename):
+    """The one ``UPDATE ... SET integrity_check_sql`` of ``ka_kala_darshana`` in a K6 migration (the registry is the fixture's table)."""
+    chunks = [c for c in (MIGRATIONS / filename).read_text().split('\nUPDATE ')
+              if 'SET integrity_check_sql' in c and "asset_id='ka_kala_darshana'" in c]
+    assert len(chunks) == 1, filename
+    return 'UPDATE ' + chunks[0].replace('public.asset_registry', 'asset_registry')
+
+
+def darshana_670():
+    text = (MIGRATIONS / '670_nirmana_l3_w3_integrity_contracts.sql').read_text()
+    match = re.search(r"-- ka_kala_darshana\nUPDATE asset_registry SET integrity_check_sql = \$ck\$(.*?)\$ck\$\n WHERE asset_id = 'ka_kala_darshana';", text, re.S)
+    assert match, 'migration 670 ka_kala_darshana integrity text not found'
+    return match.group(1)
+
+
 def spec_1212():
     text = (MIGRATIONS / '1212_nirmana_l3_ka_vighnakara_output_digest_spec.sql').read_text()
     return re.search(r"'ka_vighnakara',\n  '([0-9a-f]{64})',\n  '(\{.*?\})'::jsonb", text, re.S).groups()
@@ -69,6 +96,19 @@ def mdb(kala_db_dsn):
             reviewed_at TIMESTAMPTZ NOT NULL DEFAULT now(), retired_at TIMESTAMPTZ, PRIMARY KEY (asset_id, spec_sha256))''')
         conn.execute('CREATE UNIQUE INDEX asset_output_digest_specs_one_current ON asset_output_digest_specs (asset_id) WHERE retired_at IS NULL')
         conn.execute('INSERT INTO asset_registry VALUES (%s, %s, %s)', ('ka_vighnakara', integrity_670(), OLD_COUNT_SQL))
+        # the two downstream checks that read kala_obstruction, at their LIVE text: 1259 for ph_pratikara; for ka_kala_darshana the
+        # 670 text wrapped by 1354, 1356 and 1375 (replayed from the real migration files)
+        conn.execute('INSERT INTO asset_registry VALUES (%s, %s, NULL)', ('ph_pratikara', pratikara_1259()))
+        conn.execute('INSERT INTO asset_registry VALUES (%s, %s, NULL)', ('ka_kala_darshana', darshana_670()))
+        for filename in ('1354_k6_darshana_candidate.sql', '1356_k6_read_model_build_scoped_detectors.sql'):
+            conn.execute(darshana_statement(filename))
+        conn.execute((MIGRATIONS / '1375_k6_integrity_chart_build_binding.sql').read_text()
+                     .replace("ARRAY['ka_kalasutra','ka_kala_darshana','ka_jivana_parva']", "ARRAY['ka_kala_darshana']")
+                     .replace('public.asset_registry', 'asset_registry'))
+        conn.execute('CREATE TABLE phala_anchors (anchor_id bigserial PRIMARY KEY)')
+        conn.execute('CREATE TABLE phala_mitigation (mitigation_id bigserial PRIMARY KEY, chart_id uuid, obstruction_id bigint, '
+                     'obstruction_severity text, linked_anchor_id bigint)')
+        conn.execute('CREATE TABLE kala_darshana (chart_id uuid, convergence_id bigint, obstruction_summary jsonb, narrative jsonb)')
         sha, spec = spec_1212()
         conn.execute('INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec) VALUES (%s, %s, %s::text::jsonb)', ('ka_vighnakara', sha, spec))
         yield conn
@@ -95,6 +135,10 @@ def integrity(conn):
 
 # ── M1 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+FULL_ROWS = 'SELECT to_jsonb(o) FROM kala_obstruction o ORDER BY id'      # every column: convergence_id is the one a convergence-side change moves
+FK_ACTION = "SELECT confdeltype FROM pg_constraint WHERE conrelid = 'kala_obstruction'::regclass AND contype = 'f'"
+
+
 def served_world(conn):
     conv = convergence(conn)
     conn.execute('INSERT INTO kala_layer_head VALUES (%s, %s)', (CHART, HEAD))
@@ -109,17 +153,21 @@ def test_m1_before_the_migration_the_convergence_delete_cascades_into_the_served
     assert mdb.execute('SELECT count(*) FROM kala_obstruction').fetchone()[0] == 0, 'the premise: migration 245 cascades'
 
 
-def test_m1_after_the_migration_the_convergence_delete_leaves_every_served_row(mdb):
+def test_m1_the_migration_keeps_the_cascade_and_changes_no_obstruction_row(mdb):
     conv = served_world(mdb)
+    before = [r[0] for r in mdb.execute(FULL_ROWS).fetchall()]
+    assert {row['convergence_id'] for row in before} == {conv}, 'the served rows must be convergence-anchored or the comparison is vacuous'
     mdb.execute(migration_sql())
-    before = mdb.execute("SELECT id, chart_id, signal_id, obstruction_type, severity, severity_score, override_score, obstruction_detail, "
-                         "source_citation, generation FROM kala_obstruction ORDER BY id").fetchall()
-    mdb.execute('DELETE FROM kala_convergence WHERE chart_id = %s', (CHART,))     # ka_sangam's whole-chart delete
-    after = mdb.execute("SELECT id, chart_id, signal_id, obstruction_type, severity, severity_score, override_score, obstruction_detail, "
-                        "source_citation, generation FROM kala_obstruction ORDER BY id").fetchall()
-    assert after == before and len(after) == 2, 'a served obstruction row was deleted or changed by the convergence delete'
-    assert mdb.execute('SELECT count(*) FROM kala_obstruction WHERE convergence_id IS NOT NULL').fetchone()[0] == 0
-    assert conv
+    assert [r[0] for r in mdb.execute(FULL_ROWS).fetchall()] == before, 'the migration rewrote or deleted an obstruction row'
+    assert mdb.execute(FK_ACTION).fetchall() == [('c',)], 'the convergence foreign key must stay ON DELETE CASCADE (SET NULL was withdrawn)'
+
+
+def test_m1_after_the_migration_a_convergence_delete_leaves_no_served_orphan(mdb):
+    served_world(mdb)
+    mdb.execute(migration_sql())
+    mdb.execute('DELETE FROM kala_convergence WHERE chart_id = %s', (CHART,))
+    served = mdb.execute("SELECT count(*) FROM kala_obstruction WHERE convergence_id IS NULL AND source_citation LIKE '%%:conv=%%'").fetchone()[0]
+    assert served == 0, 'a convergence-anchored row survived with a NULL link and a citation of the deleted window'
 
 
 # ── M2 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -208,10 +256,84 @@ def test_m4_the_new_digest_spec_replaces_1212_validates_and_keeps_the_legacy_par
 
 def test_m5_the_migration_is_idempotent_and_refuses_a_registry_text_it_was_not_written_against(mdb):
     mdb.execute(migration_sql())
-    state = mdb.execute("SELECT integrity_check_sql, count_sql FROM asset_registry").fetchone()
-    mdb.execute(migration_sql())                                              # a re-run changes nothing
-    assert mdb.execute("SELECT integrity_check_sql, count_sql FROM asset_registry").fetchone() == state
+    snapshot = "SELECT asset_id, integrity_check_sql, count_sql FROM asset_registry ORDER BY asset_id"
+    state = mdb.execute(snapshot).fetchall()
+    mdb.execute(migration_sql())                                              # a re-run changes nothing, for all three assets
+    assert mdb.execute(snapshot).fetchall() == state
     assert mdb.execute('SELECT count(*) FROM asset_output_digest_specs WHERE retired_at IS NULL').fetchone()[0] == 1
     mdb.execute("UPDATE asset_registry SET count_sql = 'SELECT 1'")
     with pytest.raises(psycopg.errors.RaiseException, match='count_sql'):
         mdb.execute(migration_sql())
+
+
+@pytest.mark.parametrize('asset', ['ph_pratikara', 'ka_kala_darshana'])
+def test_m5_a_downstream_check_text_the_migration_was_not_written_against_is_refused_not_skipped(mdb, asset):
+    mdb.execute("UPDATE asset_registry SET integrity_check_sql = integrity_check_sql || ' ' WHERE asset_id = %s", (asset,))
+    with pytest.raises(psycopg.errors.RaiseException, match=asset):
+        mdb.execute(migration_sql())
+
+
+# ── M6 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def pratikara_world(conn):
+    """A served legacy obstruction row with its mitigation: the 1:1 tiling holds."""
+    conv = convergence(conn)
+    obstruction(conn, None, conv)
+    legacy = conn.execute('SELECT id FROM kala_obstruction').fetchone()[0]
+    conn.execute("INSERT INTO phala_mitigation (chart_id, obstruction_id, obstruction_severity) VALUES (%s, %s, 'high')", (CHART, legacy))
+    return conv
+
+
+def pratikara_check(conn):
+    return conn.execute(conn.execute("SELECT integrity_check_sql FROM asset_registry WHERE asset_id = 'ph_pratikara'").fetchone()[0]).fetchone()[0]
+
+
+def test_m6_before_the_migration_an_unserved_candidate_row_reads_as_an_unmitigated_obstruction(mdb):
+    conv = pratikara_world(mdb)
+    assert pratikara_check(mdb) is True
+    obstruction(mdb, CAND, conv)            # what a candidate-bound ka_vighnakara writes; ph_pratikara mitigates the served partition only
+    assert pratikara_check(mdb) is False, 'the premise: 1259 tiles every partition'
+
+
+def test_m6_after_the_migration_the_tiling_reads_the_served_partition_only_and_still_detects_a_served_gap(mdb):
+    conv = pratikara_world(mdb)
+    mdb.execute(migration_sql())
+    obstruction(mdb, CAND, conv)
+    assert pratikara_check(mdb) is True, 'an unserved candidate row has no mitigation by design'
+    obstruction(mdb, None, conv, otype='gandanta')           # a SERVED row nobody mitigated
+    assert pratikara_check(mdb) is False, 'a genuine tiling gap in the served partition must still be detected'
+
+
+# ── M7 ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def darshana_world(conn):
+    """One window, one served legacy obstruction row, and the darshana row whose summary mirrors it entry for entry (670 clause (e))."""
+    conv = convergence(conn)
+    obstruction(conn, None, conv)
+    summary = [{'type': 'malefic_transit', 'severity': 'severe', 'override_score': 0.36}]
+    conn.execute('INSERT INTO kala_darshana VALUES (%s, %s, %s, %s)',
+                 (CHART, conv, Jsonb(summary), Jsonb({'caution': 'beware the malefic_transit window'})))
+    return conv
+
+
+def clause_e(conn):
+    """Clause (e) of the LIVE ka_kala_darshana text, executed on its own (the full text also needs the K6 candidate tables)."""
+    text = conn.execute("SELECT integrity_check_sql FROM asset_registry WHERE asset_id = 'ka_kala_darshana'").fetchone()[0]
+    start = text.index('  AND NOT EXISTS (\n    SELECT 1 FROM kala_darshana d\n    WHERE jsonb_array_length')
+    return conn.execute('SELECT true\n' + text[start:text.index('  -- (f)')]).fetchone()[0]
+
+
+def test_m7_before_the_migration_a_candidate_row_on_a_shared_window_reads_as_a_summary_mismatch(mdb):
+    conv = darshana_world(mdb)
+    assert clause_e(mdb) is True
+    obstruction(mdb, CAND, conv)            # a candidate-bound ka_vighnakara re-detected the same window
+    assert clause_e(mdb) is False, 'the premise: 670 clause (e) counts every partition'
+
+
+def test_m7_after_the_migration_clause_e_counts_the_served_partition_only_and_still_detects_a_summary_mismatch(mdb):
+    conv = darshana_world(mdb)
+    mdb.execute(migration_sql())
+    obstruction(mdb, CAND, conv)
+    assert clause_e(mdb) is True, 'a candidate row is not part of the served summary'
+    obstruction(mdb, None, conv, otype='gandanta')           # a SERVED row the summary does not mirror
+    assert clause_e(mdb) is False, 'a served summary that disagrees with the served rows must still be detected'
