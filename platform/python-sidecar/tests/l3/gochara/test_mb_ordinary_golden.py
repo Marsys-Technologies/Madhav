@@ -519,4 +519,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned at the SR-OD1 merge-back wave 3b (R8X on R67+S3+D3+R2+R8): g6_plan joins the window stage and numerical_window_gate / verification_job changed (aggregate T16 universe, T18 G-6
     # plan, B4 wall rule); geometry is unchanged. Re-derived from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin
     # ba0588e6... is the wave-3a head); R8X's own lane pin 0e4f173d... was derived without R67's window_cert_check and is superseded; no golden component is re-captured.
-    assert got["implementation"]["window"] == "a7d186891c5e1b9b2a66851c8ef0093fbf838a6e69e38feaa1e99a3ddf3dc855"
+    # Window re-pinned for SR-OD1 R8X review S-1 (od1-g6-resolver): window_verifier gains `resolve_inputs` and the production `g6_resolver`, verification_job binds it per grain, g6_plan's
+    # "who resolves" text changed. Evaluation and geometry are asserted unchanged above. Re-derived from the tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin a7d18689... is the wave-3b head); no golden component is re-captured.
+    assert got["implementation"]["window"] == "2e7a0b6a1bf77a03157b44fe7143fcc11dc71c6a4464f4efa1a6bf9d1d713eee"

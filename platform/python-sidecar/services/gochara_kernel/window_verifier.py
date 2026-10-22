@@ -33,6 +33,7 @@ window IS reproduced (pieces cut at those instants, value read at each piece's s
 """
 from __future__ import annotations
 
+import functools
 from datetime import timezone
 
 from . import boundary_match as bm
@@ -351,6 +352,37 @@ def _certificate_verdict(window: dict, *, records: list, objective: str, positio
     return _cc.check_numbered(lo=window["lo"], hi=window["hi"], records=records, objective=objective, stored=stored, position_at=position_at,
                               certificate=certificate, event_class=window["event_class"], against_evaluated=against_evaluated)
 
+def _g6_inputs(conn, *, recs, qualified, chans, factor_rows, position_at, vedha_overlay, channel_at, channel_boundaries, window: dict, path_id: str, against_ok: bool):
+    """The inputs of one numbered window's G-6 from-scratch re-solve (SR-OD1 R8X S-1), built from the stored row, the factor rows and the verifier's own sky with the SAME
+    derivation `_certificate_verdict` uses (`_checker_records`) — never from the builder's certificate. None (the resolver does not cover the window) when there is no sky to
+    solve over or the stored window states no maximum to compare with: an honest null, never a pass."""
+    if position_at is None:
+        return None
+    ov = window["objective_value"] if window["objective_value"] is not None else (window["score"] if path_id == "P4" else None)
+    if ov is None:
+        return None
+    stored = _chk.StoredWindow(peak_instant=window["peak"], objective_value=ov, score=window["score"], evidence_for=window["evidence_for"],
+                               evidence_against=window["evidence_against"], outcome_valence=window["valence"])
+    records = _checker_records(conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at, vedha_overlay=vedha_overlay,
+                               channel_at=channel_at, channel_boundaries=channel_boundaries)
+    return dict(lo=window["lo"], hi=window["hi"], records=records, objective=_chk.OBJ_MAXMIN if path_id == "P4" else _chk.OBJ_SUM, stored=stored,
+                position_at=position_at, event_class=window["event_class"], against_evaluated=against_ok)
+
+
+def g6_resolver(inputs: dict):
+    """The PRODUCTION G-6 resolver (`g6_plan`'s contract: `resolver(request) -> CertReport | None`) over one grain's numbered windows. `inputs` is the `resolve_inputs` mapping
+    `verify_window_semantics` filled while it verified the grain: `{window_id: thunk}`, each thunk building `_g6_inputs` on demand (only the selected ~3 % + five windows pay for it).
+    The re-solve is `window_cert_check.check_numbered(resolve=True)`: NO certificate is used, the verifier's own enclosure solves the window from scratch and compares it with the
+    stored numbers. A window the grain did not verify as numbered (no thunk) or one the inputs cannot be built for is not covered: None, which the plan records as unresolved."""
+    def resolve(request: dict):
+        make = inputs.get(request["window_id"])
+        args = None if make is None else make()
+        if args is None:
+            return None
+        return _cc.check_numbered(certificate=None, resolve=True, **args)
+    return resolve
+
+
 #: the frozen qualification policy this verifier implements (R8-4) — the builder's `window_sweep.draft_windows`
 #: documents the same table; the two are separate code and the DB gate binds the version
 POLICY_VERSION = "window_qualification/1"
@@ -394,7 +426,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                             drishti_bound: bool = False, vedha_bound: bool = False,
                             dynamic_enabled: bool | None = None, policy: str | None = None,
                             solver_check: bool = True, channel_at=None, channel_boundaries=None, p1_check=None,
-                            vedha_overlay=None, moon_sign: int | None = None, position_at=None, solver_check_fn=None) -> dict:
+                            vedha_overlay=None, moon_sign: int | None = None, position_at=None, solver_check_fn=None, resolve_inputs: dict | None = None) -> dict:
     """`dynamic_enabled` (S3): whether a window with a function-valued member is SOLVED (the `window_qualification_table/2` rule 2) or still blank under the
     retired dynamic switch. None (the default) follows the table this code implements: solved under `window_qualification/1`. `False` answers a build made
     with the legacy switch (tests of the retired behaviour only).
@@ -419,6 +451,9 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
     and capped by the numerical-window gate. Without a `solver_check_fn`, a call that has `position_at` runs the verifier's own adapter
     (`_certificate_verdict`: `_checker_records` + `window_cert_check`) — the same classes, from the stored certificate; a call with neither leaves the
     window UNVERIFIED (`solver_check_unavailable_windows`).
+
+    `resolve_inputs` (SR-OD1 R8X S-1): when a dict is passed, every NUMBERED window this call reaches is registered in it, keyed by its `window_id`, as a thunk that builds the inputs of its G-6
+    from-scratch re-solve (`_g6_inputs`) from the same members, factor rows and sky as the certificate check — nothing is derived unless the plan selects the window (`g6_resolver`).
 
     `p1_check` (P1c): a `p1_operands_check.P1Check` — the verifier's own sky + L0 derivation of the P1 states. Bound to this
     path's factor rows it supplies the P1 records' value, side (`channel_at`), unknown reasons and change instants, replacing any
@@ -655,6 +690,12 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                 fully_reproduced += 1
             detail.append(row)
             continue
+        if resolve_inputs is not None and peak is not None:
+            resolve_inputs[wid] = functools.partial(
+                _g6_inputs, conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at, vedha_overlay=vedha_overlay,
+                channel_at=channel_at, channel_boundaries=channel_boundaries, path_id=path_id, against_ok=against_ok,
+                window={"lo": lo, "hi": hi, "peak": peak, "score": score, "evidence_for": ev_for, "evidence_against": ev_against, "valence": valence,
+                        "objective_value": s_objective_value, "event_class": event_class})
         if has_fn:                                   # the solver is enabled: the constant-window derivation cannot reproduce these numbers
             detail.append(row)
             # UNIVERSAL BOUNDS (hold for any factor value in [0,1], so they bind where numbers cannot be
@@ -1291,5 +1332,5 @@ def reconstruct_qualification(conn, *, chart_id: str, generation: str, event_cla
             for wid, v in out.items()}
 
 
-__all__ = ["GOVERNED_FIELDS", "POLICY_VERSION", "reconstruct_qualification", "satisfies_gate",
+__all__ = ["GOVERNED_FIELDS", "POLICY_VERSION", "g6_resolver", "reconstruct_qualification", "satisfies_gate",
            "verify_member_geometry", "verify_member_support", "verify_window_semantics"]
