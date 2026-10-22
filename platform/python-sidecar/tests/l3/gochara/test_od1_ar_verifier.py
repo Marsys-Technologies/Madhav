@@ -273,3 +273,21 @@ def test_b1_the_edge_ulp_is_the_jd_double_spacing_in_whole_microseconds_widened_
     jd = 2440587.5 + TRUE_EDGE.timestamp() / 86400.0
     assert wv._edge_ulp(TRUE_EDGE) == timedelta(microseconds=math.ceil(math.ulp(jd) * 86400e6) + 1)
     assert timedelta(microseconds=39) < wv._edge_ulp(TRUE_EDGE) < timedelta(microseconds=50)
+
+
+# ── K12 (edge-pair review N1, added at the merge-back wave 3c-a) ───────────────────────────────────────────────────────
+def test_k12_the_window_verifier_imports_no_builder_module_so_its_ulp_clamp_is_its_own_code():
+    """The verifier's JD-ulp edge clamp (`_edge_ulp`) is its own restatement, not the builder's `window_sweep.jd_ulp_tolerance`: a verifier that borrowed the builder's helper would agree with the builder
+    by construction on the boundary convention (the second-set-of-eyes claim of B-1). Revert: `from .window_sweep import jd_ulp_tolerance as _edge_ulp` in window_verifier. Sibling pattern:
+    test_od1_c2_vedha_verifier::test_c2_11."""
+    import ast
+    import inspect
+    builder = {"window_sweep", "window_store", "window_solver", "p1_operands", "record_store", "materialise", "contacts", "substrate", "near_miss"}
+    names = set()
+    for node in ast.walk(ast.parse(inspect.getsource(wv))):
+        if isinstance(node, ast.ImportFrom):
+            names.add((node.module or "").split(".")[-1])
+            names.update(a.name for a in node.names)
+        elif isinstance(node, ast.Import):
+            names.update(a.name.split(".")[-1] for a in node.names)
+    assert not names & builder, names & builder
