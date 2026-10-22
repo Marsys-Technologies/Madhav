@@ -1,7 +1,7 @@
 {
  "schema": "ky.g3_decision_table/1",
  "table_id": "SCORING-PLAN-v2-S5/A10.1",
- "source": "SCORING PLAN v2 §5 'G-3 and G-2 as a decision table' (carried unchanged by PLAN A10.1 §9; RECONCILIATION R-9 and N3). Floors are LOWER BOUNDS for the confirmed rulings (Q4/Q9: nodes malefic and numbered in full once 1401 is applied; nodes obstruct, node transits N/A); expectations, not measurements. A shortfall whose blank reasons are all allowed is REPORTED to the surrogate for a dispatch ruling; a reason outside the closed allowed set, or any forbidden reason, is a REFUSAL.",
+ "source": "SCORING PLAN v2 §5 'G-3 and G-2 as a decision table' (carried unchanged by PLAN A10.1 §9; RECONCILIATION R-9 and N3). Floors are LOWER BOUNDS for the confirmed rulings (Q4/Q9: nodes malefic and numbered in full once 1401 is applied; nodes obstruct, node transits N/A); expectations, not measurements. A shortfall whose blank reasons are all allowed is REPORTED to the surrogate for a dispatch ruling; a reason outside the closed allowed set, or any forbidden reason, is a REFUSAL. Added to the closed allowed set by ruling SR-D6-OBJECTIVE-UNKNOWN (b): no_aspect_rule_defined_at_offset (BPHS 1:16496-16502 defines 3-10/5-9/4-8/7 only) is the named blank of a drishti operand at an offset the rule authority does not define; the generic objective_unknown_over_component stays OUTSIDE the set.",
  "rows": [
   {"id": "P1", "paths": ["P1"], "floor": 0.90, "shortfall": "REPORT", "forbidden": "REFUSE", "basis": "nodes fully numbered after 1401; remaining blanks are boundary/solver/dasha-horizon"},
   {"id": "P2", "paths": ["P2"], "floor": 0.85, "shortfall": "REPORT", "forbidden": "REFUSE", "basis": "Q9(i) nodes obstruct, node transits N/A; node residence coverage (V-3) unmeasured, so 85"},
@@ -26,7 +26,8 @@
   "verifier_budget_exhausted",
   "tie_isolation_unresolved",
   "tie_ambiguous",
-  "dasha_horizon_exhausted"
+  "dasha_horizon_exhausted",
+  "no_aspect_rule_defined_at_offset"
  ],
  "forbidden_reasons": [
   "applicability_undeclared",
