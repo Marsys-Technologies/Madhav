@@ -46,6 +46,7 @@ describe('WP-1.3(e) — as_of point-in-time honored', () => {
   it('builds a point-in-time clause (start<=as_of AND end>=as_of) and echoes it', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [DATED_ROW] }) // activation query
+      .mockResolvedValueOnce({ rows: [{ generation: 'g-head' }] }) // kala_layer_head (served generation, K9-WRITE-SCOPE F5)
       .mockResolvedValueOnce({ rows: [] })          // predicates query
     const res = await queryTemporalActivationCapability.handler(
       { chart_id: CHART_ID, as_of: '2020-06-15' }, undefined,
@@ -68,6 +69,7 @@ describe('WP-1.3(e) — range date params honored + echoed', () => {
   it('applies range overlap clauses and echoes an explicit date_filter (mode=range)', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [DATED_ROW] })
+      .mockResolvedValueOnce({ rows: [{ generation: 'g-head' }] }) // kala_layer_head (served generation, K9-WRITE-SCOPE F5)
       .mockResolvedValueOnce({ rows: [] })
     const res = await queryTemporalActivationCapability.handler(
       { chart_id: CHART_ID, date_from: '2019-01-01', date_to: '2022-01-01' }, undefined,
@@ -89,6 +91,7 @@ describe('WP-1.3(e) — range date params honored + echoed', () => {
   it('flags range_defaulted=true when neither date_from/date_to nor as_of is passed', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [DATED_ROW] })
+      .mockResolvedValueOnce({ rows: [{ generation: 'g-head' }] }) // kala_layer_head (served generation, K9-WRITE-SCOPE F5)
       .mockResolvedValueOnce({ rows: [] })
     const res = await queryTemporalActivationCapability.handler({ chart_id: CHART_ID }, undefined)
     const content = (res as { content: Record<string, unknown> }).content
@@ -101,6 +104,7 @@ describe('WP-1.3(e) — date columns serialized as YYYY-MM-DD (no TZ shift)', ()
   it('SELECTs the three date columns through to_char(..., YYYY-MM-DD), not raw', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [DATED_ROW] })
+      .mockResolvedValueOnce({ rows: [{ generation: 'g-head' }] }) // kala_layer_head (served generation, K9-WRITE-SCOPE F5)
       .mockResolvedValueOnce({ rows: [] })
     await queryTemporalActivationCapability.handler({ chart_id: CHART_ID }, undefined)
     const [sql] = queryMock.mock.calls[0] as [string, unknown[]]
@@ -157,12 +161,13 @@ describe('WP-1.3(e) — honest empty with disclosed reason', () => {
   it('non-empty result → empty_reason is null, no disclosure count query', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [DATED_ROW] })
+      .mockResolvedValueOnce({ rows: [{ generation: 'g-head' }] }) // kala_layer_head (served generation, K9-WRITE-SCOPE F5)
       .mockResolvedValueOnce({ rows: [] }) // predicates
     const res = await queryTemporalActivationCapability.handler({ chart_id: CHART_ID }, undefined)
     const content = (res as { content: Record<string, unknown> }).content
     expect(content['empty_reason']).toBeNull()
     expect(content['awaiting_activation_dates']).toBe(false)
-    // exactly 2 queries: activation + predicates (no disclosure count)
-    expect(queryMock.mock.calls.length).toBe(2)
+    // exactly 3 queries: activation + served-generation head + predicates (no disclosure count)
+    expect(queryMock.mock.calls.length).toBe(3)
   })
 })

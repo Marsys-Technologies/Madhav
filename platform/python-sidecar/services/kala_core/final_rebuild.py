@@ -17,7 +17,8 @@ import sys
 from uuid import UUID
 
 from pipeline.orchestrator.runner import validate_frozen_run_manifest
-from services.kala_core.rehearsal import ASSETS, WAVES, _INPUTS, prepare_rehearsal
+from services.kala_core.publication_admission import merge_edges, order_violations, upstream_of
+from services.kala_core.rehearsal import ROSTER, _INPUTS, prepare_rehearsal
 
 CANONICAL_CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 PUBLICATION_MODULE = 'services.kala_core.publication'
@@ -56,12 +57,12 @@ def prepare(plan: dict, frozen_run: dict) -> dict:
     previous = plan['expected_head_generation']
     _require(previous is None or _generation(previous), 'previous head is reserved or unsafe')
     frozen = validate_frozen_run_manifest(frozen_run)
-    _require(len(frozen.plan) == len(ASSETS) and set(frozen.plan) == set(ASSETS), 'complete full-layer roster required')
+    _require(len(frozen.plan) == len(ROSTER) and set(frozen.plan) == set(ROSTER), 'complete full-layer roster required')
     _require(str(frozen_run['id']) == plan['build_id'] and str(frozen_run['chart_id']) == CANONICAL_CHART
              and frozen_run['action'] == 'rebuild' and frozen_run['scope'] == 'asset_set'
              and frozen_run['scope_target'] == plan['request']['scope_target'], 'frozen run identity/scope differs')
     grains = plan['conventions'].get('publication_grains')
-    _require(isinstance(grains, dict) and set(grains) == set(ASSETS), 'publication grains must cover all 19 writers')
+    _require(isinstance(grains, dict) and set(grains) == set(ROSTER), 'publication grains must cover all 20 writers')
     keys = []
     for aid, values in grains.items():
         _require(isinstance(values, list) and bool(values), 'every writer needs explicit publication grains')
@@ -72,11 +73,11 @@ def prepare(plan: dict, frozen_run: dict) -> dict:
     for aid, values in plan['grains_by_asset'].items():
         _require(values == grains[aid], 'materialized grain plan differs from publication plan')
     # validate_frozen_run_manifest checks each wave/asset binding. Additionally
-    # prohibit a valid digest over a different semantic ordering.
-    levels = {aid: i for i, wave in enumerate(WAVES) for aid in wave}
-    observed = [[levels[aid] for aid in wave] for wave in frozen_run['plan_manifest']['waves'] if wave]
-    _require(all(len(set(wave)) == 1 for wave in observed)
-             and all(max(a) <= min(b) for a, b in zip(observed, observed[1:])), 'frozen waves violate stage order')
+    # prohibit a valid digest over a different semantic ordering: no writer may be
+    # frozen ahead of an upstream the registry depends_on declares (SR-K9-WAVE-ORDER).
+    order = merge_edges(plan['registry_edges'], frozen.asset_deps)
+    wrong = order_violations(order, frozen.plan)
+    _require(not wrong, 'frozen waves violate stage order: ' + ', '.join(f'{dep} must precede {aid}' for dep, aid in wrong))
     # (I) INTERPRETATION: preserve the actual frozen order within a dependency
     # wave; K9-1 imposes stage order, not a second scheduler for peer writers.
     expected_head = previous if previous is not None else 'NONE'
@@ -147,30 +148,30 @@ def inspect_readback(bundle: dict, evidence: dict, *, phase: str) -> dict:
     plan = bundle['plan']
     run = evidence.get('run')
     _require(isinstance(run, dict), 'run readback is absent')
-    validate_frozen_run_manifest(run)
+    frozen = validate_frozen_run_manifest(run)
     for key in ('id', 'chart_id', 'scope', 'scope_target', 'action', 'plan', 'plan_manifest', 'plan_manifest_digest'):
         _require(run.get(key) == bundle['frozen_run'][key], 'run identity or frozen plan changed: ' + key)
     _require(run.get('state') == 'completed', 'build run is not completed')
     writers = evidence.get('writers')
-    _require(isinstance(writers, list) and len(writers) == len(ASSETS)
-             and {row['asset_id'] for row in writers} == set(ASSETS), 'per-writer population incomplete')
+    _require(isinstance(writers, list) and len(writers) == len(ROSTER)
+             and {row['asset_id'] for row in writers} == set(ROSTER), 'per-writer population incomplete')
     indexed = {row['asset_id']: row for row in writers}
-    previous_end = None
-    for wave in WAVES:
-        ends = []
-        for aid in wave:
-            row = indexed[aid]
-            _require(row.get('run_id') == plan['build_id'] and row.get('state') == 'complete'
-                     and row.get('error') is None, aid + ': writer failed, skipped or belongs to another run')
-            try:
-                start, end = (datetime.fromisoformat(row[key]) for key in ('started_at', 'ended_at'))
-                valid = start.utcoffset() is not None and end.utcoffset() is not None and start <= end
-            except (TypeError, ValueError, KeyError):
-                valid = False
-            _require(valid, aid + ': missing or invalid measured writer interval')
-            _require(previous_end is None or previous_end <= start, aid + ': writer overlapped an upstream wave')
-            ends.append(end)
-        previous_end = max(ends + ([previous_end] if previous_end else []))
+    intervals = {}
+    for aid in sorted(ROSTER):
+        row = indexed[aid]
+        _require(row.get('run_id') == plan['build_id'] and row.get('state') == 'complete'
+                 and row.get('error') is None, aid + ': writer failed, skipped or belongs to another run')
+        try:
+            start, end = (datetime.fromisoformat(row[key]) for key in ('started_at', 'ended_at'))
+            valid = start.utcoffset() is not None and end.utcoffset() is not None and start <= end
+        except (TypeError, ValueError, KeyError):
+            valid = False
+        _require(valid, aid + ': missing or invalid measured writer interval')
+        intervals[aid] = (start, end)
+    order = merge_edges(plan['registry_edges'], frozen.asset_deps)
+    for aid in sorted(ROSTER):
+        for upstream in sorted(upstream_of(order, aid) & set(ROSTER)):
+            _require(intervals[upstream][1] <= intervals[aid][0], aid + ': writer overlapped its upstream ' + upstream)
     candidate = evidence.get('candidate')
     _require(isinstance(candidate, dict) and all(candidate.get(key) == value for key, value in bundle['candidate'].items()),
              'candidate or its pinned inputs differs')

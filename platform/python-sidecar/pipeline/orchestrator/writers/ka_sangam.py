@@ -152,7 +152,7 @@ _LIFETIME_MAX_PREDICATES = 60   # raised from 24: broader lifetime evidence
 # Bump when substep SEMANTICS change (what a given substep_key computes/writes),
 # so any in-flight resume ledger from an older writer is treated as a different
 # build and replanned-all rather than resumed against stale semantics.
-_KA_SANGAM_RESUME_VERSION = 2
+_KA_SANGAM_RESUME_VERSION = 3   # v3: ledger key adds predicate generation + run id (K9-WRITE-SCOPE F4)
 _LIFETIME_MAX_ROWS = 40_000     # raised from 13k to match expanded predicate budget
 
 # D-3 FIX-PSEL (MEMO_D-3_1.md): per-signature-class quota reserved out of each
@@ -253,6 +253,14 @@ class _LegacyKaSangamWriter(WriterBase):
         # K9 (SR-K9-PUBLISHABLE): a build bound to a layer candidate reads the
         # predicates of THAT candidate generation, never the published head.
         self._candidate = bound_candidate(conn, getattr(ctx, 'build_id', None), chart_id)
+        # K9-WRITE-SCOPE F4: the resume ledger is keyed by the generation this
+        # build reads (resolved from the DATABASE, never from ctx.config — the
+        # FROZEN config carries no candidate) and by the run that owns it.
+        # An ordinary rebuild resolves head-or-legacy inside its own predicate SQL
+        # (planning adds no extra read there); the run id keys it.
+        self._ledger_generation = (
+            self._candidate.generation if self._candidate is not None else 'head-or-legacy')
+        self._ledger_run_id = str(getattr(ctx, 'build_id', None) or '')
 
         # Load candidate predicates.
         #
@@ -523,18 +531,23 @@ class _LegacyKaSangamWriter(WriterBase):
     # ── resumption helpers (migration 436) ────────────────────────────────────
 
     def _compute_build_fingerprint(self, chart_id: str) -> str:
-        """Stable identity of THIS build's inputs — deliberately NOT the per-attempt
-        run_id/build_id (which changes on every retry, so keying resume on it would
-        treat each retry as a new build and never actually resume). Two attempts
-        with the same upstream predicate set, writer version, birth year, and
-        near-tier reference date belong to the SAME build and may resume across a
-        dropped connection; any change to those inputs replans-all (§N.3). `today`
-        is included because the near tier is date-relative — a build that legitimately
-        crosses midnight should replan its near tier rather than resume it stale."""
+        """Stable identity of THIS build run's inputs. Two attempts belong to the
+        SAME build — and may resume across a dropped connection — only when they
+        share the run (`build_id`, which the orchestrator keeps across retries of
+        one run), the predicate generation the build reads (the bound K9 candidate, resolved
+        from the DB in plan_substeps; an ordinary rebuild reads head-or-legacy),
+        the writer version, birth year, near-tier reference date and predicate set.
+        Any change replans-all (§N.3). The run id and generation are what stop a
+        SECOND rebuild on the same day, over the same signal set, from matching an
+        earlier run's ledger and skipping every substep (K9-WRITE-SCOPE F4); `today`
+        is included because the near tier is date-relative — a build that
+        legitimately crosses midnight should replan its near tier, not resume it."""
         sig_ids = sorted(str(p.get('signal_id')) for p in self._pred_dicts if p.get('signal_id'))
         parts = [
             f"v={_KA_SANGAM_RESUME_VERSION}",
             f"chart={chart_id}",
+            f"generation={self._ledger_generation}",
+            f"run={self._ledger_run_id}",
             f"birth_year={self._birth_year}",
             f"today={date.today().isoformat()}",
             f"npreds={len(sig_ids)}",

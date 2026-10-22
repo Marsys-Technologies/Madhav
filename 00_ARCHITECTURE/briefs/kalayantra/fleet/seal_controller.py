@@ -1,8 +1,9 @@
 #!/opt/homebrew/bin/python3
 """SC-1 — the seal controller (PLAN_A10_1 §5; A10.1 B8; O-12 seal approval DELEGATED to the owner surrogate by OWNER-DEPENDENCY-REMOVAL-20261021).
 
-One poll per invocation (launchd StartInterval).  stdlib only.  It never connects to a database, never calls gh / gcloud, never reads a credential, never approves and never seals:
-it MEASURES evidence files and executor receipts, PREPARES documents (readback_sql request documents, the dispatch command, the approval command + evidence bundle) and PAGES.
+One poll per invocation (launchd StartInterval).  stdlib only.  It never connects to a database, never calls gcloud, never reads a credential, never approves and never seals:
+it MEASURES evidence files, executor receipts and GitHub run records, PREPARES documents (readback_sql request documents, the dispatch command, the approval command + evidence bundle) and PAGES.
+Its ONLY gh calls are the allow-list `gh_allowed` (fixed read-only GETs and the two owner-step-11 dispatches), and the dispatches run only with --execute-redeploy under the delegated login.
 Root CLAUDE.md §N.8: every transition below is a detector over real evidence that can read false; a missing input is an honest status and no advance.
 
 THE CHAIN (each stage re-evaluates from evidence on every poll; the persisted markers only make the EMISSIONS exactly-once per key):
@@ -10,8 +11,12 @@ THE CHAIN (each stage re-evaluates from evidence on every poll; the persisted ma
                 readback (executor `readback_sql`, request document written here) shows: the included pinned universe is EXACTLY the adopted expected class list (26; never taken from
                 the surviving rows), every grain VERIFIED under window_qualification/1 with a PASSED attestation, ONE runner commit = the adopted head (mixed head refuses), and the
                 live sums equal the aggregate's.  Plus v1's receipt of the verification operation (COMPLETED, exit 0, bound to head) and the INCONCLUSIVE cap (0.5 %).
+  1b REDEPLOY   owner step 11 (A11 item 9): the checking job (`gochara-verification-job`) redefined at the sealing head — main tip == head, CI green, delegated login, dispatch of the
+                definition workflow (and owner step 11a, the package build with ci_gate=require-ci-green, only when the definition finds no pipeline image), job outcomes read back, surrogate paged.
   2 BRIEF       the MAIN-produced brief (`gochara_seal_brief_check.py` green; the retained execution envelope `check-envelope` green for THIS run/attempt/commit/brief digest/brief id;
                 the head is an ancestor of origin/main; the brief's own numerical gate equals the aggregate).  No brief yet => the exact dispatch command is prepared and the surrogate paged.
+  2b LOG VIEW   step 10 positive proof: the retained `logview_proof.json` of the brief run is RE-MEASURED (the view returned >= 1 `gochara-verification-job` entry and ONLY such entries); false / missing /
+                unreadable => HOLD with a named reason.  `view_refusal_outside` is carried as NULL (SR-LOGVIEW-NARROW-KEEP; re-evaluated by LOGVIEW-NARROW-IAC) — never green.
   3 APPROVAL    all of the above + (when named) the executor's quiescence record => the evidence bundle + the exact approval comment/command are written and the surrogate is paged, ONCE per
                 (generation, head, run, attempt).  Nothing is approved by this program: the gochara-seal required reviewer approves.
   4 SEALER      the approval history of THIS run is checked by the reviewed `gochara_seal_approval.py` (the grammar line, run/attempt, digest, brief id) and the approver is the expected
@@ -23,7 +28,7 @@ Adopted-generation file (JSON, written by the cockpit; default /Users/Dev/kalaya
   chart_id, generation, head (40-hex sealing commit), verification_operation_id, aggregate_file, expected_classes [26 names] (+ optional expected_class_count),
   repo (a checkout whose origin/main contains the head; scripts default to <repo>/platform/scripts), brief_run {run_id, attempt}, brief_file, compact_file, envelope_file,
   optional: approval_history_file, seal_run_file, quiescence_operation_id, expected_approver (default the gochara-seal required reviewer), triggering_actor, readback_epoch,
-  item_id, kyd, reviewed_commit, scripts_dir, aggregate_readback_operation_id.
+  item_id, kyd, reviewed_commit, scripts_dir, aggregate_readback_operation_id, logview_proof_file (REQUIRED once the brief exists: the brief job's `logview_proof.json`, step 10).
 """
 from __future__ import annotations
 
@@ -32,9 +37,11 @@ import contextlib
 import datetime as dt
 import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from fractions import Fraction
@@ -67,12 +74,39 @@ _CLASS = re.compile(r"[A-Za-z0-9_.-]{1,80}")
 # the approval comment line — pinned equal to platform/scripts/gochara_seal_approval.py `_LINE` by a parity test
 APPROVAL_LINE = "brief-digest: {digest}  run: {run}  attempt: {attempt}  brief-id: {brief_id}"
 
+def _sibling(name: str):
+    """The reviewed sibling module next to this file, loaded by path (this program is run as a script AND loaded by path in its tests)."""
+    spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name(f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+lvp = _sibling("log_view_proof")                           # step-10 positive log-view proof (SR-LOGVIEW-NARROW-KEEP); pure, no gcloud
+
 READY, NOT_READY = "READY", "NOT_READY"
 NO_INPUT, STALE_HEAD, REFUSED, NOT_PASSED = "NO_INPUT", "STALE_HEAD", "REFUSED", "NOT_PASSED"
 OVER_CAP, DISAGREEMENT, AWAITING_READBACK = "INCONCLUSIVE_OVER_CAP", "DISAGREEMENT", "AWAITING_READBACK"
 AWAITING_BRIEF, AWAITING_APPROVAL, AWAITING_SEAL = "AWAITING_BRIEF", "AWAITING_APPROVAL", "AWAITING_SEAL"
 RETRY_NEEDED, HALTED, SEALED = "RETRY_NEEDED", "HALTED", "SEALED"
-STAGES = ("START", "AGGREGATE", "BRIEF", "APPROVAL_REQUESTED", "APPROVED", "SEALED")
+HOLD = "HOLD"                                              # a named pre-seal check read false or could not be read: no approval is prepared
+STAGES = ("START", "AGGREGATE", "REDEPLOY", "BRIEF", "APPROVAL_REQUESTED", "APPROVED", "SEALED")
+
+# owner step 11 (OWNER_GUIDE_v2 §6): the checking job redeployed at the sealing version.  Every name below is pinned to the workflow file it reads by a parity test.
+DEF_WORKFLOW = "gochara-verification-job-deploy.yml"       # "Gochara verification job (definition, reviewed)"
+DEF_CONFIRM = "DEFINE-GOCHARA-VERIFICATION-JOB"            # its `confirm` input
+DEF_JOB = "Define the verification job"
+DEF_STEPS = ("Resolve the immutable image digest", "Create or update the verification job", "Read the WHOLE definition back", "Run the secret-isolation preflight")
+PKG_WORKFLOW = "deploy.yml"                                # owner step 11a: the main "Deploy" workflow builds the pipeline image the definition runs
+PKG_JOBS = ("Build & Deploy Pipeline Job Image", "Require earned deployment outcome")
+CI_WORKFLOW = "ci.yml"                                     # "CI — Ganga Quality Gate", the workflow deploy.yml's own dispatch gate reads
+CI_GATE = "require-ci-green"                               # deploy.yml `ci_gate` input; the only value this program ever sends
+RUNS_PAGE, JOBS_PAGE = 50, 100
+VISIBLE_SKEW_S, VISIBLE_TIMEOUT_S = 120, 1200              # a dispatched run must show up in the run list within 20 min (clock skew allowance 2 min)
+MAX_DEF_DISPATCH = 2                                       # the definition is dispatched at most twice per key: once, and once more after a package build
+BAD_JOB = ("failure", "cancelled", "timed_out", "action_required", "startup_failure", "stale")
+AWAITING_REDEPLOY, AWAITING_CI = "AWAITING_REDEPLOY", "AWAITING_CI"
 
 
 class NotReady(Exception):
@@ -465,6 +499,23 @@ def check_brief(a: dict, agg: dict, sdir: Path, python: str, main_ref: str) -> d
             "scripts": {n: {"path": str(sdir / n), "sha256": sha256_file(sdir / n)} for n in ("gochara_seal_brief_check.py", "gochara_seal_execution_check.py")}}
 
 
+def check_logview_proof(a: dict, brief: dict) -> dict:
+    """Step 10, the POSITIVE log-view proof: the retained proof of the brief run (adopted `logview_proof_file`, uploaded by the brief job) is RE-MEASURED here from its groups, never trusted.
+    Missing / unreadable / of another run / false => HOLD with a named reason.  `view_refusal_outside` is carried as NULL with its reason and is never counted as a pass (SR-LOGVIEW-NARROW-KEEP)."""
+    name = "positive_log_view_proof"
+    path = a.get("logview_proof_file")
+    if not path or not Path(path).is_file():
+        raise NotReady(HOLD, f"{name}: no retained proof (adopted `logview_proof_file` {path!r}); the brief job's view read has not been proven, so no approval is prepared")
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+        res = lvp.verify(doc, run_id=brief["run_id"], attempt=brief["attempt"])
+    except (OSError, ValueError, lvp.ViewUnreadable) as exc:
+        raise NotReady(HOLD, f"{name}: unreadable — {exc}") from None
+    if not res["passed"]:
+        raise NotReady(HOLD, f"{name}: {res['reason']}")
+    return {"path": str(path), "sha256": sha256_file(Path(path)), "rows": res["rows"], "view": doc["view"], "execution": doc.get("execution")}
+
+
 # ── stage 3: the approval preparation (emission, exactly once per generation × head × run × attempt) ───────────────────────────
 
 def approval_comment(brief: dict) -> str:
@@ -478,7 +529,7 @@ def approval_command(a: dict, brief: dict) -> str:
             f"  -f comment='{approval_comment(brief)}'")
 
 
-def bundle_doc(a: dict, agg: dict, brief: dict, quiescence: dict | None, out: Path, now) -> dict:
+def bundle_doc(a: dict, agg: dict, brief: dict, quiescence: dict | None, out: Path, now, redeploy: dict | None = None, logview: dict | None = None) -> dict:
     n = agg["aggregate"]
     return {"schema": SCHEMA, "kind": "approval_bundle", "key": key_of(a), "run": {"run_id": brief["run_id"], "attempt": brief["attempt"]}, "chart_id": a["chart_id"],
             "generation": a["generation"], "head": a["head"], "approver": approver_of(a), "approval_comment": approval_comment(brief), "brief_digest": brief["brief_digest"],
@@ -488,6 +539,8 @@ def bundle_doc(a: dict, agg: dict, brief: dict, quiescence: dict | None, out: Pa
                         "gate_digest": brief["brief_gate_digest"]},
             "evidence": {"aggregate_sha256": agg["aggregate_sha256"], "brief": brief["brief_path"], "compact": brief["compact_path"], "envelope": brief["envelope_path"],
                          "grain_readback": agg["grain_readback"], "verification": agg["verification"], "scripts": brief["scripts"],
+                         "redeploy": redeploy,                                                          # owner step 11: the definition run (and package run) read back at the sealing head
+                         "logview": logview,                                                            # step 10: positive log-view proof (+ the outside-refusal row, NULL)
                          "quiescence": quiescence if quiescence is not None else None,
                          "quiescence_note": "measured and ACCEPTED" if quiescence is not None else "NOT MEASURED: the adopted file names no quiescence operation"},
             "prepared_at": utc(now), "bundle_dir": str(out)}
@@ -500,6 +553,8 @@ def surrogate_text(doc: dict, cmd: str) -> str:
             f"APPROVAL REQUESTED. Generation {doc['generation']} (chart {doc['chart_id']}), sealing head {doc['head']}: the aggregate is PASSED over {v['classes']} classes / {v['grains']} grains,\n"
             f"  G-6 {v['g6']}; windows {v['windows']}, numbered {v['numbered']}, blank-with-reason {v['blank']}; INCONCLUSIVE {v['inconclusive']} of {v['windows']} = {v['share_percent']} (cap {v['cap_percent']}).\n"
             f"  brief digest {doc['brief_digest']}, brief id {doc['brief_id']}, producer execution {doc['producer_execution_id']}.\n"
+            f"  checking job redeployed at the sealing head: definition run {((doc['evidence'].get('redeploy') or {}).get('definition') or {}).get('run_id')} read back green (owner step 11).\n"
+            f"  step 10 log view: PROVEN positive (view returned only {lvp.JOB} entries, at least one); {lvp.OUTSIDE} = NULL ({lvp.OUTSIDE_REASON}) — not green.\n"
             f"  quiescence: {doc['evidence']['quiescence_note']}.\n"
             f"  evidence bundle: {doc['bundle_dir']}/APPROVAL_BUNDLE.json\n\n"
             f"Approval comment (exactly this line):\n  {doc['approval_comment']}\n\n"
@@ -553,7 +608,7 @@ def emit_dispatch(a: dict, out: Path, pages_log: Path, now) -> str:
         return "NEW"
 
 
-def emit_approval(a: dict, agg: dict, brief: dict, quiescence: dict | None, out: Path, pages_log: Path, now) -> tuple[str, dict]:
+def emit_approval(a: dict, agg: dict, brief: dict, quiescence: dict | None, out: Path, pages_log: Path, now, redeploy: dict | None = None, logview: dict | None = None) -> tuple[str, dict]:
     key = key_of(a)
     run_key = f"{key} run={brief['run_id']} attempt={brief['attempt']}"
     bdir = out / "approval" / a["generation"] / f"{a['head'][:12]}-r{brief['run_id']}a{brief['attempt']}"
@@ -567,7 +622,7 @@ def emit_approval(a: dict, agg: dict, brief: dict, quiescence: dict | None, out:
         if existing is not None and existing.get("brief_digest") != brief["brief_digest"]:
             raise NotReady(REFUSED, f"the approval prepared for {run_key} names brief digest {existing.get('brief_digest')!r}, the retained brief is now {brief['brief_digest']!r}: "
                                     "a stale or altered brief is never re-approved; start a fresh run")
-        doc = existing if existing is not None else bundle_doc(a, agg, brief, quiescence, bdir, now)
+        doc = existing if existing is not None else bundle_doc(a, agg, brief, quiescence, bdir, now, redeploy, logview)
         if marker.exists():
             return "ALREADY", doc
         if existing is None:                                                          # the bundle is complete on disk BEFORE any page or marker
@@ -719,6 +774,304 @@ def emit_stop(a: dict, kind: str, reason: str, run: tuple[int, int] | None, out:
         write_marker(out, name, {"key": key, "kind": kind, "reason": reason, "ts": utc(now)})
 
 
+# ── stage 1b: owner step 11 — the checking job redeployed at the sealing version (A11 item 9) ─────────────────────────────────────
+# Owner step 11 (OWNER_GUIDE_v2 §6): "sealing refuses unless the checking job was set up at the very same version that runs the seal".  The controller does it, under the
+# DELEGATED gh login of this Mac (OWNER-DEPENDENCY-REMOVAL-20261021), through the ONLY gh calls in `gh_allowed` below: fixed read-only GETs, and the two workflow dispatches.
+# It never dispatches the approval/seal workflow, never approves, never sends the CI-gate override choice, never runs gcloud, and never reads a credential (gh uses its own login).
+# Evidence per transition (§N.8) — every detector below can read false:
+#   main tip == the adopted head (live)        refuses STALE_HEAD "main moved" — step 11 goes stale if anything merges after it
+#   CI green at the head                       the newest COMPLETED ci.yml run of the head is `success` and no newer run is still going (deploy.yml's own gate reads the same)
+#   delegated login                            `gh api user` login == the expected reviewer login
+#   done                                       a COMPLETED `success` definition run at head_sha == head on main, whose job "Define the verification job" and each of its four
+#                                              named steps (digest, create/update, whole-definition readback, isolation preflight) read back `success`
+#   no package                                 the definition run failed AT the digest step => owner step 11a: deploy.yml with ci_gate=require-ci-green, force_all_services=true
+#                                              (the pipeline-image job runs only then when the head did not change the pipeline), then the definition once more
+# Exactly-once: a marker is written BEFORE each dispatch (at most once per key and kind; a crash after the dispatch can only wait, never re-dispatch); a run that never appears
+# within 20 min, a failed run, or a package that still leaves no image HALTS (marker + one page); nothing is retried by guess.
+
+def api_get(path: str) -> list[str]:
+    return ["api", "-X", "GET", path]
+
+
+def runs_path(workflow: str, head: str) -> str:
+    return f"repos/{REPO_SLUG}/actions/workflows/{workflow}/runs?head_sha={head}&per_page={RUNS_PAGE}"
+
+
+def jobs_path(run_id: int) -> str:
+    return f"repos/{REPO_SLUG}/actions/runs/{run_id}/jobs?per_page={JOBS_PAGE}"
+
+
+def def_dispatch_argv() -> list[str]:
+    return ["workflow", "run", DEF_WORKFLOW, "--repo", REPO_SLUG, "--ref", "main", "-f", f"confirm={DEF_CONFIRM}"]
+
+
+def pkg_dispatch_argv() -> list[str]:
+    return ["workflow", "run", PKG_WORKFLOW, "--repo", REPO_SLUG, "--ref", "main", "-f", f"ci_gate={CI_GATE}", "-f", "force_all_services=true"]
+
+
+_READ_PATHS = tuple(re.compile(p) for p in (
+    r"user",
+    re.escape(f"repos/{REPO_SLUG}/git/ref/heads/main"),
+    re.escape(f"repos/{REPO_SLUG}/actions/workflows/") + r"(ci|deploy|gochara-verification-job-deploy)\.yml/runs\?head_sha=[0-9a-f]{40}&per_page=" + str(RUNS_PAGE),
+    re.escape(f"repos/{REPO_SLUG}/actions/runs/") + r"[1-9][0-9]{0,18}/jobs\?per_page=" + str(JOBS_PAGE)))
+
+
+def gh_allowed(argv: list[str]) -> bool:
+    """The complete list of gh invocations this program may make: four fixed read-only GET shapes and exactly two workflow dispatches."""
+    if len(argv) == 4 and argv[:3] == ["api", "-X", "GET"]:
+        return any(rx.fullmatch(argv[3]) for rx in _READ_PATHS)
+    return argv in (def_dispatch_argv(), pkg_dispatch_argv())
+
+
+def default_gh(argv: list[str], timeout: int = 90) -> subprocess.CompletedProcess:
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    return subprocess.run(["gh", *argv], capture_output=True, text=True, timeout=timeout, env=env)
+
+
+def gh_call(gh, argv: list[str], what: str) -> str:
+    if not gh_allowed(argv):
+        raise NotReady(REFUSED, f"{what}: internal error — this gh call is not on the controller's allow-list")
+    try:
+        proc = gh(argv)
+    except (OSError, subprocess.TimeoutExpired):
+        raise NotReady(NO_INPUT, f"{what}: gh could not be run or timed out") from None
+    if proc.returncode != 0:
+        raise NotReady(NO_INPUT, f"{what}: gh exited {proc.returncode}")                  # stderr is never relayed (it may name an identity)
+    return proc.stdout
+
+
+def gh_json(gh, argv: list[str], what: str) -> dict:
+    try:
+        doc = json.loads(gh_call(gh, argv, what))
+    except ValueError:
+        raise NotReady(NO_INPUT, f"{what}: gh output is not JSON") from None
+    if not isinstance(doc, dict):
+        raise NotReady(NO_INPUT, f"{what}: gh output is not a JSON object")
+    return doc
+
+
+def parse_ts(v, what: str) -> dt.datetime:
+    try:
+        return dt.datetime.strptime(v, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc)
+    except (TypeError, ValueError):
+        raise NotReady(NO_INPUT, f"{what}: {v!r} is not a GitHub timestamp") from None
+
+
+def list_runs(gh, workflow: str, head: str) -> list[dict]:
+    """Runs of `workflow` whose head_sha is `head`, newest first.  A response for another commit, a malformed row or a cut-short list refuses the whole read."""
+    doc = gh_json(gh, api_get(runs_path(workflow, head)), f"{workflow} runs")
+    rows = doc.get("workflow_runs")
+    if not isinstance(rows, list) or (is_int(doc.get("total_count")) and doc["total_count"] > len(rows)):
+        raise NotReady(NO_INPUT, f"{workflow} runs: the run list is missing or cut short")
+    out = []
+    for r in rows:
+        if not isinstance(r, dict) or not is_int(r.get("id")) or r.get("status") not in ("queued", "in_progress", "completed", "waiting", "requested", "pending"):
+            raise NotReady(NO_INPUT, f"{workflow} runs: a run row is malformed")
+        if r.get("head_sha") != head:
+            raise NotReady(NO_INPUT, f"{workflow} runs: run {r['id']} is for commit {r.get('head_sha')!r}, not the requested {head}")
+        if r.get("event") == "pull_request":
+            continue
+        out.append({"id": r["id"], "status": r["status"], "conclusion": r.get("conclusion"), "event": r.get("event"), "branch": r.get("head_branch"),
+                    "created_at": parse_ts(r.get("created_at"), f"{workflow} run {r['id']} created_at"), "url": r.get("html_url")})
+    out.sort(key=lambda r: (r["created_at"], r["id"]), reverse=True)
+    return out
+
+
+def read_jobs(gh, run_id: int) -> list[dict]:
+    doc = gh_json(gh, api_get(jobs_path(run_id)), f"run {run_id} jobs")
+    jobs = doc.get("jobs")
+    if not isinstance(jobs, list) or (is_int(doc.get("total_count")) and doc["total_count"] > len(jobs)):
+        raise NotReady(NO_INPUT, f"run {run_id} jobs: the job list is missing or cut short")
+    out = []
+    for j in jobs:
+        steps = j.get("steps") if isinstance(j, dict) else None
+        if not isinstance(j, dict) or not isinstance(j.get("name"), str) or not isinstance(steps, list):
+            raise NotReady(NO_INPUT, f"run {run_id} jobs: a job row is malformed")
+        out.append({"name": j["name"], "status": j.get("status"), "conclusion": j.get("conclusion"),
+                    "steps": [{"name": s.get("name"), "conclusion": s.get("conclusion")} for s in steps if isinstance(s, dict)]})
+    return out
+
+
+def def_verdict(jobs: list[dict]) -> tuple[str, dict]:
+    """PASS | DIGEST_MISSING | FAIL, measured from the run's own job/step conclusions.  PASS needs the job AND every named step to read `success`."""
+    job = next((j for j in jobs if j["name"] == DEF_JOB), None)
+    ev = {"job": DEF_JOB, "job_conclusion": job["conclusion"] if job else None, "steps": {}}
+    if job is None:
+        return "FAIL", ev
+    for prefix in DEF_STEPS:
+        ev["steps"][prefix] = next((s["conclusion"] for s in job["steps"] if isinstance(s["name"], str) and s["name"].startswith(prefix)), None)
+    failed = next((s["name"] for s in job["steps"] if s["conclusion"] in BAD_JOB), None)
+    ev["failed_step"] = failed
+    if job["conclusion"] == "success" and all(v == "success" for v in ev["steps"].values()):
+        return "PASS", ev
+    if failed and failed.startswith(DEF_STEPS[0]):
+        return "DIGEST_MISSING", ev
+    return "FAIL", ev
+
+
+def pkg_verdict(run: dict, jobs: list[dict]) -> tuple[bool, dict]:
+    by = {j["name"]: j["conclusion"] for j in jobs}
+    ev = {"run_id": run["id"], "run_conclusion": run["conclusion"], "jobs": by}
+    ok = (run["conclusion"] == "success" and all(by.get(n) == "success" for n in PKG_JOBS) and not any(c in BAD_JOB for c in by.values()))
+    return ok, ev
+
+
+def main_tip(gh) -> str:
+    sha = (gh_json(gh, api_get(f"repos/{REPO_SLUG}/git/ref/heads/main"), "main tip").get("object") or {}).get("sha")
+    if not isinstance(sha, str) or not _SHA.fullmatch(sha):
+        raise NotReady(NO_INPUT, "main tip: the response carries no commit sha")
+    return sha
+
+
+def ci_green(gh, head: str) -> dict:
+    runs = list_runs(gh, CI_WORKFLOW, head)
+    if not runs:
+        raise NotReady(NOT_PASSED, f"CI is not green: no {CI_WORKFLOW} run exists for {head}")
+    if runs[0]["status"] != "completed":
+        raise NotReady(AWAITING_CI, f"CI is still running for {head} (run {runs[0]['id']}, {runs[0]['status']})")
+    if runs[0]["conclusion"] != "success":
+        raise NotReady(NOT_PASSED, f"CI is not green for {head}: run {runs[0]['id']} concluded {runs[0]['conclusion']!r}")
+    return {"run_id": runs[0]["id"], "conclusion": "success"}
+
+
+def delegated_login(gh, a: dict) -> str:
+    login = gh_json(gh, api_get("user"), "gh login").get("login")
+    if login != approver_of(a):
+        raise NotReady(REFUSED, f"the gh login on this machine is not the delegated login `{approver_of(a)}`: nothing is dispatched under another identity")
+    return login
+
+
+def redeploy_markers(out: Path, a: dict, kind: str) -> list[tuple[Path, dt.datetime]]:
+    found = []
+    for p in sorted((out / "markers").glob(f"REDEPLOY_{kind}.{a['generation']}.{a['head']}.n*")) if (out / "markers").is_dir() else []:
+        try:
+            ts = parse_ts(json.loads(p.read_text())["ts"], "redeploy marker")
+        except (ValueError, KeyError, TypeError, NotReady):                                                # an unreadable marker still counts as a dispatch, at its file time
+            ts = dt.datetime.fromtimestamp(p.stat().st_mtime, dt.timezone.utc)
+        found.append((p, ts))
+    return found
+
+
+def answered(marker_ts: dt.datetime, runs: list[dict]) -> bool:
+    return any(r["created_at"] >= marker_ts - dt.timedelta(seconds=VISIBLE_SKEW_S) for r in runs)
+
+
+def halt_redeploy(reason: str):
+    raise NotReady(HALTED, reason, halt=True)
+
+
+def dispatch_redeploy(a: dict, ops: Path, out: Path, pages_log: Path, gh, execute: bool, now, kind: str, argv: list[str], why: str) -> None:
+    """Gate, then (only under --execute and the delegated login) dispatch once.  Always ends by raising AWAITING_REDEPLOY."""
+    head, key = a["head"], key_of(a)
+    tip = main_tip(gh)
+    if tip != head:
+        raise NotReady(STALE_HEAD, f"main moved: its tip is {tip}, the sealing head is {head}; step 11 must be repeated at the sealing version, nothing is dispatched")
+    ci = ci_green(gh, head)
+    quiescence = check_quiescence(ops, a)
+    n = len(redeploy_markers(out, a, kind)) + 1
+    tag = f"{kind.lower()}#{n}"
+    cmd = "gh " + shlex.join(argv)
+    note = "quiescence measured and ACCEPTED" if quiescence else "quiescence NOT MEASURED (the adopted file names no quiescence operation)"
+    qtag = "measured" if quiescence else "NOT_MEASURED"
+    if not execute:
+        with locked(out):
+            atomic_write(out / "REDEPLOY_DISPATCH.txt", f"OWNER STEP 11 — {why}\nkey {key}  main tip = head {head}  CI green (run {ci['run_id']})  {note}\n\nDispatch (delegated login `{approver_of(a)}`):\n{cmd}\n")
+            append_page(pages_log, f"PAGE SEAL-REDEPLOY-DISPATCH-NEEDED key={key} step={tag} ",
+                        f"{utc(now)} PAGE SEAL-REDEPLOY-DISPATCH-NEEDED key={key} step={tag} head={head[:12]} dispatch={out / 'REDEPLOY_DISPATCH.txt'}\n")
+        raise NotReady(AWAITING_REDEPLOY, f"{why}: the dispatch is prepared, not executed (the controller runs without --execute-redeploy): {cmd}")
+    delegated_login(gh, a)
+    with locked(out):
+        marker = out / "markers" / f"REDEPLOY_{kind}.{a['generation']}.{head}.n{n}"
+        if marker.exists():
+            raise NotReady(AWAITING_REDEPLOY, f"{why}: already dispatched ({tag})")
+        write_marker(out, marker.name, {"key": key, "kind": kind, "n": n, "cmd": cmd, "ts": utc(now)})       # BEFORE the dispatch: at most once
+        try:
+            gh_call(gh, argv, f"dispatch {tag}")
+        except NotReady:
+            marker.unlink(missing_ok=True)                                                                   # the dispatch did not happen: a later poll may try again
+            raise
+        append_page(pages_log, f"PAGE SEAL-REDEPLOY-DISPATCHED key={key} step={tag} ",
+                    f"{utc(now)} PAGE SEAL-REDEPLOY-DISPATCHED key={key} step={tag} head={head[:12]} workflow={argv[2]} ci_run={ci['run_id']} quiescence={qtag}\n")
+    raise NotReady(AWAITING_REDEPLOY, f"{why}: dispatched ({tag}); waiting for the run to appear and finish")
+
+
+def verified_definition(gh, run: dict) -> dict:
+    verdict, ev = def_verdict(read_jobs(gh, run["id"]))
+    if verdict != "PASS":
+        raise NotReady(NOT_PASSED, f"definition run {run['id']} concluded success but its jobs do not read back as the full definition (job {ev['job_conclusion']!r}, steps {ev['steps']}): not accepted")
+    return {"run_id": run["id"], "url": run["url"], "created_at": utc(run["created_at"]), **ev}
+
+
+def emit_redeploy_done(a: dict, ev: dict, out: Path, pages_log: Path, now) -> None:
+    key = key_of(a)
+    with locked(out):
+        marker = out / "markers" / f"REDEPLOY_DONE.{a['generation']}.{a['head']}.done"
+        if marker.exists():
+            return
+        doc = {"schema": SCHEMA, "kind": "redeploy", "key": key, "head": a["head"], "evidence": ev, "ts": utc(now),
+               "step8_permission": "NOT MEASURED by this program: after a redeploy the cockpit re-reads `gcloud run jobs get-iam-policy gochara-verification-job` (owner step 8); if the grant is gone the owner redoes step 8"}
+        atomic_write(out / "REDEPLOY.json", json.dumps(doc, indent=1, sort_keys=True) + "\n")
+        append_page(pages_log, f"PAGE SEAL-REDEPLOY-DONE key={key} ",
+                    f"{utc(now)} PAGE SEAL-REDEPLOY-DONE key={key} head={a['head'][:12]} definition_run={ev['definition']['run_id']} package_run={(ev.get('package') or {}).get('run_id')} "
+                    f"evidence={out / 'REDEPLOY.json'} reread_step8_permission=required\n")
+        write_marker(out, marker.name, {"key": key, "ts": utc(now)})
+
+
+def check_redeploy(a: dict, ops: Path, out: Path, pages_log: Path, gh, execute: bool, now) -> dict:
+    head = a["head"]
+    clock = now or dt.datetime.now(dt.timezone.utc)
+    defs = [r for r in list_runs(gh, DEF_WORKFLOW, head) if r["event"] == "workflow_dispatch" and r["branch"] == "main"]
+    for r in defs:                                                                                           # done: evidence first, whoever dispatched it
+        if r["status"] == "completed" and r["conclusion"] == "success":
+            ev = {"definition": verified_definition(gh, r)}
+            if redeploy_markers(out, a, "PKG"):                                                              # a package build was dispatched: read its job outcomes back too
+                for p in list_runs(gh, PKG_WORKFLOW, head):
+                    if p["status"] == "completed" and p["conclusion"] == "success" and p["created_at"] <= r["created_at"]:
+                        ok, pev = pkg_verdict(p, read_jobs(gh, p["id"]))
+                        if ok:
+                            ev["package"] = pev
+                            break
+            if not a.get("brief_run"):                                                                       # until the brief is produced, main must still BE the sealing head
+                tip = main_tip(gh)
+                if tip != head:
+                    raise NotReady(STALE_HEAD, f"main moved: its tip is {tip}, the sealing head is {head}; the redeploy is stale and must be repeated at the sealing version")
+            emit_redeploy_done(a, ev, out, pages_log, now)
+            return ev
+    live = [r for r in defs if r["status"] != "completed"]
+    if live:
+        raise NotReady(AWAITING_REDEPLOY, f"the definition run {live[0]['id']} is {live[0]['status']}: {live[0]['url']}")
+    def_marks = redeploy_markers(out, a, "DEF")
+    if def_marks and not answered(def_marks[-1][1], defs):
+        if (clock - def_marks[-1][1]).total_seconds() > VISIBLE_TIMEOUT_S:
+            halt_redeploy("the definition was dispatched but no run appeared within 20 minutes: a person looks (the controller dispatches nothing more for this key)")
+        raise NotReady(AWAITING_REDEPLOY, "the definition was dispatched; its run is not visible yet")
+    if not defs:
+        dispatch_redeploy(a, ops, out, pages_log, gh, execute, now, "DEF", def_dispatch_argv(), "owner step 11: define the checking job at the sealing version")
+    latest = defs[0]
+    verdict, ev = def_verdict(read_jobs(gh, latest["id"]))
+    if verdict != "DIGEST_MISSING":
+        halt_redeploy(f"the definition run {latest['id']} concluded {latest['conclusion']!r} at step {ev.get('failed_step')!r}: the deployed definition is left in place to inspect, nothing is retried automatically ({latest['url']})")
+    pkgs = list_runs(gh, PKG_WORKFLOW, head)                                                                 # owner step 11a: there is no pipeline image for the sealing commit
+    after = [p for p in pkgs if p["created_at"] > latest["created_at"]]
+    if any(p["status"] != "completed" for p in after):
+        raise NotReady(AWAITING_REDEPLOY, "owner step 11a: the package build (deploy.yml) is running")
+    pkg_marks = redeploy_markers(out, a, "PKG")
+    if pkg_marks and not answered(pkg_marks[-1][1], pkgs):
+        if (clock - pkg_marks[-1][1]).total_seconds() > VISIBLE_TIMEOUT_S:
+            halt_redeploy("the package build was dispatched but no run appeared within 20 minutes: a person looks")
+        raise NotReady(AWAITING_REDEPLOY, "owner step 11a: the package build was dispatched; its run is not visible yet")
+    for p in after:
+        ok, pev = pkg_verdict(p, read_jobs(gh, p["id"]))
+        if not ok:
+            halt_redeploy(f"owner step 11a: the package build run {p['id']} did not succeed ({pev}); nothing is retried automatically ({p['url']})")
+        if len(def_marks) >= MAX_DEF_DISPATCH:
+            halt_redeploy("the definition still reports no pipeline image after the package build; it was already dispatched twice for this key")
+        dispatch_redeploy(a, ops, out, pages_log, gh, execute, now, "DEF", def_dispatch_argv(), "owner step 11: define the checking job again, after the package build")
+    if pkg_marks:
+        halt_redeploy("a package build was already dispatched for this key and the definition still finds no pipeline image: a person looks")
+    dispatch_redeploy(a, ops, out, pages_log, gh, execute, now, "PKG", pkg_dispatch_argv(), "owner step 11a: no pipeline image exists for the sealing commit, build and deploy it (CI-green gate)")
+
+
 # ── the poll ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 def halted(a: dict, out: Path) -> dict | None:
@@ -730,7 +1083,7 @@ def halted(a: dict, out: Path) -> dict | None:
     return {"kind": HALTED, "reason": "a HALT marker exists and is unreadable"}
 
 
-def advance(a: dict, ops: Path, out: Path, pages_log: Path, sdir: Path, python: str, main_ref: str, now, status: dict) -> None:
+def advance(a: dict, ops: Path, out: Path, pages_log: Path, sdir: Path, python: str, main_ref: str, now, status: dict, gh=None, execute: bool = False) -> None:
     status["key"] = key_of(a)
     stop = halted(a, out)
     if stop:
@@ -739,6 +1092,13 @@ def advance(a: dict, ops: Path, out: Path, pages_log: Path, sdir: Path, python: 
     agg = check_aggregate(a, ops, out)
     status["stage"] = "AGGREGATE"
     try:
+        redeploy = check_redeploy(a, ops, out, pages_log, gh or default_gh, execute, now)
+    except NotReady as exc:
+        if exc.kind == HALTED:
+            emit_stop(a, exc.kind, exc.reason, None, out, pages_log, now, halt=True)
+        raise
+    status["stage"] = "REDEPLOY"
+    try:
         brief = check_brief(a, agg, sdir, python, main_ref)
     except NotReady as exc:
         if exc.kind == AWAITING_BRIEF and not a.get("brief_run"):                  # a named run is already dispatched: only its artifacts are missing
@@ -746,8 +1106,9 @@ def advance(a: dict, ops: Path, out: Path, pages_log: Path, sdir: Path, python: 
             exc.reason += f" ({'dispatch paged' if how == 'NEW' else 'dispatch already paged'})"
         raise
     status["stage"] = "BRIEF"
+    logview = check_logview_proof(a, brief)
     quiescence = check_quiescence(ops, a)
-    how, doc = emit_approval(a, agg, brief, quiescence, out, pages_log, now)
+    how, doc = emit_approval(a, agg, brief, quiescence, out, pages_log, now, redeploy, logview)
     status["stage"] = "APPROVAL_REQUESTED"
     status["approval_emission"] = "paged" if how == "NEW" else "already_paged"
     run = (brief["run_id"], brief["attempt"])
@@ -764,13 +1125,13 @@ def advance(a: dict, ops: Path, out: Path, pages_log: Path, sdir: Path, python: 
     status["stage"] = "SEALED"
 
 
-def run(adopted_path, ops, out, pages_log, scripts_override=None, python=sys.executable, main_ref="origin/main", now=None) -> dict:
+def run(adopted_path, ops, out, pages_log, scripts_override=None, python=sys.executable, main_ref="origin/main", now=None, gh=None, execute_redeploy: bool = False) -> dict:
     adopted_path, ops, out, pages_log = Path(adopted_path), Path(ops), Path(out), Path(pages_log)
     status = {"schema": SCHEMA, "ts": utc(now), "state": NOT_READY, "stage": "START"}
     try:
         a = load_adopted(adopted_path)
         sdir = scripts_dir(a, scripts_override)
-        advance(a, ops, out, pages_log, sdir, python, main_ref, now, status)
+        advance(a, ops, out, pages_log, sdir, python, main_ref, now, status, gh, execute_redeploy)
         status.update(state=READY, kind=SEALED)
         line = f"SEAL-CONTROLLER {status['ts']} SEALED key={status['key']}"
     except NotReady as exc:
@@ -790,12 +1151,14 @@ def main(argv=None) -> int:
     ap.add_argument("--pages-log", default=os.environ.get("SEAL_PAGES_LOG"))
     ap.add_argument("--scripts-dir", default=os.environ.get("SEAL_SCRIPTS_DIR"))
     ap.add_argument("--main-ref", default="origin/main")
+    ap.add_argument("--execute-redeploy", action="store_true", default=os.environ.get("SEAL_EXECUTE_REDEPLOY") == "1",
+                    help="owner step 11: dispatch the redeploy under the delegated gh login (without it the dispatch is only prepared and paged)")
     ap.add_argument("--python", default="/opt/homebrew/bin/python3")
     a = ap.parse_args(argv)
     if not a.out or not a.pages_log:
         print("seal_controller: --out (or $OUT) and --pages-log are required", file=sys.stderr)
         return 2
-    status = run(a.adopted, a.ops, a.out, a.pages_log, a.scripts_dir, a.python, a.main_ref)
+    status = run(a.adopted, a.ops, a.out, a.pages_log, a.scripts_dir, a.python, a.main_ref, execute_redeploy=a.execute_redeploy)
     print(status["line"])
     return 0
 
