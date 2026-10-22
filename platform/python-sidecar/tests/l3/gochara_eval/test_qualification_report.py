@@ -180,3 +180,24 @@ def test_portable_3_0_baseline_is_transcribed_without_changing_any_figure(tmp_pa
     assert base["endpoints"]["t_fp"]["status"] == "fail"
     assert base["endpoints"]["t_honesty"]["status"] == "insufficient_evidence"
     assert result["generations"]["5.0"]["source_result"] is None
+
+
+# ── J-5q tooling for generation 5.0: SR-F5-41-DEFER ────────────────────────────────────────────────────────────────────────────────
+
+DEFER = "4.1 not built for this campaign (deferred by SR-F5-41-DEFER); no substitute baseline"
+
+
+def test_the_report_header_carries_the_41_deferral_in_the_artifact_and_the_markdown(tmp_path):
+    """Claim: the J-5q report states, in its own header, that 4.1 is deferred and no substitute baseline stands in for it (SR-F5-41-DEFER)."""
+    result = report.assemble(manifest(tmp_path), tmp_path)
+    assert result["header"] == DEFER
+    md = report.render_markdown(result)
+    assert md.splitlines()[2] == f"**{DEFER}**"          # directly under the title, not buried in the body
+
+
+def test_a_deferred_41_stays_an_honest_null_beside_a_measured_50_with_no_substitute_filled_in(tmp_path):
+    """Claim: with no 4.1 source the 4.1 column is null for every endpoint — neither 3.0's nor 5.0's figures are copied into it."""
+    gens = report.assemble(manifest(tmp_path), tmp_path)["generations"]
+    assert gens["5.0"]["endpoints"]["t_cover"]["status"] == "fail"
+    assert all(v["status"] == "insufficient_evidence" and v["measured"] is None for v in gens["4.1"]["endpoints"].values())
+    assert gens["4.1"]["source_result"] is None
