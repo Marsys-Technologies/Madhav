@@ -657,6 +657,18 @@ def g5_effective_wall_checks(report: dict, profile: dict) -> list[dict]:
     if not n_trial or r is None or limit is None or not writer:
         checks.append(check("projected effective wall (compute + lock wait) ≤ limit", None, proj, "needs writer stages, horizon and class counts"))
         return checks
+    # D-10 (review 3879 B-1): the same two guards as g5_runtime — the projection is only meaningful for the full trial, measured on a quiet machine
+    claim = "projected effective wall (compute + lock wait) ≤ limit"
+    n_required = len(profile.get("trial_classes") or TRIAL_CLASSES_12)
+    valid, load_obs, load_why = load_validity(report, profile)
+    if n_trial < n_required:
+        checks.append(check(claim, None, {"trial_classes": n_trial, "required": n_required}, f"a trial of {n_required} classes",
+                            note="not evaluated: the projection is only meaningful for the full trial it was written for"))
+        return checks
+    if valid is not True:
+        checks.append(check(claim, None, load_obs, f"1-minute load average per core ≤ {load_obs.get('bound_per_core')} over every measured build stage",
+                            note=f"not evaluated: {load_why}" + ("; re-run on a quiet machine" if valid is False else "")))
+        return checks
     scale = n_cent / n_trial * r * speed
     compute, lock = sum(v["compute_s"] for v in writer.values()) * scale, sum(v["lock_wait_s"] for v in writer.values()) * scale
     checks.append(check("projected effective wall (compute + lock wait) ≤ limit", compute + lock <= limit,

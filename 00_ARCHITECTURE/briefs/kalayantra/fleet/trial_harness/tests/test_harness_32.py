@@ -276,3 +276,34 @@ def test_h_c_the_clock_records_the_busiest_load_per_core_of_every_stage_and_keep
     with blind.measure("build:body"):
         pass
     assert blind.record()["stages"]["build:body"]["max_load_per_core"] is None            # an unanswerable sample is unknown, not 0
+
+
+# ── H-c on the A10.1 evaluator: gates.evaluate(..., decision_table=...) is what the trial driver always runs (review 3879 B-1) ──
+
+EFFECTIVE = "projected effective wall (compute + lock wait) ≤ limit"
+
+
+def _g5_a10(classes, kinds, load=fx.QUIET_LOAD):
+    r = fx.a10_report()
+    r["config"]["classes"] = list(classes)
+    r["runtime_s"]["by_step_kind"] = dict(kinds)
+    r["effective_wall"]["stages"] = {f"build:{k}": {"wall_s": v, "lock_wait_s": 0.0, "compute_s": v, "max_load_per_core": load} for k, v in kinds.items()}
+    v = gates.evaluate(r, fx.a10_baseline(), fx.profile(), decision_table=fx.decision_table(), dispatch_digests=fx.dispatch_digests(), verification=r["verification"])
+    g5 = v["gates"]["G-5"]
+    return g5, next(c for c in g5["checks"] if c["claim"] == EFFECTIVE)
+
+
+def test_h_c_a10_a_one_class_slice_reads_g5_not_evaluated_through_gates_evaluate():
+    g5, c = _g5_a10(["major_loss"], SLICE_KINDS)        # the 26× head scaling would be 107,185 s > 43,200 s: FAIL for the slice, not the build
+    assert c["status"] == NOT_EVALUATED and c["observed"] == {"trial_classes": 1, "required": 12}, c
+    assert g5["status"] == NOT_EVALUATED, g5["status"]
+
+
+def test_h_c_a10_a_loaded_12_class_run_reads_g5_not_evaluated_and_a_quiet_one_is_computed_as_before():
+    g5, c = _g5_a10(gates.TRIAL_CLASSES_12, SLOW_KINDS, load=2.4)
+    assert c["status"] == NOT_EVALUATED and "load" in c["note"], c
+    assert g5["status"] == NOT_EVALUATED, g5["status"]
+    _, quiet_slow = _g5_a10(gates.TRIAL_CLASSES_12, SLOW_KINDS)
+    assert quiet_slow["status"] == FAIL
+    g5_fast, quiet_fast = _g5_a10(gates.TRIAL_CLASSES_12, FAST_KINDS)
+    assert quiet_fast["status"] == PASS and g5_fast["status"] == PASS
