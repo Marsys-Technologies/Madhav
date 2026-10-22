@@ -51,6 +51,7 @@ describe('F-KALA-1 — query_temporal_activation ORDER BY ranks on dasha_activat
   it('the activation-fetch SQL leads its ORDER BY with dasha_activation_proximity_score DESC NULLS LAST', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [DATED_ROW] }) // activation query
+      .mockResolvedValueOnce({ rows: [{ generation: 'g-head' }] }) // kala_layer_head (served generation, K9-WRITE-SCOPE F5)
       .mockResolvedValueOnce({ rows: [] })          // predicates query
     await queryTemporalActivationCapability.handler({ chart_id: CHART_ID }, undefined)
     const [sql] = queryMock.mock.calls[0] as [string, unknown[]]
@@ -62,6 +63,7 @@ describe('F-KALA-1 — query_temporal_activation ORDER BY ranks on dasha_activat
   it('orb_strength survives as a secondary tiebreak (real signal is not discarded)', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [DATED_ROW] })
+      .mockResolvedValueOnce({ rows: [{ generation: 'g-head' }] }) // kala_layer_head (served generation, K9-WRITE-SCOPE F5)
       .mockResolvedValueOnce({ rows: [] })
     await queryTemporalActivationCapability.handler({ chart_id: CHART_ID }, undefined)
     const [sql] = queryMock.mock.calls[0] as [string, unknown[]]
@@ -76,6 +78,7 @@ describe('F-KALA-1 — query_temporal_activation ORDER BY ranks on dasha_activat
   it('activation_start and id remain the final deterministic tiebreak', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [DATED_ROW] })
+      .mockResolvedValueOnce({ rows: [{ generation: 'g-head' }] }) // kala_layer_head (served generation, K9-WRITE-SCOPE F5)
       .mockResolvedValueOnce({ rows: [] })
     await queryTemporalActivationCapability.handler({ chart_id: CHART_ID }, undefined)
     const [sql] = queryMock.mock.calls[0] as [string, unknown[]]
@@ -85,6 +88,7 @@ describe('F-KALA-1 — query_temporal_activation ORDER BY ranks on dasha_activat
   it('unrelated WHERE/date-param behavior is unaffected by the ORDER BY change (sanity)', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [DATED_ROW] })
+      .mockResolvedValueOnce({ rows: [{ generation: 'g-head' }] }) // kala_layer_head (served generation, K9-WRITE-SCOPE F5)
       .mockResolvedValueOnce({ rows: [] })
     const res = await queryTemporalActivationCapability.handler(
       { chart_id: CHART_ID, as_of: '2020-06-15' }, undefined,
