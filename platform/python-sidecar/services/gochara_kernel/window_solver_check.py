@@ -760,7 +760,7 @@ class _Engine:
             self.rederived["tie_cluster"] = [(self._dt(x), self._dt(y)) for x, y in close]
             return (f"{len(ties)} extrema within the tie tolerance of the maximum, two of them {close[0][1] - close[0][0]:.3f} s "
                     f"apart from {self._dt(close[0][0]).isoformat()} (limit {ISOLATION_S} s): isolation is unresolved")
-        zone = self._zone_tie(m_hat)
+        zone = self._zone_tie(m_hat, ties)
         if zone is not None:
             zl, zh, zt, zn = zone
             self.rederived["tie_zone"] = (self._dt(zl), self._dt(zh), zt, zn)
@@ -803,8 +803,9 @@ class _Engine:
                 out.append((lo, hi, noise))
         return out
 
-    def _zone_tie(self, m_hat: float):
-        """(lo, hi, zone_top, noise) of the first station zone whose value is within TIE + its noise bound of the maximum `m_hat`; None if there is none.
+    def _zone_tie(self, m_hat: float, ties: list):
+        """(lo, hi, zone_top, noise) of the first station zone whose value is within TIE + its noise bound of the maximum `m_hat` AND that holds every tied
+        extremum (`ties`, the instants within TIE of it — the ruling's "tie set lies inside the zone"); None if there is none.
         The zone's value is read directly (the objective at the zone's ends, at every piece boundary inside it — the left limit, never the next piece's
         first value — and at the piece midpoints)."""
         for lo, hi, noise in self._zone_clusters():
@@ -815,7 +816,7 @@ class _Engine:
                     pts.update((x, y - US if y - x > 2 * US else y, 0.5 * (x + y)))
             vals = [v for v in (self._objective_at(t) for t in sorted(pts) if 0.0 <= t < self.L) if v is not None]
             zone_top = max(vals, default=None)
-            if zone_top is not None and zone_top >= m_hat - TIE - noise:
+            if zone_top is not None and zone_top >= m_hat - TIE - noise and all(lo <= t <= hi for t in ties):
                 return lo, hi, zone_top, noise
         return None
 

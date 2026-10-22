@@ -25,6 +25,9 @@ Claims — each with ONE doctrine-grounded oracle and ONE planted reversion that
   NST-8 the verifier-side confirmation of a stored builder blank (`confirm_tie_isolation`)                      reversion: always None
   NST-9 end to end (sweep -> stored blank -> independent verifier): the verifier CONFIRMS the blank             reversion: the verifier forgets the reason
   NST-10 end to end: a station just OUTSIDE the window (the sweep lists it within NEAR_STATION_S) still marks the zone   reversion: list only the stations inside
+  NST-11 builder: a PLATEAU window (the max-min objective held at 1.0 over the whole window by residence steps — the tie set is the whole window, NOT inside the
+         station zone) NUMBERS at its start; the zone rule blanks only a tie set that lies INSIDE the zone (the ruling, verbatim)   reversion: drop the "inside the zone" test
+  NST-12 checker: the same plateau window with its stored number (1.0 at the window start) is VERIFIED, never UNVERIFIED `tie_isolation_unresolved`   reversion: drop the same test
   K12   the checker imports nothing of the builder, the builder nothing of the checker; the noise bound is a literal in each
 """
 from __future__ import annotations
@@ -173,7 +176,7 @@ def oracle_the_builder_blanks_the_tie_zone(mods):
     assert (res.status, res.reason, res.value, res.instant) == (mods.sol.BLANK, REASON, None, None), (res.status, res.reason, res.value)
 
 
-@claim("NST-2", "checker", "        zone = self._zone_tie(m_hat)\n", "        zone = None\n")
+@claim("NST-2", "checker", "        zone = self._zone_tie(m_hat, ties)\n", "        zone = None\n")
 def oracle_the_checker_returns_the_inconclusive_blank_never_a_refutation(mods):
     c = tie_case()
     rep = _check(mods.chk, c, c.hi - timedelta(microseconds=1), 1.0)                  # the number the legacy builder stored: the window end, 1.0
@@ -182,7 +185,7 @@ def oracle_the_checker_returns_the_inconclusive_blank_never_a_refutation(mods):
     assert {r for r, _d in rep.unverified} <= wcc.INCONCLUSIVE_REASONS                  # R-6: INCONCLUSIVE -> demoted to the named blank, counted toward the cap
 
 
-@claim("NST-3", "builder", "        if zone_top >= top - TIE - noise:\n", "        if True:\n")
+@claim("NST-3", "builder", "        if zone_top >= top - TIE - noise and all(lo <= t <= hi for t in ties):\n", "        if True:\n")
 def oracle_an_isolated_maximum_near_a_station_still_numbers(mods):
     c = isolated_case()
     res = mods.sol.solve(_problem(mods.sol, c))
@@ -193,7 +196,7 @@ def oracle_an_isolated_maximum_near_a_station_still_numbers(mods):
     assert direct == pytest.approx(1.0, abs=1e-8)                                           # and the real Swiss sky is at its crest there
 
 
-@claim("NST-4", "checker", "            if zone_top is not None and zone_top >= m_hat - TIE - noise:\n", "            if zone_top is not None:\n")
+@claim("NST-4", "checker", "            if zone_top is not None and zone_top >= m_hat - TIE - noise and all(lo <= t <= hi for t in ties):\n", "            if zone_top is not None:\n")
 def oracle_the_checker_verifies_the_isolated_maximum(mods):
     c = isolated_case()
     res = sol.solve(_problem(sol, c))                                                      # the REAL builder's number
@@ -285,6 +288,40 @@ def oracle_end_to_end_a_station_just_outside_the_window_still_marks_the_zone(mod
     assert (draft.peak_instant, draft.unqualified_reason) == (None, REASON), (draft.peak_instant, draft.unqualified_reason)
 
 
+# ── the ruling is applied LITERALLY (review F-1 against od1-plateau-tie): a zone blanks only a tie set that lies INSIDE it ─────────────────────────────────────
+# SR-NEAR-STATION-TIE (DECISIONS_SURROGATE madhav-44): "When a window tie set (>=2 maxima within TIE of the top) lies inside a <=120 s station zone and the tied
+# maxima differ from the top by no more than the S0 near-station noise bound, the builder blanks". The 7 parental_event P4 / 3 property_acquisition P4 windows
+# the zone test over-blanked have max-min F == 1.0 over the WHOLE window (each agent held at 1.0 by a constant residence step), one maximum from the window start,
+# no comb: the tie set is not inside the zone. Closed-form worlds (no sky): a Jupiter tent whose station sits S s into a window of L s, beside two constant steps.
+PL_S, PL_L = 500_000.0, 2_000_000.0
+PL_K = 1e-7                                  # the offset's curvature: deg/s^2 (velocity 0 at the station)
+
+
+@claim("NST-11", "builder", "        if zone_top >= top - TIE - noise and all(lo <= t <= hi for t in ties):\n", "        if zone_top >= top - TIE - noise:\n")
+def oracle_a_plateau_window_whose_tie_set_is_not_inside_the_zone_numbers(mods):
+    m = mods.sol
+    tent = m.Tent(offset=lambda t: PL_K * (t - PL_S) ** 2 + 0.3, orb=1.0, velocity=lambda t: 2 * PL_K * (t - PL_S), stations=(PL_S,), min_station_spacing=1e9)
+    members = (m.Member(key="jup_res", group="jupiter", supports=((0.0, PL_L),), steps=(m.constant_step(1.0),)),
+               m.Member(key="jup_tent", group="jupiter", supports=((0.0, PL_L),), tent=tent),
+               m.Member(key="sat_res", group="saturn", supports=((0.0, PL_L),), steps=(m.constant_step(1.0),)))
+    res = m.solve(m.Problem(lo=0.0, hi=PL_L, objective=m.OBJECTIVE_MINMAX, members=members))
+    assert (res.status, res.value, res.instant) == (m.SOLVED, 1.0, 0.0), (res.status, res.reason, res.value, res.instant)
+
+
+@claim("NST-12", "checker", "            if zone_top is not None and zone_top >= m_hat - TIE - noise and all(lo <= t <= hi for t in ties):\n",
+       "            if zone_top is not None and zone_top >= m_hat - TIE - noise:\n")
+def oracle_the_checker_verifies_the_plateau_window_it_must_not_blank(mods):
+    k = mods.chk
+    t0 = datetime(2030, 1, 1, tzinfo=UTC)
+    pos = lambda body, d: ((100.0 + PL_K * ((d - t0).total_seconds() - PL_S) ** 2) if body == "J" else 200.0) % 360.0               # noqa: E731
+    lo, hi = t0, t0 + timedelta(seconds=PL_L)
+    recs = [k.CheckRecord("jr", "Rj", "jupiter", ((lo, hi),)),                                   # the Jupiter residence step, 1.0 over the window
+            k.CheckRecord("jt", "Rt", "jupiter", ((lo, t0 + timedelta(seconds=PL_S + 10.0)),), tent=k.TentFactor("J", 100.3, 5.0)),   # its tent ends 10 s past the station
+            k.CheckRecord("sr", "Rs", "saturn", ((lo, hi),))]                                    # the Saturn residence step
+    rep = k.check_window(lo=lo, hi=hi, records=recs, objective=k.OBJ_MAXMIN, position_at=pos, stored=k.StoredWindow(lo, 1.0), max_evals=300_000)
+    assert rep.status == k.VERIFIED and not rep.unverified, (rep.status, rep.codes())
+
+
 # ═══════════════════════════════ the harness ═══════════════════════════════════════════════════════════════════════════════════════════
 
 _COUNT = [0]
@@ -327,7 +364,7 @@ def test_the_single_planted_reversion_fails_the_oracle(cid):
 
 
 def test_every_claim_has_exactly_one_reversion_and_one_oracle():
-    assert set(CLAIMS) == {f"NST-{i}" for i in range(1, 11)}
+    assert set(CLAIMS) == {f"NST-{i}" for i in range(1, 13)}
     assert len({(t, old, new) for _, t, old, new in CLAIMS.values()}) == len(CLAIMS)           # no two claims share a reversion
 
 
