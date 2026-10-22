@@ -914,7 +914,15 @@ class _Engine:
                 # sampling scale: a named blank, not a verdict (the value / bound / at-the-peak findings still stand).
                 ties = sorted(t for t, f in cands if f >= theta)
                 unresolved = self._isolation(m_hat, ties)
-                if unresolved is not None:
+                # Q12 is not relaxed by a zone: it only makes WHICH comb instant is the earliest tie undecidable. A stored instant outside every
+                # zone (+-tol_s) and within tol_s of no extremum that reaches the tie threshold is plainly wrong, as before the zone rule.
+                in_zone = any(lo - self.tol_s <= t_star <= hi + self.tol_s for lo, hi, _n in self._zone_clusters())
+                if unresolved is not None and "tie_zone" in self.rederived and not in_zone and \
+                        not any(abs(t_star - t) <= self.tol_s for t, f in cands if f >= theta - GREY):
+                    self.findings.append(Finding(F_INSTANT, (
+                        f"the stored peak {st.peak_instant.isoformat()} lies outside every station zone and within {self.tol_s} s of no extremum "
+                        "that reaches the tie threshold of the maximum")))
+                elif unresolved is not None:
                     self.unverified.append((U_ISOLATION, unresolved))
                 else:
                     widest = [t for t, f in cands if f >= theta - GREY]

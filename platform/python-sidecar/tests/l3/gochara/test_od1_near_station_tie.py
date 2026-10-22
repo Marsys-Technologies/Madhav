@@ -341,6 +341,34 @@ def test_planting_the_removal_of_the_checker_zone_rule_brings_earlier_tie_not_ta
     assert rep.status == k.REFUTED and k.F_EARLIER_TIE in rep.codes(), (rep.status, rep.codes())
 
 
+# B-1 (review X-20261022T175406Z-review-lane-pt): the zone rule must not relax Q12. Owner decision SOLVER-TOLERANCES Q12(a): the peak instant is exact to the
+# second. A stored instant OUTSIDE every station zone (+-tol_s) and within tol_s of no qualifying extremum is REFUTED peak_instant_mismatch (as at the base
+# e6be81efb), not demoted to the named blank. Case 3 (Venus 2029-12-16), instant 200.003 s before the window end (the zone is the last 120 s + noise), with the
+# objective read there (2.2e-8 below the top: inside the float4 value tolerance, 22 x TIE from a tie).
+_B1_OLD = '"tie_zone" in self.rederived and not in_zone and'
+
+
+def _b1_check(k):
+    c = tie_case()
+    t = c.hi - timedelta(seconds=200.003)
+    v = 1.0 - abs(_wrap180(_lon_dt(c.body, t) - c.level)) / ORB
+    assert v < 1.0 - 1e-8                                                                 # not a tie of the maximum
+    rep = _check(k, c, t, v)
+    assert rep.status == k.REFUTED and k.F_INSTANT in rep.codes(), (rep.status, rep.codes())
+
+
+@requires_swieph
+def test_b1_instant_outside_every_zone_at_no_extremum_is_still_refuted_peak_instant_mismatch():
+    _b1_check(chk)
+
+
+@requires_swieph
+def test_b1_planting_the_removal_of_the_outside_the_zone_refutation_fails_the_oracle():
+    k = reverted_module("checker", _B1_OLD, "False and")
+    with pytest.raises(AssertionError):
+        _b1_check(k)
+
+
 # the six windows of the 2026-10-22 diagnosis (3 Venus, 3 Mercury): (body, scan from, side, level short by, the number the LEGACY builder stored — seconds from the
 # window start, value). They are inputs (a stored number the checker meets), not expected outputs: the expected outcome is the ruling's — the named blank.
 SIX = [("Venus", datetime(2031, 1, 1, tzinfo=UTC), "start_before", 1e-9, 21.11234035954414, 0.9999999999999375),
