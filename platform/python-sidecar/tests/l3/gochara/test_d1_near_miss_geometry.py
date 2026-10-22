@@ -284,3 +284,55 @@ def test_each_disagreement_is_refused_by_name():
 def test_a_stored_near_miss_outside_the_horizon_is_not_expected_from_the_certifier():
     far = [dict(STORED[0], t_in=_d(200), t_out=_d(210))]
     assert _rec(reported=[], stored=far) == []
+
+
+# ── SR-NEARMISS-BISECT: t_in / t_out are the band-edge crossings, to the time bracket, not to the index tolerance ───────────────────────
+
+def test_the_band_edge_instants_are_the_analytic_edge_crossings_of_a_slow_station():
+    """ND-P2 rule 1 (module doc): a near-miss opens at the instant the body ENTERS the admission band of a ray level and ends when it LEAVES. Body: a station
+    at ts with lon(t) = level + 0.9 + K/2 (t - ts)^2 (a parabola, exact for the cubic spline), orb 1.0, so the band-edge crossings are ts +- sqrt(2 (orb - 0.9) / K)
+    exactly. K is Saturn-slow (edge speed 0.0089 deg/day, so one index arcsecond is ~16 minutes): an early exit at the index tolerance misses the edge by minutes."""
+    level, k, ts = 100.0, 0.0004, 2470000.0 + 0.37                     # an arbitrary non-knot station instant
+    jds = [ts - 60 + 0.5 * i for i in range(241)]
+    index = gk_arcs.build_arc_index("Saturn", jds, [(level + 0.9 + 0.5 * k * (j - ts) ** 2) % 360.0 for j in jds])
+    (st,) = nm.rootless_stretches(index, [level], ORB)
+    half = math.sqrt(2 * (ORB - 0.9) / k)
+    assert abs(st.t_in_jd - (ts - half)) * 86400 < 1.0, "t_in is not the band-entry crossing"
+    assert abs(st.t_out_jd - (ts + half)) * 86400 < 1.0, "t_out is not the band-exit crossing"
+
+
+def test_a_real_saturn_station_opens_its_near_miss_at_the_swiss_band_entry_crossing():
+    """Pinned ephemeris (CLAUDE.md §N.4: verify by classical-rule re-derivation, no JH oracle): the entry/exit of the band of a ray level 0.8 deg beyond a real Saturn
+    station is located INDEPENDENTLY by bisecting Swiss |lon - level| = orb to 0.01 s; the builder's arc-index t_in / t_out must be within 1 s of both crossings."""
+    import swisseph as swe
+    from datetime import date
+
+    from services.gochara_kernel.knots import calc_sidereal_lon, sample_knots
+    from .conftest import EPHE_PATH, assert_real_ephemeris
+    assert_real_ephemeris()
+    ks = sample_knots("Saturn", date(2004, 1, 1), date(2005, 6, 30), EPHE_PATH)
+    index = gk_arcs.build_arc_index("Saturn", ks.knot_jds, ks.longitudes_deg)
+    stations = [s.end_jd for s in index.segments[:-1]]
+    assert stations, "a real Saturn station lies inside the sampled span"
+    ts = stations[0]
+    lon_ts = float(index.evaluate(ts))
+    above = float(index.evaluate(ts + 5.0)) < lon_ts                    # the station is a local maximum: the level sits above it, unreachable
+    level = (lon_ts + 0.8 if above else lon_ts - 0.8) % 360.0
+
+    def swiss(jd):
+        lon, _ = calc_sidereal_lon("Saturn", jd, EPHE_PATH)
+        return abs((lon - level + 180.0) % 360.0 - 180.0) - ORB          # > 0 outside the band
+
+    def crossing(outside, inside):
+        for _ in range(60):                                              # bracket narrower than 1e-8 day (about 1 ms)
+            mid = 0.5 * (outside + inside)
+            outside, inside = (mid, inside) if swiss(mid) > 0 else (outside, mid)
+        return 0.5 * (outside + inside)
+
+    stretches = [s for s in nm.rootless_stretches(index, [level], ORB) if abs(s.t_closest_jd - ts) < 1.0]
+    assert len(stretches) == 1, "the station's near-miss is found once"
+    st = stretches[0]
+    assert abs(st.clearance_deg - 0.8) < 0.01
+    assert swiss(st.t_in_jd - 1.0) > 0 and swiss(ts) < 0, "the Swiss band is entered between t_in - 1 d and the station"
+    assert abs(st.t_in_jd - crossing(st.t_in_jd - 1.0, ts)) * 86400 <= 1.0
+    assert abs(st.t_out_jd - crossing(st.t_out_jd + 1.0, ts)) * 86400 <= 1.0

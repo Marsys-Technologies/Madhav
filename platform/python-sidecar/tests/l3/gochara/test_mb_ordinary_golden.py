@@ -436,7 +436,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
     # Geometry re-pinned again for F-1305-INVENTED-SUPPORT (#3774): record_store's period-rows cache now carries the held-presence flag; the digest below is re-derived on the
     # merged tree (main's bytes give 0ecc897c...).
-    assert got["implementation"]["geometry"] == "a8cb08f07fa867e010109d8a236422e39ebf0b57cf9a149eae64e42c7547a3ff"
+    # Geometry re-pinned ONCE for SR-NEARMISS-BISECT (od1-nearmiss): near_miss._bisect narrows the band-edge instants to a 1e-6-day time bracket with no |f| early exit (near_miss.py
+    # EDGE_BRACKET_DAYS). Re-derived by the script (never hand-edited) with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES); the prior pin a8cb08f0... is
+    # the union head. evaluation and window are unchanged by it, and no golden component is re-captured.
+    assert got["implementation"]["geometry"] == "6cd5a41b705cc1d0681aa6c4c0fc4a66568dc3f08248225957a48e0903955674"
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. With P06b's window-stage changes the merged-tree
     # digest below is re-derived the same way (main alone gives 6c981eb8...; J-4c F-LEANNESS also changed window_store); evaluation and geometry are untouched by this change, and no golden component is re-captured.
     # Window re-pinned for the W3W4 strict-slice window-qualification fix: window_sweep.build_program no longer lists an OMITTED operand (karaka_agent, null_state omit)
