@@ -14,7 +14,9 @@ from gates import FAIL, NOT_EVALUATED, PASS, REPORT
 # ── the plan's own table, restated literally (PLAN v2 §5; carried by PLAN_A10_1 §9) — NOT read from the data file ──────────────────────────────────────
 PLAN_FLOORS = {"P1": 0.90, "P2": 0.85, "P3": 0.92, "P4": 0.95, "P3+P4": 0.90, "ALL": 0.88}
 PLAN_ALLOWED = {"state_boundaries_incomplete", "solver_budget_exhausted", "monotone_arc_not_established", "solver_certificate_incomplete", "obstructor_residence_unknown",
-                "node_residence_unknown", "verifier_budget_exhausted", "tie_isolation_unresolved", "tie_ambiguous", "dasha_horizon_exhausted"}
+                "node_residence_unknown", "verifier_budget_exhausted", "tie_isolation_unresolved", "tie_ambiguous", "dasha_horizon_exhausted",
+                # SR-D6-OBJECTIVE-UNKNOWN (b): the named blank of a drishti operand at an offset the rule authority does not define; the generic code is NOT in the set
+                "no_aspect_rule_defined_at_offset"}
 PLAN_FORBIDDEN = ["applicability_undeclared", "value_mapping_undeclared", "vedha_overlay_not_bound", "orb_not_ratified", "dynamic_objective_solver_guarantee_not_available",
                   "agent_nature_node_undecided", "node_obstruction_undecided", "node_dignity_unclassified"]
 
@@ -67,7 +69,7 @@ def test_control_every_gate_g0_to_g8_passes_and_only_a_final_profile_dispatches(
 # ── (1) the G-3 decision table, the forbidden list and the caps are DATA, and they are the plan's ─────────────────────────────────────────────────────
 
 def test_the_shipped_table_is_the_plan_v2_section_5_table():
-    """PLAN v2 §5, row by row: floors 90/85/92/95/90/88, shortfall REPORT, forbidden REFUSE, caps 0.5 %/0.5 %, the 10 allowed and 8 forbidden reasons."""
+    """PLAN v2 §5, row by row: floors 90/85/92/95/90/88, shortfall REPORT, forbidden REFUSE, caps 0.5 %/0.5 %, the 10 allowed (+ SR-D6-OBJECTIVE-UNKNOWN's named blank) and 8 forbidden reasons."""
     t = fx.decision_table()
     assert {r["id"]: r["floor"] for r in t["rows"]} == PLAN_FLOORS
     assert {(r["shortfall"], r["forbidden"]) for r in t["rows"]} == {("REPORT", "REFUSE")}
