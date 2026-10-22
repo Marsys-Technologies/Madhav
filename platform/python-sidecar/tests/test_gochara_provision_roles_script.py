@@ -802,3 +802,185 @@ def test_an_unobservable_sealer_credential_is_compensated(world):  # claim C6
     with _admin() as c:
         assert role(c, "gochara_sealer")[8] is True
     assert "--secret gochara-sealer-db-url" in (world["tmp"] / "gcloud_destroy.txt").read_text()
+
+
+# ── O-W56-C (M-W56-4): stage layer-verifier-credential — the KĀLA-YANTRA executor's whole-layer verifier login ─────────────────────────────────────
+# Sources: kala-provision-verifier-role.sh (verifier_principal is created NOLOGIN, NOINHERIT, no password; grant-usage gives USAGE on public only), migrations 1330/1334/1390 (its only
+# grants: the receipt INSERT on kala_layer_verification and column reads), services/kala_core/publication.py:86 (verification refuses unless current_user = verifier_principal),
+# fleet/executor.env.example.sh ("a separate verifier_principal login"). The sealer-credential claims C1-C6 above are the pattern; each claim below has one oracle.
+LV = "verifier_principal"
+LV_TAIL = "@127.0.0.1:5432/amjis"
+LV_SECRET = "kala-layer-verifier-db-url"
+
+
+@pytest.fixture()
+def lv(world):
+    """verifier_principal exactly as kala-provision-verifier-role.sh leaves it (created over the admin connection: NOLOGIN, NOINHERIT) plus the one table it inserts into."""
+    def build():
+        with _admin() as c:
+            c.execute(f"DROP OWNED BY {LV}") if c.execute("SELECT 1 FROM pg_roles WHERE rolname=%s", (LV,)).fetchone() else None
+            c.execute(f"DROP ROLE IF EXISTS {LV}")
+            c.execute("DROP TABLE IF EXISTS public.kala_layer_verification, public.lv_other_table")
+            c.execute("CREATE TABLE public.kala_layer_verification (chart_id uuid, generation text, result text)")
+            c.execute("CREATE TABLE public.lv_other_table (id int)")
+        with psycopg.connect(ADMIN_URL, autocommit=True, connect_timeout=3) as a:        # the creator is the ownership admin, as in production
+            a.execute(f"CREATE ROLE {LV} NOLOGIN NOINHERIT NOCREATEDB NOCREATEROLE NOREPLICATION")
+        with _admin() as c:
+            c.execute(f"GRANT INSERT ON public.kala_layer_verification TO {LV}")
+            c.execute(f"GRANT SELECT (chart_id, generation) ON public.kala_layer_verification TO {LV}")
+    build()
+    yield world
+    with _admin() as c:
+        c.execute(f"DROP OWNED BY {LV}") if c.execute("SELECT 1 FROM pg_roles WHERE rolname=%s", (LV,)).fetchone() else None
+        c.execute(f"DROP ROLE IF EXISTS {LV}")
+        c.execute("DROP TABLE IF EXISTS public.kala_layer_verification, public.lv_other_table")
+        c.execute("GRANT USAGE ON SCHEMA public TO PUBLIC")
+
+
+def lv_state(c):
+    return c.execute("SELECT rolcanlogin, rolconnlimit, rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolbypassrls, rolinherit, rolpassword IS NULL"
+                     " FROM pg_authid WHERE rolname = %s", (LV,)).fetchone()
+
+
+NOLOGIN_AS_CREATED = (False, -1, False, False, False, False, False, False, True)
+
+
+def lv_run(world, **kw):
+    return run(world, "layer-verifier-credential", tail=kw.pop("tail", LV_TAIL), **kw)
+
+
+def test_lv_credential_writes_the_dsn_to_secret_manager_and_the_role_authenticates_as_itself_with_exactly_the_least_privilege_set(lv):  # claim V1
+    r = lv_run(lv)
+    assert r.returncode == 0, r.stdout + r.stderr
+    dsn = lv["capture"].read_text()
+    m = re.fullmatch(r"postgresql://verifier_principal:([0-9a-f]{96})" + re.escape(LV_TAIL), dsn)
+    assert m, "the secret must be exactly the layer-verifier DSN"
+    argv = (lv["tmp"] / "gcloud_argv.txt").read_text()
+    assert f"secrets versions add {LV_SECRET}" in argv and "--data-file=-" in argv and m.group(1) not in argv
+    assert m.group(1) not in visible(r)                                  # the password is in the secret input and nowhere a log shows
+    with _login(LV, m.group(1)) as c:                                    # activation is observable AS verifier_principal (publication.py:86)
+        assert c.execute("SELECT current_user").fetchone()[0] == LV
+    with _admin() as c:
+        st = lv_state(c)
+        assert st == (True, 4, False, False, False, False, False, False, False), st            # login, limit 4, nothing elevated, a password set
+        assert c.execute("SELECT pg_has_role(%s, 'cloudsqlsuperuser', 'MEMBER')", (LV,)).fetchone()[0] is False
+        assert c.execute("SELECT count(*) FROM pg_auth_members WHERE member = (SELECT oid FROM pg_roles WHERE rolname=%s)", (LV,)).fetchone()[0] == 0
+    assert verbs(lv) == ["add", "list"]                                  # never `access`, never `destroy` on success
+    assert "secret_version: 1\tenabled" in r.stdout and "member_of_cloudsqlsuperuser=f" in r.stdout
+
+
+def test_lv_credential_changes_no_grant(lv):  # claim V2 (the stage grants nothing: the ownership/ACL deploy gates have nothing new to admit)
+    def acl(c):
+        return (c.execute("SELECT relname, relacl::text FROM pg_class WHERE relnamespace='public'::regnamespace AND relname IN ('kala_layer_verification','lv_other_table') ORDER BY 1").fetchall(),
+                c.execute("SELECT nspacl::text FROM pg_namespace WHERE nspname='public'").fetchone())
+    with _admin() as c:
+        before = acl(c)
+    assert lv_run(lv).returncode == 0
+    with _admin() as c:
+        assert acl(c) == before
+
+
+def test_lv_credential_refuses_unless_the_role_is_the_nologin_role_as_created_and_writes_no_secret(lv):  # claim V3
+    with _admin() as c:
+        c.execute(f"DROP OWNED BY {LV}; DROP ROLE {LV}")
+    r = lv_run(lv)
+    assert r.returncode == 3 and "does not exist" in r.stderr and verbs(lv) == [], r.stdout + r.stderr          # role absent
+    lv_world = lv
+    with psycopg.connect(ADMIN_URL, autocommit=True, connect_timeout=3) as a:
+        a.execute(f"CREATE ROLE {LV} NOLOGIN NOINHERIT")
+    assert lv_run(lv_world).returncode == 0
+    first = lv_world["capture"].read_text()
+    again = lv_run(lv_world)                                                                                    # already a login role: never rotates behind the first run
+    assert again.returncode == 3 and "not the NOLOGIN role" in again.stderr, again.stdout + again.stderr
+    assert lv_world["capture"].read_text() == first and verbs(lv_world) == ["add", "list"]
+
+
+def test_lv_credential_refuses_a_changed_connection_limit_and_writes_no_secret(lv):  # claim V3b (the compensation restores -1, so any other pre-state is refused rather than overwritten)
+    with _admin() as c:
+        c.execute(f"ALTER ROLE {LV} CONNECTION LIMIT 9")
+    r = lv_run(lv)
+    assert r.returncode == 3 and "not the NOLOGIN role" in r.stderr and verbs(lv) == [], r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("tail", ["@user:pass@127.0.0.1:5432/amjis", "no-at-sign", "@/amjis?host=/cloudsql/p:r:i", "@10.9.9.9:5432/amjis", "@localhost:5432/amjis",
+                                  "@127.0.0.1:5432/amjis?sslmode=disable", "@127.0.0.1/amjis", "@127.0.0.1:5432/"])
+def test_lv_credential_accepts_only_the_executors_loopback_tail(lv, tail):  # claim V4 (the executor reaches the database through a local proxy; the verifier's Cloud Run socket form is not it)
+    r = lv_run(lv, tail=tail)
+    assert r.returncode == 2 and verbs(lv) == [], (tail, r.stdout, r.stderr)
+    with _admin() as c:
+        assert lv_state(c) == NOLOGIN_AS_CREATED
+
+
+@pytest.mark.parametrize("plant", [
+    "GRANT UPDATE ON public.kala_layer_verification TO verifier_principal",                       # a write beyond the single receipt INSERT
+    "GRANT DELETE ON public.kala_layer_verification TO verifier_principal",
+    "GRANT INSERT ON public.lv_other_table TO verifier_principal",                                # the INSERT is for kala_layer_verification only
+    "GRANT SELECT ON public.lv_other_table TO verifier_principal WITH GRANT OPTION",
+    "GRANT CREATE ON SCHEMA public TO verifier_principal",
+    "GRANT cloudsqlsuperuser TO verifier_principal",
+    "ALTER TABLE public.lv_other_table OWNER TO verifier_principal",
+    "REVOKE USAGE ON SCHEMA public FROM PUBLIC",                                                  # the role has no USAGE on public (grant-usage not run): every read it needs would fail
+], ids=["update", "delete", "insert-other", "grant-option", "create-schema", "superuser-edge", "owns-a-table", "no-usage"])
+def test_lv_credential_postconditions_refuse_anything_beyond_the_receipt_insert_and_commit_nothing(lv, plant):  # claim V5 (one planted drift per postcondition clause; nothing committed, compensation verified)
+    with _admin() as c:
+        c.execute(plant)
+    r = lv_run(lv)
+    assert r.returncode == 5 and "compensated and VERIFIED" in r.stderr and "destroyed secret version 7" in r.stderr, r.stdout + r.stderr
+    with _admin() as c:
+        assert lv_state(c) == NOLOGIN_AS_CREATED, "the activation must have committed nothing"
+    pw = re.search(r"verifier_principal:([0-9a-f]{96})", lv["capture"].read_text()).group(1)
+    assert pw not in visible(r)
+    assert f"--secret {LV_SECRET}" in (lv["tmp"] / "gcloud_destroy.txt").read_text()
+
+
+def test_lv_credential_tolerates_the_creator_admin_membership_postgres_16_records_but_refuses_any_other_member(lv):  # claim V6
+    with _admin() as c:
+        c.execute(f"GRANT {LV} TO pgadmin WITH ADMIN OPTION, INHERIT FALSE, SET FALSE") if c.execute("SHOW server_version_num").fetchone()[0] >= "160000" else c.execute(f"GRANT {LV} TO pgadmin WITH ADMIN OPTION")
+    r = lv_run(lv)
+    assert r.returncode == 0, r.stdout + r.stderr                                                       # the creating admin's own administration right is not an escalation
+    with _admin() as c:
+        c.execute("ALTER ROLE verifier_principal NOLOGIN PASSWORD NULL CONNECTION LIMIT -1")
+        c.execute("DROP ROLE IF EXISTS lv_stranger")
+        c.execute("CREATE ROLE lv_stranger NOLOGIN")
+        c.execute(f"GRANT {LV} TO lv_stranger")                                                         # someone who could SET ROLE to it
+    try:
+        r = lv_run(lv)
+        assert r.returncode == 5 and "compensated and VERIFIED" in r.stderr, r.stdout + r.stderr
+        with _admin() as c:
+            assert lv_state(c) == NOLOGIN_AS_CREATED
+    finally:
+        with _admin() as c:
+            c.execute("DROP ROLE IF EXISTS lv_stranger")
+
+
+def test_lv_credential_compensates_an_activation_that_cannot_be_observed_as_itself(lv):  # claim V7
+    shim = lv["tmp"] / "psql_lv_login_fails"
+    shim.write_text(f'#!/usr/bin/env bash\n[ "${{PGUSER:-}}" = "{LV}" ] && [ -n "${{PGPASSWORD:-}}" ] && exit 2\nexec "{PSQL}" "$@"\n')
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    r = lv_run(lv, psql=str(shim))
+    assert r.returncode == 5 and "cannot authenticate as itself after activation" in r.stderr and "compensated and VERIFIED" in r.stderr, r.stdout + r.stderr
+    with _admin() as c:
+        assert lv_state(c) == NOLOGIN_AS_CREATED
+    assert f"--secret {LV_SECRET}" in (lv["tmp"] / "gcloud_destroy.txt").read_text()
+
+
+def test_lv_credential_unverifiable_compensation_exits_70_and_keeps_the_secret_version(lv):  # claim V8 (the version is the only record of a possibly-live credential)
+    shim = lv["tmp"] / "psql_lv_compensation_fails"
+    flag = lv["tmp"] / "lv_activated.flag"
+    shim.write_text(f'''#!/usr/bin/env bash
+prev=""; for a in "$@"; do if [ "$prev" = "-f" ] && [ "$a" = "-" ]; then stmt="$(cat)"; printf '%s' "$stmt" | "{PSQL}" "$@" || exit $?; touch "{flag}"; exit 0; fi; prev="$a"; done
+if [ -f "{flag}" ]; then for a in "$@"; do case "$a" in *"NOLOGIN PASSWORD NULL"*) exit 1;; esac; done; fi
+[ -f "{flag}" ] && [ "${{PGUSER:-}}" = "{LV}" ] && exit 2
+exec "{PSQL}" "$@"
+''')
+    shim.chmod(shim.stat().st_mode | stat.S_IEXEC)
+    r = lv_run(lv, psql=str(shim))
+    assert r.returncode == 70 and "ROLLBACK INCOMPLETE — THE LAYER VERIFIER MAY BE ACTIVE" in r.stderr and "NOT destroyed" in r.stderr, r.stdout + r.stderr
+    assert not (lv["tmp"] / "gcloud_destroy.txt").exists()
+
+
+def test_lv_credential_a_secret_store_failure_changes_nothing_in_the_database(lv):  # claim V9 (secret store FIRST: a failed write leaves the role exactly as it was)
+    r = lv_run(lv, extra={"GCLOUD_PERMS": "list,destroy"})
+    assert r.returncode == 5 and "nothing was changed in the database" in r.stderr, r.stdout + r.stderr
+    with _admin() as c:
+        assert lv_state(c) == NOLOGIN_AS_CREATED

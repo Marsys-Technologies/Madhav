@@ -53,6 +53,7 @@ const SHARED_ROLES = [
 ] as const
 const GOCHARA = ['gochara_verifier', 'gochara_sealer'] as const
 const THIRD = 'gochara_acl_gate_third_grantee'
+const LAYER_VERIFIER = 'verifier_principal'      // O-W56-C: the Kāla role gochara-provision-roles.sh stage layer-verifier-credential makes able to log in
 const TABLES = ['chart_facts', 'chart_dashas'] as const
 
 describe.skipIf(!ADMIN_URL)('data-plane deploy gate — Gochara verifier/sealer L1-read tolerance is exact', () => {
@@ -78,7 +79,7 @@ describe.skipIf(!ADMIN_URL)('data-plane deploy gate — Gochara verifier/sealer 
     if ((await admin.query('SELECT 1 FROM pg_database WHERE datname=$1', [DB_NAME])).rowCount) throw new Error(`${DB_NAME} already exists: refusing to reuse a database this run did not create`)
     await admin.query(`CREATE DATABASE ${DB_NAME}`)
     pool = new Pool({ connectionString: dbUrl() })
-    for (const r of [...SHARED_ROLES, ...GOCHARA, THIRD]) {
+    for (const r of [...SHARED_ROLES, ...GOCHARA, THIRD, LAYER_VERIFIER]) {
       const existed = (await admin.query('SELECT 1 FROM pg_roles WHERE rolname=$1', [r])).rowCount
       if (!existed && !(SHARED_ROLES as readonly string[]).includes(r)) createdByThisRun.push(r)
       await ensureRole(admin, r)
@@ -191,5 +192,54 @@ describe.skipIf(!ADMIN_URL)('data-plane deploy gate — Gochara verifier/sealer 
     await reset()
     await pool.query('GRANT SELECT ON public.chart_divisionals TO gochara_sealer')
     expect(await tableGateUnsafe()).toBe(true)
+  })
+
+  // O-W56-C (M-W56-4): the post-stage state of gochara-provision-roles.sh stage `layer-verifier-credential`. The stage grants NOTHING — it only lets the Kāla role
+  // verifier_principal log in (LOGIN, a password, CONNECTION LIMIT 4) — so the deploy gate needs no new allowance: the role's existing allowlist entry (USAGE on schema public, the
+  // `verifier_principal` row of the schema gate) is all it holds on the protected surface, its receipt INSERT / column reads are on non-protected kala_* tables, and NOTHING
+  // widened for it. Both claims are measured with the gate statements extracted verbatim from the on-disk source.
+  describe('O-W56-C: verifier_principal after the layer-verifier-credential stage', () => {
+    async function resetLv(): Promise<void> {
+      await reset()                                                                     // the preceding tests above leave their last planted drift behind
+      await pool.query(`REVOKE ALL ON public.chart_facts, public.chart_dashas, public.chart_divisionals FROM ${LAYER_VERIFIER}`)
+      await pool.query(`REVOKE CREATE ON SCHEMA public FROM ${LAYER_VERIFIER}`)
+      await pool.query(`GRANT USAGE ON SCHEMA public TO ${LAYER_VERIFIER}`)          // the schema gate REQUIRES this once the role exists
+    }
+    async function postStage(): Promise<void> {
+      await resetLv()
+      await pool.query('DROP TABLE IF EXISTS public.kala_layer_verification; CREATE TABLE public.kala_layer_verification (chart_id uuid, generation text, result text)')
+      await pool.query(`GRANT INSERT ON public.kala_layer_verification TO ${LAYER_VERIFIER}; GRANT SELECT (chart_id, generation) ON public.kala_layer_verification TO ${LAYER_VERIFIER}`)
+      if (createdByThisRun.includes(LAYER_VERIFIER)) {                                  // never alter a shared cluster's pre-existing role: the ACL gates do not read the login attributes
+        await admin.query(`ALTER ROLE ${LAYER_VERIFIER} LOGIN PASSWORD 'lv-fixture-only' CONNECTION LIMIT 4`)
+      }
+    }
+    afterAll(async () => { await pool.query('DROP TABLE IF EXISTS public.kala_layer_verification') })
+
+    it('claim A1: the role as the stage leaves it (LOGIN, USAGE on public, the receipt INSERT and column reads on its kala table) reads SAFE on both ACL gates — nothing to allowlist', async () => {
+      await postStage()
+      expect(await tableGateUnsafe()).toBe(false)
+      expect(await schemaGateUnsafe()).toBe(false)
+      if (createdByThisRun.includes(LAYER_VERIFIER)) {
+        const attrs = (await admin.query('SELECT rolcanlogin, rolconnlimit FROM pg_roles WHERE rolname=$1', [LAYER_VERIFIER])).rows[0]
+        expect(attrs).toEqual({ rolcanlogin: true, rolconnlimit: 4 })
+      }
+    })
+    it('claim A2: the allowlist did NOT widen for it — SELECT on an L1 table is still drift for verifier_principal (the Gochara tolerance names only gochara_verifier and gochara_sealer)', async () => {
+      await postStage()
+      await pool.query(`GRANT SELECT ON public.chart_facts TO ${LAYER_VERIFIER}`)
+      expect(await tableGateUnsafe()).toBe(true)
+      await resetLv()
+      expect(await tableGateUnsafe()).toBe(false)
+    })
+    it('claim A3: CREATE on schema public is still drift for it (USAGE only), and losing USAGE is drift too (the schema gate requires it once the role exists)', async () => {
+      await postStage()
+      await pool.query(`GRANT CREATE ON SCHEMA public TO ${LAYER_VERIFIER}`)
+      expect(await schemaGateUnsafe()).toBe(true)
+      await resetLv()
+      await pool.query(`REVOKE USAGE ON SCHEMA public FROM ${LAYER_VERIFIER}`)
+      expect(await schemaGateUnsafe()).toBe(true)
+      await resetLv()
+      expect(await schemaGateUnsafe()).toBe(false)
+    })
   })
 })
