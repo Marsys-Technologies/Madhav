@@ -46,7 +46,7 @@ def test_preparation_uses_frozen_canonical_roster_and_k9_23_interface_without_di
     _, bundle, plan = prepared
     assert bundle['status'] == 'PREPARATION_ONLY'
     assert bundle['production_acceptance'] is None and bundle['dry_run_passed'] is None
-    assert bundle['assets'] == ASSETS and len(bundle['assets']) == 19
+    assert bundle['assets'] == ASSETS and len(bundle['assets']) == 20
     assert bundle['candidate']['expected_head_generation'] is None
     steps = {row['kind']: row for row in bundle['operations']}
     assert list(steps) == ['backup_snapshot', 'backup_restore_verify', 'orchestrator_rebuild_dryrun',
@@ -61,7 +61,7 @@ def test_preparation_uses_frozen_canonical_roster_and_k9_23_interface_without_di
     assert 'ka_bhavishya_lekha' not in bundle['assets']
 
 
-@pytest.mark.parametrize('change', ['roster', 'order', 'registrar', 'chart', 'clear', 'generation', 'grain', 'service_grain', 'manifest'])
+@pytest.mark.parametrize('change', ['roster', 'resonance', 'order', 'registrar', 'chart', 'clear', 'generation', 'grain', 'service_grain', 'resonance_grain', 'manifest'])
 def test_prepare_rejects_incomplete_or_widened_scope(stored, change):
     conn, plan, _ = stored
     plan = deepcopy(plan)
@@ -71,6 +71,7 @@ def test_prepare_rejects_incomplete_or_widened_scope(stored, change):
         run = cursor.fetchone()
     run['id'], run['chart_id'] = str(run['id']), str(run['chart_id'])
     if change == 'roster': run['plan'] = run['plan'][:-1]
+    elif change == 'resonance': run['plan'] = [aid for aid in run['plan'] if aid != 'ka_gochara_resonance']
     elif change == 'order': run['plan'] = list(reversed(run['plan']))
     elif change == 'registrar': run['plan'] += ['ka_bhavishya_lekha']
     elif change == 'chart': plan['chart_id'] = '11111111-1111-4111-8111-111111111111'
@@ -78,8 +79,9 @@ def test_prepare_rejects_incomplete_or_widened_scope(stored, change):
     elif change == 'generation': plan['generation'] = 'NONE'
     elif change == 'grain': plan['conventions']['publication_grains']['ka_yojaka'] = ['ka_avadhi:fixture']
     elif change == 'service_grain': del plan['conventions']['publication_grains']['ka_graha_sancara']
+    elif change == 'resonance_grain': del plan['conventions']['publication_grains']['ka_gochara_resonance']
     else: run['plan_manifest_digest'] = '0' * 64
-    if change in {'roster', 'order', 'registrar'}:
+    if change in {'roster', 'resonance', 'order', 'registrar'}:
         # Keep the manifest internally valid: this must test the final-layer
         # scope/order guard, not merely the frozen-manifest digest detector.
         by_asset={row['asset_id']:row for row in run['plan_manifest']['assets']}
@@ -98,7 +100,7 @@ def test_real_single_select_readback_measures_each_writer_and_zero_row_grain(pre
     result = tool().inspect_readback(bundle, readback(conn, bundle), phase='rebuilt')
     assert result['status'] == 'OBSERVED_COMPLETE'
     assert result['writer_results_complete'] is True and result['grain_results_complete'] is True
-    assert len(result['writers']) == 19
+    assert len(result['writers']) == 20
     assert result['independent_verification'] is False
     assert result['production_acceptance'] is None
     assert result['semantic_verification'] is None
