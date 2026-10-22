@@ -124,7 +124,8 @@
         "tests/l3/gochara/test_p06*.py",
         "tests/l3/gochara/test_j6_bindings*.py",
         "tests/l3/gochara/test_od1_c1*.py",
-        "tests/l3/gochara/test_od1_d3*.py"
+        "tests/l3/gochara/test_od1_d3*.py",
+        "tests/l3/gochara/test_od1_ndh*.py"
       ],
       "discover_db": true
     },

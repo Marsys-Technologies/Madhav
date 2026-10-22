@@ -627,6 +627,14 @@ class RuleRegistryStore:
             (path_id, rule_version)).fetchall()
         if not members:
             raise RegistryDivergenceError(f"no soft-factor membership persisted for {path_id}@{rule_version}")
+        # SR-NDH-INPLACE: the persisted membership must BE the declared one. A row built from the content a version had before an in-place re-derivation (the
+        # 1.2.0 rows before SR-OD1 V1 held the 1.0.0 factor set) names bound factors, so the per-member check below cannot see it: the whole set is compared.
+        declared_path = rules_registry.RULE_PATHS.get((path_id, rule_version))
+        want_members = sorted(tuple(ref) for ref in declared_path["soft_factors"]) if declared_path is not None else None
+        have_members = sorted(_as_tuple(["factor_id", "factor_rule_version"], m) for m in members)
+        if want_members != have_members:
+            raise RegistryDivergenceError(
+                f"persisted soft-factor membership of {path_id}@{rule_version} is not the declared one — stored {have_members} vs declared {want_members}")
         declared = {(r["factor_id"], r["rule_version"]): r for r in factor_rows()}
         out = []
         for member in members:
