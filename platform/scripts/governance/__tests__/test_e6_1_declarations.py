@@ -329,7 +329,7 @@ NARR_CITES = {
                       (_WR + "ka_vighnakara.py", 795, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 872, "'reason': ("),
                       (_WR + "ka_vighnakara.py", 951, "'reason': ("), (_WR + "ka_vighnakara.py", 1007, "'reason': f\"{planet_str} combust"),
                       (_WR + "ka_vighnakara.py", 307, "json.dumps(obs['detail'])"),
-                      (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
+                      (_L + "L3_kala/query_obstruction_periods.ts", 81, "obstruction_detail")],
     "ka_avadhi": [(_WR + "ka_avadhi.py", 198, "'note': f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\""),
                   (_WR + "ka_avadhi.py", 315, "dossier=Jsonb(dossier)"),
                   (_L + "L3_kala/query_dasha_dossier.ts", 94, "dossier, quality")],
