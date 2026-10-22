@@ -17,6 +17,9 @@ once per pending substep, final rules, strict certification, in-build verify DEF
   trial_slice.py trial-ready --out DIR --repo PATH [--ref SHA] [--timeout-s N]               TRIAL_READY/1 (the merged evaluator) → <out>/trial_ready.json, attached to the report
   trial_slice.py eq-record   --out DIR --eq-repo PATH [--eq-tool FILE] [--pinned-extra FILE] EQUIVALENCE_RECORD/1 (the merged tool) for the trial head, attached to the report
   trial_slice.py amd64-readiness --head SHA [--image-digest sha256:..] [--out FILE]          the command + inputs of the ONE amd64 slice per TR head (NOT run)
+  trial_slice.py amd64-finish --out DIR [--eq-repo PATH ..]                                  finish an amd64-run whose driver was killed after the container ran to its end
+  trial_slice.py amd64-run --head SHA (--repo PATH | --export DIR) --out DIR [--classes ..] [--image-digest sha256:..] [--eq-repo PATH ..]
+                                                                                              the ONE amd64 slice per TR head IN A linux/amd64 DOCKER CONTAINER (SR-T24-AMD64-DOCKER; amd64_docker.py)
   trial_slice.py check-table [--decision-table FILE]                                          validate the G-3 decision table (data) and print its digest
 
 A10.1 (T1B): every run loads and validates the G-3 decision table (`g3_decision_table.json`: floors, forbidden reasons, caps, noninterference kinds) and the gates are
@@ -40,6 +43,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -51,6 +55,7 @@ from urllib.parse import urlsplit, urlunsplit
 sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))                  # `python -I` does not put the script directory on sys.path
+import amd64_docker as ad                      # noqa: E402  (AMD64-DOCKER)
 import crosscheck as cx                        # noqa: E402
 import g5_cpu                                  # noqa: E402  (G5-CPU)
 import gates                                   # noqa: E402
@@ -956,7 +961,7 @@ def trial_ready_stage(state: dict, out: Path, repo: str | None, ready_json: str 
     return te.run_trial_ready(Path(repo) if repo else None, head, out / "trial_ready.json", python=sys.executable, timeout_s=timeout_s)
 
 
-def equivalence_stage(state: dict, out: Path, eq_repo: str | None, eq_tool: str | None, extra_path: str | None, image_digest: str | None) -> dict:
+def equivalence_stage(state: dict, out: Path, eq_repo: str | None, eq_tool: str | None, extra_path: str | None, image_digest: str | None, extra_inline: dict | None = None) -> dict:
     """EQUIVALENCE_RECORD/1 for the trial head by the merged tool.  The pinned inputs are what the trial can read (the stored vector, its own horizon, the runtime it ran
     on as a ROLLING DIAGNOSTIC) plus an operator-supplied file for what only the dispatch config / L0 / L1 can say."""
     vec = None
@@ -965,6 +970,8 @@ def equivalence_stage(state: dict, out: Path, eq_repo: str | None, eq_tool: str 
     except (OSError, ValueError):
         pass
     extra = json.loads(Path(extra_path).read_text(encoding="utf-8")) if extra_path else None
+    if extra_inline:                                      # AMD64-DOCKER: the runtime block read inside the container and the emulation note win over a file's runtime/provenance keys
+        extra = {**(extra or {}), **{k: {**((extra or {}).get(k) or {}), **v} for k, v in extra_inline.items()}}
     g5 = g5_cpu.equivalence_fields(state)                                                     # G5-CPU: the method inputs ride the runtime block
     extra = {**(extra or {}), "runtime": {**((extra or {}).get("runtime") or {}), **g5}}
     pinned = None if vec is None else te.pinned_inputs(vec, trial_horizon=(state.get("horizon") or {}).get("days") and [state["horizon"]["start"], state["horizon"]["end"]],
@@ -1582,6 +1589,106 @@ def cmd_amd64_readiness(a) -> int:
     return 0 if doc["ready"] else 3
 
 
+#: what a container run needs of the head: the sidecar and migrations (the harness), and the three files the pipeline Dockerfile COPYs from 035_DISCOVERY_LAYER
+EXPORT_PATHS = ("platform/python-sidecar", "platform/migrations", "035_DISCOVERY_LAYER")
+
+
+def export_head(repo: Path, head: str, dest: Path) -> Path:
+    """`git archive` of the head into `dest` (read-only git; reused when `<dest>.head` already names this head).  A path without a .git is taken as an export already."""
+    if not (repo / ".git").exists():
+        return repo
+    marker = dest.with_name(dest.name + ".head")
+    if dest.is_dir() and marker.is_file() and marker.read_text().strip() == head:
+        return dest
+    if dest.exists():
+        shutil.rmtree(dest)
+    dest.mkdir(parents=True)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env["GIT_OPTIONAL_LOCKS"] = "0"
+    tar = subprocess.Popen(["git", "-C", str(repo), "archive", "--format=tar", head, "--", *EXPORT_PATHS], stdout=subprocess.PIPE, env=env)
+    subprocess.run(["tar", "-x", "-C", str(dest)], stdin=tar.stdout, check=True, timeout=600)
+    if tar.wait() != 0:
+        raise Refused(f"git archive {head[:12]} failed in {repo}")
+    marker.write_text(head + "\n")
+    return dest
+
+
+def amd64_finish(out: Path, rec: dict, *, eq_repo: str | None, eq_tool: str | None, pinned_extra: str | None) -> dict:
+    """After the container slice: build the runtime block from the IN-CONTAINER probe (refused without it), attach the `platform` block (G-5 reads wall_comparable) and the run record to the
+    report, and emit EQUIVALENCE_RECORD/1 with runtime.kind qualifying_run / arch linux/amd64 / the emulation note (host side: the record tool needs a git repo holding the head)."""
+    probe = ad._json(out / "runtime_probe.json")
+    rb = ad.runtime_block(probe, nonce=rec["nonce"], emulation=rec["emulation"], image_digest=rec["image"]["digest"])
+    state = load_state(out)
+    state["image_digest"] = rec["image"]["digest"]
+    attach_to_report(out, "platform", rb["platform"])
+    summary = {"stages": {k: {kk: vv for kk, vv in v.items() if kk in ("status", "wall_s", "exit")} for k, v in rec["stages"].items()},
+               "image": rec["image"], "pg": rec["pg"], "engine": rec["engine"], "emulation": rec["emulation"], "probe": {k: probe[k] for k in (
+                   "uname_machine", "uname_sysname", "platform_machine", "sys_platform", "python", "cpu", "distributions", "dependency_lock_digest", "swiss")},
+               "teardown": rec.get("teardown"), "rule": "SR-T24-AMD64-DOCKER: runtime.kind qualifying_run, arch read in the container; wall time not used for G-5 (SR-G5-LOAD)"}
+    attach_to_report(out, "amd64_docker", summary)
+    eq = equivalence_stage(state, out, eq_repo, eq_tool, pinned_extra, rec["image"]["digest"],
+                           extra_inline={"runtime": rb["runtime"], "provenance": {"platform_notes": rb["platform_notes"]}})
+    state["equivalence_record"] = eq
+    state["amd64_docker"] = summary
+    write_json(out / "state.json", state)
+    attach_to_report(out, "equivalence_record", eq)
+    e4 = Path(eq["record_file"] + ".manifests") / "E4.json" if eq.get("record_file") else None
+    return {"platform": rb["platform"], "equivalence_record": {k: eq.get(k) for k in ("status", "reason", "complete", "record_digest", "unreadable", "record_file")},
+            "e4_manifest": str(e4) if e4 and e4.is_file() else None}
+
+
+def cmd_amd64_run(a) -> int:
+    out = Path(a.out).resolve()
+    try:
+        repo = Path(a.export or a.repo).resolve()
+        classes = ad.check_classes([c for c in (a.classes or ",".join(ad.SLICE_CLASSES)).split(",") if c])
+        export = export_head(repo, a.head, out.with_name(out.name + ".export"))
+        rec = ad.run(head=a.head, export=export, harness=HERE, out=out, classes=classes, ephe=Path(EPHE), l1_export=EXPORT, image_digest=a.image_digest,
+                     budget_s=a.budget_s, keep_image=a.keep_image, build_timeout_s=a.build_timeout_s, slice_timeout_s=a.slice_timeout_s)
+        fin = None
+        if rec["status"] in ("complete", "failed") and (out / "runtime_probe.json").is_file() and rec.get("emulation") and rec.get("image") and rec.get("pg"):
+            fin = amd64_finish(out, rec, eq_repo=a.eq_repo, eq_tool=a.eq_tool, pinned_extra=a.pinned_extra)
+    except (ad.Amd64Refused, Refused) as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        return 2
+    wall = {k: v.get("wall_s") for k, v in rec["stages"].items()}
+    print(json.dumps({"status": rec["status"], "run_id": rec["run_id"], "head": a.head, "classes": rec["classes"], "wall_s": wall, "teardown": rec.get("teardown"), "finish": fin},
+                     indent=1, sort_keys=True))
+    return {"complete": 0, "resume": EX_RESUME}.get(rec["status"], 1)
+
+
+def cmd_amd64_finish(a) -> int:
+    """Finish an `amd64-run` whose driver was killed (a foreground session limit) after the slice container ran to its end: read the run record, refuse while the container still runs, take the emulation
+    from the engine record and the probe, attach `platform` / the run record / EQUIVALENCE_RECORD like a driver that survived, and tear the sibling PG and the network down.  The container's exit code
+    was not observed by the killed driver: it is recorded as null (the report's own build/defect fields say how the slice went)."""
+    out = Path(a.out).resolve()
+    rec = ad._json(out / "amd64_run.json")
+    try:
+        if not rec:
+            raise Refused(f"no amd64_run.json in {out}")
+        docker = ad.Docker()
+        if rec["names"]["slice"] in docker("ps", "--format", "{{.Names}}", check=False).stdout.split():
+            raise Refused("the slice container is still running: wait for it (or run amd64-run again to resume)")
+        label = load_state(out)["label"]
+        if not (out / f"{label}_report.json").is_file() or not (out / "runtime_probe.json").is_file():
+            raise Refused("no report or no runtime probe in the out directory: the slice did not finish (run amd64-run again to resume)")
+        probe = ad._json(out / "runtime_probe.json")
+        rec["emulation"] = ad.detect_emulation(rec["engine"], (probe or {}).get("cpu"))
+        rec["stages"]["slice"] = {**rec["stages"].get("slice", {}), "status": "done_unobserved", "exit": None,
+                                  "note": "the driver was killed while the container ran; its exit code was not observed"}
+        rec["status"] = "complete"
+        rec["teardown"] = ad.teardown(docker, rec["run_id"])
+        if not a.keep_image and rec.get("image", {}).get("built"):
+            rec["teardown"]["image_removed"] = docker("rmi", rec["image"]["tag"], check=False).returncode == 0
+        (out / "amd64_run.json").write_text(json.dumps(rec, indent=1, sort_keys=True) + "\n")
+        fin = amd64_finish(out, rec, eq_repo=a.eq_repo, eq_tool=a.eq_tool, pinned_extra=a.pinned_extra)
+    except (ad.Amd64Refused, Refused) as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps({"status": rec["status"], "run_id": rec["run_id"], "teardown": rec["teardown"], "finish": fin}, indent=1, sort_keys=True))
+    return 0
+
+
 def cmd_check_table(a) -> int:
     table = load_decision_table(a.decision_table)
     print(f"G-3 decision table OK: {table['table_id']} sha256={table['sha256']} rows={[r['id'] for r in table['rows']]} caps={[c['id'] for c in table['caps']]} "
@@ -1663,6 +1770,26 @@ def build_parser() -> argparse.ArgumentParser:
     m.add_argument("--head", default=None)
     m.add_argument("--image-digest", default=None)
     m.add_argument("--out", default=None)
+    r = sub.add_parser("amd64-run")
+    r.add_argument("--head", required=True, help="the TR head (40 hex) the slice is bound to")
+    r.add_argument("--repo", default=None, help="a git repo/work tree holding the head (exported with git archive) — or a tree that is already an export")
+    r.add_argument("--export", default=None, help="an export of the head (no git needed)")
+    r.add_argument("--out", required=True)
+    r.add_argument("--classes", default=None, help="a subset of the 4-class slice (default: all four)")
+    r.add_argument("--image-digest", default=None, help="use this already-present image BY DIGEST instead of building from the head's Dockerfile")
+    r.add_argument("--budget-s", type=int, default=None)
+    r.add_argument("--keep-image", action="store_true")
+    r.add_argument("--build-timeout-s", type=int, default=3600, help="the hard limit of the docker build in this invocation (a cold build is ~12 min; a timeout leaves the run resumable)")
+    r.add_argument("--slice-timeout-s", type=int, default=7200, help="the hard limit of the slice container in this invocation (a timeout kills the container; its finished substeps are kept)")
+    r.add_argument("--eq-repo", default=None)
+    r.add_argument("--eq-tool", default=None)
+    r.add_argument("--pinned-extra", default=None)
+    f = sub.add_parser("amd64-finish")
+    f.add_argument("--out", required=True)
+    f.add_argument("--keep-image", action="store_true")
+    f.add_argument("--eq-repo", default=None)
+    f.add_argument("--eq-tool", default=None)
+    f.add_argument("--pinned-extra", default=None)
     c = sub.add_parser("check-table")
     c.add_argument("--decision-table", default=None)
     j = sub.add_parser("project")
@@ -1674,7 +1801,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv=None) -> int:
     a = build_parser().parse_args(argv)
     return {"run": cmd_run, "report": cmd_report, "drop": cmd_drop, "baseline": cmd_baseline, "evaluate": cmd_evaluate, "project": cmd_project,
-            "trial-ready": cmd_trial_ready, "eq-record": cmd_eq_record, "amd64-readiness": cmd_amd64_readiness, "check-table": cmd_check_table}[a.cmd](a)
+            "trial-ready": cmd_trial_ready, "eq-record": cmd_eq_record, "amd64-readiness": cmd_amd64_readiness, "amd64-run": cmd_amd64_run, "amd64-finish": cmd_amd64_finish, "check-table": cmd_check_table}[a.cmd](a)
 
 
 if __name__ == "__main__":
