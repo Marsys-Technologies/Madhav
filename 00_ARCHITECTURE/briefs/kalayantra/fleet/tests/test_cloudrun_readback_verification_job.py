@@ -12,6 +12,9 @@ the runner is a double returning a job shaped from the flags `.github/workflows/
   V6 a field Cloud Run omits (proto3 zero maxRetries) reads NULL, never 0 and never a green                                                                                        [_count(...)/ok None]
   V7 `--job` takes only named jobs, adds `checks` only on the definition-alone read, and the executor table carries it as an allowed argument                                 [argparse choices / allowed_args]
   V8 the kind stays read-only and the record makes no claim about the executor table (main enabled `verification_job` under J-4b)                                                      [executor_ops.json]
+  V10 the Cloud SQL attachment is read at EVERY level the deploy checker reads (execution template `spec.template.metadata`, task template, job metadata): present at the execution template reads true
+     (the real deployed shape, J-4b-a55j receipt 20261023 read null from the task level alone), present at the task template reads true, absent everywhere reads NULL and false (never an invented value),
+     and a differing value at any one level reads false whatever the others say; the verdict agrees with `gochara_verification_job_readback.check` on every shape     [cloudsql_annotation_levels]
   V9 the resources check demands the RULED 28,800 s task timeout (#3747 via #3789: "job task timeout 28,800 s in deploy, readback, seal check and launch preparation";
      PRECENTURY_PLAN §9 D-2, F-VERIFY-TIMEOUT): a job at 7,200 s reads false, and the reader's pin cannot drift from the seal check's constant, both deploy flags or the launch preparation
                                                                                                                                                                                   [VERIFIER_TIMEOUT_SECONDS = 7200]
@@ -28,6 +31,7 @@ from types import SimpleNamespace
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "platform/scripts"))
+import gochara_verification_job_readback as deploy_checker  # noqa: E402  the deploy workflow's readback: the doctrine for where the annotation lives and how levels combine
 import gochara_seal_execution_check as execchk  # noqa: E402  the one source of truth the deploy workflow, seal check and launch preparation share
 
 HERE = Path(__file__).resolve().parent
@@ -53,8 +57,8 @@ def verification_job():
     return {
         "apiVersion": "run.googleapis.com/v1", "kind": "Job",
         "metadata": {"name": "gochara-verification-job", "labels": {"cloud.googleapis.com/location": "asia-south1"}},
-        "spec": {"template": {"spec": {"taskCount": 1, "template": {
-            "metadata": {"annotations": {"run.googleapis.com/cloudsql-instances": SQL}},
+        "spec": {"template": {"metadata": {"annotations": {"run.googleapis.com/cloudsql-instances": SQL}},      # where `gcloud run jobs deploy --set-cloudsql-instances` puts it (C6)
+                              "spec": {"taskCount": 1, "template": {
             "spec": {
                 "containers": [{
                     "image": f"{REPO_IMAGE}@{DIGEST}",
@@ -214,3 +218,55 @@ def test_v9_the_timeout_pins_cannot_drift_from_the_seal_checks_constant():
     assert [int(v) for v in re.findall(r"--timeout-seconds (\d+)", deploy)] == [execchk.JOB_TIMEOUT_SECONDS]       # the post-deploy definition readback
     assert re.findall(r"--memory (\S+)", deploy) == [execchk.JOB_MEMORY] * 2 and re.findall(r"--cpu (\S+)", deploy) == [execchk.JOB_CPU] * 2
     assert [int(v) for v in re.findall(r"timeout_seconds=(\d+)", LAUNCH_PREP.read_text())] == [execchk.JOB_TIMEOUT_SECONDS]
+
+
+SQL_KEY = "run.googleapis.com/cloudsql-instances"
+
+
+def sql_job(*, execution=None, task=None, job=None):
+    """The verification job with the Cloud SQL annotation at exactly the named levels (None = absent)."""
+    j = verification_job()
+    j["spec"]["template"].pop("metadata", None)
+    for node, value in ((j["spec"]["template"], execution), (j["spec"]["template"]["spec"]["template"], task), (j, job)):
+        node.pop("metadata", None) if node is not j else None
+        if value is not None:
+            node.setdefault("metadata", {}).setdefault("annotations", {})[SQL_KEY] = value
+    j["metadata"]["name"] = "gochara-verification-job"
+    return j
+
+
+def sql_check(j):
+    return checks(measure(j)[0])["cloudsql_instance_is_the_amjis_instance"]
+
+
+def test_v10_the_annotation_at_the_execution_template_is_read_as_deployed():
+    row = sql_check(sql_job(execution=SQL))
+    assert row["observed"] == SQL and row["ok"] is True
+
+
+def test_v10_the_annotation_at_the_task_template_is_still_read():
+    row = sql_check(sql_job(task=SQL))
+    assert row["observed"] == SQL and row["ok"] is True
+
+
+def test_v10_an_absent_annotation_reads_null_and_false_never_a_value():
+    record, _ = measure(sql_job())
+    row = checks(record)["cloudsql_instance_is_the_amjis_instance"]
+    assert row["observed"] is None and row["ok"] is False and record["all_checks_ok"] is False
+
+
+@pytest.mark.parametrize("levels", [dict(execution=SQL, task="foreign:r:i"), dict(execution="foreign:r:i", task=SQL), dict(execution=SQL, job="foreign:r:i"), dict(task="foreign:r:i")])
+def test_v10_a_differing_value_at_any_present_level_reads_false_and_is_shown_by_level(levels):
+    row = sql_check(sql_job(**levels))
+    assert row["ok"] is False and ("foreign:r:i" in json.dumps(row["observed"]))
+    if len(levels) > 1:
+        assert isinstance(row["observed"], dict) and len(row["observed"]) == len(levels)
+
+
+@pytest.mark.parametrize("levels", [dict(), dict(execution=SQL), dict(task=SQL), dict(job=SQL), dict(execution=SQL, task=SQL, job=SQL),
+                                    dict(execution=SQL, task="foreign:r:i"), dict(execution="foreign:r:i", task=SQL), dict(execution=SQL, job="foreign:r:i")])
+def test_v10_the_verdict_agrees_with_the_deploy_checkers_on_every_shape(levels):
+    j = sql_job(**levels)
+    deploy_ok = not any("Cloud SQL" in b for b in deploy_checker.check(j, image_repo=REPO_IMAGE, image_digest=DIGEST, service_account=SA, runner_commit=SHA,
+                                                                    secret_name=VERIFIER_SECRET_ID, cloudsql_instance=SQL, timeout_seconds=RULED_TIMEOUT_SECONDS, memory="8Gi", cpu="2"))
+    assert sql_check(j)["ok"] is deploy_ok
