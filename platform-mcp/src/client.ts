@@ -11,6 +11,7 @@
  *
  * Exports:
  *   callPlatformPrimitive() → /api/mcp/primitives/{toolName}
+ *   platformServiceGet()    → principal-free service GET (deploy-identity read for /health)
  *
  * (callPlatform / callPlatformPlan deleted by Stream A unit 3.legacy_delete
  * 2026-05-28 — /api/mcp/execute endpoint retired alongside the legacy
@@ -177,6 +178,30 @@ async function platformFetch(opts: PlatformFetchOptions): Promise<PlatformCallRe
   }
 
   return { status: response.status, envelope }
+}
+
+// ── Principal-free service GET (deploy-identity read for /health) ─────────────
+
+/**
+ * One service-to-service GET to a platform route that needs no principal (Layer 1 only:
+ * identity token + X-MCP-Internal-Token), e.g. /api/mcp/health/migrations. Never retried: the
+ * caller is the unauthenticated /health route and must answer quickly.
+ */
+export async function platformServiceGet(
+  path: string,
+  timeoutMs: number
+): Promise<{ status: number; body: unknown }> {
+  const identityToken = await fetchIdentityToken()
+  const response = await fetch(`${PLATFORM_URL}${path}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${identityToken}`,
+      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+    },
+    signal: AbortSignal.timeout(timeoutMs),
+  })
+  const body: unknown = await response.json().catch(() => null)
+  return { status: response.status, body }
 }
 
 // ── Exported call functions ───────────────────────────────────────────────────
