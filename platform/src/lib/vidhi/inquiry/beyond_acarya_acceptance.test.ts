@@ -228,11 +228,18 @@ const historicalV30 = {
   artifact_hash: 'sha256:0026d03ec89847381b634468b14c91ef56250c152718a03545762f2f15b5641b',
 } as const
 
-// K9 obstruction scope: v31 is the immutable predecessor of the generation-scoped kala_obstruction (migration 1406) evaluator-derived v32.
+// K9 D6: v31 is the immutable predecessor of the output-digest-v3 (migration 1400) evaluator-derived v32.
 const historicalV31 = {
   capability_content_hash: 'sha256:51ff201a392b71a0a03f904a339991c45d07fa34b05aeecc0151dbfb70c01c9c',
   report_hash: 'sha256:0fd4a7e8615ac2e8b3a905c4bd92346ec73ec53f9d50960758db97c02df1b24a',
   artifact_hash: 'sha256:bf23a135ce5d202678fd22d715e981cef628f1e35ec799d2135994664dcdfa36',
+} as const
+
+// K9 obstruction scope: v32 is the immutable predecessor of the generation-scoped kala_obstruction (migration 1406) evaluator-derived v33.
+const historicalV32 = {
+  capability_content_hash: 'sha256:1b9786f908bfbb75b40e9c80ca86e021b08b8e8222c9b199c64ffa2b964b9b6d',
+  report_hash: 'sha256:9f534d08ec7176d47be81a54fcd9979500e6a3657460d700ea2c2dd2329af7f7',
+  artifact_hash: 'sha256:9cb6962af255b4da95902a95e86cb9ddbba138a285d00a297a0617e9c6362f0d',
 } as const
 
 describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
@@ -336,8 +343,9 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     // OSR-013: Tulana into PRIORITY moves catalog provenance only; metrics and protected fingerprints stay fixed.
     // K9-6 (v30): the explicit published_request input, density_contract and published-stage text on the seven public kala_*_get views move catalog provenance only; metrics and protected fingerprints stay fixed.
     // K9 D10 (v31): migration 1399 moves the ka_yojaka output-digest spec path in the producer census, which moves producer_contract_fingerprint, hence capability_content_hash and report_hash; metrics, source_catalog_fingerprint and semantic_review_fingerprint stay fixed.
-    // K9 obstruction scope (v32): migration 1406 moves the ka_vighnakara output-digest spec path in the producer census (producer_contract_fingerprint) and the kala_obstruction source-query probe mirrors the served-partition read (semantic_review_fingerprint), hence capability_content_hash and report_hash; metrics and source_catalog_fingerprint stay fixed.
-    expect(report.report_hash).toBe('sha256:329e93ac843fb268dda81142bf65037cee4ebe1af06c6da09fb95d7bec83995f')
+    // K9 D6 (v32): migration 1400 moves the ka_yojaka output-digest spec path again (1399 -> 1400), which moves producer_contract_fingerprint, hence capability_content_hash and report_hash; metrics, source_catalog_fingerprint and semantic_review_fingerprint stay fixed.
+    // K9 obstruction scope (v33): migration 1406 moves the ka_vighnakara output-digest spec path in the producer census (producer_contract_fingerprint) and the kala_obstruction source-query probe mirrors the served-partition read (semantic_review_fingerprint), hence capability_content_hash and report_hash; metrics and source_catalog_fingerprint stay fixed.
+    expect(report.report_hash).toBe('sha256:78cd59605194a45154fe716272817bf34d4cb4e0841a346f37e3a478389d2227')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -1063,7 +1071,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('keeps the v31 source-successor artifact immutable after the K9 obstruction-scope producer-census and probe advance', () => {
+  it('keeps the v31 source-successor artifact immutable after the K9 D6 output-digest-v3 producer-census advance', () => {
     const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v31.json',
       import.meta.url,
@@ -1084,9 +1092,30 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     })
   })
 
-  it('pins the v32 source-successor artifact to the current executable report without claiming live acceptance (K9 obstruction-scope producer census and probe)', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the v32 source-successor artifact immutable after the K9 obstruction-scope producer-census and probe advance', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v32.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV32.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v32',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v31.json',
+        capability_content_hash: historicalV31.capability_content_hash,
+        report_hash: historicalV31.report_hash,
+      },
+      capability_content_hash: historicalV32.capability_content_hash,
+      report_hash: historicalV32.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v33 source-successor artifact to the current executable report without claiming live acceptance (K9 obstruction-scope producer census and probe)', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v33.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -1094,24 +1123,24 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     const predecessor = JSON.parse(readFileSync(new URL(
-      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v31.json',
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v32.json',
       import.meta.url,
     ), 'utf8'))
     expect(artifact.metrics).toEqual(report.metrics)
     expect(artifact.metrics).toEqual(predecessor.metrics)
-    // v32 is the one step where the producer contract (migration 1406 digest-spec path) and the semantic review (kala_obstruction served-partition probe) move; the catalog fingerprint coincides with v31's.
+    // v33 is the one step where the producer contract (migration 1406 digest-spec path) and the semantic review (kala_obstruction served-partition probe) move; the catalog fingerprint coincides with v32's.
     expect(snapshot.source_catalog_fingerprint).toBe(predecessor.generated_snapshot.source_catalog_fingerprint)
     expect(snapshot.semantic_review_fingerprint).not.toBe(predecessor.generated_snapshot.semantic_review_fingerprint)
     expect(snapshot.producer_contract_fingerprint).not.toBe(predecessor.generated_snapshot.producer_contract_fingerprint)
 
     expect(artifact).toMatchObject({
-      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v32',
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v33',
       predecessor: {
-        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v31.json',
-        artifact_hash: historicalV31.artifact_hash,
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v32.json',
+        artifact_hash: historicalV32.artifact_hash,
         acceptance_version: 'beyond-acarya-source-acceptance-v2',
-        capability_content_hash: historicalV31.capability_content_hash,
-        report_hash: historicalV31.report_hash,
+        capability_content_hash: historicalV32.capability_content_hash,
+        report_hash: historicalV32.report_hash,
       },
       preserves_historical_predecessor: true,
       acceptance_version: report.acceptance_version,
@@ -1155,7 +1184,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
         producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
       },
-      evaluated_source_revision: 'c3c5e17b7df874a49f941d746ef74dab579d51d9',
+      evaluated_source_revision: 'f6b8660230b72351ef1053783e4bb81fa1c84fb7',
     })
   })
 })
