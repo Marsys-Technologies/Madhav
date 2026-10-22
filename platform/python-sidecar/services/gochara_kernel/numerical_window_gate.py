@@ -31,6 +31,13 @@ POLICY_QUALIFICATION = "window_qualification/1"
 POLICY_ALL_NULL = "all_null_candidate/1"
 ATTESTATION_KEY = "numerical_window_gate"                 # the key inside the 1240 row's runner_identity
 SHARD_KEY = "verification_shard"                          # …beside it: WHICH launch (generation, head, image, execution, classes) wrote the row (SR-OD1 R8)
+WALL_KEY = "verification_wall"                            # …and the class's measured wall, lock wait apart from compute (SR-OD1 R8X; B4 / G-5)
+G6_KEY = "g6_evidence"                                    # …and the grain's G-6 evidence (`g6_plan.KEY`, the compulsory sample; SR-OD1 R8X, T18)
+#: B4 (ruling SR-A10-1): the wall rule. Verification is ONE execution iff the serial projection fits WALL_FRACTION × the job's task timeout; class shards only if not.
+#: Integers only, here and in everything stored or briefed: the brief is canonical JSON, which has no float encoding (a wall is stored in whole milliseconds).
+TASK_TIMEOUT_S = 28800
+WALL_PERCENT = 75
+BUDGET_S = TASK_TIMEOUT_S * WALL_PERCENT // 100          # 21,600
 
 #: the reason codes the policy leaves a window blank under, grouped for the disclosure (the group is a label; the CODE is what is counted and stored). A code in no group
 #: is still counted, under `other_named_reason`: a blank is never nameless.
@@ -146,10 +153,12 @@ def grain_attestation(conn, *, chart_id: str, generation: str, event_class: str,
             "numbered": c["numbered"], "numbered_without_score": c["numbered_without_score"], "valence": c["valence"], "blank": c["blank"]}
 
 
-def runner_with_attestation(runner: dict, attestation: dict, shard: dict | None = None) -> dict:
+def runner_with_attestation(runner: dict, attestation: dict, shard: dict | None = None, wall: dict | None = None, g6: dict | None = None) -> dict:
     """The runner-identity object the 1240 row stores, carrying the attestation beside the commit / implementation digest the SQL gate reads, and (a class-sharded
-    launch, SR-OD1 R8) the shard stamp that says which launch wrote the row."""
-    return {**runner, ATTESTATION_KEY: attestation, **({} if shard is None else {SHARD_KEY: shard})}
+    launch, SR-OD1 R8) the shard stamp that says which launch wrote the row, the class's measured wall (R8X, B4) and the grain's G-6 evidence (R8X, T18). A value the
+    launch could not produce is absent, never invented: the aggregate names the absence."""
+    return {**runner, ATTESTATION_KEY: attestation, **({} if shard is None else {SHARD_KEY: shard}), **({} if wall is None else {WALL_KEY: wall}),
+            **({} if g6 is None else {G6_KEY: g6})}
 
 
 _IMAGE_DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
@@ -197,10 +206,65 @@ def _shard_problems(tag: str, generation: str, cls: str, runner: dict, pinned_im
     return out
 
 
+def pinned_universe() -> list[str]:
+    """The class universe the aggregate must COVER: the VERIFIER's OWN pinned scored-class list (`input_vector_verifier.SCORED_CLASS_UNIVERSE`, the 26 scored classes of the
+    evaluation protocol), never the manifest's list (a manifest that pins 25 classes is a 25-class generation, and it must not be able to narrow what is demanded) and never
+    'whatever attestations exist'."""
+    from .input_vector_verifier import SCORED_CLASS_UNIVERSE
+    return sorted(SCORED_CLASS_UNIVERSE)
+
+
 def expected_classes(conn, chart_id: str, generation: str, vector: dict):
-    """The class universe the aggregate must COVER: the manifest's pinned `scored_classes` (the pinned list, never 'whatever attestations exist'). A named seam: the G8 census
-    opt-out of the older one-class job-mechanics suites (tests/l3/gochara/conftest.py) sets it aside, exactly as it sets aside the job's own census."""
-    return vector.get("scored_classes")
+    """The class universe the aggregate must COVER (R8X: the PINNED universe, `pinned_universe`). A named seam: the G8 census opt-out of the older one-class job-mechanics
+    suites (tests/l3/gochara/conftest.py) sets it aside, exactly as it sets aside the job's own census."""
+    return pinned_universe()
+
+
+def manifest_vs_universe(vector: dict, universe: list[str]) -> list[str]:
+    """Why the manifest's `scored_classes` is not the pinned universe: absent / malformed, a universe class it does not pin (a 25-class generation), or a class it pins that the
+    universe does not know. A seam with `expected_classes` (the one-class worlds set both aside)."""
+    pins = vector.get("scored_classes") if isinstance(vector, dict) else None
+    if not isinstance(pins, list) or not all(isinstance(c, str) for c in pins):
+        return ["the manifest vector pins no scored_classes list: the aggregate has no class census to compare with the pinned universe"]
+    out = []
+    if len(set(pins)) != len(pins):
+        out.append("the manifest vector's scored_classes repeats a class")
+    out += [f"{c}: a class of the verifier's pinned universe ({len(universe)} classes) that the manifest vector does not pin (it pins {len(set(pins))})" for c in sorted(set(universe) - set(pins))]
+    out += [f"{c}: a class the manifest vector pins that is not in the verifier's pinned universe" for c in sorted(set(pins) - set(universe))]
+    return out
+
+
+def _wall_entry(tag: str, cls: str, wall: Any) -> tuple[int | None, list[str]]:
+    """(compute milliseconds of the class, problems) from ONE row's `verification_wall`: wall = lock wait + compute, every term a non-negative integer (ms), for this class."""
+    keys = ("wall_ms", "lock_wait_ms", "compute_ms")
+    if not isinstance(wall, dict):
+        return None, [f"{tag}: the verification row carries no measured wall (the serial-versus-shards decision cannot be shown)"]
+    nums = [wall.get(k) for k in keys]
+    if wall.get("class") != cls or set(wall) != {"class", *keys} or not all(isinstance(x, int) and not isinstance(x, bool) and x >= 0 for x in nums):
+        return None, [f"{tag}: the measured wall {wall!r} is not a non-negative integer wall / lock wait / compute (ms) for class {cls!r}"]
+    if nums[0] != nums[1] + nums[2]:
+        return None, [f"{tag}: the measured wall {nums[0]} ms is not the lock wait {nums[1]} ms plus the compute {nums[2]} ms"]
+    return nums[2], []
+
+
+def wall_rule(compute_ms_by_class: dict, executions: int, universe_size: int) -> dict:
+    """B4: the serial projection is the mean measured COMPUTE per class (lock wait excluded: a serial run has no sibling to wait for) times the pinned class total, in exact integer
+    arithmetic. DECISION = 'serial' iff it fits BUDGET_S (75 % of the task timeout), else 'sharded', null when no class wall was measured (unknown is never 'serial'). `followed` says
+    whether the generation was verified the way the decision demands (ONE execution iff serial); null while the decision is unknown. Problems name each way it was not."""
+    walls = [v for v in compute_ms_by_class.values() if v is not None]
+    num = sum(walls) * universe_size                                     # projected ms × len(walls)
+    projection = None if not walls else -(-num // (1000 * len(walls)))   # whole seconds, rounded up
+    decision = None if not walls else ("serial" if num <= BUDGET_S * 1000 * len(walls) else "sharded")
+    followed = None if decision is None else ((executions == 1) == (decision == "serial"))
+    problems = []
+    if decision is None:
+        problems.append("no class wall was measured: whether verification had to be sharded is not shown")
+    elif not followed and decision == "serial":
+        problems.append(f"verification ran as {executions} executions although the serial projection {projection} s fits {BUDGET_S} s ({WALL_PERCENT} % of {TASK_TIMEOUT_S} s): it is ONE execution then")
+    elif not followed:
+        problems.append(f"verification ran as ONE execution although the serial projection {projection} s exceeds {BUDGET_S} s ({WALL_PERCENT} % of {TASK_TIMEOUT_S} s): shards are required then")
+    return {"budget_s": BUDGET_S, "classes_measured": len(walls), "serial_projection_s": projection, "executions": executions, "decision": decision, "followed": followed,
+            "problems": problems}
 
 
 def generation_verdict(conn, chart_id: str, generation: str, classes=None, head: str | None = None) -> dict:
@@ -213,7 +277,12 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None, head:
     refuses); every row carries the shard stamp of the launch that wrote it (generation, head = the writing runner's commit, image digest, execution, classes); the rows agree on ONE
     head and ONE image (two shards at different heads refuse, naming both); and every row was written by the code the manifest pins (so a shard run before a rebuild that changed
     the code is void); every row is bound to the build EPOCH (manifest + search-input snapshot), a named image digest and a named execution; every pinned class has its search inventory
-    and the inventory's independent re-derivation (the expected grains come from the inventories). `head`, when given, is the head the aggregate must be at. A subset verdict (`classes` given) is the job's own and does not carry these checks."""
+    and the inventory's independent re-derivation (the expected grains come from the inventories). `head`, when given, is the head the aggregate must be at. A subset verdict (`classes` given) is the job's own and does not carry these checks.
+
+    SR-OD1 R8X (A10.1 B3/B4/B5): (T16) the universe the aggregate covers is the verifier's OWN pinned list (`pinned_universe`, 26 classes), and the manifest's `scored_classes` must equal it
+    (a 25-class generation refuses); (T18) every row carries the G-6 evidence of its grain and it must meet the pinned plan (`g6_plan`: deterministic 3 % sample + the generation-wide five
+    windows with the most mixed pieces, all re-solved from scratch and AGREED; a missing sample refuses); (B4) the verdict records the wall rule's decision (`aggregate.wall_rule`): ONE
+    execution iff the serial projection fits 0.75 × 28,800 s, shards only if not, and a generation verified the other way refuses."""
     from .result_policy import manifest_vector
     vector = manifest_vector(conn, chart_id, generation)
     policy = None if vector is None else vector.get("result_policy")
@@ -246,11 +315,15 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None, head:
             inv_ver.setdefault(c, set()).add(d)
         scored = expected_classes(conn, chart_id, generation, vector)
         if not isinstance(scored, list) or not scored:
-            problems.append("the manifest vector pins no scored_classes: the aggregate has no class census to cover")
+            problems.append("the pinned class universe is empty: the aggregate has no class census to cover")
             scored = []
+        problems += manifest_vs_universe(vector, scored)
+        from . import g6_plan
+        g6_sel = g6_plan.selection(conn, chart_id, generation) if _has_provenance(conn) else g6_plan.Selection([])
+        compute: dict[str, int] = {}
         have = {p[0] for p in _rows(conn, "SELECT DISTINCT event_class FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s", (chart_id, generation))}
         problems += [f"{c}: a pinned scored class with no search-path pin at all — no shard can have attested it" for c in sorted(set(scored) - have)]
-        problems += [f"{c}: a class with search-path pins that the manifest does not pin as scored" for c in sorted(have - set(scored))]
+        problems += [f"{c}: a class with search-path pins that is not in the pinned scored-class universe" for c in sorted(have - set(scored))]
         problems += [f"{c}: a pinned scored class with no search inventory — its grains cannot be enumerated" for c in sorted(set(scored) - set(inv))]
         problems += [f"{c}: the inventory is not attested by an independent re-derivation of its digest" for c in sorted(set(scored) & set(inv)) if inv_ver.get(c) != {inv[c]}]
     shards: dict[tuple, set] = {}
@@ -269,6 +342,11 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None, head:
         att = runner.get(ATTESTATION_KEY)
         if aggregate:
             problems += _shard_problems(tag, generation, cls, runner, pinned_impl, epoch)
+            problems += g6_plan.evidence_problems(tag, runner.get(G6_KEY), (cls, path, ver), g6_sel)
+            secs, wall_problems = _wall_entry(tag, cls, runner.get(WALL_KEY))
+            problems += wall_problems
+            if secs is not None:
+                compute[cls] = max(secs, compute.get(cls, 0))
             st = runner.get(SHARD_KEY)
             if isinstance(st, dict):
                 shards.setdefault((st.get("head"), st.get("image_digest")), set()).add(cls)
@@ -311,9 +389,12 @@ def generation_verdict(conn, chart_id: str, generation: str, classes=None, head:
             problems.append("the classes were attested on different images: " + "; ".join(f"{i!r}: {sorted(c for (_, ii), c2 in shards.items() if ii == i for c in c2)}" for i in images))
         if head is not None and heads and heads != [head]:
             problems.append(f"the aggregate must be at head {head!r}; the shards ran at {heads}")
+        rule = wall_rule(compute, len({e[0] for e in executions}), len(scored))
+        problems += rule.pop("problems")
         extra = {"aggregate": {"head": heads[0] if len(heads) == 1 else None, "image_digest": images[0] if len(images) == 1 else None, "epoch": epoch,
                                "classes_attested": sorted(c for cs in shards.values() for c in cs),
-                               "executions": [{"execution_id": e, "head": h, "image_digest": i, "classes": list(c)} for e, h, i, c in sorted(executions, key=str)]}}
+                               "executions": [{"execution_id": e, "head": h, "image_digest": i, "classes": list(c)} for e, h, i, c in sorted(executions, key=str)],
+                               "g6": g6_sel.summary(), "wall_rule": rule}}
     return {"schema": SCHEMA, "status": FAILED if problems else PASSED, "policy": policy, "table": binding, "grains": len(pins), "windows": total["windows"], **extra,
             "numbered_windows": total["numbered"], "numbered_without_score": total["numbered_without_score"], "blank_windows": blank,
             "valence_of_numbered": dict(sorted(valence.items())), "by_path": dict(sorted(by_path.items())),

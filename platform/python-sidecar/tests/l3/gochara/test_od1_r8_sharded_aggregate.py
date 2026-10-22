@@ -39,14 +39,11 @@ from .test_a53_r11_seal_brief import _brief_as_verifier, _verified  # noqa: F401
 from .test_a53_r12_seal_job import built_numbers  # noqa: F401
 from .test_a53_verification_job import PASSWORD
 
-@pytest.fixture(autouse=True)
-def _job_census_only(monkeypatch):
-    """The one-class world's manifest pins all 26 classes, so the JOB's own census (the G8 refusal) is set aside as in the older job-mechanics suites — but, unlike them, the AGGREGATE's
-    coverage is NOT: each test narrows the pinned universe itself after the run (`_pin_universe`), and A2 shows that a pinned class with nothing built refuses."""
-    from services.gochara_kernel import verification_job as _vj
-    monkeypatch.setattr(_vj, "_enforce_class_census", lambda *a, **k: None)
-    monkeypatch.setattr(_vj, "class_census_violations", lambda *a, **k: [])
-
+# G8: this suite is about the shard stamp / head / image / epoch / inventory mechanics of the AGGREGATE on a deliberate one-class world; it opts out of the census BY NAME (conftest.g8_census_opt_out)
+# and narrows the aggregate's universe itself, in the manifest (`_pin_universe`) — the one-class world's manifest pins all 26 classes, and A2 shows a pinned class with nothing built refuses.
+G8_CENSUS_OPT_OUT_REASON = "shard-stamp / head / image / epoch / inventory mechanics of the generation-wide aggregate on a deliberate one-class marriage world (SR-OD1 R8)"
+G8_AGGREGATE_UNIVERSE = "manifest"
+pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
 
 def _pin_universe(w, classes=(CLS,)):
     _bypass(w, ("UPDATE public.kala_gochara_publication SET input_generation_vector = jsonb_set(input_generation_vector, '{scored_classes}', %s::jsonb)", (json.dumps(list(classes)),)))
@@ -85,8 +82,10 @@ def test_a7_a_shard_run_stamps_every_row_and_the_aggregate_reads_the_stamps(buil
     assert report["shard"] == rows[0][nwg.SHARD_KEY]
     verdict = nwg.generation_verdict(w.conn, CHART_ID, GEN)
     assert verdict["status"] == "PASSED", verdict["problems"]
-    assert verdict["aggregate"] == {"head": head, "image_digest": IMAGE, "epoch": epoch, "classes_attested": [CLS],
-                                    "executions": [{"execution_id": EXECUTION, "head": head, "image_digest": IMAGE, "classes": [CLS]}]}      # the execution history the aggregate reads
+    agg = dict(verdict["aggregate"])
+    assert agg.pop("g6")["plan_digest"] and agg.pop("wall_rule")["executions"] == 1                    # R8X: the G-6 plan and the wall rule's decision ride in the aggregate
+    assert agg == {"head": head, "image_digest": IMAGE, "epoch": epoch, "classes_attested": [CLS],
+                   "executions": [{"execution_id": EXECUTION, "head": head, "image_digest": IMAGE, "classes": [CLS]}]}      # the execution history the aggregate reads
     # the shard's own report says what the aggregate reads NOW: this world's manifest pins all 26 classes and one shard attested one of them (pins + inventories missing for the other 25)
     assert report["aggregate"]["status"] == "FAILED" and report["aggregate"]["classes_attested"] == [CLS] and report["aggregate"]["problem_count"] == 50
     assert all(not p.startswith(f"{CLS}:") for p in report["aggregate"]["problems"])

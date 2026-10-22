@@ -23,6 +23,8 @@ self-check as a REPORT; it never persists a verification row (it holds no privil
 The entry point `pipeline/orchestrator/verification_job.py` is not a registered writer and is not in the build DAG."""
 from __future__ import annotations
 
+import threading
+import time
 from typing import Any, Callable
 
 GENERATION = "5.0"
@@ -303,11 +305,39 @@ class VerificationDisagrees(RuntimeError):
         self.stage, self.detail = stage, detail
 
 
+#: SR-OD1 R8X (B4 / G-5): the time THIS thread has spent acquiring the chart / global locks, so a class's measured wall can be split into LOCK WAIT (a sibling shard holds the
+#: lock: not work, not part of the serial projection) and COMPUTE. Per thread: two shards driven from one process (the overlap harness) must not read each other's wait.
+_WALL = threading.local()
+
+
+def lock_wait_s() -> float:
+    return getattr(_WALL, "lock_wait_s", 0.0)
+
+
 def take_locks(conn, chart_id: str) -> None:
     """R10-3: the chart lock, THEN the global SHARED key — the builder's own order — taken before ANY read that feeds an
-    attestation and held (transaction-scoped advisory locks) until the caller's transaction ends. Re-entrant."""
-    conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (chart_id,))
-    conn.execute("SELECT public.ka_gochara_lock_global_shared()")
+    attestation and held (transaction-scoped advisory locks) until the caller's transaction ends. Re-entrant. The time the two calls take is accumulated as LOCK WAIT."""
+    t0 = time.monotonic()
+    try:
+        conn.execute("SELECT public.ka_gochara_lock_chart(%s::uuid)", (chart_id,))
+        conn.execute("SELECT public.ka_gochara_lock_global_shared()")
+    finally:
+        _WALL.lock_wait_s = lock_wait_s() + (time.monotonic() - t0)
+
+
+def class_wall(event_class: str) -> dict | None:
+    """What this thread has spent on the class `run` is verifying, in whole milliseconds (the brief has no float encoding): the wall since it started, the lock wait inside it and the
+    compute (the rest). None when the class was not started by `run` (a direct library call): an unmeasured wall is null, never zero."""
+    t0 = getattr(_WALL, "class_t0", None)
+    if t0 is None or getattr(_WALL, "class_name", None) != event_class:
+        return None
+    wall = round((time.monotonic() - t0) * 1000)
+    wait = min(round((lock_wait_s() - _WALL.class_lock0) * 1000), wall)
+    return {"class": event_class, "wall_ms": wall, "lock_wait_ms": wait, "compute_ms": wall - wait}
+
+
+def _class_started(event_class: str) -> None:
+    _WALL.class_t0, _WALL.class_name, _WALL.class_lock0 = time.monotonic(), event_class, lock_wait_s()
 
 
 def _included_pins(conn, chart_id, generation, event_class):
@@ -367,7 +397,8 @@ def _inventory_header(conn, chart_id, generation, event_class):
 
 def verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
                  path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
-                 drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None, shard: dict | None = None) -> dict:
+                 drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None, shard: dict | None = None,
+                 g6_sel=None, g6_resolver: Callable | None = None) -> dict:
     """See `_verify_class`. A class whose records (or any derivation) the verifier cannot independently derive is
     UNVERIFIED — an explicit result, the gate stays closed, nothing is persisted — never a pass."""
     from . import inventory_verifier as inv_v
@@ -376,14 +407,15 @@ def verify_class(conn, *, chart_id: str, generation: str, event_class: str, posi
                              position_at=position_at, configured_selection=configured_selection,
                              path_rulings=path_rulings, h_unknown=h_unknown, moon_scope_domain=moon_scope_domain,
                              factor_rows_for=factor_rows_for, drishti_bound=drishti_bound, vedha_bound=vedha_bound,
-                             persist=persist, runner=runner, shard=shard)
+                             persist=persist, runner=runner, shard=shard, g6_sel=g6_sel, g6_resolver=g6_resolver)
     except inv_v.Unverifiable as exc:
         return {"event_class": event_class, "persisted": False, "status": "UNVERIFIED", "reason": str(exc)}
 
 
 def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, position_at, configured_selection: dict,
                   path_rulings: dict, h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable,
-                  drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None, shard: dict | None = None) -> dict:
+                  drishti_bound: bool, vedha_bound: bool, persist: bool, runner: dict | None = None, shard: dict | None = None,
+                  g6_sel=None, g6_resolver: Callable | None = None) -> dict:
     """Everything the independent verifiers say about ONE event class. With `persist=False` (the builder's in-build
     self-check, and `--report-only`) nothing is written. With `persist=True` — the verifier principal's act — the 1206
     inventory-verification row and every included P1–P4 grain's 1240 window-verification row are REPLACED (the caller
@@ -398,6 +430,7 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
     from . import window_gate as wg
     from . import window_verifier as wv
     from . import p1_operands_check as p1c
+    from . import g6_plan
 
     def stage(name, fn):
         try:
@@ -508,8 +541,16 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
             # OD-1: the NUMERICAL-WINDOW GATE — the recount of every window of this grain against the re-derivation just made; it raises on any difference
             attestation = stage(f"numerical_window_gate {path_id}", lambda g=grain, r=report: nwg.grain_attestation(conn, report=r, policy=policy, **g))
             entry["numerical_window_gate"] = {k: attestation[k] for k in ("status", "windows", "numbered", "blank")}
+            # SR-OD1 R8X (T18): G-6 is COMPULSORY in the pinned plan — the grain's deterministic-sample / top-mixed windows are re-solved from scratch (a DISAGREEMENT raises and blocks the
+            # seal) and the evidence rides in the row beside the attestation; a window the plan selects and nothing re-solved is recorded as such, and the aggregate refuses it
+            if g6_sel is None:
+                g6_sel = g6_plan.selection(conn, chart_id, generation)
+            g6_evidence = stage(f"g6_resample {path_id}", lambda g=grain: g6_plan.collect(chart_id=chart_id, generation=generation, grain=g, sel=g6_sel, resolver=g6_resolver))
+            entry["g6"] = {"selected": len(g6_evidence["windows"]), "agreed": sum(1 for w in g6_evidence["windows"].values() if w["result"] == g6_plan.PASS_CLASS)}
+        else:
+            g6_evidence = None
         windows.append(entry)
-        reports.append((grain, report, None if derived is None else derived["derived_windows"], attestation))
+        reports.append((grain, report, None if derived is None else derived["derived_windows"], attestation, g6_evidence))
     out["windows"] = windows
     if persist:
         # ORDER (Stream B's all-guards rehearsal): the WINDOW verifications first, the 1206 inventory row last — the class's
@@ -523,9 +564,10 @@ def _verify_class(conn, *, chart_id: str, generation: str, event_class: str, pos
             raise VerificationDisagrees(
                 "consistency", "the data this verification checked changed before it could be persisted — the report "
                 "no longer identifies the stored state (a writer replaced it outside the lock protocol); nothing is persisted")
-        for grain, report, derived_w, attestation in reports:
+        wall = class_wall(event_class)               # R8X (B4): measured once, so every grain of the class carries the same wall; None (unmeasured) when `run` did not start the class
+        for grain, report, derived_w, attestation, g6_evidence in reports:
             # OD-1: under `window_qualification/1` the grain's PASSED attestation rides in the runner-identity object of its 1240 row (no migration needed)
-            row_runner = runner if attestation is None else nwg.runner_with_attestation(runner if runner is not None else wg.runner_identity(), attestation, shard)
+            row_runner = runner if attestation is None else nwg.runner_with_attestation(runner if runner is not None else wg.runner_identity(), attestation, shard, wall, g6_evidence)
             stage(f"record_verification {grain['path_id']}", lambda g=grain, r=report, d=derived_w, rr=row_runner:
                   wg.record_verification(conn, report=r, input_digest=snap, expected=d, runner=rr,
                                          checked_inputs_digest=fp0["grains"][f"{g['path_id']}@{g['rule_version']}"][0],
@@ -608,7 +650,7 @@ def near_miss_verified_for_state(conn, chart_id: str, generation: str):
 def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, position_at, ephe_path: str | None = None,
         modules: dict | None = None, path_refs=None, configured_selection_for: Callable, path_rulings: dict,
         h_unknown: dict, moon_scope_domain: bool, factor_rows_for: Callable, drishti_bound: bool, vedha_bound: bool,
-        report_only: bool = False, enforce_identity: bool = True, producer: dict | None = None) -> dict:
+        report_only: bool = False, enforce_identity: bool = True, producer: dict | None = None, g6_resolver: Callable | None = None) -> dict:
     """The whole sequence. Identity first, then the preconditions (a refusal writes NOTHING), then one transaction per
     class (replace-before-seal), then the SAME candidate gate the seal uses. `enforce_identity=False` is a TEST SEAM for
     fixtures that connect as a superuser; the entry point never passes it.
@@ -617,7 +659,11 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     (`numerical_window_gate.shard_stamp`: generation, head = this runner's commit, image digest, execution, the shard's classes). `producer` is the job's own identity
     (`seal_brief.producer_identity()`: commit / image digest / execution id; the entry point passes it and refuses to persist without it); without one the image and execution
     are read from the job's environment and are None where it names none. A SUBSET run also reports `aggregate`: what the generation-wide verdict reads now, so the cockpit
-    sees which classes are still missing — it never changes this run's own status (the sealer and the brief read the aggregate, not a shard's report)."""
+    sees which classes are still missing — it never changes this run's own status (the sealer and the brief read the aggregate, not a shard's report).
+
+    SR-OD1 R8X: G-6 is part of the pinned plan (`g6_plan`). `g6_resolver(request) -> report | None` is the from-scratch re-solve of one selected window (the integration's adapter
+    over `window_cert_check.check_numbered(resolve=True)`); without one every selected window is recorded unresolved and the aggregate refuses a generation that has any. Each class's
+    measured wall (lock wait apart from compute) rides in its rows for the wall rule (`numerical_window_gate.wall_rule`)."""
     from . import window_gate as wg
     report: dict[str, Any] = {"chart_id": chart_id, "generation": generation, "report_only": report_only, "classes": {}}
     report["identity"] = check_identity(conn) if enforce_identity else {"separate": "NOT CHECKED (test seam)"}
@@ -645,6 +691,8 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     except nmv.NearMissError as exc:
         raise VerificationDisagrees("near_miss", str(exc)) from exc
     from . import numerical_window_gate as nwg
+    from . import g6_plan
+    g6_sel = g6_plan.selection(conn, chart_id, generation) if nwg._has_provenance(conn) else g6_plan.Selection([])      # the plan's requirement, from the stored windows, once
     env = __import__("os").environ
     who = producer or {}
     head = (pre.get("runner") or {}).get("commit")
@@ -654,6 +702,7 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
     report["shard"] = shard
     disagreements = []
     for cls in pre["classes"]:
+        _class_started(cls)
         try:
             with conn.transaction():
                 take_locks(conn, chart_id)
@@ -665,7 +714,7 @@ def run(conn, *, chart_id: str, generation: str = GENERATION, classes=None, posi
                     conn, chart_id=chart_id, generation=generation, event_class=cls, position_at=position_at,
                     configured_selection=configured_selection_for(cls), path_rulings=path_rulings, h_unknown=h_unknown,
                     moon_scope_domain=moon_scope_domain, factor_rows_for=factor_rows_for, drishti_bound=drishti_bound,
-                    vedha_bound=vedha_bound, persist=not report_only, runner=pre.get("runner"), shard=shard)
+                    vedha_bound=vedha_bound, persist=not report_only, runner=pre.get("runner"), shard=shard, g6_sel=g6_sel, g6_resolver=g6_resolver)
         except VerificationDisagrees as exc:
             report["classes"][cls] = {"event_class": cls, "status": "DISAGREE", "stage": exc.stage, "detail": exc.detail}
             disagreements.append(cls)

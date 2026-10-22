@@ -421,4 +421,6 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned ONCE for the SR-OD1 I1 union: window_solver_check (S2), vedha_verifier (C2), p1_operands_check (P1c) join the window stage and window_sweep / window_store /
     # window_verifier / verification_job changed (S1, S2, P1a-c, C2, D2). Geometry is UNCHANGED by the union (P1a's `RecordStore.fetch_stations` read moved to
     # `WindowStore._fetch_stations` precisely so that it stays a8cb08f0...). Re-derived the same way (the prior pin 873236f3... is the pre-union W0 merge).
-    assert got["implementation"]["window"] == "fc0e7500f0f30d89ea0519102b568dfd2b7d466e4208e63f282610981014c60d"
+    # Window re-derived for SR-OD1 R8X: g6_plan joins the window stage and numerical_window_gate / verification_job changed (R8's own edits to the same files had already moved it off the
+    # I1 pin above: the R8 head's bytes give b0ad4b11...). Re-derived the same way from this tree's real bytes; it is re-derived again at every merge (R67 adds window_cert_check).
+    assert got["implementation"]["window"] == "0e4f173d2d232b239cc74d0c30f677271f93e5f4d2dd0d519ee3714d0b168b17"
