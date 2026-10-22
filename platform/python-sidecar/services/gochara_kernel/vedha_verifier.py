@@ -123,6 +123,13 @@ class RecordVedha:
         return self.applicable and bool(self.segments) and all(s.value is None for s in self.segments)
 
     @property
+    def blank_reason(self) -> str:
+        """The reason a wholly-unknown record is blank under: the ONE name its unknown stretches carry (the exact set of `Segment.reason`),
+        else the generic `WHOLLY_UNKNOWN_REASON` when they differ — the builder's rule, derived exactly rather than sampled."""
+        named = {s.reason for s in self.segments if s.value is None}
+        return named.pop() if len(named) == 1 and None not in named else WHOLLY_UNKNOWN_REASON
+
+    @property
     def scopes(self) -> list[str]:
         return sorted({s.scope for s in self.segments if s.scope})
 
