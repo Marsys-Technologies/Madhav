@@ -251,8 +251,9 @@ def _scoring_status(lo: datetime, hi: datetime, edge: datetime | None, reason: s
 # ── windows and members ──────────────────────────────────────────────────────────────────────────────────────────────
 
 _WINDOW_COLUMNS = ("w.window_id::text, w.event_class, w.path_id, w.rule_version, lower(w.interval), upper(w.interval),"
-                   " lower_inc(w.interval), upper_inc(w.interval), w.peak_instant, w.score, w.evidence_for,"
-                   " w.evidence_against, w.outcome_valence_for_native, w.severity, w.null_states_used")
+                   " lower_inc(w.interval), upper_inc(w.interval), w.peak_instant, w.score::float8,"
+                   " w.evidence_for::float8, w.evidence_against::float8, w.outcome_valence_for_native, w.severity::float8,"
+                   " w.null_states_used")
 _WINDOW_ORDER = (" ORDER BY lower(w.interval), upper(w.interval), w.event_class, w.path_id, w.rule_version,"
                  " w.window_id")
 

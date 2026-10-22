@@ -8,6 +8,13 @@
         "platform/scripts/governance/__tests__/test_selfhosted_fork_guard*.py"
       ]
     },
+    "f4-exact-read-guard-tests": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "platform/scripts/governance/__tests__/test_check_f4_exact_reads*.py"
+      ]
+    },
     "deploy-build-check-tests": {
       "cwd": ".",
       "engine": "pytest",

@@ -1286,7 +1286,7 @@ def verify_member_geometry(conn, *, chart_id: str, generation: str, event_class:
     grain = (chart_id, generation, event_class, path_id, rule_version)
     rows = conn.execute(
         "SELECT DISTINCT c.contact_id::text, c.body, c.relation_kind, c.t_in, c.t_out, c.t_exact, o.canonical_target,"
-        " lower(cov.completed_horizon), upper(cov.completed_horizon), c.delta_lambda"
+        " lower(cov.completed_horizon), upper(cov.completed_horizon), c.delta_lambda::float8"
         " FROM public.ka_gochara_eval_window_record m"
         " JOIN public.ka_gochara_relationship_record r ON r.record_id = m.record_id"
         " JOIN public.ka_gochara_contact c ON (c.chart_id, c.generation, c.contact_id)"
