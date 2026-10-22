@@ -526,9 +526,10 @@ def test_the_dispatch_execute_policy_measures_the_scope_and_refuses_a_backup_who
 
 def test_the_century_execute_policy_names_no_backup_and_keeps_every_other_admission_check(backup, shared, tmp_path, monkeypatch):
     """SR-A12-BACKUP-REMOVAL (supersedes SR-BACKUP-VALIDITY-A8 §3.10 for the century dispatch): no dump is taken, so a century dispatch that names no
-    backup_label / backup_restore_sha256 is ADMITTED by `_century_request_policy` (what `--execute` runs before staging), nothing is measured, and a
-    request that still names a stale or changed backup is not refused for it. Every other check of that policy still refuses: the item, the four
-    exact args, the independent absence of the generation and the completed staging dry run."""
+    backup_label / backup_restore_sha256 is ADMITTED by `_century_request_policy` (what `--execute` runs before staging), and a request that still
+    names a stale or changed backup is not refused for it. What stays is the ruling's exact-scope measurability: the reviewed scope's relations are
+    measured (no backup content is compared) and a scope that cannot be measured refuses. Every other check of that policy still refuses: the item,
+    the four exact args, the independent absence of the generation and the completed staging dry run."""
     century = importlib.import_module('dispatch_v5_century_job')
     refuse = {}
     def gate(name):
@@ -543,7 +544,11 @@ def test_the_century_execute_policy_names_no_backup_and_keeps_every_other_admiss
     unchanged = now_measure()
     monkeypatch.setattr(backup, 'measure_scope_now', unchanged)
     assert century._century_request_policy(req, tmp_path) is None
-    assert unchanged.seen == [], 'no scoped-content measurement is taken any more'
+    assert unchanged.seen == [(backup.load_scope()['tables'], [])], 'the reviewed scope relations are measured, once, for measurability only'
+    def cannot_measure(tables, sequences):
+        raise RuntimeError('relation does not exist')
+    monkeypatch.setattr(backup, 'measure_scope_now', cannot_measure)
+    assert 'scoped content could not be measured now' in century._century_request_policy(req, tmp_path)
     old = write_evidence(tmp_path, shared, scope_sha=shared.SCOPED_BACKUP_SCOPE_SHA256S['century'], started=datetime.now(timezone.utc) - timedelta(days=30))
     monkeypatch.setattr(backup, 'measure_scope_now', now_measure(changed='public.a'))
     assert century._century_request_policy({**req, **old}, tmp_path) is None, 'a named backup is ignored, not judged'
@@ -554,3 +559,10 @@ def test_the_century_execute_policy_names_no_backup_and_keeps_every_other_admiss
     del refuse['absence']
     refuse['dryrun'] = 'no completed staging dry run'
     assert century._century_request_policy(req, tmp_path) == 'no completed staging dry run'
+
+
+def test_century_scope_relations_equal_the_small_test_scope(backup):
+    """Claim (A12-M1): `_century_request_policy` measures the reviewed small-test scope's tables as the century scope's relations; that stand-in is only
+    sound while the two reviewed files list the same relations (SR-A12-BACKUP-REMOVAL keeps the exact-scope measurement)."""
+    century, small = backup.load_scope(name='century'), backup.load_scope(name='small_test')
+    assert century['tables'] == small['tables'] and century['written'] == small['written']
