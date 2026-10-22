@@ -39,11 +39,15 @@ from .test_a53_r11_seal_brief import _brief_as_verifier, _verified  # noqa: F401
 from .test_a53_r12_seal_job import built_numbers  # noqa: F401
 from .test_a53_verification_job import PASSWORD
 
-# G8: this suite is about the shard stamp / head / image / epoch / inventory mechanics of the AGGREGATE on a deliberate one-class world; it opts out of the census BY NAME (conftest.g8_census_opt_out)
-# and narrows the aggregate's universe itself, in the manifest (`_pin_universe`) — the one-class world's manifest pins all 26 classes, and A2 shows a pinned class with nothing built refuses.
-G8_CENSUS_OPT_OUT_REASON = "shard-stamp / head / image / epoch / inventory mechanics of the generation-wide aggregate on a deliberate one-class marriage world (SR-OD1 R8)"
+# G8: the one-class world's manifest pins all 26 classes, so the JOB's own census refusal is set aside BY NAME (conftest.g8_job_census_only, closed list + this reason) — but, unlike the older
+# job-mechanics suites (the full opt-out), the AGGREGATE's coverage is NOT: each test narrows the pinned universe itself after the run (`_pin_universe`), and A2 shows that a pinned
+# class with nothing built refuses.
+G8_JOB_CENSUS_ONLY_REASON = "the aggregate's own coverage check is under test on a deliberate one-class marriage world, so only the job's census refusal is set aside"
+# SR-OD1 R8X: the aggregate's universe is the list this suite narrows in the manifest (`_pin_universe`): the real pinned 26-class universe would refuse the narrowed manifest (T16). That is the ONLY
+# thing the fixture changes about the aggregate, and only where a suite declares it; the built-versus-pinned coverage check still runs against that list.
 G8_AGGREGATE_UNIVERSE = "manifest"
-pytestmark = pytest.mark.usefixtures("g8_census_opt_out")
+pytestmark = pytest.mark.usefixtures("g8_job_census_only")
+
 
 def _pin_universe(w, classes=(CLS,)):
     _bypass(w, ("UPDATE public.kala_gochara_publication SET input_generation_vector = jsonb_set(input_generation_vector, '{scored_classes}', %s::jsonb)", (json.dumps(list(classes)),)))

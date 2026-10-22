@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
+
 import pytest
 
 from pipeline.orchestrator.writers import ContextSpec, SubStep
@@ -35,6 +37,7 @@ from .test_a53_am5_writer import make_ephe
 from .test_a53_inventory import CHART_ID, H0, H1, create_am5_database, drop_am5_database
 from .test_c46_v5_test_slice import GOLDEN_PLAN_DIGEST, GOLDEN_PLAN_STEPS, _ctx as _slice_ctx, _marker
 
+MIGRATIONS = Path(__file__).resolve().parents[4] / "migrations"
 GEN = writer_mod.GENERATION
 FLAG = writer_mod.DEFER_VERIFY_KEY
 CLASS = "marriage"          # not an ND-H class: its selection is the same under the final rules
@@ -112,6 +115,10 @@ def am5():
     admin, name, dsn = create_am5_database("w3defer")
     conn = psycopg.connect(dsn, autocommit=True, connect_timeout=3)
     try:
+        # a FINAL build consumes the P1 Form B L0 tables (dignity, combustion orbs, naisargika friendship), and the evaluation-stage independent derivation of each (od1-l0verify) reads
+        # them from the database: seed them from the REAL migrations, as test_od1_l0verify does, never from a stand-in
+        for migration in ("250_bg_dignity_reference.sql", "1401_l0_node_dignity_friendship.sql"):
+            conn.execute((MIGRATIONS / migration).read_text(encoding="utf-8"))
         yield conn
     finally:
         conn.close()

@@ -544,7 +544,7 @@ MUTANTS.update({
 })
 
 MUTANTS.update({
-    'verifier.cli-profile': ('../../pipeline/orchestrator/verification_job.py', 'test_p06_final_rule_verification.py::test_verification_cli_uses_the_same_explicit_candidate_profile', 'with rule_registry.rule_profile(final_rules=args.final_rules):', 'with rule_registry.rule_profile(final_rules=False):'),
+    'verifier.cli-profile': ('../../pipeline/orchestrator/verification_job.py', 'test_p06_final_rule_verification.py::test_verification_cli_uses_the_same_explicit_candidate_profile', 'with rule_registry.rule_profile(final_rules=args.final_rules, **({"p1_form_b": True} if args.p1_form_b else {})):', 'with rule_registry.rule_profile(final_rules=False, **({"p1_form_b": True} if args.p1_form_b else {})):'),
 })
 
 MUTANTS.update({'fixture.setup-cleanup': ('../../tests/l3/gochara/test_a55_replace_chain.py',

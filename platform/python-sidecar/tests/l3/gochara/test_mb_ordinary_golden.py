@@ -521,4 +521,11 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # ba0588e6... is the wave-3a head); R8X's own lane pin 0e4f173d... was derived without R67's window_cert_check and is superseded; no golden component is re-captured.
     # Window re-pinned for SR-OD1 achievement_recognition (2): window_sweep's support/geometry check honours the half-open boundary convention at JD-ulp precision. Re-derived from the tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin a7d18689... is the wave-3b head; the lane's own pin 67aac6d5... was derived on the wave-3a tree and is superseded); evaluation and geometry are unchanged; no golden component is re-captured.
-    assert got["implementation"]["window"] == "17d93221309c1b74e0c91f5b6cf8097b48348715742b4f065fd032e66ca9e7aa"
+    # Window re-pinned for RV-INT part 1 (B3): pipeline/orchestrator/verification_job.py prints the R8 producer-identity refusal through seal_brief.canonical_json (the ONE serializer, as the brief
+    # refusals above it do) instead of json.dumps. Re-derived from the tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin a7d18689... is
+    # the wave-3b head).
+    # Window re-pinned at the SR-OD1 merge-back wave 3c-a (ar-sweep + drishti-edge + ar-verifier + rvint1-fix on the wave-3b head): window_sweep, window_store (drishti-edge), window_verifier / vedha_verifier / verification_job
+    # (ar-verifier) and pipeline/orchestrator/verification_job (RV-INT B3) all move the window stage. The final pin is re-derived from the merged tree's real bytes with input_vector_verifier.module_digests(
+    # input_vector.IMPLEMENTATION_MODULES); the lanes' own pins (ar-sweep 67aac6d5..., rvint1-fix 74056e90...) were derived on the wave-3a tree and are superseded, and the intermediate merge steps' pins
+    # (17d93221..., 40f65b7c...) are not the final one; evaluation and geometry are unchanged by all four lanes; no golden component is re-captured.
+    assert got["implementation"]["window"] == "75887439850c1d931ef109385a0d387ca333b0aa2e9a19a6a007d23a090aa131"

@@ -304,6 +304,7 @@ def test_job_near_miss_disagreement_prevents_class_persistence(monkeypatch):
     monkeypatch.setattr(vj,'take_locks',lambda *a:None)
     monkeypatch.setattr(vj,'check_preconditions',lambda *a,**kw:{'classes':['marriage']})
     monkeypatch.setattr(vj,'precondition_fingerprint',lambda *a:'same')
+    monkeypatch.setattr(vj,'near_miss_verified_for_state',lambda *a:None)      # SR-OD1 R8: the reuse read needs a connection that can execute; nothing is reusable here
     def disagree(*a,**kw):
         raise nv.NearMissError('near_miss_missing: independent detector')
     monkeypatch.setattr(nv,'verify_generation',disagree)
@@ -528,6 +529,8 @@ def test_operator_entry_reports_a_generation_stage_disagreement_as_disagree(monk
             self.closed=True
     c=C()
     monkeypatch.setenv(entry.ENV_URL,'postgresql://postgres@127.0.0.1:55433/postgres')
+    monkeypatch.setenv('GOCHARA_RUNNER_IMAGE_DIGEST','sha256:'+'1'*64)      # SR-OD1 R8: a persisting launch names its image and execution
+    monkeypatch.setenv('CLOUD_RUN_EXECUTION','projects/p/locations/l/jobs/gochara-verification-job/executions/e1')
     monkeypatch.setattr(psycopg,'connect',lambda *a,**kw:c)
     monkeypatch.setattr(entry,'_build_kwargs',lambda *a:{})
     def disagreement(*a,**kw):

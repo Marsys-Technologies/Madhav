@@ -180,7 +180,10 @@ def test_c1_the_solver_and_the_legacy_sampler_are_never_both_asked_for_and_the_w
     src = inspect.getsource(writer)
     call = next(n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "draft_windows")
     kwargs = {k.arg for k in call.keywords}
-    assert "solver" in kwargs and "allow_dynamic" not in kwargs and "speed_at" in src            # the speed seam is bound beside it
+    assert "solver" in kwargs and "allow_dynamic" not in kwargs
+    # the speed seam is a KEYWORD of the writer's read_grain call (RV-INT part 1 B5: `"speed_at" in src` was satisfied by the `def speed_at` beside it)
+    read = next(n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "read_grain")
+    assert "speed_at" in {k.arg for k in read.keywords}
 
 
 # ═════ C2: the verifier refutes wrong numbers ════════════════════════════════════════════════════════════════════════
