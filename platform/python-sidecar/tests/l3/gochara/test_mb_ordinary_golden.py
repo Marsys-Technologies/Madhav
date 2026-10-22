@@ -491,7 +491,11 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # cdcefd54... is the wave-3c-b head; the lane's own pin ce9ffedd... was derived on the wave-3a tree and is superseded); geometry is unchanged; no golden component is re-captured.
     # Evaluation re-pinned at the P1 self-check fix (od1-p1-boundary): p1_nature_operands (the lord's nature-change instants are located to the first microsecond) is an evaluation-stage module. Re-derived from the
     # tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 3fe1142e... is the wave-3a head); geometry is unchanged; no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "453a55be06f4c1a57b40a7244ec9fc87c64cc923bcd660ff9017b5ffb4d5ef12"
+    # Evaluation re-pinned at the SR-OD1 merge-back wave 3c-d (p1-boundary + plateau-tie + drishti-reasons on the wave-3c-c head): p1_nature_operands (p1-boundary) and the drishti-reasons edits to the evaluation-stage
+    # modules (evaluator, inventory, ka_gochara_v5, gochara_rules.drishti) move the evaluation identity. Re-derived ONCE from the final merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 453a55be... is the wave-3c-c head; the p1-boundary lane's own pin daa9b514... was derived on the wave-3a tree and is
+    # superseded; the intermediate merge steps carried the wave-3c-c pins and are not final); geometry is unchanged; no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "daff35674a186493c63f0d5050baf8ccab9317d8fa057f98471b779615de6507"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
@@ -563,4 +567,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # same way (the prior pin b6568936... is the wave-3c-b head; the lane's own scored-until pin 9fd794af... was derived on the wave-3a tree and is superseded; the intermediate merge steps carried the 3c-b pins and are not final); geometry is unchanged.
     # Window re-pinned at the P1 self-check fix (od1-p1-boundary): p1_operands_check (the verifier's change instants are located to the first microsecond) is a window-stage module. Re-derived from the tree's real
     # bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin ba0588e6... is the wave-3a head); geometry is unchanged; no golden component is re-captured.
-    assert got["implementation"]["window"] == "e9b44092819730297f50ce3c9b7d18cbb8b5fa615c6438a9d443523494790b05"
+    # Window re-pinned at the SR-OD1 merge-back wave 3c-d (p1-boundary + plateau-tie + drishti-reasons): p1_operands_check (p1-boundary), window_solver / window_solver_check / window_sweep / window_verifier (plateau-tie,
+    # drishti-reasons) move the window stage. Re-derived ONCE from the final merged tree's real bytes the same way (the prior pin e9b44092... is the wave-3c-c head; the p1-boundary lane's own pin a8b438a3... was
+    # derived on the wave-3a tree and is superseded; the intermediate merge steps carried the wave-3c-c pins and are not final); geometry is unchanged (7a841aa4...).
+    assert got["implementation"]["window"] == "c869027f7b2ae6458271868ecaa8b65be067080cd27802e442613efc4a229d10"
