@@ -522,4 +522,6 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned for SR-OD1 R8X review S-1 (od1-g6-resolver): window_verifier gains `resolve_inputs` and the production `g6_resolver`, verification_job binds it per grain, g6_plan's
     # "who resolves" text changed. Evaluation and geometry are asserted unchanged above. Re-derived from the tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin a7d18689... is the wave-3b head); no golden component is re-captured.
-    assert got["implementation"]["window"] == "2e7a0b6a1bf77a03157b44fe7143fcc11dc71c6a4464f4efa1a6bf9d1d713eee"
+    # Window re-pinned again for the od1-g6-resolver review fix B-1: window_verifier derives a P1 Form-B record's G-6 inputs from the verifier's own P1 binding (a P1 `StepFactor`) and a factor with
+    # no derivation is a named refusal (`NoSolverDerivation`, G-6 answers None). Evaluation and geometry unchanged; re-derived from the real bytes (the prior pin 2e7a0b6a... is the lane's first head).
+    assert got["implementation"]["window"] == "3d346c2743339bca649aa9d8810949be86bfdd366c8c9f004a586998d9c9c279"

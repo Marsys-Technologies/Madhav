@@ -289,7 +289,25 @@ def _drishti_step(conn, rec: dict, row: dict, target: str, position_at):
                            complete=bool(rec.get("boundaries_complete")))
 
 
-def _checker_records(conn, *, recs: dict, qualified: dict, chans: dict, factor_rows: list, position_at, vedha_overlay, channel_at, channel_boundaries):
+class NoSolverDerivation(RuntimeError):
+    """A factor (or a P1 binding) the verifier has no solver-check derivation for: a NAMED refusal. The certificate check keeps it a RuntimeError (as before); the G-6
+    resolver reads it as "the window is not covered" (None, unresolved), never as a disagreement (§N.7.6, §N.8)."""
+
+
+#: the three P1 Form-B categorical rows are ONE step-valued table (agent_nature x dignity x combustion, `p1_operands_check.P1Binding._evaluate`): one `StepFactor` per record
+_P1_STEP_FACTORS = ("agent_nature", "dignity_of_transit_sign", "combustion")
+
+
+def _p1_step_factor(p1, rec: dict):
+    """A P1 record's categorical product as a `StepFactor` from the verifier's own `P1Binding`: value at t (None = undeterminable at t, the prover's own refusal), change
+    instants = the binding's `channel_boundaries`, complete by that derivation."""
+    def value_at(t):
+        v = p1.value_at(rec, t)
+        return None if isinstance(v, _p1c.P1Unknown) else v
+    return _chk.StepFactor(value_at=value_at, boundaries=lambda lo, hi: p1.channel_boundaries(rec, lo, hi), complete=True)
+
+
+def _checker_records(conn, *, recs: dict, qualified: dict, chans: dict, factor_rows: list, position_at, vedha_overlay, channel_at, channel_boundaries, p1=None):
     """The window's members as the prover's plain data. A record with several directed rays becomes one `CheckRecord` per ray (the kernel is the best ray: a max
     inside the record's root / agent group). Every factor is derived here from the stored row, the factor rows and the ephemeris — never read from the builder."""
     targets = _record_targets(conn, [rid for rid, r in recs.items() if rid in qualified and r["relation"] in ("residence", "aspect", "conjunction")])
@@ -305,6 +323,7 @@ def _checker_records(conn, *, recs: dict, qualified: dict, chans: dict, factor_r
             out.append(_chk.CheckRecord(record_id=rid, qualified=False, **kw))
             continue
         constant, steps, tent = 1.0, [], None
+        p1_step = None
         for row in factor_rows:
             fid, ap = row["factor_id"], row.get("applicability")
             if fid == "activity_kernel":
@@ -322,8 +341,12 @@ def _checker_records(conn, *, recs: dict, qualified: dict, chans: dict, factor_r
                     steps.append(_chk.StepFactor(value_at=derived.value_at, boundaries=derived.boundaries, complete=derived.complete))
             elif fid == "karaka_agent" and row.get("null_state") == "omit":
                 continue
+            elif fid in _P1_STEP_FACTORS and row.get("category_mapping") and p1 is not None:
+                if p1_step is None:      # P1c: the verifier's own P1 derivation (sky + L0), the product of the three rows; its change instants are where value OR side may change
+                    p1_step = _p1_step_factor(p1, rec)
+                    steps.append(p1_step)
             else:
-                raise RuntimeError(f"window verifier: factor {fid!r} has no solver-check derivation")
+                raise NoSolverDerivation(f"window verifier: factor {fid!r} has no solver-check derivation")
         if tent is None:
             out.append(_chk.CheckRecord(record_id=rid, constant=constant, steps=tuple(steps), **kw))
             continue
@@ -352,7 +375,7 @@ def _certificate_verdict(window: dict, *, records: list, objective: str, positio
     return _cc.check_numbered(lo=window["lo"], hi=window["hi"], records=records, objective=objective, stored=stored, position_at=position_at,
                               certificate=certificate, event_class=window["event_class"], against_evaluated=against_evaluated)
 
-def _g6_inputs(conn, *, recs, qualified, chans, factor_rows, position_at, vedha_overlay, channel_at, channel_boundaries, window: dict, path_id: str, against_ok: bool):
+def _g6_inputs(conn, *, recs, qualified, chans, factor_rows, position_at, vedha_overlay, channel_at, channel_boundaries, window: dict, path_id: str, against_ok: bool, p1=None):
     """The inputs of one numbered window's G-6 from-scratch re-solve (SR-OD1 R8X S-1), built from the stored row, the factor rows and the verifier's own sky with the SAME
     derivation `_certificate_verdict` uses (`_checker_records`) — never from the builder's certificate. None (the resolver does not cover the window) when there is no sky to
     solve over or the stored window states no maximum to compare with: an honest null, never a pass."""
@@ -363,8 +386,11 @@ def _g6_inputs(conn, *, recs, qualified, chans, factor_rows, position_at, vedha_
         return None
     stored = _chk.StoredWindow(peak_instant=window["peak"], objective_value=ov, score=window["score"], evidence_for=window["evidence_for"],
                                evidence_against=window["evidence_against"], outcome_valence=window["valence"])
-    records = _checker_records(conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at, vedha_overlay=vedha_overlay,
-                               channel_at=channel_at, channel_boundaries=channel_boundaries)
+    try:
+        records = _checker_records(conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at, vedha_overlay=vedha_overlay,
+                                   channel_at=channel_at, channel_boundaries=channel_boundaries, p1=p1)
+    except NoSolverDerivation:
+        return None                  # a factor with no derivation here: the window is not covered (named refusal, unresolved) — never a disagreement
     return dict(lo=window["lo"], hi=window["hi"], records=records, objective=_chk.OBJ_MAXMIN if path_id == "P4" else _chk.OBJ_SUM, stored=stored,
                 position_at=position_at, event_class=window["event_class"], against_evaluated=against_ok)
 
@@ -693,7 +719,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
         if resolve_inputs is not None and peak is not None:
             resolve_inputs[wid] = functools.partial(
                 _g6_inputs, conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at, vedha_overlay=vedha_overlay,
-                channel_at=channel_at, channel_boundaries=channel_boundaries, path_id=path_id, against_ok=against_ok,
+                channel_at=channel_at, channel_boundaries=channel_boundaries, path_id=path_id, against_ok=against_ok, p1=p1,
                 window={"lo": lo, "hi": hi, "peak": peak, "score": score, "evidence_for": ev_for, "evidence_against": ev_against, "valence": valence,
                         "objective_value": s_objective_value, "event_class": event_class})
         if has_fn:                                   # the solver is enabled: the constant-window derivation cannot reproduce these numbers
@@ -737,7 +763,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                 continue
             records = None if position_at is None else _checker_records(
                 conn, recs=recs, qualified=qualified, chans=chans, factor_rows=factor_rows, position_at=position_at, vedha_overlay=vedha_overlay,
-                channel_at=channel_at, channel_boundaries=channel_boundaries)
+                channel_at=channel_at, channel_boundaries=channel_boundaries, p1=p1)
             objective = _chk.OBJ_MAXMIN if path_id == "P4" else _chk.OBJ_SUM
             if structural_blank:
                 probe = _chk.check_window(lo=lo, hi=hi, records=records, objective=objective, position_at=position_at, event_class=event_class,

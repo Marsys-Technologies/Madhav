@@ -10,6 +10,8 @@ Claims — each has ONE oracle here and the single planted reversion that must m
   G3  a real certified generation's AGGREGATE passes with the production resolver wired (end to end: the entry point's `vj.run`, the persisted evidence, `generation_verdict`) — revert: as G1
   G4  an omitted or stale sample is refused by the aggregate: a resolver that covers nothing, evidence deleted from the rows, a population that grew after the run       — revert: the evidence check skips a missing window (covered by test_od1_r8x_aggregate T18c/T18d)
   G5  a production-resolver DISAGREEMENT blocks the class at the `g6_resample` stage and persists nothing for it                                                        — revert: as G2
+  G6  a selected P1 (Form B, step-valued) window is re-solved from scratch from the verifier's OWN P1 derivation and reads AGREED; a stored value that is not the table's reads DISAGREEMENT; a P1 record
+      with no P1 binding is a named refusal (None, unresolved) — never a raise that stage() would call DISAGREE                                                  — revert: `_checker_records` raises on the P1 rows again
 Doctrine: §N.8 (a green comes from a detector that can read false: a re-solve that ran and agreed), §N.7.6 (a window the resolver cannot cover is None, never a pass), A10.1 B5 / PLAN_A10_1 §4
 (G-6: the independent from-scratch re-solve of a deterministic 3 % + the five mixed-heaviest windows). The numbers are the S3 closed-form P4 world (`test_od1_s3_integration`): the max-min of two
 tents, d* = 10/3 d, M = 5/6.
@@ -88,3 +90,38 @@ def test_g2_a_stored_maximum_the_certificate_agrees_with_but_the_sky_does_not_is
     # …and the from-scratch re-solve refuses it, naming the defect: a DISAGREEMENT raises, so the verification job blocks the seal
     with pytest.raises(RuntimeError, match=r"G-6 from-scratch re-solve of window w0 DISAGREES.*(objective_exceeds_stored_maximum|peak_value_mismatch)"):
         g6_plan.collect(resolver=wv.g6_resolver(inputs), **kw)
+
+
+# ── G6: a P1 Form-B window (review B-1) ──────────────────────────────────────────────────────────────────────────────────────────────────────
+
+def _p1_g6_world(objective_value):
+    """The P1c suite's Form-B world: Jupiter (benefic) DEBILITATED in Capricorn until it enters Aquarius on day 5 (ANSWERS.md §B.3: adverse 1.0 before, NEU favourable 0.125 after), a gain class —
+    so the objective's maximum is 0.125 at the day-5 ingress. `objective_value` is what the stored 1240 provenance carries."""
+    from .test_od1_p1c_operands_check import _Conn as P1Conn, _jupiter_world, _verify as p1_verify, _d as p1_d
+    sky, _conn, stored = _jupiter_world()
+    row = list(stored)
+    row[11] = objective_value
+    conn = P1Conn([tuple(row)], [("r1", "root1", "residence", "sign_span", "jupiter", None, p1_d(0), p1_d(10))], [("w", "r1")])
+    inputs: dict = {}
+    assert p1_verify(conn, sky, resolve_inputs=inputs, position_at=sky)["status"] == "VERIFIED"
+    assert set(inputs) == {"w"}
+    return inputs
+
+
+def test_g6_a_selected_p1_form_b_window_is_re_solved_from_the_verifiers_own_p1_derivation_and_agrees():
+    inputs = _p1_g6_world(0.125)
+    out = wv.g6_resolver(inputs)({"window_id": "w"})
+    assert out is not None and out.classification == "AGREED", out
+
+
+def test_g6_a_p1_window_whose_stored_value_is_not_the_tables_is_a_g6_disagreement():
+    inputs = _p1_g6_world(0.25)                                                           # the table's maximum is 0.125, not 0.25
+    out = wv.g6_resolver(inputs)({"window_id": "w"})
+    assert out is not None and out.classification == "DISAGREEMENT", out
+
+
+def test_g6_a_p1_record_with_no_p1_binding_is_a_named_refusal_not_a_raise():
+    inputs = _p1_g6_world(0.125)
+    thunk = inputs["w"]
+    inputs["w"] = lambda: thunk.func(*thunk.args, **{**thunk.keywords, "p1": None})       # the P1 rows are declared, but nothing here can derive them
+    assert wv.g6_resolver(inputs)({"window_id": "w"}) is None                             # unresolved (the aggregate refuses "None, not AGREED"); never VerificationDisagrees

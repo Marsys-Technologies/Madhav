@@ -989,6 +989,29 @@ def test_the_certificate_check_imports_nothing_of_the_builder():
     assert out.stdout.strip() == "CLEAN", out.stdout + out.stderr
 
 
+def test_the_verifier_that_hosts_the_g6_resolver_imports_nothing_of_the_builder_solver():
+    """K12 (review N-1): `window_verifier` now hosts `g6_resolver`, so the builder's `window_solver` / `window_sweep` must be unreachable from it, statically (any import, lazy ones included)
+    and at load time."""
+    src = Path(wv.__file__).read_text()
+    bad = []
+    for node in ast.walk(ast.parse(src)):
+        names = []
+        if isinstance(node, ast.Import):
+            names = [a.name for a in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            base = "." * node.level + (node.module or "")
+            names = [base] + [f"{base}.{a.name}" for a in node.names]
+        bad += [n for n in names if "window_sweep" in n or "kernel_factor" in n or n.rsplit(".", 1)[-1] == "window_solver"]
+    assert bad == []
+    import subprocess
+    root = str(Path(__file__).resolve().parents[3])
+    code = (f"import sys; sys.path.insert(0, {root!r}); from services.gochara_kernel import window_verifier\n"
+            "bad = [m for m in ('services.gochara_kernel.window_sweep', 'services.gochara_kernel.window_solver') if m in sys.modules]\n"
+            "print('LOADED', bad) if bad else print('CLEAN')\n")
+    out = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True, cwd=root)
+    assert out.stdout.strip() == "CLEAN", out.stdout + out.stderr
+
+
 def test_the_two_sides_restate_the_same_literals():
     assert cc.SCHEMA == sol.CERT_SCHEMA and cc.BUDGET_REASON == sol.REASON_BUDGET
     assert cc.POLICY_MAX_EVALS_WINDOW == sol.MAX_EVALS_WINDOW == 500_000
