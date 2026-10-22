@@ -44,7 +44,8 @@ from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
 from services.kala_core.writer_grain import (
-    GRAIN_STEP, attest_inputs, bound_candidate, convergence_generation, grain_steps, predicate_generation)
+    GRAIN_STEP, attest_inputs, bound_candidate, convergence_generation, grain_steps, predicate_generation,
+    refuse_unbound_rewrite)
 from panchang_engine.swiss_backend import records_swiss_backend
 
 # ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
@@ -253,6 +254,10 @@ class _LegacyKaSangamWriter(WriterBase):
         # K9 (SR-K9-PUBLISHABLE): a build bound to a layer candidate reads the
         # predicates of THAT candidate generation, never the published head.
         self._candidate = bound_candidate(conn, getattr(ctx, 'build_id', None), chart_id)
+        if self._candidate is None:
+            # SR-K9-BIND B1b: a build bound to no candidate never rewrites a published head in place (read-only check, before any ledger
+            # or delete); the same check guards every kala_convergence DELETE/INSERT through `convergence_generation` in run_substep.
+            refuse_unbound_rewrite(conn, chart_id, 'ka_sangam')
 
         # Load candidate predicates.
         #
@@ -514,7 +519,7 @@ class _LegacyKaSangamWriter(WriterBase):
         chart_id = self._chart_id
         dry_run  = getattr(ctx, 'dry_run', False)
         # Resolved from the DATABASE each substep (the FROZEN ctx.config carries no candidate): the bound candidate
-        # (read + lock) or the served partition. Every kala_convergence delete below is scoped to this generation, so
+        # (read + lock), or 'legacy' for an unbound build that REFUSES once a head exists (SR-K9-BIND B1b). Every kala_convergence delete below is scoped to this generation, so
         # the FK cascade out of kala_convergence (migration 1405 header) can only reach the children of this
         # build's own rows (K9-WRITE-SCOPE F1).
         self._conv_generation = convergence_generation(conn, chart_id, getattr(self, '_candidate', None))

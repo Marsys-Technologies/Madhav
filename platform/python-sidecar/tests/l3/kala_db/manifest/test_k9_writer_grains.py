@@ -26,6 +26,7 @@ from pipeline.orchestrator.writers import ContextSpec, WriterResult
 from pipeline.orchestrator.writers import ka_gochara as gochara_mod
 from pipeline.orchestrator.writers import ka_sangam as sangam_mod
 from pipeline.orchestrator.writers import ka_vighnakara as vighnakara_mod
+from services.kala_core.writer_grain import UNBOUND_REWRITE_REFUSED, UnboundRewriteRefused
 
 CHART = '00000000-0000-0000-0000-0000000000a1'
 BUILD = '00000000-0000-0000-0000-0000000000b1'
@@ -62,7 +63,8 @@ def conn(kala_db_dsn):
         c.execute('CREATE TABLE kala_convergence (convergence_id serial, chart_id uuid, signal_id text, mode text, '
                   'peak_date date, convergence_score numeric, orb_strength numeric, window_start date, '
                   'window_end date, horizon_tier text, generation text NOT NULL DEFAULT \'legacy\')')
-        c.execute('CREATE VIEW kala_convergence_served AS SELECT * FROM kala_convergence')    # migration 1405: readers take the served view
+        c.execute('CREATE VIEW kala_convergence_served AS SELECT k.* FROM kala_convergence k WHERE k.generation = '
+                  "COALESCE((SELECT h.generation FROM kala_layer_head h WHERE h.chart_id = k.chart_id), 'legacy')")    # migration 1405's definition
         c.execute('CREATE TABLE kala_obstruction (id serial, chart_id uuid, convergence_id integer, signal_id text, '
                   'obstruction_type text, severity text, severity_score numeric, override_score numeric, '
                   'obstruction_detail jsonb, source_citation text, generation text)')
@@ -153,9 +155,19 @@ def test_sangam_input_drift_inside_one_candidate_needs_a_new_candidate(conn, san
         drive(conn, sangam_mod.KaSangamWriter(), 'ka_sangam')
 
 
-def test_sangam_unbound_build_keeps_the_head_read_and_attests_nothing(conn, sangam):
+def test_sangam_unbound_build_after_publish_is_refused_and_attests_nothing(conn, sangam):
+    """SR-K9-BIND B1b: with a published head an unbound build rewrites nothing (the planning refusal fires before any ledger or delete)."""
+    with pytest.raises(UnboundRewriteRefused, match=UNBOUND_REWRITE_REFUSED):
+        drive(conn, sangam, 'ka_sangam', build=str(uuid.uuid4()))
+    assert grains(conn) == {}
+    assert conn.execute('SELECT count(*) AS n FROM kala_convergence').fetchone()['n'] == 0
+
+
+def test_sangam_unbound_build_without_a_head_keeps_the_legacy_read_and_attests_nothing(conn, sangam):
+    conn.execute('DELETE FROM kala_layer_head')
+    predicate(conn, 'legacy', 'S-LEG', '2029-09-09')
     drive(conn, sangam, 'ka_sangam', build=str(uuid.uuid4()))
-    assert {p['signal_id'] for p in sangam._pred_dicts} == {'S-HEAD'}
+    assert {p['signal_id'] for p in sangam._pred_dicts} == {'S-LEG'}
     assert grains(conn) == {}
 
 
@@ -187,14 +199,14 @@ def vighnakara(conn, monkeypatch):
     return vighnakara_mod.KaVighnakaraWriter()
 
 
-def convergence(conn):
-    # the SERVED partition of this chart: it has a published head, so the served generation is the head's (migration 1405)
+def convergence(conn, generation, signal='S-CONV'):
     conn.execute("INSERT INTO kala_convergence (chart_id, signal_id, mode, peak_date, convergence_score, generation) "
-                 "VALUES (%s, 'S-CONV', 'A', '2030-03-03', 0.9, %s)", (CHART, HEAD))
+                 "VALUES (%s, %s, 'A', '2030-03-03', 0.9, %s)", (CHART, signal, generation))
 
 
 def test_vighnakara_reads_candidate_predicates_and_attests_under_the_candidate(conn, vighnakara):
-    convergence(conn)
+    convergence(conn, CAND)                          # the candidate's own upstream rows (SR-K9-BIND B1a) ...
+    convergence(conn, HEAD, 'S-SERVED')              # ... never the served head's
     drive(conn, vighnakara, 'ka_vighnakara')
     signals = {r['signal_id'] for r in conn.execute('SELECT signal_id FROM kala_obstruction').fetchall()}
     assert signals == {'S-CONV', 'S-CAND'}, 'dasha-anchor obstruction must come from the candidate predicates'
@@ -209,10 +221,21 @@ def test_vighnakara_without_convergence_still_attests_an_honest_zero(conn, vighn
     assert grains(conn)[(CAND, 'ka_vighnakara:inputs')][0] == 'zero_rows'
 
 
-def test_vighnakara_unbound_build_keeps_the_head_read_and_attests_nothing(conn, vighnakara):
-    convergence(conn)
+def test_vighnakara_unbound_build_after_publish_is_refused_and_attests_nothing(conn, vighnakara):
+    convergence(conn, HEAD)
+    with pytest.raises(UnboundRewriteRefused, match=UNBOUND_REWRITE_REFUSED):
+        drive(conn, vighnakara, 'ka_vighnakara', build=str(uuid.uuid4()))
+    assert conn.execute('SELECT count(*) AS n FROM kala_obstruction').fetchone()['n'] == 0
+    assert grains(conn) == {}
+
+
+def test_vighnakara_unbound_build_without_a_head_keeps_the_served_read_and_attests_nothing(conn, vighnakara):
+    conn.execute('DELETE FROM kala_layer_head')
+    predicate(conn, 'legacy', 'S-LEG', '2029-09-09')
+    convergence(conn, 'legacy')
+    convergence(conn, CAND, 'S-CAND-CONV')
     drive(conn, vighnakara, 'ka_vighnakara', build=str(uuid.uuid4()))
-    assert {r['signal_id'] for r in conn.execute('SELECT signal_id FROM kala_obstruction').fetchall()} == {'S-CONV', 'S-HEAD'}
+    assert {r['signal_id'] for r in conn.execute('SELECT signal_id FROM kala_obstruction').fetchall()} == {'S-CONV', 'S-LEG'}
     assert grains(conn) == {}
 
 

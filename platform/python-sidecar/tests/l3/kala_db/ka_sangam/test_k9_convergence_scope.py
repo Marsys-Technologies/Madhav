@@ -17,12 +17,16 @@ with that claim's line reverted; root CLAUDE.md §N.8):
   M6  migration: ka_sangam's integrity contract (670 conjunct (a), §N.3 accretion) no longer reads the same window in two generations as accretion
   M7  migration: ka_sangam's output-digest spec digests the served view (real canonical_digest / _validate_spec), 980 is retired, one current spec
   W1  a candidate-bound build writes its own generation and leaves served kala_convergence AND every cascaded child byte-identical
-  W2  an ordinary rebuild writes and deletes the served generation (head, else legacy) only
+  W2  SR-K9-BIND B1b: once a generation is published, an UNBOUND ka_sangam REFUSES with a named reason; served convergence and every cascaded child stay byte-identical
+  W2b with no published generation an unbound ka_sangam writes the legacy partition
+  W2c SR-K9-BIND B1b: an UNBOUND ka_vighnakara refuses the same way (it reads the served head, so it may not rebuild it in place)
+  B1a SR-K9-BIND: a candidate-BOUND ka_vighnakara reads only its own candidate's convergence rows (never the served view), so every row it writes references candidate ids
+  B1a2 an UNBOUND ka_vighnakara (no published generation) reads the served (legacy) rows
   W3  a build bound to a candidate that is no longer a building, unpublished candidate cannot write
   T1  tearing down a candidate removes exactly its rows; served rows and the cascaded children of served rows are byte-identical afterwards
   T2  teardown also removes the candidate's rows (the unlinked-table list names kala_convergence)
   T3  teardown REFUSES, deleting nothing, when a row that is not the candidate's would be cascaded or nulled (a served child pointing at a candidate row)
-  R1  no writer reads the base table (a reader of the base table would mix a candidate's rows into served data); the one allowed writer is ka_sangam
+  R1  no writer reads the base table (a reader of the base table would mix a candidate's rows into served data); the allowed writers are ka_sangam (its partitions) and ka_vighnakara (generation-filtered read, B1a)
   R2  the derivation-completeness guard does not count a candidate-only chart as having served convergence
 """
 import json
@@ -503,32 +507,50 @@ def test_w1b_every_delete_statement_is_scoped_when_the_near_tier_also_clears_lif
     assert dump(world, 'legacy') == before
 
 
-def oracle_ordinary_rebuild(conn, writer_cls):
+def oracle_unbound_rebuild_after_publish(conn, writer_cls, refusal):
     legacy_ids = served_world(conn)
     head(conn)
     head_ids = served_world(conn, HEAD)
-    legacy_before = dump(conn, 'legacy')
-    build(conn, writer_cls, None, bind=False)
-    conn.commit()
-    assert conv_ids(conn, CHART, 'legacy') == legacy_ids and dump(conn, 'legacy') == legacy_before, 'an ordinary rebuild with a head leaves the retained legacy partition alone'
-    new = conv_ids(conn, CHART, HEAD)
-    assert len(new) == len(NEAR) + len(LIFETIME) and not set(new) & set(head_ids), 'it replaces the served (head) generation'
-    # the cascade from the replaced head rows reached THEIR children only
-    assert conn.execute('SELECT count(*) FROM kala_darshana WHERE convergence_id = ANY(%s)', (head_ids,)).fetchone()[0] == 0
+    before = (dump(conn, 'legacy'), dump(conn, HEAD))
+    try:
+        build(conn, writer_cls, None, bind=False)
+    except refusal as exc:
+        conn.rollback()
+        assert writer_grain.UNBOUND_REWRITE_REFUSED in str(exc), 'the refusal names its reason'
+        assert (dump(conn, 'legacy'), dump(conn, HEAD)) == before, 'a refusal changed served convergence or a cascaded child of it'
+        assert conv_ids(conn, CHART, 'legacy') == legacy_ids and conv_ids(conn, CHART, HEAD) == head_ids
+        return
+    raise AssertionError('an unbound rebuild of a published head was allowed')
 
 
 @BOTH
-def test_w2_ordinary_rebuild_writes_and_deletes_the_served_generation_only(world, tmp_path, reverted):
+def test_w2_unbound_rebuild_after_publish_is_refused_and_leaves_the_head_and_its_children_identical(world, tmp_path, reverted, monkeypatch):
+    from pipeline.orchestrator.writers import ka_sangam
     apply(world)
     if not reverted:
-        return oracle_ordinary_rebuild(world, real_writer())
-    cls = load_variant(tmp_path, "self._conv_generation = convergence_generation(conn, chart_id, getattr(self, '_candidate', None))",
-                       "self._conv_generation = 'legacy'")
-    with pytest.raises(AssertionError, match='retained legacy partition alone'):
-        oracle_ordinary_rebuild(world, cls)
+        return oracle_unbound_rebuild_after_publish(world, real_writer(), writer_grain.UnboundRewriteRefused)
+    # reversion: the refusal is removed ('allow'); the unbound build proceeds
+    copy = mutated(writer_grain, tmp_path, 'if head is not None:\n        raise UnboundRewriteRefused(', 'if False:\n        raise UnboundRewriteRefused(')
+    monkeypatch.setattr(ka_sangam, 'convergence_generation', copy.convergence_generation)
+    monkeypatch.setattr(ka_sangam, 'refuse_unbound_rewrite', copy.refuse_unbound_rewrite)
+    with pytest.raises(AssertionError, match='was allowed'):
+        oracle_unbound_rebuild_after_publish(world, real_writer(), writer_grain.UnboundRewriteRefused)
 
 
-def test_w2b_an_ordinary_rebuild_with_no_head_writes_legacy(world):
+def test_w2a_planning_refuses_before_any_ledger_or_delete(world):
+    """The refusal also fires in plan_substeps (read-only), before the first substep can run."""
+    apply(world)
+    head(world)
+    served_world(world, HEAD)
+    before = dump(world, HEAD)
+    writer = real_writer()()
+    ctx = SimpleNamespace(db_conn=world, build_id=None, dry_run=False, config={'chart_id': CHART})
+    with pytest.raises(writer_grain.UnboundRewriteRefused, match=writer_grain.UNBOUND_REWRITE_REFUSED):
+        writer.plan_substeps(ctx)
+    assert dump(world, HEAD) == before
+
+
+def test_w2b_an_unbound_rebuild_with_no_head_writes_legacy(world):
     apply(world)
     build(world, real_writer(), None, bind=False)
     world.commit()
@@ -560,6 +582,119 @@ def test_w3_a_published_candidate_cannot_be_written(world, tmp_path, reverted):
                       'return candidate.generation')
     with pytest.raises(AssertionError, match='published candidate was offered'):
         oracle_unbuildable_candidate(world, variant.convergence_generation)
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# B: candidate-bound readers (SR-K9-BIND B1a) and the unbound refusal of ka_vighnakara
+
+
+def load_vighnakara(tmp_path, old=None, new=None):
+    """ka_vighnakara.py with ONE line reverted (None = the real module). The writer registry is process-wide, so the copy is not registered."""
+    import importlib.util
+    if old is None:
+        from pipeline.orchestrator.writers import ka_vighnakara
+        return ka_vighnakara
+    source = (SIDECAR / 'pipeline/orchestrator/writers/ka_vighnakara.py').read_text()
+    assert source.count(old) == 1, f'reversion anchor is not unique: {old!r}'
+    path = tmp_path / 'variant_ka_vighnakara.py'
+    path.write_text(re.sub(r"^@register\('ka_vighnakara'\)\n", '', source.replace(old, new), flags=re.M))
+    spec = importlib.util.spec_from_file_location('variant_ka_vighnakara_' + uuid.uuid4().hex, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+OBSTRUCTION_COLUMNS = ('ALTER TABLE kala_obstruction ADD COLUMN signal_id uuid, ADD COLUMN obstruction_type text, ADD COLUMN severity text, '
+                       'ADD COLUMN severity_score double precision, ADD COLUMN override_score double precision, ADD COLUMN obstruction_detail jsonb, '
+                       'ADD COLUMN source_citation text')
+
+
+def run_vighnakara(conn, module, build_id, monkeypatch):
+    """ka_vighnakara's own legacy run over the real tables; the sky (detectors, ephemeris guard, lagna/moon/location reads) is not under test, the reads and writes are."""
+    writer = module._LegacyKaVighnakaraWriter()
+    for method in ('_fetch_natal_lagna_lon', '_fetch_natal_moon_lon'):
+        monkeypatch.setattr(writer, method, lambda *args: None)
+    monkeypatch.setattr(writer, '_fetch_combustion_orbs', lambda *args: {})
+    monkeypatch.setattr(writer, '_resolve_native_location', lambda *args: {})
+    monkeypatch.setattr(writer, '_dasha_anchor_peaks', lambda *args: [])
+    monkeypatch.setattr(module, '_detect_all', lambda **kw: [dict(obstruction_type='malefic_transit', severity='severe', severity_score=.9, override_score=.9, detail={})])
+    ctx = SimpleNamespace(db_conn=conn, build_id=build_id, dry_run=False, config={'chart_id': CHART})
+    return module._LegacyKaVighnakaraWriter.run.__wrapped__(writer, ctx)       # the real ephemeris guard has its own suite
+
+
+def written_convergence_ids(conn):
+    return {r[0] for r in conn.execute("SELECT convergence_id FROM kala_obstruction WHERE source_citation LIKE 'ka_vighnakara:v2.0:conv=%'").fetchall()}
+
+
+def oracle_bound_vighnakara_reads_its_own_candidate(conn, module, monkeypatch):
+    conn.execute(OBSTRUCTION_COLUMNS)
+    head(conn)
+    served = [conv(conn, generation=HEAD, peak=date(2027, 1, 10)), conv(conn, generation=HEAD, peak=date(2027, 2, 10))]
+    own = [conv(conn, generation=GEN, peak=date(2027, 6, 10)), conv(conn, generation=GEN, peak=date(2027, 7, 10))]
+    run = make_run(conn, 'completed', generation=GEN)
+    assert not set(served) & set(own)
+    run_vighnakara(conn, module, run.build_id, monkeypatch)
+    ids = written_convergence_ids(conn)
+    assert ids, 'the candidate-bound build wrote obstruction rows'
+    assert ids == set(own), 'a candidate-bound ka_vighnakara referenced convergence ids that are not its own candidate\'s'
+    grain = conn.execute("SELECT result_state FROM kala_layer_candidate_grain WHERE chart_id = %s AND generation = %s AND grain_key = 'ka_vighnakara:inputs'",
+                         (CHART, GEN)).fetchone()
+    assert grain == ('rows',)
+
+
+@BOTH
+def test_b1a_a_candidate_bound_vighnakara_reads_only_its_own_candidates_convergence(world, tmp_path, reverted, monkeypatch):
+    apply(world)
+    if not reverted:
+        return oracle_bound_vighnakara_reads_its_own_candidate(world, load_vighnakara(tmp_path), monkeypatch)
+    # reversion: the bound build reads the served generation again (the candidate argument dropped)
+    module = load_vighnakara(tmp_path, 'convergence_read_generation(conn, chart_id, candidate)', 'convergence_read_generation(conn, chart_id, None)')
+    with pytest.raises(AssertionError, match='not its own candidate'):
+        oracle_bound_vighnakara_reads_its_own_candidate(world, module, monkeypatch)
+
+
+def oracle_unbound_vighnakara_reads_served(conn, module, monkeypatch):
+    conn.execute(OBSTRUCTION_COLUMNS)
+    served = [conv(conn, generation='legacy', peak=date(2027, 1, 10)), conv(conn, generation='legacy', peak=date(2027, 2, 10))]
+    conv(conn, generation=GEN, peak=date(2027, 6, 10))          # a candidate's rows exist, and are not served
+    conn.commit()
+    run_vighnakara(conn, module, None, monkeypatch)
+    assert written_convergence_ids(conn) == set(served), 'an unbound ka_vighnakara must read the served rows'
+
+
+@BOTH
+def test_b1a2_an_unbound_vighnakara_reads_the_served_rows(world, tmp_path, reverted, monkeypatch):
+    apply(world)
+    if not reverted:
+        return oracle_unbound_vighnakara_reads_served(world, load_vighnakara(tmp_path), monkeypatch)
+    module = load_vighnakara(tmp_path, 'convergence_read_generation(conn, chart_id, candidate)', "'candidate:unbound-misread'")
+    with pytest.raises(AssertionError, match='must read the served rows'):
+        oracle_unbound_vighnakara_reads_served(world, module, monkeypatch)
+
+
+def oracle_unbound_vighnakara_after_publish(conn, module, monkeypatch):
+    conn.execute(OBSTRUCTION_COLUMNS)
+    head(conn)
+    ids = served_world(conn, HEAD)
+    before = dump(conn, HEAD)
+    try:
+        run_vighnakara(conn, module, None, monkeypatch)
+    except writer_grain.UnboundRewriteRefused as exc:
+        conn.rollback()
+        assert writer_grain.UNBOUND_REWRITE_REFUSED in str(exc)
+        assert dump(conn, HEAD) == before and conv_ids(conn, CHART, HEAD) == ids
+        return
+    raise AssertionError('an unbound ka_vighnakara rebuilt a published head')
+
+
+@BOTH
+def test_w2c_an_unbound_vighnakara_after_publish_is_refused(world, tmp_path, reverted, monkeypatch):
+    apply(world)
+    if not reverted:
+        return oracle_unbound_vighnakara_after_publish(world, load_vighnakara(tmp_path), monkeypatch)
+    module = load_vighnakara(tmp_path, "refuse_unbound_rewrite(conn, chart_id, 'ka_vighnakara')", 'pass')
+    with pytest.raises(AssertionError, match='rebuilt a published head'):
+        oracle_unbound_vighnakara_after_publish(world, module, monkeypatch)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -648,7 +783,7 @@ def test_t3_planted_reversion_no_cascade_check(world, tmp_path):
 READERS = [
     'pipeline/orchestrator/writers/ka_kala_darshana.py', 'pipeline/orchestrator/writers/ka_bhavishya_lekha.py',
     'pipeline/orchestrator/writers/ka_jivana_parva.py', 'pipeline/orchestrator/writers/ka_kalasutra.py',
-    'pipeline/orchestrator/writers/ka_vighnakara.py', 'pipeline/orchestrator/writers/ph_nimitta.py',
+    'pipeline/orchestrator/writers/ph_nimitta.py',
     'pipeline/orchestrator/writers/ph_pratikara.py', 'pipeline/orchestrator/writers/ph_muhurta.py',
     'pipeline/orchestrator/writers/mi_adhilepa.py', 'services/ka_sangam/jury/reader.py',
 ]
@@ -669,6 +804,7 @@ def test_r1_no_reader_reads_the_base_table():
     every_reader_reads_the_served_view({name: (SIDECAR / name).read_text() for name in READERS})
     # and nothing else under the writers or services does either, ka_sangam (the writer) excepted
     owners = {'pipeline/orchestrator/writers/ka_sangam.py',           # the writer of the partitions
+              'pipeline/orchestrator/writers/ka_vighnakara.py',       # candidate-bound: reads WHERE generation = its candidate's (SR-K9-BIND B1a, oracle B1a)
               'services/kala_core/rebuild_control.py',                 # teardown: reads the candidate's rows to prove what a cascade would reach
               'services/kala_core/idempotency/__init__.py'}            # the generation-scoped delete map (never called by the plan)
     offenders = [str(p.relative_to(SIDECAR)) for base in ('pipeline/orchestrator/writers', 'services') for p in (SIDECAR / base).rglob('*.py')

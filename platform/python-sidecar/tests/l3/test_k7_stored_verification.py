@@ -20,6 +20,7 @@ class Capture:
     def __exit__(self, *args): pass
     def execute(self, sql, params=()):
         self.probing = 'FROM pg_attribute' in str(sql)
+        self.head_read = 'FROM kala_layer_head' in str(sql)      # the unbound-rewrite refusal (SR-K9-BIND B1b): this chart has no published head
         if self.probing:
             self.probes += 1
             if self.db is not None:
@@ -35,6 +36,7 @@ class Capture:
             raise UndefinedColumn('column verification_pass_status does not exist')
         self.writes.extend((sql, tuple(row)) for row in rows)
     def fetchone(self):
+        if getattr(self, 'head_read', False): return None
         return self.probe_row if self.db is not None and self.probing else (self.has_tier,)
     def fetchall(self):
         rows, self.rows = self.rows, []
