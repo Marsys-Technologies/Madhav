@@ -16,6 +16,10 @@ shows that the gate's oracle FAILS on it (D-OWNER-TESTS-20261016).  Claims (root
   S4  a  a dispatch receipt without LAUNCHED evidence holds; b  a RUNNING build holds; c  an execution of another run holds; d  SUCCEEDED -> ALL verification requests in the same poll
   S5  a  a verification receipt of another commit holds; b  an aggregate without PASSED G-6 holds; c  PASSED -> the adopted file is written, loads in the seal controller, one page; d  a file of
       another generation is never overwritten
+  K9  (precondition `k9_migrations_applied`, S0; SR-K9-MIGRATION-WINDOW) a  1404_*, 1405_kala_convergence_generation.sql and 1406_kala_obstruction_generation_scope.sql all in
+      public._migrations_applied -> true; b  any one missing -> holds naming it, no TR armed; c  a ledger readback that is absent / not COMPLETED / unparseable -> holds (null, never a pass);
+      d  the chain never reaches the dispatch with one missing (the wiring); e  a file absent from the repo at H holds with a named reason; f  the names are read from the repo AT H;
+      g  the ledger is read through a `migration_readback` request that names the file; h  the newest ledger reading decides; i  the real `git ls-tree` seam reads a commit and refuses an unknown one
   X   paging once per reason / only after the stall limit; dry-run writes nothing; gh argv shapes and the forbidden tokens; no process is started by the chain; the action catalogue
 """
 from __future__ import annotations
@@ -61,6 +65,8 @@ PR = 3841
 RUN_ID = "11111111-2222-3333-4444-555555555555"
 EXEC = "brahma-build-pipeline-job-abc12"
 CHART = seal_h.CHART
+K9_1404, K9_1405, K9_1406 = "1404_kala_k9_fixture.sql", "1405_kala_convergence_generation.sql", "1406_kala_obstruction_generation_scope.sql"
+K9_REPO = [K9_1404, K9_1405, K9_1406, "1407_unrelated.sql", "1403_before.sql"]
 
 
 def sha(b: bytes) -> str:
@@ -116,6 +122,12 @@ class FakeTools:
     def __init__(self, c):
         self.c, self.calls = c, []
 
+    def tree_names(self, repo, commit, directory):
+        self.c.tree_calls.append((repo, commit, directory))
+        if self.c.k9_repo_unreadable:
+            raise OSError("git ls-tree exited 128")
+        return list(self.c.k9_files)
+
     def run(self, script, args, timeout=0):
         self.calls.append((script, args))
         if script == "equivalence_record.py" and args[0] == "record":
@@ -144,6 +156,7 @@ class Chain:
         for d in (self.ev, self.staged):
             d.mkdir(parents=True)
         self.now, self.stale_caps, self.record_commit = NOW, False, None
+        self.k9_files, self.k9_ledger, self.k9_auto, self.k9_receipt, self.k9_repo_unreadable, self.tree_calls = list(K9_REPO), set(K9_REPO), True, "ok", False, []
         self.rehearsal_flags, self.rehearsal_bad_control, self.rehearsal_refused = [], False, set()
         self.gh, self.tools = FakeGh(self), FakeTools(self)
         solver = eq_h.K + "window_solver.py"
@@ -229,8 +242,32 @@ class Chain:
             mutate(c)
         (self.tmp / "chain.json").write_text(json.dumps(c))
 
+    # ── the K9 migration ledger (the executor's migration_readback receipts) ──
+    def k9_text(self, name, ledger=None):
+        """What readback_sql.sh --migration prints: the ledger rows whose filename starts with the asked name (header always)."""
+        rows = [f"{n}\t2026-10-22 08:00:00+00\t{'0' * 64}" for n in sorted(self.k9_ledger if ledger is None else ledger) if n.startswith(name)]
+        return "\n".join(["filename\tapplied_at\tsha256", *rows]) + "\n"
+
+    def k9_answer(self, op, name, mode=None, ledger=None):
+        mode = mode or self.k9_receipt
+        text = "" if mode == "failed" else "garbled\n" if mode == "garbled" else self.k9_text(name, ledger)
+        if mode == "failed":                                                    # killed after it had printed the full ledger: the output is not evidence
+            text = self.k9_text(name, ledger)
+        self.seal.receipt(op, "migration_readback", "FAILED" if mode == "failed" else "COMPLETED", 1 if mode == "failed" else 0, text, self.M)
+
+    def seed_k9(self):
+        """The executor, ahead of the poll: one receipt per K9 file the repo holds, for the current readback period."""
+        epoch = int(self.now.timestamp() // 300)
+        for num in ("1404", "1405", "1406"):
+            for name in [n for n in self.k9_files if n.startswith(num + "_")][:1]:
+                op = f"chain-k9mig-5-0-{H[:12]}-{num}-e{epoch}"
+                if not (self.ops / "receipts" / f"{op}.json").exists():
+                    self.k9_answer(op, name)
+
     # ── running ──
     def poll(self, apply=False, dry=False, **kw):
+        if self.k9_auto:
+            self.seed_k9()
         self.write_caps()
         return self.m.run(self.tmp / "chain.json", self.ops, self.out, self.pages, requests_dir=self.queue, gh=self.gh, tools=self.tools, now=self.now, apply=apply, dry=dry, **kw)
 
@@ -1081,6 +1118,181 @@ def test_x_config_is_validated(tmp_path):
         assert st["kind"] == "CONFIG_INVALID" and text in st["reason"], st["line"]
 
 
+# ═════════════════════════════════════ K9 precondition (S0) ═════════════════════════════════════
+
+def drive(c, polls=8):
+    """The cockpit and the executor, generically: merge when auto-merge is enabled, answer the image readback, rebind; poll --apply up to `polls` times."""
+    st = None
+    for _ in range(polls):
+        c.write_rebind()
+        st = c.poll(apply=True)
+        if c.gh.pr["autoMergeRequest"] and c.gh.pr["state"] == "OPEN":
+            c.gh.merge()
+        for img in c.queued("chain-image-"):
+            if not (c.ops / "receipts" / f"{img.stem}.json").exists():
+                c.answer(img.stem, "cloudrun_job_readback", c.readback_text())
+    return st
+
+
+def o_k9_all_applied_reads_true(m, tmp):
+    c = Chain(m, tmp)
+    st = c.poll()
+    s0 = st["stages"][0]
+    assert s0["state"] == "PASS" and s0["evidence"]["k9_migrations_applied"]["files"] == {"1404": K9_1404, "1405": K9_1405, "1406": K9_1406}, st["line"]
+    assert (c.out / "actions" / f"ARM_TR.5.0.{H}.json").exists()
+
+
+def o_k9_one_missing_reads_false_naming_it(m, tmp):
+    for i, gone in enumerate((K9_1404, K9_1405, K9_1406)):
+        c = Chain(m, Path(tmp) / str(i))
+        c.k9_ledger -= {gone}
+        st = c.poll()
+        assert st["kind"] == "S0_K9_MIGRATIONS_NOT_APPLIED", st["line"]
+        assert gone in st["reason"] and not any(n in st["reason"] for n in (K9_1404, K9_1405, K9_1406) if n != gone), st["reason"]
+        assert not (c.out / "actions").exists() and st["stages"][1]["state"] == "NOT_REACHED", st["line"]
+
+
+def o_k9_unreadable_ledger_reads_null_and_the_chain_refuses(m, tmp):
+    c = Chain(m, Path(tmp) / "failed")
+    c.k9_receipt = "failed"                                                      # a non-COMPLETED readback whose output still lists every file: not evidence
+    st = c.poll(apply=True)
+    assert st["kind"] == "S0_RECEIPT_NOT_COMPLETED" and c.gh.acts == [] and not (c.out / "actions").exists(), st["line"]
+    c = Chain(m, Path(tmp) / "garbled")
+    c.k9_receipt = "garbled"
+    st = c.poll(apply=True)
+    assert st["kind"] == "S0_K9_LEDGER_UNREADABLE" and c.gh.acts == [], st["line"]
+    c = Chain(m, Path(tmp) / "none")
+    c.k9_auto = False                                                            # no receipt at all
+    st = c.poll(apply=True)
+    assert st["kind"] == "S0_K9_AWAITING_RECEIPT" and st["soft"] is True and c.gh.acts == [] and not (c.out / "actions").exists(), st["line"]
+
+
+def o_k9_the_chain_never_reaches_dispatch_with_one_missing(m, tmp):
+    ok = Chain(m, Path(tmp) / "control")
+    drive(ok)
+    assert ok.queued("century-"), "control: with every K9 migration applied the driver must reach the dispatch (else this oracle measures nothing)"
+    c = Chain(m, Path(tmp) / "one-missing")
+    c.k9_ledger -= {K9_1406}
+    st = drive(c)
+    assert st["kind"] == "S0_K9_MIGRATIONS_NOT_APPLIED", st["line"]
+    assert not c.queued("century-") and not c.queued("verify-") and c.gh.acts == [], (c.queued(""), c.gh.acts)
+
+
+def o_k9_a_file_absent_from_the_repo_holds(m, tmp):
+    c = Chain(m, Path(tmp) / "no1404")
+    c.k9_files = [n for n in K9_REPO if not n.startswith("1404_")]
+    st = c.poll()
+    assert st["kind"] == "S0_K9_FILE_NOT_IN_REPO" and "1404_*.sql" in st["reason"] and K9_1405 not in st["reason"], st["line"]
+    c = Chain(m, Path(tmp) / "renamed1406")
+    c.k9_files = [K9_1404, K9_1405, "1406_some_other_name.sql"]
+    c.k9_ledger = set(c.k9_files)
+    st = c.poll()
+    assert st["kind"] == "S0_K9_FILE_NOT_IN_REPO" and K9_1406 in st["reason"], st["line"]
+    c = Chain(m, Path(tmp) / "unreadable")
+    c.k9_repo_unreadable = True
+    st = c.poll()
+    assert st["kind"] == "S0_K9_REPO_UNREADABLE" and not (c.out / "actions").exists(), st["line"]
+
+
+def o_k9_names_come_from_the_repo_at_the_evaluated_head(m, tmp):
+    c = Chain(m, tmp)
+    c.k9_files = ["1404_repo_chose_this.sql", K9_1405, K9_1406]
+    c.k9_ledger = {"1404_a_different_1404.sql", K9_1405, K9_1406}
+    st = c.poll()
+    assert c.tree_calls == [(str(c.seal.repo), H, "platform/migrations")], c.tree_calls
+    assert st["kind"] == "S0_K9_MIGRATIONS_NOT_APPLIED" and "1404_repo_chose_this.sql" in st["reason"], st["line"]
+
+
+def o_k9_the_ledger_is_read_through_a_migration_readback_request(m, tmp):
+    c = Chain(m, tmp)
+    c.k9_auto = False
+    st = c.poll(apply=True)
+    assert st["kind"] == "S0_K9_AWAITING_RECEIPT", st["line"]
+    reqs = [json.loads(p.read_text()) for p in c.queued("chain-k9mig-")]
+    assert sorted(r["args"]["migration"] for r in reqs) == sorted([K9_1404, K9_1405, K9_1406]), reqs
+    assert {r["kind"] for r in reqs} == {"migration_readback"} and {r["reviewed_commit"] for r in reqs} == {H}, reqs
+    for r in reqs:                                                               # the executor answers the chain's OWN documents
+        c.k9_answer(r["operation_id"], r["args"]["migration"])
+    st = c.poll(apply=True)
+    assert st["stages"][0]["state"] == "PASS", st["line"]
+
+
+def o_k9_the_newest_ledger_reading_decides(m, tmp):
+    c = Chain(m, tmp)
+    c.k9_auto = False
+    e0 = int(c.now.timestamp() // 300)
+    for num, name in (("1404", K9_1404), ("1405", K9_1405), ("1406", K9_1406)):
+        c.k9_answer(f"chain-k9mig-5-0-{H[:12]}-{num}-e{e0}", name, ledger={K9_1404, K9_1405})        # period 0: 1406 not yet applied
+    assert c.poll()["kind"] == "S0_K9_MIGRATIONS_NOT_APPLIED"
+    c.now += dt.timedelta(seconds=600)
+    for num, name in (("1404", K9_1404), ("1405", K9_1405), ("1406", K9_1406)):
+        c.k9_answer(f"chain-k9mig-5-0-{H[:12]}-{num}-e{e0 + 2}", name, ledger=set(K9_REPO))         # period 2: applied since
+    st = c.poll()
+    assert st["stages"][0]["state"] == "PASS", st["line"]
+
+
+def o_k9_git_ls_tree_seam_reads_a_commit_and_refuses_an_unknown_one(m, tmp):
+    repo = Path(tmp) / "repo"
+    (repo / "platform" / "migrations").mkdir(parents=True)
+    seal_h.git(repo, "init", "-q", "-b", "main")
+    (repo / "platform" / "migrations" / K9_1405).write_text("select 1;\n")
+    (repo / "platform" / "migrations" / "sub").mkdir()
+    (repo / "platform" / "migrations" / "sub" / "x.sql").write_text("select 1;\n")
+    seal_h.git(repo, "add", "-A")
+    seal_h.git(repo, "commit", "-q", "-m", "m")
+    head = seal_h.git(repo, "rev-parse", "HEAD")
+    assert sorted(m.Tools().tree_names(str(repo), head, "platform/migrations")) == sorted(["sub", K9_1405])
+    try:
+        listing = m.Tools().tree_names(str(repo), "ab" * 20, "platform/migrations")
+    except OSError:
+        return
+    raise AssertionError(f"an unknown commit read as a directory listing: {listing}")
+
+
+def test_k9_all_applied_reads_true(tmp_path):
+    o_k9_all_applied_reads_true(dc, tmp_path)
+
+
+def test_k9_one_missing_reads_false_naming_it(tmp_path):
+    o_k9_one_missing_reads_false_naming_it(dc, tmp_path)
+
+
+def test_k9_unreadable_ledger_reads_null_and_the_chain_refuses(tmp_path):
+    o_k9_unreadable_ledger_reads_null_and_the_chain_refuses(dc, tmp_path)
+
+
+def test_k9_the_chain_never_reaches_dispatch_with_one_missing(tmp_path):
+    o_k9_the_chain_never_reaches_dispatch_with_one_missing(dc, tmp_path)
+
+
+def test_k9_a_file_absent_from_the_repo_holds(tmp_path):
+    o_k9_a_file_absent_from_the_repo_holds(dc, tmp_path)
+
+
+def test_k9_names_come_from_the_repo_at_the_evaluated_head(tmp_path):
+    o_k9_names_come_from_the_repo_at_the_evaluated_head(dc, tmp_path)
+
+
+def test_k9_the_ledger_is_read_through_a_migration_readback_request(tmp_path):
+    o_k9_the_ledger_is_read_through_a_migration_readback_request(dc, tmp_path)
+
+
+def test_k9_the_newest_ledger_reading_decides(tmp_path):
+    o_k9_the_newest_ledger_reading_decides(dc, tmp_path)
+
+
+def test_k9_git_ls_tree_seam_reads_a_commit_and_refuses_an_unknown_one(tmp_path):
+    o_k9_git_ls_tree_seam_reads_a_commit_and_refuses_an_unknown_one(dc, tmp_path)
+
+
+def test_k9_the_1405_and_1406_names_in_the_pins_exist_in_this_repo():
+    """The brief's exact names are real files here (1405 is on main; 1406 arrives with its PR, so only a present file is compared)."""
+    mig = REPO / "platform" / "migrations"
+    for num, exact in dc.K9_MIGRATIONS:
+        if exact and any(mig.glob(num + "_*.sql")):
+            assert (mig / exact).is_file(), exact
+
+
 # ═════════════════════════════════ planted reversions: ONE per gate ═════════════════════════════════
 # (gate, oracle, source text, planted replacement).  Each source text occurs exactly once; the mutated module is loaded beside the real one and the oracle MUST fail on it.
 
@@ -1133,6 +1345,16 @@ REVERSIONS += [
     ("S5 the aggregate detector is skipped", o_s5_aggregate_without_g6_holds, "sc.check_aggregate(adopted, ctx.ops, scratch)", "pass"),
     ("S5 another generation's adopted file is overwritten/accepted", o_s5_adopted_file_of_another_generation_is_never_overwritten,
      'if isinstance(cur, dict) and (cur.get("generation"), cur.get("head")) == (adopted["generation"], adopted["head"]):', "if isinstance(cur, dict):"),
+    ("K9 an applied file is not recognised in the ledger", o_k9_all_applied_reads_true, 'if name not in {r["filename"] for r in rows}:', 'if name not in {r["filename"] + "!" for r in rows}:'),
+    ("K9 a missing migration is accepted", o_k9_one_missing_reads_false_naming_it, 'if missing:\n        raise Hold("S0_K9_MIGRATIONS_NOT_APPLIED"', 'if False:\n        raise Hold("S0_K9_MIGRATIONS_NOT_APPLIED"'),
+    ("K9 a non-COMPLETED readback's output is trusted", o_k9_unreadable_ledger_reads_null_and_the_chain_refuses,
+     'need_receipt(ctx, base + str(have[0]), f"migration ledger readback of {name}", "S0", "migration_readback")', 'sc.read_receipt(ctx.ops, base + str(have[0]), "x")'),
+    ("K9 the chain does not consult the precondition", o_k9_the_chain_never_reaches_dispatch_with_one_missing, "ev[K9_PRECONDITION] = check_k9_migrations_applied(ctx)", "pass"),
+    ("K9 a file absent from the repo is accepted", o_k9_a_file_absent_from_the_repo_holds, 'if absent:\n        raise Hold("S0_K9_FILE_NOT_IN_REPO"', 'if False:\n        raise Hold("S0_K9_FILE_NOT_IN_REPO"'),
+    ("K9 the names are read at another commit than H", o_k9_names_come_from_the_repo_at_the_evaluated_head, 'ctx.tools.tree_names(ctx.cfg["repo"], ctx.H, K9_MIGRATION_DIR)', 'ctx.tools.tree_names(ctx.cfg["repo"], "main", K9_MIGRATION_DIR)'),
+    ("K9 the ledger readback is not a migration_readback", o_k9_the_ledger_is_read_through_a_migration_readback_request, 'kind="migration_readback", commit=ctx.H)', 'kind="readback_sql", commit=ctx.H)'),
+    ("K9 the oldest ledger reading decides", o_k9_the_newest_ledger_reading_decides, 'base + str(have[0]), f"migration ledger readback', 'base + str(have[-1]), f"migration ledger readback'),
+    ("K9 an unknown commit reads as an empty directory", o_k9_git_ls_tree_seam_reads_a_commit_and_refuses_an_unknown_one, 'if p.returncode != 0:\n            raise OSError(f"git ls-tree', 'if False:\n            raise OSError(f"git ls-tree'),
     ("X a hard hold pages on every poll", o_x_a_hard_hold_pages_once_per_reason, 'f"stage={stage_id} code={h.code} r={tag}"', 'f"stage={stage_id} code={h.code} r={tag}{ctx.now.timestamp()}"'),
     ("X a soft hold pages immediately", o_x_a_soft_hold_pages_only_after_the_stall_limit, "if first is not None and (ctx.now - first).total_seconds() > stall_s:", "if first is not None:"),
     ("X dry-run writes the status file", o_x_dry_run_writes_nothing, "    if not dry:\n        out.mkdir(parents=True, exist_ok=True)", "    if True:\n        out.mkdir(parents=True, exist_ok=True)"),
