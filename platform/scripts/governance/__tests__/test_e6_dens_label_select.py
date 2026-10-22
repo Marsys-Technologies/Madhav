@@ -1112,7 +1112,14 @@ def test_no_pass_partial_or_fail_cell_moves_on_the_real_tree(real_dens):
     # FAIL -> PARTIAL only; the sub-select establishes no stored tier carriage.
     assert real_dens["ka_sangam"][0]["v"] == ac.PARTIAL
     assert real_dens["ka_sangam"][1]["density"] == 0
-    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (18, 50, 22), c
+    # Migration 1404 (SR-K9-RESONANCE-MAP B): the served coverage reads moved to gochara_resonance_map_served (a different identifier, so they no longer
+    # attribute to this asset's table token). The only select of gochara_resonance_map left in register_gochara_windows.ts is resonanceMapEmptyReason's
+    # `SELECT COUNT(*) ... FROM gochara_resonance_map`, a helper outside the contract-declaring capability's entry. The scanner reads it as a served select
+    # with no density contract in a capability that serves it: ka_gochara_resonance PARTIAL -> FAIL (a measured scanner reading of the real source, not a
+    # serve of rows). (18, 50, 22) -> (18, 49, 23).
+    assert real_dens["ka_gochara_resonance"][0]["v"] == ac.FAIL
+    assert real_dens["ka_gochara_resonance"][1]["served"] == 1 and real_dens["ka_gochara_resonance"][1]["density"] == 0
+    assert (c["PASS"], c["PARTIAL"], c["FAIL"]) == (18, 49, 23), c
     assert c["N/A"] == 5 and c["NO_DETECTOR"] == 32, c
 
 

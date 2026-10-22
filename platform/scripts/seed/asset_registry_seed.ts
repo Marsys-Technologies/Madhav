@@ -2241,7 +2241,7 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     english_description: 'D-5 Lane G-1: per-chart x event-class classical-prior-weighted target sets (bhavas, lords, karakas, mechanism nodes, sensitive degrees, arudhas, yoga constituents, dasha-lord portfolios) sourced from bg_transit_rules + brahma_event_ontology + chart-scoped L1 facts. Feeds D-5 Lane G-3\'s transit-intensity engine. Writer: ka_gochara_resonance.',
     storage_type: 'postgres_table',
     target_table: 'gochara_resonance_map',
-    count_sql: 'SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=$1',
+    count_sql: 'SELECT COUNT(*) FROM gochara_resonance_map_served WHERE chart_id=$1',   // migration 1404: the served generation
     size_sql: null,
     target_floor: 0,
     expected_volume_formula: null,
