@@ -116,7 +116,7 @@ def test_stored_rebuild_faults_cannot_earn_complete(prepared, mutation):
       'writer_failed': "UPDATE build_run_assets SET state='error' WHERE asset_id='ka_taranga'",
       # The fixture models the nullable production error column additively.
       'writer_error': "ALTER TABLE build_run_assets ADD COLUMN error text; UPDATE build_run_assets SET error='failed' WHERE asset_id='ka_taranga'",
-      'writer_overlap': "UPDATE build_run_assets SET started_at='2026-10-01T00:00Z' WHERE asset_id='ka_kshetra'",
+      'writer_overlap': "UPDATE build_run_assets SET started_at='2026-10-01T00:00Z' WHERE asset_id='ka_kshetra'",   # ka_kshetra declares ka_vighnakara
       'run_wrong': "UPDATE build_runs SET state='failed'",
       'candidate_wrong': "UPDATE kala_layer_candidate SET build_id='11111111-1111-4111-8111-111111111111'",
       'grain_missing': "DELETE FROM kala_layer_candidate_grain WHERE grain_key='ka_taranga:fixture'",
