@@ -27,6 +27,10 @@ WHAT IT PROVES for one numbered window (a stored peak instant `t*` and objective
                   ISOLATION_S of each other, neither side can say which of them is the earliest distinct one (the enumeration, like
                   the builder's, resolves extrema only down to its own sampling scale); the window is UNVERIFIED
                   `tie_isolation_unresolved` (INCONCLUSIVE, a named blank at the seal, never a pass and never a refutation);
+                  SO IS A STATION ZONE (SR-NEAR-STATION-TIE): within NEAR_END_S of a Swiss station the Swiss curve is a noise comb of dozens of
+                  maxima 0.3-1.3 s apart, all within TIE of the zone's top, which this enumeration (a pure piece is read by its two ends) cannot
+                  resolve — when the zone's value is within TIE + NEAR_END_NOISE_DEG/orb of the maximum, the same `tie_isolation_unresolved` is
+                  returned (instead of a refutation by whichever lone candidate survives);
   4. INSTANT      the stored `t*` lies within PEAK_INSTANT_TOLERANCE (owner decision SOLVER-TOLERANCES, Q12 a: the strongest
                   moment exact to the second) of an ACTUAL qualifying extremum (one whose unrounded value reaches the tie
                   threshold), never of a point between extrema;
@@ -82,6 +86,7 @@ PLATEAU_EPS = 1e-12           # two objective samples this close are one plateau
 H1_SAMPLE_S = 5.0 * 86400.0   # velocity-sign sampling spacing; premise: the audited minimum station spacing is 19.75 d
 MIN_STATION_SPACING_D = 19.75  # S0 measurement 19.7585 d (Mercury); must exceed 2 x H1_SAMPLE_S for "no hidden pair"
 NEAR_END_S = 120.0            # a station this close to a support end is a Swiss/spline offset (<= 16.7 s measured), a cut
+NEAR_END_NOISE_DEG = 3.9e-9   # S0 K-2: the Swiss longitude is non-monotone by up to this inside a station zone (a noise comb of tied maxima)
 VEL_H_S = 600.0               # half-width of the centred-difference velocity (the speed is read, never assumed)
 MIN_WIDTH_S = 1e-3            # the bound search stops bisecting here (UNVERIFIED if still not certified)
 LEAF_S = 0.0864               # resolution (1e-6 d) of the extremum enumeration; each extremum is then located to a microsecond
@@ -280,6 +285,7 @@ class _Engine:
         self.unverified: list = []
         self._lon_cache: dict = {}
         self._h1_cache: dict = {}
+        self._near_cache: dict = {}    # (body, a, b) -> the Swiss stations within NEAR_END_S of the support [a, b] (inside it or just outside)
         self.rederived: dict = {}
         self.recs: list = []
         for rec in records:
@@ -291,6 +297,7 @@ class _Engine:
             if sup:
                 self.recs.append(_R(rec, sup))
         self.pieces: list = []
+        self.zones: list = []          # SR-NEAR-STATION-TIE: (lo, hi, noise_F) per cut station of each tent record that matters
 
     def _add(self, code: str, detail: str):
         f = Finding(code, detail)
@@ -359,7 +366,7 @@ class _Engine:
             pts = [a - e, b + e]
         vs = [self._vel(body, t) for t in pts]
         sg = [(v > 0.0) - (v < 0.0) for v in vs]
-        cuts, why = [], None
+        cuts, why, near = [], None, []
         for i in range(len(pts) - 1):
             if sg[i] == 0:
                 ts = pts[i]
@@ -367,6 +374,7 @@ class _Engine:
                 ts = self._bisect(lambda t: self._vel(body, t), pts[i], pts[i + 1], vs[i])
             else:
                 continue
+            near.append(ts)
             if ts <= a or ts >= b:
                 continue                                    # the station is outside the support: the arc is monotone inside
             if ts - a <= e or b - ts <= e:
@@ -375,6 +383,7 @@ class _Engine:
                 why = (f"{body}: the velocity changes sign at {self._dt(ts).isoformat()}, strictly inside the support "
                        f"[{self._dt(a).isoformat()}, {self._dt(b).isoformat()}) — more than {e:.0f} s from either end")
         res = (None, why) if why else (sorted(set(cuts)), None)
+        self._near_cache[key] = sorted(set(near))
         self._h1_cache[key] = res
         return res
 
@@ -432,6 +441,10 @@ class _Engine:
                                 if a < c < b)
                 if rec.tent is not None:
                     cuts.update(self._tent_cuts(rec.tent, a, b, rec.record_id))
+                    self._stations(rec.tent.body, a, b)                            # cached by `_tent_cuts`; a failed H1 is already a finding
+                    # a Swiss station within NEAR_END_S of the support — inside it, or just outside — leaves its noise comb in the support's ends
+                    self.zones.extend((max(a, c - NEAR_END_S), min(b, c + NEAR_END_S), NEAR_END_NOISE_DEG / float(rec.tent.orb_deg))
+                                      for c in self._near_cache.get((rec.tent.body, a, b), ()) if c - NEAR_END_S <= b and c + NEAR_END_S >= a)
         return sorted(c for c in cuts if 0.0 <= c <= self.L)
 
     def _step_value(self, rec: CheckRecord, st: StepFactor, t: float) -> float:
@@ -486,7 +499,9 @@ class _Engine:
         pc = _Piece(l, r, ents, defined, groups)
         if not defined:
             return pc
-        pc.vl, pc.vr = self._vals(pc, l), self._vals(pc, r)
+        # the piece is half-open: its right sample is the LEFT LIMIT at r (one microsecond inside), never the value AT r — at a bisected cut the Swiss
+        # longitude steps (a JD-ulp staircase, ~1e-9 deg on Venus/Mercury), and the value at r belongs to the NEXT piece
+        pc.vl, pc.vr = self._vals(pc, l), self._vals(pc, r - US if r - l > 2 * US else r)
         up = any(b > a + 1e-15 for a, b, e in zip(pc.vl, pc.vr, ents) if e.tent is not None)
         down = any(b < a - 1e-15 for a, b, e in zip(pc.vl, pc.vr, ents) if e.tent is not None)
         convex = False
@@ -731,6 +746,73 @@ class _Engine:
         ft = self._objective_at(t)
         return (t, ft) if ft is not None and ft >= f0 else (t0, f0)
 
+    def _isolation(self, m_hat: float, ties: list):
+        """Why the earliest tie cannot be isolated, or None: two tied extrema within ISOLATION_S of each other (R-3), or a station zone whose value is
+        within TIE + its noise bound of the maximum (SR-NEAR-STATION-TIE). Records what it found under `rederived`."""
+        close = [(x, y) for x, y in zip(ties, ties[1:]) if y - x <= ISOLATION_S]
+        if close:
+            self.rederived["tie_cluster"] = [(self._dt(x), self._dt(y)) for x, y in close]
+            return (f"{len(ties)} extrema within the tie tolerance of the maximum, two of them {close[0][1] - close[0][0]:.3f} s "
+                    f"apart from {self._dt(close[0][0]).isoformat()} (limit {ISOLATION_S} s): isolation is unresolved")
+        zone = self._zone_tie(m_hat)
+        if zone is not None:
+            zl, zh, zt, zn = zone
+            self.rederived["tie_zone"] = (self._dt(zl), self._dt(zh), zt, zn)
+            return (f"the station zone [{self._dt(zl).isoformat()}, {self._dt(zh).isoformat()}] reaches {zt!r}, within TIE + {zn:.3g} of the "
+                    f"maximum {m_hat!r}: its noise comb of tied maxima is not isolated (SR-NEAR-STATION-TIE)")
+        return None
+
+    def probe_isolation(self) -> Optional[str]:
+        """For a window the BUILDER left blank under `tie_isolation_unresolved` (no stored peak to test): re-derive, independently, whether the earliest tie
+        is unresolved. The maximum is found as `_run` finds it, from the best directly-read value in place of the stored peak's. Returns the description,
+        or None when the tie is isolated (or the window cannot be read at all: H1/H2/undeterminable — those are other blanks)."""
+        try:
+            xs = self._cuts()
+            if self.findings:
+                return None
+            xs = [x for i, x in enumerate(xs) if i == 0 or x - xs[i - 1] > 1e-9]
+            self.pieces = [self._make_piece(l, r) for l, r in zip(xs, xs[1:])]
+            if self.findings:
+                return None
+            pts = sorted({t for pc in self.pieces if pc.defined for t in (pc.l, pc.r - US if pc.r - pc.l > 2 * US else pc.r, 0.5 * (pc.l + pc.r))})
+            seen = [v for v in (self._objective_at(t) for t in pts if 0.0 <= t < self.L) if v is not None]
+            cands = self._extrema(max(seen) - TIE - GREY - 1e-12) if seen else []
+            if not cands:
+                return None
+            top = max(f for _, f in cands)
+            return self._isolation(top, sorted(t for t, f in cands if f >= top - TIE))
+        except (_Budget, _Undet):
+            return None
+
+    # ── SR-NEAR-STATION-TIE: a station zone can host the earliest tie ─────────────────────────────────────────────────────
+    def _zone_clusters(self) -> list:
+        """The cut stations' zones merged where they overlap: [(lo, hi, noise_F)] — the noise bound of F over the merged zone, in objective units
+        (the SUM of the record bounds for the sum objective, the largest for the max-min one)."""
+        out: list = []
+        for lo, hi, noise in sorted(self.zones):
+            if out and lo <= out[-1][1]:
+                prev = out[-1]
+                out[-1] = (prev[0], max(prev[1], hi), prev[2] + noise if self.objective == OBJ_SUM else max(prev[2], noise))
+            else:
+                out.append((lo, hi, noise))
+        return out
+
+    def _zone_tie(self, m_hat: float):
+        """(lo, hi, zone_top, noise) of the first station zone whose value is within TIE + its noise bound of the maximum `m_hat`; None if there is none.
+        The zone's value is read directly (the objective at the zone's ends, at every piece boundary inside it — the left limit, never the next piece's
+        first value — and at the piece midpoints)."""
+        for lo, hi, noise in self._zone_clusters():
+            pts = {lo, hi - US if hi >= self.L else hi}
+            for pc in self.pieces:
+                x, y = max(pc.l, lo), min(pc.r, hi)
+                if x < y:
+                    pts.update((x, y - US if y - x > 2 * US else y, 0.5 * (x + y)))
+            vals = [v for v in (self._objective_at(t) for t in sorted(pts) if 0.0 <= t < self.L) if v is not None]
+            zone_top = max(vals, default=None)
+            if zone_top is not None and zone_top >= m_hat - TIE - noise:
+                return lo, hi, zone_top, noise
+        return None
+
     # ── check 6: the numbers carried by the peak ────────────────────────────────────────────────────────────────────────
     def _at_peak(self, t: float, f_peak: float):
         st = self.stored
@@ -831,12 +913,17 @@ class _Engine:
                 # R-3: which of several near-coincident tied extrema is the earliest DISTINCT one is not decided by either side's
                 # sampling scale: a named blank, not a verdict (the value / bound / at-the-peak findings still stand).
                 ties = sorted(t for t, f in cands if f >= theta)
-                close = [(x, y) for x, y in zip(ties, ties[1:]) if y - x <= ISOLATION_S]
-                if close:
-                    self.rederived["tie_cluster"] = [(self._dt(x), self._dt(y)) for x, y in close]
-                    self.unverified.append((U_ISOLATION, (
-                        f"{len(ties)} extrema within the tie tolerance of the maximum, two of them {close[0][1] - close[0][0]:.3f} s "
-                        f"apart from {self._dt(close[0][0]).isoformat()} (limit {ISOLATION_S} s): isolation is unresolved")))
+                unresolved = self._isolation(m_hat, ties)
+                # Q12 is not relaxed by a zone: it only makes WHICH comb instant is the earliest tie undecidable. A stored instant outside every
+                # zone (+-tol_s) and within tol_s of no extremum that reaches the tie threshold is plainly wrong, as before the zone rule.
+                in_zone = any(lo - self.tol_s <= t_star <= hi + self.tol_s for lo, hi, _n in self._zone_clusters())
+                if unresolved is not None and "tie_zone" in self.rederived and not in_zone and \
+                        not any(abs(t_star - t) <= self.tol_s for t, f in cands if f >= theta - GREY):
+                    self.findings.append(Finding(F_INSTANT, (
+                        f"the stored peak {st.peak_instant.isoformat()} lies outside every station zone and within {self.tol_s} s of no extremum "
+                        "that reaches the tie threshold of the maximum")))
+                elif unresolved is not None:
+                    self.unverified.append((U_ISOLATION, unresolved))
                 else:
                     widest = [t for t, f in cands if f >= theta - GREY]
                     if not any(abs(t_star - t) <= self.tol_s for t in widest):
@@ -874,10 +961,20 @@ def check_window(*, lo: datetime, hi: datetime, records, objective: str, stored:
                    event_class=event_class, against_evaluated=against_evaluated).run()
 
 
+def confirm_tie_isolation(*, lo: datetime, hi: datetime, records, objective: str, position_at, max_evals: int = DEFAULT_MAX_EVALS,
+                          event_class: Optional[str] = None, against_evaluated: bool = False) -> Optional[str]:
+    """A stored BLANK under `tie_isolation_unresolved` (the builder's SR-NEAR-STATION-TIE blank) has no peak to prove: this re-derives, from this module's own
+    code, whether the earliest tie of the window is unresolved (a station zone within TIE + the noise bound of the maximum, or two tied extrema within
+    ISOLATION_S). Returns the description when it is — the blank is then confirmed — and None when the independent prover finds the tie isolated."""
+    dummy = StoredWindow(peak_instant=lo, objective_value=0.0)
+    return _Engine(lo, hi, records, objective, dummy, position_at, peak_tolerance_s=PEAK_INSTANT_TOLERANCE_S, max_evals=max_evals,
+                   event_class=event_class, against_evaluated=against_evaluated).probe_isolation()
+
+
 def satisfies_gate(report: CheckReport) -> bool:
     """A numbered window passes a gate ONLY when it is VERIFIED: a refutation or an unsettled window never does."""
     return report.status == VERIFIED
 
 
 __all__ = ["CH_AGAINST", "CH_FOR", "CheckRecord", "CheckReport", "Finding", "NOT_GIVEN", "OBJ_MAXMIN", "OBJ_SUM",
-           "REFUTED", "StepFactor", "StoredWindow", "TentFactor", "UNVERIFIED", "VERIFIED", "check_window", "satisfies_gate"]
+           "REFUTED", "StepFactor", "StoredWindow", "TentFactor", "UNVERIFIED", "VERIFIED", "check_window", "confirm_tie_isolation", "satisfies_gate"]

@@ -228,6 +228,9 @@ def _live(recs, t):
 #: the named reasons a SOLVER window may be blank under — this verifier's OWN literals (the builder's live in `window_solver`; a test asserts equality)
 SOLVER_STRUCTURAL = {"monotone_arc_not_established": _chk.F_H1, "state_boundaries_incomplete": _chk.F_H2}
 SOLVER_BUDGET_REASONS = ("solver_budget_exhausted", "solver_certificate_incomplete")
+#: SR-NEAR-STATION-TIE: the builder's blank for a window whose station zone can host the earliest tie. Confirmed by the prover's OWN re-derivation
+#: (`window_solver_check.confirm_tie_isolation`), not by a finding code: the window has no stored peak to refute.
+SOLVER_TIE_ZONE_REASON = "tie_isolation_unresolved"
 SOLVER_UNKNOWN_REASONS = ("objective_unknown_over_component", "objective_undeterminable")
 _SPAN_KERNEL_VALUE_KEY = "inside"
 
@@ -800,10 +803,18 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                 channel_at=channel_at, channel_boundaries=channel_boundaries, p1=p1)
             objective = _chk.OBJ_MAXMIN if path_id == "P4" else _chk.OBJ_SUM
             if structural_blank:
-                probe = _chk.check_window(lo=lo, hi=hi, records=records, objective=objective, position_at=position_at, event_class=event_class,
-                                          against_evaluated=against_ok, stored=_chk.StoredWindow(peak_instant=lo, objective_value=0.0))
-                want_code = SOLVER_STRUCTURAL.get(reason, _chk.F_UNDET)
-                if want_code not in _structural_codes(probe):
+                if reason == SOLVER_TIE_ZONE_REASON:
+                    tie_why = _chk.confirm_tie_isolation(lo=lo, hi=hi, records=records, objective=objective, position_at=position_at,
+                                                         event_class=event_class, against_evaluated=against_ok)
+                    probe, want_code = None, None
+                    if tie_why is None:
+                        problems.append(f"{tag}: blank under {reason!r}, but the independent prover finds the earliest tie isolated — a blank where the table yields a value")
+                        continue
+                else:
+                    probe = _chk.check_window(lo=lo, hi=hi, records=records, objective=objective, position_at=position_at, event_class=event_class,
+                                              against_evaluated=against_ok, stored=_chk.StoredWindow(peak_instant=lo, objective_value=0.0))
+                    want_code = SOLVER_STRUCTURAL.get(reason, _chk.F_UNDET)
+                if want_code is not None and want_code not in _structural_codes(probe):
                     problems.append(f"{tag}: blank under {reason!r}, but the independent prover finds no such defect "
                                     f"(it found {sorted(f.code for f in probe.findings) or 'none'}) — a blank where the table yields a value")
                     continue

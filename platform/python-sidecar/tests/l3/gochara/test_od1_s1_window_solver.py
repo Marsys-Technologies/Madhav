@@ -302,11 +302,13 @@ def test_cs10_a_station_inside_a_support_blanks_the_window_it_must_not_report_th
     assert (r.status, r.reason, r.value, r.instant) == (sol.BLANK, sol.REASON_MONOTONE, None, None)
 
 
-def test_cs10_the_same_station_listed_is_a_cut_and_the_peak_is_exact():
+def test_cs10_the_same_station_listed_is_a_cut_and_its_zone_holds_the_named_tie_blank():
+    """Listed, the station is a cut (no `monotone_arc_not_established`). The world's one maximum (0.7) sits AT the station, inside its ±120 s zone, where the
+    real Swiss curve is a noise comb of tied maxima: since SR-NEAR-STATION-TIE the window is the named blank `tie_isolation_unresolved`, not the number
+    (before it: SOLVED, 0.7 at TS) — the cut, not a tie, is what separates this from the unlisted world above."""
     r = run(_station_world(stations=(TS,)), 0.0, W)
-    assert r.status == sol.SOLVED, (r.reason, r.detail)
-    assert r.value == pytest.approx(0.7, abs=1e-10)
-    assert r.instant == pytest.approx(TS, abs=2e-6)
+    assert (r.status, r.reason, r.value, r.instant) == (sol.BLANK, sol.REASON_TIE_ISOLATION, None, None), (r.status, r.reason, r.detail)
+    assert r.reason != sol.REASON_MONOTONE
 
 
 @pytest.mark.parametrize("kw,why", [({"velocity": False}, "no velocity operand"), ({"spacing": None}, "no audited station spacing"),
