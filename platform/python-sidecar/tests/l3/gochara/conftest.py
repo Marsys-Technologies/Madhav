@@ -219,7 +219,9 @@ G8_OPT_OUT_ALLOWLIST = frozenset({
     "test_a53_r11_seal_brief.py", "test_a53_r12_boundary.py", "test_a53_r12_persisted_brief.py", "test_a53_r12_seal_job.py",
     "test_a53_r15_amendments.py", "test_a53_r10_complete_records.py", "test_a53_r10_boundary_contract.py", "test_a53_r11_generation_wide.py", "test_a53_r11_p1_independence.py",
     "test_a53_r13_own_checkout.py", "test_a53_r13_producer.py", "test_a53_r13_sealed_boundary.py", "test_a53_r13_timeouts.py",
-    "test_a53_r14_sealed_contacts.py", "test_a53_r16_amendments.py", "test_c46_slice_round2.py", "test_p09_real_seal.py"})
+    "test_a53_r14_sealed_contacts.py", "test_a53_r16_amendments.py", "test_c46_slice_round2.py", "test_p09_real_seal.py",
+    # SR-OD1 R8 / R8X: the shard-stamp mechanics (R8), the pinned-universe / G-6 / wall-rule claims and the overlap harness (R8X) on the one-class world
+    "test_od1_r8_sharded_aggregate.py", "test_od1_r8x_aggregate.py", "test_od1_r8x_overlap.py"})
 
 
 @pytest.fixture()
@@ -239,10 +241,20 @@ def g8_census_opt_out(request, monkeypatch):
     # the job's refusal AND the candidate adapter (the brief / end-of-run gate) both judge the census through the one function: set both aside, for this suite only
     monkeypatch.setattr(_vj, "_enforce_class_census", lambda *a, **k: None)
     monkeypatch.setattr(_vj, "class_census_violations", lambda *a, **k: [])
-    # SR-OD1 R8: the generation-wide AGGREGATE judges coverage against the same pinned list, so the one-class worlds set it aside too: their universe is the classes actually pinned
+    # SR-OD1 R8: the generation-wide AGGREGATE judges coverage against the same pinned list, so the one-class worlds set it aside too. Where the aggregate's universe comes from is the
+    # suite's declaration `G8_AGGREGATE_UNIVERSE`: "pins" (default) = the classes actually pinned; "manifest" = the list the suite narrows in the manifest vector (the R8 shard mechanics);
+    # "pinned" = the verifier's REAL pinned universe, nothing set aside (R8X's T16 — the suite then patches the aggregate seam itself where a test needs it)
     from services.gochara_kernel import numerical_window_gate as _nwg
-    monkeypatch.setattr(_nwg, "expected_classes", lambda conn, chart_id, generation, vector: sorted({r[0] if not isinstance(r, dict) else next(iter(r.values())) for r in conn.execute(
-        "SELECT DISTINCT event_class FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchall()}))
+    universe = getattr(request.module, "G8_AGGREGATE_UNIVERSE", "pins")
+    if universe not in ("pins", "manifest", "pinned"):
+        raise pytest.UsageError(f"{rel}: G8_AGGREGATE_UNIVERSE must be 'pins', 'manifest' or 'pinned', not {universe!r}")
+    if universe == "pins":
+        monkeypatch.setattr(_nwg, "expected_classes", lambda conn, chart_id, generation, vector: sorted({r[0] if not isinstance(r, dict) else next(iter(r.values())) for r in conn.execute(
+            "SELECT DISTINCT event_class FROM public.ka_gochara_search_path_pin WHERE chart_id = %s AND generation = %s", (chart_id, generation)).fetchall()}))
+        # SR-OD1 R8X: …and the manifest-versus-pinned-universe comparison with it (these worlds' manifests pin the 26 classes while only the built ones are the universe)
+        monkeypatch.setattr(_nwg, "manifest_vs_universe", lambda vector, universe: [])
+    elif universe == "manifest":
+        monkeypatch.setattr(_nwg, "expected_classes", lambda conn, chart_id, generation, vector: vector.get("scored_classes"))
 
 
 @pytest.fixture(autouse=True, scope="module")

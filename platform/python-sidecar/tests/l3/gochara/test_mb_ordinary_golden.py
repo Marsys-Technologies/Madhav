@@ -510,4 +510,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned at the SR-OD1 merge-back wave 3a (R67): window_cert_check joins the window stage; window_sweep (the production solver path stores the certificate), window_verifier (the
     # certificate check and the demotion path), window_solver (stored_certificate), window_solver_check and numerical_window_gate (demotions, the cap) changed. Re-derived from the merged tree's
     # real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin bb608cda... is the wave-2 head); geometry is unchanged; no golden component is re-captured.
-    assert got["implementation"]["window"] == "ba0588e639ba46447b10de31a7321f97ce0df58f457609beb7898d3a98a5eda5"
+    # Window re-pinned at the SR-OD1 merge-back wave 3b (R8X on R67+S3+D3+R2+R8): g6_plan joins the window stage and numerical_window_gate / verification_job changed (aggregate T16 universe, T18 G-6
+    # plan, B4 wall rule); geometry is unchanged. Re-derived from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin
+    # ba0588e6... is the wave-3a head); R8X's own lane pin 0e4f173d... was derived without R67's window_cert_check and is superseded; no golden component is re-captured.
+    assert got["implementation"]["window"] == "PLACEHOLDER"

@@ -69,7 +69,7 @@ IMPLEMENTATION_MODULES = {
     # the pinned job is part of the trusted system (AM-24 item 4), so a different job is a different manifest vector.
     # SR-OD1 R9c-A10-1 (G-8): the window solver (S1) and its independent checker (S2) decide a built window's value and its verification, so they sit here with the sweep/verifier
     # they serve (never geometry; `vedha_source`, the derived vedha overlay the sweep reads, is in the same stage — SR-OD1 C1): editing either must move the window digest even before the sweep imports it (S3), which the import-closure test could not see
-    "window": tuple(_K + m for m in ("result_policy", "candidate_boundary", "numerical_window_gate", "p1_operands_check", "seal_brief", "seal_flow", "vedha_source", "verification_job", "window_gate", "window_store",
+    "window": tuple(_K + m for m in ("result_policy", "candidate_boundary", "numerical_window_gate", "p1_operands_check", "seal_brief", "seal_flow", "vedha_source", "verification_job", "g6_plan", "window_gate", "window_store",
                                      "vedha_verifier", "window_cert_check", "window_solver", "window_solver_check", "window_sweep", "window_verifier")) + ("pipeline.orchestrator.verification_job", "pipeline.orchestrator.seal_job"),
 }
 

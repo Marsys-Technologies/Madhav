@@ -500,6 +500,10 @@ def test_c8_the_verdict_counts_blank_windows_per_grain_and_per_reason_group(monk
         def execute(self, sql, params=()):
             if "kala_gochara_publication" in sql:
                 return _Rows([("manifest-1",)])
+            if "FROM pg_attribute" in sql:                                            # R8X (merge-back 3b): the G-6 provenance probe
+                return _Rows([(1,)])
+            if "qualification -> 'solver_certificate' IS NOT NULL" in sql:            # R8X: the G-6 population read (no certified window here)
+                return _Rows([])
             if "SELECT window_id::text" in sql:                                       # R67 B-1: the grain's stored NUMBERED windows (no demotion here, so none are listed)
                 return _Rows([("w0",), ("w1",), ("w2",)])
             if "ka_gochara_search_input_snapshot" in sql:
@@ -513,7 +517,9 @@ def test_c8_the_verdict_counts_blank_windows_per_grain_and_per_reason_group(monk
             if "ka_gochara_eval_window_verification" in sql:
                 epoch = nwg.current_epoch(self, "c", "g")
                 runner = {"commit": head, "implementation_digest": pinned, nwg.ATTESTATION_KEY: att,
-                          nwg.SHARD_KEY: nwg.shard_stamp(generation="g", head=head, classes=["marriage"], epoch=epoch, image_digest=image, execution_id=execution)}
+                          nwg.SHARD_KEY: nwg.shard_stamp(generation="g", head=head, classes=["marriage"], epoch=epoch, image_digest=image, execution_id=execution),
+                          nwg.WALL_KEY: {"class": "marriage", "wall_ms": 10, "lock_wait_ms": 0, "compute_ms": 10},
+                          nwg.G6_KEY: {"schema": "g6_evidence/1", "plan_digest": __import__("services.gochara_kernel.g6_plan", fromlist=["x"]).PLAN_DIGEST, "sample_per_mille": 30, "population": 0, "windows": {}}}
                 return _Rows([("marriage", "P4", "1.0.0", "VERIFIED", nwg.POLICY_QUALIFICATION, 5, json.dumps(runner))])
             raise AssertionError(sql)
     import services.gochara_kernel.result_policy as rpm
@@ -521,6 +527,7 @@ def test_c8_the_verdict_counts_blank_windows_per_grain_and_per_reason_group(monk
                                                                            "scored_classes": ["marriage"], "implementation": impl})
     monkeypatch.setattr(nwg, "census", lambda *a, **k: {"windows": 5, "numbered": 3, "numbered_without_score": 0, "valence": {"favourable": 3},
                                                        "blank": {"solver_budget_exhausted": 2}, "problems": []})
+    monkeypatch.setattr(nwg, "expected_classes", lambda *a: ["marriage"])                # R8X (T16): the one-class world sets the pinned 26-class universe aside
     verdict = nwg.generation_verdict(Conn(), "c", "g")
     assert verdict["status"] == nwg.PASSED, verdict["problems"]
     assert verdict["honest_nulls_by_grain"] == [{"event_class": "marriage", "path_id": "P4", "rule_version": "1.0.0", "group": "solver_certificate",
