@@ -392,7 +392,8 @@ def test_d9_the_persisted_rows_are_read_back_with_the_authored_table_and_the_1_0
     Planted reversion: `bound_factor_rows` drops `category_mapping` (the verifier and the sweep would then see no table)."""
     forms = tuple((f, "1.3.0") for f in ("dignity_of_transit_sign", "combustion", "agent_nature"))
     monkeypatch.setattr(rr, "BOUND_FACTOR_REFS", tuple(rr.BOUND_FACTOR_REFS) + forms)
-    old = rr.RuleRegistryStore(_Persisted([("dignity_of_transit_sign", "1.0.0"), ("combustion", "1.0.0")]))
+    # the persisted membership is the declared one (SR-NDH-INPLACE: `bound_factor_rows` refuses any other set), here the whole 1.0.0 P1 set
+    old = rr.RuleRegistryStore(_Persisted([tuple(ref) for ref in reg.RULE_PATHS[("P1", "1.0.0")]["soft_factors"]]))
     assert all("category_mapping" not in r for r in old.bound_factor_rows("P1", "1.0.0"))
     new = rr.RuleRegistryStore(_Persisted(list(forms))).bound_factor_rows("P1", "1.3.0")
     assert {r["factor_id"]: r["category_mapping"] for r in new} == {f: reg.FACTORS[(f, "1.3.0")]["category_mapping"] for f, _v in forms}

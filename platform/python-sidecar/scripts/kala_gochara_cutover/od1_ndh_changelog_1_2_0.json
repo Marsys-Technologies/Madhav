@@ -1,0 +1,47 @@
+{
+ "entries": [
+  {
+   "also_reads_1_2_0": [
+    "bereavement"
+   ],
+   "changed": {
+    "h_table": false,
+    "l0_node_inputs": true,
+    "soft_factors": true
+   },
+   "classes_changed": [
+    "achievement_recognition",
+    "business_launch",
+    "financial_deception",
+    "foreign_settlement",
+    "parental_event",
+    "property_acquisition",
+    "psychological_arc",
+    "spiritual_turn"
+   ],
+   "content_digest_after": "a3c947211dff89182d83df519d4d79010c297438ad7309a002a1534187b2cb36",
+   "content_digest_before": "b3479c8e653edb91aba2edfa8c383765adcb475fafed1e3a79a86cd9ae2dd50c",
+   "date": "2026-10-22",
+   "l0_digests_after": {
+    "bg_dignity_reference": "2635a7f1f311ffc884dc1416baecc5a8cb44212c308cb386fac5423afcda4456",
+    "bg_graha_naisargika_friendship": "6fe29171b27e7934271823a38ef36efd12300838fe240ee551b660d46b000c1f"
+   },
+   "l0_digests_before": {
+    "bg_dignity_reference": "9300cc28b801216b1c0d3dc81e2d12d842d67c476a2c468805ac55928cb40efd",
+    "bg_graha_naisargika_friendship": "aed4c56b3061f5ca8d5e48d230a16757dc14676288cc00e600ca3d77f8a0c050"
+   },
+   "migration": "1401_l0_node_dignity_friendship.sql",
+   "paths": [
+    "P1",
+    "P3",
+    "P4"
+   ],
+   "rule_version": "1.2.0",
+   "rulings": [
+    "SR-DOCTRINE-H",
+    "SR-NDH-INPLACE"
+   ]
+  }
+ ],
+ "schema": "ky.ndh_changelog/1"
+}
