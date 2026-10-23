@@ -29,6 +29,7 @@ Claims (the cited rule is the ruling or classical definition the oracle is built
   C-2  an UNVERIFIED reason that is not a named INCONCLUSIVE one blocks (DISAGREEMENT)                                  R-6
   C-3  INCONCLUSIVE is derived from the reasons that make it so (end to end through `check_numbered`)                   R-6
   C-4  a bound that cannot be pushed under M + tol, with no point above it, is INCONCLUSIVE; a real exceedance DISAGREES   R-6 (SR-TR2-DEFECT-B)
+       (SR-UCERT-CAP-WATCH: the verifier cuts below 1 ms first, so that case is rare; the claims of that floor are S-32 .. S-34 in test_od1_s2_solver_check)
   G-1  populations are matched AFTER classification (stored numbered = reproduced + demoted)                            R-6
   G-2  a demoted window is attested as a BLANK under its named reason                                                   R-6
   G-3  the demoted share is capped at 0.5 % of all windows; above it the verdict FAILS                                  R-6
@@ -473,7 +474,7 @@ class RoundingEdgeWorld:
     sum F = tentA + tentB peaks AT the crest, F* = 1 + tentB(t_c) = 2 - B0 (orb 1, so a tent is 1 - |offset|). The stored maximum is a float4: `M4`, with F* = M4 + `err_of_half` x half a
     float4 spacing (2^-24 in [1, 2)). The verifier's bound is the sum of each body's larger end value, which exceeds F by B's fall across a leaf (VEL_B x width); the search stops at
     MIN_WIDTH_S = 1 ms (VEL_B x 1 ms = 1.2e-8 here, against a margin to M4 + tol of (1 - err_of_half) x 2^-24 + 1e-10). With `err_of_half` = 0.98 the margin is ~1.2e-9: every point is at or
-    under M4 + tol, and the bound cannot show it."""
+    under M4 + tol, and the bound could not show it at 1 ms — the defect; the verifier now cuts on to DEEP_WIDTH_S and certifies it (C-4 iii)."""
     ORB = 1.0
     VEL_A, VEL_B = 1.8e-4, 1.157e-5          # deg/s: Mercury-like, Sun-like (the trial's two bodies)
     HALF_F4 = 2.0 ** -24                     # half a float4 spacing in [1, 2)
@@ -499,18 +500,45 @@ class RoundingEdgeWorld:
                                    stored=chk.StoredWindow(at(self.t_c), stored_value), position_at=self.pos, certificate=None, resolve=True)
 
 
+class FloorEdgeWorld:
+    """What the verifier's bound still cannot show at its LOWER floor (SR-UCERT-CAP-WATCH): body `A` (tent value 0.9 at `t_end`, crest beyond) ends its support at `t_end` while the Sun-like body B
+    (1.157e-5 deg/s) falls on, so the supremum is F at the last instant of A's support, exactly `margin` under M4 + tol, and the several-body bound is VEL_B x (leaf width) loose: 6e-11 on the 5.6 us
+    leaf the search ends on. A margin of 2e-11 is a maximum under the threshold that nothing the verifier can evaluate shows."""
+    VEL_A, VEL_B = 1.8e-4, 1.157e-5
+
+    def __init__(self, margin: float, *, t_end: float = 3000.0):
+        self.t_end = t_end
+        self.M4 = struct.unpack("f", struct.pack("f", 1.76007128))[0]
+        thr = self.M4 + chk._f4_tol(self.M4)
+        self.b0 = 1.9 - (thr - margin) - (self.VEL_A - self.VEL_B) * 1e-6           # B's offset (deg) at t_end
+
+    def pos(self, body, d):
+        t = (d - T0).total_seconds()
+        return (100.0 + self.VEL_A * (t - self.t_end)) % 360.0 if body == "A" else (200.0 + self.b0 + self.VEL_B * (t - self.t_end)) % 360.0
+
+    def records(self):
+        return [chk.CheckRecord("A", "rA", "A", ((at(0.0), at(self.t_end)),), constant=1.0, tent=chk.TentFactor("A", 100.1, 1.0)),
+                chk.CheckRecord("B", "rB", "B", ((at(0.0), at(2 * self.t_end)),), constant=1.0, tent=chk.TentFactor("B", 200.0, 1.0))]
+
+    def classify(self, m_cc, stored_value):
+        return m_cc.check_numbered(lo=at(0), hi=at(2 * self.t_end), records=self.records(), objective=chk.OBJ_SUM,
+                                   stored=chk.StoredWindow(at(self.t_end - 1e-6), stored_value), position_at=self.pos, certificate=None, resolve=True)
+
+
 @claim("C-4", "window_cert_check", "chk.U_BUDGET, chk.U_CERT, ", "chk.U_BUDGET, ")
 def oracle_c4(mods):
-    """SR-TR2-DEFECT-B, both directions. (i) A stored float4 whose rounding error is 98 % of its limit leaves the exact maximum 1.2e-9 under M + tol; the verifier's cross-body bound
-    cannot show that at its 1 ms floor, and no point it evaluates is above the threshold — so the window is INCONCLUSIVE naming `solver_certificate_incomplete` (demoted to the named blank), with no
-    finding: the sky does not contradict the number. (ii) The same world with the stored maximum one float4 spacing too low is a real exceedance: DISAGREEMENT, whatever else is open."""
+    """SR-TR2-DEFECT-B, both directions, after SR-UCERT-CAP-WATCH made the case rare. (i) A stored float4 whose true maximum is 2e-11 under M + tol is a number nothing the verifier evaluates contradicts,
+    but its several-body bound is 6e-11 loose even at the lowest floor: the window is INCONCLUSIVE naming `solver_certificate_incomplete` (demoted to the named blank), with no finding — the sky does not
+    contradict the number. (ii) The same world with the stored maximum one float4 spacing too low is a real exceedance: DISAGREEMENT, whatever else is open. (iii) The first real window of the trial (the
+    rounding-edge crest, 1.3e-9 under the threshold) is no longer INCONCLUSIVE: the lower floor certifies it AGREED."""
     c = M(mods, "window_cert_check")
-    w = RoundingEdgeWorld(0.98)
-    assert abs(w.f_star - w.M4) < chk._f4_tol(w.M4) and chk._f4_tol(w.M4) - (w.f_star - w.M4) < 2e-9      # the premise: the margin to the threshold is ~1.2e-9, a true maximum under it
+    w = FloorEdgeWorld(2e-11)
     rep = w.classify(c, w.M4)
     assert rep.classification == c.INCONCLUSIVE and [r for r, _ in rep.inconclusive] == [chk.U_CERT] and not rep.findings, (rep.classification, rep.codes())
-    low = w.classify(c, w.M4 - 2.0 ** -23)                 # one float4 spacing below: F* - stored = 1.98 half-spacings, outside the tolerance
+    low = w.classify(c, w.M4 - 2.0 ** -23)                 # one float4 spacing below: the maximum exceeds the stored one by 1.98 half-spacings, outside the tolerance
     assert low.classification == c.DISAGREEMENT and low.findings, (low.classification, low.codes())
+    crest = RoundingEdgeWorld(0.98)
+    assert crest.classify(c, crest.M4).classification == c.AGREED
 
 
 # G-1 .. G-4: the gate, over a stored census and a re-derivation report ───────────────────────────────────────────────────────────

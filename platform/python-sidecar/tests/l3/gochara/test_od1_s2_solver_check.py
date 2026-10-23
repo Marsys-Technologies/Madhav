@@ -603,6 +603,91 @@ def oracle_tent_is_the_frozen_kernel(m):
 LON = [0.0]
 
 
+# ── SR-UCERT-CAP-WATCH: a sum over several bodies is bounded by each body's larger end value, which exceeds F on a leaf by the opposing bodies' fall across it ──────
+
+def f4(x: float) -> float:
+    return struct.unpack("f", struct.pack("f", x))[0]
+
+
+def w_crest(m, m_val, margin, falling, vel_a, tc=3000.0):
+    """The shape of the two real windows of defect B (foreign_settlement/P3), synthetic tents with the scrubbed numerics and no chart data. A fast body `A` (Mercury/Venus-like, `vel_a`
+    deg/s, orb 1) climbs to its tent crest at `tc`; the `falling` bodies [(name, deg/s)] (Sun-like 1.157e-5, ...) fall away from theirs. The sum peaks AT the crest, F* = thr - `margin`, thr = M + tol
+    for the stored float4 M = f4(m_val). Pieces are cut at the crest, so the supremum of the left piece sits at its right end and the bound there is A(r) + sum of the falling bodies' LEFT-end values:
+    looser than F by (their fall per second) x (leaf width) — 1.2e-8 on a 1 ms leaf (real window 1) / 1.8e-8 (real window 2, three bodies)."""
+    stored_m = f4(m_val)
+    thr = stored_m + m._f4_tol(stored_m)
+    n, vel = len(falling), dict(falling)
+    b0 = ((n + 1) - (thr - margin)) / n                    # each falling body's offset from its level at the crest
+    pos = sky_s(**{"A": lambda s: 100.0 + vel_a * (s - tc), **{nm: (lambda s, v=v: 200.0 + b0 + v * (s - tc)) for nm, v in falling}})
+    sup = ((at(0), at(0, 2 * tc)),)
+    recs = [m.CheckRecord("A", "rA", "A", sup, tent=m.TentFactor("A", 100.0, 1.0))]
+    recs += [m.CheckRecord(nm, "r" + nm, nm, sup, tent=m.TentFactor(nm, 200.0, 1.0)) for nm, _ in falling]
+    return {"lo": at(0), "hi": at(0, 2 * tc), "records": recs, "pos": pos}, stored_m, at(0, tc)
+
+
+def w_support_end(m, m_val, margin, falling, vel_a, tc=3000.0):
+    """The same bound looseness where the maximum cannot be hidden by a cut: `A` (tent value 0.9 at `tc`, its crest is beyond) ends its SUPPORT at `tc` while the falling bodies live on, so the sum's
+    supremum is its value at the last instant of A's support (`tc` - 1 us), exactly `margin` under M + tol. A positive margin is a window whose maximum IS under the threshold; a negative one is a
+    real exceedance. `falling` of equal speed to `vel_a` makes F exactly flat on [0, tc): a long near-threshold stretch."""
+    stored_m = f4(m_val)
+    thr = stored_m + m._f4_tol(stored_m)
+    n, vel = len(falling), dict(falling)
+    b0 = (n + 0.9 - (thr - margin) - (vel_a - sum(vel.values())) * 1e-6) / n
+    pos = sky_s(**{"A": lambda s: 100.0 + vel_a * (s - tc), **{nm: (lambda s, v=v: 200.0 + b0 + v * (s - tc)) for nm, v in falling}})
+    recs = [m.CheckRecord("A", "rA", "A", ((at(0), at(0, tc)),), tent=m.TentFactor("A", 100.1, 1.0))]
+    recs += [m.CheckRecord(nm, "r" + nm, nm, ((at(0), at(0, 2 * tc)),), tent=m.TentFactor(nm, 200.0, 1.0)) for nm, _ in falling]
+    return {"lo": at(0), "hi": at(0, 2 * tc), "records": recs, "pos": pos}, stored_m, at(0, tc - 1e-6)
+
+
+#: (M stored as float4, margin of the true maximum under M + tol, falling bodies, speed of the climbing body) — the scrubbed numerics of the trial's two windows
+DEFECT_B_WINDOWS = {"window 1 (two bodies)": (1.76007128, 1.3e-9, [("B", 1.157e-5)], 1.8e-4),
+                    "window 2 (three bodies)": (2.7011158, 7.7e-9, [("S", 1.157e-5), ("R", 6e-6)], 2e-5)}
+
+
+@claim("S-32", "DEEP_WIDTH_S = 1e-5 ", "DEEP_WIDTH_S = 1e-3 ")
+def oracle_deep_floor_certifies(m):
+    """SR-UCERT-CAP-WATCH. The two real windows of defect B have a maximum 1.3e-9 / 7.7e-9 under M + tol while the several-body bound is 1.2e-8 / 1.8e-8 loose at the 1 ms floor (the opposing
+    bodies' fall per second x the leaf): the search must keep cutting below 1 ms, where the SAME bound tightens linearly with the leaf, until it is under M + tol — VERIFIED, not
+    `solver_certificate_incomplete`. (A bound sound on a leaf is sound on each half of it: the first-order enclosure of a monotone piece holds on every sub-interval, `_seeds`.)"""
+    for name, (m_val, margin, falling, vel_a) in DEFECT_B_WINDOWS.items():
+        w, stored_m, t_star = w_crest(m, m_val, margin, falling, vel_a)
+        assert sum(v for _, v in falling) * m.MIN_WIDTH_S > margin, name                 # the premise: at the 1 ms floor the bound cannot show it
+        rep = run(m, w, stored(m, t_star, stored_m))
+        assert rep.status == m.VERIFIED and not rep.unverified, (name, rep.status, codes(rep))
+
+
+@claim("S-33", "                        worst = (l, r)\n                        continue\n                    deep_left -= 1", "                        continue\n                    deep_left -= 1")
+def oracle_uncertified_leaf_is_never_passed(m):
+    """Soundness, the dangerous direction: a leaf whose bound is still above M + tol at the new floor (maximum 2e-11 under the threshold, the bound 6e-11 loose at a 5.6 us leaf) is UNVERIFIED
+    `solver_certificate_incomplete` — never passed; a maximum 3e-11 ABOVE the threshold is still REFUTED by an evaluated point (`objective_exceeds_stored_maximum`), whatever the floor; and the
+    lower floor changed no verdict where the bound is rigorous (the interior-maximum and falling-term worlds of S-2 / S-7 stay pinned by their own oracles)."""
+    m_val, _, falling, vel_a = DEFECT_B_WINDOWS["window 1 (two bodies)"]
+    w, stored_m, t_star = w_support_end(m, m_val, 2e-11, falling, vel_a)
+    assert sum(v for _, v in falling) * m.DEEP_WIDTH_S / 2 > 2e-11                           # the premise: still loose at the lower floor
+    rep = run(m, w, stored(m, t_star, stored_m))
+    assert rep.status == m.UNVERIFIED and codes(rep) == [m.U_CERT], (rep.status, codes(rep))
+    w, stored_m, t_star = w_support_end(m, m_val, -3e-11, falling, vel_a)
+    bad = run(m, w, stored(m, t_star, stored_m))
+    assert bad.status == m.REFUTED and chk.F_ABOVE in codes(bad), (bad.status, codes(bad))
+
+
+@claim("S-34", "        deep_left = DEEP_SPLIT_CAP\n", "        deep_left = 10 ** 9\n")
+def oracle_deep_cost_is_capped(m):
+    """The extra cost of the lower floor is bounded per window. F exactly flat 5e-12 under M + tol on a 10 s stretch (the climbing body gains what the falling one loses: equal speeds) defeats
+    the bound at EVERY leaf, 1 ms or 10 us: 1e4 leaves x 7 levels would need millions of evaluations. The allowance (DEEP_SPLIT_CAP bisections, one evaluation per body each, two bodies, a
+    leaf and its two children) holds it to the cost of the 1 ms search plus <= 4 x the cap; the window stays `solver_certificate_incomplete`, never `verifier_budget_exhausted`."""
+    m_val, _, _, _ = DEFECT_B_WINDOWS["window 1 (two bodies)"]
+    w, stored_m, t_star = w_support_end(m, m_val, 5e-12, [("B", 1.8e-4)], 1.8e-4, tc=10.0)
+    rep = run(m, w, stored(m, t_star, stored_m))
+    assert m.U_CERT in codes(rep) and m.U_BUDGET not in codes(rep), codes(rep)
+    saved, m.DEEP_SPLIT_CAP = m.DEEP_SPLIT_CAP, 0
+    try:
+        base = run(m, w, stored(m, t_star, stored_m))                                    # the search that stops at the 1 ms floor
+    finally:
+        m.DEEP_SPLIT_CAP = saved
+    assert rep.evals <= base.evals + 4 * m.DEEP_SPLIT_CAP and rep.evals < 150_000, (rep.evals, base.evals)
+
+
 # ── plain scenarios (no reversion: each pins an end-to-end case the claims above do not exercise) ─────────────────────────────────
 
 def test_a_crossing_of_the_360_seam_is_proved_at_its_crest():
@@ -785,7 +870,7 @@ def test_the_single_planted_reversion_fails_the_oracle(cid):
 def test_every_claim_has_exactly_one_reversion_and_one_oracle():
     assert set(CLAIMS) == {"V-1", "S-2", "S-3", "S-4", "S-5", "S-6", "S-7", "S-8", "S-9", "S-10", "S-11", "S-12", "S-13", "S-14",
                            "S-15", "S-16", "S-17", "S-18", "S-19", "S-20", "S-21", "S-22", "S-23", "S-24", "S-25", "S-26", "S-27", "S-28", "S-29", "S-30", "S-31",
-                           "R1-1", "R1-2"}
+                           "R1-1", "R1-2", "S-32", "S-33", "S-34"}
     assert len({old for _, old, _ in CLAIMS.values()}) == len(CLAIMS)             # no two claims share a reversion site
 
 
