@@ -14,11 +14,14 @@ Semantics (the whole point; each is pinned by `__tests__/test_trial_ready.py`):
   * Skipped tests are not passes: a test oracle that skipped (a missing database, say) reads null.
 
 The detectors live in the registry (`trial_ready_checks.json`, read at the evaluated commit): per check a list of `parts`, all of which must read true.
-Part kinds: `pytest`, `git_file`, `db_sql`, `db_migrations`, `json_keys`, `json_field_eq`, `unbound`. A part reads false when its detector ran and the claim
+Part kinds: `pytest`, `git_file`, `db_sql`, `db_migrations`, `json_keys`, `json_field_eq`, `lane_ledger`, `unbound`. A part reads false when its detector ran and the claim
 failed, null when the detector could not run or its evidence is unreadable. A `pytest` part may carry `env` (values may use `{repo}`, the evaluated work tree) and
 `deselect` (node ids a known environment-dependent test is excluded by, each named and justified in the registry). A `db_migrations` part either lists `prefixes`
 or sets `mode: "all"` (every migration file at the commit must be recorded). A `json_field_eq` part reads a JSON record outside the repository (TR-BIND: T21, T24);
 each field declares exactly one of `equals` (a constant), `equals_head` (the evaluated sha) or `equals_patch_id_of` (a base ref: `git diff <base>...<head> | git patch-id --stable`).
+A `lane_ledger` part (TR-BIND: T22) runs the checker AT THE COMMIT (`lane_ledger_check.py`, which recomputes every lane's patch-id from git and recounts BLOCKING findings from the
+review jobs' own result files) over the ledger file named by the environment variable `ledger_env`: exit 0 reads true, exit 1 false, anything else -- and an unset or unreadable
+ledger -- null. The ledger is an identity list, never a verdict: nothing it states is trusted except the heads, bases and paths it names.
 Parts combine three-valued: any false -> false; else any null -> null; else true.
 A lane that merges adds the binding of its own oracle to the registry in its PR; until then its check is `unbound` and reads null.
 
@@ -354,6 +357,38 @@ def _d_json_field_eq(ctx: "Ctx", part: Part) -> Outcome:
     return combine(verdicts), ref, _sha256(data), "%d field(s) read" % len(fields)
 
 
+def _d_lane_ledger(ctx: "Ctx", part: Part) -> Outcome:
+    """T22: the lane ledger checker, run from the evaluated work tree, over a ledger file outside the repository (named by `ledger_env`) that must have been rebuilt AT this
+    commit (the checker reads FALSE for a ledger built at another head). exit 0 -> true, 1 -> false, else null (could not run); the digest is the checker's own JSON reading."""
+    env_name = part.get("ledger_env")
+    checker_rel = part.get("checker", "platform/scripts/governance/lane_ledger_check.py")
+    ref = "lane_ledger:%s@%s" % (env_name, ctx.sha[:12])
+    ledger = os.environ.get(env_name, "") if isinstance(env_name, str) and env_name else ""
+    if not ledger:
+        return None, ref, None, "%s is not set: no lane ledger was rebuilt at this commit" % (env_name or "ledger_env")
+    if not ctx.tree_ok:
+        return None, ref, None, "work tree is not the commit: %s" % ctx.tree_reason
+    if not isinstance(checker_rel, str) or blob(ctx.repo, ctx.sha, checker_rel) is None:
+        return None, ref, None, "the checker is not present at the commit"
+    out = ctx.workdir / ("lane-ledger-%s" % _sha256(ref.encode())[:12] + ".json")
+    out.unlink(missing_ok=True)
+    cmd = [ctx.python, "-I", str(ctx.repo / checker_rel), "--ledger", ledger, "--repo", str(ctx.repo), "--integration-ref", ctx.sha, "--json-out", str(out), "--quiet"]
+    try:
+        r = subprocess.run(cmd, env=scrubbed(), capture_output=True, timeout=int(part.get("timeout_s", 600)))
+    except (OSError, subprocess.SubprocessError) as exc:
+        return None, ref, None, "the checker could not run: %s" % type(exc).__name__
+    if r.returncode not in (0, 1):
+        return None, ref, None, "the checker could not read the ledger (exit %d)" % r.returncode
+    try:
+        reading = out.read_bytes()
+        value = json.loads(reading.decode("utf-8")).get("value")
+    except (OSError, ValueError):
+        return None, ref, None, "the checker wrote no readable result"
+    if value is not (r.returncode == 0):                    # the checker's exit and its own JSON must agree, else neither is evidence
+        return None, ref, _sha256(reading), "the checker's exit code and its result disagree"
+    return value, ref, _sha256(reading), "lane ledger %s" % ("holds" if value else "does not hold")
+
+
 DETECTORS = {
     "unbound": _d_unbound,
     "git_file": _d_git_file,
@@ -362,6 +397,7 @@ DETECTORS = {
     "db_migrations": _d_db_migrations,
     "json_keys": _d_json_keys,
     "json_field_eq": _d_json_field_eq,
+    "lane_ledger": _d_lane_ledger,
 }
 
 

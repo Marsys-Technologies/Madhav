@@ -281,6 +281,13 @@ def test_n7_the_oracle_file_the_registry_part_names_is_this_file():
     assert (Path(__file__).resolve().parents[3] / pytest_part["tests"][0]).samefile(__file__)
 
 
+def test_n9_the_registry_binds_t11_to_exactly_the_parts_the_detector_renders():
+    """TR-BIND: the shipped TRIAL_READY registry entry for T11 is `t11_parts()` itself, byte for byte (a hand-edited or stale SQL in the registry would read a different claim than the one n7 proves)."""
+    registry = Path(__file__).resolve().parents[5] / "platform" / "scripts" / "governance" / "trial_ready_checks.json"
+    (t11,) = [c for c in json.loads(registry.read_text(encoding="utf-8"))["checks"] if c["id"] == "T11"]
+    assert t11["parts"] == tool.t11_parts()
+
+
 def test_n7_a_database_with_no_gochara_table_is_not_clean():
     """The detector must have something to read: an empty database reads UNDETERMINED (the cockpit's `ky_lane_head` before it is built), never CLEAN."""
     import psycopg

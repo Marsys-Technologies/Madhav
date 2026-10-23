@@ -309,8 +309,9 @@ def test_c7_exit_code_follows_ready_and_a_stale_file_never_survives_a_failed_run
 
 # ── C8 ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-# the checks whose detector is another job's (TR_GAPS B1 NDH, B2 SELECT-130, B7 DASH-READBACK, B6 LANE-LEDGER); binding one removes it from this set, a new unbound check fails
-STILL_UNBOUND = {"T11", "T12", "T13", "T22"}
+# TR-BIND (SR madhav-44, 2026-10-23): "an unbound check is a TR auto-arm blocker" -- T11 NDH, T12 SELECT-130, T13 DASH readback and T22 lane ledger are bound to their lanes' oracles
+# (a part that cannot run reads null, never true); no check may be unbound, so a new `unbound` part fails
+STILL_UNBOUND: set = set()
 
 
 def test_c8_the_shipped_registry_names_the_25_checks_and_points_only_at_real_oracles():
@@ -335,7 +336,7 @@ def test_c8_the_shipped_registry_names_the_25_checks_and_points_only_at_real_ora
                 assert p.get("mode") == "all" or p.get("prefixes"), (c["id"], p)
 
 
-def test_c8_only_the_four_checks_that_wait_for_another_job_are_unbound():
+def test_c8_no_check_of_the_shipped_registry_is_unbound():
     doc = json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))
     unbound = {c["id"] for c in doc["checks"] if any(p["kind"] == "unbound" for p in c["parts"])}
     assert unbound <= STILL_UNBOUND, sorted(unbound - STILL_UNBOUND)
@@ -347,7 +348,7 @@ def test_c8_a_check_with_no_bound_detector_cannot_read_true_from_the_shipped_reg
     repo, _ = make(tmp_path, doc)
     v = values(run(repo, tmp_path))
     unbound_only = [c["id"] for c in doc["checks"] if all(p["kind"] == "unbound" for p in c["parts"])]
-    assert unbound_only and all(v[i] is None for i in unbound_only)
+    assert all(v[i] is None for i in unbound_only)
     assert not tr.is_ready(run(repo, tmp_path)["checks"])
 
 
@@ -647,3 +648,57 @@ def test_c15_an_unresolvable_base_makes_the_patch_id_field_null(tmp_path):
     git(repo, "update-ref", "-d", "refs/remotes/origin/main")
     (tmp_path / "RVINT_VERDICT.json").write_text(json.dumps({"proposed_verdict": {"verdict": "ACCEPTED", "head": head, "patch_id": "a" * 40}}))
     assert values(run(repo, tmp_path))["T21"] is None
+
+
+# ── C16 lane_ledger (TR-BIND: T22) ───────────────────────────────────────────────────────────────────────────────────────────────────────
+
+STUB_CHECKER = "import json, sys\na = sys.argv\nout = a[a.index('--json-out') + 1]\nopen(out, 'w').write(json.dumps({'value': %s}))\nsys.exit(%d)\n"
+
+
+def _ledger_repo(tmp_path, exit_code, value, name="ll"):
+    """A repo whose T22 part runs a STAND-IN checker at the commit (the shipped checker's own proof is test_lane_ledger_selftest.py)."""
+    part = {"kind": "lane_ledger", "ledger_env": "TR_TEST_LEDGER", "checker": "stub_checker.py"}
+    repo, _ = make(tmp_path, registry({"T22": [part]}), {"stub_checker.py": STUB_CHECKER % (value, exit_code)}, name=name)
+    return repo
+
+
+def test_c16_the_checker_exit_and_reading_map_to_true_false_and_null(tmp_path, monkeypatch):
+    (tmp_path / "ledger.json").write_text("{}")
+    monkeypatch.setenv("TR_TEST_LEDGER", str(tmp_path / "ledger.json"))
+    assert values(run(_ledger_repo(tmp_path, 0, "True", "a"), tmp_path))["T22"] is True
+    assert values(run(_ledger_repo(tmp_path, 1, "False", "b"), tmp_path))["T22"] is False
+    assert values(run(_ledger_repo(tmp_path, 2, "None", "c"), tmp_path))["T22"] is None                 # exit 2: the checker could not run -> null
+    assert values(run(_ledger_repo(tmp_path, 0, "False", "d"), tmp_path))["T22"] is None                # exit 0 but a false reading: they disagree -> no evidence
+    assert values(run(_ledger_repo(tmp_path, 1, "True", "e"), tmp_path))["T22"] is None
+
+
+def test_c16_no_ledger_a_missing_checker_and_a_dirty_tree_read_null(tmp_path, monkeypatch):
+    monkeypatch.delenv("TR_TEST_LEDGER", raising=False)
+    assert values(run(_ledger_repo(tmp_path, 0, "True", "a"), tmp_path))["T22"] is None                 # no ledger rebuilt at this commit
+    monkeypatch.setenv("TR_TEST_LEDGER", str(tmp_path / "ledger.json"))
+    part = {"kind": "lane_ledger", "ledger_env": "TR_TEST_LEDGER", "checker": "nowhere.py"}
+    repo, _ = make(tmp_path, registry({"T22": [part]}), name="b")
+    assert values(run(repo, tmp_path))["T22"] is None
+    repo = _ledger_repo(tmp_path, 0, "True", "c")
+    (repo / "stub_checker.py").write_text("# edited after the commit\n")
+    assert values(run(repo, tmp_path))["T22"] is None
+
+
+def test_c16_the_shipped_checker_reads_false_for_a_ledger_built_at_another_head_and_null_for_one_it_cannot_read(tmp_path, monkeypatch):
+    """The real checker, run by the real part, at a throwaway commit: an empty ledger names no lane (every required lane is missing) and was built at no head -> FALSE; garbage -> null."""
+    shipped = (REPO_ROOT / "platform/scripts/governance/lane_ledger_check.py").read_text(encoding="utf-8")
+    part = {"kind": "lane_ledger", "ledger_env": "TR_TEST_LEDGER"}
+    repo, _ = make(tmp_path, registry({"T22": [part]}), {"platform/scripts/governance/lane_ledger_check.py": shipped})
+    ledger = tmp_path / "ledger.json"
+    monkeypatch.setenv("TR_TEST_LEDGER", str(ledger))
+    ledger.write_text(json.dumps({"schema": "ky.lane_ledger/1", "integration_head": "0" * 40, "lanes": []}))
+    assert values(run(repo, tmp_path))["T22"] is False
+    ledger.write_text("not json")
+    assert values(run(repo, tmp_path))["T22"] is None
+
+
+def test_c16_the_shipped_t22_has_a_recomputing_detector_and_names_its_missing_input():
+    t22 = shipped_check("T22")
+    assert {p["kind"] for p in t22["parts"]} == {"pytest", "lane_ledger"}
+    assert (REPO_ROOT / "platform/scripts/governance/lane_ledger_check.py").is_file() and "LANE_LEDGER.json rebuilt at this commit" in t22["note"]
+    assert all(p["kind"] != "unbound" for c in json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))["checks"] for p in c["parts"])

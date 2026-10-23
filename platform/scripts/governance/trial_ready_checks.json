@@ -185,8 +185,8 @@
      "cwd": "platform/python-sidecar",
      "tests": [
       "tests/l3/gochara/test_od1_c1_vedha_provider.py",
-      "tests/l3/gochara/test_od1_c1_vedha_provider_db.py",
       "tests/l3/gochara/test_od1_c2_vedha_verifier.py",
+      "tests/l3/gochara/test_od1_vedha_residence.py",
       "tests/l3/gochara/test_od1_c2_vedha_verifier_db.py",
       "tests/l3/gochara/test_od1_d3_vedha_rulings.py"
      ],
@@ -195,9 +195,10 @@
       "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
       "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
      },
-     "lands_with": "od1-integration"
+     "note": "test_od1_c1_vedha_provider_db.py was deleted by d4144bedb (SR-VEDHA-RESIDENCE-SOURCE); its two claims (C1-S1: a stored open residence contact is closed at the horizon of the class being built; C1-S2: only residence contacts of the obstructor bodies are read, the Moon never) were SQL over stored contacts that nothing reads any more. Replaced by test_od1_vedha_residence.py (review X-20261022T121753Z-review-lane-vedha, ACCEPTED at d4144bedb, 66 passed, 0 skipped)."
     }
-   ]
+   ],
+   "note": "Claim -> file mapping from review X-20261022T121753Z-review-lane-vedha (reviewer-enumerated C1-C14, one planted reversion each): C1/C2 nodes (Rahu/Ketu) derived at the instant, builder/verifier -> test_od1_vedha_residence.py::test_r1; C3/C4 nothing reads stored contacts any more (the retirement of the deleted file's C1-S1 and C1-S2) -> test_r1 (_Conn refuses a substrate read) and test_r4 (DB); C6 mean node -> test_r3; C7/C7b Ketu = mean node + 180 -> test_r2; C8 half-open ingress, builder -> test_od1_c1_vedha_provider.py::test_c1_1, verifier -> test_od1_c2_vedha_verifier.py::test_c2_1; C9 ingress within 1 s -> test_r2; C10 out of range is a named null (the replacement of C1-S1's 'unknown stretch is unknown, never an obstruction-free 1.0') -> test_r5; C11 pinned convention -> test_r5_a_pinned_convention; C5 verifier independence -> test_od1_c2_vedha_verifier.py::test_c2_11; D3 choices (nodes obstruct, transiting nodes N/A, no vipareeta) -> test_od1_d3_vedha_rulings.py and test_od1_c1_vedha_provider.py::test_c1_2. NAMED GAPS the review did not close (not covered, not claimed): C13 the writer wiring (position_at / ephe_path) has no local oracle (non-blocking N3, CI writer suites); C14 the 1 s search floor is unpinned on both sides (N4, no behaviour change). The deleted file's S2 clause 'the Moon is never an obstructor source' is asserted by test_od1_c1_vedha_provider.py::test_c1_provider_reads_lazily_and_derives_only_the_obstructor_bodies_from_the_position_probe (Moon not in probe.calls) - the review planted no reversion on it; TR-BIND planted one (revert_proofs.out)."
   },
   {
    "id": "T10",
@@ -250,10 +251,20 @@
    "owner_lane": "NDH",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "lane NDH (TR_GAPS B1, od1-ndh) adds the pytest oracle and a retained-row census db_sql here; none exists on any branch yet"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_ndh_in_place.py"
+     ]
+    },
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "expect": "t",
+     "sql": "SELECT NOT EXISTS (SELECT 1 FROM (SELECT h.chart_id::text, h.generation, CASE WHEN s.chart_id IS NULL THEN 'no_input_vector' WHEN s.input_generation_vector -> 'l0' ->> 'bg_dignity_reference' IS NULL OR s.input_generation_vector -> 'l0' ->> 'bg_graha_naisargika_friendship' IS NULL THEN 'no_l0_digest_recorded' WHEN s.input_generation_vector -> 'l0' ->> 'bg_dignity_reference' <> '2635a7f1f311ffc884dc1416baecc5a8cb44212c308cb386fac5423afcda4456' OR s.input_generation_vector -> 'l0' ->> 'bg_graha_naisargika_friendship' <> '6fe29171b27e7934271823a38ef36efd12300838fe240ee551b660d46b000c1f' THEN 'l0_differs_from_post_1401' END AS reason FROM (SELECT chart_id, generation FROM public.ka_gochara_relationship_record WHERE rule_version = '1.2.0' UNION SELECT chart_id, generation FROM public.ka_gochara_eval_window WHERE rule_version = '1.2.0' UNION SELECT chart_id, generation FROM public.ka_gochara_eval_window_verification WHERE rule_version = '1.2.0' UNION SELECT chart_id, generation FROM public.ka_gochara_search_path_pin WHERE rule_version = '1.2.0' UNION SELECT chart_id, generation FROM public.ka_gochara_search_obligation WHERE rule_version = '1.2.0') h LEFT JOIN public.ka_gochara_search_input_snapshot s ON s.chart_id = h.chart_id AND s.generation = h.generation) g WHERE g.reason IS NOT NULL) AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_rule_path_soft_factor WHERE rule_version = '1.2.0' AND factor_rule_version = '1.0.0')"
     }
-   ]
+   ],
+   "note": "parts are rendered by od1_ndh_in_place.t11_parts() (lane od1-ndh, reviews X-20261022T130523Z-review-ndh2 ACCEPTED at bdb836944 and X-20261022T125455Z-review-ndh-sql ACCEPTED); test_od1_ndh_in_place.py::test_n9 asserts this entry equals t11_parts(). The pytest part proves the changelog digests before/after and the retained-row detector (planted stale generations read false); the db_sql part runs that detector on the lane DB (TRIAL_READY_LANE_DSN): a 1.2.0 generation built on pre-1401 L0, or a 1.2.0 membership naming a 1.0.0 factor, reads false. A lane DB with no 1.2.0 row reads true vacuously (nothing retained to be stale) - the retained-row claim is about stored rows, so the claim is as strong as the DB it is read on."
   },
   {
    "id": "T12",
@@ -262,10 +273,19 @@
    "owner_lane": "SELECT-130",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "lane SELECT-130 (TR_GAPS B2) adds the oracle that flips the selection to 1.2.0 and reads G-2 refusing; test_od1_v1_versions only asserts the default selection and never flips it"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_select_130.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     }
     }
-   ]
+   ],
+   "note": "oracle WRITTEN by TR-BIND (no lane oracle flipped the selection; test_od1_v1_versions only asserts the default). It flips FINAL_SELECTED_PATH_REFS P1 to 1.2.0 and reads the harness. (I) INTERPRETATION: G-2 reads the blank-reason census of stored windows and has no selection input; the harness gate that reads the selected rule-version identity is G-7's noninterference check, which is what the oracle drives (flipped -> FAIL, real selection -> PASS). G-2 itself cannot be made to refuse by a selection flip without a full database build."
   },
   {
    "id": "T13",
@@ -274,10 +294,26 @@
    "owner_lane": "DASH",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "DASH-READBACK (TR_GAPS B7) adds the coverage readback db_sql and the DASH pytest; the dasha tables end at different dates per system (kalachakra, mudda stop before 2084-02-05)"
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_a53_p1_support.py",
+      "tests/l3/gochara/test_a53_dasha_read.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     }
+    },
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_TRIAL_DSN",
+     "expect": "t",
+     "sql": "SELECT COALESCE((SELECT count(*) = 3 AND bool_and(m >= TIMESTAMPTZ '2084-02-05 00:00:00+00') FROM (SELECT level_n, max(end_iso) AS m FROM chart_dashas WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa' AND ayanamsha_id = 'lahiri_chitrapaksha' AND system_id = 'vimshottari' AND verification_pass_status = 'two_pass_verified' AND level_n IN (1, 2, 3) GROUP BY level_n) x), false)"
     }
-   ]
+   ],
+   "note": "DASH lane (4b4f07e72, review X-20261022T065400Z-review-lane-dash ACCEPTED: a support past the stored table end blanks with dasha_table_ends_before_support, no lord invented, verifier agrees, half-open end) -> test_a53_p1_support.py; the pinned read -> test_a53_dasha_read.py; the SQL is the readback of job X-20261022T094623Z-dash-readback (section 5) on the DB holding the loaded canonical L1 (TRIAL_READY_TRIAL_DSN - the lane DB holds no chart_dashas rows, so this part reads null there, never false): vimshottari/lahiri two_pass_verified, levels 1-3 all end >= 2084-02-05 (2100-12-31 on the data). Reads false on no rows, a missing level or a short table. NAMED GAP, not bound: the legacy PERMISSION operand reads mudda level 1, which ends 2032-02-05, and the DASH blank does not cover that path (it reads inactive, readback section 3); kalachakra is read by no operand."
   },
   {
    "id": "T14",
@@ -513,7 +549,8 @@
      "expect": "t",
      "sql": "SELECT datcollate = 'C' AND datctype = 'C' FROM pg_database WHERE datname = current_database()"
     }
-   ]
+   ],
+   "note": "TR-BIND finding (T20 golden part): (1) CI runs tests/l3/gochara/test_mb_ordinary_golden.py in job 'Gochara measuring build - horizon, basis, state guard, fired cap' of .github/workflows/ci.yml (suite gochara-a55-measuring-build-1-9 in ci_test_suites.json, throwaway postgres:16 service, GOCHARA_A53_REQUIRE_DB=1), on its own template database made by create_am5_database('a55rc') (real migration chain + 1206, L1 tables STUBBED). No step of that job seeds bg_combustion_orbs, bg_dignity_reference or bg_graha_naisargika_friendship (test_a53_inventory._populate_am5_database stubs only bg_transit_rules). (2) The evaluator takes no CI input: every part runs here, from this registry, on the evaluator's own cluster, so no CI result can feed T20. (3) MEASURED at this head with the evaluator's own env: test_capture_the_markerless_run FAILS (substep 'manifest' -> InputDrift 'l0: bg_combustion_orbs is not readable (UndefinedTable) - nothing to bind') and the two golden tests that need its capture ERROR; the other 52 tests of the part pass; I1-FINAL recorded the same ('cannot run locally ... deferred to CI'). The golden part therefore reads FALSE and stays false until the golden's template carries the three L0 P1 tables (or the ordinary build stops consuming them): a template/fixture change in test_mb_ordinary_golden.py or its a55 template, which re-opens the pin-once rule and is a surrogate ruling, not made here. It cannot be bound to TRIAL_READY_LANE_DSN as asked: the golden creates and drops its own database from an ADMIN DSN and has no input that names an existing database."
   },
   {
    "id": "T21",
@@ -548,10 +585,22 @@
    "owner_lane": "conductor",
    "parts": [
     {
-     "kind": "unbound",
-     "needs": "LANE-LEDGER (TR_GAPS B6): needs a recomputing detector (ledger patch-ids against the merge parents' diffs, zero open BLOCKING); a self-reported ledger summary would read true from a lane state (N.8)"
+     "kind": "pytest",
+     "cwd": ".",
+     "tests": [
+      "platform/scripts/governance/__tests__/test_lane_ledger_selftest.py"
+     ],
+     "env": {
+      "LC_ALL": "en_US.UTF-8",
+      "LANG": "en_US.UTF-8"
+     }
+    },
+    {
+     "kind": "lane_ledger",
+     "ledger_env": "TRIAL_READY_LANE_LEDGER"
     }
-   ]
+   ],
+   "note": "recomputing detector = platform/scripts/governance/lane_ledger_check.py (vendored from job X-20261022T111735Z-lane-ledger, TR_GAPS B6): from git it recomputes every lane's patch-id (base..reviewed head), the merge parent and the patch-id of what the merge brought in, and from the review jobs' own result.json it recounts BLOCKING findings and re-hashes the file; it reads false on 25 single planted defects (28-scenario selftest, run by the pytest part; TR-BIND added the three spellings of a BLOCKING finding inside `findings` that its first revert proof showed unproven) and null when it cannot run. The ledger (an identity list: lane -> branch, review job, base) lives outside the repository and is a claim about ONE integration head: MISSING INPUT TODAY = a LANE_LEDGER.json rebuilt at this commit (lane_ledger_build.py in job X-20261022T111735Z-lane-ledger, after the last merge/review; it must name TRIAL_READY_LANE_LEDGER). Until then this part reads null - and a ledger built at any other head reads false (stale)."
   },
   {
    "id": "T23",
