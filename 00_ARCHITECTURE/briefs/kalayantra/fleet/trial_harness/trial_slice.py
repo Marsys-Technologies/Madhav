@@ -225,7 +225,8 @@ def requiring_code(checkout: Path, overlay_file: str) -> list[str]:
     pat = OVERLAY_REQUIRING_CODE[overlay_file]
     hits = []
     for p in sorted(root.rglob("*.py")):
-        if "tests" in p.parts or "__pycache__" in p.parts or p.name.startswith("test_"):
+        rel = p.relative_to(root).parts                                  # relative to the code root: a checkout that itself lives under a directory named `tests` must not hide its production code
+        if "tests" in rel or "__pycache__" in rel or p.name.startswith("test_"):
             continue
         if pat.search(p.read_text(encoding="utf-8", errors="replace")):
             hits.append(p.relative_to(checkout).as_posix())

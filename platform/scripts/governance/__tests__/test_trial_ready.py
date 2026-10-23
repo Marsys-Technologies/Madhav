@@ -500,7 +500,10 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # SR-BASELINE-OVERLAY-SKIP (harness-only change; previous pin f4cffcd8...0cc6; job X-20261023T121013Z-baseline-overlay-skip): in BASELINE mode only (make_baseline.sh -> TRIAL_BASELINE_MODE=1, default policy,
 # label baseline) a mandatory overlay migration the checkout lacks is skipped BY NAME and recorded in baseline_12.json when the checkout also lacks the code that requires it; a trial run still refuses
 # (trial_slice.py plan_overlay/requiring_code, run_trial.sh, make_baseline.sh, tests/test_baseline_overlay_skip.py)
-HARNESS_V31_DIGEST = "a1b81addc177de753ee2f2902955adba74c1482219c980ce56f85a8ebe800242"
+# SR-BASELINE-OVERLAY-SKIP review close (previous pin a1b81add...e800242; job X-20261023T124421Z-g-fix): the requiring-code probe's tests exclusion reads the path relative to the code root (a checkout
+# under a directory named tests is no longer skipped); new oracles: stored mode governs setup_lane, a resume under another mode is refused, an absent code root refuses
+# BASELINE-12-SNAPSHOT (cockpit 2026-10-23; previous pin 20c54873...2999): baseline_12.json re-made WITH the noninterference snapshot on linux/amd64 (default policy, main c23cda8ab, harness 6816b4572; 4,509 windows; 1402 skipped by name, SR-BASELINE-OVERLAY-SKIP) so G-7 reads a real value
+HARNESS_V31_DIGEST = "9ad94476ea3044e3c490ffefab918f80877eb8f0751a685edc0218261352fb6c"
 
 
 def harness_digest(root):

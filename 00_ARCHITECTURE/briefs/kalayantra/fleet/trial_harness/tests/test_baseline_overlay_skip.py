@@ -109,3 +109,75 @@ def test_only_make_baseline_sets_the_mode_for_the_launcher():
     assert "--baseline-mode" in argv and argv[argv.index("--result-policy") + 1] == "default" and argv[argv.index("--label") + 1] == "baseline"
     tr = subprocess.run(["bash", str(HARNESS / "run_trial.sh"), "/x/co", "/x/out"], capture_output=True, text=True, env=env, timeout=30)
     assert tr.returncode == 0 and "--baseline-mode" not in tr.stdout.splitlines()
+
+
+# ── close of review X-20261023T122631Z-review-item-g (3 BLOCKING findings): each claim below has one oracle and one planted reversion that fails it ───────────────────────────────
+
+class _NoDatabase(Exception):
+    """Raised in place of creating a database: setup_lane got past its planning, which is all these oracles need to observe."""
+
+
+def _lane_checkout(tmp_path, *, services):
+    """A checkout with every file setup_lane checks before it touches a database: the base MIGRATIONS and the overlay set WITHOUT 1402."""
+    co = checkout(tmp_path, services=services)
+    for f in ts.MIGRATIONS:
+        (co / "platform" / "migrations" / f).write_text("-- stub\n")
+    return co
+
+
+@pytest.fixture
+def no_database(monkeypatch):
+    guard = pytest.importorskip("tests.l3.gochara._disposable_db_guard")                # the checkout's own guard (KY_TEST_CHECKOUT puts its sidecar on sys.path)
+    pytest.importorskip("tests.l3.gochara.test_a53_inventory")
+
+    def boom(*_a, **_k):
+        raise _NoDatabase("setup_lane would create a database")
+    monkeypatch.setattr(guard, "guarded_admin_connect", boom)
+
+
+def test_setup_lane_takes_the_mode_from_the_stored_state_trial_mode_refuses_a_missing_1402(tmp_path, no_database):
+    """F2.  The mode stored in state.json governs setup_lane (cmd_run records it at creation).  Reversion: `base_co = checkout` in setup_lane (always baseline) → the missing 1402 is
+    planned as a skip, `_NoDatabase` is raised, not Refused."""
+    co = _lane_checkout(tmp_path, services=MAIN_LIKE)
+    with pytest.raises(ts.Refused):
+        ts.setup_lane({"baseline_mode": False}, co, tmp_path / "out")
+
+
+def test_setup_lane_takes_the_mode_from_the_stored_state_baseline_mode_passes_the_plan(tmp_path, no_database):
+    """F2, the other direction.  Reversion: `base_co = None` in setup_lane (never baseline) → Refused for the missing 1402 instead of reaching the database step."""
+    co = _lane_checkout(tmp_path, services=MAIN_LIKE)
+    with pytest.raises(_NoDatabase):
+        ts.setup_lane({"baseline_mode": True}, co, tmp_path / "out")
+
+
+@pytest.mark.parametrize("stored,asked", [(False, True), (True, False)])
+def test_a_resume_with_another_baseline_mode_than_the_stored_one_is_refused(tmp_path, monkeypatch, capsys, stored, asked):
+    """F2.  A resume under a different mode than the stored one is refused before any work.  Reversion: delete the `state.get("baseline_mode") != baseline_mode` refusal in cmd_run →
+    the run goes on past it (to the 'database already dropped' stop) and the message below is absent."""
+    from conftest import CHECKOUT
+    monkeypatch.setattr(ts, "bind_checkout", lambda co: co / "platform" / "python-sidecar")           # no chdir / sys.path / environment change from this unit test
+    out = tmp_path / "out"
+    out.mkdir()
+    table = ts.load_decision_table(None)
+    state = {"requested_policy": "default", "code": {"checkout": str(CHECKOUT.resolve())}, "classes": [], "collect": False, "baseline_mode": stored,
+             "decision_table": {"sha256": table["sha256"]}, "dropped": True, "db": None}
+    (out / "state.json").write_text(json.dumps(state))
+    argv = ["run", "--checkout", str(CHECKOUT), "--result-policy", "default", "--out", str(out), "--label", "baseline", "--classes", ""] + (["--baseline-mode"] if asked else [])
+    with pytest.raises(ts.Refused):
+        ts.cmd_run(ts.build_parser().parse_args(argv))
+    assert f"started with baseline_mode={stored}, this run asks for {asked}" in capsys.readouterr().err
+
+
+# ── F3: an absent code root refuses; F1: the probe judges paths relative to the checkout ────────────────────────────────────────────────────────────────────────────────────
+
+def test_the_probe_refuses_when_the_code_root_is_absent(tmp_path):
+    """F3.  An unreadable checkout proves nothing.  Reversion: return [] instead of raising when the code root is not a directory → no Refused (and a skip would follow)."""
+    with pytest.raises(ts.Refused):
+        ts.requiring_code(tmp_path, M1402)
+
+
+def test_the_probe_finds_requiring_code_in_a_checkout_that_lives_under_a_tests_directory(tmp_path):
+    """F1.  The tests exclusion applies to the path under the checkout, not to where the checkout sits.  Reversion: test `p.parts` (the absolute path) instead of the relative parts in
+    requiring_code → the code is skipped, [] is returned, and BASELINE mode would skip a 1402 the checkout needs."""
+    co = checkout(tmp_path / "tests" / "co", services=P1_CODE)
+    assert ts.requiring_code(co, M1402) == ["platform/python-sidecar/services/gochara_kernel/p1_operands.py"]

@@ -1,13 +1,28 @@
 {
+ "baseline_mode": true,
  "classes": {
   "achievement_recognition": {
-   "blank": null,
+   "blank": 472,
+   "blank_reasons": {
+    "all_null_candidate_policy": 472
+   },
+   "by_path_windows": {
+    "P1": 146,
+    "P2": 32,
+    "P3": 249,
+    "P4": 45
+   },
    "group": "new_8",
-   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
-   "windows_total": null
+   "valence": {
+    "unqualified": 472
+   },
+   "windows_total": 472
   },
   "bereavement": {
    "blank": 397,
+   "blank_reasons": {
+    "all_null_candidate_policy": 397
+   },
    "by_path_windows": {
     "P1": 215,
     "P2": 154,
@@ -15,17 +30,34 @@
     "P4": 27
    },
    "group": "prior_4class",
-   "source": "previous harness, origin/main d7552d029",
+   "prior_harness_windows_total": 397,
+   "valence": {
+    "unqualified": 397
+   },
    "windows_total": 397
   },
   "business_launch": {
-   "blank": null,
+   "blank": 338,
+   "blank_reasons": {
+    "all_null_candidate_policy": 338
+   },
+   "by_path_windows": {
+    "P1": 212,
+    "P2": 32,
+    "P3": 35,
+    "P4": 59
+   },
    "group": "new_8",
-   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
-   "windows_total": null
+   "valence": {
+    "unqualified": 338
+   },
+   "windows_total": 338
   },
   "chronic_onset": {
    "blank": 447,
+   "blank_reasons": {
+    "all_null_candidate_policy": 447
+   },
    "by_path_windows": {
     "P1": 138,
     "P2": 154,
@@ -33,23 +65,51 @@
     "P4": 137
    },
    "group": "prior_4class",
-   "source": "previous harness, origin/main d7552d029",
+   "prior_harness_windows_total": 447,
+   "valence": {
+    "unqualified": 447
+   },
    "windows_total": 447
   },
   "financial_deception": {
-   "blank": null,
+   "blank": 457,
+   "blank_reasons": {
+    "all_null_candidate_policy": 457
+   },
+   "by_path_windows": {
+    "P1": 123,
+    "P2": 154,
+    "P3": 45,
+    "P4": 135
+   },
    "group": "new_8",
-   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
-   "windows_total": null
+   "valence": {
+    "unqualified": 457
+   },
+   "windows_total": 457
   },
   "foreign_settlement": {
-   "blank": null,
+   "blank": 439,
+   "blank_reasons": {
+    "all_null_candidate_policy": 439
+   },
+   "by_path_windows": {
+    "P1": 25,
+    "P2": 32,
+    "P3": 265,
+    "P4": 117
+   },
    "group": "new_8",
-   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
-   "windows_total": null
+   "valence": {
+    "unqualified": 439
+   },
+   "windows_total": 439
   },
   "illness_acute": {
    "blank": 447,
+   "blank_reasons": {
+    "all_null_candidate_policy": 447
+   },
    "by_path_windows": {
     "P1": 138,
     "P2": 154,
@@ -57,11 +117,17 @@
     "P4": 137
    },
    "group": "prior_4class",
-   "source": "previous harness, origin/main d7552d029",
+   "prior_harness_windows_total": 447,
+   "valence": {
+    "unqualified": 447
+   },
    "windows_total": 447
   },
   "major_loss": {
    "blank": 381,
+   "blank_reasons": {
+    "all_null_candidate_policy": 381
+   },
    "by_path_windows": {
     "P1": 63,
     "P2": 154,
@@ -69,49 +135,754 @@
     "P4": 109
    },
    "group": "prior_4class",
-   "source": "previous harness, origin/main d7552d029",
+   "prior_harness_windows_total": 381,
+   "valence": {
+    "unqualified": 381
+   },
    "windows_total": 381
   },
   "parental_event": {
-   "blank": null,
+   "blank": 230,
+   "blank_reasons": {
+    "all_null_candidate_policy": 230
+   },
+   "by_path_windows": {
+    "P1": 149,
+    "P3": 24,
+    "P4": 57
+   },
    "group": "new_8",
-   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
-   "windows_total": null
+   "valence": {
+    "unqualified": 230
+   },
+   "windows_total": 230
   },
   "property_acquisition": {
-   "blank": null,
+   "blank": 346,
+   "blank_reasons": {
+    "all_null_candidate_policy": 346
+   },
+   "by_path_windows": {
+    "P1": 52,
+    "P2": 32,
+    "P3": 212,
+    "P4": 50
+   },
    "group": "new_8",
-   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
-   "windows_total": null
+   "valence": {
+    "unqualified": 346
+   },
+   "windows_total": 346
   },
   "psychological_arc": {
-   "blank": null,
+   "blank": 278,
+   "blank_reasons": {
+    "all_null_candidate_policy": 278
+   },
+   "by_path_windows": {
+    "P1": 15,
+    "P3": 212,
+    "P4": 51
+   },
    "group": "new_8",
-   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
-   "windows_total": null
+   "valence": {
+    "unqualified": 278
+   },
+   "windows_total": 278
   },
   "spiritual_turn": {
-   "blank": null,
+   "blank": 277,
+   "blank_reasons": {
+    "all_null_candidate_policy": 277
+   },
+   "by_path_windows": {
+    "P1": 149,
+    "P3": 49,
+    "P4": 79
+   },
    "group": "new_8",
-   "source": "NOT MEASURED: the 12-class all-null run on origin/main has not been made",
-   "windows_total": null
+   "valence": {
+    "unqualified": 277
+   },
+   "windows_total": 277
   }
  },
- "generated_utc": "2026-10-21T11:35:33+00:00",
+ "code": {
+  "branch": "",
+  "checkout": "/Users/Dev/vm/bl/src",
+  "head": "c23cda8ab180d7952c51031d7a4419beb217fc04",
+  "tracked_files_modified_vs_head": 0
+ },
+ "generated_utc": "2026-10-23T12:48:10+00:00",
  "marker": "TRIAL_SLICE",
+ "noninterference": {
+  "geometry_config": "e0ea7a92df9c03bbb6504c6cf9b3c5de2d808d433dc71c8f94f87297f06a5878",
+  "kinds": {
+   "contacts": {
+    "count": 14411,
+    "groups": {
+     "contacts|-": {
+      "count": 14411,
+      "sha256": "02a36c15fd807db23e5c705c3d1f05703ab80c31efb3e6480c95ccdb9fd59389"
+     }
+    },
+    "sha256": "82f2f5cfaec7238404eb5ff93998f241a01250b28168efe5851a5fad4912aa79"
+   },
+   "membership": {
+    "count": 56566,
+    "groups": {
+     "achievement_recognition|P1": {
+      "count": 229,
+      "sha256": "d0ddf094acdc1e5d56a3fa7b922b6262453a3f24de23ea2ed11bc449cb77a695"
+     },
+     "achievement_recognition|P2": {
+      "count": 2063,
+      "sha256": "11a3b730b3aa61078d1047c79796b5e4feebec562c1f371bf0c431f34f4580f3"
+     },
+     "achievement_recognition|P3": {
+      "count": 1628,
+      "sha256": "b143e6e879761edc7caa2154947836a2bfb33704fb691776eebab30e886d4392"
+     },
+     "achievement_recognition|P4": {
+      "count": 179,
+      "sha256": "a484dd448396679d1b96641003d92c3fbb8d4bd4ea36b9b27c341da87f4f2ce3"
+     },
+     "bereavement|P1": {
+      "count": 427,
+      "sha256": "8d7c83ffb18af918e7117635770be669c9afd1b21f8fee91b5a2c1bea16af638"
+     },
+     "bereavement|P2": {
+      "count": 447,
+      "sha256": "f5555ef627091e597ff9678187390e752fcb4707ae9d5d106ab8d06b3317a6b6"
+     },
+     "bereavement|P3": {
+      "count": 6635,
+      "sha256": "406376723efe035feae1e73021b89b7df1a2d44c37909b87fbcb0e3beb163444"
+     },
+     "bereavement|P4": {
+      "count": 612,
+      "sha256": "0f85d99d26ca3822a99b7906ca3db04c7094d67320bff5abc9cc175db1baf9f1"
+     },
+     "business_launch|P1": {
+      "count": 415,
+      "sha256": "4dfb8ba5a60632dda9dc8aafc202a992cdd13463a13ab881432b5b3fbc843a2c"
+     },
+     "business_launch|P2": {
+      "count": 2063,
+      "sha256": "eb35dd31a9a6b621517f21992a7c1c81bb420b89aad6d9a81c7eecd9b44db47e"
+     },
+     "business_launch|P3": {
+      "count": 3264,
+      "sha256": "cf142998388b87bc75de984e7d33e24554e612e8819d891f72561d332039490a"
+     },
+     "business_launch|P4": {
+      "count": 232,
+      "sha256": "f412f3e1d96bfc0ebd3eecc8da3e599664c6cce1ff62d00722d5d0d9641dafca"
+     },
+     "chronic_onset|P1": {
+      "count": 204,
+      "sha256": "806b419b608b25298bd49c52352a426cf5e95a6aa6f051666dc7fd17cf9a9d83"
+     },
+     "chronic_onset|P2": {
+      "count": 447,
+      "sha256": "2391ee9614601b36107dbb6c08f89c1f4693f223c5c96c55dd82ef15ba096905"
+     },
+     "chronic_onset|P3": {
+      "count": 4929,
+      "sha256": "2cba10731ea7134e3f746eedfb8f262396a10a891ebf4d9336b4f4fc2c6b4e10"
+     },
+     "chronic_onset|P4": {
+      "count": 498,
+      "sha256": "fc11074e0f138233d8474e9ae37d2edf23c886ad45930bd73d933a70904c2999"
+     },
+     "financial_deception|P1": {
+      "count": 224,
+      "sha256": "e73d1191a666a6810fbb1d927f4b3b19abd07fafac83f62d0e51547a67b603d1"
+     },
+     "financial_deception|P2": {
+      "count": 447,
+      "sha256": "4dbc9996b066383d02235449850f75911c99a9941eff3e59327dfb387bc1862d"
+     },
+     "financial_deception|P3": {
+      "count": 3275,
+      "sha256": "723975fd7e55f201cbcb5e8fb95e1413e03e7348f6fd86a237689f7b2392fda4"
+     },
+     "financial_deception|P4": {
+      "count": 491,
+      "sha256": "fb2016ae9dc060a440f32244bd13f0798569a289efce518247825eac06fe1ed4"
+     },
+     "foreign_settlement|P1": {
+      "count": 41,
+      "sha256": "a7d34502f7baad30e50a5e83c6375beec726ce907b3423f6bf4cadfc0d66a5ce"
+     },
+     "foreign_settlement|P2": {
+      "count": 2063,
+      "sha256": "848423e0df1ccf5f4fd8c218e62d37682233a2f994212e34675ffec10b1c00e6"
+     },
+     "foreign_settlement|P3": {
+      "count": 1647,
+      "sha256": "0094a9776020c87ab75cdf96428c366d31195fe78ec8000e8667092ef0688a2d"
+     },
+     "foreign_settlement|P4": {
+      "count": 322,
+      "sha256": "11c8c57e799f0eb0b63c69ba94aecefc4f0516fb1bb1f32ee241c08237507fbc"
+     },
+     "illness_acute|P1": {
+      "count": 204,
+      "sha256": "fc8eadc9f89a1bf4b1f62c8512403fbea8ea519e7ff80764d96050de7731eef2"
+     },
+     "illness_acute|P2": {
+      "count": 447,
+      "sha256": "6751bc0b9a28bbd4ec42a4f57b7696df9432f32c5e783f9af1c4773f6cb9c69f"
+     },
+     "illness_acute|P3": {
+      "count": 4929,
+      "sha256": "5343348b081c38da7f08e63299beeb3eec0341fc892e63839bddc62e9f3b3e8c"
+     },
+     "illness_acute|P4": {
+      "count": 498,
+      "sha256": "3ef72ef10776b943fa81af96595a3a9b6bd59cb30e8d684aa646c7f69f8334ed"
+     },
+     "major_loss|P1": {
+      "count": 85,
+      "sha256": "5d8a178e4cce0cfe7afde0ff1a3404a5cfa8b5c438476c3e9eddff3c1c0736d8"
+     },
+     "major_loss|P2": {
+      "count": 447,
+      "sha256": "d9711efbc50c864d62b75c7d2e09a5ee921aa27ff5bdd3f6661bc1d56aaab2f6"
+     },
+     "major_loss|P3": {
+      "count": 3282,
+      "sha256": "56e04a7e73811f1e5b8db4f08b9601e597695b6e241494c414a6b6e2d274f51b"
+     },
+     "major_loss|P4": {
+      "count": 289,
+      "sha256": "9d6abacd52b4cb0ae87821d4f7c216fc6b173d4322b5674173ded71541410d7d"
+     },
+     "parental_event|P1": {
+      "count": 260,
+      "sha256": "8ac407295fc2d5a93a9709a38390446cda30ef5d7dcf0e93eed7a0987b61670a"
+     },
+     "parental_event|P3": {
+      "count": 3344,
+      "sha256": "0855ace5e182b65b12cd6912a816c2cadf1344a43f2da888150f4cb1ea33d702"
+     },
+     "parental_event|P4": {
+      "count": 302,
+      "sha256": "f0bf8c470eab29a17a02fd8801f05f33e7dcde0005741cb7459df7e7b8f24a70"
+     },
+     "property_acquisition|P1": {
+      "count": 59,
+      "sha256": "322b97a379a66b4d24706d98335640ebe2d41a5cdfae6b9b6dbbe81defc9cc17"
+     },
+     "property_acquisition|P2": {
+      "count": 2063,
+      "sha256": "b86cd46f9e159532e041602975bbf7ce789cdb64aac7127a4f5dadc32cd4d60f"
+     },
+     "property_acquisition|P3": {
+      "count": 1654,
+      "sha256": "7c0e3ee94f62b125e18264607ab327032fd53ec78e0118d5ee4927c54a7dcc15"
+     },
+     "property_acquisition|P4": {
+      "count": 226,
+      "sha256": "41edb079c89ff37e96871d8d9b629ccb6779f5db92b354f96b7d29e2e71205ee"
+     },
+     "psychological_arc|P1": {
+      "count": 15,
+      "sha256": "e456b803a08a512bcc140e62b1942c2cc395c6d27d8a1598681e4b5052e82a9c"
+     },
+     "psychological_arc|P3": {
+      "count": 1733,
+      "sha256": "a3bbd24836eba6036ac57688bcfd77694cba7798987e205157a2d23e8ca46326"
+     },
+     "psychological_arc|P4": {
+      "count": 141,
+      "sha256": "864db52e37c3f5ef6330566885a4c58a742b2a888c783d21c6fcb1ff7d0d987c"
+     },
+     "spiritual_turn|P1": {
+      "count": 260,
+      "sha256": "d91112ade125e6c76b29e865d87102d94f579c68e4efda39b26c3fab324a89dd"
+     },
+     "spiritual_turn|P3": {
+      "count": 3288,
+      "sha256": "6484b7dfe482fe19f167f1321f6257fc938f275ad2efd5aed1cda41774858ceb"
+     },
+     "spiritual_turn|P4": {
+      "count": 258,
+      "sha256": "73dcdd85096f46586b97342768164dfcdd00e284b685ec89b6fb4631e27ea34a"
+     }
+    },
+    "sha256": "c18968f8c375d3d2e1613bf14feecd0391bf74e19ffffd47c543a447a0711d17"
+   },
+   "supports": {
+    "count": 101643,
+    "groups": {
+     "achievement_recognition|P1": {
+      "count": 4542,
+      "sha256": "633ced98ce0f9b516d800cc44322384b5c3bb6846674a4e2d3ba41f95153c52b"
+     },
+     "achievement_recognition|P2": {
+      "count": 2063,
+      "sha256": "979f3e6cc940291ce208ecbc5b8e49647e26b0eda83d9d1849934bbba8a6da15"
+     },
+     "achievement_recognition|P3": {
+      "count": 1628,
+      "sha256": "bdd8b89bc84f1896e9b9345b2b6d84e917050dd649c2b8ffc3c6292aa344661c"
+     },
+     "achievement_recognition|P4": {
+      "count": 211,
+      "sha256": "88db9b4d93b385311c68849d87c57348b9a4151c4e381c01f5d13034e8f0aa4a"
+     },
+     "bereavement|P1": {
+      "count": 3950,
+      "sha256": "e8325287224f7f39e541def18e91b463ae1e3d4e66eace2c97e47009fef96817"
+     },
+     "bereavement|P2": {
+      "count": 464,
+      "sha256": "7208885c585980016fc605bdf59f6f066f1e250dafdf2ef418e50aaaf54c05a2"
+     },
+     "bereavement|P3": {
+      "count": 6637,
+      "sha256": "6212f3176e12448788c27e5e3ae605178ddb93e02684db812541e166a976def2"
+     },
+     "bereavement|P4": {
+      "count": 638,
+      "sha256": "c2fe8c7bacad5c0a0d2a01fd3bad0f6d5d38d6997c0da207b36c9ac85cb112f1"
+     },
+     "business_launch|P1": {
+      "count": 4542,
+      "sha256": "e2b4cb2e03aab04b85a5214d4c37a763caee4a9fcfeafc7df71e173f22c260ab"
+     },
+     "business_launch|P2": {
+      "count": 2063,
+      "sha256": "cb1267bfbecda657446c34d5bb4d588ea12062b9a3eb7a98a50a1b510aa033e5"
+     },
+     "business_launch|P3": {
+      "count": 3264,
+      "sha256": "5c5179949f572b464a8fce0bf7c7c64753240545ab89b486a57beda873d5d562"
+     },
+     "business_launch|P4": {
+      "count": 280,
+      "sha256": "29f2d83e175f8c0f1281a2636e84574c12a67dc108064f3dd81bf325d0152b8e"
+     },
+     "chronic_onset|P1": {
+      "count": 3440,
+      "sha256": "5b70af9d9acb702b553d9faeeb4206bedb970bee144760b56f4a289825492c5e"
+     },
+     "chronic_onset|P2": {
+      "count": 464,
+      "sha256": "5db125aad174d0a7ce779aa1246066636013e102bfdda33c4426ccab213d6e0a"
+     },
+     "chronic_onset|P3": {
+      "count": 4929,
+      "sha256": "2c43c3948489d9220c61fe3a0d137fae43f9ec13d429314b3505d439982ada59"
+     },
+     "chronic_onset|P4": {
+      "count": 431,
+      "sha256": "3750a5f6125c3d529a4febe7d8856146bca803538a525d2bcbc52fa1ec6ba62f"
+     },
+     "financial_deception|P1": {
+      "count": 3695,
+      "sha256": "d8a34c21ed261b7b73d9af9d274723fdc0e262c256a356fde5cec0cfdf61eb9c"
+     },
+     "financial_deception|P2": {
+      "count": 464,
+      "sha256": "fff6daccf2aa270cc095b75eb71e3537687773870a776b865146a221b5cc0d20"
+     },
+     "financial_deception|P3": {
+      "count": 3275,
+      "sha256": "ff2f1da24e46f11303da079f9467e036ef4d1455a88535dbc136fa9f39e5cd24"
+     },
+     "financial_deception|P4": {
+      "count": 424,
+      "sha256": "af563c56b1890a24d82d229283ba27499089412fd6a56ed9ab88cd5eff6c769f"
+     },
+     "foreign_settlement|P1": {
+      "count": 3440,
+      "sha256": "b23d2205fae204e9539dd0b28d303e2e24bc52211d6c998b8a4b6c113695849c"
+     },
+     "foreign_settlement|P2": {
+      "count": 2063,
+      "sha256": "11cf1e9e2c79ea27f0009c4890bf66f0fd7743e8fd1f8b45bb2d81aff47fdd1f"
+     },
+     "foreign_settlement|P3": {
+      "count": 1647,
+      "sha256": "7bb2f64698d15374acc9c221a1cd3621eae5b69faa2e4aeac6d778b84fbbf1d2"
+     },
+     "foreign_settlement|P4": {
+      "count": 289,
+      "sha256": "8404af0c2fc64023ad19e00a84536105aff329d2d123835327bb6186533f608b"
+     },
+     "illness_acute|P1": {
+      "count": 3440,
+      "sha256": "c893b8a0eaa241b91576cd5b7d40238c666638e9693feebd71b7de74ff7365f7"
+     },
+     "illness_acute|P2": {
+      "count": 464,
+      "sha256": "b2ca248926f51cb0c1515d40e70422c57bbd5d89d910aba0cc00ff5719cd9ed0"
+     },
+     "illness_acute|P3": {
+      "count": 4929,
+      "sha256": "4bcd65817ca19a4505ccbf943747b9884145206e69e6c451f2f561eb26d430fd"
+     },
+     "illness_acute|P4": {
+      "count": 431,
+      "sha256": "da1a24bf4482a62e988cdf18912e921abd63d84df781560b0d31e559b86327ac"
+     },
+     "major_loss|P1": {
+      "count": 3440,
+      "sha256": "03b99ca7f2adc695be190539f4a588eed99dbd65d2c62c069743db6eda53a255"
+     },
+     "major_loss|P2": {
+      "count": 464,
+      "sha256": "779ca01e5f19297d8839f2f7dcc0980ce927876d71850deccd76412952c365de"
+     },
+     "major_loss|P3": {
+      "count": 3282,
+      "sha256": "0ddfc5d02b1a318cc3b2c461fc30dfe6bc50e9109d379b1203303ffec6b09db7"
+     },
+     "major_loss|P4": {
+      "count": 290,
+      "sha256": "bc2d1cfeb8baa3109ef6ba17d07037eba1d59084a8f664d592eda98b7835ef94"
+     },
+     "parental_event|P1": {
+      "count": 3695,
+      "sha256": "55985bda04de70c3d9d258b643022f0ab14787c118998e22dd3aefc7f2f0670b"
+     },
+     "parental_event|P3": {
+      "count": 3344,
+      "sha256": "4d95e12d16565d388d51b2af7373c23f7858b32b4dc3618af7fcc93e677b3ef8"
+     },
+     "parental_event|P4": {
+      "count": 351,
+      "sha256": "50437366a45e5fdd094326917f10b88c903562b0604fff1ed12bdebdcaa431a7"
+     },
+     "property_acquisition|P1": {
+      "count": 4726,
+      "sha256": "b1eabdc50406b1a3a03e642821133365208073ef7007f6cb8c4667adda6ea27c"
+     },
+     "property_acquisition|P2": {
+      "count": 2063,
+      "sha256": "0e69e5423f6ae4d498809a7c5ccacdcb0c4548bb11c898ff55269691191f04d8"
+     },
+     "property_acquisition|P3": {
+      "count": 1654,
+      "sha256": "d5a4e457f6724a30e819e65f242cb8fa22173d856a8a0096b99e39d70488fdee"
+     },
+     "property_acquisition|P4": {
+      "count": 284,
+      "sha256": "41c5ce9d56c5eced5117ab06f44464118ea8b3ade6a1b090407fdd7ddd166e87"
+     },
+     "psychological_arc|P1": {
+      "count": 4726,
+      "sha256": "68608080a4f277dcee9f392b3d4e0e47ae8c50306ea50d2b546285021084d3ef"
+     },
+     "psychological_arc|P3": {
+      "count": 1733,
+      "sha256": "c8ff2c9abfd076745d2c769978c5d18f94de5694b36a597d6ac2e20c30619212"
+     },
+     "psychological_arc|P4": {
+      "count": 215,
+      "sha256": "d94151eb5dad6fe7828f691b246dd9dc5881ccba334258342e4843d61bb9636a"
+     },
+     "spiritual_turn|P1": {
+      "count": 3695,
+      "sha256": "b2578157184c9d511e76083269f58933607e6fc48603a3857dd059e4d19a349c"
+     },
+     "spiritual_turn|P3": {
+      "count": 3288,
+      "sha256": "1631db238fc6c8cb90c51061a2679c8c2434e89ac4ed7a4973946073c0b5bd4b"
+     },
+     "spiritual_turn|P4": {
+      "count": 286,
+      "sha256": "b2ec63217db9f3b89c334e09e15eef4a7a00b52b38d50a6660aae8c1e910f83c"
+     }
+    },
+    "sha256": "960cf25f88784e6d789d4a43deb021050e32574dff12d03672f8c862d860d623"
+   },
+   "windows": {
+    "count": 4509,
+    "groups": {
+     "achievement_recognition|P1": {
+      "count": 146,
+      "sha256": "dca92a40c03b5026fd41d0e0817efb40266bbca88fe5cd2db4820005a278ee2b"
+     },
+     "achievement_recognition|P2": {
+      "count": 32,
+      "sha256": "e5f9bddaf6e77225017392bc687486994a72fa59f4adfda577f67b4fa151e7df"
+     },
+     "achievement_recognition|P3": {
+      "count": 249,
+      "sha256": "77543e9c95c637a9646e0bcec4ad4531689bed55a623cec9a7855d9f61d53c64"
+     },
+     "achievement_recognition|P4": {
+      "count": 45,
+      "sha256": "77d3c7f71839dc747e58646b42c4f4fcc09ffc3f85ce52d50910b06d6aa92369"
+     },
+     "bereavement|P1": {
+      "count": 215,
+      "sha256": "cdbf3963a1b869faa09fbba583fcdf1bdf8ba9f106dbf428992319e33f92e1c9"
+     },
+     "bereavement|P2": {
+      "count": 154,
+      "sha256": "0bd1fe3e8e6fbbb72ed534272512c83992bb41375cb8e55e3965a2caa61aec5d"
+     },
+     "bereavement|P3": {
+      "count": 1,
+      "sha256": "840d0e1e4eedfd93bcb0c659e6ea7dbb97d3b3a1f4efdff36838997a9a9ad5e0"
+     },
+     "bereavement|P4": {
+      "count": 27,
+      "sha256": "596f68f7ee526e0a884acb59917f6bc2092b2ce529917c29361870a74c0dd1af"
+     },
+     "business_launch|P1": {
+      "count": 212,
+      "sha256": "6b1c75b62f070d450b6bd94233e796817707f81853ba4d3e7d54f1ac604c8d0e"
+     },
+     "business_launch|P2": {
+      "count": 32,
+      "sha256": "57627dd8b4f3f22b2ab249fedb6bb64ce566cf31e4630831672265cb550d982b"
+     },
+     "business_launch|P3": {
+      "count": 35,
+      "sha256": "97f764a1ddcd74e10f042f3efd828cbd4b38f6946aef85aa284d65a1712a9e67"
+     },
+     "business_launch|P4": {
+      "count": 59,
+      "sha256": "7e5dd08e7c7342924ab471cd41762a6c9123f9db54d844476e4d6d6e8548176a"
+     },
+     "chronic_onset|P1": {
+      "count": 138,
+      "sha256": "fa3a7212792361c22f42b42a8a76dc9b74b69926689e756ad82a4898352394f2"
+     },
+     "chronic_onset|P2": {
+      "count": 154,
+      "sha256": "728428daf471ce61c97d73955d9105151f2e887284649a4bb8071f485a93d34b"
+     },
+     "chronic_onset|P3": {
+      "count": 18,
+      "sha256": "41e5ba94b5cbc33ba41142fa5c1e72b5b12753fed2d90317766255641222dc7c"
+     },
+     "chronic_onset|P4": {
+      "count": 137,
+      "sha256": "775b7479cc2d0aacf4bfc4718607d561cf4e62159f4cf5992393dc534ce3b738"
+     },
+     "financial_deception|P1": {
+      "count": 123,
+      "sha256": "86db7a0ba81401a904130ed070b3d6b58d5515beee8de323cc9bca77d8e553c6"
+     },
+     "financial_deception|P2": {
+      "count": 154,
+      "sha256": "6fef88a9a32239709db4626f0c94adbb10194209a1ce13ebfef8edd29d676afb"
+     },
+     "financial_deception|P3": {
+      "count": 45,
+      "sha256": "ac76a7a04a5ca4e36456621117d645f366a82bf8d780a56cfeabe26e3153f675"
+     },
+     "financial_deception|P4": {
+      "count": 135,
+      "sha256": "398cc5f4807e173ddb8bb208e8fa47f873e224079785af89508a74a079af9d6d"
+     },
+     "foreign_settlement|P1": {
+      "count": 25,
+      "sha256": "fbea9e170298a2f5429026f8c2f923909f67dbf9937db7d2577ba6211b5ce9ce"
+     },
+     "foreign_settlement|P2": {
+      "count": 32,
+      "sha256": "9a81652947ef9ac185af470323f21440d5edf13e5b052343717894d2eda32484"
+     },
+     "foreign_settlement|P3": {
+      "count": 265,
+      "sha256": "3d7bebece9cd4b7bf3ce5ab08857636193ceb0936672589487ae5c75fe3eefbd"
+     },
+     "foreign_settlement|P4": {
+      "count": 117,
+      "sha256": "78e7d4577912553721a574ec8f29b7a4d579023c72902ca847aae5ff986adb1c"
+     },
+     "illness_acute|P1": {
+      "count": 138,
+      "sha256": "c6c44247f361737f0a286e0ecbbeef25bb8c89d104e8dffb7698868cb4088c5f"
+     },
+     "illness_acute|P2": {
+      "count": 154,
+      "sha256": "acfc43f92babebc9e621c6ecf0dd07b4529bcadbd15d320e6f2055844ee5e8fe"
+     },
+     "illness_acute|P3": {
+      "count": 18,
+      "sha256": "38dedf30197c3d695bedb85b9c0a93bc731049d2da634ebf90e14ab307e7036b"
+     },
+     "illness_acute|P4": {
+      "count": 137,
+      "sha256": "af8f4a0bbe73cf6687b8286f11c309369997c765d9c121463ecf288ae75236cc"
+     },
+     "major_loss|P1": {
+      "count": 63,
+      "sha256": "60cba0a68d51ac48eeaabd2edee55bfbc945887617f5d94808dab21b2fa8dbc9"
+     },
+     "major_loss|P2": {
+      "count": 154,
+      "sha256": "2393113fec3678e26e37b13dc1def7d49b684cc4397865755a4bbcb3d366e8b0"
+     },
+     "major_loss|P3": {
+      "count": 55,
+      "sha256": "321073299f6a15d85f9878907096d15951dd62e8eac86b47a325a3154a698b60"
+     },
+     "major_loss|P4": {
+      "count": 109,
+      "sha256": "34987f386e720ffe360ddad7ac638e2bc814a7a1a5bd0b1b6064e22c823db992"
+     },
+     "parental_event|P1": {
+      "count": 149,
+      "sha256": "aa74c2911ae1f687bb5a6c260e42b597966e63b3ac185db7222fe91c93092230"
+     },
+     "parental_event|P3": {
+      "count": 24,
+      "sha256": "ef433fe4d85133bbf37725f550b48a182ff97b00d28fed39caf432c708ce81ab"
+     },
+     "parental_event|P4": {
+      "count": 57,
+      "sha256": "34f93ff8442a4616e5caa48c9cb9dc94e28007633d151fd52bbc70fcf5bc953e"
+     },
+     "property_acquisition|P1": {
+      "count": 52,
+      "sha256": "165e9223a372bb3cc211021545e0f788bdf0a6ace6e26f07b273b0f394339e6e"
+     },
+     "property_acquisition|P2": {
+      "count": 32,
+      "sha256": "3e7b424618feae9ae90f550d741989cbfdac9a6e85de3e0d5dffa565db1fbb92"
+     },
+     "property_acquisition|P3": {
+      "count": 212,
+      "sha256": "1d6c937400c3803b74bc887494e7dcc30cee611751e4b24e819dee0d74753f71"
+     },
+     "property_acquisition|P4": {
+      "count": 50,
+      "sha256": "b3cc2b818686e83c1fc2f20636050f855093d259d48b665702caa457dad80330"
+     },
+     "psychological_arc|P1": {
+      "count": 15,
+      "sha256": "6d1a3b48ef9d0e06084b0a0ffc8065e47aaf360d722af657764bce5b88076cef"
+     },
+     "psychological_arc|P3": {
+      "count": 212,
+      "sha256": "cf8da01e902d64530c9e044da074a6581a9db4ecdb28daae98dae3a8b9770cbf"
+     },
+     "psychological_arc|P4": {
+      "count": 51,
+      "sha256": "2ec0386da26926575c9331d82f45bb3dd527744c4186ab7f0d06dc8e8b010540"
+     },
+     "spiritual_turn|P1": {
+      "count": 149,
+      "sha256": "ae136c97b2ca5c890584df4b6e05488c39ddcac5bb62b23469c6bc0bc66a06a3"
+     },
+     "spiritual_turn|P3": {
+      "count": 49,
+      "sha256": "622ac34ce797d23d705b8f916fc0f2320ef2516ac8cd3b783229ad81112a381c"
+     },
+     "spiritual_turn|P4": {
+      "count": 79,
+      "sha256": "f11d0836da5ac6020d67bcb56e73a051b0859d89c080c55e3a32caa073fce6cd"
+     }
+    },
+    "sha256": "d5636a589fe1a44de0c958287d2f1d768a8d213dcbc64d3626e0477c3884620e"
+   }
+  },
+  "note": "sorted natural keys per class|path; window rule_version is not part of a key",
+  "rule_versions": {
+   "P1": [
+    "1.0.0",
+    "1.2.0"
+   ],
+   "P2": [
+    "1.0.0"
+   ],
+   "P3": [
+    "1.0.0",
+    "1.2.0"
+   ],
+   "P4": [
+    "1.0.0",
+    "1.2.0"
+   ]
+  },
+  "schema": "ky.noninterference_snapshot/1"
+ },
  "not_evidence": true,
- "note": "PARTIAL: the 12-class all-null run on origin/main (89071f3040c0) could not be made \u2014 the local lane cluster 127.0.0.1:55433 was unreachable for the whole job (connection refused; machine up ~45 min, no process listening). The 4 ruled classes carry the previous harness measurement (origin/main d7552d029); the 8 decision-pending classes are UNMEASURED (null). Produce the real baseline with harness/make_baseline.sh, which overwrites this file only after its oracle passes.",
- "oracle": null,
+ "oracle": {
+  "expected": {
+   "all_blank": true,
+   "classes": 12,
+   "prior_4class_windows": {
+    "bereavement": 397,
+    "chronic_onset": 447,
+    "illness_acute": 447,
+    "major_loss": 381
+   }
+  },
+  "name": "baseline_all_null_reproduction",
+  "passed": true,
+  "prior_4class_reproduced": {
+   "bereavement": {
+    "now": 397,
+    "prior": 397
+   },
+   "chronic_onset": {
+    "now": 447,
+    "prior": 447
+   },
+   "illness_acute": {
+    "now": 447,
+    "prior": 447
+   },
+   "major_loss": {
+    "now": 381,
+    "prior": 381
+   }
+  },
+  "problems": []
+ },
+ "overlay_skipped": {
+  "1402_gochara_qualification_provenance_certificate.sql": "baseline mode: absent in the checkout, and the checkout has no code that requires it (SR-BASELINE-OVERLAY-SKIP)",
+  "1403_ka_gochara_v5_depends_on_l0_dignity.sql": "absent in the checkout"
+ },
+ "paths": {
+  "P1": 1425,
+  "P2": 898,
+  "P3": 1183,
+  "P4": 1003
+ },
  "policy": "all_null_candidate/1",
  "prior_4class_baseline": {
   "file_sha256": "80456dad84f17288b733fd4fdd3990e407dc85147e2c762a889667c7b20abb15",
   "windows": 1672
  },
+ "runtime_s": {
+  "build_substeps_sum": 1223.26,
+  "by_step_kind": {
+   "body": 103.9,
+   "convention": 0.01,
+   "coverage": 1.01,
+   "inventory": 60.96,
+   "manifest": 0.18,
+   "record": 966.02,
+   "rules": 0.04,
+   "snapshot": 6.78,
+   "verify": 0.72,
+   "window": 83.64
+  },
+  "load_average_at_report": [
+   0.9,
+   0.9,
+   0.7
+  ]
+ },
  "schema": "ky.trial_baseline/2",
- "status": "PARTIAL_PRIOR_ONLY",
+ "source_report_sha256": "00798c0239738730e80cf65db7aa91f2943dc78d9e7171eecc3abc6eb6165be7",
  "totals": {
-  "new_8_windows": null,
+  "blank": 4509,
+  "new_8_windows": 2837,
   "prior_4class_windows": 1672,
-  "windows_total": null
- }
+  "windows_total": 4509
+ },
+ "window_rows_sha256": "e5626dc7ee02f139982ce2fa1d1fd52adcb7af641f671cbf51c9edc4259288ce"
 }
