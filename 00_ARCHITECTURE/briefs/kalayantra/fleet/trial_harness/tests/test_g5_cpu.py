@@ -219,10 +219,11 @@ def verdict(report):
 
 
 def test_c2_on_a_loaded_machine_wall_is_not_evaluated_and_attributed_cpu_projects_close_to_the_quiet_one(cluster, work):
-    """SR-G5-LOAD: wall when the load bound held, attributed_cpu otherwise.  A quiet run and a run under 2×cores real CPU hogs do identical fixed work.  Under the hogs the
+    """SR-G5-LOAD: wall when the load bound held, attributed_cpu otherwise.  A quiet run and a run under real CPU hogs (2×cores, more on a retry: 3, 4, 6×) do identical fixed work.  Under the hogs the
     wall method is NOT usable (method attributed_cpu, no wall projection check survives, `wall_method` NOT_EVALUATED) while the CPU projection stays within ×1.6 of the
-    quiet one times k, the same burn's own contention cost (observed ×1.16..1.43 on the Mac) although the wall projection is several times larger.  Planted reversion: `select` ignores the load (always WALL) → the loaded run
-    would be judged on its inflated wall → fails."""
+    quiet one times k, the same burn's own contention cost (k measured ×1.34..1.79 on the loaded Mac, ≈ 2.3 on the TR VM), although the wall projection is several times larger.  Planted reversion: `select` ignores the load (always WALL) → the loaded run
+    would be judged on its inflated wall → fails.  Planted reversion: the CPU projection fed the wall (a meter that counts waiting) → fails, because an attempt is judged
+    only once the wall grew past valid_wall_ratio(k)."""
     conn, pid = work
     n = calibrate(0.2)
     attempts = []
