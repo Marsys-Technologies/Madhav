@@ -3,6 +3,7 @@ import { stableFingerprint } from './stable'
 import { ayanamshaServeOrderBy } from '../handler_ayanamsha'
 import { CITATION_HUMAN_SELECT } from '../layers/L1_ganita/citation_narration'
 import { servedReceiptRunAdmitsSql, servedRowsBuildIdSql } from '../generation/served_generation'
+import { servedObstructionPredicate } from '../layers/L3_kala/served_obstruction'
 
 export type SourceQueryParameterBinding =
   | 'global'
@@ -2957,20 +2958,22 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
     capability_uri: 'marsys://tool/L3/query_obstruction_periods',
     scope: 'chart', parameter_binding: 'chart_with_active_build_context', empty_semantics: 'query_success_is_available',
     sql: `WITH handler_page AS (
-            SELECT id, convergence_id, signal_id, obstruction_type, severity, severity_score,
-                   override_score, obstruction_detail, source_citation
-              FROM kala_obstruction
-             WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR obstruction_type = NULL::text)
-               AND (NULL::text IS NULL OR severity = NULL::text)
-             ORDER BY severity_score DESC NULLS LAST LIMIT 0
+            SELECT o.id, o.convergence_id, o.signal_id, o.obstruction_type, o.severity, o.severity_score,
+                   o.override_score, o.obstruction_detail, o.source_citation
+              FROM kala_obstruction o
+             WHERE o.chart_id = $1::uuid
+               AND ${servedObstructionPredicate('o')}
+               AND (NULL::text IS NULL OR o.obstruction_type = NULL::text)
+               AND (NULL::text IS NULL OR o.severity = NULL::text)
+             ORDER BY o.severity_score DESC NULLS LAST LIMIT 0
           ), handler_count AS (
-            SELECT COUNT(*)::text AS total FROM kala_obstruction
-             WHERE chart_id = $1::uuid
-               AND (NULL::text IS NULL OR obstruction_type = NULL::text)
-               AND (NULL::text IS NULL OR severity = NULL::text)
+            SELECT COUNT(*)::text AS total FROM kala_obstruction o
+             WHERE o.chart_id = $1::uuid
+               AND ${servedObstructionPredicate('o')}
+               AND (NULL::text IS NULL OR o.obstruction_type = NULL::text)
+               AND (NULL::text IS NULL OR o.severity = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
-    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:74-94'],
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:69-95'],
   },
   {
     contract_id: 'source-query:query-vedha-gochara:v1',
@@ -3052,6 +3055,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                    constituent_factors, source_citation
               FROM kala_convergence
              WHERE chart_id = $1::uuid
+               AND COALESCE(to_jsonb(kala_convergence)->>'generation', 'legacy') = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = $1::uuid), 'legacy')
                AND (NULL::date IS NULL OR window_end >= NULL::date)
                AND (NULL::date IS NULL OR window_start <= NULL::date)
                AND (0::numeric <= 0 OR convergence_score >= 0::numeric)
@@ -3060,6 +3064,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
           ), handler_count AS (
             SELECT COUNT(*)::text AS total FROM kala_convergence
              WHERE chart_id = $1::uuid
+               AND COALESCE(to_jsonb(kala_convergence)->>'generation', 'legacy') = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = $1::uuid), 'legacy')
                AND (NULL::date IS NULL OR window_end >= NULL::date)
                AND (NULL::date IS NULL OR window_start <= NULL::date)
                AND (0::numeric <= 0 OR convergence_score >= 0::numeric)

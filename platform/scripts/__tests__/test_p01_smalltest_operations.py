@@ -203,11 +203,12 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     import types
     source = ROOT / '00_ARCHITECTURE/briefs/kalayantra/fleet/executor.py'
     # validate's signed route is signer_acceptance_problem (the A8 §3.9 block, moved out unchanged by OWNER-MINIMAL-PROTECTION-NOW);
-    # orchestrator_rebuild_cancel_problem (SR-CANCEL-LANE) and orchestrator_rebuild_dryrun_problem (SR-K9-PUBLISHABLE D7) are compiled for real: each returns
-    # None before touching any state for a kind other than its own
+    # orchestrator_rebuild_cancel_problem (SR-CANCEL-LANE), orchestrator_rebuild_dryrun_problem (SR-K9-PUBLISHABLE D7) and orchestrator_rebuild_teardown_problem
+    # (Round A N10) are compiled for real: each returns None before touching any state for a kind other than its own
     functions = [n for n in ast.parse(source.read_text()).body if isinstance(n, ast.FunctionDef)
-                 and n.name in ('signer_acceptance_problem', 'orchestrator_rebuild_cancel_problem', 'orchestrator_rebuild_dryrun_problem', 'validate')]
-    assert len(functions) == 4
+                 and n.name in ('signer_acceptance_problem', 'orchestrator_rebuild_cancel_problem', 'orchestrator_rebuild_dryrun_problem',
+                                   'orchestrator_rebuild_teardown_problem', 'validate')]
+    assert len(functions) == 5
     accepted_dir = tmp_path / 'acceptance'; accepted_dir.mkdir()
     globals_ = {'pathlib': importlib.import_module('pathlib'), 'SAFE_ID': importlib.import_module('re').compile(r'^[a-z0-9_-]+$'),
                 'SAFE_ARG': importlib.import_module('re').compile(r'^[A-Za-z0-9_.:+,/-]+$'),
@@ -246,10 +247,10 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     path = accepted_dir / 'receipt.json'
     request['acceptance_receipt'] = str(path)
     path.write_text(json.dumps(receipt))
-    if kind in ('smalltest_dispatch', 'smalltest_teardown'):    # A8 §5: dry_run_passed for a mutating kind, backup_taken for a teardown; nothing else
+    if kind in ('smalltest_dispatch', 'smalltest_teardown'):    # A8 §5: dry_run_passed for a mutating kind; nothing else (SR-A12-BACKUP-REMOVAL: not backup_taken either)
         assert 'attestation missing' in validate(request, table, caps)
     else:
         assert validate(request, table, caps) is None
-    receipt.update(checks={'backup_taken': True, 'dry_run_passed': True})
+    receipt.update(checks={'dry_run_passed': True})
     path.write_text(json.dumps(receipt))
     assert validate(request, table, caps) is None

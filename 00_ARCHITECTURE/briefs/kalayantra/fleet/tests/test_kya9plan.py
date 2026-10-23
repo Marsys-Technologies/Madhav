@@ -138,3 +138,58 @@ def test_prep_deferred_items_are_deferred_outside_c1_and_the_closure(items, clos
         assert items[iid]["triage"]["class"] == "b" and items[iid]["triage"]["re_entry"].startswith("post-flip"), iid
     for iid, cut in kya9plan.PREP_CUT_EDGES.items():
         assert not set(cut) & set(items[iid]["depends_on"]) and not set(cut) & set(items[iid].get("requires_outcome") or {}), iid
+
+
+# SR-PARKED-OUT-OF-CAMPAIGN (2026-10-22): the ruling names exactly these thirteen; the ruling text is the source, not the script
+PARKED_RULING = ["KR-1", "KR-2", "J-7a", "J-7a-pr3099", "J-7a-a62", "J-8", "J-8a", "J-8-b63", "J-8-j3",
+                 "J-4a-a25", "J-4a-a26", "J-3a-b44", "L0-K"]
+
+
+def test_the_thirteen_parked_items_are_deferred_out_of_the_campaign_with_their_re_entry(items, closure):  # SR-PARKED-OUT-OF-CAMPAIGN
+    # Fail-on-revert: drop an item from kya9plan.PARKED_OUT_OF_CAMPAIGN (or put it back to class a / empty re-entry) and this reads false.
+    assert sorted(kya9plan.PARKED_OUT_OF_CAMPAIGN) == sorted(PARKED_RULING)
+    for iid in PARKED_RULING:
+        triage = items[iid]["triage"]
+        assert triage["class"] == "b" and triage["re_entry"] == kya9plan.PARKED_OUT_OF_CAMPAIGN[iid], iid
+        assert "SR-PARKED-OUT-OF-CAMPAIGN" in triage["reason"], iid
+        assert iid not in closure["closure"], iid
+    assert [(i, d) for i in closure["closure"] for d in items[i]["depends_on"] if d in PARKED_RULING] == []
+
+
+def test_the_parked_items_are_carried_to_the_post_campaign_list_with_the_same_re_entry(items):  # SR-PARKED-OUT-OF-CAMPAIGN
+    # The list is read back, not trusted: every item has a table row ending in its re_entry text from the model.
+    rows = {}
+    for line in (FLEET.parent / "POST_CAMPAIGN_v1_0.md").read_text(encoding="utf-8").splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if line.startswith("| ") and len(cells) == 3:
+            rows[cells[0]] = cells[2]
+    for iid in PARKED_RULING:
+        assert rows.get(iid) == items[iid]["triage"]["re_entry"], iid
+
+
+def test_d_t2_is_closed_by_its_recorded_decision_and_waits_on_nothing(items, closure):  # SR-DT2-CANDIDATE
+    # The tracker reads a recorded decision item done only while every dependency is done; L0-K leaves the campaign, so the edges go.
+    assert items["D-T2"]["depends_on"] == [] and "D-T2" not in closure["closure"]
+
+
+
+def test_the_committed_model_is_the_fixed_point_of_the_plan_script(model):  # SR-AUDIT-NA-TIMEOUT / SR-AUDIT-BOOKKEEPING
+    # Fail-on-revert: drop an `if ... not in items` guard in kya9plan (a second run then appends the retirement items again) or
+    # hand-edit the model away from the script's output, and this reads false.
+    once = kya9plan.apply_model_edits(model)
+    assert once == model
+    assert kya9plan.apply_model_edits(once) == once
+    ids = [i["id"] for i in model["items"]]
+    assert len(ids) == len(set(ids)) and len([d["id"] for d in model["decisions"]]) == len({d["id"] for d in model["decisions"]})
+
+
+def test_the_two_timeout_items_are_retired_by_one_decision_outside_the_closure(items, model, closure):  # SR-AUDIT-NA-TIMEOUT (R1)
+    # Source: audit R1 text, carried verbatim as the reason. Fail-on-revert: put either item back to class b (deferred) or drop the
+    # decision declaration and this reads false.
+    for iid in kya9plan.TIMEOUT_NA_TARGETS:
+        assert items[iid]["triage"] == {"class": "retired", "decision": "D-GOCHARA-TIMEOUT-NA", "reason": kya9plan.TIMEOUT_NA_REASON}, iid
+        assert items[iid]["requires_outcome"]["D-GOCHARA-TIMEOUT-NA"] == "approved" and iid not in closure["closure"], iid
+    assert "Re-entry: if J-4f shows a timeout binding" in kya9plan.TIMEOUT_NA_REASON and "1395" in kya9plan.TIMEOUT_NA_REASON
+    assert items["D-GOCHARA-TIMEOUT-NA"]["triage"]["class"] == "retire_decision"
+    assert "D-GOCHARA-TIMEOUT-NA" in {d["id"] for d in model["decisions"]}
+    assert [(i, d) for i in closure["closure"] for d in items[i]["depends_on"] if d in kya9plan.TIMEOUT_NA_TARGETS] == []

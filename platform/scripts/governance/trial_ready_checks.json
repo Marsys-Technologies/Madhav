@@ -1,0 +1,665 @@
+{
+ "schema": "trial_ready.checks/1",
+ "predicate": "TRIAL_READY/1",
+ "source": "PLAN_A10_1 §2.2 (A10.1 B7); the 25 required ids are fixed in trial_ready.py REQUIRED_IDS, not here, so a missing entry here reads null",
+ "checks": [
+  {
+   "id": "T01",
+   "claim": "R-1 verifier tolerances merged",
+   "detector": "R1 plateau oracle (8 s peak must not verify) and 4.1234567 sum oracle fail on the head",
+   "owner_lane": "R1",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_s2_solver_check.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    }
+   ]
+  },
+  {
+   "id": "T02",
+   "claim": "R-2 boundary completeness",
+   "detector": "the 10 s island is not found through the real provider",
+   "owner_lane": "R2",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r2_state_boundaries.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    }
+   ]
+  },
+  {
+   "id": "T03",
+   "claim": "R-3 close extrema",
+   "detector": "the ≥ 2-extrema fixture does not return `tie_isolation_unresolved`",
+   "owner_lane": "R3",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_s2_solver_check.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    }
+   ]
+  },
+  {
+   "id": "T04",
+   "claim": "R-4 combustion inheritance **+ its DB key admitted** (migration applied on the lane DB)",
+   "detector": "a window carrying `combustion_inheritance` fails to INSERT; foreign orb row does not refuse on the verifier side",
+   "owner_lane": "R4 + migration 1402",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r4_combustion_inheritance.py",
+      "tests/l3/gochara/test_od1_r4_migration_1402.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    }
+   ]
+  },
+  {
+   "id": "T05",
+   "claim": "R-5 P1 subject = anchor",
+   "detector": "Sun-agent/Jupiter-anchor record yields one side on builder and the other on verifier",
+   "owner_lane": "R5",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r5_p1_subject.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    }
+   ]
+  },
+  {
+   "id": "T06",
+   "claim": "R-6 + R-7 certificate **+ its DB keys admitted** (1403 or equivalent)",
+   "detector": "tampered leaf is not detected; exhaust-then-easy fixture blanks the easy window; certificate INSERT fails",
+   "owner_lane": "R67",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r67_certificate.py",
+      "tests/l3/gochara/test_od1_r4_migration_1402.py",
+      "tests/l3/gochara/test_w1_serving_reader.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    }
+   ]
+  },
+  {
+   "id": "T07",
+   "claim": "Q3C side per Q3(c) (16 cells, both columns, goldens)",
+   "detector": "any cell side/value differs from the literal table",
+   "owner_lane": "Q3C",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_q3c_side.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    }
+   ]
+  },
+  {
+   "id": "T08",
+   "claim": "D1 orb 1.0° ratified + AM-13 K-1..K-6",
+   "detector": "`orb_not_ratified` or `applicability_undeclared` > 0 in a probe window",
+   "owner_lane": "D1",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_d1_orb_values.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    }
+   ]
+  },
+  {
+   "id": "T09",
+   "claim": "C1 vedha provider + D3 choices (nodes obstruct, transiting nodes N/A, no vipāreeta)",
+   "detector": "node-obstruction case or node-primary N/A case fails",
+   "owner_lane": "C1, D3",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_c1_vedha_provider.py",
+      "tests/l3/gochara/test_od1_c1_vedha_provider_db.py",
+      "tests/l3/gochara/test_od1_c2_vedha_verifier.py",
+      "tests/l3/gochara/test_od1_c2_vedha_verifier_db.py",
+      "tests/l3/gochara/test_od1_d3_vedha_rulings.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    }
+   ]
+  },
+  {
+   "id": "T10",
+   "claim": "**1401 applied** on the lane DB (and on the trial DB)",
+   "detector": "query reads Rāhu Taurus ≠ EX or Gemini ≠ MT, or the five pairs differ from `bphs:PG40:C1`",
+   "owner_lane": "L0-1401",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/test_migration_1401_l0_node_dignity.py"
+     ]
+    },
+    {
+     "kind": "pytest",
+     "cwd": ".",
+     "tests": [
+      "platform/scripts/governance/__tests__/test_sr_doctrine_h_node_dignity_1401.py"
+     ],
+     "env": {
+      "LC_ALL": "en_US.UTF-8",
+      "LANG": "en_US.UTF-8"
+     }
+    },
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "expect": "t",
+     "sql": "SELECT (SELECT count(*) FROM bg_graha_naisargika_friendship WHERE (graha, other_graha, relation) IN (('Rahu','Mercury','neutral'),('Rahu','Mars','enemy'),('Rahu','Jupiter','friend'),('Ketu','Sun','enemy'),('Ketu','Moon','enemy'))) = 5 AND (SELECT count(*) FROM bg_dignity_reference WHERE (graha, moolatrikona_sign) IN (('Rahu','Gemini'),('Ketu','Sagittarius'))) = 2"
+    },
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_TRIAL_DSN",
+     "expect": "t",
+     "sql": "SELECT (SELECT count(*) FROM bg_graha_naisargika_friendship WHERE (graha, other_graha, relation) IN (('Rahu','Mercury','neutral'),('Rahu','Mars','enemy'),('Rahu','Jupiter','friend'),('Ketu','Sun','enemy'),('Ketu','Moon','enemy'))) = 5 AND (SELECT count(*) FROM bg_dignity_reference WHERE (graha, moolatrikona_sign) IN (('Rahu','Gemini'),('Ketu','Sagittarius'))) = 2"
+    },
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "expect": "t",
+     "sql": "SELECT count(*) = 2 FROM bg_dignity_reference WHERE (graha, exaltation_sign) IN (('Rahu','Taurus'),('Ketu','Scorpio'))"
+    }
+   ]
+  },
+  {
+   "id": "T11",
+   "claim": "ND-H applied **in place** on 1.2.0, changelog entry, retained-row census",
+   "detector": "a retained row derived from pre-change 1.2.0 survives; changelog digest before/after absent",
+   "owner_lane": "NDH",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "lane NDH (TR_GAPS B1, od1-ndh) adds the pytest oracle and a retained-row census db_sql here; none exists on any branch yet"
+    }
+   ]
+  },
+  {
+   "id": "T12",
+   "claim": "1.3.0 **selected** on the head (the flag the trial reads)",
+   "detector": "flipping the flag to 1.2.0 does not make G-2 refuse",
+   "owner_lane": "SELECT-130",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "lane SELECT-130 (TR_GAPS B2) adds the oracle that flips the selection to 1.2.0 and reads G-2 refusing; test_od1_v1_versions only asserts the default selection and never flips it"
+    }
+   ]
+  },
+  {
+   "id": "T13",
+   "claim": "DASH readback (dasha operands to 2084 or named blank)",
+   "detector": "a record past the table end fails the build instead of blanking",
+   "owner_lane": "DASH",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "DASH-READBACK (TR_GAPS B7) adds the coverage readback db_sql and the DASH pytest; the dasha tables end at different dates per system (kalachakra, mudda stop before 2084-02-05)"
+    }
+   ]
+  },
+  {
+   "id": "T14",
+   "claim": "Trial evaluator T1b: G-3 table, forbidden reasons, caps, noninterference, digests record, **EQUIVALENCE_RECORD emission**, **TRIAL_READY evaluator**",
+   "detector": "evaluator reads true on a planted forbidden reason or cap breach",
+   "owner_lane": "T1B",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness",
+     "tests": [
+      "tests/test_a10_gates.py",
+      "tests/test_a10_stages.py",
+      "tests/test_analyse.py",
+      "tests/test_crosscheck.py",
+      "tests/test_driver.py",
+      "tests/test_gates.py",
+      "tests/test_harness_32.py",
+      "tests/test_launcher.py",
+      "tests/test_lane_db_overlay.py",
+      "tests/test_t1b_fix.py",
+      "tests/test_trial_census.py"
+     ],
+     "env": {
+      "KY_TEST_CHECKOUT": "{repo}",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe",
+      "PYTHONDONTWRITEBYTECODE": "1"
+     },
+     "deselect": [
+      "tests/test_driver.py::test_probe_reports_absence_when_the_checkout_has_no_solver"
+     ],
+     "deselect_why": "test_driver.py::test_probe_reports_absence_when_the_checkout_has_no_solver asserts the checkout has NO window_solver (true of the SR-OD1 export it was written on); the integration head has one, so the test reads false there for a reason that is not a product claim. The positive probe test (fake solver) stays."
+    },
+    {
+     "kind": "pytest",
+     "cwd": ".",
+     "tests": [
+      "platform/scripts/governance/__tests__/test_trial_ready.py"
+     ],
+     "timeout_s": 3600
+    }
+   ]
+  },
+  {
+   "id": "T15",
+   "claim": "**S3 end-to-end**: `window_solver` connected to `window_sweep`; `window_solver_check` connected to `window_verifier`; `dynamic_objective_solver_guarantee_not_available` **absent**; named reasons (`tie_ambiguous`, `tie_isolation_unresolved`, `verifier_budget_exhausted`) carried to seal-brief counts; numerical gate counts populations **after** classification",
+   "detector": "the numbered dynamic-window oracle (a window with a time-varying factor gets a proven maximum and instant, the verifier agrees) fails, or the forbidden reason still appears in a dynamic window",
+   "owner_lane": "S3",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_s3_integration.py",
+      "tests/l3/gochara/test_od1_s1_window_solver.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    },
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/test_gochara_seal_approval_scripts.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     }
+    }
+   ]
+  },
+  {
+   "id": "T16",
+   "claim": "R8 **and R8X** in the trial identity (`generation_verdict` derives the 26 expected classes from the pinned universe; remove-one-class and mixed commit/image refuse)",
+   "detector": "the 25-class and mixed-head fixtures read PASSED",
+   "owner_lane": "R8, R8X",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r8_sharded_aggregate.py",
+      "tests/l3/gochara/test_od1_r8x_aggregate.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration+od1-r8x"
+    }
+   ]
+  },
+  {
+   "id": "T17",
+   "claim": "G-5 **effective-wall** measurement and the **two-shard overlap** harness exist on the disposable fixture",
+   "detector": "harness cannot report lock wait separately from compute",
+   "owner_lane": "T1B / R8X",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness",
+     "tests": [
+      "tests/test_a10_gates.py"
+     ],
+     "env": {
+      "KY_TEST_CHECKOUT": "{repo}",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe",
+      "PYTHONDONTWRITEBYTECODE": "1"
+     }
+    },
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r8x_overlap.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-r8x"
+    }
+   ]
+  },
+  {
+   "id": "T18",
+   "claim": "G-6 compulsory in the verifier's pinned plan (deterministic 3 % + generation-wide top-five mixed pieces); aggregate refuses missing G-6",
+   "detector": "a generation with the sample omitted aggregates PASSED",
+   "owner_lane": "R8X",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_od1_r8x_aggregate.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-r8x"
+    }
+   ]
+  },
+  {
+   "id": "T19",
+   "claim": "**EQR tool present in the trial**; `window_solver`, `window_solver_check` (and the kinematic tables S1 binds) are in `IMPLEMENTATION_MODULES`; import-closure test passes",
+   "detector": "editing either module does not change the module vector",
+   "owner_lane": "EQR",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_a53_od1_implmods.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "lands_with": "od1-integration"
+    },
+    {
+     "kind": "pytest",
+     "cwd": ".",
+     "tests": [
+      "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_equivalence_record.py"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "T20",
+   "claim": "I1-FINAL: main merged up, pins and goldens re-derived **once** (geometry pin re-derived once after R2 + near-miss, SR-GEOMETRY-PIN-ONCE, recorded in the EQUIVALENCE_RECORD changelog with both causes; any further geometry change refuses; the golden asserts every pin at the head), DB suites green locally, `lc_collate`/`lc_ctype` unchanged = C/C (SR-DB-LOCALE-CHECK)",
+   "detector": "the golden/horizon pins differ from the head's bytes, a DB suite fails, or the lane DB's collation is not C/C → STOP, tell the surrogate (the 'once' rule is the surrogate's, not machine-read)",
+   "owner_lane": "I1-FINAL",
+   "parts": [
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_mb_ordinary_golden.py",
+      "tests/l3/gochara/test_mb_horizon_shape_guard.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "timeout_s": 3600
+    },
+    {
+     "kind": "pytest",
+     "cwd": "platform/python-sidecar",
+     "tests": [
+      "tests/l3/gochara/test_a53_window_evaluator.py",
+      "tests/l3/gochara/test_a53_window_sweep.py",
+      "tests/l3/gochara/test_a53_window_sweep_pg.py",
+      "tests/l3/gochara/test_a53_window_verification_gate.py",
+      "tests/l3/gochara/test_a53_window_verification_roles.py",
+      "tests/l3/gochara/test_a53_all_null_policy.py",
+      "tests/l3/gochara/test_a53_all_null_policy_db.py",
+      "tests/l3/gochara/test_a53_input_vector.py"
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     },
+     "timeout_s": 3600,
+     "deselect": [
+      "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id"
+     ],
+     "deselect_why": {
+      "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id": "the test skips by design (pytest.skip at test_a53_input_vector.py:670) because ka_gochara_sky_convention carries the insert-only trigger ka_gochara_sky_convention_immutable (platform/migrations/1153_gochara_sky_event_substrate.sql:609-611) in every chain-built database, so it can never run to a pass; the evaluator reads any skip as null, which would hold T20 null forever"
+     }
+    },
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "expect": "t",
+     "sql": "SELECT datcollate = 'C' AND datctype = 'C' FROM pg_database WHERE datname = current_database()"
+    }
+   ]
+  },
+  {
+   "id": "T21",
+   "claim": "RV-INT scoped integration review passed at the head (claims enumerated, one planted reversion each)",
+   "detector": "a seam reversion (anchor × Form B side, factor boundary × certificate coverage, R8 × seal admission) survives",
+   "owner_lane": "RV-INT",
+   "parts": [
+    {
+     "kind": "json_field_eq",
+     "path": "/Users/Dev/kalayantra/run/TR/RVINT_VERDICT.json",
+     "fields": [
+      {
+       "field": "proposed_verdict.verdict",
+       "equals": "ACCEPTED"
+      },
+      {
+       "field": "proposed_verdict.head",
+       "equals_head": true
+      },
+      {
+       "field": "proposed_verdict.patch_id",
+       "equals_patch_id_of": "origin/main"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "T22",
+   "claim": "every LC-* merged; **no lane with an open BLOCKING finding**; per-lane review bound to the actual patch (A10.1 N1)",
+   "detector": "a lane head differs from the reviewed patch id",
+   "owner_lane": "conductor",
+   "parts": [
+    {
+     "kind": "unbound",
+     "needs": "LANE-LEDGER (TR_GAPS B6): needs a recomputing detector (ledger patch-ids against the merge parents' diffs, zero open BLOCKING); a self-reported ledger summary would read true from a lane state (N.8)"
+    }
+   ]
+  },
+  {
+   "id": "T23",
+   "claim": "migrations 1400/1401/1402/1403 recorded in `MIGRATION_ALLOCATION.json` and applied on the lane DB",
+   "detector": "ledger or DB differ from the head's migration list",
+   "owner_lane": "cockpit",
+   "parts": [
+    {
+     "kind": "json_keys",
+     "path": "/Users/Dev/kalayantra/run/MIGRATION_ALLOCATION.json",
+     "object": "allocated",
+     "keys": [
+      "1400",
+      "1401",
+      "1402",
+      "1403"
+     ]
+    },
+    {
+     "kind": "db_migrations",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "dir": "platform/migrations",
+     "prefixes": [
+      "1400_",
+      "1401_",
+      "1402_",
+      "1403_"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "T24",
+   "claim": "linux/amd64 image available for the qualifying run (SR-AMD64-PER-HEAD): the amd64_slice run itself ran on linux/amd64 at the evaluated head and produced a complete qualifying EQUIVALENCE_RECORD",
+   "detector": "the amd64 slice did not run to a complete record: its own report, pinned runtime or EQUIVALENCE_RECORD names another head, another arch, a non-qualifying runtime kind or an incomplete record (a readiness record, which only checks that inputs are named, is never read)",
+   "owner_lane": "T1B / ops",
+   "parts": [
+    {
+     "kind": "json_field_eq",
+     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/amd64_slice_report.json",
+     "fields": [
+      {
+       "field": "code.head",
+       "equals_head": true
+      },
+      {
+       "field": "equivalence_record.status",
+       "equals": "COMPLETE"
+      },
+      {
+       "field": "equivalence_record.head",
+       "equals_head": true
+      }
+     ]
+    },
+    {
+     "kind": "json_field_eq",
+     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/equivalence/eq_pinned_inputs.json",
+     "fields": [
+      {
+       "field": "runtime.kind",
+       "equals": "qualifying_run"
+      },
+      {
+       "field": "runtime.arch",
+       "equals": "linux/amd64"
+      }
+     ]
+    },
+    {
+     "kind": "json_field_eq",
+     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/equivalence/equivalence_record.json",
+     "fields": [
+      {
+       "field": "complete",
+       "equals": true
+      },
+      {
+       "field": "runtime_kind",
+       "equals": "qualifying_run"
+      },
+      {
+       "field": "E6.commit",
+       "equals_head": true
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "T25",
+   "claim": "lane DB at 55433 up, C collation, **every** head migration file recorded in its ledger (built with MIGRATE_APPLY_PROTECTED=1 on loopback, so no file is skipped)",
+   "detector": "`SHOW lc_collate` ≠ recorded or a migration is missing",
+   "owner_lane": "ops",
+   "parts": [
+    {
+     "kind": "db_sql",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "expect": "t",
+     "sql": "SELECT datcollate = 'C' AND datctype = 'C' FROM pg_database WHERE datname = current_database()"
+    },
+    {
+     "kind": "db_migrations",
+     "dsn_env": "TRIAL_READY_LANE_DSN",
+     "dir": "platform/migrations",
+     "mode": "all"
+    }
+   ]
+  }
+ ]
+}

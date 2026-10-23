@@ -105,8 +105,13 @@ def evaluate_throughput_drift(throughput_and_live: dict[str, tuple[int | None, i
     return sorted(set(drift))
 
 
+# A candidate generation of kala_convergence (migration 1405) is not served upstream data: only the served view says
+# whether a chart has convergence rows its derived tables should have been built from.
+_READ_AS = {"kala_convergence": "kala_convergence_served"}
+
+
 def _charts_with_rows(conn, table: str) -> set[str]:
-    rows = conn.execute(f"SELECT DISTINCT chart_id FROM {table}").fetchall()
+    rows = conn.execute(f"SELECT DISTINCT chart_id FROM {_READ_AS.get(table, table)}").fetchall()
     return {str(r["chart_id"]) for r in rows}
 
 

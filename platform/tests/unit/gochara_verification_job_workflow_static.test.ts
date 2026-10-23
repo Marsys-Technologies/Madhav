@@ -22,28 +22,62 @@ describe('gochara-verification-job-deploy.yml', () => {
     expect(result.calls.at(-1)?.args).toEqual(['merge-base', '--is-ancestor', 'a'.repeat(40), 'origin/main'])
   })
 
-  it('executes deploy and readback with one task and the same pinned timeout and resources', () => {
-    const readback = job.steps.find((s: any) => String(s.run).includes('gochara_verification_job_readback.py'))
-    const result = runWorkflowShell(`${deploy.run}\n${readback.run}`, {
-      gcloud: 'if (args.includes("describe")) console.log("{}");',
-      curl: 'console.log("{}");', python3: '',
-    }, { ...wf.env, IMAGE_DIGEST: `sha256:${'b'.repeat(64)}`, GITHUB_SHA: 'a'.repeat(40) })
-    expect(result.status, result.stderr).toBe(0)
-    const calls = result.calls.filter(c => c.command === 'gcloud' && c.args[2] === 'deploy')
-    expect(calls).toHaveLength(1)
-    const deployed = calls[0].args
-    const checked = result.calls.find(c => c.command === 'python3')!.args
-    const value = (args: string[], flag: string) => {
-      expect(args.filter(a => a === flag)).toHaveLength(1)
-      return args[args.indexOf(flag) + 1]
+  // The incident (run 39736105931): `gcloud run jobs deploy --clear-args` is "unrecognized arguments" — neither deploy nor update has it.
+  // A new job is created with `jobs deploy` (no args); an existing one is changed with `jobs update ... --args ""` (the documented reset:
+  // "To reset this field to its default, pass an empty string" — docs.cloud.google.com/sdk/gcloud/reference/run/jobs/update).
+  const existence = (exists: boolean | 'error') => `
+    if (args[2] === 'describe' && args.includes('--format=value(name)')) {
+      ${exists === true ? 'console.log("gochara-verification-job"); process.exit(0);'
+        : exists === false ? 'console.error("ERROR: (gcloud.run.jobs.describe) Cannot find job gochara-verification-job"); process.exit(1);'
+        : 'console.error("ERROR: (gcloud.run.jobs.describe) PERMISSION_DENIED"); process.exit(1);'}
     }
+    if (args.includes("describe")) console.log("{}");`
+  const runDefinition = (exists: boolean | 'error') => {
+    const readback = job.steps.find((s: any) => String(s.run).includes('gochara_verification_job_readback.py'))
+    return runWorkflowShell(`${deploy.run}\n${readback.run}`, {
+      gcloud: existence(exists), curl: 'console.log("{}");', python3: '',
+    }, { ...wf.env, IMAGE_DIGEST: `sha256:${'b'.repeat(64)}`, GITHUB_SHA: 'a'.repeat(40) })
+  }
+  const value = (args: string[], flag: string) => {
+    expect(args.filter(a => a === flag)).toHaveLength(1)
+    return args[args.indexOf(flag) + 1]
+  }
+
+  it('CREATE path: runs `jobs deploy` once, with no args flag at all, one task and the same pinned timeout and resources as the readback', () => {
+    const result = runDefinition(false)
+    expect(result.status, result.stderr).toBe(0)
+    const calls = result.calls.filter(c => c.command === 'gcloud' && ['deploy', 'update'].includes(c.args[2]))
+    expect(calls.map(c => c.args.slice(0, 3))).toEqual([['run', 'jobs', 'deploy']])
+    const deployed = calls[0].args
+    expect(deployed).not.toContain('--clear-args')
+    expect(deployed).not.toContain('--args')
+    const checked = result.calls.find(c => c.command === 'python3')!.args
     expect(value(deployed, '--tasks')).toBe('1')
     expect(value(deployed, '--task-timeout')).toBe('28800')
     expect(value(checked, '--timeout-seconds')).toBe('28800')
-    for (const [flag, expected] of [['--memory', '8Gi'], ['--cpu', '2']]) {
+    for (const [flag, expected] of [['--memory', '4Gi'], ['--cpu', '1']]) {
       expect(value(deployed, flag)).toBe(expected)
       expect(value(checked, flag)).toBe(expected)
     }
+  })
+
+  it('UPDATE path: runs `jobs update` once (never deploy), resets args with an empty string, and carries the identical definition flags', () => {
+    const created = runDefinition(false).calls.find(c => c.command === 'gcloud' && c.args[2] === 'deploy')!.args
+    const result = runDefinition(true)
+    expect(result.status, result.stderr).toBe(0)
+    const calls = result.calls.filter(c => c.command === 'gcloud' && ['deploy', 'update'].includes(c.args[2]))
+    expect(calls.map(c => c.args.slice(0, 3))).toEqual([['run', 'jobs', 'update']])
+    const updated = calls[0].args
+    expect(updated).not.toContain('--clear-args')
+    expect(value(updated, '--args')).toBe('')
+    const withoutArgs = updated.filter((a, i) => !(a === '--args' || updated[i - 1] === '--args'))
+    expect(withoutArgs.slice(3)).toEqual(created.slice(3))   // everything after `run jobs <deploy|update>`: job name and all flags
+  })
+
+  it('refuses to create or update when it cannot tell whether the job exists (an unrelated describe failure)', () => {
+    const result = runDefinition('error')
+    expect(result.status).toBe(1)
+    expect(result.calls.filter(c => c.command === 'gcloud' && ['deploy', 'update'].includes(c.args[2]))).toHaveLength(0)
   })
 
   it.each([0, 23])('executes the isolation preflight and propagates its exit %i', exit => {
@@ -70,7 +104,8 @@ describe('gochara-verification-job-deploy.yml', () => {
   it('deploys the verifier entry point with exactly one secret and the commit-pinned image and runner identity', () => {
     const run = String(deploy.run)
     expect(run).toContain('--command "python,-m,pipeline.orchestrator.verification_job"')
-    expect(run).toContain('--clear-args')
+    expect(run).not.toContain('--clear-args')   // not a flag of `jobs deploy` nor `jobs update` (run 39736105931)
+    expect(run).toContain('gcloud run jobs update "$VERIFICATION_JOB" "${DEFINITION_FLAGS[@]}" --args ""')
     expect(run).toContain('--service-account "$VERIFIER_SERVICE_ACCOUNT"')
     expect(run).toContain('--set-secrets "GOCHARA_VERIFIER_DB_URL=${VERIFIER_SECRET}:latest"')
     expect(run).toContain('--set-env-vars "GOCHARA_RUNNER_COMMIT=${GITHUB_SHA},GOCHARA_RUNNER_IMAGE_DIGEST=${IMAGE_DIGEST}"')   // ST-WIRE-2: the verifier records both as the brief's producer

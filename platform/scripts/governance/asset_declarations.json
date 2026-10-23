@@ -17544,12 +17544,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1858",
+   "read_evidence": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1888",
    "read_table": "kala_gochara_windows",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) kala_gochara_windows; census Idem.pattern PARTIAL: registry/writer table mismatch (R240, a registry-data findin; K8-REG remainder, produced_tables not declared: the writer's rows_inserted counts only the kala_gochara_windows_v2 rows it inserts (pipeline/orchestrator/writers/ka_gochara.py, `inserted`); kala_gochara_v2_build_state holds one resume row per event class and is not counted, so a two-table SUM would read Build.completion FAIL for a correct build",
-    "carriage": "served_surface true: read_evidence platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1858 reads `kala_gochara_windows` (`let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows`). Dens.served=FAIL. Served gochara-windows 'as of' query (`SELECT ${ROW_COLUMNS} FROM kala_gochara_windows`): row-level serve of the windows.",
+    "carriage": "served_surface true: read_evidence platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1888 reads `kala_gochara_windows` (`let sql = `SELECT ${ROW_COLUMNS} FROM kala_gochara_windows`). Dens.served=FAIL. Served gochara-windows 'as of' query (`SELECT ${ROW_COLUMNS} FROM kala_gochara_windows`): row-level serve of the windows.",
     "prose_fields": null
    }
   },
@@ -17561,12 +17561,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1165",
-   "read_table": "gochara_resonance_map",
+   "read_evidence": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1191",
+   "read_table": "gochara_resonance_map_served",
    "read_kind": "coverage",
    "evidence": {
     "kind": "registry kind data (seed, T0 data); writer-backed own table(s) gochara_resonance_map; census Idem.pattern PASS: DELETE FROM the asset's own table(s) (delete-then-insert): g; K2-2 candidate_generation opt-in additionally owns kala_f1_target_object and kala_f1_relationship (static partition DELETE/INSERT in services/ka_gochara_resonance/relationship_storage.py); legacy count/serve retained until judge cutover; no N-150 produced_tables sum is declared: legacy and candidate dispatches are mutually exclusive, F1 rows_inserted counts only its active candidate partition, and the current census shim scan does not bind this delegated writer; candidate Build.completion remains unmeasured pending a generation-scoped detector",
-    "carriage": "served_surface true: read_evidence platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1165 reads `gochara_resonance_map` (`FROM gochara_resonance_map rm`). Dens.served=N/A (scanner gap: the scan does not see this read). Served gochara-windows tool (event-class coverage from the resonance map); also :1230. read_kind coverage: register_gochara_windows.ts:1165 (and :1230) is a `SELECT DISTINCT event_class ... FROM gochara_resonance_map` facet/coverage lookup (event classes covered for the chart), not a row-level serve of the map; no row-level read exists in the repo (only those two coverage queries), so it stays true with this note.",
+    "carriage": "served_surface true: read_evidence platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1191 reads `gochara_resonance_map_served` (`FROM gochara_resonance_map_served rm`: migration 1404, the served generation of gochara_resonance_map). Dens.served=N/A (scanner gap: the scan does not see this read). Served gochara-windows tool (event-class coverage from the resonance map); also :1258. read_kind coverage: register_gochara_windows.ts:1191 (and :1258) is a `SELECT DISTINCT event_class ... FROM gochara_resonance_map_served` facet/coverage lookup (event classes covered for the chart), not a row-level serve of the map; no row-level read exists in the repo (only those two coverage queries), so it stays true with this note.",
     "prose_fields": null
    },
    "fingerprint": {
@@ -17936,13 +17936,13 @@
    ],
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:81",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:82",
    "read_table": "kala_obstruction",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_obstruction; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k; K3-2 pre-build certification mapping (current registry revision 30, production_certification=null): platform/python-sidecar/services/ka_vighnakara/certification_mapping.json:1. Sealed candidates are private; legacy carriage and prose declarations retained.",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:81 reads `kala_obstruction` (`FROM kala_obstruction`). Dens.served=FAIL.",
-    "prose_fields": "writers/ka_vighnakara.py detector functions put a composed `reason` in every obstruction detail dict: f-strings at platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:681 (test-only proxy), platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:733, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:790, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:867, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:946, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:1002 (constant stubs at :793 and :868 return a fixed string); the detail dict is bound to kala_obstruction.obstruction_detail as json.dumps(obs['detail']) (platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:302, and json.dumps(detail) in the dasha-anchored builder, INSERT at :338). Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:80 selects obstruction_detail. The malefic-transit reason (ka_vighnakara.py:733) is now chart-relative (Track I-2): it names the building chart's own lagna and Moon sign (from chart_facts graha_position longitude_sidereal) and the house relation that made the sign adverse; with neither natal anchor known the detector emits nothing. Rows already stored keep the old hard-coded Aries/Aquarius text until the chart is rebuilt."
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:82 reads `kala_obstruction` (`FROM kala_obstruction`). Dens.served=FAIL.",
+    "prose_fields": "writers/ka_vighnakara.py detector functions put a composed `reason` in every obstruction detail dict: f-strings at platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:686 (test-only proxy), platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:738, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:795, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:872, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:951, platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:1007 (constant stubs at :793 and :868 return a fixed string); the detail dict is bound to kala_obstruction.obstruction_detail as json.dumps(obs['detail']) (platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py:307, and json.dumps(detail) in the dasha-anchored builder, INSERT at :338). Served: platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:81 selects obstruction_detail. The malefic-transit reason (ka_vighnakara.py:738) is now chart-relative (Track I-2): it names the building chart's own lagna and Moon sign (from chart_facts graha_position longitude_sidereal) and the house relation that made the sign adverse; with neither natal anchor known the detector emits nothing. Rows already stored keep the old hard-coded Aries/Aquarius text until the chart is rebuilt."
    },
    "evidence_kind": "writer"
   },
@@ -17954,12 +17954,12 @@
    "prose_fields": null,
    "terminal_by_construction": null,
    "cross_asset_writes": null,
-   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:389",
+   "read_evidence": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:398",
    "read_table": "kala_activation_predicates",
    "read_kind": null,
    "evidence": {
     "kind": "registry kind 'artifact' (seed asset_kind='artifact', T0 artifact) mapped to data: writer-backed (has_writer=True), own target table kala_activation_predicates; census Idem.pattern: DELETE FROM the asset's own table(s) (delete-then-insert): k; K8-REG remainder, produced_tables not declared: rows_inserted is len(rows) of kala_activation_predicates only (pipeline/orchestrator/writers/ka_yojaka.py); kala_layer_candidate_grain is candidate bookkeeping written by the shared partition helper and is not counted, so a two-table SUM would read Build.completion FAIL for a correct build",
-    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:389 reads `kala_activation_predicates` (`FROM kala_activation_predicates`). Dens.served=FAIL.",
+    "carriage": "served_surface true: read_evidence platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts:398 reads `kala_activation_predicates` (`FROM kala_activation_predicates`). Dens.served=FAIL.",
     "prose_fields": null
    }
   },

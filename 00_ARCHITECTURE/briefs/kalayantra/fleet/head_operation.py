@@ -345,7 +345,7 @@ def readback_sql(req):
              " AND coalesce(p.input_generation_vector->>'stored_scope','') <> 'test_slice'"
              " AND NOT (p.input_generation_vector ? 'test_slice')") if governed_target else 'true'
     sealed = 'public.ka_gochara_generation_is_sealed(a.chart_id,a.authoritative_generation)' if governed_target else 'NULL'
-    return f"""SELECT jsonb_build_object(
+    return f"""SELECT (jsonb_build_object(
  'schema','ky.head_readback/1','operation_id',{quote(req['operation_id'])},
  'request_sha256',{quote(request_digest(req))},'chart_id',a.chart_id::text,
  'target',jsonb_build_object('generation',{gen},'manifest_id',{manifest}),
@@ -353,7 +353,7 @@ def readback_sql(req):
    CASE WHEN a.flipped_at IS NULL THEN NULL ELSE
      to_char(a.flipped_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.US') || '+00:00' END,
    'flipped_by',a.flipped_by,'evidence_ref',a.evidence_ref),
- 'target_matches',a.authoritative_generation={gen} AND ({match}), 'sealed',{sealed}) AS head_readback
+ 'target_matches',a.authoritative_generation={gen} AND ({match}), 'sealed',{sealed}))::text AS head_readback
  FROM public.kala_gochara_authority a LEFT JOIN public.kala_gochara_publication p
  ON p.chart_id=a.chart_id AND p.generation=a.authoritative_generation
  WHERE a.chart_id={chart}::uuid;
@@ -371,7 +371,8 @@ def observe(conn, req):
     row = conn.execute(readback_sql(req)).fetchall()
     if len(row) != 1:
         raise Refused('one_authority_readback_required')
-    return _normalize_readback(row[0][0])
+    value = row[0][0]
+    return _normalize_readback(load_json(value) if isinstance(value, str) else value)
 
 
 def decode_readback(raw):

@@ -256,23 +256,38 @@ def _req(**over):
     return req
 
 
-def test_p8_table_entry_is_exact_shipped_disabled_and_the_real_validate_holds(tmp_path, monkeypatch):
+def test_p8_table_entry_is_exact_enabled_read_only_credential_free_and_the_real_validate_holds(tmp_path, monkeypatch):
+    # W5W6-READINESS WP1 (J-6l), claim 1: the kind is enabled and is STILL read-only, credential-free and takes only `probe` (http_probe.py docstring;
+    # SR-TEARDOWN-AUTHORITY-GATE item 3). Planted reversion: `enabled:false` in executor_ops.json fails the first assertion.
     table = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
     entry = table["http_probe"]
-    assert list(entry)[0] == "enabled" and entry["enabled"] is False                  # shipped disabled: the owner's flip enables it
+    assert list(entry)[0] == "enabled" and entry["enabled"] is True                   # enabled by the J-6l shard (tests/executor_pin_shards/J-6l.json)
     assert (entry["production"], entry["read_only"], entry["needs"], entry["fixed_args"], entry["allowed_args"]) == (False, True, "none", [], ["probe"])
     assert entry["script"] == "00_ARCHITECTURE/briefs/kalayantra/fleet/http_probe.py" and (REPO / entry["script"]).is_file()
     assert entry["requesters"] == ["adhikarin", "v1", "v2"] and "also_needs" not in entry and entry["enabled_by"] == "J-6l"
     ex = _executor(tmp_path, monkeypatch)
     caps = {"none": True}
-    assert "is not enabled" in ex.validate(_req(), table, caps)                         # disabled: refused today
-    live = copy.deepcopy(table)
-    live["http_probe"]["enabled"] = True
-    assert ex.validate(_req(), live, caps) is None
-    assert "disallowed args" in ex.validate(_req(args={"probe": "mcp_health", "url": "https://evil.example/"}), live, caps)
-    assert "disallowed args" in ex.validate(_req(args={"url": "https://evil.example/"}), live, caps)
-    assert "may not request" in ex.validate(_req(requested_by="sutradhara"), live, caps)
-    assert "unsafe characters" in ex.validate(_req(args={"probe": "a b"}), live, caps)
+    assert ex.validate(_req(), table, caps) is None                                     # enabled: admitted with no capability beyond the always-true "none"
+    assert "disallowed args" in ex.validate(_req(args={"probe": "mcp_health", "url": "https://evil.example/"}), table, caps)
+    assert "disallowed args" in ex.validate(_req(args={"url": "https://evil.example/"}), table, caps)
+    assert "may not request" in ex.validate(_req(requested_by="sutradhara"), table, caps)
+    assert "unsafe characters" in ex.validate(_req(args={"probe": "a b"}), table, caps)
+
+
+def test_p8_admission_does_not_make_an_unmeasurable_probe_measurable(tmp_path, monkeypatch, capsys):
+    # claim 2: with the kind enabled, `probe=gochara_served_head` still reaches the script and is REFUSED there (no request made); `probe=mcp_health` is measured.
+    # Planted reversion: adding `gochara_served_head` to http_probe.PROBES makes the first assertion fail.
+    table = json.loads((FLEET / "executor_ops.json").read_text())["ops"]
+    ex = _executor(tmp_path, monkeypatch)
+    for probe in ("gochara_served_head", "mcp_health"):
+        assert ex.validate(_req(args={"probe": probe}), table, {"none": True}) is None      # validate() admits both: the probe set is the script's, not the table's
+    assert "gochara_served_head" not in HP.PROBES                                       # a URL registered for it would measure a login page, not the served head
+    transport = Transport()
+    assert HP.cli(["--probe", "gochara_served_head"], transport) == 1
+    refused = json.loads(capsys.readouterr().out)
+    assert refused["status"] == "REFUSED" and refused["probe"] == "gochara_served_head" and transport.urls == []
+    assert HP.cli(["--probe", "mcp_health"], transport) == 0
+    assert json.loads(capsys.readouterr().out)["status"] == "MEASURED" and transport.urls == [HP.PROBES["mcp_health"]]
 
 
 # ───────────── P9 end to end through the CLI ─────────────

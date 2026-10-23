@@ -45,6 +45,7 @@ async function postgres(sql: string, params: unknown[], nonempty: boolean) {
       start_year int, end_year int, parva_quality text, theme_keywords text[], high_convergence_count int, avg_effective_score numeric,
       narrative jsonb, source_citation text, computed_at timestamptz);
     CREATE TEMP TABLE kala_convergence (chart_id uuid);
+    CREATE TEMP TABLE kala_layer_head (chart_id uuid, generation text);
     INSERT INTO kala_jivana_parva VALUES (1, '${chart}', 1, 'Mercury', NULL, 2020, 2027, 'building', '{career}', 8838, 0.91,
       '{"summary":"8838 windows","high_convergence_count":8838,"avg_effective_score":0.91}', 'CODEX:MD=Mercury', '2026-08-13');
     INSERT INTO kala_convergence VALUES ('22222222-2222-4222-8222-222222222222');

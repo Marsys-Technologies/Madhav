@@ -14,8 +14,8 @@ is the child's stdout alone, in <operation_id>.output.txt, and its stderr alone 
 
 Production approval binds the request (A8 §3.9): ONE verifier lane's acceptance receipt carries the sha256 of the request as
 sorted compact JSON without the fields that may lawfully change after signing — `acceptance_receipt`, `expires_at` and any
-`*_expires_at` lease-expiry field (see request_digest) — plus the attestations the kind needs: `dry_run_passed` for a mutating
-kind and `backup_taken` for a `*_teardown`. It is valid from its timestamp until the request's `expires_at`; there is no age cap.
+`*_expires_at` lease-expiry field (see request_digest) — plus the attestation the kind needs: `dry_run_passed` for a mutating
+kind (SR-A12-BACKUP-REMOVAL: a `*_teardown` no longer needs `backup_taken`; its dry run, exact scope and absence readback stay mandatory). It is valid from its timestamp until the request's `expires_at`; there is no age cap.
 The lease must be the ONLY unexpired ACTIVE row of the shared lease table.
 
 Mechanical acceptance of a production write (OWNER-MINIMAL-PROTECTION-NOW-20261018; SR-MINIMAL-PROTECTION §2): a request with NO `acceptance_receipt` but a
@@ -89,6 +89,8 @@ TEARDOWN_KINDS = (   # the committed teardowns that wait for an independent abse
     "smalltest_teardown",
 )
 LAUNCH_SCHEMAS = {"smalltest_dispatch": "ky.smalltest_launch/1", "measuring_dispatch": "ky.measuring_launch/1", "century_dispatch": "ky.century_launch/1"}
+RUN_OPERATION_KINDS = ("orchestrator_rebuild", "orchestrator_rebuild_cancel")      # the operations that act on a K9 rebuild run's writers
+RAN_TO_AN_END = ("COMPLETED", "FAILED", "INTERRUPTED")      # receipt statuses of an operation whose child was started and has ended (INTERRUPTED: the executor restarted; the child may live on, so only the session readback proves it)
 REMOTE_ASYNC_KINDS = frozenset({   # A8 §3.11: work continues remotely after the child returns — fenced even if a table drops `remote_async`
     "century_dispatch",
     "measuring_dispatch",
@@ -96,6 +98,9 @@ REMOTE_ASYNC_KINDS = frozenset({   # A8 §3.11: work continues remotely after th
     "verification_job",
 })
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
+LOOP_TICK_S = 10        # the main loop's idle sleep: the finest grain at which any timed gate below can fire
+CAPS_REFRESH_S = 30     # A10.1 item 6: CAPABILITIES.json is rewritten at least this often (was 300)
+CAPS_FRESH_S = 45       # the freshness bound readers of CAPABILITIES.json apply (unchanged); a snapshot is at most CAPS_REFRESH_S + LOOP_TICK_S old
 PACK_ALLOWLIST = OPS / "PACK_ALLOWLIST.json"   # OWNER-MINIMAL-PROTECTION-NOW: written by the cockpit ONLY from an ACCEPTED verify job of a pack; this executor only reads it
 SIGNED_ONLY_KINDS = frozenset({   # serving changes, plus the deletion-adjacent cancels (every kind on CANCEL_LANE_KINDS, which a test keeps equal to this set's cancels); every `*_teardown` kind is signed-only too (see mechanical_exempt)
     "century_cancel",
@@ -135,6 +140,7 @@ SCHEDULER_STATES = ("ENABLED", "PAUSED", "DISABLED", "UPDATE_FAILED")   # google
 SCHEDULER_UTC = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:Z|\+00:00)")
 SCHEDULER_BACKSTOP = OPS / "scheduler_backstop"
 PROBE_SCHEMA = "ky.served_probe/1"
+CONSUMER_PROBE_KEY = "KY_CONSUMER_PROBE_KEY"   # J-6l-a61: the executor-held consumer credential; `execute` hands it to a `consumer_probe` child ONLY, under exactly this name
 PROBE_SHA256 = re.compile(r"[0-9a-f]{64}")
 _lock = threading.Lock()
 
@@ -142,7 +148,8 @@ _lock = threading.Lock()
 def now() -> str: return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 def redact(s: str) -> str:
     for rx in REDACT: s = rx.sub("[REDACTED]", s)
-    return s
+    key = os.environ.get(CONSUMER_PROBE_KEY)
+    return s.replace(key, "[REDACTED]") if key else s
 def log(msg: str) -> None:
     with _lock, (KY_ROOT / "logs" / "executor.log").open("a") as f: f.write(f"{now()} {redact(msg)}\n")
 def git(*args: str, timeout: int = 120) -> subprocess.CompletedProcess:
@@ -170,9 +177,14 @@ def load_table() -> dict | None:
     try: return json.loads(p.stdout)["ops"]
     except Exception: return None
 
+def capabilities_due(last_caps: float, now_s: float) -> bool:
+    return now_s - last_caps >= CAPS_REFRESH_S
+
+
 def capabilities(table_on_main: bool) -> dict:
     caps = {"builder": bool(os.environ.get("KY_BUILDER_DATABASE_URL")), "owner": bool(os.environ.get("KY_OWNER_DATABASE_URL")),
             "layer_verifier": bool(os.environ.get("KY_LAYER_VERIFIER_DATABASE_URL")),
+            "consumer_reader": bool(os.environ.get(CONSUMER_PROBE_KEY)),
             "pgenv": pathlib.Path("/Users/Dev/.config/pravaha/pgenv.sh").exists(),
             "gcloud": subprocess.run(["gcloud", "auth", "list", "--format=value(account)"], capture_output=True, text=True).stdout.strip() != "",
             "none": True, "ops_table_on_main": table_on_main, "production_slot": "PENDING" if FENCE.exists() else "free",
@@ -791,6 +803,65 @@ def orchestrator_rebuild_cancel_problem(req: dict) -> str | None:
     return "the target run-id is not the run of an orchestrator_rebuild in flight"
 
 
+def writer_absence_problem(rebuild: dict) -> str | None:
+    """None only when an ACCEPTED quiescence_check of this rebuild shows, measured AFTER the rebuild's terminal receipt, that no database session carries the rebuild's
+    PGAPPNAME marker (every connection the rebuild's writers open carries it, see execute()) and that the readback could see every role's sessions. A readback taken
+    while a writer still ran lists its session and does not count: the run row reading `stopped` proves nothing about the writer thread (Round A N10)."""
+    op = str(rebuild["operation_id"]); marker = session_marker(op)
+    if rebuild.get("session_marker") not in (None, marker): return f"the receipt of {op} names a different session marker than its operation id derives"
+    try: ended = utc_time(rebuild["ts"])
+    except (KeyError, TypeError, ValueError): return f"the receipt of {op} has no readable terminal time"
+    for path in sorted(DONE.glob("*.json")):
+        try:
+            check = json.loads(path.read_text()); got = accepted_readback(str(check["operation_id"]), "quiescence_check")
+            if got is None or check.get("kind") != "quiescence_check" or (check.get("args") or {}).get("operation") != op: continue
+            lines = [json.loads(line) for line in got[1].decode().splitlines() if line.startswith("{")]
+            found = [v for v in lines if isinstance(v, dict) and v.get("schema") == "ky.session_readback/1"]
+            seen = found[0] if len(found) == 1 else {}
+            if (seen.get("status") == "MEASURED" and seen.get("marker") == marker and seen.get("sees_all_sessions") is True
+                    and seen.get("sessions") == [] and utc_time(seen["measured_at"]) >= ended): return None
+        except (OSError, ValueError, KeyError, TypeError, AttributeError): continue
+    return (f"no accepted session readback of {op} taken after it ended shows zero live sessions carrying its marker {marker}: "
+            "file a quiescence_check for it once the rebuild has ended")
+
+
+def orchestrator_rebuild_teardown_problem(req: dict) -> str | None:
+    """Round A N10 (deletion safety; SR-K9-RESONANCE-MAP, N10 part) admission for `orchestrator_rebuild_teardown` and its dry run, run at the tail of validate (so again
+    immediately before execution): a teardown is admitted only when (1) no orchestrator_rebuild or orchestrator_rebuild_cancel of the run-id is in flight, (2) every
+    one of them that was started has a TERMINAL receipt (a cancel's run row reads `stopped` seconds before its writer thread ends; the rebuild's own receipt is written
+    only when its process has ended), (3) at least one orchestrator_rebuild of the run-id was started, and (4) each of those has proof of process absence
+    (writer_absence_problem). The run's state in the database is never consulted: it is the very signal that can read `stopped` beside a live writer. The absence
+    readback of a deletion therefore runs after all of this, because the teardown cannot start before it holds."""
+    if req.get("kind") not in ("orchestrator_rebuild_teardown", "orchestrator_rebuild_teardown_dryrun"): return None
+    run_id = (req.get("args") or {}).get("run-id")
+    if not (isinstance(run_id, str) and SAFE_ID.fullmatch(run_id)): return "run-id required: the run of the orchestrator_rebuild to tear down"
+    named = []
+    for folder in (INFLIGHT, DONE):
+        for path in sorted(folder.glob("*.json")):
+            try: other = json.loads(path.read_text())
+            except (OSError, ValueError):
+                if folder is INFLIGHT: return f"an unreadable in-flight entry ({path.name}) is unproven quiet: the run's writer cannot be shown to have ended"
+                continue
+            if not (isinstance(other, dict) and other.get("kind") in RUN_OPERATION_KINDS and isinstance(other.get("args"), dict) and other["args"].get("run-id") == run_id): continue
+            if folder is INFLIGHT: return f"{other['kind']} {other.get('operation_id')} of this run is still in flight: a teardown never starts beside a live writer"
+            named.append(other)
+    started = []
+    for other in named:
+        op = str(other.get("operation_id"))
+        try: record = json.loads((REC / f"{op}.json").read_text())
+        except (OSError, ValueError): return f"the receipt of {other['kind']} {op} is unreadable: its end is not proven"
+        if not (isinstance(record, dict) and record.get("operation_id") == op and record.get("kind") == other["kind"]): return f"the receipt of {other['kind']} {op} does not bind it"
+        if record.get("status") == "REFUSED": continue      # refused before its child was started: nothing ran
+        if record.get("status") not in RAN_TO_AN_END: return f"{other['kind']} {op} has no terminal receipt (status {record.get('status')}): the cancelled writer may still be running"
+        started.append(record)
+    rebuilds = [r for r in started if r["kind"] == "orchestrator_rebuild"]
+    if not rebuilds: return "no started orchestrator_rebuild of this run-id has a terminal receipt: the run's writer is not shown to have ended"
+    for rebuild in rebuilds:
+        why = writer_absence_problem(rebuild)
+        if why: return why
+    return None
+
+
 def orchestrator_rebuild_dryrun_problem(req: dict, table: dict) -> str | None:
     """SR-K9-PUBLISHABLE D7 (N.8) admission for the production `orchestrator_rebuild`, run at the tail of validate (so on BOTH routes, signed or mechanical):
     the request is admitted only if THIS executor's own receipt shows a COMPLETED `orchestrator_rebuild_dryrun` for the same identity (dry_run_check). A signer's
@@ -859,6 +930,31 @@ def served_probe_proof(req: dict, op: dict, rc: int | None, out: str) -> tuple[d
         if declared.get("store_body") is not True: return rec, "a body was stored for an endpoint declared digest-only"
         raw = body.encode() if isinstance(body, str) else b""
         if not isinstance(body, str) or len(raw) != length or hashlib.sha256(raw).hexdigest() != digest: return rec, "the stored body does not match its recorded length and sha256"
+    return rec, None
+
+
+def consumer_probe_proof(req: dict, rc: int | None, out: str, stderr: str = "") -> tuple[dict | None, str | None]:
+    """(record, problem) for a `consumer_probe`'s complete output (J-6l-a61). `record` is the ONE ky.consumer_probe/1 line when it names this operation, this request
+    digest and the requested probe id (else None); `problem` is None only when the record is MEASURED with HTTP 200, states `credentials_sent: true` (the header was
+    sent) and `credential_echoed: false`, carries its body digest and length, and neither stdout nor stderr contains the credential itself. An exit status alone proves nothing."""
+    key = os.environ.get(CONSUMER_PROBE_KEY)
+    if key and (key in out or key in stderr): return None, "the credential appears in the probe's output"
+    found = []
+    for line in out.splitlines():
+        try: value = json.loads(line)
+        except ValueError: continue
+        if isinstance(value, dict) and value.get("schema") == "ky.consumer_probe/1": found.append(value)
+    if len(found) != 1: return None, "consumer probe record missing or not unique"
+    rec = found[0]
+    if (rec.get("probe") != (req.get("args") or {}).get("probe") or rec.get("operation_id") != req.get("operation_id") or rec.get("request_sha256") != request_digest(req)):
+        return None, "consumer probe record does not bind this operation, request and probe"
+    if rec.get("credential_echoed") is not False: return rec, "probe record does not state that the credential was not echoed"
+    if rec.get("status") != "MEASURED": return rec, f"probe record status is {rec.get('status')}, not MEASURED"
+    if rec.get("credentials_sent") is not True: return rec, "probe record does not state that the credential was sent in the header"
+    code, length, digest = rec.get("http_status"), rec.get("body_bytes"), rec.get("body_sha256")
+    if not (type(code) is int and code == 200): return rec, f"the consumer path answered HTTP {code}, not 200"
+    if not (type(length) is int and length >= 0 and isinstance(digest, str) and HEX64.fullmatch(digest)): return rec, "probe record lacks the body length and sha256"
+    if "body" in rec: return rec, "probe record carries a body"
     return rec, None
 
 
@@ -1065,8 +1161,7 @@ def signer_acceptance_problem(req: dict) -> str | None:
         if not issued <= current < expires: return "approval expired or not yet valid"      # A8 §4: no age cap — valid until the request's own expiry
     except (KeyError, TypeError, ValueError): return "valid approval timestamp and a timezone-qualified request expires_at required"
     if a.get("request_sha256") != request_digest(req): return "approval does not bind the complete request"
-    kind = req["kind"]; required = []                                        # A8 §5: `required_rows` and `restore_verified` are retired as preconditions
-    if kind.endswith("_teardown"): required.append("backup_taken")
+    kind = req["kind"]; required = []                                        # A8 §5: `required_rows` and `restore_verified` are retired as preconditions; SR-A12-BACKUP-REMOVAL: so is `backup_taken` (no dump is taken)
     if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"): required.append("dry_run_passed")
     if any((a.get("checks") or {}).get(k) is not True for k in required): return "required backup/restore/dry-run attestation missing"
     return None
@@ -1125,6 +1220,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         lambda: measuring_cancel_problem(req),
         lambda: orchestrator_rebuild_cancel_problem(req),
         lambda: orchestrator_rebuild_dryrun_problem(req, table),
+        lambda: orchestrator_rebuild_teardown_problem(req),
         lambda: scheduler_policy_problem(req),
         lambda: served_probe_problem(req, op),
         lambda: smalltest_policy_problem(req),
@@ -1404,6 +1500,7 @@ def execute(req: dict, op: dict) -> tuple[int, str]:
     if op["needs"] == "builder": env["DATABASE_URL"] = os.environ["KY_BUILDER_DATABASE_URL"]
     elif op["needs"] == "owner": env["DATABASE_URL"] = os.environ["KY_OWNER_DATABASE_URL"]
     elif op["needs"] == "layer_verifier": env["DATABASE_URL"] = os.environ["KY_LAYER_VERIFIER_DATABASE_URL"]
+    elif op["needs"] == "consumer_reader": env[CONSUMER_PROBE_KEY] = os.environ[CONSUMER_PROBE_KEY]      # J-6l-a61: this kind's child alone receives the consumer credential
     env["KY_OPERATION_REQUEST"] = json.dumps(req, sort_keys=True, separators=(",", ":"))
     env["PGAPPNAME"] = session_marker(oid)                                      # A7 D-44: libpq tags every connection this child opens, so quiescence can see them
     env["SE_EPHE_PATH"] = os.environ.get("SE_EPHE_PATH", str(KY_ROOT / "ephe")); env["KY_ROOT"] = str(KY_ROOT)
@@ -1524,6 +1621,22 @@ def accepted_cloudrun_execution(readback_id: str, execution_name: str) -> dict |
             "completion_time": measured.get("completion_time"), "readback_output_sha256": record["output_sha256"]}
 
 
+def accepted_readback(readback_id: str, kind: str) -> tuple[dict, bytes] | None:
+    """(receipt, output bytes) of a read-only `kind` operation that COMPLETED with exit 0, whose output file still has the receipt's sha256 and that an ACCEPTED post
+    record binds (None when not provable). An unreadable file raises: the callers treat that as not provable. Same bar as accepted_cloudrun_execution, which is a pinned
+    function and so is left untouched."""
+    if not SAFE_ID.fullmatch(readback_id): return None
+    record = json.loads((REC / f"{readback_id}.json").read_text()); body = (REC / f"{readback_id}.output.txt").read_bytes()
+    accepted = json.loads((ACC / f"{readback_id}.post.json").read_text())
+    if not (record.get("kind") == kind and record.get("status") == "COMPLETED" and record.get("exit_code") == 0 and digest_bytes(body) == record.get("output_sha256")): return None
+    if not (accepted.get("result") == "ACCEPTED" and accepted.get("operation_id") == readback_id and accepted.get("request_sha256") == record.get("request_sha256")): return None
+    if accepted.get("by") in ("v1", "v2", "v3", "v4"): return record, body
+    checks = accepted.get("checks")      # the executor's own mechanical acceptance: its schema, and every check present and true
+    if accepted.get("by") == "executor-mechanical" and accepted.get("schema") == "ky.mechanical_acceptance/1" and isinstance(checks, dict) and checks and all(v is True for v in checks.values()):
+        return record, body
+    return None
+
+
 def mechanical_quiescence(req: dict, archived: pathlib.Path) -> str | None:
     """A7 D-44: `req` is a completed quiescence_check naming a fenced production operation (args.operation). The executor measures, from its
     own files and the check's session readback, that the operation is quiet — receipt terminal, not in flight, the fence names it, no live
@@ -1612,6 +1725,9 @@ def run_one(path: pathlib.Path, req: dict, op: dict) -> None:
         if cancelled is not None: extra["cancel"] = cancelled   # likewise: the execution state read back after the cancel (CANCELLED, or the observed state beside a FAILED receipt)
         probed, probe_problem = served_probe_proof(req, op, rc, out) if extra is not None and req["kind"] == "served_probe" else (None, None)
         if probed is not None: extra["probe"] = probed          # SR-TEARDOWN-AUTHORITY-GATE: status, content type, length and sha256 of the served body (the body only where the table allows)
+        consumed, consumer_problem = consumer_probe_proof(req, rc, out, stderr) if extra is not None and req["kind"] == "consumer_probe" else (None, None)
+        if consumed is not None: extra["consumer_probe"] = consumed      # J-6l-a61: typed fields only (no body, no credential) — the authenticated consumer-path measurement
+        probe_problem = probe_problem or consumer_problem
         ok = rc == 0 and problem is None and cancel_problem is None and probe_problem is None
         receipt(req, "COMPLETED" if ok else "FAILED", "" if ok else (problem or cancel_problem or probe_problem or "non-zero exit (read the postconditions; an exit status proves nothing)"), rc, out, extra, stderr)
         if ok and req["kind"] == "scheduler_resume": scheduler_backstop_satisfy(req)
@@ -1688,8 +1804,8 @@ def main() -> int:
                 table = load_table()
             except Exception as e: log(f"sync failed: {e}"); table = None
             last_sync = time.time()
-        if time.time() - last_caps > 300: caps = capabilities(table is not None); last_caps = time.time()
-        if table is None or (KY_ROOT / "HOLD").exists(): time.sleep(10); continue      # no table on main yet (before B-1), refs unreachable, or HOLD
+        if capabilities_due(last_caps, time.time()): caps = capabilities(table is not None); last_caps = time.time()
+        if table is None or (KY_ROOT / "HOLD").exists(): time.sleep(LOOP_TICK_S); continue      # no table on main yet (before B-1), refs unreachable, or HOLD
         if FENCE.exists(): fence_quiescent()  # reconcile independent small-test completion; retain the owner-controlled fence
         publish_teardown_completions()        # SR-TEARDOWN-COMPLETION: a committed teardown + its accepted absence complete without a fence
         publish_head_completions()            # M-W56-16: a committed head change + its independent readback and accepted digest complete without a fence
@@ -1710,7 +1826,7 @@ def main() -> int:
             receipt(req, "RUNNING", "accepted; in flight")
             pool, work = pool_for(req, production, readers, builder, cancel_lane)
             pool.submit(work, flight, req, op)
-        time.sleep(10)
+        time.sleep(LOOP_TICK_S)
 
 
 if __name__ == "__main__":

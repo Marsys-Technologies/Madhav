@@ -693,7 +693,7 @@ def test_executor_py_remaining_line_diff_is_the_git_line_only():
     ("MAX_TIMEOUT = 6 * 3600", "MAX_TIMEOUT = 7 * 3600"),
     ('if not issued <= current < expires: return "approval expired or not yet valid"', 'if not issued <= current: return "approval expired or not yet valid"'),
     ('return op.get("remote_async") is True or kind in REMOTE_ASYNC_KINDS', 'return op.get("remote_async") is True'),
-    ('if kind.endswith("_teardown"): required.append("backup_taken")', 'pass'),
+    ('if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"): required.append("dry_run_passed")', 'pass'),
     ('if k not in UNBOUND_REQUEST_FIELDS and not k.endswith("_expires_at")', 'if k not in UNBOUND_REQUEST_FIELDS'),
     ('"HOME", "PATH", "LANG"', '"HOME", "PATH", "LANG", "KY_BUILDER_DATABASE_URL"'),
     ('return f"kind {req[\'kind\']} is not enabled', 'return f"kind {req[\'kind\']} is disabled'),
@@ -926,7 +926,7 @@ def test_validate_reads_the_real_table_through_the_selected_repository(tmp_path,
     assert w.mod.validate(simple_request("finalize", "sutradhara"), table, ALL_CAPS) is None
 
 
-@pytest.mark.parametrize("kind", [*PROTECTED_WINDOW_BINDINGS, *PROVISIONING_BINDINGS, "http_probe", *REBUILD_CONTROL_BINDINGS])   # K9 kinds, verification_job, century_teardown and the head kinds are enabled here, not disabled
+@pytest.mark.parametrize("kind", [*PROTECTED_WINDOW_BINDINGS, *PROVISIONING_BINDINGS])   # K9 kinds, the K9 cancel and teardown kinds (shards K9-4a and K9-4b, W5W6 WP2), verification_job, century_teardown, the head kinds and (J-6l shard) http_probe are enabled here, not disabled
 def test_request_for_a_disabled_kind_is_not_enabled(tmp_path, monkeypatch, kind):
     w = World(tmp_path, monkeypatch, OPS_FILE.read_text())
     why = w.mod.validate(w.production_request(kind), w.table(), ALL_CAPS)

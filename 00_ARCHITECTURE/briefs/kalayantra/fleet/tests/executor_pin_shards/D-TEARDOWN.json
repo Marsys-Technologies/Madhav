@@ -1,0 +1,9 @@
+{
+ "schema": "ky.executor_pin_shard/2",
+ "item": "D-TEARDOWN",
+ "function_hashes": {
+  "W4": {
+   "signer_acceptance_problem": "c3131e8cd4ee051abfbec0b1d97bc1ae3b57d0324321b9e97c9547285b828657"
+  }
+ }
+}

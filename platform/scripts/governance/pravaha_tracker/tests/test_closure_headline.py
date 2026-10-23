@@ -23,13 +23,14 @@ REPO = Path(__file__).resolve().parents[5]
 MODEL_PATH = REPO / "00_ARCHITECTURE/control/kalayantra/plan_model.json"
 
 NOT_APPLICABLE = ["JOIN-ALL", "K-CERT-2", "W4-SAFETY-N01", "W4-SAFETY-N02", "KA3B-N1", "KA3B-N2", "OPS-NB-03",
-                  "V-K3b", "V-K5", "V-K6", "V-KA", "V-VC", "J-4c-pr2907"]
+                  "V-K3b", "V-K5", "V-K6", "V-KA", "V-VC", "J-4c-pr2907",
+                  "D-GOCHARA-TIMEOUT", "J-GOCHARA-TIMEOUT"]    # the last two: SR-AUDIT-NA-TIMEOUT (D-GOCHARA-TIMEOUT-NA)
 DEFERRED = ["J-7a", "J-7a-a62", "J-7a-pr3099", "KR-1", "KR-2", "J-8", "J-8-b63", "J-8-j3", "J-8a", "K9-5",
             "K9-5-NB-01"]
 DEFERRED_NB04 = ["J-4a-a25", "J-4a-a26", "J-3a-b44"]   # SR-A9-INTERP A9-NB-04: no phase brief reads their output;
                                                          # J-3a-b44 added by SR-A9-NB-04-B44 (its 4.1 baseline needs a25)
-DEFERRED_PREP = ["D-T2", "L0-K", "D-GOCHARA-TIMEOUT", "J-GOCHARA-TIMEOUT"]    # SR-W34-PREP-RULINGS 5b/5f, SR-CLOSE-NOW 4: deferred with
-                                                                               # re-entry, outside C-1 and the closure (A9 D-53)
+DEFERRED_PREP = ["D-T2", "L0-K"]    # SR-W34-PREP-RULINGS 5b: deferred with re-entry, outside C-1 and the closure (A9 D-53); the two
+                                    # GOCHARA-TIMEOUT items left this list for not_applicable (SR-AUDIT-NA-TIMEOUT)
 
 
 def _closure(model):
@@ -95,8 +96,9 @@ def decided(tmp_path_factory):
     cli.EVENTS, cli.load_model = str(log), lambda: model
     try:
         # D-J4C-PR2907-NA: #2907's content landed through #2901 (review X-20261019T150725Z-review-3596-pr2907)
+        # D-GOCHARA-TIMEOUT-NA: the legacy v3 materializer timeout, superseded by migration 1395 (SR-AUDIT-NA-TIMEOUT)
         for dec in sorted(d["id"] for d in model["decisions"]
-                          if d["id"].startswith(("D-A9-NA-", "D-J4C-PR2907-NA"))):
+                          if d["id"].startswith(("D-A9-NA-", "D-J4C-PR2907-NA", "D-GOCHARA-TIMEOUT-NA"))):
             assert cli.main(["decide", dec, "--outcome", "refused", "--as", "steward", "--delegated",
                              "--detail", f"A9 {dec}"]) == 0
     finally:
@@ -125,7 +127,7 @@ def test_not_applicable_does_not_spread_into_the_closure(decided):
 def test_the_headline_denominator_is_the_closure_and_every_deferred_item_is_listed(decided):
     _, snap = decided
     o = snap["overall"]
-    assert o["total"] == 181 and o["plan_wide"]["total"] == 274   # 183 -> 181: VC-1 and VC-2 leave with the retired VC-2 (SR-CLOSE-NOW 5); 275 -> 274: D-KA4B-NB02-NA dropped (SR-CLOSE-NOW.amend-7)
+    assert o["total"] == 181 and o["plan_wide"]["total"] == 276   # 183 -> 181: VC-1 and VC-2 leave with the retired VC-2 (SR-CLOSE-NOW 5); 275 -> 274: D-KA4B-NB02-NA dropped (SR-CLOSE-NOW.amend-7); 274 -> 276: D-GOCHARA-TIMEOUT-NA and D-J4B-1303-NA declared (SR-AUDIT-NA-TIMEOUT, SR-AUDIT-BOOKKEEPING)
     listed = {d["id"]: d for d in o["deferred"]}
     assert set(DEFERRED + DEFERRED_NB04 + DEFERRED_PREP) <= set(listed)
     assert all(listed[i]["re_entry"] for i in DEFERRED + DEFERRED_NB04 + DEFERRED_PREP)
@@ -262,3 +264,36 @@ def test_k_cert_carries_no_deferral_so_its_real_artifact_acceptance_can_count():
     assert (kcert.get("triage") or {}).get("class") == "a" and "re_entry" not in (kcert.get("triage") or {})
     assert "K-CERT" in load_closure(model)["closure"]
     assert kcert["detector"]["path"].endswith("K-CERT_ASSESSMENT_REVIEW.md")
+
+
+# SR-PARKED-OUT-OF-CAMPAIGN / SR-DT2-CANDIDATE (2026-10-22). Source: the two rulings in DECISIONS_SURROGATE.jsonl; mechanism: A9 D-51.3
+# (deferred items are listed apart, never counted) and CONTROL_PLANE.md (a recorded decision item reads done once its gates are done).
+PARKED_OUT = ["KR-1", "KR-2", "J-7a", "J-7a-pr3099", "J-7a-a62", "J-8", "J-8a", "J-8-b63", "J-8-j3", "J-4a-a25", "J-4a-a26",
+              "J-3a-b44", "L0-K"]
+
+
+def test_the_parked_items_read_deferred_with_re_entry_and_never_done_or_in_the_headline(tmp_path):
+    model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+    snap = _decide(model, tmp_path, {"D-T2": "approved"})
+    o = snap["overall"]
+    listed = {d["id"]: d for d in o["deferred"]}
+    rows = _rows(snap)
+    members = set(_closure(model)["closure"])
+    for iid in PARKED_OUT:
+        assert iid in listed and listed[iid]["re_entry"], iid          # listed apart, with the condition to come back
+        assert iid not in members, iid                                    # outside the headline count
+        assert rows[iid]["status"] != "done", iid                         # never shown as done
+    # all thirteen sit in the reconciliation's deferred group, none in the finish path or side work
+    by_class = {r["id"] for r in o["deferred"]}
+    assert set(PARKED_OUT) <= by_class
+    assert o["reconciliation"]["deferred"]["total"] >= len(PARKED_OUT) and o["reconciliation"]["unclassified"]["total"] == 0
+    assert o["reconciliation"]["sum_of_parts"] == o["reconciliation"]["plan_items"]
+
+
+def test_d_t2_reads_done_once_its_decision_is_recorded(tmp_path):
+    model = json.loads(MODEL_PATH.read_text(encoding="utf-8"))
+    rows = _rows(_decide(model, tmp_path, {"D-T2": "approved"}))
+    assert rows["D-T2"]["status"] == "done" and rows["D-T2"]["outcome"] == "approved"
+    # earned by the record: with no decision event the same item is not done (N.8)
+    assert _rows(build_snapshot(model, [], {}, {}, {}, now=NOW, closure=_closure(model)))["D-T2"]["status"] != "done"
+

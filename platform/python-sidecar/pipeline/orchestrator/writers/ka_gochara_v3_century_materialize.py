@@ -1250,7 +1250,7 @@ def _fetch_resonance_targets(conn, chart_id: str, event_class: str) -> list[str]
     """
     try:
         cur = conn.execute(
-            "SELECT DISTINCT target_ref FROM gochara_resonance_map "
+            "SELECT DISTINCT target_ref FROM gochara_resonance_map_served "
             "WHERE chart_id = %s AND event_class = %s ORDER BY target_ref",
             [chart_id, event_class],
         )
@@ -1305,12 +1305,14 @@ def _discover_event_classes(conn, chart_id: str) -> list[str]:
     produces the honest empty list — a query that never ran to completion
     is not that, and must not be reported as if it were.
 
-    I2: this is a plain SQL read against gochara_resonance_map — the exact
-    same table _fetch_resonance_targets above already reads — not an import
+    I2: this is a plain SQL read against gochara_resonance_map_served (migration
+    1404: the served partition of gochara_resonance_map; this writer is not part
+    of the K9 candidate plan, so it never reads a candidate's rows) — the exact
+    same relation _fetch_resonance_targets above already reads — not an import
     of gochara_grammar/gochara_intensity/ka_gochara_sweep.
     """
     rows = _query_fn(conn)(
-        "SELECT DISTINCT event_class FROM gochara_resonance_map "
+        "SELECT DISTINCT event_class FROM gochara_resonance_map_served "
         "WHERE chart_id = %s ORDER BY event_class",
         [chart_id],
     )

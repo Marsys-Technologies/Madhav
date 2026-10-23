@@ -101,7 +101,10 @@ const ALLOWED_TABLES = new Set([
   // coverage block's sweep_completeness (execution-axis) disclosure — the same table migration
   // 436 introduced for cross-attempt substep resumption; read-only here, no write path added.
   // Chart-scoped or global read-only reference tables; no write path added by any of the three.
+  // Migration 1404: the base table holds one partition per generation (a candidate rebuild's rows sit beside the served ones); the coverage
+  // block reads the served view, and the base table only to say WHY the served generation is empty.
   'gochara_resonance_map',
+  'gochara_resonance_map_served',
   'brahma_event_ontology',
   'build_substep_progress',
   // PARISHODHANA B1 (newly-discovered regression, distinct from CR-42): the D-1.6 S-1

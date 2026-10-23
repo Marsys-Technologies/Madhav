@@ -131,6 +131,25 @@ def test_c2_any_other_argument_exits_before_any_cloud_call(argv, capsys):
     assert caught.value.code == 2 and cloud.calls == []
 
 
+# ───────────── SR-RIGHT-SIZE amend-1: the builder job's DEFINITION ─────────────
+
+def test_rs1_the_builder_job_is_defined_at_2_vcpu_8gi_for_both_the_century_build_and_k9():
+    """SR-RIGHT-SIZE amend-1 (owner OWNER-CLOUD-RUNS-APPROVED-20261023): brahma-build-pipeline-job is the ONE job both the century build and the K9-4b rebuild execute
+    (century_contract.json image.job); a `gcloud run jobs execute` cannot override cpu/memory (platform/scripts/governance/gcloud_flag_reference_v1.json), so the
+    definition in deploy.yml is the only place the size is set. 8Gi/2 vCPU, measured against the century's peak RSS <= 427 MiB (CENTURY_SIZING.md)."""
+    lines = (REPO / ".github/workflows/deploy.yml").read_text(encoding="utf-8").splitlines()
+    steps = []                                  # the image re-point step is the update that also sets --task-timeout (another update elsewhere does not)
+    for i, line in enumerate(lines):
+        if "gcloud run jobs update brahma-build-pipeline-job" in line:
+            window = [x.strip() for x in lines[i:i + 14]]
+            if any(x.startswith("--task-timeout=") for x in window):
+                steps.append(window)
+    assert len(steps) == 1
+    step = steps[0]
+    assert [x for x in step if x.startswith("--memory")] == ["--memory=8Gi \\"] and [x for x in step if x.startswith("--cpu")] == ["--cpu=2 \\"]
+    assert "--task-timeout=86400 \\" in step
+
+
 # ───────────── C3 the job record ─────────────
 
 def test_c3_job_image_digest_commit_and_configuration():
@@ -140,7 +159,7 @@ def test_c3_job_image_digest_commit_and_configuration():
     assert (record["project"], record["region"], job["name"]) == ("madhav-astrology", "asia-south1", "brahma-build-pipeline-job")
     assert job["image"] == {"reference": f"{CR.IMAGE_REPO}:{SHA}", "tag": SHA, "digest": DIGEST}
     assert record["provenance"]["image_commit"] == SHA
-    assert (job["memory"], job["cpu"], job["timeout_seconds"]) == ("16Gi", "4", 86400)      # deploy.yml: --memory=16Gi --cpu=4 --task-timeout=86400
+    assert (job["memory"], job["cpu"], job["timeout_seconds"]) == ("16Gi", "4", 86400)      # the recorded SAMPLE in fixtures/cloudrun_readback/job.json (a pre-SR-RIGHT-SIZE job); the readback reports observed values, it does not judge them
     assert job["service_account"] == "data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com"
     assert record["execution"] is None
 

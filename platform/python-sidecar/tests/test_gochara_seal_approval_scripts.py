@@ -559,7 +559,7 @@ def execution(name="exec-1", **over):
     ex = {"metadata": {"name": name},
           "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": "28800",     # int64 fields arrive as decimal STRINGS (API/SDK shape)
                   "containers": [{"image": f"{REPO}@{IMG}", "command": list(xcheck_contract.ENTRYPOINT), "args": ARGS,
-                                  "resources": {"limits": {"cpu": "2", "memory": "8Gi"}},
+                                  "resources": {"limits": {"cpu": "1", "memory": "4Gi"}},
                                   "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG},
                                           {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}},
           "status": {"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1}}
@@ -882,12 +882,13 @@ def test_an_absent_timeout_is_refused_not_defaulted():
         xcheck(_del((*T, "timeoutSeconds")))
 
 
-@pytest.mark.parametrize("mem", ["8Gi", "8192Mi"])
+@pytest.mark.parametrize("mem", ["4Gi", "4096Mi"])
 def test_an_equivalent_quantity_spelling_is_accepted_by_value(mem):
-    assert xcheck(_mut((*T, "containers", 0, "resources"), {"limits": {"cpu": "2000m", "memory": mem}}))["execution"] == "exec-1"
+    assert xcheck(_mut((*T, "containers", 0, "resources"), {"limits": {"cpu": "1000m", "memory": mem}}))["execution"] == "exec-1"
 
 
-@pytest.mark.parametrize("lim", [{"cpu": "2", "memory": "4Gi"}, {"cpu": "1", "memory": "8Gi"}, {"cpu": 2, "memory": "8Gi"}, {"cpu": "2", "memory": 8589934592}, {"cpu": "2.0", "memory": "8Gi"}, {"cpu": "2", "memory": "8gi"}, {"cpu": "2", "memory": "8e9"}, {"cpu": "2"}])
+@pytest.mark.parametrize("lim", [{"cpu": "2", "memory": "4Gi"}, {"cpu": "1", "memory": "2Gi"}, {"cpu": 1, "memory": "4Gi"}, {"cpu": "1", "memory": 4294967296}, {"cpu": "1.0", "memory": "4Gi"}, {"cpu": "1", "memory": "4gi"}, {"cpu": "1", "memory": "4e9"}, {"cpu": "1"},
+                                 {"cpu": "2", "memory": "8Gi"}])
 def test_a_resource_limit_that_is_not_the_deployed_value_is_refused(lim):
     with pytest.raises(xc.Refused, match="limit"):
         xcheck(_mut((*T, "containers", 0, "resources"), {"limits": lim}))

@@ -399,7 +399,7 @@ def test_a_changed_request_or_head_an_expired_acceptance_or_an_omitted_check_ref
         partial = {k: v for k, v in accepted["checks"].items() if k != check}
         assert with_acceptance(checks=partial) == "required backup/restore/dry-run attestation missing", check
         assert with_acceptance(checks=dict(accepted["checks"], **{check: "true"})) == "required backup/restore/dry-run attestation missing"
-    for retired in ("backup_taken", "restore_verified"):                               # A8 §5: retired as preconditions (backup_taken stays for *_teardown only)
+    for retired in ("backup_taken", "restore_verified"):                               # A8 §5 / SR-A12-BACKUP-REMOVAL: retired as preconditions (backup_taken too, even for a *_teardown)
         assert with_acceptance(checks={k: v for k, v in accepted["checks"].items() if k != retired}) is None, retired
     assert with_acceptance(rows={"2": True, "3": False}) is None                        # A8 §5: required_rows retired
 

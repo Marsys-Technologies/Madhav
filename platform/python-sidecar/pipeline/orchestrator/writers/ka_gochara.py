@@ -196,18 +196,22 @@ class KaGocharaWriter(WriterBase):
         if candidate is None:
             return steps
         return steps + grain_steps(ctx, candidate, self.asset_id,
-                                   self._input_sources(ctx.db_conn, ctx.config['chart_id']))
+                                   self._input_sources(ctx.db_conn, ctx.config['chart_id'], candidate.generation))
+
+    @staticmethod
+    def _resonance_generation(ctx: ContextSpec) -> str | None:
+        """Migration 1404: the resonance partition this build reads. A candidate-bound build reads its OWN candidate's rows (what this
+        run's ka_gochara_resonance step wrote); an ordinary rebuild reads the served partition (None -> gochara_resonance_map_served)."""
+        candidate = bound_candidate(ctx.db_conn, getattr(ctx, 'build_id', None), ctx.config['chart_id'])
+        return None if candidate is None else candidate.generation
 
     def _plan_event_classes(self, ctx: ContextSpec) -> list[SubStep]:
         chart_id = ctx.config['chart_id']
         conn = ctx.db_conn
         query = _query_fn(conn)
+        generation = self._resonance_generation(ctx)
         try:
-            rows = query(
-                "SELECT DISTINCT event_class FROM gochara_resonance_map "
-                "WHERE chart_id = %s ORDER BY event_class",
-                [chart_id],
-            )
+            rows = query(*RM.event_classes_query(chart_id, generation))
         except Exception as exc:
             logger.warning("[ka_gochara] could not discover event_classes for "
                             "chart %s: %s -- honest empty plan.", chart_id, exc)
@@ -243,7 +247,7 @@ class KaGocharaWriter(WriterBase):
             event_class = step.key
             try:
                 with savepoint_scope(conn, "w2g_v2_targets_plan"):
-                    raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
+                    raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class, generation)
             except Exception as exc:
                 logger.warning(
                     "[ka_gochara] could not pre-check targets for chart %s "
@@ -267,18 +271,16 @@ class KaGocharaWriter(WriterBase):
         return remaining
 
     @staticmethod
-    def _input_sources(conn, chart_id: str) -> dict[str, list]:
+    def _input_sources(conn, chart_id: str, generation: str | None = None) -> dict[str, list]:
         """This writer's own input identity: per populated event class the
         resonance targets' class_fingerprint, plus the arc fingerprints."""
         query = _query_fn(conn)
         arc_fps = KaGocharaWriter._fetch_arc_fingerprints(query)
-        classes = [r["event_class"] for r in query(
-            "SELECT DISTINCT event_class FROM gochara_resonance_map "
-            "WHERE chart_id = %s ORDER BY event_class", [chart_id])]
+        classes = [r["event_class"] for r in query(*RM.event_classes_query(chart_id, generation))]
         ledger = []
         for event_class in classes:
             with savepoint_scope(conn, "w2g_v2_targets_grain"):
-                targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
+                targets = RM.fetch_resonance_targets(conn, chart_id, event_class, generation)
             fp = (class_fingerprint(event_class, GRAMMAR_VERSION, [t.target_ref for t in targets],
                                     BODIES, arc_fps) if targets else None)
             ledger.append([event_class, fp])
@@ -300,7 +302,7 @@ class KaGocharaWriter(WriterBase):
         produced = query(f"SELECT count(*) AS n FROM {TABLE} WHERE chart_id = %s AND generation = %s",
                          [chart_id, GENERATION_V2])[0]["n"]
         attest_inputs(conn, candidate, self.asset_id,
-                      sources=self._input_sources(conn, chart_id), produced_rows=int(produced))
+                      sources=self._input_sources(conn, chart_id, candidate.generation), produced_rows=int(produced))
         return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                             notes='candidate grain ka_gochara:inputs attested')
 
@@ -329,7 +331,7 @@ class KaGocharaWriter(WriterBase):
         query = _query_fn(conn)
 
         with savepoint_scope(conn, "w2g_v2_targets"):
-            raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
+            raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class, self._resonance_generation(ctx))
 
         if not raw_targets:
             self._upsert_build_state(
@@ -443,6 +445,9 @@ class KaGocharaWriter(WriterBase):
             f"{inserted} served, {collisions} collision(s) skipped, "
             f"horizon={horizon.start_date}..{horizon.end_date} ({horizon.status})"
         )
+        if result.mudda_overlap is not None:     # SR-W56-S3: counted per run, read back by the K9 receipts
+            notes += (f"; {result.mudda_overlap['reason']}={result.mudda_overlap['overlaps_named']} "
+                      f"(mudda lord unresolved inside each; {result.mudda_overlap['overlap_seconds_total']:g} s in all)")
         return WriterResult(asset_id=self.asset_id, rows_inserted=inserted,
                              duration_seconds=time.time() - t0, notes=notes)
 

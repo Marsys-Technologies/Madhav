@@ -63,6 +63,7 @@ def env_seconds(name: str, default: float, maximum: float = MAX_CONFIGURED_S, no
 
 # A loaded machine can make `gh pr list` take longer than 5 s (incident 2026-10-19: ~7.4 s at load ~60).
 CALL_TIMEOUT_S = env_seconds("PRAVAHA_CALL_TIMEOUT_S", 5.0)
+MISSING_REMOTE_REF = "couldn't find remote ref"      # git fetch of a branch that is not on origin (yet)
 # Budget for one live verification (`ky done`, the D-46 sweep): all of a detector's calls share it.
 VERIFY_BUDGET_S = env_seconds("PRAVAHA_VERIFY_BUDGET_S", 20.0)
 _EXTERNAL = threading.local()
@@ -396,7 +397,15 @@ class Detectors:
 
     def d_branch_merged(self, spec):
         self._fetch("main")
-        ref = self._resolve_ref(spec["ref"])
+        try:
+            ref = self._resolve_ref(spec["ref"])
+        except RuntimeError as exc:
+            # SR-AUDIT-BOOKKEEPING: a branch nobody has pushed yet (parked or future work) is "not yet", not a fault;
+            # any other fetch failure still raises and reads as a detector error.
+            if MISSING_REMOTE_REF in str(exc):
+                return DetectorResult("pending", f"{spec['ref']} does not exist on origin yet (not measured)", now_iso(),
+                                      "detector:branch_merged")
+            raise
         rc0, _ = _run(["git", "rev-parse", "--verify", "-q", ref], cwd=self.cfg.repo)
         if rc0 != 0:
             return DetectorResult("pending", f"{spec['ref']} does not exist yet", now_iso(), "detector:branch_merged")

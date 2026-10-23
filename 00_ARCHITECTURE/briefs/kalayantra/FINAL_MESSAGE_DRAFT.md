@@ -23,19 +23,21 @@ chain (V-K9, then C-1 to C-4). The campaign's close is not certification: the Su
 
 ## Deferred, not closed
 
-These are outside the close, each with a re-entry condition. They are listed in the close report and are never reported as closed.
+These are outside the close, each with a re-entry condition. They are listed in the close report and are never reported as closed. Thirteen of them (KR-1, KR-2, J-7a, J-7a-pr3099, J-7a-a62, J-8, J-8a, J-8-b63, J-8-j3, J-4a-a25, J-4a-a26, J-3a-b44, L0-K) were deferred out of the campaign by SR-PARKED-OUT-OF-CAMPAIGN (2026-10-22) and are carried, with their re-entry conditions, in `POST_CAMPAIGN_v1_0.md`.
 
 | Items | Re-entry |
 |---|---|
 | Legacy clean-up after the flip: J-7a, J-7a-a62, J-7a-pr3099, KR-1, KR-2 | after V-J6 is accepted and the served layer has run one week on 5.0 |
 | Tier-2 admissions and the corpus ingestion: D-T2, L0-K | post-flip, on the same condition |
-| Predecessor paperwork (Pravāha close report and archive): J-8, J-8-b63, J-8-j3, J-8a | at campaign close, as documentation |
+| Predecessor paperwork (Pravāha close report and archive): J-8, J-8-b63, J-8-j3, J-8a | post-campaign, as documentation |
 | Rehearsal census: K9-5, K9-5-NB-01 | when Suvarṇa schedules its certification census |
 | The 4.1 historical build and its baseline: J-4a-a25, J-4a-a26, J-3a-b44 | when the approved disposition of the 4.1 build is recorded, or a phase brief names it as a measured input |
-| The single materializer timeout ruling: D-GOCHARA-TIMEOUT | ruled when the century build's measured duration exists |
 
 Items that ended `not_applicable` by decision (each with its decision id in the report) are gaps or retirements as the report states them; none
 is counted as closed.
+
+The two materializer-timeout items (D-GOCHARA-TIMEOUT, J-GOCHARA-TIMEOUT) ended `not_applicable` by D-GOCHARA-TIMEOUT-NA (SR-AUDIT-NA-TIMEOUT, 2026-10-22):
+the century runs on ka_gochara_v5, whose writer timeout migration 1395 set and read back; re-entry only if J-4f shows a timeout binding.
 
 ## Decisions the owner may want to look at
 

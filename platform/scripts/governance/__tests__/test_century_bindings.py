@@ -94,8 +94,12 @@ def test_century_policy_is_routed_from_reviewed_source_and_demands_every_gate(tm
         return edited
 
     assert executor.smalltest_policy_problem(signed()) is None                       # the re-signing itself keeps a good request good
-    for gone in (['absence_receipt', 'absence_acceptance'], ['backup_label', 'backup_restore_sha256'], ['dryrun_receipt', 'dryrun_acceptance']):
+    # SR-A12-BACKUP-REMOVAL (supersedes the old J-4e rule "backup_label is mandatory for the real kind"): no dump is taken, so a century_dispatch with no
+    # backup_label / backup_restore_sha256 but everything else valid is ADMITTED; the absence and the staging dry run stay mandatory.
+    assert executor.smalltest_policy_problem(signed(backup_label=None, backup_restore_sha256=None)) is None
+    for gone in (['absence_receipt', 'absence_acceptance'], ['dryrun_receipt', 'dryrun_acceptance']):
         assert executor.smalltest_policy_problem(signed(**{k: None for k in gone})), f'{gone[0]} is mandatory for the real kind'
+    assert executor.smalltest_policy_problem(signed(backup_label=None, backup_restore_sha256=None, item_id='J-3c')) == 'century dispatch belongs to J-4e'      # any other defect still refuses
     dry = signed(kind='century_dispatch_dryrun', backup_label=None, backup_restore_sha256=None, dryrun_receipt=None, dryrun_acceptance=None)
     assert executor.smalltest_policy_problem(dry) is None                                        # the rollback needs the absence only
     assert executor.smalltest_policy_problem(signed(kind='century_dispatch_dryrun', absence_receipt=None, absence_acceptance=None, backup_label=None,

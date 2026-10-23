@@ -155,6 +155,23 @@ def test_valid_authorization_cannot_replace_required_evidence(table, executor, k
         else 'named evidence reference required')
 
 
+def test_a_teardown_with_no_backup_but_a_passing_dry_run_and_the_exact_scope_is_admitted_and_scope_drift_still_refuses(table, executor):
+    """SR-A12-BACKUP-REMOVAL (1): the signer's acceptance carries `dry_run_passed` only (smalltest_admission_support.approve writes no backup attestation);
+    the teardown is ADMITTED. The exact-scope evidence is unchanged: a scope that is not the staged launch's scope, and a dry run staged for another
+    scope, are still refused."""
+    req = request(executor, 'smalltest_teardown', {})
+    assert json.loads(Path(req['acceptance_receipt']).read_text())['checks'] == {'dry_run_passed': True}, 'premise: the acceptance names no backup'
+    assert executor.validate(req, table, caps()) is None
+    drifted = json.loads(json.dumps(req))
+    drifted['smalltest_scope'] = dict(req['smalltest_scope'], run_id='11111111-2222-4333-8444-555555555555')
+    approve(executor, drifted)
+    assert executor.validate(drifted, table, caps()) == 'scope differs from the accepted staged launch/manifest identity'      # refused for its own reason although the approval is valid
+    no_dry = json.loads(json.dumps(req))
+    no_dry.pop('dryrun_receipt')
+    approve(executor, no_dry)
+    assert executor.validate(no_dry, table, caps()) == 'named evidence reference required'
+
+
 @pytest.mark.parametrize('kind,field', [
     ('smalltest_teardown', 'dryrun_receipt'),
     ('smalltest_dispatch', 'absence_receipt'),

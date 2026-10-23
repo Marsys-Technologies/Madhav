@@ -1,0 +1,133 @@
+{
+ "schema": "ky.trial_gate_profile/1",
+ "profile_id": "PLACEHOLDER-PLAN-RECOMMENDED-DEFAULTS-20261021",
+ "final": false,
+ "provenance": "PLACEHOLDER. PLAN.md \u00a74.2/\u00a74.3 recommended defaults (Q4 b nodes unscored, Q9 a nodes undecided). Owner confirmation pending; ANSWERS.md is the proposal.",
+ "trial_classes": [
+  "bereavement",
+  "chronic_onset",
+  "illness_acute",
+  "major_loss",
+  "achievement_recognition",
+  "business_launch",
+  "financial_deception",
+  "foreign_settlement",
+  "parental_event",
+  "property_acquisition",
+  "psychological_arc",
+  "spiritual_turn"
+ ],
+ "answers": {
+  "q4": "b",
+  "q9": "a"
+ },
+ "zero_reasons": [
+  "applicability_undeclared",
+  "value_mapping_undeclared",
+  "vedha_overlay_not_bound",
+  "orb_not_ratified",
+  "dynamic_objective_solver_guarantee_not_available"
+ ],
+ "allowed_reasons": [
+  {
+   "reason": "state_boundaries_incomplete",
+   "when": {},
+   "source": "PLAN \u00a74.2 (legitimate remaining)"
+  },
+  {
+   "reason": "solver_budget_exhausted",
+   "when": {},
+   "source": "PLAN \u00a74.2; capped by solver_budget_exhausted_max_share"
+  },
+  {
+   "reason": "monotone_arc_not_established",
+   "when": {},
+   "source": "PLAN \u00a72.2 H1 / \u00a72.7 (I) INTERPRETATION: a named Q13a blank, allowed"
+  },
+  {
+   "reason": "solver_certificate_incomplete",
+   "when": {},
+   "source": "PLAN \u00a72.7 (I) INTERPRETATION: a named Q13a blank, allowed"
+  },
+  {
+   "reason": "agent_nature_node_undecided",
+   "when": {
+    "q4": [
+     "b"
+    ]
+   },
+   "source": "PLAN \u00a74.2 P1 row (Q4 b: nodes unscored)"
+  },
+  {
+   "reason": "node_obstruction_undecided",
+   "when": {
+    "q9": [
+     "a"
+    ]
+   },
+   "source": "PLAN \u00a74.3 G-2 example (only if Q9a)"
+  },
+  {
+   "reason": "node_residence_unknown",
+   "when": {
+    "q9": [
+     "a"
+    ]
+   },
+   "source": "PLAN \u00a73.4 reasons carried through"
+  },
+  {
+   "reason": "obstructor_residence_unknown",
+   "when": {
+    "q9": [
+     "a",
+     "b",
+     "c"
+    ]
+   },
+   "source": "PLAN \u00a74.2 P2 rows"
+  },
+  {
+   "reason": "no_aspect_rule_defined_at_offset",
+   "when": {},
+   "source": "SR-D6-OBJECTIVE-UNKNOWN (b)"
+  }
+ ],
+ "share_floors": {
+  "p3_p4": 0.9,
+  "p2": {
+   "by": "q9",
+   "floors": {
+    "a": 0.4,
+    "b": 0.9,
+    "c": 0.9
+   }
+  },
+  "p1": {
+   "by": "q4",
+   "floors": {
+    "a": 0.9,
+    "b": 0.2
+   }
+  }
+ },
+ "share_floors_note": "Floors are PLAN \u00a74.2 lower bounds (P3/P4 0.90; P2 0.40 under Q9a, 0.90 under Q9b; P1 0.20 under Q4b, 0.90 under Q4a). Q9 c is NOT in the plan's table: floor 0.90 is an (I) INTERPRETATION (nodes decided, as b).",
+ "solver_budget_exhausted_max_share": 0.005,
+ "runtime": {
+  "cap_s": 72000,
+  "abort_fraction": 0.8,
+  "margin": 0.75,
+  "century_classes": 26,
+  "speed_factor": 1.0,
+  "century_horizon": null,
+  "verifier_solver_check_s_per_class": 600,
+  "max_load_per_core": 1.0,
+  "max_load_per_core_ruling": "PLACEHOLDER-SURROGATE-RULING-G5-MAX-LOAD-PER-CORE: 1.0 is an (I) INTERPRETATION default (HARNESS-3.2, D-10); the final value is a surrogate ruling not yet made"
+ },
+ "crosscheck": {
+  "sample_rate": 0.03,
+  "top_n_mixed": 5,
+  "dense_max_days": 3,
+  "dense_step_s": 1
+ }
+}

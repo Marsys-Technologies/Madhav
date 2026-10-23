@@ -97,15 +97,16 @@ def test_w2_service_payload_shapes_are_exact_and_immutable():
         "chart_id", "ayanamsha_id", "target_lords", "related_lords",
         "date_start", "date_end", "max_level", "prana_grain",
         "systems_queried", "windows", "kp_windows", "total_windows",
-        "high_agreement_count",
+        "high_agreement_count", "single_tier_windows", "judgment_flags",   # SR-DASHA-SINGLE-TIER
     )
     assert _field_names(EligibleWindow) == (
         "dasha_row_id", "chart_id", "ayanamsha_id", "system_id", "level_n",
         "lord_graha", "start_date", "end_date", "ancestor_lords",
         "eligibility_band", "eligibility_score", "cross_dasha_agreement",
         "kp_sublevel", "kp_sub_lord", "is_prana_computed",
+        "verification_pass_status", "single_tier_input",                     # SR-DASHA-SINGLE-TIER
     )
-    assert _field_names(CrossDashaAgreement) == ("count", "systems_agreeing")
+    assert _field_names(CrossDashaAgreement) == ("count", "systems_agreeing", "single_tier_systems")
     assert _field_names(MuhuratWindow) == (
         "event", "start_utc", "end_utc", "star_rating", "score", "breakdown",
     )

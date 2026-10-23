@@ -498,7 +498,16 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Evaluation re-pinned at the SR-OD1 merge-back wave 3c-e (f4-exact + reason-one-name + early-defects on the wave-3c-d head): record_derivation, record_verifier and scope_response (f4-exact: the stored REAL columns they read
     # are read ::float8) and dasha_read (reason-one-name: PERIOD_TABLE_ENDS_REASON is the one name dasha_horizon_exhausted) are evaluation-stage modules. Re-derived ONCE from the final merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin daff3567... is the wave-3c-d head; the same script reproduces that pin on the wave-3c-d tree); no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "b3baf81f9a1e8c2954dd5ab48c78a50bae778cd08c3660f977e6c0b34e19d6a4"
+    # Evaluation re-pinned for SR-W56-S3 (honest-null for Tajika mudda boundary overlaps, #3850): gochara_kernel.dasha_read changed (the boundary-overlap honest null). Re-derived
+    # from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (main alone gives e5fae125...); geometry is unchanged
+    # and no golden component is re-captured (this fixture's chart has no consecutive-boundary overlap).
+    # Evaluation re-pinned for SR-DASHA-SINGLE-TIER (#3883): gochara_kernel.dasha_read and gochara_grammar.read_tier_policy changed (the governed dasha reader admits tier
+    # single for five systems into flagging consumers only). Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (main alone gives 91aabdc8...); geometry and window are unchanged and no golden component is re-captured.
+    # Evaluation re-pinned ONCE at I1-FINAL (origin/main merged into the integration branch after GEOMETRY-PIN-ONCE): main's #3850 (mudda-overlap honest null) and #3883 (single-tier dasha read) change dasha_read,
+    # the only evaluation-stage modules main touched, and the integration branch has its own (DASH table-end, reason-one-name) edits to the same file. Re-derived ONCE from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin b3baf81f... is the pre-merge head; main's own pin 16cea5f4... is on main's tree); geometry is unchanged (27edba25...); no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "8168cbfc2edf022868dc72b25b0ec5643b23cbcbf5f6578ce9f1ae5099a53c2c"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
@@ -590,4 +599,8 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned at the SR-OD1 merge-back wave 3c-f (ephe-once + tie-literal): vedha_verifier (ephe-once: probes use the once-per-thread ephemeris path) and window_solver / window_solver_check (tie-literal, SR-NEAR-STATION-TIE applied
     # literally: a station zone blanks only a tie set that lies inside it) move the window stage. Re-derived ONCE from the final merged tree's real bytes the same way (the prior pin 50695734... is the wave-3c-e head, reproduced
     # by the same script on that tree); evaluation is unchanged (b3baf81f...); no golden component is re-captured.
-    assert got["implementation"]["window"] == "a5f05e4c26cae7f71d39e63c0ef6bcc6e00e07eff75ae2e6ce608943ec13ef1c"
+    # Window re-pinned for SR-W56-S3 (#3850): gochara_kernel.seal_brief changed (the window stage's only touched module). Re-derived the same way from the merged tree's real
+    # bytes (main alone gives 7dc92acc...); evaluation is re-pinned above, geometry is untouched, and no golden component is re-captured.
+    # Window re-pinned ONCE at I1-FINAL (origin/main merged after GEOMETRY-PIN-ONCE): main's #3850 seal_brief change (mudda-overlap disclosure) joins the integration branch's window-stage edits. Re-derived ONCE from the
+    # merged tree's real bytes the same way (the prior pin a5f05e4c... is the pre-merge head; main's own pin 5148dee9... is on main's tree); geometry is unchanged (27edba25...); no golden component is re-captured.
+    assert got["implementation"]["window"] == "75c3fd11e0a5035977897d53de470081173ff5d3dffdb1b4d253b39b8d5b0058"

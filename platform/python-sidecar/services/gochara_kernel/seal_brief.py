@@ -275,6 +275,7 @@ def _build_payload(conn, chart_id: str, generation: str, *, sealing_commit: str 
         "result_policy": manifest_policy(conn, chart_id, generation),
         **_qualification_table_entry(vector),
         **_numerical_gate_entry(conn, chart_id, generation),
+        **_mudda_overlap_entry(conn, chart_id),
         "candidate_gate": {"source": "candidate_adapter/1 over ka_gochara_candidate_gate_violations",
                            "violations": sorted((f"{v['event_class']}/{v['path_id']}@{v['rule_version']}:{v['violation']}"
                                                  for v in violations))},
@@ -395,6 +396,15 @@ def _numerical_gate_entry(conn, chart_id: str, generation: str) -> dict:
     from . import numerical_window_gate as nwg
     verdict = nwg.generation_verdict(conn, chart_id, generation)
     return {} if verdict["status"] == nwg.NOT_APPLICABLE else {"numerical_window_gate": verdict}
+
+
+def _mudda_overlap_entry(conn, chart_id: str) -> dict:
+    """SR-W56-S3: the named L1 Tājika mudda boundary overlaps (reason `l1_mudda_boundary_overlap`) the dasha readers blank, COUNTED from the
+    governed read. The key is present only when the chart has such overlaps, so every brief of a chart without them stays byte-identical;
+    an unreadable chart reads `not_readable` with its typed refusal code — never a silent zero."""
+    from .dasha_read import mudda_overlap_disclosure
+    found = mudda_overlap_disclosure(conn, chart_id)
+    return {} if found["status"] == "counted" and not found["overlaps_named"] else {"mudda_boundary_overlap": found}
 
 
 def _policy_disclosure(policy: str) -> str:

@@ -81,7 +81,9 @@ it('old temporal tools still return their golden shapes and isolate private cand
     expect((await getCapability(`marsys://tool/L3/${name}`)!.handler!({ chart_id: 'chart' }, {})).content)
       .toMatchObject({ chart_id: 'chart', [field]: [{ id: 'legacy-1' }], count: 1, total_matching: 1, more_available: false })
   }
-  for (const [sql] of db.mock.calls) expect(sql).toContain('generation IS NULL')
+  // temporal view: the legacy NULL partition. Obstruction periods (SR-K9-WRITE-SCOPE): the SERVED partition (the head's rows
+  // when it holds any, else the legacy rows); both exclude every unpublished candidate generation from data and counts.
+  for (const [sql] of db.mock.calls) expect(sql).toMatch(/generation IS NULL|o\.generation IS NOT DISTINCT FROM \(SELECT h\.generation FROM kala_layer_head h/)
 })
 
 // Real SQL oracle, explicitly enabled by the item's precheck. All writes are
@@ -96,7 +98,7 @@ CREATE TEMP TABLE kala_darshana (id bigint, chart_id uuid, generation text, asse
 CREATE TEMP TABLE kala_obstruction (LIKE kala_darshana);
 CREATE TEMP TABLE kala_gochara_contacts (chart_id uuid, generation text, contact_id text, t_in timestamptz, t_out timestamptz);
 CREATE TEMP TABLE kala_bhavishya (id bigint, chart_id uuid, window_start date, window_end date);
-CREATE TEMP TABLE kala_convergence (convergence_id bigint, chart_id uuid, window_start date, window_end date);
+CREATE TEMP TABLE kala_convergence (convergence_id bigint, chart_id uuid, window_start date, window_end date, generation text DEFAULT '4.1');
 CREATE TEMP TABLE kala_jivana_parva (id bigint, chart_id uuid, start_year int, end_year int,
   high_convergence_count int, avg_effective_score numeric, narrative jsonb);
 INSERT INTO kala_layer_head VALUES ('${fixtureChart}', '4.1', '2026-10-09T00:00:00Z');
