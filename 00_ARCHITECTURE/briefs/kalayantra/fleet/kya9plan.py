@@ -222,6 +222,8 @@ TIMEOUT_RULED_DECISION = "D-GOCHARA-TIMEOUT"     # the existing decision item th
 A55J_WORDING = "verification job configured; executes only on an executor dispatch; no schedule"
 A55J_TITLE_OLD = "and the verification job configured but disabled"
 A55J_TITLE_NEW = f"and the {A55J_WORDING} (SR-A55J-GAPS C8, option a)"
+J4B_TITLE_OLD = "verification job configured but disabled"
+J4B_TITLE_NEW = f"{A55J_WORDING} (SR-A55J-GAPS C8, option a)"
 A55J_NOTES_OLD = "principals, grants and the disabled job config are measured by readbacks"
 A55J_NOTES_NEW = (f"principals, grants and the job config ({A55J_WORDING}: SR-A55J-GAPS C8 option a; enabled:true is the intended state "
                   "since J-4b and step 9 used it) are measured by readbacks")
@@ -263,19 +265,35 @@ A55M_ACT_NEW = {
          "roles/run.jobsExecutorWithOverrides for serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com. The probe reads "
          "that job's policy only; the absence of a project-level roles/run.* binding is not part of this receipt. The earlier request "
          "J-4c-a55m.act13-run-job-iam-20261022T2304Z was REFUSED (missing field kind) and is superseded (SR-A55J-GAPS)."),
-    14: ("EVIDENCED by the iam_readback receipt J-4c-a55m.act14-project-cloudsql-client-20261022T2306Zb (kind iam_readback, read-only; "
+    14: ("EVIDENCED by two iam_readback receipts (kind iam_readback, read-only; both COMPLETED, exit 0; probe project_iam_member_role), "
+         "one per principal that needs roles/cloudsql.client: (1) J-4c-a55m.act14-project-cloudsql-client-20261022T2306Zb (MEASURED "
+         "2026-10-22T23:06:08Z): held:true for member serviceAccount:gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com on "
+         "roles/cloudsql.client, which the verification job itself needs to reach the database; (2) "
+         "J-4c-a55m.act14-github-actions-cloudsql-client-20261023T0015Z (MEASURED 2026-10-23T00:15:10Z): held:true for member "
+         "serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com on roles/cloudsql.client, project-wide, which the "
+         "workflows need to reach the database through the connector (the runbook's Act 14 names github-actions@). Both principals "
+         "need the role and both are evidenced. The earlier request J-4c-a55m.act14-project-cloudsql-client-20261022T2304Z was REFUSED "
+         "(missing field kind) and is superseded (SR-A55J-GAPS)."),
+}
+# the round-2 act 14 text (PR #3899 first push); re-applied models carry it, so it is a second replace source
+A55M_ACT14_ROUND2 = ("EVIDENCED by the iam_readback receipt J-4c-a55m.act14-project-cloudsql-client-20261022T2306Zb (kind iam_readback, read-only; "
          "COMPLETED, exit 0; probe project_iam_member_role, MEASURED 2026-10-22T23:06:08Z): held:true for member "
          "serviceAccount:gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com on roles/cloudsql.client. OPEN POINT: the "
          "runbook's Act 14 names github-actions@ as the proxy identity, and this receipt measured the verifier runtime service account, so "
          "the github-actions@ binding is NOT evidenced by it; the reviewer decides which identity the proxy uses. The earlier request "
-         "J-4c-a55m.act14-project-cloudsql-client-20261022T2304Z was REFUSED (missing field kind) and is superseded (SR-A55J-GAPS)."),
-}
+         "J-4c-a55m.act14-project-cloudsql-client-20261022T2304Z was REFUSED (missing field kind) and is superseded (SR-A55J-GAPS).")
 A55M_NOTES_ACTS_OLD = "No new executor kind is assumed; acts 12 and 13 (and 14 directly) have no existing readback."
 A55M_NOTES_ACTS_NEW = ("Acts 12-14 are evidenced by the iam_readback executor kind (#3894): receipts J-4c-a55m.act12-logging-view-20261022T2306Zb, "
-                       "J-4c-a55m.act13-run-job-iam-20261022T2306Zb, J-4c-a55m.act14-project-cloudsql-client-20261022T2306Zb (act 14: see the open "
-                       "point in its step text). The FB-19 publication-row CHECK (1307, never a migration) is superseded by the migration-1379 "
+                       "J-4c-a55m.act13-run-job-iam-20261022T2306Zb, and for act 14 both J-4c-a55m.act14-project-cloudsql-client-20261022T2306Zb "
+                       "(verifier runtime service account) and J-4c-a55m.act14-github-actions-cloudsql-client-20261023T0015Z (github-actions@). "
+                       "The FB-19 publication-row CHECK (1307, never a migration) is superseded by the migration-1379 "
                        "authority-head guard, read back by J-4c-a55m.testslice-refusal-20261022T2054Z (SR-A55M-TESTSLICE). No completion is "
                        "asserted by this text: the item completes only on its own receipt, steps and acceptance.")
+A55M_NOTES_ACTS_ROUND2 = ("Acts 12-14 are evidenced by the iam_readback executor kind (#3894): receipts J-4c-a55m.act12-logging-view-20261022T2306Zb, "
+                          "J-4c-a55m.act13-run-job-iam-20261022T2306Zb, J-4c-a55m.act14-project-cloudsql-client-20261022T2306Zb (act 14: see the open "
+                          "point in its step text). The FB-19 publication-row CHECK (1307, never a migration) is superseded by the migration-1379 "
+                          "authority-head guard, read back by J-4c-a55m.testslice-refusal-20261022T2054Z (SR-A55M-TESTSLICE). No completion is "
+                          "asserted by this text: the item completes only on its own receipt, steps and acceptance.")
 
 
 # SR-DT2-CANDIDATE (owner surrogate madhav-44, 2026-10-22 20:05Z): D-T2 decided (a) — Sudarśana admitted as a CANDIDATE judge method.
@@ -405,10 +423,13 @@ def apply_model_edits(model: dict) -> dict:
     # SR-A55M-TESTSLICE / SR-A55J-GAPS (bookkeeping round 2): text only
     a55m["brief"]["tests"] = [
         A55M_PUBLICATION_NEW if t.startswith(A55M_PUBLICATION_PREFIX) else
-        t.replace(A55M_JOB_OLD, A55M_JOB_NEW).replace(A55M_ACT_OLD[14], A55M_ACT_NEW[14]) if t.startswith("Act 14 (") else
+        t.replace(A55M_JOB_OLD, A55M_JOB_NEW).replace(A55M_ACT_OLD[14], A55M_ACT_NEW[14]).replace(A55M_ACT14_ROUND2, A55M_ACT_NEW[14]) if t.startswith("Act 14 (") else
         t.replace(A55M_ACT_OLD[12], A55M_ACT_NEW[12]).replace(A55M_ACT_OLD[13], A55M_ACT_NEW[13]).replace(A55M_JOB_OLD, A55M_JOB_NEW)
         for t in a55m["brief"]["tests"]]
-    a55m["brief"]["notes"] = a55m["brief"]["notes"].replace(A55M_NOTES_ACTS_OLD, A55M_NOTES_ACTS_NEW)
+    a55m["brief"]["notes"] = (a55m["brief"]["notes"].replace(A55M_NOTES_ACTS_OLD, A55M_NOTES_ACTS_NEW)
+                              .replace(A55M_NOTES_ACTS_ROUND2, A55M_NOTES_ACTS_NEW))
+    j4b = items["J-4b"]
+    j4b["title"] = j4b["title"].replace(J4B_TITLE_OLD, J4B_TITLE_NEW)
     a55j = items["J-4b-a55j"]
     a55j["title"] = a55j["title"].replace(A55J_TITLE_OLD, A55J_TITLE_NEW)
     a55j["brief"]["tests"] = [t if A55J_TEST_NEW in t else t.replace(A55J_TEST_OLD, A55J_TEST_NEW) for t in a55j["brief"]["tests"]]
