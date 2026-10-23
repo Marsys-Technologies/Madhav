@@ -17,6 +17,7 @@ import json
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 from services.kala_core.stored_verification import has_stored_verification
 import logging
+import math
 from datetime import date
 
 import psycopg
@@ -230,6 +231,31 @@ def _select_top_predicates_with_class_quota(
 
     selected.sort(key=_sort_key)
     return selected[:limit]
+
+
+# ── target-unresolved named blank (SR-K9B-TRIAGE; CLAUDE.md §N.7.6) ──────────
+# ka_yojaka writes `target_longitude_deg: null, null_reason: 'target_unresolved'` when a
+# predicate's target cannot be resolved from L1. Mode A/B scan for transits against that
+# longitude, so such a predicate has nothing to scan: it yields NO Mode A/B window, is counted by
+# name in the substep result notes and the run log (the orchestrator keeps no per-writer receipt field: FROZEN contract), and never receives a float or
+# a default longitude (the old `.get(key, 0.0)` + float() crashed on an explicit null and
+# would have invented 0 deg for an absent key).
+TARGET_UNRESOLVED = 'target_unresolved'
+
+
+def _resolved_target_longitude(pred_dict: dict) -> float | None:
+    """The predicate's target longitude when it is a real finite number, else None (a named blank)."""
+    value = (pred_dict.get('transit_trigger_jsonb') or {}).get('target_longitude_deg')
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        return None
+    return float(value)
+
+
+def _target_blank_note(blanks: list[dict]) -> str:
+    """Notes text for the substep result: the count of predicates blanked for an unresolved target, '' when there are none."""
+    if not blanks:
+        return ''
+    return f"{TARGET_UNRESOLVED}={len(blanks)} (target_longitude_deg NULL: no Mode A/B window computed for these predicates)"
 
 
 @records_swiss_backend
@@ -659,7 +685,7 @@ class _LegacyKaSangamWriter(WriterBase):
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, near_deduped, 'near')
             self._record_substep(conn, chart_id, 'near', rows)
-        return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
+        return WriterResult(asset_id='ka_sangam', rows_inserted=rows, notes=_target_blank_note(self._target_blanks))
 
     def _substep_lifetime(self, conn, chart_id: str, idx: int, dry_run: bool) -> WriterResult:
         pred      = self._lt_preds[idx]
@@ -704,7 +730,7 @@ class _LegacyKaSangamWriter(WriterBase):
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, deduped, 'lifetime')
             self._record_substep(conn, chart_id, f'lifetime:{idx}', rows)
-        return WriterResult(asset_id='ka_sangam', rows_inserted=rows)
+        return WriterResult(asset_id='ka_sangam', rows_inserted=rows, notes=_target_blank_note(self._target_blanks))
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
@@ -727,6 +753,25 @@ class _LegacyKaSangamWriter(WriterBase):
         horizon_start_jd = _date_to_jd(horizon_start)
         horizon_end_jd   = _date_to_jd(horizon_end)
         all_windows: list[dict] = []
+        blanks: list[dict] = []
+        self._target_blanks = blanks        # read by the substeps for their notes; one list per call
+
+        def _mode_d_windows(pred_dict: dict, primary_domain) -> list[dict]:
+            try:
+                windows = mode_d_av_bindhu(
+                    predicate=pred_dict,
+                    horizon_start_jd=horizon_start_jd,
+                    horizon_end_jd=horizon_end_jd,
+                    gochara_service=gochara_service,
+                    enrichment_context=enrichment_context,
+                )
+            except Exception as exc:
+                logger.warning("ka_sangam: Mode D failed for signal %s: %s", pred_dict.get('signal_id'), exc)
+                return []
+            for w in windows:
+                w['primary_domain'] = primary_domain
+            return windows
+
         for pred_dict in pred_dicts:
             sig_id    = pred_dict.get('signal_id')
             sig_class = (pred_dict.get('signature_class') or '').upper()
@@ -755,7 +800,20 @@ class _LegacyKaSangamWriter(WriterBase):
 
             # D-3 T-6: target_lon feeds TRIGGER's mechanism_lon/target_lon below —
             # same longitude mode_a_search/mode_b_sweep already scan against.
-            target_lon = float((pred_dict.get('transit_trigger_jsonb') or {}).get('target_longitude_deg', 0.0))
+            target_lon = _resolved_target_longitude(pred_dict)
+            if target_lon is None:
+                # Named blank (SR-K9B-TRIAGE): nothing to scan against, nothing invented. services/ka_sangam/engine.py mode_a_search / mode_b_sweep
+                # return no window for a null target on their own; this only stops the float() of None above them. Mode D is sign-level and reads no
+                # target, so it still runs for the first predicate of the call exactly as before.
+                blanks.append({'signal_id': sig_id, 'reason': TARGET_UNRESOLVED})
+                logger.info("ka_sangam: signal %s blank (%s): no target longitude", sig_id, TARGET_UNRESOLVED)
+                if keepalive:
+                    keepalive()
+                if pred_dicts and pred_dict is pred_dicts[0]:
+                    all_windows.extend(_mode_d_windows(pred_dict, primary_domain))
+                    if keepalive:
+                        keepalive()
+                continue
             moon_sign_idx = _SIGN_NAME_TO_IDX.get(native_ctx.moon_sign)
             vedha_rules = (enrichment_context.vedha_rules if enrichment_context else None) or None
 
@@ -820,21 +878,11 @@ class _LegacyKaSangamWriter(WriterBase):
             # produces N×K duplicate windows with different signal_ids that bypass the dedup
             # key check (which includes signal_id).
             if pred_dicts and pred_dict is pred_dicts[0]:
-                try:
-                    new_windows_d = mode_d_av_bindhu(
-                        predicate=pred_dict,
-                        horizon_start_jd=horizon_start_jd,
-                        horizon_end_jd=horizon_end_jd,
-                        gochara_service=gochara_service,
-                        enrichment_context=enrichment_context,
-                    )
-                    for w in new_windows_d:
-                        w['primary_domain'] = primary_domain
-                    all_windows.extend(new_windows_d)
-                except Exception as exc:
-                    logger.warning("ka_sangam: Mode D failed for signal %s: %s", sig_id, exc)
+                all_windows.extend(_mode_d_windows(pred_dict, primary_domain))
                 if keepalive:
                     keepalive()
+        if blanks:      # the orchestrator does not persist WriterResult.notes (FROZEN contract), so the count is also in the run log
+            logger.info("ka_sangam: %s=%d of %d predicates in this call (no Mode A/B window computed for them)", TARGET_UNRESOLVED, len(blanks), len(pred_dicts))
         return all_windows
 
     def _resolve_native_chart_context(self, conn, chart_id: str, birth_params) -> 'NativeChartContext':

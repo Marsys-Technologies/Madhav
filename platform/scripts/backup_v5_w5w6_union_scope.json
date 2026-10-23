@@ -306,17 +306,25 @@
      "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
      "function": "<module>",
      "kind": "INSERT",
-     "line": 142,
+     "line": 144,
      "via": "dynamic"
     },
     {
      "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
      "function": "KaGocharaWriter.run_substep",
      "kind": "DELETE",
-     "line": 390,
+     "line": 405,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "teardown",
+     "kind": "DELETE",
+     "line": 366,
      "via": "dynamic"
     }
-   ]
+   ],
+   "note": "ka_gochara candidate path since SR-K9B-TRIAGE (S5): a candidate-bound build writes, replaces and fingerprints its own generation partition; the ordinary '2.0' rows are written only by an ordinary rebuild. rebuild_control.teardown deletes the run's partition by (chart_id, generation) through UNLINKED_CANDIDATE_TABLES."
   },
   {
    "table": "public.kala_gochara_v2_build_state",
@@ -326,10 +334,18 @@
      "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
      "function": "KaGocharaWriter._upsert_build_state",
      "kind": "INSERT",
-     "line": 490,
+     "line": 510,
+     "via": "dynamic"
+    },
+    {
+     "file": "platform/python-sidecar/services/kala_core/rebuild_control.py",
+     "function": "teardown",
+     "kind": "DELETE",
+     "line": 366,
      "via": "dynamic"
     }
-   ]
+   ],
+   "note": "ka_gochara candidate path since SR-K9B-TRIAGE (S5): a candidate-bound build writes, replaces and fingerprints its own generation partition; the ordinary '2.0' rows are written only by an ordinary rebuild. rebuild_control.teardown deletes the run's partition by (chart_id, generation) through UNLINKED_CANDIDATE_TABLES."
   },
   {
    "table": "public.kala_convergence",
@@ -1012,6 +1028,8 @@
     "kala_convergence",
     "kala_f1_relationship",
     "kala_f1_target_object",
+    "kala_gochara_v2_build_state",
+    "kala_gochara_windows_v2",
     "kala_obstruction"
    ]
   }
