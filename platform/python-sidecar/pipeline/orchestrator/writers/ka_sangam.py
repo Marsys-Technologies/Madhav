@@ -18,6 +18,7 @@ from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 from services.kala_core.stored_verification import has_stored_verification
 import logging
 import math
+from collections.abc import Sequence
 from datetime import date
 
 import psycopg
@@ -251,7 +252,7 @@ def _resolved_target_longitude(pred_dict: dict) -> float | None:
     return float(value)
 
 
-def _target_blank_note(blanks: list[dict]) -> str:
+def _target_blank_note(blanks: Sequence[dict]) -> str:
     """Notes text for the substep result: the count of predicates blanked for an unresolved target, '' when there are none."""
     if not blanks:
         return ''
@@ -269,6 +270,9 @@ class _LegacyKaSangamWriter(WriterBase):
     """
     asset_id = 'ka_sangam'
     has_substeps = True
+    # Blanked predicates of the latest `_generate_windows` call. Defined here (immutable) so a substep that reads it
+    # before any call has run (a resumed/skipped path, a stubbed generator) sees "no blanks", never an AttributeError.
+    _target_blanks: Sequence[dict] = ()
 
     # ── plan ─────────────────────────────────────────────────────────────────
 

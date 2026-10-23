@@ -96,3 +96,15 @@ def test_c5_mode_d_still_runs_when_the_first_predicate_is_blank(engine):
     _, _ = _generate([_pred('sig-null', NULL_TARGET), _pred('sig-good', GOOD_TARGET)])
     assert engine['d'] == ['sig-null']        # the pre-change behaviour of Mode D (first predicate of the call) is untouched by a blank target
     assert engine['a'] == ['sig-good'] and engine['b'] == ['sig-good']
+
+
+def test_c6_substep_notes_read_blanks_before_any_generate_call(engine, monkeypatch):
+    """review-3901 NB-4: `_target_blanks` was only set inside `_generate_windows`; a substep whose generator is stubbed (or a writer
+    that has not generated yet) reads it first. It must read as 'no blanks' (honest empty note), never raise AttributeError (§N.7.6)."""
+    writer = ks.KaSangamWriter.__new__(ks.KaSangamWriter)
+    writer._conv_generation = 'candidate:test'
+    writer._lt_preds = []
+    writer._pred_dicts = []
+    writer._dks = writer._gs = writer._enrichment_ctx = writer._muhurta = writer._native_ctx = None
+    monkeypatch.setattr(writer, '_generate_windows', lambda **kw: [])
+    assert writer._substep_near(MagicMock(), 'c', dry_run=True).notes == ''
