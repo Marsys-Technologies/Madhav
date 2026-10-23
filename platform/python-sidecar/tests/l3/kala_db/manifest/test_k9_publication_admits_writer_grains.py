@@ -143,7 +143,9 @@ def accept(conn, cand):
 
 
 def test_publication_admits_a_layer_whose_in_scope_writers_all_attested(conn, sangam, vighnakara, gochara):
-    predicate(conn, GENERATION, 'S-CAND', '2032-02-02')
+    # A signal-less admitted predicate: ka_sangam's zero windows are then SR-SANGAM-SIGNAL-UNRESOLVED's honest null, which the K9 gate publishes
+    # (a signal-bearing predicate with zero windows refuses: see the ka_sangam test below).
+    predicate(conn, GENERATION, None, '2032-02-02')
     cand = open_plan(conn)
     run_in_scope_writers(conn, cand, WRITERS[1:])
     held = {r['grain_key'] for r in conn.execute('SELECT grain_key FROM kala_layer_candidate_grain').fetchall()}
@@ -169,7 +171,7 @@ def test_publication_refuses_when_one_in_scope_writer_did_not_attest(conn, sanga
 def test_publication_refuses_a_zero_row_ka_vighnakara_whose_upstream_is_not_empty(conn, sangam, vighnakara, gochara):
     """SR-K9-ADMITTED-ZERO compensating detector, end to end: the writer attested `zero_rows`, then the candidate's convergence layer holds a window
     (a defect, not a vacuous pass): publication refuses and names the grain. The same layer with an empty upstream publishes (test above)."""
-    predicate(conn, GENERATION, 'S-CAND', '2032-02-02')
+    predicate(conn, GENERATION, None, '2032-02-02')
     cand = open_plan(conn)
     run_in_scope_writers(conn, cand, WRITERS[1:])
     convergence(conn, GENERATION)
@@ -178,3 +180,47 @@ def test_publication_refuses_a_zero_row_ka_vighnakara_whose_upstream_is_not_empt
     with pytest.raises(ValueError, match=r'zero-row completion without a measured vacuous reason.*ka_vighnakara:inputs'):
         publication.publish(conn, run_id=cand.build_id, generation=GENERATION, expected_head=None)
     assert conn.execute('SELECT count(*) FROM kala_layer_head').fetchone()[0] == 0
+
+
+def _admitted(conn, generation, signal, *, route='admitted', state='in_force', scored='true'):
+    conn.execute("INSERT INTO kala_activation_predicates (chart_id, signal_id, generation, mechanism_route, conclusion_state_jsonb) "
+                 "VALUES (%s, %s, %s, %s, %s::jsonb)",
+                 (CHART, signal, generation, route, json.dumps({'effective_state': state, 'scored': scored})))
+
+
+@pytest.mark.parametrize('rows,reason', [
+    ([], 'no_admitted_predicates'),
+    ([dict(signal='S1', route='candidate'), dict(signal='S2', state='suppressed'), dict(signal='S3', scored='false'), dict(signal='S4', generation='candidate:other')],
+     'no_admitted_predicates'),                                                      # the writer's own filter: admitted + in_force + scored, this generation
+    ([dict(signal=None), dict(signal=None)], 'all_admitted_signal_unresolved'),      # SR-SANGAM-SIGNAL-UNRESOLVED honest null
+    ([dict(signal=None), dict(signal='S1')], None),                                  # a signal-bearing admitted predicate wrote no window: refuse
+    ([dict(signal='S1')], None),
+], ids=['none', 'filtered_out', 'all_signal_less', 'mixed', 'signal_bearing'])
+def test_ka_sangam_vacuous_reason_is_measured_by_the_writers_admitted_predicate_filter(conn, rows, reason):
+    """The gate's admitted-count SQL against the real predicate table (the unit oracle scripts its counts)."""
+    for r in rows:
+        _admitted(conn, r.pop('generation', GENERATION), r.pop('signal'), **r)
+    conn.row_factory = tuple_row
+    assert publication._vacuous_reason(conn, 'ka_sangam', CHART, GENERATION) == reason
+
+
+def test_publication_refuses_a_zero_row_ka_sangam_whose_admitted_signal_bearing_predicates_wrote_no_window(conn, sangam, vighnakara, gochara):
+    """SR-K9-ADMITTED-ZERO end to end (ka_sangam): the writer attested `zero_rows` while the candidate holds an admitted, in-force, signal-bearing predicate
+    (a silent failure, not an honest null): publication refuses and names the grain."""
+    cand = open_plan(conn)
+    run_in_scope_writers(conn, cand, WRITERS[1:])
+    assert {r['grain_key']: r['result_state'] for r in conn.execute('SELECT grain_key, result_state FROM kala_layer_candidate_grain')}['ka_sangam:inputs'] == 'zero_rows'
+    _admitted(conn, GENERATION, 'S-CAND')
+    accept(conn, cand)
+    conn.row_factory = tuple_row
+    with pytest.raises(ValueError, match=r'zero-row completion without a measured vacuous reason.*ka_sangam:inputs'):
+        publication.publish(conn, run_id=cand.build_id, generation=GENERATION, expected_head=None)
+    assert conn.execute('SELECT count(*) FROM kala_layer_head').fetchone()[0] == 0
+
+
+def test_an_erroring_integrity_sql_keeps_its_named_reason_and_the_next_grain_is_still_judged(conn):
+    """The integrity statement runs in a savepoint: its error aborts only itself, so the next grain's reads still run (no InFailedSqlTransaction)."""
+    conn.execute("UPDATE asset_registry SET integrity_check_sql = 'SELECT 1/0' WHERE asset_id = 'ka_sangam'")
+    conn.row_factory = tuple_row
+    problems = publication._unexplained_zero_rows(conn, CHART, GENERATION, ['ka_sangam:inputs', 'ka_vighnakara:inputs'])
+    assert len(problems) == 1 and 'ka_sangam:inputs' in problems[0] and 'integrity_check_sql errored: DivisionByZero' in problems[0]

@@ -115,7 +115,9 @@ def _vacuous_reason(conn: Any, writer: str, chart_id: str, generation: str) -> s
         (chart_id, generation)).fetchone())
     if admitted == 0:
         return 'no_admitted_predicates'
-    return 'all_admitted_signal_unresolved' if unresolved == admitted else 'no_window_from_signal_bearing_predicates'
+    # SR-SANGAM-SIGNAL-UNRESOLVED sanctions exactly two honest nulls: nothing admitted, and every admitted predicate signal-less (no window can be attributed).
+    # Admitted predicates that DO carry a signal and still wrote 0 windows are the silent failure floor 0 stopped the orchestrator detecting: refuse (N.8).
+    return 'all_admitted_signal_unresolved' if unresolved == admitted else None
 
 
 def _unexplained_zero_rows(conn: Any, chart_id: str, generation: str, zero_grains: list[str]) -> list[str]:
@@ -134,7 +136,8 @@ def _unexplained_zero_rows(conn: Any, chart_id: str, generation: str, zero_grain
             problems.append(f'{key}: vacuous ({reason}) but {writer} has no integrity_check_sql to confirm it')
             continue
         try:
-            verdict = conn.execute(row[0]).fetchone()
+            with conn.transaction():      # a savepoint: a SQL error must not abort the caller's transaction, or the next grain's reads would lose their named reason
+                verdict = conn.execute(row[0]).fetchone()
         except psycopg.Error as exc:
             problems.append(f'{key}: vacuous ({reason}) but integrity_check_sql errored: {type(exc).__name__}')
             continue

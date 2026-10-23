@@ -1,9 +1,11 @@
-"""SR-K9-ADMITTED-ZERO / SR-SANGAM-FLOOR-ZERO: the K9 publish gate (services/kala_core/publication.py `_candidate`, used by `verify` and `publish`) is the
+"""SR-K9-ADMITTED-ZERO / SR-SANGAM-FLOOR-ZERO: the K9 publish gate (services/kala_core/publication.py `_candidate`, applied by `publish` only) is the
 compensating detector for ka_sangam and ka_vighnakara declaring target_floor = 0 (migration 1409). Outside the FROZEN asset_runner path (CLAUDE.md §N.8).
 
 A zero-row grain of these two writers publishes only when (1) the emptiness is explained by a named reason the gate MEASURES from the candidate's own rows and
 (2) the asset's registered integrity_check_sql passes now. Claims:
-G1 an UNEXPLAINED zero-row completion refuses (the upstream holds windows / the signal-bearing input exists, yet the writer wrote none);
+G1 an UNEXPLAINED zero-row completion refuses (the upstream holds windows / the signal-bearing input exists, yet the writer wrote none). For ka_sangam only
+   SR-SANGAM-SIGNAL-UNRESOLVED's two honest nulls (nothing admitted; every admitted predicate signal-less) are vacuous: admitted SIGNAL-BEARING in-force
+   predicates that wrote 0 windows are the silent failure floor 0 stopped the orchestrator detecting, so they refuse;
 G2 an explained (vacuous, named reason) zero-row completion with a passing integrity check passes;
 G3 an explained zero-row completion whose integrity check does not pass (or is absent) refuses;
 G4 a non-empty (`rows`) grain, and a zero-row grain of any OTHER writer, are unaffected;
@@ -34,6 +36,18 @@ class _Conn:
         self.grains = list(grains)
         self.integrity, self.verdict = integrity, verdict
         self.sql = []
+        self.savepoints = 0
+
+    def transaction(self):
+        conn = self
+
+        class _Savepoint:
+            def __enter__(self):
+                conn.savepoints += 1
+
+            def __exit__(self, *exc):
+                return False
+        return _Savepoint()
 
     def execute(self, sql, params=()):
         self.sql.append(sql)
@@ -67,14 +81,22 @@ def test_g1_sangam_zero_windows_that_exist_in_the_candidate_refuses():
     assert len(problems) == 1 and 'not vacuous' in problems[0]
 
 
+@pytest.mark.parametrize('admitted,unresolved', [(4, 1), (4, 0)], ids=['mixed', 'all_signal_bearing'])
+def test_g1_sangam_admitted_signal_bearing_predicates_that_wrote_no_window_refuse(admitted, unresolved):
+    """The silent failure floor 0 hides: in-force admitted predicates carry a signal, yet 0 windows. Not one of SR-SANGAM-SIGNAL-UNRESOLVED's honest nulls."""
+    conn = _Conn(admitted=admitted, unresolved=unresolved)
+    problems = check(conn, 'ka_sangam:inputs')
+    assert len(problems) == 1 and 'ka_sangam:inputs' in problems[0] and 'not vacuous' in problems[0]
+    assert not any('asset_registry' in sql for sql in conn.sql), 'a refused grain never reaches the integrity check'
+
+
 # ── G2 ──────────────────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize('conn,writer', [
     (_Conn(peak=0), 'ka_vighnakara'),                                              # empty upstream
     (_Conn(admitted=0), 'ka_sangam'),                                              # no admitted predicate (the K4-2b unadmitted state)
     (_Conn(admitted=4, unresolved=4), 'ka_sangam'),                                # every admitted predicate signal-less
-    (_Conn(admitted=4, unresolved=1), 'ka_sangam'),                                # signal-bearing predicates produced no window
-], ids=['vighnakara_empty_upstream', 'sangam_no_admitted', 'sangam_all_signal_unresolved', 'sangam_no_window'])
+], ids=['vighnakara_empty_upstream', 'sangam_no_admitted', 'sangam_all_signal_unresolved'])
 def test_g2_a_vacuous_zero_row_completion_with_a_passing_integrity_check_passes(conn, writer):
     assert check(conn, f'{writer}:inputs') == []
     assert any(sql == 'SELECT true' for sql in conn.sql), 'the integrity statement must actually have run'
@@ -85,7 +107,7 @@ def test_g2_each_vacuous_state_has_its_own_named_reason():
     assert named(_Conn(peak=0), 'ka_vighnakara') == 'empty_upstream_convergence'
     assert named(_Conn(admitted=0), 'ka_sangam') == 'no_admitted_predicates'
     assert named(_Conn(admitted=3, unresolved=3), 'ka_sangam') == 'all_admitted_signal_unresolved'
-    assert named(_Conn(admitted=3, unresolved=2), 'ka_sangam') == 'no_window_from_signal_bearing_predicates'
+    assert named(_Conn(admitted=3, unresolved=2), 'ka_sangam') is None               # signal-bearing predicates, no window: not vacuous
 
 
 # ── G3 ──────────────────────────────────────────────────────────────────────
@@ -101,6 +123,11 @@ def test_g3_vacuous_but_integrity_returns_no_row_refuses():
 
 def test_g3_vacuous_but_no_registered_integrity_sql_refuses():
     assert 'no integrity_check_sql' in check(_Conn(admitted=0, integrity=None), 'ka_sangam:inputs')[0]
+
+
+def test_g3_integrity_sql_runs_inside_a_savepoint():
+    conn = _Conn(admitted=0)
+    assert check(conn, 'ka_sangam:inputs') == [] and conn.savepoints == 1
 
 
 # ── G4 ──────────────────────────────────────────────────────────────────────
