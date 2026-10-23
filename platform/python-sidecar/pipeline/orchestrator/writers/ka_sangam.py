@@ -251,6 +251,12 @@ TARGET_UNRESOLVED = 'target_unresolved'
 SIGNAL_UNRESOLVED = 'signal_unresolved'
 
 
+def _can_carry_mode_d(pred_dict: dict) -> bool:
+    """Mode D rides a predicate that has a signal AND reaches the Mode D step: a SUBSYSTEM predicate `continue`s out of the loop after Mode C
+    (see _generate_windows), so riding it would compute Mode D on no substep at all (review of PR #3904, B-1)."""
+    return bool(pred_dict.get('signal_id')) and 'SUBSYSTEM' not in (pred_dict.get('signature_class') or '').upper()
+
+
 def _resolved_target_longitude(pred_dict: dict) -> float | None:
     """The predicate's target longitude when it is a real finite number, else None (a named blank)."""
     value = (pred_dict.get('transit_trigger_jsonb') or {}).get('target_longitude_deg')
@@ -754,8 +760,8 @@ class _LegacyKaSangamWriter(WriterBase):
 
         # SR-K9-TRIAGE-DUP: Mode D is predicate-agnostic and this tier calls once PER PREDICATE, so the once-per-call guard of 074d69ee8
         # (A3) held for none of them: every lifetime substep wrote the full set again, under its own signal_id (or, with an equal
-        # signal_id, under the SAME natural key: contract 670 conjunct (a)). It rides ONE lifetime substep, the first attributable one.
-        mode_d_idx = next((i for i, p in enumerate(self._lt_preds) if p.get('signal_id')), None)
+        # signal_id, under the SAME natural key: contract 670 conjunct (a)). It rides ONE lifetime substep, the first attributable non-SUBSYSTEM one (_can_carry_mode_d).
+        mode_d_idx = next((i for i, p in enumerate(self._lt_preds) if _can_carry_mode_d(p)), None)
         windows       = self._generate_windows(
             pred_dicts        = [pred],
             mode_d            = (idx == mode_d_idx),
@@ -825,8 +831,8 @@ class _LegacyKaSangamWriter(WriterBase):
         all_windows: list[dict] = []
         blanks: list[dict] = []
         self._target_blanks = blanks        # read by the substeps for their notes; one list per call
-        # Mode D is sign-level: it is computed once per call, on the first predicate that can be attributed to a signal.
-        mode_d_pred = next((p for p in pred_dicts if p.get('signal_id')), None) if mode_d else None
+        # Mode D is sign-level: it is computed once per call, on the first predicate that can be attributed to a signal and reaches the Mode D step.
+        mode_d_pred = next((p for p in pred_dicts if _can_carry_mode_d(p)), None) if mode_d else None
 
         def _mode_d_windows(pred_dict: dict, primary_domain) -> list[dict]:
             try:

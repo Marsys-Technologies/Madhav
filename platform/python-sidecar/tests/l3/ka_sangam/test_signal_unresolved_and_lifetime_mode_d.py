@@ -85,3 +85,16 @@ def test_c3_lifetime_tier_computes_mode_d_on_one_substep_only(engine):
         writer._substep_lifetime(MagicMock(), 'c', idx, dry_run=True)
     assert engine['d'] == ['s1']                                     # once, on the first attributable lifetime predicate
     assert engine['a'] == ['s1', 's2', 's3']                        # Mode A/B still scan every predicate against its own target
+
+
+def test_c2_c3_a_subsystem_first_list_still_computes_mode_d_once_per_tier(engine):
+    """Review of PR #3904, B-1: Mode C `continue`s before Mode D, so a SUBSYSTEM predicate cannot carry the Mode D set; it rides the first
+    non-SUBSYSTEM predicate that has a signal, in the near call and on exactly one lifetime substep (contract 670 (a))."""
+    preds = [_pred('sub1', signature_class='SUBSYSTEM'), _pred('y1'), _pred('y2')]
+    _generate(preds)
+    assert engine['d'] == ['y1']
+    engine['d'].clear()
+    writer = _lifetime_writer(preds, engine)
+    for idx in range(len(preds)):
+        writer._substep_lifetime(MagicMock(), 'c', idx, dry_run=True)
+    assert engine['d'] == ['y1']
