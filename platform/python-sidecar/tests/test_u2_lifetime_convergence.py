@@ -174,7 +174,9 @@ def store():
                 'signal_id': f'sig-{i}',
                 'signature_class': 'CAREER_PEAK',
                 'dasha_eligibility_rule_jsonb': {},
-                'transit_trigger_jsonb': {},
+                # A resolved target: ka_yojaka writes target_longitude_deg explicitly; a missing/null one is a
+                # named blank (target_unresolved, SR-K9B-TRIAGE, §N.7.6) with no Mode A/B window by design.
+                'transit_trigger_jsonb': {'target_longitude_deg': 100.0 + 10.0 * i},
                 'strength_affliction_hook_jsonb': {},
                 'derivation_ledger_jsonb': {},
             }
