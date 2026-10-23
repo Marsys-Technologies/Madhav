@@ -428,7 +428,20 @@ class Rehearsal:
         path = self.ex.ACC / f"{req['operation_id']}.json"
         path.write_text(json.dumps(acc))
         req["acceptance_receipt"] = str(path)
+        self.stand_in_owner_go(req)
         return req
+
+    def stand_in_owner_go(self, req: dict) -> None:
+        """OWNER-BUILD-GO-REQUIRED-20261023: the executor refuses a century dispatch or a production rebuild without the owner's go file. A rehearsal judges the TEMPLATE, never the owner's yes, so a
+        stand-in go bound to exactly this request is written in the sandbox (the executor's own owner_go_problem judges it). An executor without the gate (an older main) has no OWNER_GO_KINDS: nothing is written."""
+        if req.get("kind") not in getattr(self.ex, "OWNER_GO_KINDS", ()): return
+        self.ex.OWNER_GO_DIR.mkdir(parents=True, exist_ok=True)
+        go = {"schema": self.ex.OWNER_GO_SCHEMA, "operation_id": req["operation_id"], "kind": req["kind"], "item_id": req.get("item_id"), "request_sha256": self.ex.request_digest(req),
+              "reviewed_commit": req.get("reviewed_commit"), "owner_yes": True, "owner_words": "REHEARSAL stand-in: not the owner's words", "transcript_citation": "rehearsal sandbox (no transcript)",
+              "written_by": self.ex.OWNER_GO_WRITER, "written_at": self.iso(dt.datetime.now(dt.timezone.utc)),
+              "expires_at": self.iso(dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1))}
+        (self.ex.OWNER_GO_DIR / f"{req['operation_id']}.json").write_text(json.dumps(go))
+        self.stand_ins["owner_go"] = "a stand-in owner go (run/ops/owner_go) bound to each gated request by the harness; the owner's real yes is never rehearsed and is still required to dispatch"
 
     def executor_problem(self, req: dict, table: dict) -> str | None:
         try: return self.ex.validate(req, table, self.caps)

@@ -2980,7 +2980,7 @@ jobs:
     # SR-BOLD-08(a): merge_group-only. `run_combination_suites` is 'false' only on a pull_request that does not touch the scoping
     # rules (ci_gate.py); any other value, including the empty output of a failed `changes`, runs the shards (fail-closed).
     if: ${{ !cancelled() && needs.changes.outputs.docs_only != 'true' && needs.changes.outputs.run_combination_suites != 'false' }}
-    # Suvarṇa E4.1 (sharded, Exec Suvarṇa): runs platform/scripts/governance/__tests__ as a whole, so the landed Nikaṣa tools and the
+    # Suvarṇa E4.1 (sharded, Exec Suvarṇa): discovers governance/__tests__ and pravaha_tracker/tests, so the landed Nikaṣa tools and the
     # drift_detector/schema_validator tests are enforced, not just present. The shard pytest runs without DB settings; DB tests skip on their
     # own (PG*/DATABASE_URL unset), and missing campaign artifacts skip via conftest. The final J-1a step owns a separate loopback-only CI cluster.
     # The single job outgrew its 10-minute ceiling (median ~8.5 min, max ~10 min on main), so the test files are split across 5 shards (3 until the 2026-10-05 L0-L2 build-out grew the suite to ~48 min of shard time) by
@@ -3015,6 +3015,11 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Setup Node for tracker browser regressions
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Install Python dependencies
         run: pip install pyyaml pytest
 
@@ -3026,11 +3031,12 @@ jobs:
         env:
           DATABASE_URL: ''
           PGHOST: ''
+          PYTHONPATH: platform/scripts/governance
         run: |
           # a failing or empty ci_shard.py must stop here: `pytest $(…)` would swallow its exit status and collect the whole repo
           mapfile -t FILES < <(python platform/scripts/governance/ci_shard.py --count 5 --index ${{ matrix.shard }})
           [ "${#FILES[@]}" -gt 0 ] || { echo "::error::ci_shard.py returned no test files for shard ${{ matrix.shard }}"; exit 1; }
-          python -m pytest "${FILES[@]}" -q --no-header -rs
+          python -m pytest "${FILES[@]}" -q --no-header -rs -p no:cacheprovider
 
       - name: K9-23 disabled layer bindings and credential isolation
         if: ${{ matrix.shard == 1 }}
