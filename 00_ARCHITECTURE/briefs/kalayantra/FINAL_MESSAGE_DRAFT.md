@@ -36,7 +36,7 @@ These are outside the close, each with a re-entry condition. They are listed in 
 Items that ended `not_applicable` by decision (each with its decision id in the report) are gaps or retirements as the report states them; none
 is counted as closed.
 
-The two materializer-timeout items (D-GOCHARA-TIMEOUT, J-GOCHARA-TIMEOUT) ended `not_applicable` by D-GOCHARA-TIMEOUT-NA (SR-AUDIT-NA-TIMEOUT, 2026-10-22):
+The materializer-timeout pair ended by the recorded refusal of D-GOCHARA-TIMEOUT (J-GOCHARA-TIMEOUT reads `not_applicable`; SR-AUDIT-NA-TIMEOUT, 2026-10-22):
 the century runs on ka_gochara_v5, whose writer timeout migration 1395 set and read back; re-entry only if J-4f shows a timeout binding.
 
 ## Decisions the owner may want to look at

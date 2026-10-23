@@ -55,6 +55,11 @@ the running tracker uses a separate installed snapshot and changes only at B-2.
   work `not_applicable`; that state propagates through executable consumers.
   Only items declaring `accepts_not_applicable_dependencies` may proceed from a
   skipped dependency, and the originating gaps remain visible at joins.
+- Deferred display (SR-PARKED-OUT-OF-CAMPAIGN): a row is flagged `deferred: true` when its triage class is `b`, it is outside the acceptance
+  closure and it is not finished. Deferred rows keep their own status (never rewritten, never done); a deferred row that reads `blocked`,
+  `parked` or `unknown` is left out of `attention`, the stream Blocked column and the `blocked`/`unknown` tallies, and the plan-wide
+  figures carry `deferred_count`. `failed` and `conflict` stay visible. A declared decision carrying `retires` (no item of its own) is
+  staged like a retirement decision item.
 - `send` follows the model's `message_policy`. `PRAVAHA_HOLD` selects the HOLD
   path. `preflight` accepts an unclaimed detached lane. `note` cannot unblock;
   owner-authorized `unblock` and `reopen` are explicit transitions.

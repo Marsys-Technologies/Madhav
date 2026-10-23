@@ -183,13 +183,35 @@ def test_the_committed_model_is_the_fixed_point_of_the_plan_script(model):  # SR
     assert len(ids) == len(set(ids)) and len([d["id"] for d in model["decisions"]]) == len({d["id"] for d in model["decisions"]})
 
 
-def test_the_two_timeout_items_are_retired_by_one_decision_outside_the_closure(items, model, closure):  # SR-AUDIT-NA-TIMEOUT (R1)
-    # Source: audit R1 text, carried verbatim as the reason. Fail-on-revert: put either item back to class b (deferred) or drop the
-    # decision declaration and this reads false.
+def test_the_two_timeout_items_are_retired_by_the_existing_decision_outside_the_closure(items, model, closure):  # SR-AUDIT-NA-TIMEOUT (R1)
+    # Source: audit R1 text, carried verbatim as the reason. The fold-out (owner: add nothing to the tracker) removed the retirement
+    # item #3896 added; the pair reads not_applicable through requires_outcome on the existing decision item D-GOCHARA-TIMEOUT.
+    # Fail-on-revert: put either item back to class b (deferred), restore the folded-out decision, or drop the requirement.
     for iid in kya9plan.TIMEOUT_NA_TARGETS:
-        assert items[iid]["triage"] == {"class": "retired", "decision": "D-GOCHARA-TIMEOUT-NA", "reason": kya9plan.TIMEOUT_NA_REASON}, iid
-        assert items[iid]["requires_outcome"]["D-GOCHARA-TIMEOUT-NA"] == "approved" and iid not in closure["closure"], iid
+        assert items[iid]["triage"] == {"class": "retired", "decision": "D-GOCHARA-TIMEOUT", "reason": kya9plan.TIMEOUT_NA_REASON}, iid
+        assert iid not in closure["closure"], iid
+    assert items["J-GOCHARA-TIMEOUT"]["requires_outcome"] == {"D-GOCHARA-TIMEOUT": "approved"}
+    assert "requires_outcome" not in items["D-GOCHARA-TIMEOUT"]       # a decision cannot require itself (the plan has no cycles)
     assert "Re-entry: if J-4f shows a timeout binding" in kya9plan.TIMEOUT_NA_REASON and "1395" in kya9plan.TIMEOUT_NA_REASON
-    assert items["D-GOCHARA-TIMEOUT-NA"]["triage"]["class"] == "retire_decision"
-    assert "D-GOCHARA-TIMEOUT-NA" in {d["id"] for d in model["decisions"]}
+    assert "D-GOCHARA-TIMEOUT-NA" not in items and "D-GOCHARA-TIMEOUT-NA" not in {d["id"] for d in model["decisions"]}
     assert [(i, d) for i in closure["closure"] for d in items[i]["depends_on"] if d in kya9plan.TIMEOUT_NA_TARGETS] == []
+
+
+def test_the_fold_out_removes_the_two_decision_items_from_a_model_that_still_has_them(model):  # FOLD-OUT (owner via madhav-44, 2026-10-22)
+    # Fail-on-revert: delete the fold-out step in apply_model_edits -> the two items (and the edges onto them) survive, 276 items.
+    import copy
+    before = copy.deepcopy(model)
+    anchor = next(i for i in before["items"] if i["id"] == "D-J4C-PR2907-NA")
+    for did in kya9plan.FOLDED_OUT_DECISION_ITEMS:
+        before["items"].append({**copy.deepcopy(anchor), "id": did, "decision": did,
+                                "triage": {"class": "retire_decision", "retires": "x"}})
+    for iid in kya9plan.TIMEOUT_NA_TARGETS:
+        for it in before["items"]:
+            if it["id"] == iid:
+                it["depends_on"] = it["depends_on"] + ["D-GOCHARA-TIMEOUT-NA"]
+                it["requires_outcome"] = {**(it.get("requires_outcome") or {}), "D-GOCHARA-TIMEOUT-NA": "approved"}
+    before["decisions"].append({"id": "D-GOCHARA-TIMEOUT-NA", "title": "t", "owner": "o", "default": "d"})
+    assert len(before["items"]) == 276
+    after = kya9plan.apply_model_edits(before)
+    assert len(after["items"]) == 274 and after == model
+    assert all(d not in i["depends_on"] for i in after["items"] for d in kya9plan.FOLDED_OUT_DECISION_ITEMS)

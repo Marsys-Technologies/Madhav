@@ -9,7 +9,7 @@ that adopted it. Claims, each with the single planted reversion that makes its t
   4. ready_at_accepted is a start condition only for a dependency that completes at its PR merge   (state.completes_at_merge)
   5. a decision whose own item reads not_applicable is not a question for the native (D-G2)        (native_queue filter)
   6. a branch nobody has pushed yet reads pending, any other fetch failure stays an error          (detectors.d_branch_merged)
-  7. D-GOCHARA-TIMEOUT and J-GOCHARA-TIMEOUT are not_applicable by the recorded retirement decision (plan model)
+  7. J-GOCHARA-TIMEOUT is not_applicable once the existing decision D-GOCHARA-TIMEOUT is refused (plan model; the decision reads decided)
   8. J-5q-b54 no longer names 4.1 as a comparator (SR-F5-41-DEFER)                                 (plan model)
   9. D-J4B-1303-NA is declared and J-4c-a55m drops the 1303 clause                                 (plan model)
  10. KR-1, KR-2, L0-K, C-2 read the deferral / "not yet" without a detector error                  (detector + snapshot)
@@ -233,27 +233,43 @@ def _snapshot(model, events, det_results=None):
     return build_snapshot(model, events, det_results or {}, {}, {}, now=NOW, closure=load_closure(model))
 
 
-def test_the_two_timeout_items_are_not_applicable_by_the_recorded_retirement_decision(model, items):  # claim 7 (SR-AUDIT-NA-TIMEOUT)
-    # Reversion: drop D-GOCHARA-TIMEOUT's requires_outcome on D-GOCHARA-TIMEOUT-NA (or its triage) -> it stays waiting.
+def test_the_timeout_pair_is_retired_by_the_existing_decision_item(model, items):  # claim 7 (SR-AUDIT-NA-TIMEOUT, fold-out)
+    # J-GOCHARA-TIMEOUT reads not_applicable through the plan's own requires_outcome on the EXISTING decision item D-GOCHARA-TIMEOUT
+    # (the fold-out added no item; kyclosure demands a decision item, which D-GOCHARA-TIMEOUT already is). The decision item itself
+    # reads decided once recorded (the no-cycle invariant forbids requiring itself), class retired, so it is never work or deferred.
+    # Reversion: restore requires_outcome on the folded-out D-GOCHARA-TIMEOUT-NA (kyclosure refuses it) or change the required outcome
+    # to refused -> the item reads waiting after the refusal.
     targets = ["D-GOCHARA-TIMEOUT", "J-GOCHARA-TIMEOUT"]
-    decision = next(d for d in model["decisions"] if d["id"] == "D-GOCHARA-TIMEOUT-NA")
-    assert "SR-AUDIT-NA-TIMEOUT" in decision["owner"] and decision["default"].startswith("refused")
+    assert "D-GOCHARA-TIMEOUT-NA" not in items and "D-GOCHARA-TIMEOUT-NA" not in {d["id"] for d in model["decisions"]}
+    assert items["J-GOCHARA-TIMEOUT"]["requires_outcome"] == {"D-GOCHARA-TIMEOUT": "approved"}
+    assert "requires_outcome" not in items["D-GOCHARA-TIMEOUT"] and items["D-GOCHARA-TIMEOUT"]["done_by"] == "decision"
     for iid in targets:
-        assert items[iid]["requires_outcome"]["D-GOCHARA-TIMEOUT-NA"] == "approved" and "D-GOCHARA-TIMEOUT-NA" in items[iid]["depends_on"]
-        assert items[iid]["triage"]["class"] == "retired" and items[iid]["triage"]["decision"] == "D-GOCHARA-TIMEOUT-NA"
-    assert items["D-GOCHARA-TIMEOUT-NA"]["triage"] == {"class": "retire_decision", "retires": targets}
-    before = _snapshot(model, [])
-    assert {i: _rows(before)[i]["status"] for i in targets} != {i: "not_applicable" for i in targets}
-    assert "D-GOCHARA-TIMEOUT-NA" not in {d["id"] for d in before["native_queue"]}       # staged: not a question for the native
-    after = _snapshot(model, [_decision("D-GOCHARA-TIMEOUT-NA", "refused")])
-    assert {i: _rows(after)[i]["status"] for i in targets} == {i: "not_applicable" for i in targets}
+        assert items[iid]["triage"]["class"] == "retired" and items[iid]["triage"]["decision"] == "D-GOCHARA-TIMEOUT"
+        assert "SR-AUDIT-NA-TIMEOUT" in items[iid]["triage"]["reason"]
+    deferred = _snapshot(model, [{"kind": "decision", "actor": "steward", "decision": "D-GOCHARA-TIMEOUT", "state": "delegated",
+                                  "outcome": "deferred", "detail": "KYD-108", "ts": TS}])
+    assert _rows(deferred)["J-GOCHARA-TIMEOUT"]["status"] != "not_applicable"            # an open outcome retires nothing
+    after = _snapshot(model, [_decision("D-GOCHARA-TIMEOUT", "refused")])
+    assert _rows(after)["J-GOCHARA-TIMEOUT"]["status"] == "not_applicable"
+    decision = _rows(after)["D-GOCHARA-TIMEOUT"]                                          # decided, like D-VC after its refusal: it is
+    assert decision["outcome"] == "refused" and decision["status"] != "not_applicable"    # not n/a, and waits on nothing but B-7 (done live)
+    assert set(decision["deps_open"]) <= {"B-7"}
     assert not {d["id"] for d in after["overall"]["deferred"]} & set(targets)           # no longer deferred: ended, not parked
+    cancelled = after["overall"]["reconciliation"]["cancelled"]["total"]
+    assert cancelled > _snapshot(model, [])["overall"]["reconciliation"]["cancelled"]["total"] - 1       # class retired: cancelled, not work
     done = {"kind": "item", "actor": "stream-K:d46-sweep", "item": "JGT-NB-01", "state": "done", "guarded": True,
             "evidence": "PR #3569 merged", "ts": TS}
-    kept = _snapshot(model, [_decision("D-GOCHARA-TIMEOUT-NA", "refused"), done])
+    kept = _snapshot(model, [_decision("D-GOCHARA-TIMEOUT", "refused"), done])
     assert _rows(kept)["JGT-NB-01"]["status"] == "done"                                 # the already-done consumer is untouched
     assert _rows(after)["C-1"]["status"] != "not_applicable"
-    assert after["overall"]["total"] == before["overall"]["total"]                      # the headline denominator is the closure
+
+
+def test_the_plan_item_total_is_274_and_no_ruling_became_an_item(model, items):  # claim 12 (fold-out: "do not add anything to the tracker")
+    # Reversion: re-add D-GOCHARA-TIMEOUT-NA / D-J4B-1303-NA as decision items (what #3896 did) -> 276.
+    assert len(model["items"]) == 274
+    assert "D-GOCHARA-TIMEOUT-NA" not in items and "D-J4B-1303-NA" not in items
+    assert {"retire_decision"} >= {(i.get("triage") or {}).get("class") for i in model["items"]
+                                   if i["id"] in ("D-GOCHARA-TIMEOUT-NA", "D-J4B-1303-NA")}
 
 
 def test_the_timeout_items_are_outside_the_closure_and_gate_nothing_in_it(model, items):  # claim 7
@@ -264,7 +280,7 @@ def test_the_timeout_items_are_outside_the_closure_and_gate_nothing_in_it(model,
     spec.loader.exec_module(kyclosure)
     roots = json.loads((REPO / "00_ARCHITECTURE/control/kalayantra/ACCEPTANCE_ROOTS_v3.json").read_text(encoding="utf-8"))
     closure = set(kyclosure.compute(model, roots)["closure"])
-    assert not closure & {"D-GOCHARA-TIMEOUT", "J-GOCHARA-TIMEOUT", "D-GOCHARA-TIMEOUT-NA", "D-J4B-1303-NA"}
+    assert not closure & {"D-GOCHARA-TIMEOUT", "J-GOCHARA-TIMEOUT"}
 
 
 def test_d_g2_is_not_in_the_native_queue_of_the_real_plan(model):  # claim 5, real model (SR-AUDIT-BOOKKEEPING)
@@ -284,12 +300,13 @@ def test_j_5q_b54_no_longer_names_4_1_as_a_comparator(items):  # claim 8 (SR-F5-
     assert item["depends_on"] == ["J-0m", "J-4f"] and item["triage"]["class"] == "a"      # in scope, narrowed, not deferred
 
 
-def test_d_j4b_1303_na_is_declared_and_the_1303_clause_leaves_j_4c_a55m(model, items):  # claim 9 (audit R3)
+def test_d_j4b_1303_na_is_declared_and_the_1303_clause_leaves_j_4c_a55m(model, items):  # claim 9 (audit R3, fold-out)
     # Reversion: drop the decision declaration, or put "1303 ... OPEN" back into the step's tests.
     decisions = {d["id"]: d for d in model["decisions"]}
     assert "D-J4B-1303-NA" in decisions and "F-DORMANT-ROLES" in decisions["D-J4B-1303-NA"]["default"]
     assert "J-4c-a55m.window2-20261021T0315Z" in decisions["D-J4B-1303-NA"]["default"]
-    assert items["D-J4B-1303-NA"]["triage"]["class"] == "retire_decision"
+    assert decisions["D-J4B-1303-NA"]["retires"] == ["J-4c-a55m (the 1303 clause only)"]
+    assert "D-J4B-1303-NA" not in items                                                    # a declared decision, not a plan item
     a55m = items["J-4c-a55m"]
     assert "1303" not in a55m["title"] and "dormant-role revokes" not in a55m["title"]
     clause = next(t for t in a55m["brief"]["tests"] if t.startswith("1303 and the dormant-role revokes"))
@@ -297,7 +314,10 @@ def test_d_j4b_1303_na_is_declared_and_the_1303_clause_leaves_j_4c_a55m(model, i
     assert "stay OPEN" not in a55m["brief"]["notes"] and "D-J4B-1303-NA" in a55m["brief"]["notes"]
     assert "requires_outcome" not in a55m and "D-J4B-1303-NA" not in a55m["depends_on"]    # retiring a clause never retires the item
     assert _rows(_snapshot(model, [_decision("D-J4B-1303-NA", "refused")]))["J-4c-a55m"]["status"] != "not_applicable"
-    assert "D-J4B-1303-NA" not in {d["id"] for d in _snapshot(model, [])["native_queue"]}  # staged until recorded
+    # a retirement decision with no item of its own is still STAGED (not a question for the native), recorded or not
+    # (reversion: drop the `retires` clause in state.build_snapshot -> it is listed as pending)
+    assert "D-J4B-1303-NA" not in {d["id"] for d in _snapshot(model, [])["native_queue"]}
+    assert "D-J4B-1303-NA" not in {d["id"] for d in _snapshot(model, [_decision("D-J4B-1303-NA", "refused")])["native_queue"]}
 
 
 @pytest.mark.parametrize("iid", ["KR-1", "KR-2", "L0-K", "C-2"])
