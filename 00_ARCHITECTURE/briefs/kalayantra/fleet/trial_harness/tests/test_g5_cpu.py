@@ -12,8 +12,8 @@ Stated tolerances (measured on this Mac 2026-10-22, 18 cores = 6 P + 12 E, share
     (observed ±10 ms: macOS ps has 10 ms resolution; Linux procps prints whole seconds, so on Linux ps cannot be the reference);
   * loaded vs quiet attributed CPU for identical work: within ×1.6 of k, and the growth beyond k × quiet at most half the wall's GROWTH (loaded − quiet, so an ambient
     load on the quiet leg cannot fail it).  k = the CPU cost of the same pure burn under the same hogs over its quiet cost, measured in the same attempt (floored at 1):
-    CPU seconds move with core placement (P vs E cores), SMT and cache contention, but not with time spent waiting for a core.  On this Mac k ≈ 1 (observed ×1.16..1.43
-    over 9 pairs while the wall projection grew ×3.3..4.7); on the linux/amd64 TR VM (2 threads per core) the SMT sibling roughly doubles the cost (2026-10-23: k-free
+    CPU seconds move with core placement (P vs E cores), SMT and cache contention, but not with time spent waiting for a core.  On the Mac k was ×1.34..1.79 under a
+    load of ~33 on 18 cores (the k-free ratio had been ×1.16..1.43 over 9 pairs while the wall projection grew ×3.3..4.7); on the linux/amd64 TR VM (2 threads per core) the SMT sibling roughly doubles the cost (2026-10-23: k-free
     ratio ×2.3 with the wall ×3.6), which is the work's own cost, not waiting;
   * wall vs attributed-CPU projection on a not-oversubscribed fixture-scale slice: within ×1.5 (observed ×1.04..1.10): wall = CPU + off-CPU wait, and a serial CPU-bound
     slice that is not starved waits for less than a third of its time."""
@@ -100,10 +100,17 @@ def burn(n):
 
 def ref_backend_cpu_s(pid):
     """The independent truth for a backend's CPU seconds.  Linux: the scheduler's own on-CPU nanoseconds (/proc/<pid>/schedstat field 1; the meter reads the tick-based
-    utime+stime of /proc/<pid>/stat, a different kernel account).  Elsewhere: `ps -o time=` (centiseconds on macOS)."""
+    utime+stime of /proc/<pid>/stat, a tick-scaled view through a different interface, independent of the meter's code).  Elsewhere: `ps -o time=` (centiseconds on macOS)."""
     if sys.platform.startswith("linux"):
         return int(Path(f"/proc/{int(pid)}/schedstat").read_text().split()[0]) / 1e9
     return g5_cpu._ps_cpu_s(pid)
+
+
+def valid_wall_ratio(k):
+    """The wall growth R an attempt of test_c2 needs before it may be judged.  A meter that counts waiting reads cpu_l / cpu_q = R; c2's assertion admits it iff
+    k / 1.6 <= R <= min(1.6 k, 2 k - 1) (the band, and the growth bound with cpu = wall).  So an attempt is an experiment only when R exceeds max(1.6 k, 2 k - 1)
+    with a 25 % margin (never below the original 1.5): then a waiting-counting meter always fails, whatever k the machine's SMT siblings produce."""
+    return max(1.5, 1.25 * max(1.6 * k, 2 * k - 1))
 
 
 def burn_cost(n):
@@ -219,10 +226,10 @@ def test_c2_on_a_loaded_machine_wall_is_not_evaluated_and_attributed_cpu_project
     conn, pid = work
     n = calibrate(0.2)
     attempts = []
-    for _ in range(3):
+    for mult in (2, 3, 4, 6):                                                        # more hogs per retry: a longer run queue grows the wall, not k
         quiet = slice_world(cluster, conn, pid, n, lambda: 1.0)
         k_q = burn_cost(n)
-        hogs = Hogs(2 * NCPU)
+        hogs = Hogs(mult * NCPU)
         try:
             time.sleep(0.5)
             k_l = burn_cost(n)
@@ -233,13 +240,14 @@ def test_c2_on_a_loaded_machine_wall_is_not_evaluated_and_attributed_cpu_project
         wall_l = gates.runtime_projection(loaded, fx.profile())["projected_writer_s"]
         cpu_q = g5_cpu.cpu_projection(quiet, fx.profile(), gates.runtime_projection)["projected_writer_s"]
         cpu_l = g5_cpu.cpu_projection(loaded, fx.profile(), gates.runtime_projection)["projected_writer_s"]
-        attempts.append((quiet, loaded, wall_q, wall_l, cpu_q, cpu_l, max(1.0, k_l / k_q)))
-        if wall_l / wall_q >= 1.5:                                                   # the hogs really starved the builder: a valid experiment
+        k = max(1.0, k_l / k_q)
+        attempts.append((quiet, loaded, wall_q, wall_l, cpu_q, cpu_l, k))
+        if wall_l / wall_q >= valid_wall_ratio(k):                                   # the hogs starved the builder enough that a waiting-counting meter must fail
             break
     # a machine whose own load already inflates the "quiet" leg's wall can leave an attempt in which the hogs added little: such an attempt is not an experiment
     # (its wall did not grow), so it is retried, never judged; no valid attempt fails the test (never skipped).  Judged on the valid attempt that ends the loop.
     quiet, loaded, wall_q, wall_l, cpu_q, cpu_l, k = attempts[-1]
-    assert wall_l / wall_q >= 1.5, [(a[2], a[3]) for a in attempts]                       # the hogs really starved the builder: the wall method would have lied
+    assert wall_l / wall_q >= valid_wall_ratio(k), [(a[2], a[3], a[6]) for a in attempts]  # the hogs really starved the builder: the wall method would have lied
     vq, vl = verdict(quiet), verdict(loaded)
     gq, gl = vq["gates"]["G-5"], vl["gates"]["G-5"]
     assert gq["projection_method"]["method"] == "wall" and gl["projection_method"]["method"] == "attributed_cpu"
