@@ -32,6 +32,12 @@ DEPLOYED = "c" * 40
 OTHER = "d" * 40
 
 
+@pytest.fixture(autouse=True)
+def _isolated_pravaha_home(tmp_path, monkeypatch):
+    """A GitHubSource built without an explicit proof path must never read or write the live proof cache."""
+    monkeypatch.setenv("PRAVAHA_HOME", str(tmp_path / "pravaha-home"))
+
+
 class FakeSource:
     """What GitHub and git would say. `deployed_merges` are the merge commits a successful main deploy contains."""
 
@@ -449,3 +455,176 @@ def test_d46_sweep_takes_a_dispatch_deploy_only_when_the_evidence_says_it_earned
     assert d46_sweep._first_deploy("/repo", {"deploys": [{**run, "earned_deploy": True}]}, MERGE)["run_id"] == 3
     assert d46_sweep._first_deploy("/repo", {"deploys": [{**run, "earned_deploy": True, "conclusion": "failure"}]},
                                    MERGE) is None
+
+
+# ---- SR-TRACKER-DONE-NEVER-EXPIRES: a merged+deployed proof never expires -----------------------------------------
+# Oracle: owner ruling madhav-44 (a: per-branch lookup beyond the MERGED_LIST_LIMIT window + a persistent proof cache
+# keyed (PR number, merge sha), voided only when the merge commit leaves origin/main; b: a skip / not_applicable pass
+# never overrides a proven done), on SR-BOLD-07 (merged PR contained in a successful main deploy is done; a merge
+# cannot un-happen) and the measured defect of 2026-10-23 (#3555 / #3554 fell out of the newest-300 window).
+def _sha_of(number):
+    return format(number, "040x")
+
+
+def _pr(number, branch):
+    return {"number": number, "state": "MERGED", "headRefName": branch, "headRefOid": "f" * 40,
+            "mergeCommit": {"oid": _sha_of(number)}}
+
+
+class World:
+    """gh and git as one fake: `merged` is the newest-first list of merged PRs on main; `in_main` the merge shas that
+    origin/main contains; `gh` is "up", "down" (every gh call fails) or "empty" (gh answers, with nothing)."""
+
+    def __init__(self, merged, gh="up"):
+        self.merged, self.gh, self.git_rc = list(merged), gh, None
+        self.in_main = {pr["mergeCommit"]["oid"] for pr in merged}
+        self.calls = []
+
+    def __call__(self, cmd, cwd=None, timeout=5.0, shell=False, **kw):
+        cmd = list(cmd)
+        self.calls.append(cmd)
+        if cmd[0] == "gh":
+            return self._gh(cmd)
+        if cmd[:3] == ["git", "merge-base", "--is-ancestor"]:
+            if self.git_rc is not None:
+                return self.git_rc, ""
+            return (0 if cmd[3] in self.in_main else 1), ""
+        if cmd[:2] == ["git", "diff-tree"]:
+            return 0, "a.py\n"
+        if cmd[:2] == ["git", "cat-file"]:
+            return 0, ""
+        return 0, _sha_of(1) + "\n"                   # git fetch / rev-parse origin/main
+
+    def _gh(self, cmd):
+        if self.gh == "down":
+            return 1, "gh: network"
+        if self.gh == "empty":
+            return 0, "" if cmd[:3] == ["gh", "pr", "view"] else "[]"
+        if cmd[:3] == ["gh", "pr", "list"]:
+            rows = self.merged
+            if "--head" in cmd:
+                rows = [pr for pr in rows if pr["headRefName"] == cmd[cmd.index("--head") + 1]]
+            return 0, json.dumps(rows[:int(cmd[cmd.index("--limit") + 1])])
+        if cmd[:3] == ["gh", "pr", "view"]:
+            hit = [pr for pr in self.merged if str(pr["number"]) == cmd[3]]
+            return (0, json.dumps(hit[0])) if hit else (1, "not found")
+        if cmd[:3] == ["gh", "run", "list"]:
+            return 0, json.dumps([{"databaseId": 9, "headSha": DEPLOYED, "event": "workflow_run", "createdAt": "t"}])
+        return 1, "unexpected"
+
+    def head_lookups(self):
+        return [c for c in self.calls if c[:3] == ["gh", "pr", "list"] and "--head" in c]
+
+
+def _branch_item(iid, branch):
+    return item(iid, {"type": "branch_merged", "ref": f"origin/{branch}"}, owns=["a.py"])
+
+
+def _window_of(target_numbers, filler=300):
+    """The newest-first merged list: `filler` unrelated PRs, then the targets (so the first target is #filler+1)."""
+    rows = [_pr(5000 - i, f"filler-{i}") for i in range(filler)]
+    return rows + [_pr(n, f"kalayantra/k{n}") for n in target_numbers]
+
+
+def _src(monkeypatch, world, path):
+    monkeypatch.setattr(D, "_run", world)
+    return M.GitHubSource("/repo", proof_path=str(path))
+
+
+def test_t1_a_branch_whose_pr_is_beyond_the_window_still_derives_done(monkeypatch, tmp_path):
+    world = World(_window_of([3555]))
+    src = _src(monkeypatch, world, tmp_path / "p.json")
+    src.refresh()
+    assert 3555 not in {n for ns in src._heads.values() for n in ns}      # the windowed list really does not hold it
+    derived = M.derive(model_of(_branch_item("K5-2", "kalayantra/k3555")), src)
+    assert derived["K5-2"]["pr"] == 3555 and derived["K5-2"]["merge_commit"] == _sha_of(3555)
+
+
+def test_t2_the_proof_survives_a_restart_and_a_refresh_where_gh_returns_nothing(monkeypatch, tmp_path):
+    path = tmp_path / "p.json"
+    model = model_of(_branch_item("K5-2", "kalayantra/k3555"), item("K-NAMED", {"type": "pr_merged", "pr": 3554}, owns=["a.py"]))
+    live = World(_window_of([3555, 3554]))
+    first = _src(monkeypatch, live, path)
+    first.refresh()
+    proofs = M.derive(model, first)
+    assert set(proofs) == {"K5-2", "K-NAMED"} and path.exists()
+    for mode in ("down", "empty"):
+        restarted = _src(monkeypatch, World(_window_of([3555, 3554]), gh=mode), path)       # a new process
+        restarted.refresh()                                                                  # gh gives nothing
+        again = M.derive(model, restarted)
+        assert set(again) == {"K5-2", "K-NAMED"}, mode
+        assert again["K5-2"]["deploy_run_id"] == proofs["K5-2"]["deploy_run_id"]
+        assert len(restarted.proofs.entries()) == 2, mode                                    # a gh failure clears nothing
+
+
+def test_t3_the_cache_entry_is_dropped_when_the_merge_sha_leaves_main(monkeypatch, tmp_path):
+    monkeypatch.setattr(M, "REVALIDATE_S", 0.0)
+    path = tmp_path / "p.json"
+    world = World(_window_of([3555]))
+    src = _src(monkeypatch, world, path)
+    model = model_of(_branch_item("K5-2", "kalayantra/k3555"))
+    src.refresh()
+    assert "K5-2" in M.derive(model, src)
+    world.git_rc = 128                  # git itself failing is not evidence: the proof stays
+    src.refresh()
+    assert len(src.proofs.entries()) == 1
+    world.git_rc = None
+    world.in_main.discard(_sha_of(3555))      # the merge commit is no longer contained in origin/main
+    src.refresh()
+    assert src.proofs.entries() == {} and json.loads(path.read_text())["proofs"] == {}
+    gone = _src(monkeypatch, World(_window_of([3555]), gh="down"), path)
+    assert M.derive(model, gone) == {}
+
+
+@pytest.mark.parametrize("position", [300, 301])
+def test_t5_the_window_boundary_pr_300_is_in_the_list_pr_301_is_found_on_its_own(monkeypatch, tmp_path, position):
+    rows = _window_of([], filler=position - 1) + [_pr(3555, "kalayantra/k3555")]
+    world = World(rows + [_pr(4000 + i, f"after-{i}") for i in range(301 - position)])
+    assert world.merged.index(next(r for r in rows if r["number"] == 3555)) + 1 == position
+    src = _src(monkeypatch, world, tmp_path / "p.json")
+    src.refresh()
+    window = next(c for c in world.calls if c[:3] == ["gh", "pr", "list"] and "--head" not in c)
+    assert window[window.index("--limit") + 1] == str(M.MERGED_LIST_LIMIT) == "300"
+    assert "K5-2" in M.derive(model_of(_branch_item("K5-2", "kalayantra/k3555")), src)
+    assert bool(world.head_lookups()) is (position > M.MERGED_LIST_LIMIT)      # only the 301st needs its own lookup
+
+
+def test_a_failed_per_branch_lookup_is_not_remembered_as_no_pr(monkeypatch, tmp_path):
+    world = World(_window_of([3555]), gh="down")
+    src = _src(monkeypatch, world, tmp_path / "p.json")
+    assert src.merged_prs_for_branch("kalayantra/k3555") == []
+    world.gh = "up"
+    assert src.merged_prs_for_branch("kalayantra/k3555") == [3555]       # gh recovered: asked again at once
+
+
+def test_the_proof_file_is_written_atomically_and_an_unreadable_one_is_ignored(monkeypatch, tmp_path):
+    path = tmp_path / "run" / "p.json"
+    src = _src(monkeypatch, World(_window_of([3555])), path)
+    src.refresh()
+    M.derive(model_of(_branch_item("K5-2", "kalayantra/k3555")), src)
+    assert [p.name for p in path.parent.iterdir()] == ["p.json"]          # no temp file left behind
+    path.write_text("{not json")
+    assert M.ProofStore(str(path)).entries() == {}
+
+
+# ---- ruling (b): a skip / not_applicable pass never overrides a proven done ---------------------------------------
+def test_t4_a_proven_done_is_never_overridden_by_a_skip_or_not_applicable_propagation():
+    def with_outcomes(*items):
+        model = model_of(*items)
+        model["control_plane"]["decision_outcomes"] = {"final": ["approved", "refused"], "open": ["deferred"]}
+        return model
+
+    refused = {"kind": "decision", "decision": "D-VC", "state": "decided", "outcome": "refused", "ts": NOW.isoformat()}
+    skipped = item("K-SKIPPED", {"type": "pr_merged", "pr": 11}, owns=["b.py"], requires_outcome={"D-VC": "approved"})
+    proven = item("K-PROVEN", {"type": "pr_merged", "pr": 10}, owns=["a.py"], requires_outcome={"D-VC": "approved"})
+    downstream = item("K-DOWN", {"type": "pr_merged", "pr": 12}, owns=["c.py"], depends_on=["K-SKIPPED"])
+    model = with_outcomes(skipped, proven, downstream)
+    source = FakeSource(prs={10: merged(10, MERGE), 12: merged(12, BUNDLE_MERGE)},
+                        diffs={MERGE: ["a.py"], BUNDLE_MERGE: ["c.py"]}, deployed_merges=[MERGE, BUNDLE_MERGE])
+    derived = M.derive(model, source)
+    assert set(derived) == {"K-PROVEN", "K-DOWN"}
+    rows = rows_of(model, derived, [refused])
+    assert rows["K-SKIPPED"]["status"] == "not_applicable"            # the skip pass is live: it does skip an unproven item
+    assert rows["K-PROVEN"]["status"] == "done" and rows["K-PROVEN"]["source"] == M.SOURCE
+    assert rows["K-DOWN"]["status"] == "done"                         # nor does a skipped dependency reach a proven done
+    assert rows["K-DOWN"].get("skip_origin") is None
