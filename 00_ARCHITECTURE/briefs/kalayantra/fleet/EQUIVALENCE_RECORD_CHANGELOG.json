@@ -530,6 +530,43 @@
    "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the final tree, equal to input_vector.implementation_digests(); the golden pin in test_mb_ordinary_golden.py was replaced by script (AST-located literal); no golden component re-captured.",
    "interpretations": [],
    "closed": true
+  },
+  {
+   "id": "TR2-DEFECTS-AB",
+   "rulings": [
+    "SR-NEARMISS-DOMAIN-TAIL",
+    "SR-UCERT-CAP-WATCH"
+   ],
+   "category": "E1",
+   "part": "implementation.window (golden pin) + century_contract.json image.writer_source_digest",
+   "base_commit": "3d9b65c68",
+   "derived_at_head": "2e3c6b341",
+   "statement": "THE ONE RE-PIN after the VM TR diagnostic 20261023T1655ZT (NO_DISPATCH). Defect A (od1-tr2-nearmiss e34a116ea + 2ffbaab1b, reviewed ACCEPTED in round 2): the geometry-stage near-miss reconciliation (verification_job.near_miss_reconcile_problems) excludes exactly the disclosed identity-domain tails, recomputed with the verifier's own functions and matched by object id one-for-one; any other reported-but-unstored graze still fails; a duplicate tail object key is refused. Defect B (od1-tr2-certbound 4e39b711d, ACCEPTED): a bound the verifier cannot push under M + tol with no point above it is INCONCLUSIVE (named blank solver_certificate_incomplete, counted against the R-6 0.5 % cap by origin: only builder-numbered windows), not DISAGREEMENT; a witnessed exceedance still disagrees; no tolerance changed. Defects C/D (od1-tr2-g6g7 838b1373e + d916c7dfa, ACCEPTED) are trial-harness only and move no implementation digest. All changed implementation modules are window-stage; geometry and evaluation are unchanged.",
+   "cause": {
+    "commit": "2e3c6b341",
+    "modules": [
+     "verification_job",
+     "window_cert_check",
+     "numerical_window_gate"
+    ]
+   },
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "b94365dd0cfff70763f922fb3dc58598b7c05a70f97b7f288aeea4ee19fd5035",
+     "after": "e38160c13a39ac3223dc52b928f2a7c73e4dd9b821e57fb0ef2c86a1cd8dd1e1"
+    }
+   },
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the merged tree, equal to input_vector.implementation_digests(); the golden window pin in test_mb_ordinary_golden.py replaced by exact-string substitution of the old digest; century_contract.json image.writer_source_digest e4433b5f -> 9706eed5 from get_writer_source_hash('ka_gochara_v5'), century_contract.py --check equal (partial: no --pack). implementation_digest.lock.json is NOT touched (CI-generated output).",
+   "interpretations": [],
+   "closed": true
   }
  ]
 }
