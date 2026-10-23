@@ -333,7 +333,10 @@ def test_r4_builder_and_verifier_agree_on_every_p2_record_of_the_class(db, cls):
         assert all(s.reason is None for s in b.segments), (r.agent, r.house_from_frame)          # nothing is `*_residence_unknown` where the sky answers
     assert disagree == [], f"{len(disagree)} of {len(records)} records disagree: {disagree[:5]}"
     assert with_changes >= 5                                                                  # the comparison is not vacuous: ingresses do cut records
-    assert ov.summary()["residence_unanswered_seconds"] == {} and prov.summary()["residence_unanswered_seconds"] == {}
+    # the verifier reports a stretch only above its own 1e-6 s noise floor (`vedha_verifier.derive_residence`); hold the builder to that floor, because
+    # its float difference of second-sums leaves ~1e-8 s of rounding noise on CPython <= 3.11 (a 0.0-second "gap" is not unanswered time)
+    floor = lambda summary: {g: v for g, v in summary["residence_unanswered_seconds"].items() if v >= 1e-6}              # noqa: E731
+    assert floor(ov.summary()) == {} and floor(prov.summary()) == {}
 
 
 # ── R-5 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
