@@ -8,7 +8,8 @@ generations, counts and asset states are PLANTED labels (B.10).
       never computed / computed and found none / rows only in an unserved partition / served rows the reader's condition dropped
   R2  a probe that cannot run is ``layer_state_unreadable`` and leaves the writer's transaction usable (SAVEPOINT)
   R3  ``ph_muhurta`` names the empty obstruction layer (no windows) instead of silently reporting "no overlap": undatable served rows
-      are told apart from a layer nobody built; a populated layer reports no reason
+      are told apart from a layer nobody built; a populated layer reports no reason; a read that errors is ``obstruction_read_failed``,
+      never the state probe's "computed_found_none"
   R4  ``ka_kala_darshana`` with convergence windows but an empty obstruction layer stamps every window's narrative "not checked"
       (not an unobstructed score), unless ka_vighnakara actually ran; a populated layer's narrative is unchanged
 """
@@ -100,6 +101,15 @@ def test_r3_muhurta_populated_layer_reports_windows_and_no_reason(world):
     windows, layer = muhurta_mod.PhMuhurtaWriter()._read_obstruction_layer(conn, CHART)
     assert sorted(windows) == [(date(2031, 4, 1), date(2031, 4, 7))]
     assert layer == {'windows': 1, 'empty_reason': None, 'layer_state': None}
+
+
+def test_r3_muhurta_a_failed_obstruction_read_is_named_not_read_as_no_overlap(world):
+    conn = world
+    light(conn, 'ka_vighnakara')  # a built layer: were the failure reclassified by the state probe it would read "computed_found_none"
+    serve_convergence(conn, drop_only=True)  # the served convergence view the read joins through is gone: the SELECT errors
+    windows, layer = muhurta_mod.PhMuhurtaWriter()._read_obstruction_layer(conn, CHART)
+    assert windows == {} and layer == {'windows': 0, 'empty_reason': 'obstruction_read_failed', 'layer_state': None}
+    assert conn.execute('SELECT 1 AS ok').fetchone()['ok'] == 1, 'the failed read aborted the writer transaction'
 
 
 def _darshana_table(conn):

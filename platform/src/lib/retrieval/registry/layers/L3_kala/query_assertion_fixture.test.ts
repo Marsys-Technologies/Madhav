@@ -59,7 +59,9 @@ it('legacy capabilities exclude all candidate rows from both data and counts', a
   // temporal view: the legacy NULL partition; obstruction periods (SR-K9-WRITE-SCOPE): the served partition, never a candidate.
   const sqls = queryMock.mock.calls.map(([sql]) => sql as string)
   const obstruction = sqls.filter(sql => sql.includes('FROM kala_obstruction'))
-  // page + total + the SR-EMPTY-REASON layer-state probe an empty result triggers (all three read the served partition)
+  // page + total + the SR-EMPTY-REASON layer-state probe an empty result triggers. The page and total read only the served
+  // partition; the probe is one statement that also counts the chart's rows in ANY partition (by design: that count is how it
+  // tells "rows only in a candidate" from "nothing built"), beside a served-partition count, which carries the predicate asserted below.
   expect(obstruction.length).toBe(3)
   for (const sql of sqls.filter(sql => !obstruction.includes(sql))) expect(sql).toContain('generation IS NULL')
   for (const sql of obstruction) expect(sql).toContain('o.generation IS NOT DISTINCT FROM (SELECT h.generation FROM kala_layer_head h')

@@ -5,11 +5,11 @@
  *  E2  a non-empty layer is unchanged (no reason, no extra probe)
  *  E3  a probe that cannot be read is an honest unreadable, never a guessed "none"
  *  E4  composeView names the reason PER SOURCE (one empty source beside a populated one used to be silent)
- *  E5  the SQL viewSql emits measures those counts (real SQL, gated by KALA_VIEW_DB_TESTS like the other real-SQL oracles)
+ *  E5  the real-SQL oracles (viewSql counts, and the two routes' layer-state probe) live in views_registry.integration.empty_reason.test.ts,
+ *      which the db-integration-tests-10-0 profile (KALA_VIEW_DB_TESTS=1) runs; this file is unit-only
  * Vocabulary and meaning: empty_layer_reason.ts.
  */
 import { beforeEach, expect, it, vi } from 'vitest'
-import { disposableSql } from './disposable_sql.test_support'
 
 const db = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/db/client', () => ({ query: db }))
@@ -130,46 +130,4 @@ it('E4 an unpublished view keeps its page-level reason and invents no per-source
   const { composeView } = await import('./view_common')
   const content = composeView('now', 'chart', { manifest: null, coverage: [], sources: [] })
   expect(content).toMatchObject({ empty_reason: 'unpublished', sources: [] })
-})
-
-// ---- E5: real SQL ----
-const chart = '11111111-1111-4111-8111-111111111111'
-const head = 'CODEX-head'
-function measured(opts: { obstruction: (string | null)[]; asset?: string; selector?: string }) {
-  const rows = opts.obstruction.map((generation, i) =>
-    `INSERT INTO kala_obstruction VALUES (${i + 1}, '${chart}', ${generation === null ? 'NULL' : `'${generation}'`}, 'a${i + 1}', NULL, NULL, NULL, NULL, NULL);`).join('\n')
-  return import('./view_common').then(({ viewSql }) => disposableSql(`BEGIN;
-    CREATE TEMP TABLE kala_layer_head (chart_id uuid, generation text, published_at timestamptz);
-    CREATE TEMP TABLE asset_throughput (chart_id uuid, asset_id text, state text);
-    CREATE TEMP TABLE kala_layer_candidate (chart_id uuid, generation text, build_id uuid, model_digest text, rule_registry_version text, conventions jsonb, state text);
-    CREATE TEMP TABLE kala_layer_candidate_grain (chart_id uuid, generation text, grain_key text, result_state text);
-    CREATE TEMP TABLE kala_gochara_coverage (chart_id uuid, generation text, partition_kind text, partition_key text);
-    CREATE TEMP TABLE kala_obstruction (id bigint, chart_id uuid, generation text, assertion_id text, assertion jsonb,
-      interval_start timestamptz, interval_end timestamptz, window_start date, window_end date);
-    INSERT INTO kala_layer_head VALUES ('${chart}', '${head}', now());
-    INSERT INTO kala_layer_candidate VALUES ('${chart}', '${head}', '22222222-2222-4222-8222-222222222222', 'd', 'r', '{}', 'published');
-    ${opts.asset ? `INSERT INTO asset_throughput VALUES ('${chart}', 'ka_vighnakara', '${opts.asset}');` : ''}
-    ${rows}
-    PREPARE ky_view(uuid,timestamptz,timestamptz,timestamptz,text,text,int,int,text,text)
-      AS ${viewSql({ name: 'now', description: 'fixture', sources: ['kala_obstruction'], required: [] })};
-    EXECUTE ky_view('${chart}', NULL, NULL, NULL, ${opts.selector ? `'${opts.selector}'` : 'NULL'}, NULL, 50, 0, NULL, NULL); ROLLBACK;`)[0].sources as Parameters<typeof import('./view_common').composeView>[2]['sources'])
-}
-const dbLane = it.runIf(process.env.KALA_VIEW_DB_TESTS === '1')
-
-dbLane('E5 real SQL: the three empty states are measured from the table and the asset state', async () => {
-  const { composeView } = await import('./view_common')
-  const reasonOf = async (opts: Parameters<typeof measured>[0]) => {
-    const sources = await measured(opts)
-    return composeView('now', chart, { manifest: { manifest_id: 'b', generation: head }, coverage: [], sources }).sources[0] as Record<string, unknown>
-  }
-  expect(await reasonOf({ obstruction: [] })).toMatchObject({ empty_reason: 'layer_not_computed', layer_state: { rows_any_partition: 0, asset_state: null } })
-  expect(await reasonOf({ obstruction: [], asset: 'lit' })).toMatchObject({ empty_reason: 'computed_found_none', layer_state: { asset_state: 'lit' } })
-  // a private candidate's rows are rows in the table, but not the published generation's
-  expect(await reasonOf({ obstruction: ['candidate:x'], asset: 'lit' })).toMatchObject({ empty_reason: 'rows_outside_served_generation', layer_state: { rows_any_partition: 1, rows_served_unfiltered: 0 } })
-  // the head holds a row, the selector (event_class) excludes it
-  expect(await reasonOf({ obstruction: [head], asset: 'lit', selector: 'travel' })).toMatchObject({ empty_reason: 'filters_excluded_all_rows', layer_state: { rows_served_unfiltered: 1 } })
-  // a populated source is unchanged: no reason key
-  const populated = (await reasonOf({ obstruction: [head], asset: 'lit' }))
-  expect(populated).not.toHaveProperty('empty_reason')
-  expect(populated).toMatchObject({ total_matching: 1, returned: 1 })
 })
