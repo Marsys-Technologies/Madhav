@@ -42,6 +42,8 @@ def signed(w, args=ARGS, dry=None, oid="op-rb"):
     req = w.production_request("orchestrator_rebuild", operation_id=oid, idempotency_key="k-" + oid, args=dict(args))
     if dry is not None:
         req["dryrun_receipt"] = dry
+    from owner_go_cases import write_owner_go      # OWNER-BUILD-GO-REQUIRED-20261023: the owner's go for the actual build (bound to the request, which the acceptance does not change)
+    write_owner_go(w.mod, req)
     return w.accept(req)
 
 

@@ -60,6 +60,15 @@ entry (a name the table does not declare is refused at admission, before any pro
 status, content type, byte length and sha256 of the body — the body itself only for an endpoint declared `store_body: true` and only if it carries no personal data.
 A non-2xx answer, or a record that does not bind this operation, is a FAILED receipt; a 2xx one is accepted mechanically like `readback_sql` (fleet/served_probe.py).
 
+Owner go (OWNER-BUILD-GO-REQUIRED-20261023): "before you start the actual build, take my explicit approval". `century_dispatch` and the production `orchestrator_rebuild`
+(never their `*_dryrun` siblings, which stay free) are refused at admission AND again immediately before execution unless run/ops/owner_go/<operation_id>.json exists and
+binds THIS request. The owner surrogate writes it, only from the owner's own yes: {"schema": "ky.owner_go/1", "operation_id", "kind", "item_id", "request_sha256" (the
+executor's request_digest of the request: the same sha256 an acceptance binds), "reviewed_commit" (the dispatch head), "owner_yes": true, "owner_words" (verbatim),
+"transcript_citation" (session + timestamp, non-empty), "written_by": "madhav-44 (owner surrogate)", "written_at" (timezone-qualified)}. A cockpit pages on the refusal
+reasons `owner_go_missing` (no file) and `owner_go_mismatch: <field>` (the file names a different request, or lacks a citation, the yes or the writer). Neither a surrogate
+ruling, an earlier approval file (OWNER-CLOUD-RUNS-APPROVED), an environment flag, a lease, an acceptance receipt nor a capability replaces it; deleting the file stops a
+queued build. Trials and dry runs need no go.
+
 Cancel lane (SR-CANCEL-LANE): every production cancel / stall-stop kind (CANCEL_LANE_KINDS, a closed allow-list) runs on its OWN single worker, never on the
 production worker, and never waits for the production fence — a cancel queued behind the very operation it must stop would never run. The lane refuses any
 kind that is not on the list, every one of them is signed-only, and `orchestrator_rebuild_cancel` is admitted only for the run-id of an `orchestrator_rebuild`
@@ -97,6 +106,13 @@ REMOTE_ASYNC_KINDS = frozenset({   # A8 §3.11: work continues remotely after th
     "smalltest_dispatch",
     "verification_job",
 })
+OWNER_GO_KINDS = frozenset({   # OWNER-BUILD-GO-REQUIRED-20261023: the actual build starts only on the owner's explicit yes; the dry-run siblings stay free
+    "century_dispatch",
+    "orchestrator_rebuild",
+})
+OWNER_GO_DIR = OPS / "owner_go"   # run/ops/owner_go/<operation_id>.json, written only by the owner surrogate from the owner's own words
+OWNER_GO_SCHEMA = "ky.owner_go/1"
+OWNER_GO_WRITER = "madhav-44 (owner surrogate)"
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
 LOOP_TICK_S = 10        # the main loop's idle sleep: the finest grain at which any timed gate below can fire
 CAPS_REFRESH_S = 30     # A10.1 item 6: CAPABILITIES.json is rewritten at least this often (was 300)
@@ -755,6 +771,31 @@ def century_contract_problem(req: dict) -> str | None:
     return None
 
 
+def owner_go_problem(req: dict) -> str | None:
+    """OWNER-BUILD-GO-REQUIRED-20261023: the owner's explicit go for the actual build. The century dispatch and the production K9 rebuild (OWNER_GO_KINDS; never their dry-run
+    siblings) are admitted only when run/ops/owner_go/<operation_id>.json exists and binds THIS request: schema, operation_id, kind, item_id, the executor's own request_digest
+    (`request_sha256`) and the dispatch head (`reviewed_commit`) all equal the request's, `owner_yes` is true, `owner_words` and `transcript_citation` (session + timestamp) are
+    non-empty, `written_by` is the owner surrogate and `written_at` is a timezone-qualified time. Run at the tail of validate, so again immediately before execution (removing the
+    file stops a queued build). The reasons the cockpit pages on are `owner_go_missing` and `owner_go_mismatch: <field>`. No surrogate ruling, earlier approval file, environment flag or capability substitutes."""
+    if req.get("kind") not in OWNER_GO_KINDS: return None
+    path = OWNER_GO_DIR / f"{req.get('operation_id')}.json"
+    if not path.exists() and not path.is_symlink(): return "owner_go_missing"
+    try:
+        if path.is_symlink() or not path.is_file(): return "owner_go_mismatch: file"
+        go = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError): return "owner_go_mismatch: file"
+    if not isinstance(go, dict): return "owner_go_mismatch: file"
+    for field, expected in (("schema", OWNER_GO_SCHEMA), ("operation_id", req.get("operation_id")), ("kind", req.get("kind")), ("item_id", req.get("item_id")),
+                            ("request_sha256", request_digest(req)), ("reviewed_commit", req.get("reviewed_commit")), ("written_by", OWNER_GO_WRITER)):
+        if not isinstance(expected, str) or not expected or go.get(field) != expected: return f"owner_go_mismatch: {field}"
+    if go.get("owner_yes") is not True: return "owner_go_mismatch: owner_yes"
+    for field in ("owner_words", "transcript_citation"):
+        if not isinstance(go.get(field), str) or not go[field].strip(): return f"owner_go_mismatch: {field}"
+    try: utc_time(go.get("written_at"))
+    except (TypeError, ValueError): return "owner_go_mismatch: written_at"
+    return None
+
+
 def measuring_cancel_problem(req: dict) -> str | None:
     """SR-J3-CANCEL-NULL 2(a) admission for a cancel kind (`measuring_cancel`, `century_cancel`, `verification_cancel` and their `*_dryrun` twins), run at the tail of
     validate (so again immediately before execution; the name is the J-3c one, the rule is family-aware since W3W4 verify E1): the target execution is the one the family's dispatch receipt named (measuring_dispatch J-3c, century_dispatch J-4e,
@@ -1221,6 +1262,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         lambda: orchestrator_rebuild_cancel_problem(req),
         lambda: orchestrator_rebuild_dryrun_problem(req, table),
         lambda: orchestrator_rebuild_teardown_problem(req),
+        lambda: owner_go_problem(req),
         lambda: scheduler_policy_problem(req),
         lambda: served_probe_problem(req, op),
         lambda: smalltest_policy_problem(req),
