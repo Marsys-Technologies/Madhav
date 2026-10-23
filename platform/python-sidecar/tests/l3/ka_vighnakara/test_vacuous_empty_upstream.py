@@ -58,7 +58,10 @@ def _run(monkeypatch, conv_rows):
     monkeypatch.setattr(cls, '_dasha_anchor_peaks', lambda self, c, ch, covered, gen: [])
     monkeypatch.setattr(kv, '_detect_all', lambda **kw: [])
     ctx = SimpleNamespace(db_conn=_Conn(conv_rows), build_id=None, config={'chart_id': 'c', 'birth_params': {'datetime_iso': '1984-02-05T10:43:00+05:30'}})
-    return cls().run(ctx)
+    # The class is wrapped by @records_swiss_backend, which demands the pinned .se1 corpus; this test mocks every
+    # ephemeris call (the K3 CI job carries no corpus) and measures the vacuous label in the writer body, so call the
+    # unwrapped body. The backend guard has its own tests (tests/test_swiss_backend_helper.py).
+    return cls.run.__wrapped__(cls(), ctx)
 
 
 def test_e1_empty_upstream_is_labelled_vacuous_in_the_notes_and_the_run_log(monkeypatch, caplog):

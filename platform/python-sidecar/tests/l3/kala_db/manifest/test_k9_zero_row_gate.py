@@ -148,7 +148,7 @@ def test_g4_another_writers_zero_row_grain_is_unaffected():
 def entry(monkeypatch):
     monkeypatch.setattr(pub, 'lock_candidate_inputs', lambda conn, c: None)
     monkeypatch.setattr(pub, '_run', lambda conn, run_id: {'chart_id': 'chart', 'state': 'completed', 'plan': ['ka_vighnakara']})
-    return lambda conn: pub._candidate(conn, 'build', 'candidate:g', zero_row_gate=True)
+    return lambda conn: pub._candidate(conn, 'build', 'candidate:g', enforce_zero_rows=True)
 
 
 def test_g5_candidate_refuses_an_unexplained_zero_row_grain(entry):
@@ -169,5 +169,5 @@ def test_g5_candidate_returns_a_labelled_vacuous_zero_row_grain_and_a_non_empty_
 
 def test_g6_verify_reads_no_layer_table_or_registry(entry):
     conn = _Conn(peak=4, convergence=4, grains=[('ka_vighnakara:inputs', 'zero_rows')])           # unexplained, but verify only binds a digest
-    pub._candidate(conn, 'build', 'candidate:g')                                                     # the verify path: no zero_row_gate
+    pub._candidate(conn, 'build', 'candidate:g')                                                     # the verify path: no enforce_zero_rows
     assert not any(t in sql for sql in conn.sql for t in ('FROM kala_convergence', 'kala_activation_predicates', 'asset_registry'))

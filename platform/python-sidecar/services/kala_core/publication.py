@@ -40,7 +40,7 @@ def _grain_refusal(absent: list[str], unplanned: list[str], failed: list[str]) -
     return 'candidate has absent, unplanned or failed grains; '+'; '.join(parts)
 
 
-def _candidate(conn: Any, run_id: str, generation: str, *, zero_row_gate: bool = False) -> tuple[Candidate, dict]:
+def _candidate(conn: Any, run_id: str, generation: str, *, enforce_zero_rows: bool = False) -> tuple[Candidate, dict]:
     query = ('SELECT chart_id, build_id, expected_head_generation, state, conventions '
              'FROM kala_layer_candidate WHERE build_id = %s AND generation = %s')
     row = conn.execute(query,(run_id,generation)).fetchone()
@@ -80,7 +80,7 @@ def _candidate(conn: Any, run_id: str, generation: str, *, zero_row_gate: bool =
         raise CandidateNotPublishable(_grain_refusal(absent,unplanned,failed))
     # The zero-row detector reads the layer tables and the registry, which the narrow `verifier_principal` role may not (migration 1330 grants it the grain,
     # verification and nothing else; verification only binds a digest). It therefore runs where the serving change is made: `publish`.
-    unlabelled = _unexplained_zero_rows(conn,c.chart_id,generation,[r[0] for r in rows if r[1] == 'zero_rows']) if zero_row_gate else []
+    unlabelled = _unexplained_zero_rows(conn,c.chart_id,generation,[r[0] for r in rows if r[1] == 'zero_rows']) if enforce_zero_rows else []
     if unlabelled:
         raise CandidateNotPublishable('zero-row completion without a measured vacuous reason and a passing integrity check: '+'; '.join(unlabelled))
     return c, {'run':run,'grains':tuple(sorted(grains))}
@@ -159,7 +159,7 @@ def verify(conn: Any, *, run_id: str, generation: str, independently_derived_dig
 
 
 def publish(conn: Any, *, run_id: str, generation: str, expected_head: str | None) -> dict:
-    c, detail = _candidate(conn,run_id,generation,zero_row_gate=True)
+    c, detail = _candidate(conn,run_id,generation,enforce_zero_rows=True)
     if expected_head != c.expected_head_generation:
         raise CandidateNotPublishable('request expected-head differs from candidate-open pin')
     publish_candidate(conn,c,expected_grains=detail['grains'])
