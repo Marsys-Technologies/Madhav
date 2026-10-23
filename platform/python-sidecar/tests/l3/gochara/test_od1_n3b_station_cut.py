@@ -12,8 +12,9 @@ which already treats a station within 120 s of a support end as a cut — found 
 Claims — each with ONE oracle (the classical/analytic source is cited) and ONE planted reversion that makes it fail:
 
   N3B-1 a stretch <= NEAR_STATION_S touching a listed station is not sign-tested (S0 K-2; checker `_stations`: `ts - a <= e or b - ts <= e` is a cut)
-        oracle: REAL Swiss Jupiter station, window ending 3 ms after it, the station listed; the builder numbers, the independent checker VERIFIES the
-        builder's value and instant (the one isolated crest lies outside the zone; SR-NEAR-STATION-TIE).   reversion: drop the skip in `_check_arc`
+        oracle: REAL Swiss Jupiter station, window ending a few ms after it (the first end, on a fixed ladder, whose Swiss speed signs are really
+        noisy on this platform: `_noisy_end_after`), the station listed; the builder numbers, the independent checker VERIFIES the builder's value
+        and instant (the one isolated crest lies outside the zone; SR-NEAR-STATION-TIE).   reversion: drop the skip in `_check_arc`
   N3B-2 the builder's convention is EQUAL in value to the verifier's 120 s (owner ruling SR-STATION-NEAR-END)
         oracle: the same real-sky window agrees AND the constants are equal.                reversion: a 0 s convention (R2: the 9 DISAGREEs return)
   N3B-3 a piece <= NEAR_STATION_S touching a listed station is read monotone within the S0 noise bound
@@ -28,6 +29,7 @@ Claims — each with ONE oracle (the classical/analytic source is cited) and ONE
 from __future__ import annotations
 
 import ast
+import functools
 import math
 import sys
 import types
@@ -137,14 +139,43 @@ def _continuous_kin(origin: datetime):
     return at
 
 
+# The Swiss speed next to a station is ~1e-13 deg/s with a sign decided by the last bits of the floating-point evaluation, so WHERE it flips differs
+# between builds of the same ephemeris (measured 2026-10-23: the arm64 build, which fuses multiply-adds, flips between 0.75 ms and 2.25 ms past its station;
+# the same C source built without fusion, as on the x86-64 CI runner, has one sign there and a station 78 ms away). The oracle of N3B-1 needs the premise of S0 K-2 —
+# the sign of the speed on the cut stretch IS noise — so it takes it from the platform it runs on instead of assuming one platform's noise: the first end offset
+# of a fixed ladder at which the two instants the reverted sign test samples read opposite (or vanishing) signs.
+END_AFTER_LADDER_S = (0.003, 0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0, 100.0)    # all <= NEAR_STATION_S (120 s): the stretch stays a cut
+
+
+def _signs_disagree(speeds) -> bool:
+    """True when the speeds are not all strictly of one sign: the reverted `_check_arc` (`signs not in ({1}, {-1})`) then blanks the stretch."""
+    return {(v > 0) - (v < 0) for v in speeds} not in ({1}, {-1})
+
+
+@functools.lru_cache(maxsize=None)
+def _noisy_end_after() -> float:
+    """Seconds after the Jupiter station S at which the 2030-03 window ends: the first ladder rung whose cut stretch [S, S + d] has noisy speed signs at the
+    two instants (a quarter and three quarters in: `inset = length / 4` for a stretch under four minutes) the reverted sign test would sample. A platform with
+    no noisy rung FAILS here by name, outside any `pytest.raises` (a premise that cannot be established is not a pass for the planted reversion)."""
+    assert_real_ephemeris()
+    st = _jupiter_station(datetime(2030, 3, 1, tzinfo=timezone.utc))
+    origin = st - timedelta(days=2)
+    at = _continuous_kin(origin)
+    listed = (st - origin).total_seconds()
+    for d in END_AFTER_LADDER_S:
+        if _signs_disagree(at(listed + d * f)[1] for f in (0.25, 0.75)):
+            return d
+    raise AssertionError(f"no rung of {END_AFTER_LADDER_S} has a noisy Swiss speed sign next to the station {st.isoformat()}: the premise of S0 K-2 is absent here")
+
+
 def _real_sky_window(m, short: float = 1e-7):
-    """Jupiter's first 2030-03 station S; the window [S - 2 d, S + 3 ms) (the support ends 3 ms after the Swiss station, the station is LISTED — the
-    stretch between them is 3 ms); the tent's level is the station longitude `short` degrees short. With the default 1e-7° the crest (kernel 1.0) lies
+    """Jupiter's first 2030-03 station S; the window [S - 2 d, S + d_end) (the support ends d_end after the Swiss station, d_end = `_noisy_end_after()`, 3 ms where
+    the speed sign is noisy at once; the station is LISTED — the stretch between them is d_end); the tent's level is the station longitude `short` degrees short. With the default 1e-7° the crest (kernel 1.0) lies
     ~650 s from the station: ONE isolated maximum outside the 120 s zone, whose value is 2e-8 above the zone's, so the window still NUMBERS
     (SR-NEAR-STATION-TIE amends SR-STATION-NEAR-END: with `short` = 1e-9° the crest, ~70 s out, is inside the zone and the window is the named blank)."""
     assert_real_ephemeris()
     st = _jupiter_station(datetime(2030, 3, 1, tzinfo=timezone.utc))
-    lo, hi = st - timedelta(days=2), st + timedelta(seconds=0.003)
+    lo, hi = st - timedelta(days=2), st + timedelta(seconds=_noisy_end_after())
     origin, length = lo, (hi - lo).total_seconds()
     level, orb = _lon_dt("Jupiter", st) - short, 5.0
     at = _continuous_kin(origin)
@@ -252,8 +283,15 @@ def test_oracle_passes_on_the_real_solver(cid):
 def test_the_single_planted_reversion_fails_the_oracle(cid):
     oracle, old, new = CLAIMS[cid]
     reverted = reverted_module(old, new)          # built OUTSIDE the raises-block: a reversion that no longer matches is an ERROR, not a pass
+    if cid in REAL_SKY:
+        _noisy_end_after()                        # the real-sky premise is established OUTSIDE the raises-block too: its failure is the test's, not the reversion's
     with pytest.raises(AssertionError):
         oracle(reverted)
+
+
+def test_the_noisy_sign_detector_reads_false_on_one_sign_and_true_on_a_flip_or_a_zero():
+    assert not _signs_disagree([3e-14, 1e-13]) and not _signs_disagree([-1e-13, -2e-13])           # one sign: the reverted sign test would pass the stretch
+    assert _signs_disagree([3e-14, -1.7e-13]) and _signs_disagree([1e-13, 0.0])                    # a flip, or a vanishing speed: it blanks
 
 
 def test_every_claim_has_exactly_one_reversion_and_one_oracle():
