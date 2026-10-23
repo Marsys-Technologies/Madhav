@@ -255,7 +255,12 @@
      "cwd": "platform/python-sidecar",
      "tests": [
       "tests/l3/gochara/test_od1_ndh_in_place.py"
-     ]
+     ],
+     "env": {
+      "GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+      "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
+     }
     },
     {
      "kind": "db_sql",
@@ -264,7 +269,7 @@
      "sql": "SELECT NOT EXISTS (SELECT 1 FROM (SELECT h.chart_id::text, h.generation, CASE WHEN s.chart_id IS NULL THEN 'no_input_vector' WHEN s.input_generation_vector -> 'l0' ->> 'bg_dignity_reference' IS NULL OR s.input_generation_vector -> 'l0' ->> 'bg_graha_naisargika_friendship' IS NULL THEN 'no_l0_digest_recorded' WHEN s.input_generation_vector -> 'l0' ->> 'bg_dignity_reference' <> '2635a7f1f311ffc884dc1416baecc5a8cb44212c308cb386fac5423afcda4456' OR s.input_generation_vector -> 'l0' ->> 'bg_graha_naisargika_friendship' <> '6fe29171b27e7934271823a38ef36efd12300838fe240ee551b660d46b000c1f' THEN 'l0_differs_from_post_1401' END AS reason FROM (SELECT chart_id, generation FROM public.ka_gochara_relationship_record WHERE rule_version = '1.2.0' UNION SELECT chart_id, generation FROM public.ka_gochara_eval_window WHERE rule_version = '1.2.0' UNION SELECT chart_id, generation FROM public.ka_gochara_eval_window_verification WHERE rule_version = '1.2.0' UNION SELECT chart_id, generation FROM public.ka_gochara_search_path_pin WHERE rule_version = '1.2.0' UNION SELECT chart_id, generation FROM public.ka_gochara_search_obligation WHERE rule_version = '1.2.0') h LEFT JOIN public.ka_gochara_search_input_snapshot s ON s.chart_id = h.chart_id AND s.generation = h.generation) g WHERE g.reason IS NOT NULL) AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_rule_path_soft_factor WHERE rule_version = '1.2.0' AND factor_rule_version = '1.0.0')"
     }
    ],
-   "note": "parts are rendered by od1_ndh_in_place.t11_parts() (lane od1-ndh, reviews X-20261022T130523Z-review-ndh2 ACCEPTED at bdb836944 and X-20261022T125455Z-review-ndh-sql ACCEPTED); test_od1_ndh_in_place.py::test_n9 asserts this entry equals t11_parts(). The pytest part proves the changelog digests before/after and the retained-row detector (planted stale generations read false); the db_sql part runs that detector on the lane DB (TRIAL_READY_LANE_DSN): a 1.2.0 generation built on pre-1401 L0, or a 1.2.0 membership naming a 1.0.0 factor, reads false. A lane DB with no 1.2.0 row reads true vacuously (nothing retained to be stale) - the retained-row claim is about stored rows, so the claim is as strong as the DB it is read on."
+   "note": "parts are rendered by od1_ndh_in_place.t11_parts() (lane od1-ndh, reviews X-20261022T130523Z-review-ndh2 ACCEPTED at bdb836944 and X-20261022T125455Z-review-ndh-sql ACCEPTED); test_od1_ndh_in_place.py::test_n9 asserts this entry equals t11_parts(). The pytest part proves the changelog digests before/after and the retained-row detector (planted stale generations read false); the db_sql part runs that detector on the lane DB (TRIAL_READY_LANE_DSN): a 1.2.0 generation built on pre-1401 L0, or a 1.2.0 membership naming a 1.0.0 factor, reads false. A lane DB with no 1.2.0 row reads true vacuously (nothing retained to be stale) - the retained-row claim is about stored rows, so the claim is as strong as the DB it is read on. SR-TRBIND-3 landing: the pytest part carries the lane cluster's admin DSN like the other DB-backed parts; without it test_od1_ndh_in_place.py defaults to port 55434, skips (8 of 12) and the part reads null."
   },
   {
    "id": "T12",

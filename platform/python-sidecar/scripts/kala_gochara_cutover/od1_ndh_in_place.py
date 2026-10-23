@@ -229,7 +229,10 @@ def t11_parts() -> list[dict]:
            + ") g WHERE g.reason IS NOT NULL) AND NOT EXISTS (SELECT 1 FROM public.ka_gochara_rule_path_soft_factor"
            f" WHERE rule_version = '{VERSION}' AND factor_rule_version = '{reg.RULE_VERSION}')")
     return [
-        {"kind": "pytest", "cwd": "platform/python-sidecar", "tests": ["tests/l3/gochara/test_od1_ndh_in_place.py"]},
+        # the oracle's database tests default to port 55434 and skip (the part would read null); the lane cluster's admin DSN, like the other DB-backed parts of the registry
+        {"kind": "pytest", "cwd": "platform/python-sidecar", "tests": ["tests/l3/gochara/test_od1_ndh_in_place.py"],
+         "env": {"GOCHARA_A53_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres", "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
+                 "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"}},
         {"kind": "db_sql", "dsn_env": "TRIAL_READY_LANE_DSN", "expect": "t", "sql": sql},
     ]
 
