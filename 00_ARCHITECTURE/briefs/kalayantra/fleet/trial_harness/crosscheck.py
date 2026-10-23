@@ -10,6 +10,10 @@ MAXIMISATION (the factor VALUES are the independent verifier's claim, G-4) — a
     each grid local maximum within `refine_margin` of the best refined by golden section inside its bracket.  Brute force is a LOWER bound of the true maximum
     up to the refinement, so: stored ≥ dense − tol  (the solver found it)  and  stored ≤ dense + tol  (the solver claims nothing higher than exists).
   * SAMPLER (every sampled window): the legacy `maximise_earliest` per piece — it can only under-estimate, so the solver must satisfy stored ≥ sampler − tol.
+  * SLIVERS (SR-P1-SLIVER-D2): a piece shorter than one JD-double ulp at its start is one sky event read on two paths, not a sky configuration; the builder leaves it
+    out of the window maximum.  Both re-solves above run over the SAME admissible pieces: `is_sliver` is the builder's own predicate (`window_sweep.sliver_resolution_s`,
+    the function `window_sweep` applies to the same `_pieces`; imported through the checkout's module, never restated here).  A weak lower bound that counts a sample
+    taken inside a sliver would fail a solver for correctly not serving a value that is no sky configuration.  The number left out rides in the record.
   * PEAK CONSISTENCY: F evaluated at the stored peak instant must equal the stored value (a peak that does not produce its value is a defect of either side).
 
 `tol` = the verifier's REAL (float4) storage round-trip (1e-6): the stored column is REAL.  A window the module cannot rebuild is reported under
@@ -22,7 +26,7 @@ import random
 import time
 from datetime import datetime, timedelta, timezone
 
-SWEEP_NEEDS = ("_pieces", "_objective_fn", "maximise_earliest", "RecordProgram", "SweepRecord", "build_program", "_contains", "_overlaps")
+SWEEP_NEEDS = ("sliver_resolution_s", "_pieces", "_objective_fn", "maximise_earliest", "RecordProgram", "SweepRecord", "build_program", "_contains", "_overlaps")
 TOL = 1e-6                    # window_verifier._TOL: the REAL (float4) storage round-trip
 REFINE_MARGIN = 1e-3          # grid local maxima within this of the best are refined (F changes < 1e-4 per second for any graha / 1.0° orb)
 GOLDEN = (math.sqrt(5) - 1) / 2
@@ -44,19 +48,26 @@ def _secs(a: datetime, b: datetime) -> float:
 
 # ── the window's objective as pieces ────────────────────────────────────────────────────────────────────────────
 
+def is_sliver(ws, a: datetime, b: datetime) -> bool:
+    """SR-P1-SLIVER-D2, the builder's predicate: the piece [a, b) is shorter than the stored-edge resolution at its start (`window_sweep.sliver_resolution_s(a)`).
+    The same comparison `window_sweep` makes on its `_pieces`; the resolution itself is the builder's function, called, not copied."""
+    return (b - a).total_seconds() < ws.sliver_resolution_s(a)
+
+
 def pieces_of(ws, in_win: list, path_id: str, event_class: str, lo: datetime, hi: datetime) -> list[dict]:
     """The elementary pieces of the window with their objective function.  A P4 piece outside the joint support (not both agents live) is not a candidate;
-    a non-P4 piece with no live member has the identically-zero objective (exactly as `draft_windows`)."""
+    a non-P4 piece with no live member has the identically-zero objective (exactly as `draft_windows`).  Each piece carries `sliver` (see `is_sliver`): a sliver is
+    listed, so it is counted, but it is no candidate for the maximum in either re-solve."""
     out = []
     for a, b, live in ws._pieces(lo, hi, in_win):
         if path_id == "P4":
             if {p.rec.agent for p in live} != {"jupiter", "saturn"}:
                 continue
         elif not live:
-            out.append({"a": a, "b": b, "live": [], "f": (lambda t: 0.0), "constant": True})
+            out.append({"a": a, "b": b, "live": [], "f": (lambda t: 0.0), "constant": True, "sliver": is_sliver(ws, a, b)})
             continue
         f = ws._objective_fn(path_id, live, event_class)
-        out.append({"a": a, "b": b, "live": live, "f": f, "constant": all(p.constant is not None for p in live)})
+        out.append({"a": a, "b": b, "live": live, "f": f, "constant": all(p.constant is not None for p in live), "sliver": is_sliver(ws, a, b)})
     return out
 
 
@@ -122,6 +133,8 @@ def dense_max(pieces: list[dict], *, step_s: float = 1.0, deadline: float | None
     best_v, best_t, evals, unknown = -1.0, None, 0, 0
     for pc in pieces:
         a, b, f = pc["a"], pc["b"], pc["f"]
+        if pc["sliver"]:
+            continue                                       # SR-P1-SLIVER-D2: no sky configuration, no candidate for the maximum
         if pc["constant"]:
             v = f(a)
             evals += 1
@@ -164,9 +177,12 @@ def dense_max(pieces: list[dict], *, step_s: float = 1.0, deadline: float | None
 
 
 def sampler_max(ws, pieces: list[dict]) -> dict:
-    """The legacy sampler (`maximise_earliest`) per piece; constant pieces are exact.  It can only under-estimate the true maximum."""
+    """The legacy sampler (`maximise_earliest`) per ADMISSIBLE piece (slivers are skipped, as the builder skips them); constant pieces are exact.  It can only
+    under-estimate the true maximum."""
     best_v, best_t, unknown = -1.0, None, 0
     for pc in pieces:
+        if pc["sliver"]:
+            continue                                       # SR-P1-SLIVER-D2: a sample inside a sub-resolution sliver is not a sky value the solver owes
         if pc["constant"]:
             v = pc["f"](pc["a"])
             got = None if v is None else (v, pc["a"])
@@ -194,7 +210,8 @@ def check_window(ws, pieces: list[dict], stored_value: float, stored_peak: datet
     """Compare one stored (value, peak) with the three re-solves.  Returns the per-window record (violations are named, not just counted)."""
     days = _secs(lo, hi) / 86400.0
     t0 = time.time()
-    rec = {"days": round(days, 3), "stored_value": stored_value, "mixed": window_is_mixed(pieces), "violations": []}
+    rec = {"days": round(days, 3), "stored_value": stored_value, "mixed": window_is_mixed(pieces), "sliver_pieces_skipped": sum(1 for pc in pieces if pc["sliver"]),
+           "violations": []}
     fp = value_at(pieces, stored_peak)
     rec["value_at_stored_peak"] = fp
     if fp is None:
@@ -204,7 +221,8 @@ def check_window(ws, pieces: list[dict], stored_value: float, stored_peak: datet
     sm = sampler_max(ws, pieces)
     rec["sampler_max"] = sm["max"]
     if sm["max"] is None:
-        rec["violations"].append({"kind": "recompute_inconsistent", "detail": "the legacy sampler found the objective unknown"})
+        why = "every piece of the window is a sub-resolution sliver, yet the window is numbered" if pieces and all(pc["sliver"] for pc in pieces) else "the legacy sampler found the objective unknown"
+        rec["violations"].append({"kind": "recompute_inconsistent", "detail": why})
     elif stored_value < sm["max"] - tol:
         rec["violations"].append({"kind": "sampler", "detail": f"stored {stored_value:.9f} < sampler {sm['max']:.9f}"})
     if days <= dense_max_days:
@@ -251,4 +269,4 @@ def aggregate(selection: dict, results: dict, numbered_windows: int, rate: float
             "sampled": len([w for w in selection["random"] if w in results]), "sample_required": sample_size(rate, numbered_windows),
             "top_mixed_requested": len(selection["top_mixed"]), "top_mixed_checked": len(checked_top),
             "dense": {"windows": dense_windows}, "sampler_violations": sampler_v, "dense_violations": dense_v, "recompute_inconsistent": incon,
-            "windows_checked": len(results), "mixed_windows_checked": sum(1 for r in results.values() if r.get("mixed"))}
+            "windows_checked": len(results), "sliver_pieces_skipped": sum(r.get("sliver_pieces_skipped", 0) for r in results.values()), "mixed_windows_checked": sum(1 for r in results.values() if r.get("mixed"))}

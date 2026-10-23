@@ -145,3 +145,47 @@ def test_a_narrow_crest_between_grid_points_is_refined_not_misread():
     assert r["dense"]["max"] == pytest.approx(1.0, abs=1e-6)
     r2 = cc.check_window(ws, w, 0.95, T0 + timedelta(seconds=1800), T0, T0 + HOUR, dense_max_days=1)       # a solver that stops at the grid value 0.95
     assert "dense" in kinds(r2), r2
+
+
+# ── SR-P1-SLIVER-D2 (TR defect C): the cross-check judges the solver against the pieces the builder admits ─────────────────────────────────────────────
+# Classical ground: a piece shorter than one JD-double ulp is one sky event read on two paths, not a sky configuration (N.7.6; the surrogate ruling SR-P1-SLIVER-D2).
+# Closed-form worlds: A = 0.25 over the whole hour; B = 0.75 over a short piece [T0+30 min, +len) on its OWN root, so on that piece F = 0.25 + 0.75 = 1.0.
+
+MID = T0 + HOUR / 2
+
+
+def short_piece_world(length: timedelta):
+    const_a = lambda t: 0.25                                  # noqa: E731
+    const_b = lambda t: 0.75                                  # noqa: E731
+    progs = [prog(rec("rA", "rootA"), const_a), prog(rec("rB", "rootB", lo=MID, hi=MID + length), const_b)]
+    return cc.pieces_of(ws, progs, "P3", "bereavement", T0, T0 + HOUR)
+
+
+def test_the_sliver_predicate_is_the_builders_own_resolution():
+    res_us = ws.sliver_resolution_s(MID) * 1e6                # ~40.2 us at JD 2.46e6, computed by the builder's function
+    below, above = timedelta(microseconds=int(res_us) - 2), timedelta(microseconds=int(res_us) + 2)
+    assert cc.is_sliver(ws, MID, MID + below) and not cc.is_sliver(ws, MID, MID + above)
+    assert [pc["sliver"] for pc in short_piece_world(below)] == [False, True, False]
+    assert [pc["sliver"] for pc in short_piece_world(timedelta(milliseconds=10))] == [False, False, False]
+
+
+def test_a_sample_inside_a_sliver_is_not_counted_against_the_solver():
+    w = short_piece_world(timedelta(microseconds=10))        # the 10 us piece carries 1.0; the admissible pieces carry 0.25
+    r = run(w, 0.25, 0.0)                                     # the solver stores the admissible maximum, as the builder does
+    assert r["violations"] == [], r
+    assert r["sampler_max"] == pytest.approx(0.25, abs=1e-9) and r["dense"]["max"] == pytest.approx(0.25, abs=1e-9) and r["sliver_pieces_skipped"] == 1
+
+
+def test_a_real_higher_ten_millisecond_piece_still_fails_a_solver_that_misses_it():
+    w = short_piece_world(timedelta(milliseconds=10))        # 10 ms >> the ~40 us resolution: a sky configuration, a genuine maximum 1.0
+    r = run(w, 0.25, 0.0)                                     # the deliberately wrong solver stores 0.25
+    assert {"sampler", "dense"} <= set(kinds(r)) and r["sliver_pieces_skipped"] == 0, r
+    assert r["sampler_max"] == pytest.approx(1.0, abs=1e-9)
+    right = cc.check_window(ws, w, 1.0, MID + timedelta(milliseconds=1), T0, T0 + HOUR, dense_max_days=1)
+    assert right["violations"] == [], right
+
+
+def test_the_skipped_slivers_are_counted_in_the_aggregate():
+    r = run(short_piece_world(timedelta(microseconds=10)), 0.25, 0.0)
+    out = cc.aggregate({"seed": 1, "random": ["a"], "top_mixed": []}, {"a": r}, 1, 0.03)
+    assert out["sliver_pieces_skipped"] == 1 and out["sampler_violations"] == []

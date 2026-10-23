@@ -292,7 +292,7 @@ def test_an_undeclared_rule_version_change_is_a_failure_and_a_declared_one_is_al
     rv = [c for c in v["gates"]["G-7"]["checks"] if c["claim"].startswith("rule-version identities")][0]
     assert rv["status"] == FAIL and "P2" in rv["observed"]
     raw = json.loads(fx.TABLE_PATH.read_text())
-    raw["noninterference"]["declared_rule_version_changes"] = [{"path": "P2", "from": "1.2.0", "to": "1.3.0"}]
+    raw["noninterference"]["declared_rule_version_changes"] = [{"path": "P2", "from": "1.2.0", "to": "1.3.0", "ruling": ["TEST-RULING"]}]
     ok = run10(r, base, table=gates.load_decision_table(raw))
     assert [c for c in ok["gates"]["G-7"]["checks"] if c["claim"].startswith("rule-version identities")][0]["status"] == PASS
 
@@ -301,7 +301,7 @@ def test_a_declared_change_does_not_excuse_another_path():
     base = fx.a10_baseline()
     base["noninterference"]["rule_versions"] = {"P1": ["1.2.0"], "P2": ["1.2.0"]}
     raw = json.loads(fx.TABLE_PATH.read_text())
-    raw["noninterference"]["declared_rule_version_changes"] = [{"path": "P2", "from": "1.2.0", "to": "1.3.0"}]
+    raw["noninterference"]["declared_rule_version_changes"] = [{"path": "P2", "from": "1.2.0", "to": "1.3.0", "ruling": ["TEST-RULING"]}]
     r = _with_trial_snapshot(versions={"P1": ["1.3.0"], "P2": ["1.3.0"]})
     v = run10(r, base, table=gates.load_decision_table(raw))
     assert [c for c in v["gates"]["G-7"]["checks"] if c["claim"].startswith("rule-version identities")][0]["status"] == FAIL
@@ -517,3 +517,42 @@ def test_the_required_ids_are_the_25_of_the_merged_evaluator():
     finally:
         sys.path.remove(str(tool.parent))
     assert tuple(mod.REQUIRED_IDS) == gates.TRIAL_READY_IDS and mod.PREDICATE == gates.TRIAL_READY_PREDICATE
+
+
+# ── TR2 G-7 reconciliation: the rule-version moves the VM TR observed are DECLARED, each with its rulings; every other move still reads FAIL ──────────────────
+# Source: gate_verdict.json of the VM TR (G-7 rule-version check): baseline P1/P3/P4 {1.0.0, 1.2.0}, P2 {1.0.0}; trial P1/P3/P4 {1.2.0, 1.3.0}, P2 {1.3.0}.  The doctrine:
+# the final profile selects the owner-confirmed 1.3.0 rows for P1..P4 (rule_registry.FINAL_SELECTED_PATH_REFS; OWNER-DOCTRINE-CONFIRMED-20261021), the eight ND-H classes keep
+# 1.2.0 re-derived in place (SR-NDH-INPLACE) — an identity present on both sides, so not a move.
+OBSERVED_BASELINE_VERSIONS = {"P1": ["1.0.0", "1.2.0"], "P2": ["1.0.0"], "P3": ["1.0.0", "1.2.0"], "P4": ["1.0.0", "1.2.0"]}
+OBSERVED_TRIAL_VERSIONS = {"P1": ["1.2.0", "1.3.0"], "P2": ["1.3.0"], "P3": ["1.2.0", "1.3.0"], "P4": ["1.2.0", "1.3.0"]}
+
+
+def _identity_status(trial_versions, table=None, baseline_versions=OBSERVED_BASELINE_VERSIONS):
+    base = fx.a10_baseline()
+    base["noninterference"]["rule_versions"] = copy.deepcopy(baseline_versions)
+    v = run10(_with_trial_snapshot(versions=copy.deepcopy(trial_versions)), base, table=table)
+    return [c for c in v["gates"]["G-7"]["checks"] if c["claim"].startswith("rule-version identities")][0]
+
+
+def test_the_real_table_declares_exactly_the_observed_moves_and_each_names_its_rulings():
+    real = json.loads(fx.TABLE_PATH.read_text())["noninterference"]["declared_rule_version_changes"]
+    assert sorted((d["path"], d["from"], d["to"]) for d in real) == [("P1", "1.0.0", "1.3.0"), ("P2", "1.0.0", "1.3.0"), ("P3", "1.0.0", "1.3.0"), ("P4", "1.0.0", "1.3.0")]
+    assert all(d["ruling"] and all(isinstance(x, str) and x for x in d["ruling"]) for d in real)
+    assert _identity_status(OBSERVED_TRIAL_VERSIONS)["status"] == PASS
+
+
+def test_one_undeclared_move_still_reads_fail_under_the_real_table():
+    """Planted: P2 moves 1.0.0 -> 1.1.0 instead of the declared 1.0.0 -> 1.3.0 (a version no ruling selects)."""
+    c = _identity_status({**OBSERVED_TRIAL_VERSIONS, "P2": ["1.1.0"]})
+    assert c["status"] == FAIL and list(c["observed"]) == ["P2"], c
+
+
+def test_a_declaration_without_a_ruling_is_refused():
+    raw = json.loads(fx.TABLE_PATH.read_text())
+    for bad in (None, [], [""], ["R", "R"]):
+        d = {"path": "P1", "from": "1.0.0", "to": "1.3.0"}
+        if bad is not None:
+            d["ruling"] = bad
+        raw["noninterference"]["declared_rule_version_changes"] = [d]
+        with pytest.raises(gates.DecisionTableError):
+            gates.load_decision_table(raw)
