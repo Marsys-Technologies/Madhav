@@ -21,6 +21,8 @@ ready (N.7.6)"; "a check reads true only from its detector's run" (§N.8); "TR1/
      readiness record, which only says the inputs are named.
   C14 (review B-2) T20's a53 DB-suite part deselects the one test that skips by design, so the part can read true.
   C15 (review N-2) T21 also matches the verdict's patch_id to a patch-id recomputed from the repository; N-3/N-4 T10 part 2 pins its locale, T20 names the geometry-pin rule.
+  C16 (SR-EVALUATOR-SKIP-IS-NULL, DECISIONS_SURROGATE) a `pytest` part reads true only if EVERY bound test PASSED: a skip or xfail beside passes, or a bound file none of whose tests ran, is null;
+     a skip is tolerated only when the part's `optional_skips` names that exact test WITH a reason.
 Every test builds a throw-away git repository; none touches the shared repository or a database (the database answer is replaced where the claim is
 about how the evaluator READS it).
 """
@@ -710,3 +712,60 @@ def test_c16_the_shipped_t22_has_a_recomputing_detector_and_names_its_missing_in
     assert {p["kind"] for p in t22["parts"]} == {"pytest", "lane_ledger"}
     assert (REPO_ROOT / "platform/scripts/governance/lane_ledger_check.py").is_file() and "LANE_LEDGER.json rebuilt at this commit" in t22["note"]
     assert all(p["kind"] != "unbound" for c in json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))["checks"] for p in c["parts"])
+
+
+# ── C16 skip / xfail / not-run is null unless declared optional (SR-EVALUATOR-SKIP-IS-NULL; N.8) ───────────────────────────────────────
+
+MIXED = "import pytest\n\ndef test_ok():\n    assert True\n\ndef test_needs_db():\n    pytest.skip('no database')\n"
+XFAILING = "import pytest\n\ndef test_ok():\n    assert True\n\n@pytest.mark.xfail(reason='known')\ndef test_known_bad():\n    assert False\n"
+OPT = "t_mixed.py::test_needs_db"
+
+
+def _c16(tmp_path, part, files, name="repo"):
+    repo, _ = make(tmp_path, registry({"T04": [part]}), files, name=name)
+    return values(run(repo, tmp_path))["T04"]
+
+
+def test_c16_a_skip_beside_passing_tests_makes_the_part_null(tmp_path):
+    """Ruling: any SKIP of a bound test makes the part null. Reversion: count only failures -> the part reads true."""
+    assert _c16(tmp_path, {"kind": "pytest", "tests": ["t_mixed.py"]}, {"t_mixed.py": MIXED}) is None
+
+
+def test_c16_an_xfail_beside_passing_tests_makes_the_part_null(tmp_path):
+    """Ruling: xfail is not a pass. Reversion: treat xfail as passed -> true."""
+    assert _c16(tmp_path, {"kind": "pytest", "tests": ["t_xf.py"]}, {"t_xf.py": XFAILING}) is None
+
+
+def test_c16_a_declared_optional_skip_with_a_reason_keeps_the_part_true(tmp_path):
+    """Ruling: unless that test's skip is explicitly declared optional with a reason. Reversion: ignore optional_skips -> null."""
+    part = {"kind": "pytest", "tests": ["t_mixed.py"], "optional_skips": [{"test": OPT, "reason": "needs a database the lane does not have"}]}
+    assert _c16(tmp_path, part, {"t_mixed.py": MIXED}) is True
+
+
+def test_c16_an_optional_declaration_without_a_reason_or_for_another_test_declares_nothing(tmp_path):
+    """Reversion: accept an empty reason / match any skip -> true."""
+    for i, decl in enumerate(({"test": OPT, "reason": "  "}, {"test": OPT}, {"test": "t_mixed.py::test_other", "reason": "x"})):
+        part = {"kind": "pytest", "tests": ["t_mixed.py"], "optional_skips": [decl]}
+        assert _c16(tmp_path, part, {"t_mixed.py": MIXED}, name="r%d" % i) is None
+
+
+def test_c16_a_declared_optional_skip_is_no_substitute_for_a_pass_of_the_bound_file(tmp_path):
+    """Every bound test must have a passing case: a file whose only test is a declared-optional skip was not run. Reversion: true when nothing failed or skipped undeclared."""
+    only = "import pytest\n\ndef test_needs_db():\n    pytest.skip('no database')\n"
+    part = {"kind": "pytest", "tests": ["t_only.py"], "optional_skips": [{"test": "t_only.py::test_needs_db", "reason": "no database"}]}
+    assert _c16(tmp_path, part, {"t_only.py": only}) is None
+
+
+def test_c16_a_bound_file_none_of_whose_tests_ran_is_null_not_true(tmp_path):
+    """Not-run of a bound test: file b's only test is deselected, file a passes and pytest exits 0 -- the old reader said true. Reversion: drop the bound-test check."""
+    files = {"t_a.py": PASSING, "t_b.py": "def test_b():\n    assert True\n"}
+    part = {"kind": "pytest", "tests": ["t_a.py", "t_b.py"], "deselect": ["t_b.py::test_b"]}
+    assert _c16(tmp_path, part, files) is None
+    assert _c16(tmp_path, {"kind": "pytest", "tests": ["t_a.py", "t_b.py"]}, files, name="all_run") is True
+
+
+def test_c16_the_shipped_registry_declares_no_optional_skip_without_a_reason():
+    for c in json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))["checks"]:
+        for part in c["parts"]:
+            for e in part.get("optional_skips", []):
+                assert e["test"].count("::") >= 1 and e["reason"].strip(), (c["id"], e)

@@ -11,7 +11,8 @@ Semantics (the whole point; each is pinned by `__tests__/test_trial_ready.py`):
     A check with no bound detector part is `null`.
   * ONE commit: the ref is resolved to a full sha; the work tree must be at that sha with no modified tracked file before AND after the detectors
     ran, else every check reads null (the evidence cannot be attributed to one commit). The registry itself is read from that commit.
-  * Skipped tests are not passes: a test oracle that skipped (a missing database, say) reads null.
+  * Skipped tests are not passes (SR-EVALUATOR-SKIP-IS-NULL): in a `pytest` part, any skip, xfail or not-run of a bound test makes the part null; the part reads true only if
+    every bound test PASSED. A skip is tolerated only when the part's `optional_skips` declares that exact test (`{"test": <node id>, "reason": <why>}`, reason required).
 
 The detectors live in the registry (`trial_ready_checks.json`, read at the evaluated commit): per check a list of `parts`, all of which must read true.
 Part kinds: `pytest`, `git_file`, `db_sql`, `db_migrations`, `json_keys`, `json_field_eq`, `lane_ledger`, `unbound`. A part reads false when its detector ran and the claim
@@ -135,33 +136,77 @@ def _d_git_file(ctx: "Ctx", part: Part) -> Outcome:
     return ok, ref, _sha256(data), "contains/absent checked"
 
 
-def _pytest_outcome(junit: Path, rc: int) -> Tuple[Optional[bool], List[List[str]], str]:
-    """Read the junit file: false only when a test FAILED; error/skip/collection trouble/no file is null (the oracle did not run to a verdict)."""
+def _node_key(nodeid: str) -> Tuple[str, str]:
+    """(dotted classname, test name) as junit writes them, from a pytest node id `dir/file.py::Class::test` (a bare file gives name '')."""
+    parts = nodeid.split("::")
+    module = re.sub(r"\.py$", "", parts[0]).strip("/").replace("/", ".")
+    return ".".join([module, *parts[1:-1]]), (parts[-1] if len(parts) > 1 else "")
+
+
+def _case_matches(spec: str, classname: str, name: str) -> bool:
+    """Does the junit case (classname, name) belong to the bound test `spec` (a file or a node id)? Rootdir-tolerant: the dotted path may carry a prefix."""
+    want_cls, want_name = _node_key(spec)
+    have = "." + classname + "."
+    if "::" not in spec:
+        return ("." + want_cls + ".") in have
+    if not have.endswith("." + want_cls + "."):
+        return False
+    return name == want_name or name.startswith(want_name + "[")
+
+
+def _optional_skips(part: Part) -> Dict[Tuple[str, str], str]:
+    """The skips the registry declares optional: `optional_skips: [{"test": <node id>, "reason": <why>}]`. An entry with no reason declares nothing (SR-EVALUATOR-SKIP-IS-NULL)."""
+    out: Dict[Tuple[str, str], str] = {}
+    for e in part.get("optional_skips") or []:
+        if isinstance(e, dict) and isinstance(e.get("test"), str) and "::" in e["test"] and isinstance(e.get("reason"), str) and e["reason"].strip():
+            out[_node_key(e["test"])] = e["reason"].strip()
+    return out
+
+
+def _pytest_outcome(junit: Path, rc: int, bound: Optional[List[str]] = None,
+                    optional: Optional[Dict[Tuple[str, str], str]] = None) -> Tuple[Optional[bool], List[List[str]], str]:
+    """Read the junit file, per test (SR-EVALUATOR-SKIP-IS-NULL, N.8): false only when a test FAILED; otherwise true only if EVERY bound test PASSED -- an error, a skip,
+    an xfail, a bound file or node that produced no passing case (not run), collection trouble or no file is null. A skip is tolerated only when the registry declares that
+    exact test optional WITH a reason (`optional_skips`); the part still needs a passing case for every bound test."""
+    optional = optional or {}
     try:
         root = ET.parse(str(junit)).getroot()
     except (OSError, ET.ParseError):
         return None, [], "no readable junit result (pytest exit %d)" % rc
     cases: List[List[str]] = []
-    failed = errored = skipped = 0
+    seen: List[Tuple[str, str, str]] = []
+    failed = errored = skipped = xfailed = declared = 0
     for tc in root.iter("testcase"):
-        name = "%s::%s" % (tc.get("classname", ""), tc.get("name", ""))
+        cls, nm = tc.get("classname", ""), tc.get("name", "")
+        name = "%s::%s" % (cls, nm)
+        sk = tc.find("skipped")
         if tc.find("failure") is not None:
             failed += 1
-            cases.append([name, "failed"])
+            status = "failed"
         elif tc.find("error") is not None:
             errored += 1
-            cases.append([name, "error"])
-        elif tc.find("skipped") is not None:
+            status = "error"
+        elif sk is not None and (sk.get("type") == "pytest.xfail" or str(sk.get("message", "")).lower().startswith("xfail")):
+            xfailed += 1
+            status = "xfail"
+        elif sk is not None and (cls, nm) in optional:
+            declared += 1
+            status = "skipped_optional"
+        elif sk is not None:
             skipped += 1
-            cases.append([name, "skipped"])
+            status = "skipped"
         else:
-            cases.append([name, "passed"])
+            status = "passed"
+        cases.append([name, status])
+        seen.append((cls, nm, status))
     cases.sort()
     if failed:
         return False, cases, "%d test(s) failed" % failed
-    if errored or skipped or rc != 0 or not cases:
-        return None, cases, "no verdict: errors=%d skipped=%d exit=%d collected=%d" % (errored, skipped, rc, len(cases))
-    return True, cases, "%d passed" % len(cases)
+    not_run = [b for b in (bound or []) if not any(st == "passed" and _case_matches(b, c, n) for c, n, st in seen)]
+    if errored or skipped or xfailed or not_run or rc != 0 or not cases:
+        return None, cases, ("no verdict: errors=%d skipped=%d xfail=%d not_run=%s exit=%d collected=%d"
+                             % (errored, skipped, xfailed, ",".join(not_run) or "-", rc, len(cases)))
+    return True, cases, "%d passed (%d declared-optional skip(s))" % (len(cases) - declared, declared)
 
 
 def _d_pytest(ctx: "Ctx", part: Part) -> Outcome:
@@ -193,8 +238,9 @@ def _d_pytest(ctx: "Ctx", part: Part) -> Outcome:
         rc = r.returncode
     except (OSError, subprocess.SubprocessError) as exc:
         return None, ref, None, "pytest could not run: %s" % type(exc).__name__
-    value, cases, detail = _pytest_outcome(junit, rc)
-    return value, ref, _sha256(_canon({"tests": tests, "deselect": deselect, "cases": cases})), detail
+    optional = _optional_skips(part)
+    value, cases, detail = _pytest_outcome(junit, rc, tests, optional)
+    return value, ref, _sha256(_canon({"tests": tests, "deselect": deselect, "optional_skips": sorted("%s::%s" % k for k in optional), "cases": cases})), detail
 
 
 def _loopback_dsn(spec: Part) -> Tuple[Optional[str], Optional[str], str]:
