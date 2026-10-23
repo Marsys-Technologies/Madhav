@@ -709,8 +709,41 @@ def _follow_domain_edge(position_at, body, centres, orb, rec, domain):
         if full["state"] == "contact":
             return full
         if not full["clipped"]:
-            return {**rec, "state":"unresolved", "reason": "rootless_stretch_crosses_identity_domain"}
+            return {**rec, "state":"unresolved", "reason": "rootless_stretch_crosses_identity_domain",
+                    "station_in_domain": _station_in_span(position_at, body, max(full["t_in"], domain[0]), min(full["t_out"], domain[1]))}
     return {**rec, "state":"unresolved", "reason":"clipped_extension_unresolved_within_1500_days"}
+
+
+def _station_in_span(position_at, body, a, b):
+    """Does the body turn (direct <-> retrograde) between a and b? Daily samples of the signed step; a span shorter than three samples cannot say, so it answers
+    True (never infer absence). A station is what the builder's arc index needs to see a rootless stretch at all (`near_miss.rootless_stretches`)."""
+    n = int((b - a).total_seconds() // 86400)
+    if n < 3:
+        return True
+    lon = [position_at(body, a + timedelta(days=k)) for k in range(n + 1)]
+    steps = [((lon[k + 1] - lon[k] + 180.0) % 360.0) - 180.0 for k in range(n)]
+    return any(steps[k] == 0.0 or (steps[k] > 0) != (steps[k + 1] > 0) for k in range(n - 1))
+
+
+def split_identity_domain_tails(derived):
+    """(kept, tails). A TAIL is a rootless stretch that crosses the identity-domain edge (`_follow_domain_edge`) and has NO station inside the domain: the builder's
+    arc index holds only the monotone tail, cannot see the stretch, and can neither store nor refuse it, so its absence from the stored rows is the only possible
+    stored state. It is DISCLOSED by the caller (never green, never silent) instead of failing the generation. A crossing stretch WITH a station inside the domain
+    stays in `kept`: the builder refuses that one by name (`near_miss_unresolved_domain_edge`) and the verifier keeps refusing it."""
+    tails = [r for r in derived if r["state"] == "unresolved" and r.get("reason") == "rootless_stretch_crosses_identity_domain" and r.get("station_in_domain") is False]
+    return [r for r in derived if not any(r is t for t in tails)], tails
+
+
+def tail_record(object_id, body, relation, rec):
+    """One disclosed tail: object id, body, relation, dates; the reason is the verifier's existing name (SR-REASON-ONE-NAME), no new string."""
+    return {"object_id": str(object_id), "body": body, "relation": relation, "t_in": rec["t_in"].isoformat(), "t_out": rec["t_out"].isoformat(),
+            "reason": rec["reason"], "station_in_domain": False}
+
+
+def tail_disclosure(edge_tails):
+    """The disclosure as it enters the verification report: the records AND their COUNT (SR-NEARMISS-DOMAIN-TAIL condition 1) — a count a reader can
+    compare with zero without opening the list. Zero is a measured zero (`verify_generation` looked at every crossing stretch), not an absence."""
+    return {"identity_domain_tails": list(edge_tails), "identity_domain_tail_count": len(edge_tails)}
 
 
 def _junction(conn, obj, rec, horizon, dashas, position_at):
@@ -817,6 +850,7 @@ def verify_generation(conn, *, chart_id, generation, ephe_path, persist=False):
         dashas.append({"level":int(key["level_n"]),"start":datetime.fromisoformat(key["start_iso"].replace('Z','+00:00')),
             "end":datetime.fromisoformat(content["end_iso"].replace('Z','+00:00')),"id":str(meta["dasha_row_id"])})
     problems=[]
+    edge_tails=[]
     for s in searches:
         body,relation=s["body"],s["relation_kind"]
         orb=_POINT_ORB_DEG[relation]
@@ -838,6 +872,8 @@ def verify_generation(conn, *, chart_id, generation, ephe_path, persist=False):
         derived=derive_near_misses(position_at,body,centres,s["domain_start"],s["domain_end"],orb_deg=orb)
         derived = [_follow_domain_edge(position_at,body,centres,orb,r,(s["domain_start"],s["domain_end"]))
                    if r["clipped"] and r["t_in"] < horizon[1] and r["t_out"] > horizon[0] else r for r in derived]
+        derived, tails = split_identity_domain_tails(derived)
+        edge_tails += [tail_record(s["near_miss_object_id"], body, relation, r) for r in tails]
         for ordinal,r in assign_ordinals([r for r in derived if r["state"]=="near_miss"]):
             r["full_domain_ordinal"]=ordinal
         relevant=[r for r in derived if r["t_in"] < horizon[1] and r["t_out"] > horizon[0]]
@@ -864,4 +900,4 @@ def verify_generation(conn, *, chart_id, generation, ephe_path, persist=False):
         conn.execute("DELETE FROM public.ka_gochara_near_miss_verification WHERE chart_id=%s AND generation=%s",(chart_id,generation))
         conn.execute("INSERT INTO public.ka_gochara_near_miss_verification(chart_id,generation,layer_version,near_miss_digest) VALUES(%s,%s,1,%s)",(chart_id,generation,after))
     return {"status":"VERIFIED", "digest":after,"objects":len(searches),"persisted":persist,
-        "resolution_limit_seconds":60.0, "output_identity":"vacuous_under_policy" if vector.get("result_policy")=="all_null_candidate/1" else None}
+        "resolution_limit_seconds":60.0, **tail_disclosure(edge_tails), "output_identity":"vacuous_under_policy" if vector.get("result_policy")=="all_null_candidate/1" else None}
