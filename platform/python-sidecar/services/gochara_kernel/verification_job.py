@@ -428,10 +428,13 @@ def identity_domain_tails(conn, *, chart_id: str, generation: str, keys, positio
     from . import near_miss_verifier as nmv
     from .window_verifier import _ASPECT_ANGLES, _POINT_ORB_DEG
     out = []
+    seen: dict = {}
     for obj_id, body, relation, target, d0, d1 in sorted(map(_row_tuple, conn.execute(_NM_OBJECTS_SQL, (chart_id, generation)).fetchall()),
                                                          key=lambda r: (r[1], r[2], r[3])):
         if (body, relation, target) not in keys:
             continue
+        if seen.setdefault((body, relation, target), obj_id) != obj_id:       # the tail is matched by this key, so it must name ONE object
+            raise RuntimeError(f"near_miss_tail_ambiguous: {body} {relation} {target} is held by two searched objects ({seen[(body, relation, target)]}, {obj_id})")
         orb = _POINT_ORB_DEG[relation]
         angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
         centres = [(float(target.split(":")[1]) - a) % 360 for a in angles]

@@ -13,10 +13,17 @@ connection (no database). Station and edge: the domain opens D0; |lambda - centr
   T-1  a reported stretch crossing the domain edge with its station BEFORE the domain is not a problem, and is DISCLOSED in the geometry result with the object id the
        near-miss search holds for it, body, relation, target, dates and a count (revert: `identity_domain_tails` returns [] -> the stage raises `reported_but_unstored`);
   T-2  the same crossing stretch with a station INSIDE the domain still fails by name (revert: `_station_in_span` answers False, i.e. every crossing stretch is a tail);
+  T-4  the tail is matched to the graze by the OBJECT'S identity (body, relation, target = one object id), not by the body alone: a second object of the same body
+       whose crossing stretch is not a tail, reported before the real tail object, is named alone and the disclosed object id is the tail's
+       (revert: match the tail by body only -> the tail object is named instead and the tail is pinned on the wrong object);
+  T-5  a tail excuses ONLY the graze it overlaps, one for one: the same object's mid-domain unstored graze (a second station inside the domain) still fails by name
+       beside the disclosed tail (revert: a tail excuses every graze of its object, no overlap, no consumption -> nothing raises);
+  T-6  one (body, relation, target) key held by two searched objects is refused, not silently pinned to one (revert: drop the uniqueness check -> two tails, no raise);
   T-3  only the disclosed set is excluded: another reported-but-unstored object beside a disclosed tail still fails, and the message names it alone
        (revert: any disclosed tail excuses any unstored graze, not only the one of its own object -> the second object is forgiven)."""
 from __future__ import annotations
 
+import math
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -106,3 +113,48 @@ def test_t3_only_the_disclosed_set_is_excluded_another_unstored_object_still_fai
         _geometry(Conn([SAT, JUP]), _sky(D0 - timedelta(days=15)))
     msg = str(exc.value)
     assert "near_miss_reported_but_unstored: jupiter conjunction point:200.0" in msg and "saturn" not in msg
+
+
+def test_t4_the_tail_is_matched_by_object_identity_not_by_body():
+    """Reversion: match the tail to the graze by `body` alone -> the non-tail saturn object is excused by the real tail and the tail object is named instead."""
+    from services.gochara_kernel import contact_certify as cc
+    sat2 = ("saturn", "conjunction", f"point:{99.5 + K * 17.0 ** 2:.6f}")                 # a second saturn object: its stretch has < 3 in-domain days and a station in the domain -> not a tail
+    OBJ_ID[sat2] = "00000000-0000-0000-0000-00000000a003"
+    try:
+        sky, conn, sink = _sky(D0 - timedelta(days=15)), Conn([sat2, SAT]), []
+        cc.certify_contact_geometry(conn, chart_id="c", generation=GEN, event_class=CLS, position_at=sky, graze_sink=sink)
+        assert {g["target"] for g in sink} == {sat2[2], SAT[2]}
+        order = sorted(sink, key=lambda g: g["target"] != sat2[2])                       # the non-tail object FIRST
+        disclosed: list = []
+        problems = vj.near_miss_reconcile_problems(conn, chart_id="c", generation=GEN, event_class=CLS, reported=order, horizon=HORIZON, position_at=sky,
+                                                   disclosed=disclosed)
+    finally:
+        OBJ_ID.pop(sat2, None)
+    assert len(problems) == 1 and f"near_miss_reported_but_unstored: saturn conjunction {sat2[2]} " in problems[0] and "point:100.0 " not in problems[0]
+    assert [(d["object_id"], d["target"]) for d in disclosed] == [(OBJ_ID[SAT], SAT[2])]
+
+
+def test_t5_a_tail_excuses_only_the_graze_it_overlaps_a_mid_domain_graze_of_the_same_object_still_fails():
+    """Reversion: a tail excuses every graze of its object (no overlap test, no consumption) -> this does not raise."""
+    period = 200.0                                                                       # a second station at day 200 of the curve (D0 + 185): a mid-domain graze of the SAME object
+    amp = 2 * K / (2 * math.pi / period) ** 2
+    station = D0 - timedelta(days=15)
+
+    def sky_two_stations(body, t):
+        d = (t - station).total_seconds() / 86400.0
+        return (100.0 + C + amp * (1 - math.cos(2 * math.pi * d / period))) % 360.0
+
+    with pytest.raises(RuntimeError) as exc:
+        _geometry(Conn([SAT]), sky_two_stations)
+    msg = str(exc.value)
+    assert msg.count("near_miss_reported_but_unstored") == 1 and "near_miss_reported_but_unstored: saturn conjunction point:100.0 [" in msg
+    assert f"[{D0.isoformat()}" not in msg                                               # the named graze is the mid-domain one, not the domain-start tail
+
+
+def test_t6_one_key_held_by_two_searched_objects_is_refused():
+    """Reversion: drop the uniqueness check in `identity_domain_tails` -> two tails are computed for one key and nothing raises."""
+    conn = Conn([SAT], searched=[SAT, SAT])
+    rows = [("00000000-0000-0000-0000-00000000b001", *SAT, *DOMAIN), ("00000000-0000-0000-0000-00000000b002", *SAT, *DOMAIN)]
+    conn.execute = lambda sql, params=(), _o=conn.execute: _Cur(rows) if "FROM public.ka_gochara_near_miss_search s" in " ".join(sql.split()) else _o(sql, params)
+    with pytest.raises(RuntimeError, match=r"near_miss_tail_ambiguous: saturn conjunction point:100\.0"):
+        vj.identity_domain_tails(conn, chart_id="c", generation=GEN, keys={SAT}, position_at=_sky(D0 - timedelta(days=15)), horizon=HORIZON)
