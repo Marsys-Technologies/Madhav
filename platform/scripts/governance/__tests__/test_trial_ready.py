@@ -23,6 +23,9 @@ ready (N.7.6)"; "a check reads true only from its detector's run" (§N.8); "TR1/
   C15 (review N-2) T21 also matches the verdict's patch_id to a patch-id recomputed from the repository; N-3/N-4 T10 part 2 pins its locale, T20 names the geometry-pin rule.
   C16 (SR-EVALUATOR-SKIP-IS-NULL, DECISIONS_SURROGATE) a `pytest` part reads true only if EVERY bound test PASSED: a skip or xfail beside passes, or a bound file none of whose tests ran, is null;
      a skip is tolerated only when the part's `optional_skips` names that exact test WITH a reason.
+  C17 (SR-T24-NATIVE) T24 reads the native VM run's OWN EQUIVALENCE_RECORD (named by TRIAL_READY_EQ_RECORD, with the eq_pinned_inputs.json beside it): true only when the record is
+     complete, a qualifying_run of THIS head, its arch read inside the run as linux/amd64 and not emulated; null when the record is not named or not there; the Docker amd64 slice
+     stays a documented fallback alternative (`any_of`: any true alternative qualifies, no evidence never does).
 Every test builds a throw-away git repository; none touches the shared repository or a database (the database answer is replaced where the claim is
 about how the evaluator READS it).
 """
@@ -505,7 +508,11 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # SR-BASELINE-OVERLAY-SKIP review close (previous pin a1b81add...e800242; job X-20261023T124421Z-g-fix): the requiring-code probe's tests exclusion reads the path relative to the code root (a checkout
 # under a directory named tests is no longer skipped); new oracles: stored mode governs setup_lane, a resume under another mode is refused, an absent code root refuses
 # BASELINE-12-SNAPSHOT (cockpit 2026-10-23; previous pin 20c54873...2999): baseline_12.json re-made WITH the noninterference snapshot on linux/amd64 (default policy, main c23cda8ab, harness 6816b4572; 4,509 windows; 1402 skipped by name, SR-BASELINE-OVERLAY-SKIP) so G-7 reads a real value
-HARNESS_V31_DIGEST = "9ad94476ea3044e3c490ffefab918f80877eb8f0751a685edc0218261352fb6c"
+# TR-READY-FIXES (cockpit 2026-10-23; previous pin 9ad94476...fb6c; SR-T14-FIX-NOT-EXCLUDE, harness TEST-only change; job X-20261023T134421Z-tr-ready-fixes): tests/test_driver.py states the solver-probe claim for a
+# solver-carrying head (present + counts at the real window_solver; absent + counts nothing at a package copy with none) instead of asserting the pre-solver export; tests/test_g5_cpu.py test_c2 judges the
+# CPU growth against the wall GROWTH of the same experiment and retries an attempt in which the hogs did not starve the builder; test_c4 judges the wall/CPU agreement
+# normalised by a same-process calibrated reference (a pure burn's wall per CPU second), so an ambient load cannot fail either
+HARNESS_V31_DIGEST = "88dc9af0b5eefaf378eae99da4503151969e29f1cf2ab793332215fa1a576f5c"
 
 
 def harness_digest(root):
@@ -769,3 +776,104 @@ def test_c16_the_shipped_registry_declares_no_optional_skip_without_a_reason():
         for part in c["parts"]:
             for e in part.get("optional_skips", []):
                 assert e["test"].count("::") >= 1 and e["reason"].strip(), (c["id"], e)
+# ── C17 T24 bound to the native VM run's own record (SR-T24-NATIVE) ──────────────────────────────────────────────────────────────────────
+
+EQ_ENV = "TRIAL_READY_EQ_RECORD"
+
+
+@pytest.fixture(autouse=True)
+def _no_ambient_eq_record(monkeypatch):
+    """The cockpit sets TRIAL_READY_EQ_RECORD for the real evaluation; no test may read it from the ambient environment."""
+    monkeypatch.delenv(EQ_ENV, raising=False)
+VM_READ = "vm_probe (os.uname on the VM)"
+
+
+def vm_records(eq_dir, sha, *, complete=True, kind="qualifying_run", commit=None, emulated=False, read_from=VM_READ, pin_kind="qualifying_run", arch="linux/amd64"):
+    """What the VM's TR leaves under <out>/s5/tr/equivalence/ (vmkit stages/s5_tr.sh + lib/vm_probe.py + equivalence_record.py): the record, whose E6 copies the pinned
+    provenance verbatim, and the pinned inputs, whose runtime block the VM probe read on the machine."""
+    d = Path(eq_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "equivalence_record.json").write_text(json.dumps({"complete": complete, "runtime_kind": kind, "E6": {"commit": commit or sha, "platform_notes": {"native_vm": {
+        "emulated": emulated, "arch_read_from": read_from, "vm_type": "c3-standard-8"}}}}))
+    (d / "eq_pinned_inputs.json").write_text(json.dumps({"runtime": {"kind": pin_kind, "arch": arch}}))
+    return d / "equivalence_record.json"
+
+
+def vm_t24(tmp_path, monkeypatch, name, write, *, env=True, fallback=None):
+    """The SHIPPED T24 (both alternatives); the Docker slice directory is moved under a scratch directory that holds a slice run only when `fallback` writes one."""
+    run_dir = tmp_path / (name + "_run")
+    repo, sha = make(tmp_path, registry({"T24": retarget(shipped_check("T24"), run_dir)["parts"]}), name=name)
+    rec = write(tmp_path / (name + "_eq") / "equivalence", sha)
+    if fallback:
+        fallback(run_dir, sha)
+    if env and rec is not None:
+        monkeypatch.setenv(EQ_ENV, str(rec))
+    elif env:
+        monkeypatch.setenv(EQ_ENV, str(tmp_path / (name + "_eq") / "equivalence" / "equivalence_record.json"))
+    else:
+        monkeypatch.delenv(EQ_ENV, raising=False)
+    return values(run(repo, tmp_path))["T24"]
+
+
+def test_c17_t24_reads_true_from_the_complete_native_qualifying_record_of_this_head(tmp_path, monkeypatch):
+    assert vm_t24(tmp_path, monkeypatch, "ok", lambda d, sha: vm_records(d, sha)) is True
+
+
+@pytest.mark.parametrize("name,over", [
+    ("incomplete", {"complete": False}),                                   # record.complete == true
+    ("rolling_record", {"kind": "rolling_diagnostic"}),                      # record.runtime_kind == qualifying_run
+    ("other_head", {"commit": "3" * 40}),                                    # record E6.commit == the evaluated head
+    ("emulated", {"emulated": True}),                                        # native, not emulated
+    ("arch_not_read_in_run", {"read_from": "asserted by a file"}),           # the arch was read inside the run
+    ("rolling_pinned", {"pin_kind": "rolling_diagnostic"}),                  # pinned runtime.kind == qualifying_run
+    ("arm64", {"arch": "linux/arm64"}),                                      # pinned runtime.arch == linux/amd64
+])
+def test_c17_each_field_of_the_native_claim_is_measured_and_reads_false(tmp_path, monkeypatch, name, over):
+    assert vm_t24(tmp_path, monkeypatch, name, lambda d, sha: vm_records(d, sha, **over)) is False
+
+
+def test_c17_t24_is_null_when_no_record_is_named_or_the_named_one_is_absent(tmp_path, monkeypatch):
+    assert vm_t24(tmp_path, monkeypatch, "noenv", lambda d, sha: vm_records(d, sha), env=False) is None            # the record exists, but nothing names it for this run
+    assert vm_t24(tmp_path, monkeypatch, "nofile", lambda d, sha: None) is None                                      # named, not there
+    monkeypatch.setenv(EQ_ENV, "")
+    repo, _ = make(tmp_path, registry({"T24": retarget(shipped_check("T24"), tmp_path / "e_run")["parts"]}), name="empty_env")
+    assert values(run(repo, tmp_path))["T24"] is None                                                               # an empty value names nothing
+
+
+def test_c17_a_pinned_inputs_file_missing_beside_the_record_is_null_not_true(tmp_path, monkeypatch):
+    def only_record(d, sha):
+        rec = vm_records(d, sha)
+        (d / "eq_pinned_inputs.json").unlink()
+        return rec
+    assert vm_t24(tmp_path, monkeypatch, "nopin", only_record) is None
+
+
+def test_c17_the_docker_slice_stays_a_fallback_alternative(tmp_path, monkeypatch):
+    nothing = lambda d, sha: None
+    assert vm_t24(tmp_path, monkeypatch, "fb_ok", nothing, env=False, fallback=lambda d, sha: slice_records(d, sha)) is True        # no VM record: the complete Docker slice qualifies
+    assert vm_t24(tmp_path, monkeypatch, "fb_bad", nothing, env=False, fallback=lambda d, sha: slice_records(d, sha, arch="linux/arm64")) is False
+    assert vm_t24(tmp_path, monkeypatch, "fb_none", nothing, env=False) is None                                                   # no evidence of either kind
+
+
+def test_c17_a_failed_native_record_does_not_hide_a_qualifying_fallback_but_never_rescues_itself(tmp_path, monkeypatch):
+    assert vm_t24(tmp_path, monkeypatch, "both", lambda d, sha: vm_records(d, sha, emulated=True), fallback=lambda d, sha: slice_records(d, sha)) is True
+    assert vm_t24(tmp_path, monkeypatch, "vmbad", lambda d, sha: vm_records(d, sha, emulated=True)) is False
+
+
+@pytest.mark.parametrize("alts,want", [([[GOOD], [{"kind": "unbound"}]], True), ([[{"kind": "unbound"}], [{"kind": "unbound"}]], None),
+                                       ([[{"kind": "unbound"}], [{"kind": "git_file", "path": "evidence.txt", "contains": ["red"]}]], False),
+                                       ([[{"kind": "git_file", "path": "evidence.txt", "contains": ["red"]}], [GOOD]], True),
+                                       ([[GOOD, {"kind": "unbound"}]], None), ([], None), ([[]], None)])
+def test_c17_any_of_is_true_for_a_true_alternative_false_for_a_failed_one_and_never_true_from_no_evidence(tmp_path, alts, want):
+    repo, _ = make(tmp_path, registry({"T24": [{"kind": "any_of", "alternatives": alts}]}))
+    assert values(run(repo, tmp_path))["T24"] is want
+
+
+def test_c17_the_shipped_t24_names_the_native_record_first_and_the_docker_slice_as_fallback():
+    t24 = shipped_check("T24")
+    assert [p["kind"] for p in t24["parts"]] == ["any_of"]
+    native, fallback = t24["parts"][0]["alternatives"]
+    assert all(p["kind"] == "json_field_eq" and p["path_env"] == EQ_ENV for p in native)
+    assert all("path" in p and "path_env" not in p for p in fallback) and "amd64_slice" in json.dumps(fallback)
+    assert "SR-T24-NATIVE" in t24["note"] and "fallback" in t24["note"]
+

@@ -15,11 +15,15 @@ Semantics (the whole point; each is pinned by `__tests__/test_trial_ready.py`):
     every bound test PASSED. A skip is tolerated only when the part's `optional_skips` declares that exact test (`{"test": <node id>, "reason": <why>}`, reason required).
 
 The detectors live in the registry (`trial_ready_checks.json`, read at the evaluated commit): per check a list of `parts`, all of which must read true.
-Part kinds: `pytest`, `git_file`, `db_sql`, `db_migrations`, `json_keys`, `json_field_eq`, `lane_ledger`, `unbound`. A part reads false when its detector ran and the claim
+Part kinds: `pytest`, `git_file`, `db_sql`, `db_migrations`, `json_keys`, `json_field_eq`, `lane_ledger`, `any_of`, `unbound`. A part reads false when its detector ran and the claim
 failed, null when the detector could not run or its evidence is unreadable. A `pytest` part may carry `env` (values may use `{repo}`, the evaluated work tree) and
 `deselect` (node ids a known environment-dependent test is excluded by, each named and justified in the registry). A `db_migrations` part either lists `prefixes`
 or sets `mode: "all"` (every migration file at the commit must be recorded). A `json_field_eq` part reads a JSON record outside the repository (TR-BIND: T21, T24);
 each field declares exactly one of `equals` (a constant), `equals_head` (the evaluated sha) or `equals_patch_id_of` (a base ref: `git diff <base>...<head> | git patch-id --stable`).
+A `json_field_eq` part may name its record by `path_env` (the environment variable that holds the path; unset or empty -> null) instead of `path`, and by `sibling` (a bare file
+name) the file next to it: SR-T24-NATIVE reads the qualifying run's OWN equivalence record (`TRIAL_READY_EQ_RECORD`) and its `eq_pinned_inputs.json` that way.
+An `any_of` part (T24) holds `alternatives`: a list of part lists, each list an AND (as for a check). The part is true when any alternative is true, else false when any alternative
+is false, else null: an alternative with no evidence offers nothing (never a pass), while one that ran and failed still counts when no other alternative qualifies.
 A `lane_ledger` part (TR-BIND: T22) runs the checker AT THE COMMIT (`lane_ledger_check.py`, which recomputes every lane's patch-id from git and recounts BLOCKING findings from the
 review jobs' own result files) over the ledger file named by the environment variable `ledger_env`: exit 0 reads true, exit 1 false, anything else -- and an unset or unreadable
 ledger -- null. The ledger is an identity list, never a verdict: nothing it states is trusted except the heads, bases and paths it names.
@@ -374,6 +378,16 @@ def _d_json_field_eq(ctx: "Ctx", part: Part) -> Outcome:
     field with the commit the evaluator resolved, so a record made for ANY other head reads false; `{head}` in `path` names a per-head file. A missing or
     unparsable file, a missing field and a JSON null all read null (no evidence); a present field with another value (or another type: 1 is not true) reads false."""
     raw = part.get("path")
+    if "path_env" in part:                                # the record's location is named by the environment, never by the registry (SR-T24-NATIVE)
+        name = part.get("path_env")
+        raw = os.environ.get(name, "") if isinstance(name, str) and name else ""
+        if not raw:
+            return None, "env:%s" % (name or "path_env"), None, "%s is not set: no record was named for this run" % (name or "path_env")
+        sib = part.get("sibling")
+        if sib is not None:
+            if not isinstance(sib, str) or not sib or "/" in sib or sib in (".", ".."):
+                return None, "env:%s" % name, None, "sibling must be a bare file name"
+            raw = str(Path(raw).parent / sib)
     path = raw.replace("{head}", ctx.sha) if isinstance(raw, str) else None
     ref = "file:%s" % path
     fields = [f for f in part.get("fields", []) if isinstance(f, dict) and isinstance(f.get("field"), str) and f["field"]]
@@ -435,6 +449,24 @@ def _d_lane_ledger(ctx: "Ctx", part: Part) -> Outcome:
     return value, ref, _sha256(reading), "lane ledger %s" % ("holds" if value else "does not hold")
 
 
+def _d_any_of(ctx: "Ctx", part: Part) -> Outcome:
+    """T24: alternative qualifying evidence. Each alternative is a list of parts read as a check reads them (three-valued AND). True when any alternative is true; else false
+    when any alternative is false; else null. An alternative with no evidence (null) never promotes the part, and never hides another alternative's false."""
+    alts = part.get("alternatives")
+    if not isinstance(alts, list) or not alts or not all(isinstance(a, list) and a for a in alts):
+        return None, None, None, "any_of part declares no alternatives"
+    values: List[Optional[bool]] = []
+    refs: List[str] = []
+    digests: List[Any] = []
+    for i, alt in enumerate(alts):
+        results = [run_part(ctx, p) for p in alt]
+        values.append(combine([r[0] for r in results]))
+        refs.extend(r[1] for r in results if r[1])
+        digests.append({"alt": i, "value": values[-1], "parts": [r[2] for r in results]})
+    value: Optional[bool] = True if any(v is True for v in values) else False if any(v is False for v in values) else None
+    return value, "; ".join(refs) or None, (_sha256(_canon(digests)) if value is not None else None), "%d alternative(s) read: %s" % (len(alts), values)
+
+
 DETECTORS = {
     "unbound": _d_unbound,
     "git_file": _d_git_file,
@@ -444,6 +476,7 @@ DETECTORS = {
     "json_keys": _d_json_keys,
     "json_field_eq": _d_json_field_eq,
     "lane_ledger": _d_lane_ledger,
+    "any_of": _d_any_of,
 }
 
 

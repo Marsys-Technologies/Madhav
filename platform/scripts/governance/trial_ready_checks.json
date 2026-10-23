@@ -639,61 +639,112 @@
   },
   {
    "id": "T24",
-   "claim": "linux/amd64 image available for the qualifying run (SR-AMD64-PER-HEAD): the amd64_slice run itself ran on linux/amd64 at the evaluated head and produced a complete qualifying EQUIVALENCE_RECORD",
-   "detector": "the amd64 slice did not run to a complete record: its own report, pinned runtime or EQUIVALENCE_RECORD names another head, another arch, a non-qualifying runtime kind or an incomplete record (a readiness record, which only checks that inputs are named, is never read)",
+   "claim": "linux/amd64 qualifying run (SR-T24-NATIVE, SR-AMD64-PER-HEAD): the native linux/amd64 VM's own run produced a complete qualifying EQUIVALENCE_RECORD at the evaluated head, its arch read inside the run and not emulated (documented fallback: the Docker amd64 slice's own records at this head)",
+   "detector": "the run's own EQUIVALENCE_RECORD (named by TRIAL_READY_EQ_RECORD, with the eq_pinned_inputs.json beside it) is absent (null), incomplete, of another head, not a qualifying_run, not linux/amd64, not read by the VM probe or marked emulated (false); a readiness record, which only checks that inputs are named, is never read. Fallback alternative: the Docker amd64 slice's report, pinned runtime and EQUIVALENCE_RECORD under run/TR/amd64_slice (an emulated arch, SR-T24-AMD64-DOCKER) - any alternative that reads true qualifies, an alternative with no evidence never does",
    "owner_lane": "T1B / ops",
    "parts": [
     {
-     "kind": "json_field_eq",
-     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/amd64_slice_report.json",
-     "fields": [
-      {
-       "field": "code.head",
-       "equals_head": true
-      },
-      {
-       "field": "equivalence_record.status",
-       "equals": "COMPLETE"
-      },
-      {
-       "field": "equivalence_record.head",
-       "equals_head": true
-      }
-     ]
-    },
-    {
-     "kind": "json_field_eq",
-     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/equivalence/eq_pinned_inputs.json",
-     "fields": [
-      {
-       "field": "runtime.kind",
-       "equals": "qualifying_run"
-      },
-      {
-       "field": "runtime.arch",
-       "equals": "linux/amd64"
-      }
-     ]
-    },
-    {
-     "kind": "json_field_eq",
-     "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/equivalence/equivalence_record.json",
-     "fields": [
-      {
-       "field": "complete",
-       "equals": true
-      },
-      {
-       "field": "runtime_kind",
-       "equals": "qualifying_run"
-      },
-      {
-       "field": "E6.commit",
-       "equals_head": true
-      }
+     "kind": "any_of",
+     "alternatives": [
+      [
+       {
+        "kind": "json_field_eq",
+        "path_env": "TRIAL_READY_EQ_RECORD",
+        "fields": [
+         {
+          "field": "complete",
+          "equals": true
+         },
+         {
+          "field": "runtime_kind",
+          "equals": "qualifying_run"
+         },
+         {
+          "field": "E6.commit",
+          "equals_head": true
+         },
+         {
+          "field": "E6.platform_notes.native_vm.emulated",
+          "equals": false
+         },
+         {
+          "field": "E6.platform_notes.native_vm.arch_read_from",
+          "equals": "vm_probe (os.uname on the VM)"
+         }
+        ]
+       },
+       {
+        "kind": "json_field_eq",
+        "path_env": "TRIAL_READY_EQ_RECORD",
+        "sibling": "eq_pinned_inputs.json",
+        "fields": [
+         {
+          "field": "runtime.kind",
+          "equals": "qualifying_run"
+         },
+         {
+          "field": "runtime.arch",
+          "equals": "linux/amd64"
+         }
+        ]
+       }
+      ],
+      [
+       {
+        "kind": "json_field_eq",
+        "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/amd64_slice_report.json",
+        "fields": [
+         {
+          "field": "code.head",
+          "equals_head": true
+         },
+         {
+          "field": "equivalence_record.status",
+          "equals": "COMPLETE"
+         },
+         {
+          "field": "equivalence_record.head",
+          "equals_head": true
+         }
+        ]
+       },
+       {
+        "kind": "json_field_eq",
+        "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/equivalence/eq_pinned_inputs.json",
+        "fields": [
+         {
+          "field": "runtime.kind",
+          "equals": "qualifying_run"
+         },
+         {
+          "field": "runtime.arch",
+          "equals": "linux/amd64"
+         }
+        ]
+       },
+       {
+        "kind": "json_field_eq",
+        "path": "/Users/Dev/kalayantra/run/TR/amd64_slice/equivalence/equivalence_record.json",
+        "fields": [
+         {
+          "field": "complete",
+          "equals": true
+         },
+         {
+          "field": "runtime_kind",
+          "equals": "qualifying_run"
+         },
+         {
+          "field": "E6.commit",
+          "equals_head": true
+         }
+        ]
+       }
+      ]
      ]
     }
-   ]
+   ],
+   "note": "SR-T24-NATIVE binding: the primary alternative reads the VM run's own record: `runtime.arch` is the value lib/vm_probe.py read ON the VM (os.uname, refused unless linux/x86_64) and `platform_notes.native_vm` is what the same probe wrote into the record's E6 (vmkit lib/t24_readback.py prints the same five fields). The cockpit sets TRIAL_READY_EQ_RECORD to the pulled <out>/s5/tr/equivalence/equivalence_record.json; unset or unreadable reads null, never true. The Docker slice stays a documented fallback (second alternative, unchanged parts)."
   },
   {
    "id": "T25",
