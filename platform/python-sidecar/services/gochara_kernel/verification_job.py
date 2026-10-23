@@ -411,18 +411,53 @@ _NM_STORED_SQL = (
     "SELECT o.body, o.relation_kind, o.canonical_target, n.near_miss_id, n.t_in, n.t_out, n.clearance_deg"
     " FROM public.ka_gochara_near_miss n JOIN public.ka_gochara_near_miss_object o ON o.near_miss_object_id = n.near_miss_object_id"
     " WHERE n.chart_id = %s AND n.generation = %s")
+_NM_OBJECTS_SQL = (
+    "SELECT o.near_miss_object_id, o.body, o.relation_kind, o.canonical_target, c.domain_start, c.domain_end"
+    " FROM public.ka_gochara_near_miss_search s JOIN public.ka_gochara_near_miss_object o ON o.near_miss_object_id = s.near_miss_object_id"
+    " JOIN public.ka_gochara_sky_convention c ON c.convention_id = o.convention_id WHERE s.chart_id = %s AND s.generation = %s")
 
 
 def _row_tuple(r):
     return tuple(r.values()) if isinstance(r, dict) else tuple(r)
 
 
-def near_miss_reconcile_problems(conn, *, chart_id: str, generation: str, event_class: str, reported: list, horizon) -> list[str]:
+def identity_domain_tails(conn, *, chart_id: str, generation: str, keys, position_at, horizon) -> list[dict]:
+    """The DISCLOSED identity-domain tails (SR-NEARMISS-DOMAIN-TAIL) of the searched objects named by `keys` = {(body, relation, canonical target)}: the very records
+    `near_miss_verifier.verify_generation` discloses for them (same derivation, same follow of the clipped stretch, same split, same `tail_record` carrying the
+    object id), recomputed here because the generation-wide pass runs once per epoch and a later shard only finds its persisted result, which carries no tails."""
+    from . import near_miss_verifier as nmv
+    from .window_verifier import _ASPECT_ANGLES, _POINT_ORB_DEG
+    out = []
+    for obj_id, body, relation, target, d0, d1 in sorted(map(_row_tuple, conn.execute(_NM_OBJECTS_SQL, (chart_id, generation)).fetchall()),
+                                                         key=lambda r: (r[1], r[2], r[3])):
+        if (body, relation, target) not in keys:
+            continue
+        orb = _POINT_ORB_DEG[relation]
+        angles = (0.0,) if relation == "conjunction" else _ASPECT_ANGLES[body]
+        centres = [(float(target.split(":")[1]) - a) % 360 for a in angles]
+        try:
+            derived = nmv.derive_near_misses(position_at, body, centres, d0, d1, orb_deg=orb)
+            derived = [nmv._follow_domain_edge(position_at, body, centres, orb, r, (d0, d1))
+                       if r["clipped"] and r["t_in"] < horizon[1] and r["t_out"] > horizon[0] else r for r in derived]
+        except nmv.NearMissError as exc:
+            raise RuntimeError(f"near_miss_tail_underivable: {body} {relation} {target}: {exc}") from exc
+        out += [{**nmv.tail_record(obj_id, body, relation, r), "target": target} for r in nmv.split_identity_domain_tails(derived)[1]]
+    return out
+
+
+def near_miss_reconcile_problems(conn, *, chart_id: str, generation: str, event_class: str, reported: list, horizon,
+                                 position_at=None, disclosed: list | None = None) -> list[str]:
     """The graze sink is NOT a forgiveness. A near-miss is an in-band stretch that never crosses the exact aspect level; the builder mints a
     point contact only around an exact root (ND-P2-20261005 rules 1-2, AM-13), so its ledger rightly holds none and the near-miss layer holds
     the stretch instead. What the certifier classified as a graze from the ephemeris alone (`reported`, whole stretches) must therefore pair one
     to one — by (body, relation, target) and overlap — with the near-miss rows stored for the class's point obligations, in both directions.
-    Agreement of the bounds is `near_miss_verifier`'s duty. Named problems (empty = they agree)."""
+    Agreement of the bounds is `near_miss_verifier`'s duty. Named problems (empty = they agree).
+
+    ONE exception, exactly the verifier's own disclosure (SR-NEARMISS-DOMAIN-TAIL): a reported stretch that crosses the identity-domain edge with NO station
+    inside the domain is a TAIL the builder's arc index cannot see, so it stores nothing for it and could not. Such a stretch is not an omission: it is appended
+    to `disclosed` (object id, body, relation, dates) and is not a problem. It is excused only when the object's own tail (`identity_domain_tails`, recomputed from
+    the ephemeris with `position_at`) overlaps it; any other reported-but-unstored object, a crossing stretch WITH an in-domain station included, still fails by
+    name. Without `position_at` nothing is excused. Nothing here says the tail is sealed: the disclosure is report-level."""
     keys = {_row_tuple(r) for r in conn.execute(_NM_OBLIGATIONS_SQL, (chart_id, generation, event_class)).fetchall()}
     free = []
     for body, relation, target, nm_id, t_in, t_out, clearance in map(_row_tuple, conn.execute(_NM_STORED_SQL, (chart_id, generation)).fetchall()):
@@ -430,14 +465,27 @@ def near_miss_reconcile_problems(conn, *, chart_id: str, generation: str, event_
             free.append({"key": (body, relation, target), "id": str(nm_id), "t_in": t_in, "t_out": t_out, "clearance": clearance})
     problems = []
     from datetime import datetime
+
+    def paired(g, t_in, t_out):
+        return t_in < datetime.fromisoformat(g["interval"][1]) and datetime.fromisoformat(g["interval"][0]) < t_out
+    key_of = lambda g: (g["body"], g["relation"], g["target"])      # noqa: E731
+    unstored = {key_of(g) for g in reported if not any(s["key"] == key_of(g) and paired(g, s["t_in"], s["t_out"]) for s in free)}
+    tails = [] if position_at is None or not unstored else identity_domain_tails(
+        conn, chart_id=chart_id, generation=generation, keys=unstored, position_at=position_at, horizon=horizon)
     for g in reported:
-        a, b = (datetime.fromisoformat(x) for x in g["interval"])
-        match = next((s for s in free if s["key"] == (g["body"], g["relation"], g["target"]) and s["t_in"] < b and a < s["t_out"]), None)
-        if match is None:
-            problems.append(f"near_miss_reported_but_unstored: {g['body']} {g['relation']} {g['target']} [{g['interval'][0]}, {g['interval'][1]}) "
-                            f"closest {g.get('closest_approach_deg')} deg")
-        else:
+        match = next((s for s in free if s["key"] == key_of(g) and paired(g, s["t_in"], s["t_out"])), None)
+        if match is not None:
             free.remove(match)
+            continue
+        tail = next((t for t in tails if (t["body"], t["relation"], t["target"]) == key_of(g)
+                     and paired(g, datetime.fromisoformat(t["t_in"]), datetime.fromisoformat(t["t_out"]))), None)
+        if tail is not None:
+            tails.remove(tail)
+            if disclosed is not None:
+                disclosed.append(tail)
+            continue
+        problems.append(f"near_miss_reported_but_unstored: {g['body']} {g['relation']} {g['target']} [{g['interval'][0]}, {g['interval'][1]}) "
+                        f"closest {g.get('closest_approach_deg')} deg")
     for s in free:
         problems.append(f"near_miss_stored_but_unreported: {' '.join(s['key'])} [{s['t_in'].isoformat()}, {s['t_out'].isoformat()}) "
                         f"clearance {s['clearance']} deg (id {s['id']})")
@@ -447,7 +495,7 @@ def near_miss_reconcile_problems(conn, *, chart_id: str, generation: str, event_
 def certify_geometry(conn, *, chart_id: str, generation: str, event_class: str, position_at, horizon) -> dict:
     """The contact-geometry stage. Where the near-miss layer exists the certifier gets a graze sink (a rootless in-band stretch is not an omitted
     contact) and the grazes it reports are reconciled with the stored near-miss rows (`near_miss_reconcile_problems`); a graze with no stored row
-    and a stored row with no graze both raise by name. Anything else the certifier finds (omission, anomaly, unresolved) still raises. Without
+    and a stored row with no graze both raise by name, except a disclosed identity-domain tail (reported in the result, never silent). Anything else the certifier finds (omission, anomaly, unresolved) still raises. Without
     the layer there is nowhere to keep a near-miss: no sink, exactly as before."""
     from . import contact_certify as cc
     layer = bool(_one(conn.execute(_NM_LAYER_SQL).fetchone()))
@@ -455,10 +503,12 @@ def certify_geometry(conn, *, chart_id: str, generation: str, event_class: str, 
     geometry = cc.certify_contact_geometry(conn, chart_id=chart_id, generation=generation, event_class=event_class, position_at=position_at,
                                            graze_sink=graze_sink)
     if layer:
+        disclosed: list = []
         problems = near_miss_reconcile_problems(conn, chart_id=chart_id, generation=generation, event_class=event_class,
-                                                reported=graze_sink, horizon=horizon)
+                                                reported=graze_sink, horizon=horizon, position_at=position_at, disclosed=disclosed)
         if problems:
             raise RuntimeError(f"near-miss reconciliation failed {event_class}: " + "; ".join(problems))
+        geometry = {**geometry, "identity_domain_tails": disclosed, "identity_domain_tail_count": len(disclosed)}      # a measured zero, not an absence
     return geometry
 
 
