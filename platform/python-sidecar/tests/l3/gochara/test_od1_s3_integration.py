@@ -536,6 +536,10 @@ def test_c8_the_verdict_counts_blank_windows_per_grain_and_per_reason_group(monk
     assert verdict["honest_nulls_by_grain"] == [{"event_class": "marriage", "path_id": "P4", "rule_version": "1.0.0", "group": "solver_certificate",
                                                   "reason": "solver_budget_exhausted", "windows": 2}]
     assert verdict["blank_by_group"] == {"solver_certificate": 2} and verdict["honest_nulls"][0]["group"] == "solver_certificate"
+    # RV-INT part-1 N1: the docstring says this read is the R8 AGGREGATE; only the aggregate branch (`classes is None`) names the shards it covered, so these keys read false when it is off
+    agg = verdict["aggregate"]
+    assert (agg["head"], agg["image_digest"], agg["classes_attested"]) == (head, image, ["marriage"])
+    assert [(e["execution_id"], e["head"], e["classes"]) for e in agg["executions"]] == [(execution, head, ["marriage"])]
 
 
 # ═════ C9: the lane gate ═══════════════════════════════════════════════════════════════════════════════════════════
