@@ -468,11 +468,9 @@ def static_validate(req, entry):
 
 
 def required_checks(kind):
-    """executor.validate's attestation rule (A8 §5), names of the checks that must be true: `backup_taken` for a *_teardown and
-    `dry_run_passed` for a mutating kind. `restore_verified` and the table's `required_rows` are retired as preconditions."""
+    """executor.validate's attestation rule (A8 §5), names of the checks that must be true: `dry_run_passed` for a mutating kind.
+    `backup_taken`, `restore_verified` and the table's `required_rows` are retired as preconditions (SR-A12-BACKUP-REMOVAL)."""
     required = []
-    if kind.endswith("_teardown"):
-        required.append("backup_taken")
     if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"):
         required.append("dry_run_passed")
     return required

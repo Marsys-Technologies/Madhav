@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / 'platform/scripts/__tests__'))
 import smalltest_safety_support as evidence
 from test_teardown_v5_small_test import _Harness, RUN_1
 
-ARG_VALUES = {'label': 'fixture', 'scope': 'small_test', 'sql_file': 'fixture.sql', 'sql_sha256': '0' * 64, 'migration': '1304',
+ARG_VALUES = {'label': 'fixture', 'scope': 'small_test', 'sql_file': 'fixture.sql', 'sql_sha256': '0' * 64, 'sql-sha256': '0' * 64, 'migration': '1304',
               'run': 'all_classes_1y', 'classes': 'all',
               'horizon-start': '2025-04-17T00:00:00+00:00',
               'horizon-end': '2026-04-17T00:00:00+00:00'}
@@ -46,7 +46,7 @@ def approve(executor, req):
     acceptance.write_text(json.dumps(dict(result='ACCEPTED', by='v1', operation_id=req['operation_id'],
         reviewed_commit=req['reviewed_commit'], ts=executor.now(), request_sha256=executor.request_digest(req),
         rows={k: True for k in ['2', '3', '7', '9', '11']},
-        checks=dict(backup_taken=True, restore_verified=True, dry_run_passed=True))))
+        checks=dict(dry_run_passed=True))))     # SR-A12-BACKUP-REMOVAL: no backup_taken, no restore_verified: the one attestation a mutating kind needs
     return req
 
 

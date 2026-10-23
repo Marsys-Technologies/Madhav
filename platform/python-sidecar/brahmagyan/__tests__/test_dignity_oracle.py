@@ -355,8 +355,16 @@ def test_l0_dignity_reference_matches_seeded_migration_250():
         py = py_by_graha[graha]
         assert seeded["exaltation_sign"] == py["exaltation_sign"], graha
         assert seeded["debilitation_sign"] == py["debilitation_sign"], graha
-        assert seeded["moolatrikona_sign"] == py["moolatrikona_sign"], graha
-        assert set(seeded["own_signs"]) == set(py["own_signs"]), graha
+        if graha in ("Rahu", "Ketu"):
+            # SR-DOCTRINE-H: migration 250 is applied and never edited; it seeded the nodes with no
+            # moolatrikona sign and no own signs. Their BPHS ch.47 values arrive in migration 1401, and
+            # the Python-vs-1401 seam is pinned by tests/test_migration_1401_l0_node_dignity.py. Here we
+            # pin that 250 still holds the shape it was applied with (an edit to 250 must fail).
+            assert seeded["moolatrikona_sign"] is None and seeded["own_signs"] == [], graha
+            assert seeded["moolatrikona_from"] is None and seeded["moolatrikona_to"] is None, graha
+        else:
+            assert seeded["moolatrikona_sign"] == py["moolatrikona_sign"], graha
+            assert set(seeded["own_signs"]) == set(py["own_signs"]), graha
         # Degrees: SQL NUMERIC parses as float; Python ints compare equal to
         # float via ==, so a direct comparison (with NULL/None on both sides
         # for Rahu/Ketu) is exact, not approximate.

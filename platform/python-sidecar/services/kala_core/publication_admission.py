@@ -3,17 +3,26 @@
 ``publication.py`` stays the one reviewed, byte-pinned operation module (NB-KALA ``source_imports.json``); this module
 adds only what the executor kinds need on top of it and delegates every real operation to it:
 
-* ``rebuild`` / ``rebuild-dryrun`` -- the SR-BOLD-04 split. ``--phase pre`` admits only assets that do not depend on the
-  gochara surface the flip changes, ``--phase post`` only assets that are that surface or depend on it. The set is read
-  from ``asset_registry.depends_on`` at run time, never from a list kept here. The orchestrator's probe mode is its
-  default delta-skip gate (``asset_runner.py`` ``_run_data_writer``); it is switched off only by ``NIRMANA_FORCE_EXECUTE``,
-  so a rebuild that would force is refused.
+* ``rebuild`` / ``rebuild-dryrun`` -- ONE single-phase run over the whole in-scope plan (SR-K9-PUBLISHABLE D1: the SR-BOLD-04
+  pre/post split is withdrawn and its ``--phase`` code path is gone; a plan that mixes assets on both sides of the gochara flip
+  is the normal K9 rebuild). The kind admits a non-empty list of distinct assets that all exist in ``asset_registry``; the
+  delegated ``publication`` operation then requires them to equal the run's frozen plan. The orchestrator's probe mode is its
+  default delta-skip gate (``asset_runner.py`` ``_run_data_writer``); it is switched off only by ``NIRMANA_FORCE_EXECUTE``.
+  An ambient forcing environment is refused. SR-BOLD-04-WITHDRAWN / U-K9P-01 (option B): the executor's ``rebuild`` kind passes
+  the explicit ``--force-execute`` flag, which makes this module -- not the caller's environment -- turn the gate off for
+  the one in-process run, so every planned writer executes and attests its grain under the new generation. A probe-skipped
+  writer cannot be admitted instead: its rows live only under the lit build's generation and serving reads the head
+  generation, so carrying its old grain forward would publish a layer silently missing that writer's rows (N.7.6, N.8).
+  The delegated operation's stdout is ONE JSON document (SR-K9-PUBLISHABLE D5): the orchestrator's ``[event]`` lines and any
+  import-time print go to stderr (``PUBSUB_DISABLED`` is set for the run, so the events are printed, never published to Pub/Sub),
+  and the ``admission`` block (``probe_mode`` / ``force_execute``) is added to the result
+  document, so a receipt shows whether the run was forced.
 * ``verify-dryrun`` / ``publish-dryrun`` / ``rollback-dryrun`` -- the layer operations run for real inside a transaction
   that is then rolled back, with the rollback read back. ``dry_run_passed`` is true only when the operation ran, its
   write was observed inside the transaction, and the state read after the rollback equals the state read before it.
 * ``cancel`` / ``teardown`` (+ ``-dryrun``) -- ``rebuild_control``: the orchestrator's stop request for a run, and the deletion of
-  an unpublished candidate of a terminal run. Each is read back from the database after its commit; the ``-dryrun`` twin is
-  the same rehearsal as the layer ones.
+  an unpublished candidate of a terminal run (a FAILED run also has the asset states it wrote restored, SR-K9-PUBLISHABLE D8).
+  Each is read back from the database after its commit; the ``-dryrun`` twin is the same rehearsal as the layer ones.
 """
 from __future__ import annotations
 
@@ -22,6 +31,7 @@ import contextlib
 import io
 import json
 import os
+import sys
 from datetime import timezone
 from typing import Any, Callable, Iterable, Mapping
 from uuid import UUID
@@ -31,14 +41,11 @@ import psycopg
 from services.kala_core import publication, rebuild_control
 from services.kala_core.publication import CANONICAL_CHART
 
-# SR-BOLD-04 reading (J-bold04 GRAPH.json split_rule_used): "gochara-dependent" is one of the four gochara producers
-# OR a transitive dependent of one. The literal "depends on ka_gochara_v5" test is vacuous: nothing declares that edge.
-GOCHARA_SURFACE = frozenset({'ka_gochara', 'ka_gochara_v3_century_materialize',
-                             'ka_gochara_v4_41_candidate', 'ka_gochara_v5'})
-PHASES = ('pre', 'post')
 # runner.py execute_run: ``os.environ.get("NIRMANA_FORCE_EXECUTE", "").strip().lower() in ("1", "true", "yes")``
 FORCE_ENV = 'NIRMANA_FORCE_EXECUTE'
 FORCING_VALUES = ('1', 'true', 'yes')
+# events.py emit(): ``if os.environ.get("PUBSUB_DISABLED") or not os.environ.get("PUBSUB_TOPIC")`` prints the ``[event]`` line, otherwise publishes it
+PUBSUB_ENV = 'PUBSUB_DISABLED'
 REBUILD_OPERATIONS = ('rebuild', 'rebuild-dryrun')
 REHEARSALS = ('verify-dryrun', 'publish-dryrun', 'rollback-dryrun')
 CONTROL_OPERATIONS = ('cancel', 'teardown')
@@ -52,38 +59,164 @@ def force_refusal(environ: Mapping[str, str]) -> str | None:
     return None
 
 
-def gochara_closure(edges: Mapping[str, Iterable[str]]) -> frozenset[str]:
-    """The gochara surface plus every asset that depends on a member of it, directly or transitively."""
-    members = set(GOCHARA_SURFACE)
-    grew = True
-    while grew:
-        grew = False
-        for asset, deps in edges.items():
-            if asset not in members and any(dep in members for dep in deps):
-                members.add(asset)
-                grew = True
-    return frozenset(members)
+@contextlib.contextmanager
+def forced_execution():
+    """Switch the orchestrator's delta-skip gate off for the duration of one in-process run, then restore the environment."""
+    previous = os.environ.get(FORCE_ENV, '')    # restored by assignment: an unset and an empty value both read as "not forcing"
+    os.environ[FORCE_ENV] = '1'
+    try:
+        yield
+    finally:
+        os.environ[FORCE_ENV] = previous
 
 
-def phase_refusal(edges: Mapping[str, Iterable[str]], assets: list[str], phase: str) -> str | None:
-    """A reason when ``assets`` does not belong to ``phase`` of the K9 rebuild split, else None."""
-    if phase not in PHASES:
-        return 'phase must be one of ' + ', '.join(PHASES)
+def _upstream(edges: Mapping[str, Iterable[str]], asset: str, memo: dict[str, frozenset[str]]) -> frozenset[str]:
+    """Every asset ``asset`` transitively depends on (registry ``depends_on``); a cycle contributes nothing twice."""
+    if asset not in memo:
+        memo[asset] = frozenset()          # cycle guard: a re-entry sees the empty set
+        found: set[str] = set()
+        for dep in edges.get(asset, ()):
+            found.add(dep)
+            found |= _upstream(edges, dep, memo)
+        memo[asset] = frozenset(found)
+    return memo[asset]
+
+
+def upstream_of(edges: Mapping[str, Iterable[str]], asset: str) -> frozenset[str]:
+    """Every asset ``asset`` transitively declares as an upstream (public form of ``_upstream``)."""
+    return _upstream(edges, asset, {})
+
+
+def merge_edges(*graphs: Mapping[str, Iterable[str]]) -> dict[str, list[str]]:
+    """The union of dependency graphs (e.g. the pinned preparation edges and the edges a run was frozen with)."""
+    merged: dict[str, set[str]] = {}
+    for graph in graphs:
+        for asset, deps in graph.items():
+            merged.setdefault(asset, set()).update(deps)
+    return {asset: sorted(deps) for asset, deps in merged.items()}
+
+
+def plan_gaps(edges: Mapping[str, Iterable[str]], assets: list[str]) -> list[tuple[str, str, str]]:
+    """(missing, upstream planned, downstream planned) for each asset the plan leaves out BETWEEN two planned assets.
+
+    The orchestrator stales every out-of-plan dependent of a planned asset whose output changed
+    (``staleness.py`` ``targets = downstream - plan_set``), and a planned writer is refused at entry when a DECLARED
+    dependency is not lit (``asset_runner.deps_unsatisfied``). An unplanned asset that sits between a planned writer and
+    one of its planned dependents is therefore a timing race: the dependent runs only if it starts before the upstream
+    finishes (K9 rehearsal r4 N4: ``ka_yojaka`` -> ``ka_gochara_resonance`` -> ``ka_gochara``).
+    """
+    memo: dict[str, frozenset[str]] = {}
+    planned = set(assets)
+    gaps: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    for downstream in assets:
+        for middle in sorted(_upstream(edges, downstream, memo) - planned - seen):
+            feeders = sorted(_upstream(edges, middle, memo) & planned)
+            if feeders:
+                seen.add(middle)
+                gaps.append((middle, feeders[0], downstream))
+    return gaps
+
+
+def derived_waves(edges: Mapping[str, Iterable[str]], assets: Iterable[str], *, close: bool = True) -> list[list[str]]:
+    """The plan's dependency levels, derived from the registry ``depends_on`` and from nothing else (SR-K9-WAVE-ORDER).
+
+    A writer's level is one more than the deepest planned asset it transitively depends on (through unplanned assets too);
+    the writers of one level are listed by asset id. No order is read from the caller's list, so the same registry and the
+    same set of assets always give the same plan, and a writer can never be placed ahead of an upstream it declares.
+    ``close`` adds every missing intermediate (``plan_gaps``); ``close=False`` orders exactly ``assets``.
+    A registry cycle among the planned assets has no order: it raises ``ValueError`` naming them.
+    """
+    planned = list(assets)
+    memo: dict[str, frozenset[str]] = {}
+    members = set(planned) | ({middle for middle, _, _ in plan_gaps(edges, planned)} if close else set())
+    above = {asset: _upstream(edges, asset, memo) & (members - {asset}) for asset in members}
+    waves: list[list[str]] = []
+    placed: set[str] = set()
+    while len(placed) < len(members):
+        level = sorted(asset for asset in members - placed if not (above[asset] - placed))
+        if not level:
+            raise ValueError('registry dependency cycle among: ' + ', '.join(sorted(members - placed)))
+        waves.append(level)
+        placed.update(level)
+    return waves
+
+
+def closed_plan(edges: Mapping[str, Iterable[str]], assets: list[str]) -> list[str]:
+    """``assets`` plus every missing intermediate, in the order the registry derives (``derived_waves``, flattened).
+
+    The caller's order is not an input: a hand-listed order is never kept, only checked (``order_violations``).
+    """
+    return [asset for wave in derived_waves(edges, assets) for asset in wave]
+
+
+def order_violations(edges: Mapping[str, Iterable[str]], assets: list[str]) -> list[tuple[str, str]]:
+    """(dependency, dependent) pairs the list orders the wrong way round."""
+    memo: dict[str, frozenset[str]] = {}
+    position = {a: i for i, a in enumerate(assets)}
+    return [(dep, asset) for asset in assets for dep in sorted(_upstream(edges, asset, memo) & set(assets))
+            if position[dep] > position[asset]]
+
+
+@contextlib.contextmanager
+def pubsub_disabled():
+    """Keep the orchestrator's events off Pub/Sub for the duration of one in-process run, then restore the environment.
+
+    ``events.emit`` reads the variable at emit time and, when it is set, prints each ``[event]`` line instead of publishing it, so a
+    rebuild launched where ``PUBSUB_TOPIC`` is present still leaves its events as evidence on stderr and the two-source gates' log source
+    is populated (W5/W6 M-W56-17). Restored by assignment, like ``forced_execution``: an unset and an empty value both read as "not disabled".
+    """
+    previous = os.environ.get(PUBSUB_ENV, '')
+    os.environ[PUBSUB_ENV] = '1'
+    try:
+        yield
+    finally:
+        os.environ[PUBSUB_ENV] = previous
+
+
+def assets_refusal(edges: Mapping[str, Iterable[str]], assets: list[str]) -> str | None:
+    """A reason when ``assets`` is not an admissible single-phase K9 rebuild list, else None.
+
+    Admissible = every asset registered, the plan closed under its dependencies, and no writer listed ahead of an upstream it
+    declares (SR-K9-WAVE-ORDER: the registry's ``depends_on`` is the only source of order; the refusal carries the derived plan).
+    """
     if not assets or any(not a for a in assets) or len(set(assets)) != len(assets):
         return 'assets must be a non-empty list without blanks or duplicates'
     unknown = [a for a in assets if a not in edges]
     if unknown:
         return 'not in asset_registry: ' + ', '.join(unknown)
-    closure = gochara_closure(edges)
-    if phase == 'pre':
-        offenders = [a for a in assets if a in closure]
-        if offenders:
-            return 'pre-flip rebuild may not include gochara-dependent assets: ' + ', '.join(offenders)
-    else:
-        offenders = [a for a in assets if a not in closure]
-        if offenders:
-            return 'post-flip rebuild is limited to gochara-dependent assets; not dependent: ' + ', '.join(offenders)
+    try:
+        derived_waves(edges, assets)
+    except ValueError as exc:
+        return str(exc)
+    gaps = plan_gaps(edges, assets)
+    if gaps:
+        return ('plan is not closed under its dependencies; add ' + ', '.join(
+                f'{middle} (between {upstream} and {downstream})' for middle, upstream, downstream in gaps)
+                + '; closed plan: ' + ','.join(closed_plan(edges, assets)))
+    wrong = order_violations(edges, assets)
+    if wrong:
+        return ('plan order breaks a dependency: ' + ', '.join(f'{dep} must precede {asset}' for dep, asset in wrong)
+                + '; ordered plan: ' + ','.join(closed_plan(edges, assets)))
     return None
+
+
+# Migration 1405 (PR #3869) gives ``kala_convergence`` a ``generation`` column and ka_sangam a delete scoped to its own generation. The foreign key
+# ``kala_obstruction.convergence_id ... ON DELETE CASCADE`` (migration 245, kept by 1406) means ka_sangam's whole-chart delete of ``kala_convergence``
+# also deletes the SERVED obstruction rows (and kala_darshana / phala_anchors rows); only the scoped delete keeps that cascade off them.
+CONVERGENCE_SCOPE_ASSET = 'ka_sangam'
+
+
+def convergence_scope_refusal(conn: Any, assets: list[str]) -> str | None:
+    """A reason when the plan runs ka_sangam against a database whose ``kala_convergence`` has no ``generation`` column (1405 not applied)."""
+    if CONVERGENCE_SCOPE_ASSET not in assets:
+        return None
+    row = conn.execute("SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() "
+                       "AND table_name = 'kala_convergence' AND column_name = 'generation'").fetchone()
+    if row is not None:
+        return None
+    return ('migration 1405 is not applied (kala_convergence has no generation column): ka_sangam would delete the whole chart\'s '
+            'convergence rows and, through the ON DELETE CASCADE foreign keys, the served obstruction rows')
 
 
 def registry_edges(conn: Any) -> dict[str, list[str]]:
@@ -165,7 +298,8 @@ def _parser() -> argparse.ArgumentParser:
             continue
         if operation in REBUILD_OPERATIONS:
             p.add_argument('--assets', required=True)
-            p.add_argument('--phase', required=True, choices=PHASES)
+            if operation == 'rebuild':
+                p.add_argument('--force-execute', action='store_true')
         else:
             p.add_argument('--generation', required=True)
         if operation in ('publish-dryrun', 'rollback-dryrun'):
@@ -180,28 +314,53 @@ def _refuse(reason: str, code: int = 2) -> int:
     return code
 
 
+def _forces(args: argparse.Namespace) -> bool:
+    return bool(getattr(args, 'force_execute', False))
+
+
 def _admit_rebuild(dsn: str, args: argparse.Namespace) -> str | None:
+    # The explicit flag is the only way to force; an ambient forcing environment is still refused.
     forced = force_refusal(os.environ)
     if forced:
         return forced
     with psycopg.connect(dsn, connect_timeout=5) as conn:
         conn.read_only = True
-        return phase_refusal(registry_edges(conn), args.assets.split(','), args.phase)
+        assets = args.assets.split(',')
+        return assets_refusal(registry_edges(conn), assets) or convergence_scope_refusal(conn, assets)
+
+
+def split_output(text: str) -> tuple[dict | None, list[str]]:
+    """(the delegated operation's own result, every other line): the result is the last stdout line that is a JSON object."""
+    lines = text.splitlines()
+    for index in range(len(lines) - 1, -1, -1):
+        try:
+            document = json.loads(lines[index])
+        except ValueError:
+            continue
+        if isinstance(document, dict):
+            return document, lines[:index] + lines[index + 1:]
+    return None, lines
 
 
 def _delegate_rebuild(args: argparse.Namespace) -> int:
     captured = io.StringIO()
-    with contextlib.redirect_stdout(captured):
-        code = publication.main([args.operation, '--run-id', str(args.run_id), '--assets', args.assets])
-    text = captured.getvalue().strip()
+    # --force-execute applies to the real rebuild only; the dry run executes nothing.
+    forcing = _forces(args) and args.operation == 'rebuild'
+    code = 3
     try:
-        document = json.loads(text)
-    except ValueError:
-        print(text)
-        return code
+        with contextlib.redirect_stdout(captured), pubsub_disabled(), (forced_execution() if forcing else contextlib.nullcontext()):
+            code = publication.main([args.operation, '--run-id', str(args.run_id), '--assets', args.assets])
+    finally:
+        document, rest = split_output(captured.getvalue())
+        # Orchestrator [event] lines and import-time prints are evidence on stderr, never part of the proof on stdout.
+        if rest:
+            print('\n'.join(rest), file=sys.stderr)
+    if document is None:
+        print(json.dumps({'status': 'FAILED', 'reason': 'the delegated rebuild produced no JSON result document'}))
+        return code or 3
     if code == 0:
-        document['admission'] = {'phase': args.phase, 'assets': args.assets.split(','),
-                                 'probe_mode': 'delta_skip_gate', 'force_execute': False}
+        document['admission'] = {'assets': args.assets.split(','),
+                                 'probe_mode': 'force_execute' if forcing else 'delta_skip_gate', 'force_execute': forcing}
     print(json.dumps(document, sort_keys=True))
     return code
 
@@ -223,8 +382,10 @@ def _control(dsn: str, args: argparse.Namespace) -> int:
             state, requested = rebuild_control.cancel_state(conn, run_id)
             result['readback'] = {'state': state, 'stop_requested_at': requested.astimezone(timezone.utc).isoformat() if requested else None}
         else:
+            states = dict(rebuild_control.asset_state_census(conn))
             result['readback'] = {'remaining_rows': rebuild_control.row_counts(conn, rebuild_control.CANONICAL_CHART, result['generation']),
-                                  'head_generation': rebuild_control.head_of(conn, rebuild_control.CANONICAL_CHART)}
+                                  'head_generation': rebuild_control.head_of(conn, rebuild_control.CANONICAL_CHART),
+                                  'asset_states': {r['asset_id']: states.get(r['asset_id']) for r in result['asset_states_restored']}}
         conn.rollback()
     print(json.dumps(result, sort_keys=True, default=str))
     return 0

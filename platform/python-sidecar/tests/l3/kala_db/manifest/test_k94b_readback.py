@@ -1,0 +1,96 @@
+"""K9-4b request-prep SQL is one executable SELECT, with digest-bound bytes."""
+import copy
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+import uuid
+
+import psycopg
+import pytest
+
+FLEET = Path(__file__).resolve().parents[6] / '00_ARCHITECTURE/briefs/kalayantra/fleet'
+
+
+def prep():
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('k94b_prep',FLEET/'k9_readback.py')
+    mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    return mod
+
+
+def request():
+    return dict(item_id='K9-4b',kind='readback_sql',operation_id='k94b-readback',
+                reviewed_commit='a'*40,args={'sql_file':'run/ops/sql/k94b.sql'})
+
+
+def test_prep_binds_single_select_wrapper_into_request_digest():
+    m=prep(); original=request()
+    result=m.prepare_readback(original, readback_sql="SELECT jsonb_build_object('passed', true) AS evidence")
+    expected="SELECT evidence::text AS evidence FROM (SELECT jsonb_build_object('passed', true) AS evidence) AS t"
+    assert result['sql']==expected
+    assert result['request']['args']['sql-sha256']==hashlib.sha256(expected.encode()).hexdigest()
+    assert result['request_sha256'] != m.request_digest(original)
+    assert original==request()
+    altered=copy.deepcopy(result['request']); altered['args']['sql-sha256']='0'*64
+    assert m.request_digest(altered)!=result['request_sha256']
+
+
+@pytest.mark.parametrize('bad',["SELECT '{}'::jsonb AS evidence; SELECT 1", "WITH t AS (DELETE FROM x RETURNING *) SELECT * FROM t", "DELETE FROM x", "SELECT 1;", "SELECT '\\!'", "SELECT 1 -- comment"])
+def test_unsafe_wrapper_input_is_refused(bad):
+    with pytest.raises(ValueError): prep().prepare_readback(request(), readback_sql=bad)
+
+
+@pytest.mark.parametrize('field,value',[('item_id','K9-4a'),('kind','layer_publish'),('operation_id',''),('reviewed_commit','not-a-sha')])
+def test_readback_prep_requires_exact_request_identity(field,value):
+    req=request(); req[field]=value
+    with pytest.raises(ValueError): prep().prepare_readback(req,readback_sql="SELECT '{}'::jsonb AS evidence")
+
+
+def test_single_select_jsonb_wrapper_runs_under_actual_readback_shell(kala_db_dsn, tmp_path):
+    m=prep(); result=m.prepare_readback(request(),readback_sql="SELECT jsonb_build_object('run_id', 'fixture', 'passed', true) AS evidence")
+    root=tmp_path/'runtime'; (root/'run/ops/sql').mkdir(parents=True); (root/'venv/bin').mkdir(parents=True)
+    (root/'venv/bin/python').symlink_to(sys.executable)
+    query=root/'run/ops/sql/k94b.sql'; query.write_text(result['sql'])
+    # Guarded suite-owned local database only; no credentials read or copied.
+    settings=psycopg.conninfo.conninfo_to_dict(kala_db_dsn)
+    assert settings['host'] in {'127.0.0.1','localhost'}
+    import os
+    env={k:v for k,v in os.environ.items() if not k.startswith('PG') and k not in {'DATABASE_URL','KY_BUILDER_DATABASE_URL','KY_OWNER_DATABASE_URL','KY_LAYER_VERIFIER_DATABASE_URL'}}
+    env.update(KY_ROOT=str(root),KY_READBACK_PGENV=str(tmp_path/'pgenv.sh'),PGHOST=settings['host'],PGPORT=settings['port'],PGUSER='postgres',PGDATABASE=settings['dbname'],PGPASSFILE='/dev/null')
+    # CI's throwaway server requires the password in its own fixture DSN; the local cluster is trust-auth and carries none.
+    if settings.get('password'): env['PGPASSWORD']=settings['password']
+    (tmp_path/'pgenv.sh').write_text('# test uses guarded fixture PG settings\n')
+    argv=['bash',str(FLEET/'readback_sql.sh'),'--sql_file',str(query),'--sql-sha256',result['request']['args']['sql-sha256']]
+    run=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=10)
+    assert run.returncode==0,run.stderr
+    import csv, io
+    rows=list(csv.reader(io.StringIO(run.stdout),delimiter='\t'))
+    assert rows[0]==['evidence'] and json.loads(rows[1][0])=={'run_id':'fixture','passed':True}
+    query.write_text("SELECT '{}'::jsonb AS evidence")
+    changed=subprocess.run(argv,env=env,capture_output=True,text=True,timeout=10)
+    assert changed.returncode != 0 and 'digest' in changed.stderr
+
+
+def test_readback_session_runs_at_utc_and_three_float_digits_under_actual_shell(kala_db_dsn, tmp_path):
+    """W3W4 R3: whatever the environment file / role defaults say, the readback session itself is UTC with extra_float_digits=3
+    (the setting the scoped backups measure under, platform/scripts/backup_v5_small_test_job.py measurements()), and is still read-only."""
+    import csv, io, os
+    root=tmp_path/'runtime'; (root/'run/ops/sql').mkdir(parents=True); (root/'venv/bin').mkdir(parents=True)
+    (root/'venv/bin/python').symlink_to(sys.executable)
+    query=root/'run/ops/sql/r3.sql'
+    query.write_text("SELECT current_setting('TimeZone') AS tz, current_setting('extra_float_digits') AS efd, "
+                     "current_setting('transaction_read_only') AS ro, (0.1::float8 + 0.2::float8)::text AS f")
+    settings=psycopg.conninfo.conninfo_to_dict(kala_db_dsn)
+    assert settings['host'] in {'127.0.0.1','localhost'}
+    env={k:v for k,v in os.environ.items() if not k.startswith('PG') and k not in {'DATABASE_URL','KY_BUILDER_DATABASE_URL','KY_OWNER_DATABASE_URL','KY_LAYER_VERIFIER_DATABASE_URL'}}
+    # The symptom measured in production: a session that would otherwise run at extra_float_digits=1 and a non-UTC zone.
+    env.update(KY_ROOT=str(root),KY_READBACK_PGENV=str(tmp_path/'pgenv.sh'),PGHOST=settings['host'],PGPORT=settings['port'],PGUSER='postgres',
+               PGDATABASE=settings['dbname'],PGPASSFILE='/dev/null',PGOPTIONS='-c timezone=Asia/Kolkata -c extra_float_digits=1')
+    if settings.get('password'): env['PGPASSWORD']=settings['password']
+    (tmp_path/'pgenv.sh').write_text('# test uses guarded fixture PG settings\n')
+    run=subprocess.run(['bash',str(FLEET/'readback_sql.sh'),'--sql_file',str(query)],env=env,capture_output=True,text=True,timeout=10)
+    assert run.returncode==0,run.stderr
+    rows=list(csv.reader(io.StringIO(run.stdout),delimiter='\t'))
+    assert rows[0]==['tz','efd','ro','f'] and rows[1]==['UTC','3','on','0.30000000000000004']

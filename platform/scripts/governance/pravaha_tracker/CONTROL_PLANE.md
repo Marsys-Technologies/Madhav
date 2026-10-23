@@ -55,6 +55,11 @@ the running tracker uses a separate installed snapshot and changes only at B-2.
   work `not_applicable`; that state propagates through executable consumers.
   Only items declaring `accepts_not_applicable_dependencies` may proceed from a
   skipped dependency, and the originating gaps remain visible at joins.
+- Deferred display (SR-PARKED-OUT-OF-CAMPAIGN): a row is flagged `deferred: true` when its triage class is `b`, it is outside the acceptance
+  closure and it is not finished. Deferred rows keep their own status (never rewritten, never done); a deferred row that reads `blocked`,
+  `parked` or `unknown` is left out of `attention`, the stream Blocked column and the `blocked`/`unknown` tallies, and the plan-wide
+  figures carry `deferred_count`. `failed` and `conflict` stay visible. A declared decision carrying `retires` (no item of its own) is
+  staged like a retirement decision item.
 - `send` follows the model's `message_policy`. `PRAVAHA_HOLD` selects the HOLD
   path. `preflight` accepts an unclaimed detached lane. `note` cannot unblock;
   owner-authorized `unblock` and `reopen` are explicit transitions.
@@ -72,6 +77,18 @@ squash-merged `detector.ref`; else the merged PR of the `ref` head branch; else 
 owned path. A bundle child counts only when at least one of its owned paths is in the bundle's diff and every owned
 path is in its merged tree. The row reads `source: derived:merged+deployed` with `merged_pr` and `deploy_run_id`; an
 earlier guarded completion event still wins. Operation items close from executor receipts, decisions from the ledger.
+
+## SR-AUDIT-BOOKKEEPING: labels that outlived their cause
+
+- A `review` item event on a PR that has since MERGED no longer reads `review` / "in progress": the item reads from the event before it,
+  else from its dependencies (`state.drop_merged_reviews`). The server asks GitHub about exactly the PRs the latest `review` events name
+  (`stale_review_prs`, `CodeDone.merged_prs`); a merge that was not observed changes nothing (never assumed).
+- `ready_at_accepted` (a dependency's pre-merge ACCEPTED verdict lets dependants start) applies only to a dependency that is complete
+  once its PR merges (`state.completes_at_merge`: a `branch_merged`/`pr_merged` detector on a code or undeclared item). An operation, a
+  packet, or a code item measured by a receipt or file still has its own output to produce, so its dependants wait.
+- A decision whose own item reads `not_applicable` is not listed in `native_queue`.
+- `branch_merged` on a branch that is not on origin yet reads `pending` ("does not exist on origin yet"); any other fetch failure is
+  still a detector error.
 
 ## A7 D-46: implemented vs. activated
 

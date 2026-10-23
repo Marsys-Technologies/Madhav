@@ -1,0 +1,47 @@
+{
+ "schema": "ky.g3_decision_table/1",
+ "table_id": "SCORING-PLAN-v2-S5/A10.1",
+ "source": "SCORING PLAN v2 §5 'G-3 and G-2 as a decision table' (carried unchanged by PLAN A10.1 §9; RECONCILIATION R-9 and N3). Floors are LOWER BOUNDS for the confirmed rulings (Q4/Q9: nodes malefic and numbered in full once 1401 is applied; nodes obstruct, node transits N/A); expectations, not measurements. A shortfall whose blank reasons are all allowed is REPORTED to the surrogate for a dispatch ruling; a reason outside the closed allowed set, or any forbidden reason, is a REFUSAL. Added to the closed allowed set by ruling SR-D6-OBJECTIVE-UNKNOWN (b): no_aspect_rule_defined_at_offset (BPHS 1:16496-16502 defines 3-10/5-9/4-8/7 only) is the named blank of a drishti operand at an offset the rule authority does not define; the generic objective_unknown_over_component stays OUTSIDE the set.",
+ "rows": [
+  {"id": "P1", "paths": ["P1"], "floor": 0.90, "shortfall": "REPORT", "forbidden": "REFUSE", "basis": "nodes fully numbered after 1401; remaining blanks are boundary/solver/dasha-horizon"},
+  {"id": "P2", "paths": ["P2"], "floor": 0.85, "shortfall": "REPORT", "forbidden": "REFUSE", "basis": "Q9(i) nodes obstruct, node transits N/A; node residence coverage (V-3) unmeasured, so 85"},
+  {"id": "P3", "paths": ["P3"], "floor": 0.92, "shortfall": "REPORT", "forbidden": "REFUSE", "basis": "v1 §4.2"},
+  {"id": "P4", "paths": ["P4"], "floor": 0.95, "shortfall": "REPORT", "forbidden": "REFUSE", "basis": "v1 §4.2"},
+  {"id": "P3+P4", "paths": ["P3", "P4"], "floor": 0.90, "shortfall": "REPORT", "forbidden": "REFUSE", "basis": "v1 G-3"},
+  {"id": "ALL", "paths": ["*"], "floor": 0.88, "shortfall": "REPORT", "forbidden": "REFUSE", "basis": "v1 §4.2 row Q4(a)+Q9(b)"}
+ ],
+ "caps": [
+  {"id": "solver_budget_exhausted", "reasons": ["solver_budget_exhausted"], "max_share": 0.005, "of": "all_windows", "above": "REFUSE",
+   "basis": "REFUSE above the cap"},
+  {"id": "inconclusive", "reasons": ["tie_ambiguous", "tie_isolation_unresolved", "verifier_budget_exhausted"], "max_share": 0.005, "of": "all_windows", "above": "REFUSE",
+   "basis": "INCONCLUSIVE (R-6) <= 0.5 % of windows; a breach predicts a seal refusal after a ~4 h build and the sharded verification. (I) INTERPRETATION: the INCONCLUSIVE reasons are the three named in PLAN A10.1 T15; windows carrying two of them are counted twice (an upper bound)"}
+ ],
+ "allowed_reasons": [
+  "state_boundaries_incomplete",
+  "solver_budget_exhausted",
+  "monotone_arc_not_established",
+  "solver_certificate_incomplete",
+  "obstructor_residence_unknown",
+  "node_residence_unknown",
+  "verifier_budget_exhausted",
+  "tie_isolation_unresolved",
+  "tie_ambiguous",
+  "dasha_horizon_exhausted",
+  "no_aspect_rule_defined_at_offset"
+ ],
+ "forbidden_reasons": [
+  "applicability_undeclared",
+  "value_mapping_undeclared",
+  "vedha_overlay_not_bound",
+  "orb_not_ratified",
+  "dynamic_objective_solver_guarantee_not_available",
+  "agent_nature_node_undecided",
+  "node_obstruction_undecided",
+  "node_dignity_unclassified"
+ ],
+ "noninterference": {
+  "kinds": ["windows", "supports", "contacts", "membership"],
+  "declared_rule_version_changes": [],
+  "note": "GPT N3 / PLAN v2 G-7: at the same geometry configuration the sorted natural keys of windows, supports, contacts and membership equal the all-null baseline; only a rule-version identity change DECLARED in declared_rule_version_changes ({path, from, to}) is allowed. Empty = none declared: any change of rule version between the baseline and the trial reads FAIL until the cockpit declares it from the ratified selection (no value invented, B.10)."
+ }
+}

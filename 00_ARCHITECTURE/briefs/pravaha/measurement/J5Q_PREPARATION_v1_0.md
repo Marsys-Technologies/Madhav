@@ -1,11 +1,12 @@
 ---
 artifact: J5Q_PREPARATION
-version: "1.0"
+version: "1.1"
 status: BUILT_WAITING_ON_GATE
 date: 2026-10-16
 items: [J-5q, J-5q-pr3091, J-5q-a57, J-5q-b54]
 runtime_effect: none
 changelog:
+  - "1.1: J-5q scoring tooling for generation 5.0 (numerical policy): the extract and the freeze accept 5.0 (stored eval-window columns, honest nulls with their reason), the density report is over the scored span 1998-01-01..2026-04-17 with the build span labelled apart, and producers exist for per-(class, year) coverage cells and the six leave-one-path-out ablations. Still no measurement, acceptance or result artifact."
   - "1.0: offline qualification diagnostics, pinned-artifact report assembly, C35 seal/manifest refusal tests, and strict-tolerance merger repairs. No candidate evaluation or residual acceptance claimed."
 ---
 
@@ -260,3 +261,24 @@ before measurement; the reporter continues to preserve source results verbatim.
    and scorer behavior. Alternative: keep a diagnostic-only workaround and leave
    the canonical scorer's exact-tolerance boundary wrong. The FROZEN orchestrator
    contract is not changed; existing freeze documents are not rewritten.
+
+
+## Update 1.1 — what now exists for generation 5.0 (tooling only; nothing here is a measurement)
+
+`dump_extract.py:42` / `freeze.py:32` no longer refuse 5.0; the other statements above about "refuses governed 5.x" describe 1.0.
+
+- **Extract (`dump_extract --generation 5.0`).** Reads `ka_gochara_eval_window` read-only: `si := evidence_for` (NULL stays NULL), `pk := peak_instant`,
+  `ws`/`we` the first/last IST day of the half-open interval, the **stored** `outcome_valence_for_native`, `path_id`, and `null_reason` (the stored
+  `qualification.unqualified_reason`). Windows wholly outside 1998-01-01..2026-04-17 are excluded and **counted** in the header; the header carries a
+  null census. The same file is the report's `diagnostic_extract`.
+- **Freeze.** A 5.0 Stage-1 binds the manifest's `result_policy`, ephemeris, `orb_policy`, registry digest and implementation identity (re-read live by the
+  dump); the 4.x-only blocks (`orb_max_deg`, donor rows, daśā plurality, `orb_state`) are required for 4.1 only. Either named result policy may be frozen:
+  an `all_null_candidate/1` generation measures as all-unknown (honestly), a `window_qualification/1` one scores its numbers.
+- **Density report.** `density_extract` is over the **scored** span by default (`--span build` for the build span); the output labels `horizon_kind`,
+  `scored_span` and `build_span`; a build that does not cover the scored span is refused.
+- **Coverage cells (`coverage_cells.py`).** One read of the `event_class` ledger; `computed` needs the whole year inside the completed horizon (final year
+  cut at 2026-04-17). **OWNER/STEWARD DECISION STILL OPEN:** whether a partition with an `unsearched_reason` (e.g. "Moon-agent edges are on-demand")
+  claims its years — `--unsearched-policy strict` (default, does not claim) or `horizon_only`; the file records the policy and both facts per cell.
+- **Path ablations (`path_ablation.py`).** (I) INTERPRETATION: leave-one-path-out over the sealed extract's stored windows, same frozen registry/budget; a path
+  with no window is `path_absent_from_extract` (no delta), the baseline must reproduce the recorded measurement. Supply the output as
+  `sources[g].path_ablations` in the report inputs. Alternative not built: path-alone.

@@ -4,8 +4,10 @@
 The measuring build (dispatch_v5_measuring_job.py) is the same staged run with a test-slice marker, stamped `test_slice` and so unsealable by
 construction. The century build is that run WITHOUT the marker: `plan_manifest` carries no `gochara_v5_test_slice`, the run's trigger is
 'gochara-v5-century', and the writer builds the ordinary, sealable candidate it builds for any unmarked run. This binding chooses NO horizon,
-class set or rule version: it stages the run and the writer decides everything else (what '5.0' answers after 2026-04-17 is the owner's open
-N-G9 decision and the writer code J-4d lands — never this script).
+class set or rule version itself: the production orchestrator hands the writer chart_id and birth_params only, so the request's `final_rules`,
+`defer_in_build_verify` and `horizon` arguments (F-CHANNEL, SR-W34-PREP-RULINGS 1; the owner's D-G9 value, never a constant here) are STAGED as
+plan_manifest['gochara_v5_century_config'], covered by plan_manifest_digest, and the writer reads them from there. The request digest covers `args`,
+so each is bound by the acceptance and the pack fill. The writer refuses an unmarked run that arrives without an explicit profile or horizon.
 
 It reuses the guarded small-test staging transaction (chart lock, frozen-generation refusal, one active run per chart, registry-row shape,
 N-137 end state, no receipts and no generation '5.0' output: the measuring lifecycle must be torn down first) through explicit keyword
@@ -20,6 +22,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import datetime
+import hashlib
 import io
 import json
 import sys
@@ -45,19 +48,34 @@ def launch_plan(run_id: str) -> dict:
                 async_launch=True)
 
 
-def century_shape(*, run=None, classes=None, horizon_start=None, horizon_end=None) -> dict:
-    """The only request shape there is: all classes, no run name, no horizon. Anything else is refused before any connection."""
+def century_shape(*, run=None, classes=None, horizon_start=None, horizon_end=None, final_rules=None, defer_in_build_verify=None, horizon=None, result_policy=None) -> dict:
+    """The only request shape there is: all classes, no run name, no slice horizon (`horizon_start`/`horizon_end` are the small-test pair and stay refused),
+    plus — F-CHANNEL, SR-W34-PREP-RULINGS 1 — the century config: the rule profile, the verify-deferral switch and the D-G9 horizon as the request's
+    'true'/'false'/'start,end' strings. The three come together or not at all; given, they are validated by the WRITER's own validator and returned in its
+    canonical form under 'century_config'. Anything else is refused before any connection."""
     if run is not None or horizon_start is not None or horizon_end is not None or classes not in (None, "all"):
-        raise shared.Refused("century dispatch takes only --classes all: no run name and no horizon (the writer decides the horizon)")
-    return {"classes": "all"}
+        raise shared.Refused("century dispatch takes only --classes all: no run name and no slice horizon (the century horizon is the one 'horizon' argument)")
+    shape = {"classes": "all"}
+    given = (final_rules, defer_in_build_verify, horizon, result_policy)
+    if any(value is not None for value in given):
+        if any(value is None for value in given):
+            raise shared.Refused("century dispatch takes final_rules, defer_in_build_verify, horizon and result_policy together")
+        shape["century_config"] = shared.century_config_component(final_rules, defer_in_build_verify, horizon, result_policy)
+    return shape
 
 
 def build_century_manifest(*, candidate, slice_marker=None):
-    """The frozen asset_set manifest, digested once, with NO slice marker (the manifest and its digest are `build_manifest`'s own)."""
+    """The frozen asset_set manifest, digested once, with NO slice marker. `slice_marker` is the century shape (see `century_shape`): when it carries a
+    'century_config' the manifest also carries it under the writer's CENTURY_CONFIG_KEY and the digest is taken over the whole — so the profile, the
+    deferral switch and the horizon are fixed at dispatch and the writer's every read verifies them (a shape without one is `build_manifest`'s own)."""
     manifest, digest = staging.build_manifest(chart_id=shared.CHART_ID, candidate=candidate,
                                               expected_code_digest=staging._load_writer_digest(shared.ASSET_ID))
     if staging.SLICE_MARKER_KEY in manifest:
         raise shared.Refused("a century manifest never carries a slice marker")
+    config = (slice_marker or {}).get("century_config")
+    if config is not None:
+        manifest[shared.CENTURY_CONFIG_KEY] = config
+        digest = hashlib.sha256(staging._canonical_json(manifest).encode("utf-8")).hexdigest()
     return manifest, digest
 
 
@@ -66,12 +84,17 @@ def parse_args(argv):
     p.add_argument("--i-am-steward", action="store_true", help="required: you are the steward, acting on native authority")
     p.add_argument("--after-settled-1", action="store_true", help="required: the protected window's settled-1 precondition has passed")
     p.add_argument("--classes", default="all", choices=("all",))
+    p.add_argument("--final_rules", required=True, choices=("true", "false"), help="the rule profile: true = the final ND-H rules, false = the measuring rules")
+    p.add_argument("--defer_in_build_verify", required=True, choices=("true", "false"), help="true = defer the in-build verify:<class> to the independent job (final rules only)")
+    p.add_argument("--result_policy", required=True, choices=shared.CENTURY_RESULT_POLICIES, help="OD-1: the numeric-result policy the century build is bound under (window_qualification/1 = numbers on)")
+    p.add_argument("--horizon", required=True, help="the D-G9 derived horizon as 'start,end', each a tz-aware ISO timestamp (half-open)")
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true", help="the DEFAULT: stage, ROLL BACK, print the plan")
     mode.add_argument("--execute", action="store_true", help="commit the staged run (needs both steward flags)")
     a = p.parse_args(argv)
     # the attributes staging._main reads; a century run has no lookup mode, run name or horizon
     return argparse.Namespace(i_am_steward=a.i_am_steward, after_settled_1=a.after_settled_1, execute=a.execute, classes=a.classes,
+                              final_rules=a.final_rules, defer_in_build_verify=a.defer_in_build_verify, horizon=a.horizon, result_policy=a.result_policy,
                               list_runs=False, lookup=None, run=None, horizon_start=None, horizon_end=None)
 
 
@@ -97,11 +120,16 @@ def prepare_report(*, dry_run, run_id, manifest, manifest_digest, existing, note
 
 
 def _century_request_policy(req, root):
-    """The century evidence policy with its fresh, read-only scoped-content measurement (SR-BACKUP-VALIDITY-A8): the named scoped backup
-    admits this dispatch only while the database's scoped content still has the digest the backup recorded. The executor's admission has
-    no database; this is the check that reads it, at --execute and before anything is staged."""
+    """The century evidence policy with its read-only exact-scope measurement. SR-A12-BACKUP-REMOVAL: no backup is named or judged any more, but the
+    reviewed scope's relations must still be found and measurable in the database (a missing or unreadable one refuses `UNMEASURABLE`). The executor's
+    admission has no database; this is the check that reads it, at --execute and before anything is staged.
+    (I) INTERPRETATION A12-M1: the relations are the reviewed scope file's tables (`backup.load_scope()`, the small-test file, whose table lists are
+    identical to the century file's: pinned by test_century_scope_relations_equal_the_small_test_scope); alternative: load the century file itself."""
     import backup_v5_small_test_job as backup
-    return shared.century_request_problem(req, root, measure=backup.measure_scope_now)
+
+    def measure_scope():
+        return backup.measure_scope_now(backup.load_scope()['tables'], [])
+    return shared.century_request_problem(req, root, measure=measure_scope)
 
 
 def main(argv=None):
@@ -115,10 +143,18 @@ def main(argv=None):
     problem = _century_request_policy(req, shared.evidence_root())
     if problem:
         raise shared.Refused(problem)
-    shape = century_shape(classes=args.classes)
+    shape = century_shape(classes=args.classes, final_rules=args.final_rules, defer_in_build_verify=args.defer_in_build_verify, horizon=args.horizon,
+                          result_policy=args.result_policy)
     bound = req.get("args") or {}
-    if shape != century_shape(run=bound.get("run"), classes=bound.get("classes")):
+    if shape != century_shape(run=bound.get("run"), classes=bound.get("classes"), final_rules=bound.get("final_rules"),
+                              defer_in_build_verify=bound.get("defer_in_build_verify"), horizon=bound.get("horizon"),
+                              result_policy=bound.get("result_policy")):
         raise shared.Refused("century arguments differ from the accepted request")
+
+    def marker_builder(*, run=None, classes=None, horizon_start=None, horizon_end=None):
+        # staging._main passes only the small-test keywords; the century config is the request's, already compared with the bound request above
+        return century_shape(run=run, classes=classes, horizon_start=horizon_start, horizon_end=horizon_end, final_rules=args.final_rules,
+                             defer_in_build_verify=args.defer_in_build_verify, horizon=args.horizon, result_policy=args.result_policy)
 
     def check_manifest(manifest, digest):
         if args.execute:
@@ -126,7 +162,7 @@ def main(argv=None):
 
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
-        staging._main(argv, parse_args=parse_args, marker_builder=century_shape, operation_kind="century_dispatch",
+        staging._main(argv, parse_args=parse_args, marker_builder=marker_builder, operation_kind="century_dispatch",
                       request_policy=_century_request_policy, manifest_check=check_manifest,
                       manifest_builder=build_century_manifest, triggered_by=TRIGGERED_BY, report_builder=prepare_report)
     if args.execute:

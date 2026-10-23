@@ -1,0 +1,805 @@
+{
+ "anomalies": {
+  "blank_without_reason_code": 0,
+  "number_without_score": 0,
+  "peak_without_score": 0,
+  "valence_without_score": 0
+ },
+ "baseline_comparison": {
+  "all_null_baseline_windows": 1672,
+  "baseline_all_null_blank_windows": 1672,
+  "blank_delta": 0,
+  "blank_now": 1672,
+  "delta": 0,
+  "equal": true,
+  "informational_slice_counts_j5q": {
+   "contacts": {
+    "j5q_dry_run": 10644,
+    "now": 10644
+   },
+   "near_miss": {
+    "j5q_dry_run": 40,
+    "now": 40
+   },
+   "window_records": {
+    "j5q_dry_run": 24380,
+    "now": 24380
+   }
+  },
+  "windows_total": 1672
+ },
+ "build": {
+  "aborted": null,
+  "dead_classes": [],
+  "defects": [],
+  "observed": {
+   "certification_policies": [],
+   "maximise_earliest_calls": 0,
+   "near_miss_layer": [
+    "present"
+   ]
+  },
+  "substeps_done": 56,
+  "substeps_planned": 56
+ },
+ "classes": {
+  "bereavement": {
+   "blank": 397,
+   "blank_reasons": {
+    "all_null_candidate_policy": 397
+   },
+   "blank_without_reason_code": 0,
+   "by_path": {
+    "P1": {
+     "blank": 215,
+     "windows": 215,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P2": {
+     "blank": 154,
+     "windows": 154,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P3": {
+     "blank": 1,
+     "windows": 1,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P4": {
+     "blank": 27,
+     "windows": 27,
+     "with_peak": 0,
+     "with_score": 0
+    }
+   },
+   "number_without_score": 0,
+   "unresolved_factors_all_windows": {
+    "applicability_undeclared": {
+     "members": 7247,
+     "windows": 28
+    },
+    "value_mapping_undeclared": {
+     "members": 427,
+     "windows": 215
+    },
+    "vedha_overlay_not_bound": {
+     "members": 447,
+     "windows": 154
+    }
+   },
+   "unresolved_factors_in_blank_windows": {
+    "applicability_undeclared": {
+     "members": 7247,
+     "windows": 28
+    },
+    "value_mapping_undeclared": {
+     "members": 427,
+     "windows": 215
+    },
+    "vedha_overlay_not_bound": {
+     "members": 447,
+     "windows": 154
+    }
+   },
+   "valence": {
+    "unqualified": 397
+   },
+   "windows_total": 397,
+   "with_any_number": 0,
+   "with_evidence_for": 0,
+   "with_peak": 0,
+   "with_score": 0,
+   "with_severity": 0
+  },
+  "chronic_onset": {
+   "blank": 447,
+   "blank_reasons": {
+    "all_null_candidate_policy": 447
+   },
+   "blank_without_reason_code": 0,
+   "by_path": {
+    "P1": {
+     "blank": 138,
+     "windows": 138,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P2": {
+     "blank": 154,
+     "windows": 154,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P3": {
+     "blank": 18,
+     "windows": 18,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P4": {
+     "blank": 137,
+     "windows": 137,
+     "with_peak": 0,
+     "with_score": 0
+    }
+   },
+   "number_without_score": 0,
+   "unresolved_factors_all_windows": {
+    "applicability_undeclared": {
+     "members": 5427,
+     "windows": 155
+    },
+    "value_mapping_undeclared": {
+     "members": 204,
+     "windows": 138
+    },
+    "vedha_overlay_not_bound": {
+     "members": 447,
+     "windows": 154
+    }
+   },
+   "unresolved_factors_in_blank_windows": {
+    "applicability_undeclared": {
+     "members": 5427,
+     "windows": 155
+    },
+    "value_mapping_undeclared": {
+     "members": 204,
+     "windows": 138
+    },
+    "vedha_overlay_not_bound": {
+     "members": 447,
+     "windows": 154
+    }
+   },
+   "valence": {
+    "unqualified": 447
+   },
+   "windows_total": 447,
+   "with_any_number": 0,
+   "with_evidence_for": 0,
+   "with_peak": 0,
+   "with_score": 0,
+   "with_severity": 0
+  },
+  "illness_acute": {
+   "blank": 447,
+   "blank_reasons": {
+    "all_null_candidate_policy": 447
+   },
+   "blank_without_reason_code": 0,
+   "by_path": {
+    "P1": {
+     "blank": 138,
+     "windows": 138,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P2": {
+     "blank": 154,
+     "windows": 154,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P3": {
+     "blank": 18,
+     "windows": 18,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P4": {
+     "blank": 137,
+     "windows": 137,
+     "with_peak": 0,
+     "with_score": 0
+    }
+   },
+   "number_without_score": 0,
+   "unresolved_factors_all_windows": {
+    "applicability_undeclared": {
+     "members": 5427,
+     "windows": 155
+    },
+    "value_mapping_undeclared": {
+     "members": 204,
+     "windows": 138
+    },
+    "vedha_overlay_not_bound": {
+     "members": 447,
+     "windows": 154
+    }
+   },
+   "unresolved_factors_in_blank_windows": {
+    "applicability_undeclared": {
+     "members": 5427,
+     "windows": 155
+    },
+    "value_mapping_undeclared": {
+     "members": 204,
+     "windows": 138
+    },
+    "vedha_overlay_not_bound": {
+     "members": 447,
+     "windows": 154
+    }
+   },
+   "valence": {
+    "unqualified": 447
+   },
+   "windows_total": 447,
+   "with_any_number": 0,
+   "with_evidence_for": 0,
+   "with_peak": 0,
+   "with_score": 0,
+   "with_severity": 0
+  },
+  "major_loss": {
+   "blank": 381,
+   "blank_reasons": {
+    "all_null_candidate_policy": 381
+   },
+   "blank_without_reason_code": 0,
+   "by_path": {
+    "P1": {
+     "blank": 63,
+     "windows": 63,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P2": {
+     "blank": 154,
+     "windows": 154,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P3": {
+     "blank": 55,
+     "windows": 55,
+     "with_peak": 0,
+     "with_score": 0
+    },
+    "P4": {
+     "blank": 109,
+     "windows": 109,
+     "with_peak": 0,
+     "with_score": 0
+    }
+   },
+   "number_without_score": 0,
+   "unresolved_factors_all_windows": {
+    "applicability_undeclared": {
+     "members": 3571,
+     "windows": 164
+    },
+    "value_mapping_undeclared": {
+     "members": 85,
+     "windows": 63
+    },
+    "vedha_overlay_not_bound": {
+     "members": 447,
+     "windows": 154
+    }
+   },
+   "unresolved_factors_in_blank_windows": {
+    "applicability_undeclared": {
+     "members": 3571,
+     "windows": 164
+    },
+    "value_mapping_undeclared": {
+     "members": 85,
+     "windows": 63
+    },
+    "vedha_overlay_not_bound": {
+     "members": 447,
+     "windows": 154
+    }
+   },
+   "valence": {
+    "unqualified": 381
+   },
+   "windows_total": 381,
+   "with_any_number": 0,
+   "with_evidence_for": 0,
+   "with_peak": 0,
+   "with_score": 0,
+   "with_severity": 0
+  }
+ },
+ "code": {
+  "branch": "",
+  "checkout": "/Users/Dev/scratch.noindex/claude/madhav/20261011-kalayantra-v3/fast/jobs/X-20261021T050212Z-trial-slice-harness/base",
+  "head": "d7552d029ce3aecfb7bfdf53c4fa097871707b6e",
+  "tracked_files_modified_vs_head": 0
+ },
+ "config": {
+  "chart": "canonical (482012f1-\u2026)",
+  "classes": [
+   "bereavement",
+   "chronic_onset",
+   "illness_acute",
+   "major_loss"
+  ],
+  "final_rules": true,
+  "in_build_verify_deferred": true,
+  "policy_passed_to_build": null,
+  "requested_result_policy": "default"
+ },
+ "database": {
+  "dropped": true,
+  "name": "ky_trial_ff0bc405"
+ },
+ "gate": {
+  "detail": "no numerical-window gate function found in verification_job.py / services/gochara_kernel (pass --gate-entry module:function once the builder's name is known)",
+  "entry": null,
+  "status": "ABSENT"
+ },
+ "generated_utc": "2026-10-21T05:53:22+00:00",
+ "label": "baseline",
+ "lane": {
+  "dasha_id_set_equal": true,
+  "database_created_by": "X-20261021T050212Z-trial-slice-harness",
+  "fact_id_set_equal": true,
+  "loads": [
+   {
+    "rows": 147753,
+    "table": "chart_facts"
+   },
+   {
+    "rows": 483855,
+    "table": "chart_dashas"
+   }
+  ],
+  "migration_effects_present": {
+   "1305": true,
+   "1306": true,
+   "1308": true,
+   "1381": true,
+   "1398": true
+  },
+  "migration_sha256_equal_to_proofs_job": {
+   "1305_gochara_snapshot_owns_l1_copy.sql": true,
+   "1306_gochara_expected_class_census.sql": true,
+   "1308_gochara_near_miss_storage.sql": true,
+   "1381_gochara_near_miss_seal_integration.sql": true,
+   "1398_gochara_snapshot_dasha_held.sql": true
+  },
+  "port": 55433,
+  "server_version": "15.17 (Homebrew)",
+  "setup_s": 24.8
+ },
+ "marker": "TRIAL_SLICE",
+ "not_evidence": true,
+ "oracle": {
+  "expected": {
+   "blank": 1672,
+   "substeps": 56,
+   "windows": 1672
+  },
+  "name": "baseline_all_null_reproduction",
+  "passed": true,
+  "problems": []
+ },
+ "policy_effect": {
+  "manifest_policy": "all_null_candidate/1",
+  "note": "default policy requested: the checkout's own default applies; the baseline oracle below judges the outcome",
+  "requested": "default",
+  "took_effect": null,
+  "window_qualification_policies": {
+   "all_null_candidate/1": 1672
+  }
+ },
+ "runtime_s": {
+  "build_substeps_sum": 1183.79,
+  "by_class_build": {
+   "bereavement": 287.95,
+   "chronic_onset": 216.43,
+   "illness_acute": 125.79,
+   "major_loss": 221.74
+  },
+  "by_step_kind": {
+   "body": 328.55,
+   "convention": 0.01,
+   "coverage": 0.29,
+   "inventory": 5.97,
+   "manifest": 0.19,
+   "record": 795.36,
+   "rules": 0.04,
+   "snapshot": 3.09,
+   "verify": 0.23,
+   "window": 50.06
+  },
+  "gate": null,
+  "head_substeps": 331.88,
+  "load_average_at_report": [
+   13.9,
+   16.5,
+   20.3
+  ],
+  "note": "local-Mac wall seconds on a shared machine; not Cloud Run seconds and not a projection of the century build",
+  "report_and_gate": 0.03,
+  "setup": 24.8,
+  "steps": [
+   {
+    "rows": 22,
+    "secs": 0.04,
+    "step": "rules"
+   },
+   {
+    "rows": 0,
+    "secs": 0.01,
+    "step": "convention"
+   },
+   {
+    "rows": 11745,
+    "secs": 63.75,
+    "step": "body:Sun"
+   },
+   {
+    "rows": 6825,
+    "secs": 44.25,
+    "step": "body:Mars"
+   },
+   {
+    "rows": 15051,
+    "secs": 102.3,
+    "step": "body:Mercury"
+   },
+   {
+    "rows": 1750,
+    "secs": 21.5,
+    "step": "body:Jupiter"
+   },
+   {
+    "rows": 12495,
+    "secs": 73.24,
+    "step": "body:Venus"
+   },
+   {
+    "rows": 996,
+    "secs": 12.04,
+    "step": "body:Saturn"
+   },
+   {
+    "rows": 631,
+    "secs": 5.22,
+    "step": "body:Rahu"
+   },
+   {
+    "rows": 631,
+    "secs": 6.25,
+    "step": "body:Ketu"
+   },
+   {
+    "rows": 0,
+    "secs": 0.19,
+    "step": "manifest"
+   },
+   {
+    "rows": 1,
+    "secs": 3.09,
+    "step": "snapshot"
+   },
+   {
+    "rows": 227,
+    "secs": 1.58,
+    "step": "inventory:bereavement"
+   },
+   {
+    "rows": 1,
+    "secs": 0.08,
+    "step": "coverage:bereavement"
+   },
+   {
+    "rows": 5720,
+    "secs": 164.75,
+    "step": "record:bereavement:P1"
+   },
+   {
+    "rows": 928,
+    "secs": 2.0,
+    "step": "record:bereavement:P2"
+   },
+   {
+    "rows": 13368,
+    "secs": 85.31,
+    "step": "record:bereavement:P3"
+   },
+   {
+    "rows": 1276,
+    "secs": 15.56,
+    "step": "record:bereavement:P4"
+   },
+   {
+    "rows": 642,
+    "secs": 1.51,
+    "step": "window:bereavement:P1"
+   },
+   {
+    "rows": 601,
+    "secs": 0.69,
+    "step": "window:bereavement:P2"
+   },
+   {
+    "rows": 6636,
+    "secs": 14.56,
+    "step": "window:bereavement:P3"
+   },
+   {
+    "rows": 639,
+    "secs": 1.85,
+    "step": "window:bereavement:P4"
+   },
+   {
+    "rows": 0,
+    "secs": 0.06,
+    "step": "verify:bereavement"
+   },
+   {
+    "rows": 179,
+    "secs": 1.46,
+    "step": "inventory:chronic_onset"
+   },
+   {
+    "rows": 1,
+    "secs": 0.07,
+    "step": "coverage:chronic_onset"
+   },
+   {
+    "rows": 5210,
+    "secs": 128.18,
+    "step": "record:chronic_onset:P1"
+   },
+   {
+    "rows": 928,
+    "secs": 1.15,
+    "step": "record:chronic_onset:P2"
+   },
+   {
+    "rows": 9878,
+    "secs": 64.6,
+    "step": "record:chronic_onset:P3"
+   },
+   {
+    "rows": 862,
+    "secs": 9.62,
+    "step": "record:chronic_onset:P4"
+   },
+   {
+    "rows": 342,
+    "secs": 0.57,
+    "step": "window:chronic_onset:P1"
+   },
+   {
+    "rows": 601,
+    "secs": 0.64,
+    "step": "window:chronic_onset:P2"
+   },
+   {
+    "rows": 4947,
+    "secs": 9.03,
+    "step": "window:chronic_onset:P3"
+   },
+   {
+    "rows": 635,
+    "secs": 1.06,
+    "step": "window:chronic_onset:P4"
+   },
+   {
+    "rows": 0,
+    "secs": 0.05,
+    "step": "verify:chronic_onset"
+   },
+   {
+    "rows": 179,
+    "secs": 1.4,
+    "step": "inventory:illness_acute"
+   },
+   {
+    "rows": 1,
+    "secs": 0.07,
+    "step": "coverage:illness_acute"
+   },
+   {
+    "rows": 5210,
+    "secs": 27.69,
+    "step": "record:illness_acute:P1"
+   },
+   {
+    "rows": 928,
+    "secs": 1.15,
+    "step": "record:illness_acute:P2"
+   },
+   {
+    "rows": 9858,
+    "secs": 70.25,
+    "step": "record:illness_acute:P3"
+   },
+   {
+    "rows": 862,
+    "secs": 13.14,
+    "step": "record:illness_acute:P4"
+   },
+   {
+    "rows": 342,
+    "secs": 0.6,
+    "step": "window:illness_acute:P1"
+   },
+   {
+    "rows": 601,
+    "secs": 0.65,
+    "step": "window:illness_acute:P2"
+   },
+   {
+    "rows": 4947,
+    "secs": 9.41,
+    "step": "window:illness_acute:P3"
+   },
+   {
+    "rows": 635,
+    "secs": 1.36,
+    "step": "window:illness_acute:P4"
+   },
+   {
+    "rows": 0,
+    "secs": 0.07,
+    "step": "verify:illness_acute"
+   },
+   {
+    "rows": 143,
+    "secs": 1.53,
+    "step": "inventory:major_loss"
+   },
+   {
+    "rows": 1,
+    "secs": 0.07,
+    "step": "coverage:major_loss"
+   },
+   {
+    "rows": 5210,
+    "secs": 149.24,
+    "step": "record:major_loss:P1"
+   },
+   {
+    "rows": 928,
+    "secs": 1.3,
+    "step": "record:major_loss:P2"
+   },
+   {
+    "rows": 6564,
+    "secs": 51.88,
+    "step": "record:major_loss:P3"
+   },
+   {
+    "rows": 580,
+    "secs": 9.54,
+    "step": "record:major_loss:P4"
+   },
+   {
+    "rows": 148,
+    "secs": 0.37,
+    "step": "window:major_loss:P1"
+   },
+   {
+    "rows": 601,
+    "secs": 0.69,
+    "step": "window:major_loss:P2"
+   },
+   {
+    "rows": 3337,
+    "secs": 6.41,
+    "step": "window:major_loss:P3"
+   },
+   {
+    "rows": 398,
+    "secs": 0.66,
+    "step": "window:major_loss:P4"
+   },
+   {
+    "rows": 0,
+    "secs": 0.05,
+    "step": "verify:major_loss"
+   }
+  ]
+ },
+ "schema": "ky.trial_slice_report/1",
+ "slice_counts": {
+  "contacts": 10644,
+  "near_miss": 40,
+  "relationship_records": 37693,
+  "window_records": 24380
+ },
+ "totals": {
+  "blank": 1672,
+  "blank_reasons": {
+   "all_null_candidate_policy": 1672
+  },
+  "blank_without_reason_code": 0,
+  "by_path": {
+   "P1": {
+    "blank": 554,
+    "windows": 554,
+    "with_peak": 0,
+    "with_score": 0
+   },
+   "P2": {
+    "blank": 616,
+    "windows": 616,
+    "with_peak": 0,
+    "with_score": 0
+   },
+   "P3": {
+    "blank": 92,
+    "windows": 92,
+    "with_peak": 0,
+    "with_score": 0
+   },
+   "P4": {
+    "blank": 410,
+    "windows": 410,
+    "with_peak": 0,
+    "with_score": 0
+   }
+  },
+  "number_without_score": 0,
+  "unresolved_factors_all_windows": {
+   "applicability_undeclared": {
+    "members": 21672,
+    "windows": 502
+   },
+   "value_mapping_undeclared": {
+    "members": 920,
+    "windows": 554
+   },
+   "vedha_overlay_not_bound": {
+    "members": 1788,
+    "windows": 616
+   }
+  },
+  "unresolved_factors_in_blank_windows": {
+   "applicability_undeclared": {
+    "members": 21672,
+    "windows": 502
+   },
+   "value_mapping_undeclared": {
+    "members": 920,
+    "windows": 554
+   },
+   "vedha_overlay_not_bound": {
+    "members": 1788,
+    "windows": 616
+   }
+  },
+  "valence": {
+   "unqualified": 1672
+  },
+  "windows_total": 1672,
+  "with_any_number": 0,
+  "with_evidence_for": 0,
+  "with_peak": 0,
+  "with_score": 0,
+  "with_severity": 0
+ }
+}

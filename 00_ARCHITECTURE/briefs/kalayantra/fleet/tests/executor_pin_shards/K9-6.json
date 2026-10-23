@@ -1,0 +1,14 @@
+{
+ "schema": "ky.executor_pin_shard/2",
+ "item": "K9-6",
+ "function_hashes": {
+  "W4": {
+   "RAN_TO_AN_END": "98ec0cf41f8aea793af3e944a1af9fc440236f51ac7196f2a63799a33c6a890c",
+   "RUN_OPERATION_KINDS": "d580c27f3d31799067bcadf872744d6c4f4da926e1ce07396af51cf234aa73e8",
+   "accepted_readback": "d786e81b4cc1ae98a154a31e241458009781e676da1212ad01eaf84fd12afca8",
+   "orchestrator_rebuild_teardown_problem": "e5121743453bb1863042e87d51249a41d97799aa7bf46504d8c8a03a01515bcc",
+   "validate": "47497b0363c07ab7a24b3285d3e59744fd1178fc9cf1abff6795b44fab0b121c",
+   "writer_absence_problem": "e6eae7cc06666d93099236de2fb9aa7d205ddef2c3df209cdf130fdfa1398bae"
+  }
+ }
+}

@@ -19,7 +19,7 @@ from services.kala_core.assertion import AssertionEnvelope, Ref, Typed
 from services.kala_core.assertion.attachment import (
     AttachmentReport, CanonicalForecast, EventIdentity, ReadingClaim, attach_reading_claims,
 )
-from services.kala_core.measure import DEFAULT_NON_IDENTITY_SHIFTS, Interval, intersect_intervals
+from services.kala_core.measure import DEFAULT_NON_IDENTITY_SHIFTS, Interval, ShiftSchedule, candidate_schedule, intersect_intervals
 from .agreement import Agreement, agreement
 from .contests import Contest, Opinion, Sequence, _canonical, contests, sequences, turning_points
 from .evidence import GROUPS, Node, Use, Support, corroboration, evidence_graph
@@ -233,13 +233,19 @@ def _supported_opinions(opinions, support):
     return _canonical(admitted)
 
 
-def compute(value: ClassInput) -> CandidateResult:
+def compute(value: ClassInput, *, schedule: ShiftSchedule | None = None) -> CandidateResult:
     nodes, uses, roster, opinions = _class_evidence(value)
     support = _admitted_support(value.horizon, nodes, uses, roster)
     opinions = _supported_opinions(opinions, support)
+    # PLAN §6.2(5): one schedule per (duration, shifts) per process, shared by
+    # every class's jury preparation; the jury keeps its own witness geometry,
+    # estimand and conditioning. NOT shared with the Kshetra field: that schedule
+    # is over 36525 days, this one over the exposure duration in UTC seconds, in a
+    # separate asset (cross-writer sharing is carried, pending the native's decision).
+    schedule = schedule or candidate_schedule(value.experiment_exposure.horizon.duration, value.non_identity_shifts)
     measured = agreement(value.experiment_exposure.horizon, nodes, uses, roster.values(), alpha=value.alpha,
         exchangeable=value.exchangeable, non_identity_shifts=value.non_identity_shifts,
-        conditioning_intervals=(value.horizon,))
+        conditioning_intervals=(value.horizon,), schedule=schedule)
     # Null draws use the declared exposure; stored observations/contests belong
     # only to W. Do not expand the served window to the null's shift domain.
     measured = replace(measured, segments=tuple(replace(s, interval=i) for s in measured.segments
@@ -310,6 +316,8 @@ def write_candidate(ctx, value: ClassInput, *, joint_points=()) -> int:
         'anchor': value.anchor.model_dump(mode='json'), 'upstream_refs': value.upstream_refs,
         'experiment_exposure': value.experiment_exposure.model_dump(mode='json'),
         'selection_ancestry': value.selection_ancestry.model_dump(mode='json'),
+        'preparation': {'schedule_digest': measured.schedule_digest,
+                        'witness_preparation_digest': measured.conditional.preparation_digest},
         'axis': 'utc_unix_seconds', 'sequences': [asdict(s) for s in result.sequences],
         'reading_attachment_report': result.attachments.model_dump(mode='json'),
         'turning_points': [asdict(p) for p in joint_points if value.event_class in p.event_classes]}

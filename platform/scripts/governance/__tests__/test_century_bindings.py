@@ -23,7 +23,11 @@ sys.path.insert(0, str(FLEET))
 import v5_small_test_shared as shared
 import smalltest_safety_support as S
 
-ARGS = {'classes': 'all'}
+# F-CHANNEL (SR-W34-PREP-RULINGS 1): the century request carries the rule profile, the verify-deferral switch and the horizon. SYNTHETIC bounds only —
+# the real D-G9 horizon is life-event derived and appears in no code, test or commit text.
+HORIZON = '2001-01-01T00:00:00+00:00,2051-01-01T00:00:00+00:00'
+# OD-1 (SR-OD1-NUMERICAL): the fifth required value is the numeric-result policy the century build is bound under.
+ARGS = {'classes': 'all', 'final_rules': 'true', 'defer_in_build_verify': 'false', 'horizon': HORIZON, 'result_policy': 'window_qualification/1'}
 
 
 def load(name):
@@ -90,14 +94,18 @@ def test_century_policy_is_routed_from_reviewed_source_and_demands_every_gate(tm
         return edited
 
     assert executor.smalltest_policy_problem(signed()) is None                       # the re-signing itself keeps a good request good
-    for gone in (['absence_receipt', 'absence_acceptance'], ['backup_label', 'backup_restore_sha256'], ['dryrun_receipt', 'dryrun_acceptance']):
+    # SR-A12-BACKUP-REMOVAL (supersedes the old J-4e rule "backup_label is mandatory for the real kind"): no dump is taken, so a century_dispatch with no
+    # backup_label / backup_restore_sha256 but everything else valid is ADMITTED; the absence and the staging dry run stay mandatory.
+    assert executor.smalltest_policy_problem(signed(backup_label=None, backup_restore_sha256=None)) is None
+    for gone in (['absence_receipt', 'absence_acceptance'], ['dryrun_receipt', 'dryrun_acceptance']):
         assert executor.smalltest_policy_problem(signed(**{k: None for k in gone})), f'{gone[0]} is mandatory for the real kind'
+    assert executor.smalltest_policy_problem(signed(backup_label=None, backup_restore_sha256=None, item_id='J-3c')) == 'century dispatch belongs to J-4e'      # any other defect still refuses
     dry = signed(kind='century_dispatch_dryrun', backup_label=None, backup_restore_sha256=None, dryrun_receipt=None, dryrun_acceptance=None)
     assert executor.smalltest_policy_problem(dry) is None                                        # the rollback needs the absence only
     assert executor.smalltest_policy_problem(signed(kind='century_dispatch_dryrun', absence_receipt=None, absence_acceptance=None, backup_label=None,
                                                     backup_restore_sha256=None, dryrun_receipt=None, dryrun_acceptance=None))      # ...but it does need that
     for args in ({'classes': 'marriage'}, {'classes': 'all', 'horizon-start': '2025-01-01'}, {'run': 'all_classes_full', 'classes': 'all'}, {}):
-        assert executor.smalltest_policy_problem(signed(args=args)) == 'century request requires only all classes'
+        assert executor.smalltest_policy_problem(signed(args=args)).startswith('century request requires'), args
     assert executor.smalltest_policy_problem(signed(item_id='J-3c')) == 'century dispatch belongs to J-4e'
 
 
@@ -110,7 +118,8 @@ def test_century_launch_refuses_a_measuring_or_markerd_staging_rollback(tmp_path
         'small-test trigger': dict(proof=staging_proof(triggered_by=shared.TRIGGERED_BY)),
         'measuring schema': dict(proof=staging_proof(schema='ky.measuring_staging/1')),
         'rollback not confirmed': dict(proof=staging_proof(rollback_confirmed=False)),
-        'different args': dict(proof=staging_proof(args={'classes': 'marriage'})),
+        'different args': dict(proof=staging_proof(args={**ARGS, 'classes': 'marriage'})),
+        'different horizon': dict(proof=staging_proof(args={**ARGS, 'horizon': '2002-01-01T00:00:00+00:00,2052-01-01T00:00:00+00:00'})),
     }
     for name, kwargs in cases.items():
         req = dispatch_request(tmp_path / name.replace(' ', '_'), **kwargs)
@@ -180,7 +189,40 @@ def test_century_chooses_no_run_name_horizon_or_class_subset(kwargs):
     import dispatch_v5_century_job as dry
     with pytest.raises(shared.Refused):
         dry.century_shape(**kwargs)
-    assert dry.century_shape(classes='all') == {'classes': 'all'} == dry.century_shape()
+    assert dry.century_shape(classes='all') == {'classes': 'all'} == dry.century_shape()      # with no config given the shape is the classes-only one
+
+
+# ───────────────────────────── F-CHANNEL: the profile, the deferral switch and the horizon reach the writer ─────────────────────────────
+# Claims (SR-W34-PREP-RULINGS 1, option a; OD-1 adds result_policy): (1) the century request takes exactly classes + final_rules + defer_in_build_verify + horizon + result_policy and refuses
+# anything else; (2) the three new values are validated strictly; (3) they are STAGED in plan_manifest under the writer's key, inside plan_manifest_digest
+# (so the writer's every read verifies them), in the writer's canonical form; (4) the launcher stages and expects exactly that manifest; (5) the dispatch refuses
+# CLI values that differ from the accepted request. The request digest covers `args` (executor.request_digest), so the acceptance and the pack fill bind all four.
+# Claims 3-5 validate through the real ka_gochara_v5 writer, which the governance shards (pyyaml + pytest only) cannot import: they run in the sidecar environment, in
+# platform/python-sidecar/tests/l3/kala_db/test_century_bindings_writer_bound.py.
+
+
+@pytest.mark.parametrize('name,args', [
+    ('an unknown argument', {**ARGS, 'horizon-start': '2025-01-01T00:00:00+00:00'}),
+    ('no final_rules', {k: v for k, v in ARGS.items() if k != 'final_rules'}),
+    ('no defer_in_build_verify', {k: v for k, v in ARGS.items() if k != 'defer_in_build_verify'}),
+    ('no horizon', {k: v for k, v in ARGS.items() if k != 'horizon'}),
+    ('no result_policy', {k: v for k, v in ARGS.items() if k != 'result_policy'}),
+    ('an unknown result_policy', {**ARGS, 'result_policy': 'all_null'}),
+    ('a result_policy spelled without its version', {**ARGS, 'result_policy': 'window_qualification'}),
+    ('a boolean spelled True', {**ARGS, 'final_rules': 'True'}),
+    ('a JSON boolean', {**ARGS, 'defer_in_build_verify': False}),
+    ('deferral without the final rules', {**ARGS, 'final_rules': 'false', 'defer_in_build_verify': 'true'}),
+    ('a naive horizon', {**ARGS, 'horizon': '2001-01-01T00:00:00,2051-01-01T00:00:00'}),
+    ('an inverted horizon', {**ARGS, 'horizon': '2051-01-01T00:00:00+00:00,2001-01-01T00:00:00+00:00'}),
+    ('one horizon bound', {**ARGS, 'horizon': '2001-01-01T00:00:00+00:00'}),
+    ('three horizon bounds', {**ARGS, 'horizon': HORIZON + ',2052-01-01T00:00:00+00:00'}),
+])
+def test_century_request_args_are_exactly_the_five_and_strictly_valued(name, args):
+    """Claims 1-2 (+ OD-1: the result policy is one of the two NAMED policies, required): the exact argument contract; a value that is not spelled exactly, or a horizon that is not two tz-aware ISO bounds in order, is refused by name."""
+    assert shared.century_args_problem(dict(ARGS)) is None
+    with pytest.raises(shared.Refused):
+        shared.century_args_problem(args)
+
 
 
 # ───────────────────────────── the century teardown scope ─────────────────────────────

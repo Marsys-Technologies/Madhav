@@ -32,6 +32,14 @@ def _run(conn: Any, run_id: str) -> dict:
     return run
 
 
+def _grain_refusal(absent: list[str], unplanned: list[str], failed: list[str]) -> str:
+    """The refusal text for a candidate whose grains do not match its plan: it names the writers lacking a grain and the keys."""
+    lacking = sorted({key.split(':',1)[0] for key in absent + failed})
+    parts = ['writers lacking a grain: '+', '.join(lacking)] if lacking else []
+    parts += [f'{label} grains: '+', '.join(keys) for label,keys in (('absent',absent),('unplanned',unplanned),('failed',failed)) if keys]
+    return 'candidate has absent, unplanned or failed grains; '+'; '.join(parts)
+
+
 def _candidate(conn: Any, run_id: str, generation: str) -> tuple[Candidate, dict]:
     query = ('SELECT chart_id, build_id, expected_head_generation, state, conventions '
              'FROM kala_layer_candidate WHERE build_id = %s AND generation = %s')
@@ -64,8 +72,12 @@ def _candidate(conn: Any, run_id: str, generation: str) -> tuple[Candidate, dict
         raise CandidateNotPublishable('grain plan contains duplicates')
     rows = conn.execute('SELECT grain_key, result_state FROM kala_layer_candidate_grain '
                         'WHERE chart_id = %s AND generation = %s',(c.chart_id,generation)).fetchall()
-    if set(grains) != {r[0] for r in rows} or any(r[1] not in {'rows','zero_rows'} for r in rows):
-        raise CandidateNotPublishable('candidate has absent, unplanned or failed grains')
+    observed = {r[0] for r in rows}
+    absent = sorted(set(grains) - observed)
+    unplanned = sorted(observed - set(grains))
+    failed = sorted(r[0] for r in rows if r[1] not in {'rows','zero_rows'})
+    if absent or unplanned or failed:
+        raise CandidateNotPublishable(_grain_refusal(absent,unplanned,failed))
     return c, {'run':run,'grains':tuple(sorted(grains))}
 
 

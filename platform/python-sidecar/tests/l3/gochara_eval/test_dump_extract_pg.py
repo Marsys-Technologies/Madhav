@@ -28,6 +28,10 @@ SCHEMA = """
 CREATE TABLE kala_gochara_windows (chart_id uuid, generation text, event_class text, window_start date, window_end date,
   peak_date date, signed_intensity numeric NOT NULL, raw_intensity numeric NOT NULL, valence text, is_adverse boolean,
   resolution text, temporal_shape text);
+-- the governed eval-window columns the extractor reads, with the types migration 1156 / 1240 declare (constraints omitted: this is the read path)
+CREATE TABLE ka_gochara_eval_window (window_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid NOT NULL, event_class text NOT NULL,
+  generation text NOT NULL, path_id text NOT NULL, rule_version text NOT NULL DEFAULT '1.0.0', interval tstzrange NOT NULL, peak_instant timestamptz,
+  score real, evidence_for real, evidence_against real, outcome_valence_for_native text NOT NULL, severity real, qualification jsonb);
 CREATE TABLE kala_gochara_publication (chart_id uuid, generation text, status text, input_generation_vector jsonb);
 CREATE TABLE chart_facts (fact_id uuid PRIMARY KEY DEFAULT gen_random_uuid(), chart_id uuid, ayanamsha_id text, fact_category text, fact_subject text,
   fact_key text, fact_value_num double precision);
@@ -248,3 +252,100 @@ def test_dump_rows_isolates_the_requested_chart_even_with_same_generation_and_da
         assert len(result) == 1 and result[0]["si"] == 0.7
     assert dx.dump_rows(reader(conn), "4.1", True,
                         chart_id="22222222-2222-4222-8222-222222222222") == []
+
+
+# ── J-5q: the governed ('5.0') extract and the per-(class, year) coverage cells, on a REAL PostgreSQL ────────────────────────────────────
+
+def gov(conn, gen, rows, chart=CHART_ID):
+    """rows: (event_class, path, lower, upper, peak, evidence_for, valence, qualification-or-None) with IST-aware instants."""
+    for cls, path, lo, hi, pk, ev, val, q in rows:
+        conn.execute("INSERT INTO ka_gochara_eval_window(chart_id, event_class, generation, path_id, interval, peak_instant, evidence_for, "
+                     "outcome_valence_for_native, qualification) VALUES (%s,%s,%s,%s,tstzrange(%s,%s,'[)'),%s,%s,%s,%s)",
+                     (chart, cls, gen, path, lo, hi, pk, ev, val, None if q is None else json.dumps(q)))
+
+
+IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
+
+
+def ist(y, m, d, h=0, mi=0):
+    return dt.datetime(y, m, d, h, mi, tzinfo=IST)
+
+
+def test_governed_dump_maps_the_stored_columns_to_the_adapter_row_on_real_sql(fresh):
+    """FIXTURE (not a measurement). The day convention is the only thing a fake cursor cannot check: a half-open interval whose upper bound is exactly
+    00:00 IST ends the DAY BEFORE (the same convention as density_extract._day_span); an upper bound one minute later reaches the next day."""
+    c, _ = fresh
+    q_null = {"policy": "window_qualification/1", "unqualified_reason": "dynamic_objective_solver_guarantee_not_available",
+              "unresolved": {}, "affected_channels": [], "members": 1, "qualified_members": 0}
+    q_ok = {**q_null, "unqualified_reason": None, "qualified_members": 1}
+    gov(c, "5.0", [
+        ("marriage", "P3", ist(2010, 5, 1), ist(2010, 5, 20), ist(2010, 5, 7, 13), 0.75, "favourable", q_ok),             # upper = 00:00 IST -> we = 05-19
+        ("marriage", "P4", ist(2010, 5, 1), ist(2010, 5, 20, 0, 1), None, None, "unqualified", q_null),                    # one minute later -> we = 05-20
+        ("bereavement", "P1", ist(2012, 1, 1), ist(2012, 1, 9), None, None, "unqualified", None)])                         # null without a stored reason
+    gov(c, "3.0", [("marriage", "P3", ist(2000, 1, 1), ist(2000, 2, 1), None, 0.5, "mixed", None)])                          # another generation: not mixed in
+    gov(c, "5.0", [("marriage", "P3", ist(2010, 5, 1), ist(2010, 5, 3), None, 0.1, "mixed", None)], chart="11111111-1111-4111-8111-111111111111")
+    rows, extra = dx.dump_governed(reader(c), "5.0", chart_id=CHART_ID)
+    assert [(r["event_class"], r["path_id"], r["ws"], r["we"], r["pk"], r["si"], r["outcome_valence_for_native"], r["null_reason"]) for r in rows] == [
+        ("bereavement", "P1", "2012-01-01", "2012-01-08", None, None, "unqualified", None),
+        ("marriage", "P3", "2010-05-01", "2010-05-19", "2010-05-07", 0.75, "favourable", None),
+        ("marriage", "P4", "2010-05-01", "2010-05-20", None, None, "unqualified", "dynamic_objective_solver_guarantee_not_available")]
+    assert extra["null_census"] == {"si_null": 2, "pk_null": 2, "si_null_without_reason": 1,
+                                    "si_null_reasons": {"dynamic_objective_solver_guarantee_not_available": 1},
+                                    "valence": {"favourable": 1, "unqualified": 2}, "paths": {"P1": 1, "P3": 1, "P4": 1}}
+    assert dx.render("5.0", "2026-10-21", rows, chart_id=CHART_ID, extra=extra) == dx.render(
+        "5.0", "2026-10-21", dx.dump_rows(reader(c), "5.0", True, chart_id=CHART_ID), chart_id=CHART_ID, extra=extra)         # deterministic
+
+
+def test_governed_dump_keeps_a_window_that_overlaps_the_scored_horizon_whole_and_counts_the_rest(fresh):
+    c, _ = fresh
+    gov(c, "5.0", [
+        ("marriage", "P3", ist(1990, 1, 1), ist(1997, 12, 31, 23, 59), None, 0.1, "mixed", None),       # ends before 1998-01-01 IST: excluded
+        ("marriage", "P3", ist(1997, 12, 31), ist(1998, 1, 2), ist(1998, 1, 1), 0.2, "mixed", None),     # touches 1998-01-01: kept
+        ("marriage", "P3", ist(2026, 4, 17), ist(2090, 1, 1), ist(2026, 4, 17, 6), 0.3, "mixed", None),  # starts on the last scored day, ends in 2090: kept whole
+        ("marriage", "P3", ist(2026, 4, 18), ist(2026, 4, 19), None, 0.4, "mixed", None),                # starts after the scored horizon: excluded
+        ("marriage", "P3", ist(2060, 1, 1), ist(2060, 2, 1), None, 0.5, "mixed", None)])                 # century tail: excluded
+    rows, extra = dx.dump_governed(reader(c), "5.0", chart_id=CHART_ID)
+    assert [r["si"] for r in rows] == [pytest.approx(0.2), pytest.approx(0.3)] and rows[1]["we"] == "2089-12-31"
+    assert extra["windows_stored"] == 5 and extra["windows_outside_scored_horizon_excluded"] == 3
+
+
+def test_governed_dump_isolates_the_requested_chart(fresh):
+    c, _ = fresh
+    other = "11111111-1111-4111-8111-111111111111"
+    gov(c, "5.0", [("marriage", "P3", ist(2010, 5, 1), ist(2010, 5, 3), None, 0.7, "mixed", None)])
+    gov(c, "5.0", [("marriage", "P3", ist(2010, 5, 1), ist(2010, 5, 3), None, 0.2, "mixed", None)], chart=other)
+    for chart, want in ((CHART_ID, 0.7), (other, 0.2)):
+        got = dx.dump_governed(reader(c), "5.0", chart_id=chart)[0]
+        assert len(got) == 1 and got[0]["si"] == pytest.approx(want)
+    assert dx.dump_governed(reader(c), "5.0", chart_id="22222222-2222-4222-8222-222222222222")[0] == []
+
+
+def test_governed_manifest_readback_on_real_jsonb(fresh):
+    c, _ = fresh
+    eph = {"backend": "swieph", "swe_version": "2.10.03", "library_sha256": "ab" * 32, "platform": "Linux-x86_64",
+           "files": {"sepl_18.se1": "cd" * 32}, "probe_digest": "ef" * 32}
+    vec = {"result_policy": "window_qualification/1", "ephemeris": eph, "orb_policy": {"admission_digest": "01" * 32, "activity": {"x": 1}},
+           "registry": {"digest": "02" * 32, "census": []}, "implementation": {"geometry": "03" * 32, "evaluation": "04" * 32}}
+    c.execute("INSERT INTO kala_gochara_publication VALUES (%s,'5.0','candidate',%s)", (CHART_ID, json.dumps(vec)))
+    m = dx.read_governed_manifest(reader(c), "5.0", chart_id=CHART_ID)
+    assert (m["manifest_status"], m["result_policy"], m["registry_digest"]) == ("candidate", "window_qualification/1", "02" * 32)
+    assert m["implementation"] == vec["implementation"] and m["orb_policy"] == vec["orb_policy"] and m["ephemeris_problems"] == []
+    c.execute("UPDATE kala_gochara_publication SET input_generation_vector = jsonb_set(input_generation_vector, '{result_policy}', '\"made_up/9\"')")
+    assert any("result_policy" in p for p in dx.read_governed_manifest(reader(c), "5.0", chart_id=CHART_ID)["ephemeris_problems"])
+
+
+def test_coverage_cells_read_the_event_class_ledger_on_real_sql(fresh):
+    from services.gochara_eval import coverage_cells as cc
+    c, _ = fresh
+    full = "[1998-01-01T00:00:00+05:30,2084-12-31T00:00:00+05:30)"
+    c.execute("INSERT INTO kala_gochara_coverage VALUES (%s,'5.0','event_class','marriage',%s,%s,1,1,0,NULL)", (CHART_ID, full, full))
+    c.execute("INSERT INTO kala_gochara_coverage VALUES (%s,'5.0','event_class','bereavement',%s,%s,1,1,0,'Moon-agent edges are on-demand (AM-4)')",
+              (CHART_ID, full, full))
+    c.execute("INSERT INTO kala_gochara_coverage VALUES (%s,'5.0','body_target','saturn:karaka',%s,%s,1,1,0,NULL)", (CHART_ID, full, full))
+    c.execute("INSERT INTO kala_gochara_coverage VALUES (%s,'5.1','event_class','childbirth',%s,%s,1,1,0,NULL)", (CHART_ID, full, full))
+    doc = cc.read_cells(reader(c), chart_id=CHART_ID, generation="5.0")
+    by = {(x["event_class"], x["year"]): x for x in doc["cells"]}
+    assert len(doc["cells"]) == 2 * 29 and "marriage" not in doc["classes_without_partition"] and "childbirth" in doc["classes_without_partition"]
+    assert by[("marriage", 1998)]["computed"] is True and by[("marriage", 2026)]["computed"] is True
+    assert by[("bereavement", 2010)]["computed"] is False and by[("bereavement", 2010)]["horizon_covers_year"] is True      # strict: unsearched part
+    assert cc.read_cells(reader(c), chart_id=CHART_ID, generation="5.0", unsearched_policy="horizon_only")["cells"][0]["computed"] is True

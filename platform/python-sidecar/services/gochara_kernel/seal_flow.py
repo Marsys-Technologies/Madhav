@@ -89,7 +89,9 @@ def _seal_with_approval(conn, *, chart_id: str, generation: str, approved_digest
 import json
 import re
 
-REQUIRED_POLICY = "all_null_candidate/1"
+#: OD-1 (SR-OD1-NUMERICAL): the sealing job accepts exactly the two NAMED policies, and nothing else unknown. `window_qualification/1` is accepted only with its
+#: frozen qualification table bound in the manifest vector (`result_policy.require_bound_table`); `required_policy` pins one of them for a caller that wants it.
+ACCEPTED_POLICIES = ("all_null_candidate/1", "window_qualification/1")
 APPROVAL_SCHEMA = "seal_approval/2"
 #: process exit codes of `pipeline/orchestrator/seal_job.py`
 EXIT_SEALED, EXIT_REFUSED, EXIT_MISMATCH, EXIT_IDENTITY, EXIT_ERROR = 0, 2, 3, 4, 5
@@ -206,7 +208,7 @@ def check_sealer_identity(conn) -> dict:
 
 
 def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id: int, run_attempt: int, sealing_commit: str,
-                 triggering_actor: str | None, required_policy: str = REQUIRED_POLICY, enforce_identity: bool = True) -> dict[str, Any]:
+                 triggering_actor: str | None, required_policy: str | None = None, enforce_identity: bool = True) -> dict[str, Any]:
     """The sealing job's whole act, owning ONE explicit transaction on an AUTOCOMMIT connection: inputs and approval validated (nothing
     touched), the connection proven to be the sealer, then — inside the transaction — the seal locks, the policy requirement, the
     approval RECOMPUTE (refused on any mismatch BEFORE publishing), publication, the authoritative seal, the receipt, the post-publication
@@ -214,7 +216,8 @@ def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id
     `sealing_commit` / `triggering_actor` are what the RUNNING workflow says it is (its environment); the approval must have been given for
     exactly them, and its note must be the mechanical `ruling:<id>; actor:<triggering actor>`."""
     from . import verification_job as vj
-    from .result_policy import manifest_policy
+    from . import numerical_window_gate
+    from .result_policy import (POLICY_QUALIFICATION, QualificationTableMismatch, ResultPolicyMissing, manifest_policy, require_bound_table)
     if not isinstance(run_id, int) or run_id < 1 or not isinstance(run_attempt, int) or run_attempt < 1:
         raise SealRefused("run_identity_malformed", "the run id / attempt are not positive integers")
     if not isinstance(sealing_commit, str) or not _COMMIT.match(sealing_commit):
@@ -235,10 +238,22 @@ def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id
             seal_brief.set_local_timeouts(conn, statement=seal_brief.SEAL_STATEMENT_TIMEOUT, lock=seal_brief.SEAL_LOCK_TIMEOUT,
                                           idle_in_transaction=seal_brief.SEAL_IDLE_IN_TRANSACTION_TIMEOUT)
             vj.take_locks(conn, chart_id)
-            policy = manifest_policy(conn, chart_id, generation)
-            if policy != required_policy:
-                raise SealRefused("wrong_policy", f"the manifest selects {policy!r}; this milestone's sealing job requires "
-                                  f"{required_policy!r}")
+            try:
+                policy = manifest_policy(conn, chart_id, generation)
+            except ResultPolicyMissing as exc:             # an unknown (or absent) policy is a NAMED refusal, never a generic error
+                raise SealRefused("wrong_policy", str(exc)) from exc
+            if policy not in ((required_policy,) if required_policy is not None else ACCEPTED_POLICIES):
+                raise SealRefused("wrong_policy", f"the manifest selects {policy!r}; the sealing job accepts "
+                                  f"{(required_policy,) if required_policy is not None else ACCEPTED_POLICIES!r}")
+            try:
+                require_bound_table(conn, chart_id, generation)
+            except QualificationTableMismatch as exc:
+                raise SealRefused("qualification_table_mismatch", str(exc)) from exc
+            if policy == POLICY_QUALIFICATION:          # OD-1: numbers are sealed only when the independent job's numerical-window gate PASSED for THIS generation
+                try:
+                    numerical_window_gate.require_passed(conn, chart_id, generation)
+                except numerical_window_gate.NumericalGateNotPassed as exc:
+                    raise SealRefused("numerical_gate_not_passed", str(exc)) from exc
             return seal_with_approval(conn, chart_id=chart_id, generation=generation, approved_digest=approval["brief_digest"],
                                       approver_login=approval["approver_login"], run_id=run_id, run_attempt=run_attempt,
                                       approval_note=approval["approved_by_note"], sealing_commit=sealing_commit,
@@ -251,5 +266,5 @@ def execute_seal(conn, *, chart_id: str, generation: str, approval: dict, run_id
                           f"sealing transaction was rolled back, nothing was published ({exc})") from exc
 
 
-__all__ = ["APPROVAL_SCHEMA", "REQUIRED_POLICY", "SEALER_WRITE_ALLOWED", "SealRefused", "check_sealer_identity", "execute_seal",
+__all__ = ["ACCEPTED_POLICIES", "APPROVAL_SCHEMA", "SEALER_WRITE_ALLOWED", "SealRefused", "check_sealer_identity", "execute_seal",
            "check_approval_note", "parse_approval", "seal_with_approval"]

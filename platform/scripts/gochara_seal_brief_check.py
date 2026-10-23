@@ -12,8 +12,11 @@ This script — stdlib only, no database — refuses unless:
   * the sha256 of the BRIEF FILE'S BYTES equals the declared digest (transport integrity: a truncated or altered brief fails), and the payload re-encoded here in canonical form is
     byte-for-byte the file (so this script's canonical encoder agrees with the verifier's strict one — a disagreement is a refusal, never a different digest);
   * the persisted receipt names the manifest the payload is for;
-  * the payload schema is `seal_approval_payload/1`, the manifest is a `candidate`, the candidate gate has NO violation, and the result policy is the milestone's
-    `all_null_candidate/1` (explicitly required — the first 5.0 candidate is all-NULL by design);
+  * the payload schema is `seal_approval_payload/1`, the manifest is a `candidate`, the candidate gate has NO violation, and the result policy is one of the two NAMED
+    policies: `all_null_candidate/1`, or `window_qualification/1` (OD-1, SR-OD1-NUMERICAL) — the latter only when the brief states the frozen qualification table the
+    manifest binds and it is this script's OWN literal of that table (`QUALIFICATION_TABLE_BINDING`; a test asserts it equals the sidecar's) and agrees with the code's;
+  * under `window_qualification/1` the brief's `numerical_window_gate` verdict is PASSED for the frozen table, every window is counted numbered or blank-with-a-reason-code (honest nulls
+    are disclosed, never a refusal by themselves) and the per-grain attestations inside the brief's own `attestations` agree with that summary; the all-NULL brief carries none;
   * the chart and generation are the ones the workflow was dispatched for;
   * the payload's sealing commit is EXACTLY the workflow's reviewed revision (the commit the sealing code runs from).
 On success it prints the digest (and only the digest) to stdout. Exit 0 ok / 2 refused (the reason on stderr).
@@ -31,6 +34,10 @@ from decimal import Decimal
 
 SCHEMA = "seal_approval_payload/1"
 POLICY = "all_null_candidate/1"
+POLICY_QUALIFICATION = "window_qualification/1"
+ACCEPTED_POLICIES = (POLICY, POLICY_QUALIFICATION)
+#: this script's OWN literal of the frozen `window_qualification/1` table binding (stdlib only: nothing imported from the sidecar)
+QUALIFICATION_TABLE_BINDING = {"schema": "window_qualification_table/1", "digest": "5bbc65bb5fc98547bf0bea5d1ff90c76965155f3166a7042a11ab34772e6a80f"}
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 FULL_GENERATION = "5.0"
 _DIGEST = re.compile(r"[0-9a-f]{64}")
@@ -80,6 +87,59 @@ def _inventory_attests_class(payload: dict, cls: dict) -> bool:
             (payload.get("chart_id"), payload.get("generation"), cls.get("event_class"))]
     return bool(mine) and all(row.get("rederived_inventory_digest") == digest for row in mine)
 
+
+
+NUMERICAL_GATE_SCHEMA = "numerical_window_gate/1"
+
+
+def _count(value, what):
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise Refused(f"the numerical-window gate's {what} is {value!r}, not a non-negative integer")
+    return value
+
+
+def check_numerical_gate(p: dict) -> None:
+    """OD-1: a `window_qualification/1` brief is approvable only with the NUMERICAL-WINDOW GATE's verdict PASSED, naming the frozen table, with every window counted either
+    numbered or blank-with-a-reason (honest nulls are disclosed, never a refusal by themselves), and with the per-grain attestations the verifier persisted — in the brief's own
+    `attestations` — agreeing with that summary. The all-NULL brief carries none."""
+    gate = p.get("numerical_window_gate")
+    if p["result_policy"] != POLICY_QUALIFICATION:
+        if gate is not None:
+            raise Refused(f"the brief carries a numerical-window gate under {p['result_policy']}")
+        return
+    if not isinstance(gate, dict) or gate.get("schema") != NUMERICAL_GATE_SCHEMA:
+        raise Refused(f"the {POLICY_QUALIFICATION} brief carries no {NUMERICAL_GATE_SCHEMA} verdict")
+    if gate.get("status") != "PASSED" or gate.get("problems") != []:
+        raise Refused(f"the numerical-window gate is {gate.get('status')!r} ({gate.get('problems')!r}), not PASSED: numbers are sealed only when the independent job re-derived them")
+    if gate.get("policy") != POLICY_QUALIFICATION or gate.get("table") != QUALIFICATION_TABLE_BINDING:
+        raise Refused(f"the numerical-window gate names policy {gate.get('policy')!r} / table {gate.get('table')!r}, not the frozen {QUALIFICATION_TABLE_BINDING!r}")
+    windows, numbered, blank = (_count(gate.get(k), k) for k in ("windows", "numbered_windows", "blank_windows"))
+    if numbered + blank != windows:
+        raise Refused(f"the numerical-window gate counts {numbered} numbered + {blank} blank windows but {windows} in all")
+    honest = gate.get("honest_nulls")
+    if not isinstance(honest, list):
+        raise Refused("the numerical-window gate lists no honest nulls (an empty list is `[]`)")
+    for h in honest:
+        if not (isinstance(h, dict) and isinstance(h.get("reason"), str) and h["reason"] and isinstance(h.get("group"), str) and h["group"]
+                and isinstance(h.get("path_id"), str)):
+            raise Refused(f"an honest null carries no reason code / group: {h!r}")
+    if sum(_count(h.get("windows"), "honest-null windows") for h in honest) != blank:
+        raise Refused(f"the honest nulls account for {sum(h['windows'] for h in honest)} blank windows, the gate counts {blank}: a blank window has no reason")
+    rows = (p.get("attestations") or {}).get("ka_gochara_eval_window_verification")
+    if not isinstance(rows, list):
+        raise Refused("the brief carries no persisted window-verification rows to check the numerical-window gate against")
+    seen_windows = seen_numbered = 0
+    for line in rows:
+        try:
+            att = (json.loads(line).get("runner_identity") or {}).get("numerical_window_gate")
+        except (TypeError, ValueError, AttributeError) as exc:
+            raise Refused(f"a persisted window-verification row is not readable JSON: {exc}") from exc
+        if not isinstance(att, dict) or att.get("status") != "PASSED" or att.get("table") != QUALIFICATION_TABLE_BINDING:
+            raise Refused(f"a persisted window-verification row carries no PASSED attestation of the frozen table: {att!r}")
+        seen_windows += _count(att.get("windows"), "attested windows")
+        seen_numbered += _count(att.get("numbered"), "attested numbered windows")
+    if (seen_windows, seen_numbered) != (windows, numbered):
+        raise Refused(f"the persisted attestations count {seen_numbered} numbered of {seen_windows} windows; the gate summary says {numbered} of {windows}")
 
 
 def check(raw: bytes, compact: dict, *, chart_id: str, generation: str, sealing_commit: str) -> str:
@@ -138,8 +198,15 @@ def check(raw: bytes, compact: dict, *, chart_id: str, generation: str, sealing_
     gate = (p.get("candidate_gate") or {}).get("violations")
     if gate != []:
         raise Refused(f"the candidate gate is not clean: {gate!r}")
-    if p.get("result_policy") != POLICY:
-        raise Refused(f"the result policy is {p.get('result_policy')!r}; this milestone requires {POLICY}")
+    if p.get("result_policy") not in ACCEPTED_POLICIES:
+        raise Refused(f"the result policy is {p.get('result_policy')!r}; this milestone requires {POLICY} or {POLICY_QUALIFICATION} (with its frozen table bound)")
+    table = p.get("qualification_table")
+    if p["result_policy"] == POLICY_QUALIFICATION:
+        if table != {"bound": QUALIFICATION_TABLE_BINDING, "implemented": QUALIFICATION_TABLE_BINDING, "agrees": True}:
+            raise Refused(f"the brief's qualification table {table!r} is not the frozen {QUALIFICATION_TABLE_BINDING!r} bound by the manifest and implemented by the code")
+    elif table is not None:
+        raise Refused(f"the brief carries a qualification table under {p['result_policy']}")
+    check_numerical_gate(p)
     code_commit = (p.get("code") or {}).get("sealing_commit")
     if code_commit != sealing_commit:
         raise Refused(f"the brief was produced for sealing revision {code_commit!r}, not this workflow's reviewed revision {sealing_commit}")

@@ -100,6 +100,8 @@ from pipeline.orchestrator.writers import (
     register,
 )
 from services.gochara_grammar import resonance_map as RM
+from services.kala_core.writer_grain import (
+    GRAIN_STEP, attest_inputs, bound_candidate, grain_steps)
 from services.gochara_intensity._dbutil import savepoint_scope
 from services.w2g.db_source import DbArcSource
 from services.w2g.fingerprint import ARC_ENGINE_VERSION, class_fingerprint
@@ -185,15 +187,31 @@ class KaGocharaWriter(WriterBase):
     # ── FROZEN CONTRACT: plan_substeps + run_substep ─────────────────────────
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
+        # K9 (SR-K9-PUBLISHABLE): a build bound to a layer candidate also owes
+        # the candidate its `ka_gochara:inputs` grain, even when every class is
+        # fingerprint-complete or the plan is honestly empty. Planning stays
+        # read-only: the attestation substep is offered only while it is absent.
+        steps = self._plan_event_classes(ctx)
+        candidate = bound_candidate(ctx.db_conn, getattr(ctx, 'build_id', None), ctx.config['chart_id'])
+        if candidate is None:
+            return steps
+        return steps + grain_steps(ctx, candidate, self.asset_id,
+                                   self._input_sources(ctx.db_conn, ctx.config['chart_id'], candidate.generation))
+
+    @staticmethod
+    def _resonance_generation(ctx: ContextSpec) -> str | None:
+        """Migration 1404: the resonance partition this build reads. A candidate-bound build reads its OWN candidate's rows (what this
+        run's ka_gochara_resonance step wrote); an ordinary rebuild reads the served partition (None -> gochara_resonance_map_served)."""
+        candidate = bound_candidate(ctx.db_conn, getattr(ctx, 'build_id', None), ctx.config['chart_id'])
+        return None if candidate is None else candidate.generation
+
+    def _plan_event_classes(self, ctx: ContextSpec) -> list[SubStep]:
         chart_id = ctx.config['chart_id']
         conn = ctx.db_conn
         query = _query_fn(conn)
+        generation = self._resonance_generation(ctx)
         try:
-            rows = query(
-                "SELECT DISTINCT event_class FROM gochara_resonance_map "
-                "WHERE chart_id = %s ORDER BY event_class",
-                [chart_id],
-            )
+            rows = query(*RM.event_classes_query(chart_id, generation))
         except Exception as exc:
             logger.warning("[ka_gochara] could not discover event_classes for "
                             "chart %s: %s -- honest empty plan.", chart_id, exc)
@@ -229,7 +247,7 @@ class KaGocharaWriter(WriterBase):
             event_class = step.key
             try:
                 with savepoint_scope(conn, "w2g_v2_targets_plan"):
-                    raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
+                    raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class, generation)
             except Exception as exc:
                 logger.warning(
                     "[ka_gochara] could not pre-check targets for chart %s "
@@ -252,7 +270,45 @@ class KaGocharaWriter(WriterBase):
 
         return remaining
 
+    @staticmethod
+    def _input_sources(conn, chart_id: str, generation: str | None = None) -> dict[str, list]:
+        """This writer's own input identity: per populated event class the
+        resonance targets' class_fingerprint, plus the arc fingerprints."""
+        query = _query_fn(conn)
+        arc_fps = KaGocharaWriter._fetch_arc_fingerprints(query)
+        classes = [r["event_class"] for r in query(*RM.event_classes_query(chart_id, generation))]
+        ledger = []
+        for event_class in classes:
+            with savepoint_scope(conn, "w2g_v2_targets_grain"):
+                targets = RM.fetch_resonance_targets(conn, chart_id, event_class, generation)
+            fp = (class_fingerprint(event_class, GRAMMAR_VERSION, [t.target_ref for t in targets],
+                                    BODIES, arc_fps) if targets else None)
+            ledger.append([event_class, fp])
+        return {'class_fingerprints': ledger, 'arc_fingerprints': sorted(arc_fps.items())}
+
+    def _attest_candidate_grain(self, ctx: ContextSpec) -> WriterResult:
+        """Attest `ka_gochara:inputs` under the candidate generation.
+
+        The input ledger is what this writer itself fingerprints: per populated
+        event class the resonance targets' class_fingerprint, plus the arc
+        fingerprints. 'rows' only when this chart holds windows in its own table.
+        """
+        chart_id = ctx.config['chart_id']
+        conn = ctx.db_conn
+        candidate = bound_candidate(conn, ctx.build_id, chart_id)
+        if candidate is None:
+            raise ValueError('grain attestation requires a candidate-bound build')
+        query = _query_fn(conn)
+        produced = query(f"SELECT count(*) AS n FROM {TABLE} WHERE chart_id = %s AND generation = %s",
+                         [chart_id, GENERATION_V2])[0]["n"]
+        attest_inputs(conn, candidate, self.asset_id,
+                      sources=self._input_sources(conn, chart_id, candidate.generation), produced_rows=int(produced))
+        return WriterResult(asset_id=self.asset_id, rows_inserted=0,
+                            notes='candidate grain ka_gochara:inputs attested')
+
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
+        if step.key == GRAIN_STEP:
+            return self._attest_candidate_grain(ctx)
         t0 = time.time()
         chart_id = ctx.config['chart_id']
         event_class = step.key
@@ -275,7 +331,7 @@ class KaGocharaWriter(WriterBase):
         query = _query_fn(conn)
 
         with savepoint_scope(conn, "w2g_v2_targets"):
-            raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
+            raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class, self._resonance_generation(ctx))
 
         if not raw_targets:
             self._upsert_build_state(
@@ -389,6 +445,9 @@ class KaGocharaWriter(WriterBase):
             f"{inserted} served, {collisions} collision(s) skipped, "
             f"horizon={horizon.start_date}..{horizon.end_date} ({horizon.status})"
         )
+        if result.mudda_overlap is not None:     # SR-W56-S3: counted per run, read back by the K9 receipts
+            notes += (f"; {result.mudda_overlap['reason']}={result.mudda_overlap['overlaps_named']} "
+                      f"(mudda lord unresolved inside each; {result.mudda_overlap['overlap_seconds_total']:g} s in all)")
         return WriterResult(asset_id=self.asset_id, rows_inserted=inserted,
                              duration_seconds=time.time() - t0, notes=notes)
 

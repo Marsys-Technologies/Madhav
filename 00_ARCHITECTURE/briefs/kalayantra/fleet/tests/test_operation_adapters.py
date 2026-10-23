@@ -14,6 +14,7 @@ import re
 import shutil
 import sqlite3
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 
@@ -21,6 +22,9 @@ import pytest
 
 HERE = Path(__file__).resolve().parent
 FLEET = HERE.parent
+sys.path.insert(0, str(FLEET))
+import executor_pin_shards  # noqa: E402  (SR-CHURN-CUT 5: later kinds are shards, not edits to the sets below)
+SHARDS = executor_pin_shards.load_shards()
 REPO = FLEET.parents[3]
 ADAPTERS_PY = FLEET / "operation_adapters.py"
 EXECUTOR_PY = FLEET / "executor.py"
@@ -33,12 +37,19 @@ PROTECTED = [EXECUTOR_PY, OPS_FILE, DISPATCH_PY, PREFLIGHT_TS]
 P01_KINDS = {"backup_snapshot", "backup_restore_verify", "smalltest_dispatch_dryrun",
              "smalltest_dispatch", "smalltest_teardown_dryrun", "smalltest_teardown"}
 SCHEDULER_KINDS = {"scheduler_readback", "scheduler_pause_dryrun", "scheduler_pause", "scheduler_resume_dryrun", "scheduler_resume", "measuring_cancel_dryrun", "measuring_cancel"}   # SR-J3-REAPER-PAUSE (+ SR-J3-CANCEL-NULL)
+VERIFICATION_KINDS = {"verification_job", "verification_job_dryrun"}   # J-4b (SR-PREBUILD-ALL)
+PROBE_KINDS = {"served_probe"}   # SR-TEARDOWN-AUTHORITY-GATE item 3: read-only, production:false
 MEASURING_KINDS = {"measuring_dispatch_dryrun", "measuring_dispatch", "measuring_teardown_dryrun", "measuring_teardown"}   # J-3a
 K9_KINDS = {"orchestrator_rebuild_dryrun", "orchestrator_rebuild", "layer_verify_dryrun", "layer_verify", "layer_publish_dryrun", "layer_publish",
             "layer_rollback_dryrun", "layer_rollback"}   # K9-23
-CENTURY_KINDS = {"century_dispatch_dryrun", "century_dispatch", "century_teardown_dryrun"}   # SR-PREBUILD-ALL (century_teardown stays disabled)
+CENTURY_KINDS = {"century_dispatch_dryrun", "century_dispatch", "century_teardown_dryrun", "century_teardown"}   # SR-PREBUILD-ALL; century_teardown enabled by W3W4 pack verify E1 (signed-only)
+FAMILY_CANCEL_KINDS = {"century_cancel_dryrun", "century_cancel", "verification_cancel_dryrun", "verification_cancel"}   # W3W4 pack verify E1: measuring_cancel's siblings
 HEAD_KINDS = {"publish_head", "publish_head_dryrun", "rollback_head", "rollback_head_dryrun"}
-ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS | MEASURING_KINDS | SCHEDULER_KINDS | K9_KINDS | CENTURY_KINDS | HEAD_KINDS   # SR-HEAD-POLICY-KEEP: enabled through the head policy
+BASE_ENABLED_KINDS = {"readback_sql", "migration_readback", "cloudrun_job_readback", "quiescence_check", "local_schema_seed", "finalize"} | P01_KINDS | MEASURING_KINDS | SCHEDULER_KINDS | VERIFICATION_KINDS | K9_KINDS | CENTURY_KINDS | PROBE_KINDS | FAMILY_CANCEL_KINDS | HEAD_KINDS   # SR-HEAD-POLICY-KEEP: the head kinds are enabled through the head policy
+# frozen BASE (SR-CHURN-CUT 5): every set above is the reviewed census up to the shards; a later kind is a tests/executor_pin_shards/<ITEM>.json shard
+ENABLED_KINDS = executor_pin_shards.enabled_after(BASE_ENABLED_KINDS, SHARDS)
+BASE_PRODUCTION_ENABLED = {k for k in P01_KINDS | MEASURING_KINDS | K9_KINDS | CENTURY_KINDS | FAMILY_CANCEL_KINDS | {"scheduler_pause", "scheduler_resume", "measuring_cancel", "verification_job", "publish_head", "rollback_head"} if not k.endswith("_dryrun")}   # A8 §3.8
+PRODUCTION_ENABLED = executor_pin_shards.kinds_after(BASE_PRODUCTION_ENABLED, SHARDS, lambda e: e.get("enabled") is True and e.get("production") is True)
 CANONICAL_CHART = "482012f1-710e-4a25-994a-93821f5871aa"
 ITEM = "K9-FIXTURE"
 LEASE = "LEASE-KY-FIXTURE"
@@ -244,9 +255,26 @@ class Bench:
             "outcome": {"SUCCEEDED": "succeeded", "FAILED": "failed"}.get(state),
             "receipt_sha256": sha_file(self.X.REC / (prepared["operation_id"] + ".json")), "source": "fake remote"}, **fields)
 
+def archive_dry_run(bench, req, oid="OP-FIX-dry0"):
+    """The `orchestrator_rebuild_dryrun` of `req`'s identity as this executor would have archived it (done/ request, output, COMPLETED receipt); returns the
+    {name, sha256} citation. SR-K9-PUBLISHABLE D7: the production kind is admitted only on the executor's OWN receipt of that dry run (dry_run_check)."""
+    X = bench.X
+    dreq = {"operation_id": oid, "kind": "orchestrator_rebuild_dryrun", "item_id": req["item_id"], "idempotency_key": oid, "requested_by": "adhikarin",
+            "kyd": req["kyd"], "args": copy.deepcopy(req["args"]), "chart_id": req["chart_id"], "reviewed_commit": req["reviewed_commit"]}
+    (X.DONE / f"{oid}.json").write_text(json.dumps(dreq))
+    output = json.dumps({"status": "PLAN_ONLY", "dry_run_passed": None}) + "\n"
+    (X.REC / f"{oid}.output.txt").write_text(output)
+    record = {"operation_id": oid, "kind": dreq["kind"], "item_id": req["item_id"], "status": "COMPLETED", "reason": "", "exit_code": 0, "ts": X.now(),
+              "reviewed_commit": req["reviewed_commit"], "request_sha256": X.request_digest(dreq), "output_sha256": hashlib.sha256(output.encode()).hexdigest()}
+    body = json.dumps(record, indent=1).encode()
+    (X.REC / f"{oid}.json").write_bytes(body)
+    return {"name": f"{oid}.json", "sha256": hashlib.sha256(body).hexdigest()}
+
 def accepted_request(bench, steps=None):
     spec = (steps or [RUN()])[0]
     req = dict(spec, item_id=ITEM, idempotency_key=spec["operation_id"], requested_by="adhikarin", chart_id=CANONICAL_CHART)
+    if req["kind"] == "orchestrator_rebuild":
+        req["dryrun_receipt"] = archive_dry_run(bench, req)
     digest = bench.X.request_digest(req)
     prepared = {"schema": "ky.op_prepared/1", "operation_id": req["operation_id"], "item": ITEM, "step": 1,
         "request": copy.deepcopy(req), "request_sha256": digest, "prepared_by": "controller:fixture", "prepared_by_slot": None}
@@ -371,7 +399,7 @@ def test_a_changed_request_or_head_an_expired_acceptance_or_an_omitted_check_ref
         partial = {k: v for k, v in accepted["checks"].items() if k != check}
         assert with_acceptance(checks=partial) == "required backup/restore/dry-run attestation missing", check
         assert with_acceptance(checks=dict(accepted["checks"], **{check: "true"})) == "required backup/restore/dry-run attestation missing"
-    for retired in ("backup_taken", "restore_verified"):                               # A8 §5: retired as preconditions (backup_taken stays for *_teardown only)
+    for retired in ("backup_taken", "restore_verified"):                               # A8 §5 / SR-A12-BACKUP-REMOVAL: retired as preconditions (backup_taken too, even for a *_teardown)
         assert with_acceptance(checks={k: v for k, v in accepted["checks"].items() if k != retired}) is None, retired
     assert with_acceptance(rows={"2": True, "3": False}) is None                        # A8 §5: required_rows retired
 
@@ -845,7 +873,7 @@ def test_remote_plan_matches_the_current_wave4_launcher(monkeypatch):
 def test_only_p01_production_kinds_are_enabled_and_wave4_launch_stays_bound(bench):
     table = real_table()
     assert {k for k, v in table.items() if v["enabled"]} == ENABLED_KINDS
-    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == {k for k in P01_KINDS | MEASURING_KINDS | K9_KINDS | CENTURY_KINDS | {"scheduler_pause", "scheduler_resume", "measuring_cancel", "publish_head", "rollback_head"} if not k.endswith("_dryrun")}   # A8 §3.8
+    assert {k for k, v in table.items() if v["production"] and v["enabled"]} == PRODUCTION_ENABLED   # A8 §3.8
     entry = table["smalltest_dispatch"]
     assert entry["script"].endswith("/smalltest_launch.py") and entry["also_needs"] == ["gcloud"]
     for kind in ("smalltest_dispatch",):

@@ -143,7 +143,12 @@ def test_cold_start_serves_snapshot_during_first_slow_tick(cold_config, monkeypa
         status, state, _ = read(base, "/api/state")
         assert status == 200
         assert state["version"] > (7 if restored else 0)
-        assert state["overall"]["total"] == 183  # acceptance closure (A9 D-51.3; SR-CLOSURE-272), as pinned in test_closure_headline.py
+        # The headline is the acceptance closure (A9 D-51.3), not the plan-wide count. The closure file is CI-generated from the
+        # model (183 while the committed file predates VC-2's retirement, 181 once regenerated; SR-CLOSE-NOW 5), so the served
+        # total is compared with the file the engine reads; the exact figure is pinned against the recomputation in
+        # test_closure_headline.py.
+        closure = S.load_closure(engine.model)
+        assert closure is not None and state["overall"]["total"] == len(closure["closure"]) < len(engine.model["items"])
         assert state["health"]["event_log"]["events"] == 14_500
         assert state["health"]["initializing"] is False
         assert read(base, "/api/health")[1]["ok"] is True

@@ -56,5 +56,10 @@ it('legacy capabilities exclude all candidate rows from both data and counts', a
   const { queryObstructionPeriodsCapability } = await import('./query_obstruction_periods')
   await queryTemporalViewCapability.handler!({ chart_id: 'chart' }, {})
   await queryObstructionPeriodsCapability.handler!({ chart_id: 'chart' }, {})
-  for (const [sql] of queryMock.mock.calls) expect(sql).toContain('generation IS NULL')
+  // temporal view: the legacy NULL partition; obstruction periods (SR-K9-WRITE-SCOPE): the served partition, never a candidate.
+  const sqls = queryMock.mock.calls.map(([sql]) => sql as string)
+  const obstruction = sqls.filter(sql => sql.includes('FROM kala_obstruction'))
+  expect(obstruction.length).toBe(2)
+  for (const sql of sqls.filter(sql => !obstruction.includes(sql))) expect(sql).toContain('generation IS NULL')
+  for (const sql of obstruction) expect(sql).toContain('o.generation IS NOT DISTINCT FROM (SELECT h.generation FROM kala_layer_head h')
 })

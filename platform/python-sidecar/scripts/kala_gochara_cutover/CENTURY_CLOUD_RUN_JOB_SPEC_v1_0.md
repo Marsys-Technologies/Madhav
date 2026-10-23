@@ -14,8 +14,9 @@ without D-FLIP.
 `madhav-astrology`), the governed build path — the deploy pipeline re-points it at
 `brahma-pipeline:$DEPLOY_SHA` with:
 
-- `--memory=16Gi --cpu=4 --task-timeout=86400` (deploy.yml; the 16Gi raise was
-  F-185: **`/tmp` is RAM-backed tmpfs on Cloud Run — there is NO disk volume**),
+- `--memory=8Gi --cpu=2 --task-timeout=86400` (deploy.yml; SR-RIGHT-SIZE amend-1,
+  2026-10-23: was 16Gi/4 — measured century peak RSS <= 427 MiB, single-threaded.
+  The earlier memory raise was F-185: **`/tmp` is RAM-backed tmpfs on Cloud Run — there is NO disk volume**),
 - service account `data-plane-builder-runtime@…`, `DATABASE_URL` from
   `data-plane-builder-db-url:latest`.
 
@@ -33,7 +34,7 @@ Constraint math (risk register §8): pre-T0-G, ~13.5M episodes per century; the
 Tier 0-G `global_boundary_table` fix (A2.1, `59a1d625d`) removed the duplicated
 boundary SOLVES (1.21M of 1.35M per decade were duplicates), but the per-target
 attachment rows still exist pre-dedupe, so the cross-body in-memory list at
-century scale stays O(10⁷) rows — 16Gi RAM, no disk. The design that fits:
+century scale stays O(10⁷) rows — RAM only, no disk (the job is now 8Gi; the measured peak RSS is <= 427 MiB). The design that fits:
 
 1. **Per-body chunks.** `step06_enumerate_episodes.py --bodies` (M-3/R7: the
    eight non-Moon grahas `Sun Mercury Venus Mars Jupiter Saturn Rahu Ketu`;
@@ -43,7 +44,7 @@ century scale stays O(10⁷) rows — 16Gi RAM, no disk. The design that fits:
 2. **One execution, looping bodies, streaming to GCS.** Per body: enumerate →
    sort → append NDJSON to `gs://<build-artifacts>/kala_gochara/482012f1/4.1/
    episodes/<body>.ndjson`, then free the list. Per-body peak ≈ (13.5M/8)
-   dicts ≈ 2–4 GiB — fits the 16Gi task with headroom; nothing century-scale
+   dicts ≈ 2–4 GiB — fits the task with headroom (16Gi when written, 8Gi since SR-RIGHT-SIZE amend-1); nothing century-scale
    ever touches `/tmp`.
 3. **One candidate build** (`step06_candidate_build.py`) reading the
    concatenated stream, single transaction, `publish_candidate` +

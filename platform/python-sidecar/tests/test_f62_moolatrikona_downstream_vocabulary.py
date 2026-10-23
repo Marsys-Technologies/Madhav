@@ -112,9 +112,12 @@ def test_jupiter_moolatrikona_band_matches_the_l0_reference():
 # ── §2 Every graha's own band, driven from the L0 reference ───────────────────
 
 def _grahas_with_a_moolatrikona_band() -> list[str]:
+    # A "band" is a degree range. Rahu and Ketu carry a moolatrikona SIGN (BPHS ch.47, migration 1401,
+    # SR-DOCTRINE-H) but the verse gives no degree range, so they have no band; the node case is pinned
+    # separately below rather than dropped.
     return [
         row["graha"] for row in DIGNITY_REFERENCE
-        if row["moolatrikona_sign"] is not None
+        if row["moolatrikona_sign"] is not None and row["moolatrikona_from"] is not None
     ]
 
 
@@ -148,6 +151,21 @@ def test_moolatrikona_band_is_reachable_and_bounded(graha: str):
     assert classify_dignity(graha, sign, hi) == "own"
     if hi < 29.0:
         assert classify_dignity(graha, sign, hi + 1.0) == "own"
+
+
+def test_nodes_carry_a_sign_only_moolatrikona_and_the_classifier_emits_no_node_moolatrikona_tier():
+    """SR-DOCTRINE-H: L0 holds Rahu/Ketu moolatrikona as a sign with no degree band (BPHS ch.47 gives signs only).
+    `classify_dignity` keeps its documented node early-exit (only exalted/debilitated/neutral for the nodes), so a
+    node in its L0 moolatrikona or own sign still reads 'neutral' here. Whether L1 should emit a node moolatrikona
+    or own tier is an open L1-owner decision; this pin makes that decision change a test, not drift silently."""
+    expected = {"Rahu": ("Gemini", "Aquarius"), "Ketu": ("Sagittarius", "Scorpio")}
+    for graha, (mt_sign, own_sign) in expected.items():
+        row = _BY_GRAHA[graha]
+        assert (row["moolatrikona_sign"], row["moolatrikona_from"], row["moolatrikona_to"]) == (mt_sign, None, None)
+        assert own_sign in row["own_signs"]
+        assert classify_dignity(graha, mt_sign, 5.0) == "neutral"
+        assert classify_dignity(graha, mt_sign, 25.0) == "neutral"
+    assert classify_dignity("Rahu", "Aquarius", 5.0) == "neutral"       # Ketu in Scorpio is exalted by precedence
 
 
 def test_the_own_sign_that_is_not_the_moolatrikona_sign_is_never_moolatrikona():

@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """U-M-03: the executor kinds `gochara_role_provisioning_dispatch` (--execute) and `gochara_role_provisioning_dispatch_dryrun` (--dry-run).
 
-They dispatch ONE workflow, .github/workflows/gochara-role-provisioning-oneshot.yml (workflow_dispatch only, environment data-plane-production-cutover), stage
-`create-roles` only: acts 1 + 2a of runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md (the reviewed script platform/scripts/gochara-provision-roles.sh creates the
-verifier and sealer roles with PASSWORD NULL). The `sealer-password` stage (act 2b, after the live-gate proof) is not served here and is refused.
+They dispatch ONE workflow, .github/workflows/gochara-role-provisioning-oneshot.yml (workflow_dispatch only, environment data-plane-production-cutover), at one of
+three stages (the reviewed script platform/scripts/gochara-provision-roles.sh):
+  create-roles       acts 1 + 2a of runbooks/ROLES_AND_SEAL_PROVISIONING_RUNBOOK_v1_0.md (verifier and sealer roles with PASSWORD NULL); needs the verifier dsn_tail.
+  grant-l1-reads     J-4b-a55j (SR-GRANTS-MINIMAL): SELECT on chart_facts and chart_dashas for the two principals; takes NO dsn_tail.
+  sealer-credential  J-4b-a55j (SR-GRANTS-MINIMAL): the sealer password generated in the run and its DSN written straight to Secret Manager; needs the SEALER's
+                     TCP-loopback dsn_tail @127.0.0.1:5432/<db> (runbook line 62: the two roles' tails differ).
+The `sealer-password` stage (act 2b with a person-staged password) is not served here and is refused.
 
 This program never reads, prints or forwards a credential: the ownership-admin secret lives in the workflow's protected environment and is read only there. It
 prints non-secret facts (the lease verdict, the input names, a digest prefix of the DSN tail). Its own environment is the executor's filtered child environment; the
@@ -25,7 +29,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from window_lease_gate import read_table, verdict, SAFE_ID   # noqa: E402  (the lease reading is shared with the protected-window dispatchers)
 
 WORKFLOW = "gochara-role-provisioning-oneshot.yml"
-STAGE = "create-roles"
+STAGES = {"create-roles": True, "grant-l1-reads": False, "sealer-credential": True}      # stage -> whether the workflow input dsn_tail is needed
+SEALER_TAIL = re.compile(r"^@127\.0\.0\.1:5432/[A-Za-z0-9_]+$")
 CONFIRM = "PROVISION-GOCHARA-ROLES"
 DSN_WIRE = re.compile(r"^@[A-Za-z0-9._/:=+-]+(,[A-Za-z0-9._/:=+-]+)?$")   # executor.SAFE_ARG minus `@` after the first (no credentials), `,` at most once
 GH_ENV_ALLOW = ("HOME", "PATH", "LANG", "LC_ALL", "TZ", "TMPDIR", "USER", "LOGNAME", "XDG_CONFIG_HOME", "GH_CONFIG_DIR", "GH_HOST")
@@ -44,10 +49,14 @@ def dsn_tail(wire: str) -> tuple[str | None, str | None]:
 
 def plan(args, environ, repo: str) -> tuple[dict | None, str]:
     """(workflow inputs, one-line reason). inputs is None on refusal. Reads only git (the lease table) and KY_OPERATION_REQUEST."""
-    if args.stage != STAGE: return refusal(f"stage must be {STAGE} (sealer-password is act 2b, not served by this kind)")
+    if args.stage not in STAGES: return refusal(f"stage must be one of {', '.join(STAGES)} (sealer-password is act 2b with a staged password, not served by this kind)")
     if args.confirm != CONFIRM: return refusal(f"confirm must be exactly {CONFIRM}")
-    tail, why = dsn_tail(args.dsn_tail)
-    if why: return refusal(why)
+    tail = None
+    if STAGES[args.stage]:
+        tail, why = dsn_tail(args.dsn_tail)
+        if why: return refusal(why)
+        if args.stage == "sealer-credential" and not SEALER_TAIL.fullmatch(tail): return refusal("sealer-credential needs the sealer's loopback tail @127.0.0.1:5432/<db>")
+    elif args.dsn_tail: return refusal(f"stage {args.stage} takes no dsn_tail")
     own = (args.window_lease_id or "").strip()
     if not own or not SAFE_ID.fullmatch(own): return refusal("window_lease_id must name the lease this window runs under")
     try: request = json.loads(environ.get("KY_OPERATION_REQUEST") or "null")
@@ -56,7 +65,7 @@ def plan(args, environ, repo: str) -> tuple[dict | None, str]:
         return refusal("window_lease_id is not the request's own lease_id")
     ok, reason = verdict(read_table(repo), own)
     if not ok: return None, reason
-    return {"stage": STAGE, "dsn_tail": tail, "confirm": CONFIRM}, reason
+    return {"stage": args.stage, **({"dsn_tail": tail} if tail is not None else {}), "confirm": CONFIRM}, reason
 
 
 def gh_environment(environ) -> dict:
@@ -79,7 +88,7 @@ def main(argv: list[str] | None = None, environ=None) -> int:
     inputs, reason = plan(args, environ, args.repo)
     print(reason)
     if inputs is None: return 1
-    shown = ", ".join(sorted(inputs)) + f" (dsn_tail sha256 {hashlib.sha256(inputs['dsn_tail'].encode()).hexdigest()[:12]})"
+    shown = ", ".join(sorted(inputs)) + (f" (dsn_tail sha256 {hashlib.sha256(inputs['dsn_tail'].encode()).hexdigest()[:12]})" if "dsn_tail" in inputs else "")
     if args.dry_run:
         print(f"DRY RUN: would dispatch {WORKFLOW} on main with inputs {shown}; no gh call made")
         return 0

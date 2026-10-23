@@ -1,10 +1,10 @@
 ---
 artifact: K9_DRILLS
-version: "1.1"
+version: "1.2"
 status: ENABLED BINDINGS — local manifest protocol proven; full-layer drills pending
 produced_on: 2026-10-20
 item: K9-23
-changelog: "1.1: all eight layer/rebuild kinds are enabled (SR-PREBUILD-ALL, #3746) and described as bound; each drill names the runner record it must retain; backup bindings confirmed from the declaration; every full-layer result stays null; the Gochara separation statement follows main (publish_head / rollback_head enabled by #3786, verification_job still disabled). 1.0: separately bound disabled layer operations, local failure/rollback proofs and full-drill protocol."
+changelog: "1.2 (W5W6-READINESS WP2): the cancel kinds are enabled and the section 'Cancel, stop and teardown of a rebuild' states what a cancel does to a running rebuild, proven by test_w56_k9_cancel_teardown.py; the rebuild run no longer publishes to Pub/Sub; teardown covers the resonance writer's candidate tables and names the chart-scoped gochara_resonance_map. 1.1: all eight layer/rebuild kinds are enabled (SR-PREBUILD-ALL, #3746) and described as bound; each drill names the runner record it must retain; backup bindings confirmed from the declaration; every full-layer result stays null; the Gochara separation statement follows the declaration (publish_head / rollback_head enabled by #3786; verification_job enabled by J-4b through its own script fleet/verification_launch.py, on the kind-batch). 1.0: separately bound disabled layer operations, local failure/rollback proofs and full-drill protocol."
 ---
 
 # Layer publication and rebuild drills
@@ -13,7 +13,7 @@ The three layer operations are distinct from Gochara's `verification_job`,
 `publish_head`, and `rollback_head`. They operate only the `kala_layer_*` manifest
 and call the existing APIs. They neither switch Gochara authority nor delete
 candidate, published, issued-forecast or production rows. In the declaration
-`verification_job` is `enabled:false`, while `publish_head` and `rollback_head` are enabled
+`verification_job` is `enabled:true` (J-4b) and runs its own script `fleet/verification_launch.py`, while `publish_head` and `rollback_head` are enabled
 only through the reviewed head policy (J-6m / J-6r, #3786) and run `fleet/head_operation.py`;
 no Gochara kind shares a script with a layer kind. All eight layer and rebuild kinds below are enabled in
 `fleet/executor_ops.json` (SR-PREBUILD-ALL, #3746): `orchestrator_rebuild_dryrun`,
@@ -110,6 +110,42 @@ never let `NIRMANA_FORCE_EXECUTE` reach a child. Required Governance Tool Tests
 runs those binding tests and now depends on Kāla DB Tests. The CI gate's own
 negative cases execute its shell predicate with failed, cancelled and skipped DB
 results; only an intentional docs-only skip is permitted.
+
+## Cancel, stop and teardown of a rebuild
+
+`orchestrator_rebuild_cancel` and its dry run `orchestrator_rebuild_cancel_dryrun` run `publication_admission cancel` / `cancel-dryrun`
+(`rebuild_control.cancel`). The executor admits a cancel only for the run-id of an `orchestrator_rebuild` that is in flight (SR-CANCEL-LANE),
+signed-only, on its own worker so it never waits behind the rebuild it stops. The teardown kinds `orchestrator_rebuild_teardown` and
+`orchestrator_rebuild_teardown_dryrun` run the same module's `teardown` / `teardown-dryrun`; whether they are enabled is the declaration's
+(`fleet/executor_ops.json`, surrogate ruling S-1), and a teardown is never mechanical and needs the signer's backup and dry-run attestations.
+
+**What a cancel does to a run that is executing.** It acts only between assets; it never interrupts one.
+
+1. The cancel sets `build_runs.stop_requested_at` (a first request keeps its time) and nothing else for a `running` or `paused` run; a `planned`
+   run is marked `stopped` at once. The returned `state_after` is what the database says, never a presumed terminal state.
+2. The rebuild is ONE in-process run: the executor child `publication_admission rebuild` calls `execute_run`. Its scheduler
+   (`runner.execute_dag`) reads the request at the top of each scheduling round: after every asset that finishes, and at most every
+   `_POLL_INTERVAL` (5 s) while assets are in flight.
+3. On a stop request it starts no further asset. An asset already dispatched runs to the end of its own work (the runner cannot interrupt a writer;
+   only the writer's own `writer_timeout_seconds` abandons one), and is counted completed if it finishes.
+4. `execute_run` then writes the run `stopped` with `ended_at` and returns. The child reads the final state, finds it is not `completed`, prints
+   `{"reason": "orchestrator did not complete the build", "status": "REFUSED"}` and exits 2: the receipt of a cancelled rebuild is a refusal, never a pass.
+5. A cancel therefore does not shorten the asset in progress: for a long single writer (the Gochara century writer runs for hours) the run ends only after that
+   writer ends. Cancelling does not tear anything down; the candidate and the asset states the run wrote stay until a teardown.
+
+Proven against the database fixture by `test_w56_k9_cancel_teardown.py`: `test_c5a` (a stub plan of three assets, cancel after the first: the other two never
+start, the run reads `stopped`), `test_c5b` (a cancel that arrives while an asset is working: that asset finishes, nothing further starts) and `test_c5c` (the
+rebuild child of a cancelled run exits REFUSED, exit 2).
+
+**What a teardown covers.** The candidate of a terminal run, every table that references it (read from the catalog), the unlinked candidate-keyed tables
+of the plan's writers (`kala_activation_predicates` from `ka_yojaka`; `kala_f1_relationship` and `kala_f1_target_object` from the resonance writer's candidate
+path, migration 1342), and, for a failed run, the asset states it wrote. `gochara_resonance_map` is different: it has no generation column and the resonance writer's
+legacy path deletes and re-inserts the whole chart (`services/ka_gochara_resonance/writer.py`), so a teardown cannot tell a run's rows from the previous build's. It is
+never deleted; the teardown result names it under `chart_scoped_writes_left_alone` with its row count, and a rebuild whose plan includes `ka_gochara_resonance` has
+already replaced that table's rows for the chart. Giving that table a candidate generation needs a migration and is not done here.
+
+The rebuild run keeps its orchestrator events off Pub/Sub (`PUBSUB_DISABLED` is set for the run by `publication_admission`), so the `[event]` lines reach stderr and
+the stall and re-projection gates have their log source.
 
 ## Full-layer drills still owed
 

@@ -56,6 +56,7 @@
       "include": [
         "tests/l3/ka_bhavishya_lekha/test_certification*.py",
         "tests/l3/ka_kshetra/test_g1*.py",
+        "tests/l3/ka_sangam/test_jury_shared_preparation*.py",
         "tests/l3/ka_vedha_gochara/test_ka3a_overlays_module_oracles*.py",
         "tests/l3/ka_vedha_gochara/test_ka3a_coverage_and_qualification_*.py"
       ],
@@ -108,6 +109,7 @@
         "tests/l3/gochara/test_w1*.py",
         "tests/l3/gochara/test_w2*.py",
         "tests/l3/gochara/test_p09*.py",
+        "tests/l3/gochara/test_j1a*.py",
         "tests/l3/gochara/test_j7b*.py",
         "tests/l3/gochara/test_j4ops_*.py",
         "tests/l3/gochara/test_j6m*.py",
@@ -565,8 +567,23 @@
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_overlay*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor_table*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_executor*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_cloudrun_readback*.py",
         "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_github_run_readback*.py",
-        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_http_probe*.py"
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_iam_policy_readback*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_iam_readback*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_http_probe*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_seal_controller*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_log_view_proof*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_equivalence_record*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_consumer_probe*.py",
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_dispatch_chain*.py"
+      ]
+    },
+    "governance-tool-tests-seal-inputs": {
+      "cwd": ".",
+      "engine": "pytest",
+      "include": [
+        "00_ARCHITECTURE/briefs/kalayantra/fleet/tests/test_seal_inputs*.py"
       ]
     },
     "governance-tool-tests-shard-6-0": {
@@ -588,7 +605,9 @@
         "platform/scripts/governance/pravaha_tracker/tests/test_decision*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_tracker_reconcil*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_merged_deployed*.py",
-        "platform/scripts/governance/pravaha_tracker/tests/test_done_dependency*.py"
+        "platform/scripts/governance/pravaha_tracker/tests/test_done_dependency*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_a55j*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_git_source*.py"
       ]
     },
     "governance-readback-tests-3-0": {
@@ -774,7 +793,8 @@
         "src/lib/vidhi/inquiry/migration_contract*.test.ts",
         "scripts/__tests__/generate_capability*.test.ts",
         "src/app/api/mcp/inquiry/__tests__/route*.test.ts",
-        "src/app/api/mcp/prashna_ask/__tests__/route*.test.ts"
+        "src/app/api/mcp/prashna_ask/__tests__/route*.test.ts",
+        "src/app/api/mcp/health/__tests__/migrations_route*.test.ts"
       ]
     },
     "density-census-29-0": {

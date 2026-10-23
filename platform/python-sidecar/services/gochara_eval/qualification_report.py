@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 from uuid import UUID
 
+from .n4_reader import DEFER_HEADER
 from .qualification import endpoint_records, engineering_diagnostics, record
 
 GENERATIONS = ("3.0", "4.1", "5.0")
@@ -49,8 +50,8 @@ def _matches_identity(doc: dict, chart: str, generation: str) -> bool:
         + re.escape(chart) + "' and generation='" + re.escape(generation) + "'", str(doc.get("predicate", ""))))
 
 
-def _disclosure(source: dict, key: str) -> dict:
-    data = source.get(key)
+def _disclosure(source: dict, key: str, data=None) -> dict:
+    data = source.get(key) if data is None else data
     entry = record("pass" if isinstance(data, dict) and data else "insufficient_evidence", data,
                    "protocol §10 mandatory non-gating disclosure; source content transcribed, not causal verification")
     if key == "path_ablations":
@@ -59,6 +60,20 @@ def _disclosure(source: dict, key: str) -> dict:
         if entry["missing_paths"]:
             entry["status"] = "insufficient_evidence"
     return entry
+
+
+def _read_ablations(ent: dict, root: Path, chart: str, gen: str) -> tuple[dict, dict]:
+    """The pinned `ky.path_ablations/1` output of `path_ablation.py` for this source: its identity must be this chart, this generation and the
+    very extract the source scored (a different extract's ablations are not this generation's). Returns (per-path records, run descriptor)."""
+    data = _read(ent["path_ablations"], root)
+    if data.get("schema") != "ky.path_ablations/1" or data.get("chart_id") != chart or data.get("generation") != gen:
+        raise ValueError("path_ablations identity or schema mismatch")
+    if data.get("base", {}).get("extract_sha256") != ent["extract"]["sha256"]:
+        raise ValueError("path_ablations did not ablate this source's extract")
+    if not isinstance(data.get("paths"), dict):
+        raise ValueError("path_ablations carries no per-path records")
+    return data["paths"], {k: data.get(k) for k in ("mode", "non_gating", "enumeration_budget", "limits")} | {
+        "reproduces_recorded_result": data["base"].get("reproduces_recorded_result")}
 
 
 def assemble(doc: dict, root: Path) -> dict:
@@ -97,9 +112,15 @@ def assemble(doc: dict, root: Path) -> dict:
             if (sha.get("measured") != ent["extract"]["sha256"] or sha.get("match") is not True
                     or sha.get("declared_pin") != ent["extract"]["sha256"]):
                 raise ValueError("source extract digest is not the scorer's measured, declared pin")
+        ablations, run = source.get("path_ablations"), None
+        if ent is not None and ent.get("path_ablations") is not None:
+            ablations, run = _read_ablations(ent, root, chart, gen)
+        disclosure = _disclosure(source, "path_ablations", ablations)
+        if run is not None:
+            disclosure["run"] = run
         generations[gen] = {"endpoints": endpoint_records(source), "source_result": source or None,
                             "mechanism_attribution": _disclosure(source, "mechanism_attribution"),
-                            "path_ablations": _disclosure(source, "path_ablations")}
+                            "path_ablations": disclosure}
     rows, cells = [], None
     for key in ("diagnostic_extract", "coverage_cells"):
         if key not in doc:
@@ -111,7 +132,7 @@ def assemble(doc: dict, root: Path) -> dict:
             rows = data["rows"]
         else:
             cells = data["cells"]
-    return {"schema": "ky.qualification_preparation/1", "build_state": "built_waiting_on_gate",
+    return {"schema": "ky.qualification_preparation/1", "header": DEFER_HEADER, "build_state": "built_waiting_on_gate",
             "chart_id": chart, "protocol": "EVALUATION_PROTOCOL_v2_3", "si_addendum": "1.5",
             "generation_authors": authors, "sources": sources,
             "diagnostic_sources": {k: doc[k] for k in ("diagnostic_extract", "coverage_cells") if k in doc},
@@ -123,7 +144,7 @@ def assemble(doc: dict, root: Path) -> dict:
 
 
 def render_markdown(result: dict) -> str:
-    lines = ["# J5Q qualification preparation", "", "State: **built, waiting on gate**.", "", result["limits"], "",
+    lines = ["# J5Q qualification preparation", "", f"**{result['header']}**", "", "State: **built, waiting on gate**.", "", result["limits"], "",
              "Missing evidence retains a null measured value. Original scorer statuses and all measured fields are retained below.", ""]
     for gen, data in result["generations"].items():
         lines += [f"## Generation {gen}", "", "| Endpoint | Status |", "|---|---|"]
@@ -152,6 +173,8 @@ def main(argv: list[str] | None = None) -> int:
             protected.add((manifest_path.parent / ent["path"]).resolve())
             if "extract" in ent:
                 protected.add((manifest_path.parent / ent["extract"]["path"]).resolve())
+            if ent.get("path_ablations"):
+                protected.add((manifest_path.parent / ent["path_ablations"]["path"]).resolve())
         outputs = [Path(p).resolve() for p in (args.output, args.markdown) if p]
         if len(set(outputs)) != len(outputs) or any(p in protected for p in outputs):
             raise ValueError("outputs must differ from each other and every pinned input")

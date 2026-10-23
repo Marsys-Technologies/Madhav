@@ -81,7 +81,7 @@ def candidate(tmp_path_factory):
         horizon = (datetime(2025, 1, 1, tzinfo=timezone.utc), datetime(2025, 1, 3, tzinfo=timezone.utc))
         with login(w, 'data_plane_builder') as builder:
             ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id='j5s-full-class-local', db_conn=builder,
-                              dry_run=False, config={'chart_id': CHART_ID, 'horizon': horizon, 'ephe_path': EPHE_PATH})
+                              dry_run=False, config={'chart_id': CHART_ID, 'gochara_v5_final_rules': False, 'horizon': horizon, 'ephe_path': EPHE_PATH})
             for step in writer.plan_substeps(ctx):
                 if step.key == writer_mod.RULES_SUBSTEP:
                     continue  # the global catalogue is provisioned by the fixture owner

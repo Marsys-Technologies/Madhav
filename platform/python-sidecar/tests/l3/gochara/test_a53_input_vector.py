@@ -341,6 +341,23 @@ def test_a_live_check_uses_the_manifests_own_l0_set(db, ephe):
         _live(db, stored, ephe)
 
 
+def test_the_independent_input_check_binds_the_frozen_qualification_table_to_the_numerical_policy_only(db, ephe):
+    """OD-1 (SR-OD1-NUMERICAL), claim 4: under `window_qualification/1` the stored vector must carry exactly the verifier's OWN literal of the frozen table (derived,
+    named in `derived`); a different digest, a missing component, or a table beside the all-NULL policy DISAGREES. (revert: drop the verifier's comparison — the
+    three refusals below pass silently)"""
+    stored = _vector(db, ephe, result_policy="window_qualification/1")
+    assert stored["qualification_table"] == {"schema": "window_qualification_table/1", "digest": ivv.QUALIFICATION_TABLE_BINDING["digest"]}
+    assert "qualification_table" in _ivv(db, stored, ephe)["derived"]
+    other = {**stored, "qualification_table": {**stored["qualification_table"], "digest": "0" * 64}}
+    with pytest.raises(RuntimeError, match="qualification_table"):
+        _ivv(db, other, ephe)
+    with pytest.raises(RuntimeError, match="qualification_table"):
+        _ivv(db, {k: v for k, v in stored.items() if k != "qualification_table"}, ephe)
+    with pytest.raises(RuntimeError, match="qualification_table"):
+        _ivv(db, {**_vector(db, ephe), "qualification_table": stored["qualification_table"]}, ephe)           # a table beside the all-NULL policy
+    assert "qualification_table" not in _vector(db, ephe)                                                  # the all-NULL vector is unchanged
+
+
 def test_the_independent_input_check_derives_every_derivable_component_and_names_the_rest(db, ephe):
     stored = _vector(db, ephe, l0_consumed=CONSUME)
     out = _ivv(db, stored, ephe)

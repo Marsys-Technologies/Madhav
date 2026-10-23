@@ -230,7 +230,7 @@ class TestStage1:
     def test_typed_fields(self, tmp_path):
         doc, _ = make_stage1(tmp_path)
         for path, bad, needle in [(("cohort", "held_out"), "47", "cohort.held_out"), (("cohort", "chart_id"), "x", "cohort.chart_id"),
-                                  (("controls", "seed"), "482012", "controls.seed"), (("generation",), "5.0", "measurable candidate"),
+                                  (("controls", "seed"), "482012", "controls.seed"), (("generation",), "5.1", "measurable candidate"),
                                   (("tolerances_and_conversions", "enumeration_budget"), 0, "enumeration_budget"),
                                   (("extract_generation_args", "pinned_at"), "tomorrow", "ISO date")]:
             d = copy.deepcopy(doc)
@@ -520,7 +520,7 @@ class TestDump:
         assert rc == 0 and out["orb_max_deg"] == 5.0 and out["orb_ruling"].endswith("(unratified)")
         assert all("kala_gochara_windows" not in sql for sql, _ in conn.executed)
         assert out["ephemeris_problems"] == []
-        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "5.0", "--read-manifest-orb"], conn_factory=lambda: conn) == 2
+        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "5.1", "--read-manifest-orb"], conn_factory=lambda: conn) == 2      # not a candidate generation
         with pytest.raises(RuntimeError, match="exactly one manifest"):
             dx.read_manifest_orb(RO(ROWS, manifest=[]), "4.1", chart_id=CHART_ID)
 
@@ -538,12 +538,14 @@ class TestDump:
         with pytest.raises(RuntimeError, match="outside the scored horizon"):
             dx.dump_rows(RO(ROWS, outside=3), "4.1", horizon_check=True, chart_id=CHART_ID)
 
-    def test_refuses_without_a_freeze_and_for_governed_generations(self, tmp_path, capsys):
+    def test_refuses_without_a_freeze_and_for_unknown_generations(self, tmp_path, capsys):
         out = tmp_path / "o.json"
         base = ["--pinned-at", "2026-10-05", "--out", str(out)]
         assert dx.main(["--chart-id", CHART_ID] + ["--generation", "4.1", *base], conn_factory=lambda: FakeConn(ROWS)) == 2
-        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "5.0", "--stage1", "x", *base], conn_factory=lambda: FakeConn(ROWS)) == 2
-        assert "eval-window reader" in capsys.readouterr().err
+        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "5.0", *base], conn_factory=lambda: FakeConn(ROWS)) == 2      # '5.0' is a candidate now: it needs its freeze
+        assert "needs --stage1" in capsys.readouterr().err
+        assert dx.main(["--chart-id", CHART_ID] + ["--generation", "5.1", "--stage1", "x", *base], conn_factory=lambda: FakeConn(ROWS)) == 2
+        assert "no extract path for generation '5.1'" in capsys.readouterr().err
         assert not out.exists()
 
     def test_refuses_while_the_freeze_has_placeholders(self, tmp_path, capsys):

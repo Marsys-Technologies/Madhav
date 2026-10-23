@@ -63,6 +63,7 @@ def env_seconds(name: str, default: float, maximum: float = MAX_CONFIGURED_S, no
 
 # A loaded machine can make `gh pr list` take longer than 5 s (incident 2026-10-19: ~7.4 s at load ~60).
 CALL_TIMEOUT_S = env_seconds("PRAVAHA_CALL_TIMEOUT_S", 5.0)
+MISSING_REMOTE_REF = "couldn't find remote ref"      # git fetch of a branch that is not on origin (yet)
 # Budget for one live verification (`ky done`, the D-46 sweep): all of a detector's calls share it.
 VERIFY_BUDGET_S = env_seconds("PRAVAHA_VERIFY_BUDGET_S", 20.0)
 _EXTERNAL = threading.local()
@@ -151,7 +152,11 @@ def _remaining():
     return max(0, getattr(_EXTERNAL, "context", (None, float("inf")))[1] - time.monotonic())
 
 
-def _run(cmd, cwd: str | None = None, timeout: float = CALL_TIMEOUT_S, shell: bool = False) -> tuple[int, str]:
+def _run(cmd, cwd: str | None = None, timeout: float = CALL_TIMEOUT_S, shell: bool = False,
+         answer_rc: tuple[int, ...] = (), answer_text: str | None = None) -> tuple[int, str]:
+    # answer_rc: non-zero exits that ARE the call's answer (`merge-base --is-ancestor` 1, `rev-parse --verify -q` 1). They return
+    # as before but do not mark the source stale. answer_text further narrows it to a stderr marker (the fetch of a branch nobody
+    # pushed exits 128 with MISSING_REMOTE_REF; any other 128 is a real failure and still counts).
     # Call sites may ask for a shorter limit, never a longer one. The live
     # verification deadline also bounds every subprocess in a multi-call detector.
     timeout = min(CALL_TIMEOUT_S, timeout, _remaining())
@@ -188,8 +193,9 @@ def _run(cmd, cwd: str | None = None, timeout: float = CALL_TIMEOUT_S, shell: bo
         if monitor is not None:
             monitor.record(source, key, "timed out" if isinstance(exc, subprocess.TimeoutExpired) else type(exc).__name__)
         raise
+    is_answer = p.returncode == 0 or (p.returncode in answer_rc and (answer_text is None or answer_text in (err or out)))
     if monitor is not None:
-        monitor.record(source, key, None if p.returncode == 0 else f"exit {p.returncode}")
+        monitor.record(source, key, None if is_answer else f"exit {p.returncode}")
     return p.returncode, (out if p.returncode == 0 else (err or out))
 
 
@@ -332,7 +338,8 @@ class Detectors:
             except Exception:
                 pass
         try:
-            rc, out = _run(["git", "fetch", "-q", "origin", remote_branch], cwd=self.cfg.repo)
+            rc, out = _run(["git", "fetch", "-q", "origin", remote_branch], cwd=self.cfg.repo,
+                           answer_rc=(128,), answer_text=MISSING_REMOTE_REF)
             if rc != 0:
                 raise RuntimeError(f"git fetch {remote_branch}: {out.strip()[:160]}")
         except BaseException as exc:
@@ -396,11 +403,19 @@ class Detectors:
 
     def d_branch_merged(self, spec):
         self._fetch("main")
-        ref = self._resolve_ref(spec["ref"])
-        rc0, _ = _run(["git", "rev-parse", "--verify", "-q", ref], cwd=self.cfg.repo)
+        try:
+            ref = self._resolve_ref(spec["ref"])
+        except RuntimeError as exc:
+            # SR-AUDIT-BOOKKEEPING: a branch nobody has pushed yet (parked or future work) is "not yet", not a fault;
+            # any other fetch failure still raises and reads as a detector error.
+            if MISSING_REMOTE_REF in str(exc):
+                return DetectorResult("pending", f"{spec['ref']} does not exist on origin yet (not measured)", now_iso(),
+                                      "detector:branch_merged")
+            raise
+        rc0, _ = _run(["git", "rev-parse", "--verify", "-q", ref], cwd=self.cfg.repo, answer_rc=(1,))
         if rc0 != 0:
             return DetectorResult("pending", f"{spec['ref']} does not exist yet", now_iso(), "detector:branch_merged")
-        rc, _ = _run(["git", "merge-base", "--is-ancestor", ref, "origin/main"], cwd=self.cfg.repo)
+        rc, _ = _run(["git", "merge-base", "--is-ancestor", ref, "origin/main"], cwd=self.cfg.repo, answer_rc=(1,))
         if rc == 0:
             return DetectorResult("done", f"{spec['ref']} is merged into main", now_iso(), "detector:branch_merged", 1.0)
         # main's merge queue squashes, so a merged branch is never an ancestor of main. Accept a MERGED PR into main

@@ -167,6 +167,10 @@ _CENSUS_STEP_DAYS = 120.0                                  # finer than a file b
 _KNOWN_SCHEMA = "ka_gochara_input_vector/3"
 _KNOWN_SCOPES = ("stored_non_moon",)
 _KNOWN_POLICIES = ("all_null_candidate/1", "window_qualification/1")
+#: OD-1 (SR-OD1-NUMERICAL): this verifier's OWN literal of the frozen `window_qualification/1` table binding (nothing imported from the builder's
+#: `result_policy`; a test asserts the two equal). The vector must carry exactly this component under that policy and none under the all-NULL one.
+QUALIFICATION_TABLE_BINDING = {"schema": "window_qualification_table/1",
+                               "digest": "5bbc65bb5fc98547bf0bea5d1ff90c76965155f3166a7042a11ab34772e6a80f"}
 #: G8: the verifier's OWN scored-class universe (nothing imported from the builder): the 26 scored event classes of the evaluation
 #: protocol's fixed 27-class table (EVALUATION_PROTOCOL_v2_3 §2; gochara_eval.registry.CLASSES_27) minus `birth_anchor`, which is an
 #: unscored annotation — the evaluator refuses to enumerate it by design (O-CF-N6: zero rows). A drift test pins this tuple equal to both
@@ -337,6 +341,12 @@ def verify_inputs(conn, stored: dict, *, ephe_path: str, modules: dict, path_ref
         if got not in known:
             problems.append(f"{key}: {got!r} is not a named member of {known}")
         derived.append(key)
+    want_table = QUALIFICATION_TABLE_BINDING if stored.get("result_policy") == "window_qualification/1" else None
+    if stored.get("qualification_table") != want_table:
+        problems.append(f"qualification_table: the vector binds {stored.get('qualification_table')!r} under {stored.get('result_policy')!r}, "
+                        f"the verifier's own frozen table is {want_table!r}")
+    if want_table is not None:
+        derived.append("qualification_table")
     for key in ("library_sha256", "platform"):
         if key not in stored["ephemeris"]:
             problems.append(f"ephemeris.{key}: the vector binds no library identity (schema /2 requires it)")

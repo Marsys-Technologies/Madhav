@@ -1,10 +1,13 @@
 ---
 artifact: CLOUDRUN_READBACK
-version: "1.3"
+version: "1.6"
 status: REVIEW_CANDIDATE
 produced_on: 2026-10-17
 authority: J-2a run-1 dispatch V1 REJECTED (X-20261017T124945Z-review-j2a-13-dispatch-v1); pack MISSING M6/M7 ("no enabled fixed op reads Cloud Run job configuration/image/corpus or execution completion")
 changelog:
+  - "1.6: SR-RIGHT-SIZE amend-1: the `gochara-verification-job` resources check is now `resources_4Gi_1cpu_28800s` (was `resources_8Gi_2cpu_28800s`); the task timeout is unchanged. The builder job's deployed limits are 8Gi / 2 vCPU (was 16Gi / 4). Readback reads values only; no schema change."
+  - "1.5: `--job gochara-verification-job` on its own (no `--execution`, `--logs` or `--metrics`) also prints named contract `checks` computed from the same ONE describe call (J-4b-a55j, SR-A55J-A55M-RESCOPE: no new executor kind; see the section below). Additive: with an execution, logs or metrics, and for the pipeline job, the record is exactly 1.4's."
+  - "1.4: optional `job` argument (W3W4 pack verify E2): `gochara-verification-job` measures the VERIFICATION Cloud Run job instead of the pipeline job (same record schema; the definition by immutable digest, `GOCHARA_RUNNER_COMMIT` / `GOCHARA_RUNNER_IMAGE_DIGEST` shown in their public shape, `logs true` reads the job's one final report). No `job` = the pipeline job, byte for byte as before."
   - "1.3: optional `metrics` argument (SR-BOLD-09, BOLD-09-METRICS): two more fixed read-only `gcloud monitoring time-series list` calls (Cloud Run job container CPU and memory utilisation) for ONE execution, summarised as mean / p95 / highest-bucket bound, with the CPU read against the allocated vCPUs as a `shape` (SINGLE_THREAD_BOUND when p95 sits at ~1 vCPU of several). Additive: the `metrics` key exists only when asked, so a run without it prints exactly what 1.2 printed. NOT yet in the executor table's `allowed_args` (see Metrics, below)."
   - "1.2: `logs` reads EVERY entry of the execution (J3C-v2 blocking M-J3-6/7: a 26-class build overflowed the single newest-1000 page, so STRETCH_SINK counts read null). Same fixed filter, paged newest-first by an added `timestamp<=` cursor; hard caps (60 pages, 420 s); `page_full` is replaced by `truncated` + `truncation_reason` + `pages_read` + `max_pages`. Still additive to ky.cloudrun_readback/1 (key removed from the `logs` object: nothing in the repo read `page_full`)."
   - "1.1: optional `logs` argument (SR-J3-READ-KINDS): one fixed `gcloud logging read` of the execution's job log, parsed for STRETCH_SINK/1 lines and asset.substep progress. Additive; the schema stays ky.cloudrun_readback/1 (the new `logs` key is null unless asked)."
@@ -40,11 +43,20 @@ Minimal request:
 * `job.image.reference` / `tag` / `digest` — what Cloud Run holds, and the registry digest that tag resolves to **at `measured_at`**.
 * `provenance.image_commit` — the 40-hex commit in the tag. **How this ties the image to a commit:** `deploy.yml` job *Build & Deploy Pipeline Job Image* checks out `DEPLOY_SHA`, verifies `git rev-parse HEAD == DEPLOY_SHA`, builds `Dockerfile.pipeline`, pushes `brahma-pipeline:${DEPLOY_SHA}` (and `:latest`) and points the job at `…:${DEPLOY_SHA}`. So the tag is the commit **by CI convention**. The image itself carries no revision label (`provenance.image_attests_commit` is `false`), and a tag is mutable: an out-of-band push could move it. The digest pins what was measured; it does not prove who pushed it. A reference that is `:latest`, digest-only or another repository is **refused** (no commit can be tied to it).
 * `provenance.job_label_commit_sha` — `null` today (the deploy step sets no job label; services have a `commit-sha` revision label). If it is ever set and disagrees with the tag, the record is refused.
-* `job.service_account`, `timeout_seconds`, `max_retries`, `memory`, `cpu`, `labels`, `environment`. Compare to `deploy.yml` (`--service-account`, `--task-timeout=86400`, `--memory=16Gi`, `--cpu=4`, `--update-env-vars`, `--update-secrets`). Secrets show **name and version only**. Plain values show only for `GCP_PROJECT`, `PUBSUB_TOPIC`, `KA_KSHETRA_HASH_SPILL_DIR`, `SE_EPHE_PATH`, `SWE_EPHE_PATH`, `PYTHONPATH`; every other value is `value_withheld`. A new key needs a reviewed edit of the allowlist.
+* `job.service_account`, `timeout_seconds`, `max_retries`, `memory`, `cpu`, `labels`, `environment`. Compare to `deploy.yml` (`--service-account`, `--task-timeout=86400`, `--memory=8Gi`, `--cpu=2` (SR-RIGHT-SIZE amend-1; was 16Gi/4), `--update-env-vars`, `--update-secrets`). Secrets show **name and version only**. Plain values show only for `GCP_PROJECT`, `PUBSUB_TOPIC`, `KA_KSHETRA_HASH_SPILL_DIR`, `SE_EPHE_PATH`, `SWE_EPHE_PATH`, `PYTHONPATH`; every other value is `value_withheld`. A new key needs a reviewed edit of the allowlist.
 * `execution` (only when asked): `outcome` is `SUCCEEDED` only if the `Completed` condition is `True`, `completionTime` is present, `succeeded == taskCount`, and nothing failed, was cancelled or is running; `FAILED` on any failed/cancelled count or `Completed=False`; otherwise `RUNNING`. Also `start_time`, `completion_time`, the four counts, the image reference and args the execution carried (the `--run-id` it was launched with), `image_reference_equals_job`, and `log_uri` (the link only; the log itself is read only with `logs`, below).
 * `corpus.status: UNMEASURED_IN_DEPLOYED_IMAGE` — see below.
 
 A required field that is missing or malformed refuses the **whole** record. A refused record is never evidence of anything but the refusal.
+
+## Second job (`job: "gochara-verification-job"`; W3W4 pack verify E2)
+
+The only other job this reader will name. Same project/region, same record schema, same refusal rules; an unlisted `job` exits 2 before any cloud call, and an `execution` must be `gochara-verification-job-<suffix>` and carry that job's label.
+
+* **Definition** (no `execution`): the job is deployed by `gochara-verification-job-deploy.yml` from the pipeline repository **by immutable digest** (`<repository>@sha256:<64-hex>`; no commit tag, no registry call). `job.image` is `{reference, tag: null, digest}`; a tag or another repository is refused. `job.timeout_seconds`, `job.max_retries` (absent reads **null**, never 0: Cloud Run's default is 3), `job.service_account`, `cpu`, `memory` and `environment` are read as for the pipeline job; the credential `GOCHARA_VERIFIER_DB_URL` shows its secret NAME only.
+* **Runner identity**: `GOCHARA_RUNNER_COMMIT` (40 lowercase hex) and `GOCHARA_RUNNER_IMAGE_DIGEST` (`sha256:<64-hex>`) are shown ONLY in those shapes (any other value is withheld); `provenance.image_commit` is the runner commit when shown, else null.
+* **Logs** (`logs: "true"` with `execution`): the same paged reader with a fixed filter for the job's log lines carrying `"classes"`. `logs.report` is the parsed final report **only** when exactly one well-formed report object (a `classes` object and a `generation`) was read and the read was complete; zero, several, an unreadable candidate line or a truncated read leave it null beside `reports_found` / `unreadable_lines` / `truncated`.
+* Request example: `{"kind": "cloudrun_job_readback", "args": {"job": "gochara-verification-job", "execution": "gochara-verification-job-abc12", "logs": "true"}}`. Read-only, so there is no dry-run twin.
 
 ## Logs (`logs: "true"`, only with `execution`)
 
@@ -79,3 +91,21 @@ The image digest at the moment an execution *started* (the execution record carr
 ## Shape caveat
 
 (I) INTERPRETATION — no live gcloud response was captured for this build. The parser reads the Cloud Run v1 shapes the repo already reads (`spec.template.spec.template.spec.containers[0].image`, `deploy.yml`; `status.conditions` / `succeededCount` / `taskCount` for an execution, `gochara_seal_execution_check.py`; `image_summary.digest`, `gochara-verification-job-deploy.yml`). A different shape **refuses**, never guesses. Fixtures under `tests/fixtures/cloudrun_readback/` are shaped from those paths, not captured. If the first real run refuses on shape, the receipt's `reason` names the field; fix the parser, do not hand-edit the receipt.
+
+## `--job gochara-verification-job` (J-4b-a55j)
+
+With `--job gochara-verification-job` and none of `--execution`, `--logs`, `--metrics`: one fixed `gcloud run jobs describe gochara-verification-job` and nothing else (the one response feeds both the job record and the checks). The output is the verification-job record described above (`ky.cloudrun_readback/1`, `status MEASURED`, the job's image reference and digest, service account, environment by name with the one secret shown as name and version) plus `checks`, each `{name, observed, ok}`; `all_checks_ok` is false if any check is false, null if none is false but one is unknown, otherwise true.
+
+| Check | True when (the deploy workflow `.github/workflows/gochara-verification-job-deploy.yml` sets it) |
+|---|---|
+| `image_by_digest_of_pipeline_repo` | the image is `<pipeline repository>@sha256:<64-hex>`; a tag reference REFUSES the whole record |
+| `service_account_is_the_verifier_runtime` | `gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com` |
+| `command_is_the_verifier_entry_point` | `python -m pipeline.orchestrator.verification_job` |
+| `environment_is_exactly_the_contract` | three variables only: `GOCHARA_VERIFIER_DB_URL` from secret `gochara-verifier-db-url:latest`, `GOCHARA_RUNNER_COMMIT`, `GOCHARA_RUNNER_IMAGE_DIGEST` |
+| `runner_digest_equals_image_digest` | the digest variable equals the digest in the image reference |
+| `runner_commit_is_a_full_commit` | the commit variable is 40-hex |
+| `task_count_is_one`, `resources_4Gi_1cpu_28800s` | as deployed (`--memory 4Gi --cpu 1 --task-timeout 28800`; SR-RIGHT-SIZE amend-1, was 8Gi/2cpu; the ruled 28,800 s, #3747 via #3789, PRECENTURY_PLAN §9 D-2) |
+| `cloudsql_instance_is_the_amjis_instance` | the `run.googleapis.com/cloudsql-instances` annotation is present at one or more of the three levels the deploy workflow's own readback reads (`platform/scripts/gochara_verification_job_readback.py` `_annotations`: `spec.template.metadata` — where `--set-cloudsql-instances` puts it —, `spec.template.spec.template.metadata`, `metadata`) and EVERY present level names `madhav-astrology:asia-south1:amjis-postgres`. `observed` is the value when the present levels agree, `{level: value}` when they differ, null when no level carries it (null and false: never an invented value). C6 of the J-4b-a55j review: the first run (receipt `J-4b-a55j.jobconfig-20261023`) read only the task-template level and so read null on a job that carries it at `spec.template.metadata`. |
+| `max_retries_is_zero` | `maxRetries` is 0; Cloud Run omits a zero, so an absent field reads null (not true) and the v2 REST read of the deploy workflow settles it |
+
+No variable value outside the contract is printed. What this does NOT prove: that the job is not executed by another principal or schedule, and anything about the executor table's `verification_job` entry (main enabled it under J-4b; this reader runs standalone and does not read the table; it starts, schedules and executes nothing). (I) INTERPRETATION: the shape is read from the deploy workflow's own flags, not from a captured live response; the first real run is the proof of the shape and a different shape REFUSES.

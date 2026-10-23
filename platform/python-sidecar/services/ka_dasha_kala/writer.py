@@ -19,6 +19,8 @@ import json
 import logging
 from datetime import date, datetime, timezone
 
+from services.gochara_grammar.read_tier_policy import SINGLE
+
 logger = logging.getLogger(__name__)
 
 # Canonical chart for self-test
@@ -44,8 +46,12 @@ def _run_selftest(conn) -> tuple[bool, str]:
 
     svc = KaDashaKalaService(db_conn=conn)
 
-    # Assertion 1: 7 systems present
-    sys_counts = svc.confirm_systems_present(_CANONICAL_CHART_ID, _CANONICAL_AYANAMSHA)
+    # Assertion 1: 7 systems present. SR-DASHA-SINGLE-TIER: this service carries `single_tier_input` on every
+    # window it derives, so it is the one consumer that reads the five systems stored at `single`.
+    tier_counts = svc.confirm_systems_present_by_tier(
+        _CANONICAL_CHART_ID, _CANONICAL_AYANAMSHA, admit_single_tier=True)
+    sys_counts = {system: sum(by_tier.values()) for system, by_tier in tier_counts.items()}
+    single_tier_systems = sorted(system for system, by_tier in tier_counts.items() if SINGLE in by_tier)
     missing = _EXPECTED_SYSTEMS - set(sys_counts.keys())
     if missing:
         return False, json.dumps({"error": f"Missing systems in chart_dashas: {sorted(missing)}"})
@@ -61,6 +67,7 @@ def _run_selftest(conn) -> tuple[bool, str]:
         date_end=date(2030, 12, 31),
         max_level=2,   # AD level — fast enough for self-test
         prana_grain=False,
+        admit_single_tier=True,
     )
 
     if not result.windows:
@@ -74,7 +81,15 @@ def _run_selftest(conn) -> tuple[bool, str]:
     if invalid:
         return False, json.dumps({"error": f"{len(invalid)} intervals have start_date >= end_date"})
 
+    # Assertion 4 (§N.8): a window whose own row is stored at `single` must carry the flag.
+    unflagged = [w for w in result.windows if w.verification_pass_status == SINGLE and not w.single_tier_input]
+    if unflagged:
+        return False, json.dumps({"error": f"{len(unflagged)} single-tier windows lack single_tier_input"})
+
     detail = json.dumps({
+        "single_tier_systems": single_tier_systems,
+        "windows_single_tier_input": result.single_tier_windows,
+        "judgment_flags": result.judgment_flags,
         "systems_found": sorted(sys_counts.keys()),
         "systems_expected": sorted(_EXPECTED_SYSTEMS),
         "windows_returned": result.total_windows,

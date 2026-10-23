@@ -41,7 +41,7 @@ VECTOR_SCHEMA = "ka_gochara_input_vector/3"
 #: every numerical result field NULL for every path/channel (this milestone); `window_qualification/1` = the policy that
 #: applies when numbers are enabled.
 from .result_policy import (DEFAULT_RESULT_POLICY, POLICY_ALL_NULL, POLICY_QUALIFICATION,  # noqa: E402
-                            RESULT_POLICIES)
+                            RESULT_POLICIES, qualification_table_component)
 REGISTRY_DIGEST_SCHEMA = "ka_gochara_registry_digest/1"
 STORED_SCOPE = "stored_non_moon"
 EXCLUDED_AUDIT_FIELDS = ("created_at", "sealed_at")
@@ -65,8 +65,8 @@ IMPLEMENTATION_MODULES = {
         "valence", "vedha", "vedha_derive")),
     # R10-4: the VERIFICATION JOB (the library and the operator entry point) is part of the governed implementation identity —
     # the pinned job is part of the trusted system (AM-24 item 4), so a different job is a different manifest vector
-    "window": tuple(_K + m for m in ("result_policy", "candidate_boundary", "seal_brief", "seal_flow", "verification_job", "window_gate", "window_store", "window_sweep",
-                                     "window_verifier")) + ("pipeline.orchestrator.verification_job", "pipeline.orchestrator.seal_job"),
+    "window": tuple(_K + m for m in ("result_policy", "candidate_boundary", "numerical_window_gate", "seal_brief", "seal_flow", "verification_job", "window_gate", "window_store",
+                                     "window_sweep", "window_verifier")) + ("pipeline.orchestrator.verification_job", "pipeline.orchestrator.seal_job"),
 }
 
 # The L0 authorities a path READS, and which loader reads them (R8-1). `bg_transit_rules` is consumed ONLY
@@ -242,7 +242,8 @@ def assemble_vector(inp: dict) -> dict:
       | ({"in_build_verify": inp["in_build_verify"]} if inp.get("in_build_verify") is not None else {}) \
       | ({"test_slice": inp["test_slice"]} if inp.get("test_slice") is not None else {}) \
       | ({"horizon_basis": inp["horizon_basis"]} if inp.get("horizon_basis") is not None else {}) \
-      | ({"near_miss_layer_version": _near_miss_layer_component(inp["near_miss_layer_version"])} if inp.get("near_miss_layer_version") is not None else {})
+      | ({"near_miss_layer_version": _near_miss_layer_component(inp["near_miss_layer_version"])} if inp.get("near_miss_layer_version") is not None else {}) \
+      | ({"qualification_table": inp["qualification_table"]} if inp.get("qualification_table") is not None else {})
 
 
 # ── node series / ephemeris ──────────────────────────────────────────────────
@@ -518,6 +519,8 @@ def build_input_vector(conn, *, sky_convention_id: str, ephe_path: str | None,
                 "to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL AND "
                 "to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL").fetchone()[0] else None),
         "in_build_verify": in_build_verify,
+        # OD-1: under `window_qualification/1` the frozen table is bound beside the policy name (absent under all-NULL, so those vectors stay byte-identical)
+        "qualification_table": qualification_table_component(result_policy),
     })
 
 

@@ -73,6 +73,25 @@ LEVEL_TIER_POLICY: Final[dict[tuple[str, int], frozenset[str]]] = {
 }
 
 
+# SR-DASHA-SINGLE-TIER (surrogate ruling 2026-10-22, option (a) scoped). The L1 rebuild stores five systems at
+# `single` at every level (nothing double-checked them). The governed reader admits `single` for THESE FIVE
+# systems only, and only into a consumer that asks for it by name (`admit_single_tier`) AND carries
+# `single_tier_input` onto every row it derives (CLAUDE.md §N.6: counted and flagged separately, never
+# presented as verified). It is deliberately NOT a LEVEL_TIER_POLICY entry: that table feeds the vote /
+# permission readers, which cannot carry the flag and so keep refusing `single`. vimshottari (the 5.0 P1
+# operand) and every unlisted system (vimshottari_kp, narayana level 2, mudda levels 2-4) stay STRICT.
+# Post-campaign item F-L1-DASHA-TWO-PASS: two-pass verify these five, then delete this set and the flag.
+SINGLE_TIER_ADMITTED_SYSTEMS: Final[frozenset[str]] = frozenset({
+    "ashtottari", "chara_karaka", "kalachakra", "naisargika", "yogini",
+})
+SINGLE_TIER_INPUT_FLAG: Final[str] = "single_tier_input"
+
+
+def single_tier_admitted(system_id: Any, status: Any) -> bool:
+    """True iff (system_id, status) is a `single` row of one of the five ruled systems."""
+    return status == SINGLE and system_id in SINGLE_TIER_ADMITTED_SYSTEMS
+
+
 def accepted_tiers_for(system_id: str, level_n: int) -> frozenset[str]:
     """The tiers a read of (system_id, level_n) accepts: the table entry, else STRICT."""
     return LEVEL_TIER_POLICY.get((system_id, int(level_n)), STRICT_TIERS)
@@ -100,4 +119,5 @@ def tier_evidence(status: Any) -> dict:
 
 
 __all__ = ["STRICT_TIERS", "HONEST_COMPUTED_TIERS", "LEVEL_TIER_POLICY",
+           "SINGLE_TIER_ADMITTED_SYSTEMS", "SINGLE_TIER_INPUT_FLAG", "single_tier_admitted",
            "accepted_tiers_for", "tier_accepted", "row_tier_accepted", "tier_evidence"]

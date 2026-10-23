@@ -1,0 +1,116 @@
+{
+  "schema": "ky.equivalence_requalification/1",
+  "source": "SCORING PLAN A10.1 §3.5 (A10.1 B1): the minimum re-qualification before dispatch when a category digest differs. Data, not code: equivalence_record.decide() selects rows by the differing parts and reads action, text and flags from here.",
+  "action_rank": {
+    "none": 0,
+    "correct_config": 1,
+    "complete_record_and_recheck": 2,
+    "repair_snapshot_and_recheck": 3,
+    "rerun_amd64_slice_on_dispatch_image": 4,
+    "rerun_tr1_four_class_slice_amd64": 5,
+    "full_tr": 6
+  },
+  "e1_solver_checker_evaluator_modules": [
+    "services.gochara_kernel.evaluator",
+    "services.gochara_kernel.window_solver",
+    "services.gochara_kernel.window_solver_check"
+  ],
+  "rows": [
+    {
+      "id": "E1.outside",
+      "category": "E1",
+      "meaning": "a result-bearing module changed between trial and main (merge resolution, CI repair), and only modules outside the solver, the checker and the evaluator",
+      "action": "rerun_tr1_four_class_slice_amd64",
+      "text": "Re-run the 4-class slice and the amd64 run (TR1) before dispatch.",
+      "flags": ["blocks_dispatch"]
+    },
+    {
+      "id": "E1.inside",
+      "category": "E1",
+      "meaning": "a solver, checker or evaluator module changed, or the module lists, the import closure, the required modules or the qualification CHECK function differ",
+      "action": "full_tr",
+      "text": "Full TR before dispatch.",
+      "flags": ["blocks_dispatch"]
+    },
+    {
+      "id": "E2",
+      "category": "E2",
+      "meaning": "selection, registry, ruling, convention or orb policy differ",
+      "action": "full_tr",
+      "text": "Full TR before dispatch (values changed).",
+      "flags": ["blocks_dispatch"]
+    },
+    {
+      "id": "E3a.l0",
+      "category": "E3a",
+      "meaning": "an L0 input differs",
+      "action": "full_tr",
+      "text": "Full TR before dispatch; stop and tell the surrogate if L0 changed after the freeze.",
+      "flags": ["blocks_dispatch", "stop_and_tell_surrogate"]
+    },
+    {
+      "id": "E3a.other",
+      "category": "E3a",
+      "meaning": "an L1 or dasha input differs",
+      "action": "full_tr",
+      "text": "Full TR before dispatch.",
+      "flags": ["blocks_dispatch"]
+    },
+    {
+      "id": "E3b.coverage",
+      "category": "E3b",
+      "meaning": "the century snapshot lacks a trial-consumed row, or has it with different content, or the coverage evidence is not available",
+      "action": "repair_snapshot_and_recheck",
+      "text": "Block dispatch, repair the snapshot, re-run EQ_CHECK.",
+      "flags": ["blocks_dispatch"]
+    },
+    {
+      "id": "E4.probe",
+      "category": "E4",
+      "meaning": "the deterministic series probe differs",
+      "action": "full_tr",
+      "text": "Full TR before dispatch (a different numeric series).",
+      "flags": ["blocks_dispatch"]
+    },
+    {
+      "id": "E4.other",
+      "category": "E4",
+      "meaning": "a different ephemeris file, library, architecture, Python or dependency lock with an identical probe",
+      "action": "rerun_amd64_slice_on_dispatch_image",
+      "text": "Re-run the amd64 slice on the dispatch image.",
+      "flags": ["blocks_dispatch"]
+    },
+    {
+      "id": "E5.budgets_or_tolerances",
+      "category": "E5",
+      "meaning": "budgets or tolerances differ",
+      "action": "full_tr",
+      "text": "Correct the config; full TR because budgets or tolerances changed.",
+      "flags": ["blocks_dispatch"]
+    },
+    {
+      "id": "E5.other",
+      "category": "E5",
+      "meaning": "horizon, basis, policy, deferral, class universe or verification plan differ",
+      "action": "correct_config",
+      "text": "Correct the config, then re-run EQ_CHECK.",
+      "flags": ["blocks_dispatch"]
+    },
+    {
+      "id": "E6.only",
+      "category": "E6",
+      "meaning": "labels only (commit, tree, image, run ids, timestamps)",
+      "action": "none",
+      "text": "None — the decision stays EQUAL; the century is dispatched on the trial evidence.",
+      "flags": []
+    },
+    {
+      "id": "UNREADABLE",
+      "category": "any",
+      "meaning": "(I) a category is null on either side (a source could not be read, N.7.6): equality is not established",
+      "action": "complete_record_and_recheck",
+      "text": "Supply the missing pinned input or module constant named in the record, rebuild the record, re-run EQ_CHECK.",
+      "flags": ["blocks_dispatch"]
+    }
+  ]
+}

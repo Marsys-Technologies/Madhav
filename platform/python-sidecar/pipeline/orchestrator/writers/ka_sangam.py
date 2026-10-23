@@ -43,6 +43,9 @@ from services.ka_dasha_kala.service import KaDashaKalaService
 from services.ka_gochara.service import KaGocharaService
 from services.ka_muhurta_seva.service import KaMuhurtaSevaService
 from services.kala_trigger.trigger import compute_trigger_currents, compose_with_ka_sangam
+from services.kala_core.writer_grain import (
+    GRAIN_STEP, attest_inputs, bound_candidate, convergence_generation, grain_steps, predicate_generation,
+    refuse_unbound_rewrite)
 from panchang_engine.swiss_backend import records_swiss_backend
 
 # ── D-3 T-6: TRIGGER wiring at the ADMITTED weights ───────────────────────────
@@ -150,7 +153,7 @@ _LIFETIME_MAX_PREDICATES = 60   # raised from 24: broader lifetime evidence
 # Bump when substep SEMANTICS change (what a given substep_key computes/writes),
 # so any in-flight resume ledger from an older writer is treated as a different
 # build and replanned-all rather than resumed against stale semantics.
-_KA_SANGAM_RESUME_VERSION = 2
+_KA_SANGAM_RESUME_VERSION = 3   # v3: ledger key adds predicate generation + run id (K9-WRITE-SCOPE F4)
 _LIFETIME_MAX_ROWS = 40_000     # raised from 13k to match expanded predicate budget
 
 # D-3 FIX-PSEL (MEMO_D-3_1.md): per-signature-class quota reserved out of each
@@ -248,6 +251,22 @@ class _LegacyKaSangamWriter(WriterBase):
         conn      = ctx.db_conn
         chart_id  = ctx.config['chart_id']
         self._chart_id = chart_id
+        # K9 (SR-K9-PUBLISHABLE): a build bound to a layer candidate reads the
+        # predicates of THAT candidate generation, never the published head.
+        self._candidate = bound_candidate(conn, getattr(ctx, 'build_id', None), chart_id)
+        if self._candidate is None:
+            # SR-K9-BIND B1b: a build bound to no candidate never rewrites a published head in place (read-only check, before any ledger
+            # or delete); the same check guards every kala_convergence DELETE/INSERT through `convergence_generation` in run_substep.
+            refuse_unbound_rewrite(conn, chart_id, 'ka_sangam')
+
+        # K9-WRITE-SCOPE F4: the resume ledger is keyed by the generation this
+        # build reads (resolved from the DATABASE, never from ctx.config — the
+        # FROZEN config carries no candidate) and by the run that owns it.
+        # An ordinary rebuild resolves head-or-legacy inside its own predicate SQL
+        # (planning adds no extra read there); the run id keys it.
+        self._ledger_generation = (
+            self._candidate.generation if self._candidate is not None else 'head-or-legacy')
+        self._ledger_run_id = str(getattr(ctx, 'build_id', None) or '')
 
         # Load candidate predicates.
         #
@@ -278,42 +297,86 @@ class _LegacyKaSangamWriter(WriterBase):
         #     representation floor at BOTH the near (200) and lifetime (60)
         #     limits, decided independently per tier.
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-            cur.execute(
-                """
-                WITH scored AS (
-                    SELECT p.id, p.chart_id, p.ayanamsha_id, p.signal_id, p.signature_class,
-                           p.dasha_eligibility_rule_jsonb, p.transit_trigger_jsonb,
-                           p.strength_affliction_hook_jsonb, p.derivation_ledger_jsonb,
-                           s.dignity_score AS raw_dignity_score,
-                           md5(
-                               coalesce(p.signal_id::text, '') || '|' ||
-                               coalesce(p.signature_class, '') || '|' ||
-                               coalesce(p.dasha_eligibility_rule_jsonb::text, '')
-                           ) AS content_hash
-                    FROM kala_activation_predicates p
-                    LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
-                    WHERE p.chart_id = %s
-                      AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
-                      AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
-                ),
-                ranked AS (
-                    SELECT *,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY signature_class
-                               ORDER BY raw_dignity_score DESC NULLS LAST, content_hash ASC
-                           ) AS class_rank
-                    FROM scored
+            if self._candidate is None:
+                cur.execute(
+                    """
+                    WITH scored AS (
+                        SELECT p.id, p.chart_id, p.ayanamsha_id, p.signal_id, p.signature_class,
+                               p.dasha_eligibility_rule_jsonb, p.transit_trigger_jsonb,
+                               p.strength_affliction_hook_jsonb, p.derivation_ledger_jsonb,
+                               s.dignity_score AS raw_dignity_score,
+                               md5(
+                                   coalesce(p.signal_id::text, '') || '|' ||
+                                   coalesce(p.signature_class, '') || '|' ||
+                                   coalesce(p.dasha_eligibility_rule_jsonb::text, '')
+                               ) AS content_hash
+                        FROM kala_activation_predicates p
+                        LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
+                        WHERE p.chart_id = %s
+                          AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
+                          AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
+                    ),
+                    ranked AS (
+                        SELECT *,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY signature_class
+                                   ORDER BY raw_dignity_score DESC NULLS LAST, content_hash ASC
+                               ) AS class_rank
+                        FROM scored
+                    )
+                    SELECT id, chart_id, ayanamsha_id, signal_id, signature_class,
+                           dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
+                           strength_affliction_hook_jsonb, derivation_ledger_jsonb,
+                           content_hash
+                    FROM ranked
+                    WHERE class_rank <= %s
+                    """,
+                    (chart_id, _MAX_PREDICATES),
                 )
-                SELECT id, chart_id, ayanamsha_id, signal_id, signature_class,
-                       dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
-                       strength_affliction_hook_jsonb, derivation_ledger_jsonb,
-                       content_hash
-                FROM ranked
-                WHERE class_rank <= %s
-                """,
-                (chart_id, _MAX_PREDICATES),
-            )
+            else:
+                # K9: a candidate-bound build reads its OWN candidate generation.
+                # (Read only on this path: the ordinary rebuild above resolves
+                # head-or-legacy inside its own SQL, so it needs no extra read.)
+                predicate_gen = predicate_generation(conn, chart_id, self._candidate)
+                cur.execute(
+                    """
+                    WITH scored AS (
+                        SELECT p.id, p.chart_id, p.ayanamsha_id, p.signal_id, p.signature_class,
+                               p.dasha_eligibility_rule_jsonb, p.transit_trigger_jsonb,
+                               p.strength_affliction_hook_jsonb, p.derivation_ledger_jsonb,
+                               s.dignity_score AS raw_dignity_score,
+                               md5(
+                                   coalesce(p.signal_id::text, '') || '|' ||
+                                   coalesce(p.signature_class, '') || '|' ||
+                                   coalesce(p.dasha_eligibility_rule_jsonb::text, '')
+                               ) AS content_hash
+                        FROM kala_activation_predicates p
+                        LEFT JOIN bodha_msr_signals s ON s.signal_id = p.signal_id
+                        WHERE p.chart_id = %s
+                          AND p.generation = %s
+                          AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
+                    ),
+                    ranked AS (
+                        SELECT *,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY signature_class
+                                   ORDER BY raw_dignity_score DESC NULLS LAST, content_hash ASC
+                               ) AS class_rank
+                        FROM scored
+                    )
+                    SELECT id, chart_id, ayanamsha_id, signal_id, signature_class,
+                           dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
+                           strength_affliction_hook_jsonb, derivation_ledger_jsonb,
+                           content_hash
+                    FROM ranked
+                    WHERE class_rank <= %s
+                    """,
+                    (chart_id, predicate_gen, _MAX_PREDICATES),
+                )
             candidates = cur.fetchall()
+        # The grain's input ledger: the predicate content this build consumed
+        # (row ids are execution history, not content).
+        self._grain_sources = [{k: v for k, v in row.items() if k != 'id'} for row in candidates]
 
         logger.info(
             "ka_sangam: loaded %d candidate predicates (pre-quota-select) for chart %s",
@@ -448,16 +511,32 @@ class _LegacyKaSangamWriter(WriterBase):
         )
         return remaining
 
+    # ── generation scope (migration 1405) ────────────────────────────────────
+
+    def _write_generation(self) -> str:
+        """The kala_convergence generation this build writes and deletes (resolved in run_substep).
+        No default: a delete or insert reached without it must fail, never fall back to the served copy."""
+        generation = getattr(self, '_conv_generation', None)
+        if not generation:
+            raise RuntimeError('ka_sangam: kala_convergence generation was not resolved for this substep')
+        return generation
+
     # ── dispatch ─────────────────────────────────────────────────────────────
 
     def run_substep(self, ctx, step: SubStep) -> WriterResult:
         conn     = ctx.db_conn
         chart_id = self._chart_id
         dry_run  = getattr(ctx, 'dry_run', False)
+        # Resolved from the DATABASE each substep (the FROZEN ctx.config carries no candidate): the bound candidate
+        # (read + lock), or 'legacy' for an unbound build that REFUSES once a head exists (SR-K9-BIND B1b). Every kala_convergence delete below is scoped to this generation, so
+        # the FK cascade out of kala_convergence (migration 1405 header) can only reach the children of this
+        # build's own rows (K9-WRITE-SCOPE F1).
+        self._conv_generation = convergence_generation(conn, chart_id, getattr(self, '_candidate', None))
 
         if self._reset_pending and not dry_run:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s", (chart_id,))
+                cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s",
+                            (chart_id, self._write_generation()))
                 cur.execute(
                     "DELETE FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'",
                     (chart_id,),
@@ -474,18 +553,23 @@ class _LegacyKaSangamWriter(WriterBase):
     # ── resumption helpers (migration 436) ────────────────────────────────────
 
     def _compute_build_fingerprint(self, chart_id: str) -> str:
-        """Stable identity of THIS build's inputs — deliberately NOT the per-attempt
-        run_id/build_id (which changes on every retry, so keying resume on it would
-        treat each retry as a new build and never actually resume). Two attempts
-        with the same upstream predicate set, writer version, birth year, and
-        near-tier reference date belong to the SAME build and may resume across a
-        dropped connection; any change to those inputs replans-all (§N.3). `today`
-        is included because the near tier is date-relative — a build that legitimately
-        crosses midnight should replan its near tier rather than resume it stale."""
+        """Stable identity of THIS build run's inputs. Two attempts belong to the
+        SAME build — and may resume across a dropped connection — only when they
+        share the run (`build_id`, which the orchestrator keeps across retries of
+        one run), the predicate generation the build reads (the bound K9 candidate, resolved
+        from the DB in plan_substeps; an ordinary rebuild reads head-or-legacy),
+        the writer version, birth year, near-tier reference date and predicate set.
+        Any change replans-all (§N.3). The run id and generation are what stop a
+        SECOND rebuild on the same day, over the same signal set, from matching an
+        earlier run's ledger and skipping every substep (K9-WRITE-SCOPE F4); `today`
+        is included because the near tier is date-relative — a build that
+        legitimately crosses midnight should replan its near tier, not resume it."""
         sig_ids = sorted(str(p.get('signal_id')) for p in self._pred_dicts if p.get('signal_id'))
         parts = [
             f"v={_KA_SANGAM_RESUME_VERSION}",
             f"chart={chart_id}",
+            f"generation={self._ledger_generation}",
+            f"run={self._ledger_run_id}",
             f"birth_year={self._birth_year}",
             f"today={date.today().isoformat()}",
             f"npreds={len(sig_ids)}",
@@ -535,8 +619,8 @@ class _LegacyKaSangamWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute("SET LOCAL statement_timeout = 0")
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'near'",
-                        (chart_id,))
+            cur.execute("DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s AND horizon_tier = 'near'",
+                        (chart_id, self._write_generation()))
             # Self-scoped delete: only bulk-clear lifetime rows when there are NO
             # lifetime substeps to clear their own (each _substep_lifetime clears
             # its own signal's rows). Making every substep touch only its own rows
@@ -545,8 +629,8 @@ class _LegacyKaSangamWriter(WriterBase):
             # resumed run byte-identical to an uninterrupted one.
             if not self._lt_preds:
                 cur.execute(
-                    "DELETE FROM kala_convergence WHERE chart_id = %s AND horizon_tier = 'lifetime'",
-                    (chart_id,),
+                    "DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s AND horizon_tier = 'lifetime'",
+                    (chart_id, self._write_generation()),
                 )
 
         today        = date.today()
@@ -586,8 +670,8 @@ class _LegacyKaSangamWriter(WriterBase):
         with conn.cursor() as cur:
             if signal_id:
                 cur.execute(
-                    "DELETE FROM kala_convergence WHERE chart_id = %s AND signal_id = %s::uuid AND horizon_tier = 'lifetime'",
-                    (chart_id, str(signal_id)),
+                    "DELETE FROM kala_convergence WHERE chart_id = %s AND generation = %s AND signal_id = %s::uuid AND horizon_tier = 'lifetime'",
+                    (chart_id, self._write_generation(), str(signal_id)),
                 )
 
         if self._birth_year is None:
@@ -900,6 +984,7 @@ class _LegacyKaSangamWriter(WriterBase):
     def _insert_windows(self, cur, chart_id, deduped: list[dict], horizon_tier: str) -> int:
         """Insert a tier's deduped windows into kala_convergence; return count."""
         store_tier = has_stored_verification(cur, 'kala_convergence')
+        generation = self._write_generation()
         rows_inserted = 0
         # JL-014: within-chart relative tier, computed once over this batch's
         # convergence_score distribution (additive to I-21's absolute confidence_label).
@@ -952,7 +1037,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         confidence_score, confidence_label,
                         independent_current_count, is_off_dasha_discovery,
                         horizon_tier, domain,
-                        confidence_label_relative, tier_basis{", verification_pass_status" if store_tier else ""}
+                        confidence_label_relative, tier_basis, generation{", verification_pass_status" if store_tier else ""}
                     ) VALUES (
                         %s, %s, %s, %s,
                         %s::jsonb, %s, NOW(),
@@ -960,7 +1045,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         %s, %s,
                         %s, %s,
                         %s, %s,
-                        %s, %s{", %s" if store_tier else ""}
+                        %s, %s, %s{", %s" if store_tier else ""}
                     )
                     """,
                     (
@@ -985,6 +1070,7 @@ class _LegacyKaSangamWriter(WriterBase):
                         # JL-014: interim within-chart percentile tier + provenance flag
                         c_label_relative,
                         'relative_uncalibrated',
+                        generation,
                         *((UNVERIFIED_DEFAULT,) if store_tier else ()),
                     ),
                 )
@@ -1191,9 +1277,29 @@ class KaSangamWriter(_LegacyKaSangamWriter):
     CLAUDE.md §N.8.4). Keep real legacy production rather than claiming either.
     """
 
+    def _attest_candidate_grain(self, ctx) -> WriterResult:
+        """Attest `ka_sangam:inputs` under the candidate generation (after every
+        class/lifetime substep). 'rows' only when kala_convergence holds rows."""
+        conn = ctx.db_conn
+        with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
+            cur.execute("SELECT count(*) FROM kala_convergence WHERE chart_id = %s AND generation = %s",
+                        (self._chart_id, self._candidate.generation))
+            produced = int(cur.fetchone()[0])
+        attest_inputs(conn, self._candidate, 'ka_sangam',
+                      sources={'kala_activation_predicates': self._grain_sources},
+                      produced_rows=produced)
+        return WriterResult('ka_sangam', 0, notes='candidate grain ka_sangam:inputs attested')
+
     def plan_substeps(self, ctx) -> list[SubStep]:
         if 'jury_fixture_inputs' not in ctx.config:
-            return super().plan_substeps(ctx)
+            # Read-only: the attestation substep is offered only while this
+            # candidate lacks the ka_sangam grain (writer_grain.grain_steps).
+            self._candidate = None  # every dispatch path defines it before the guard below
+            steps = super().plan_substeps(ctx)
+            if self._candidate is None:
+                return steps  # ordinary rebuild: nothing to attest, no grain read
+            return steps + grain_steps(ctx, self._candidate, 'ka_sangam',
+                                       {'kala_activation_predicates': self._grain_sources})
         from services.ka_sangam.jury import candidate
         inputs = candidate.class_inputs(ctx.config['jury_fixture_inputs'])
         generation = candidate.bind_candidate(ctx, lock=False)
@@ -1205,6 +1311,8 @@ class KaSangamWriter(_LegacyKaSangamWriter):
 
     def run_substep(self, ctx, step: SubStep) -> WriterResult:
         if 'jury_fixture_inputs' not in ctx.config:
+            if step.key == GRAIN_STEP:
+                return self._attest_candidate_grain(ctx)
             return super().run_substep(ctx, step)
         from services.ka_sangam.jury import candidate
         if not step.key.startswith('class:') or step.key[6:] not in self._jury_inputs:

@@ -125,7 +125,7 @@ def test_a_non_canonical_but_self_consistent_brief_is_refused():
     ({"generation": "4.1"}, "another chart or generation"),
     ({"manifest": {"manifest_id": "m", "status": "published"}}, "not a candidate"),
     ({"candidate_gate": {"violations": ["marriage/P3@1.0.0:output_grain_not_permitted"]}}, "not clean"),
-    ({"result_policy": "numeric/1"}, "requires all_null_candidate/1"),
+    ({"result_policy": "numeric/1"}, "requires all_null_candidate/1 or window_qualification/1"),
     ({"code": {"sealing_commit": "b" * 40}}, "not this workflow's reviewed revision"),
     ({"code": {}}, "not this workflow's reviewed revision"),
     ({"classes": []}, "no classes"),
@@ -137,6 +137,80 @@ def test_a_brief_for_the_wrong_thing_is_refused_even_with_a_self_consistent_dige
     raw, c = pair(p)                                                                        # the digest is computed over the altered payload: it is self-consistent
     with pytest.raises(bc.Refused, match=needle):
         check(raw, c)
+
+
+BOUND = bc.QUALIFICATION_TABLE_BINDING
+
+
+def qual_table(**over):
+    return {"bound": BOUND, "implemented": BOUND, "agrees": True, **over}
+
+
+def qual_gate(**over):
+    """A PASSED numerical-window gate verdict whose counts the attestations below agree with: 5 windows, 3 numbered, 2 blank with a reason (OD-1, SR-OD1-DESIGN)."""
+    g = {"schema": "numerical_window_gate/1", "status": "PASSED", "policy": bc.POLICY_QUALIFICATION, "table": BOUND, "grains": 2, "windows": 5, "numbered_windows": 3,
+         "numbered_without_score": 0, "blank_windows": 2, "valence_of_numbered": {"favourable": 3}, "by_path": {}, "problems": [],
+         "honest_nulls": [{"path_id": "P1", "group": "categorical_factor_unmapped", "reason": "value_mapping_undeclared", "windows": 2}]}
+    g.update(over)
+    return g
+
+
+def qual_attestations(*pairs):
+    return {"ka_gochara_eval_window_verification": [json.dumps({"runner_identity": {"commit": "c", "numerical_window_gate": {
+        "status": "PASSED", "table": BOUND, "windows": w, "numbered": n}}}) for w, n in pairs]}
+
+
+def qual_payload(**over):
+    p = payload(result_policy=bc.POLICY_QUALIFICATION, qualification_table=qual_table(), numerical_window_gate=qual_gate(),
+                attestations=qual_attestations((2, 0), (3, 3)))
+    p.update(over)
+    return p
+
+
+def test_the_numerical_policy_is_approvable_only_with_the_frozen_table_bound_and_agreed():
+    """OD-1 (SR-OD1-NUMERICAL): `window_qualification/1` passes this check when the brief states the frozen table this script holds its OWN literal of, bound by the
+    manifest and implemented by the code, in agreement; all-NULL is unchanged and carries no table. (revert: accept the policy without the table comparison — every
+    refusal below passes silently)"""
+    assert check(*pair(qual_payload()))
+    assert check(*pair())                                                                    # all-NULL: unchanged
+    for table in (None, qual_table(bound={**BOUND, "digest": "0" * 64}), qual_table(implemented={**BOUND, "digest": "0" * 64}), qual_table(agrees=False),
+                  qual_table(bound=None)):
+        p = qual_payload()
+        p.pop("qualification_table")
+        if table is not None:
+            p["qualification_table"] = table
+        with pytest.raises(bc.Refused, match="qualification table"):
+            check(*pair(p))
+    with pytest.raises(bc.Refused, match="carries a qualification table under"):
+        check(*pair(payload(qualification_table=qual_table())))                                # a table beside the all-NULL policy
+
+
+@pytest.mark.parametrize("name,over,needle", [
+    ("no verdict at all", {"numerical_window_gate": None}, "carries no numerical_window_gate/1 verdict"),
+    ("a FAILED verdict", {"numerical_window_gate": qual_gate(status="FAILED", problems=["x"])}, "not PASSED"),
+    ("a PASSED verdict that still lists a problem", {"numerical_window_gate": qual_gate(problems=["x"])}, "not PASSED"),
+    ("another table", {"numerical_window_gate": qual_gate(table={**BOUND, "digest": "0" * 64})}, "not the frozen"),
+    ("windows that are neither numbered nor blank", {"numerical_window_gate": qual_gate(windows=6)}, "numbered \\+ .* blank"),
+    ("blank windows with no reason accounted for", {"numerical_window_gate": qual_gate(honest_nulls=[])}, "have no reason|no reason|account for"),
+    ("a nameless reason", {"numerical_window_gate": qual_gate(honest_nulls=[{"path_id": "P1", "group": "g", "reason": "", "windows": 2}])}, "no reason code"),
+    ("attestations that count other numbers", {"attestations": qual_attestations((2, 0), (3, 2))}, "attestations count"),
+    ("a grain with no attestation", {"attestations": {"ka_gochara_eval_window_verification": [json.dumps({"runner_identity": {"commit": "c"}})]}}, "no PASSED attestation"),
+])
+def test_a_numerical_brief_is_refused_unless_its_gate_passed_and_every_blank_has_a_reason(name, over, needle):
+    """OD-1 (SR-OD1-DESIGN): the brief check refuses what the numerical-window gate would. (revert: skip `check_numerical_gate` — every case passes silently)"""
+    p = qual_payload()
+    for k, v in over.items():
+        if v is None:
+            p.pop(k)
+        else:
+            p[k] = v
+    with pytest.raises(bc.Refused, match=needle):
+        check(*pair(p))
+
+
+def test_an_all_null_brief_carries_no_numerical_verdict():
+    with pytest.raises(bc.Refused, match="numerical-window gate under"):
+        check(*pair(payload(numerical_window_gate=qual_gate())))
 
 
 def test_the_workflow_revision_must_be_a_40_hex_sha():
@@ -441,9 +515,9 @@ REPO = "asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline"
 
 def execution(name="exec-1", **over):
     ex = {"metadata": {"name": name},
-          "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": "7200",     # int64 fields arrive as decimal STRINGS (API/SDK shape)
+          "spec": {"taskCount": 1, "template": {"spec": {"serviceAccountName": SA, "maxRetries": 0, "timeoutSeconds": "28800",     # int64 fields arrive as decimal STRINGS (API/SDK shape)
                   "containers": [{"image": f"{REPO}@{IMG}", "command": list(xcheck_contract.ENTRYPOINT), "args": ARGS,
-                                  "resources": {"limits": {"cpu": "2", "memory": "8Gi"}},
+                                  "resources": {"limits": {"cpu": "1", "memory": "4Gi"}},
                                   "env": [{"name": "GOCHARA_RUNNER_COMMIT", "value": SHA}, {"name": "GOCHARA_RUNNER_IMAGE_DIGEST", "value": IMG},
                                           {"name": "GOCHARA_VERIFIER_DB_URL", "valueFrom": {"secretKeyRef": {"name": "gochara-verifier-db-url", "key": "latest"}}}]}]}}},
           "status": {"conditions": [{"type": "Completed", "status": "True"}], "succeededCount": 1}}
@@ -750,13 +824,13 @@ def test_the_seal_jobs_non_zero_status_fails_the_run_unchanged(world, rc, needle
 
 # R15-2 / R15-3: int64 strings, quantities, the secret selector and the secret-remapping annotation — through the executed-resource check (the deploy readback and the pre-execution check
 # share the same contract functions; #2976's tests drive the same shapes through its readback)
-@pytest.mark.parametrize("ok", ["7200", 7200])
+@pytest.mark.parametrize("ok", ["28800", 28800])
 def test_a_documented_int64_string_or_integer_timeout_is_accepted(ok):
     assert xcheck(_mut((*T, "timeoutSeconds"), ok))["execution"] == "exec-1"
 
 
-@pytest.mark.parametrize("bad", [True, "7200.0", 7200.5, float("inf"), float("nan"), " 7200", "+7200", "07200", "7200s", "", None, "0x1c20", "7e3", 3600, "3600"])
-def test_a_timeout_that_is_not_exactly_the_documented_7200_is_refused(bad):
+@pytest.mark.parametrize("bad", [True, "28800.0", 28800.5, float("inf"), float("nan"), " 28800", "+28800", "028800", "28800s", "", None, "0x7080", "28.8e3", 7200, "7200", 3600, "3600"])
+def test_a_timeout_that_is_not_exactly_the_documented_28800_is_refused(bad):
     with pytest.raises(xc.Refused, match="timeoutSeconds"):
         xcheck(_mut((*T, "timeoutSeconds"), bad))
 
@@ -766,12 +840,13 @@ def test_an_absent_timeout_is_refused_not_defaulted():
         xcheck(_del((*T, "timeoutSeconds")))
 
 
-@pytest.mark.parametrize("mem", ["8Gi", "8192Mi"])
+@pytest.mark.parametrize("mem", ["4Gi", "4096Mi"])
 def test_an_equivalent_quantity_spelling_is_accepted_by_value(mem):
-    assert xcheck(_mut((*T, "containers", 0, "resources"), {"limits": {"cpu": "2000m", "memory": mem}}))["execution"] == "exec-1"
+    assert xcheck(_mut((*T, "containers", 0, "resources"), {"limits": {"cpu": "1000m", "memory": mem}}))["execution"] == "exec-1"
 
 
-@pytest.mark.parametrize("lim", [{"cpu": "2", "memory": "4Gi"}, {"cpu": "1", "memory": "8Gi"}, {"cpu": 2, "memory": "8Gi"}, {"cpu": "2", "memory": 8589934592}, {"cpu": "2.0", "memory": "8Gi"}, {"cpu": "2", "memory": "8gi"}, {"cpu": "2", "memory": "8e9"}, {"cpu": "2"}])
+@pytest.mark.parametrize("lim", [{"cpu": "2", "memory": "4Gi"}, {"cpu": "1", "memory": "2Gi"}, {"cpu": 1, "memory": "4Gi"}, {"cpu": "1", "memory": 4294967296}, {"cpu": "1.0", "memory": "4Gi"}, {"cpu": "1", "memory": "4gi"}, {"cpu": "1", "memory": "4e9"}, {"cpu": "1"},
+                                 {"cpu": "2", "memory": "8Gi"}])
 def test_a_resource_limit_that_is_not_the_deployed_value_is_refused(lim):
     with pytest.raises(xc.Refused, match="limit"):
         xcheck(_mut((*T, "containers", 0, "resources"), {"limits": lim}))

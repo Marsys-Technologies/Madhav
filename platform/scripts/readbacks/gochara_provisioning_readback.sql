@@ -4,6 +4,11 @@ WITH
 -- No function under audit is executed; no write or password read is attempted.
 -- Each row names its expected and observed value; missing inputs are failures.
 -- Expected ACL is reviewed here separately from the migration's own closure.
+-- The third element of a table entry and the second of a function entry name the migration that grants it. Besides 1240 and 1378 the
+-- list re-derives, from the migration text, what 1305 (13 snapshot-copy functions), 1308 (SELECT on the three near-miss tables) and
+-- 1381 (SELECT on the near-miss verification table, its two functions, and the verifier's INSERT/DELETE on it) give BOTH principals:
+-- 8 table SELECT, 30 function EXECUTE, and so 88 column SELECT, 6 verifier column INSERT, 1 verifier table INSERT, 1 verifier table DELETE.
+-- Namespace USAGE for both principals is a provisioning act (gochara-provision-roles.sh, stage grant-l1-reads), checked by schema-usage below.
 spec AS (SELECT $spec$
 {
   "roles": {
@@ -41,6 +46,12 @@ spec AS (SELECT $spec$
         ["kala_gochara_windows","SELECT",["chart_id","generation"],"1378"],
         ["ka_gochara_seal_brief","SELECT",null,"1378"],
         ["ka_gochara_seal_brief","INSERT",null,"1378"],
+        ["ka_gochara_near_miss_object","SELECT",null,"1308"],
+        ["ka_gochara_near_miss","SELECT",null,"1308"],
+        ["ka_gochara_near_miss_search","SELECT",null,"1308"],
+        ["ka_gochara_near_miss_verification","SELECT",null,"1381"],
+        ["ka_gochara_near_miss_verification","INSERT",null,"1381"],
+        ["ka_gochara_near_miss_verification","DELETE",null,"1381"],
         ["chart_facts","SELECT",null,"L1 ACL owner"],
         ["chart_dashas","SELECT",null,"L1 ACL owner"]
       ],
@@ -68,7 +79,22 @@ spec AS (SELECT $spec$
         ["ka_gochara_search_moon_scope_violations(uuid,text)","1378"],
         ["ka_gochara_search_moon_resolved_domain(uuid,text,text,uuid)","1378"],
         ["ka_gochara_legacy_projection_rows(uuid,text)","1378"],
-        ["ka_gochara_brief_state_digest(uuid,text)","1378"]
+        ["ka_gochara_brief_state_digest(uuid,text)","1378"],
+        ["ka_gochara_search_copy_digest(jsonb,text)","1305"],
+        ["ka_gochara_search_normalize_numbers(jsonb)","1305"],
+        ["ka_gochara_search_facts_copy(uuid,text[])","1305"],
+        ["ka_gochara_search_facts_live_population(uuid)","1305"],
+        ["ka_gochara_search_dasha_path(uuid,uuid)","1305"],
+        ["ka_gochara_search_dasha_ordinal_path(uuid,uuid)","1305"],
+        ["ka_gochara_search_dasha_element(uuid,uuid)","1305"],
+        ["ka_gochara_search_dasha_copy(uuid,uuid[])","1305"],
+        ["ka_gochara_search_dasha_live_population(uuid,tstzrange)","1305"],
+        ["ka_gochara_search_copy_violations(jsonb,jsonb,tstzrange,boolean)","1305"],
+        ["ka_gochara_search_copy_difference(jsonb,jsonb)","1305"],
+        ["ka_gochara_search_snapshot_copy_violations(uuid,text)","1305"],
+        ["ka_gochara_search_input_digest(text,jsonb,text,text,text[])","1305"],
+        ["ka_gochara_near_miss_digest(uuid,text)","1381"],
+        ["ka_gochara_near_miss_violations(uuid,text)","1381"]
       ]
     },
     "gochara_sealer": {
@@ -104,6 +130,10 @@ spec AS (SELECT $spec$
         ["ka_gochara_search_obligation","SELECT",null,"1378"],
         ["ka_gochara_search_interval","SELECT",null,"1378"],
         ["ka_gochara_search_inventory_verification","SELECT",null,"1378"],
+        ["ka_gochara_near_miss_object","SELECT",null,"1308"],
+        ["ka_gochara_near_miss","SELECT",null,"1308"],
+        ["ka_gochara_near_miss_search","SELECT",null,"1308"],
+        ["ka_gochara_near_miss_verification","SELECT",null,"1381"],
         ["chart_facts","SELECT",null,"L1 ACL owner"],
         ["chart_dashas","SELECT",null,"L1 ACL owner"]
       ],
@@ -141,7 +171,22 @@ spec AS (SELECT $spec$
         ["ka_gochara_seal_receipt_missing(uuid,text)","1378"],
         ["ka_gochara_legacy_projection_rows(uuid,text)","1378"],
         ["ka_gochara_brief_state_digest(uuid,text)","1378"],
-        ["ka_gochara_seal_brief_problem(uuid,text,uuid,text)","1378"]
+        ["ka_gochara_seal_brief_problem(uuid,text,uuid,text)","1378"],
+        ["ka_gochara_search_copy_digest(jsonb,text)","1305"],
+        ["ka_gochara_search_normalize_numbers(jsonb)","1305"],
+        ["ka_gochara_search_facts_copy(uuid,text[])","1305"],
+        ["ka_gochara_search_facts_live_population(uuid)","1305"],
+        ["ka_gochara_search_dasha_path(uuid,uuid)","1305"],
+        ["ka_gochara_search_dasha_ordinal_path(uuid,uuid)","1305"],
+        ["ka_gochara_search_dasha_element(uuid,uuid)","1305"],
+        ["ka_gochara_search_dasha_copy(uuid,uuid[])","1305"],
+        ["ka_gochara_search_dasha_live_population(uuid,tstzrange)","1305"],
+        ["ka_gochara_search_copy_violations(jsonb,jsonb,tstzrange,boolean)","1305"],
+        ["ka_gochara_search_copy_difference(jsonb,jsonb)","1305"],
+        ["ka_gochara_search_snapshot_copy_violations(uuid,text)","1305"],
+        ["ka_gochara_search_input_digest(text,jsonb,text,text,text[])","1305"],
+        ["ka_gochara_near_miss_digest(uuid,text)","1381"],
+        ["ka_gochara_near_miss_violations(uuid,text)","1381"]
       ]
     }
   },

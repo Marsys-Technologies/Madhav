@@ -35,7 +35,7 @@ class _LegacyKaKalaDarshanaWriter(WriterBase):
                        kc.peak_date, kc.window_start, kc.window_end,
                        kc.convergence_score, kc.confidence_label,
                        kc.orb_strength, kc.rarity_years
-                FROM kala_convergence kc
+                FROM kala_convergence_served kc
                 WHERE kc.chart_id = %s
                 ORDER BY kc.convergence_score DESC NULLS LAST
                 LIMIT 750
@@ -45,12 +45,12 @@ class _LegacyKaKalaDarshanaWriter(WriterBase):
         if not convergence_rows:
             return WriterResult(asset_id='ka_kala_darshana', rows_inserted=0, notes='No convergence windows — run ka_sangam first')
 
-        # Read obstruction data grouped by convergence_id
+        from services.kala_core.served_generation import served_obstruction_predicate  # obstruction data grouped by convergence_id, SERVED partition only
         with conn.cursor() as cur:
             cur.execute("""
                 SELECT convergence_id, obstruction_type, severity, override_score, obstruction_detail
-                FROM kala_obstruction
-                WHERE chart_id = %s AND generation IS NULL
+                FROM kala_obstruction o
+                WHERE o.chart_id = %s AND """ + served_obstruction_predicate('o') + """
             """, (chart_id,))
             obstruction_rows = cur.fetchall()
 

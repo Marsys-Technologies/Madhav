@@ -261,6 +261,15 @@ export function composeView(view: ViewName, chart_id: string, snapshot: ViewSnap
   }
 }
 
+/** The legacy (generation IS NULL) rows a view serves beside the published generation. kala_obstruction's legacy
+ * partition is REPLACED by the head once the head holds obstruction rows (SR-K9-WRITE-SCOPE: the K9 build writes the
+ * full set under its generation, so serving both would double every window); kala_darshana keeps serving both. */
+function legacyRows(table: SourceTable): string {
+  return table === 'kala_obstruction'
+    ? ' OR (s.generation IS NULL AND NOT EXISTS (SELECT 1 FROM kala_obstruction h WHERE h.chart_id = s.chart_id AND h.generation = p.generation))'
+    : ' OR s.generation IS NULL'
+}
+
 /** $1 chart, $2 at, $3/$4 horizon, $5 class, $6 assertion, $7 limit, $8 offset,
  * $9 table, $10 record. All identifiers come from the fixed source inventory. */
 export function viewSql(spec: ViewSpec): string {
@@ -286,10 +295,10 @@ export function viewSql(spec: ViewSpec): string {
       WHEN ${bound} AND ${tier} IN (${quoted(VERIFICATION_PASS_STATUS_VOCAB.map(entry => entry.status))}) THEN 2 ELSE 3 END`
     return `source_${i} AS NOT MATERIALIZED (
       SELECT to_jsonb(s) || jsonb_build_object('verification_pass_status', to_jsonb(s)->>'verification_pass_status')${table === 'kala_jivana_parva' ? ` || jsonb_build_object('convergence_source_available',
-        EXISTS (SELECT 1 FROM kala_convergence WHERE chart_id = $1::uuid))` : ''} AS data, ${source.id}::text AS record_id, ${rank} AS tier_order
+        EXISTS (SELECT 1 FROM kala_convergence WHERE chart_id = $1::uuid AND COALESCE(to_jsonb(kala_convergence)->>'generation', 'legacy') = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = $1::uuid), 'legacy')))` : ''} AS data, ${source.id}::text AS record_id, ${rank} AS tier_order
       FROM ${table} s CROSS JOIN published p
       WHERE s.chart_id = $1::uuid
-        ${source.generation ? `AND (s.generation = p.generation${source.assertion ? ' OR s.generation IS NULL' : ''})` : "AND (to_jsonb(s)->>'generation' IS NULL OR to_jsonb(s)->>'generation' = p.generation)"}
+        ${source.generation ? `AND (s.generation = p.generation${source.assertion ? legacyRows(table) : ''})` : "AND (to_jsonb(s)->>'generation' IS NULL OR to_jsonb(s)->>'generation' = p.generation)"}
         AND ($2::timestamptz IS NULL OR (${source.start} <= $2::timestamptz AND ${source.end} > $2::timestamptz))
         AND ($3::timestamptz IS NULL OR ${source.end} > $3::timestamptz)
         AND ($4::timestamptz IS NULL OR ${source.start} < $4::timestamptz)

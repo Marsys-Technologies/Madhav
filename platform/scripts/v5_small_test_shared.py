@@ -741,6 +741,12 @@ def absence_evidence(req, root, *, teardown_receipt=None):
 # FULL-form (/1) proof only (full_backup_window_problem); an old scoped capture's `validity.not_after` stays readable
 # and is never a gate.
 SCOPED_BACKUP_SCOPE_SHA256 = "1daf69d6e31279592947aa25e2b4f9a5c1c8137d6663ba039c27e7331ac7335a"
+# W3W4 pack verify E3: the other reviewed scopes (backup_v5_century_scope.json, backup_v5_verification_seal_scope.json; M-W56-6: backup_v5_w5w6_union_scope.json), pinned the same way and for the same reason.
+# A dispatch names ITS scope (scoped_backup_problem(scope=...)); a proof of another scope never admits it (the digest covers the scope's name as well as its tables).
+SCOPED_BACKUP_SCOPE_SHA256S = {"small_test": SCOPED_BACKUP_SCOPE_SHA256,
+                               "century": "eab44eef1ceb06604cab21fbcc464334a9253af1f320ca322b797cf3ff32b020",
+                               "verification_seal": "d20d37b36dad2c7707379415a3981dc434caf85bf952f2bb43546fe392fca7ad",
+                               "w5w6_union": "28f093154c6044fbffed64ef718caac3456d8b829932f70dbc6c36c5a065f6da"}
 SCOPED_BACKUP_VALIDITY_S = 4 * 3600
 SCOPED_MEASUREMENT_METHOD = 'sql_sum_sha256_rowjson/1'
 
@@ -783,8 +789,8 @@ def full_backup_window_problem(proof, label, folder, root, now=None):
         raise Refused('backup is outside its validity window; a fresh backup and restore proof are required')
 
 
-def scoped_backup_problem(req, root, now=None, measure=None):
-    """A `smalltest_dispatch` MUST name its backup (`backup_label` + the restore proof's `backup_restore_sha256`), and
+def scoped_backup_problem(req, root, now=None, measure=None, scope='small_test'):
+    """A `smalltest_dispatch` (or, with `scope=`, a `century_dispatch`) MUST name its backup (`backup_label` + the restore proof's `backup_restore_sha256`), and
     that backup must still describe the database (SR-BACKUP-VALIDITY-A8): its restore proof is a verified proof of the
     pinned scope, bound to its capture, and the scoped-content digest recorded at capture equals the digest of a fresh
     measurement of the same relations. A scoped proof (schema /2) is checked that way; a full proof (schema /1) is
@@ -813,10 +819,11 @@ def scoped_backup_problem(req, root, now=None, measure=None):
             or proof.get('scoped') is not True or proof.get('restore_verified') is not True
             or proof.get('backup_taken') is not True or proof.get('target_removed') is not True):
         raise Refused('scoped backup restore proof is not a verified proof for this label')
-    if proof.get('scope_sha256') != SCOPED_BACKUP_SCOPE_SHA256:
+    expected_scope = SCOPED_BACKUP_SCOPE_SHA256S[scope]
+    if proof.get('scope_sha256') != expected_scope:
         raise Refused('scoped backup covers a scope other than the reviewed one')
     capture = read_evidence(root, folder, {'name': 'capture.json', 'sha256': proof.get('capture_sha256')})
-    scope = capture.get('scope') or {}
+    captured_scope = capture.get('scope') or {}
     window = capture.get('validity') or {}
     try:
         start = datetime.fromisoformat(window['not_before'])
@@ -826,7 +833,7 @@ def scoped_backup_problem(req, root, now=None, measure=None):
     except (KeyError, TypeError, ValueError):
         raise Refused('scoped backup capture instant missing or malformed') from None
     if (capture.get('schema') != 'ky.smalltest_backup/2' or capture.get('label') != label
-            or scope.get('sha256') != SCOPED_BACKUP_SCOPE_SHA256 or capture.get('archive_sha256') != proof.get('archive_sha256')
+            or captured_scope.get('sha256') != expected_scope or capture.get('archive_sha256') != proof.get('archive_sha256')
             or proof.get('validity') != window):
         raise Refused('scoped backup restore proof does not match its capture')
     instant = now or datetime.now(timezone.utc)
@@ -979,25 +986,91 @@ def measuring_dryrun_evidence(req, root, manifest_digest=None):
 # SR-PREBUILD-ALL: the century launch is the measuring launch minus the test slice. Same gates (accepted request, live lease, scoped backup,
 # a rollback-confirmed staging dry run before the real staging, one durable launch claim, a previous lifecycle independently absent), but
 # the staged run carries NO slice marker and its own trigger, so the candidate it builds is an ordinary, sealable one.
-CENTURY_ARGS = {'classes': 'all'}
+# F-CHANNEL (SR-W34-PREP-RULINGS 1): the century request also carries the three values the production orchestrator cannot (its writer config is chart_id and
+# birth_params only): the final-rule profile, the verify-deferral switch and the D-G9 horizon. They ride in the request `args` — so the request digest the
+# acceptance and the pack fill bind covers them — and are STAGED in plan_manifest[CENTURY_CONFIG_KEY], which plan_manifest_digest covers. All four are required:
+# a century request that omitted one would stage a run the writer refuses at its first substep.
+# OD-1 (SR-OD1-NUMERICAL): a fifth required value, `result_policy`, names the numeric-result policy the century build is bound under (the writer's century config /2 carries
+# it; a final-rules run without it is refused by name). Executor-side admission holds its OWN literal of the two named policies (a test pins it equal to the writer's).
+CENTURY_ARG_KEYS = ('classes', 'final_rules', 'defer_in_build_verify', 'horizon', 'result_policy')
+CENTURY_RESULT_POLICIES = ('all_null_candidate/1', 'window_qualification/1')
+CENTURY_CONFIG_KEY = 'gochara_v5_century_config'      # the writer's CENTURY_CONFIG_KEY (a test pins the two equal)
 CENTURY_EXECUTION_ENV = 'PUBSUB_DISABLED=1'      # J-3 gate: Pub/Sub on would publish asset.substep and print nothing the log read could see
+
+
+def parse_century_horizon(raw):
+    """The two derived horizon bounds of a century request: 'start,end', each a tz-aware ISO timestamp, start before end — else Refused by name.
+    Returns the pair of strings as given (the writer's `validate_century_config` canonicalises them to UTC and bounds them to the substrate domain)."""
+    from datetime import datetime
+    parts = raw.split(',') if isinstance(raw, str) else None
+    if parts is None or len(parts) != 2:
+        raise Refused("century horizon must be exactly two tz-aware ISO timestamps 'start,end'")
+    try:
+        start, end = (datetime.fromisoformat(part) for part in parts)
+    except ValueError:
+        raise Refused('century horizon bounds must be ISO 8601 timestamps') from None
+    if start.tzinfo is None or end.tzinfo is None:
+        raise Refused('century horizon bounds must carry a timezone; an unstated zone is never guessed')
+    if not start < end:
+        raise Refused('century horizon is empty or inverted')
+    return parts[0], parts[1]
+
+
+def century_args_problem(args):
+    """The century request's exact argument contract (executor-side admission; the writer's own validator runs at the staging rollback that must precede
+    the real launch). Raises Refused; returns None when `args` is exactly classes=all, final_rules and defer_in_build_verify as 'true'/'false', a horizon and one of the two named result policies."""
+    if not isinstance(args, dict) or set(args) != set(CENTURY_ARG_KEYS):
+        raise Refused('century request requires exactly ' + ', '.join(CENTURY_ARG_KEYS))
+    if args['classes'] != 'all':
+        raise Refused('century request requires only all classes')
+    for key in ('final_rules', 'defer_in_build_verify'):
+        if args[key] not in ('true', 'false'):
+            raise Refused(f"century {key} must be the string 'true' or 'false'")
+    if args['defer_in_build_verify'] == 'true' and args['final_rules'] != 'true':
+        raise Refused('century defer_in_build_verify needs final_rules')
+    if args['result_policy'] not in CENTURY_RESULT_POLICIES:
+        raise Refused('century result_policy must be one of ' + ', '.join(CENTURY_RESULT_POLICIES))
+    parse_century_horizon(args['horizon'])
+
+
+def century_config_component(final_rules, defer_in_build_verify, horizon, result_policy):
+    """The plan_manifest component for the four values, validated and canonicalised by the WRITER's own validator (the single implementation of what the
+    writer will accept). Arguments are the request strings ('true'/'false', 'start,end')."""
+    module = writer()
+    bounds = parse_century_horizon(horizon)
+    for name, value in (('final_rules', final_rules), ('defer_in_build_verify', defer_in_build_verify)):
+        if value not in ('true', 'false'):
+            raise Refused(f"century {name} must be the string 'true' or 'false'")
+    try:
+        return module.validate_century_config({'schema': module.CENTURY_CONFIG_SCHEMA, 'final_rules': final_rules == 'true',
+                                               'defer_in_build_verify': defer_in_build_verify == 'true', 'horizon': list(bounds),
+                                               'result_policy': result_policy})
+    except Exception as exc:    # the writer's CenturyConfigRefusal or the horizon module's named domain refusals
+        raise Refused(str(exc)) from None
 
 
 def century_request_problem(req, root, measure=None):
     """Century-only file evidence admission, loaded from reviewed source (the executor loads this module alone, from the reviewed commit).
-    `measure` is the fresh read-only scoped-content measurement (see scoped_backup_problem): the executor's admission has none; the century
-    dispatch script supplies it at --execute, so a backup whose scoped content has changed since capture is refused (SR-BACKUP-VALIDITY-A8 §3.10)."""
+    `measure()` is the dispatch script's fresh read-only measurement of the reviewed century scope's relations (the executor's admission has none and
+    passes nothing). SR-A12-BACKUP-REMOVAL removed the scoped-backup freshness check it used to feed (SR-BACKUP-VALIDITY-A8 §3.10) but NOT the exact-scope
+    measurability: a scoped relation that cannot be found or read now still refuses (never admits) a `century_dispatch`."""
     try:
         kind = req.get('kind')
         if kind in ('century_dispatch', 'century_dispatch_dryrun'):
             if req.get('item_id') != CENTURY_ITEM:
                 raise Refused('century dispatch belongs to ' + CENTURY_ITEM)
-            if (req.get('args') or {}) != CENTURY_ARGS:
-                raise Refused('century request requires only all classes')
+            century_args_problem(req.get('args') or {})
             # Even a staging rollback may not bypass the previous lifecycle: generation '5.0' must be independently absent.
             absence_evidence(req, root)
             if kind == 'century_dispatch':
-                scoped_backup_problem(req, root, measure=measure)
+                # SR-A12-BACKUP-REMOVAL: a century dispatch no longer names a scoped backup (no dump is taken): the scoped_backup_problem call that stood here
+                # is gone and every other check of this branch (item, args, absence, completed staging dry run) stays. smalltest_dispatch keeps its own call.
+                # The exact-scope measurability stays too (the ruling keeps dry run, exact scope and absence readback): a relation that cannot be measured now refuses.
+                if measure is not None:
+                    try:
+                        measure()
+                    except Exception:
+                        raise Refused('scoped content could not be measured now; the century scope is not shown to be present') from None
                 century_dryrun_evidence(req, root)
         elif kind in ('century_teardown', 'century_teardown_dryrun'):
             scope = staged_scope(req, root)

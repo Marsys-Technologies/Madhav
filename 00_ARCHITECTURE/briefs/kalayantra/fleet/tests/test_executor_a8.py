@@ -9,7 +9,7 @@ execute_lane against test_executor_overlay's fixture repository.
   2. request_digest excludes acceptance_receipt, expires_at and any *_expires_at field — an extension voids no acceptance — and
      the signer's (kyd_kinds_ops) and the children's (v5_small_test_shared) mirrors agree byte for byte;
   3. no acceptance age cap: an acceptance is valid from its timestamp until the request's expires_at;
-  4. preconditions: required_rows and restore_verified retired; backup_taken only for *_teardown; dry_run_passed for a mutating kind;
+  4. preconditions: required_rows and restore_verified retired; backup_taken retired too (SR-A12-BACKUP-REMOVAL: no dump is taken, so a *_teardown needs no backup attestation); dry_run_passed for a mutating kind;
   5. *_dryrun kinds are production:false — admitted with no lease, acceptance, chart_id or fence; refused without a merged
      reviewed_commit; run in that reviewed tree with the generated overlay; the receipt still fails without the rollback proof;
   6. the fence is set only for a remote-asynchronous kind (the table's remote_async flag or a named kind); a synchronous kind takes none;
@@ -19,6 +19,7 @@ execute_lane against test_executor_overlay's fixture repository.
 import datetime as dt
 import importlib.util
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -30,7 +31,20 @@ from test_executor_table import ALL_CAPS, CANONICAL_CHART, OPS_FILE, World, _loa
 HERE = Path(__file__).resolve().parent
 FLEET = HERE.parent
 REPO = FLEET.parents[3]
-REMOTE_ASYNC = {"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"}
+sys.path.insert(0, str(FLEET))
+import executor_pin_shards  # noqa: E402  (SR-CHURN-CUT 5: a later kind declares its class in a shard, not on a line below)
+SHARDS = executor_pin_shards.load_shards()
+REMOTE_ASYNC = {"smalltest_dispatch", "measuring_dispatch", "century_dispatch", "verification_job"}   # the kinds executor.REMOTE_ASYNC_KINDS names (frozen BASE)
+# frozen BASE of the two censuses below; a later kind is a `classes` entry (`dryrun_census` / `remote_async`) of its shard
+BASE_DRYRUN_CENSUS = {"smalltest_dispatch_dryrun", "smalltest_teardown_dryrun", "measuring_dispatch_dryrun", "measuring_teardown_dryrun",
+                      "orchestrator_rebuild_dryrun", "layer_verify_dryrun", "layer_publish_dryrun", "layer_rollback_dryrun",
+                      "scheduler_pause_dryrun", "scheduler_resume_dryrun", "measuring_cancel_dryrun",
+                      "verification_job_dryrun", "century_dispatch_dryrun", "century_teardown_dryrun", "century_cancel_dryrun", "verification_cancel_dryrun", "publish_head_dryrun", "rollback_head_dryrun", "protected_window_dispatch_dryrun", "gochara_role_provisioning_dispatch_dryrun",
+                      "orchestrator_rebuild_cancel_dryrun", "orchestrator_rebuild_teardown_dryrun"}   # SR-PREBUILD-ALL: the K9 control dry runs hold the builder capability like the rebuild
+BASE_FENCED = REMOTE_ASYNC | {"protected_window_dispatch"}   # U-M-01: fenced by its table flag alone
+CLASSES = executor_pin_shards.classes_after({**{k: ["dryrun_census"] for k in BASE_DRYRUN_CENSUS}, **{k: ["remote_async"] for k in BASE_FENCED}}, SHARDS)
+DRYRUN_CENSUS = executor_pin_shards.kinds_with(CLASSES, "dryrun_census")
+FENCED = executor_pin_shards.kinds_with(CLASSES, "remote_async")
 MISSING = "required backup/restore/dry-run attestation missing"
 EXPIRED = "approval expired or not yet valid"
 
@@ -160,16 +174,17 @@ def _attestation_world(tmp_path, monkeypatch):
     return w, w.table()
 
 
-def test_preconditions_are_dry_run_passed_and_backup_taken_for_a_teardown_only(tmp_path, monkeypatch):
+def test_preconditions_are_dry_run_passed_only_and_a_teardown_needs_no_backup(tmp_path, monkeypatch):
     w, table = _attestation_world(tmp_path, monkeypatch)
     publish = w.production_request("fixture_publish")
     assert w.mod.validate(w.accept(publish, rows={}, checks={"dry_run_passed": True}), table, ALL_CAPS) is None               # no rows, backup_taken or restore_verified
     assert w.mod.validate(w.accept(publish, rows={"2": False, "3": False}, checks={"dry_run_passed": True}), table, ALL_CAPS) is None   # required_rows ignored
     assert w.mod.validate(w.accept(publish, checks={"backup_taken": True, "restore_verified": True}), table, ALL_CAPS) == MISSING    # dry_run_passed still earned
     teardown = w.production_request("fixture_teardown")
-    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": True}), table, ALL_CAPS) == MISSING                           # a teardown needs backup_taken
-    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": True, "backup_taken": True}), table, ALL_CAPS) is None
-    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": True, "backup_taken": "true"}), table, ALL_CAPS) == MISSING   # the boolean, never prose
+    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": True}), table, ALL_CAPS) is None                              # SR-A12-BACKUP-REMOVAL: a teardown with no backup attestation is ADMITTED
+    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": True, "backup_taken": True}), table, ALL_CAPS) is None        # a stray backup attestation changes nothing
+    assert w.mod.validate(w.accept(teardown, checks={"backup_taken": True}), table, ALL_CAPS) == MISSING                             # the teardown's dry run stays mandatory
+    assert w.mod.validate(w.accept(teardown, checks={"dry_run_passed": "true"}), table, ALL_CAPS) == MISSING                         # the boolean, never prose
 
 
 def test_the_signers_required_checks_are_exactly_what_the_executor_demands(tmp_path, monkeypatch):
@@ -194,7 +209,7 @@ def test_the_signers_required_checks_are_exactly_what_the_executor_demands(tmp_p
         for dropped in required:
             partial = {k: True for k in required if k != dropped}
             assert w.mod.validate(w.accept(req, checks=partial), table, ALL_CAPS) == MISSING, (kind, dropped)              # nothing less
-    assert kyd.required_checks("smalltest_teardown") == ["backup_taken", "dry_run_passed"]
+    assert kyd.required_checks("smalltest_teardown") == ["dry_run_passed"]            # SR-A12-BACKUP-REMOVAL: no backup attestation
     assert kyd.required_checks("smalltest_dispatch") == ["dry_run_passed"]
     assert kyd.required_checks("backup_snapshot") == [] and kyd.required_checks("smalltest_teardown_dryrun") == []
 
@@ -203,11 +218,7 @@ def test_the_signers_required_checks_are_exactly_what_the_executor_demands(tmp_p
 def test_every_dry_run_kind_is_read_only_with_a_credential_in_the_table():
     ops = json.loads(OPS_FILE.read_text())["ops"]
     dry = {k for k in ops if k.endswith("_dryrun")}
-    assert dry == {"smalltest_dispatch_dryrun", "smalltest_teardown_dryrun", "measuring_dispatch_dryrun", "measuring_teardown_dryrun",
-                   "orchestrator_rebuild_dryrun", "layer_verify_dryrun", "layer_publish_dryrun", "layer_rollback_dryrun",
-                   "scheduler_pause_dryrun", "scheduler_resume_dryrun", "measuring_cancel_dryrun",
-                   "century_dispatch_dryrun", "century_teardown_dryrun", "publish_head_dryrun", "rollback_head_dryrun", "protected_window_dispatch_dryrun", "gochara_role_provisioning_dispatch_dryrun",
-                   "orchestrator_rebuild_cancel_dryrun", "orchestrator_rebuild_teardown_dryrun"}   # SR-PREBUILD-ALL: the K9 control dry runs hold the builder capability like the rebuild
+    assert dry == DRYRUN_CENSUS
     credential_free = {"protected_window_dispatch_dryrun", "gochara_role_provisioning_dispatch_dryrun"}   # U-M-01 (I): its only credential is the GitHub CLI session of the executor's own HOME, no database or cloud capability (least privilege); U-M-03: reads git only and makes no gh call, so it holds no credential at all
     for kind in dry:
         assert ops[kind]["production"] is False, kind
@@ -287,8 +298,9 @@ def test_the_named_remote_kinds_are_fenced_without_the_flag_and_the_table_flags_
     assert mod.remote_async("some_future_kind", {"production": True, "remote_async": True}) is True
     assert mod.remote_async("some_future_kind", {"production": True, "remote_async": "true"}) is False       # the boolean, never prose
     ops = json.loads(OPS_FILE.read_text())["ops"]
-    assert {k for k, e in ops.items() if e.get("remote_async") is True} == REMOTE_ASYNC | {"protected_window_dispatch"}   # U-M-01: fenced by its table flag alone (executor.py is untouched)
-    assert all(ops[k]["production"] is True for k in REMOTE_ASYNC | {"protected_window_dispatch"})
+    assert {k for k, e in ops.items() if e.get("remote_async") is True} == FENCED   # U-M-01: protected_window_dispatch is fenced by its table flag alone
+    assert all(ops[k]["production"] is True for k in FENCED)
+    assert REMOTE_ASYNC <= mod.REMOTE_ASYNC_KINDS <= FENCED       # whatever the executor names is fenced; a kind named later changes REMOTE_ASYNC_KINDS' digest (a shard's function_hashes)
 
 
 # 7 ── lane_receipts

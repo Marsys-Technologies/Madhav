@@ -91,6 +91,57 @@ def test_guard_ignores_table_names_inside_comments():
     )
 
 
+def test_read_through_served_view_is_a_read_of_its_base_table():
+    """#3869 verifier F1 (N.8): migration 1405 moved the K9 readers onto `kala_convergence_served`, a view no asset
+    owns. Recorded under its own name it is skipped (no producer) and the reader escapes the edge check; it must
+    count as a read of kala_convergence, so a missing depends_on edge on ka_sangam is flagged."""
+    reg = _synthetic_registry()
+    src = "@register('ph_pratikara')\nSQL = 'SELECT * FROM kala_convergence_served WHERE chart_id=%s'\n"
+    real = _REAL | {"kala_convergence_served"}  # information_schema.tables lists views too
+    res = g.evaluate(reg, real, [("ph_pratikara.py", src)])
+    assert any("ph_pratikara" in h and "kala_convergence" in h and "ka_sangam" in h for h in res["hard"]), res
+    reg["ph_pratikara"]["depends_on"] = ["ka_sangam"]
+    assert g.evaluate(reg, real, [("ph_pratikara.py", src)])["hard"] == []
+
+
+def test_read_through_resonance_map_served_view_is_a_read_of_its_base_table():
+    """Migration 1404 added `gochara_resonance_map_served`; same claim as the kala_convergence view above (N.8): a reader of the
+    view must be checked against the producer of gochara_resonance_map, not skipped because no asset owns the view name."""
+    reg = {
+        "ka_gochara_resonance": {
+            "asset_id": "ka_gochara_resonance", "scope": "per_chart",
+            "target_table": "gochara_resonance_map", "count_sql": "SELECT count(*) FROM gochara_resonance_map",
+            "depends_on": [],
+        },
+        "ka_kshetra": {
+            "asset_id": "ka_kshetra", "scope": "per_chart",
+            "target_table": "kshetra_out", "count_sql": "SELECT count(*) FROM kshetra_out",
+            "depends_on": [],  # MISSING ka_gochara_resonance
+        },
+    }
+    src = "@register('ka_kshetra')\nSQL = 'SELECT * FROM gochara_resonance_map_served WHERE chart_id=%s'\n"
+    real = {"gochara_resonance_map", "kshetra_out", "gochara_resonance_map_served"}
+    res = g.evaluate(reg, real, [("ka_kshetra.py", src)])
+    assert any("ka_kshetra" in h and "gochara_resonance_map" in h and "ka_gochara_resonance" in h for h in res["hard"]), res
+    reg["ka_kshetra"]["depends_on"] = ["ka_gochara_resonance"]
+    assert g.evaluate(reg, real, [("ka_kshetra.py", src)])["hard"] == []
+
+
+def test_every_served_view_in_migrations_is_mapped():
+    """A new `*_served` view (a later K9 generation scope) must be added to _VIEW_BASE_TABLES, or its readers are
+    invisible to the guard again. Scans the committed migrations for the view definitions."""
+    import re
+    from pathlib import Path
+    mig = Path(g.__file__).resolve().parents[3] / "migrations"
+    found = set()
+    for f in mig.glob("*.sql"):
+        found.update(m.lower() for m in re.findall(
+            r"CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+(?:public\.)?([a-z0-9_]+_served)\b",
+            f.read_text(encoding="utf-8", errors="ignore"), re.IGNORECASE))
+    assert "kala_convergence_served" in found, "migration scan found no served view; the scan is broken"
+    assert found <= set(g._VIEW_BASE_TABLES), sorted(found - set(g._VIEW_BASE_TABLES))
+
+
 # ── Integration: the live DAG is edge-complete ───────────────────────────────
 
 @pytest.mark.skipif(not os.environ.get("DATABASE_URL"), reason="needs DATABASE_URL")

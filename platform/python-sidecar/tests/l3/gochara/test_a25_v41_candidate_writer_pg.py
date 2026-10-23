@@ -118,8 +118,12 @@ CREATE TABLE gochara_resonance_map (
   target_resolution_state TEXT NOT NULL DEFAULT 'resolved',
   classical_citation TEXT,
   uncited_extension BOOLEAN,
-  source_rule_id TEXT
+  source_rule_id TEXT,
+  generation TEXT NOT NULL DEFAULT 'legacy'
 );
+-- stand-in for the served view of migration 1404 (its real definition is tested in tests/l3/kala_db/manifest/test_resmap_generation.py): the readers under test
+-- (services.gochara_grammar.resonance_map) read the served partition
+CREATE VIEW gochara_resonance_map_served AS SELECT * FROM gochara_resonance_map WHERE generation = 'legacy';
 DROP TABLE IF EXISTS chart_facts CASCADE;
 CREATE TABLE chart_facts (
   fact_id TEXT PRIMARY KEY,

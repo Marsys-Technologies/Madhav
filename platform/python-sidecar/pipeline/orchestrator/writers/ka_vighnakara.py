@@ -38,6 +38,8 @@ from ga_writers.ga_sensitive_degree_writer import GANDANTA_CITATION, check_ganda
 import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from services.kala_core.writer_grain import (
+    attest_inputs, bound_candidate, convergence_read_generation, predicate_generation, refuse_unbound_rewrite)
 from services.ka_temporal import (
     load_dasha_timeline,
     resolve_activation_windows,
@@ -211,27 +213,40 @@ class _LegacyKaVighnakaraWriter(WriterBase):
 
         conn     = ctx.db_conn  # NEVER commit or rollback
         chart_id = ctx.config['chart_id']
+        # K9 (SR-K9-PUBLISHABLE): a build bound to a layer candidate reads the
+        # predicates of THAT candidate generation (never the published head)
+        # and attests its input grain under it; an ordinary rebuild does neither.
+        candidate = bound_candidate(conn, getattr(ctx, 'build_id', None), chart_id)
+        predicate_gen = predicate_generation(conn, chart_id, candidate)
+        if candidate is None:      # SR-K9-BIND B1b: no in-place rewrite once a generation is published (before the delete below)
+            refuse_unbound_rewrite(conn, chart_id, 'ka_vighnakara')
 
-        # Idempotency: delete-then-insert scoped to chart.
-        # Safe to DELETE only after confirming swisseph is available and we can rebuild.
+        # Idempotency: delete-then-insert scoped to (chart, partition). SR-K9-WRITE-SCOPE: a candidate-bound build owns ONLY its candidate generation (served rows untouched); an ordinary rebuild rewrites the legacy NULL partition.
+        write_generation = _owned_generation(conn, chart_id, candidate)
         with conn.cursor() as _timeout_cur:
             _timeout_cur.execute("SET LOCAL statement_timeout = 0")
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM kala_obstruction WHERE chart_id = %s AND generation IS NULL", (chart_id,))
+            cur.execute("DELETE FROM kala_obstruction WHERE chart_id = %s AND generation IS NOT DISTINCT FROM %s", (chart_id, write_generation))
 
-        # Read convergence windows
+        # Read convergence windows. SR-K9-BIND B1a: a candidate-bound build reads ONLY its own candidate's convergence rows (never the
+        # served view, whose ids belong to another generation); an unbound build reads the served generation.
+        conv_generation = convergence_read_generation(conn, chart_id, candidate)
         with conn.cursor(row_factory=psycopg.rows.tuple_row) as cur:
             cur.execute("""
                 SELECT convergence_id, signal_id, mode, peak_date,
                        convergence_score, orb_strength, window_start, window_end
                 FROM kala_convergence
-                WHERE chart_id = %s AND peak_date IS NOT NULL
+                WHERE chart_id = %s AND generation = %s AND peak_date IS NOT NULL
                 ORDER BY convergence_score DESC NULLS LAST
                 LIMIT 500
-            """, (chart_id,))
+            """, (chart_id, conv_generation))
             convergence_rows = cur.fetchall()
 
         if not convergence_rows:
+            if candidate is not None:
+                attest_inputs(conn, candidate, 'ka_vighnakara',
+                              sources={'kala_convergence': [], 'predicate_generation': [predicate_gen]},
+                              produced_rows=0)
             return WriterResult(
                 asset_id='ka_vighnakara', rows_inserted=0,
                 notes='No convergence windows — run ka_sangam first',
@@ -291,7 +306,7 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(obs['detail']),
                     f"ka_vighnakara:v2.0:conv={conv_id}",
-                    UNVERIFIED_DEFAULT,
+                    write_generation, UNVERIFIED_DEFAULT,
                 ))
 
         # ── WP-2.1 / F-L10-018: dasha-anchored obstruction reachability ────────
@@ -304,7 +319,9 @@ class _LegacyKaVighnakaraWriter(WriterBase):
         already_covered = {
             str(r[1]) for r in convergence_rows if r[1] is not None  # signal_id column
         }
-        dasha_anchors = self._dasha_anchor_peaks(conn, chart_id, already_covered)
+        dasha_anchors = self._dasha_anchor_peaks(
+            conn, chart_id, already_covered,
+            candidate.generation if candidate is not None else None)
         for peak_date, signal_id in dasha_anchors:
             jd = _jd_from_date(peak_date)
             obstructions = _detect_all(
@@ -330,7 +347,7 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(detail),
                     f"ka_vighnakara:v2.0:dasha_anchor",
-                    UNVERIFIED_DEFAULT,
+                    write_generation, UNVERIFIED_DEFAULT,
                 ))
 
         if rows:
@@ -340,11 +357,17 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     f"""INSERT INTO kala_obstruction (
                         chart_id, convergence_id, signal_id,
                         obstruction_type, severity, severity_score, override_score,
-                        obstruction_detail, source_citation{", verification_pass_status" if store_tier else ""}
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})""",
+                        obstruction_detail, source_citation, generation{", verification_pass_status" if store_tier else ""}
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})""",
                     rows if store_tier else [row[:-1] for row in rows],
                 )
 
+        if candidate is not None:
+            attest_inputs(conn, candidate, 'ka_vighnakara',
+                          sources={'kala_convergence': convergence_rows,
+                                   'dasha_anchor_peaks': dasha_anchors,
+                                   'predicate_generation': [predicate_gen]},
+                          produced_rows=len(rows))
         return WriterResult(asset_id='ka_vighnakara', rows_inserted=len(rows))
 
     def _fetch_combustion_orbs(self, conn) -> dict[str, float]:
@@ -484,7 +507,8 @@ class _LegacyKaVighnakaraWriter(WriterBase):
             logger.debug("ka_vighnakara: natal lagna fetch failed: %s", exc)
         return None
 
-    def _dasha_anchor_peaks(self, conn, chart_id: str, covered_signal_ids: set) -> list:
+    def _dasha_anchor_peaks(self, conn, chart_id: str, covered_signal_ids: set,
+                            generation: Optional[str] = None) -> list:
         """WP-2.1: distinct dasha-derived activation peaks for signals NOT covered
         by a convergence window, so obstruction detection reaches them.
 
@@ -513,17 +537,31 @@ class _LegacyKaVighnakaraWriter(WriterBase):
             # against each predicate's OWN ayanamsha timeline (§8.4 fix).
             birth_date = resolve_birth_date(conn, chart_id)
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                cur.execute(
-                    """
-                    SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
-                    FROM kala_activation_predicates p
-                    WHERE p.chart_id = %s
-                      AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
-                      AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
-                    ORDER BY signal_id
-                    """,
-                    (chart_id,),
-                )
+                if generation is None:
+                    cur.execute(
+                        """
+                        SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
+                        FROM kala_activation_predicates p
+                        WHERE p.chart_id = %s
+                          AND p.generation = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = p.chart_id), 'legacy')
+                          AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
+                        ORDER BY signal_id
+                        """,
+                        (chart_id,),
+                    )
+                else:
+                    # K9: a candidate-bound build reads its OWN candidate generation.
+                    cur.execute(
+                        """
+                        SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
+                        FROM kala_activation_predicates p
+                        WHERE p.chart_id = %s
+                          AND p.generation = %s
+                          AND (p.generation = 'legacy' OR (p.mechanism_route = 'admitted' AND p.conclusion_state_jsonb->>'effective_state' = 'in_force' AND p.conclusion_state_jsonb->>'scored' = 'true'))
+                        ORDER BY signal_id
+                        """,
+                        (chart_id, generation),
+                    )
                 predicates = cur.fetchall()
 
             def _timeline_for(ayan):
@@ -1029,3 +1067,18 @@ class KaVighnakaraWriter(_LegacyKaVighnakaraWriter):
         # The original ephemeris gate wraps the legacy implementation exactly
         # as before; fixtures compute no sky and claim no Swiss backend.
         return super().run(ctx)
+
+
+def _owned_generation(conn, chart_id: str, candidate) -> str | None:
+    """The `kala_obstruction` partition this build may replace: its candidate generation, or None (the legacy NULL
+    partition) for an ordinary rebuild. A candidate is replaceable only while it is `building` and not the published
+    head: a published or retained generation holds SERVED rows (storage.write_fixture_candidate applies the same rule)."""
+    if candidate is None:
+        return None
+    state = conn.execute('SELECT state FROM kala_layer_candidate WHERE chart_id = %s AND generation = %s AND build_id = %s FOR UPDATE',
+                         (chart_id, candidate.generation, candidate.build_id)).fetchone()
+    head = conn.execute('SELECT generation FROM kala_layer_head WHERE chart_id = %s', (chart_id,)).fetchone()
+    first = lambda row: None if row is None else (tuple(row.values())[0] if isinstance(row, dict) else row[0])
+    if first(state) != 'building' or first(head) == candidate.generation:
+        raise ValueError('only a building candidate that is not the published head may have its obstruction rows replaced')
+    return candidate.generation

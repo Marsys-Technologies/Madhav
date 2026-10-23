@@ -202,6 +202,7 @@ class MaterializeResult:
     contacts_evaluated: int
     targets_resolved: int
     skipped_reason: Optional[str] = None
+    mudda_overlap: Optional[dict] = None    # SR-W56-S3: the named L1 mudda boundary overlaps in the dasha read this class used
 
 
 def materialize_event_class(
@@ -286,6 +287,7 @@ def materialize_event_class(
 
     return MaterializeResult(
         rows=rows, contacts_evaluated=len(candidate_jds), targets_resolved=len(targets),
+        mudda_overlap=DD.mudda_overlap_census(dasha_periods),
     )
 
 

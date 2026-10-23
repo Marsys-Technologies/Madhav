@@ -379,8 +379,17 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
 
       let predicates: Record<string, unknown>[] = []
       const judgment_flags: string[] = []
+      let predicate_generation: string | null = null
+      let predicate_empty_reason: string | null = null
       if (predSignalIds.length > 0) {
-        const predPhs = predSignalIds.map((_, i) => `$${i + 3}`).join(', ')
+        // K9-WRITE-SCOPE F5: kala_activation_predicates is candidate-scoped (ka_yojaka writes
+        // `candidate:{build_id}` rows). Serve ONLY the generation the other predicate readers
+        // serve: the published kala_layer_head generation, else 'legacy'. Never a candidate.
+        const headResult = await query<{ generation: string }>(
+          `SELECT generation FROM kala_layer_head WHERE chart_id = $1`, [chart_id])
+        const publishedHead = headResult.rows[0]?.generation ?? null
+        predicate_generation = publishedHead ?? 'legacy'
+        const predPhs = predSignalIds.map((_, i) => `$${i + 4}`).join(', ')
         const predSql = `
           SELECT id, signal_id, ayanamsha_id, signature_class,
                  dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
@@ -389,9 +398,16 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           FROM kala_activation_predicates
           WHERE chart_id = $1
             AND ayanamsha_id = $2
+            AND generation = $3
             AND signal_id IN (${predPhs})
         `
-        const predResult = await query<Record<string, unknown>>(predSql, [chart_id, ayanamsha_id, ...predSignalIds])
+        const predResult = await query<Record<string, unknown>>(predSql, [chart_id, ayanamsha_id, predicate_generation, ...predSignalIds])
+        if (predResult.rows.length === 0) {
+          judgment_flags.push('predicates_not_in_served_generation')
+          predicate_empty_reason = publishedHead
+            ? `The published generation '${publishedHead}' holds no activation predicates for these signals at ayanamsha '${ayanamsha_id}'. Unpublished candidate generations are never served.`
+            : `No generation is published for this chart and no 'legacy' activation predicates exist for these signals at ayanamsha '${ayanamsha_id}'. Unpublished candidate generations are never served.`
+        }
         const ranked = predResult.rows.map(row => {
           const raw = row['derivation_ledger_jsonb']
           const ledger: Record<string, unknown> = raw && typeof raw === 'object' && !Array.isArray(raw)
@@ -652,6 +668,8 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           predicates,
           judgment_flags,
           predicate_count:   predicates.length,
+          predicate_generation,
+          predicate_empty_reason,
           signal_id_refs:    signalRefs,
           filters: {
             date_from, date_to, as_of: as_of ?? null, signal_ids, top_k, min_strength,

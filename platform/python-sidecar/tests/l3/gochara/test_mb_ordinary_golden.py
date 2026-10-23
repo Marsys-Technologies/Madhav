@@ -91,6 +91,10 @@ BIRTH_PARAMS = {"datetime_iso": "1984-02-05T10:43:00", "latitude_deg": 20.2961, 
                 "subject_label": "native"}
 CLASS = "marriage"
 GUARD_SELECT = "SELECT state FROM public.asset_throughput WHERE chart_id = %s AND asset_id = %s"
+# F-CHANNEL (SR-W34-PREP-RULINGS 1): `run_substep` resolves the run's century config (_resolve_run_config) after its configuration checks and before the state guard,
+# which reads build_runs.plan_manifest once more, through the same digest-verifying `_plan_manifest`. One extra read-only SELECT per non-dry-run substep, checked
+# separately (exact text, one parameter, exactly one more than the golden's own manifest reads) and excluded from the statement summary like the state guard.
+MANIFEST_READ_SELECT = "SELECT plan_manifest, plan_manifest_digest FROM public.build_runs WHERE id = %s"
 LAYER_SELECT = ("SELECT to_regclass('public.ka_gochara_near_miss') IS NOT NULL AND "
                 "to_regclass('public.ka_gochara_near_miss_search') IS NOT NULL AND "
                 "to_regclass('public.ka_gochara_near_miss_object') IS NOT NULL")
@@ -183,7 +187,7 @@ def capture(template_db, raw: dict | None = None) -> dict:
             rec.statements.clear()
             ctx = ContextSpec(asset_id=writer_mod.ASSET_ID, build_id="b-golden", db_conn=rec, dry_run=dry_run,
                               config={"chart_id": CHART_ID, "birth_params": BIRTH_PARAMS, "horizon": SHORT, "ephe_path": EPHE_PATH,
-                                    "gochara_v5_final_rules": True})   # (I) INTERPRETATION: main made the final rules opt-in; the accepted P06 capture IS the final-rule build
+                                    "gochara_v5_final_rules": True, "result_policy": "all_null_candidate/1"})   # OD-1: a final-rules run names its policy (the capture IS the all-NULL build). (I) INTERPRETATION: main made the final rules opt-in; the accepted P06 capture IS the final-rule build
             try:
                 with w.conn.transaction():
                     res = writer_mod.GocharaV5Writer().run_substep(ctx, SubStep(key=key, label=key))
@@ -316,6 +320,10 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
         period_guard = [s for s in raw[key] if s == [PERIOD_GUARD_SELECT, 11]]
         assert len(period_guard) == (1 if key == "inventory:marriage" else 0), f"{key}: expected the B5 period guard exactly once before the inventory projection"
         rest = [s for s in raw[key] if s not in ([GUARD_SELECT, 2], [PERIOD_GUARD_SELECT, 11], [LAYER_SELECT, 0])]
+        golden_reads = m["statements"]["shapes"].get(f"1|{MANIFEST_READ_SELECT}", 0)
+        if "[dry_run]" not in key:
+            assert rest.count([MANIFEST_READ_SELECT, 1]) == golden_reads + 1, f"{key}: expected exactly one extra plan_manifest read (the century-config resolution)"
+            rest.remove([MANIFEST_READ_SELECT, 1])         # the first one is the resolution's: it precedes the substep's own reads (the golden's sequence is order-sensitive)
         if key == writer_mod.SNAPSHOT_SUBSTEP:       # every other substep keeps its own P1 gate reads, compared with the golden unchanged
             assert rest.count([P1_GATE_SELECT, 1]) == 1, f"{key}: expected the new P1-minting schema read exactly once"
             rest.remove([P1_GATE_SELECT, 1])
@@ -381,7 +389,19 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (never relaxed).
     # Evaluation re-pinned for F-1305-INVENTED-SUPPORT (#3774): dasha_read and inventory_verifier changed (the snapshot path no longer invents support for a lord held
     # only outside the horizon). Re-derived the same way on the merge of this branch with main (main's bytes give 9f6c462e...); no golden component is re-captured.
-    assert got["implementation"]["evaluation"] == "3d24331f1a73721b761ca0af94da3c53493f92e9349769ba3fb6964a94d2bb42"
+    # Evaluation re-pinned again for F-CHANNEL (SR-W34-PREP-RULINGS 1, kalayantra/kind-batch): this branch also changes the ka_gochara_v5 writer's century-config overlay
+    # (+101 lines), which sits in the evaluation stage. Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (main alone gives 3d24331f...); geometry and window are unchanged by it.
+    # Evaluation re-pinned for OD-1 (SR-OD1-NUMERICAL): the ka_gochara_v5 writer's century config now carries result_policy (schema /2) and refuses a final-rules run with no
+    # explicit policy, and input_vector binds the qualification table. Re-derived from the merged tree's real bytes the same way (main alone gives f065569b...); no golden
+    # component is re-captured (this fixture's run names result_policy all_null_candidate/1, the accepted all-NULL build).
+    # Evaluation re-pinned for SR-W56-S3 (honest-null for Tajika mudda boundary overlaps, #3850): gochara_kernel.dasha_read changed (the boundary-overlap honest null). Re-derived
+    # from the merged tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (main alone gives e5fae125...); geometry is unchanged
+    # and no golden component is re-captured (this fixture's chart has no consecutive-boundary overlap).
+    # Evaluation re-pinned for SR-DASHA-SINGLE-TIER (#3883): gochara_kernel.dasha_read and gochara_grammar.read_tier_policy changed (the governed dasha reader admits tier
+    # single for five systems into flagging consumers only). Re-derived from the merged tree's real bytes with
+    # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (main alone gives 91aabdc8...); geometry and window are unchanged and no golden component is re-captured.
+    assert got["implementation"]["evaluation"] == "16cea5f44ba816b06fb20be5844c611b796263499123868c21431d38ea58ad9b"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
@@ -393,4 +413,8 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned for the W3W4 strict-slice window-qualification fix: window_sweep.build_program no longer lists an OMITTED operand (karaka_agent, null_state omit)
     # as an unresolved reason, so the writer's `unresolved` equals the verifier's. Re-derived on the merge with main (which carries P06b) from the merged tree's real bytes
     # (main alone gives 41d28f76...); evaluation and geometry are untouched by this change and equal main's, and no golden component is re-captured.
-    assert got["implementation"]["window"] == "e0aea2fae6b607d5fb32124ae9e945fef6b1662fbb6de4fd8e053ec02e50e78d"
+    # Window re-pinned for OD-1 (SR-OD1-NUMERICAL): numerical_window_gate joins the window stage, and seal_brief / seal_flow / verification_job / seal_job changed. Re-derived the
+    # same way from the merged tree's real bytes (main alone gives e0aea2fa...); no golden component is re-captured.
+    # Window re-pinned for SR-W56-S3 (#3850): gochara_kernel.seal_brief changed (the window stage's only touched module). Re-derived the same way from the merged tree's real
+    # bytes (main alone gives 7dc92acc...); evaluation is re-pinned above, geometry is untouched, and no golden component is re-captured.
+    assert got["implementation"]["window"] == "5148dee90d8f362333ecfa7682b8c7241dbba0abe5229526d2bb5b4a81fc2b3d"

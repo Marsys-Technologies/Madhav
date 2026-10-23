@@ -25,7 +25,8 @@ from typing import Callable
 from brahmagyan.verification_vocab import RESTRICTED_TABLE_VOCAB, DIVERGENT_FLAGGED
 from services.gochara_grammar import dasha_data as DD
 from services.gochara_grammar.read_tier_policy import (
-    HONEST_COMPUTED_TIERS, LEVEL_TIER_POLICY, row_tier_accepted, tier_accepted)
+    HONEST_COMPUTED_TIERS, LEVEL_TIER_POLICY, SINGLE, SINGLE_TIER_ADMITTED_SYSTEMS,
+    row_tier_accepted, tier_accepted)
 
 PINNED_SYSTEM = "vimshottari"
 #: the period LEVEL tokens a P1 anchor carries → the chart_dashas `level_n` (§4.0: 1 MD, 2 AD, 3 PD)
@@ -420,6 +421,34 @@ _DASHA_QUERIES = {
           AND end_date      > %s
         ORDER BY start_date
     """,
+    'dasha_system_tier_counts': """
+            SELECT system_id, verification_pass_status, COUNT(*) AS cnt
+            FROM chart_dashas
+            WHERE chart_id = %s AND ayanamsha_id = %s
+            GROUP BY system_id, verification_pass_status
+            ORDER BY system_id, verification_pass_status
+        """,
+    'tree_level1_tiered': """
+        SELECT dasha_row_id, lord_graha, start_date, end_date,
+               kp_sublevel, kp_sub_lord, verification_pass_status
+        FROM chart_dashas
+        WHERE chart_id       = %s
+          AND ayanamsha_id   = %s
+          AND system_id      = %s
+          AND level_n        = 1
+          AND start_date     < %s
+          AND end_date       > %s
+        ORDER BY start_date
+    """,
+    'tree_children_tiered': """
+        SELECT dasha_row_id, lord_graha, start_date, end_date, level_n,
+               parent_row_id, kp_sublevel, kp_sub_lord, verification_pass_status
+        FROM chart_dashas
+        WHERE parent_row_id = %s
+          AND start_date    < %s
+          AND end_date      > %s
+        ORDER BY start_date
+    """,
     'sweep_birth_anchor': """SELECT MIN(start_date) AS birth_date FROM chart_dashas WHERE chart_id = %s AND level_n = 1""",
     'resonance_candidate_md': """SELECT dasha_row_id,lord_graha,start_iso,end_iso,verification_pass_status
           FROM chart_dashas WHERE chart_id=%s AND build_id=%s AND ayanamsha_id=%s
@@ -510,16 +539,32 @@ def dasha_query(name: str) -> str:
     return _DASHA_QUERIES[name]
 
 
+#: SR-DASHA-SINGLE-TIER: the only projections that may be read with ``admit_single_tier=True`` — each one returns
+#: ``verification_pass_status`` per row, so the consumer CAN carry ``single_tier_input`` onto what it derives. A
+#: projection that erases the tier (every other one) cannot propagate the flag and keeps refusing `single`.
+_TIER_CARRYING_PROJECTIONS = frozenset(
+    _DASHA_QUERIES[k] for k in ("dasha_system_tier_counts", "tree_level1_tiered", "tree_children_tiered"))
+
+
 def execute_governed_dasha_query(
     conn, chart_id, sql, params=(), *, ayanamsha_id="lahiri_chitrapaksha", cursor=None,
-    clock_tier=None,
+    clock_tier=None, admit_single_tier=False,
 ):
     """Read legacy projections from a chart/ayanamsha/build/tier-bound view.
 
     All-population coherence is checked before the view filters tiers. This
     also governs children-only and aggregate queries whose projection would
     otherwise erase provenance. Uses the caller's transaction and cursor.
+
+    ``admit_single_tier`` (SR-DASHA-SINGLE-TIER): additionally admits the `single` rows of the five ruled systems
+    (``SINGLE_TIER_ADMITTED_SYSTEMS``). It is refused unless the projection carries ``verification_pass_status``
+    (the caller must be able to propagate ``single_tier_input``) and is refused alongside an explicit F2 ``clock_tier``.
     """
+    if admit_single_tier:
+        if clock_tier is not None:
+            raise DashaBuildRefused("read_contract_mismatch", "single-tier admission and an explicit F2 clock tier are exclusive")
+        if sql not in _TIER_CARRYING_PROJECTIONS:
+            raise DashaBuildRefused("read_contract_mismatch", "single-tier admission needs a projection that carries the tier")
     if clock_tier is not None:
         if sql not in (_DASHA_QUERIES["clock_rows"], _DASHA_QUERIES["avadhi_periods"],
                        _DASHA_QUERIES["avadhi_integrity_periods"]):
@@ -551,6 +596,9 @@ def execute_governed_dasha_query(
     for (system, level), tiers in sorted(policy.items()):
         prefix += " OR (system_id = %s AND level_n = %s AND verification_pass_status = ANY(%s))"
         bound.extend([system, level, sorted(tiers)])
+    if admit_single_tier:
+        prefix += " OR (system_id = ANY(%s) AND verification_pass_status = %s)"
+        bound.extend([sorted(SINGLE_TIER_ADMITTED_SYSTEMS), SINGLE])
     prefix += ")) "
     invalid = _population_query(conn, prefix + """
         SELECT dasha_row_id, start_iso, end_iso FROM governed_chart_dashas
@@ -664,7 +712,22 @@ def make_period_rows_for_snapshot(conn, chart_id: str, generation: str) -> tuple
     return rows_for, contract
 
 
+def mudda_overlap_disclosure(conn, chart_id: str) -> dict:
+    """SR-W56-S3: the named L1 Tājika mudda boundary overlaps of the chart's governed read, COUNTED (the seal brief and the K9
+    rehearsal receipt disclose this; `ka_gochara` carries the same census per run). Read-only, through the same governed
+    reader every Kāla consumer uses, so the count is of what a run actually reads — never a second reading of the table.
+    A chart with no governed read (no settlement, mixed build, a conflict that is NOT a named overlap) is
+    `status: not_readable` with the typed refusal code — an honest null, never a count of zero."""
+    try:
+        with conn.transaction():      # a savepoint: a failed read must not abort the caller's snapshot
+            rows = load_governed_dasha_periods(
+                conn, chart_id, systems=["mudda"], levels=(DD.MUDDA_YEAR_LEVEL,), level_tier_policy=True)
+    except DD.DashaReadConflict as exc:
+        return {"status": "not_readable", "reason": getattr(exc, "code", "dasha_read_conflict")}
+    return {"status": "counted", **DD.mudda_overlap_census(rows)}
+
+
 __all__ = ["PINNED_SYSTEM", "load_pinned_vimshottari", "make_period_rows_for", "make_period_rows_for_snapshot",
            "select_dasha_read_contract", "load_dasha_settlement", "DashaBuildRefused",
            "load_governed_dasha_periods", "dasha_query", "execute_governed_dasha_query",
-           "observe_dasha_tiers", "validate_live_dasha_periods"]
+           "observe_dasha_tiers", "validate_live_dasha_periods", "mudda_overlap_disclosure"]

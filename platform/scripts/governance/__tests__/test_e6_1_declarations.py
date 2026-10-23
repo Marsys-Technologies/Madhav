@@ -325,11 +325,11 @@ NARR_CITES = {
     "bo_upaya": [(_WR + "bo_upaya.py", 1010, "reason = ("), (_WR + "bo_upaya.py", 1714, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
-    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 648, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 700, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 757, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 834, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 913, "'reason': ("), (_WR + "ka_vighnakara.py", 969, "'reason': f\"{planet_str} combust"),
-                      (_WR + "ka_vighnakara.py", 292, "json.dumps(obs['detail'])"),
-                      (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
+    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 686, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 738, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 795, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 872, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 951, "'reason': ("), (_WR + "ka_vighnakara.py", 1007, "'reason': f\"{planet_str} combust"),
+                      (_WR + "ka_vighnakara.py", 307, "json.dumps(obs['detail'])"),
+                      (_L + "L3_kala/query_obstruction_periods.ts", 81, "obstruction_detail")],
     "ka_avadhi": [(_WR + "ka_avadhi.py", 198, "'note': f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\""),
                   (_WR + "ka_avadhi.py", 315, "dossier=Jsonb(dossier)"),
                   (_L + "L3_kala/query_dasha_dossier.ts", 94, "dossier, quality")],
@@ -668,7 +668,7 @@ def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant
     roots = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
              if isinstance(k, ast.Constant) and k.value == "detail"]
     composed, constant = _composed_lines(nw.composed_report(tree, roots, ("reason",)))
-    assert composed == [648, 700, 757, 834, 913, 969] and constant == [795, 870]
+    assert composed == [686, 738, 795, 872, 951, 1007] and constant == [833, 908]
 
 
 def _avadhi_dossier_prose_report(src):
@@ -1866,12 +1866,12 @@ CITATION_DECISIONS = json.loads(r"""
   "cites": [
    [
     "platform/python-sidecar/ga_writers/ga_condition_writer.py",
-    1270,
+    1304,
     "\"citation_human\":          f"
    ],
    [
     "platform/python-sidecar/ga_writers/ga_condition_writer.py",
-    1554,
+    1588,
     "f\"{graha} lajjitadi avastha "
    ]
   ],
@@ -3114,7 +3114,7 @@ def test_committed_read_evidence_repoints_and_kinds():
     L = "platform/src/lib/retrieval/registry/layers/"
     want = {
         "bo_sangati": L + "L2_bodha/query_domain_reading.ts:831",
-        "ka_gochara": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1858",
+        "ka_gochara": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1888",
         "mi_bhavisya": L + "L5_mimamsa/query_predictions.ts:138",
         "ph_nimitta": L + "L4_phala/query_predictive_anchors.ts:139",
         "mi_darshana": L + "L5_mimamsa/query_insights.ts:225",
