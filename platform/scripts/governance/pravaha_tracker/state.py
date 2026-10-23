@@ -548,6 +548,11 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     # A final ruling is recorded independently of each consuming item's completion.
     # Seed decision items as waiting so joins/other decisions cannot consume a
     # provisional done state before its original gates have been resolved.
+    # SR-TRACKER-DONE-NEVER-EXPIRES: a done that item_status itself proved (merged+deployed derivation, a guarded done
+    # event, a detector done) is never overridden by the skip / not_applicable propagation below. Joins and decisions
+    # are resolved inside the loop, so they are not in this set.
+    proven_done = {iid for iid, it in items.items()
+                   if status[iid]["status"] == "done" and it.get("done_by") not in ("decision", "join")}
     recorded_decisions = {iid for iid, it in items.items()
                           if it.get("done_by") == "decision" and status[iid]["status"] == "done"}
     for iid in recorded_decisions:
@@ -588,7 +593,8 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             s["deps_open_strict"] = strict_open
             if strict_open != start_blockers:
                 s["deps_merged_pending_deploy"] = [d for d in strict_open if d in merged_accepted]
-            if decision_outcomes and s["status"] not in ("done", "not_applicable"):
+            loop_done = it.get("done_by") in ("decision", "join") and s["status"] == "done"
+            if decision_outcomes and iid not in proven_done and not loop_done and s["status"] != "not_applicable":
                 origins = []
                 for decision, needed in it.get("requires_outcome", {}).items():
                     event = decision_status(ix["decisions"].get(decision, []))[1]

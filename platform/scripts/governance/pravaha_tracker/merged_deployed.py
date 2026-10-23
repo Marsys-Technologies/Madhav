@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import collections
 import json
+import os
 import re
 import subprocess
 import threading
@@ -36,6 +37,9 @@ DEPLOY_JOBS = ("Build & Deploy Web", "Build & Deploy Sidecar", "Build & Deploy M
 SOURCE = "derived:merged+deployed"
 REFRESH_S = 60.0           # how often the background refresh re-reads GitHub and git
 MERGED_LIST_LIMIT = 300    # one `gh pr list` call maps head branches of the newest merged PRs
+BRANCH_LOOKUP_TTL_S = 600.0  # a branch absent from that window is looked up on its own; "no merged PR" is kept this long
+REVALIDATE_S = 600.0       # how often the proof cache re-checks that each merge commit is still in origin/main
+PR_FIELDS = "number,state,headRefName,headRefOid,mergeCommit"
 
 _SHA = re.compile(r"[0-9a-f]{40}")
 _SQUASH_SUBJECT = re.compile(r"\(#(\d+)\)\s*$")
@@ -108,6 +112,12 @@ def _accepted(item: dict, source, number: int) -> dict | None:
     if (not isinstance(deploy, dict) or deploy.get("contains_merge") is not True or not deploy.get("run_id")
             or not _sha(deploy.get("deployed_sha"))):
         return None
+    record = getattr(source, "record_proof", None)
+    if record is not None:
+        try:
+            record(number, pr, merge, deploy)
+        except OSError:
+            pass            # an unwritable cache never costs the item its done
     return _proof(number, pr, merge, deploy)
 
 
@@ -170,19 +180,124 @@ def derive_for_events(model: dict, events: list[dict], source, *, only=None) -> 
     return derive(model, source, skip=skip)
 
 
+class ProofStore:
+    """Persistent merged+deployed proofs, keyed "<PR number>:<merge sha>" (SR-TRACKER-DONE-NEVER-EXPIRES).
+
+    A merged PR stays merged and a deploy that contains a commit keeps containing it, so a proof never expires with
+    age or with the `gh pr list` window. The one thing that voids it is the merge commit no longer being contained
+    in origin/main (`drop`, called by GitHubSource's revalidation). A failing gh/git call never reaches this class.
+    The file is written atomically (temp file + replace); `path=None` keeps the store in memory only.
+    """
+
+    def __init__(self, path: str | None):
+        self.path = path
+        self._lock = threading.Lock()
+        self._entries: dict[str, dict] = {}
+        self._load()
+
+    def _read(self) -> dict[str, dict]:
+        if not self.path:
+            return {}
+        try:
+            with open(self.path, encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (OSError, ValueError):
+            return {}
+        rows = data.get("proofs") if isinstance(data, dict) else None
+        return {k: v for k, v in rows.items() if self._valid(k, v)} if isinstance(rows, dict) else {}
+
+    @staticmethod
+    def _valid(key, entry) -> bool:
+        pr = entry.get("pr") if isinstance(entry, dict) else None
+        deploy = entry.get("deploy") if isinstance(entry, dict) else None
+        commit = pr.get("mergeCommit") if isinstance(pr, dict) else None
+        merge = commit.get("oid") if isinstance(commit, dict) else None
+        return (isinstance(key, str) and _number(pr.get("number")) is not None and _sha(merge)
+                and key == f"{pr['number']}:{merge}" and isinstance(deploy, dict) and _sha(deploy.get("deployed_sha")))
+
+    def _load(self) -> None:
+        self._entries = self._read()
+
+    def _save(self) -> None:
+        if not self.path:
+            return
+        os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
+        tmp = f"{self.path}.{os.getpid()}.{threading.get_ident()}.tmp"
+        try:
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump({"version": 1, "proofs": self._entries}, fh, sort_keys=True)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp, self.path)
+        finally:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+
+    def put(self, number: int, pr: dict, merge: str, deploy: dict) -> None:
+        key = f"{number}:{merge}"
+        entry = {"pr": {k: pr.get(k) for k in ("number", "state", "headRefName", "headRefOid", "mergeCommit")},
+                 "deploy": {k: deploy.get(k) for k in ("deployed_sha", "run_id", "contains_merge")}}
+        with self._lock:
+            if self._entries.get(key) == entry:
+                return
+            self._entries.update({k: v for k, v in self._read().items() if k not in self._entries})   # another process
+            self._entries[key] = entry
+            self._save()
+
+    def drop(self, key: str) -> None:
+        with self._lock:
+            disk = self._read()
+            self._entries.pop(key, None)
+            if key in disk:
+                self._save()
+
+    def entries(self) -> dict[str, dict]:
+        with self._lock:
+            return dict(self._entries)
+
+    def pr(self, number: int) -> dict | None:
+        with self._lock:
+            for key, entry in self._entries.items():
+                if key.split(":", 1)[0] == str(number):
+                    return dict(entry["pr"])
+        return None
+
+    def numbers_for_branch(self, branch: str) -> list[int]:
+        with self._lock:
+            return sorted({e["pr"]["number"] for e in self._entries.values() if e["pr"].get("headRefName") == branch},
+                          reverse=True)
+
+    def deploy_for(self, merge: str) -> dict | None:
+        with self._lock:
+            for key, entry in self._entries.items():
+                if key.split(":", 1)[1] == merge:
+                    return {**entry["deploy"], "contains_merge": True}
+        return None
+
+
+def default_proof_path() -> str:
+    return os.path.join(os.environ.get("PRAVAHA_HOME", "/Users/Dev/pravaha"), "run", "merged_proofs.json")
+
+
 class GitHubSource:
     """Observations from `gh` and local git, cached: git facts about a commit never change, a merged PR stays
     merged, and a deploy that contains a commit keeps containing it. Everything else is re-read after REFRESH_S."""
 
-    def __init__(self, repo: str):
+    def __init__(self, repo: str, proof_path: str | None = None, proofs: ProofStore | None = None):
         self.repo = repo
+        self.proofs = proofs if proofs is not None else ProofStore(proof_path or default_proof_path())
         self._lock = threading.Lock()
+        self._branch_lookups: dict[str, float] = {}      # branch -> when a per-branch lookup last found no merged PR
+        self._validated_at = 0.0
         self._prs: dict[int, tuple[float, dict | None]] = {}
         self._heads: dict[str, list[int]] = {}
         self._diffs: dict[str, frozenset] = {}
         self._paths: dict[tuple[str, str], bool] = {}
         self._subjects: dict[str, int | None] = {}
-        self._contained: dict[str, dict] = {}
+        self._contained: dict[str, dict] = {e["pr"]["mergeCommit"]["oid"]: {**e["deploy"], "contains_merge": True}
+                                            for e in self.proofs.entries().values()}
         self._not_contained: dict[str, float] = {}
         self._runs: tuple[float, list[dict]] | None = None
         self._earned_runs: dict[int, bool] = {}      # a finished run's jobs never change
@@ -206,8 +321,9 @@ class GitHubSource:
         rc, out = self._call(["git", "rev-parse", "origin/main"])
         with self._lock:
             self._main = out.strip() if rc == 0 else self._main
+        self._revalidate()
         rc, out = self._call(["gh", "pr", "list", "--state", "merged", "--base", "main", "--limit",
-                              str(MERGED_LIST_LIMIT), "--json", "number,state,headRefName,headRefOid,mergeCommit"])
+                              str(MERGED_LIST_LIMIT), "--json", PR_FIELDS])
         if rc == 0:
             heads: dict[str, list[int]] = collections.defaultdict(list)
             for pr in _json_list(out):
@@ -218,14 +334,35 @@ class GitHubSource:
             with self._lock:
                 self._heads = dict(heads)
 
+    def _revalidate(self, force: bool = False) -> None:
+        """Drop a cached proof only when its merge commit is provably no longer in origin/main (`merge-base
+        --is-ancestor` exits 1). Any other outcome (gh down, git failing or timing out) leaves every proof in place."""
+        with self._lock:
+            if not force and time.time() - self._validated_at < REVALIDATE_S:
+                return
+            self._validated_at = time.time()
+        for key, entry in self.proofs.entries().items():
+            merge = entry["pr"]["mergeCommit"]["oid"]
+            rc, _ = self._call(["git", "merge-base", "--is-ancestor", merge, "origin/main"])
+            if rc != 1:
+                continue
+            self.proofs.drop(key)
+            with self._lock:
+                self._contained.pop(merge, None)
+                self._prs.pop(entry["pr"]["number"], None)
+
+    def record_proof(self, number: int, pr: dict, merge: str, deploy: dict) -> None:
+        self.proofs.put(number, pr, merge, deploy)
+        with self._lock:
+            self._contained[merge] = {**deploy, "contains_merge": True}
+
     # -- Source ----------------------------------------------------------------------------------
     def pr(self, number: int) -> dict | None:
         with self._lock:
             cached = self._prs.get(number)
         if cached is not None:
             return cached[1]
-        rc, out = D._run(["gh", "pr", "view", str(number), "--json", "number,state,headRefName,headRefOid,mergeCommit"],
-                         cwd=self.repo)
+        rc, out = self._call(["gh", "pr", "view", str(number), "--json", PR_FIELDS])
         try:
             pr = json.loads(out) if rc == 0 else None
         except ValueError:
@@ -234,11 +371,29 @@ class GitHubSource:
         if pr is not None:
             with self._lock:
                 self._prs[number] = (time.time(), pr)
-        return pr
+            return pr
+        return self.proofs.pr(number)       # gh could not say: a merged+deployed proof already seen stands
 
     def merged_prs_for_branch(self, branch: str) -> list[int]:
+        """Merged PRs whose head is `branch`: the windowed list first, then proofs already cached, then (for a branch
+        older than MERGED_LIST_LIMIT merged PRs) a per-branch `gh pr list --head`. A failed lookup is never cached."""
         with self._lock:
-            return list(self._heads.get(branch, []))
+            windowed = list(self._heads.get(branch, []))
+            looked_up = self._branch_lookups.get(branch)
+        found = windowed + [n for n in self.proofs.numbers_for_branch(branch) if n not in windowed]
+        if found or (looked_up is not None and time.time() - looked_up < BRANCH_LOOKUP_TTL_S):
+            return found
+        rc, out = self._call(["gh", "pr", "list", "--state", "merged", "--base", "main", "--head", branch,
+                              "--limit", "10", "--json", PR_FIELDS])
+        if rc != 0:
+            return []
+        rows = [pr for pr in _json_list(out) if _number(pr.get("number")) is not None and pr.get("headRefName") == branch]
+        with self._lock:
+            for pr in rows:
+                self._prs[pr["number"]] = (time.time(), pr)
+            if not rows:
+                self._branch_lookups[branch] = time.time()
+        return sorted((pr["number"] for pr in rows), reverse=True)
 
     def pr_of_commit(self, sha: str) -> int | None:
         with self._lock:
