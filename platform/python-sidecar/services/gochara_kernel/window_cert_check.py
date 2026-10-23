@@ -26,9 +26,11 @@ WHAT IT DOES FOR A `solver_budget_exhausted` BLANK (`check_budget_blank`) — th
 
 TWO CLASSES OF UNVERIFIED (R-6). DISAGREEMENT — a bound violated, a different maximum, an earlier qualifying extremum, a certificate the sky or the
 stored row contradicts, a blank whose certificate shows fewer evaluations than the declared budget or no open cell — blocks the seal, always.
-INCONCLUSIVE — the verifier could not settle the window inside its own budget (`verifier_budget_exhausted`), or R-1/R-3's `tie_ambiguous` /
-`tie_isolation_unresolved` — is demoted at seal to a named blank, counted, capped (see `numerical_window_gate`). An UNVERIFIED reason in neither
-list is treated as a DISAGREEMENT: only the named reasons are ever demoted.
+INCONCLUSIVE — the verifier could not settle the window inside its own budget (`verifier_budget_exhausted`), or could not push its first-order bound under the
+stored maximum + the float4 tolerance at its width floor with no evaluated point above it (`solver_certificate_incomplete`: nothing contradicts the stored number, the
+verifier's bound is merely too loose to certify it; SR-TR2-DEFECT-B, see the note at `INCONCLUSIVE_REASONS`), or R-1/R-3's `tie_ambiguous` /
+`tie_isolation_unresolved` — is demoted at seal to a named blank, counted, capped (see `numerical_window_gate`). An UNVERIFIED reason in none of these
+is treated as a DISAGREEMENT: only the named reasons are ever demoted. A refutation (a point the verifier evaluated above the maximum) is a DISAGREEMENT whatever else is open.
 
 (I) INTERPRETATIONS (each with its alternative in the job notes): "an unexpanded prunable leaf" is read as "a budget blank with no open cell the verifier
 cannot discharge"; the G-6 sample rate defaults to 2 %; a H1/H2 failure the verifier finds under a budget-blank certificate makes the blank AGREED
@@ -60,8 +62,13 @@ WITNESSED_REFUTATIONS = frozenset({chk.F_ABOVE, chk.F_VALUE})
 
 AGREED, DISAGREEMENT, INCONCLUSIVE = "AGREED", "DISAGREEMENT", "INCONCLUSIVE"
 #: the UNVERIFIED reasons that are demoted rather than blocking (R-6). `tie_ambiguous` (R-1) and `tie_isolation_unresolved` (R-3) are the
-#: verifier's refusals to name an extremum it cannot isolate; `verifier_budget_exhausted` is its own work budget.
-INCONCLUSIVE_REASONS = frozenset({chk.U_BUDGET, "tie_isolation_unresolved", "tie_ambiguous"})
+#: verifier's refusals to name an extremum it cannot isolate; `verifier_budget_exhausted` is its own work budget. `solver_certificate_incomplete` (SR-TR2-DEFECT-B):
+#: the verifier's bound for a SUM over several bodies is the sum of each body's larger end value, which exceeds the function by the opposing bodies' variation across the
+#: leaf (first order in the leaf width); a stored REAL may sit up to half a float4 spacing from the exact maximum, so where the rounding error is within that slack of
+#: its limit the bound cannot get under M + tol at the 1 ms width floor although every point the verifier evaluated is at or under it. That is a bound too loose to certify,
+#: not a sky that contradicts the number: the window is demoted to the named blank (counted, capped), never blocked as a DISAGREEMENT. A point above the threshold is a
+#: witnessed refutation and stays a DISAGREEMENT (`classify` reads REFUTED first).
+INCONCLUSIVE_REASONS = frozenset({chk.U_BUDGET, chk.U_CERT, "tie_isolation_unresolved", "tie_ambiguous"})
 
 C_SCHEMA = "certificate_schema_invalid"
 C_OBJECTIVE = "certificate_objective_mismatch"
