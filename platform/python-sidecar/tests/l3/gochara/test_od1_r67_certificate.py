@@ -982,7 +982,11 @@ def test_the_certificate_check_imports_nothing_of_the_builder():
     assert bad == []
     import subprocess
     root = str(Path(__file__).resolve().parents[3])
-    code = (f"import sys; sys.path.insert(0, {root!r}); from services.gochara_kernel import window_cert_check\n"
+    # `-I` drops the user site and PYTHONPATH (where a CI runner's pyswisseph can live) and the package `__init__` imports `knots`: hand the child the parent's import path and a
+    # swisseph stand-in, as `test_od1_s2_solver_check` does, so only OUR import closure is measured
+    code = (f"import sys; sys.path[:0] = {[root, *sys.path]!r}\n"
+            "try:\n    import swisseph\nexcept ImportError:\n    from unittest import mock; sys.modules['swisseph'] = mock.MagicMock()\n"
+            "from services.gochara_kernel import window_cert_check\n"
             "bad = [m for m in ('services.gochara_kernel.window_sweep', 'services.gochara_kernel.window_solver') if m in sys.modules]\n"
             "print('LOADED', bad) if bad else print('CLEAN')\n")
     out = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True, cwd=root)
@@ -1005,7 +1009,11 @@ def test_the_verifier_that_hosts_the_g6_resolver_imports_nothing_of_the_builder_
     assert bad == []
     import subprocess
     root = str(Path(__file__).resolve().parents[3])
-    code = (f"import sys; sys.path.insert(0, {root!r}); from services.gochara_kernel import window_verifier\n"
+    # `-I` drops the user site and PYTHONPATH (where a CI runner's pyswisseph can live) and the package `__init__` imports `knots`: hand the child the parent's import path and a
+    # swisseph stand-in, as `test_od1_s2_solver_check` does, so only OUR import closure is measured
+    code = (f"import sys; sys.path[:0] = {[root, *sys.path]!r}\n"
+            "try:\n    import swisseph\nexcept ImportError:\n    from unittest import mock; sys.modules['swisseph'] = mock.MagicMock()\n"
+            "from services.gochara_kernel import window_verifier\n"
             "bad = [m for m in ('services.gochara_kernel.window_sweep', 'services.gochara_kernel.window_solver') if m in sys.modules]\n"
             "print('LOADED', bad) if bad else print('CLEAN')\n")
     out = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True, cwd=root)

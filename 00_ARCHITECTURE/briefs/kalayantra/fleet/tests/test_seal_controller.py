@@ -233,14 +233,21 @@ class World:
         self.aggregate.write_text(json.dumps(agg))
         # the retained brief (real check script must accept it)
         bw = windows + brief_gate_shift
+        # SR-OD1 S3 / R-6: the brief's gate also carries the blank windows per GRAIN and the windows the verifier demoted (the INCONCLUSIVE ones), and each persisted
+        # attestation carries its own demoted counts; the real check script refuses a brief without them or whose counts disagree with the summary.
+        demoted_by_reason = {sc.INCONCLUSIVE_REASON: inconclusive} if inconclusive else {}
+        honest_brief = [dict(h, windows=h["windows"] + (brief_gate_shift if i == 0 else 0)) for i, h in enumerate(self.honest)]
+        by_grain = [{"event_class": "bereavement", "path_id": h["path_id"], "rule_version": "v1", "reason": h["reason"], "group": h["group"], "windows": h["windows"]}
+                    for h in honest_brief]
         payload = {"schema": "seal_approval_payload/1", "chart_id": CHART, "generation": GEN, "manifest": {"manifest_id": "m-1", "status": "candidate"},
                    "candidate_gate": {"violations": list(candidate_violations)}, "result_policy": sc.POLICY, "code": {"sealing_commit": self.head},
                    "classes": [{"event_class": "bereavement", "grains": [{"status": "VERIFIED", "path_id": "P1", "rule_version": "v1"}]}],
                    "attestations": {"ka_gochara_eval_window_verification": [json.dumps({"runner_identity": {"numerical_window_gate": {
-                       "status": "PASSED", "table": TABLE, "windows": bw, "numbered": numbered}}})]},
+                       "status": "PASSED", "table": TABLE, "windows": bw, "numbered": numbered, "demoted": demoted_by_reason}}})]},
                    "qualification_table": {"bound": TABLE, "implemented": TABLE, "agrees": True},
                    "numerical_window_gate": {**{k: v for k, v in gate.items() if k != "grains"}, "windows": bw, "blank_windows": bw - numbered,
-                                             "honest_nulls": [dict(h, windows=h["windows"] + (brief_gate_shift if i == 0 else 0)) for i, h in enumerate(self.honest)]}}
+                                             "honest_nulls": honest_brief, "honest_nulls_by_grain": by_grain, "demoted_windows": inconclusive,
+                                             "demoted_by_reason": demoted_by_reason}}
         self.raw = chk.canon(payload).encode("utf-8")
         self.brief, self.compact, self.envelope = root / "brief.json", root / "compact.json", root / "envelope.json"
         self.history, self.run_file = root / "approvals.json", root / "seal_run.json"

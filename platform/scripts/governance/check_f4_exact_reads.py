@@ -71,6 +71,9 @@ EXEMPT: tuple[tuple[str, str, str], ...] = (
      "BUILDER substrate store: reads back the sky events it wrote; no verifier compares it (ruling: the builder is unchanged)"),
     ("services/gochara_eval/dump_extract.py", "w.evidence_for AS si",
      "the Stage-1 freeze records this EXACT extract command (SI addendum v1.3 §5); it feeds the qualification report's ordering, not a verifier tolerance"),
+    ("services/gochara_eval/n4_reader.py", "w.qualification ->> 'unqualified_reason'",
+     "the N4 reader renders the SAME `si` extract as `dump_extract` (same `float(si)` -> `render`) for the frozen scorer; casting would change the scorer's input bytes "
+     "relative to the Stage-1 freeze. A scorer input, not a verifier tolerance compare (the reader and the dump are outside the pinned scorer digest by design)"),
 )
 
 _TABLE_RE = re.compile(r"\b(" + "|".join(REAL_COLUMNS) + r")\b")

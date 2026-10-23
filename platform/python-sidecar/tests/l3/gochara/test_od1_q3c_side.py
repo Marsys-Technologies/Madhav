@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -324,13 +325,18 @@ def test_s7_a_node_row_that_gives_a_degree_range_is_refused_not_read_as_a_whole_
 # ── S8: independence — an import-graph proof ────────────────────────────────────────────────────────────────────────
 BUILDER_SIDE_MODULES = ("services.gochara_rules.p1_valence", "services.gochara_kernel.p1_nature_operands", "services.gochara_kernel.p1_operands",
                         "services.gochara_kernel.window_sweep", "services.gochara_kernel.window_solver")
-_PROBE = ("import sys; sys.path.insert(0, sys.argv[1]); import importlib; importlib.import_module(sys.argv[2]); "
+# `-I` drops the user site and PYTHONPATH, where a CI runner's pip-installed pyswisseph can live, and the package `__init__` imports `knots` (which needs it at import time):
+# hand the child the parent's own import path, and a stand-in for a runner without the binding, so what is measured is only which of OUR modules the import pulls in
+# (the same two moves as `test_od1_s2_solver_check`'s checker-imports-nothing-of-the-builder probe)
+_PROBE = ("import sys, json; sys.path[:0] = [sys.argv[1], *json.loads(sys.argv[3])]\n"
+          "try:\n    import swisseph\nexcept ImportError:\n    from unittest import mock; sys.modules['swisseph'] = mock.MagicMock()\n"
+          "import importlib; importlib.import_module(sys.argv[2]); "
           "print('\\n'.join(sorted(m for m in sys.modules if m.startswith('services.gochara'))))")
 
 
 def _loaded_after_importing(module: str) -> set[str]:
     """The `services.gochara*` modules a FRESH interpreter holds after importing `module` alone (isolated: no cwd, no PYTHONPATH)."""
-    out = subprocess.run([sys.executable, "-I", "-c", _PROBE, str(SIDECAR), module], capture_output=True, text=True, timeout=120, check=True)
+    out = subprocess.run([sys.executable, "-I", "-c", _PROBE, str(SIDECAR), module, json.dumps(sys.path)], capture_output=True, text=True, timeout=120, check=True)
     return set(out.stdout.split())
 
 
