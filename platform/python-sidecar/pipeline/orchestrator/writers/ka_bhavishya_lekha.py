@@ -214,10 +214,18 @@ class _LegacyKaBhavishyaLekhaWriter(WriterBase):
                     "a successful empty rebuild or leave stale rows silently servable; no rows "
                     "were mutated. Run ka_kala_darshana or explicitly reconcile the stale rows."
                 )
+            # SR-EMPTY-REASON: the join to kala_convergence_served is what empties this plan, so "no future darshana
+            # windows" is only one of the possible causes. Name the convergence layer's measured state beside it.
+            from services.kala_core.empty_layer_reason import read_empty_layer
+            conv_reason = read_empty_layer(conn, chart_id, 'kala_convergence', savepoint='sp_bhavishya_conv_state')['empty_reason']
             return WriterResult(
                 asset_id='ka_bhavishya_lekha',
                 rows_inserted=0,
-                notes='No future darshana windows and no existing projections — run ka_kala_darshana first',
+                notes=f'No future darshana windows joined to a served convergence window and no existing projections '
+                      f'(convergence layer: {conv_reason}) — '
+                      + ('run ka_sangam, then ka_kala_darshana' if conv_reason == 'layer_not_computed'
+                         else 'run ka_kala_darshana' if conv_reason == 'filters_excluded_all_rows'
+                         else 'no projection can be built until the convergence layer is populated'),
             )
 
         # Store flag on local scope so the loop can access it without a global

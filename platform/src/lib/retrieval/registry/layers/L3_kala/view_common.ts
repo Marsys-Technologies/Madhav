@@ -2,6 +2,7 @@
 import { query } from '@/lib/db/client'
 import { isVerifiedPassStatus, VERIFICATION_PASS_STATUS_VOCAB, VERIFIED_PASS_STATUSES } from '../../../envelope'
 import { qualifyStoryConvergence } from './story_source'
+import { classifyEmptyLayer, type EmptyLayerEvidence } from './empty_layer_reason'
 import { MUHURTA_UNDERTAKINGS } from '@/generated/muhurta_undertakings.generated'
 import type { CapabilityContext, CapabilityDescriptor, CapabilityHandler, InputSchema, ToolResult } from '../../types'
 
@@ -166,7 +167,13 @@ export interface Manifest extends Data { manifest_id: string; generation: string
 export interface ViewSnapshot {
   manifest: Manifest | null
   coverage: Data[]
-  sources: { table: string; total: number; rows: Data[] }[]
+  sources: { table: string; total: number; rows: Data[]; layer?: SourceLayerCounts }[]
+}
+/** Measured per source by viewSql, before any selector filter (SR-EMPTY-REASON); absent = not measured. */
+export interface SourceLayerCounts {
+  rows_in_published_generation: number | string | null
+  rows_any_partition: number | string | null
+  asset_state: string | null
 }
 export interface ViewSpec {
   name: ViewName
@@ -176,18 +183,19 @@ export interface ViewSpec {
 }
 type SourceTable = keyof typeof SOURCES
 const SOURCES = {
-  kala_darshana: { id: 's.id', assertion: true, generation: true,
+  kala_darshana: { id: 's.id', assertion: true, generation: true, asset: 'ka_kala_darshana',
     start: 'COALESCE(s.interval_start, s.window_start::timestamp AT TIME ZONE \'UTC\')',
     end: 'COALESCE(s.interval_end, (s.window_end + 1)::timestamp AT TIME ZONE \'UTC\')' },
-  kala_obstruction: { id: 's.id', assertion: true, generation: true,
+  kala_obstruction: { id: 's.id', assertion: true, generation: true, asset: 'ka_vighnakara',
     start: 's.interval_start', end: 's.interval_end' },
-  kala_gochara_contacts: { id: 's.contact_id', assertion: false, generation: true,
+  // No single writer asset (ka_gochara_v3/v4_41/v5 all write it): the build state is not consulted.
+  kala_gochara_contacts: { id: 's.contact_id', assertion: false, generation: true, asset: null,
     start: 's.t_in', end: 's.t_out' },
-  kala_bhavishya: { id: 's.id', assertion: false, generation: false,
+  kala_bhavishya: { id: 's.id', assertion: false, generation: false, asset: 'ka_bhavishya_lekha',
     start: 's.window_start::timestamp AT TIME ZONE \'UTC\'', end: '(s.window_end + 1)::timestamp AT TIME ZONE \'UTC\'' },
-  kala_convergence: { id: 's.convergence_id', assertion: false, generation: false,
+  kala_convergence: { id: 's.convergence_id', assertion: false, generation: false, asset: 'ka_sangam',
     start: 's.window_start::timestamp AT TIME ZONE \'UTC\'', end: '(s.window_end + 1)::timestamp AT TIME ZONE \'UTC\'' },
-  kala_jivana_parva: { id: 's.id', assertion: false, generation: false,
+  kala_jivana_parva: { id: 's.id', assertion: false, generation: false, asset: 'ka_jivana_parva',
     start: 'make_date(s.start_year, 1, 1)::timestamp AT TIME ZONE \'UTC\'',
     end: 'make_date(s.end_year + 1, 1, 1)::timestamp AT TIME ZONE \'UTC\'' },
 } as const
@@ -225,6 +233,19 @@ function stageDensityContract(sources: SourceTable[]): StageDensityContract {
       build_id_column: table === 'kala_gochara_contacts' ? 'build_id' : null })) }
 }
 
+/** Per-source empty reason from the counts viewSql measured; a snapshot that carries none is an honest unreadable. */
+function sourceEmpty(source: ViewSnapshot['sources'][number]): { empty_reason: string; layer_state: EmptyLayerEvidence } {
+  const num = (v: number | string | null | undefined) => v === null || v === undefined || v === '' ? null : Number(v)
+  const asset = Object.hasOwn(SOURCES, source.table) ? SOURCES[source.table as SourceTable].asset : null
+  const evidence: EmptyLayerEvidence = {
+    rows_any_partition: num(source.layer?.rows_any_partition),
+    rows_served_unfiltered: num(source.layer?.rows_in_published_generation),
+    asset_state: source.layer?.asset_state ?? null,
+    asset_state_measurable: asset !== null,
+  }
+  return { empty_reason: classifyEmptyLayer(evidence), layer_state: evidence }
+}
+
 export function composeView(view: ViewName, chart_id: string, snapshot: ViewSnapshot, offset = 0) {
   const manifest = snapshot.manifest
   const sources = manifest ? snapshot.sources : []
@@ -254,7 +275,10 @@ export function composeView(view: ViewName, chart_id: string, snapshot: ViewSnap
     generation: manifest?.generation ?? null, empty_reason: !manifest ? 'unpublished' : !rows.length ? 'no_matching_rows' : null,
     rows, density, catalog_only_rows_in_page: density.catalog_only + density.unknown, coverage: manifest ? snapshot.coverage : [],
     pagination: { total_matching, returned: rows.length, more_available: sources.some(source => Number(source.total) > offset + source.rows.length) },
-    sources: sources.map(s => ({ table: s.table, total_matching: Number(s.total), returned: s.rows.length })),
+    // SR-EMPTY-REASON: a source that contributed nothing says which kind of nothing (the page-level empty_reason is
+    // set only when EVERY source is empty, so one silent empty source beside a populated one read as "none").
+    sources: sources.map(s => ({ table: s.table, total_matching: Number(s.total), returned: s.rows.length,
+      ...(Number(s.total) === 0 && s.rows.length === 0 ? sourceEmpty(s) : {}) })),
     judgment_flags: [ ...(density.catalog_only + density.unknown ? ['catalog_only_rows_present'] : []),
       ...(density.unknown ? ['stored_tier_contract_unavailable'] : []),
       ...(density.context_only ? ['context_only_rows_present'] : []), ...(!snapshot.coverage.length ? ['coverage_unavailable'] : []) ],
@@ -268,6 +292,13 @@ function legacyRows(table: SourceTable): string {
   return table === 'kala_obstruction'
     ? ' OR (s.generation IS NULL AND NOT EXISTS (SELECT 1 FROM kala_obstruction h WHERE h.chart_id = s.chart_id AND h.generation = p.generation))'
     : ' OR s.generation IS NULL'
+}
+
+/** Which of a source's rows belong to the published generation (legacy rows included where the view serves them). */
+function generationClause(table: SourceTable): string {
+  const source = SOURCES[table]
+  return source.generation ? `AND (s.generation = p.generation${source.assertion ? legacyRows(table) : ''})`
+    : "AND (to_jsonb(s)->>'generation' IS NULL OR to_jsonb(s)->>'generation' = p.generation)"
 }
 
 /** $1 chart, $2 at, $3/$4 horizon, $5 class, $6 assertion, $7 limit, $8 offset,
@@ -298,7 +329,7 @@ export function viewSql(spec: ViewSpec): string {
         EXISTS (SELECT 1 FROM kala_convergence WHERE chart_id = $1::uuid AND COALESCE(to_jsonb(kala_convergence)->>'generation', 'legacy') = COALESCE((SELECT generation FROM kala_layer_head WHERE chart_id = $1::uuid), 'legacy')))` : ''} AS data, ${source.id}::text AS record_id, ${rank} AS tier_order
       FROM ${table} s CROSS JOIN published p
       WHERE s.chart_id = $1::uuid
-        ${source.generation ? `AND (s.generation = p.generation${source.assertion ? legacyRows(table) : ''})` : "AND (to_jsonb(s)->>'generation' IS NULL OR to_jsonb(s)->>'generation' = p.generation)"}
+        ${generationClause(table)}
         AND ($2::timestamptz IS NULL OR (${source.start} <= $2::timestamptz AND ${source.end} > $2::timestamptz))
         AND ($3::timestamptz IS NULL OR ${source.end} > $3::timestamptz)
         AND ($4::timestamptz IS NULL OR ${source.start} < $4::timestamptz)
@@ -320,6 +351,10 @@ export function viewSql(spec: ViewSpec): string {
       FROM kala_gochara_coverage g JOIN published p USING (chart_id, generation)), '[]'::jsonb) AS coverage,
     jsonb_build_array(${spec.sources.map((table, i) => `jsonb_build_object(
       'table', '${table}', 'total', (SELECT count(*) FROM source_${i}),
+      'layer', jsonb_build_object(
+        'rows_in_published_generation', (SELECT count(*) FROM ${table} s CROSS JOIN published p WHERE s.chart_id = $1::uuid ${generationClause(table)}),
+        'rows_any_partition', (SELECT count(*) FROM ${table} WHERE chart_id = $1::uuid),
+        'asset_state', ${SOURCES[table].asset ? `(SELECT state FROM asset_throughput WHERE chart_id = $1::uuid AND asset_id = '${SOURCES[table].asset}' LIMIT 1)` : 'NULL::text'}),
       'rows', COALESCE((SELECT jsonb_agg(page.data ORDER BY page.tier_order, page.record_id)
         FROM (SELECT * FROM source_${i} ORDER BY tier_order, record_id LIMIT $7 OFFSET $8) page), '[]'::jsonb))`).join(',\n')}) AS sources`
 }
