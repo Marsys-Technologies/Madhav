@@ -137,8 +137,8 @@ def test_h_a2_a_p1_grain_is_read_with_the_writers_p1_operand_sources(monkeypatch
     p1o.P1Operands = P1Operands
     monkeypatch.setitem(sys.modules, "services.gochara_kernel.p1_operands", p1o)
     monkeypatch.setattr(sys.modules["services.gochara_kernel"], "p1_operands", p1o, raising=False)
-    # the sweep of this base cannot place a P1 record in a channel or solve its objective (P1 is categorical here): the binding is what is under test, so the two
-    # downstream steps are stood in for; an UNQUALIFIED member still raises first
+    # this stub record has no per-instant side, so the static-channel step and the solve are stood in for (the binding is what is under test); an UNQUALIFIED member
+    # still raises first.  The per-instant-side P1 rebuild is H-a3 below, with nothing stood in.
     monkeypatch.setattr(ws, "_program_channel", lambda event_class, rec, qualified: ws.CHANNEL_FOR)
     monkeypatch.setattr(ts.cx, "pieces_of", lambda *a, **k: ["pieces"])
     env = _env("P1", _Overlay())
@@ -148,6 +148,28 @@ def test_h_a2_a_p1_grain_is_read_with_the_writers_p1_operand_sources(monkeypatch
     other = _env("P2", _Overlay())
     other.pieces(_win("P2"))
     assert other.store.seen[0]["p1"] is None                           # only a P1 grain carries the operand sources
+
+
+def test_h_a3_the_cross_check_rebuilds_a_p1_window_whose_side_a_factor_decides_per_instant(monkeypatch):
+    """G-6 on the 87320fbf2 trial: all 37 sampled P1 windows read `cannot rebuild the window: SweepRefusal: P1: channel assignment ... is not implemented`.  The
+    builder (`draft_windows`) gives a record whose side a factor decides per instant (P1 agent_nature, Q3(c): SR-PLAN-REVIEW-FABLE B-1) NO static channel — it never
+    calls `record_channel`, which refuses every P1 record; the cross-check asked it unconditionally.  Real `_program_channel`, real `pieces_of` (nothing stood in).
+    [window_sweep.draft_windows: `prog.channel = None if prog.has_channel_fn else _program_channel(...)`; RecordProgram.has_channel_fn, "P1 agent_nature, Q3(a)"]"""
+    rec = ws.dataclasses.replace(_record("r1", "P1"), operand_sources={"agent_nature": ws.OperandSource(
+        boundaries=lambda lo, hi: [], complete=True, value_at=lambda t: 0.5, channel_at=lambda t: ws.CHANNEL_FOR)})
+    env = _env("P1", _Overlay())
+    env.store.read_grain = lambda **kw: [rec]
+    env.bound_rows = lambda path_id, version: [{"factor_id": "agent_nature", "rule_version": "1.3.0", "null_state": ws.UNQUALIFIED}]
+    env.w.P1_VALUE_RULES = {}                                          # the writer's rules are bound, so the grain is read with operand sources (the store is a stub here)
+    p1o = pytest.importorskip("services.gochara_kernel.p1_operands")
+    monkeypatch.setattr(p1o, "form_b_mapping", lambda rows: None)
+    monkeypatch.setattr(p1o, "load_p1_l0", lambda cur: None)
+    monkeypatch.setattr(p1o, "P1Operands", lambda *a, **k: object())
+    pieces = env.pieces(_win("P1"))
+    (piece,) = pieces
+    (member,) = piece["live"]
+    assert member.channel is None and member.has_channel_fn            # the side is read per instant, never from a static channel
+    assert piece["f"](T0 + HOUR / 2) == pytest.approx(0.5)             # the objective is the for-channel value of the per-instant side
 
 
 def test_h_a2_the_cross_check_runs_under_the_final_rule_profile_and_leaves_none_behind():

@@ -1056,7 +1056,10 @@ class _CrosscheckEnv:
         progs = []
         for rid in ids:
             p = ws.build_program(self.records[key][rid], rows, drishti=self.w.DRISHTI_SOURCE, vedha=vedha)
-            p.channel = ws._program_channel(key[0], p.rec, p.qualified) if hasattr(ws, "_program_channel") else p.channel
+            if p.has_channel_fn:                                            # draft_windows: a record whose side a factor decides per instant (P1 agent_nature, Q3(c)) has no static channel
+                p.channel = None
+            elif hasattr(ws, "_program_channel"):
+                p.channel = ws._program_channel(key[0], p.rec, p.qualified)
             if not p.qualified:
                 raise RuntimeError(f"member {rid} is unqualified although the window is numbered")
             progs.append(p)

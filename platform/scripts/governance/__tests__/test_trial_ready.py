@@ -495,7 +495,9 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # TRIAL_COLLECT=1) lets a diagnostic run continue past a class's first defect, failing the class at the END with the full list (tests/test_harness_33.py, mutants_h33.py)
 # AMD64-DOCKER (item amd64-docker; previous pin 55c3a775...418d; ruling SR-T24-AMD64-DOCKER): the one amd64 slice runs in a linux/amd64 Docker container (Rosetta/QEMU emulation) against a PG 15 locale-C
 # sibling container; the arch is read by an in-container probe, the emulation is recorded (platform_notes), G-5 reads NOT_EVALUATED for such a run (tests/test_amd64_docker.py, mutants_amd64.py)
-HARNESS_V31_DIGEST = "4822bcf0fcf710a00e004852573e64997ba703870bc9a6a0327015145d74fa7a"
+# G6-P1-CROSSCHECK (item g6-p1; previous pin 4822bcf0...fa7a; ruling SR-NEARMISS-DOMAIN-TAIL-AMEND-1, G-6): the cross-check rebuilds a P1 window through the builder's own
+# per-instant agent_nature channel (draft_windows' has_channel_fn path), never record_channel's P1 refusal (job X-20261023T111950Z-g6-p1-crosscheck; tests/test_harness_32.py test_h_a3)
+HARNESS_V31_DIGEST = "f4cffcd8a9916085a6395391b6fad0423b5cd3d177f7f6e450a102fe44550cc6"
 
 
 def harness_digest(root):
