@@ -708,4 +708,9 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Window re-pinned ONCE at I1-FINAL (origin/main merged after GEOMETRY-PIN-ONCE): main's #3850 seal_brief change (mudda-overlap disclosure) joins the integration branch's window-stage edits. Re-derived ONCE from the
     # merged tree's real bytes the same way (the prior pin a5f05e4c... is the pre-merge head; main's own pin 5148dee9... is on main's tree); geometry is unchanged (27edba25...); no golden component is re-captured.
     # Window re-pinned ONCE more, the last re-derivation before the TR (SR-PIN-COMMENT-REPIN): e4a5d661e's comment/docstring-only rewording (forced by test_w2_serving_route) moved the window stage's byte digest (75c3fd11... -> 789430e0...); geometry is unchanged. Re-derived by script from the final tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry PIN-COMMENT-REPIN.
-    assert got["implementation"]["window"] == "789430e0c9f73f6e3f1f9d24fe1f63e3b07e3ad0245a536c5994eab8482db307"
+    # Window re-pinned ONCE more, the LAST re-derivation before the TR (SR-P1-SLIVER-D2): 604963d43 makes the builder (window_solver, window_sweep) and, in its own code, the verifier
+    # (window_solver_check, window_verifier) leave a piece shorter than one JD-double ulp out of a window's maximum (one sky event read on two paths, N.7.6) and count it
+    # (qualification.certificate.sliver_pieces_excluded) (789430e0... -> b94365dd...). Window-stage modules only: geometry (77cde807...) and evaluation (16c4a524...) are unchanged. Re-derived
+    # by script from the final tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is
+    # re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry P1-SLIVER-D2.
+    assert got["implementation"]["window"] == "b94365dd0cfff70763f922fb3dc58598b7c05a70f97b7f288aeea4ee19fd5035"

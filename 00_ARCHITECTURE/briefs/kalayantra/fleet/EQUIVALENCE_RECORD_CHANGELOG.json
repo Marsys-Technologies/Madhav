@@ -492,6 +492,44 @@
    "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the final tree, equal to input_vector.implementation_digests(); the golden pins in test_mb_ordinary_golden.py were replaced by script (job script, AST-located literals); no golden component re-captured.",
    "interpretations": [],
    "closed": true
+  },
+  {
+   "id": "P1-SLIVER-D2",
+   "rulings": [
+    "SR-P1-SLIVER-D2"
+   ],
+   "category": "E1",
+   "part": "implementation.window (golden pin) + implementation_digest.lock.json + century_contract.json image.writer_source_digest",
+   "base_commit": "90cba08db",
+   "derived_at_head": "604963d43b6f186aa0c6353ed56cae2b88b8aa09",
+   "statement": "P1-SLIVER-D2 (SR-P1-SLIVER-D2, madhav-44): the builder and, independently in its own code, the verifier each exclude from a window's MAXIMUM any piece shorter than the stored-edge resolution at that instant = one JD-double ulp, COMPUTED (math.ulp(jd) * 86400 s, never a literal). A record's stored support end and the lord's sign change are the same sky event computed on two paths <= 21 us apart; a maximum that exists only on such a piece is not a sky configuration (N.7.6). The excluded pieces are counted per window (qualification.certificate.sliver_pieces_excluded, the generic member migration 1402 admits; absent = none excluded) and listed as kind 'sliver' in the solver certificate's geometry. A window whose only positive piece was a sliver is numbered by the pieces that remain (possibly 0.0). Cause commit 604963d43 changes window_solver, window_sweep, window_solver_check and window_verifier only (window-stage modules). Geometry and evaluation are unchanged. Measured on harness-built records (chronic_onset 10 of 138 P1 windows change value, illness_acute 10 of 138, major_loss 9 of 63, parental_event 15 of 149; no P2/P3/P4 window changes value). Last re-derivation before the TR. Derived pins carried by this entry: the window golden pin (test_mb_ordinary_golden.py); services/gochara_kernel/implementation_digest.lock.json regenerated with its own --write (it was already stale at the base head, registering the pre-amend-5 digests 5721a21c / geometry 5ec80159, so test_the_committed_lock_is_current_for_the_code_in_this_checkout could not pass there); century_contract.json image.writer_source_digest 48f50d1c -> e4433b5f (--check said the image differed; equal after).",
+   "cause": {
+    "commit": "604963d43",
+    "modules": [
+     "window_solver",
+     "window_sweep",
+     "window_solver_check",
+     "window_verifier"
+    ]
+   },
+   "excluded_piece_rule": "a piece [a, b) of a window's elementary pieces with (b - a) in seconds < math.ulp(JD(a)) * 86400, JD(a) the Julian Day double of its start, is no candidate for the maximum; the pieces on either side keep their own values and edges; a 10 ms piece (a different rung) is never excluded",
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "789430e0c9f73f6e3f1f9d24fe1f63e3b07e3ad0245a536c5994eab8482db307",
+     "after": "b94365dd0cfff70763f922fb3dc58598b7c05a70f97b7f288aeea4ee19fd5035"
+    }
+   },
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the final tree, equal to input_vector.implementation_digests(); the golden pin in test_mb_ordinary_golden.py was replaced by script (AST-located literal); no golden component re-captured.",
+   "interpretations": [],
+   "closed": true
   }
  ]
 }
