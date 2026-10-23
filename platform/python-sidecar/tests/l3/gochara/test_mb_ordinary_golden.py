@@ -515,12 +515,8 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     got = {k: v for k, v in got.items() if k != "scored_until"}
 
     same_host = got["ephemeris"]["platform"] == want["ephemeris"]["platform"]
-    # SR-TRBIND-3 (3) (I) INTERPRETATION: a platform string ('Darwin-arm64') does not identify a build - the golden was captured on one macOS arm64 pyswisseph build and the
-    # evaluator's own venv holds another (same swe_version, same .se1 files, SAME numerical probe digest, different compiled-extension hash, which `library_artifact_sha` binds
-    # precisely because "two builds can share a version"). On the same platform with another build only the artifact hash is host-bound; the probe digest (the numerical claim) and
-    # the version are still compared exactly. On another platform all three stay excluded, as before.
-    same_build = same_host and got["ephemeris"]["library_sha256"] == want["ephemeris"]["library_sha256"]
-    host_bound = () if same_build else (("library_sha256",) if same_host else ("platform", "library_sha256", "probe_digest"))
+    # SR-GOLDEN-LIB-STRICT: on the golden's own platform nothing is host-bound - the library artifact hash (library_sha256) stays strictly compared with the probe digest.
+    host_bound = () if same_host else ("platform", "library_sha256", "probe_digest")
     # the golden was generated on `want['ephemeris']['platform']`: the host library's own identity (its artifact hash, platform string and numerical probe digest) is a
     # property of the MACHINE, not of the repository's code, so on another host those three are not compared; every other component is, exactly
 
