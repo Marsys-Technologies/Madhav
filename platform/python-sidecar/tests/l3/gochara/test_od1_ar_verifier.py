@@ -170,6 +170,8 @@ class GeoConn:
             return _Cur(self.contacts)
         if "FROM public.ka_gochara_near_miss n" in flat:
             return _Cur(self.stored)
+        if "FROM public.ka_gochara_near_miss_search s" in flat:
+            return _Cur([])                                    # no searched object, so no disclosed identity-domain tail (test_near_miss_geometry_tail_reconcile)
         raise AssertionError(flat[:160])
 
 
