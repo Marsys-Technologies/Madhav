@@ -19,6 +19,8 @@
 #          TRIAL_LANE_DB=ky_lane_head  the named head-chain database the TRIAL_READY/1 evaluator reads (only ky_lane_* names). The harness itself exports TRIAL_READY_LANE_DSN (that
 #                                      database) and TRIAL_READY_TRIAL_DSN (this run's ky_trial_* database, while it exists) around the trial-ready stage — loopback, no credential.
 #          TRIAL_COLLECT=1            COLLECT mode (diagnostic / PRETR): do not stop a class at its first defect; run every remaining grain, fail the class at the END with the full list (default: stop-at-first, the TR shape)
+#          TRIAL_BASELINE_MODE=1      BASELINE mode (SR-BASELINE-OVERLAY-SKIP; set only by make_baseline.sh; needs TRIAL_POLICY=default and TRIAL_LABEL=baseline, else refused): a mandatory overlay migration the
+#                                     checkout lacks is skipped BY NAME and recorded, only when the checkout also lacks the code that requires it; a trial run (any other policy) always refuses
 #          TRIAL_AMD64_DOCKER=1       AMD64-DOCKER (SR-T24-AMD64-DOCKER): run the 4-class slice of TRIAL_CODE_HEAD (REQUIRED) in a linux/amd64 DOCKER CONTAINER against a PG 15 / locale C sibling container
 #                                     on a private network; <code checkout> is a git repo holding the head (exported with git archive) or an export; TRIAL_CLASSES = a subset of the four;
 #                                     TRIAL_IMAGE_DIGEST = use that local image by digest instead of building; TRIAL_EQ_REPO/TRIAL_EQ_TOOL/TRIAL_EQ_PINNED_EXTRA as above (host side);
@@ -70,5 +72,6 @@ if [ "${TRIAL_VERIFY:-}" = "1" ]; then args+=(--verify); fi
 if [ "${TRIAL_CROSSCHECK:-}" = "1" ]; then args+=(--crosscheck); fi
 if [ "${TRIAL_KEEP_DB:-}" = "1" ]; then args+=(--keep-db); fi
 if [ "${TRIAL_COLLECT:-}" = "1" ]; then args+=(--collect); fi
+if [ "${TRIAL_BASELINE_MODE:-}" = "1" ]; then args+=(--baseline-mode); fi
 if [ "${TRIAL_DRY_RUN:-}" = "1" ]; then printf '%s\n' "$PY" -I -X utf8 "$HERE/trial_slice.py" "${args[@]}"; exit 0; fi
 exec "$PY" -I -X utf8 "$HERE/trial_slice.py" "${args[@]}"
