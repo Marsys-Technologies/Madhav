@@ -197,6 +197,8 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
     expect(sourceSql).not.toMatch(/^\s*(INSERT|UPDATE|DELETE|TRUNCATE|MERGE)\b/im)
   })
 
+  // v5's declared four-edge set (definitions.ts NIRMANA_STAGED_INERT_CANDIDATE_RULES; migrations 1304, 1392, 1403)
+  const V5_DEPS = ['ga_positions', 'ga_dashas', 'bg_transit_rules', 'bg_dignity_reference']
   // N-137: the exclusion of the staged Gochara candidates is VISIBLE in the monitor output, and any other state fails closed
   const stagedRow = (asset_id: string, over: Partial<NirmanaRegistryContractRow> = {}): NirmanaRegistryContractRow => ({
     ...registryRow(), asset_id, layer: 'kala', scope: 'per_chart', is_active: false, target_table: 'kala_gochara_windows',
@@ -205,7 +207,7 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
 
   it('N-137: names every excluded staged candidate (id, reason, decision) in the response and logs one line per id each run', async () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
-    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v4_41_candidate'), stagedRow('ka_gochara_v5', { depends_on: ['ga_positions', 'ga_dashas'] })] })
+    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v4_41_candidate'), stagedRow('ka_gochara_v5', { depends_on: V5_DEPS })] })
     const { POST } = await import('../route')
     const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
     const body = await response.json()
@@ -227,13 +229,13 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
   it.each([
     ['a non-test evidence row', { has_non_test_runtime_evidence: true }],
     ['is_active true', { is_active: true }],
-    ['an extra dependency', { depends_on: ['ga_positions', 'ga_dashas', 'bg_reference'] }],
+    ['an extra dependency', { depends_on: [...V5_DEPS, 'bg_reference'] }],
     ['a MISSING dependency', { depends_on: ['ga_dashas'] }],
     ['a DIFFERENT dependency', { depends_on: ['ga_dashas', 'bg_reference'] }],
   ])('N-137 fails closed: a v5 with %s is NOT excluded — it is not listed and the monitor cannot read the baseline as healthy', async (_name, over) => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v5', { depends_on: ['ga_positions', 'ga_dashas'], ...over })] })
+    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v5', { depends_on: V5_DEPS, ...over })] })
     const { POST } = await import('../route')
     const response = await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))
     const body = await response.json()
@@ -247,7 +249,7 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const dependent = { ...registryRow(), asset_id: 'bg_depends_on_v5', sort_order: 2, depends_on: ['ka_gochara_v5'] }
-    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v5', { depends_on: ['ga_positions', 'ga_dashas'] }), dependent] })
+    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v5', { depends_on: V5_DEPS }), dependent] })
     const { POST } = await import('../route')
     const body = await (await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))).json()
     expect(body.excluded_staged_candidates).toEqual([])
@@ -299,7 +301,7 @@ describe('POST /api/admin/internal/nirmana-elevation-monitor', () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     // v4.1 is excluded by the rule; v5 carries NON-test evidence, so it stays in the denominator and the baseline throws
-    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v4_41_candidate'), stagedRow('ka_gochara_v5', { depends_on: ['ga_positions', 'ga_dashas'], has_non_test_runtime_evidence: true })] })
+    successfulSources({ registryRows: [registryRow(), stagedRow('ka_gochara_v4_41_candidate'), stagedRow('ka_gochara_v5', { depends_on: V5_DEPS, has_non_test_runtime_evidence: true })] })
     const { POST } = await import('../route')
     const body = await (await POST(request({ Authorization: `Bearer ${schedulerOidcToken}` }))).json()
     expect(body.status).toBe('source_unavailable')                                                               // the baseline threw …

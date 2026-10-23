@@ -226,7 +226,7 @@ def _scored_classes_component(classes) -> list:
     return sorted(classes)
 
 
-#: the vector key the SERVED surface reads the scored edge from (`serving_reader.SCORED_UNTIL_VECTOR_KEY`; a test pins the two equal)
+#: the vector key the SERVED surface reads the scored edge from (the read-side module's `SCORED_UNTIL_VECTOR_KEY`; a test pins the two equal)
 SCORED_UNTIL_KEY = "scored_until"
 _IST = _dt.timezone(_dt.timedelta(hours=5, minutes=30))        # the scorer's day convention (gochara_eval.registry: "All event dates are IST calendar dates")
 

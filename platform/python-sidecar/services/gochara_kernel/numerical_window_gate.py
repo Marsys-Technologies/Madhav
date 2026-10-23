@@ -22,7 +22,7 @@ seal, always: `verify_window_semantics` raises) or INCONCLUSIVE (it could not se
 window that carries a number is DEMOTED: the attestation counts it as a BLANK under its named reason, not as numbered, and lists it under `demoted` (the stored row
 still carries the builder's number; what is attested and sealed is that the window is served as the named blank). The attestation therefore NAMES them
 (`demoted_windows`: sorted `{window_id, reason}`): `generation_verdict` checks that each is a stored numbered window of the grain and that the list agrees with the counts,
-and `serving_reader` reads the list back and serves each listed window with every number null and `unqualified_reason` the attested reason. The census the gate recounts is the STORED
+and the read-side serving module reads the list back and serves each listed window with every number null and `unqualified_reason` the attested reason. The census the gate recounts is the STORED
 populations; the attested populations are the stored ones after classification, and every difference is a named, counted demotion. The demoted share of all windows
 is capped at 0.5 % (`INCONCLUSIVE_SHARE_CAP`); above it the verdict FAILS and the seal refuses. A stored blank the check could not confirm stays the blank it is.
 
