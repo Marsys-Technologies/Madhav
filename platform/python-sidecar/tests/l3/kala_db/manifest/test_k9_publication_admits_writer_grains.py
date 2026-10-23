@@ -58,6 +58,9 @@ def conn(kala_db_dsn):
                   'action text, plan jsonb, state text, plan_manifest jsonb, plan_manifest_digest text)')
         c.execute('CREATE TABLE asset_throughput (chart_id uuid, asset_id text, last_built_at timestamptz, '
                   'rows_written integer)')
+        # SR-K9-ADMITTED-ZERO: publication's zero-row detector reads each of the two writers' registered integrity_check_sql (the runner's own detector)
+        c.execute('CREATE TABLE asset_registry (asset_id text PRIMARY KEY, integrity_check_sql text)')
+        c.execute("INSERT INTO asset_registry VALUES ('ka_sangam', 'SELECT true'), ('ka_vighnakara', 'SELECT true')")
         for ddl in (
             'CREATE TABLE kala_activation_predicates (id serial, chart_id uuid, ayanamsha_id text, signal_id text, '
             'signature_class text, dasha_eligibility_rule_jsonb jsonb, transit_trigger_jsonb jsonb, '
@@ -159,5 +162,19 @@ def test_publication_refuses_when_one_in_scope_writer_did_not_attest(conn, sanga
     accept(conn, cand)
     conn.row_factory = tuple_row
     with pytest.raises(ValueError, match='grain'):
+        publication.publish(conn, run_id=cand.build_id, generation=GENERATION, expected_head=None)
+    assert conn.execute('SELECT count(*) FROM kala_layer_head').fetchone()[0] == 0
+
+
+def test_publication_refuses_a_zero_row_ka_vighnakara_whose_upstream_is_not_empty(conn, sangam, vighnakara, gochara):
+    """SR-K9-ADMITTED-ZERO compensating detector, end to end: the writer attested `zero_rows`, then the candidate's convergence layer holds a window
+    (a defect, not a vacuous pass): publication refuses and names the grain. The same layer with an empty upstream publishes (test above)."""
+    predicate(conn, GENERATION, 'S-CAND', '2032-02-02')
+    cand = open_plan(conn)
+    run_in_scope_writers(conn, cand, WRITERS[1:])
+    convergence(conn, GENERATION)
+    accept(conn, cand)
+    conn.row_factory = tuple_row
+    with pytest.raises(ValueError, match=r'zero-row completion without a measured vacuous reason.*ka_vighnakara:inputs'):
         publication.publish(conn, run_id=cand.build_id, generation=GENERATION, expected_head=None)
     assert conn.execute('SELECT count(*) FROM kala_layer_head').fetchone()[0] == 0

@@ -278,12 +278,16 @@ def _target_blank_note(blanks: Sequence[dict]) -> str:
 
 
 def _vacuous_label(admitted: int, unresolved: int, windows: int) -> str:
-    """SR-SANGAM-SIGNAL-UNRESOLVED: '' unless the build wrote ZERO windows from MORE THAN zero admitted predicates.
+    """SR-SANGAM-SIGNAL-UNRESOLVED / SR-K9-ADMITTED-ZERO: '' unless the build wrote ZERO windows (from admitted predicates, or from none admitted).
 
     Zero windows is a named outcome, never a silent pass: the integrity contract reads true on an empty table (an honest null, CLAUDE.md §N.7.6),
-    so the label is what tells a reader the green is vacuous. `unresolved` = admitted predicates with signal_id NULL (signal_unresolved)."""
-    if admitted <= 0 or windows > 0:
+    so the label is what tells a reader the green is vacuous. `unresolved` = admitted predicates with signal_id NULL (signal_unresolved).
+    With NO admitted predicate (the K4-2b unadmitted state; target_floor = 0, migration 1409) the run is labelled `no_admitted_predicates`:
+    the compensating K9 gate (kala_core/publication.py) refuses an unlabelled zero-row ka_sangam, so this state must be nameable."""
+    if windows > 0:
         return ''
+    if admitted <= 0:
+        return f"{SIGNAL_UNRESOLVED}=0 of 0; vacuous=true reason=no_admitted_predicates (no predicate of this generation is admitted, so there is nothing to convert into a window)"
     if unresolved >= admitted:
         reason = f"all_admitted_signal_unresolved (every one of the {admitted} admitted predicates has signal_id NULL: no window can be attributed to a signal)"
     else:
@@ -800,7 +804,9 @@ class _LegacyKaSangamWriter(WriterBase):
         notes = _target_blank_note(self._target_blanks)
         if self._is_final_step(step_key):
             preds = self._pred_dicts
-            label = _vacuous_label(len(preds), sum(1 for p in preds if not p.get('signal_id')), self._windows_written)
+            # a run that never went through plan_substeps (no final key: a stubbed/unplanned writer) has no admitted-predicate list to judge, so it stays unlabelled
+            planned = self._final_step_key is not None
+            label = _vacuous_label(len(preds), sum(1 for p in preds if not p.get('signal_id')), self._windows_written) if (preds or planned) else ''
             if label:
                 logger.warning("ka_sangam: %s", label)
                 notes = f"{notes}; {label}" if notes else label
