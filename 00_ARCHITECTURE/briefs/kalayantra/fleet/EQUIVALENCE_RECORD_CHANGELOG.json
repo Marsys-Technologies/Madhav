@@ -375,6 +375,42 @@
     }
    ],
    "closed": true
+  },
+  {
+   "id": "PIN-COMMENT-REPIN",
+   "rulings": [
+    "SR-PIN-COMMENT-REPIN",
+    "SR-GOLDEN-LIB-STRICT"
+   ],
+   "category": "E1",
+   "part": "implementation.evaluation + implementation.window (golden pins)",
+   "base_commit": "4c7c845e89802ddaf5805f267fea6277155a31ce",
+   "derived_at_head": "b911607f514bc9caa26e42dc7ef96b3635250fe4",
+   "statement": "PIN-COMMENT-REPIN (SR-PIN-COMMENT-REPIN): the last re-derivation before the TR. Cause: e4a5d661e's comment/docstring-only rewording, forced by test_w2_serving_route (comments naming the read-side module). input_vector.py: comments only, the AST is identical; numerical_window_gate.py: docstring-only. Both are IMPLEMENTATION_MODULES files, so their byte digests moved while no behaviour did. Geometry unchanged. This supersedes the I1-ADDENDUM statement 'IMPLEMENTATION_MODULES digests measured unchanged', which was true at 4c7c845e8 and is false at the landing head.",
+   "implementation_digests": {
+    "geometry": {
+     "before": "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7",
+     "after": "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7"
+    },
+    "evaluation": {
+     "before": "8168cbfc2edf022868dc72b25b0ec5643b23cbcbf5f6578ce9f1ae5099a53c2c",
+     "after": "dc911db8c033c56a6022f79714947acc694a564d496388d1b99d917caaf8fb0b"
+    },
+    "window": {
+     "before": "75c3fd11e0a5035977897d53de470081173ff5d3dffdb1b4d253b39b8d5b0058",
+     "after": "789430e0c9f73f6e3f1f9d24fe1f63e3b07e3ad0245a536c5994eab8482db307"
+    }
+   },
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the final tree, equal to input_vector.implementation_digests(); the pins in test_mb_ordinary_golden.py were replaced by script by a job script, no golden component re-captured.",
+   "withdrawn_interpretations": [
+    {
+     "entry": "I1-ADDENDUM",
+     "choice": "library_sha256 host-bound when the platform string matches but the build differs",
+     "withdrawn_by": "SR-GOLDEN-LIB-STRICT: the library artifact hash stays strictly compared on the golden's own platform; the golden is fed by CI's capture-equivalent image (T20)"
+    }
+   ],
+   "interpretations": [],
+   "closed": true
   }
  ]
 }
