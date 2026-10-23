@@ -20,7 +20,8 @@ The build-bound `kala_layer_candidate` must be `building`, have a nonempty
 `conventions.fixture=true` is refused. The common advisory publication lock
 is taken before the candidate lifecycle lock. Validation and F2 reads precede
 partition replacement. All other generations and legacy rows are retained.
-The existing query_obstruction_periods.ts:69 filters `generation IS NULL`.
+query_obstruction_periods.ts:69 serves the head's generation when it holds rows, else the legacy `generation IS NULL` partition
+(SR-K9-WRITE-SCOPE; before it filtered `generation IS NULL` only).
 
 **(I) INTERPRETATION I1:** implement the separately required live-storage
 prerequisite with this pre-build under owner A3, rather than label a real

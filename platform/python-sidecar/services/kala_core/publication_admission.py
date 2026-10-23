@@ -201,6 +201,24 @@ def assets_refusal(edges: Mapping[str, Iterable[str]], assets: list[str]) -> str
     return None
 
 
+# Migration 1405 (PR #3869) gives ``kala_convergence`` a ``generation`` column and ka_sangam a delete scoped to its own generation. The foreign key
+# ``kala_obstruction.convergence_id ... ON DELETE CASCADE`` (migration 245, kept by 1406) means ka_sangam's whole-chart delete of ``kala_convergence``
+# also deletes the SERVED obstruction rows (and kala_darshana / phala_anchors rows); only the scoped delete keeps that cascade off them.
+CONVERGENCE_SCOPE_ASSET = 'ka_sangam'
+
+
+def convergence_scope_refusal(conn: Any, assets: list[str]) -> str | None:
+    """A reason when the plan runs ka_sangam against a database whose ``kala_convergence`` has no ``generation`` column (1405 not applied)."""
+    if CONVERGENCE_SCOPE_ASSET not in assets:
+        return None
+    row = conn.execute("SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() "
+                       "AND table_name = 'kala_convergence' AND column_name = 'generation'").fetchone()
+    if row is not None:
+        return None
+    return ('migration 1405 is not applied (kala_convergence has no generation column): ka_sangam would delete the whole chart\'s '
+            'convergence rows and, through the ON DELETE CASCADE foreign keys, the served obstruction rows')
+
+
 def registry_edges(conn: Any) -> dict[str, list[str]]:
     rows = conn.execute("SELECT asset_id, COALESCE(depends_on, '{}') FROM asset_registry").fetchall()
     return {row[0]: list(row[1]) for row in rows}
@@ -307,7 +325,8 @@ def _admit_rebuild(dsn: str, args: argparse.Namespace) -> str | None:
         return forced
     with psycopg.connect(dsn, connect_timeout=5) as conn:
         conn.read_only = True
-        return assets_refusal(registry_edges(conn), args.assets.split(','))
+        assets = args.assets.split(',')
+        return assets_refusal(registry_edges(conn), assets) or convergence_scope_refusal(conn, assets)
 
 
 def split_output(text: str) -> tuple[dict | None, list[str]]:

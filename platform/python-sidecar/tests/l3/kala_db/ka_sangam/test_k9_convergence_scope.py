@@ -740,7 +740,7 @@ def test_t1_planted_reversion_unscoped_delete_destroys_served_rows(world, tmp_pa
 
 def test_t2_planted_reversion_teardown_forgets_kala_convergence(world, tmp_path):
     apply(world)
-    module = mutated(rebuild_control, tmp_path, "'gochara_resonance_map', 'kala_convergence')", "'gochara_resonance_map')")
+    module = mutated(rebuild_control, tmp_path, "'kala_obstruction', 'kala_convergence')", "'kala_obstruction')")
     with pytest.raises(AssertionError, match='exactly the candidate'):
         oracle_teardown(world, module)
 

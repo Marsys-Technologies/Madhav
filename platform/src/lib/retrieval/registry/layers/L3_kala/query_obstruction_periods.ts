@@ -14,6 +14,7 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { servedObstructionPredicate } from './served_obstruction'
 
 const MAX_LIMIT = 50
 
@@ -65,28 +66,28 @@ export const queryObstructionPeriodsCapability: CapabilityDescriptor = {
       ? Number(args['min_severity_score']) : null
     const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
-    const filters: string[] = ['chart_id = $1', 'generation IS NULL']
+    const filters: string[] = ['o.chart_id = $1', servedObstructionPredicate('o')] // served partition: the head's rows if it holds any, else legacy; never a candidate
     const params: unknown[] = [chart_id]
     let p = 2
-    if (obstruction_type) { filters.push(`obstruction_type = $${p++}`); params.push(obstruction_type) }
-    if (severity)         { filters.push(`severity = $${p++}`);         params.push(severity) }
+    if (obstruction_type) { filters.push(`o.obstruction_type = $${p++}`); params.push(obstruction_type) }
+    if (severity)         { filters.push(`o.severity = $${p++}`);         params.push(severity) }
     if (min_severity_score !== null && !Number.isNaN(min_severity_score)) {
-      filters.push(`severity_score >= $${p++}`); params.push(min_severity_score)
+      filters.push(`o.severity_score >= $${p++}`); params.push(min_severity_score)
     }
     const where = filters.join(' AND ')
 
     const sql = `
-      SELECT id, convergence_id, signal_id, obstruction_type, severity, severity_score,
-             override_score, obstruction_detail, source_citation
-      FROM kala_obstruction
+      SELECT o.id, o.convergence_id, o.signal_id, o.obstruction_type, o.severity, o.severity_score,
+             o.override_score, o.obstruction_detail, o.source_citation
+      FROM kala_obstruction o
       WHERE ${where}
-      ORDER BY severity_score DESC NULLS LAST
+      ORDER BY o.severity_score DESC NULLS LAST
       LIMIT $${p}`
 
     try {
       const [rowsRes, countRes] = await Promise.all([
         query(sql, [...params, limit]),
-        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM kala_obstruction WHERE ${where}`, params),
+        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM kala_obstruction o WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
       return {

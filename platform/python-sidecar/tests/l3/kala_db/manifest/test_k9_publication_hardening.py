@@ -88,6 +88,8 @@ def delegating(calls, c):
 
 def d1a(module, wired, monkeypatch, capsys):
     registry(wired, REGISTRY)
+    wired.execute('CREATE TABLE kala_convergence (convergence_id bigserial PRIMARY KEY, generation text)')      # ka_sangam is in the plan: 1405 applied
+    wired.commit()
     c = prepare(wired, writers=tuple(MIXED.split(',')))
     calls = []
     monkeypatch.setattr(publication, 'main', delegating(calls, c))

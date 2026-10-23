@@ -1011,7 +1011,8 @@
     "kala_activation_predicates",
     "kala_convergence",
     "kala_f1_relationship",
-    "kala_f1_target_object"
+    "kala_f1_target_object",
+    "kala_obstruction"
    ]
   }
  ]

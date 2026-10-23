@@ -24,31 +24,31 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 131,
+      "line": 132,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_bhava_bala. It mirrors the handler's full multi-category and optional fact_key filter surface, but LIMIT 0 guarantees no fact row is consumed or reduced. Requiring a concrete fact_key here would make the availability contract narrower than the handler and mask unreadable valid categories. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 129->131; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 192,
+      "line": 193,
       "pattern": null,
       "justification": "AUDITED zero-row/count source-query availability probe for get_dignity. It validates the handler's complete category set and optional fact_key surface without selecting any fact row; it is not a value lookup or reduction. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 190->192; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 229,
+      "line": 230,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_aspects. The complete handler category set is intentionally queried with LIMIT 0; no fact row is selected, so the fact-key row-selection defect class cannot occur. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 227->229; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 254,
+      "line": 255,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_ashtakavarga. The complete default handler category set is intentionally queried with LIMIT 0; no fact row is selected, so the fact-key row-selection defect class cannot occur. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 252->254; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 280,
+      "line": 281,
       "pattern": null,
       "justification": "AUDITED zero-row/count source-query availability probe for get_avasthas. It validates the complete handler category set without selecting or reducing a fact row; the count is only a source-access witness. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 277->280; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
@@ -60,13 +60,13 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 344,
+      "line": 345,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_dispositors. It verifies the handler's complete five-category source scope and optional ayanamsha filter without selecting a fact row. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 341->344; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 367,
+      "line": 368,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_eclipse_flags. It reproduces the handler's one-category source scope with LIMIT 0 and consumes no fact row. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 364->367; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
@@ -78,7 +78,7 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1563,
+      "line": 1564,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_nakshatra. It reproduces the handler's complete default category set and pagination order with LIMIT 0, so it witnesses source access without reading or reducing a fact row. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 1555->1563; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
@@ -90,7 +90,7 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1619,
+      "line": 1620,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_sade_sati. It preserves the handler's complete category family and its stable pagination order while LIMIT 0 prevents selecting, filtering, or reducing a period fact row. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 1609->1619; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
@@ -108,25 +108,25 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 1767,
+      "line": 1768,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_panchanga. It reproduces the handler's complete default Pañcāṅga category family plus its count/page shape, while LIMIT 0 prevents selecting or reducing any fact row; authenticated query success is the only availability witness. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 1300->1767; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 2038,
+      "line": 2039,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_structural. It preserves the handler's complete residual structural-signal category family and deterministic pagination order while LIMIT 0 prevents selecting or reducing any fact row. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 2014->2038; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 2122,
+      "line": 2123,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_ashtakavarga. It preserves the complete default and advertised opt-in Ashtakavarga category family with the handler's deterministic pagination order, while LIMIT 0 prevents selecting or reducing any fact row. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 2093->2122; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
     {
       "file": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-      "line": 2177,
+      "line": 2178,
       "pattern": null,
       "justification": "AUDITED zero-row source-query availability probe for get_positions. It preserves the handler's default graha-position source and stable category-priority order while LIMIT 0 prevents selecting or reducing a fact row. Optional upagraha and non-default category requests are deliberately not implied by this default-source contract. [Lahiri-primary combined batch rehearsal, 2026-10-10: line 2146->2177; the probe is unchanged in purpose, the lines moved because the batch edited this file.]"
     },
