@@ -243,6 +243,19 @@ def _select_top_predicates_with_class_quota(
 # would have invented 0 deg for an absent key).
 TARGET_UNRESOLVED = 'target_unresolved'
 
+# SR-K9-TRIAGE-DUP: a predicate with NO signal_id (ka_yojaka's F1 graph writes an honest NULL for an admitted row whose signal is shared,
+# several or absent: services/ka_yojaka/promise_adapter.py bind_signal_ids) cannot be attributed to a convergence window. Every
+# kala_convergence row must carry the signal it answers to (integrity contract 670 conjunct (g): `signal_id IS NULL` is a violation) and
+# its Mode A-D score reads the signal's dignity; for a signal-less predicate that dignity would be the invented 0.5 default of
+# plan_substeps (CLAUDE.md §N.7.6, B.10). Such a predicate is a NAMED blank: it yields no window in any mode, is counted in the notes.
+SIGNAL_UNRESOLVED = 'signal_unresolved'
+
+
+def _can_carry_mode_d(pred_dict: dict) -> bool:
+    """Mode D rides a predicate that has a signal AND reaches the Mode D step: a SUBSYSTEM predicate `continue`s out of the loop after Mode C
+    (see _generate_windows), so riding it would compute Mode D on no substep at all (review of PR #3904, B-1)."""
+    return bool(pred_dict.get('signal_id')) and 'SUBSYSTEM' not in (pred_dict.get('signature_class') or '').upper()
+
 
 def _resolved_target_longitude(pred_dict: dict) -> float | None:
     """The predicate's target longitude when it is a real finite number, else None (a named blank)."""
@@ -253,10 +266,29 @@ def _resolved_target_longitude(pred_dict: dict) -> float | None:
 
 
 def _target_blank_note(blanks: Sequence[dict]) -> str:
-    """Notes text for the substep result: the count of predicates blanked for an unresolved target, '' when there are none."""
-    if not blanks:
+    """Notes text for the substep result: one count per blank reason (target / signal), '' when there are none."""
+    parts = []
+    targets = [b for b in blanks if b.get('reason') == TARGET_UNRESOLVED]
+    signals = [b for b in blanks if b.get('reason') == SIGNAL_UNRESOLVED]
+    if targets:
+        parts.append(f"{TARGET_UNRESOLVED}={len(targets)} (target_longitude_deg NULL: no Mode A/B window computed for these predicates)")
+    if signals:
+        parts.append(f"{SIGNAL_UNRESOLVED}={len(signals)} (signal_id NULL: no window in any mode computed for these predicates)")
+    return '; '.join(parts)
+
+
+def _vacuous_label(admitted: int, unresolved: int, windows: int) -> str:
+    """SR-SANGAM-SIGNAL-UNRESOLVED: '' unless the build wrote ZERO windows from MORE THAN zero admitted predicates.
+
+    Zero windows is a named outcome, never a silent pass: the integrity contract reads true on an empty table (an honest null, CLAUDE.md §N.7.6),
+    so the label is what tells a reader the green is vacuous. `unresolved` = admitted predicates with signal_id NULL (signal_unresolved)."""
+    if admitted <= 0 or windows > 0:
         return ''
-    return f"{TARGET_UNRESOLVED}={len(blanks)} (target_longitude_deg NULL: no Mode A/B window computed for these predicates)"
+    if unresolved >= admitted:
+        reason = f"all_admitted_signal_unresolved (every one of the {admitted} admitted predicates has signal_id NULL: no window can be attributed to a signal)"
+    else:
+        reason = f"no_window_from_signal_bearing_predicates ({admitted - unresolved} predicates carry a signal and produced no window, e.g. target_unresolved)"
+    return f"{SIGNAL_UNRESOLVED}={unresolved} of {admitted}; vacuous=true reason={reason}"
 
 
 @records_swiss_backend
@@ -273,6 +305,11 @@ class _LegacyKaSangamWriter(WriterBase):
     # Blanked predicates of the latest `_generate_windows` call. Defined here (immutable) so a substep that reads it
     # before any call has run (a resumed/skipped path, a stubbed generator) sees "no blanks", never an AttributeError.
     _target_blanks: Sequence[dict] = ()
+    # Windows written by this run so far (the rows of substeps resumed from the ledger count too) and the key of the last substep of the plan:
+    # on that substep the run-level vacuous label is decided. None = not planned (derived from the predicate lists).
+    _windows_written: int = 0
+    _final_step_key: 'str | None' = None
+    _pred_dicts: Sequence[dict] = ()      # the admitted predicates of the run (set by plan_substeps); () = none planned, so nothing to be vacuous about
 
     # ── plan ─────────────────────────────────────────────────────────────────
 
@@ -522,7 +559,9 @@ class _LegacyKaSangamWriter(WriterBase):
         self._resume_fingerprint = self._compute_build_fingerprint(chart_id)
         self._resume_skipped = 0
         self._reset_pending = False
+        self._windows_written = 0
         if getattr(ctx, 'dry_run', False):
+            self._final_step_key = steps[-1].key
             return steps  # dry runs never delete data or touch the ledger
 
         completed = self._load_completed_substeps(conn, chart_id, self._resume_fingerprint)
@@ -530,11 +569,17 @@ class _LegacyKaSangamWriter(WriterBase):
             # Planning/re-probing is read-only. The first executing substep owns
             # reset and replacement in the same orchestrator transaction.
             self._reset_pending = True
+            self._final_step_key = steps[-1].key
             logger.info("ka_sangam: fresh/replan build for chart %s — %d substeps", chart_id, len(steps))
             return steps
 
         remaining = [s for s in steps if s.key not in completed]
         self._resume_skipped = len(steps) - len(remaining)
+        self._final_step_key = remaining[-1].key if remaining else None
+        with conn.cursor() as cur:       # the windows the resumed (skipped) substeps already committed count toward this run's total
+            cur.execute("SELECT COALESCE(SUM(rows_written), 0) AS n FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'", (chart_id,))
+            row = cur.fetchone()
+        self._windows_written = int((row['n'] if isinstance(row, dict) else row[0]) or 0)
         logger.info(
             "ka_sangam: RESUMING build for chart %s — %d/%d substeps already committed, %d remaining",
             chart_id, self._resume_skipped, len(steps), len(remaining),
@@ -689,7 +734,7 @@ class _LegacyKaSangamWriter(WriterBase):
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, near_deduped, 'near')
             self._record_substep(conn, chart_id, 'near', rows)
-        return WriterResult(asset_id='ka_sangam', rows_inserted=rows, notes=_target_blank_note(self._target_blanks))
+        return self._substep_result('near', len(near_deduped) if dry_run else rows, rows)
 
     def _substep_lifetime(self, conn, chart_id: str, idx: int, dry_run: bool) -> WriterResult:
         pred      = self._lt_preds[idx]
@@ -713,8 +758,13 @@ class _LegacyKaSangamWriter(WriterBase):
             with conn.cursor() as _cur:
                 _cur.execute("SELECT 1")
 
+        # SR-K9-TRIAGE-DUP: Mode D is predicate-agnostic and this tier calls once PER PREDICATE, so the once-per-call guard of 074d69ee8
+        # (A3) held for none of them: every lifetime substep wrote the full set again, under its own signal_id (or, with an equal
+        # signal_id, under the SAME natural key: contract 670 conjunct (a)). It rides ONE lifetime substep, the first attributable non-SUBSYSTEM one (_can_carry_mode_d).
+        mode_d_idx = next((i for i, p in enumerate(self._lt_preds) if _can_carry_mode_d(p)), None)
         windows       = self._generate_windows(
             pred_dicts        = [pred],
+            mode_d            = (idx == mode_d_idx),
             horizon_start     = horizon_start,
             horizon_end       = horizon_end,
             dasha_kala_service= self._dks,
@@ -734,7 +784,27 @@ class _LegacyKaSangamWriter(WriterBase):
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, deduped, 'lifetime')
             self._record_substep(conn, chart_id, f'lifetime:{idx}', rows)
-        return WriterResult(asset_id='ka_sangam', rows_inserted=rows, notes=_target_blank_note(self._target_blanks))
+        return self._substep_result(f'lifetime:{idx}', len(deduped) if dry_run else rows, rows)
+
+    def _is_final_step(self, step_key: str) -> bool:
+        final = self._final_step_key
+        if final is None:       # not planned through plan_substeps: the last of near + one lifetime substep per lifetime predicate
+            final = f'lifetime:{len(self._lt_preds) - 1}' if self._lt_preds else 'near'
+        return step_key == final
+
+    def _substep_result(self, step_key: str, windows: int, rows: int | None = None) -> WriterResult:
+        """The substep's WriterResult. The orchestrator persists no per-writer notes (FROZEN contract), so on the LAST substep of the run the
+        vacuous label (zero windows from >0 admitted predicates, SR-SANGAM-SIGNAL-UNRESOLVED) is in the notes AND in the run log."""
+        rows = windows if rows is None else rows
+        self._windows_written += windows
+        notes = _target_blank_note(self._target_blanks)
+        if self._is_final_step(step_key):
+            preds = self._pred_dicts
+            label = _vacuous_label(len(preds), sum(1 for p in preds if not p.get('signal_id')), self._windows_written)
+            if label:
+                logger.warning("ka_sangam: %s", label)
+                notes = f"{notes}; {label}" if notes else label
+        return WriterResult(asset_id='ka_sangam', rows_inserted=rows, notes=notes)
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
@@ -742,7 +812,7 @@ class _LegacyKaSangamWriter(WriterBase):
                           dasha_kala_service, gochara_service, chart_id,
                           native_ctx: 'NativeChartContext',
                           keepalive=None, enrichment_context=None,
-                          muhurta_service=None) -> list[dict]:
+                          muhurta_service=None, mode_d: bool = True) -> list[dict]:
         """Run Mode A + Mode B (or Mode C for SUBSYSTEM) for every predicate.
 
         SUBSYSTEM predicates are routed to mode_c_subsystem_period (sign-ingress
@@ -753,12 +823,16 @@ class _LegacyKaSangamWriter(WriterBase):
         native_ctx: CR-87 — THIS chart's resolved NativeChartContext (janma
           nakshatra, Moon sign, location). Never another chart's values.
         B4-src: stamps primary_domain onto every window dict produced.
+        mode_d: whether this call carries the (predicate-agnostic) Mode D set. It rides the first predicate of the
+          call that has a signal; the lifetime tier calls once per predicate and passes True for ONE of them only.
         """
         horizon_start_jd = _date_to_jd(horizon_start)
         horizon_end_jd   = _date_to_jd(horizon_end)
         all_windows: list[dict] = []
         blanks: list[dict] = []
         self._target_blanks = blanks        # read by the substeps for their notes; one list per call
+        # Mode D is sign-level: it is computed once per call, on the first predicate that can be attributed to a signal and reaches the Mode D step.
+        mode_d_pred = next((p for p in pred_dicts if _can_carry_mode_d(p)), None) if mode_d else None
 
         def _mode_d_windows(pred_dict: dict, primary_domain) -> list[dict]:
             try:
@@ -781,6 +855,13 @@ class _LegacyKaSangamWriter(WriterBase):
             sig_class = (pred_dict.get('signature_class') or '').upper()
             # B4-src: primary domain from MSR signal (carried through plan_substeps)
             primary_domain = pred_dict.get('primary_domain')
+
+            if not sig_id:
+                blanks.append({'signal_id': None, 'reason': SIGNAL_UNRESOLVED})
+                logger.info("ka_sangam: predicate blank (%s): no signal_id, nothing attributable to compute", SIGNAL_UNRESOLVED)
+                if keepalive:
+                    keepalive()
+                continue
 
             # Route SUBSYSTEM predicates to Mode C (period-based ingress trigger)
             if 'SUBSYSTEM' in sig_class:
@@ -813,7 +894,7 @@ class _LegacyKaSangamWriter(WriterBase):
                 logger.info("ka_sangam: signal %s blank (%s): no target longitude", sig_id, TARGET_UNRESOLVED)
                 if keepalive:
                     keepalive()
-                if pred_dicts and pred_dict is pred_dicts[0]:
+                if pred_dict is mode_d_pred:
                     all_windows.extend(_mode_d_windows(pred_dict, primary_domain))
                     if keepalive:
                         keepalive()
@@ -877,16 +958,16 @@ class _LegacyKaSangamWriter(WriterBase):
                 keepalive()
 
             # O7: Mode D — SAV-bindhu activation windows for strong signs
-            # Only run for the first predicate per horizon call to avoid duplicate windows.
+            # Only run for the first attributable predicate per horizon call to avoid duplicate windows.
             # Mode D is sign-level and predicate-agnostic; running it for every predicate
             # produces N×K duplicate windows with different signal_ids that bypass the dedup
             # key check (which includes signal_id).
-            if pred_dicts and pred_dict is pred_dicts[0]:
+            if pred_dict is mode_d_pred:
                 all_windows.extend(_mode_d_windows(pred_dict, primary_domain))
                 if keepalive:
                     keepalive()
         if blanks:      # the orchestrator does not persist WriterResult.notes (FROZEN contract), so the count is also in the run log
-            logger.info("ka_sangam: %s=%d of %d predicates in this call (no Mode A/B window computed for them)", TARGET_UNRESOLVED, len(blanks), len(pred_dicts))
+            logger.info("ka_sangam: %d of %d predicates in this call are blank: %s", len(blanks), len(pred_dicts), _target_blank_note(blanks))
         return all_windows
 
     def _resolve_native_chart_context(self, conn, chart_id: str, birth_params) -> 'NativeChartContext':

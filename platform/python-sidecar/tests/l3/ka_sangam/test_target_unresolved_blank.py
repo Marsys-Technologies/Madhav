@@ -89,7 +89,9 @@ def test_c4_no_blank_leaves_notes_empty(engine):
     writer._pred_dicts = [_pred('sig-good', GOOD_TARGET)]
     writer._dks = writer._gs = writer._enrichment_ctx = writer._muhurta = None
     writer._native_ctx = SimpleNamespace(janma_nakshatra_idx=24, moon_sign='Aquarius', location={'lat': 20.3, 'lon': 85.8})
-    assert writer._substep_near(MagicMock(), 'c', dry_run=True).notes == ''
+    # no blank -> no blank count in the notes. The stubbed engine writes no window either, so the ONLY text is the run-level vacuous label
+    # (SR-SANGAM-SIGNAL-UNRESOLVED; test_vacuous_pass_is_labelled.py owns that claim).
+    assert writer._substep_near(MagicMock(), 'c', dry_run=True).notes == ks._vacuous_label(1, 0, 0)
 
 
 def test_c5_mode_d_still_runs_when_the_first_predicate_is_blank(engine):
