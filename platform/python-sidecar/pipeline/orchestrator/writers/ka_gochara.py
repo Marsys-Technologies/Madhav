@@ -206,11 +206,21 @@ class KaGocharaWriter(WriterBase):
         candidate = bound_candidate(ctx.db_conn, getattr(ctx, 'build_id', None), ctx.config['chart_id'])
         return None if candidate is None else candidate.generation
 
+    @staticmethod
+    def _window_generation(ctx: ContextSpec) -> str:
+        """The generation this build writes, deletes and fingerprints in `kala_gochara_windows_v2` / `kala_gochara_v2_build_state`.
+        SR-K9B-TRIAGE (S5): a candidate-bound build owns ONLY its candidate's partition ('candidate:<build>'), so the K9 teardown can remove
+        it (rebuild_control.UNLINKED_CANDIDATE_TABLES) and the ordinary '2.0' rows are never replaced by an unpublished run; an ordinary
+        rebuild keeps rewriting '2.0'. Resolved from the DATABASE each substep (the FROZEN ctx.config carries no candidate)."""
+        candidate = bound_candidate(ctx.db_conn, getattr(ctx, 'build_id', None), ctx.config['chart_id'])
+        return GENERATION_V2 if candidate is None else candidate.generation
+
     def _plan_event_classes(self, ctx: ContextSpec) -> list[SubStep]:
         chart_id = ctx.config['chart_id']
         conn = ctx.db_conn
         query = _query_fn(conn)
         generation = self._resonance_generation(ctx)
+        window_generation = self._window_generation(ctx)      # where this build's own fingerprints live (SR-K9B-TRIAGE)
         try:
             rows = query(*RM.event_classes_query(chart_id, generation))
         except Exception as exc:
@@ -264,7 +274,7 @@ class KaGocharaWriter(WriterBase):
                 continue
             target_refs = [t.target_ref for t in raw_targets]
             fp = class_fingerprint(event_class, GRAMMAR_VERSION, target_refs, BODIES, arc_fps)
-            stored_fp = self._stored_fingerprint(query, chart_id, event_class)
+            stored_fp = self._stored_fingerprint(query, chart_id, event_class, window_generation)
             if stored_fp == fp:
                 continue  # already correctly built under this exact fingerprint
             remaining.append(step)
@@ -301,7 +311,7 @@ class KaGocharaWriter(WriterBase):
             raise ValueError('grain attestation requires a candidate-bound build')
         query = _query_fn(conn)
         produced = query(f"SELECT count(*) AS n FROM {TABLE} WHERE chart_id = %s AND generation = %s",
-                         [chart_id, GENERATION_V2])[0]["n"]
+                         [chart_id, candidate.generation])[0]["n"]
         attest_inputs(conn, candidate, self.asset_id,
                       sources=self._input_sources(conn, chart_id, candidate.generation), produced_rows=int(produced))
         return WriterResult(asset_id=self.asset_id, rows_inserted=0,
@@ -330,6 +340,7 @@ class KaGocharaWriter(WriterBase):
                                      horizon.end_date.day, 0.0)
 
         query = _query_fn(conn)
+        generation = self._window_generation(ctx)
 
         with savepoint_scope(conn, "w2g_v2_targets"):
             raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class, self._resonance_generation(ctx))
@@ -339,7 +350,7 @@ class KaGocharaWriter(WriterBase):
                 conn, chart_id, event_class, class_fp=None, horizon=horizon,
                 contacts_evaluated=0, rows_written=0,
                 skipped_reason="no gochara_resonance_map targets for this chart/event_class",
-                build_id=ctx.build_id,
+                build_id=ctx.build_id, generation=generation,
             )
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                  duration_seconds=time.time() - t0,
@@ -350,7 +361,7 @@ class KaGocharaWriter(WriterBase):
         target_refs = [t.target_ref for t in raw_targets]
         fp = class_fingerprint(event_class, GRAMMAR_VERSION, target_refs, BODIES, arc_fps)
 
-        stored_fp = self._stored_fingerprint(query, chart_id, event_class)
+        stored_fp = self._stored_fingerprint(query, chart_id, event_class, generation)
         if stored_fp is not None and stored_fp == fp and not ctx.dry_run:
             return WriterResult(
                 asset_id=self.asset_id, rows_inserted=0, duration_seconds=time.time() - t0,
@@ -378,20 +389,21 @@ class KaGocharaWriter(WriterBase):
             self._upsert_build_state(
                 conn, chart_id, event_class, class_fp=fp, horizon=horizon,
                 contacts_evaluated=result.contacts_evaluated, rows_written=0,
-                skipped_reason=result.skipped_reason, build_id=ctx.build_id,
+                skipped_reason=result.skipped_reason, build_id=ctx.build_id, generation=generation,
             )
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                  duration_seconds=time.time() - t0,
                                  notes=f"{event_class}: {result.skipped_reason}")
 
-        # §N.3 replace-not-accrete, scoped to (chart_id, event_class, '2.0')
+        # §N.3 replace-not-accrete, scoped to (chart_id, event_class, this build's generation:
+        # '2.0' for an ordinary rebuild, the candidate's own partition for a K9 build)
         # against THIS WRITER'S OWN TABLE ONLY (native ruling point 2) --
         # the protected v1 sweep table is never named in this statement or
         # any other one this writer issues.
         with conn.cursor() as cur:
             cur.execute(
                 f"DELETE FROM {TABLE} WHERE chart_id = %s AND event_class = %s AND generation = %s",
-                [chart_id, event_class, GENERATION_V2],
+                [chart_id, event_class, generation],
             )
 
         inserted = 0
@@ -416,7 +428,7 @@ class KaGocharaWriter(WriterBase):
                 "peak_basis": row["peak_basis"],
                 "calibration_state": row["calibration_state"],
                 "source": row["source"],
-                "generation": GENERATION_V2,
+                "generation": generation,
                 # W1.5: λ decomposition + structural prior CI (nullable on v1-parity rows)
                 "term_breakdown": _dumps(row["term_breakdown"]) if row.get("term_breakdown") is not None else None,
                 "lambda_v3_ci_low": row.get("lambda_v3_ci_low"),
@@ -438,7 +450,7 @@ class KaGocharaWriter(WriterBase):
         self._upsert_build_state(
             conn, chart_id, event_class, class_fp=fp, horizon=horizon,
             contacts_evaluated=result.contacts_evaluated, rows_written=inserted,
-            skipped_reason=None, build_id=ctx.build_id,
+            skipped_reason=None, build_id=ctx.build_id, generation=generation,
         )
 
         notes = (
@@ -477,18 +489,18 @@ class KaGocharaWriter(WriterBase):
         return {r["body"]: r["arc_fingerprint"] for r in rows}
 
     @staticmethod
-    def _stored_fingerprint(query, chart_id: str, event_class: str) -> str | None:
+    def _stored_fingerprint(query, chart_id: str, event_class: str, generation: str) -> str | None:
         rows = query(
             f"SELECT class_fingerprint FROM {BUILD_STATE_TABLE} "
             f"WHERE chart_id = %s AND event_class = %s AND generation = %s",
-            [chart_id, event_class, GENERATION_V2],
+            [chart_id, event_class, generation],
         )
         return rows[0]["class_fingerprint"] if rows else None
 
     @staticmethod
     def _upsert_build_state(conn, chart_id: str, event_class: str, *, class_fp: str | None,
                              horizon, contacts_evaluated: int, rows_written: int,
-                             skipped_reason: str | None, build_id: str) -> None:
+                             skipped_reason: str | None, build_id: str, generation: str = GENERATION_V2) -> None:
         if class_fp is None:
             # Nothing to fingerprint (no targets at all) -- record the honest
             # skip without a fabricated fingerprint value.
@@ -514,7 +526,7 @@ class KaGocharaWriter(WriterBase):
               build_id = EXCLUDED.build_id,
               computed_at = now()
             """,
-            [chart_id, event_class, GENERATION_V2, class_fp, GRAMMAR_VERSION,
+            [chart_id, event_class, generation, class_fp, GRAMMAR_VERSION,
              ARC_ENGINE_VERSION, list(BODIES), horizon.start_date, horizon.end_date,
              horizon.status, contacts_evaluated, rows_written, skipped_reason, build_id],
         )
