@@ -279,10 +279,12 @@ class _LedgerCur:
     def execute(self, sql, params=None):
         self._last, self._params = sql, params
         if "INSERT INTO build_substep_progress" in sql:
-            _cid, key, fp, _rows = params
+            _cid, key, fp, rows = params
             self.db.ledger[key] = fp
+            self.db.ledger_rows[key] = rows
         elif "DELETE FROM build_substep_progress" in sql:
             self.db.ledger.clear()
+            self.db.ledger_rows.clear()
         elif "DELETE FROM kala_convergence" in sql:
             self.db.convergence_deletes += 1
 
@@ -294,6 +296,9 @@ class _LedgerCur:
         return []
 
     def fetchone(self):
+        # A resumed plan totals the windows the committed substeps already wrote (SUM over the ledger).
+        if "SUM(rows_written)" in self._last:
+            return {"n": sum(self.db.ledger_rows.values())}
         # SR-K9-BIND B1b: an unbound plan_substeps reads `kala_layer_head`; this fake chart has no published head.
         return None
 
@@ -307,6 +312,7 @@ class _LedgerCur:
 class _LedgerDb:
     def __init__(self, predicates):
         self.ledger: dict[str, str] = {}
+        self.ledger_rows: dict[str, int] = {}
         self.convergence_deletes = 0
         self.predicates = predicates
 
@@ -397,3 +403,4 @@ class TestSameRunResume:
         assert [s.key for s in remaining] == [s.key for s in steps[2:]]
         assert w2._resume_skipped == 2
         assert w2._reset_pending is False, "a resume must not wipe the committed substeps' rows"
+        assert w2._windows_written == 2, "a resumed run counts the committed substeps' windows toward its total"
