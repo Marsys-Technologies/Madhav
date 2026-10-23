@@ -48,6 +48,7 @@ import hashlib
 import json
 import os
 import re
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -59,6 +60,7 @@ from .conftest import EPHE_PATH
 from .test_a53_inventory import CHART_ID
 from .test_a55_replace_chain import SHORT, _World, template as _a55_template
 
+MIGRATIONS = Path(__file__).resolve().parents[4] / "migrations"
 J4P_GOLDEN = Path(__file__).resolve().parent / "fixtures" / "mb_ordinary_golden_j4p.json"
 GOLDEN = J4P_GOLDEN.with_name("mb_ordinary_golden_p06.json")
 GOLDEN_COMMIT = "adc6b81ea"
@@ -81,9 +83,43 @@ def template():
     """The a55 template (real migrations + sky-event substrate), seeded with the FINAL-rule registry: the capture below is the final-rule build, so its
     rule-registry rows (8 paths, the 1.2.0 factors) must be present in the template exactly as in the accepted P06 capture. The template's own seed runs
     outside any writer substep, so the explicit profile is what selects them."""
+    with _pre_doctrine_final_profile():
+        built = _a55_template.__wrapped__()
+        try:
+            admin, name, dsn = next(built)
+            _seed_p1_l0_reference_tables(dsn)
+            yield admin, name, dsn
+        finally:
+            built.close()                                                  # the a55 template's own teardown drops the database
+
+
+@contextmanager
+def _pre_doctrine_final_profile():
+    """SR-OD1 V1 / SR-TRBIND-3 (3): the accepted P06 capture is the PRE-doctrine final profile (5 bound paths + the 3 ND-H paths = 8). The doctrine rows (P1/P3/P4@1.3.0, P2@1.1.0 and the
+    owner-confirmed vedha overlay) joined the final catalogue after it, so the template is built on the same pre-doctrine final profile `test_j4d_slice_lane_db.py` runs on (its comment gives
+    the reasons): selection and catalogue both pre-doctrine, the vedha overlay unbound with them. The doctrine rows are gated by the TRIAL (T12 / test_od1_select_130.py), not by this
+    ordinary-run equivalence; nothing here relaxes a comparison."""
     from services.gochara_kernel import rule_registry
-    with rule_registry.rule_profile(final_rules=True):
-        yield from _a55_template.__wrapped__()
+    with rule_registry.rule_profile(final_rules=True), pytest.MonkeyPatch.context() as patch:
+        patch.setattr(rule_registry, "FINAL_SELECTED_PATH_REFS", rule_registry.SELECTED_PATH_REFS)
+        patch.setattr(rule_registry, "FINAL_ONLY_PATH_REFS", rule_registry.ND_H_PATH_REFS)
+        patch.setattr(rule_registry, "DOCTRINE_PATH_REFS", ())
+        patch.setattr(rule_registry, "VEDHA_PATH_REFS", ())
+        patch.setattr(writer_mod, "FINAL_VEDHA_SOURCE", None)
+        yield
+
+
+def _seed_p1_l0_reference_tables(dsn):
+    """TR-BIND finding / SR-TRBIND-3 (3): the final profile's ND-H class overrides run P1@1.2.0, whose soft factors declare the owner's Form B table, so the
+    manifest binds the three P1 L0 reference tables (`ka_gochara_v5._l0_consumed`, `input_vector.l0_identities`) and refuses a world that cannot read them
+    ("bg_combustion_orbs is not readable"). `create_am5_database` stubs the L1 tables only, so the a55 template lacks `bg_combustion_orbs`, `bg_dignity_reference` and
+    `bg_graha_naisargika_friendship`. They are seeded here, once, into the template from the REAL migrations 250 (the tables and their rows) and 1401 (the post-1401
+    node dignity and friendship rows), the same seed `test_j4d_slice_lane_db.py` and `test_od1_l0verify.py` use; every clone carries them. CI's 'Gochara measuring
+    build' runs this same file, so it reads the same seeded fixture (no separate seed path)."""
+    import psycopg
+    with psycopg.connect(dsn, autocommit=True, connect_timeout=3) as conn:
+        for number in ("250_bg_dignity_reference.sql", "1401_l0_node_dignity_friendship.sql"):
+            conn.execute((MIGRATIONS / number).read_text(encoding="utf-8"))
 
 
 # the REAL runner's birth parameters shape (birth_params._to_birth_params): main ignores them, an ordinary HEAD build must too
@@ -123,16 +159,14 @@ PERIOD_GUARD_SELECT = " ".join("""
 """.split())
 
 
-FACTOR_READ_GOLDEN = ("SELECT operand_selector, null_state, function, direction FROM public.ka_gochara_factor"
-                      " WHERE factor_id = %s AND rule_version = %s")
-# OD-1 D2 (rule_registry.RuleRegistryStore, the persisted-membership read): the one per-factor read also returns `category_mapping`, so an authored
-# value table (the P1 Form B rows) is read back as persisted and checked against the declaration. Same statement, same parameters, one more column.
-FACTOR_READ_HEAD = ("SELECT operand_selector, null_state, function, direction, category_mapping FROM public.ka_gochara_factor"
-                    " WHERE factor_id = %s AND rule_version = %s")
-
-
-GRAIN_READ_GOLDEN_TAIL = "c.t_exact, c.convention_id FROM public.ka_gochara_relationship_record r"
-GRAIN_READ_HEAD_TAIL = "c.t_exact, c.convention_id, NULL::text FROM public.ka_gochara_relationship_record r"
+# SR-NDH-INPLACE / D2: the manifest vector binds the three P1 L0 reference tables (input_vector.l0_identities), so every substep that reads the manifest issues one digest SELECT per table; they are
+# checked separately (exact text, no parameter, exactly once per such substep, never in rules / convention / body) and excluded from the statement summary before it is compared with the golden.
+L0_DIGEST_SELECTS = (
+    'SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(COALESCE(jsonb_agg(jsonb_build_array(graha, exaltation_sign, debilitation_sign, moolatrikona_sign, trim_scale(moolatrikona_from)::text, trim_scale(moolatrikona_to)::text, COALESCE(to_jsonb(own_signs), \'[]\'::jsonb)) ORDER BY graha COLLATE "C"), \'[]\'::jsonb))), count(*) FROM public.bg_dignity_reference',
+    'SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(COALESCE(jsonb_agg(jsonb_build_array(graha, other_graha, relation) ORDER BY graha COLLATE "C", other_graha COLLATE "C"), \'[]\'::jsonb))), count(*) FROM public.bg_graha_naisargika_friendship',
+    'SELECT public.ka_gochara_sha256_hex(public.ka_gochara_canonical_json(COALESCE(jsonb_agg(jsonb_build_array(graha, trim_scale(orb_degrees)::text, trim_scale(deep_orb_degrees)::text) ORDER BY graha COLLATE "C"), \'[]\'::jsonb))), count(*) FROM public.bg_combustion_orbs',
+)
+L0_FREE_SUBSTEP_KINDS = ("rules", "convention", "body")
 
 
 class _Rec:
@@ -271,7 +305,62 @@ def _follow_p1_ledger(golden: dict) -> dict:
     return json.loads(text.replace(GOLDEN_SNAPSHOT_DASHA_ROWS, P1L_SNAPSHOT_DASHA_ROWS))
 
 
-# SR-OD1 I1 (OD-1 D2 / P1a): two READ shapes of the window and rule-registry stages gained one selected column each. The accepted P06 capture predates both, so its two
+# SR-NDH-INPLACE (SR-OD1 V1): the eight ND-H classes' P1@1.2.0 row was re-derived IN PLACE to carry the owner's Form B factors, so the final-rule registry the template is seeded with is no longer
+# the one the accepted P06 capture saw. Each pin below moved for that one cause (the declared catalogue changed; no code path of the ordinary run did); each is asserted on the golden
+# EXACTLY as it was captured (never silent or vacuous) and compared strictly at its new value. The row counts and the rules note are DERIVED here from the declared catalogue
+# (`rule_registry.factor_rows()` / `soft_factor_rows()` under the pre-doctrine final profile), never restated; the three manifest literals were re-derived BY SCRIPT from the
+# test's own capture (`test_capture_the_markerless_run` with $MB_GOLDEN_OUT, run on the seeded template) and are not hand-edited.
+GOLDEN_FACTOR_ROWS, GOLDEN_SOFT_FACTOR_ROWS, GOLDEN_RULES_REUSED = 12, 19, 67
+GOLDEN_RULES_SEQUENCE_SHA256 = "033a468ae62bbbcb151cd0af72d9afe3ceeaeda85511dbd9fe85bd8d61c361f9"
+# the rules substep's ordered statement transcript is one read per declared row, so its hash moves with the catalogue; re-derived by the script above (the shapes and count are derived, only the order hash is a literal)
+NDH_RULES_SEQUENCE_SHA256 = "87100ca17af37d832e060cc3ea6f71396b928fb9572bf34118f894cbfc0e2878"
+GOLDEN_REGISTRY_DIGEST = "decadef6289d4113a01b4179522ba26d14eb1833bb73d424e9ba9700f36e778d"
+NDH_REGISTRY_DIGEST = "38806d8f4ae8e4a7bcd86ef57edab2372b2d54fee3818f7ab3c03f636ed30295"
+# the sha256 canonical-JSON digest of each P1 L0 reference table as migrations 250 + 1401 leave it (SR-DOCTRINE-H node rows included); the golden predates the manifest's `l0` component
+NDH_L0_DIGESTS = {
+    "bg_combustion_orbs": "754dc5ff539e954b7ae20b2311c6a3130aa101f93acd6c058c333a82cf8047d4",
+    "bg_dignity_reference": "2635a7f1f311ffc884dc1416baecc5a8cb44212c308cb386fac5423afcda4456",
+    "bg_graha_naisargika_friendship": "6fe29171b27e7934271823a38ef36efd12300838fe240ee551b660d46b000c1f",
+}
+# the Form B orb activity (P1@1.3.0 is REGISTERED, not selected) joined the orb policy's activity map after the golden
+NDH_ORB_ACTIVITY_130 = {"orb_decision_ref": "nd_orb_scale", "orb_deg": 1.0}
+
+
+def _follow_ndh_in_place_rows(golden: dict) -> dict:
+    """The golden with the registry row counts and the rules note moved to the declared catalogue (SR-NDH-INPLACE)."""
+    from services.gochara_kernel import rule_registry
+    with _pre_doctrine_final_profile():
+        factors, softs = len(rule_registry.factor_rows()), len(rule_registry.soft_factor_rows())
+    reused = GOLDEN_RULES_REUSED - GOLDEN_FACTOR_ROWS - GOLDEN_SOFT_FACTOR_ROWS + factors + softs
+    assert (factors, softs) != (GOLDEN_FACTOR_ROWS, GOLDEN_SOFT_FACTOR_ROWS), "the catalogue did not move: this adaptation would be vacuous"
+    out = json.loads(json.dumps(golden))
+    for sub in out["substeps"]:
+        assert (sub["counts"]["ka_gochara_factor"], sub["counts"]["ka_gochara_rule_path_soft_factor"]) == (GOLDEN_FACTOR_ROWS, GOLDEN_SOFT_FACTOR_ROWS), sub["key"]
+        sub["counts"]["ka_gochara_factor"], sub["counts"]["ka_gochara_rule_path_soft_factor"] = factors, softs
+    rules = next(sub for sub in out["substeps"] if sub["key"] == "rules")["statements"]
+    assert rules["count"] == GOLDEN_RULES_REUSED and rules["sequence_sha256"] == GOLDEN_RULES_SEQUENCE_SHA256, "the golden names the rules substep's statement transcript"
+    factor_shape = next(k for k in rules["shapes"] if k.startswith("2|SELECT factor_id, rule_version, operand_selector") and k.endswith("FROM public.ka_gochara_factor WHERE factor_id = %s AND rule_version = %s"))
+    soft_shape = next(k for k in rules["shapes"] if k.startswith("4|SELECT path_id, rule_version, factor_id, factor_rule_version FROM public.ka_gochara_rule_path_soft_factor"))
+    assert (rules["shapes"][factor_shape], rules["shapes"][soft_shape]) == (GOLDEN_FACTOR_ROWS, GOLDEN_SOFT_FACTOR_ROWS)
+    rules["count"], rules["sequence_sha256"] = reused, NDH_RULES_SEQUENCE_SHA256
+    rules["shapes"][factor_shape], rules["shapes"][soft_shape] = factors, softs
+    text = json.dumps(out, sort_keys=True, ensure_ascii=False)
+    old_note = f"{GOLDEN_RULES_REUSED} reused (idempotent)"
+    assert text.count(old_note) >= 1, "the golden names the rules note's reused count"
+    return json.loads(text.replace(old_note, f"{reused} reused (idempotent)"))
+
+
+def _follow_ndh_in_place_manifest(vector: dict) -> dict:
+    """The golden's manifest vector with the three components SR-NDH-INPLACE moved: the registry digest, the P1 L0 reference digests, the orb activity map."""
+    out = json.loads(json.dumps(vector))
+    assert out["registry"]["digest"] == GOLDEN_REGISTRY_DIGEST and out["l0"] == {} and set(out["orb_policy"]["activity"]) == {"1.0.0"}
+    out["registry"]["digest"] = NDH_REGISTRY_DIGEST
+    out["l0"] = dict(NDH_L0_DIGESTS)
+    out["orb_policy"]["activity"]["1.3.0"] = dict(NDH_ORB_ACTIVITY_130)
+    return out
+
+
+# SR-OD1 I1 (OD-1 D2 / P1a): two READ shapes of the window and rule-registry stages gained one selected column each, and (SR-F4-STORE-EXACT) three of the window stage's reads gained float8 casts. The accepted P06 capture predates both, so its two
 # shapes are compared through this adaptation and nothing else is relaxed: each pair below is (the golden's fragment, the head's fragment); every statement is otherwise
 # byte-compared, in order, with the same parameter counts, and the head must issue the new fragment EXACTLY as often as the golden issued the old one (never silently or vacuously).
 #   * RuleRegistryStore.persisted_factors reads the authored `category_mapping` back (rule_registry.py), so the persisted Form B value table is checked against the declaration.
@@ -281,6 +370,17 @@ OD1_READ_ADAPTATIONS = (
      " direction, category_mapping FROM public.ka_gochara_factor WHERE factor_id = %s"),
     ("c.t_exact, c.convention_id FROM public.ka_gochara_relationship_record r JOIN",
      "c.t_exact, c.convention_id, NULL::text FROM public.ka_gochara_relationship_record r JOIN"),
+    # SR-OD1 I1 (window_store, P1 period anchor): the scored-support read of the same stage carries the same constant `NULL::text` column for every non-P1 path.
+    ("lower(s.x), upper(s.x) FROM public.ka_gochara_relationship_record r CROSS JOIN LATERAL",
+     "lower(s.x), upper(s.x), NULL::text FROM public.ka_gochara_relationship_record r CROSS JOIN LATERAL"),
+    # SR-F4-STORE-EXACT (od1-f4-exact): the window stage's READ statements cast the stored REAL columns they read to float8 so the verifier compares exact values (the contact's
+    # `delta_lambda`, in the two selects that read it, and the eval-window row's numeric columns). Read casts only; no SQL write, join or filter moved.
+    (" c.t_out, c.delta_lambda FROM public.ka_gochara_contact c",
+     " c.t_out, c.delta_lambda::float8 FROM public.ka_gochara_contact c"),
+    ("upper(cov.completed_horizon), c.delta_lambda FROM",
+     "upper(cov.completed_horizon), c.delta_lambda::float8 FROM"),
+    ("peak_instant, score, evidence_for, evidence_against, severity, null_states_used, outcome_valence_for_native, objective, objective_value, qualification FROM public.ka_gochara_eval_window",
+     "peak_instant, score::float8, evidence_for::float8, evidence_against::float8, severity::float8, null_states_used, outcome_valence_for_native, objective, objective_value::float8, qualification FROM public.ka_gochara_eval_window"),
 )
 
 
@@ -343,7 +443,7 @@ def head(template):
 
 def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read_only_state_guard_select(head):
     got, raw = head
-    want = _follow_p1_ledger(_follow_settlement(_load()))
+    want = _follow_ndh_in_place_rows(_follow_p1_ledger(_follow_settlement(_load())))
     assert [s["key"] for s in got["substeps"]] == [s["key"] for s in want["substeps"]]
     adapted = [0] * len(OD1_READ_ADAPTATIONS)
     kinds = {s["key"].split(":")[0].split(" ")[0] for s in want["substeps"]}
@@ -367,6 +467,11 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
             rest.remove([P1_GATE_SELECT, 1])
             assert rest.count([COPY_PROBE_SELECT, 0]) == 3, f"{key}: expected the G12 copy probe exactly three times (before the ledger decision, inside the insert, and after it)"
             rest.remove([COPY_PROBE_SELECT, 0])
+        for l0_select in L0_DIGEST_SELECTS:
+            want_n = 0 if key.split(":")[0].split(" ")[0] in L0_FREE_SUBSTEP_KINDS else 1
+            assert rest.count([l0_select, 0]) == want_n, f"{key}: expected the P1 L0 digest SELECT exactly {want_n} time(s), saw {rest.count([l0_select, 0])}"
+            if want_n:
+                rest.remove([l0_select, 0])
         assert len(guard) == (0 if "[dry_run]" in key else 1), f"{key}: expected exactly one state-guard SELECT per non-dry-run substep, saw {len(guard)}"
         if key == "inventory:marriage":
             old_shapes = m["statements"]["shapes"]
@@ -376,18 +481,8 @@ def test_every_substep_kind_of_a_markerless_run_equals_mains_except_the_one_read
             new = old[0].replace("AND start_iso < end_iso AND", "AND")
             assert rest.count([new, 13]) == 1
             rest = [[old[0], n] if sql == new else [sql, n] for sql, n in rest]
-        # OD-1 D2: follow the golden's per-factor read to the head's one extra column. Never silent or vacuous: every occurrence the golden carries must be matched by
-        # exactly as many head occurrences of the new text (and none of the old), and the rest of the sequence stays strictly compared.
-        golden_factor_reads = m["statements"]["shapes"].get(f"2|{FACTOR_READ_GOLDEN}", 0)
-        assert rest.count([FACTOR_READ_GOLDEN, 2]) == 0, f"{key}: the head still ran the pre-D2 factor read"
-        assert rest.count([FACTOR_READ_HEAD, 2]) == golden_factor_reads, f"{key}: the factor read ran {rest.count([FACTOR_READ_HEAD, 2])}x, the golden {golden_factor_reads}x"
-        rest = [[FACTOR_READ_GOLDEN, n] if sql == FACTOR_READ_HEAD else [sql, n] for sql, n in rest]
-        # OD-1 I1 (window_store.WindowStore.read_grain): the grain read carries one more select column, the P1 period-anchor lord; for every non-P1 path it is the constant
-        # `NULL::text`. Same follow-the-golden discipline: the golden's occurrences must be matched one for one by the head's new text, none of the old text may remain.
-        golden_grain_reads = sum(v for shape, v in m["statements"]["shapes"].items() if GRAIN_READ_GOLDEN_TAIL in shape)
-        assert not [s for s, _ in rest if GRAIN_READ_GOLDEN_TAIL in s], f"{key}: the head still ran the pre-I1 grain read"
-        assert len([s for s, _ in rest if GRAIN_READ_HEAD_TAIL in s]) == golden_grain_reads, f"{key}: the grain read count differs from the golden's {golden_grain_reads}"
-        rest = [[sql.replace(GRAIN_READ_HEAD_TAIL, GRAIN_READ_GOLDEN_TAIL), n] for sql, n in rest]
+        # (the head's two OD-1 read shapes - the per-factor read's `category_mapping` column and the grain read's `NULL::text` period-anchor column - are followed below by `_follow_od1_reads`, once each.
+        # An earlier pair of explicit blocks here did the same restoration first and left `_follow_od1_reads` counting zero head occurrences of statements already restored, so it never could pass.)
         if key.startswith("record:"):
             # J-4c F-LEANNESS (C5, test_a53_j4c_leanness_pipeline.py): the P1 anchor-column catalogue probe is read ONCE per store, no longer once per
             # record. The accepted capture ran it before every relationship-record INSERT; this build runs it once (before the first) plus the substep's
@@ -412,7 +507,7 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
 
     No `horizon_basis` or `test_slice` component may appear in an ordinary run.
     """
-    got, want = head[0]["manifest_vector"], _load()["manifest_vector"]
+    got, want = head[0]["manifest_vector"], _follow_ndh_in_place_manifest(_load()["manifest_vector"])
     assert "horizon_basis" not in got and "test_slice" not in got
     # OD-1 / D-FLIP F-10: the ONE component added since the golden was captured — the scored edge, derived from the protocol's H1 (2026-04-17, inclusive IST) → the next IST midnight.
     # It is asserted here by value and set aside below; every other component is still compared to the accepted baseline unchanged.
@@ -420,7 +515,12 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     got = {k: v for k, v in got.items() if k != "scored_until"}
 
     same_host = got["ephemeris"]["platform"] == want["ephemeris"]["platform"]
-    host_bound = () if same_host else ("platform", "library_sha256", "probe_digest")
+    # SR-TRBIND-3 (3) (I) INTERPRETATION: a platform string ('Darwin-arm64') does not identify a build - the golden was captured on one macOS arm64 pyswisseph build and the
+    # evaluator's own venv holds another (same swe_version, same .se1 files, SAME numerical probe digest, different compiled-extension hash, which `library_artifact_sha` binds
+    # precisely because "two builds can share a version"). On the same platform with another build only the artifact hash is host-bound; the probe digest (the numerical claim) and
+    # the version are still compared exactly. On another platform all three stay excluded, as before.
+    same_build = same_host and got["ephemeris"]["library_sha256"] == want["ephemeris"]["library_sha256"]
+    host_bound = () if same_build else (("library_sha256",) if same_host else ("platform", "library_sha256", "probe_digest"))
     # the golden was generated on `want['ephemeris']['platform']`: the host library's own identity (its artifact hash, platform string and numerical probe digest) is a
     # property of the MACHINE, not of the repository's code, so on another host those three are not compared; every other component is, exactly
 
