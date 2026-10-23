@@ -4,9 +4,10 @@ import json
 
 
 def owner_go_document(mod, req, **over):
-    go = {"schema": "ky.owner_go/1", "operation_id": req["operation_id"], "kind": req["kind"], "item_id": req["item_id"], "request_sha256": mod.request_digest(req),
+    go = {"schema": "ky.owner_go/2", "operation_id": req["operation_id"], "kind": req["kind"], "item_id": req["item_id"], "request_sha256": mod.request_digest(req),
           "reviewed_commit": req.get("reviewed_commit"), "owner_yes": True, "owner_words": "start the build", "transcript_citation": "session 2026-10-23T14:02:11Z, owner message 7",
-          "written_by": "madhav-44 (owner surrogate)", "written_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
+          "written_by": "madhav-44 (owner surrogate)", "written_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+          "expires_at": (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1)).isoformat(timespec="seconds")}
     go.update(over)
     return go
 

@@ -14,7 +14,21 @@ pattern of test_executor_rebuild_dryrun_detector.py).
   G7 the dry-run siblings are NOT gated
   G8 the rebuild is gated exactly as the century dispatch is (each kind's membership of the gated set)
   G9 nothing but the file substitutes: an environment flag and an earlier approval file admit nothing
+
+SR-OWNER-GATE-HARDEN (review of #3902, NB-1 / NB-4 / NB-2): the same ledger, one oracle per distinct claim, each with its ONE planted reversion.
+  G10 a row that runs the century launcher (century_launch.py) is gated whatever its kind is called (a `*_dryrun` name included)
+  G11 a row that runs the production rebuild entry with `rebuild` / `--force-execute` is gated whatever its kind is called; a row running `rebuild-dryrun` stays free
+  G12 a symlink at the go directory or at any parent below the run root is refused `owner_go_mismatch: directory`
+  G13 a symlink AT the go file is refused `owner_go_mismatch: file`
+  G14 a go without a usable `expires_at` (absent, unparsable, naive, not a string) is refused `owner_go_mismatch: expires_at`
+  G15 a go whose `expires_at` is in the past is refused `owner_go_mismatch: expires_at`
+  G16 a go whose `expires_at` is more than 12 hours after `written_at` is refused `owner_go_mismatch: expires_at`
+  G17 a longer span is accepted only with `owner_span_hours` AND the owner's `owner_span_words` (otherwise `owner_go_mismatch: owner_span_hours`)
+  G18 a `written_at` in the future (which would stretch the window) is refused `owner_go_mismatch: written_at`
+  G19 run_one judges the go again immediately before execution: a go that has lapsed since admission stops the queued build (REFUSED, nothing executed)
 """
+import datetime as dt
+import os
 import json
 
 import pytest
@@ -24,7 +38,7 @@ import test_executor_rebuild_dryrun_detector as D7
 from owner_go_cases import write_owner_go
 from test_executor_table import ALL_CAPS
 
-CHAIN_LINE = "        lambda: owner_go_problem(req),\n"
+CHAIN_LINE = "        lambda: owner_go_problem(req, op),\n"
 GATED = ("orchestrator_rebuild", "century_dispatch")
 
 
@@ -122,6 +136,145 @@ def oracle_g9_nothing_but_the_file_substitutes(w, table, monkeypatch):
         assert judged(w, table, req) == "owner_go_missing", kind
 
 
+def renamed(w, table, base_kind, new_kind, **row):
+    """A request for the `base_kind` build under another kind name, and a table that carries that name as a copy of base_kind's row (with `row` overrides)."""
+    req = request(w, base_kind, operation_id=f"op-{new_kind}", idempotency_key=f"k-{new_kind}")
+    req["kind"] = new_kind
+    return req, {**table, new_kind: {**table[base_kind], **row}}
+
+
+def oracle_g10_the_century_launcher_is_gated_by_script(w, table):
+    for name in ("quarterly_launch", "century_launch_dryrun"):      # an innocent name, and a name that claims to be dry while running the very same launcher
+        req, renamed_table = renamed(w, table, "century_dispatch", name)
+        assert judged(w, renamed_table, req) == "owner_go_missing", name
+        write_owner_go(w.mod, req)
+        assert judged(w, renamed_table, req) is None, f"control failed — {name} with a correctly bound go must be admitted"
+
+
+def oracle_g11_the_production_rebuild_entry_is_gated_by_script(w, table):
+    req, renamed_table = renamed(w, table, "orchestrator_rebuild", "nightly_refresh")
+    assert judged(w, renamed_table, req) == "owner_go_missing"
+    write_owner_go(w.mod, req)
+    assert judged(w, renamed_table, req) is None, "control failed — the renamed rebuild with a correctly bound go must be admitted"
+    forced, forced_table = renamed(w, table, "orchestrator_rebuild", "nightly_forced", fixed_args=["--force-execute"])      # the force flag alone is enough
+    assert judged(w, forced_table, forced) == "owner_go_missing"
+    free = w.mod.validate(w.production_request("orchestrator_rebuild_dryrun", operation_id="op-free", idempotency_key="k-free", args=dict(D7.ARGS)),
+                          {**table, "rebuild_rehearsal_dryrun": dict(table["orchestrator_rebuild_dryrun"])}, ALL_CAPS)
+    assert free is None, f"control failed — a rebuild-dryrun row is admitted ({free})"
+    dry = w.production_request("rebuild_rehearsal_dryrun", operation_id="op-free2", idempotency_key="k-free2", args=dict(D7.ARGS))
+    assert w.mod.validate(dry, {**table, "rebuild_rehearsal_dryrun": dict(table["orchestrator_rebuild_dryrun"])}, ALL_CAPS) is None, "a genuinely dry row under another name stays free"
+
+
+def oracle_g12_a_symlinked_directory_is_refused(w, table):
+    mod = w.mod
+    req = request(w, "orchestrator_rebuild", operation_id="op-rb", idempotency_key="k-rb")
+    write_owner_go(mod, req)
+    assert judged(w, table, req) is None, "control failed — the go in a real directory is admitted"
+    real = mod.OPS.parent / "elsewhere"
+    os.rename(mod.OPS / "owner_go", real)                          # the same bytes, reached through a symlinked owner_go directory
+    (mod.OPS / "owner_go").symlink_to(real, target_is_directory=True)
+    assert judged(w, table, req) == "owner_go_mismatch: directory"
+    (mod.OPS / "owner_go").unlink()
+    os.rename(real, mod.OPS / "owner_go")
+    assert judged(w, table, req) is None
+    parked = mod.OPS.parent / "ops_real"                           # ...and through a symlinked parent (run/ops) below the run root
+    os.rename(mod.OPS, parked)
+    mod.OPS.symlink_to(parked, target_is_directory=True)
+    assert judged(w, table, req) == "owner_go_mismatch: directory"
+
+
+def oracle_g13_a_symlinked_file_is_refused(w, table):
+    req = request(w, "orchestrator_rebuild", operation_id="op-rb", idempotency_key="k-rb")
+    write_owner_go(w.mod, req)
+    target = w.mod.OPS / "owner_go" / "op-rb.json"
+    real = w.mod.OPS / "real-go.json"
+    os.rename(target, real)
+    target.symlink_to(real)
+    assert judged(w, table, req) == "owner_go_mismatch: file"
+
+
+def at(hours):
+    return (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=hours)).isoformat(timespec="seconds")
+
+
+def oracle_g14_an_unusable_expiry_is_refused(w, table):
+    for kind in GATED:
+        for expiry in (None, "", "tomorrow", (dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1)).replace(tzinfo=None).isoformat(timespec="seconds"), 1893456000):
+            req = request(w, kind, operation_id=f"op-{kind}", idempotency_key=f"k-{kind}")
+            write_owner_go(w.mod, req, expires_at=expiry)
+            assert judged(w, table, req) == "owner_go_mismatch: expires_at", (kind, expiry)
+        write_owner_go(w.mod, req, expires_at=at(2))
+        assert judged(w, table, req) is None, f"control failed — {kind} with a future timezone-qualified expiry is admitted"
+
+
+def oracle_g15_an_expired_go_is_refused(w, table):
+    for kind in GATED:
+        req = request(w, kind, operation_id=f"op-{kind}", idempotency_key=f"k-{kind}")
+        write_owner_go(w.mod, req, written_at=at(-3), expires_at=at(-1))
+        assert judged(w, table, req) == "owner_go_mismatch: expires_at", kind
+        write_owner_go(w.mod, req, written_at=at(-3), expires_at=at(1))      # control: the same window, still running, is admitted
+        assert judged(w, table, req) is None, kind
+
+
+def oracle_g16_the_default_span_is_twelve_hours(w, table):
+    for kind in GATED:
+        req = request(w, kind, operation_id=f"op-{kind}", idempotency_key=f"k-{kind}")
+        write_owner_go(w.mod, req, written_at=at(0), expires_at=at(12.5))
+        assert judged(w, table, req) == "owner_go_mismatch: expires_at", kind
+        write_owner_go(w.mod, req, written_at=at(0), expires_at=at(11.9))
+        assert judged(w, table, req) is None, kind
+
+
+def oracle_g17_a_longer_span_needs_the_owners_words(w, table):
+    for kind in GATED:
+        req = request(w, kind, operation_id=f"op-{kind}", idempotency_key=f"k-{kind}")
+        write_owner_go(w.mod, req, written_at=at(0), expires_at=at(30), owner_span_hours=48, owner_span_words="keep it open for two days")
+        assert judged(w, table, req) is None, f"control failed — {kind} with an owner-given 48 h window is admitted"
+        write_owner_go(w.mod, req, written_at=at(0), expires_at=at(60), owner_span_hours=48, owner_span_words="keep it open for two days")
+        assert judged(w, table, req) == "owner_go_mismatch: expires_at", "past the owner's own span"
+        for hours, words in ((48, None), (48, "  "), (0, "x"), (-5, "x"), (True, "x"), ("48", "x"), (float("nan"), "x"), (10 ** 9, "x")):
+            write_owner_go(w.mod, req, written_at=at(0), expires_at=at(30), owner_span_hours=hours, owner_span_words=words)
+            assert judged(w, table, req) == "owner_go_mismatch: owner_span_hours", (kind, hours, words)
+
+
+def oracle_g18_a_future_written_at_is_refused(w, table):
+    for kind in GATED:
+        req = request(w, kind, operation_id=f"op-{kind}", idempotency_key=f"k-{kind}")
+        write_owner_go(w.mod, req, written_at=at(30), expires_at=at(35))      # within 12 h of a written_at that has not happened yet: still not a window that started
+        assert judged(w, table, req) == "owner_go_mismatch: written_at", kind
+
+
+def drive_run_one(w, table, req):
+    """Run the real run_one on `req` with the transport doubled: returns (receipts written, whether the child was executed)."""
+    mod = w.mod
+    seen = {"receipts": [], "executed": False}
+    mod.sync = lambda: None
+    mod.load_table = lambda: table
+    mod.capabilities = lambda *a, **k: ALL_CAPS
+    mod.mechanical_acceptance = lambda *a, **k: None
+    mod.receipt = lambda req, status, reason="", *a, **k: seen["receipts"].append((status, reason))
+    mod.execute = lambda req, op: seen.__setitem__("executed", True) or (0, "")
+    queued = mod.REQ / f"{req['operation_id']}.json"
+    mod.REQ.mkdir(parents=True, exist_ok=True); mod.DONE.mkdir(parents=True, exist_ok=True)
+    queued.write_text(json.dumps(req))
+    mod.run_one(queued, req, table[req["kind"]])
+    return seen["receipts"], seen["executed"]
+
+
+def oracle_g19_run_one_judges_the_go_again_before_execution(w, table):
+    req = request(w, "orchestrator_rebuild", operation_id="op-rb", idempotency_key="k-rb")
+    write_owner_go(w.mod, req)
+    receipts, executed = drive_run_one(w, table, w.accept(req))
+    assert executed and receipts == [("COMPLETED", "")], f"control failed — a bound, unexpired go runs ({receipts})"
+    again = request(w, "orchestrator_rebuild", operation_id="op-rb2", idempotency_key="k-rb2")
+    write_owner_go(w.mod, again)
+    accepted = w.accept(again)
+    assert w.mod.validate(accepted, table, ALL_CAPS) is None                    # admitted ...
+    write_owner_go(w.mod, again, written_at=at(-3), expires_at=at(-1))        # ... then the window lapses before the worker starts it
+    receipts, executed = drive_run_one(w, table, accepted)
+    assert not executed and receipts == [("REFUSED", "owner_go_mismatch: expires_at")], (receipts, executed)
+
+
 # claim -> (oracle, the ONE planted reversion of executor.py that must make it fail)
 ORACLES = {
     "g1": (oracle_g1_no_go_no_build, (CHAIN_LINE, "")),
@@ -130,9 +283,19 @@ ORACLES = {
     "g4": (oracle_g4_a_go_for_another_dispatch_head, ('("reviewed_commit", req.get("reviewed_commit")), ', "")),
     "g5": (oracle_g5_no_transcript_citation, ('for field in ("owner_words", "transcript_citation"):', 'for field in ("owner_words",):')),
     "g6": (oracle_g6_the_owner_must_have_said_yes, ('if go.get("owner_yes") is not True:', "if False:")),
-    "g7": (oracle_g7_dry_runs_are_not_gated, ('if req.get("kind") not in OWNER_GO_KINDS: return None', 'if not str(req.get("kind")).startswith(("century_dispatch", "orchestrator_rebuild")): return None')),
+    "g7": (oracle_g7_dry_runs_are_not_gated, ('if req.get("kind") in OWNER_GO_KINDS: return True', 'if str(req.get("kind")).startswith(("century_dispatch", "orchestrator_rebuild")): return True')),
     "g8": (oracle_g8_the_gated_set_is_the_two_build_kinds, ('    "orchestrator_rebuild",\n})\nOWNER_GO_DIR', '})\nOWNER_GO_DIR')),
-    "g9": (oracle_g9_nothing_but_the_file_substitutes, ('if req.get("kind") not in OWNER_GO_KINDS: return None', 'if req.get("kind") not in OWNER_GO_KINDS or os.environ.get("KY_OWNER_GO"): return None')),
+    "g10": (oracle_g10_the_century_launcher_is_gated_by_script, ("    if names & OWNER_GO_SCRIPT_NAMES: return True\n", "")),
+    "g11": (oracle_g11_the_production_rebuild_entry_is_gated_by_script, ("        return any(t in OWNER_GO_REBUILD_TOKENS for t in tokens)\n", "        return False\n")),
+    "g12": (oracle_g12_a_symlinked_directory_is_refused, ('        if directory.is_symlink(): return "owner_go_mismatch: directory"\n', "")),
+    "g13": (oracle_g13_a_symlinked_file_is_refused, ("if path.is_symlink() or not path.is_file():", "if not path.is_file():")),
+    "g14": (oracle_g14_an_unusable_expiry_is_refused, ('if expires is None: return "owner_go_mismatch: expires_at"', "if expires is None: expires = now + dt.timedelta(hours=1)")),
+    "g15": (oracle_g15_an_expired_go_is_refused, (" or expires <= now: return", ": return")),
+    "g16": (oracle_g16_the_default_span_is_twelve_hours, (" or expires - written > dt.timedelta(hours=span)", "")),
+    "g17": (oracle_g17_a_longer_span_needs_the_owners_words, ("        span = max(span, hours)\n", "")),
+    "g18": (oracle_g18_a_future_written_at_is_refused, ('    if written > now + dt.timedelta(minutes=5): return "owner_go_mismatch: written_at"\n', "")),
+    "g19": (oracle_g19_run_one_judges_the_go_again_before_execution, ("        why = validate(req, current_table, capabilities(True), reserved=True)\n        if why:\n            receipt(req, \"REFUSED\", why); return\n", "")),
+    "g9": (oracle_g9_nothing_but_the_file_substitutes, ('if not owner_go_gated(req, op): return None', 'if not owner_go_gated(req, op) or os.environ.get("KY_OWNER_GO"): return None')),
 }
 
 
@@ -166,3 +329,4 @@ def test_the_go_is_judged_again_immediately_before_execution(tmp_path, monkeypat
     assert w.mod.validate(accepted, table, ALL_CAPS, reserved=True) is None
     (w.mod.OPS / "owner_go" / "op-rb.json").unlink()
     assert w.mod.validate(accepted, table, ALL_CAPS, reserved=True) == "owner_go_missing"
+
