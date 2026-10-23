@@ -108,6 +108,7 @@ from services.w2g.fingerprint import ARC_ENGINE_VERSION, class_fingerprint
 from services.w2g.materialize import (
     GENERATION_V2,
     GRAMMAR_VERSION,
+    horizon_exhausted_note,
     materialize_event_class,
     progressive_horizon,
 )
@@ -448,6 +449,7 @@ class KaGocharaWriter(WriterBase):
         if result.mudda_overlap is not None:     # SR-W56-S3: counted per run, read back by the K9 receipts
             notes += (f"; {result.mudda_overlap['reason']}={result.mudda_overlap['overlaps_named']} "
                       f"(mudda lord unresolved inside each; {result.mudda_overlap['overlap_seconds_total']:g} s in all)")
+        notes += horizon_exhausted_note(result)      # SR-MUDDA-HORIZON: counted per run, read back by the K9 receipts
         return WriterResult(asset_id=self.asset_id, rows_inserted=inserted,
                              duration_seconds=time.time() - t0, notes=notes)
 

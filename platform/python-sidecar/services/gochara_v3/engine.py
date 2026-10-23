@@ -1974,6 +1974,7 @@ def _compute_permission_from_context(
         "systems_active": systems_active,
         "systems_considered": [s["system_id"] for s in systems],
         "system_count_active": len(systems_active),
+        "dasha_horizon_exhausted": DD.horizon_exhausted_entries(systems),
         "t_datetime_ist": t_iso,
         "window_days": window_days,
         "calibration_state": "structural_prior",
@@ -2069,6 +2070,15 @@ def _dasha_contributions_from_context(
         out["mudda"] = {"active": False, "state": "unavailable",
                         "detail": {"reason": DD.MUDDA_OVERLAP_REASON, "overlap_start_iso": str(overlap["start_iso"]),
                                    "overlap_end_iso": str(overlap["end_iso"]), "overlap_seconds": overlap["seconds"]}}
+    # SR-MUDDA-HORIZON: past a system's table end nothing was measured -- named blank, never "inactive" (§N.7.6)
+    for sid in DASHA_SYSTEM_IDS:
+        if out[sid]["active"] or out[sid].get("state") == "unavailable":
+            continue
+        exhausted = DD.dasha_horizon_exhausted_at(context.dasha_periods, sid, t_iso)
+        if exhausted is not None:
+            out[sid] = {"active": False, "state": "unavailable",
+                        "detail": {"reason": exhausted["reason"], "table_end_iso": exhausted["table_end_iso"],
+                                   "levels": exhausted["levels"]}}
     return out
 
 

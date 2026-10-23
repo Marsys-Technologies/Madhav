@@ -134,6 +134,46 @@ def unresolved_mudda_overlap_at(periods, dt_iso) -> Optional[dict]:
     return None
 
 
+# SR-MUDDA-HORIZON: a dasha table is finite (mudda L1 ends 2032-02-05 on every ayanamsha). At an instant at or after the
+# last end of every row a system holds, nothing was measured: "inactive" would assert a checked negative for an unmeasured
+# span (§N.7.6), so the readers blank it with this reason instead. A system with NO rows keeps its own "no rows" reason.
+HORIZON_EXHAUSTED_REASON = "dasha_horizon_exhausted"
+
+
+def dasha_horizon_exhausted_at(periods, system_id: str, dt_iso: str) -> Optional[dict]:
+    """`{reason, system_id, table_end_iso, levels}` when `system_id` HAS rows in the read but `dt_iso` is at or after the
+    last end of all of them (half-open, like every period: t == end is past the table), else None. t before the table end
+    is never named here -- a gap or a non-matching lord inside the table is a real, measured "not active". Rows whose end
+    cannot be parsed are not evidence of a table end; a system with no parseable end (or no rows) is None."""
+    ends, levels = [], set()
+    for period in periods:
+        if period.get("system_id") != system_id:
+            continue
+        try:
+            ends.append(_instant(period["end_iso"]))
+        except (ValueError, KeyError, TypeError, AttributeError):
+            continue
+        levels.add(int(period.get("level_n") or 1))
+    if not ends:
+        return None
+    try:
+        t = _instant(dt_iso)
+    except (ValueError, TypeError, AttributeError):
+        return None
+    table_end = max(ends)
+    if t < table_end:
+        return None
+    return {"reason": HORIZON_EXHAUSTED_REASON, "system_id": system_id,
+            "table_end_iso": table_end.isoformat(), "levels": sorted(levels)}
+
+
+def horizon_exhausted_entries(systems) -> list[dict]:
+    """The permission `systems` entries that read `dasha_horizon_exhausted`, as `{system_id, table_end_iso}` -- the count the
+    per-run K9 receipt carries. Counted from the entries the readers actually emitted, never re-derived."""
+    return [{"system_id": s["system_id"], "table_end_iso": (s.get("detail") or {}).get("table_end_iso")}
+            for s in systems if (s.get("detail") or {}).get("reason") == HORIZON_EXHAUSTED_REASON]
+
+
 def mudda_overlap_census(periods) -> dict:
     """Count of DISTINCT named overlaps in a read (each is carried by both of its rows)."""
     seen = {(str(i["start_iso"]), str(i["end_iso"])): i["seconds"]
@@ -282,6 +322,6 @@ def period_contains(period: dict, dt_iso: str) -> bool:
 __all__ = ["DASHA_SYSTEMS", "fetch_dasha_periods", "fetch_dasha_periods_multilevel",
            "canonicalize_multilevel_rows", "MUDDA_OVERLAP_REASON", "MUDDA_OVERLAP_MAX_SECONDS",
            "mudda_boundary_overlap_seconds", "unresolved_mudda_overlap_at", "mudda_overlap_census",
-           "MUDDA_OVERLAP_KEY",
+           "MUDDA_OVERLAP_KEY", "HORIZON_EXHAUSTED_REASON", "dasha_horizon_exhausted_at", "horizon_exhausted_entries",
            "build_fixture_dasha_periods", "period_contains", "DashaReadConflict",
            "DEFAULT_LEVELS", "READ_CONTRACT_TIER"]

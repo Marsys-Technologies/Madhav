@@ -203,6 +203,8 @@ class MaterializeResult:
     targets_resolved: int
     skipped_reason: Optional[str] = None
     mudda_overlap: Optional[dict] = None    # SR-W56-S3: the named L1 mudda boundary overlaps in the dasha read this class used
+    # SR-MUDDA-HORIZON: candidates (of contacts_evaluated) at which a dasha system read `dasha_horizon_exhausted`, counted per system
+    dasha_horizon_exhausted: Optional[dict] = None
 
 
 def materialize_event_class(
@@ -255,12 +257,20 @@ def materialize_event_class(
     dasha_periods = fetch_dasha_periods(conn, chart_id, ayanamsha_id=ayanamsha_id)
 
     rows: list[dict[str, Any]] = []
+    exhausted_candidates = 0
+    exhausted_by_system: dict[str, int] = {}
     for t_jd in candidate_jds:
         result = compute_lambda_e_fn(
             swe, conn, chart_id, event_class, t_jd,
             targets=targets, dasha_periods=dasha_periods, temporal_shape="point",
             ayanamsha_id=ayanamsha_id,
         )
+        # counted for EVERY candidate, before the inactivity skip below: a blank that is not served is still a blank
+        exhausted = (getattr(result, "permission_detail", None) or {}).get("dasha_horizon_exhausted") or []
+        if exhausted:
+            exhausted_candidates += 1
+            for entry in exhausted:
+                exhausted_by_system[entry["system_id"]] = exhausted_by_system.get(entry["system_id"], 0) + 1
         if result.raw_lambda <= ACTIVATION_EPS:
             continue  # honest inactivity, not a served row -- matches v1's _active_runs threshold
         peak_date = _jd_to_date_ist(swe, t_jd)
@@ -288,7 +298,20 @@ def materialize_event_class(
     return MaterializeResult(
         rows=rows, contacts_evaluated=len(candidate_jds), targets_resolved=len(targets),
         mudda_overlap=DD.mudda_overlap_census(dasha_periods),
+        dasha_horizon_exhausted={"reason": DD.HORIZON_EXHAUSTED_REASON, "candidates_exhausted": exhausted_candidates,
+                                 "by_system": dict(sorted(exhausted_by_system.items()))},
     )
+
+
+def horizon_exhausted_note(result: MaterializeResult) -> str:
+    """SR-MUDDA-HORIZON: the per-run receipt clause (ka_gochara appends it to its run notes; the K9 receipts read it back).
+    Empty when the result carries no census."""
+    exhausted = result.dasha_horizon_exhausted
+    if exhausted is None:
+        return ""
+    by_system = ",".join(f"{sid}:{n}" for sid, n in exhausted["by_system"].items()) or "none"
+    return (f"; {exhausted['reason']}={exhausted['candidates_exhausted']} of {result.contacts_evaluated} candidates "
+            f"(systems named blank past their table end: {by_system})")
 
 
 def _jd_to_date_ist(swe: Any, jd: float) -> date:
@@ -297,6 +320,7 @@ def _jd_to_date_ist(swe: Any, jd: float) -> date:
 
 
 __all__ = [
+    "horizon_exhausted_note",
     "CANDIDATE_NET_ORB_DEG",
     "GENERATION_V2",
     "GRAMMAR_VERSION",
