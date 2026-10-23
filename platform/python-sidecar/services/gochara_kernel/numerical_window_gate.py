@@ -18,7 +18,7 @@ reason code, are counted by reason in the verdict and the brief, and are NEVER a
 table yields none, a blank where it yields a value, a reason that names the all-NULL policy under this one (a stub), a table other than the frozen one.
 
 POPULATIONS AFTER CLASSIFICATION (R-6). The verifier's solver check gives every function-valued window one of three classes: AGREED, DISAGREEMENT (blocks the
-seal, always: `verify_window_semantics` raises) or INCONCLUSIVE (it could not settle the window inside its own budget, or R-1/R-3's tie refusals). An INCONCLUSIVE
+seal, always: `verify_window_semantics` raises) or INCONCLUSIVE (it could not settle the window inside its own budget, could not push its bound under the stored maximum with no point above it, or R-1/R-3's tie refusals). An INCONCLUSIVE
 window that carries a number is DEMOTED: the attestation counts it as a BLANK under its named reason, not as numbered, and lists it under `demoted` (the stored row
 still carries the builder's number; what is attested and sealed is that the window is served as the named blank). The attestation therefore NAMES them
 (`demoted_windows`: sorted `{window_id, reason}`): `generation_verdict` checks that each is a stored numbered window of the grain and that the list agrees with the counts,
@@ -73,7 +73,7 @@ REASON_GROUPS = {
 SOLVER = SOLVER_CERTIFICATE      # one group, two names (S3 and R67 each named it): the same string
 REASON_GROUPS.update({"verifier_budget_exhausted": SOLVER, "tie_isolation_unresolved": SOLVER, "tie_ambiguous": SOLVER})     # R-6: the verifier's own named blanks
 #: the UNVERIFIED reasons the verifier's check demotes instead of blocking (R-6; restated, compared with `window_cert_check` by a test)
-INCONCLUSIVE_REASONS = frozenset({"verifier_budget_exhausted", "tie_isolation_unresolved", "tie_ambiguous"})
+INCONCLUSIVE_REASONS = frozenset({"verifier_budget_exhausted", "solver_certificate_incomplete", "tie_isolation_unresolved", "tie_ambiguous"})     # SR-TR2-DEFECT-B: + the bound that could not be pushed
 #: the share of ALL windows that may be demoted: 0.5 % (R-6). Compared in integers (`demoted × 1000 > windows × 5`): no float edge.
 INCONCLUSIVE_SHARE_CAP_PER_MILLE = 5
 ALL_NULL_REASON = "all_null_candidate_policy"             # this module's own literal: under window_qualification/1 it can only mean a stub policy
