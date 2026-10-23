@@ -80,7 +80,7 @@ def _versions(selection: dict) -> dict:
 def _identity_check(gates, trial_selection, base_selection, declared_to) -> dict:
     table = json.loads((HARNESS / "g3_decision_table.json").read_text())
     table = copy.deepcopy(table)
-    table["noninterference"]["declared_rule_version_changes"] = [{"path": pid, "from": "1.0.0", "to": declared_to} for pid in PATHS]
+    table["noninterference"]["declared_rule_version_changes"] = [{"path": pid, "from": "1.0.0", "to": declared_to, "ruling": ["SELECT-130"]} for pid in PATHS]
     table = gates.load_decision_table(table)
     checks = gates.g7_noninterference_checks({"noninterference": _snapshot(_versions(trial_selection))},
                                              {"noninterference": _snapshot(_versions(base_selection))}, table)

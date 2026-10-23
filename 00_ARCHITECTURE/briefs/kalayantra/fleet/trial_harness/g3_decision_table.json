@@ -41,7 +41,12 @@
  ],
  "noninterference": {
   "kinds": ["windows", "supports", "contacts", "membership"],
-  "declared_rule_version_changes": [],
-  "note": "GPT N3 / PLAN v2 G-7: at the same geometry configuration the sorted natural keys of windows, supports, contacts and membership equal the all-null baseline; only a rule-version identity change DECLARED in declared_rule_version_changes ({path, from, to}) is allowed. Empty = none declared: any change of rule version between the baseline and the trial reads FAIL until the cockpit declares it from the ratified selection (no value invented, B.10)."
+  "declared_rule_version_changes": [
+    {"path": "P1", "from": "1.0.0", "to": "1.3.0", "ruling": ["P1-MAPPING-DECISION", "OWNER-DOCTRINE-CONFIRMED-20261021", "SELECT-130"]},
+    {"path": "P2", "from": "1.0.0", "to": "1.3.0", "ruling": ["VEDHA-SOURCE", "ND-NODE-VEDHA", "ND-VIPAREETA", "OWNER-DOCTRINE-CONFIRMED-20261021", "SELECT-130"]},
+    {"path": "P3", "from": "1.0.0", "to": "1.3.0", "ruling": ["AM-13-RATIFIED", "OWNER-DOCTRINE-CONFIRMED-20261021", "SELECT-130"]},
+    {"path": "P4", "from": "1.0.0", "to": "1.3.0", "ruling": ["AM-13-RATIFIED", "OWNER-DOCTRINE-CONFIRMED-20261021", "SELECT-130"]}
+  ],
+  "note": "GPT N3 / PLAN v2 G-7: at the same geometry configuration the sorted natural keys of windows, supports, contacts and membership equal the all-null baseline; only a rule-version identity change DECLARED in declared_rule_version_changes ({path, from, to, ruling}) is allowed; a declaration names its ruling ids (B.3), and any other change of rule version reads FAIL. DECLARED (TR2 G-7 reconciliation, against the identities the VM TR observed: baseline P1/P3/P4 {1.0.0, 1.2.0}, P2 {1.0.0}; trial P1/P3/P4 {1.2.0, 1.3.0}, P2 {1.3.0}): the final profile's default selection moves P1..P4 from 1.0.0 to the owner-confirmed doctrine version 1.3.0 (rule_registry.FINAL_SELECTED_PATH_REFS), each with the rulings of registry DOCTRINE_PATH_RULINGS and DECISIONS_SURROGATE OWNER-DOCTRINE-CONFIRMED-20261021. NOT a version move, so not declared: the eight ND-H classes keep 1.2.0 and are re-derived IN PLACE (SR-NDH-INPLACE, SR-DOCTRINE-H); the identity 1.2.0 is on both sides, and its content change is the T11 check's, not G-7's."
  }
 }

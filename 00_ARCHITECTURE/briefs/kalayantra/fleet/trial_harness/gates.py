@@ -498,8 +498,11 @@ def load_decision_table(table: Any) -> dict:
     if not isinstance(ni, dict) or tuple(ni.get("kinds") or ()) != NONINTERFERENCE_KINDS:
         raise DecisionTableError(f"noninterference.kinds must be exactly {list(NONINTERFERENCE_KINDS)}")
     for d in ni.get("declared_rule_version_changes") or []:
-        if not (isinstance(d, dict) and sorted(d) == ["from", "path", "to"] and d["path"] in PATH_IDS and isinstance(d["from"], str) and isinstance(d["to"], str)):
-            raise DecisionTableError(f"declared rule-version change {d!r} is not {{path, from, to}}")
+        if not (isinstance(d, dict) and sorted(d) == ["from", "path", "ruling", "to"] and d["path"] in PATH_IDS and isinstance(d["from"], str) and isinstance(d["to"], str)):
+            raise DecisionTableError(f"declared rule-version change {d!r} is not {{path, from, to, ruling}}")
+        rl = d["ruling"]       # an identity move is declared WITH the ruling(s) it stands on (B.3): a move with no ruling is a finding, never a declaration
+        if not (isinstance(rl, list) and rl and all(isinstance(x, str) and x for x in rl) and len(set(rl)) == len(rl)):
+            raise DecisionTableError(f"declared rule-version change {d['path']} {d['from']} -> {d['to']} names no ruling (a non-empty list of ruling ids is required)")
     body = {k: v for k, v in table.items() if k != "sha256"}
     return {**body, "sha256": sha256_of(body)}
 
