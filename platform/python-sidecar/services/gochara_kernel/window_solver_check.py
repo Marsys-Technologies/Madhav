@@ -604,6 +604,21 @@ class _Engine:
         the builder's certificate cells as such a partition, so the search starts where the builder ended."""
         return [(pc.l, pc.r, pc.vl, pc.vr)]
 
+    def _flat(self, pc: "_Piece", v1: list, v2: list, l: float, r: float) -> bool:
+        """SR-TR3-P4-PLATEAU: is the max-min objective certified CONSTANT (to PLATEAU_EPS) on [l, r] of the mixed piece `pc`, so that the extremum enumeration may take its two
+        end samples as the whole stretch instead of refining it to LEAF_S? Every member's value is monotone over the piece (an affine tent of a monotone longitude, steps constant
+        — the premise of `_reduce_upper`), so on [l, r] it lies between its end values; max over a group and min over groups are monotone, hence
+        reduce(member minima) <= F <= reduce(member maxima) there. When the two ends of that enclosure are within PLATEAU_EPS, `_extrema` — which already reads samples this
+        close as one plateau and a plateau's instant as its start — would have read every leaf of the stretch as that plateau: the same run, without the ~(r-l)/LEAF_S
+        evaluations (a decade-long P4 window whose Jupiter or Saturn activity is a constant above the other agent's tent otherwise needs ~1e6 leaves per day). Not taken for
+        a stretch touching a station zone: there the longitude is non-monotone by up to NEAR_END_NOISE_DEG (the noise comb the zone rule reads), so the enclosure is not sound."""
+        if self.objective != OBJ_MAXMIN:
+            return False
+        if any(r > zl and l < zh for zl, zh, _n in self.zones):
+            return False
+        lower = self._reduce(pc, [min(a, b) for a, b in zip(v1, v2)])
+        return self._reduce_upper(pc, v1, v2) - lower <= PLATEAU_EPS
+
     # ── check 2: the first-order upper bound ────────────────────────────────────────────────────────────────────────────
     def _witness(self, t: float, thr: float):
         v = self._objective_at(t)
@@ -682,7 +697,7 @@ class _Engine:
                         yield gap
                     last_gap, prev_end = True, None
                     continue
-                if r - l > LEAF_S:
+                if r - l > LEAF_S and not self._flat(pc, vl, vr, l, r):
                     m = 0.5 * (l + r)
                     vm = self._vals(pc, m)
                     stack.append((m, r, vm, vr))
