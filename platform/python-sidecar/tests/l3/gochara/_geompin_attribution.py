@@ -10,6 +10,7 @@ Two detectors live here, both able to read false (CLAUDE.md §N.8):
 from __future__ import annotations
 
 import ast
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -70,6 +71,33 @@ def refusals_for(root: Path, entry: dict) -> list[str]:
     if not out and stage != entry["geometry_after"]:
         out.append("REFUSE: the geometry digest differs from the entry's geometry_after although every module matches (the entry is inconsistent)")
     return out
+
+
+def apply_amendments(entry: dict, amendments: list[dict]) -> dict:
+    """The qualified pin AFTER the changelog's amendments of `entry` (GEOMETRY-PIN-ONCE reopened for one named cause at a time, e.g. amend-5).
+
+    Each amendment must CHAIN: its `geometry_before` is the pin reached so far and each module's `before_sha256` is the bytes reached so far, so an amendment cannot be
+    spliced in over a different history. It adds exactly its own `cause` and moves only the modules it names; every other module keeps the bytes of the base entry, so
+    `refusals_for(root, composed)` still refuses any other geometry change. Raises ValueError on a broken chain (never repairs one).
+    """
+    cur = copy.deepcopy(entry)
+    for a in amendments:
+        if a.get("amends") != entry["id"]:
+            raise ValueError(f"amendment {a.get('id')} does not amend {entry['id']}")
+        if a["geometry_before"] != cur["geometry_after"]:
+            raise ValueError(f"amendment {a['id']}: geometry_before {a['geometry_before'][:8]} is not the pin reached so far {cur['geometry_after'][:8]}")
+        if sorted(a["cause"]["modules"]) != sorted(a["modules"]):
+            raise ValueError(f"amendment {a['id']}: the cause's modules differ from the amended modules")
+        for name, m in a["modules"].items():
+            if name not in cur["modules"]:
+                raise ValueError(f"amendment {a['id']}: {name} is not a geometry module")
+            if m["before_sha256"] != cur["modules"][name]["after_sha256"]:
+                raise ValueError(f"amendment {a['id']}: {name} before_sha256 is not the bytes reached so far")
+            cur["modules"][name]["after_sha256"] = m["after_sha256"]
+            cur["modules"][name]["changed"] = cur["modules"][name]["before_sha256"] != m["after_sha256"]
+        cur["causes"].append(copy.deepcopy(a["cause"]))
+        cur["geometry_after"] = a["geometry_after"]
+    return cur
 
 
 def ownership_problems(entry: dict, geometry_names: list[str], approved: set[str], shared: dict[str, set[str]]) -> list[str]:

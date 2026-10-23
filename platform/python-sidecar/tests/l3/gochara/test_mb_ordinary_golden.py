@@ -604,7 +604,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # the only evaluation-stage modules main touched, and the integration branch has its own (DASH table-end, reason-one-name) edits to the same file. Re-derived ONCE from the merged tree's real bytes with
     # input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin b3baf81f... is the pre-merge head; main's own pin 16cea5f4... is on main's tree); geometry is unchanged (27edba25...); no golden component is re-captured.
     # Evaluation re-pinned ONCE more, the last re-derivation before the TR (SR-PIN-COMMENT-REPIN): e4a5d661e's comment/docstring-only rewording (forced by test_w2_serving_route) moved the evaluation stage's byte digest (8168cbfc... -> dc911db8...); geometry is unchanged. Re-derived by script from the final tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry PIN-COMMENT-REPIN.
-    assert got["implementation"]["evaluation"] == "dc911db8c033c56a6022f79714947acc694a564d496388d1b99d917caaf8fb0b"
+    # Evaluation re-pinned ONCE more, the LAST re-derivation before the TR (SR-P2-ADMISSION-VERIFIER-FIX): 66560932b makes the P2 record verifier (record_derivation, an evaluation-stage module) re-derive
+    # house_from_moon from the sealed CITED set, not the adverse search plan (dc911db8... -> 16c4a524...). Verifier-only; the builder is unchanged, so no rebuild is needed. Re-derived by script from the final tree's real
+    # bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry P2-ADMISSION.
+    assert got["implementation"]["evaluation"] == "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
     # J-4c (main, #3770): the geometry stage also moved by the Swiss-polished in-orb span edges in record_store._in_orb_span_around_root. With P06b's near_miss_verifier in the
     # geometry identity, the merged-tree digest below is re-derived the same way (main alone gives 4479243d...; evaluation and window are unchanged by J-4c itself; J-4c F-LEANNESS (d96b3bfb0) then moved record_store again, anchor-column probe once per store). No golden component is
     # re-captured: this capture's SQL shapes, counts and outcomes do not depend on the span edges' last arcsec.
@@ -632,7 +635,11 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # causes R2 (contact_reconstruct), DASH (record_store), NEARMISS (near_miss), EPHE_ONCE (knots, and near_miss_verifier's own memo) and F4_READ_CASTS (contact_certify, and near_miss_verifier's
     # delta_t read). Every row that moved on the 4-class slice is the near-miss rows of NEARMISS (40 rows) plus pin-consumer digest columns; R2, DASH, EPHE_ONCE and F4_READ_CASTS move no row.
     # The intermediate literals a8cb08f0 (I1 union), 0186cc07, 3c129bd3, 6cd5a41b, 7a841aa4 and 1a821723 above were per-wave bookkeeping, not the qualified pin.
-    assert got["implementation"]["geometry"] == "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7"
+    # GEOMETRY RE-PINNED ONCE MORE, the LAST re-derivation before the TR (GEOMETRY-PIN-ONCE reopened as amend-5 for exactly this cause: SR-NEARMISS-DOMAIN-TAIL + amend-1 + amend-2): cbd7d2e86 makes
+    # near_miss_verifier disclose a stretch that crosses into the identity domain with its station outside it (identity_domain_tails), instead of refusing it (27edba25... -> 77cde807...). near_miss_verifier is the only
+    # geometry-stage module that moved; no stored row/id/window/score/contact changes (the near-miss layer is not on the scored path). Re-derived by script from the final tree's real bytes the same way; no golden
+    # component is re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry GEOM-PIN-ONCE-AMEND-5; test_a53_geometry_pin_once.py accepts this pin only with that entry and refuses any other geometry change.
+    assert got["implementation"]["geometry"] == "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. With P06b's window-stage changes the merged-tree
     # digest below is re-derived the same way (main alone gives 6c981eb8...; J-4c F-LEANNESS also changed window_store); evaluation and geometry are untouched by this change, and no golden component is re-captured.
     # Window re-pinned for the W3W4 strict-slice window-qualification fix: window_sweep.build_program no longer lists an OMITTED operand (karaka_agent, null_state omit)

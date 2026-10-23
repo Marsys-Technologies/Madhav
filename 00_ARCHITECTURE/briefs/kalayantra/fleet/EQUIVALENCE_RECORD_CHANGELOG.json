@@ -411,6 +411,87 @@
    ],
    "interpretations": [],
    "closed": true
+  },
+  {
+   "id": "GEOM-PIN-ONCE-AMEND-5",
+   "amends": "GEOM-PIN-ONCE",
+   "rulings": [
+    "SR-NEARMISS-DOMAIN-TAIL",
+    "SR-NEARMISS-DOMAIN-TAIL amend-1",
+    "SR-NEARMISS-DOMAIN-TAIL amend-2",
+    "GEOMETRY-PIN-ONCE amend-5 (reopened for exactly this cause)"
+   ],
+   "category": "E1",
+   "part": "implementation.geometry",
+   "base_commit": "87320fbf2",
+   "derived_at_head": "69155d9f08a882c594d69bcdbd9d748b720b004e",
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES)['geometry'] on the final tree, equal to input_vector.implementation_digests(); derived by script, never hand-typed. The geometry digest at 87320fbf2 (27edba25...) was re-measured by the same recipe over `git archive 87320fbf2`.",
+   "geometry_before": "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7",
+   "geometry_after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+   "modules": {
+    "near_miss_verifier": {
+     "before_sha256": "766197bb1a4952fc907e0bd205e29732d367abc43b7f476868a8e52c1b909360",
+     "after_sha256": "6308b3c29802376cd2aae0493bff325f3a7e106205198d9c8f2d5b305d98d5f2",
+     "changed": true
+    }
+   },
+   "cause": {
+    "id": "NEARMISS_DOMAIN_TAIL",
+    "ruling": "SR-NEARMISS-DOMAIN-TAIL (+amend-1, +amend-2)",
+    "modules": [
+     "near_miss_verifier"
+    ],
+    "commit": "cbd7d2e86",
+    "why_needed": "Qualifying TR on linux/amd64 (87320fbf2): every class's verification refused with near_miss_unresolved rootless_stretch_crosses_identity_domain. A stretch that crosses into the identity domain with its station OUTSIDE it is invisible to the builder's arc index (it forms stretches only around in-domain stations), so the verifier's refusal could never agree with any stored row. near_miss_verifier now discloses it by name (identity_domain_tails, identity_domain_tail_count; reason name unchanged, SR-REASON-ONE-NAME) instead of refusing; a crossing stretch WITH an in-domain station stays refused.",
+    "code_path": "near_miss_verifier._follow_domain_edge / _station_in_span / split_identity_domain_tails / tail_record / tail_disclosure <- verify_generation (verifier side only; near_miss.py, the builder, is untouched)",
+    "rows": {
+     "result": "no stored row/id/window/score/contact changes; near-miss layer not on the scored path",
+     "measured_by_this_job": false,
+     "grounding": "the cause commit changes near_miss_verifier.py and its test only (git show --stat cbd7d2e86); no other geometry-stage module differs from 87320fbf2 (re-measured here module by module); this job ran no leave-one-out build."
+    }
+   },
+   "last_re_derivation_before_the_tr": true,
+   "statement": "GEOM-PIN-ONCE amend-5: the geometry implementation digest moves once more, 27edba25 -> 77cde807, for exactly one cause (cbd7d2e86, SR-NEARMISS-DOMAIN-TAIL +amend-1/-2); one module, near_miss_verifier. Last re-derivation before the TR. Any other geometry change still refuses (test_a53_geometry_pin_once).",
+   "interpretations": [
+    "(I) The amendment is a separate changelog entry chained to GEOM-PIN-ONCE (its geometry_before must equal GEOM-PIN-ONCE.geometry_after and its module before_sha256 must equal the entry's after_sha256), rather than an edit of the closed GEOM-PIN-ONCE entry; alternative: rewrite GEOM-PIN-ONCE in place."
+   ],
+   "closed": true,
+   "further_geometry_change": "REFUSE"
+  },
+  {
+   "id": "P2-ADMISSION",
+   "rulings": [
+    "SR-P2-ADMISSION-VERIFIER-FIX"
+   ],
+   "category": "E1",
+   "part": "implementation.evaluation (golden pin)",
+   "base_commit": "87320fbf2",
+   "derived_at_head": "69155d9f08a882c594d69bcdbd9d748b720b004e",
+   "statement": "P2-ADMISSION (SR-P2-ADMISSION-VERIFIER-FIX): the P2 record verifier re-derives house_from_moon from the sealed CITED set (favourable U the D-RQ5 adverse 12/8/1), not the adverse search plan. Cause commit 66560932b changes record_derivation.py only (an evaluation-stage module). Verifier-only; builder unchanged; no rebuild needed. Last re-derivation before the TR.",
+   "cause": {
+    "commit": "66560932b",
+    "modules": [
+     "record_derivation"
+    ]
+   },
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "note": "moved by GEOM-PIN-ONCE-AMEND-5, not by this entry"
+    },
+    "evaluation": {
+     "before": "dc911db8c033c56a6022f79714947acc694a564d496388d1b99d917caaf8fb0b",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "789430e0c9f73f6e3f1f9d24fe1f63e3b07e3ad0245a536c5994eab8482db307",
+     "after": "789430e0c9f73f6e3f1f9d24fe1f63e3b07e3ad0245a536c5994eab8482db307"
+    }
+   },
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the final tree, equal to input_vector.implementation_digests(); the golden pins in test_mb_ordinary_golden.py were replaced by script (job script, AST-located literals); no golden component re-captured.",
+   "interpretations": [],
+   "closed": true
   }
  ]
 }
