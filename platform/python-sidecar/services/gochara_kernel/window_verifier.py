@@ -282,6 +282,13 @@ def _edge_ulp(c) -> timedelta:
     return timedelta(microseconds=math.ceil(math.ulp(jd) * 86400e6) + 1)
 
 
+def _sliver_resolution_s(t) -> float:
+    """SR-P1-SLIVER-D2: the stored-edge resolution at `t`, in seconds: the spacing of the JD double that carries the instant (≈ 40.2 µs at JD 2.46e6), COMPUTED from the
+    instant, never a literal. A piece shorter than this is one sky event read on two paths, not a sky configuration: it is no candidate for the window's maximum (N.7.6).
+    This verifier's own statement of the rule; the builder's (`window_sweep.sliver_resolution_s`) is never imported."""
+    return math.ulp(_UNIX_EPOCH_JD + (t - datetime(1970, 1, 1, tzinfo=timezone.utc)).total_seconds() / 86400.0) * 86400.0
+
+
 def _read_instant(edges, t):
     """The instant at which the state owning `t` is read. The convention is half-open, the NEW state owns the boundary instant (`p1_operands_check` NAMED
     LIMITS), compared at the stored edge's own precision: `t` within one ulp after a stored edge `c` is read at `c + ulp` (the new state), and `t` within
@@ -684,7 +691,15 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                 for k in sorted(set(inherited) | set(got)):
                     if got.get(k) != inherited.get(k):
                         problems.append(f"{tag}: combustion inheritance {k} {got.get(k)!r} != re-derived {inherited.get(k)!r}")
-        # R-7: the builder's `solver_certificate` rides in the same object; it is CHECKED by the solver check, never compared here
+        # SR-P1-SLIVER-D2: the count of sliver pieces left out of the maximum rides in the generic `certificate` member (migration 1402), present only when it is > 0.
+        # A window re-derived piecewise carries THIS verifier's own count; a solver-checked window (its pieces are the builder's cut structure, which this verifier
+        # does not repeat) carries the builder's, accepted only when it equals the sliver pieces its own stored geometry lists (a count nothing backs is refused)
+        n_sliver = row.get("sliver_pieces_excluded")
+        if n_sliver is None:
+            cert = s_qual.get("solver_certificate")
+            n_sliver = sum(1 for pc in ((cert or {}).get("geometry") or {}).get("pieces", ()) if isinstance(pc, list) and len(pc) == 3 and pc[2] == "sliver")
+        if n_sliver:
+            want_q["certificate"] = {"sliver_pieces_excluded": n_sliver}
         if {k: v for k, v in s_qual.items() if k != "solver_certificate"} != want_q:
             problems.append(f"{tag}: qualification {s_qual} != re-derived {want_q}")
 
@@ -918,7 +933,11 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
             problems.append(f"{tag}: evidence_against is stored but the registry row declares no way to "
                             "evaluate that channel (expected NULL)")
         cands = []
+        n_sliver = 0
         for a, b in pieces:
+            if (b - a).total_seconds() < _sliver_resolution_s(a):
+                n_sliver += 1                     # SR-P1-SLIVER-D2: one sky event on two paths — the piece is no candidate for the maximum
+                continue
             live = [rid for rid in _live(recs, a) if rid in qualified]
             if path_id == "P4":
                 act = {}
@@ -932,6 +951,7 @@ def verify_window_semantics(conn, *, chart_id: str, generation: str, event_class
                     if chan_at(rid, a) == "evidence_for_occurrence":
                         per_root[recs[rid]["root"]] = max(per_root.get(recs[rid]["root"], 0.0), val(rid, a))
                 cands.append((sum(per_root.values()), a))     # no for-channel member live ⇒ the objective is 0
+        row["sliver_pieces_excluded"] = n_sliver
         if not cands:
             problems.append(f"{tag}: no objective candidate re-derived")
             detail.append(row)

@@ -147,6 +147,8 @@ def test_v2_builder_and_verifier_agree_on_a_window_whose_maximum_is_a_sliver_at_
     spans E. For the gain class "marriage" the objective is the sum over roots of the favourable value: 0 before E, 0.25 in [E, E+19us), 0.125 after.
     The builder's rung list is exact; the verifier locates the same E from the sky alone. A verifier that locates it late loses the cut (it falls past
     the first record's support end) and re-derives 0.125 for the builder's 0.25 — `objective_value 0.25 != re-derived 0.125`, the production message.
+    SR-P1-SLIVER-D2 (supersedes the 0.25): the 19 us piece is shorter than one JD ulp (40.2 us), one sky event read on two paths, so it is no candidate for the
+    maximum: BOTH sides number 0.125, first reached where the first record's support ends (E + 19 us), and the builder counts the excluded piece.
     Planted reversion: as V1."""
     base = datetime(2010, 1, 1, tzinfo=UTC)                           # day 0 of both analytic worlds (`_d(0)`, `T0`)
     t_cross = base + timedelta(days=1, hours=7, seconds=13, microseconds=123456)
@@ -160,8 +162,8 @@ def test_v2_builder_and_verifier_agree_on_a_window_whose_maximum_is_a_sliver_at_
     r1 = dataclasses.replace(_p1_record(lv, "mercury"), record_id="r1", root_id="root1", supports=((base, E + 19 * US),))
     r2 = dataclasses.replace(_p1_record(lv, "mercury"), record_id="r2", root_id="root2", supports=((base + timedelta(hours=12), base + timedelta(days=3)),))
     (draft,), _ = ws.draft_windows("marriage", [r1, r2], lambda path, version: p1_rows(), solver=ws.PRODUCTION_SOLVER)     # the rows the verifier reads too
-    assert draft.unqualified_reason is None and draft.objective_value == pytest.approx(0.25)
-    assert abs((draft.peak_instant - E) / US) <= 2
+    assert draft.unqualified_reason is None and draft.objective_value == pytest.approx(0.125)      # D2: not 0.25 — that maximum lived on the 19 us sliver
+    assert draft.sliver_pieces_excluded == 1 and abs((draft.peak_instant - (E + 19 * US)) / US) <= 2
     lo, hi = draft.interval
     stored = ("w", lo, hi, draft.peak_instant, draft.score, draft.evidence_for, draft.evidence_against, None, list(draft.null_states_used),
               draft.outcome_valence_for_native, None, None, None)

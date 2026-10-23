@@ -60,6 +60,11 @@ evaluation count and the limits assumed — is returned as `SolveResult.tree`; `
 `qualification` carries. A budget-exhausted blank carries the partial tree and its OPEN cells, so the independent verifier can check that the
 exhaustion was real. The verifier CHECKS the cells with its own first-order enclosure (`window_cert_check`); it never trusts a claimed bound.
 
+SLIVERS (SR-P1-SLIVER-D2). When the caller gives `Problem.origin_jd`, an elementary piece shorter than one JD-double ulp at its start (`sliver_resolution_s`: the
+resolution of a stored edge — one sky event computed on two paths lands ≤ one ulp apart) is excluded from the maximum like a piece outside the joint support: it is no
+candidate, its samples are absent, the certificate lists it as a `sliver` piece and the result's certificate counts it (`sliver_pieces_excluded`). A window whose only positive
+piece was a sliver is numbered by the pieces that remain (possibly 0.0, its honest value); one with no piece left is the named blank `objective_undeterminable`.
+
 S0 findings used: the Swiss longitude is non-monotone by up to 3.9e-9° inside a stored (spline) segment next to a station, so a
 caller lists the Swiss stations in `Tent.stations` (extra cuts); `A_QUIET` + limb windows (`accel_bound_provider`) are the H4 table
 (audit and limb-window list generation are S3).
@@ -172,6 +177,16 @@ class Problem:
     hi: float
     objective: str
     members: tuple
+    #: SR-P1-SLIVER-D2: the Julian Day (double) of second 0 of this problem's time axis. With it, a piece shorter than ONE JD-double ulp at its start (the resolution a
+    #: stored edge has: the same sky event is computed on two paths ≤ one ulp apart) is excluded from the maximum — `sliver_resolution_s`. None = an analytic world with
+    #: no JD axis: no piece is excluded.
+    origin_jd: Optional[float] = None
+
+
+def sliver_resolution_s(origin_jd: float, t: float) -> float:
+    """The stored-edge resolution at solver instant `t`, in seconds: the spacing of the JD double that carries the instant (≈ 40.2 µs at JD 2.46e6), COMPUTED here, never a
+    literal. A piece shorter than this is not a sky configuration: its two edges are one sky event read on two paths (SR-P1-SLIVER-D2, N.7.6)."""
+    return math.ulp(origin_jd + t / 86400.0) * 86400.0
 
 
 @dataclass(frozen=True)
@@ -241,6 +256,7 @@ class _Ctx:
         self._kin: dict = {}
         self.trace = _Trace()
         self.zones: list = []           # SR-NEAR-STATION-TIE: (lo, hi, noise_F) of each listed station's zone, per support of each tent member
+        self.slivers: set = set()       # SR-P1-SLIVER-D2: indices of the elementary pieces shorter than one JD ulp, excluded from the maximum
 
     def kin(self, tent: Tent, t: float):
         """(offset, velocity) of `tent` at `t`; ONE counted call per distinct (tent, t)."""
@@ -537,6 +553,11 @@ def _build(problem: Problem, ctx: _Ctx):
     ctx.trace.cuts = list(ordered)
     pieces = []
     for idx, (a, b) in enumerate(zip(ordered, ordered[1:])):
+        if problem.origin_jd is not None and b - a < sliver_resolution_s(problem.origin_jd, a):
+            # SR-P1-SLIVER-D2: shorter than the stored-edge resolution at this instant — not a sky configuration, never a candidate for the maximum (N.7.6); counted
+            ctx.slivers.add(idx)
+            pieces.append(None)
+            continue
         live = [m for m, sup in members if any(s0 <= a < s1 for s0, s1 in sup)]
         b_eff = b - QUANT if b - a > 2 * QUANT else a
         probes = sorted({a, 0.5 * (a + b_eff), b_eff})
@@ -776,7 +797,7 @@ def _exhausted_tree(problem: Problem, ctx: _Ctx) -> dict:
     if tr.phase == "refine":
         opened += [(c[1], c[2]) for c in cells if c[0] == "leaf"]
     for a, b, kind in tr.pieces:
-        if kind == "gap":
+        if kind in ("gap", "sliver"):
             continue
         if not any(c[1] < b and c[2] > a or (c[1] == a and c[2] == b) for c in cells) and not any(l < b and r > a or (l == a and r == b) for l, r in opened):
             opened.append((a, b))
@@ -834,7 +855,7 @@ def stored_certificate(result: SolveResult, *, objective: str, t0_iso: str, max_
 def _solve(problem: Problem, ctx: _Ctx) -> SolveResult:
     tr = ctx.trace
     ordered, pieces = _build(problem, ctx)
-    tr.pieces = [[ordered[i], ordered[i + 1] - QUANT if ordered[i + 1] - ordered[i] > 2 * QUANT else ordered[i], "gap"]
+    tr.pieces = [[ordered[i], ordered[i + 1] - QUANT if ordered[i + 1] - ordered[i] > 2 * QUANT else ordered[i], "sliver" if i in ctx.slivers else "gap"]
                  if p is None else [p.a, p.b_eff, p.kind] for i, p in enumerate(pieces)]
     tr.phase = "prove"
     live = [p for p in pieces if p is not None]
@@ -895,7 +916,7 @@ def _solve(problem: Problem, ctx: _Ctx) -> SolveResult:
     h4_used = any(br.tent is not None and br.tent.accel_bound is not None for p in mixed for brs in p.groups.values() for br in brs)
     cert = {"upper_bound": top + (EPS_M if mixed else 0.0), "value_at_instant": at_star, "pieces": len(live),
             "mixed_pieces": len(mixed), "candidates": len(cands), "ties": sum(1 for v, _t in cands if v >= top - TIE),
-            "h4_used": h4_used}
+            "h4_used": h4_used, "sliver_pieces_excluded": len(ctx.slivers)}
     tree = _tree(ctx, outcome="solved", value=top, instant=t_star, upper=cert["upper_bound"], h4_used=h4_used)
     return SolveResult(SOLVED, top, t_star, None, ctx.evals, certificate=cert, tree=tree)
 
@@ -904,5 +925,5 @@ __all__ = [
     "OBJECTIVE_SUM", "OBJECTIVE_MINMAX", "SOLVED", "BLANK", "REASON_BUDGET", "REASON_MONOTONE", "REASON_CERTIFICATE",
     "REASON_BOUNDARIES", "REASON_UNKNOWN", "REASON_UNDETERMINABLE", "REASON_TIE_ISOLATION", "QUANT", "TIE", "MAX_EVALS_WINDOW", "SolverRefusal", "BudgetExhausted", "Tent",
     "Step", "Member", "Problem", "SolveResult", "constant_step", "accel_bound_provider", "CERT_SCHEMA", "MAX_CERT_CELLS", "MAX_OPEN_CELLS",
-    "A_QUIET_DEG_PER_DAY2", "H4_MARGIN", "objective_value", "solve", "stored_certificate",
+    "A_QUIET_DEG_PER_DAY2", "H4_MARGIN", "objective_value", "sliver_resolution_s", "solve", "stored_certificate",
 ]

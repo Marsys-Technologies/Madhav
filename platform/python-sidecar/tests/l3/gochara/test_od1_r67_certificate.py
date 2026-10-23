@@ -787,7 +787,7 @@ def oracle_w3(mods):
 
 # S-1 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-@claim("S-1", "window_sweep", "objective_value=best,\n            solver_certificate=solver_certificate, **base))", "objective_value=best, **base))")
+@claim("S-1", "window_sweep", "objective_value=best,\n            solver_certificate=solver_certificate, sliver_pieces_excluded=piece_slivers, **base))", "objective_value=best, sliver_pieces_excluded=piece_slivers, **base))")
 def oracle_s1(mods):
     """R-7: the sweep stores the solver's certificate in the window's `qualification` — for the numbered window and for the named blank alike — and a solver blank is a NAMED blank
     (its reason, the unqualified valence, no number); without the seam a function-valued window is still blank under the dynamic switch."""

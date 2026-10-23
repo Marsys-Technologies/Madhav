@@ -63,7 +63,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Optional
 
 # ── the frozen objective definitions, restated (plan §2.1) ──────────────────────────────────────────────────────────────
@@ -93,6 +93,7 @@ LEAF_S = 0.0864               # resolution (1e-6 d) of the extremum enumeration;
 ISOLATION_S = 4.0             # R-3: tied extrema closer than this (2 x the builder's LEAF, <= 2 s on the real sky: window_solver H5) are not isolated
 LOCATE_XTOL_S = 1e-6           # an extremum is located to a microsecond: a kinked peak loses < 1e-10 of value at that distance
 US = 1e-6
+JD_OF_UNIX_EPOCH = 2440587.5   # the Julian Day of 1970-01-01T00:00:00Z (restated; the builder's own copy is never imported)
 H2_FRACTIONS = (1 / 7, 2 / 7, 3 / 7, 4 / 7, 5 / 7, 6 / 7)
 DEFAULT_MAX_EVALS = 2_000_000  # ephemeris evaluations; verifier budget = 20 x the builder's (plan §2.4)
 
@@ -261,6 +262,7 @@ class _Piece:
     F_l: float = 0.0
     F_r: float = 0.0
     U: float = 0.0
+    sliver: bool = False                    # SR-P1-SLIVER-D2: shorter than one JD ulp at its start: excluded from the maximum (never `defined`)
     units: Optional[list] = None            # sum objective: the root groups, grouped by the ONE body their tents read
     mixed: list = field(default_factory=list)   # …and the roots whose tents read several bodies (bounded record by record)
 
@@ -315,6 +317,13 @@ class _Engine:
 
     def _sec(self, d: datetime) -> float:
         return (d - self.lo).total_seconds()
+
+    def _ulp_s(self, t: float) -> float:
+        """SR-P1-SLIVER-D2: the stored-edge resolution at solver instant `t`, in seconds: the spacing of the JD double that carries the instant (≈ 40.2 µs at JD
+        2.46e6), COMPUTED from the instant, never a literal. A piece shorter than this is one sky event read on two paths, not a sky configuration."""
+        d = self._dt(t)
+        jd = (d - datetime(1970, 1, 1, tzinfo=timezone.utc)).total_seconds() / 86400.0 + JD_OF_UNIX_EPOCH
+        return math.ulp(jd) * 86400.0
 
     def _lon(self, body: str, t: float) -> float:
         key = (body, t)
@@ -462,6 +471,10 @@ class _Engine:
         return float(x)
 
     def _make_piece(self, l: float, r: float) -> _Piece:
+        if r - l < self._ulp_s(l):
+            pc = _Piece(l, r, [], False, [])           # not `defined`: no bound, no sample, no candidate of the maximum is read from it
+            pc.sliver = True
+            return pc
         ents = []
         for rc in self.recs:
             rec = rc.rec
@@ -811,6 +824,8 @@ class _Engine:
         for lo, hi, noise in self._zone_clusters():
             pts = {lo, hi - US if hi >= self.L else hi}
             for pc in self.pieces:
+                if pc.sliver:
+                    continue
                 x, y = max(pc.l, lo), min(pc.r, hi)
                 if x < y:
                     pts.update((x, y - US if y - x > 2 * US else y, 0.5 * (x + y)))
@@ -892,8 +907,14 @@ class _Engine:
         self.pieces = [self._make_piece(l, r) for l, r in zip(xs, xs[1:])]
         if self.findings:
             return
+        self.rederived["sliver_pieces_excluded"] = sum(1 for pc in self.pieces if pc.sliver)
         f_star = self._objective_at(t_star)
         self.rederived["value_at_peak"] = f_star
+        on_sliver = next((pc for pc in self.pieces if pc.sliver and pc.l <= t_star < pc.r), None)
+        if on_sliver is not None:
+            self.findings.append(Finding(F_VALUE, (
+                f"the stored peak {st.peak_instant.isoformat()} lies on a piece of {on_sliver.r - on_sliver.l:.3g} s, shorter than the stored-edge resolution "
+                f"{self._ulp_s(on_sliver.l):.3g} s there: a maximum that exists only on such a piece is not a sky configuration")))
         if f_star is None or abs(f_star - st.objective_value) > max(VALUE_TOL, _f4_tol(st.objective_value)):
             self.findings.append(Finding(F_VALUE, f"the objective at the stored peak {st.peak_instant.isoformat()} is "
                                                   f"{f_star!r}, the stored value {st.objective_value!r}"))

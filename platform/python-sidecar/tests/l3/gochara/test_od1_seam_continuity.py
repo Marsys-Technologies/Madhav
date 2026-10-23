@@ -356,6 +356,9 @@ def test_o4_a_rising_times_falling_crossing_is_numbered_and_its_certificate_is_a
 
 @needs_swiss
 def test_o4_reverted_the_raw_seam_blanks_the_crossing_window(monkeypatch):
+    # SR-P1-SLIVER-D2: the raw-seam blank lived in the 4-36 us pieces this fixture's support ends cut — pieces shorter than one JD ulp, which are no longer classified
+    # at all. The claim measured here (the continuous seam) is independent of that rule, so the rule is switched off to keep the reversion observable.
+    monkeypatch.setattr(sol, "sliver_resolution_s", lambda origin_jd, t: 0.0)
     monkeypatch.setattr(ws, "_kinematics", _raw_kinematics)
     reasons = {ws.draft_windows("marriage", _crossing_records(CROSSING_TC, *ends), ROWS, solver=ws.PRODUCTION_SOLVER)[0][0].unqualified_reason for ends in CROSSING_ENDS_US}
     assert reasons & {"monotone_arc_not_established", "solver_certificate_incomplete"}

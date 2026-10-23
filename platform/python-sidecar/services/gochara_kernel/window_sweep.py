@@ -284,6 +284,12 @@ def jd_ulp_tolerance(t: datetime) -> timedelta:
     return timedelta(microseconds=math.ceil(math.ulp(jd) * 86400.0 * 1e6) + 1)
 
 
+def sliver_resolution_s(t: datetime) -> float:
+    """SR-P1-SLIVER-D2: the stored-edge resolution at `t`, in seconds — the spacing of the JD double that carries the instant (≈ 40.2 µs at JD 2.46e6), COMPUTED, never a literal.
+    A piece shorter than this is not a sky configuration: its two edges are one sky event read on two paths, which land at most one ulp apart (N.7.6)."""
+    return math.ulp(t.timestamp() / 86400.0 + _JD_UNIX_EPOCH) * 86400.0
+
+
 def _geometry_at_edge(check, instant: datetime, side: str, lo: datetime, hi: datetime) -> bool | None:
     """The geometry check at one END of a stored support `[lo, hi)` (the record's own, which holds the piece the end belongs to), under the boundary convention of the platform (half-open: a change instant is the
     FIRST microsecond of the NEW state, which owns it — p1_operands.py BOUNDARIES, p1_operands_check.py NAMED LIMITS; SR-OD1 R-2 / SR-H2-1S).
@@ -781,6 +787,8 @@ class WindowDraft:
     #: content digest, and the L1 combustion module's digest (`p1_operands.P1Operands.combustion_inheritance`). None for every other grain.
     combustion_inheritance: dict | None = None
     solver_certificate: dict | None = None  # R-7: the solver's piece tree (`window_solver.stored_certificate`) — numbered, or a budget-exhausted blank
+    #: SR-P1-SLIVER-D2: how many elementary pieces shorter than one JD ulp (`sliver_resolution_s`) were left out of this window's maximum; None for a blank (no maximum was taken)
+    sliver_pieces_excluded: int | None = None
 
     def qualification(self) -> dict:
         """The structured provenance persisted with the window (1240 `qualification`; closed keys, plus `combustion_inheritance` for a P1 grain bound
@@ -792,6 +800,8 @@ class WindowDraft:
             q["combustion_inheritance"] = self.combustion_inheritance
         if self.solver_certificate is not None:
             q["solver_certificate"] = self.solver_certificate
+        if self.sliver_pieces_excluded:
+            q["certificate"] = {"sliver_pieces_excluded": self.sliver_pieces_excluded}      # the generic extension member migration 1402 admits; absent = none excluded
         return q
 
 
@@ -963,7 +973,8 @@ def solver_problem(path_id: str, programs: list, lo: datetime, hi: datetime, cfg
                 tent=_solver.Tent(offset=lambda s, _a=at, _sh=shift, _lv=level: _wrap180(_a(s)[0] + _sh - _lv), orb=orb,
                                   velocity=lambda s, _a=at: _a(s)[1], stations=stations,
                                   min_station_spacing=cfg.min_station_spacing_s)))
-    return _solver.Problem(lo=0.0, hi=L, objective=_solver.OBJECTIVE_MINMAX if path_id == "P4" else _solver.OBJECTIVE_SUM, members=tuple(members))
+    return _solver.Problem(lo=0.0, hi=L, objective=_solver.OBJECTIVE_MINMAX if path_id == "P4" else _solver.OBJECTIVE_SUM, members=tuple(members),
+                           origin_jd=_split_jd(origin)[0])
 
 OBJECTIVE_P4 = "max_min_agent_activity"          # S:321-323, O-RP-3
 OBJECTIVE_EVIDENCE = "evidence_for_per_root_sum"  # Σ over roots of the per-root max, for-channel
@@ -1280,13 +1291,18 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                 continue
             cands.append((out.value, out.instant))
             solved_by_solver = True
+        piece_slivers = 0                      # SR-P1-SLIVER-D2: pieces shorter than one JD ulp left out of the maximum on this (non-solver) path
         for a, b, live in (() if solved_by_solver else _pieces(lo, hi, qualified)):
+            sliver = (b - a).total_seconds() < sliver_resolution_s(a)
             if path_id == "P4":
                 if {p.rec.agent for p in live} != {"jupiter", "saturn"}:
                     continue               # outside the joint support within this piece: not a candidate
             elif not live:
                 if not use_solver:
-                    cands.append((0.0, a))     # no for-channel contributor: the objective is identically 0 here (the solver models it the same way)
+                    if sliver:
+                        piece_slivers += 1
+                    else:
+                        cands.append((0.0, a))     # no for-channel contributor: the objective is identically 0 here (the solver models it the same way)
                 continue
             # membership comes from the CONTACT GEOMETRY across the whole component, not only at the
             # chosen peak (R7 [8]): at every piece start, and just inside its end, a live member's
@@ -1337,6 +1353,8 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                         reason_pieces[reason] = reason_pieces.get(reason, 0) + 1
                 else:
                     unnamed_pieces += 1
+            elif sliver:
+                piece_slivers += 1             # one sky event on two paths: the piece is no sky configuration, never a candidate for the maximum
             else:
                 cands.append(got)
         solved = None
@@ -1354,6 +1372,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
                 reason_pieces = {res.reason: 1}
             else:
                 solved = (res.value, lo + timedelta(seconds=res.instant))
+                piece_slivers = res.certificate["sliver_pieces_excluded"]
                 if not lo <= solved[1] < hi:
                     raise SweepRefusal(f"window {lo.isoformat()}: the solver's instant {solved[1].isoformat()} lies outside the window")
         if unknown_pieces or (solved is None and not cands):
@@ -1403,7 +1422,7 @@ def draft_windows(event_class: str, records: list[SweepRecord],
         drafts.append(WindowDraft(
             peak_instant=peak, score=score, evidence_for=ev_for, evidence_against=ev_against,
             outcome_valence_for_native=val.outcome_valence_for_native, objective_value=best,
-            solver_certificate=solver_certificate, **base))
+            solver_certificate=solver_certificate, sliver_pieces_excluded=piece_slivers, **base))
     drafts = [d if d.policy == policy else dataclasses.replace(d, policy=policy) for d in drafts]
     if combustion_inheritance is not None:        # R4: every window of the grain carries the identity of the combustion authority it consumed
         drafts = [dataclasses.replace(d, combustion_inheritance=combustion_inheritance) for d in drafts]
