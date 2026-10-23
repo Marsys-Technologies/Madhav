@@ -199,6 +199,28 @@ def main():
         lg = copy.deepcopy(ledger)
         L(lg, "L1").pop("review_result_path")
         expect("reversion: lane with no review", False, run(repo, lg))
+        # a multi-item review (one result file, one verdict per row in proposed_verdict.items): a row binds ONE item by `review_item`
+        def multi_review(name, items):
+            path = os.path.join(td, name + ".json")
+            with open(path, "w") as f:
+                json.dump({"schema": "ky.job_result/1", "status": "done", "proposed_verdict": {"items": items}}, f)
+            return path, hashlib.sha256(open(path, "rb").read()).hexdigest()
+        def item(i, head, pid, verdict="ACCEPTED", findings=None):
+            return {"id": i, "verdict": verdict, "head": head, "patch_id": pid, "claims": [], "findings": findings or []}
+        pid1 = L(ledger, "L1")["reviewed_patch_id"]
+        for label, items, key, want in [
+                ("control: multi-item review, row bound to its ACCEPTED item", [item("L1", c["l1"], pid1), item("X", c["base"], "0" * 40)], "L1", True),
+                ("reversion: multi-item review, row names an unknown item", [item("L1", c["l1"], pid1)], "NOPE", False),
+                ("reversion: multi-item review, the row's item is REJECTED", [item("L1", c["l1"], pid1, verdict="REJECTED")], "L1", False),
+                ("reversion: multi-item review, the row's item carries a BLOCKING finding", [item("L1", c["l1"], pid1, findings=[{"id": "B1", "severity": "BLOCKING"}])], "L1", False),
+                ("reversion: multi-item review, row bound to ANOTHER row's item", [item("L1", c["l1"], pid1), item("X", c["base"], "0" * 40)], "X", False),
+                ("reversion: multi-item review, row has no review_item (never falls back to a top-level verdict)", [item("L1", c["l1"], pid1)], None, False)]:
+            lg = copy.deepcopy(ledger)
+            r = L(lg, "L1")
+            r["review_result_path"], r["review_result_sha256"] = multi_review("revm_" + str(len(results)), items)
+            if key is not None:
+                r["review_item"] = key
+            expect(label, want, run(repo, lg))
         # the merged head differs from the reviewed head: lane gets a further commit that is merged instead
         sh(repo, "checkout", "-q", "lane1")
         l1b = commit(repo, "l1.txt", "one\ntwo\nthree\n", "l1 unreviewed extra")

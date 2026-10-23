@@ -132,12 +132,32 @@ def _is_blocking_finding(f):
     return False
 
 
-def blocking_ids(result, lane_key=None):
-    """BLOCKING finding ids recounted from a review job's result.json.
-    lane_key selects result["lanes"][lane_key] (a pair review that carries one verdict per lane)."""
+def _select_verdict(result, lane_key=None, item=None):
+    """The verdict dict a row is bound to.
+    * item given: the element of the review's `items` list whose id equals `item` (the list is
+      proposed_verdict.items, or a top-level items list when proposed_verdict is absent or itself a list).
+      Absent id, absent list or an ambiguous id is a DetectorError: a multi-item review never falls back to a
+      top-level verdict (that one speaks for the whole job, not for the row).
+    * lane_key given: result["lanes"][lane_key] (a pair review).
+    * neither: proposed_verdict, which must be a single verdict dict."""
+    if item is not None:
+        pv = result.get("proposed_verdict")
+        cands = pv.get("items") if isinstance(pv, dict) else (pv if isinstance(pv, list) else None)
+        if not isinstance(cands, list):
+            cands = result.get("items")
+        if not isinstance(cands, list):
+            raise DetectorError("result has no items list (row names item %r)" % item)
+        hits = [c for c in cands if isinstance(c, dict) and str(c.get("id", c.get("item"))) == str(item)]
+        if len(hits) != 1:
+            raise DetectorError("result has %d items with id %r (need exactly 1)" % (len(hits), item))
+        return hits[0]
     pv = (result.get("lanes") or {}).get(lane_key) if lane_key else result.get("proposed_verdict")
     if not isinstance(pv, dict):
         raise DetectorError("result has no %s" % ("lanes[%s]" % lane_key if lane_key else "proposed_verdict"))
+    return pv
+
+
+def _blocking_from(pv):
     ids = []
     if isinstance(pv.get("blocking"), list):
         for x in pv["blocking"]:
@@ -152,19 +172,29 @@ def blocking_ids(result, lane_key=None):
     return ids
 
 
-def review_view(result_path, lane_key=None):
+def blocking_ids(result, lane_key=None, item=None):
+    """BLOCKING finding ids recounted from a review job's result.json.
+    lane_key selects result["lanes"][lane_key] (a pair review that carries one verdict per lane);
+    item selects one element of a multi-item review by its id (that item's findings only)."""
+    return _blocking_from(_select_verdict(result, lane_key, item))
+
+
+def review_view(result_path, lane_key=None, item=None):
     with open(result_path, "rb") as f:
         raw = f.read()
     result = json.loads(raw)
-    pv = (result.get("lanes") or {}).get(lane_key) if lane_key else result.get("proposed_verdict")
-    pv = pv or {}
+    if item is not None:
+        pv = _select_verdict(result, lane_key, item)
+    else:
+        pv = (result.get("lanes") or {}).get(lane_key) if lane_key else result.get("proposed_verdict")
+        pv = pv if isinstance(pv, dict) else {}
     return {
         "sha256": hashlib.sha256(raw).hexdigest(),
         "verdict": pv.get("verdict"),
         "head": pv.get("head"),
         "patch_id": pv.get("patch_id"),
         "content_digest": pv.get("content_digest"),
-        "blocking_ids": blocking_ids(result, lane_key),
+        "blocking_ids": _blocking_from(pv) if pv else blocking_ids(result, lane_key),
     }
 
 
@@ -178,7 +208,7 @@ def check_review(row, ctx, why):
     if not os.path.isfile(rp):
         why.append("review_result_unreadable: %s" % rp)
         return None
-    v = review_view(rp, row.get("review_lane_key"))
+    v = review_view(rp, row.get("review_lane_key"), row.get("review_item"))
     if row.get("review_result_sha256") != v["sha256"]:
         why.append("review_result_changed: sha256 differs from the ledger")
     if v["verdict"] != "ACCEPTED":
