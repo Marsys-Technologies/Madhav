@@ -492,7 +492,9 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # near_station_tie_cap_exceeded above 0.5 % of a class's windows, NOT_EVALUATED where the count is unavailable (SR-NEAR-STATION-TIE; tests/test_harness_32b.py)
 # HARNESS-3.3 (item harness-33; previous pin 2cf47ce9...7c29; PRETR-early O-1, O-2): a raised substep is booked under its own stage kind (never `empty`), and a COLLECT mode (--collect /
 # TRIAL_COLLECT=1) lets a diagnostic run continue past a class's first defect, failing the class at the END with the full list (tests/test_harness_33.py, mutants_h33.py)
-HARNESS_V31_DIGEST = "55c3a7753e61fe4ebde79d0f3d7bf43febc9d8cce25ba1193c67f4f26213418d"
+# AMD64-DOCKER (item amd64-docker; previous pin 55c3a775...418d; ruling SR-T24-AMD64-DOCKER): the one amd64 slice runs in a linux/amd64 Docker container (Rosetta/QEMU emulation) against a PG 15 locale-C
+# sibling container; the arch is read by an in-container probe, the emulation is recorded (platform_notes), G-5 reads NOT_EVALUATED for such a run (tests/test_amd64_docker.py, mutants_amd64.py)
+HARNESS_V31_DIGEST = "4822bcf0fcf710a00e004852573e64997ba703870bc9a6a0327015145d74fa7a"
 
 
 def harness_digest(root):

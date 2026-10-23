@@ -317,6 +317,24 @@ def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool 
     return out
 
 
+# Statuses a deferred item can read that mean "set aside" rather than "something is wrong": they are not stuck and need no attention.
+# `failed` and `conflict` stay visible: a failed or contradicted deferred item is a fault in the evidence, not a deferral.
+DEFERRED_QUIET = ("blocked", "parked", "unknown")
+
+
+def is_deferred(item: dict, status: str, members: set) -> bool:
+    """Display only (owner direction 2026-10-22, SR-PARKED-OUT-OF-CAMPAIGN): a triage class b item that is outside the acceptance
+    closure and not finished is DEFERRED. It is never counted as done (finished items are excluded by definition, so a deferral
+    can neither create nor hide a completion), never counted in the closure headline, and not listed as stuck or in attention."""
+    return ((item.get("triage") or {}).get("class") == "b" and item.get("id") not in members
+            and status not in ("done", "not_applicable"))
+
+
+def _needs_attention(row: dict) -> bool:
+    return row["status"] in ("blocked", "failed", "parked", "conflict", "unknown") and not (
+        row["deferred"] and row["status"] in DEFERRED_QUIET)
+
+
 def _stream_view(stream: dict, flat: list[dict], ix: dict, activity: dict, now: dt.datetime) -> dict:
     sid = stream["id"]
     actor_keys = [a for a in ix["last_by_actor"] if actor_stream(a) == sid]
@@ -326,7 +344,7 @@ def _stream_view(stream: dict, flat: list[dict], ix: dict, activity: dict, now: 
     mine = [t for t in flat if t.get("owner") == sid]
     running = [t for t in mine if t["status"] in ("running", "review")]
     ready = [t for t in mine if t["status"] == "ready"]
-    blocked = [t for t in mine if t["status"] in ("blocked", "failed", "parked", "conflict")]
+    blocked = [t for t in mine if t["status"] in ("blocked", "failed", "parked", "conflict") and _needs_attention(t)]
     hb_age = _age_s(hb_last["ts"], now) if hb_last else None
     stale_after, dead_after = stream.get("stale_after_s", 900), stream.get("dead_after_s", 2700)
     if running:
@@ -500,7 +518,7 @@ def closure_headline(overall: dict, flat: list[dict], items: dict, closure: dict
         "pct": round(100 * done / total, 1) if total else 0.0,
         "by_status": dict(sorted(counts.items())),
         "missing": sorted(members - set(rows)),
-        "plan_wide": {k: overall[k] for k in ("total", "done", "not_applicable", "pct")},
+        "plan_wide": {k: overall[k] for k in ("total", "done", "not_applicable", "pct", "deferred_count")},
         "deferred": deferred,
         "reconciliation": reconciliation(flat, items, members),
     }
@@ -646,6 +664,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
 
     # a model that declares its items (relaunch plan v2.7 §6) shows each row's declaration; other models as before
     declared = isinstance(model.get("control_plane", {}).get("declarations"), dict)
+    members = set(closure["closure"]) if closure else set()
     tracks = []
     for tr in model["tracks"]:
         tis = []
@@ -656,6 +675,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             tis.append({"id": iid, "title": it["title"], "lane": it.get("lane"), "gate": it.get("gate", False),
                         "owner": it.get("owner"), "depends_on": it.get("depends_on", []),
                         "cross_stream": it.get("cross_stream", False), **s,
+                        "deferred": is_deferred(it, s["status"], members),
                         "elapsed_s": _age_s(s["started_at"], now) if s["status"] in ("running", "review") else None})
             if declared:
                 tis[-1].update({key: it.get(key) for key in DECLARATION_KEYS})
@@ -683,6 +703,8 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     # to publish, so until a final outcome is recorded it is marked and is not a question for the native
     retirements = {it["decision"] for it in model["items"] if declared and it.get("done_by") == "decision"
                    and it.get("decision") and (it.get("triage") or {}).get("class") == "retire_decision"}
+    # a retirement decision with no item of its own (the plan item total is not grown for a ruling) carries `retires`
+    retirements |= {d["id"] for d in model["decisions"] if declared and d.get("retires")}
     final_outcomes = (decision_outcomes or {}).get("final", ["approved", "refused"])
     for d in model["decisions"]:
         st, dev = decision_status(ix["decisions"].get(d["id"], []))
@@ -716,14 +738,16 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                              and not d.get("staged") and dec_item_status.get(d["id"]) != "not_applicable"],
                             key=lambda d: (rank[d["status"]], -sum(1 for x in d["needed_by"] if status.get(x, {}).get("status") in ("ready", "waiting"))))
 
-    overall = {"total": total, "done": counts.get("done", 0),
+    # deferred items are not stuck: the blocked/unknown tallies leave out the set-aside ones and `deferred_count` reports them
+    live = collections.Counter(t["status"] for t in flat if _needs_attention(t) or t["status"] not in DEFERRED_QUIET)
+    overall = {"total": total, "done": counts.get("done", 0), "deferred_count": sum(1 for t in flat if t["deferred"]),
                **d46_headline(flat),
                "built_waiting_on_gate": sum(1 for t in flat if t["built_waiting_on_gate"]),
                "not_applicable": counts.get("not_applicable", 0),
                "running": counts.get("running", 0) + counts.get("review", 0),
                "ready": counts.get("ready", 0), "waiting": counts.get("waiting", 0),
-               "blocked": counts.get("blocked", 0) + counts.get("failed", 0) + counts.get("parked", 0),
-               "unknown": counts.get("unknown", 0) + counts.get("conflict", 0),
+               "blocked": live.get("blocked", 0) + live.get("failed", 0) + live.get("parked", 0),
+               "unknown": live.get("unknown", 0) + live.get("conflict", 0),
                "pct": round(100 * done_w / total, 1) if total else 0.0}
     if closure:
         overall = closure_headline(overall, flat, items, closure)
@@ -737,7 +761,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         "tracks": tracks,
         "now": [t for t in flat if t["status"] in ("running", "review")],
         "next": [t for t in flat if t["status"] == "ready"],
-        "attention": [t for t in flat if t["status"] in ("blocked", "failed", "parked", "conflict", "unknown")],
+        "attention": [t for t in flat if _needs_attention(t)],
         "done": sorted([t for t in flat if t["status"] == "done"],
                        key=lambda t: t.get("updated_at") or t.get("checked_at") or "", reverse=True),
         "decisions": decisions,
