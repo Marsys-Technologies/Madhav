@@ -616,6 +616,10 @@ class _Engine:
         thr = m_stored + _f4_tol(m_stored)
         worst = None
         deep_left = DEEP_SPLIT_CAP
+        # the per-window cap record (SR-UCERT-CAP-WATCH, measurable hit rate): bisections used out of the allowance, and the leaves that reached
+        # the allowance's end still uncertified (> 0 = the window spent the allowance; each such leaf is `worst`, never passed)
+        self.rederived["deep_bisections"] = 0
+        self.rederived["allowance_exhausted_leaves"] = 0
         for pc in self.pieces:
             if not pc.defined:
                 continue
@@ -652,10 +656,15 @@ class _Engine:
                     # sound, `_seeds`), stays an upper bound at every depth and tightens linearly with the leaf; a point above the threshold
                     # is still found by the midpoint evaluation above, and a leaf still uncertified at DEEP_WIDTH_S (or once the allowance is
                     # spent) is `worst` exactly as before — never passed.
-                    if r - l <= DEEP_WIDTH_S or deep_left <= 0:
+                    if r - l <= DEEP_WIDTH_S:
+                        worst = (l, r)
+                        continue
+                    if deep_left <= 0:
+                        self.rederived["allowance_exhausted_leaves"] += 1
                         worst = (l, r)
                         continue
                     deep_left -= 1
+                    self.rederived["deep_bisections"] += 1
                 stack.append((m, r, vm, vr))
                 stack.append((l, m, vl, vm))
         if worst is not None:

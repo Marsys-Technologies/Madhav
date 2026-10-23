@@ -541,6 +541,25 @@ def oracle_c4(mods):
     assert crest.classify(c, crest.M4).classification == c.AGREED
 
 
+def test_a_cap_exhausting_window_is_inconclusive_and_its_record_says_the_allowance_was_spent():
+    """SR-UCERT-SUBDIV ruling condition 6 end to end at the certificate: a flat two-body sum 1e-7 under M + tol over 10 s (each 1 ms leaf needs one more cut: the allowance runs out first)
+    classifies INCONCLUSIVE `solver_certificate_incomplete` with no finding, and the deciding check's record carries the exhaustion; the same checker on the wide-margin crest world certifies
+    AGREED with no exhaustion. (The oracles of the two halves are S-35 / S-36 in the S2 suite and C-4 / W-4 here.)"""
+    m_val = struct.unpack("f", struct.pack("f", 1.76007128))[0]
+    thr = m_val + chk._f4_tol(m_val)
+    v, tc = 1.8e-4, 10.0
+    b0 = 1.9 - (thr - 1e-7)
+    pos = lambda body, d: ((100.0 + v * ((d - T0).total_seconds() - tc)) if body == "A" else (200.0 + b0 + v * ((d - T0).total_seconds() - tc))) % 360.0   # noqa: E731
+    recs = [chk.CheckRecord("A", "rA", "A", ((at(0.0), at(tc)),), constant=1.0, tent=chk.TentFactor("A", 100.1, 1.0)),
+            chk.CheckRecord("B", "rB", "B", ((at(0.0), at(2 * tc)),), constant=1.0, tent=chk.TentFactor("B", 200.0, 1.0))]
+    rep = cc.check_numbered(lo=at(0), hi=at(2 * tc), records=recs, objective=chk.OBJ_SUM, stored=chk.StoredWindow(at(0), m_val), position_at=pos, certificate=None, resolve=True)
+    assert rep.classification == cc.INCONCLUSIVE and [r for r, _ in rep.inconclusive] == [chk.U_CERT] and not rep.findings, (rep.classification, rep.codes())
+    assert rep.inner.rederived["allowance_exhausted_leaves"] > 0 and rep.inner.rederived["deep_bisections"] == chk.DEEP_SPLIT_CAP, rep.inner.rederived
+    crest = RoundingEdgeWorld(0.98)
+    ok = crest.classify(cc, crest.M4)
+    assert ok.classification == cc.AGREED and ok.inner.rederived["allowance_exhausted_leaves"] == 0, (ok.classification, ok.inner.rederived)
+
+
 # G-1 .. G-4: the gate, over a stored census and a re-derivation report ───────────────────────────────────────────────────────────
 
 def _census(numbered=10, blank=None, valence=None, no_score=0, windows=None):
@@ -791,8 +810,10 @@ GRAIN = dict(chart_id="c", generation="g", event_class="marriage", path_id="P3",
 
 
 class Verdict:
-    def __init__(self, classification, findings=(), inconclusive=()):
+    def __init__(self, classification, findings=(), inconclusive=(), rederived=None):
         self.classification, self.findings, self.inconclusive = classification, tuple(findings), tuple(inconclusive)
+        if rederived is not None:                          # the deciding check's own record, as `CertReport.inner.rederived`
+            self.inner = types.SimpleNamespace(rederived=rederived)
 
 
 def _fn_windows(verdicts, *, qualification_extra=None, n=1):
@@ -859,6 +880,20 @@ def oracle_w3(mods):
     assert rep["status"] == "VERIFIED" and rep["numeric_reproduced"] == 1
     with pytest.raises(RuntimeError, match="qualification .* != re-derived"):
         _fn_windows_with(v, [Verdict("AGREED")], qualification_extra={"solver_certificate": {"schema": sol.CERT_SCHEMA}, "members": 9})
+
+
+@claim("W-4", "window_verifier", 'deep_split["windows_spent_allowance"] += 1 if _rd.get("allowance_exhausted_leaves", 0) > 0 else 0',
+       'deep_split["windows_spent_allowance"] += 0')
+def oracle_w4(mods):
+    """SR-UCERT-CAP-WATCH, the hit rate in the verification report: `deep_split_allowance` counts, over the grain's windows, those that used deep cuts and those that SPENT the allowance (a leaf
+    met its end uncertified), with the totals — read off each deciding check's own record. Three windows: one that spent it (INCONCLUSIVE), one that used cuts and certified (AGREED), one that
+    needed none (AGREED); a verdict with no record (a stub, a budget blank) is counted in none."""
+    v = M(mods, "window_verifier")
+    rep, _ = _fn_windows_with(v, [Verdict("INCONCLUSIVE", inconclusive=[("solver_certificate_incomplete", "")], rederived={"deep_bisections": 2000, "allowance_exhausted_leaves": 7}),
+                                  Verdict("AGREED", rederived={"deep_bisections": 12, "allowance_exhausted_leaves": 0}),
+                                  Verdict("AGREED", rederived={"deep_bisections": 0, "allowance_exhausted_leaves": 0}),
+                                  Verdict("AGREED")], n=4)
+    assert rep["deep_split_allowance"] == {"windows_using_deep_cuts": 2, "windows_spent_allowance": 1, "deep_bisections": 2012, "allowance_exhausted_leaves": 7}, rep["deep_split_allowance"]
 
 
 # S-1 ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -938,7 +973,7 @@ def test_the_single_planted_reversion_fails_the_oracle(cid):
 
 def test_every_claim_has_exactly_one_reversion_and_one_oracle():
     assert set(CLAIMS) == {"K-1", "K-2", "K-3", "K-4", "V-1", "V-2", "V-3", "V-4", "V-5", "V-6", "V-7", "V-8", "V-9", "C-1", "C-2", "C-3", "C-4", "G-1", "G-2", "G-3", "G-4",
-                           "W-1", "W-2", "W-3", "S-1", "V-10", "V-11", "D-1", "D-2", "D-3", "D-4", "D-5", "T-1"}
+                           "W-1", "W-2", "W-3", "S-1", "V-10", "V-11", "D-1", "D-2", "D-3", "D-4", "D-5", "T-1", "W-4"}
     assert len({(m, old) for _, m, old, _ in CLAIMS.values()}) == len(CLAIMS)             # no two claims share a reversion site
 
 
