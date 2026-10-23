@@ -521,6 +521,11 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # Geometry re-pinned at the SR-OD1 merge-back wave 3c-f (ephe-once, SR-EPHE-PATH-ONCE under ruling SR-EPHE-PATH-ONCE-AMEND-1; GEOMETRY-PIN-ONCE cause amend-3): knots (the Swiss ephemeris path is set once per thread, not once per probe)
     # and near_miss_verifier (its probes go through the once-per-thread path) are the only geometry-stage modules that move; no other lane in this wave touches a geometry module. Re-derived ONCE from the final merged tree's real bytes
     # with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (the prior pin 1a821723... is the wave-3c-e head, reproduced by the same script on that tree); no golden component is re-captured.
+    # GEOMETRY RE-PINNED ONCE (SR-GEOMETRY-PIN-ONCE + amend-1 + amend-3 + amend-4; the qualified pin, recorded with all its causes in
+    # 00_ARCHITECTURE/briefs/kalayantra/fleet/EQUIVALENCE_RECORD_CHANGELOG.json entry GEOM-PIN-ONCE; test_a53_geometry_pin_once.py refuses any further geometry change):
+    # causes R2 (contact_reconstruct), DASH (record_store), NEARMISS (near_miss), EPHE_ONCE (knots, and near_miss_verifier's own memo) and F4_READ_CASTS (contact_certify, and near_miss_verifier's
+    # delta_t read). Every row that moved on the 4-class slice is the near-miss rows of NEARMISS (40 rows) plus pin-consumer digest columns; R2, DASH, EPHE_ONCE and F4_READ_CASTS move no row.
+    # The intermediate literals a8cb08f0 (I1 union), 0186cc07, 3c129bd3, 6cd5a41b, 7a841aa4 and 1a821723 above were per-wave bookkeeping, not the qualified pin.
     assert got["implementation"]["geometry"] == "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7"
     # Window re-pinned for PR #3773 (F1): window_verifier derives karaka_agent (the omitted rank factor) as the sweep does. With P06b's window-stage changes the merged-tree
     # digest below is re-derived the same way (main alone gives 6c981eb8...; J-4c F-LEANNESS also changed window_store); evaluation and geometry are untouched by this change, and no golden component is re-captured.

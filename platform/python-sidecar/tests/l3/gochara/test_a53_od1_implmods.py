@@ -1,7 +1,7 @@
 """SR-OD1 R9c-A10-1 (G-8 / EQUIVALENCE_RECORD): the window solver and its independent checker are part of the governed implementation identity.
 
 Claims: (1) every module the SR-OD1 lanes added sits in exactly one stage, never geometry; (2) editing `window_solver` or `window_solver_check` moves the manifest's WINDOW implementation digest — and nothing else (the geometry
-pin a8cb08f0... must not move; evaluation is untouched by an edit to a window-stage module).
+pin 27edba25..., the qualified GEOM-PIN-ONCE value, must not move; evaluation is untouched by an edit to a window-stage module).
 
 Why it needs its own oracle: neither module is imported by the writer yet (the sweep calls the solver from S3), so the import-closure coverage test
 (`test_a53_input_vector`, AM-16) cannot see it; only the list itself puts it in the code fingerprint. The checker is deliberately independent of the

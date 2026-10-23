@@ -1,0 +1,271 @@
+{
+ "schema": "ky.equivalence_changelog/1",
+ "entries": [
+  {
+   "id": "GEOM-PIN-ONCE",
+   "rulings": [
+    "SR-GEOMETRY-PIN-ONCE",
+    "SR-GEOMETRY-PIN-ONCE amend-1",
+    "SR-NEARMISS-BISECT",
+    "SR-REASON-ONE-NAME",
+    "SR-EPHE-PATH-ONCE",
+    "SR-EPHE-PATH-ONCE-AMEND-1 (= GEOMETRY-PIN-ONCE amend-3)",
+    "SR-GEOMETRY-PIN-ONCE-AMEND-4"
+   ],
+   "category": "E1",
+   "part": "implementation.geometry",
+   "base_commit": "a1d10c536c9807c31008620b5738654f85302c92",
+   "derived_at_head": "90126292d5daddd0c9d0feca55bbc3926c442a64",
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES)['geometry'] over the 16 modules of IMPLEMENTATION_MODULES['geometry']; derived once by the production function, never hand-typed",
+   "geometry_before": "a8cb08f07fa867e010109d8a236422e39ebf0b57cf9a149eae64e42c7547a3ff",
+   "geometry_after": "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7",
+   "modules": {
+    "arcs": {
+     "before_sha256": "c180826d15f7ce7a6b1430d49f42622dab5fe8b77d052c1f1fe43ffd4dafccc2",
+     "after_sha256": "c180826d15f7ce7a6b1430d49f42622dab5fe8b77d052c1f1fe43ffd4dafccc2",
+     "changed": false
+    },
+    "boundary_match": {
+     "before_sha256": "173c40200c119e1f4d50e8616f46e5a06b661cadea6089fcfa81977f6642f997",
+     "after_sha256": "173c40200c119e1f4d50e8616f46e5a06b661cadea6089fcfa81977f6642f997",
+     "changed": false
+    },
+    "contact_certify": {
+     "before_sha256": "b67b87fc64044817a25b6bf5b5f441f4067cc42927122815d77d30e7b2327b90",
+     "after_sha256": "91fc8351df8f09fa072164e84d980e24e66dd26243a25e71c0ee0070be24d5b5",
+     "changed": true
+    },
+    "contact_reconstruct": {
+     "before_sha256": "e380e484fbd6ec5d72571ac704598ba5229aa4f65bf2c3a5577c3ced75dc2734",
+     "after_sha256": "3f2289e11be2326d6e4e7ab2265676389242a5fca240cdcf11377276740c3d58",
+     "changed": true
+    },
+    "contacts": {
+     "before_sha256": "bfd3cc83ade75deb4c2a1b41543f78a4e666c6f018568ebfd3f192f1f5100dd0",
+     "after_sha256": "bfd3cc83ade75deb4c2a1b41543f78a4e666c6f018568ebfd3f192f1f5100dd0",
+     "changed": false
+    },
+    "convention": {
+     "before_sha256": "4b11c31d677e7f2054c4b05aa792c276b4f7eda2262979762c874ecb7875cd6b",
+     "after_sha256": "4b11c31d677e7f2054c4b05aa792c276b4f7eda2262979762c874ecb7875cd6b",
+     "changed": false
+    },
+    "episodes": {
+     "before_sha256": "0a466ae4c7571b17a595d982e32943a515405db443afccac6a43d39224f3f668",
+     "after_sha256": "0a466ae4c7571b17a595d982e32943a515405db443afccac6a43d39224f3f668",
+     "changed": false
+    },
+    "ids": {
+     "before_sha256": "2b1966e445a7db2b12ccff53a94270bd911015c7b52141344df97593550a8a00",
+     "after_sha256": "2b1966e445a7db2b12ccff53a94270bd911015c7b52141344df97593550a8a00",
+     "changed": false
+    },
+    "knots": {
+     "before_sha256": "03d05197a185a11aa9e3840f34707cc3ebf5052024cbfbbefee651579fc9eada",
+     "after_sha256": "6ee9cf99fc618251de9f88d25089a367d6cd6e6214ad6cb976762a4d34b7f3ac",
+     "changed": true
+    },
+    "materialise": {
+     "before_sha256": "12ed530d4d50192449015a86af289786207667d9d95ca1d09c2dca307e8cadda",
+     "after_sha256": "12ed530d4d50192449015a86af289786207667d9d95ca1d09c2dca307e8cadda",
+     "changed": false
+    },
+    "near_miss": {
+     "before_sha256": "59a08de264db011b42ce4162c669aacb3798eb5a49d304136d591c9f7a5e6a90",
+     "after_sha256": "054d53e95649fa8b70c71935c728414f01f314252756129587c4d595c21ad426",
+     "changed": true
+    },
+    "near_miss_verifier": {
+     "before_sha256": "100df6e7cba9b5a6a0d014ac81e0311dc564b03468ee5629ecbbf813c57c06c3",
+     "after_sha256": "766197bb1a4952fc907e0bd205e29732d367abc43b7f476868a8e52c1b909360",
+     "changed": true
+    },
+    "record_store": {
+     "before_sha256": "92aee2af631e8bd39024dcbe496260a8ff85f27496245d7fd499f1ed3f673cae",
+     "after_sha256": "9b0da8bc8bc568fc080c875d460b27d637edadff6925d9e9c3f4977ad7c9d597",
+     "changed": true
+    },
+    "stretch_sink": {
+     "before_sha256": "e8ca2e4f64fe735e4f14175e03497d2a781c9b00bb1df280096e9c0557638d75",
+     "after_sha256": "e8ca2e4f64fe735e4f14175e03497d2a781c9b00bb1df280096e9c0557638d75",
+     "changed": false
+    },
+    "substrate": {
+     "before_sha256": "9fef75cb3befb28afd830535ae8bbc353d62c17026a1372dc752dfd04a17b7c3",
+     "after_sha256": "9fef75cb3befb28afd830535ae8bbc353d62c17026a1372dc752dfd04a17b7c3",
+     "changed": false
+    },
+    "targets": {
+     "before_sha256": "614a5620749f971433a0d7aae32f834fce0ecddced21645d6fb673142a662886",
+     "after_sha256": "614a5620749f971433a0d7aae32f834fce0ecddced21645d6fb673142a662886",
+     "changed": false
+    }
+   },
+   "causes": [
+    {
+     "id": "R2",
+     "ruling": "SR-GEOMETRY-PIN-ONCE condition 1 (SR-H2-1S)",
+     "modules": [
+      "contact_reconstruct"
+     ],
+     "commit": "3f405ddd4",
+     "why_needed": "SR-H2-1S scoped the 1 s floor to the P1 STATE providers only. The keyword has to live where `_core` lives: contact_reconstruct gains STATE_MIN_EXCURSION_SECONDS (:34), STATE_NAMED_LIMIT (:41) and the keyword-only `min_excursion_seconds` on `_core` (:68-69, floor test :100). Contact geometry keeps the 60 s default: its two callers (:137, :167) pass no keyword. Callers that pass the 1 s floor are all outside geometry: p1_operands.py:537, p1_nature_operands.py:144,:169, p1_operands_check.py:298, vedha_source.py:114.",
+     "code_path": "contact_reconstruct._core(min_excursion_seconds=) <- p1_operands / p1_nature_operands / p1_operands_check / vedha_source (state boundaries only)",
+     "rows": {
+      "contacts_added": 0,
+      "contacts_removed": 0,
+      "contacts_changed": 0,
+      "records_changed": 0,
+      "prerequisites_changed": 0,
+      "windows_changed": 0,
+      "memberships_changed": 0,
+      "near_miss_rows_changed": 0,
+      "result": "no row of any table moves on the 4-class slice when R2 is switched off (leave-one-out build: head vs head without R2)"
+     }
+    },
+    {
+     "id": "DASH",
+     "ruling": "SR-GEOMETRY-PIN-ONCE amend-1 (T13)",
+     "modules": [
+      "record_store"
+     ],
+     "commit": "4b4f07e72",
+     "why_needed": "T13: the blank is a per-record-support decision (`support[1] > table end`) taken where the P1 record is minted; the injected reader `dasha_rows_for(lord, level)` is key-level and cached per key, and the grain-count key is written inside record_store, so the arm cannot live outside a geometry module without blanking whole keys (coarser than the straddling rule). record_store imports the reason constant BY NAME from dasha_read (:73), so SR-REASON-ONE-NAME cannot move the geometry pin.",
+     "code_path": "record_store._p1_running_support arm (:1344-1348) and _table_ends_before (:1355); reason = dasha_read.PERIOD_TABLE_ENDS_REASON = 'dasha_horizon_exhausted'",
+     "rows": {
+      "contacts_added": 0,
+      "contacts_removed": 0,
+      "contacts_changed": 0,
+      "records_changed": 0,
+      "prerequisites_changed": 0,
+      "windows_changed": 0,
+      "memberships_changed": 0,
+      "near_miss_rows_changed": 0,
+      "period_running_at_records": 14270,
+      "records_with_period_running_at_unknown": 0,
+      "records_with_temporal_support_state_unrestricted": 0,
+      "result": "data delta zero on the pinned system (the stored daśā table runs past every support on the slice): the arm never fires; head vs head without DASH identical in every table"
+     }
+    },
+    {
+     "id": "NEARMISS",
+     "ruling": "SR-NEARMISS-BISECT",
+     "modules": [
+      "near_miss"
+     ],
+     "commit": "851e81672",
+     "why_needed": "band-edge instants are bracketed to 1e-6 d (EDGE_BRACKET_DAYS near_miss.py:58, _bisect :139-150) with no early exit; the verifier tolerance (600 s, near_miss_verifier.py:857) is unchanged.",
+     "code_path": "near_miss._bisect -> ka_gochara_near_miss.t_in/t_out (and the dependent t_closest, clearance_deg, proximity, delta_t)",
+     "rows": {
+      "contacts_added": 0,
+      "contacts_removed": 0,
+      "contacts_changed": 0,
+      "records_changed": 0,
+      "prerequisites_changed": 0,
+      "windows_changed": 0,
+      "memberships_changed": 0,
+      "near_miss_rows_changed": 40,
+      "endpoints_moved": 80,
+      "max_abs_endpoint_delta_s": 603.192,
+      "max_abs_t_closest_delta_s": 13.421,
+      "max_abs_clearance_or_proximity_delta_deg": 1.0585097243165364e-09,
+      "delta_t_changed_rows": 30,
+      "result": "the same 40 near-miss rows move in head vs head-without-NEARMISS and in head vs all-causes-off; every other table identical"
+     }
+    },
+    {
+     "id": "EPHE_ONCE",
+     "ruling": "SR-EPHE-PATH-ONCE-AMEND-1 (amend-3)",
+     "modules": [
+      "knots",
+      "near_miss_verifier"
+     ],
+     "commit": "89aca2a9b",
+     "why_needed": "swisseph.set_ephe_path closed the library's open files on every probe (~75 us against ~0.24 us for the probe). knots._ensure_ephe_path (:145-156) sets it once per thread with a memo invalidated by the process-wide ephe_path_generation counter; calc_sidereal_lon / calc_sidereal_lon_speed call it (:191, :215). near_miss_verifier keeps its own memo (:677-686): each side its own code. set_sid_mode is still set on every probe.",
+     "code_path": "knots._ensure_ephe_path (builder side); near_miss_verifier._ephemeris_position.at memo (verifier side; hunk 1 of 2 in that module)",
+     "rows": {
+      "contacts_added": 0,
+      "contacts_removed": 0,
+      "contacts_changed": 0,
+      "records_changed": 0,
+      "prerequisites_changed": 0,
+      "windows_changed": 0,
+      "memberships_changed": 0,
+      "near_miss_rows_changed": 0,
+      "result": "no row of any table moves on the 4-class slice when the memo is switched off (head vs head without EPHE_ONCE; all 4 classes completed on both sides)"
+     },
+     "honest_gap": "In the lane's own byte-identity check against the pre-fix head, 2 of the 4 slice classes did not finish on the pre-fix side within the 2-h box; 105,012 direct Swiss values were sha-identical and 2 full classes were byte-identical, and the 12-class TR plus the independent verifier on every window is the end-to-end check (SR-EPHE-PATH-ONCE-AMEND-1). This job's own leave-one-out build (head with the memo vs head without it, all 4 classes, every table) completed on both sides and found zero differing rows: a second, complete 4-class observation, not a replacement for the 12-class TR."
+    },
+    {
+     "id": "F4_READ_CASTS",
+     "ruling": "SR-GEOMETRY-PIN-ONCE-AMEND-4",
+     "modules": [
+      "contact_certify",
+      "near_miss_verifier"
+     ],
+     "commit": "6951053a2",
+     "why_needed": "SR-F4-STORE-EXACT amend-1: every verifier/gate/served reader of a stored REAL column reads it ::float8. Two of those read lines sit in geometry-stage modules: contact_certify.py:417 (c.delta_lambda::float8) and near_miss_verifier.py:830 (delta_t::float8 AS delta_t; hunk 2 of 2 in that module). They are READ precision only: no builder, no geometry computation.",
+     "code_path": "contact_certify.certify_contact_geometry ledger SELECT; near_miss_verifier.verify_generation stored-row SELECT",
+     "rows": {
+      "contacts_added": 0,
+      "contacts_removed": 0,
+      "contacts_changed": 0,
+      "records_changed": 0,
+      "prerequisites_changed": 0,
+      "windows_changed": 0,
+      "memberships_changed": 0,
+      "near_miss_rows_changed": 0,
+      "result": "condition of amend-4 met: builder-side outputs (contacts, records, windows, near-miss endpoints) are byte-identical with and without the two cast lines (head vs head without the casts: zero differing rows in every table); the near-miss verifier returns VERIFIED over 76 objects with and without the cast on the slice, so the cast changes no outcome there."
+     },
+     "replay_cited": "Wave 3c-e replay of the stored major_loss P3/P4 windows (fast/jobs/X-20261022T210411Z-mergeback-3ce): P3 0 problems (55 windows reproduced), P4 0 problems (109 reproduced) after f4-exact's ::float8 reads. The 'where there were 3' before-figure is in the ruling text, not in that job's notes: cited, not re-measured here."
+    }
+   ],
+   "slice": {
+    "classes": [
+     "bereavement",
+     "chronic_onset",
+     "illness_acute",
+     "major_loss"
+    ],
+    "policy": "window_qualification/1",
+    "totals_identical_in_every_leave_one_out_build": {
+     "contacts": 10644,
+     "relationship_records": 37693,
+     "record_prerequisites": 66233,
+     "windows": 1672,
+     "window_memberships": 24380,
+     "near_miss_rows": 40,
+     "near_miss_endpoints": 80
+    },
+    "method": "controlled leave-one-out builds of the exported head tree (head; head with all five causes switched off; head with each cause switched off alone); every public table fingerprinted and deep-diffed by primary key; verdict from tests/l3/gochara/_geompin_attribution.attribute",
+    "verdict": "ATTRIBUTED",
+    "rows_differing_head_vs_all_off": 31174,
+    "unattributed_rows": 0,
+    "doubly_attributed_rows": 0,
+    "rows_out_of_cause_reach": 0
+   },
+   "pin_consumers": {
+    "ka_gochara_search_input_snapshot": 1,
+    "ka_gochara_search_interval": 31128,
+    "ka_gochara_search_inventory": 4,
+    "kala_gochara_publication": 1
+   },
+   "pin_consumers_note": "rows that differ only in digest/manifest columns because ANY geometry-pin move changes the input vector; counted per table, never attributed to one cause",
+   "intermediate_pins_not_qualified": {
+    "a8cb08f0": "a8cb08f07fa867e010109d8a236422e39ebf0b57cf9a149eae64e42c7547a3ff",
+    "0186cc07": "0186cc0713d64905a8d9e31a39d05e4dc02e37af10f550960ae30161933d709c",
+    "3c129bd3": "3c129bd32603839412510625eb0431d07edb121fe8dfc15e1f788948d75c147c",
+    "6cd5a41b": "6cd5a41b705cc1d0681aa6c4c0fc4a66568dc3f08248225957a48e0903955674",
+    "7a841aa4": "7a841aa422ae49f3e2b2ec93948cb0f69bbf7227eb91c8fe67e072f56cd169a2",
+    "1a821723": "1a82172371326f2d20b93c772503152447e8286707a834aca716a4673bf84d9e"
+   },
+   "intermediate_pins_note": "a8cb08f0 is the pin before this entry (geometry_before); the others are per-wave test bookkeeping literals. Only geometry_after is the qualified pin.",
+   "interpretations": [
+    "near_miss_verifier is edited by two causes (EPHE_ONCE hunk and F4_READ_CASTS hunk, disjoint; a 3-way merge of the two cause commits over the base reproduces the bytes). The amend-3 text expected only knots.py to move for ephe-once, but SR-EPHE-PATH-ONCE itself says 'and in the verifier path if it does the same, each side its own code'.",
+    "NEARMISS dependent columns (t_closest, clearance_deg, proximity, delta_t) are attributed to NEARMISS together with t_in/t_out."
+   ],
+   "closed": true,
+   "further_geometry_change": "REFUSE"
+  }
+ ]
+}
