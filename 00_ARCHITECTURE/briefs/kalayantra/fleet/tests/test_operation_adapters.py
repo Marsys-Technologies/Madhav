@@ -275,6 +275,8 @@ def accepted_request(bench, steps=None):
     req = dict(spec, item_id=ITEM, idempotency_key=spec["operation_id"], requested_by="adhikarin", chart_id=CANONICAL_CHART)
     if req["kind"] == "orchestrator_rebuild":
         req["dryrun_receipt"] = archive_dry_run(bench, req)
+        from owner_go_cases import write_owner_go      # OWNER-BUILD-GO-REQUIRED-20261023: the owner's go for the actual build
+        write_owner_go(bench.X, req)
     digest = bench.X.request_digest(req)
     prepared = {"schema": "ky.op_prepared/1", "operation_id": req["operation_id"], "item": ITEM, "step": 1,
         "request": copy.deepcopy(req), "request_sha256": digest, "prepared_by": "controller:fixture", "prepared_by_slot": None}

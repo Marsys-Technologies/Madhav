@@ -1156,6 +1156,8 @@ def test_k9_production_kind_is_admitted_with_a_dry_run_attestation_and_refused_w
         import test_executor_rebuild_dryrun_detector as D7
         for d in (w.mod.REC, w.mod.DONE, w.mod.ACC): d.mkdir(parents=True, exist_ok=True)
         req["dryrun_receipt"] = D7.archive_dry_run(w, req)
+        from owner_go_cases import write_owner_go      # OWNER-BUILD-GO-REQUIRED-20261023: the owner's go for the actual build
+        write_owner_go(w.mod, req)
     assert w.mod.validate(w.accept(req), table, ALL_CAPS) is None, "control failed — the refusal below would be vacuous"
     checks = {"backup_taken": True, "restore_verified": True}
     assert w.mod.validate(w.accept(req, checks=checks), table, ALL_CAPS) == "required backup/restore/dry-run attestation missing"
