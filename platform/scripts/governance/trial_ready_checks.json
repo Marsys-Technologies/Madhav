@@ -347,11 +347,7 @@
       "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
       "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe",
       "PYTHONDONTWRITEBYTECODE": "1"
-     },
-     "deselect": [
-      "tests/test_driver.py::test_probe_reports_absence_when_the_checkout_has_no_solver"
-     ],
-     "deselect_why": "test_driver.py::test_probe_reports_absence_when_the_checkout_has_no_solver asserts the checkout has NO window_solver (true of the SR-OD1 export it was written on); the integration head has one, so the test reads false there for a reason that is not a product claim. The positive probe test (fake solver) stays."
+     }
     },
     {
      "kind": "pytest",
@@ -540,13 +536,7 @@
       "KALA_ADMIN_DSN": "postgresql://postgres@127.0.0.1:55433/postgres",
       "SE_EPHE_PATH": "/Users/Dev/kalayantra/ephe"
      },
-     "timeout_s": 3600,
-     "deselect": [
-      "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id"
-     ],
-     "deselect_why": {
-      "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id": "the test skips by design (pytest.skip at test_a53_input_vector.py:670) because ka_gochara_sky_convention carries the insert-only trigger ka_gochara_sky_convention_immutable (platform/migrations/1153_gochara_sky_event_substrate.sql:609-611) in every chain-built database, so it can never run to a pass; the evaluator reads any skip as null, which would hold T20 null forever"
-     }
+     "timeout_s": 3600
     },
     {
      "kind": "db_sql",

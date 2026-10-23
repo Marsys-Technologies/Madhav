@@ -14,18 +14,20 @@ ready (N.7.6)"; "a check reads true only from its detector's run" (§N.8); "TR1/
   C9 `json_field_eq` (TR-BIND: a record outside the repository -- T21 verdict, T24 readiness) reads true only when every field holds, false when a field is
      present and differs (a record made for another head, 1 for true), null when the record, a field or a value is absent.
   C10 `db_migrations` with `mode: "all"` (T25) reads false when the ledger lacks ANY file the commit lists, null when the commit lists none.
-  C11 a `pytest` part passes `env` with `{repo}` expanded and `--deselect` for each named node id (T14); a part whose every test is deselected is null;
+  C11 a `pytest` part passes `env` with `{repo}` expanded and (the mechanism only; the shipped registry may not use it, C18) `--deselect` for each named node id; a part whose every test is deselected is null;
      a relative scratch directory is resolved first (the part runs in another cwd, so its junit file would otherwise be written elsewhere and read null).
   C12 the trial harness landed under fleet/trial_harness is the accepted v3.1 + B4 overlay the trial runs (content digest pinned), not a later or edited copy.
   C13 (PR #3874 review B-1) T24 reads true only from the amd64_slice run's OWN evidence (report, pinned runtime, EQUIVALENCE_RECORD) at this head -- never from a
      readiness record, which only says the inputs are named.
-  C14 (review B-2) T20's a53 DB-suite part deselects the one test that skips by design, so the part can read true.
+  C14 (review B-2; reworked by SR-NO-DESELECT) T20's a53 DB-suite part runs the one test that used to skip by design (the sky-convention content digest) as a real, unskipped test.
   C15 (review N-2) T21 also matches the verdict's patch_id to a patch-id recomputed from the repository; N-3/N-4 T10 part 2 pins its locale, T20 names the geometry-pin rule.
   C16 (SR-EVALUATOR-SKIP-IS-NULL, DECISIONS_SURROGATE) a `pytest` part reads true only if EVERY bound test PASSED: a skip or xfail beside passes, or a bound file none of whose tests ran, is null;
      a skip is tolerated only when the part's `optional_skips` names that exact test WITH a reason.
   C17 (SR-T24-NATIVE) T24 reads the native VM run's OWN EQUIVALENCE_RECORD (named by TRIAL_READY_EQ_RECORD, with the eq_pinned_inputs.json beside it): true only when the record is
      complete, a qualifying_run of THIS head, its arch read inside the run as linux/amd64 and not emulated; null when the record is not named or not there; the Docker amd64 slice
      stays a documented fallback alternative (`any_of`: any true alternative qualifies, no evidence never does).
+  C18 (SR-NO-DESELECT, DECISIONS_SURROGATE) the shipped registry carries no `deselect` key anywhere: a test that cannot run at a head is fixed or named in `optional_skips`
+     with a reason, never excluded by name (an excluded node is a claim nothing measures).
 Every test builds a throw-away git repository; none touches the shared repository or a database (the database answer is replaced where the claim is
 about how the evaluator READS it).
 """
@@ -595,33 +597,22 @@ def test_c13_t24_is_null_without_the_slice_run(tmp_path):
     assert t24_value(tmp_path, "none", lambda d, sha: None) is None
 
 
-T20_SKIP_NODE = "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id"
+T20_SKY_NODE = "tests/l3/gochara/test_a53_input_vector.py::test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id"
 
 
-def test_c14_t20_deselects_the_one_test_that_skips_by_design_and_says_why():
-    """Review B-2. Source: platform/migrations/1153_gochara_sky_event_substrate.sql:609-611 (insert-only trigger on ka_gochara_sky_convention)."""
-    part = shipped_check("T20")["parts"][1]
-    assert part["deselect"] == [T20_SKIP_NODE]
-    why = part["deselect_why"][T20_SKIP_NODE]
-    assert "1153_gochara_sky_event_substrate.sql:609-611" in why and "insert-only" in why
+def test_c14_t20_runs_the_sky_convention_content_digest_test_instead_of_excluding_or_skipping_it():
+    """SR-NO-DESELECT. The claim "the sky convention's content digest moves when the stored content does, with the same id" is measured by this test at T20, not
+    excluded: the node is bound by file (no name-level deselect, no optional_skips), and its body stages the edit by switching off the insert-only trigger
+    (platform/migrations/1153_gochara_sky_event_substrate.sql:609-611, ka_gochara_sky_convention_immutable) in the per-test database, with no `pytest.skip` left to hide it.
+    Reversion: restore the `except Exception: pytest.skip(...)` -> this test fails."""
+    parts = [p for p in shipped_check("T20")["parts"] if p["kind"] == "pytest" and T20_SKY_NODE.split("::")[0] in p["tests"]]
+    assert len(parts) == 1 and "deselect" not in parts[0] and "optional_skips" not in parts[0]
     mig = (REPO_ROOT / "platform/migrations/1153_gochara_sky_event_substrate.sql").read_text(encoding="utf-8").splitlines()[608:611]
-    assert any("ka_gochara_sky_convention_immutable" in l for l in mig) and any("BEFORE UPDATE OR DELETE" in l for l in mig) and any("ka_gochara_insert_only" in l for l in mig)
-    src = (REPO_ROOT / "platform/python-sidecar" / T20_SKIP_NODE.split("::")[0]).read_text(encoding="utf-8")
-    assert "def " + T20_SKIP_NODE.split("::")[1] + "(" in src and "refuses an in-place edit" in src
-
-
-def test_c14_with_that_node_deselected_a_part_whose_only_skip_it_is_reads_true(tmp_path):
-    """The shipped T20 part 2 deselect applied to a stand-in file with the same node id (one skip-by-design test, one passing test).
-    Reversion: drop the deselect -> the skip makes the part null forever."""
-    rel = T20_SKIP_NODE.split("::")[0]
-    body = "import pytest\n\ndef %s():\n    pytest.skip('the convention table refuses an in-place edit here')\n\ndef test_other():\n    assert True\n" % T20_SKIP_NODE.split("::")[1]
-    part = {k: v for k, v in shipped_check("T20")["parts"][1].items() if k not in ("env", "tests")}
-    part["tests"] = [rel]
-    repo, _ = make(tmp_path, registry({"T20": [part]}), files={"platform/python-sidecar/" + rel: body})
-    assert values(run(repo, tmp_path))["T20"] is True
-    part.pop("deselect")
-    repo, _ = make(tmp_path, registry({"T20": [part]}), files={"platform/python-sidecar/" + rel: body}, name="nodeselect")
-    assert values(run(repo, tmp_path))["T20"] is None
+    assert any("ka_gochara_sky_convention_immutable" in l for l in mig) and any("BEFORE UPDATE OR DELETE" in l for l in mig)
+    src = (REPO_ROOT / "platform/python-sidecar" / T20_SKY_NODE.split("::")[0]).read_text(encoding="utf-8")
+    start = src.index("def " + T20_SKY_NODE.split("::")[1] + "(")
+    body = src[start:src.index("\ndef ", start + 1)]
+    assert "pytest.skip" not in body and "DISABLE TRIGGER ka_gochara_sky_convention_immutable" in body and "ENABLE TRIGGER ka_gochara_sky_convention_immutable" in body
 
 
 def test_c14_t20_claim_states_the_pin_once_rule_in_full():
@@ -877,3 +868,40 @@ def test_c17_the_shipped_t24_names_the_native_record_first_and_the_docker_slice_
     assert all("path" in p and "path_env" not in p for p in fallback) and "amd64_slice" in json.dumps(fallback)
     assert "SR-T24-NATIVE" in t24["note"] and "fallback" in t24["note"]
 
+
+# ── C18 no name-level deselect in the shipped registry (SR-NO-DESELECT) ──────────────────────────────────────────────────────────────────
+
+def deselect_paths(node, path="$"):
+    """Every JSON path whose key mentions `deselect`, at any depth (a nested part, an `any_of` alternative, a `deselect_why` left behind)."""
+    found = []
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if "deselect" in k.lower():
+                found.append(f"{path}.{k}")
+            found += deselect_paths(v, f"{path}.{k}")
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            found += deselect_paths(v, f"{path}[{i}]")
+    return found
+
+
+def test_c18_the_shipped_registry_carries_no_deselect_anywhere():
+    """Reads the registry file as shipped (not through the evaluator). Reversion: put back a `deselect` on any part, at any depth -> this test fails (next test)."""
+    doc = json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))
+    assert deselect_paths(doc) == []
+
+
+def test_c18_the_guard_reads_a_planted_deselect_at_any_depth_as_a_failure():
+    doc = json.loads((REPO_ROOT / tr.DEFAULT_REGISTRY).read_text(encoding="utf-8"))
+    assert deselect_paths(doc) == []
+    top = json.loads(json.dumps(doc))
+    next(p for p in shipped_check_in(top, "T14")["parts"] if p["kind"] == "pytest")["deselect"] = ["tests/test_driver.py::test_x"]
+    assert len(deselect_paths(top)) == 1
+    nested = json.loads(json.dumps(doc))
+    t24 = shipped_check_in(nested, "T24")["parts"][0]["alternatives"][0][0]
+    t24["deselect_why"] = "left behind"
+    assert deselect_paths(nested) and deselect_paths(nested)[0].endswith(".deselect_why")
+
+
+def shipped_check_in(doc, cid):
+    return next(c for c in doc["checks"] if c["id"] == cid)

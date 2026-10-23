@@ -663,11 +663,16 @@ def test_editing_a_rules_module_moves_the_evaluation_digest(tmp_path, monkeypatc
 def test_the_sky_convention_content_digest_moves_when_the_stored_content_does_with_the_same_id(db, ephe):
     base = _vector(db, ephe)
     cid = base["sky_convention"]["id"]
+    # The table carries the insert-only trigger ka_gochara_sky_convention_immutable (1153:609-611) in every chain-built
+    # database, so the edit this claim is about ("stored content moved, same id") can only be staged by switching that
+    # trigger off in THIS per-test throwaway database (the fixture's connection owns the table). A refused edit is a
+    # failure here, never a skip: a skip would read as a null signal for a claim nothing measured.
+    db.execute("ALTER TABLE public.ka_gochara_sky_convention DISABLE TRIGGER ka_gochara_sky_convention_immutable")
     try:
         db.execute("UPDATE public.ka_gochara_sky_convention SET method_version = 'tampered' WHERE convention_id = %s",
                    (cid,))
-    except Exception:                                    # an immutable ledger refuses the edit — equally fine
-        pytest.skip("the convention table refuses an in-place edit here")
+    finally:
+        db.execute("ALTER TABLE public.ka_gochara_sky_convention ENABLE TRIGGER ka_gochara_sky_convention_immutable")
     changed = iv.build_input_vector(db, sky_convention_id=cid, ephe_path=ephe, path_refs=REFS,
                                     rulings=RULINGS, files_probe=_dir_probe, series_probe=lambda ephe: "ab" * 32)
     assert iv.diff_vectors(base, changed) == ["sky_convention.content_digest"]      # the id label did not move
