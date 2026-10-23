@@ -266,6 +266,115 @@
    ],
    "closed": true,
    "further_geometry_change": "REFUSE"
+  },
+  {
+   "id": "I1-ADDENDUM",
+   "rulings": [
+    "SR-I1-ADDENDUM",
+    "SR-TRBIND-3"
+   ],
+   "category": "E1",
+   "part": "main merge (second) + golden fixture",
+   "base_commit": "625d8dea2136cd893e6d27ce6fabea17e46c53eb",
+   "derived_at_head": "4c7c845e89802ddaf5805f267fea6277155a31ce",
+   "statement": "I1-ADDENDUM (SR-I1-ADDENDUM): second main merge 4c7c845e8 (#3899 + #3898), 31 files, 0 in gochara_kernel/gochara_grammar/migrations; IMPLEMENTATION_MODULES digests measured unchanged (geometry 27edba25…, evaluation 8168cbfc…, window 75c3fd11…); trial-harness digest 55c3a775→4822bcf0 by #3898 AMD64-DOCKER (pinned on main)",
+   "implementation_digests_unchanged": {
+    "geometry": "27edba25a624504f7543c7d40267e5b6b9d724373136e71a34393de9758b54d7",
+    "evaluation": "8168cbfc2edf022868dc72b25b0ec5643b23cbcbf5f6578ce9f1ae5099a53c2c",
+    "window": "75c3fd11e0a5035977897d53de470081173ff5d3dffdb1b4d253b39b8d5b0058"
+   },
+   "trial_harness_digest": {
+    "before": "55c3a7753e61fe4ebde79d0f3d7bf43febc9d8cce25ba1193c67f4f26213418d",
+    "after": "4822bcf0fcf710a00e004852573e64997ba703870bc9a6a0327015145d74fa7a",
+    "cause": "#3898 AMD64-DOCKER (pinned on main by test_trial_ready.py::test_c12_*)"
+   },
+   "golden_pins_moved": {
+    "note": "test_mb_ordinary_golden.py, SR-TRBIND-3 (3). No implementation digest moved. Each pin below moved for the one cause named; the accepted P06 golden fixture is not re-captured; the test asserts the golden's old value exactly, then compares the head strictly at the new value. Counts and the rules note are derived from the declared catalogue (rule_registry.factor_rows()/soft_factor_rows()), the literals were re-derived by script from the test's own capture ($MB_GOLDEN_OUT on the seeded template).",
+    "cause": "SR-NDH-INPLACE (SR-OD1 V1/D2): the eight ND-H classes' P1@1.2.0 row was re-derived in place to carry the owner's Form B factors; the manifest binds the three P1 L0 reference tables and the Form B orb activity",
+    "pins": [
+     {
+      "pin": "ka_gochara_factor rows (every substep)",
+      "from": 12,
+      "to": 18
+     },
+     {
+      "pin": "ka_gochara_rule_path_soft_factor rows (every substep)",
+      "from": 19,
+      "to": 18
+     },
+     {
+      "pin": "rules substep: reused rows in the outcome note",
+      "from": 67,
+      "to": 72
+     },
+     {
+      "pin": "rules substep: statement count",
+      "from": 67,
+      "to": 72
+     },
+     {
+      "pin": "rules substep: per-factor read shape count",
+      "from": 12,
+      "to": 18
+     },
+     {
+      "pin": "rules substep: soft-factor read shape count",
+      "from": 19,
+      "to": 18
+     },
+     {
+      "pin": "rules substep: statement order hash (sequence_sha256)",
+      "from": "033a468ae62bbbcb151cd0af72d9afe3ceeaeda85511dbd9fe85bd8d61c361f9",
+      "to": "87100ca17af37d832e060cc3ea6f71396b928fb9572bf34118f894cbfc0e2878"
+     },
+     {
+      "pin": "manifest registry.digest",
+      "from": "decadef6289d4113a01b4179522ba26d14eb1833bb73d424e9ba9700f36e778d",
+      "to": "38806d8f4ae8e4a7bcd86ef57edab2372b2d54fee3818f7ab3c03f636ed30295"
+     },
+     {
+      "pin": "manifest l0.bg_combustion_orbs",
+      "from": "(absent)",
+      "to": "754dc5ff539e954b7ae20b2311c6a3130aa101f93acd6c058c333a82cf8047d4"
+     },
+     {
+      "pin": "manifest l0.bg_dignity_reference",
+      "from": "(absent)",
+      "to": "2635a7f1f311ffc884dc1416baecc5a8cb44212c308cb386fac5423afcda4456"
+     },
+     {
+      "pin": "manifest l0.bg_graha_naisargika_friendship",
+      "from": "(absent)",
+      "to": "6fe29171b27e7934271823a38ef36efd12300838fe240ee551b660d46b000c1f"
+     },
+     {
+      "pin": "manifest orb_policy.activity['1.3.0']",
+      "from": "(absent)",
+      "to": {
+       "orb_decision_ref": "nd_orb_scale",
+       "orb_deg": 1.0
+      }
+     }
+    ],
+    "fixture_changes": [
+     "the a55 template of the golden now seeds bg_combustion_orbs, bg_dignity_reference and bg_graha_naisargika_friendship from migrations 250 + 1401 (the template stubs L1 only); CI's 'Gochara measuring build' runs the same file, so it reads the same seeded fixture",
+     "the template is built on the pre-doctrine final profile (the doctrine rows P1/P3/P4@1.3.0, P2@1.1.0 joined the final catalogue after the P06 capture), as test_j4d_slice_lane_db.py",
+     "three P1 L0 digest SELECTs per manifest-reading substep are counted separately (exact text, once each)",
+     "read-shape follows: SR-F4-STORE-EXACT float8 casts (3 reads), the scored-support read's NULL::text column; the two older factor/grain read blocks that duplicated _follow_od1_reads were removed",
+     "the Swiss library artifact hash is host-bound for another build on the same platform string; version and probe digest are still compared"
+    ]
+   },
+   "interpretations": [
+    {
+     "choice": "pre-doctrine final profile for the golden's template",
+     "alternative": "re-capture the P06 golden on the full final profile (rejected: the golden is the accepted baseline and is not re-captured)"
+    },
+    {
+     "choice": "library_sha256 host-bound when the platform string matches but the build differs",
+     "alternative": "compare it whenever the platform string matches (fails on any machine whose pyswisseph build is not the capture machine's)"
+    }
+   ],
+   "closed": true
   }
  ]
 }
