@@ -103,6 +103,7 @@ def test_dsns_are_exported_around_the_stage_and_restored(monkeypatch):
     """Reversion: do not restore the environment in `finally` (the variables would leak into the report/EQ stages and into a later run)."""
     monkeypatch.delenv("TRIAL_READY_LANE_DSN", raising=False)
     monkeypatch.delenv("TRIAL_READY_TRIAL_DSN", raising=False)
+    monkeypatch.delenv("TRIAL_LANE_DB", raising=False)          # the TR stage exports its own lane DB name; this test asserts the default
     with ts.trial_ready_dsns({"db": "ky_trial_abcd1234"}) as labels:
         assert os.environ["TRIAL_READY_LANE_DSN"].endswith("/ky_lane_head")
         assert os.environ["TRIAL_READY_TRIAL_DSN"] == "postgresql://postgres@127.0.0.1:55433/ky_trial_abcd1234"

@@ -514,7 +514,7 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # solver-carrying head (present + counts at the real window_solver; absent + counts nothing at a package copy with none) instead of asserting the pre-solver export; tests/test_g5_cpu.py test_c2 judges the
 # CPU growth against the wall GROWTH of the same experiment and retries an attempt in which the hogs did not starve the builder; test_c4 judges the wall/CPU agreement
 # normalised by a same-process calibrated reference (a pure burn's wall per CPU second), so an ambient load cannot fail either
-HARNESS_V31_DIGEST = "7859ed763e18428d3cf6c3065880c896fa5796ede2a28b6487e01e6f24aea7eb"
+HARNESS_V31_DIGEST = "4fa757bfedc8dfb0d32ab31aaa35ae47a772f92553911e9d0c2871411a719de9"
 
 
 def harness_digest(root):
