@@ -342,8 +342,8 @@ def _stream_view(stream: dict, flat: list[dict], ix: dict, activity: dict, now: 
     hb_last = max(hb, key=lambda e: e["ts"]) if hb else None
     ev_last = max((ix["last_by_actor"][a] for a in actor_keys), key=lambda e: e["ts"], default=None)
     mine = [t for t in flat if t.get("owner") == sid]
-    running = [t for t in mine if t["status"] in ("running", "review")]
-    ready = [t for t in mine if t["status"] == "ready"]
+    running = [t for t in mine if t["display_status"] in ("running", "review")]
+    ready = [t for t in mine if t["display_status"] == "ready"]
     blocked = [t for t in mine if t["status"] in ("blocked", "failed", "parked", "conflict") and _needs_attention(t)]
     hb_age = _age_s(hb_last["ts"], now) if hb_last else None
     stale_after, dead_after = stream.get("stale_after_s", 900), stream.get("dead_after_s", 2700)
@@ -366,6 +366,7 @@ def _stream_view(stream: dict, flat: list[dict], ix: dict, activity: dict, now: 
                            "what": ev_last.get("item") or ev_last.get("decision") or ev_last.get("kind"),
                            "state": ev_last.get("state"), "detail": ev_last.get("detail", "")} if ev_last else None,
             "git": git, "running": running, "ready": ready[:8], "blocked": blocked,
+            "built_waiting_on_gate": [t for t in mine if t["built_waiting_on_gate"]],
             "done": done, "total": len(mine), "progress": (done + sum((t["progress"] or 0) for t in mine if t["status"] != "done")) / len(mine) if mine else 0.0}
 
 
@@ -661,6 +662,9 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             and all(dep in items for dep in s["deps_open"])
         )
         s["gate_blockers"] = list(s["deps_open"]) if s["built_waiting_on_gate"] else []
+        # D-39 is an exclusive presentation class. Keep the underlying workflow
+        # status intact for claims, strict dependency checks and guarded completion.
+        s["display_status"] = "built_waiting_on_gate" if s["built_waiting_on_gate"] else s["status"]
 
     # a model that declares its items (relaunch plan v2.7 §6) shows each row's declaration; other models as before
     declared = isinstance(model.get("control_plane", {}).get("declarations"), dict)
@@ -685,7 +689,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         tracks.append({**tr, "items": tis, "done": done, "total": n, "progress": (done + partial) / n if n else 0.0})
 
     flat = [t for tr in tracks for t in tr["items"]]
-    counts = collections.Counter(t["status"] for t in flat)
+    counts = collections.Counter(t["display_status"] for t in flat)
     total = len(flat)
     done_w = counts.get("done", 0) + sum((t["progress"] or 0) for t in flat if t["status"] != "done")
 
@@ -759,8 +763,9 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         "streams": streams,
         "phases": phases,
         "tracks": tracks,
-        "now": [t for t in flat if t["status"] in ("running", "review")],
-        "next": [t for t in flat if t["status"] == "ready"],
+        "now": [t for t in flat if t["display_status"] in ("running", "review")],
+        "next": [t for t in flat if t["display_status"] == "ready"],
+        "built_waiting_on_gate": [t for t in flat if t["built_waiting_on_gate"]],
         "attention": [t for t in flat if _needs_attention(t)],
         "done": sorted([t for t in flat if t["status"] == "done"],
                        key=lambda t: t.get("updated_at") or t.get("checked_at") or "", reverse=True),

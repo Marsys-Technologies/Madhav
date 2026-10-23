@@ -196,6 +196,43 @@ def test_derived_signal_does_not_allow_guarded_completion(scenario):
         guarded_done_event(model, events, "K-BUILT", "stream-K:builder", detectors["K-BUILT"], {})
 
 
+@pytest.mark.parametrize("event_state", ["running", "review", None])
+def test_built_waiters_have_an_exclusive_display_class(scenario, event_state):
+    model, events, detectors = scenario
+    model["streams"] = [{"id": "K", "name": "builders"}]
+    model["items"][0]["steps"] = []
+    model["items"][4]["depends_on"] = ["V-GATE"]
+    events.clear()
+    if event_state:
+        events.append({"kind": "item", "item": "K-BUILT", "state": event_state,
+                       "ts": NOW.isoformat()})
+    # A genuine review still belongs in running; an ordinary ready item stays ready.
+    model["items"].extend([
+        {"id": "K-REVIEW", "title": "review", "owner": "K", "track": "K"},
+        {"id": "K-READY", "title": "ready", "owner": "K", "track": "K"},
+    ])
+    events.append({"kind": "item", "item": "K-REVIEW", "state": "review", "ts": NOW.isoformat()})
+    snap, rows = snapshot(scenario)
+    built = rows["K-BUILT"]
+    assert built["display_status"] == "built_waiting_on_gate"
+    assert built["status"] == (event_state or "waiting")
+    assert snap["overall"]["running"] == 1
+    assert snap["overall"]["ready"] == 3  # D-GATE, V-GATE and K-READY
+    assert snap["overall"]["waiting"] == 1  # JOIN-GATE only
+    assert [row["id"] for row in snap["now"]] == ["K-REVIEW"]
+    assert [row["id"] for row in snap["next"]] == ["D-GATE", "V-GATE", "K-READY"]
+    assert [row["id"] for row in snap["built_waiting_on_gate"]] == ["K-BUILT", "K-INPUT"]
+    stream = snap["streams"][0]
+    assert [row["id"] for row in stream["running"]] == ["K-REVIEW"]
+    assert [row["id"] for row in stream["ready"]] == ["D-GATE", "V-GATE", "K-READY"]
+    assert [row["id"] for row in stream["built_waiting_on_gate"]] == ["K-BUILT", "K-INPUT"]
+    # The display class disappears on the next snapshot if merge evidence is lost.
+    detectors["K-BUILT"]["status"] = "running"
+    cleared, rows = snapshot(scenario)
+    assert rows["K-BUILT"]["display_status"] == rows["K-BUILT"]["status"]
+    assert "K-BUILT" not in {row["id"] for row in cleared["built_waiting_on_gate"]}
+
+
 # Execute the shipped browser client with DOM/network boundaries replaced. Reverting
 # the row or count rendering must fail on user-visible HTML, not source-string checks.
 CLIENT_PROBE = r"""
@@ -213,7 +250,8 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), context);
 const snaps = JSON.parse(fs.readFileSync(0, 'utf8'));
 const rendered = snaps.map(snap => {
   handlers.snapshot({data: JSON.stringify(snap)});
-  return {plan: nodes.plan.innerHTML, counts: nodes.counts.innerHTML, foot: nodes.foot.textContent};
+  return {plan: nodes.plan.innerHTML, counts: nodes.counts.innerHTML, foot: nodes.foot.textContent,
+          now: nodes.now.innerHTML, built: nodes["built-waiting"]?.innerHTML, streams: nodes.streams.innerHTML};
 });
 process.stdout.write(JSON.stringify(rendered));
 """
@@ -236,3 +274,40 @@ def test_dashboard_renders_blocker_ids_and_count_and_clears_them(scenario):
     assert "<b>1</b>built, waiting on gate" in shown["counts"]
     assert "built, waiting on gate:" not in hidden["plan"]
     assert "<b>0</b>built, waiting on gate" in hidden["counts"]
+
+
+def test_dashboard_separates_built_waiters_from_review_and_clears_them(scenario):
+    model, events, _ = scenario
+    model["streams"] = [{"id": "K", "name": "builders"}]
+    events.append({"kind": "item", "item": "K-BUILT", "state": "review", "ts": NOW.isoformat()})
+    snap, rows = snapshot(scenario)
+    # Explicit API fields isolate the renderer from the state fix.
+    row = rows["K-BUILT"]
+    row.update(display_status="built_waiting_on_gate", gate_blockers=["D-<GATE>"])
+    snap["now"] = []
+    snap["built_waiting_on_gate"] = [row]
+    snap["streams"][0].update(running=[], built_waiting_on_gate=[row])
+    cleared = json.loads(json.dumps(snap))
+    cleared["tracks"][0]["items"][0].update(display_status="review", built_waiting_on_gate=False, gate_blockers=[])
+    cleared["built_waiting_on_gate"] = []
+    cleared["streams"][0]["built_waiting_on_gate"] = []
+    cleared["overall"]["built_waiting_on_gate"] = 0
+    app = Path(__file__).resolve().parents[1] / "static" / "app.js"
+    result = subprocess.run(["node", "-e", CLIENT_PROBE, str(app)], input=json.dumps([snap, cleared]),
+                            text=True, capture_output=True, check=True)
+    shown, hidden = json.loads(result.stdout)
+    assert "Render error" not in shown["foot"]
+    assert 'class="card st-built_waiting_on_gate' in shown["plan"]
+    assert '<span class="badge">built, waiting on gate</span>' in shown["plan"]
+    assert '<span class="badge">in review</span>' not in shown["plan"]
+    assert "K-BUILT" not in shown["now"]
+    assert "K-BUILT" in shown["built"] and "D-&lt;GATE&gt;" in shown["built"]
+    assert "D-<GATE>" not in shown["built"]
+    assert "Built, waiting on gate" in shown["streams"]
+    assert 'class="mini st-built_waiting_on_gate' in shown["streams"]
+    assert "K-BUILT" not in hidden["built"]
+    assert 'class="card st-built_waiting_on_gate' not in hidden["plan"]
+    assert '<span class="badge">in review</span>' in hidden["plan"]
+    # The new list must exist in the real page, not only in the fake DOM.
+    page = (app.parent / "index.html").read_text()
+    assert 'id="built-waiting"' in page
