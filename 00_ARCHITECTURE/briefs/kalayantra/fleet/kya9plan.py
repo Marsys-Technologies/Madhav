@@ -34,6 +34,15 @@ Edits to plan_model.json (nothing else is touched):
                           D-GOCHARA-TIMEOUT-NA, requires_outcome approved; the cockpit records it `refused`)
   SR-AUDIT-BOOKKEEPING (2026-10-22) plan-model text: J-5q-b54 (4.1 is no longer a comparator, SR-F5-41-DEFER), J-4c-a55m (the 1303
                           clause dropped; D-J4B-1303-NA declared)
+  SR-A55J-GAPS C8 / SR-A55M-TESTSLICE (2026-10-22, bookkeeping round 2) plan-model text: J-4b-a55j says "verification job configured;
+                          executes only on an executor dispatch; no schedule" (C8 option a), not "configured but disabled"; J-4c-a55m
+                          records the FB-19 publication-row CHECK (1307) as superseded by the 1379 authority-head guard and acts 12-14
+                          as evidenced by the iam_readback receipts (cited by operation id). Text only: no step, edge or status changes.
+  FOLD-OUT (owner via madhav-44, 2026-10-22 ~23:30Z: "do not add anything to the tracker")  D-GOCHARA-TIMEOUT-NA and D-J4B-1303-NA are no
+                          longer plan ITEMS (the item total returns to 274). J-GOCHARA-TIMEOUT reads not_applicable through the plan's own
+                          requires_outcome on the EXISTING decision item D-GOCHARA-TIMEOUT once the cockpit records it `refused`; that item
+                          reads decided (class retired). D-J4B-1303-NA stays a declared decision (it retires a clause, not an item) so
+                          J-4c-a55m's 1303 clause stays dropped.
   control_plane.triage    roots/closure point at the v3 files
 
 Usage:  kya9plan.py [--repo-root DIR]      (default: the repository containing this file)
@@ -202,6 +211,91 @@ A55M_NA_DECISION_DEFAULT = (
     "(DECISIONS_SURROGATE.jsonl D-J4B-1303-NA, madhav-88, 2026-10-21T03:17Z)")
 
 
+# FOLD-OUT: the two retirement-decision ITEMS #3896 added are removed; their DECISIONS stay (decision ledger entries, not plan items).
+FOLDED_OUT_DECISION_ITEMS = (TIMEOUT_NA_DECISION, A55M_NA_DECISION)
+TIMEOUT_RULED_DECISION = "D-GOCHARA-TIMEOUT"     # the existing decision item the timeout pair's n/a now reads
+
+# SR-A55J-GAPS C8 option a (owner surrogate madhav-44, 2026-10-22T20:34:34Z): the verification job is configured and enabled:true is the
+# intended state since J-4b (step 9 used it); the job executes only on an executor dispatch and nothing schedules it. The step ids
+# `principals_grants_disabled_config` and `protected_apply_and_disabled_provision_readback` are receipt/detector identifiers and keep
+# their historical names (renaming would orphan the filed receipts and their patterns).
+A55J_WORDING = "verification job configured; executes only on an executor dispatch; no schedule"
+A55J_TITLE_OLD = "and the verification job configured but disabled"
+A55J_TITLE_NEW = f"and the {A55J_WORDING} (SR-A55J-GAPS C8, option a)"
+J4B_TITLE_OLD = "verification job configured but disabled"
+J4B_TITLE_NEW = f"{A55J_WORDING} (SR-A55J-GAPS C8, option a)"
+A55J_NOTES_OLD = "principals, grants and the disabled job config are measured by readbacks"
+A55J_NOTES_NEW = (f"principals, grants and the job config ({A55J_WORDING}: SR-A55J-GAPS C8 option a; enabled:true is the intended state "
+                  "since J-4b and step 9 used it) are measured by readbacks")
+STEP_ID_NOTE = (" The step id %s keeps its historical name: it identifies the filed receipts and detector patterns and is not a claim "
+                "about the job's state (SR-A55J-GAPS C8).")
+A55J_TEST_OLD = "the entry's enabled state is measured, never assumed)."
+A55J_TEST_NEW = (f"the entry's enabled state is measured, never assumed). The claim is \"{A55J_WORDING}\" (SR-A55J-GAPS C8, option a), "
+                 "not \"disabled\": cloudrun_job_readback reads the job definition and executor_ops.json the dispatch entry, and neither "
+                 "reads Cloud Scheduler, so the no-schedule clause is the ruling's wording and no step receipt claims to have measured it.")
+A55M_JOB_OLD = "Verification job definition and sealer credential in disabled state: as J-4b-a55j"
+A55M_JOB_NEW = f"Verification job definition and sealer credential: as J-4b-a55j ({A55J_WORDING}; SR-A55J-GAPS C8, option a)"
+
+# SR-A55M-TESTSLICE (the kyd of the readback below): the FB-19 publication-row CHECK was never a migration (the plan-doc number 1307
+# collided with an unrelated migration); the migration-1379 authority-head guard refuses a test-slice vector instead.
+A55M_PUBLICATION_PREFIX = "Publication refusal for a test-slice vector:"
+A55M_PUBLICATION_NEW = (
+    "Publication refusal for a test-slice vector: the FB-19 publication-row CHECK (plan-doc number 1307, never a migration) is SUPERSEDED "
+    "by the migration-1379 authority-head guard (SR-A55M-TESTSLICE): platform/migrations/1379_gochara_sealed_authority.sql adds CHECK "
+    "kga_sealed_authority_ck on kala_gochara_authority (ka_gochara_authority_admissible(chart_id, authoritative_generation)), so a governed "
+    "authority head requires a published non-test-slice manifest and a matching seal. MEASURED in production by operation "
+    "J-4c-a55m.testslice-refusal-20261022T2054Z (readback_sql, COMPLETED, exit 0, mechanically accepted): kga_sealed_authority_ck present "
+    "and validated (convalidated true), both authority heads unchanged at 3.0, 0 published test-slice rows in kala_gochara_publication, "
+    "and no test-slice CHECK on the publication table (the readback's publication_row_check section returned no row). The 1307 "
+    "publication-row CHECK is therefore not a claim of this step.")
+A55M_ACT_OLD = {
+    12: "NO existing readback kind measures it (cloudrun_job_readback describes the pipeline job only).",
+    13: "NO existing readback kind measures it (cloudrun_job_readback reads a job definition, not its IAM policy).",
+    14: "indirectly, a successful one-shot provisioning run through the same proxy identity (github_run_readback, currently enabled:false).",
+}
+A55M_ACT_NEW = {
+    12: ("EVIDENCED by the iam_readback receipt J-4c-a55m.act12-logging-view-20261022T2306Zb (kind iam_readback, read-only; COMPLETED, exit 0; "
+         "probe logging_view, MEASURED 2026-10-22T23:06:08Z): view gochara_verification_job (bucket _Default, filter "
+         "resource.type=cloud_run_job AND job_name=gochara-verification-job) carries exactly one binding, roles/logging.viewAccessor for "
+         "serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com. The negative read with the workflow identity is not part of "
+         "this receipt. The earlier request J-4c-a55m.act12-logging-view-20261022T2304Z was REFUSED (missing field kind) and is superseded "
+         "by the Zb request (SR-A55J-GAPS)."),
+    13: ("EVIDENCED by the iam_readback receipt J-4c-a55m.act13-run-job-iam-20261022T2306Zb (kind iam_readback, read-only; COMPLETED, exit 0; "
+         "probe run_job_iam, MEASURED 2026-10-22T23:06:08Z): job gochara-verification-job (asia-south1) carries exactly one binding, "
+         "roles/run.jobsExecutorWithOverrides for serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com. The probe reads "
+         "that job's policy only; the absence of a project-level roles/run.* binding is not part of this receipt. The earlier request "
+         "J-4c-a55m.act13-run-job-iam-20261022T2304Z was REFUSED (missing field kind) and is superseded (SR-A55J-GAPS)."),
+    14: ("EVIDENCED by two iam_readback receipts (kind iam_readback, read-only; both COMPLETED, exit 0; probe project_iam_member_role), "
+         "one per principal that needs roles/cloudsql.client: (1) J-4c-a55m.act14-project-cloudsql-client-20261022T2306Zb (MEASURED "
+         "2026-10-22T23:06:08Z): held:true for member serviceAccount:gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com on "
+         "roles/cloudsql.client, which the verification job itself needs to reach the database; (2) "
+         "J-4c-a55m.act14-github-actions-cloudsql-client-20261023T0015Z (MEASURED 2026-10-23T00:15:10Z): held:true for member "
+         "serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com on roles/cloudsql.client, project-wide, which the "
+         "workflows need to reach the database through the connector (the runbook's Act 14 names github-actions@). Both principals "
+         "need the role and both are evidenced. The earlier request J-4c-a55m.act14-project-cloudsql-client-20261022T2304Z was REFUSED "
+         "(missing field kind) and is superseded (SR-A55J-GAPS)."),
+}
+# the round-2 act 14 text (PR #3899 first push); re-applied models carry it, so it is a second replace source
+A55M_ACT14_ROUND2 = ("EVIDENCED by the iam_readback receipt J-4c-a55m.act14-project-cloudsql-client-20261022T2306Zb (kind iam_readback, read-only; "
+         "COMPLETED, exit 0; probe project_iam_member_role, MEASURED 2026-10-22T23:06:08Z): held:true for member "
+         "serviceAccount:gochara-verifier-runtime@madhav-astrology.iam.gserviceaccount.com on roles/cloudsql.client. OPEN POINT: the "
+         "runbook's Act 14 names github-actions@ as the proxy identity, and this receipt measured the verifier runtime service account, so "
+         "the github-actions@ binding is NOT evidenced by it; the reviewer decides which identity the proxy uses. The earlier request "
+         "J-4c-a55m.act14-project-cloudsql-client-20261022T2304Z was REFUSED (missing field kind) and is superseded (SR-A55J-GAPS).")
+A55M_NOTES_ACTS_OLD = "No new executor kind is assumed; acts 12 and 13 (and 14 directly) have no existing readback."
+A55M_NOTES_ACTS_NEW = ("Acts 12-14 are evidenced by the iam_readback executor kind (#3894): receipts J-4c-a55m.act12-logging-view-20261022T2306Zb, "
+                       "J-4c-a55m.act13-run-job-iam-20261022T2306Zb, and for act 14 both J-4c-a55m.act14-project-cloudsql-client-20261022T2306Zb "
+                       "(verifier runtime service account) and J-4c-a55m.act14-github-actions-cloudsql-client-20261023T0015Z (github-actions@). "
+                       "The FB-19 publication-row CHECK (1307, never a migration) is superseded by the migration-1379 "
+                       "authority-head guard, read back by J-4c-a55m.testslice-refusal-20261022T2054Z (SR-A55M-TESTSLICE). No completion is "
+                       "asserted by this text: the item completes only on its own receipt, steps and acceptance.")
+A55M_NOTES_ACTS_ROUND2 = ("Acts 12-14 are evidenced by the iam_readback executor kind (#3894): receipts J-4c-a55m.act12-logging-view-20261022T2306Zb, "
+                          "J-4c-a55m.act13-run-job-iam-20261022T2306Zb, J-4c-a55m.act14-project-cloudsql-client-20261022T2306Zb (act 14: see the open "
+                          "point in its step text). The FB-19 publication-row CHECK (1307, never a migration) is superseded by the migration-1379 "
+                          "authority-head guard, read back by J-4c-a55m.testslice-refusal-20261022T2054Z (SR-A55M-TESTSLICE). No completion is "
+                          "asserted by this text: the item completes only on its own receipt, steps and acceptance.")
+
+
 # SR-DT2-CANDIDATE (owner surrogate madhav-44, 2026-10-22 20:05Z): D-T2 decided (a) — Sudarśana admitted as a CANDIDATE judge method.
 DT2_CLOSED_CUT_EDGES = {"D-T2": ["J-6l", "L0-K"]}
 
@@ -286,28 +380,25 @@ def apply_model_edits(model: dict) -> dict:
     for iid, re_entry in PARKED_OUT_OF_CAMPAIGN.items():
         items[iid]["triage"] = {"class": "b", "reason": PARKED_REASON, "re_entry": re_entry}
 
-    # SR-AUDIT-NA-TIMEOUT — the two timeout items are not_applicable by a retirement decision, as the set above
-    anchor_na = items["D-J4C-PR2907-NA"]
-    if TIMEOUT_NA_DECISION not in items:
-        model["items"].append({
-            "id": TIMEOUT_NA_DECISION, "track": anchor_na["track"], "lane": anchor_na["lane"],
-            "title": f"Not applicable: {', '.join(TIMEOUT_NA_TARGETS)} — legacy v3 materializer timeout superseded by the v5 writer timeout (migration 1395)",
-            "owner": anchor_na["owner"], "depends_on": ["B-7"], "mandatory": True,
-            "done_by": "decision", "decision": TIMEOUT_NA_DECISION,
-            "triage": {"class": "retire_decision", "retires": list(TIMEOUT_NA_TARGETS)},
-        })
-        items[TIMEOUT_NA_DECISION] = model["items"][-1]
-    if TIMEOUT_NA_DECISION not in decisions:
-        model["decisions"].append({
-            "id": TIMEOUT_NA_DECISION,
-            "title": f"Not applicable ({', '.join(TIMEOUT_NA_TARGETS)}): legacy v3 materializer timeout, superseded by migration 1395",
-            "owner": "ADHIKĀRIN (N); the cockpit records the outcome (`ky decide D-GOCHARA-TIMEOUT-NA --outcome refused`) under SR-AUDIT-NA-TIMEOUT",
-            "default": f"refused — {TIMEOUT_NA_REASON}",
-        })
+    # FOLD-OUT (owner via madhav-44, 2026-10-22 ~23:30Z): the retirement-decision ITEMS #3896 added leave the plan; the item total is 274
+    # again. The decisions below stay declared (the ledger refuses an outcome for an undeclared decision) and carry `retires`.
+    model["items"] = [i for i in model["items"] if i["id"] not in FOLDED_OUT_DECISION_ITEMS]
+    for k in FOLDED_OUT_DECISION_ITEMS:
+        items.pop(k, None)
+    for i in model["items"]:
+        if any(d in FOLDED_OUT_DECISION_ITEMS for d in i.get("depends_on", [])):
+            i["depends_on"] = [d for d in i["depends_on"] if d not in FOLDED_OUT_DECISION_ITEMS]
+
+    # SR-AUDIT-NA-TIMEOUT — J-GOCHARA-TIMEOUT is not_applicable by the plan's own requires_outcome on the EXISTING decision item
+    # D-GOCHARA-TIMEOUT (kyclosure demands a decision item, and the fold-out added none): a recorded `refused` reads it so. The decision
+    # item itself reads done once decided, like D-VC after its refusal (the plan's no-cycle invariant forbids a self-requirement); its
+    # triage class `retired` keeps it in the cancelled bucket, never in the work. (I) INTERPRETATION; the alternative is a second decision
+    # item, which the owner ruled out. The cockpit records `ky decide D-GOCHARA-TIMEOUT --outcome refused` (SR-AUDIT-NA-TIMEOUT).
+    model["decisions"] = [d for d in model["decisions"] if d["id"] != TIMEOUT_NA_DECISION]
+    items["D-GOCHARA-TIMEOUT"].pop("requires_outcome", None)
+    items["J-GOCHARA-TIMEOUT"]["requires_outcome"] = {TIMEOUT_RULED_DECISION: "approved"}
     for t in TIMEOUT_NA_TARGETS:
-        items[t]["requires_outcome"] = {**items[t].get("requires_outcome", {}), TIMEOUT_NA_DECISION: "approved"}
-        items[t]["depends_on"] = _dedupe(items[t]["depends_on"] + [TIMEOUT_NA_DECISION])
-        items[t]["triage"] = {"class": "retired", "decision": TIMEOUT_NA_DECISION, "reason": TIMEOUT_NA_REASON}
+        items[t]["triage"] = {"class": "retired", "decision": TIMEOUT_RULED_DECISION, "reason": TIMEOUT_NA_REASON}
 
     # SR-AUDIT-BOOKKEEPING — J-5q-b54: 4.1 is no longer a comparator (SR-F5-41-DEFER)
     b54 = items["J-5q-b54"]
@@ -319,14 +410,6 @@ def apply_model_edits(model: dict) -> dict:
     a55m["title"] = a55m["title"].replace(A55M_TITLE_OLD, A55M_TITLE_NEW)
     a55m["brief"]["tests"] = [A55M_TEST_NEW if t.startswith(A55M_TEST_PREFIX) else t for t in a55m["brief"]["tests"]]
     a55m["brief"]["notes"] = a55m["brief"]["notes"].replace(A55M_NOTES_OLD, A55M_NOTES_NEW)
-    if A55M_NA_DECISION not in items:
-        model["items"].append({
-            "id": A55M_NA_DECISION, "track": anchor_na["track"], "lane": anchor_na["lane"],
-            "title": A55M_NA_DECISION_TITLE, "owner": anchor_na["owner"], "depends_on": ["B-7"], "mandatory": True,
-            "done_by": "decision", "decision": A55M_NA_DECISION,
-            "triage": {"class": "retire_decision", "retires": "J-4c-a55m (the 1303 clause only)"},
-        })
-        items[A55M_NA_DECISION] = model["items"][-1]
     if A55M_NA_DECISION not in decisions:
         model["decisions"].append({
             "id": A55M_NA_DECISION, "title": A55M_NA_DECISION_TITLE,
@@ -334,6 +417,26 @@ def apply_model_edits(model: dict) -> dict:
                       "SR-AUDIT-BOOKKEEPING; the cockpit records the outcome (`ky decide D-J4B-1303-NA --outcome refused`)"),
             "default": A55M_NA_DECISION_DEFAULT,
         })
+    # retiring a clause never retires the item: J-4c-a55m carries no requires_outcome on it
+    next(d for d in model["decisions"] if d["id"] == A55M_NA_DECISION)["retires"] = ["J-4c-a55m (the 1303 clause only)"]
+
+    # SR-A55M-TESTSLICE / SR-A55J-GAPS (bookkeeping round 2): text only
+    a55m["brief"]["tests"] = [
+        A55M_PUBLICATION_NEW if t.startswith(A55M_PUBLICATION_PREFIX) else
+        t.replace(A55M_JOB_OLD, A55M_JOB_NEW).replace(A55M_ACT_OLD[14], A55M_ACT_NEW[14]).replace(A55M_ACT14_ROUND2, A55M_ACT_NEW[14]) if t.startswith("Act 14 (") else
+        t.replace(A55M_ACT_OLD[12], A55M_ACT_NEW[12]).replace(A55M_ACT_OLD[13], A55M_ACT_NEW[13]).replace(A55M_JOB_OLD, A55M_JOB_NEW)
+        for t in a55m["brief"]["tests"]]
+    a55m["brief"]["notes"] = (a55m["brief"]["notes"].replace(A55M_NOTES_ACTS_OLD, A55M_NOTES_ACTS_NEW)
+                              .replace(A55M_NOTES_ACTS_ROUND2, A55M_NOTES_ACTS_NEW))
+    j4b = items["J-4b"]
+    j4b["title"] = j4b["title"].replace(J4B_TITLE_OLD, J4B_TITLE_NEW)
+    a55j = items["J-4b-a55j"]
+    a55j["title"] = a55j["title"].replace(A55J_TITLE_OLD, A55J_TITLE_NEW)
+    a55j["brief"]["tests"] = [t if A55J_TEST_NEW in t else t.replace(A55J_TEST_OLD, A55J_TEST_NEW) for t in a55j["brief"]["tests"]]
+    a55j["brief"]["notes"] = a55j["brief"]["notes"].replace(A55J_NOTES_OLD, A55J_NOTES_NEW)
+    for item in (a55j, a55m):
+        if "keeps its historical name" not in item["brief"]["notes"]:
+            item["brief"]["notes"] += STEP_ID_NOTE % item["steps"][0]
 
     cp = model["control_plane"]["triage"]
     cp["roots"] = str(CONTROL / "ACCEPTANCE_ROOTS_v3.json")

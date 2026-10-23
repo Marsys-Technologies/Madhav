@@ -606,7 +606,8 @@
         "platform/scripts/governance/pravaha_tracker/tests/test_tracker_reconcil*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_merged_deployed*.py",
         "platform/scripts/governance/pravaha_tracker/tests/test_done_dependency*.py",
-        "platform/scripts/governance/pravaha_tracker/tests/test_a55j*.py"
+        "platform/scripts/governance/pravaha_tracker/tests/test_a55j*.py",
+        "platform/scripts/governance/pravaha_tracker/tests/test_git_source*.py"
       ]
     },
     "governance-readback-tests-3-0": {
