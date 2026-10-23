@@ -313,14 +313,14 @@ NARR_CITES = {
                     (_BG + "l0_remedy_corpus.py", 2236, "prescription = (")],
     "bg_compendium_index": [(_WR + "bg_compendium_index.py", 97, 'f"{text_id} chapter {chapter_num}: {len(rows)} passage(s)"'),
                             (_WR + "bg_compendium_index.py", 109, 'f"{text_id} covers {topic_id} in {len(rows)} passage(s)"')],
-    "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 117, "_build_narrative("), (_WR + "ka_kala_darshana.py", 150, "obstruction_summary, narrative"),
-                         (_WR + "ka_kala_darshana.py", 246, "'headline': headline"),
+    "ka_kala_darshana": [(_WR + "ka_kala_darshana.py", 133, "_build_narrative("), (_WR + "ka_kala_darshana.py", 167, "obstruction_summary, narrative"),
+                         (_WR + "ka_kala_darshana.py", 266, "'headline': headline"),
                          (_L + "L3_kala/query_temporal_view.ts", 86, "obstruction_summary, narrative")],
     "ka_jivana_parva": [(_WR + "ka_jivana_parva.py", 191, "_build_parva_narrative("), (_WR + "ka_jivana_parva.py", 432, "summary = ("),
                         (_L + "L3_kala/query_life_arc.ts", 153, "narrative, source_citation")],
-    "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 334, "_build_projection_narrative("),
-                           (_WR + "ka_bhavishya_lekha.py", 328, "_build_falsifiability("),
-                           (_WR + "ka_bhavishya_lekha.py", 544, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 545, "deny = f"),
+    "ka_bhavishya_lekha": [(_WR + "ka_bhavishya_lekha.py", 342, "_build_projection_narrative("),
+                           (_WR + "ka_bhavishya_lekha.py", 336, "_build_falsifiability("),
+                           (_WR + "ka_bhavishya_lekha.py", 552, "confirm = f"), (_WR + "ka_bhavishya_lekha.py", 553, "deny = f"),
                            (_L + "L3_kala/query_projections.ts", 248, "narrative,")],
     "bo_upaya": [(_WR + "bo_upaya.py", 1010, "reason = ("), (_WR + "bo_upaya.py", 1714, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
@@ -329,7 +329,7 @@ NARR_CITES = {
                       (_WR + "ka_vighnakara.py", 795, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 872, "'reason': ("),
                       (_WR + "ka_vighnakara.py", 951, "'reason': ("), (_WR + "ka_vighnakara.py", 1007, "'reason': f\"{planet_str} combust"),
                       (_WR + "ka_vighnakara.py", 307, "json.dumps(obs['detail'])"),
-                      (_L + "L3_kala/query_obstruction_periods.ts", 81, "obstruction_detail")],
+                      (_L + "L3_kala/query_obstruction_periods.ts", 82, "obstruction_detail")],
     "ka_avadhi": [(_WR + "ka_avadhi.py", 198, "'note': f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\""),
                   (_WR + "ka_avadhi.py", 315, "dossier=Jsonb(dossier)"),
                   (_L + "L3_kala/query_dasha_dossier.ts", 94, "dossier, quality")],
@@ -395,6 +395,7 @@ NARR_JSON_BUILDERS = {
 }
 # keys each builder returns that are NOT prose (measured/structured values): never declared
 NARR_JSON_NON_PROSE = {
+    ("ka_kala_darshana", "narrative"): {"obstruction_layer"},  # SR-EMPTY-REASON: {assessed, empty_reason, layer_state}, structured data
     ("ka_jivana_parva", "narrative"): {"dasha_planet", "span", "quality", "high_convergence_count", "avg_effective_score"},
     ("ka_bhavishya_lekha", "falsifiability"): {"evaluation_date", "evaluation_window_days"},
 }
@@ -494,6 +495,22 @@ def _returned_dict_keys(path, func):
     tree = ast.parse(_read(path))
     fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == func)
     rets = [n.value for n in ast.walk(fn) if isinstance(n, ast.Return) and isinstance(n.value, ast.Dict)]
+    if not rets:
+        # SR-EMPTY-REASON: a builder may bind its dict literal to one name, add constant keys by subscript, and return the name once.
+        returns = [n for n in ast.walk(fn) if isinstance(n, ast.Return)]
+        assert len(returns) == 1 and isinstance(returns[0].value, ast.Name), (path, func)
+        name = returns[0].value.id
+        literals = [n.value for n in ast.walk(fn) if isinstance(n, ast.Assign) and isinstance(n.value, ast.Dict)
+                    and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name) and n.targets[0].id == name]
+        assert len(literals) == 1, (path, func)
+        keys = {k.value for k in literals[0].keys if isinstance(k, ast.Constant)}
+        for n in ast.walk(fn):
+            if isinstance(n, ast.Assign):
+                for tgt in n.targets:
+                    if (isinstance(tgt, ast.Subscript) and isinstance(tgt.value, ast.Name) and tgt.value.id == name
+                            and isinstance(tgt.slice, ast.Constant) and isinstance(tgt.slice.value, str)):
+                        keys.add(tgt.slice.value)
+        return keys
     assert len(rets) == 1, (path, func)
     return {k.value for k in rets[0].keys if isinstance(k, ast.Constant)}
 

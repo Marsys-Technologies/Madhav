@@ -2973,7 +2973,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                AND (NULL::text IS NULL OR o.obstruction_type = NULL::text)
                AND (NULL::text IS NULL OR o.severity = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
-    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:69-95'],
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts:70-95'],
   },
   {
     contract_id: 'source-query:query-vedha-gochara:v1',
@@ -3070,7 +3070,7 @@ const CONTRACTS: readonly SourceQueryAvailabilityContract[] = [
                AND (0::numeric <= 0 OR convergence_score >= 0::numeric)
                AND (NULL::text IS NULL OR domain = NULL::text)
           ) SELECT handler_page.*, handler_count.total FROM handler_page CROSS JOIN handler_count`,
-    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:82-176'],
+    source_refs: ['platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts:83-176'],
   },
   {
     contract_id: 'source-query:query-activation-waveform:v1',
