@@ -271,6 +271,20 @@ def _target_blank_note(blanks: Sequence[dict]) -> str:
     return '; '.join(parts)
 
 
+def _vacuous_label(admitted: int, unresolved: int, windows: int) -> str:
+    """SR-SANGAM-SIGNAL-UNRESOLVED: '' unless the build wrote ZERO windows from MORE THAN zero admitted predicates.
+
+    Zero windows is a named outcome, never a silent pass: the integrity contract reads true on an empty table (an honest null, CLAUDE.md §N.7.6),
+    so the label is what tells a reader the green is vacuous. `unresolved` = admitted predicates with signal_id NULL (signal_unresolved)."""
+    if admitted <= 0 or windows > 0:
+        return ''
+    if unresolved >= admitted:
+        reason = f"all_admitted_signal_unresolved (every one of the {admitted} admitted predicates has signal_id NULL: no window can be attributed to a signal)"
+    else:
+        reason = f"no_window_from_signal_bearing_predicates ({admitted - unresolved} predicates carry a signal and produced no window, e.g. target_unresolved)"
+    return f"{SIGNAL_UNRESOLVED}={unresolved} of {admitted}; vacuous=true reason={reason}"
+
+
 @records_swiss_backend
 class _LegacyKaSangamWriter(WriterBase):
     """
@@ -285,6 +299,11 @@ class _LegacyKaSangamWriter(WriterBase):
     # Blanked predicates of the latest `_generate_windows` call. Defined here (immutable) so a substep that reads it
     # before any call has run (a resumed/skipped path, a stubbed generator) sees "no blanks", never an AttributeError.
     _target_blanks: Sequence[dict] = ()
+    # Windows written by this run so far (the rows of substeps resumed from the ledger count too) and the key of the last substep of the plan:
+    # on that substep the run-level vacuous label is decided. None = not planned (derived from the predicate lists).
+    _windows_written: int = 0
+    _final_step_key: 'str | None' = None
+    _pred_dicts: Sequence[dict] = ()      # the admitted predicates of the run (set by plan_substeps); () = none planned, so nothing to be vacuous about
 
     # ── plan ─────────────────────────────────────────────────────────────────
 
@@ -534,7 +553,9 @@ class _LegacyKaSangamWriter(WriterBase):
         self._resume_fingerprint = self._compute_build_fingerprint(chart_id)
         self._resume_skipped = 0
         self._reset_pending = False
+        self._windows_written = 0
         if getattr(ctx, 'dry_run', False):
+            self._final_step_key = steps[-1].key
             return steps  # dry runs never delete data or touch the ledger
 
         completed = self._load_completed_substeps(conn, chart_id, self._resume_fingerprint)
@@ -542,11 +563,17 @@ class _LegacyKaSangamWriter(WriterBase):
             # Planning/re-probing is read-only. The first executing substep owns
             # reset and replacement in the same orchestrator transaction.
             self._reset_pending = True
+            self._final_step_key = steps[-1].key
             logger.info("ka_sangam: fresh/replan build for chart %s — %d substeps", chart_id, len(steps))
             return steps
 
         remaining = [s for s in steps if s.key not in completed]
         self._resume_skipped = len(steps) - len(remaining)
+        self._final_step_key = remaining[-1].key if remaining else None
+        with conn.cursor() as cur:       # the windows the resumed (skipped) substeps already committed count toward this run's total
+            cur.execute("SELECT COALESCE(SUM(rows_written), 0) AS n FROM build_substep_progress WHERE chart_id = %s AND asset_id = 'ka_sangam'", (chart_id,))
+            row = cur.fetchone()
+        self._windows_written = int((row['n'] if isinstance(row, dict) else row[0]) or 0)
         logger.info(
             "ka_sangam: RESUMING build for chart %s — %d/%d substeps already committed, %d remaining",
             chart_id, self._resume_skipped, len(steps), len(remaining),
@@ -701,7 +728,7 @@ class _LegacyKaSangamWriter(WriterBase):
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, near_deduped, 'near')
             self._record_substep(conn, chart_id, 'near', rows)
-        return WriterResult(asset_id='ka_sangam', rows_inserted=rows, notes=_target_blank_note(self._target_blanks))
+        return self._substep_result('near', len(near_deduped) if dry_run else rows, rows)
 
     def _substep_lifetime(self, conn, chart_id: str, idx: int, dry_run: bool) -> WriterResult:
         pred      = self._lt_preds[idx]
@@ -751,7 +778,27 @@ class _LegacyKaSangamWriter(WriterBase):
             with conn.cursor() as cur:
                 rows = self._insert_windows(cur, chart_id, deduped, 'lifetime')
             self._record_substep(conn, chart_id, f'lifetime:{idx}', rows)
-        return WriterResult(asset_id='ka_sangam', rows_inserted=rows, notes=_target_blank_note(self._target_blanks))
+        return self._substep_result(f'lifetime:{idx}', len(deduped) if dry_run else rows, rows)
+
+    def _is_final_step(self, step_key: str) -> bool:
+        final = self._final_step_key
+        if final is None:       # not planned through plan_substeps: the last of near + one lifetime substep per lifetime predicate
+            final = f'lifetime:{len(self._lt_preds) - 1}' if self._lt_preds else 'near'
+        return step_key == final
+
+    def _substep_result(self, step_key: str, windows: int, rows: int | None = None) -> WriterResult:
+        """The substep's WriterResult. The orchestrator persists no per-writer notes (FROZEN contract), so on the LAST substep of the run the
+        vacuous label (zero windows from >0 admitted predicates, SR-SANGAM-SIGNAL-UNRESOLVED) is in the notes AND in the run log."""
+        rows = windows if rows is None else rows
+        self._windows_written += windows
+        notes = _target_blank_note(self._target_blanks)
+        if self._is_final_step(step_key):
+            preds = self._pred_dicts
+            label = _vacuous_label(len(preds), sum(1 for p in preds if not p.get('signal_id')), self._windows_written)
+            if label:
+                logger.warning("ka_sangam: %s", label)
+                notes = f"{notes}; {label}" if notes else label
+        return WriterResult(asset_id='ka_sangam', rows_inserted=rows, notes=notes)
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
