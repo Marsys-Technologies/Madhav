@@ -1,0 +1,19 @@
+{
+  "schema": "ky.executor_pin_shard/2",
+  "item": "J-4b-a55j",
+  "after": "cloudrun_job_readback",
+  "entries": {
+    "iam_readback": {
+      "enabled": true,
+      "needs": "gcloud",
+      "script": "00_ARCHITECTURE/briefs/kalayantra/fleet/iam_readback.py",
+      "fixed_args": [],
+      "allowed_args": ["probe", "view", "job", "member", "role", "secret"],
+      "requesters": ["adhikarin", "v1", "v2"],
+      "production": false,
+      "read_only": true,
+      "timeout_s": 300,
+      "enabled_by": "J-4c-a55m"
+    }
+  }
+}

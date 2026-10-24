@@ -301,3 +301,43 @@ def test_the_plan_refuses_a_not_applicable_step_citing_an_undeclared_decision():
     item = next(row for row in plan["items"] if row["id"] == "J-3c")
     item["not_applicable_steps"]["backup_restore_verified"]["decision"] = "SR-NOT-IN-THE-PLAN"
     assert any("SR-NOT-IN-THE-PLAN" in problem for problem in server._check_declarations(plan))
+
+
+# ------------------------------------------------------------------------ (d) SR-A12-BACKUP-REMOVAL: the restore-proof step is waived by the plan's own mechanism
+
+A12_ITEMS = ("J-2a", "J-4e", "J-6", "K9-4a")      # J-3c keeps its earlier SR-OP-STEPS waiver (a backup really was taken there)
+
+
+def _a12_decision(state="delegated", **extra):
+    return {**_decision(state, **extra), "decision": "SR-A12-BACKUP-REMOVAL"}
+
+
+def _a12_step(item_id, events):
+    snapshot = build_snapshot(json.loads(PLAN.read_text()), events, {}, {}, {})
+    row = next(it for track in snapshot["tracks"] for it in track["items"] if it["id"] == item_id)
+    return next(step for step in row["steps"] if step["name"] == "backup_restore_verified")
+
+
+@pytest.mark.parametrize("item_id", A12_ITEMS)
+def test_the_plan_waives_the_restore_proof_step_citing_sr_a12_backup_removal_and_never_deletes_it(item_id):
+    plan = json.loads(PLAN.read_text())
+    item = next(row for row in plan["items"] if row["id"] == item_id)
+    assert "backup_restore_verified" in item["steps"] and "backup_restore_verified" in item["step_evidence"]      # waived, not removed
+    waived = item["not_applicable_steps"]["backup_restore_verified"]
+    assert waived["decision"] == "SR-A12-BACKUP-REMOVAL" and "SR-A12-BACKUP-REMOVAL" in waived["reason"]
+    assert "SR-A12-BACKUP-REMOVAL" in {decision["id"] for decision in plan["decisions"]}
+    assert server._check_declarations(plan) == []
+
+
+@pytest.mark.parametrize("item_id", A12_ITEMS)
+def test_the_detector_reads_the_waived_step_as_waived_with_its_citation_not_as_evidence_of_a_backup(item_id):
+    step = _a12_step(item_id, [_a12_decision()])
+    assert step["not_applicable"] is True and step["decision"] == "SR-A12-BACKUP-REMOVAL" and step["done"] is True   # satisfied by the ruling alone: no step event exists
+    assert "SR-A12-BACKUP-REMOVAL" in step["reason"]
+
+
+@pytest.mark.parametrize("item_id", A12_ITEMS)
+def test_the_waived_step_is_an_open_gap_until_the_ruling_is_recorded(item_id):
+    for events in ([], [_a12_decision("requested")], [_a12_decision(outcome="deferred")]):
+        step = _a12_step(item_id, events)
+        assert step["done"] is False and "not_applicable" not in step, events

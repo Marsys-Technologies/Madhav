@@ -221,6 +221,8 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
                 # validate() ends with the scheduler, measuring-cancel and served-probe admission rules; neither applies to a small-test kind
                 # (each has its own suite), so they are transport doubles here like smalltest_policy_problem.
                 'scheduler_policy_problem': lambda req: None, 'measuring_cancel_problem': lambda req: None,
+                # the owner go gate covers only century_dispatch and the production rebuild (its own suite: fleet/tests/test_executor_owner_go.py)
+                'owner_go_problem': lambda req, op=None: None,
                 # the mechanical route needs a pack fill, which none of these requests carries (its own suite: fleet/tests/test_executor_mechanical_production.py)
                 'mechanical_pre_acceptance': lambda req, table: 'the mechanical route is not under test here',
                 'served_probe_problem': lambda req, op: None}
@@ -247,10 +249,10 @@ def test_enabling_a_kind_does_not_bypass_executor_request_gates(kind, tmp_path):
     path = accepted_dir / 'receipt.json'
     request['acceptance_receipt'] = str(path)
     path.write_text(json.dumps(receipt))
-    if kind in ('smalltest_dispatch', 'smalltest_teardown'):    # A8 §5: dry_run_passed for a mutating kind, backup_taken for a teardown; nothing else
+    if kind in ('smalltest_dispatch', 'smalltest_teardown'):    # A8 §5: dry_run_passed for a mutating kind; nothing else (SR-A12-BACKUP-REMOVAL: not backup_taken either)
         assert 'attestation missing' in validate(request, table, caps)
     else:
         assert validate(request, table, caps) is None
-    receipt.update(checks={'backup_taken': True, 'dry_run_passed': True})
+    receipt.update(checks={'dry_run_passed': True})
     path.write_text(json.dumps(receipt))
     assert validate(request, table, caps) is None

@@ -16,6 +16,8 @@ EQ-12 only a qualifying amd64 run or the dispatch image has an E4 (P3/P6)
 EQ-13 E3b is checked for COVERAGE of every trial E3a row, by content (P2)
 EQ-14 the minimum action per difference is the §3.5 table, as data
 EQ-15 the import-closure port equals the repository's own detector at HEAD, and the CLI writes/compares end to end
+EQ-16 (SR-T24-AMD64-DOCKER) an emulated linux/amd64 container run: the arch is READ inside the container (an arch asserted from outside is refused), the emulation is
+      recorded in provenance.platform_notes (a missing note is refused), and the note lives in E6 so it never makes a record DIFFER from the dispatch image's
 """
 import copy
 import hashlib
@@ -734,3 +736,45 @@ def test_eq15_the_cli_writes_the_record_and_compares_two_records_end_to_end(tmp_
     refused = subprocess.run([sys.executable, tool, "record", "--repo", str(repo), "--commit", "0" * 40, "--pinned-inputs", str(pin), "--out",
                               str(tmp_path / "m4.json")], capture_output=True, text=True)
     assert refused.returncode == 1 and not (tmp_path / "m4.json").exists() and "REFUSED" in refused.stderr
+
+
+# ── EQ-16 (SR-T24-AMD64-DOCKER) ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+PROBE = {"source": "in_container", "uname_machine": "x86_64", "platform_machine": "x86_64", "sys_platform": "linux", "nonce_sha256": h("n")}
+NOTE = {"emulation": {"emulated": True, "layer": "rosetta", "ruling": "SR-T24-AMD64-DOCKER"}}
+
+
+def emulated(p, probe=PROBE, note=NOTE):
+    p["runtime"].update(emulated=True)
+    if probe is not None:
+        p["runtime"]["arch_probe"] = dict(probe)
+    if note is not None:
+        p["provenance"]["platform_notes"] = copy.deepcopy(note)
+
+
+@pytest.mark.parametrize("probe", [None, {**PROBE, "source": "host"}, {**PROBE, "uname_machine": "arm64"}, {**PROBE, "sys_platform": "darwin"}])
+def test_eq16_the_arch_of_an_emulated_run_is_read_inside_the_container_never_asserted_from_outside(tmp_path, base, probe):
+    """SR-T24-AMD64-DOCKER ('arch must still read linux/amd64 from inside the container - uname -m == x86_64 - never asserted from outside'): a container run whose runtime
+    names linux/amd64 without an in-container probe reading x86_64 on linux is REFUSED, not recorded."""
+    v = variant(tmp_path, base, "v", mutate=lambda p: emulated(p, probe=probe))
+    with pytest.raises(eqr.EqrRefusal, match="read inside the container"):
+        v.build()
+
+
+@pytest.mark.parametrize("note", [None, {"emulation": {"emulated": True, "layer": ""}}, {"emulation": {"emulated": False, "layer": "qemu"}}, {"other": 1}])
+def test_eq16_an_emulated_run_without_its_emulation_note_is_refused(tmp_path, base, note):
+    """SR-T24-AMD64-DOCKER ('with the emulation recorded in the EQUIVALENCE_RECORD platform notes'): `emulated: true` needs provenance.platform_notes.emulation
+    {emulated: true, layer: rosetta|qemu|undetermined}; without it no record is written."""
+    v = variant(tmp_path, base, "v", mutate=lambda p: emulated(p, note=note))
+    with pytest.raises(eqr.EqrRefusal, match="platform_notes"):
+        v.build()
+
+
+def test_eq16_the_emulation_note_is_provenance_it_never_moves_E4_or_the_decision(tmp_path, base):
+    """The dispatch image is compared with this run: E4..E5 digests are equal whether or not the run was emulated; the note is stored verbatim in E6 (provenance, never compared)."""
+    em = variant(tmp_path, base, "em", mutate=emulated)
+    assert digest(em, "E4") == digest(base, "E4")
+    rec = em.build()[0]
+    assert rec["E6"]["platform_notes"] == NOTE and rec["complete"] is True
+    disp = variant(tmp_path, base, "d", mutate=lambda p: p["runtime"].update(kind="dispatch_image"))
+    assert decide(em, disp)["decision"] == "EQUAL"

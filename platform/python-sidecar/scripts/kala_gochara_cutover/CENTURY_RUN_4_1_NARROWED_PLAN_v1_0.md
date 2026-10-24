@@ -46,7 +46,8 @@ written. The governed vehicle is a dedicated deploy-managed job:
   and re-pointed by `deploy.yml` alongside the pipeline job, same image
   `brahma-pipeline:$DEPLOY_SHA`, SA `data-plane-builder-runtime@…`, secret
   `DATABASE_URL=data-plane-builder-db-url:latest`, `--memory=16Gi --cpu=4
-  --task-timeout=86400 --max-retries=0` (a failed run is inspected, never
+  --task-timeout=86400 --max-retries=0` (as written; superseded — the century runs on
+  `brahma-build-pipeline-job`, now 8Gi/2 vCPU under SR-RIGHT-SIZE amend-1) (a failed run is inspected, never
   auto-retried; resume = a fresh execution rebuilding the candidate, N-7).
 - Container command: `/bin/sh
   /app/platform/python-sidecar/scripts/kala_gochara_cutover/century_run_4_1.sh`

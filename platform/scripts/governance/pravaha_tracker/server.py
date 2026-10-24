@@ -44,7 +44,7 @@ from pravaha_tracker import detectors as D  # noqa: E402
 from pravaha_tracker import merged_deployed  # noqa: E402
 from pravaha_tracker.merged_deployed import CodeDone  # noqa: E402
 from pravaha_tracker.events import EventLog  # noqa: E402
-from pravaha_tracker.state import build_snapshot, load_closure  # noqa: E402
+from pravaha_tracker.state import build_snapshot, load_closure, stale_review_prs  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
@@ -227,7 +227,8 @@ class Engine:
         if self.cfg["detectors_enabled"]:
             self.det.poll([i["detector"] for i in self.model.get("items", []) if i.get("detector")])
             if self.code_done.due():
-                self.code_done.poll(self.model, skip=self._completed_by_event())
+                self.code_done.poll(self.model, skip=self._completed_by_event(),
+                                    watch_prs=stale_review_prs(self.log.events))
         if time.time() - self._backup_at > self.cfg["backup_every_s"]:
             self._backup()
         if self._cancelled.is_set():
@@ -381,7 +382,8 @@ class Engine:
                     det_results[i["id"]] = r.to_dict()
         snap = build_snapshot(self.model, list(self.log.events), det_results, {}, self._sample_health(), self.activity,
                               closure=load_closure(self.model),
-                              derived_done=self.code_done.results())
+                              derived_done=self.code_done.results(),
+                              merged_prs=self.code_done.merged_prs())
         body = {k: v for k, v in snap.items() if k != "generated_at"}
         digest = hashlib.sha256(json.dumps(_strip_ages(body), sort_keys=True, default=str).encode()).hexdigest()
         with self.cond:

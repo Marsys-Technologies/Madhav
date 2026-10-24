@@ -145,6 +145,17 @@ _ALL_OBSTRUCTION_TYPES = frozenset({
 })
 
 
+def _vacuous_label(upstream_rows: int, conv_generation) -> str:
+    """SR-K9-ADMITTED-ZERO: '' unless the upstream holds NO peak-dated convergence window, else the run-level vacuous label.
+
+    Zero obstruction rows from an empty upstream is a named outcome, never a silent pass: the integrity contract reads true on an empty
+    obstruction table (an honest null, CLAUDE.md §N.7.6), so the label is what tells a reader the green is vacuous. Rows are never invented."""
+    if upstream_rows > 0:
+        return ''
+    return (f"upstream_convergence_rows={upstream_rows}; vacuous=true reason=empty_upstream_convergence "
+            f"(no peak-dated convergence window in generation {conv_generation!r}, so there is no window to test for obstruction)")
+
+
 def _severity(score: float) -> str:
     for threshold, label in _SEVERITY_THRESHOLDS:
         if score >= threshold:
@@ -221,12 +232,12 @@ class _LegacyKaVighnakaraWriter(WriterBase):
         if candidate is None:      # SR-K9-BIND B1b: no in-place rewrite once a generation is published (before the delete below)
             refuse_unbound_rewrite(conn, chart_id, 'ka_vighnakara')
 
-        # Idempotency: delete-then-insert scoped to chart.
-        # Safe to DELETE only after confirming swisseph is available and we can rebuild.
+        # Idempotency: delete-then-insert scoped to (chart, partition). SR-K9-WRITE-SCOPE: a candidate-bound build owns ONLY its candidate generation (served rows untouched); an ordinary rebuild rewrites the legacy NULL partition.
+        write_generation = _owned_generation(conn, chart_id, candidate)
         with conn.cursor() as _timeout_cur:
             _timeout_cur.execute("SET LOCAL statement_timeout = 0")
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM kala_obstruction WHERE chart_id = %s AND generation IS NULL", (chart_id,))
+            cur.execute("DELETE FROM kala_obstruction WHERE chart_id = %s AND generation IS NOT DISTINCT FROM %s", (chart_id, write_generation))
 
         # Read convergence windows. SR-K9-BIND B1a: a candidate-bound build reads ONLY its own candidate's convergence rows (never the
         # served view, whose ids belong to another generation); an unbound build reads the served generation.
@@ -247,9 +258,11 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                 attest_inputs(conn, candidate, 'ka_vighnakara',
                               sources={'kala_convergence': [], 'predicate_generation': [predicate_gen]},
                               produced_rows=0)
+            label = _vacuous_label(len(convergence_rows), conv_generation)
+            logger.warning("ka_vighnakara: %s", label)    # the orchestrator persists no WriterResult.notes (FROZEN contract): also in the run log
             return WriterResult(
                 asset_id='ka_vighnakara', rows_inserted=0,
-                notes='No convergence windows — run ka_sangam first',
+                notes=f'No convergence windows — run ka_sangam first; {label}',
             )
 
         # Pre-fetch natal lagna longitude from chart_facts (for papakartari + combustion)
@@ -306,7 +319,7 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(obs['detail']),
                     f"ka_vighnakara:v2.0:conv={conv_id}",
-                    UNVERIFIED_DEFAULT,
+                    write_generation, UNVERIFIED_DEFAULT,
                 ))
 
         # ── WP-2.1 / F-L10-018: dasha-anchored obstruction reachability ────────
@@ -347,7 +360,7 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     obs['override_score'],
                     json.dumps(detail),
                     f"ka_vighnakara:v2.0:dasha_anchor",
-                    UNVERIFIED_DEFAULT,
+                    write_generation, UNVERIFIED_DEFAULT,
                 ))
 
         if rows:
@@ -357,8 +370,8 @@ class _LegacyKaVighnakaraWriter(WriterBase):
                     f"""INSERT INTO kala_obstruction (
                         chart_id, convergence_id, signal_id,
                         obstruction_type, severity, severity_score, override_score,
-                        obstruction_detail, source_citation{", verification_pass_status" if store_tier else ""}
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})""",
+                        obstruction_detail, source_citation, generation{", verification_pass_status" if store_tier else ""}
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s{", %s" if store_tier else ""})""",
                     rows if store_tier else [row[:-1] for row in rows],
                 )
 
@@ -1067,3 +1080,18 @@ class KaVighnakaraWriter(_LegacyKaVighnakaraWriter):
         # The original ephemeris gate wraps the legacy implementation exactly
         # as before; fixtures compute no sky and claim no Swiss backend.
         return super().run(ctx)
+
+
+def _owned_generation(conn, chart_id: str, candidate) -> str | None:
+    """The `kala_obstruction` partition this build may replace: its candidate generation, or None (the legacy NULL
+    partition) for an ordinary rebuild. A candidate is replaceable only while it is `building` and not the published
+    head: a published or retained generation holds SERVED rows (storage.write_fixture_candidate applies the same rule)."""
+    if candidate is None:
+        return None
+    state = conn.execute('SELECT state FROM kala_layer_candidate WHERE chart_id = %s AND generation = %s AND build_id = %s FOR UPDATE',
+                         (chart_id, candidate.generation, candidate.build_id)).fetchone()
+    head = conn.execute('SELECT generation FROM kala_layer_head WHERE chart_id = %s', (chart_id,)).fetchone()
+    first = lambda row: None if row is None else (tuple(row.values())[0] if isinstance(row, dict) else row[0])
+    if first(state) != 'building' or first(head) == candidate.generation:
+        raise ValueError('only a building candidate that is not the published head may have its obstruction rows replaced')
+    return candidate.generation

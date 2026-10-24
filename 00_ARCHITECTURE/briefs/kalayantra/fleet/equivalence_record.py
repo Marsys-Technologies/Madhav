@@ -48,8 +48,11 @@ PINNED INPUTS (`ky.eq_pinned_inputs/1`, what the repository cannot say; produced
   century_config   {stored_scope, horizon: {start, end}, horizon_basis, final_rules, result_policy, in_build_verify, budgets: {per_window,
                    verifier}, classes: [...], verification_plan: {mode, shard_plan_digest, g6_sampling_rule, seed_rule}}
   runtime          {kind: qualifying_run|dispatch_image|rolling_diagnostic, arch, python, dependency_lock_digest}
+                   an EMULATED qualifying run (SR-T24-AMD64-DOCKER: linux/amd64 container on an arm64 Mac) adds `emulated: true` and `arch_probe` {source: in_container, uname_machine: x86_64,
+                   platform_machine, sys_platform: linux}: the arch is READ inside the container, never asserted from outside; it is refused without the probe and without the emulation
+                   note `provenance.platform_notes.emulation` {emulated: true, layer: rosetta|qemu|undetermined}.  The note lives in E6 (never compared): emulation does not change E4.
   trial_scope      {horizon} (the trial's own; excluded by name)
-  provenance       {branch, image_tag, image_digest, ci_run_ids, dispatch_run_id, manifest_ids, overlay_hashes}
+  provenance       {branch, image_tag, image_digest, ci_run_ids, dispatch_run_id, manifest_ids, overlay_hashes, platform_notes}
 JSON numbers with a fraction or exponent are read as their source TEXT (the decimal string as persisted); a NaN/Infinity is refused.
 
 THE DECISION (§3.4) `ky.equivalence_decision/1` = {trial_record_sha, main_record_sha, per_category, decision: EQUAL|DIFFERS, action}: EQUAL needs E1..E5
@@ -113,7 +116,8 @@ PINNED_KEYS = ("schema", "input_vector", "rules", "inputs", "century_config", "r
 CENTURY_KEYS = ("stored_scope", "horizon", "horizon_basis", "final_rules", "result_policy", "in_build_verify", "budgets", "classes",
                 "verification_plan")
 TRIAL_SCOPE_KEYS = ("test_slice", "trial_scope", "class_subset", "scored_classes", "trial")
-PROVENANCE_KEYS = ("branch", "image_tag", "image_digest", "ci_run_ids", "dispatch_run_id", "manifest_ids", "overlay_hashes")
+PROVENANCE_KEYS = ("branch", "image_tag", "image_digest", "ci_run_ids", "dispatch_run_id", "manifest_ids", "overlay_hashes", "platform_notes")
+EMULATION_LAYERS = ("rosetta", "qemu", "undetermined")
 
 
 class EqrRefusal(RuntimeError):
@@ -519,6 +523,24 @@ def e3_row_keys(sub: dict) -> dict:
     return flat
 
 
+def check_emulation_note(pinned, rt):
+    """SR-T24-AMD64-DOCKER.  A qualifying run that carries `emulated` or `arch_probe` is a container run: (1) `emulated` must be a bool; (2) the arch was READ inside the container —
+    `arch_probe` {source: in_container, uname_machine: x86_64, sys_platform: linux} must agree with `arch` (an arch asserted from outside is refused); (3) when emulated, the emulation is
+    recorded in `provenance.platform_notes.emulation` {emulated: true, layer}.  The note is E6 (never compared), so it can never make a record DIFFER."""
+    if rt.get("kind") != "qualifying_run" or ("emulated" not in rt and "arch_probe" not in rt):
+        return
+    if not isinstance(rt.get("emulated"), bool):
+        raise EqrRefusal("runtime.emulated must be true or false for a container run")
+    probe = rt.get("arch_probe")
+    if (not isinstance(probe, dict) or probe.get("source") != "in_container" or probe.get("uname_machine") != "x86_64"
+            or probe.get("sys_platform") != "linux" or rt.get("arch") != QUALIFYING_ARCH):
+        raise EqrRefusal("runtime.arch must be read inside the container (arch_probe: source in_container, uname_machine x86_64, sys_platform linux): an architecture asserted from outside is refused")
+    if rt["emulated"]:
+        note = (pinned.get("provenance") or {}).get("platform_notes", {}).get("emulation")
+        if not isinstance(note, dict) or note.get("emulated") is not True or note.get("layer") not in EMULATION_LAYERS:
+            raise EqrRefusal(f"an emulated run records the emulation in provenance.platform_notes.emulation {{emulated: true, layer: {'|'.join(EMULATION_LAYERS)}}}")
+
+
 def build_e4(tree, pinned, vec):
     rt = _need(pinned, "runtime")
     kind = rt.get("kind")
@@ -530,6 +552,7 @@ def build_e4(tree, pinned, vec):
         raise Unreadable(f"the qualifying run must be {QUALIFYING_ARCH} (arm64 runs are corroboration), not {rt.get('arch')!r}")
     for k in ("arch", "python", "dependency_lock_digest"):
         _need(rt, k)
+    check_emulation_note(pinned, rt)
     eph = vec["ephemeris"]
     return {"swiss": {"backend": eph["backend"], "swe_version": eph["swe_version"], "library_sha256": eph["library_sha256"], "files": eph["files"]},
             "probe": eph["probe_digest"], "platform": {"vector": eph["platform"], "arch": rt["arch"]}, "python": rt["python"],

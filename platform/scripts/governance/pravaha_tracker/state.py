@@ -32,6 +32,7 @@ import collections
 import datetime as dt
 import json
 import os
+import re
 from pathlib import Path
 
 from . import merged_deployed
@@ -47,6 +48,45 @@ STATUS_ORDER = ["done", "not_applicable", "running", "review", "ready", "waiting
 
 # A7 D-46: only code/artifact items may complete (be *implemented*) while a gate is open.
 D46_KINDS = ("code", "artifact")
+
+_REVIEW_PR = re.compile(r"\bPR #(\d+)")
+
+
+def review_pr(event: dict) -> int | None:
+    """The pull request a `review` item event is about: its `pr` number, else the `PR #N` its detail names."""
+    pr = event.get("pr")
+    if isinstance(pr, int) and not isinstance(pr, bool) and pr > 0:
+        return pr
+    match = _REVIEW_PR.search(str(event.get("detail") or ""))
+    return int(match.group(1)) if match else None
+
+
+def stale_review_prs(events: list[dict]) -> set[int]:
+    """Pull requests named by an item's latest `review` event: the ones whose merge the tracker must look up
+    (SR-AUDIT-BOOKKEEPING). The server asks GitHub about exactly these."""
+    latest: dict[str, dict] = {}
+    for e in events:
+        if e.get("kind") == "item" and not e.get("step"):
+            latest[e.get("item")] = e
+    return {pr for e in latest.values() if e.get("state") == "review" and (pr := review_pr(e)) is not None}
+
+
+def drop_merged_reviews(evs: list[dict], merged_prs) -> list[dict]:
+    """SR-AUDIT-BOOKKEEPING: a trailing `review` event on a PR that has since MERGED is over, so it no longer reads
+    as work in progress; the item reads from the event before it, else from its dependencies. `merged_prs` is the
+    set of PR numbers observed MERGED; None (not observed) leaves every review as written, never assumes a merge."""
+    evs = list(evs)
+    while merged_prs and evs and evs[-1].get("state") == "review" and review_pr(evs[-1]) in merged_prs:
+        evs.pop()
+    return evs
+
+
+def completes_at_merge(item: dict) -> bool:
+    """True when the item is complete once its PR merges: a code item (or one that declares no kind) whose detector
+    reads a merge. Only then is a pre-merge ACCEPTED verdict a real start condition for its dependants; an
+    operation, a packet or a code item measured by a receipt/file still has its own output to produce."""
+    return ((item.get("detector") or {}).get("type") in ("branch_merged", "pr_merged")
+            and item.get("completion_kind") in (None, "code"))
 
 
 def _terminal(item: dict) -> set[str]:
@@ -157,9 +197,10 @@ def recorded_na_steps(item: dict, decisions: dict, outcomes: dict | None = None)
 
 
 def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool = False,
-                decision_outcomes: dict | None = None, derived: dict | None = None) -> dict:
+                decision_outcomes: dict | None = None, derived: dict | None = None,
+                merged_prs=None) -> dict:
     all_evs = ix["items"].get(item["id"], [])
-    evs = [e for e in all_evs if not e.get("step")]
+    evs = drop_merged_reviews([e for e in all_evs if not e.get("step")], merged_prs)
     step_evs = [e for e in all_evs if e.get("step")]
     last = evs[-1] if evs else None
     completed = next((e for e in reversed(evs) if e.get("state") == "done" and
@@ -276,6 +317,24 @@ def item_status(item: dict, ix: dict, det_result: dict | None, *, guarded: bool 
     return out
 
 
+# Statuses a deferred item can read that mean "set aside" rather than "something is wrong": they are not stuck and need no attention.
+# `failed` and `conflict` stay visible: a failed or contradicted deferred item is a fault in the evidence, not a deferral.
+DEFERRED_QUIET = ("blocked", "parked", "unknown")
+
+
+def is_deferred(item: dict, status: str, members: set) -> bool:
+    """Display only (owner direction 2026-10-22, SR-PARKED-OUT-OF-CAMPAIGN): a triage class b item that is outside the acceptance
+    closure and not finished is DEFERRED. It is never counted as done (finished items are excluded by definition, so a deferral
+    can neither create nor hide a completion), never counted in the closure headline, and not listed as stuck or in attention."""
+    return ((item.get("triage") or {}).get("class") == "b" and item.get("id") not in members
+            and status not in ("done", "not_applicable"))
+
+
+def _needs_attention(row: dict) -> bool:
+    return row["status"] in ("blocked", "failed", "parked", "conflict", "unknown") and not (
+        row["deferred"] and row["status"] in DEFERRED_QUIET)
+
+
 def _stream_view(stream: dict, flat: list[dict], ix: dict, activity: dict, now: dt.datetime) -> dict:
     sid = stream["id"]
     actor_keys = [a for a in ix["last_by_actor"] if actor_stream(a) == sid]
@@ -283,9 +342,9 @@ def _stream_view(stream: dict, flat: list[dict], ix: dict, activity: dict, now: 
     hb_last = max(hb, key=lambda e: e["ts"]) if hb else None
     ev_last = max((ix["last_by_actor"][a] for a in actor_keys), key=lambda e: e["ts"], default=None)
     mine = [t for t in flat if t.get("owner") == sid]
-    running = [t for t in mine if t["status"] in ("running", "review")]
-    ready = [t for t in mine if t["status"] == "ready"]
-    blocked = [t for t in mine if t["status"] in ("blocked", "failed", "parked", "conflict")]
+    running = [t for t in mine if t["display_status"] in ("running", "review")]
+    ready = [t for t in mine if t["display_status"] == "ready"]
+    blocked = [t for t in mine if t["status"] in ("blocked", "failed", "parked", "conflict") and _needs_attention(t)]
     hb_age = _age_s(hb_last["ts"], now) if hb_last else None
     stale_after, dead_after = stream.get("stale_after_s", 900), stream.get("dead_after_s", 2700)
     if running:
@@ -307,6 +366,7 @@ def _stream_view(stream: dict, flat: list[dict], ix: dict, activity: dict, now: 
                            "what": ev_last.get("item") or ev_last.get("decision") or ev_last.get("kind"),
                            "state": ev_last.get("state"), "detail": ev_last.get("detail", "")} if ev_last else None,
             "git": git, "running": running, "ready": ready[:8], "blocked": blocked,
+            "built_waiting_on_gate": [t for t in mine if t["built_waiting_on_gate"]],
             "done": done, "total": len(mine), "progress": (done + sum((t["progress"] or 0) for t in mine if t["status"] != "done")) / len(mine) if mine else 0.0}
 
 
@@ -459,7 +519,7 @@ def closure_headline(overall: dict, flat: list[dict], items: dict, closure: dict
         "pct": round(100 * done / total, 1) if total else 0.0,
         "by_status": dict(sorted(counts.items())),
         "missing": sorted(members - set(rows)),
-        "plan_wide": {k: overall[k] for k in ("total", "done", "not_applicable", "pct")},
+        "plan_wide": {k: overall[k] for k in ("total", "done", "not_applicable", "pct", "deferred_count")},
         "deferred": deferred,
         "reconciliation": reconciliation(flat, items, members),
     }
@@ -467,10 +527,13 @@ def closure_headline(overall: dict, flat: list[dict], items: dict, closure: dict
 
 def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: dict,
                    health: dict, activity: dict | None = None, now: dt.datetime | None = None,
-                   closure: dict | None = None, derived_done: dict | None = None) -> dict:
+                   closure: dict | None = None, derived_done: dict | None = None,
+                   merged_prs=None) -> dict:
     """Pure function: everything the dashboard shows. det_results maps item id → detector result dict;
     activity maps stream id → git activity dict; closure (load_closure) scopes the headline (A9 D-51);
-    derived_done maps code item id → merged+deployed proof (merged_deployed.derive, SR-BOLD-07)."""
+    derived_done maps code item id → merged+deployed proof (merged_deployed.derive, SR-BOLD-07); merged_prs is the
+    set of PR numbers observed MERGED (None = not observed), so a `review` event on a merged PR stops reading as
+    work in progress (SR-AUDIT-BOOKKEEPING)."""
     now = now or dt.datetime.now(dt.timezone.utc)
     activity = activity or {}
     ix = index_events(events)
@@ -479,12 +542,18 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     decision_outcomes = model.get("control_plane", {}).get("decision_outcomes")
     derived_done = derived_done or {}
     status = {iid: item_status(it, ix, det_results.get(iid), guarded=guarded,
-                               decision_outcomes=decision_outcomes, derived=derived_done.get(iid))
+                               decision_outcomes=decision_outcomes, derived=derived_done.get(iid),
+                               merged_prs=merged_prs)
               for iid, it in items.items()}
 
     # A final ruling is recorded independently of each consuming item's completion.
     # Seed decision items as waiting so joins/other decisions cannot consume a
     # provisional done state before its original gates have been resolved.
+    # SR-TRACKER-DONE-NEVER-EXPIRES: a done that item_status itself proved (merged+deployed derivation, a guarded done
+    # event, a detector done) is never overridden by the skip / not_applicable propagation below. Joins and decisions
+    # are resolved inside the loop, so they are not in this set.
+    proven_done = {iid for iid, it in items.items()
+                   if status[iid]["status"] == "done" and it.get("done_by") not in ("decision", "join")}
     recorded_decisions = {iid for iid, it in items.items()
                           if it.get("done_by") == "decision" and status[iid]["status"] == "done"}
     for iid in recorded_decisions:
@@ -506,7 +575,10 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             for e in events:
                 if e.get("kind") == "verdict" and e.get("phase", "pre_merge") == "pre_merge" and e.get("item") in items:
                     latest[e["item"]] = e.get("result")
-            merged_accepted |= {iid for iid, res in latest.items() if res == "ACCEPTED"}
+            # SR-AUDIT-BOOKKEEPING: only for a dependency that is complete once its PR merges. A K9-4a operation or a
+            # K9-6 live acceptance has output a pre-merge verdict does not supply, so K9-4b / V-K9 are not ready.
+            merged_accepted |= {iid for iid, res in latest.items()
+                                if res == "ACCEPTED" and completes_at_merge(items[iid])}
     for s_ in status.values():
         s_["activation_pending"] = []
     # Resolve joins, recorded decisions and D-46 activation together until their strict gates stabilise.
@@ -522,7 +594,8 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             s["deps_open_strict"] = strict_open
             if strict_open != start_blockers:
                 s["deps_merged_pending_deploy"] = [d for d in strict_open if d in merged_accepted]
-            if decision_outcomes and s["status"] not in ("done", "not_applicable"):
+            loop_done = it.get("done_by") in ("decision", "join") and s["status"] == "done"
+            if decision_outcomes and iid not in proven_done and not loop_done and s["status"] != "not_applicable":
                 origins = []
                 for decision, needed in it.get("requires_outcome", {}).items():
                     event = decision_status(ix["decisions"].get(decision, []))[1]
@@ -595,9 +668,13 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             and all(dep in items for dep in s["deps_open"])
         )
         s["gate_blockers"] = list(s["deps_open"]) if s["built_waiting_on_gate"] else []
+        # D-39 is an exclusive presentation class. Keep the underlying workflow
+        # status intact for claims, strict dependency checks and guarded completion.
+        s["display_status"] = "built_waiting_on_gate" if s["built_waiting_on_gate"] else s["status"]
 
     # a model that declares its items (relaunch plan v2.7 §6) shows each row's declaration; other models as before
     declared = isinstance(model.get("control_plane", {}).get("declarations"), dict)
+    members = set(closure["closure"]) if closure else set()
     tracks = []
     for tr in model["tracks"]:
         tis = []
@@ -608,6 +685,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
             tis.append({"id": iid, "title": it["title"], "lane": it.get("lane"), "gate": it.get("gate", False),
                         "owner": it.get("owner"), "depends_on": it.get("depends_on", []),
                         "cross_stream": it.get("cross_stream", False), **s,
+                        "deferred": is_deferred(it, s["status"], members),
                         "elapsed_s": _age_s(s["started_at"], now) if s["status"] in ("running", "review") else None})
             if declared:
                 tis[-1].update({key: it.get(key) for key in DECLARATION_KEYS})
@@ -617,7 +695,7 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         tracks.append({**tr, "items": tis, "done": done, "total": n, "progress": (done + partial) / n if n else 0.0})
 
     flat = [t for tr in tracks for t in tr["items"]]
-    counts = collections.Counter(t["status"] for t in flat)
+    counts = collections.Counter(t["display_status"] for t in flat)
     total = len(flat)
     done_w = counts.get("done", 0) + sum((t["progress"] or 0) for t in flat if t["status"] != "done")
 
@@ -635,6 +713,8 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
     # to publish, so until a final outcome is recorded it is marked and is not a question for the native
     retirements = {it["decision"] for it in model["items"] if declared and it.get("done_by") == "decision"
                    and it.get("decision") and (it.get("triage") or {}).get("class") == "retire_decision"}
+    # a retirement decision with no item of its own (the plan item total is not grown for a ruling) carries `retires`
+    retirements |= {d["id"] for d in model["decisions"] if declared and d.get("retires")}
     final_outcomes = (decision_outcomes or {}).get("final", ["approved", "refused"])
     for d in model["decisions"]:
         st, dev = decision_status(ix["decisions"].get(d["id"], []))
@@ -663,18 +743,21 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
                        if it.get("done_by") == "decision" and it.get("decision")}
     for d in decisions:
         d["due"] = d["status"] == "requested" or dec_item_status.get(d["id"]) not in ("waiting",)
+    # a decision whose own item reads not_applicable (its required outcome is refused) is not a question for the native
     pending_native = sorted([d for d in decisions if d["status"] in ("requested", "pending") and d["due"]
-                             and not d.get("staged")],
+                             and not d.get("staged") and dec_item_status.get(d["id"]) != "not_applicable"],
                             key=lambda d: (rank[d["status"]], -sum(1 for x in d["needed_by"] if status.get(x, {}).get("status") in ("ready", "waiting"))))
 
-    overall = {"total": total, "done": counts.get("done", 0),
+    # deferred items are not stuck: the blocked/unknown tallies leave out the set-aside ones and `deferred_count` reports them
+    live = collections.Counter(t["status"] for t in flat if _needs_attention(t) or t["status"] not in DEFERRED_QUIET)
+    overall = {"total": total, "done": counts.get("done", 0), "deferred_count": sum(1 for t in flat if t["deferred"]),
                **d46_headline(flat),
                "built_waiting_on_gate": sum(1 for t in flat if t["built_waiting_on_gate"]),
                "not_applicable": counts.get("not_applicable", 0),
                "running": counts.get("running", 0) + counts.get("review", 0),
                "ready": counts.get("ready", 0), "waiting": counts.get("waiting", 0),
-               "blocked": counts.get("blocked", 0) + counts.get("failed", 0) + counts.get("parked", 0),
-               "unknown": counts.get("unknown", 0) + counts.get("conflict", 0),
+               "blocked": live.get("blocked", 0) + live.get("failed", 0) + live.get("parked", 0),
+               "unknown": live.get("unknown", 0) + live.get("conflict", 0),
                "pct": round(100 * done_w / total, 1) if total else 0.0}
     if closure:
         overall = closure_headline(overall, flat, items, closure)
@@ -686,9 +769,10 @@ def build_snapshot(model: dict, events: list[dict], det_results: dict, metrics: 
         "streams": streams,
         "phases": phases,
         "tracks": tracks,
-        "now": [t for t in flat if t["status"] in ("running", "review")],
-        "next": [t for t in flat if t["status"] == "ready"],
-        "attention": [t for t in flat if t["status"] in ("blocked", "failed", "parked", "conflict", "unknown")],
+        "now": [t for t in flat if t["display_status"] in ("running", "review")],
+        "next": [t for t in flat if t["display_status"] == "ready"],
+        "built_waiting_on_gate": [t for t in flat if t["built_waiting_on_gate"]],
+        "attention": [t for t in flat if _needs_attention(t)],
         "done": sorted([t for t in flat if t["status"] == "done"],
                        key=lambda t: t.get("updated_at") or t.get("checked_at") or "", reverse=True),
         "decisions": decisions,

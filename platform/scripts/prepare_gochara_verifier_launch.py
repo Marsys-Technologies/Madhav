@@ -29,7 +29,7 @@ def document_digest(document):
 def prepare(definition, *, reviewed_commit, image_digest, v2_job=None):
     problems = readback.check(definition, image_repo=IMAGE_REPO, image_digest=image_digest,
         service_account=SERVICE_ACCOUNT, runner_commit=reviewed_commit, secret_name=SECRET_NAME,
-        cloudsql_instance=CLOUDSQL_INSTANCE, timeout_seconds=28800, memory='8Gi', cpu='2', v2_job=v2_job)
+        cloudsql_instance=CLOUDSQL_INSTANCE, timeout_seconds=28800, memory='4Gi', cpu='1', v2_job=v2_job)
     if problems:
         raise Refused('verifier definition refused: ' + '; '.join(problems))
     expected_args = ['--chart', CHART, '--generation', '5.0']

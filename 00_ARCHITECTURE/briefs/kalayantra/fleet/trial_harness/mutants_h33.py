@@ -1,0 +1,26 @@
+"""Planted reversions for the HARNESS-3.3 claims (PRETR-early O-1, O-2) — one per distinct claim (D-OWNER-TESTS-20261016).  (id, claim, file, old, new); `old` must occur exactly once."""
+
+M33 = [
+    ("H33-1", "O-1: a step's stage kind is set from the plan BEFORE it runs, so a raised window step is booked under `window`, not `empty`", "trial_slice.py",
+     '            stage["kind"] = pending[0].key.split(":")[0]', '            pass'),
+    ("H33-1s", "O-1: the defect row carries the failed step's real kind", "trial_slice.py",
+     '"kind": d["step"].split(":")[0], "status"', '"kind": "empty", "status"'),
+    ("H33-2", "O-2: in COLLECT a defect does not close the class — every remaining grain of it runs", "trial_slice.py",
+     '                elif not collect:\n                    dead.add(cls)', '                else:\n                    dead.add(cls)'),
+    ("H33-2e", "O-2: in COLLECT the class is marked failed at the END, with every defect", "trial_slice.py",
+     '    if collect and complete:  ', '    if False and complete:  '),
+    ("H33-3", "O-2: without COLLECT the first defect closes the class (TR behaviour unchanged)", "trial_slice.py",
+     '                elif not collect:\n                    dead.add(cls)', '                elif False:\n                    dead.add(cls)'),
+    ("H33-3u", "O-2: the report names the grains a dead class never ran", "trial_slice.py",
+     'if k not in ran and _grain_class(state, k) in dead]', 'if k not in ran and _grain_class(state, k) in set()]'),
+    ("H33-4", "O-2: TRIAL_COLLECT=1 asks for COLLECT mode", "trial_slice.py",
+     ' or os.environ.get("TRIAL_COLLECT") == "1"', ''),
+    ("H33-4l", "O-2: the launcher passes TRIAL_COLLECT=1 as --collect", "run_trial.sh",
+     'if [ "${TRIAL_COLLECT:-}" = "1" ]; then args+=(--collect); fi', ':'),
+    ("H33-4r", "O-2: the report records the build mode", "trial_slice.py",
+     '"mode": build_mode(state), "defects_by_class"', '"defects_by_class"'),
+    ("H33-5", "O-2: a class-less substep that raises still aborts the build in COLLECT", "trial_slice.py",
+     '                if cls is None:\n                    state["aborted"]', '                if False:\n                    state["aborted"]'),
+    ("H33-6", "a COLLECT run is never a QUALIFYING_CANDIDATE", "trial_eval.py",
+     'g0["status"] == gates.PASS and not collect', 'g0["status"] == gates.PASS'),
+]

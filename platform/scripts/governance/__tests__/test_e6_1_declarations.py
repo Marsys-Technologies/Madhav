@@ -325,11 +325,11 @@ NARR_CITES = {
     "bo_upaya": [(_WR + "bo_upaya.py", 1010, "reason = ("), (_WR + "bo_upaya.py", 1714, '"maraka_contraindication_verdict": maraka_verdict'),
                  (_L + "L2_bodha/query_remedies.ts", 404, "prescription_detail_jsonb"),
                  (_L + "L2_bodha/query_remedies.ts", 564, "marakaVerdictFrom(r['prescription_detail_jsonb'])")],
-    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 686, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 738, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 795, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 872, "'reason': ("),
-                      (_WR + "ka_vighnakara.py", 951, "'reason': ("), (_WR + "ka_vighnakara.py", 1007, "'reason': f\"{planet_str} combust"),
-                      (_WR + "ka_vighnakara.py", 307, "json.dumps(obs['detail'])"),
-                      (_L + "L3_kala/query_obstruction_periods.ts", 80, "obstruction_detail")],
+    "ka_vighnakara": [(_WR + "ka_vighnakara.py", 699, "'reason': f\"Saturn in adversarial transit window"), (_WR + "ka_vighnakara.py", 751, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 808, "'reason': f\"Tithi"), (_WR + "ka_vighnakara.py", 885, "'reason': ("),
+                      (_WR + "ka_vighnakara.py", 964, "'reason': ("), (_WR + "ka_vighnakara.py", 1020, "'reason': f\"{planet_str} combust"),
+                      (_WR + "ka_vighnakara.py", 320, "json.dumps(obs['detail'])"),
+                      (_L + "L3_kala/query_obstruction_periods.ts", 81, "obstruction_detail")],
     "ka_avadhi": [(_WR + "ka_avadhi.py", 198, "'note': f\"AD lord {period['lord_graha']} modulates MD lord {parent}.\""),
                   (_WR + "ka_avadhi.py", 315, "dossier=Jsonb(dossier)"),
                   (_L + "L3_kala/query_dasha_dossier.ts", 94, "dossier, quality")],
@@ -668,7 +668,7 @@ def test_ka_vighnakara_every_detector_reason_is_composed_except_the_two_constant
     roots = [v for d in ast.walk(tree) if isinstance(d, ast.Dict) for k, v in zip(d.keys, d.values)
              if isinstance(k, ast.Constant) and k.value == "detail"]
     composed, constant = _composed_lines(nw.composed_report(tree, roots, ("reason",)))
-    assert composed == [686, 738, 795, 872, 951, 1007] and constant == [833, 908]
+    assert composed == [699, 751, 808, 885, 964, 1020] and constant == [846, 921]
 
 
 def _avadhi_dossier_prose_report(src):

@@ -526,3 +526,49 @@ def test_tracker_unknown_status_is_accepted_and_shown_as_not_yet_measured():
     assert 'unknown' in server.STATUSES
     assert server.GROUPS['unknown'] == 'waiting'
     assert server.LABELS['unknown'] == 'Not yet measured'
+
+
+# ---------------------------------------------------------------------------------------- deferred bucket (owner direction 2026-10-22)
+
+def deferred_state():
+    """The tracker flags a row `deferred: true` (state.is_deferred): triage class b, outside the closure, unfinished."""
+    state = fixture_state()
+    state['tracks'][1]['items'] = state['tracks'][1]['items'] + [
+        {"id": "G", "title": "Deferred by ruling", "status": "parked", "deferred": True},
+        {"id": "H", "title": "Deferred, unmeasured", "status": "unknown", "deferred": True},
+        {"id": "J", "title": "Not deferred, parked", "status": "parked", "deferred": False},
+    ]
+    return state
+
+
+def test_deferred_items_are_their_own_bucket_not_stuck_waiting_or_attention():
+    # Reversion: present_item ignores the `deferred` flag -> G, H land in stuck/waiting and in attention.
+    base = server.compute_summary(fixture_state(), completions(), NOW)["metrics"]
+    s = server.compute_summary(deferred_state(), completions(), NOW)
+    m = s["metrics"]
+    assert m["deferred"] == 2                                              # G (parked) and H (unmeasured)
+    assert (m["stuck"], m["waiting"]) == (base["stuck"] + 1, base["waiting"])   # only J (parked, not deferred) adds to stuck; H is not waiting
+    assert [i["id"] for i in s["deferred"]] == ["G", "H"]
+    assert all(i["group"] == "deferred" and i["status_label"] == "Deferred" for i in s["deferred"])
+    assert "G" not in [i["id"] for i in s["attention"]] and "H" not in [i["id"] for i in s["attention"]]
+    assert "J" in [i["id"] for i in s["attention"]]                        # a parked item that is not deferred is still set aside
+
+
+def test_a_deferred_item_never_counts_as_done_and_moves_no_other_figure():
+    # Reversion: group 'deferred' folded into 'done' (e.g. GROUPS gains the deferred mapping) -> complete/percent move.
+    with_flag, without = deferred_state(), deferred_state()
+    for item in without["tracks"][1]["items"]:
+        item.pop("deferred", None)
+    a = server.compute_summary(with_flag, completions(), NOW)["metrics"]
+    b = server.compute_summary(without, completions(), NOW)["metrics"]
+    for key in ("total", "done", "not_applicable", "complete", "percent", "in_progress", "ready", "completed_24h", "completed_7d",
+                "pace_per_day", "projected_finish"):
+        assert a[key] == b[key], key
+    assert a["deferred"] == 2 and b["deferred"] == 0
+
+
+def test_the_page_names_the_deferred_bucket_and_its_track_count_without_error():
+    state = server.compute_summary(deferred_state(), completions(), NOW)
+    text = evaluate_page('headline()+workstreams()+attention()', state)
+    assert 'Deferred' in text and 'not counted as done' in text
+    assert state['tracks'][1]['counts']['deferred'] == 2

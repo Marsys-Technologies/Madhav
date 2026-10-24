@@ -222,10 +222,21 @@ def plain_text(value, limit=220):
     return text
 
 
+# Deferred items (the tracker's `deferred` row flag: out of this campaign by ruling, not finished) are their own bucket: never
+# counted as done, never "stuck", never in attention. Only the set-aside statuses fold in; a failed or conflicting one stays visible.
+DEFERRED_QUIET = {'blocked', 'parked', 'unknown'}
+
+
+def is_deferred(item):
+    return item.get('deferred') is True and item['status'] in DEFERRED_QUIET
+
+
 def present_item(item):
     status = item['status']
+    deferred = is_deferred(item)
     return {'id': item['id'], 'title': TITLES.get(item['id']) or plain_text(item['title'], 130),
-            'status': status, 'status_label': LABELS[status], 'group': GROUPS[status],
+            'status': status, 'status_label': 'Deferred' if deferred else LABELS[status],
+            'group': 'deferred' if deferred else GROUPS[status],
             'owner': plain_text(item.get('owner'), 80), 'detail': plain_text(item.get('detail')),
             'since': item.get('started_at') or item.get('updated_at'),
             'updated_at': item.get('updated_at'), 'depends_on': item.get('depends_on', [])}
@@ -298,7 +309,9 @@ def compute_summary(state, first_done, now, first_complete=None, effort=None, sc
     metrics = {'total': len(items), 'done': counts['done'], 'not_applicable': counts['not_applicable'],
                'complete': completed, 'percent': round(completed * 100 / len(items), 1) if items else None,
                'in_progress': counts['running'] + counts['review'], 'ready': counts['ready'],
-               'waiting': counts['waiting'] + counts['unknown'], 'stuck': counts['blocked'] + counts['parked'],
+               'waiting': sum(i['status'] in ('waiting', 'unknown') and i['group'] != 'deferred' for i in items),
+               'stuck': sum(i['group'] == 'stuck' for i in items),
+               'deferred': sum(i['group'] == 'deferred' for i in items),
                'completed_24h': None, 'completed_7d': None, 'pace_per_day': None, 'projected_finish': None}
     metrics.update(closures_24h=None, closures_7d=None,
                    agent_hours_24h=effort['agent_hours_24h'] if effort is not None else None,
@@ -308,7 +321,7 @@ def compute_summary(state, first_done, now, first_complete=None, effort=None, sc
     for track in state['tracks']:
         rows = [present_item(i) for i in track['items']]
         grouped = {g: sum(i['group'] == g for i in rows)
-                   for g in ('done', 'in_progress', 'ready', 'waiting', 'stuck')}
+                   for g in ('done', 'in_progress', 'ready', 'waiting', 'stuck', 'deferred')}
         title, plain = TRACK_TEXT.get(track['id'], (plain_text(track['title']), plain_text(track['plain'])))
         tracks.append({'id': track['id'], 'title': title, 'plain': plain, 'total': len(rows),
                        'counts': grouped, 'items': rows,
@@ -368,7 +381,8 @@ def compute_summary(state, first_done, now, first_complete=None, effort=None, sc
     return {'observed_at': state['generated_at'], 'metrics': metrics, 'progress_lines': progress_lines, 'tracks': tracks, 'history': history,
             'working_items': [i for i in items if i['status'] in ('running', 'review')],
             'up_next': [i for i in items if i['status'] == 'ready'],
-            'attention': [i for i in items if i['status'] in ('blocked', 'parked')],
+            'attention': [i for i in items if i['status'] in ('blocked', 'parked') and i['group'] != 'deferred'],
+            'deferred': [i for i in items if i['group'] == 'deferred'],
             'owner_decisions': [{'id': d['id'], 'title': TITLES.get(d['id']) or plain_text(d['title']),
                                  'detail': plain_text(d.get('recommendation')), 'status': d.get('status')}
                                 for d in state['native_queue']],

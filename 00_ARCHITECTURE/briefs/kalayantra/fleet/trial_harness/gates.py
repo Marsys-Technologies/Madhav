@@ -324,6 +324,15 @@ def load_validity(report: dict, profile: dict) -> tuple[bool | None, dict, str |
     return True, obs, None
 
 
+def wall_comparability(report: dict) -> tuple[bool, str | None]:
+    """AMD64-DOCKER (SR-T24-AMD64-DOCKER, SR-G5-LOAD): is this run's wall time one G-5 may use?  A run that carries a `platform` block with `wall_comparable` false (an emulated
+    linux/amd64 container) is not; its seconds are recorded for sizing and nothing else.  A report with no platform block is an ordinary run."""
+    plat = report.get("platform")
+    if isinstance(plat, dict) and plat.get("wall_comparable") is not True:
+        return False, f"the run was executed under emulation ({plat.get('emulation_layer') or 'undetermined'}): its wall time is not comparable and is not used for G-5 (SR-T24-AMD64-DOCKER, SR-G5-LOAD)"
+    return True, None
+
+
 def g5_runtime(report: dict, profile: dict, verification: dict | None) -> dict:
     proj = runtime_projection(report, profile)
     rt = profile.get("runtime") or {}
@@ -333,7 +342,14 @@ def g5_runtime(report: dict, profile: dict, verification: dict | None) -> dict:
     n_trial = proj.get("trial_classes", 0)
     valid, load_obs, load_why = load_validity(report, profile)
     proj["load"] = load_obs
+    wall_ok, wall_why = wall_comparability(report)
     claim = "projected century writer time ≤ limit"
+    if not wall_ok:
+        proj["wall_comparable"] = False
+        checks.append(check(claim, None, {"platform": report.get("platform")}, "a wall time measured on the target runtime", note=f"not evaluated: {wall_why}"))
+        checks.append(check("verifier solver check ≤ per-class budget (projected to the century horizon)", None, "emulated run", (rt.get("verifier_solver_check_s_per_class", 600)),
+                            note=f"not evaluated: {wall_why}"))
+        return gate("G-5", "Runtime", checks, projection=proj)
     if n_trial < n_required:
         # D-10: the formula scales the class-less head by n_century/n_trial; with a slice of the trial it multiplies the head by 26 and reads FAIL for the slice, not the build
         checks.append(check(claim, None, {"trial_classes": n_trial, "required": n_required}, f"a trial of {n_required} classes",
@@ -693,6 +709,10 @@ def g5_effective_wall_checks(report: dict, profile: dict) -> list[dict]:
     claim = "projected effective wall (compute + lock wait) ≤ limit"
     n_required = len(profile.get("trial_classes") or TRIAL_CLASSES_12)
     valid, load_obs, load_why = load_validity(report, profile)
+    wall_ok, wall_why = wall_comparability(report)
+    if not wall_ok:                                                            # AMD64-DOCKER: an emulated run's wall time is not used
+        checks.append(check(claim, None, {"platform": report.get("platform")}, "a wall time measured on the target runtime", note=f"not evaluated: {wall_why}"))
+        return checks
     if n_trial < n_required:
         checks.append(check(claim, None, {"trial_classes": n_trial, "required": n_required}, f"a trial of {n_required} classes",
                             note="not evaluated: the projection is only meaningful for the full trial it was written for"))

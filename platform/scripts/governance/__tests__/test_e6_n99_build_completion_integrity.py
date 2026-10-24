@@ -276,9 +276,14 @@ def test_a_timeout_reads_partial_and_the_census_continues(pg, monkeypatch, tmp_p
          a client kill (CheckTimeout) carries neither;
       3. A LOOSE CLOCK BOUND: the statement ended before the client kill (budget + 30 s) minus a wide margin (< 20 s): this alone would not tell a 6 s
          cancel from a 10 s one, which is exactly why (1) exists.
+    WHY THE CLOCK WAS LOOSE: the planner prices `generate_series(1, 2000000000)` far above jit_above_cost, so on a JIT-enabled server (the CI postgres:16 has
+    jit = on; Homebrew's has no LLVM and never shows it) the statement first spends its time in an LLVM compile, which no statement_timeout can interrupt: the
+    1 s cancel lands only AFTER the compile (6-20 s on a loaded runner). The test therefore sends `jit=off` (PGOPTIONS, test-local; the census runner copies
+    os.environ) so the wall clock measures the cancel and not the compiler; (1)-(2) still decide WHAT was sent and WHO cancelled.
     Mutations (checked by hand): `SET LOCAL statement_timeout` removed -> the statement runs to the client kill (~31 s): (1), (2) and (3) all fail;
     the budget multiplier changed (x10000) -> the server cancels at 10 s: (1) fails; the budget not applied -> same as the first."""
     monkeypatch.setattr(ac, "INTEGRITY_BUDGET_SECS", 1)
+    monkeypatch.setenv("PGOPTIONS", (os.environ.get("PGOPTIONS", "") + " -c jit=off").strip())      # no uninterruptible LLVM compile ahead of the cancel (see above)
     seen, sent = [], []
     real, real_run = ac.psql_read_only, ac._psql_run
 
@@ -416,6 +421,12 @@ def _dollar_blobs(text):
 
 _SELECTISH = None
 
+# Derived-only migrations whose dollar-quoted bodies are replace() search / replacement FRAGMENTS (`c_old_x text := $o$..$o$`), not complete
+# registered queries: a fragment may legitimately open or close a parenthesis the surrounding stored text balances (1406: the count fragment
+# ends in the `)` that closes the stored text's enclosing call). They are never validated as literals; the migration's own md5 pre/post
+# conditions and the stored-SQL DB tests cover the derived result.
+FRAGMENT_ONLY_MIGRATIONS = {"1406_kala_obstruction_generation_scope.sql"}
+
 
 def _migration_literals(migration_dir=None):
     """([(file, sql)], [files that ASSIGN integrity_check_sql but whose literal cannot be resolved statically]). Resolved: every dollar-quoted body
@@ -428,6 +439,9 @@ def _migration_literals(migration_dir=None):
     for f in sorted((migration_dir or HERE.parents[2] / "migrations").glob("*.sql")):
         t = f.read_text(encoding="utf-8", errors="replace")
         if "integrity_check_sql" not in t:
+            continue
+        if f.name in FRAGMENT_ONLY_MIGRATIONS:
+            unresolved.append(f.name)
             continue
         got = [b for b in _dollar_blobs(t) if _SELECTISH.match(b)]
         # A concatenated prefix is not the complete registered query. Its
@@ -489,6 +503,7 @@ DERIVED_ONLY_MIGRATIONS = {"1026_nirmana_l3_ka_service_selftest_clock_timestamp_
                            "1341_k1_2_avadhi_candidate_dossiers.sql",
                            "1397_k8_registry_remainder.sql",
                            "1405_kala_convergence_generation.sql",
+                           "1406_kala_obstruction_generation_scope.sql",
                            "902_nirmana_l1_ga_condition_integrity_check_scope.sql"}
 
 

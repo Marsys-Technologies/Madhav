@@ -19,7 +19,11 @@ def operations():
 
 
 @pytest.fixture
-def db(kala_db_dsn):
+def db(kala_db_dsn, monkeypatch):
+    # SR-K9-ADMITTED-ZERO: these lifecycle suites attest zero_rows for the STAND-IN name ka_sangam over a schema with no layer tables, so publication's zero-row
+    # detector (kala_core/publication.py VACUOUS_ZERO_WRITERS) is switched off here. It has its own oracles: test_k9_zero_row_gate.py (every claim) and the
+    # real-writer end-to-end cases in test_k9_publication_admits_writer_grains.py, which run it against real layer tables.
+    monkeypatch.setattr(importlib.import_module('services.kala_core.publication'), 'VACUOUS_ZERO_WRITERS', ())
     schema = 'k923_' + uuid.uuid4().hex
     with psycopg.connect(kala_db_dsn) as conn:
         conn.execute(sql.SQL('CREATE SCHEMA {}').format(sql.Identifier(schema)))

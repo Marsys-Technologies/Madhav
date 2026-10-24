@@ -18,6 +18,12 @@
 #          TRIAL_IMAGE_DIGEST=sha256:..  provenance of the image the run executed in
 #          TRIAL_LANE_DB=ky_lane_head  the named head-chain database the TRIAL_READY/1 evaluator reads (only ky_lane_* names). The harness itself exports TRIAL_READY_LANE_DSN (that
 #                                      database) and TRIAL_READY_TRIAL_DSN (this run's ky_trial_* database, while it exists) around the trial-ready stage — loopback, no credential.
+#          TRIAL_COLLECT=1            COLLECT mode (diagnostic / PRETR): do not stop a class at its first defect; run every remaining grain, fail the class at the END with the full list (default: stop-at-first, the TR shape)
+#          TRIAL_AMD64_DOCKER=1       AMD64-DOCKER (SR-T24-AMD64-DOCKER): run the 4-class slice of TRIAL_CODE_HEAD (REQUIRED) in a linux/amd64 DOCKER CONTAINER against a PG 15 / locale C sibling container
+#                                     on a private network; <code checkout> is a git repo holding the head (exported with git archive) or an export; TRIAL_CLASSES = a subset of the four;
+#                                     TRIAL_IMAGE_DIGEST = use that local image by digest instead of building; TRIAL_EQ_REPO/TRIAL_EQ_TOOL/TRIAL_EQ_PINNED_EXTRA as above (host side);
+#                                     TRIAL_BUDGET_S bounds the slice (exit 75 = run the SAME command again: the PG container is kept for it).  The report gets `platform` (wall_comparable
+#                                     false under emulation: G-5 reads NOT_EVALUATED) and the record gets runtime.kind qualifying_run, arch read INSIDE the container, the emulation note.
 #          TRIAL_DRY_RUN=1            print the command (one argument per line) and exit 0
 # Portable: bash or zsh can run it (arguments are built as an ARRAY — the v1 launcher relied on zsh-only word handling and lost `--gate-entry`/`--budget-s`).
 # Writes <out_dir>/trial_report.json (+ report.json, state.json, gate_verdict.json for a numerical policy with a baseline).  The throwaway database is dropped at
@@ -27,6 +33,17 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 CHECKOUT="${1:?usage: run_trial.sh <checkout> [out_dir]}"
 OUT="${2:-${JOB_SCRATCH:?no out_dir given and JOB_SCRATCH is not set}/trial_$(date -u +%Y%m%dT%H%M%SZ)}"
 PY="${TRIAL_PYTHON:-/Users/Dev/kalayantra/venv/bin/python}"
+if [ "${TRIAL_AMD64_DOCKER:-}" = "1" ]; then
+  aargs=(amd64-run --head "${TRIAL_CODE_HEAD:?TRIAL_AMD64_DOCKER=1 needs TRIAL_CODE_HEAD (the TR head, 40 hex)}" --repo "$CHECKOUT" --out "$OUT")
+  if [ -n "${TRIAL_CLASSES:-}" ]; then aargs+=(--classes "$TRIAL_CLASSES"); fi
+  if [ -n "${TRIAL_IMAGE_DIGEST:-}" ]; then aargs+=(--image-digest "$TRIAL_IMAGE_DIGEST"); fi
+  if [ -n "${TRIAL_BUDGET_S:-}" ]; then aargs+=(--budget-s "$TRIAL_BUDGET_S"); fi
+  if [ -n "${TRIAL_EQ_REPO:-}" ]; then aargs+=(--eq-repo "$TRIAL_EQ_REPO"); fi
+  if [ -n "${TRIAL_EQ_TOOL:-}" ]; then aargs+=(--eq-tool "$TRIAL_EQ_TOOL"); fi
+  if [ -n "${TRIAL_EQ_PINNED_EXTRA:-}" ]; then aargs+=(--pinned-extra "$TRIAL_EQ_PINNED_EXTRA"); fi
+  if [ "${TRIAL_DRY_RUN:-}" = "1" ]; then printf '%s\n' "$PY" -I -X utf8 "$HERE/trial_slice.py" "${aargs[@]}"; exit 0; fi
+  exec "$PY" -I -X utf8 "$HERE/trial_slice.py" "${aargs[@]}"
+fi
 args=(run --checkout "$CHECKOUT" --result-policy "${TRIAL_POLICY:-window_qualification/1}" --out "$OUT" --label "${TRIAL_LABEL:-trial}"
       --baseline "${TRIAL_BASELINE:-$HERE/baseline_12.json}")
 if [ -n "${TRIAL_BUDGET_S:-}" ]; then args+=(--budget-s "$TRIAL_BUDGET_S"); fi
@@ -52,5 +69,6 @@ if [ -n "${TRIAL_IMAGE_DIGEST:-}" ]; then args+=(--image-digest "$TRIAL_IMAGE_DI
 if [ "${TRIAL_VERIFY:-}" = "1" ]; then args+=(--verify); fi
 if [ "${TRIAL_CROSSCHECK:-}" = "1" ]; then args+=(--crosscheck); fi
 if [ "${TRIAL_KEEP_DB:-}" = "1" ]; then args+=(--keep-db); fi
+if [ "${TRIAL_COLLECT:-}" = "1" ]; then args+=(--collect); fi
 if [ "${TRIAL_DRY_RUN:-}" = "1" ]; then printf '%s\n' "$PY" -I -X utf8 "$HERE/trial_slice.py" "${args[@]}"; exit 0; fi
 exec "$PY" -I -X utf8 "$HERE/trial_slice.py" "${args[@]}"

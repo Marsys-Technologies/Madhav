@@ -206,8 +206,8 @@ def load_suppression(conn, chart, generation, birth):
             for entry in payload.entries:
                 row=dict(entry); row['source_ref']=f"{generation}:moorti:{row['graha']}:{row['t_in']}"
                 moorti.append(row)
-        cur.execute('SELECT * '
-                    'FROM kala_obstruction WHERE chart_id=%s AND generation=%s ORDER BY assertion_id', (chart,generation))
+        cur.execute('SELECT * '  # negative-space ASSERTION rows only: a legacy-detector row (SR-K9-WRITE-SCOPE: ka_vighnakara writes them under the candidate) has no assertion_id
+                    'FROM kala_obstruction WHERE chart_id=%s AND generation=%s AND assertion_id IS NOT NULL ORDER BY assertion_id', (chart,generation))
         negative=cur.fetchall()
     for name,rows in [('vedha',vedha),('moorti',moorti),('negative_space',negative)]:
         if not rows:

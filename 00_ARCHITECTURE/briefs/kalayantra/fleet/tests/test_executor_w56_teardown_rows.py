@@ -1,8 +1,8 @@
 """W5W6-READINESS WP2 (brief 02), the executor side of the two K9 teardown kinds: `orchestrator_rebuild_teardown` and `orchestrator_rebuild_teardown_dryrun` are ENABLED in the committed
 table (shard K9-4b.json; surrogate ruling S-1 may hold them back, in which case this file and that shard are dropped together). The oracles read the committed table as shipped.
 
-  C2  every teardown kind needs a V1 signer (SR-MINIMAL-PROTECTION 2; `executor.mechanical_exempt`: every `*_teardown` is a deletion, never mechanical) and the signer's attestations
-      that a backup was taken and a dry run passed. (Open point, stated not hidden: the executor has no receipt detector for a K9 teardown dry run, unlike `orchestrator_rebuild`'s
+  C2  every teardown kind needs a V1 signer (SR-MINIMAL-PROTECTION 2; `executor.mechanical_exempt`: every `*_teardown` is a deletion, never mechanical) and the signer's attestation
+      that a dry run passed (SR-A12-BACKUP-REMOVAL: no backup attestation: no dump is taken). (Open point, stated not hidden: the executor has no receipt detector for a K9 teardown dry run, unlike `orchestrator_rebuild`'s
       `dry_run_check`; the dry-run-first rule for this kind rests on the signer's attestation. Deletion also stays behind the pack's teardown gate and the database role.)
 """
 import json
@@ -35,7 +35,7 @@ def c2(w):
     assert all(w.table[k]["enabled"] is True for k in TEARDOWN_KINDS)
     kind = "orchestrator_rebuild_teardown"
     assert w.mod.mechanical_exempt(kind) and w.mod.mechanical_exempt("orchestrator_rebuild_teardown_dryrun") is False   # the dry run deletes nothing: it is not a deletion
-    both = {"backup_taken": True, "dry_run_passed": True}
+    both = {"dry_run_passed": True}                                                                                     # SR-A12-BACKUP-REMOVAL: the dry run is the one attestation; none about a backup
     quiet_writer(w, RUN)           # Round A N10: a teardown is admitted only beside a rebuild that ended with no live writer session (test_executor_k9_teardown_writer_gate.py)
     assert w.validate(teardown_request(w, kind, oid="op-td-ok", checks=both)) is None                                    # positive control: a signer's complete acceptance admits it
     req = teardown_request(w, kind, oid="op-td-mech", checks=both)
@@ -43,12 +43,12 @@ def c2(w):
     assert SIGNER_ONLY in w.validate(req)                                                                               # the mechanical route is refused by name
     req.pop("pack_fill")
     assert "acceptance receipt missing" in w.validate(req)                                                              # and no route at all is refused
-    for n, checks in enumerate(({"dry_run_passed": True}, {"backup_taken": True}, {})):
+    for n, checks in enumerate(({"backup_taken": True}, {"dry_run_passed": False}, {})):
         why = w.validate(teardown_request(w, kind, oid=f"op-td-partial-{n}", checks=checks))
         assert why == "required backup/restore/dry-run attestation missing", (checks, why)
 
 
-def test_c2_every_teardown_kind_needs_a_v1_signer_with_the_backup_and_dry_run_attestations(world):
+def test_c2_every_teardown_kind_needs_a_v1_signer_with_the_dry_run_attestation_and_no_backup_one(world):
     c2(world)
 
 

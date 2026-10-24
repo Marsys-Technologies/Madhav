@@ -14,8 +14,8 @@ is the child's stdout alone, in <operation_id>.output.txt, and its stderr alone 
 
 Production approval binds the request (A8 §3.9): ONE verifier lane's acceptance receipt carries the sha256 of the request as
 sorted compact JSON without the fields that may lawfully change after signing — `acceptance_receipt`, `expires_at` and any
-`*_expires_at` lease-expiry field (see request_digest) — plus the attestations the kind needs: `dry_run_passed` for a mutating
-kind and `backup_taken` for a `*_teardown`. It is valid from its timestamp until the request's `expires_at`; there is no age cap.
+`*_expires_at` lease-expiry field (see request_digest) — plus the attestation the kind needs: `dry_run_passed` for a mutating
+kind (SR-A12-BACKUP-REMOVAL: a `*_teardown` no longer needs `backup_taken`; its dry run, exact scope and absence readback stay mandatory). It is valid from its timestamp until the request's `expires_at`; there is no age cap.
 The lease must be the ONLY unexpired ACTIVE row of the shared lease table.
 
 Mechanical acceptance of a production write (OWNER-MINIMAL-PROTECTION-NOW-20261018; SR-MINIMAL-PROTECTION §2): a request with NO `acceptance_receipt` but a
@@ -60,6 +60,21 @@ entry (a name the table does not declare is refused at admission, before any pro
 status, content type, byte length and sha256 of the body — the body itself only for an endpoint declared `store_body: true` and only if it carries no personal data.
 A non-2xx answer, or a record that does not bind this operation, is a FAILED receipt; a 2xx one is accepted mechanically like `readback_sql` (fleet/served_probe.py).
 
+Owner go (OWNER-BUILD-GO-REQUIRED-20261023): "before you start the actual build, take my explicit approval". `century_dispatch` and the production `orchestrator_rebuild`
+(never their genuinely dry `*_dryrun` siblings, which stay free), and (SR-OWNER-GATE-HARDEN) ANY table row whose script / python_module is the century launcher
+(century_launch.py) or the production rebuild entry (publication_admission with `rebuild` / `--force-execute`), whatever its kind is called, are refused at admission AND again
+immediately before execution unless run/ops/owner_go/<operation_id>.json exists and binds THIS request. The owner surrogate writes it, only from the owner's own yes:
+{"schema": "ky.owner_go/2", "operation_id", "kind", "item_id", "request_sha256" (the
+executor's request_digest of the request: the same sha256 an acceptance binds), "reviewed_commit" (the dispatch head), "owner_yes": true, "owner_words" (verbatim),
+"transcript_citation" (session + timestamp, non-empty), "written_by": "madhav-44 (owner surrogate)", "written_at" (timezone-qualified, not in the future), "expires_at" (REQUIRED, ISO-8601 with a timezone: after written_at, at most
+12 hours after it, still in the future when the executor judges it — at admission and again before execution), and ONLY when the owner gave a longer window,
+"owner_span_hours" (a number, then the longest written_at -> expires_at span) with "owner_span_words" (the owner's words, verbatim, non-empty)}. A symlink at the file or at any
+directory below the run root on its path (run/ops, run/ops/owner_go) is refused. A cockpit pages on the refusal reasons `owner_go_missing` (no file) and
+`owner_go_mismatch: <field>` (the file names a different request, or lacks a citation, the yes or the writer, is expired or has no valid expiry (`expires_at`), or sits behind
+a symlink (`directory` / `file`)). Neither a surrogate
+ruling, an earlier approval file (OWNER-CLOUD-RUNS-APPROVED), an environment flag, a lease, an acceptance receipt nor a capability replaces it; deleting the file stops a
+queued build. Trials and dry runs need no go.
+
 Cancel lane (SR-CANCEL-LANE): every production cancel / stall-stop kind (CANCEL_LANE_KINDS, a closed allow-list) runs on its OWN single worker, never on the
 production worker, and never waits for the production fence — a cancel queued behind the very operation it must stop would never run. The lane refuses any
 kind that is not on the list, every one of them is signed-only, and `orchestrator_rebuild_cancel` is admitted only for the run-id of an `orchestrator_rebuild`
@@ -97,6 +112,17 @@ REMOTE_ASYNC_KINDS = frozenset({   # A8 §3.11: work continues remotely after th
     "smalltest_dispatch",
     "verification_job",
 })
+OWNER_GO_KINDS = frozenset({   # OWNER-BUILD-GO-REQUIRED-20261023: the actual build starts only on the owner's explicit yes; the dry-run siblings stay free
+    "century_dispatch",
+    "orchestrator_rebuild",
+})
+OWNER_GO_DIR = OPS / "owner_go"   # run/ops/owner_go/<operation_id>.json, written only by the owner surrogate from the owner's own words
+OWNER_GO_SCHEMA = "ky.owner_go/2"   # /2 (SR-OWNER-GATE-HARDEN) adds the required expires_at
+OWNER_GO_DEFAULT_SPAN_HOURS = 12   # the longest written_at -> expires_at span, unless the file states a longer one the owner gave (owner_span_hours + owner_span_words)
+OWNER_GO_SCRIPT_NAMES = frozenset({"century_launch.py"})   # SR-OWNER-GATE-HARDEN: the century build launcher is gated whatever the row's kind is called
+OWNER_GO_REBUILD_MODULE = "publication_admission"          # ...and so is the production rebuild entry run with one of these tokens (never its `*-dryrun` verbs)
+OWNER_GO_REBUILD_TOKENS = frozenset({"rebuild", "--force-execute"})
+OWNER_GO_WRITER = "madhav-44 (owner surrogate)"
 REFRESH = OPS / "EXECUTOR_REFRESH.json"
 LOOP_TICK_S = 10        # the main loop's idle sleep: the finest grain at which any timed gate below can fire
 CAPS_REFRESH_S = 30     # A10.1 item 6: CAPABILITIES.json is rewritten at least this often (was 300)
@@ -755,6 +781,65 @@ def century_contract_problem(req: dict) -> str | None:
     return None
 
 
+def owner_go_gated(req: dict, op: dict | None) -> bool:
+    """SR-OWNER-GATE-HARDEN: whether the owner's go binds this request. A kind in OWNER_GO_KINDS, OR any table row whose script / python_module is the century build launcher
+    (OWNER_GO_SCRIPT_NAMES), OR whose script / python_module is the production rebuild entry (publication_admission) run with the `rebuild` verb or `--force-execute`
+    (its fixed_args, or a request arg named like it) — whatever the kind is called, a `*_dryrun` name included: a row is dry by what it runs, never by its name."""
+    if req.get("kind") in OWNER_GO_KINDS: return True
+    op = op or {}
+    names = {pathlib.PurePosixPath(str(op.get("script") or "")).name, str(op.get("python_module") or "").rsplit(".", 1)[-1] + ".py"}
+    if names & OWNER_GO_SCRIPT_NAMES: return True
+    if OWNER_GO_REBUILD_MODULE + ".py" in names:
+        tokens = [str(a) for a in op.get("fixed_args", [])] + [f"--{k}" for k in (req.get("args") or {})]
+        return any(t in OWNER_GO_REBUILD_TOKENS for t in tokens)
+    return False
+
+
+def owner_go_problem(req: dict, op: dict | None = None) -> str | None:
+    """OWNER-BUILD-GO-REQUIRED-20261023: the owner's explicit go for the actual build. The century dispatch and the production K9 rebuild (OWNER_GO_KINDS, and any row that runs
+    their scripts: owner_go_gated; never a genuinely dry sibling) are admitted only when run/ops/owner_go/<operation_id>.json exists and binds THIS request: schema, operation_id,
+    kind, item_id, the executor's own request_digest (`request_sha256`) and the dispatch head (`reviewed_commit`) all equal the request's, `owner_yes` is true, `owner_words` and
+    `transcript_citation` (session + timestamp) are non-empty, `written_by` is the owner surrogate, `written_at` is a timezone-qualified time not in the future, and `expires_at`
+    (SR-OWNER-GATE-HARDEN) is a timezone-qualified time still ahead, after written_at and at most OWNER_GO_DEFAULT_SPAN_HOURS after it (or the longer `owner_span_hours` the file
+    states together with the owner's `owner_span_words`). No component of the path below the run root (the file, run/ops/owner_go, run/ops) may be a symlink. Run at the tail of
+    validate, so again immediately before execution (removing the file, or its expiry, stops a queued build). The reasons the cockpit pages on are `owner_go_missing` and
+    `owner_go_mismatch: <field>`. No surrogate ruling, earlier approval file, environment flag or capability substitutes."""
+    if not owner_go_gated(req, op): return None
+    path = OWNER_GO_DIR / f"{req.get('operation_id')}.json"
+    root = RUN if RUN in path.parents else OWNER_GO_DIR.parent
+    directory = path.parent
+    while directory != root and directory != directory.parent:
+        if directory.is_symlink(): return "owner_go_mismatch: directory"
+        directory = directory.parent
+    if not path.exists() and not path.is_symlink(): return "owner_go_missing"
+    try:
+        if path.is_symlink() or not path.is_file(): return "owner_go_mismatch: file"
+        go = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError): return "owner_go_mismatch: file"
+    if not isinstance(go, dict): return "owner_go_mismatch: file"
+    for field, expected in (("schema", OWNER_GO_SCHEMA), ("operation_id", req.get("operation_id")), ("kind", req.get("kind")), ("item_id", req.get("item_id")),
+                            ("request_sha256", request_digest(req)), ("reviewed_commit", req.get("reviewed_commit")), ("written_by", OWNER_GO_WRITER)):
+        if not isinstance(expected, str) or not expected or go.get(field) != expected: return f"owner_go_mismatch: {field}"
+    if go.get("owner_yes") is not True: return "owner_go_mismatch: owner_yes"
+    for field in ("owner_words", "transcript_citation"):
+        if not isinstance(go.get(field), str) or not go[field].strip(): return f"owner_go_mismatch: {field}"
+    now = dt.datetime.now(dt.timezone.utc)
+    try: written = utc_time(go.get("written_at"))
+    except (TypeError, ValueError): return "owner_go_mismatch: written_at"
+    if written > now + dt.timedelta(minutes=5): return "owner_go_mismatch: written_at"
+    try: expires = utc_time(go.get("expires_at")) if isinstance(go.get("expires_at"), str) else None
+    except ValueError: expires = None
+    if expires is None: return "owner_go_mismatch: expires_at"
+    span = OWNER_GO_DEFAULT_SPAN_HOURS
+    if "owner_span_hours" in go:
+        hours = go["owner_span_hours"]
+        if type(hours) not in (int, float) or not 0 < hours <= 8760 or not isinstance(go.get("owner_span_words"), str) or not go["owner_span_words"].strip():
+            return "owner_go_mismatch: owner_span_hours"
+        span = max(span, hours)
+    if expires <= written or expires - written > dt.timedelta(hours=span) or expires <= now: return "owner_go_mismatch: expires_at"
+    return None
+
+
 def measuring_cancel_problem(req: dict) -> str | None:
     """SR-J3-CANCEL-NULL 2(a) admission for a cancel kind (`measuring_cancel`, `century_cancel`, `verification_cancel` and their `*_dryrun` twins), run at the tail of
     validate (so again immediately before execution; the name is the J-3c one, the rule is family-aware since W3W4 verify E1): the target execution is the one the family's dispatch receipt named (measuring_dispatch J-3c, century_dispatch J-4e,
@@ -1161,8 +1246,7 @@ def signer_acceptance_problem(req: dict) -> str | None:
         if not issued <= current < expires: return "approval expired or not yet valid"      # A8 §4: no age cap — valid until the request's own expiry
     except (KeyError, TypeError, ValueError): return "valid approval timestamp and a timezone-qualified request expires_at required"
     if a.get("request_sha256") != request_digest(req): return "approval does not bind the complete request"
-    kind = req["kind"]; required = []                                        # A8 §5: `required_rows` and `restore_verified` are retired as preconditions
-    if kind.endswith("_teardown"): required.append("backup_taken")
+    kind = req["kind"]; required = []                                        # A8 §5: `required_rows` and `restore_verified` are retired as preconditions; SR-A12-BACKUP-REMOVAL: so is `backup_taken` (no dump is taken)
     if kind not in ("backup_snapshot", "backup_restore_verify") and not kind.endswith("_dryrun"): required.append("dry_run_passed")
     if any((a.get("checks") or {}).get(k) is not True for k in required): return "required backup/restore/dry-run attestation missing"
     return None
@@ -1222,6 +1306,7 @@ def validate(req: dict, table: dict, caps: dict, reserved: bool = False) -> str 
         lambda: orchestrator_rebuild_cancel_problem(req),
         lambda: orchestrator_rebuild_dryrun_problem(req, table),
         lambda: orchestrator_rebuild_teardown_problem(req),
+        lambda: owner_go_problem(req, op),
         lambda: scheduler_policy_problem(req),
         lambda: served_probe_problem(req, op),
         lambda: smalltest_policy_problem(req),

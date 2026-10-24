@@ -275,7 +275,7 @@ def test_gochara_empty_plan_still_attests_a_zero_rows_grain_under_the_candidate(
 
 def test_gochara_with_windows_attests_rows_and_every_class_fingerprint_is_in_the_vector(conn, gochara):
     conn.execute("INSERT INTO gochara_resonance_map VALUES (%s, %s, 'career'), (%s, %s, 'health')", (CHART, CAND, CHART, CAND))     # the candidate's own partition (migration 1404)
-    conn.execute("INSERT INTO kala_gochara_windows_v2 VALUES (%s, '2.0')", (CHART,))
+    conn.execute('INSERT INTO kala_gochara_windows_v2 VALUES (%s, %s)', (CHART, CAND))      # the candidate's own partition (SR-K9B-TRIAGE S5): '2.0' is the ordinary rebuild's
     drive(conn, gochara, 'ka_gochara')
     state, vector = grains(conn)[(CAND, 'ka_gochara:inputs')]
     assert state == 'rows'
@@ -284,6 +284,12 @@ def test_gochara_with_windows_attests_rows_and_every_class_fingerprint_is_in_the
     conn.execute("INSERT INTO gochara_resonance_map VALUES (%s, %s, 'wealth')", (CHART, CAND))
     drive(conn, gochara_mod.KaGocharaWriter(), 'ka_gochara')
     assert grains(conn)[(CAND, 'ka_gochara:inputs')][1] != vector
+
+
+def test_gochara_ordinary_2_0_windows_do_not_make_the_candidate_grain_rows(conn, gochara):
+    conn.execute("INSERT INTO kala_gochara_windows_v2 VALUES (%s, '2.0')", (CHART,))      # served partition only: this candidate wrote nothing
+    drive(conn, gochara, 'ka_gochara')
+    assert grains(conn)[(CAND, 'ka_gochara:inputs')][0] == 'zero_rows'
 
 
 def test_gochara_candidate_bound_build_plans_from_its_own_resonance_rows_not_the_served_ones(conn, gochara):

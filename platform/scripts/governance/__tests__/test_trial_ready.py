@@ -490,7 +490,11 @@ HARNESS_DIR = "00_ARCHITECTURE/briefs/kalayantra/fleet/trial_harness"
 # G-4 is scoped to the trial classes, G-5 reads NOT_EVALUATED for a slice or a loaded machine (tests/test_harness_32.py, mutants_h32.py), on top of the G5-CPU harness
 # HARNESS-3.2b (item harness-32b; previous pin f8f71805...fd0e): the closed G-2 set carries no_aspect_rule_defined_at_offset (SR-D6-OBJECTIVE-UNKNOWN), and G-3 stops with
 # near_station_tie_cap_exceeded above 0.5 % of a class's windows, NOT_EVALUATED where the count is unavailable (SR-NEAR-STATION-TIE; tests/test_harness_32b.py)
-HARNESS_V31_DIGEST = "2cf47ce95abd99dbde9a68d141b0612fa035da4309274537f59ab986325c7c29"
+# HARNESS-3.3 (item harness-33; previous pin 2cf47ce9...7c29; PRETR-early O-1, O-2): a raised substep is booked under its own stage kind (never `empty`), and a COLLECT mode (--collect /
+# TRIAL_COLLECT=1) lets a diagnostic run continue past a class's first defect, failing the class at the END with the full list (tests/test_harness_33.py, mutants_h33.py)
+# AMD64-DOCKER (item amd64-docker; previous pin 55c3a775...418d; ruling SR-T24-AMD64-DOCKER): the one amd64 slice runs in a linux/amd64 Docker container (Rosetta/QEMU emulation) against a PG 15 locale-C
+# sibling container; the arch is read by an in-container probe, the emulation is recorded (platform_notes), G-5 reads NOT_EVALUATED for such a run (tests/test_amd64_docker.py, mutants_amd64.py)
+HARNESS_V31_DIGEST = "4822bcf0fcf710a00e004852573e64997ba703870bc9a6a0327015145d74fa7a"
 
 
 def harness_digest(root):

@@ -91,7 +91,7 @@ def test_cli_verify_and_index_bounds():
     bad = subprocess.run([sys.executable, str(HERE.parent / "ci_shard.py"), "--count", "3", "--index", "4"], capture_output=True, text=True)
     assert bad.returncode == 2
     out = subprocess.run([sys.executable, str(HERE.parent / "ci_shard.py"), "--count", "3", "--index", "1"], capture_output=True, text=True).stdout.split()
-    assert out and all(l.startswith("platform/scripts/governance/__tests__/") and (ROOT / l).is_file() for l in out)
+    assert out and all(l.startswith(("platform/scripts/governance/__tests__/", "platform/scripts/governance/pravaha_tracker/tests/")) and (ROOT / l).is_file() for l in out)
 
 
 # ---------------------------------------------------------------- the workflow contract ----------------------------------------------------
@@ -224,6 +224,31 @@ def test_tracker_suite_is_mandatory_in_governance_shards():
     assert "platform/scripts/governance/pravaha_tracker/tests/test_hang_resilience.py" in tracker[0]["run"]
     assert "test_kalayantra_control_plane.py" in tracker[0]["run"]
     assert "platform/scripts/governance/pravaha_tracker/tests/test_step_receipt_binding.py" in tracker[0]["run"]
+
+
+def test_shared_discovery_includes_all_tracker_tests_and_future_files(tmp_path):
+    tracker = HERE.parent / "pravaha_tracker" / "tests"
+    discovered = set(ci_shard.test_files())
+    expected = {p for pattern in ("test_*.py", "*_test.py") for p in tracker.rglob(pattern)}
+    assert tracker / "test_built_waiting_on_gate.py" in discovered
+    assert expected <= discovered
+    # Discovery remains pattern based when another tracker regression is added.
+    root = _files(tmp_path, {"__tests__/test_existing.py": 1,
+                             "pravaha_tracker/tests/test_future.py": 1,
+                             "pravaha_tracker/tests/nested/future_test.py": 1,
+                             "pravaha_tracker/tests/helper.py": 1})
+    assert len(ci_shard.test_files(root / "__tests__")) == 3
+
+
+def test_discovered_tracker_tests_have_runtime_dependencies_in_required_shards(jobs):
+    steps = jobs["governance-tool-tests-shard"]["steps"]
+    run_index, step = next((i, s) for i, s in enumerate(steps)
+                           if 'python -m pytest "${FILES[@]}"' in s.get("run", ""))
+    assert step["env"].get("PYTHONPATH") == "platform/scripts/governance"
+    assert "-p no:cacheprovider" in step["run"]
+    node = [s for s in steps[:run_index] if s.get("uses", "").startswith("actions/setup-node@")]
+    assert len(node) == 1 and node[0]["with"]["node-version"]
+    assert "if" not in node[0], "the feature file can land in any shard"
 
 
 def test_tracker_external_isolation_runs_in_required_governance_shard():

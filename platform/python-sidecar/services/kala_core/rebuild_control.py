@@ -15,7 +15,7 @@ Both operations take ONE argument, the run id, and are scoped to the canonical c
   referenced only by tables keyed by the same ``(chart_id, generation)`` (the vedha writer's ``kala_vedha_gochara_candidate`` and
   its ``kala_vedha_gochara_interval``, migration 1383) is the failed run's OWN candidate output: those referencing rows go first,
   then the dependent (K9 round 3 D8). ``kala_activation_predicates`` carries the candidate generation without a foreign key, so
-  its rows of the run's generation and chart are removed too (round 3 N1), as are the ``kala_f1_*`` rows the resonance writer's candidate path leaves
+  its rows of the run's generation and chart are removed too (round 3 N1), as are the ``kala_f1_*`` rows the resonance writer's candidate path leaves and the ``kala_obstruction`` rows of the run's generation (never the legacy NULL partition or a served generation)
 (W5/W6 N8). ``gochara_resonance_map`` carries the generation (migration 1404): the legacy resonance path writes the run's candidate generation, so the teardown
   removes the run's own partition by ``(chart_id, generation)`` and never a served row, and the result records the rows removed with the writer run id. A published
   candidate, the head generation and a candidate whose retained previous head is gone are refused. The head is read before and
@@ -49,11 +49,18 @@ SETTLED_BEFORE = ('lit', 'service_ok', 'mature', 'dormant')     # runner.py's se
 # Carry (chart_id, generation) with no foreign key to kala_layer_candidate, listed child first (the delete runs in this order). Derived from the write targets of the
 # closed K9 plan's writers (W5/W6 N8): ka_yojaka writes kala_activation_predicates; ka_gochara_resonance's candidate path (relationship_storage.store_projection, migration
 # 1342) writes kala_f1_relationship, whose foreign key points at kala_f1_target_object, both keyed by (chart_id, ayanamsha_id, generation) with generation LIKE 'candidate:%'.
-UNLINKED_CANDIDATE_TABLES = ('kala_activation_predicates', 'kala_f1_relationship', 'kala_f1_target_object', 'gochara_resonance_map', 'kala_convergence')
+# ka_vighnakara's candidate path (SR-K9-WRITE-SCOPE) writes kala_obstruction rows under the candidate generation; the table carries NO foreign key to the candidate and its served rows
+# (the head's generation, the legacy NULL partition) share the table, so the delete is aimed at (chart_id, this run's generation) and can never match a NULL or a served generation.
+# kala_obstruction is listed ahead of kala_convergence (child first).
+# ka_gochara (SR-K9B-TRIAGE S5): a candidate-bound build writes kala_gochara_windows_v2 and its fingerprint ledger kala_gochara_v2_build_state under the candidate's own
+# generation (writers/ka_gochara.py _window_generation); neither table has a foreign key to the candidate and their ordinary rows are generation '2.0', so the delete aimed
+# at (chart_id, this run's generation) can never match them. No table references either of them.
+UNLINKED_CANDIDATE_TABLES = ('kala_activation_predicates', 'kala_f1_relationship', 'kala_f1_target_object', 'gochara_resonance_map', 'kala_gochara_windows_v2',
+                             'kala_gochara_v2_build_state', 'kala_obstruction', 'kala_convergence')
 # gochara_resonance_map (migration 1404): ka_gochara_resonance writes the rows of its bound candidate generation (services/ka_gochara_resonance/writer.py), so the unlinked-table
 # delete above removes exactly that run's partition and never the served one (the retained partition is 'legacy', refused below). The receipt names each plan writer whose rows were
 # removed, with the count and the writer's run id (a candidate is bound to one build run: ``kala_layer_candidate.build_id``), so the removal is an honest report, not a silent pass (N.7.6).
-GENERATION_SCOPED_WRITES = {'ka_gochara_resonance': 'gochara_resonance_map'}
+GENERATION_SCOPED_WRITES = {'ka_gochara_resonance': 'gochara_resonance_map', 'ka_gochara': 'kala_gochara_windows_v2'}
 # kala_convergence (migration 1405, ka_sangam's candidate output) is one of the unlinked tables above, and the only one other tables reference: its foreign keys cascade
 # (kala_darshana, kala_obstruction, phala_anchors) or null (kala_bhavishya), so `cascade_reach` must show that the candidate's rows are referenced by nothing
 # but rows of the candidate itself before they are deleted (K9-WRITE-SCOPE F1).

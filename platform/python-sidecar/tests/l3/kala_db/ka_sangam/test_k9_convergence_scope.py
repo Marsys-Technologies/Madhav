@@ -741,7 +741,7 @@ def test_t1_planted_reversion_unscoped_delete_destroys_served_rows(world, tmp_pa
 
 def test_t2_planted_reversion_teardown_forgets_kala_convergence(world, tmp_path):
     apply(world)
-    module = mutated(rebuild_control, tmp_path, "'gochara_resonance_map', 'kala_convergence')", "'gochara_resonance_map')")
+    module = mutated(rebuild_control, tmp_path, "'kala_obstruction', 'kala_convergence')", "'kala_obstruction')")
     with pytest.raises(AssertionError, match='exactly the candidate'):
         oracle_teardown(world, module)
 
@@ -808,6 +808,7 @@ def test_r1_no_reader_reads_the_base_table():
               'pipeline/orchestrator/writers/ka_vighnakara.py',       # candidate-bound: reads WHERE generation = its candidate's (SR-K9-BIND B1a, oracle B1a)
               'services/kala_core/rebuild_control.py',                 # teardown: reads the candidate's rows to prove what a cascade would reach
               'services/kala_core/writer_grain.py',                    # N2: counts the referencing rows of the legacy partition before an unbound rewrite
+              'services/kala_core/publication.py',                     # the zero-row detector counts the CANDIDATE's own convergence rows (WHERE generation = the candidate: SR-K9-ADMITTED-ZERO)
               'services/kala_core/idempotency/__init__.py'}            # the generation-scoped delete map (never called by the plan)
     offenders = [str(p.relative_to(SIDECAR)) for base in ('pipeline/orchestrator/writers', 'services') for p in (SIDECAR / base).rglob('*.py')
                  if str(p.relative_to(SIDECAR)) not in owners and base_table_reads(p.read_text())]

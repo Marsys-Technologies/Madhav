@@ -8,6 +8,8 @@ SR-K9-PUBLISHABLE have their oracles, each with a planted reversion that fails, 
   C4b the rebuild kind's explicit --force-execute (SR-BOLD-04-WITHDRAWN / U-K9P-01, option B) makes the orchestrator force for
       exactly the delegated run, so no writer is probe-skipped and every one attests its grain; the environment is restored;
       without the flag the probe stays on; the dry run does not take the flag
+  C3b a plan that runs ka_sangam is refused while migration 1405 (kala_convergence.generation, the scoped delete) is not applied: the
+      whole-chart delete would cascade into the served kala_obstruction rows (PR #3864 review, fk_design (b))
   C5  an admitted rebuild delegates once to publication with the exact run and assets, and a refused one never does
   C6  each layer dry-run runs the real operation, rolls it back and reads the rollback back; dry_run_passed is earned
   C7  a refused layer operation is reported REFUSED with dry_run_passed false and changes nothing
@@ -95,6 +97,8 @@ def run(argv, capsys):
 
 def test_admitted_rebuild_delegates_once_with_the_exact_run_and_assets(wired, monkeypatch, capsys):
     registry(wired, {'ga_positions': [], 'ka_gochara': ['ga_positions'], 'ka_sangam': ['ka_gochara']})
+    wired.execute('CREATE TABLE kala_convergence (convergence_id bigserial PRIMARY KEY, generation text)')      # migration 1405 applied
+    wired.commit()
     c = prepare(wired, writers=('ka_gochara', 'ka_sangam'))
     calls = []
     def delegate(argv):
@@ -107,6 +111,16 @@ def test_admitted_rebuild_delegates_once_with_the_exact_run_and_assets(wired, mo
     assert out['status'] == 'BUILD_COMPLETED'
     assert out['admission'] == {'assets': ['ka_gochara', 'ka_sangam'],
                                 'probe_mode': 'delta_skip_gate', 'force_execute': False}
+
+
+def test_a_ka_sangam_rebuild_without_migration_1405_is_refused_and_never_delegates(wired, monkeypatch, capsys):
+    registry(wired, {'ga_positions': [], 'ka_gochara': ['ga_positions'], 'ka_sangam': ['ka_gochara']})
+    wired.execute('CREATE TABLE kala_convergence (convergence_id bigserial PRIMARY KEY)')                    # no generation column
+    wired.commit()
+    c = prepare(wired, writers=('ka_gochara', 'ka_sangam'))
+    monkeypatch.setattr(publication, 'main', lambda argv: pytest.fail('a refused rebuild must not reach publication'))
+    code, out = run(['rebuild', '--run-id', c.build_id, '--assets', 'ka_gochara,ka_sangam'], capsys)
+    assert code == 2 and out['status'] == 'REFUSED' and 'migration 1405' in out['reason']
 
 
 def _recording_delegate(seen, c):
@@ -281,3 +295,26 @@ def test_a_refused_layer_operation_is_reported_refused_and_changes_nothing(wired
     code, out = run(['publish-dryrun', '--run-id', c.build_id, '--generation', 'a', '--expected-head', expected], capsys)
     assert code == 2 and out['status'] == 'REFUSED' and out['dry_run_passed'] is False
     assert snapshot(wired) == before
+
+
+# ---------------------------------------------------------------- C3b: the 1405 prerequisite
+
+
+@pytest.fixture
+def convergence_db(kala_db_dsn):
+    import psycopg
+    with psycopg.connect(kala_db_dsn) as conn:
+        conn.execute('CREATE TABLE kala_convergence (convergence_id bigserial PRIMARY KEY, chart_id uuid NOT NULL)')
+        yield conn
+        conn.rollback()
+
+
+def test_ka_sangam_is_refused_until_the_convergence_table_is_generation_scoped(convergence_db):
+    plan = ['ka_sangam', 'ka_vighnakara']
+    assert 'migration 1405' in ADMISSION.convergence_scope_refusal(convergence_db, plan)
+    convergence_db.execute('ALTER TABLE kala_convergence ADD COLUMN generation text')
+    assert ADMISSION.convergence_scope_refusal(convergence_db, plan) is None
+
+
+def test_a_plan_without_ka_sangam_is_not_held_by_the_convergence_prerequisite(convergence_db):
+    assert ADMISSION.convergence_scope_refusal(convergence_db, ['ka_vighnakara', 'ph_pratikara']) is None

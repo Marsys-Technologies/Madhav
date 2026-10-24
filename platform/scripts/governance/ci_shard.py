@@ -8,7 +8,7 @@ every `ci_job_passed` plan detector that names it keep meaning "the whole govern
   python3 ci_shard.py --index I --count K     print the test files of shard I (1-based), one per line
   python3 ci_shard.py --count K --verify      fail unless the K shards together are exactly every test file, each once
 
-Assignment: every `test_*.py` / `*_test.py` under `__tests__/` (the files pytest would collect), heaviest file first (a size proxy for run
+Assignment: every `test_*.py` / `*_test.py` under `__tests__/` and `pravaha_tracker/tests/` (the files pytest would collect), heaviest file first (a size proxy for run
 time, replaced by measured seconds for the few files in CI_SECONDS; ties by path), each placed on the currently lightest shard (ties: lowest index). Pure function of the tree: no timings, no randomness,
 so a shard's content does not move between runs. A new test file lands in some shard automatically; nothing is listed by hand.
 """
@@ -22,8 +22,16 @@ TESTS = Path(__file__).resolve().parent / "__tests__"
 
 
 def test_files(root: Path = TESTS) -> list[Path]:
-    """Exactly what pytest's default collection takes from the directory (test_*.py, *_test.py), by repo-relative sorted path."""
-    found = {p for pat in ("test_*.py", "*_test.py") for p in root.rglob(pat) if p.is_file()}
+    """Collect governance and sibling tracker tests by pytest's default file patterns.
+
+    Explicit standalone roots still collect only that root; a governance __tests__
+    root also includes its sibling tracker suite so new regressions need no CI edit.
+    """
+    roots = [root]
+    if root.name == "__tests__":
+        roots.append(root.parent / "pravaha_tracker" / "tests")
+    found = {p for folder in roots for pat in ("test_*.py", "*_test.py")
+             for p in folder.rglob(pat) if p.is_file()}
     return sorted(found, key=lambda p: p.as_posix())
 
 

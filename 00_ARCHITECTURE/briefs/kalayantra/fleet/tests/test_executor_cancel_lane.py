@@ -63,6 +63,9 @@ class LaneWorld(CancelWorld):
             req["acceptance_receipt"] = str(acceptance)
             acceptance.write_text(json.dumps({"result": "ACCEPTED", "by": "v1", "operation_id": oid, "reviewed_commit": COMMIT, "ts": self.mod.now(),
                                               "request_sha256": self.mod.request_digest(req), "checks": {"dry_run_passed": True}}))
+            if kind == "orchestrator_rebuild":      # OWNER-BUILD-GO-REQUIRED-20261023: the owner's go for the actual build
+                from owner_go_cases import write_owner_go
+                write_owner_go(self.mod, req)
         return req
 
     def inflight(self, req):

@@ -24,6 +24,7 @@ Gates, in order; ALL are evaluated, the first problem is the primary reason (a r
   pin      reviewed_commit and every source_binding digest equal what main holds now                      -> stale_pin
   sql      readback_sql: main's script accepts the file digest the request cites                          -> sql_sha256_mismatch
   scope    backup_snapshot: a scope is named, the script's parser takes it, its digest is pinned          -> scope_missing | scope_unknown | scope_mismatch
+           (SR-A12-BACKUP-REMOVAL: the gate stays for a template that names a backup_snapshot; its negative controls retired with the dump)
   overlay  production kinds: the executor's generated-overlay generator builds and checks at the commit  -> overlay_absent
 The executor itself does NOT check source_binding pins and admits any reviewed_commit that is an ancestor of main: stale pins are refused by the pin gate here (the
 report shows `executor_alone` for every case so that stays visible).
@@ -423,11 +424,24 @@ class Rehearsal:
     def sign(self, req: dict) -> dict:
         """A verifier lane's acceptance of exactly this request (stand-in; the executor judges it)."""
         acc = {"result": "ACCEPTED", "operation_id": req["operation_id"], "by": "v1", "reviewed_commit": req.get("reviewed_commit"), "ts": self.iso(dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=5)),
-               "request_sha256": self.ex.request_digest(req), "rows": {}, "checks": {"backup_taken": True, "restore_verified": True, "dry_run_passed": True}}
+               "request_sha256": self.ex.request_digest(req), "rows": {}, "checks": {"restore_verified": True, "dry_run_passed": True}}
         path = self.ex.ACC / f"{req['operation_id']}.json"
         path.write_text(json.dumps(acc))
         req["acceptance_receipt"] = str(path)
+        self.stand_in_owner_go(req)
         return req
+
+    def stand_in_owner_go(self, req: dict) -> None:
+        """OWNER-BUILD-GO-REQUIRED-20261023: the executor refuses a century dispatch or a production rebuild without the owner's go file. A rehearsal judges the TEMPLATE, never the owner's yes, so a
+        stand-in go bound to exactly this request is written in the sandbox (the executor's own owner_go_problem judges it). An executor without the gate (an older main) has no OWNER_GO_KINDS: nothing is written."""
+        if req.get("kind") not in getattr(self.ex, "OWNER_GO_KINDS", ()): return
+        self.ex.OWNER_GO_DIR.mkdir(parents=True, exist_ok=True)
+        go = {"schema": self.ex.OWNER_GO_SCHEMA, "operation_id": req["operation_id"], "kind": req["kind"], "item_id": req.get("item_id"), "request_sha256": self.ex.request_digest(req),
+              "reviewed_commit": req.get("reviewed_commit"), "owner_yes": True, "owner_words": "REHEARSAL stand-in: not the owner's words", "transcript_citation": "rehearsal sandbox (no transcript)",
+              "written_by": self.ex.OWNER_GO_WRITER, "written_at": self.iso(dt.datetime.now(dt.timezone.utc)),
+              "expires_at": self.iso(dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=1))}
+        (self.ex.OWNER_GO_DIR / f"{req['operation_id']}.json").write_text(json.dumps(go))
+        self.stand_ins["owner_go"] = "a stand-in owner go (run/ops/owner_go) bound to each gated request by the harness; the owner's real yes is never rehearsed and is still required to dispatch"
 
     def executor_problem(self, req: dict, table: dict) -> str | None:
         try: return self.ex.validate(req, table, self.caps)
@@ -726,18 +740,13 @@ class Rehearsal:
             return {"note": f"reviewed_commit set to main~1 ({parent[:12]}), an ancestor of main"}
         control("stale_pin", "a pin older than main is refused", "stale_pin", "readback_sql", stale)
 
-        def drop_scope(r):
-            uniq("scope")(r); r["args"].pop("scope", None); return {"note": "args.scope removed (the script would default to a full dump)"}
-        control("scope_missing", "a backup names its scope", "scope_missing", "backup_snapshot", drop_scope)
-
-        def typo_scope(r):
-            uniq("scope2")(r); r["args"]["scope"] = WINDOW_SCOPE + "_typo"; return {"note": "args.scope = a scope the script does not offer"}
-        control("scope_unknown", "a scope the script does not offer is refused", "scope_unknown", "backup_snapshot", typo_scope)
-
+        # SR-A12-BACKUP-REMOVAL: the `scope_missing` and `scope_unknown` controls retired with the dump (no window takes a backup_snapshot any more); `scope_problem`
+        # stays for a template that still names one. `overlay_absent` and `reviewed_commit_mismatch` test general admission, so they ride on `orchestrator_rebuild`
+        # (a production kind with a dry-run twin) and still refuse for their own reasons.
         def no_overlay(r):
             return {"note": "the reviewed commit's tree without the overlay generator (platform/python-sidecar/.../provenance_inventory.py)",
                     "overlay_tree": self.overlay_tree(r["reviewed_commit"], remove=OVERLAY_MODULE_REL)}
-        control("overlay_absent", "a production kind needs a buildable generated overlay", "overlay_absent", "backup_snapshot", no_overlay)
+        control("overlay_absent", "a production kind needs a buildable generated overlay", "overlay_absent", "orchestrator_rebuild", no_overlay)
 
         disabled = [k for k in templates if (self.table_asis.get(k) or {}).get("enabled") is False]
         if want("kind_disabled"):
@@ -776,7 +785,7 @@ class Rehearsal:
             path.write_text(json.dumps(acc))
             r["acceptance_receipt"] = str(path)
             return {"note": "the acceptance receipt names main~1, the request names main"}
-        control("reviewed_commit_mismatch", "a signed acceptance must name the request's own reviewed_commit", "reviewed_commit_mismatch", "backup_snapshot", mismatch, sign=False)
+        control("reviewed_commit_mismatch", "a signed acceptance must name the request's own reviewed_commit", "reviewed_commit_mismatch", "orchestrator_rebuild", mismatch, sign=False)
 
         def flip_sql(r):
             uniq("sql")(r)

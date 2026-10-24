@@ -276,12 +276,13 @@ def _close_quietly(conn) -> None:
 def qualification_block(report: dict, image: str | None = None) -> dict:
     """Every run before TRIAL_READY/1 reads true writes {qualifying: false, label: DIAGNOSTIC, head, image, scope, status}; the TR report refuses to cite it."""
     g0 = gates.g0_trial_ready(report)
-    qualifying = g0["status"] == gates.PASS
     build = report.get("build") or {}
+    collect = build.get("mode") == "collect"                                   # HARNESS-3.3: a COLLECT run is a diagnostic by construction, never a qualifying candidate
+    qualifying = g0["status"] == gates.PASS and not collect
     return {"qualifying": qualifying, "label": "QUALIFYING_CANDIDATE" if qualifying else "DIAGNOSTIC", "head": _head(report), "image": image,
             "scope": {"classes": len(_get_classes(report)), "policy": (report.get("config") or {}).get("requested_result_policy"), "horizon": report.get("horizon")},
             "status": "BUILD_DEFECTS" if (build.get("defects") or build.get("aborted")) else "BUILD_COMPLETE",
-            "g0": g0["status"],
+            "g0": g0["status"], "mode": build.get("mode"),
             "rule": "a rolling result is discarded on the next integration advance and is not evidence for G-1..G-8 nor for the amd64 run (A10.1 N3, SR-AMD64-PER-HEAD)"}
 
 
