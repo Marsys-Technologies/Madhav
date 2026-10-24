@@ -187,7 +187,31 @@ def _refusal_cases():
     def pre_1304_shape(w):
         w.conn.execute("UPDATE public.asset_registry SET has_substeps = false, writer_timeout_seconds = 600 WHERE asset_id = %s", (ASSET,))
 
-    return [("published", published, "PUBLISHED"), ("existing_candidate", candidate, "already has output"),
+    # SR-W3-REGISTRY-ROW second order: every depends_on asset lit + fresh, scope-aware (per_chart -> the pinned chart's row, global -> the chart_id-NULL row)
+    def throughput(asset, chart, sql):
+        return lambda w: w.conn.execute(f"UPDATE public.asset_throughput SET {sql} WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s", (asset, chart))
+
+    def freshness(asset, chart, sql):
+        return lambda w: w.conn.execute(f"UPDATE public.asset_freshness SET {sql} WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s", (asset, chart))
+
+    def drop_throughput(asset, chart):
+        return lambda w: w.conn.execute("DELETE FROM public.asset_throughput WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s", (asset, chart))
+
+    def per_chart_only_a_global_row_is_lit(w):
+        """The pinned chart's row of a per_chart upstream is gone and only a chart_id-NULL 'lit' row remains: it must NOT satisfy a per_chart upstream."""
+        w.conn.execute("DELETE FROM public.asset_throughput WHERE asset_id = 'ga_positions'")
+        w.conn.execute("INSERT INTO public.asset_throughput (chart_id, asset_id, state) VALUES (NULL, 'ga_positions', 'lit')")
+
+    dependency_cases = [
+        ("per_chart_dormant", throughput("ga_positions", CHART_ID, "state = 'dormant'"), r"ga_positions \(per_chart, .*\) is dormant, not lit"),
+        ("per_chart_stale", freshness("ga_dashas", CHART_ID, "freshness_state = 'stale'"), r"ga_dashas \(per_chart, .*\) is lit but its freshness is stale"),
+        ("global_dormant", throughput("bg_transit_rules", None, "state = 'dormant'"), r"bg_transit_rules \(global, .*\) is dormant, not lit"),
+        ("global_stale", freshness("bg_dignity_reference", None, "freshness_state = 'stale'"), r"bg_dignity_reference \(global, .*\) is lit but its freshness is stale"),
+        ("global_row_missing", drop_throughput("bg_transit_rules", None), r"bg_transit_rules \(global, .*\) is absent, not lit"),
+        ("per_chart_row_missing", drop_throughput("ga_positions", CHART_ID), r"ga_positions \(per_chart, .*\) is absent, not lit"),
+        ("per_chart_satisfied_only_by_a_global_row", per_chart_only_a_global_row_is_lit, r"ga_positions \(per_chart, .*\) is absent, not lit"),
+    ]
+    return dependency_cases + [("published", published, "PUBLISHED"), ("existing_candidate", candidate, "already has output"),
             ("registry_active", registry_active, "is_active"), ("probe_green_shortcut", probe_green_shortcut, "integrity_check_sql|rebuild_on_probe_fail"),
             ("receipt_exists", receipt, "receipts of the asset|provenance receipt"), ("dependent_asset", dependent, "nothing may depend"),
             ("active_run", active_run, "already active"), ("pre_1304_shape", pre_1304_shape, "has_substeps|writer_timeout_seconds")]

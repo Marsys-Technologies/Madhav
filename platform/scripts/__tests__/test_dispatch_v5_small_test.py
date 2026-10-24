@@ -35,6 +35,7 @@ def _synthetic_dsn(host: str, database: str) -> str:
 
 
 import dispatch_v5_small_test_job as dispatch  # noqa: E402
+import registry_row_migrations_support as REG  # noqa: E402
 
 
 import datetime as _dt
@@ -166,7 +167,7 @@ def test_the_dispatch_calls_the_writers_own_validator(monkeypatch):
 
 
 def test_manifest_carries_the_slice_marker_and_digests_it_and_the_registry_dependencies():
-    candidate = {"asset_id": "ka_gochara_v5", "scope": "per_chart", "depends_on": ["ga_positions", "ga_dashas"],
+    candidate = {"asset_id": "ka_gochara_v5", "scope": "per_chart", "depends_on": list(dispatch.EXPECTED_REGISTRY_ROW["depends_on"]),
                  "natural_key_partition": None, "has_cowriters": False}
     manifest, digest = dispatch.build_small_test_manifest(candidate=candidate, slice_marker=MARKER)
     assert manifest["version"] == "nirmana-run-manifest/v1"
@@ -182,8 +183,22 @@ def test_manifest_carries_the_slice_marker_and_digests_it_and_the_registry_depen
 
 def test_expected_registry_row_is_the_1304_values_with_the_1395_timeout():
     e = dispatch.EXPECTED_REGISTRY_ROW
-    assert (e["has_substeps"], e["writer_timeout_seconds"], e["depends_on"], e["target_table"], e["is_active"]) == (
-        True, 72000, ["ga_positions", "ga_dashas"], "ka_gochara_eval_window", False)
+    assert (e["has_substeps"], e["writer_timeout_seconds"], e["target_table"], e["is_active"]) == (
+        True, 72000, "ka_gochara_eval_window", False)
+
+
+def test_expected_depends_on_is_what_migrations_1304_1392_1403_leave_in_the_registry():
+    """SR-W3-REGISTRY-ROW: the array is DERIVED from main's own registry migrations (1304 pair -> 1392 K8 registry truth -> 1403 SR-K8-EDGE-1403), in the
+    stored order, never typed here: a later registry migration fails THIS test, not the production dispatch/teardown."""
+    derived = REG.derive_depends_on()
+    assert dispatch.EXPECTED_REGISTRY_ROW["depends_on"] == derived
+    assert derived == ["ga_positions", "ga_dashas", "bg_transit_rules", "bg_dignity_reference"]     # the receipt J-4e.predispatch-20261018T111555Z-a2 reading
+    assert REG.depends_on_1304((REG.MIGRATIONS / REG.CHAIN[0]).read_text(encoding="utf-8")) == ["ga_positions", "ga_dashas"]   # the chain starts at 1304's pair
+
+
+def test_no_other_migration_writes_ka_gochara_v5_depends_on():
+    """A registry migration numbered above 1304 outside the 1304 -> 1392 -> 1403 chain would change the DB row without changing the expected array."""
+    assert REG.unknown_depends_on_writers() == [], "extend registry_row_migrations_support.derive_depends_on with the new migration"
 
 
 import re as _re  # noqa: E402
@@ -229,9 +244,11 @@ def test_the_1304_parity_covers_every_admission_field_when_the_migration_is_in_t
     landed = parse_1304(MIGRATION_1304.read_text(encoding="utf-8"))
     expected = dispatch.EXPECTED_REGISTRY_ROW
     assert REQUIRED_PARITY_FIELDS <= set(landed)
-    for field in REQUIRED_PARITY_FIELDS - {"writer_timeout_seconds"}:
+    for field in REQUIRED_PARITY_FIELDS - {"writer_timeout_seconds", "depends_on"}:
         assert landed[field] is not None or field in ("health_probe", "integrity_check_sql", "estimated_seconds"), f"{field}: not found in 1304"
         assert expected[field] == landed[field], f"{field}: the dispatch expects {expected[field]!r}, migration 1304 lands/checks {landed[field]!r}"
+    # depends_on: 1304 landed the pair; 1392 and 1403 changed it (test_expected_depends_on_is_what_migrations_1304_1392_1403_leave_in_the_registry)
+    assert landed["depends_on"] == ["ga_positions", "ga_dashas"] and expected["depends_on"] == REG.derive_depends_on()
     # writer_timeout_seconds: 1304 landed 28800, migration 1395 (J-3c cap, SR-J3-CAP-LIVE) raised it; the deployed row, which the dispatch validates, holds 1395's value.
     assert landed["writer_timeout_seconds"] == 28800, "1304 changed: the 1395 guard (prior value exactly 28800) must be re-derived"
     m1395 = (REPO / "platform/migrations/1395_ka_gochara_v5_writer_timeout_72000.sql").read_text(encoding="utf-8")
@@ -274,11 +291,19 @@ def test_the_1304_parser_reads_every_field_from_the_migration_text():
 
 # ── recording fake psycopg ────────────────────────────────────────────────────
 
+PRODUCTION_UPSTREAMS = {
+    "ga_positions": ("per_chart", ["lit"], ["fresh"]),
+    "ga_dashas": ("per_chart", ["lit"], ["fresh"]),
+    "bg_transit_rules": ("global", ["lit"], ["fresh"]),
+    "bg_dignity_reference": ("global", ["lit"], ["fresh"]),
+}
+
 class _Harness:
     def __init__(self, *, dependents=None, registry_row=None, row_missing=False, commit_error=None, rollback_error=None,
                  fail_on=None, published=None, seal=None, authority_generation=None, catalog_status="CURRENT", receipts=0,
                  existing_runs=None, output_rows=0, manifest=None, snapshot=None, inventory_mismatch=0, evidence=None,
-                 run_manifests=None, lock_error=None, active_runs=None, created_at=None, list_runs=None, close_error=None):
+                 run_manifests=None, lock_error=None, active_runs=None, created_at=None, list_runs=None, close_error=None,
+                 upstreams=None):
         self.statements: list[str] = []
         self.params: list[tuple] = []
         self.commits: list[int] = []
@@ -297,6 +322,9 @@ class _Harness:
         self.created_at = created_at or STORED_CREATED_AT
         self.list_runs = list_runs
         self.close_error = close_error
+        # what the readiness read returns per depends_on asset: (registry scope, throughput states, freshness states). Default = production,
+        # measured 2026-10-24 (receipt J-4e.depends-on-state-20261024T1325Z-a2): per-chart ganita upstreams and global L0 upstreams, all lit + fresh.
+        self.upstreams = dict(PRODUCTION_UPSTREAMS) if upstreams is None else upstreams
         harness = self
 
         class FakeCur:
@@ -304,6 +332,7 @@ class _Harness:
                 harness.statements.append(sql)
                 harness.params.append(params)
                 self._last = " ".join(sql.split())
+                self._params = params
                 if harness.lock_error and "ka_gochara_lock_chart" in sql:
                     raise harness.lock_error
                 if harness.fail_on and harness.fail_on in sql:
@@ -311,6 +340,12 @@ class _Harness:
 
             def fetchall(self):
                 s = self._last
+                if "FROM unnest(%s::text[]) WITH ORDINALITY" in s:
+                    chart_id, _, depends_on = self._params
+                    assert chart_id == CHART_ID
+                    return [{"asset_id": a, "scope": harness.upstreams.get(a, (None, [], []))[0],
+                             "states": harness.upstreams.get(a, (None, [], []))[1] or None,
+                             "freshness": harness.upstreams.get(a, (None, [], []))[2] or None} for a in depends_on]
                 if "ANY(depends_on)" in s:
                     return harness.dependents
                 if s.startswith("SELECT id, state FROM build_runs WHERE chart_id = %s AND state IN"):
@@ -344,7 +379,7 @@ class _Harness:
                 if "has_cowriters" in s:
                     return {"asset_id": "ka_gochara_v5", "layer": "kala",
                             "scope": "per_chart", "asset_kind": "data",
-                            "depends_on": ["ga_positions", "ga_dashas"], "natural_key_partition": None,
+                            "depends_on": list(dispatch.EXPECTED_REGISTRY_ROW["depends_on"]), "natural_key_partition": None,
                             "has_cowriters": False}
                 if "count(*) AS n FROM asset_provenance_receipts" in s:
                     return {"n": harness.receipts}
@@ -501,6 +536,43 @@ def test_a_row_not_in_the_1304_shape_refuses(capsys, field, bad):
         _run_main(h, BASE_ARGV, capsys)
     assert not h.commits
     assert not any("INSERT INTO build_runs" in s for s in h.statements)
+
+
+# ── SR-W3-REGISTRY-ROW second order: every depends_on asset must be lit AND fresh (scope-aware) ──────────────────────────────
+
+def test_todays_production_shape_admits_and_the_readiness_read_covers_every_depends_on_asset(capsys):
+    """Production 2026-10-24: ga_positions/ga_dashas per_chart lit+fresh for the canonical chart, bg_transit_rules/bg_dignity_reference global lit+fresh."""
+    h = _Harness()
+    out = _run_main(h, BASE_ARGV, capsys)
+    assert "REFUSAL" not in out.err
+    reads = [p for sql, p in zip(h.statements, h.params) if "WITH ORDINALITY" in sql]
+    assert reads == [(CHART_ID, CHART_ID, dispatch.EXPECTED_REGISTRY_ROW["depends_on"])]       # ALL four, once, in the stored order
+
+
+@pytest.mark.parametrize("asset, change, reason", [
+    ("ga_positions", ("per_chart", ["dormant"], ["fresh"]), r"ga_positions \(per_chart, chart .*\) is dormant, not lit"),
+    ("ga_dashas", ("per_chart", ["lit"], ["stale"]), r"ga_dashas \(per_chart, chart .*\) is lit but its freshness is stale, not fresh"),
+    ("bg_transit_rules", ("global", ["dormant"], ["fresh"]), r"bg_transit_rules \(global, the global \(chart-less\) row\) is dormant, not lit"),
+    ("bg_dignity_reference", ("global", ["lit"], ["stale"]), r"bg_dignity_reference \(global, .*\) is lit but its freshness is stale, not fresh"),
+    ("bg_transit_rules", ("global", [], []), r"bg_transit_rules \(global, .*\) is absent, not lit"),
+    ("ga_positions", ("per_chart", [], []), r"ga_positions \(per_chart, chart .*\) is absent, not lit"),
+    ("ga_dashas", ("per_chart", ["lit"], []), r"ga_dashas \(per_chart, chart .*\) is lit but its freshness is absent, not fresh"),
+    ("bg_dignity_reference", (None, [], []), r"bg_dignity_reference has no usable registry scope"),
+])
+def test_a_dormant_stale_or_missing_upstream_refuses_with_a_named_reason_and_stages_nothing(capsys, asset, change, reason):
+    h = _Harness(upstreams=dict(PRODUCTION_UPSTREAMS, **{asset: change}))
+    with pytest.raises(dispatch.shared.Refused, match=reason) as exc:
+        _run_main(h, BASE_ARGV, capsys)
+    assert "an upstream the registry row depends on is not lit and fresh" in str(exc.value)
+    assert not h.commits and not any("INSERT INTO build_runs" in s or "INSERT INTO asset_throughput" in s for s in h.statements)
+
+
+def test_the_readiness_rule_is_stated_in_the_code_and_the_teardown_carries_no_such_check():
+    import inspect
+    doc = inspect.getdoc(dispatch._check_dependencies_ready)
+    assert "per_chart" in doc and "global" in doc and "chart_id-NULL" in doc and "teardown has no such check" in doc
+    import teardown_v5_small_test_job as t
+    assert not hasattr(t, "_check_dependencies_ready") and "lit/fresh" in Path(t.__file__).read_text(encoding="utf-8").split("MANIFEST_TABLE")[0]
 
 
 def test_the_pre_1304_row_is_refused(capsys):
