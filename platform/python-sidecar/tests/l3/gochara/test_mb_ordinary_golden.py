@@ -713,4 +713,10 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # (qualification.certificate.sliver_pieces_excluded) (789430e0... -> b94365dd...). Window-stage modules only: geometry (77cde807...) and evaluation (16c4a524...) are unchanged. Re-derived
     # by script from the final tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is
     # re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry P1-SLIVER-D2.
+    # Window re-pinned after the TR diagnostic 20261023T1655ZT (TR2 defects A, B): verification_job (A: the geometry-stage near-miss reconciliation excludes exactly the
+    # disclosed identity-domain tails), window_cert_check and numerical_window_gate (B: U_CERT is INCONCLUSIVE, not DISAGREEMENT) move the window stage (b94365dd... ->
+    # e38160c1...); geometry and evaluation unchanged; re-derived by the same script; EQUIVALENCE_RECORD_CHANGELOG.json entry TR2-DEFECTS-AB.
+    # Window re-pinned a SECOND time (SR-TR3-SECOND-REPIN) after final TR #1 20261023T2010ZF (R-6 cap): window_solver_check (TR3 defect E: a certified-constant stretch of a
+    # max-min piece is one plateau; U_CERT: bisection below the 1 ms floor) and window_verifier (U_CERT: the per-window deep-split allowance counter) move the window stage
+    # (e38160c1... -> 25c5badb...); geometry and evaluation unchanged; re-derived by the same script; EQUIVALENCE_RECORD_CHANGELOG.json entry TR3-DEFECT-E-UCERT.
     assert got["implementation"]["window"] == "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"

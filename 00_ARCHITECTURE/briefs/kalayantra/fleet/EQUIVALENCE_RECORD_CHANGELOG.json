@@ -579,11 +579,12 @@
    "part": "implementation.window (golden pin) + century_contract.json image.writer_source_digest",
    "base_commit": "e01557e44",
    "derived_at_head": "287093002",
-   "statement": "THE SECOND RE-PIN (SR-TR3-SECOND-REPIN), after final TR #1 20261023T2010ZF (12/12 VERIFIED, 0 DISAGREE, NO_DISPATCH on the R-6 cap: 31 of 4509 windows demoted; 28 verifier_budget_exhausted on P4, 2 solver_certificate_incomplete, 1 tie_ambiguous). Defect E (od1-tr3-p4budget 08c6f899e + 94ae4548e, reviewed ACCEPTED in round 2): the verifier's tie scan takes a certified-constant stretch of a max-min piece as one plateau (_flat: reduce(member minima) <= F <= reduce(member maxima) on a piece where every member is monotone; agreement within the existing PLATEAU_EPS; P4 only; never inside a station zone); the bound, budget and every tolerance unchanged. U_CERT (od1-tr2-ucert-subdiv 0e636104e + 0fe92f427, ACCEPTED): the verifier bisects below the 1 ms floor to 1e-5 s within a 2000-bisection allowance before raising U_CERT, with a per-window allowance counter. Both are verifier-only window-stage changes (window_solver_check); geometry and evaluation unchanged.",
+   "statement": "THE SECOND RE-PIN (SR-TR3-SECOND-REPIN), after final TR #1 20261023T2010ZF (12/12 VERIFIED, 0 DISAGREE, NO_DISPATCH on the R-6 cap: 31 of 4509 windows demoted; 28 verifier_budget_exhausted on P4, 2 solver_certificate_incomplete, 1 tie_ambiguous). Defect E (od1-tr3-p4budget 08c6f899e + 94ae4548e, reviewed ACCEPTED in round 2): the verifier's tie scan takes a certified-constant stretch of a max-min piece as one plateau (_flat: reduce(member minima) <= F <= reduce(member maxima) on a piece where every member is monotone; agreement within the existing PLATEAU_EPS; P4 only; never inside a station zone); the bound, budget and every tolerance unchanged. U_CERT (od1-tr2-ucert-subdiv 0e636104e + 0fe92f427, ACCEPTED): the verifier bisects below the 1 ms floor to 1e-5 s within a 2000-bisection allowance before raising U_CERT, with a per-window allowance counter. Both are verifier-only window-stage changes: window_solver_check (E and U_CERT) and window_verifier (U_CERT, 0fe92f427: the per-window deep-split allowance counter carried in the re-derivation output); geometry and evaluation unchanged. (Record corrected after review X-20261024T014608Z-review-repin3 under SR-RECORD-ONLY-DELTA: the first version named window_solver_check only.)",
    "cause": {
     "commit": "287093002",
     "modules": [
-     "window_solver_check"
+     "window_solver_check",
+    "window_verifier"
     ]
    },
    "implementation_digests": {
