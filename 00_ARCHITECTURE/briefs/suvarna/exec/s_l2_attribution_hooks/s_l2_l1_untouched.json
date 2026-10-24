@@ -1,0 +1,33 @@
+{
+  "lane": "s_l2_l1_untouched",
+  "ruling": "S-L2 L1 non-regression",
+  "pr": "suvarna/land/TI-s-l2-prep-001",
+  "description": "S-L2 rebuilds only bo_* (L2 Bodha) assets, which read L1 and never write it (CLAUDE.md B.1, N.5; migration 1036 admits L2 writes only from a real producer run). The L1 rows the detector reads (chart_facts, chart_divisionals, chart_dashas, panchanga_daily) must therefore be byte-for-byte what S-L1 left. Compared against a snapshot taken at S-L1 CLOSE (not the pre-S-L1 snapshot), every entry below is an explicit zero claim; any change at all in any of the four tables is a failure, because the entries here only DECLARE zero and every other category is undeclared. A tripwire, not an attribution: if SS decides that any L1 re-run rides the S-L2 window, this file is replaced by that lane's own hook, never widened.",
+  "may_change": [
+    {
+      "table": "chart_facts",
+      "categories": ["graha_position"],
+      "expected_count": {"exact": 0},
+      "note": "S-L2 writes no chart_facts row. Source: bo_* writers' write sets (no INSERT/UPDATE/DELETE on chart_facts), L2_WRITES_MAP; any change in ANY chart_facts category is UNDECLARED_CHANGE regardless of this entry."
+    },
+    {
+      "table": "chart_divisionals",
+      "categories": ["varga_position"],
+      "expected_count": {"exact": 0},
+      "note": "S-L2 writes no chart_divisionals row. chart_divisionals.id stays the S-L1 value, which is what the rebuilt L2 signals embed (S_L1_BETWEEN_STATE section 10, I-20). Source: write sets; any change in ANY category is UNDECLARED_CHANGE."
+    },
+    {
+      "table": "chart_dashas",
+      "categories": ["vimshottari"],
+      "change_types": ["appeared", "disappeared"],
+      "expected_count": {"exact": 0},
+      "note": "S-L2 writes no chart_dashas row; a start shift of any system is DASHA_SHIFT_UNDECLARED because no dasha_shift entry exists in this lane. Source: write sets."
+    },
+    {
+      "table": "panchanga_daily",
+      "categories": ["tithi_id"],
+      "expected_count": {"exact": 0},
+      "note": "S-L2 writes no panchanga_daily row (global table, not a bo_* output). Source: write sets."
+    }
+  ]
+}
