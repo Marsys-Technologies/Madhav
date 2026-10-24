@@ -1564,6 +1564,14 @@ jobs:
             echo "revision=amjis-web-$suffix"
           } >> "$GITHUB_OUTPUT"
 
+      # A cancelled run never reaches "Remove web candidate tag", and a tagged
+      # revision keeps a min-instance warm indefinitely. Deploys on main are
+      # serialized, so any other probe-* tag is stale. Never fails the deploy.
+      - name: Sweep stale web candidate tags
+        env:
+          KEEP_TAG: ${{ steps.web-candidate.outputs.tag }}
+        run: python3 platform/scripts/ci/sweep_stale_candidate_tags.py --service amjis-web --keep "$KEEP_TAG"
+
       - name: Deploy web to Cloud Run (no traffic)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
@@ -1862,6 +1870,12 @@ jobs:
             echo "revision=amjis-sidecar-$suffix"
           } >> "$GITHUB_OUTPUT"
 
+      # See "Sweep stale web candidate tags".
+      - name: Sweep stale sidecar candidate tags
+        env:
+          KEEP_TAG: ${{ steps.sidecar-candidate.outputs.tag }}
+        run: python3 platform/scripts/ci/sweep_stale_candidate_tags.py --service amjis-sidecar --keep "$KEEP_TAG"
+
       - name: Deploy sidecar candidate to Cloud Run (zero traffic)
         id: deploy-sidecar
         uses: google-github-actions/deploy-cloudrun@v2
@@ -2113,6 +2127,12 @@ jobs:
             echo "tag=$suffix"
             echo "revision=amjis-mcp-$suffix"
           } >> "$GITHUB_OUTPUT"
+
+      # See "Sweep stale web candidate tags".
+      - name: Sweep stale MCP candidate tags
+        env:
+          KEEP_TAG: ${{ steps.mcp-candidate.outputs.tag }}
+        run: python3 platform/scripts/ci/sweep_stale_candidate_tags.py --service amjis-mcp --keep "$KEEP_TAG"
 
       - name: Deploy MCP to Cloud Run (IAM-gated, least-priv SA)
         id: deploy
