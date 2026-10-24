@@ -713,4 +713,4 @@ def test_the_ordinary_manifest_vector_equals_mains_in_every_component_except_the
     # (qualification.certificate.sliver_pieces_excluded) (789430e0... -> b94365dd...). Window-stage modules only: geometry (77cde807...) and evaluation (16c4a524...) are unchanged. Re-derived
     # by script from the final tree's real bytes with input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) (equal to input_vector.implementation_digests()); no golden component is
     # re-captured. EQUIVALENCE_RECORD_CHANGELOG.json entry P1-SLIVER-D2.
-    assert got["implementation"]["window"] == "e38160c13a39ac3223dc52b928f2a7c73e4dd9b821e57fb0ef2c86a1cd8dd1e1"
+    assert got["implementation"]["window"] == "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"

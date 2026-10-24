@@ -567,6 +567,42 @@
    "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the merged tree, equal to input_vector.implementation_digests(); the golden window pin in test_mb_ordinary_golden.py replaced by exact-string substitution of the old digest; century_contract.json image.writer_source_digest e4433b5f -> 9706eed5 from get_writer_source_hash('ka_gochara_v5'), century_contract.py --check equal (partial: no --pack). implementation_digest.lock.json is NOT touched (CI-generated output).",
    "interpretations": [],
    "closed": true
+  },
+  {
+   "id": "TR3-DEFECT-E-UCERT",
+   "rulings": [
+    "SR-TR3-SECOND-REPIN",
+    "SR-UCERT-SUBDIV",
+    "SR-UCERT-CAP-WATCH"
+   ],
+   "category": "E1",
+   "part": "implementation.window (golden pin) + century_contract.json image.writer_source_digest",
+   "base_commit": "e01557e44",
+   "derived_at_head": "287093002",
+   "statement": "THE SECOND RE-PIN (SR-TR3-SECOND-REPIN), after final TR #1 20261023T2010ZF (12/12 VERIFIED, 0 DISAGREE, NO_DISPATCH on the R-6 cap: 31 of 4509 windows demoted; 28 verifier_budget_exhausted on P4, 2 solver_certificate_incomplete, 1 tie_ambiguous). Defect E (od1-tr3-p4budget 08c6f899e + 94ae4548e, reviewed ACCEPTED in round 2): the verifier's tie scan takes a certified-constant stretch of a max-min piece as one plateau (_flat: reduce(member minima) <= F <= reduce(member maxima) on a piece where every member is monotone; agreement within the existing PLATEAU_EPS; P4 only; never inside a station zone); the bound, budget and every tolerance unchanged. U_CERT (od1-tr2-ucert-subdiv 0e636104e + 0fe92f427, ACCEPTED): the verifier bisects below the 1 ms floor to 1e-5 s within a 2000-bisection allowance before raising U_CERT, with a per-window allowance counter. Both are verifier-only window-stage changes (window_solver_check); geometry and evaluation unchanged.",
+   "cause": {
+    "commit": "287093002",
+    "modules": [
+     "window_solver_check"
+    ]
+   },
+   "implementation_digests": {
+    "geometry": {
+     "before": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616",
+     "after": "77cde807a5e0bf6a3733bea3f48270774920acd7434f37f2c2eb73fe781d3616"
+    },
+    "evaluation": {
+     "before": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc",
+     "after": "16c4a5243711fd95e045dee3b9e47c5242fca07b7569d2c7a24bdf79ba7cd6cc"
+    },
+    "window": {
+     "before": "e38160c13a39ac3223dc52b928f2a7c73e4dd9b821e57fb0ef2c86a1cd8dd1e1",
+     "after": "25c5badbe01dc8634948295a661d107927c609c6042c060faee89895c8850661"
+    }
+   },
+   "recipe": "input_vector_verifier.module_digests(input_vector.IMPLEMENTATION_MODULES) on the merged tree, equal to input_vector.implementation_digests(); the golden window pin in test_mb_ordinary_golden.py replaced by exact-string substitution; century_contract.json image.writer_source_digest 9706eed5 -> e5ebcfde from get_writer_source_hash('ka_gochara_v5'), century_contract.py --check equal (partial: no --pack). Harness digest unchanged (no trial_harness file moved). implementation_digest.lock.json not touched.",
+   "interpretations": [],
+   "closed": true
   }
  ]
 }
