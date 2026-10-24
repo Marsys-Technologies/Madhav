@@ -7,7 +7,9 @@ Method = the J-4c/J-4d proofs job (recipe) as re-run by the J-5q dry run: real m
 once per pending substep, final rules, strict certification, in-build verify DEFERRED (the final build's shape).  The harness never edits the checkout.
 
   trial_slice.py run       --checkout PATH --result-policy POLICY --out DIR [--label L] [--classes a,b,..] [--budget-s N] [--keep-db] [--code-head SHA]
-                           [--baseline baseline_12.json] [--gate-entry module:function] [--verify] [--crosscheck [--crosscheck-seed N]]
+                           [--baseline baseline_12.json] [--gate-entry module:function] [--verify] [--crosscheck [--crosscheck-seed N]] [--cert-audit]
+  trial_slice.py resume-probe --out DIR         TR-26: a resume with a perturbed program digest must refuse by name (on a copy of the killed run's database)
+  trial_slice.py cert-audit --out DIR           TR-26: the read-only certificate-size / truncation audit of a KEPT trial database (the run does it itself with --cert-audit, before the drop)
   trial_slice.py report    --out DIR            re-render the report from the DB the state names (no build)
   trial_slice.py drop      --out DIR            drop the throwaway DB the state names (only one this harness created)
   trial_slice.py baseline  --report FILE --out baseline_12.json [--prior-4class FILE]     the all-null baseline from a passed default-policy run
@@ -65,6 +67,8 @@ MARKER = "TRIAL_SLICE"
 CLASSES = list(gates.TRIAL_CLASSES_12)          # the 4 ruled classes + the 8 decision-pending ND-H classes (PLAN §4.1)
 ORIGINAL_4 = ("bereavement", "chronic_onset", "illness_acute", "major_loss")
 NEW_8 = tuple(c for c in CLASSES if c not in ORIGINAL_4)
+CLASSES_26 = list(gates.TRIAL_CLASSES_26)       # TR-26: the century universe (SR-TR26-PLAN: the trial universe = the century universe; no 14-class path); NEW_14 = the 14 the 12-class trial never ran
+NEW_14 = tuple(gates.TRIAL_CLASSES_NEW_14)
 #: the all-null baseline of the 4 ruled classes, measured by the previous harness on origin/main d7552d029 (1,672 windows): a regression oracle for the 12-class
 #: all-null baseline — the same classes on current main must reproduce it, or something other than the policy moved the window grain
 PRIOR_4CLASS_WINDOWS = {"bereavement": 397, "chronic_onset": 447, "illness_acute": 447, "major_loss": 381}
@@ -102,6 +106,7 @@ LANE_SHA_PROOFS = {      # the proofs job's lane.tsv (J-4c): informational drift
     "1398_gochara_snapshot_dasha_held.sql": "3cf844b51ce671a402a1dfa31dde446082e4fe732131c13f38569f3e6575f741"}
 BATCH = 5000
 EX_RESUME = 75
+EX_KILLED = 77            # TR-26 kill+resume leg: the build was deliberately aborted after substep N (the database is KEPT; `run --writer-resume` continues it)
 
 
 # ── small helpers ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -446,7 +451,51 @@ def make_cpu_meter(state: dict):
     return g5_cpu.make_meter(ADMIN_DSN, state.get("db"), state)
 
 
-def build(state: dict, out: Path, deadline: float | None) -> bool:
+def choose_abort_substep(plan_keys: list, classes) -> int | None:
+    """TR-26 kill+resume leg (SR-RESUME-NOW): the deterministic abort point, as a COUNT of substeps run before the kill.  A pure function of the plan: the smallest N such that after N substeps (a) at least one
+    class is fully committed (every plan substep of that class is among the first N) and (b) the NEXT substep is a `window:` substep (inside the window sweep) of a class that is not yet complete — so the kill
+    lands mid-sweep with committed work behind it and uncommitted work ahead.  None when the plan has no such point (the caller refuses by name: a kill outside the sweep proves nothing)."""
+    def cls(k):
+        parts = k.split(":")
+        return parts[1] if len(parts) > 1 and parts[1] in set(classes) else None
+    per_class: dict = {}
+    for k in plan_keys:
+        c = cls(k)
+        if c is not None:
+            per_class.setdefault(c, []).append(k)
+    for n in range(1, len(plan_keys)):
+        head, nxt = plan_keys[:n], plan_keys[n]
+        committed = [c for c, ks in per_class.items() if all(k in head for k in ks)]
+        if committed and nxt.split(":")[0] == "window" and cls(nxt) not in committed:
+            return n
+    return None
+
+
+def classes_committed(plan_keys: list, done_keys, classes) -> list:
+    done = set(done_keys)
+    per_class: dict = {}
+    for k in plan_keys:
+        parts = k.split(":")
+        if len(parts) > 1 and parts[1] in set(classes):
+            per_class.setdefault(parts[1], []).append(k)
+    return sorted(c for c, ks in per_class.items() if all(k in done for k in ks))
+
+
+def resume_leg_section(state: dict) -> dict | None:
+    """The `resume_leg` section of a report (what G-7 reads from the RESUMED run, SR-RESUME-NOW): where the kill landed, which classes were committed by then, the producer-execution log (each substep
+    the harness SAW the writer execute, by phase — independent of the writer's own ledger), and the refusal probe.  None when this run was not killed."""
+    if state.get("killed_after_substep") is None:
+        return None
+    log = state.get("executed_log") or []
+    before = [e["step"] for e in log if e["phase"] == "initial"]
+    after = [e["step"] for e in log if e["phase"] == "resume"]
+    return {"schema": "ky.resume_leg/1", "killed_after_substep": state["killed_after_substep"], "abort_next_step": state.get("abort_next_step"),
+            "classes_committed_at_abort": state.get("classes_committed_at_abort") or [], "plan_substeps": list(state.get("plan_substeps") or []),
+            "executed_before_abort": before, "executed_after_resume": after, "rerun_after_resume": sorted(set(before) & set(after)),
+            "resumed": bool(state.get("writer_resumed")), "refusal_probe": state.get("refusal_probe")}
+
+
+def build(state: dict, out: Path, deadline: float | None, *, abort_after=None, writer_resume: bool = False) -> bool:
     """Returns True when the plan is complete (every substep done or its class closed by a defect).  `deadline` = an absolute time.time(), or None.
 
     Two modes (HARNESS-3.3, O-2).  Default = stop-at-first (the TR shape): a class's first defect closes the class, its later grains are never run.  `state["collect"]` = COLLECT (a diagnostic /
@@ -459,17 +508,23 @@ def build(state: dict, out: Path, deadline: float | None) -> bool:
     policy = None if state["requested_policy"] == "default" else state["requested_policy"]
     horizon = ruled_horizon()
     state["horizon"] = {"start": horizon[0].isoformat(), "end": horizon[1].isoformat(), "days": (horizon[1] - horizon[0]).total_seconds() / 86400.0}
-    done = {s["step"] for s in state["steps"]} | {d["step"] for d in state["defects"]}
+    # TR-26 `writer_resume`: the harness does NOT skip what it ran before the kill — the writer's own (ledger-aware) plan decides what is left; the execution log says what really ran
+    done = {d["step"] for d in state["defects"]} if writer_resume else ({s["step"] for s in state["steps"]} | {d["step"] for d in state["defects"]})
+    phase = "resume" if writer_resume else "initial"
+    ran_here = 0
     collect = bool(state.get("collect"))
     dead = set() if collect else set(state.get("dead_classes", []))                    # COLLECT never skips a class on a defect: dead_classes is written once, at the end
     stage: dict = {}                                                                    # O-1: the kind of the step about to run, set BEFORE it runs so a failed step is booked under its own kind
     real_plan = writer_mod.GocharaV5Writer.plan_substeps
     real_run = writer_mod.GocharaV5Writer.run_substep
     plan_seen: list = []
+    full_plan: list = []
 
     def next_only(self, ctx):
         steps = [s for s in real_plan(self, ctx) if writer_mod._class_of_grain(s.key) in set(classes) | {None}]
         plan_seen[:] = [s.key for s in steps]
+        if not full_plan and not writer_resume:                            # the FULL plan: what the writer plans before it has committed anything (a ledger-aware writer plans less as it goes)
+            full_plan[:] = plan_seen
         pending = [s for s in steps if s.key not in done and writer_mod._class_of_grain(s.key) not in dead]
         if pending:
             stage["kind"] = pending[0].key.split(":")[0]
@@ -477,6 +532,7 @@ def build(state: dict, out: Path, deadline: float | None) -> bool:
 
     def run_deferring(self, ctx, step):                                   # the final build's own shape: verify:<class> is the named deferral no-op
         ctx.config[writer_mod.DEFER_VERIFY_KEY] = True
+        state.setdefault("executed_log", []).append({"phase": phase, "step": step.key})          # producer-execution evidence: the harness saw the writer RUN this substep
         return real_run(self, ctx, step)
 
     writer_mod.GocharaV5Writer.plan_substeps = next_only
@@ -511,6 +567,7 @@ def build(state: dict, out: Path, deadline: float | None) -> bool:
             for s in res["steps"]:
                 state["steps"].append({"step": s["step"], "rows": s["rows"], "secs": secs, "cpu_s": cpu_box["cpu_s"]})
                 done.add(s["step"])
+                ran_here += 1
                 print(f"{secs:9.2f}s  {s['step']}", flush=True)
             for d in res["defects"]:
                 state["defects"].append({"step": d["step"], "kind": d["step"].split(":")[0], "status": "failed" if d["defect"] == "substep_raised" else d["defect"],
@@ -527,9 +584,21 @@ def build(state: dict, out: Path, deadline: float | None) -> bool:
             write_json(out / "state.json", state)
             if state.get("aborted"):
                 break
+            if abort_after is not None and not writer_resume:
+                n = choose_abort_substep(full_plan, classes) if abort_after == "auto" else int(abort_after)
+                if n is None:
+                    raise Refused("the plan has no abort point with a committed class behind it and a window-sweep substep next (--abort-after-substep auto): nothing is killed")
+                if ran_here >= n:
+                    executed = [e["step"] for e in state["executed_log"] if e["phase"] == "initial"]
+                    nxt = [k for k in full_plan if k not in done and writer_mod._class_of_grain(k) not in dead]
+                    state.update({"killed_after_substep": ran_here, "abort_next_step": nxt[0] if nxt else None,
+                                  "classes_committed_at_abort": classes_committed(full_plan, executed, classes), "plan_substeps": list(full_plan)})
+                    write_json(out / "state.json", state)
+                    return False
     if collect and complete:                                                            # the END: every class that carries a defect is failed, with all its defects in state["defects"]
         state["dead_classes"] = sorted({writer_mod._class_of_grain(d["step"]) for d in state["defects"]} - {None})
-    state["plan_substeps"] = list(plan_seen) or state.get("plan_substeps", [])
+    if not writer_resume:                                                  # a resumed plan is only what the writer had LEFT; the full plan is the killed run's
+        state["plan_substeps"] = list(full_plan) if len(full_plan) >= len(state.get("plan_substeps") or []) and full_plan else (state.get("plan_substeps") or list(plan_seen))
     write_json(out / "state.json", state)
     return complete
 
@@ -630,6 +699,158 @@ def window_rows_digest(conn, state: dict) -> dict:
         pairs += 1
     return {"sha256": total.hexdigest(), "windows": n, "columns": [c for c in cols if c not in excluded], "excluded_columns": excluded,
             "per_class": {c: h.hexdigest() for c, h in sorted(per_class.items())}, "memberships_sha256": mem.hexdigest(), "memberships": pairs}
+
+
+# ── TR-26: certificate audit + TR #2 truncation audit (read-only), and the verifier-repeat record G-7 compares ────────────────────────────────────
+
+#: the database's caps on a stored solver certificate (migration 1402 `ka_gochara_solver_certificate_ok`: jsonb_array_length(cells) <= 400, octet_length(c::text) <= 262144); the gate profile carries
+#: the same two numbers and a test pins both to the migration file, so neither can drift from what the database enforces
+CERT_MAX_CELLS, CERT_MAX_BYTES = 400, 262144
+#: ONE read-only SELECT per trial: per event_class the window count, the windows carrying a certificate, the `truncated` count and — only where a STORED field distinguishes the cause — its split, plus
+#: the size maxima and the over-cap counts.  The cause is read from `solver_certificate.geometry.omitted` ({cells, cuts, pieces}: what the bounded writer of SR-KGEW-QUAL-BOUND dropped).  Cells dropped
+#: ⇒ the pre-fix coarsen cause (`_coarsen` flagged `truncated` exactly when the cell cap forced a drop after merging — the same criterion the fixed `_coarsen_report` applies); cuts/pieces dropped ⇒ the
+#: new byte bound.  A truncated window with no `omitted` member (a writer that does not record it) is `cause_unattributed`: it lands in the UPPER BOUND, never in a cause.  Counts only.
+CERT_AUDIT_SQL = """
+SELECT w.event_class,
+       count(*)                                                                                  AS windows_total,
+       count(x.c)                                                                                AS with_certificate,
+       count(*) FILTER (WHERE x.c ->> 'truncated' = 'true')                                      AS truncated,
+       count(*) FILTER (WHERE x.c ->> 'truncated' = 'true' AND o.present AND o.cuts + o.pieces > 0)                   AS cause_geometry_bounded,
+       count(*) FILTER (WHERE x.c ->> 'truncated' = 'true' AND o.present AND o.cuts + o.pieces = 0 AND o.cells > 0)   AS cause_cells_only,
+       count(*) FILTER (WHERE x.c ->> 'truncated' = 'true' AND NOT (o.present AND o.cells + o.cuts + o.pieces > 0))  AS cause_unattributed,
+       count(*) FILTER (WHERE x.c ->> 'truncated' = 'true' AND o.present AND o.cells > 0)         AS cells_dropped_any,
+       COALESCE(max(jsonb_array_length(x.c -> 'cells')), 0)                                      AS max_cells,
+       COALESCE(max(octet_length(x.c::text)), 0)                                                 AS max_bytes,
+       count(*) FILTER (WHERE jsonb_array_length(x.c -> 'cells') > %s)                           AS over_cells,
+       count(*) FILTER (WHERE octet_length(x.c::text) > %s)                                      AS over_bytes
+FROM public.ka_gochara_eval_window w
+CROSS JOIN LATERAL (SELECT NULLIF(w.qualification -> 'solver_certificate', 'null'::jsonb) AS c) x
+CROSS JOIN LATERAL (SELECT COALESCE(jsonb_typeof(x.c #> '{geometry,omitted}') = 'object', false) AS present,
+                           COALESCE(CASE WHEN jsonb_typeof(x.c #> '{geometry,omitted,cells}') = 'number'  THEN (x.c #>> '{geometry,omitted,cells}')::numeric  END, 0) AS cells,
+                           COALESCE(CASE WHEN jsonb_typeof(x.c #> '{geometry,omitted,cuts}') = 'number'   THEN (x.c #>> '{geometry,omitted,cuts}')::numeric   END, 0) AS cuts,
+                           COALESCE(CASE WHEN jsonb_typeof(x.c #> '{geometry,omitted,pieces}') = 'number' THEN (x.c #>> '{geometry,omitted,pieces}')::numeric END, 0) AS pieces) o
+WHERE w.chart_id = %s AND w.generation = %s AND w.event_class = ANY(%s)
+GROUP BY w.event_class ORDER BY w.event_class"""
+CERT_AUDIT_COLUMNS = ("event_class", "windows_total", "with_certificate", "truncated", "cause_geometry_bounded", "cause_cells_only", "cause_unattributed", "cells_dropped_any",
+                      "max_cells", "max_bytes", "over_cells", "over_bytes")
+TRUNCATED_IDS_SQL = """SELECT window_id::text FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s AND event_class = ANY(%s)
+                       AND NULLIF(qualification -> 'solver_certificate', 'null'::jsonb) ->> 'truncated' = 'true' ORDER BY 1"""
+
+
+def cert_audit_summary(rows: dict, classes) -> dict:
+    """The sum over `classes` of the per-class audit rows, with the pre-fix-cause figure labelled: `exact` when no truncated window is unattributed, else the `upper_bound` (cells dropped + unattributed),
+    next to its lower bound (cells dropped).  Pure function of the rows — the label is computed, never asserted."""
+    keys = ("windows_total", "with_certificate", "truncated", "cause_geometry_bounded", "cause_cells_only", "cause_unattributed", "cells_dropped_any", "over_cells", "over_bytes")
+    tot = {k: sum(rows[c][k] for c in classes if c in rows) for k in keys}
+    lo, hi = tot["cells_dropped_any"], tot["cells_dropped_any"] + tot["cause_unattributed"]
+    return {"classes": sorted(c for c in classes if c in rows), **tot, "pre_fix_cause_windows": hi, "pre_fix_cause_lower_bound": lo,
+            "pre_fix_cause_label": "exact" if lo == hi else "upper_bound",
+            "max_cells": max([rows[c]["max_cells"] for c in classes if c in rows] or [0]), "max_bytes": max([rows[c]["max_bytes"] for c in classes if c in rows] or [0])}
+
+
+def cert_audit(conn, classes) -> dict:
+    """The TR-26 certificate audit of the trial database (read-only; counts only — no chart value, no date).  Per event_class: windows, certificate size maxima and headroom against the caps, the
+    `truncated` count and its cause split where a stored field distinguishes the cause; and `tr2_classes`: the same figures summed over the 12 TR #2 classes (SR-TR2-TRUNC-AUDIT: "the cause split
+    counts only where a stored field actually distinguishes the cause; if none does, report the total as an UPPER BOUND, labelled so; it goes into the lineage as a disclosed gap")."""
+    rows = {}
+    for r in conn.execute(CERT_AUDIT_SQL, (CERT_MAX_CELLS, CERT_MAX_BYTES, CHART, GENERATION, list(classes))).fetchall():
+        v = dict(zip(CERT_AUDIT_COLUMNS, tuple(r.values()) if isinstance(r, dict) else tuple(r)))
+        c = v.pop("event_class")
+        v["cells_headroom"], v["bytes_headroom"] = CERT_MAX_CELLS - v["max_cells"], CERT_MAX_BYTES - v["max_bytes"]
+        rows[c] = {k: int(x) for k, x in v.items()}
+    t12 = [c for c in classes if c in gates.TRIAL_CLASSES_12]
+    attributed = bool(rows) and all(r["cause_unattributed"] == 0 for r in rows.values())
+    return {"schema": "ky.certificate_audit/1", "limits": {"max_cells": CERT_MAX_CELLS, "max_bytes": CERT_MAX_BYTES, "source": "migration 1402 ka_gochara_solver_certificate_ok"},
+            "cause_split_basis": "solver_certificate.geometry.omitted {cells,cuts,pieces}; a truncated window without it is cause_unattributed (upper bound)",
+            "cause_split_complete": attributed, "classes": rows,
+            "all_classes": cert_audit_summary(rows, list(classes)),
+            "tr2_classes": cert_audit_summary(rows, t12),
+            "note": "counts only; the TR #2 figure is measured on THIS trial database (the bounded writer) restricted to the 12 TR #2 classes"}
+
+
+def truncated_window_ids(conn, classes) -> list:
+    return [r[0] if not isinstance(r, dict) else next(iter(r.values())) for r in conn.execute(TRUNCATED_IDS_SQL, (CHART, GENERATION, list(classes))).fetchall()]
+
+
+def verdict_fingerprint(verdict) -> str:
+    """One verifier solver-check verdict (a `window_cert_check.CertReport`) as a short string G-7 compares: `AGREED`, or `<CLASS>:<sha12 of the sorted finding codes and inconclusive reasons>`.
+    Codes only — the free-text details can carry times and values and are not part of the verdict."""
+    cls = str(verdict.classification)
+    findings = sorted(str(code) for code, _d in (getattr(verdict, "findings", None) or ()))
+    why = sorted(str(r) for r, _d in (getattr(verdict, "inconclusive", None) or ()))
+    if cls == "AGREED" and not findings and not why:
+        return "AGREED"
+    return f"{cls}:{hashlib.sha256(json.dumps([findings, why]).encode()).hexdigest()[:12]}"
+
+
+class VerdictRecorder:
+    """Wraps `window_verifier._certificate_verdict` for one class: every window the certificate check reaches is recorded under its window_id (looked up from the stored (path, rule_version, lower bound)),
+    with the verdict fingerprint, the INCONCLUSIVE ones by path/reason, and — for a window whose stored certificate is `truncated` — the wall seconds the re-solve took.  The wrapper returns the real
+    verdict untouched; it only watches (N.8: the record is what the verifier said, not what the harness wished)."""
+
+    def __init__(self, event_class: str, ids: dict):
+        self.event_class, self.ids = event_class, ids
+        self.verdicts, self.inconclusive, self.truncated_s, self.unmapped = {}, [], {}, 0
+
+    def wrap(self, real):
+        def recorded(window, **kwargs):
+            t0 = time.time()
+            verdict = real(window, **kwargs)
+            dt = time.time() - t0
+            wid = self.ids.get((window["path_id"], window["rule_version"], window["lo"]))
+            if wid is None:
+                self.unmapped += 1
+                return verdict
+            self.verdicts[wid] = verdict_fingerprint(verdict)
+            if str(verdict.classification) == "INCONCLUSIVE":
+                reasons = sorted(str(r) for r, _d in (getattr(verdict, "inconclusive", None) or ()))
+                self.inconclusive.append({"event_class": self.event_class, "path_id": window["path_id"], "window_id": wid, "reason": reasons[0] if reasons else None})
+            cert = (window.get("qualification") or {}).get("solver_certificate") or {}
+            if cert.get("truncated") is True:
+                self.truncated_s[wid] = {"path_id": window["path_id"], "seconds": round(dt, 3)}
+            return verdict
+        return recorded
+
+    def record(self) -> dict:
+        return {"verdicts": self.verdicts, "inconclusive": self.inconclusive, "truncated_s": self.truncated_s, "unmapped": self.unmapped}
+
+
+WINDOW_IDS_SQL = """SELECT path_id, rule_version, lower(interval), window_id::text FROM public.ka_gochara_eval_window WHERE chart_id = %s AND generation = %s AND event_class = %s"""
+
+
+def window_id_map(conn, event_class: str) -> dict:
+    return {(r[0], r[1], r[2]): r[3] for r in (tuple(x.values()) if isinstance(x, dict) else tuple(x) for x in conn.execute(WINDOW_IDS_SQL, (CHART, GENERATION, event_class)).fetchall())}
+
+
+def verifier_repeat_section(state: dict, trunc_ids: list | None) -> dict | None:
+    """The `verifier_repeat` section of a report (what G-7 reads from BOTH runs, SR-TR26-PLAN (a)): every solver-check verdict by window id, the truncated windows' ids, run 1's G-6 sample (the
+    cross-check selection: random + top-mixed; None when this run had no cross-check), the INCONCLUSIVE windows (class/path/id/reason), the truncated windows' re-solve wall time (separately, SR-KGEW-QUAL-BOUND-AMEND-2 (c))
+    and the classes the capture covered.  None when no class was verified inline."""
+    raw = state.get("verifier_verdicts")
+    if not raw:
+        return None
+    verdicts, inc, tsec, unmapped = {}, [], {}, 0
+    for c, r in sorted(raw.items()):
+        verdicts.update(r["verdicts"])
+        inc += r["inconclusive"]
+        tsec.update({w: {"event_class": c, **x} for w, x in r["truncated_s"].items()})
+        unmapped += r["unmapped"]
+    sel = (state.get("crosscheck") or {}).get("selection")
+    by_c, by_p = {}, {}
+    for w, x in tsec.items():
+        for table, k in ((by_c, x["event_class"]), (by_p, x["path_id"])):
+            e = table.setdefault(k, {"windows": 0, "seconds": 0.0})
+            e["windows"] += 1
+            e["seconds"] = round(e["seconds"] + x["seconds"], 3)
+    timed = len(tsec)
+    return {"schema": "ky.verifier_repeat/1",
+            "verdict_basis": "window_verifier._certificate_verdict per function-valued window: classification + sha12(sorted finding codes, inconclusive reasons)",
+            "classes_covered": sorted(raw), "unmapped_verdicts": unmapped, "verdicts": verdicts,
+            "truncated_window_ids": sorted(trunc_ids) if trunc_ids is not None else None,
+            "g6_sample_window_ids": sorted(set(sel["random"]) | set(sel["top_mixed"])) if isinstance(sel, dict) else None,
+            "inconclusive_windows": sorted(inc, key=lambda d: (d["event_class"], d["path_id"], d["window_id"])),
+            "truncated_resolve": {"windows": len(trunc_ids) if trunc_ids is not None else None, "windows_timed": timed, "seconds_total": round(sum(x["seconds"] for x in tsec.values()), 3),
+                                  "seconds_max": max([x["seconds"] for x in tsec.values()] or [0.0]), "by_class": dict(sorted(by_c.items())), "by_path": dict(sorted(by_p.items()))}}
 
 
 TIE_ISOLATION_REASON = "tie_isolation_unresolved"          # the blank reason the near-station tie rule writes (SR-NEAR-STATION-TIE; window_solver.REASON_TIE_ISOLATION)
@@ -905,6 +1126,12 @@ def verify_stage(state: dict, out: Path, conn, deadline: float | None) -> bool:
     dead = set(state.get("dead_classes", []))
     pending = [c for c in state["classes"] if c not in v["classes"] and c not in dead]
     real_sem = wv.verify_window_semantics
+    real_cert = getattr(wv, "_certificate_verdict", None)          # absent in a stub verifier: nothing is recorded, and G-7 then reads NOT_EVALUATED (never a pass)
+    recorders: dict = {}
+
+    def recorder_for(cls):
+        recorders[cls] = VerdictRecorder(cls, window_id_map(conn, cls))
+        return recorders[cls]
     spent = {"window_check_s": 0.0}
 
     def timed(*args, **kwargs):
@@ -923,6 +1150,8 @@ def verify_stage(state: dict, out: Path, conn, deadline: float | None) -> bool:
         spent["window_check_s"] = 0.0
         t0 = time.time()
         wv.verify_window_semantics = timed
+        if real_cert is not None:
+            wv._certificate_verdict = recorder_for(cls).wrap(real_cert)          # TR-26 G-7: watch every solver-check verdict (the real verdict is returned untouched)
         vj._enforce_class_census = trial_census                          # CENSUS_DIAG §3: the slice is judged against the TRIAL universe
         try:
             with clock.measure(f"verify:{cls}"), meter.measure(f"verify:{cls}"), rule_registry.rule_profile(final_rules=True):
@@ -942,7 +1171,11 @@ def verify_stage(state: dict, out: Path, conn, deadline: float | None) -> bool:
             v["ran"] = True
         finally:
             wv.verify_window_semantics = real_sem
+            if real_cert is not None:
+                wv._certificate_verdict = real_cert
             vj._enforce_class_census = real_census
+        if cls in recorders and v["classes"][cls]["status"] == "VERIFIED":
+            state.setdefault("verifier_verdicts", {})[cls] = recorders[cls].record()          # a class that did not verify has no verdicts to compare: it stays uncovered (G-7 NOT_EVALUATED)
         print(f"{v['classes'][cls]['seconds']:9.2f}s  verify {cls}: {v['classes'][cls]['status']}", flush=True)
         state["effective_wall"] = clock.record()
         state["g5_cpu"] = meter.record()                                                      # G5-CPU
@@ -1352,6 +1585,14 @@ def build_report(state: dict, out: Path, conn, sidecar: Path, gate_entry: str | 
     })
     if state.get("verification"):
         rep["verification"] = state["verification"]
+    if state.get("certificate_audit"):
+        rep["certificate_audit"] = state["certificate_audit"]
+    rl = resume_leg_section(state)
+    if rl is not None:
+        rep["resume_leg"] = rl
+    rv = verifier_repeat_section(state, state.get("truncated_window_ids"))
+    if rv is not None:
+        rep["verifier_repeat"] = rv
     if state.get("crosscheck") and state["crosscheck"].get("final"):
         rep["crosscheck"] = state["crosscheck"]["final"]
     rep["baseline_comparison"] = compare_baseline(rep, baseline_path)
@@ -1416,6 +1657,11 @@ def collect_requested(a) -> bool:
     return bool(getattr(a, "collect", False)) or os.environ.get("TRIAL_COLLECT") == "1"
 
 
+def cert_audit_requested(a) -> bool:
+    """TR-26: the read-only certificate / truncation audit of the trial database (`--cert-audit` or TRIAL_CERT_AUDIT=1), run before the database is dropped."""
+    return bool(getattr(a, "cert_audit", False)) or os.environ.get("TRIAL_CERT_AUDIT") == "1"
+
+
 def baseline_mode_requested(a) -> bool:
     """SR-BASELINE-OVERLAY-SKIP: BASELINE mode is asked for explicitly (`--baseline-mode`, set only by make_baseline.sh through TRIAL_BASELINE_MODE=1), never inferred from a missing file, and
     only for the default policy under the label `baseline`: any other run (every trial policy) that asks for it is refused."""
@@ -1470,8 +1716,37 @@ def cmd_run(a) -> int:
         print(f"[{now()}] setup: creating the throwaway lane database", flush=True)
         setup_lane(state, checkout, out)
         print(f"[{now()}] setup done in {state['lane']['setup_s']}s: {state['db']}", flush=True)
-    print(f"[{now()}] build: mode={build_mode(state)} policy={a.result_policy} classes={len(classes)} head={state['code']['head'][:12]} budget={a.budget_s}", flush=True)
-    if not build(state, out, deadline):
+    abort_after = a.abort_after_substep or os.environ.get("TRIAL_ABORT_AFTER_SUBSTEP") or None
+    writer_resume = bool(getattr(a, "writer_resume", False)) or os.environ.get("TRIAL_WRITER_RESUME") == "1"
+    if abort_after is not None and (writer_resume or state.get("killed_after_substep") is not None):
+        raise Refused("--abort-after-substep kills a FRESH run once; the continuation is a separate `run --writer-resume`")
+    if state.get("killed_after_substep") is not None and not writer_resume:
+        raise Refused("this state was killed on purpose (kill+resume leg): continue it with --writer-resume — a plain re-run would let the harness skip the substeps and prove nothing about the writer's resume")
+    if writer_resume:
+        if state.get("killed_after_substep") is None:
+            raise Refused("--writer-resume continues a run that was killed by --abort-after-substep: this state was not")
+        state["writer_resumed"] = True
+        write_json(state_path, state)
+    print(f"[{now()}] build: mode={build_mode(state)} policy={a.result_policy} classes={len(classes)} head={state['code']['head'][:12]} budget={a.budget_s} abort_after={abort_after} writer_resume={writer_resume}", flush=True)
+    probe_run = bool(getattr(a, "probe_run", False))
+    try:
+        built = build(state, out, deadline, abort_after=abort_after, writer_resume=writer_resume)
+    except Refused:
+        raise
+    except Exception as exc:                                                 # noqa: BLE001 — the probe records the writer's refusal by NAME; any other run re-raises
+        if not probe_run:
+            raise
+        write_json(out / "probe_result.json", {"refused_with": type(exc).__name__, "message": scrub(exc, 240), "executed": [e["step"] for e in state.get("executed_log", []) if e["phase"] == "resume"]})
+        return 0
+    if probe_run:                                                            # no exception: the writer did NOT refuse — what it ran (or the defects it booked) is the evidence
+        d0 = (state.get("defects") or [{}])[0]
+        write_json(out / "probe_result.json", {"refused_with": None, "defect": d0.get("defect"), "message": scrub(d0.get("detail", ""), 240),
+                                              "executed": [e["step"] for e in state.get("executed_log", []) if e["phase"] == "resume"]})
+        return 0
+    if abort_after is not None and state.get("killed_after_substep") is not None:
+        print(f"[{now()}] KILLED after substep {state['killed_after_substep']} (next: {state.get('abort_next_step')}; committed classes: {state.get('classes_committed_at_abort')}); the database is kept: run --writer-resume", flush=True)
+        return EX_KILLED
+    if not built:
         print(f"RESUME: budget reached with {len(state['steps'])} substeps done; run the same command again", flush=True)
         return EX_RESUME
     import psycopg
@@ -1485,6 +1760,12 @@ def cmd_run(a) -> int:
         if a.crosscheck and not crosscheck_stage(state, out, conn, deadline, profile, a.crosscheck_seed):
             print("RESUME: cross-check not finished; run the same command again", flush=True)
             return EX_RESUME
+        if cert_audit_requested(a) and "certificate_audit" not in state:          # TR-26: read-only, on the trial database, BEFORE it is dropped (the kit's pre-teardown stage)
+            state["certificate_audit"] = cert_audit(conn, state["classes"])
+            state["truncated_window_ids"] = truncated_window_ids(conn, state["classes"])
+            write_json(state_path, state)
+            print(f"[{now()}] certificate audit: max cells {state['certificate_audit']['all_classes']['max_cells']}, max bytes {state['certificate_audit']['all_classes']['max_bytes']}, "
+                  f"truncated windows {state['certificate_audit']['all_classes']['truncated']}", flush=True)
         if "digests_record" not in state:
             from services.gochara_kernel import result_policy
             capture_a10(state, out, conn, {"result_policy": result_policy})
@@ -1517,6 +1798,68 @@ def cmd_run(a) -> int:
     print(f"  qualification: {rep['qualification']['label']} (qualifying={rep['qualification']['qualifying']}, TRIAL_READY/1 G-0 {rep['qualification']['g0']})")
     if rep["build"]["defects"] or rep["build"]["aborted"] or (rep["oracle"] is not None and not rep["oracle"]["passed"]):
         return 1
+    return 0
+
+
+def cmd_resume_probe(a) -> int:
+    """TR-26 kill+resume leg (SR-RESUME-NOW (ii)): a RESUME ATTEMPTED WITH A DIFFERENT PROGRAM DIGEST must refuse by name.  On a COPY of the killed run's database (CREATE DATABASE .. TEMPLATE; the
+    real one is never touched), the resume is attempted from a PERTURBED copy of the checkout's sidecar — one comment line appended to the writer and to every gochara_kernel module, so any definition of
+    "source/library digest" that covers the writer or the kernel changes — in a child process.  Evidence recorded in the killed state (`refusal_probe`): whether the writer refused, the refusal's name
+    (exception class) and how many substeps it ran (0 for a refusal before any work).  The probe database and the perturbed copy are removed.  Counts and names only."""
+    import psycopg
+    out = Path(a.out).resolve()
+    state = load_state(out)
+    if state.get("killed_after_substep") is None or state.get("writer_resumed") or state.get("dropped"):
+        raise Refused("resume-probe needs a KILLED, not yet resumed, not dropped run (run --abort-after-substep first; probe BEFORE --writer-resume)")
+    checkout = Path(state["code"]["checkout"])
+    sidecar = checkout / "platform" / "python-sidecar"
+    pdir = out / "resume_probe"
+    shutil.rmtree(pdir, ignore_errors=True)
+    pert = pdir / "checkout"
+    shutil.copytree(sidecar, pert / "platform" / "python-sidecar", ignore=shutil.ignore_patterns("__pycache__", "tests", "node_modules", ".pytest_cache"))
+    if (checkout / "platform" / "migrations").is_dir():
+        (pert / "platform" / "migrations").symlink_to(checkout / "platform" / "migrations")
+    ps = pert / "platform" / "python-sidecar"
+    for f in [ps / "pipeline/orchestrator/writers/ka_gochara_v5.py", *sorted((ps / "services/gochara_kernel").glob("*.py"))]:
+        f.write_text(f.read_text(encoding="utf-8") + "\n# resume-probe: perturbed program digest\n", encoding="utf-8")
+    probe_db = DB_PREFIX + uuid.uuid4().hex[:8]
+    with psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=5) as admin:
+        admin.execute(f'CREATE DATABASE "{probe_db}" TEMPLATE "{state["db"]}"')
+        admin.execute(f"COMMENT ON DATABASE \"{probe_db}\" IS 'ky.job={job_name(out)}-resume-probe'")
+    result: dict = {}
+    try:
+        write_json(pdir / "state.json", {**state, "db": probe_db, "code": {**state["code"], "checkout": str(pert.resolve())}, "writer_resumed": False})
+        cmd = [sys.executable, "-I", "-X", "utf8", str(HERE / "trial_slice.py"), "run", "--checkout", str(pert), "--result-policy", state["requested_policy"], "--out", str(pdir), "--label", "probe",
+               "--classes", ",".join(state["classes"]), "--writer-resume", "--probe-run", "--code-head", state["code"]["head"]] + (["--collect"] if state.get("collect") else [])
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=a.timeout_s)
+        pr = pdir / "probe_result.json"
+        result = json.loads(pr.read_text()) if pr.is_file() else {"refused_with": None, "executed": None, "message": f"the probe child wrote no result (exit {proc.returncode}): {scrub(proc.stderr, 160)}"}
+    finally:
+        with psycopg.connect(ADMIN_DSN, autocommit=True, connect_timeout=5) as admin:
+            admin.execute(f'DROP DATABASE IF EXISTS "{probe_db}" WITH (FORCE)')                    # only the database this command created
+        shutil.rmtree(pert, ignore_errors=True)
+    ex = result.get("executed")
+    state["refusal_probe"] = {"attempted": True, "perturbation": "one comment line appended to the writer module and every services/gochara_kernel module",
+                              "refused": bool(result.get("refused_with")) and ex == [], "refusal_name": result.get("refused_with"), "message": result.get("message"),
+                              "executed_substeps": None if ex is None else len(ex)}
+    write_json(out / "state.json", state)
+    print(json.dumps(state["refusal_probe"], indent=1))
+    return 0 if state["refusal_probe"]["refused"] else 1
+
+
+def cmd_cert_audit(a) -> int:
+    out = Path(a.out).resolve()
+    state = load_state(out)
+    if state.get("dropped"):
+        raise Refused("the database was dropped; the certificate audit must run before the drop (run with --cert-audit, or keep the database)")
+    import psycopg
+    with psycopg.connect(f"postgresql://postgres@127.0.0.1:55433/{state['db']}", autocommit=True, connect_timeout=5) as conn:
+        audit = cert_audit(conn, state["classes"])
+        state["truncated_window_ids"] = truncated_window_ids(conn, state["classes"])
+    state["certificate_audit"] = audit
+    write_json(out / "certificate_audit.json", audit)
+    write_json(out / "state.json", state)
+    print(json.dumps({k: audit[k] for k in ("limits", "cause_split_complete", "all_classes", "tr2_classes")}, indent=1))
     return 0
 
 
@@ -1565,23 +1908,26 @@ def write_partial_baseline(a) -> int:
 
 def cmd_baseline(a) -> int:
     """The 12-class all-null baseline from a PASSED default-policy (or all-null) run: counts only.  Refuses a report whose oracle did not pass, or that did not run the
-    12 classes — a baseline is never written from a run that cannot vouch for itself."""
+    classes the baseline is asked for (default the 12; `--classes` the 26 for TR-26) — a baseline is never written from a run that cannot vouch for itself."""
     if a.from_prior_only:
         return write_partial_baseline(a)
+    want = [c for c in (a.classes or ",".join(CLASSES)).split(",") if c]
+    if sorted(want) not in (sorted(CLASSES), sorted(CLASSES_26)):
+        raise Refused(f"--classes must be exactly the 12 classes (legacy baseline_12.json) or exactly the 26 (baseline_26.json), not {want!r}")
     if not a.report:
         raise Refused("--report is required (or --from-prior-only --prior-4class FILE for the honest partial baseline)")
     rep = json.loads(Path(a.report).read_text())
     if not rep.get("oracle") or not rep["oracle"].get("passed"):
         raise Refused("the report's baseline oracle did not pass (or the run was not a default/all-null one): no baseline written")
-    if sorted(rep["config"]["classes"]) != sorted(CLASSES):
-        raise Refused(f"the report ran {len(rep['config']['classes'])} classes, not the 12 required")
+    if sorted(rep["config"]["classes"]) != sorted(want):
+        raise Refused(f"the report ran {len(rep['config']['classes'])} classes, not the {len(want)} required")
     prior = None
     if a.prior_4class:
         prior = json.loads(Path(a.prior_4class).read_text())
     classes = {}
-    for c in CLASSES:
+    for c in want:
         v = rep["classes"][c]
-        classes[c] = {"windows_total": v["windows_total"], "blank": v["blank"], "group": "prior_4class" if c in ORIGINAL_4 else "new_8",
+        classes[c] = {"windows_total": v["windows_total"], "blank": v["blank"], "group": "prior_4class" if c in ORIGINAL_4 else ("new_8" if c in NEW_8 else "new_14"),
                       "by_path_windows": {p: x["windows"] for p, x in sorted(v["by_path"].items())}, "valence": v["valence"], "blank_reasons": v["blank_reasons"]}
         if prior is not None and c in ORIGINAL_4:
             classes[c]["prior_harness_windows_total"] = prior["classes"][c]["windows_total"]
@@ -1589,7 +1935,9 @@ def cmd_baseline(a) -> int:
             "code": {k: rep["code"].get(k) for k in ("head", "branch", "checkout", "tracked_files_modified_vs_head")},
             "classes": classes,
             "totals": {"windows_total": rep["totals"]["windows_total"], "blank": rep["totals"]["blank"],
-                       "prior_4class_windows": sum(classes[c]["windows_total"] for c in ORIGINAL_4), "new_8_windows": sum(classes[c]["windows_total"] for c in NEW_8)},
+                       "prior_4class_windows": sum(classes[c]["windows_total"] for c in ORIGINAL_4 if c in classes),
+                       "new_8_windows": sum(classes[c]["windows_total"] for c in NEW_8 if c in classes),
+                       "new_14_windows": sum(classes[c]["windows_total"] for c in NEW_14 if c in classes)},
             "paths": {p: v["windows"] for p, v in rep["paths"].items()},
             "oracle": rep["oracle"], "source_report_sha256": sha_file(Path(a.report)),
             "baseline_mode": bool(rep["config"].get("baseline_mode")), "overlay_skipped": (rep.get("lane") or {}).get("overlay_skipped"),          # SR-BASELINE-OVERLAY-SKIP: each skipped overlay, by name, with its reason
@@ -1599,7 +1947,7 @@ def cmd_baseline(a) -> int:
             "window_rows_sha256": rep["window_rows_digest"]["sha256"],
             "noninterference": rep.get("noninterference")}          # A10.1 N3: the natural-key snapshot G-7 compares a trial against (null = made before A10.1: G-7 reads NOT_EVALUATED)
     write_json(Path(a.out), base)
-    print(f"baseline written: {a.out}  windows={base['totals']['windows_total']} (prior 4 classes {base['totals']['prior_4class_windows']}, new 8 {base['totals']['new_8_windows']})"
+    print(f"baseline written: {a.out}  windows={base['totals']['windows_total']} (prior 4 classes {base['totals']['prior_4class_windows']}, new 8 {base['totals']['new_8_windows']}, new 14 {base['totals']['new_14_windows']})"
           f"  noninterference snapshot={'yes' if base['noninterference'] else 'NO (G-7 will read NOT_EVALUATED)'}")
     return 0
 
@@ -1797,6 +2145,12 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--profile", default=None, help="gate profile JSON (default: gate_profile.plan_defaults.json — PLACEHOLDER doctrine values)")
     r.add_argument("--verify", action="store_true", help="run the verification job inline after the build (G-4, G-5 verifier half)")
     r.add_argument("--crosscheck", action="store_true", help="run the G-6 cross-check after the build")
+    r.add_argument("--abort-after-substep", default=None, help="TR-26 kill+resume leg (env TRIAL_ABORT_AFTER_SUBSTEP): deterministically stop after N substeps (`auto` = choose_abort_substep: a committed class behind, a "
+                                                                "window-sweep substep next), keep the database and exit 77")
+    r.add_argument("--writer-resume", action="store_true", help="TR-26 (env TRIAL_WRITER_RESUME=1): continue a run killed by --abort-after-substep WITHOUT the harness skipping what it already ran — the writer's own "
+                                                               "ledger-aware plan decides what is left; every substep it runs is logged (producer-execution evidence)")
+    r.add_argument("--probe-run", action="store_true", help=argparse.SUPPRESS)
+    r.add_argument("--cert-audit", action="store_true", help="TR-26 (env TRIAL_CERT_AUDIT=1): the read-only certificate-size / TR #2 truncation audit of the trial database, before it is dropped")
     r.add_argument("--crosscheck-seed", type=int, default=None)
     r.add_argument("--solver-module", default=SOLVER_MODULE, help="dotted module whose public functions are counted as solver calls (the peaks-need-a-search anomaly detector)")
     r.add_argument("--dispatch-modules", default=None, help="JSON {module: sha256} of the dispatch head (G-8)")
@@ -1809,6 +2163,11 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--eq-tool", default=None, help="equivalence_record.py (default: <eq-repo>/00_ARCHITECTURE/briefs/kalayantra/fleet/equivalence_record.py)")
     r.add_argument("--eq-pinned-extra", default=None, help="JSON with the pinned inputs only the dispatch config / L0 / L1 can say (rules, inputs, century_config, runtime)")
     r.add_argument("--image-digest", default=None, help="the image digest the run executed in, if any (provenance; a local run has none)")
+    rp = sub.add_parser("resume-probe")
+    rp.add_argument("--out", required=True, help="the KILLED run directory (before --writer-resume): a resume with a perturbed program digest is attempted on a copy of its database")
+    rp.add_argument("--timeout-s", type=int, default=900)
+    ca = sub.add_parser("cert-audit")
+    ca.add_argument("--out", required=True, help="a run directory whose database was kept (--keep-db): the read-only audit is printed and written to <out>/certificate_audit.json")
     p = sub.add_parser("report")
     p.add_argument("--out", required=True)
     p.add_argument("--baseline", default=None)
@@ -1819,6 +2178,8 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--report", default=None)
     b.add_argument("--out", required=True)
     b.add_argument("--prior-4class", default=None)
+    b.add_argument("--classes", default=None, help="TR-26: the class list the report ran (default the 12; the 26 for baseline_26.json) — "
+                                                   "the baseline's geometry_config includes the class list, so a trial is only compared with a baseline of EXACTLY its classes")
     b.add_argument("--from-prior-only", action="store_true", help="write the honest PARTIAL baseline (4 prior classes measured, 8 null) when the 12-class run could not be made")
     b.add_argument("--note", default=None)
     e = sub.add_parser("evaluate")
@@ -1876,7 +2237,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     a = build_parser().parse_args(argv)
-    return {"run": cmd_run, "report": cmd_report, "drop": cmd_drop, "baseline": cmd_baseline, "evaluate": cmd_evaluate, "project": cmd_project,
+    return {"run": cmd_run, "cert-audit": cmd_cert_audit, "resume-probe": cmd_resume_probe, "report": cmd_report, "drop": cmd_drop, "baseline": cmd_baseline, "evaluate": cmd_evaluate, "project": cmd_project,
             "trial-ready": cmd_trial_ready, "eq-record": cmd_eq_record, "amd64-readiness": cmd_amd64_readiness, "amd64-run": cmd_amd64_run, "amd64-finish": cmd_amd64_finish, "check-table": cmd_check_table}[a.cmd](a)
 
 
