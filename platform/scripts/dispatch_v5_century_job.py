@@ -120,12 +120,18 @@ def prepare_report(*, dry_run, run_id, manifest, manifest_digest, existing, note
 
 
 
-# SR-J4E-FIX (incident J-4e.dispatch REFUSED 2026-10-24T17:26Z): the century_dispatch principal is the builder login (executor_ops: needs=builder,
-# role data_plane_builder), which by design holds NO privilege on these three relations: migration 1240 ("the builder gets NOTHING on the new table";
-# the writer cannot verify itself) for the two verification tables, and no grant on the migrations ledger. They are proven PRESENT through the catalog and
-# never read. This set is EXACT: any other relation the builder cannot SELECT refuses, so a grant the builder really needs is still caught.
+# SR-J4E-FIX (incident J-4e.dispatch REFUSED 2026-10-24T17:26Z) + SR-J4E-FIX-AMEND-1: the century_dispatch principal is the builder login (executor_ops:
+# needs=builder, role data_plane_builder), which by design cannot SELECT these FOUR relations (measured read-only in production, receipt J-4e.builder-select-20261024T1756Z;
+# of the 38 scoped relations none is missing). They are proven PRESENT through the catalog and never read.
+#   * ka_gochara_eval_window_verification, ka_gochara_search_inventory_verification: migration 1240 ("the builder gets NOTHING on the new table"; the writer
+#     cannot verify itself);
+#   * asset_throughput_state_audit: migration 1211_asset_throughput_state_audit_builder_grants.sql grants the builder INSERT and sequence USAGE only
+#     ("no grant of SELECT"; the builder writes audit rows through the state trigger and never reads them);
+#   * _migrations_applied: no grant to the builder.
+# This set is EXACT in both directions (a privilege-drift tripwire): any other relation the builder cannot SELECT refuses, so a grant the builder really
+# needs is still caught, and a pinned one that has become readable refuses too (the pin is stale).
 PRESENCE_ONLY_RELATIONS = frozenset({"public._migrations_applied", "public.ka_gochara_eval_window_verification",
-                                     "public.ka_gochara_search_inventory_verification"})
+                                     "public.ka_gochara_search_inventory_verification", "public.asset_throughput_state_audit"})
 
 
 def _century_request_policy(req, root):
