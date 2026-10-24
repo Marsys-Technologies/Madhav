@@ -110,7 +110,9 @@ CENTURY_STORED_SCOPE = "stored_non_moon"
 VECTOR_SCHEMA = "ka_gochara_input_vector/3"
 VECTOR_REQUIRED = ("schema", "stored_scope", "result_policy", "sky_convention", "registry", "node", "ephemeris", "l0", "orb_policy",
                    "rulings_digest", "implementation")
-VECTOR_OPTIONAL = ("scored_classes", "in_build_verify", "test_slice", "horizon_basis", "near_miss_layer_version", "qualification_table")
+# `scored_until`: services/gochara_kernel/input_vector.py SCORED_UNTIL_KEY (D-FLIP F-10, lane od1-scored-until) - the exclusive end of the scored horizon, serialised
+# additively when the vector is built with it; the same closed list as the serializer's optional keys.
+VECTOR_OPTIONAL = ("scored_classes", "in_build_verify", "test_slice", "horizon_basis", "scored_until", "near_miss_layer_version", "qualification_table")
 EPHEMERIS_KEYS = ("backend", "swe_version", "library_sha256", "platform", "files", "probe_digest")
 PINNED_KEYS = ("schema", "input_vector", "rules", "inputs", "century_config", "runtime", "trial_scope", "provenance")
 CENTURY_KEYS = ("stored_scope", "horizon", "horizon_basis", "final_rules", "result_policy", "in_build_verify", "budgets", "classes",
@@ -346,6 +348,12 @@ class ConstEnv:
             seq = self._comp(n.args[0], scope) if isinstance(n.args[0], (ast.GeneratorExp, ast.ListComp)) else self._ev(n.args[0], scope)
             if isinstance(seq, list):
                 return sorted(seq, key=canonical_json) if n.func.id in ("frozenset", "set", "sorted") else seq
+        elif isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "join" and isinstance(n.func.value, ast.Constant) \
+                and isinstance(n.func.value.value, str) and len(n.args) == 1 and not n.keywords:
+            # `"<literal>".join(<constant list of str>)` - result_policy.QUALIFICATION_TABLE builds rule 2's text this way (SOLVER_BLANK_REASONS)
+            seq = self._ev(n.args[0], scope)
+            if isinstance(seq, list) and all(isinstance(e, str) for e in seq):
+                return n.func.value.value.join(seq)
         raise Unreadable(f"{self.label}: line {getattr(n, 'lineno', '?')}: a {type(n).__name__} is outside the restricted evaluator")
 
     def _fmt(self, n, scope):

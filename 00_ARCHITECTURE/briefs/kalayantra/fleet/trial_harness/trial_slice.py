@@ -847,6 +847,28 @@ SELECT COALESCE(sum((runner_identity::jsonb -> 'numerical_window_gate' ->> 'wind
 FROM public.ka_gochara_eval_window_verification WHERE chart_id = %s AND generation = %s AND event_class = ANY(%s)"""
 LIVE_COUNT_SQL = """SELECT count(*), count(*) FILTER (WHERE peak_instant IS NOT NULL) FROM public.ka_gochara_eval_window
                     WHERE chart_id = %s AND generation = %s AND event_class = ANY(%s)"""
+# R-6: the verifier's demoted windows, as the attestation names them (numerical_window_gate.demotions: sorted {window_id, reason}), and which of those ids the live table
+# holds as numbered windows (a peak is stored) - G-4 matches the attested numbered count against the live one by these ids (gates.recount_agrees)
+VERIFY_DEMOTED_SQL = """
+SELECT d.e ->> 'window_id', d.e ->> 'reason'
+FROM public.ka_gochara_eval_window_verification v,
+     LATERAL jsonb_array_elements(COALESCE(v.runner_identity::jsonb -> 'numerical_window_gate' -> 'demoted_windows', '[]'::jsonb)) AS d(e)
+WHERE v.chart_id = %s AND v.generation = %s AND v.event_class = ANY(%s)
+ORDER BY 1, 2"""
+LIVE_NUMBERED_AMONG_SQL = """SELECT window_id::text FROM public.ka_gochara_eval_window
+                             WHERE chart_id = %s AND generation = %s AND event_class = ANY(%s) AND peak_instant IS NOT NULL AND window_id::text = ANY(%s) ORDER BY 1"""
+
+
+def collect_attestation_recount(conn, chart, generation, classes) -> dict:
+    """The G-4 recount: the attested counts (summed over the grains' persisted attestations) with the attested demoted windows, against the live table's counts with
+    the subset of those demoted ids that are live numbered windows."""
+    args = (chart, generation, classes)
+    att_w, att_n, unattested = conn.execute(VERIFY_ATTESTED_SQL, args).fetchone()
+    live_w, live_n = conn.execute(LIVE_COUNT_SQL, args).fetchone()
+    demoted = [{"window_id": r[0], "reason": r[1]} for r in conn.execute(VERIFY_DEMOTED_SQL, args).fetchall()]
+    held = [r[0] for r in conn.execute(LIVE_NUMBERED_AMONG_SQL, (*args, [e["window_id"] for e in demoted])).fetchall()]
+    return {"attested": {"windows": int(att_w), "numbered": int(att_n), "demoted_windows": demoted},
+            "live": {"windows": live_w, "numbered": live_n, "numbered_among_demoted": held}, "grains_without_attestation": unattested}
 
 
 def make_trial_census(vj, trial_classes):
@@ -941,10 +963,7 @@ def verify_stage(state: dict, out: Path, conn, deadline: float | None) -> bool:
             v["generation_verdict_scope"] = {"classes": sorted(state["classes"]), "scoped": True,
                                              "not_part_of_this_reading": "the aggregate-only checks of numerical_window_gate.generation_verdict (pinned-universe coverage, shard stamps, G-6 evidence, wall "
                                                                          "rule; DEFECT_MAP D-9) — a subset verdict does not carry them; the R8/R8X fixtures and the seal verification job cover them"}
-            att_w, att_n, unattested = conn.execute(VERIFY_ATTESTED_SQL, args).fetchone()
-            live_w, live_n = conn.execute(LIVE_COUNT_SQL, args).fetchone()
-            v["attestation_recount"] = {"attested": {"windows": int(att_w), "numbered": int(att_n)}, "live": {"windows": live_w, "numbered": live_n},
-                                        "grains_without_attestation": unattested}
+            v["attestation_recount"] = collect_attestation_recount(conn, *args)
             v["unverified_windows"] = conn.execute(VERIFY_UNVERIFIED_SQL, args).fetchone()[0] + int(conn.execute(VERIFY_UNVERIFIED_ROWS_SQL, args).fetchone()[0])
             gv = v["generation_verdict"]
             v["generation_verdict"] = {k: gv.get(k) for k in ("status", "policy", "grains", "windows", "numbered_windows", "blank_windows", "judgment_flags", "problems", "by_path",
