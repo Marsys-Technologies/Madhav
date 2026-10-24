@@ -8,6 +8,8 @@ table outside the scope that holds rows the archive must NOT contain.
 """
 import hashlib
 import json
+import os
+import secrets
 import sys
 import uuid
 from pathlib import Path
@@ -533,15 +535,16 @@ def builder_like(scoped, monkeypatch):
     import dispatch_v5_century_job as century
     dsn, _, scope_file = scoped
     role = 'p02_builder_' + uuid.uuid4().hex[:8]
+    password = secrets.token_hex(16)        # a real password login, so the suite does not depend on the cluster's auth method (trust locally, password in CI)
     standins = [t for t in PINNED_FOUR if t != 'public._migrations_applied']
     write_scope(scope_file, context=PINNED_FOUR)
     with psycopg.connect(dsn, autocommit=True) as admin:
         for t in standins:
             admin.execute(f'CREATE TABLE {t} (id integer)')
-        admin.execute(f'CREATE ROLE {role} LOGIN')
+        admin.execute(f"CREATE ROLE {role} LOGIN PASSWORD '{password}'")
         admin.execute(f'GRANT USAGE ON SCHEMA p02 TO {role}')
         admin.execute(f'GRANT SELECT ON p02.written, p02.audit TO {role}')
-    login = psycopg.conninfo.make_conninfo(dsn, user=role)
+    login = psycopg.conninfo.make_conninfo(dsn, user=role, password=password)
     monkeypatch.setenv('DATABASE_URL', login)
     monkeypatch.setattr(century, 'PRESENCE_ONLY_RELATIONS', frozenset(PINNED_FOUR))
     monkeypatch.setattr(shared, 'absence_evidence', lambda req, root: None)             # not under test: the lifecycle-absence file evidence
@@ -562,7 +565,7 @@ def test_century_policy_admits_a_builder_login_that_cannot_select_the_four_pinne
     """Claim (1)+(2)+(3)+(4) happy path: the login really cannot read any of the four pinned relations, every scoped relation is found, the readable ones are
     read, the unreadable set equals the pin -> ADMITTED; and the measurement names the four presence-only relations it did not read (N.8: no silent skip)."""
     dsn, role, policy, req = builder_like
-    with psycopg.connect(psycopg.conninfo.make_conninfo(dsn, user=role), autocommit=True) as probe:
+    with psycopg.connect(os.environ['DATABASE_URL'], autocommit=True) as probe:         # the builder login, with its password
         for t in PINNED_FOUR:
             with pytest.raises(psycopg.errors.InsufficientPrivilege):
                 probe.execute(f'SELECT 1 FROM {t}')                                      # the premise: the old whole-scope measurement cannot run as this login
