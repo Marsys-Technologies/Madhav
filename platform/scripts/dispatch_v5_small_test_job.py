@@ -169,8 +169,9 @@ def _note_outcome(exc: BaseException, outcome: str) -> None:
     except Exception:
         pass
 
-# The shape the ka_gochara_v5 registry row MUST have before staging — the values migration 1304
-# (PR 3101) lands, compared field by field. depends_on is compared in 1304's order.
+# The shape the ka_gochara_v5 registry row MUST have before staging — the values migration 1304 (PR 3101) lands, compared field by field,
+# as later main migrations leave it: 1395 raised the timeout, and depends_on is what 1304 -> 1392 (K8 registry truth) -> 1403 (SR-K8-EDGE-1403)
+# leave in the DB, in the stored array order. A test derives that array from those migrations' own SQL (ruling SR-W3-REGISTRY-ROW).
 EXPECTED_COUNT_SQL = ("SELECT COUNT(*) FROM ka_gochara_eval_window "
                       "WHERE chart_id=$1 AND generation='5.0'")
 EXPECTED_REGISTRY_ROW = {
@@ -179,7 +180,7 @@ EXPECTED_REGISTRY_ROW = {
     "has_writer": True,
     "has_substeps": True,
     "writer_timeout_seconds": 72000,                       # 28800 from migration 1304, raised by migration 1395 (J-3c cap, SR-J3-CAP-LIVE)
-    "depends_on": ["ga_positions", "ga_dashas"],
+    "depends_on": ["ga_positions", "ga_dashas", "bg_transit_rules", "bg_dignity_reference"],   # 1304 pair; 1392 adds bg_transit_rules; 1403 adds bg_dignity_reference
     "target_table": "ka_gochara_eval_window",
     "count_sql": EXPECTED_COUNT_SQL,
     "target_floor": 0,
@@ -196,9 +197,10 @@ EXPECTED_REGISTRY_ROW = {
 REGISTRY_READBACK = "platform/scripts/v5_small_test_registry_row_readback.sql"
 
 
-def _validate_registry_row(cur) -> None:
+def _validate_registry_row(cur) -> list[str]:
     """Lock the registry row (FOR SHARE: a concurrent UPDATE or activation blocks until this transaction ends; the lock needs UPDATE on
-    at least one column, which the builder holds for its health columns) and validate it INACTIVE, field by field. Never activates."""
+    at least one column, which the builder holds for its health columns) and validate it INACTIVE, field by field. Never activates.
+    Returns the row's validated depends_on, which `_check_dependencies_ready` then checks."""
     cur.execute(
         """SELECT scope, is_active, has_writer, has_substeps, writer_timeout_seconds,
                   depends_on, target_table, count_sql, target_floor, estimated_seconds,
@@ -223,6 +225,49 @@ def _validate_registry_row(cur) -> None:
                 "is not in the migration-1304 small-test shape; a non-conforming row would "
                 "change how this build is scheduled, budgeted or routed (apply 1304, do not edit by hand; "
                 f"{REGISTRY_READBACK} shows the production row)")
+    return list(row["depends_on"] or [])
+
+
+DEPENDENCY_READINESS_SQL = """
+    SELECT dep.asset_id, ar.scope,
+           (SELECT array_agg(t.state ORDER BY t.state) FROM asset_throughput t
+             WHERE t.asset_id = dep.asset_id
+               AND t.chart_id IS NOT DISTINCT FROM (CASE WHEN ar.scope = 'per_chart' THEN %s::uuid END)) AS states,
+           (SELECT array_agg(f.freshness_state ORDER BY f.freshness_state) FROM asset_freshness f
+             WHERE f.asset_id = dep.asset_id
+               AND f.chart_id IS NOT DISTINCT FROM (CASE WHEN ar.scope = 'per_chart' THEN %s::uuid END)) AS freshness
+      FROM unnest(%s::text[]) WITH ORDINALITY AS dep(asset_id, ord)
+      LEFT JOIN asset_registry ar ON ar.asset_id = dep.asset_id
+     ORDER BY dep.ord
+"""
+
+
+def _check_dependencies_ready(cur, depends_on: list[str]) -> None:
+    """Refuse unless EVERY upstream the registry row declares in depends_on is lit AND fresh (ruling SR-W3-REGISTRY-ROW, second-order).
+    The row to read depends on the upstream's registry scope (measured on production 2026-10-24, receipt J-4e.depends-on-state-20261024T1325Z-a2):
+      * scope per_chart -> the PINNED chart's asset_throughput row must be 'lit' and its asset_freshness row(s) (same chart_id) all 'fresh';
+      * scope global    -> the chart_id-NULL asset_throughput row must be 'lit' and its chart_id-NULL asset_freshness row(s) all 'fresh'
+        (an L0 reference asset has no per-chart state, and a chart's row of a global asset is never consulted);
+      * no throughput row, no freshness row, no registry row or any other scope -> refuse (an honest absence is not readiness).
+    Read-only, inside the admission transaction (the chart lock) and the same snapshot as the registry-row read. The teardown has no such check: it
+    only deletes this test's own output and stages nothing, so an upstream's state cannot make that deletion unsafe."""
+    cur.execute(DEPENDENCY_READINESS_SQL, (CHART_ID, CHART_ID, depends_on))
+    problems: list[str] = []
+    for r in cur.fetchall():
+        asset, scope = r["asset_id"], r["scope"]
+        if scope not in ("per_chart", "global"):
+            problems.append(f"{asset} has no usable registry scope ({scope!r})")
+            continue
+        where = f"chart {CHART_ID}" if scope == "per_chart" else "the global (chart-less) row"
+        states, freshness = list(r["states"] or []), list(r["freshness"] or [])
+        if states != ["lit"]:
+            problems.append(f"{asset} ({scope}, {where}) is {','.join(states) or 'absent'}, not lit")
+        elif freshness != ["fresh"] * len(freshness) or not freshness:
+            problems.append(f"{asset} ({scope}, {where}) is lit but its freshness is {','.join(freshness) or 'absent'}, not fresh")
+    if problems:
+        raise shared.Refused(
+            "an upstream the registry row depends on is not lit and fresh, so a build now would read stale or missing input: "
+            + "; ".join(problems) + " — rebuild or refresh that upstream first (a stale/dormant upstream is never built over)")
 
 
 SLICE_MARKER_KEY = "gochara_v5_test_slice"
@@ -483,10 +528,11 @@ def _admit(cur) -> tuple[list[dict], list[str]]:
             f"a build run is already active on chart {CHART_ID}: {[(str(r['id']), r['state']) for r in active]} — migration 595 allows one "
             "active run per chart; wait for it to end (a planned run that was never started is failed by the cockpit watchdog after "
             f"{EXECUTE_WITHIN_MINUTES} minutes) or stop it, then dispatch")
-    _validate_registry_row(cur)                                    # ruling 4 + 3: row locked FOR SHARE, validated inactive, never activated
+    depends_on = _validate_registry_row(cur)                       # ruling 4 + 3: row locked FOR SHARE, validated inactive, never activated
     problems = shared.end_state_problems(cur)                      # ruling 2: the monitor's N-137 conditions (the shared copy)
     if problems:
         raise shared.Refused("the Nirmana N-137 conditions for the small-test asset do not hold: " + "; ".join(problems))
+    _check_dependencies_ready(cur, depends_on)                     # SR-W3-REGISTRY-ROW: every depends_on asset lit + fresh (scope-aware); state after structure
     receipts = shared.count(cur, "SELECT count(*) AS n FROM asset_provenance_receipts WHERE asset_id = %s AND chart_id = %s",
                             (ASSET_ID, CHART_ID))
     if receipts:                                                   # ruling 5: the orchestrator's delta-skip could reuse an old receipt

@@ -41,6 +41,7 @@ def _synthetic_dsn(host: str, database: str) -> str:
 
 
 import teardown_v5_small_test_job as teardown_mod  # noqa: E402
+import registry_row_migrations_support as REG  # noqa: E402
 
 REGISTRY_ROW = dict(teardown_mod.EXPECTED_REGISTRY_ROW)
 PRE_1304_ROW = {"scope": "per_chart", "is_active": False, "has_writer": True, "has_substeps": False,
@@ -731,6 +732,12 @@ def test_the_registry_shape_is_the_dispatchs_1304_shape():
         pytest.skip("dispatch_v5_small_test_job.py is not in this tree yet (PR 3097); the equality is asserted once both are")
     import dispatch_v5_small_test_job as d
     assert teardown_mod.EXPECTED_REGISTRY_ROW == d.EXPECTED_REGISTRY_ROW
+
+
+def test_the_teardown_expected_depends_on_is_what_migrations_1304_1392_1403_leave_in_the_registry():
+    """SR-W3-REGISTRY-ROW: derived from the migrations' own SQL (stored order), so a later registry migration fails here, not in production."""
+    assert teardown_mod.EXPECTED_REGISTRY_ROW["depends_on"] == REG.derive_depends_on()
+    assert REG.unknown_depends_on_writers() == []
 
 
 def test_the_pre_1304_registry_row_is_refused_and_everything_rolls_back():
