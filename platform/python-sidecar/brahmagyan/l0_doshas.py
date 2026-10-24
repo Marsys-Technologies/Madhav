@@ -1935,10 +1935,10 @@ def seed_doshas(
                 "Apply migration 176 first."
             )
 
-        # All three projections are wholly owned by bg_doshas (the shared
-        # ontology delete is scoped to its entity class). The orchestrator owns
-        # the surrounding transaction/savepoint, so a failed replacement rolls
-        # back atomically.
+        # All three projections are wholly owned by bg_doshas (the ontology delete is scoped to its entity class);
+        # the orchestrator owns the transaction, so a failed replacement rolls back atomically.
+        from brahmagyan import l0_attribution_state as _attr  # carry attribution_state (mig 1268) across the replace (SS N-111)
+        attribution_saved = _attr.capture(cur, "brahma_dosha_catalog", "canonical_id", "classical_citations")
         cur.execute("DELETE FROM reference_doshas")
         cur.execute("DELETE FROM brahma_dosha_catalog")
         cur.execute("DELETE FROM brahma_ontology WHERE entity_class = 'dosha'")
@@ -2018,6 +2018,8 @@ def seed_doshas(
             )
             if cur.rowcount > 0:
                 ref_inserted += 1
+
+        _attr.restore(cur, "brahma_dosha_catalog", "canonical_id", "classical_citations", attribution_saved)
 
         cur.execute(
             """

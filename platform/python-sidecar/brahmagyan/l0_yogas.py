@@ -2237,10 +2237,10 @@ def seed_yogas(conn, build_id: str | None = None,
         len(all_yogas), len(YOGAS_CORE), len(DETECTOR_YOGAS), len(extracted),
     )
 
-    # All three projections are wholly owned by bg_yogas (the ontology delete
-    # is scoped to its entity class). Desired source is computed first; the
-    # replacement then shares the orchestrator-owned transaction/savepoint.
+    # All three projections are wholly owned by bg_yogas; the replacement shares the orchestrator-owned transaction.
     with conn.cursor() as cur:
+        from brahmagyan import l0_attribution_state as _attr  # carry attribution_state (mig 1268) across the replace (SS N-111)
+        attribution_saved = _attr.capture(cur, "brahma_yoga_catalog", "canonical_id", "classical_citations")
         cur.execute("DELETE FROM brahma_yoga_source_chunks")
         cur.execute("DELETE FROM reference_yogas")
         ref_replaced = cur.rowcount
@@ -2332,6 +2332,8 @@ def seed_yogas(conn, build_id: str | None = None,
 
             if (i + 1) % 50 == 0:
                 logger.info("[l0_yogas] progress: %d/%d yogas processed", i + 1, len(all_yogas))
+
+        _attr.restore(cur, "brahma_yoga_catalog", "canonical_id", "classical_citations", attribution_saved)
 
         cur.execute(
             """
