@@ -38,6 +38,8 @@ from .test_a53_inventory import apply_near_miss_storage
 from .test_a55_replace_chain import CHART_ID, CLASSES, GEN, PATHS, SHORT, _World, template  # noqa: F401
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "platform" / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[5] / "platform" / "scripts" / "__tests__"))
+import registry_row_migrations_support as REG  # noqa: E402  (depends_on as migrations 1304 -> 1392 -> 1403 leave it)
 import teardown_v5_small_test_job as td  # noqa: E402
 
 ASSET = td.ASSET_ID
@@ -265,7 +267,8 @@ def test_the_teardown_removes_the_whole_small_test_and_keeps_everything_else(two
     assert c.execute("SELECT count(*) FROM public.ka_gochara_sky_event").fetchone()[0] == sky_before
     row = c.execute("SELECT is_active, has_substeps, writer_timeout_seconds, depends_on FROM public.asset_registry"
                     " WHERE asset_id = %s", (ASSET,)).fetchone()
-    assert row == (False, True, 72000, ["ga_positions", "ga_dashas"])
+    # the row as migrations 1304 -> 1392 -> 1403 leave it, read from their SQL (SR-W3-REGISTRY-ROW): the teardown must not touch the registry row
+    assert row == (False, True, 72000, REG.derive_depends_on())
 
 
 def _seed_near_miss(w, generation, obj):

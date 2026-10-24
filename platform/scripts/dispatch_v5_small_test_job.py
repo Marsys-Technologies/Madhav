@@ -10,8 +10,8 @@ before touching anything.
 
 PRECONDITION: migration 1304 (PR 3101) has been applied — it is the ONLY source
 of the ka_gochara_v5 registry row's small-test shape (has_substeps true,
-writer_timeout_seconds 72000 (28800 from 1304, raised by 1395), depends_on [ga_positions, ga_dashas], the
-ka_gochara_eval_window counter). This script does NOT insert or alter that row;
+writer_timeout_seconds 72000 (28800 from 1304, raised by 1395), depends_on [ga_positions, ga_dashas, bg_transit_rules, bg_dignity_reference] (1304's pair, plus 1392 and 1403),
+the ka_gochara_eval_window counter). This script does NOT insert or alter that row;
 it VALIDATES it field by field and refuses on any difference or if the row is
 absent (A2 review: the old INSERT carried the pre-1304 shape and could never
 fire against a real row).

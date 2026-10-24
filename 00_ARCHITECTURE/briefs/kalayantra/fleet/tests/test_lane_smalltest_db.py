@@ -65,6 +65,15 @@ def _lane_database(prefix, tag, *, seed=None):
             cols = list(row)
             conn.execute(sql.SQL('INSERT INTO asset_registry ({}) VALUES ({})').format(
                 sql.SQL(',').join(map(sql.Identifier, cols)), sql.SQL(',').join(sql.Placeholder() for _ in cols)), list(row.values()))
+            # SR-W3-REGISTRY-ROW: the dispatch admission refuses unless EVERY depends_on upstream is lit and fresh. Production's shape (receipt
+            # J-4e.depends-on-state-20261024T1325Z-a2): the ga_* upstreams are per_chart (the canonical chart's row), the bg_* L0 references are
+            # global (one chart_id-NULL throughput row and one chart_id-NULL freshness row).
+            for dep in dispatch.EXPECTED_REGISTRY_ROW['depends_on']:
+                scope, chart = ('global', None) if dep.startswith('bg_') else ('per_chart', dispatch.CHART_ID)
+                conn.execute('INSERT INTO asset_registry (asset_id, scope, is_active, has_writer) VALUES (%s, %s, true, true)', (dep, scope))
+                conn.execute("INSERT INTO asset_throughput (chart_id, asset_id, state) VALUES (%s, %s, 'lit')", (chart, dep))
+                conn.execute("INSERT INTO asset_freshness (asset_id, chart_id, partition_key, freshness_state) VALUES (%s, %s, '__whole_asset__', 'fresh')",
+                             (dep, chart))
         yield dict(host='127.0.0.1', port=55433, database=name), dsn
     finally:
         if admin is not None:
@@ -145,7 +154,8 @@ def test_executor_export_six_receipts_and_final_independent_readback(lane_db, tm
     monkeypatch.setattr(ex, 'git', candidate_git)
     real_run = subprocess.run
     overlays = [FLEET / 'executor.py', FLEET / 'executor_ops.json', FLEET / 'lane_smalltest.py',
-                ROOT / 'platform/scripts/v5_small_test_shared.py', ROOT / 'platform/scripts/teardown_v5_small_test_job.py']
+                ROOT / 'platform/scripts/v5_small_test_shared.py', ROOT / 'platform/scripts/teardown_v5_small_test_job.py',
+                ROOT / 'platform/scripts/dispatch_v5_small_test_job.py']    # the fixture's registry row is the candidate's EXPECTED_REGISTRY_ROW (SR-W3-REGISTRY-ROW)
     def export_candidate(argv, **kwargs):
         if argv[0] == 'git' and 'archive' in argv:
             result = real_run(argv, **kwargs)
